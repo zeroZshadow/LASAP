@@ -45,19 +45,21 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
   | `give <id> <count> <index>` | Raw `Inventory::AddItemID` |
   | `collect <local id>` | Simulates a placeholder pickup |
   | `setrecv <n>` / `clearchecks` | Resets the counter or the checks file |
-  | `pos <x> <y> <z>` / `warp <level> <x> <y> <z>` | Position experiments. **Not working:** the player stays at the origin |
+  | `pos <x> <y> <z>` | Teleports within the current level. Works while Link stands on the ground, not while he falls |
+  | `warp <level> <x> <y> <z>` | **Not working:** loads the level but leaves Link at the origin; an autosave there strands the file |
 
   Button bits follow `nn::hid::NpadButton`: A `1`, B `2`, L+R `c0`, Plus `400`, D-pad left/up/right/down `1000`/`2000`/`4000`/`8000`. The stick range is ±32767.
 - **Inputs.** Hold at least 400 ms. Shorter presses are dropped in dialogue.
 - **Scripted AP session.** Run the client and server with stdin fed from a file (`tail -f cmds.txt | ...`) so `/dbg`, `/las` and server `/send` commands can be appended while they run.
 - **Boot sequences.** `scripts/tests/*.txt` are `drive.py` scripts: boot to file 2, or create a new game in file 2.
-- **Overworld coordinates.** Screen `Field_<row><col>` (col A=0) is around x = 15·col + 7.5, z = 12·(row − 1) + 6.75. Mabe at Marin's door is (38.25, 10.5, 128.25).
+- **Overworld coordinates.** Screen `Field_<row><col>` (col A=0) is around x = 15·col + 7.5, z = 12·(row − 1) + 6.75. Mabe at Marin's door is (38.25, 10.5, 128.25); in front of the shop is (51.75, 10.5, 117), walk up to enter.
 
 ## Verified (2026-10-12, Ryubing Canary 1.3.340, game 1.0.0)
 
 - **Boot.** The module boots with LASR's randomizer hooks; the socket listens on 43384.
 - **Generation and patching.** Generate → patch → deploy → new game works end to end.
 - **First check.** Tarin's gift (the first check) reaches the server as a location check.
+- **Shop.** Buying the placeholder in the Mabe shop charges the price, plays the item get and reports the slot's location (`shop-slot3-1st`).
 - **Received items.** Items from the server are applied in-game: progressive sword/shield/bracelet, feather, seashells, rupees, small key, tunic, heart container, golden leaf and a trap. A burst of 240 items also applied.
 - **Persistence.** The received count survives a restart without double grants. On a fresh save, everything is re-delivered.
 - **Goal.** `ShadowClear` reports the goal to the server.
@@ -65,7 +67,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 
 ## Not yet verified in-game
 
-- Opening a chest, heart pieces, seashells, shop purchases, dungeon items, owl statues, Seashell Mansion.
+- Opening a chest, heart pieces, seashells, dungeon items, owl statues, Seashell Mansion.
 - DeathLink in both directions.
 - Real hardware.
 
