@@ -45,7 +45,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 
   | Command | Effect |
   |---|---|
-  | `state` | Prints level, screen (`intro`, `title`, `menu`, `loading`, `level` or the raw ID), position, health, rupees, key inventory bits, the received counter, the player's event state, the pause flag, whether Link holds something over his head (`carry`) and the item-get display queue (`+1` while one shows) |
+  | `state` | Prints level, screen (`intro`, `title`, `menu`, `loading`, `level` or the raw ID), position, health, rupees, key inventory bits, the received counter, the player's event state, the pause flag, whether Link holds something over his head (`carry`) the item-get display queue (`+1` while one shows) and the item the last display showed (`shown`: its id once the item-get has swapped it in, -1 until then) |
   | `flag <name>` / `setflag <name> 0\|1` | Reads or sets an event flag |
   | `input <buttons hex> <ms> [lx ly]` | Holds buttons and the left stick for a duration |
   | `grant <key> <count> <dungeon> [show 0\|1]` | Same path as `ITEM`, without touching the counter |

@@ -16,4 +16,6 @@ check showq=2
 dismiss 120
 level MarinTarinHouse
 check event=0 paused=0 carry=0 showq=0(\s|$)
+# The item-gets showed the received items (the last one, Rupee20), not the placeholder.
+check shown=104(\s|$)
 shot D:/DEV/LASAP-sandbox/newgame_2.png

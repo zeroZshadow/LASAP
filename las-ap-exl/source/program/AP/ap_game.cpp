@@ -164,6 +164,10 @@ namespace {
     ItemEvent g_ItemEvent = ItemEvent::None;
     u64 g_ItemEventSince = 0;
     int g_ItemEventId = -1;            // what the event's item-get shows instead of the placeholder
+    // The item event's item-get is still to be swapped (an item, not a trap). Kept apart from the event state, which
+    // turns Running as soon as the event takes the player, before its item-get starts.
+    bool g_ItemEventSwap = false;
+    int g_ItemEventShown = -1;         // the item the last item event's item-get showed; -1 until the swap (STATE)
     std::string g_ItemEventMessage;    // and its message entry
 
     // Client connection notices
@@ -233,8 +237,10 @@ namespace {
     bool StartItemEvent(int itemId, const std::string& messageEntry) {
         g_ItemEventId = itemId;
         g_ItemEventMessage = messageEntry;
+        g_ItemEventShown = -1;
         Logging.Log("[AP] item event " + std::to_string(itemId) + " request");
         if (!RequestCommonEvent(AP::ITEM_EVENT_ENTRY)) return false;
+        g_ItemEventSwap = true;
         g_ItemEvent = ItemEvent::Requested;
         g_ItemEventSince = NowMs();
         return true;
@@ -259,6 +265,7 @@ namespace {
         if (global_config.damage.mode == "normal" && items->Health <= damage) items->Health = damage + 1;
         std::string entry = std::string(AP::TRAP_EVENT_PREFIX) + key;
         g_ItemEventId = -1;
+        g_ItemEventSwap = false;
         Logging.Log("[AP] trap event " + key + " request");
         if (!RequestCommonEvent(entry.c_str())) return false;
         g_ItemEvent = ItemEvent::Requested;
@@ -345,6 +352,7 @@ namespace {
                 break;
         }
         g_ItemEvent = ItemEvent::None;
+        g_ItemEventSwap = false;
         return false;
     }
 
@@ -383,11 +391,14 @@ namespace {
     HOOK_DEFINE_TRAMPOLINE(ItemGetSequence) {
         static void Callback(SharedPtr* out, void* player, int itemId, bool keepCarry, StrView* messageEntry) {
             size_t len = strlen(AP::RECEIVED_LABEL);
-            if (g_ItemEvent == ItemEvent::Requested && itemId == AP::PLACEHOLDER_ITEM_ID && messageEntry != nullptr &&
-                messageEntry->len == len && memcmp(messageEntry->data, AP::RECEIVED_LABEL, len) == 0) {
+            if (g_ItemEventSwap && g_ItemEvent != ItemEvent::None && itemId == AP::PLACEHOLDER_ITEM_ID &&
+                messageEntry != nullptr && messageEntry->len == len &&
+                memcmp(messageEntry->data, AP::RECEIVED_LABEL, len) == 0) {
                 StrView message{g_ItemEventMessage.c_str(), g_ItemEventMessage.size()};
+                g_ItemEventSwap = false;
+                g_ItemEventShown = g_ItemEventId;
+                if (g_ItemEvent == ItemEvent::Requested) g_ItemEventSince = NowMs();
                 g_ItemEvent = ItemEvent::Running;
-                g_ItemEventSince = NowMs();
                 Logging.Log("[AP] item event " + std::to_string(g_ItemEventId) + " start");
                 Orig(out, player, g_ItemEventId, keepCarry, &message);
                 return;
@@ -531,6 +542,7 @@ namespace {
             s += std::string(" carry=") + (PlayerCarrying() ? "1" : "0");
         }
         s += " showq=" + std::to_string(g_ShowQueue.size()) + (g_ItemEvent != ItemEvent::None ? "+1" : "");
+        s += " shown=" + std::to_string(g_ItemEventShown);
         return s;
     }
 

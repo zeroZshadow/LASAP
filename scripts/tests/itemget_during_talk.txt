@@ -23,6 +23,8 @@ shot D:/DEV/LASAP-sandbox/talk_1.png
 mash 2 1
 wait 1.5
 check showq=0\+1
+# It shows the received item, not the placeholder.
+await 3 shown=22(\s|$)
 shot D:/DEV/LASAP-sandbox/talk_2.png
 dismiss 20
 wait 2

@@ -22,6 +22,8 @@ shot D:/DEV/LASAP-sandbox/carry_1.png
 send DBG input 1 400
 await 5 carry=0
 await 5 event=22
+# It shows the received item, not the placeholder.
+await 3 shown=22(\s|$)
 shot D:/DEV/LASAP-sandbox/carry_2.png
 dismiss 20
 # The item-get leaves Link facing the camera; he turns back to the counter to lift the heart again.
