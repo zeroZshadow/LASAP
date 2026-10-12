@@ -41,4 +41,4 @@ balls. Picking one up names the item and whose it is.
 ## When the player receives an item, what happens?
 
 Link holds the item up with its usual item text, naming the player who sent it. Items arriving during a cutscene or a
-menu wait until Link is free.
+menu wait until Link is free. A trap costs a heart, and a small popup at the bottom right names the trap and its sender.

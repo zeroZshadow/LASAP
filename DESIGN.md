@@ -134,7 +134,7 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 **Items with special handling in the module**
 - Progressive sword, shield and bracelet arrive as their Lv1 key; the module upgrades when LASR's `*FoundFlag` is set.
 - Seashells, heart pieces, heart containers and golden leaves take the lowest unused in-game index.
-- Traps (`*Trap`, `$ENEMY`) cost one heart and never kill. Unknown keys are logged and counted as applied.
+- Traps (`*Trap`, `$ENEMY`) cost one heart and never kill; a notice names the trap and its sender. Unknown keys are logged and counted as applied.
 
 **In-game text**
 - A found placeholder says what it is: "You found <item> for <player>!", or "You found your <item>!" for this slot's own items. The patcher writes the names to `config/lasr-exl/ap_names.txt` (`NAME` lines without the command), which the module reads at boot, so this works before the client connects; `NAME` lines replace them. A location without a name says "You found an Archipelago item!".
@@ -153,7 +153,7 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 - A display starts once the player has been free for 0.6 s: no talk, event, cutscene, pause menu or level load. Displays run one at a time.
 - During a display only A and B reach the game, and A arrives as B, so Link cannot walk away and the closing press does not start a talk.
 - With three or more displays waiting, filler (rupees, ammo, drops) is granted without a display. The queue is not saved; a restart drops pending displays, not items.
-- Traps show nothing.
+- Traps show no item-get; the autosave popup names the trap and its sender.
 
 **Persistence**
 - **Received-item count:** event flags `APRecv0`..`APRecv15`, read as a 16-bit counter. The patcher adds them to `GlobalFlags.gsheet`.

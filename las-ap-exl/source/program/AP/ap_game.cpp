@@ -271,12 +271,14 @@ namespace {
         if (!StartItemGet(id, message)) AP::Log("item-get " + std::to_string(id) + " did not start");
     }
 
+    bool IsTrapKey(const std::string& key) { return key.ends_with("Trap") || key == "$ENEMY"; }
+
     // Grants one item the way an in-game pickup would, including LASR's progressive items.
     // Returns the item id granted, or -1 for traps and unknown keys.
     int GrantItem(const std::string& key, int count, int dungeon) {
         auto* items = *Game::Data::Inventory::Items;
         std::string k = key;
-        if (k.ends_with("Trap") || k == "$ENEMY") {
+        if (IsTrapKey(k)) {
             // Traps from other worlds cost one heart; they never kill.
             Damage(4);
             return -1;
@@ -556,6 +558,8 @@ namespace {
                 // An own item found here was named by the found text already.
                 bool namedWhenFound = sender.empty() && location >= 0 && AP::HasLocationName(location);
                 if (id >= 0 && !namedWhenFound) QueueShow(Show{id, item, sender});
+                // Traps show nothing of their own; a notice says what hit the player and who sent it.
+                if (IsTrapKey(a[2])) AP::QueueToast((item.empty() ? a[2] : item) + (sender.empty() ? "" : "\nfrom " + sender));
                 SetRecvCount(n);
                 have = n;
             }
