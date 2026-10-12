@@ -117,10 +117,12 @@ void randoFixes() {
     // we will then set the actor switch in its place
     p.Seek(offset_manager.Offset(0x856e4));
     p.WriteInst(inst::Nop());
+}
 
+void underwaterItems() {
     // force the "under_water" render property to true
     // this makes all item models properly show under water
-    p.Seek(offset_manager.Offset(0xff54bc));
+    patch::CodePatcher p(offset_manager.Offset(0xff54bc));
     p.WriteInst(inst::Nop());
     p.Seek(offset_manager.Offset(0xff54c0));
     p.WriteInst(inst::Movz(reg::W27, 1));
@@ -159,6 +161,7 @@ void runCodePatches() {
     // }
     if (global_config.randomizer.enabled) {
         // randoFixes();
+        underwaterItems();
         randoOptional();
     }
 }
