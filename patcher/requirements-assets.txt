@@ -1,0 +1,5 @@
+# Building the assets (scripts/build_assets.py) and checking the datasheet code against oead (scripts/check_gsheet.py)
+-r requirements.txt
+oead~=1.2.9.post4
+quicktex~=0.2.1
+Pillow~=10.4.0

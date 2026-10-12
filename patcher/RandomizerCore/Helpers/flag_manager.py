@@ -1,4 +1,4 @@
-import oead
+from RandomizerCore.Tools import gsheet
 
 
 class FlagManager:
@@ -6,7 +6,7 @@ class FlagManager:
         sheet = mod_generator.file_manager.readFile("GlobalFlags.gsheet")
         self.parseFlags(sheet)
         self.addCustomFlags()
-        sheet["values"] = oead.gsheet.StructArray()
+        sheet["values"] = gsheet.StructArray()
         for k,v in self.flags.items():
             sheet["values"].append({"symbol": k, "index": v})
         mod_generator.file_manager.writeFile("GlobalFlags.gsheet", sheet)

@@ -41,12 +41,12 @@ On 64-bit Windows, the release's `las.apworld` is all a player installs: it carr
    ```
    The file lands in `vendor/Archipelago/build/apworlds`. The world is needed only by whoever generates the seed and by the LAS player for the client; other players need nothing new.
 2. **Dump the RomFS.** In Ryujinx, right-click the game, then Extract Data → RomFS.
-3. **Set up the patcher.** It runs in a Python 3.12 venv with `patcher/requirements.txt`. With `uv`:
+3. **Set up the patcher.** It runs in a Python 3.12 venv with `patcher/requirements.txt`; `requirements-assets.txt` adds the tools for rebuilding the assets. With `uv`:
    ```bash
    uv venv .venv-lasr --python 3.12
    ```
    ```bash
-   uv pip install -r patcher/requirements.txt --python .venv-lasr
+   uv pip install -r patcher/requirements-assets.txt --python .venv-lasr
    ```
 4. **Build the game module** with `bash scripts/build_exl.sh`. It needs Docker and writes `patcher/exl/`. The module is the same for every seed.
 5. **Point the client at the patcher.** In the client's Patch tab, under advanced settings, set the patcher command to `<repo>/.venv-lasr/Scripts/python.exe <repo>/patcher/las_ap_patch.py` (or `las_options.patcher_command` in `host.yaml`).

@@ -1,15 +1,15 @@
-import oead
+from RandomizerCore.Tools import gsheet
 
 
 def readSheet(sheetFile):
 	with open(sheetFile, 'rb') as file:
-		sheet = oead.gsheet.parse(oead.Bytes(file.read()))
+		sheet = gsheet.parse(file.read())
 
 	return {'alignment': sheet.alignment, 'hash': sheet.hash, 'name': sheet.name, 'root_fields': sheet.root_fields, 'values': sheet.values}
 
 
 def writeSheet(sheetFile, sheet):
-	newSheet = oead.gsheet.Sheet()
+	newSheet = gsheet.Sheet()
 	newSheet.alignment = sheet['alignment']
 	newSheet.hash = sheet['hash']
 	newSheet.name = sheet['name']
@@ -24,9 +24,9 @@ def writeSheet(sheetFile, sheet):
 def parseStruct(struct, k=None):
 	result = {}
 	for k,v in struct.items():
-		if type(v) == oead.gsheet.Struct:
+		if type(v) == gsheet.Struct:
 			result[k] = parseStruct(v)
-		elif type(v) == oead.gsheet.StructArray:
+		elif type(v) == gsheet.StructArray:
 			result[k] = parseStructArray(v)
 		else:
 			result[k] = v
@@ -49,21 +49,21 @@ def dictToStruct(d):
 		elif type(d[k]) == list:
 			d[k] = listToSheetArray(k, d[k])
 
-	return oead.gsheet.Struct(d)
+	return gsheet.Struct(d)
 
 
 def listToSheetArray(name, l):
 	if len(l) > 0:
 		if type(l[0]) == dict:
-			new = oead.gsheet.StructArray()
+			new = gsheet.StructArray()
 		elif type(l[0]) == bool:
-			new = oead.gsheet.BoolArray()
+			new = gsheet.BoolArray()
 		elif type(l[0]) == int:
-			new = oead.gsheet.IntArray()
+			new = gsheet.IntArray()
 		elif type(l[0]) == float:
-			new = oead.gsheet.FloatArray()
+			new = gsheet.FloatArray()
 		elif type(l[0]) == str:
-			new = oead.gsheet.StringArray()
+			new = gsheet.StringArray()
 		for s in l:
 			if type(s) == dict:
 				d = dictToStruct(s)
@@ -72,7 +72,7 @@ def listToSheetArray(name, l):
 			# 	for k in s:
 			# 		new.append(listToSheetArray(k, s))
 	else:
-		new = oead.gsheet.StructArray()
+		new = gsheet.StructArray()
 	
 	return new
 
@@ -90,7 +90,7 @@ def readField(field):
 
 
 def createField(name, type_name, type, offset, flags=None):
-	field = oead.gsheet.Field()
+	field = gsheet.Field()
 
 	field.name = name
 	field.type_name = type_name
@@ -99,16 +99,16 @@ def createField(name, type_name, type, offset, flags=None):
 	if flags:
 		field.flags = flags
 
-	if field.type is oead.gsheet.Field.Type.String:
+	if field.type is gsheet.Field.Type.String:
 		field.inline_size = 0x10
 	
-	if field.type is oead.gsheet.Field.Type.Int:
+	if field.type is gsheet.Field.Type.Int:
 		field.inline_size = 0x4
 	
-	if field.type is oead.gsheet.Field.Type.Struct:
+	if field.type is gsheet.Field.Type.Struct:
 		field.inline_size = 0x10
-		field.fields.append(createField('category', 'ConditionCategory', oead.gsheet.Field.Type.Int, 16, oead.gsheet.Field.Flag.IsEnum))
-		field.fields.append(createField('parameter', 'string', oead.gsheet.Field.Type.String, 16))
+		field.fields.append(createField('category', 'ConditionCategory', gsheet.Field.Type.Int, 16, gsheet.Field.Flag.IsEnum))
+		field.fields.append(createField('parameter', 'string', gsheet.Field.Type.String, 16))
 	
 	field.data_size = field.inline_size
 	field.offset_in_value = offset
@@ -118,7 +118,7 @@ def createField(name, type_name, type, offset, flags=None):
 
 
 def createFieldCondition(category, parameter):
-	conditions = oead.gsheet.StructArray()
+	conditions = gsheet.StructArray()
 	conditions.append({'category': category, 'parameter': parameter})
 
 	return conditions
@@ -129,7 +129,7 @@ def createFieldCondition(category, parameter):
 # Return and create an empty structure for an element in the Conditions datasheet
 # checks is a list of (category, paramter) tuples
 def createCondition(name, checks):
-	condition = {'symbol': name, 'conditions': oead.gsheet.StructArray()}
+	condition = {'symbol': name, 'conditions': gsheet.StructArray()}
 	for category, parameter in checks:
 		condition['conditions'].append({'category': category, 'parameter': parameter})
 
@@ -152,7 +152,7 @@ def createCondition(name, checks):
 
 # create npc behavior
 def createBehavior(type, datas=None):
-	behavior = {'type': type, 'parameters': oead.gsheet.StringArray()}
+	behavior = {'type': type, 'parameters': gsheet.StringArray()}
 	if datas:
 		print('working!')
 		for data in datas:
@@ -163,7 +163,7 @@ def createBehavior(type, datas=None):
 
 # create npc eventTriggers
 def createEventTrigger(condition, additionalConditions, entryPoint):
-	trigger = {'condition': condition, 'additionalConditions': oead.gsheet.StructArray(), 'entryPoint': entryPoint}
+	trigger = {'condition': condition, 'additionalConditions': gsheet.StructArray(), 'entryPoint': entryPoint}
 	for category, parameter in additionalConditions:
 		trigger['additionalConditions'].append({'category': category, 'parameter': parameter})
 	
@@ -172,13 +172,14 @@ def createEventTrigger(condition, additionalConditions, entryPoint):
 
 # create npc layoutConditions
 def createLayoutCondition(category, parameter, layoutId=-1):
-	layout = oead.gsheet.StructArray()
+	layout = gsheet.StructArray()
 	layout.append({'category': category, 'parameter': parameter, 'layoutID': layoutId})
 
 
 
 class SARC:
 	def __init__(self, sarcFile: str):
+		import oead  # only the asset build reads archives (ap_assets.py)
 		with open(sarcFile, 'rb') as f:
 			self.reader = oead.Sarc(f.read())
 		self.writer = oead.SarcWriter.from_sarc(self.reader)

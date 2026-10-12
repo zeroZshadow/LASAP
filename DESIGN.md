@@ -7,7 +7,7 @@ How the pieces fit and the contracts between them. FEASIBILITY.md covers the bac
 | Dir | What | Language / runtime |
 |---|---|---|
 | `apworld/las/` | Archipelago world (`Links Awakening Switch`) plus PC client | Python, AP's venv (`.venv-ap`, Py 3.12) |
-| `patcher/` | Builds the romfs/exefs mod from an AP patch file; derived from LASR (MIT) | Python, `.venv-lasr` (oead, evfl, PyLibMS); frozen with PyInstaller for the release |
+| `patcher/` | Builds the romfs/exefs mod from an AP patch file; derived from LASR (MIT) | Python: pure Python plus `bsdiff4` for patching (`requirements.txt`); oead, quicktex and Pillow only to build the assets (`requirements-assets.txt`) |
 | `las-ap-exl/` | exlaunch module (subsdk9) derived from Owen-Splat/exlaunch (GPL-2.0) | C++, Docker `devkitpro/devkita64` |
 
 The module runs LASR's hooks and its code patches (`patches.hpp`), except two of LASR's fixes (`lasrOnlyFixes`): the `CompareInt` event rewrite, which only LASR's own keysanity chest flows use, and item actors spawning by actor switch, which would undo the inventory-bit hiding of heart piece and seashell actors.
@@ -21,6 +21,8 @@ Flow:
 ## Assets
 
 The files the mod changes the same way for every seed are assets (`patcher/ap_assets.py`): `StartUp.arc` (LASR's title screen logo and the notice look, `ap_ui.py`), `ItemArchipelago.bfres` (`ap_model.py`) and LASR's chest textures (`ObjTreasureBox{Junk,Key,LifeUpgrade}.bfres`, for "Texture + Size"). Building them needs native packages (oead's SARC, quicktex, Pillow). `scripts/build_assets.py` builds them from a RomFS dump and stores each in `patcher/assets` as a bsdiff4 patch against the RomFS file it comes from, with both files' SHA-256 in `assets.json`. The patcher applies the patches to the player's dump and checks the results; a dump of another game version fails with a message naming the file. After a change to `ap_ui.py`, `ap_model.py` or LASR's title screen or chest textures, rebuild and commit the assets.
+
+Datasheets (`.gsheet`) are read and written by `RandomizerCore/Tools/gsheet.py`, a pure-Python version of oead's gsheet module that LASR's `oead_tools` and `flag_manager` use. It writes what oead writes, byte for byte, and copies values stored into structs and arrays as oead does. `scripts/check_gsheet.py` compares the two on every RomFS datasheet and on any given files.
 
 ## Release
 

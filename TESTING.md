@@ -8,7 +8,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - Docker Desktop with the image `devkitpro/devkita64:latest`.
 - Python venvs created with `uv` (Python 3.12):
   - `.venv-ap`: Archipelago requirements (`vendor/Archipelago/requirements.txt`) plus pytest.
-  - `.venv-lasr`: the patcher's requirements (`patcher/requirements.txt`: oead, evfl, PyLibMS, ...).
+  - `.venv-lasr`: the patcher's requirements with the asset tools (`patcher/requirements-assets.txt`: oead, quicktex, Pillow on top of `requirements.txt`).
   - `.venv-release`: the same plus PyInstaller, for `build_release.py`.
 - `vendor/Archipelago`: Archipelago 0.6.8, with a junction `vendor/Archipelago/worlds/las` → `apworld/las`.
 
@@ -27,6 +27,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 | `reset_saves.sh [newgame]` | Restores sandbox saves from the user's saves, or from the new-game snapshot, and clears `sdcard/lasap` |
 | `ap.py <Generate.py\|MultiServer.py\|Launcher.py> ...` | Runs an AP entry point from `vendor/Archipelago` in `.venv-ap`; `LASAP_AP` points it at another checkout, such as a clean one with only `las.apworld` in `custom_worlds` |
 | `las_client.py [--nogui --connect host:port --name Slot]` | Runs the LAS client without the Launcher |
+| `check_gsheet.py [--romfs dir] [files]` | Compares the pure-Python datasheet code with oead on every RomFS datasheet and the given files (values and bytes) |
 | `build_assets.py [--romfs dir]` | Rebuilds `patcher/assets` (DESIGN.md, Assets) from a RomFS dump, in `.venv-lasr` |
 | `build_release.py` | Builds the release world with the frozen Windows patcher inside (README, Building a release) |
 | `make_test_patch.py <out.aplas>` | Writes a synthetic patch (all locations AP items) for patcher tests |
