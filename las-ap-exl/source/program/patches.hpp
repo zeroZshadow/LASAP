@@ -157,8 +157,8 @@ void runCodePatches() {
     // if (global_config.damage.mode != "normal") {
     //     damageModifier();
     // }
-    // if (global_config.randomizer.enabled) {
-    //     randoFixes();
-    //     randoOptional();
-    // }
+    if (global_config.randomizer.enabled) {
+        // randoFixes();
+        randoOptional();
+    }
 }

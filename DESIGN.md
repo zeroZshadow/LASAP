@@ -10,6 +10,8 @@ How the pieces fit and the contracts between them. FEASIBILITY.md covers the bac
 | `patcher/` | Builds the romfs/exefs mod from an AP patch file; derived from LASR (MIT) | Python, `.venv-lasr` (oead, evfl, PyLibMS) |
 | `las-ap-exl/` | exlaunch module (subsdk9) derived from Owen-Splat/exlaunch (GPL-2.0) | C++, Docker `devkitpro/devkita64` |
 
+The module runs LASR's hooks and its optional code patches (`randoOptional` in `patches.hpp`: free book, stealing). LASR's other code patch groups (`randoFixes`, `niceItems`, `damageModifier`) are not applied.
+
 Flow:
 1. AP generates a multiworld. The world writes `AP_<seed>_P<n>_<slot>.aplas` (the patch file).
 2. The player opens the patch file with the Launcher, which starts the client with it. The client runs the patcher on the patch file plus the user's romfs dump, and installs its output (see Client install).
