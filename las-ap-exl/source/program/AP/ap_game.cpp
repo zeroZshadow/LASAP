@@ -203,6 +203,7 @@ namespace {
     void TickItemGet() {
         bool free = PlayerFree();
         if (free && !g_WasFree) g_FreeSince = NowMs();
+        if (free) AP::ExpireFoundLocation();
         g_WasFree = free;
         if (ItemGetRunning()) {
             g_WasFree = false;  // the settle time starts again after each item-get

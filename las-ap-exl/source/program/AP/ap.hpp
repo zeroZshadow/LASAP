@@ -8,6 +8,7 @@ namespace AP {
     // Items.gsheet itemID of the placeholder that every randomized location gives.
     // Its AddItemID index is the location's local id.
     constexpr int PLACEHOLDER_ITEM_ID = 71;
+    constexpr const char* PLACEHOLDER_KEY = "ArchipelagoItem";
     constexpr int PORT = 43384;
     constexpr int PROTOCOL_VERSION = 2;
     // Message labels the patcher adds: the found placeholder's text (Place.msbt) and the received-item text
@@ -41,6 +42,8 @@ namespace AP {
     void SetLocationName(int local_id, const std::string& item, const std::string& player);
     bool HasLocationName(int local_id);
     std::string TextState();
+    // The location of a placeholder just added; it names the found text until the player is free again.
     void SetFoundLocation(int local_id);
+    void ExpireFoundLocation();
     void SetReceivedText(const std::string& item, const std::string& sender);
 }

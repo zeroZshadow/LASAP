@@ -81,6 +81,9 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 | Framework `+0x510` | u8, 1 while the pause menu is open or a level loads |
 | Item-get action `+0x38` | u32, 0x2a once the item-get text is closed |
 | Level-load data `+0xdc` | Restart position, used by `warp` |
+| `0x10aaf40` / `0x10aa5a0` | MSBT label lookup and text getter, hooked for the AP texts |
+| `0xa35994` | In `ShellMansionMaster.PopBox`, the call that creates the present: `x3` = item key view, `w4` = item index |
+| `0x148b10` | Collected check `(kind, count, index)` that item actors use to hide: kind 8 tests heart piece bit `index`, kind 9 seashell bit `index` |
 
 ## Verified (2026-10-12, Ryubing Canary 1.3.340, game 1.0.0)
 
@@ -96,6 +99,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Marin's song.** The song gift is a check (`Mabe Village - Marin`).
 - **Heart pieces.** The Mabe Well and Pothole North pieces appear on a save that has received heart pieces, and report their checks. A received piece still counts toward a heart.
 - **Dug seashells.** The doghouse dig gives its item with all 50 seashell bits set, and reports its check.
+- **Seashell Mansion.** The 5, 15 and 30 shell presents name their items ("You found Map Width for Bob!") and report their checks.
 - **Item names in text.** A received item from another slot says "You got Hookshot from Bob!". A dungeon chest holding this slot's item says "You found your Stone Beak (Tail Cave)!" and the item is not shown a second time when it comes back from the server. The shop's price tag names the item and its owner, and a heart piece holding another slot's item says "You found Map Bombs for Bob!".
 - **Persistence.** The received count survives a restart without double grants. On a fresh save, everything is re-delivered.
 - **Goal.** `ShadowClear` reports the goal to the server.
@@ -103,7 +107,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 
 ## Not yet verified in-game
 
-- Owl statues, Seashell Mansion, bush and tree seashells as locations.
+- Owl statues, bush and tree seashells as locations.
 - DeathLink (out of scope for now) and real hardware.
 
 ## Building the exlaunch module

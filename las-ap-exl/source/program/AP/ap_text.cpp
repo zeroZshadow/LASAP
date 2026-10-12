@@ -2,6 +2,10 @@
 // System:APReceived (an item from another player) are replaced at runtime with text naming the item and the
 // player. Two game functions are hooked: the MSBT label lookup, to learn which (file, index) pairs are ours,
 // and the MSBT text getter, to hand out our text for them.
+//
+// The found text names the location of the last placeholder added while the player was busy. Most flows add the
+// placeholder before its item-get (see the patcher). The Seashell Mansion's presents add it after, so the module
+// reads the location from the present when it pops.
 #include "AP/ap.hpp"
 #include "offsets.hpp"
 #include "loggers.hpp"
@@ -16,6 +20,9 @@ namespace {
     struct MsbtText { void* owner; void* ctrl; const char* text; s64 length; };
     constexpr uintptr_t kMsbtFindLabel = 0x10aaf40;
     constexpr uintptr_t kMsbtGetText = 0x10aa5a0;
+    // ShellMansionMaster.PopBox, at the call that creates the present: x3 = item key view, w4 = item index.
+    constexpr uintptr_t kMansionPopBoxCreate = 0xa35994;
+    struct StrView { const char* data; s64 length; };
 
     enum class Kind { None, Found, Received };
     struct Slot { void* msbt; s32 index; Kind kind; };
@@ -26,6 +33,8 @@ namespace {
 
     std::map<int, std::pair<std::string, std::string>> g_LocationNames;
     int g_FoundLocation = -1;
+    bool g_FoundFresh = false;      // g_FoundLocation was set during the current event
+    int g_PresentLocation = -1;     // the popped mansion present holding a placeholder
     std::string g_RecvItem, g_RecvSender;
     char g_FoundText[512];
     char g_RecvText[512];
@@ -91,7 +100,7 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
         if (kind != Kind::None) Logging.Log("[AP] text get index " + std::to_string(index) + " found " + std::to_string(g_FoundLocation));
         switch (kind) {
             case Kind::Found: {
-                auto it = g_LocationNames.find(g_FoundLocation);
+                auto it = g_LocationNames.find(g_FoundFresh ? g_FoundLocation : g_PresentLocation);
                 if (it == g_LocationNames.end()) return;  // unknown: keep "You found an Archipelago item!"
                 const auto& [item, player] = it->second;
                 std::string t = player.empty()
@@ -115,10 +124,24 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
     }
 };
 
+HOOK_DEFINE_INLINE(MansionPopBox) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        auto* key = reinterpret_cast<const StrView*>(ctx->X[3]);
+        int index = static_cast<int>(ctx->X[4]);
+        size_t len = std::strlen(AP::PLACEHOLDER_KEY);
+        if (key != nullptr && key->data != nullptr && static_cast<size_t>(key->length) == len &&
+            std::memcmp(key->data, AP::PLACEHOLDER_KEY, len) == 0) {
+            g_PresentLocation = index;
+            Logging.Log("[AP] present holds location " + std::to_string(index));
+        }
+    }
+};
+
 namespace AP {
     void InstallTextHooks() {
         MsbtFindLabel::InstallAtOffset(offset_manager.Offset(kMsbtFindLabel));
         MsbtGetText::InstallAtOffset(offset_manager.Offset(kMsbtGetText));
+        MansionPopBox::InstallAtOffset(offset_manager.Offset(kMansionPopBoxCreate));
     }
 
     void SetLocationName(int local_id, const std::string& item, const std::string& player) {
@@ -137,6 +160,12 @@ namespace AP {
 
     void SetFoundLocation(int local_id) {
         g_FoundLocation = local_id;
+        g_FoundFresh = true;
+        if (local_id == g_PresentLocation) g_PresentLocation = -1;
+    }
+
+    void ExpireFoundLocation() {
+        g_FoundFresh = false;
     }
 
     void SetReceivedText(const std::string& item, const std::string& sender) {
