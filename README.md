@@ -29,12 +29,13 @@ DESIGN.md has the contracts between the parts, TESTING.md covers the test harnes
 
 ## Status
 
-The core loop works on Ryujinx: checks, items, resync, goal. TESTING.md lists what is verified and what is not.
+The core loop works on Ryujinx: checks, received items with the game's own item-get display, resync, goal. TESTING.md lists what is verified and what is not.
 
 **Known gaps:**
-- In-game text doesn't name the item or its owner. Shops label the placeholder with its model's name (Seashell Sensor).
+- In-game text doesn't name the item's sender or, for a found placeholder, the item and its owner. Shops label the placeholder with its model's name (Seashell Sensor).
+- A few received items show their vanilla text, which refers to the original source (the Boomerang's trade, the Mad Batter's capacity upgrades).
 - Dungeon entrance shuffle isn't supported.
-- Not tested on hardware.
+- DeathLink is untested. Not tested on hardware.
 
 ## Licenses
 

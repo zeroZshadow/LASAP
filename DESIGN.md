@@ -97,6 +97,14 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 - Seashells, heart pieces, heart containers and golden leaves take the lowest unused in-game index.
 - Traps (`*Trap`, `$ENEMY`) cost one heart and never kill. Unknown keys are logged and counted as applied.
 
+**Showing received items**
+- The module grants an item the moment its `ITEM` line is handled, and queues a display of it.
+- A display is the game's own item-get (Link holds the item up, the item's text shows). The module calls the code behind the event action `Link.GenericItemGetSequenceByKey` directly.
+- A display starts once the player has been free for 0.6 s: no talk, event, cutscene, pause menu or level load. Displays run one at a time.
+- During a display only A and B reach the game, and A arrives as B, so Link cannot walk away and the closing press does not start a talk.
+- With three or more displays waiting, filler (rupees, ammo, drops) is granted without a display. The queue is not saved; a restart drops pending displays, not items.
+- Traps show nothing.
+
 **Persistence**
 - **Received-item count:** event flags `APRecv0`..`APRecv15`, read as a 16-bit counter. The patcher adds them to `GlobalFlags.gsheet`.
 - **Collected locations:** a bitset file `sd:/lasap/<seed_hash>.chk`, written on each check, so checks made while disconnected are reported later.

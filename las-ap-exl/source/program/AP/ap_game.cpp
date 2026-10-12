@@ -115,7 +115,7 @@ namespace {
     constexpr u32 kActionDone = 0x2a;             // ... once its text is closed
     constexpr u64 kItemGetTimeoutMs = 120000;
     constexpr size_t kShowQueueMax = 16;
-    constexpr size_t kShowFillerMax = 8;          // with this many waiting, filler is no longer shown
+    constexpr size_t kShowFillerMax = 3;          // with this many waiting, filler is no longer shown
     constexpr u64 kFreeSettleMs = 600;            // the player must be free this long before an item-get starts
     constexpr u64 kItemGetMinMs = 1500;           // an item-get done sooner was cancelled by the game
     constexpr int kItemGetTries = 3;
