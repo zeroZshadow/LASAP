@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from . import emulators
-from .install import builtin_patcher_available, installed_seed
+from .install import CURRENT, NONE, OTHER_SEED, builtin_patcher_available, installed_seed, mod_state
 
 OK, TODO, ERROR, INFO = "ok", "todo", "error", "info"
 
@@ -102,11 +102,11 @@ def check(patch_file: str, options: Dict[str, str]) -> Checklist:
     # game file
     game = options.get("game_file", "")
     if not game:
-        checks["game_file"] = Check(INFO, "Optional: the game's .nsp or .xci file, so Install and play starts it.")
+        checks["game_file"] = Check(INFO, "Optional: the game's .nsp or .xci file, so Play starts it.")
     elif not Path(game).is_file():
         checks["game_file"] = Check(ERROR, "This game file does not exist.")
     else:
-        checks["game_file"] = Check(OK, "Install and play starts this game.")
+        checks["game_file"] = Check(OK, "Play starts this game.")
 
     # RomFS dump
     romfs = options.get("romfs_folder", "")
@@ -129,14 +129,18 @@ def check(patch_file: str, options: Dict[str, str]) -> Checklist:
 
     # installed mod
     if result.target is not None and result.target.sd_card.is_dir():
-        installed = installed_seed(result.target.sd_card, result.target.mods)
-        if installed and installed == result.seed_hash:
+        state = mod_state(result.target.sd_card, result.target.mods, result.seed_hash,
+                          options.get("patcher_command", ""))
+        if state == CURRENT:
             checks["installed"] = Check(OK, "The mod for this seed is installed.")
-        elif installed:
-            checks["installed"] = Check(INFO, f"The mod for another seed ({installed}) is installed; Install and play "
-                                              f"replaces it.")
+        elif state == OTHER_SEED:
+            installed = installed_seed(result.target.sd_card, result.target.mods)
+            checks["installed"] = Check(INFO, f"The mod for another seed ({installed}) is installed; Play replaces it.")
+        elif state == NONE:
+            checks["installed"] = Check(INFO, "No mod installed yet: Play installs it.")
         else:
-            checks["installed"] = Check(INFO, "No mod installed yet.")
+            checks["installed"] = Check(INFO, "The mod for this seed comes from an older version of the world; Play "
+                                              "reinstalls it.")
     else:
         checks["installed"] = Check(INFO, "")
     return result

@@ -16,7 +16,11 @@ from typing import Callable, List, Optional
 from .emulators import TITLE_ID
 
 CONFIG_PATH = Path("config", "lasr-exl", "config.ini")
+# Next to the config: the build of the built-in patcher that wrote the installed mod, so a newer world reinstalls it.
+BUILD_PATH = CONFIG_PATH.with_name("patcher_build.txt")
 MOD_PARTS = ("romfs", "exefs")
+# mod_state results
+CURRENT, OUTDATED, OTHER_SEED, NONE = "current", "outdated", "other seed", "none"
 # The release world carries the patcher in <world>/patcher (scripts/build_release.py); from source, it is the
 # repository's patcher folder.
 PATCHER_PREFIX = f"{Path(__file__).parent.name}/patcher/"
@@ -50,6 +54,22 @@ def installed_seed(sd_card: Path, mods: Path) -> Optional[str]:
     if not all((mods / part).is_dir() for part in MOD_PARTS):
         return None
     return config.get("archipelago", "seed_hash", fallback=None)
+
+
+def mod_state(sd_card: Path, mods: Path, seed_hash: Optional[str], command: str) -> str:
+    """Whether the installed mod is the current one for `seed_hash`: CURRENT, OUTDATED (written by another build of
+    the built-in patcher), OTHER_SEED or NONE."""
+    installed = installed_seed(sd_card, mods)
+    if installed is None:
+        return NONE
+    if installed != seed_hash:
+        return OTHER_SEED
+    build = None if command.strip() else builtin_patcher_build()
+    try:
+        installed_build = (sd_card / BUILD_PATH).read_text(encoding="utf-8").strip()
+    except OSError:
+        installed_build = None
+    return OUTDATED if build is not None and installed_build != build else CURRENT
 
 
 class _ThreadOutput(io.TextIOBase):
@@ -93,6 +113,18 @@ def builtin_patcher_available() -> bool:
         with zipfile.ZipFile(archive) as zf:
             return PATCHER_BUILD in zf.namelist()
     return (SOURCE_PATCHER / "las_ap_patch.py").is_file()
+
+
+def builtin_patcher_build() -> Optional[str]:
+    """The build of the patcher the release world carries; None from source, where it changes with every edit."""
+    archive = _world_archive()
+    if archive is None:
+        return None
+    try:
+        with zipfile.ZipFile(archive) as zf:
+            return zf.read(PATCHER_BUILD).decode().strip()
+    except (OSError, KeyError, zipfile.BadZipFile):
+        return None
 
 
 def builtin_patcher_dir(log: Callable[[str], None]) -> Path:
@@ -187,8 +219,9 @@ def run_patcher(command: str, patch_file: Path, romfs: Path, out: Path, log: Cal
         raise InstallError(f"The patcher failed (exit code {proc.returncode}).")
 
 
-def install(out: Path, sd_card: Path, mods: Path) -> None:
-    """Replaces the mod's romfs and exefs folders, then the config, which carries the seed hash."""
+def install(out: Path, sd_card: Path, mods: Path, build: Optional[str] = None) -> None:
+    """Replaces the mod's romfs and exefs folders, then the config, which carries the seed hash. `build` names the
+    built-in patcher's build that wrote the mod."""
     built = out / "atmosphere" / "contents" / TITLE_ID
     for part in MOD_PARTS:
         if not (built / part).is_dir():
@@ -201,6 +234,10 @@ def install(out: Path, sd_card: Path, mods: Path) -> None:
     # the config folder (config.ini, the location names), config.ini last as it names the installed seed
     config_dir = (sd_card / CONFIG_PATH).parent
     config_dir.mkdir(parents=True, exist_ok=True)
+    if build is None:
+        (sd_card / BUILD_PATH).unlink(missing_ok=True)
+    else:
+        (sd_card / BUILD_PATH).write_text(build + "\n", encoding="utf-8")
     for file in sorted((out / CONFIG_PATH).parent.iterdir(), key=lambda f: f.name == CONFIG_PATH.name):
         if file.is_file():
             shutil.copyfile(file, config_dir / file.name)
@@ -208,15 +245,15 @@ def install(out: Path, sd_card: Path, mods: Path) -> None:
 
 def patch_and_install(command: str, patch_file: Path, seed_hash: str, romfs: Path, sd_card: Path, mods: Path,
                       log: Callable[[str], None], force: bool = False) -> bool:
-    """Installs the mod for `patch_file` unless it is installed already. Returns whether it patched."""
+    """Installs the mod for `patch_file` unless the current one is installed already. Returns whether it patched."""
     if not sd_card.is_dir():
         raise InstallError(f"The SD card folder {sd_card} does not exist.")
-    if not force and installed_seed(sd_card, mods) == seed_hash:
+    if not force and mod_state(sd_card, mods, seed_hash, command) == CURRENT:
         log(f"The mod for seed {seed_hash} is already installed in {mods}.")
         return False
     with tempfile.TemporaryDirectory(prefix="las-ap-") as tmp:
         log(f"Patching {patch_file.name}.")
         run_patcher(command, patch_file, romfs, Path(tmp), log)
-        install(Path(tmp), sd_card, mods)
+        install(Path(tmp), sd_card, mods, None if command.strip() else builtin_patcher_build())
     log(f"Installed the mod for seed {seed_hash}: {mods} and {sd_card / CONFIG_PATH}.")
     return True

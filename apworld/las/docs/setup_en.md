@@ -24,7 +24,8 @@ Double-click `las.apworld`, or copy it into Archipelago's `custom_worlds` folder
 4. Choose the RomFS dump, also once. Each setting shows what to do when it is missing:
    - Ryujinx: right-click Link's Awakening, Extract Data, RomFS, and pick a folder. Choose that folder.
    - Yuzu-based emulators: right-click Link's Awakening, Dump RomFS. The client finds the dump by itself.
-5. Press **Install and play**. The client patches the game, installs the mod and starts the emulator with the game.
+5. Press **Play**. The client patches the game, installs the mod and starts the emulator with the game. The Patch tab
+   says when the mod is installed.
    It connects to the server the patch names (patches from the website name their room) as your slot; otherwise,
    enter the address in the top bar.
 6. Start a new save file. Items arrive once the save is loaded. Once the client is connected to both the game and the
@@ -32,7 +33,8 @@ Double-click `las.apworld`, or copy it into Archipelago's `custom_worlds` folder
    the client.
 
 The client remembers its settings. Opening the next seed's patch file installs it and starts the game without
-further questions. "Patch again" reinstalls the current seed.
+further questions. Play also reinstalls the mod after an update of the world. "Reinstall mod" installs the current
+seed again without starting the game.
 
 "Open .aplas files with a double-click" at the bottom of the Patch tab sets Windows up to open `.aplas` files with
 the Archipelago Launcher. It is needed once, as Archipelago's installer only does this for the games it ships with.
@@ -53,7 +55,7 @@ The settings are saved in `host.yaml` under `las_options`.
 ## Troubleshooting
 
 - **The client says the game runs another seed.** The installed mod belongs to another slot or seed. Open this slot's
-  patch file, press Install and play, then restart the game.
+  patch file, press Play, then restart the game.
 - **Another Link's Awakening mod is installed.** The emulator would load it together with this one. Delete the folder
   the Patch tab names.
 - **Patching failed.** The Archipelago tab shows the patcher's output. The RomFS dump must be of version 1.0.0.

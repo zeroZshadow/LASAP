@@ -13,7 +13,7 @@ DESIGN.md has the contracts between the parts, TESTING.md covers the test harnes
 
 ## Playing
 
-The player's guide is `apworld/las/docs/setup_en.md`: install the world, open the `.aplas`, choose the emulator and the RomFS dump in the client's Patch tab, and press Install and play.
+The player's guide is `apworld/las/docs/setup_en.md`: install the world, open the `.aplas`, choose the emulator and the RomFS dump in the client's Patch tab, and press Play.
 
 The release's `las.apworld` is all a player installs, on any system Archipelago runs on: it carries the patcher and the game module, and the client runs the patcher in its own process. The world is needed only by whoever generates the seed and by the LAS player; other players need nothing new.
 
@@ -52,7 +52,7 @@ The release's `las.apworld` is all a player installs, on any system Archipelago 
    - You start with the sword, shield, ocarina and Manbo's Mambo.
 
    Set your `name`, put the file in `Players` with everyone else's, and generate. Host the result as usual, on archipelago.gg or with the Launcher's "Host".
-2. **Open the patch.** The output zip has a patch file per LAS slot, `AP_<seed>_P<n>_<slot>.aplas`. Open it with the Launcher (double-click, drag onto the Launcher, or "Open Patch"). The Links Awakening Switch Client opens on its Patch tab; the first time, choose the emulator and the RomFS dump there. Install and play patches and installs the mod unless that seed is installed already, starts the emulator with the game, and the client connects to the server named in the patch.
+2. **Open the patch.** The output zip has a patch file per LAS slot, `AP_<seed>_P<n>_<slot>.aplas`. Open it with the Launcher (double-click, drag onto the Launcher, or "Open Patch"). The Links Awakening Switch Client opens on its Patch tab; the first time, choose the emulator and the RomFS dump there. Play patches and installs the mod unless that seed's mod from this version of the world is installed already, starts the emulator with the game, and the client connects to the server named in the patch.
 3. **Play.**
    - Start a new save.
    - Connect the client to the server if the patch named none. The client finds the game at the game address, `127.0.0.1` by default; emulators need no settings for that.

@@ -1,4 +1,4 @@
-"""The client window's Patch tab: choose the patch file and the emulator, then Install and play. Every setting shows
+"""The client window's Patch tab: choose the patch file and the emulator, then Play. Every setting shows
 what it found or what to do next."""
 import asyncio
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple
@@ -99,11 +99,16 @@ class PatchPanel(ScrollView):
 
         actions = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=ROW_HEIGHT + dp(8), spacing=dp(8),
                               padding=(0, dp(8), 0, 0))
-        actions.add_widget(button("Install and play", self.install_and_play, dp(170)))
-        actions.add_widget(button("Patch again", self.patch_again, dp(130), "outlined"))
+        self.play_button = button("Play", self.play, dp(110))
+        self.reinstall_button = button("Reinstall mod", self.reinstall, dp(150), "outlined")
+        actions.add_widget(self.play_button)
+        actions.add_widget(self.reinstall_button)
         actions.add_widget(Widget())
         self.content.add_widget(actions)
+        self.content.add_widget(text("Play installs the mod when it is missing or out of date, then starts the game. "
+                                     "Reinstall mod installs it again without starting the game.", small=True))
         self.progress = text()
+        self.progress_lines: List[str] = []
         self.content.add_widget(self.progress)
         self.game_line = text(small=True)
         self.content.add_widget(self.game_line)
@@ -172,11 +177,11 @@ class PatchPanel(ScrollView):
         for key, field in self.fields.items():
             self.commit(key, field.text)
 
-    def install_and_play(self) -> None:
+    def play(self) -> None:
         self.commit_all()
         asyncio.create_task(self.ctx.install_patch(start=True))
 
-    def patch_again(self) -> None:
+    def reinstall(self) -> None:
         self.commit_all()
         asyncio.create_task(self.ctx.install_patch(force=True))
 
@@ -197,12 +202,21 @@ class PatchPanel(ScrollView):
             logger.info("Double-clicking a .aplas file now opens this client and installs its mod.")
         self.refresh()
 
-    def show_progress(self, level: str, message: str) -> None:
-        color = {"warning": COLORS[checklist.TODO], "error": COLORS[checklist.ERROR]}.get(level)
+    def clear_progress(self) -> None:
+        self.progress_lines = []
+        self.progress.text = ""
+
+    def show_progress(self, level: str, message: str, replace: bool = False) -> None:
+        color = {"warning": COLORS[checklist.TODO], "error": COLORS[checklist.ERROR],
+                 "info": COLORS[checklist.OK] if message.startswith("Done") else None}.get(level)
         message = escape_markup(message)
-        self.progress.text = f"[color={color}]{message}[/color]" if color else message
+        if replace and self.progress_lines:
+            self.progress_lines.pop()
+        self.progress_lines.append(f"[color={color}]{message}[/color]" if color else message)
+        self.progress.text = "\n".join(self.progress_lines)
 
     def refresh(self) -> None:
+        self.play_button.disabled = self.reinstall_button.disabled = self.ctx.patching
         for key, field in self.fields.items():
             if not field.focus:
                 field.text = self.value(key)

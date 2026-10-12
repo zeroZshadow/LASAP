@@ -133,6 +133,23 @@ class TestInstall(unittest.TestCase):
             self.assertEqual((second / "RandomizerCore" / "Data" / "items.yml").read_text(), "2")
             self.assertFalse(first.exists())
 
+    def test_newer_world_reinstalls(self) -> None:
+        """A mod the built-in patcher of another world version wrote is outdated; Play reinstalls it."""
+        root = Path(self.tmp.name) / "patcher"
+        root.mkdir()
+        (root / "las_ap_patch.py").write_text(FAKE_BUILTIN)
+        self.command = ""
+        with mock.patch.object(install, "builtin_patcher_dir", return_value=root):
+            with mock.patch.object(install, "builtin_patcher_build", return_value="1"):
+                self.assertTrue(self.run_install("aaaa0001"))
+                self.assertEqual(install.mod_state(self.sd, self.mods, "aaaa0001", ""), install.CURRENT)
+                self.assertFalse(self.run_install("aaaa0001"))
+            with mock.patch.object(install, "builtin_patcher_build", return_value="2"):
+                self.assertEqual(install.mod_state(self.sd, self.mods, "aaaa0001", ""), install.OUTDATED)
+                self.assertEqual(install.mod_state(self.sd, self.mods, "bbbb0002", ""), install.OTHER_SEED)
+                self.assertTrue(self.run_install("aaaa0001"))
+                self.assertEqual(install.mod_state(self.sd, self.mods, "aaaa0001", ""), install.CURRENT)
+
     def test_split_command(self) -> None:
         self.assertEqual(split_command('"C:/Program Files/py.exe" D:\\a\\b.py'),
                          ["C:/Program Files/py.exe", "D:\\a\\b.py"] if sys.platform == "win32"

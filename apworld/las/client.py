@@ -83,6 +83,7 @@ class LASContext(CommonContext):
         self.patch_file = patch_file
         self.patch_slot = ""  # slot name from the patch file
         self.game_status = checklist.Check(checklist.INFO, "Waiting for the game to start.")
+        self.patching = False  # an install runs; the Patch tab's buttons are off
         self.notice_sent = False  # the game was told the server connection state
         container = self.read_patch_file()
         self.patch_slot = container.player_name if container else ""
@@ -182,9 +183,9 @@ class LASContext(CommonContext):
     def check_seed(self) -> bool:
         if self.slot_seed_hash and self.game_seed_hash and self.slot_seed_hash != self.game_seed_hash:
             self.set_game_status(checklist.ERROR, f"The game runs another seed ({self.game_seed_hash}) than slot "
-                                 f"{self.auth} ({self.slot_seed_hash}). Press Install and play, then restart the game.")
+                                 f"{self.auth} ({self.slot_seed_hash}). Press Play, then restart the game.")
             logger.error(f"The game runs another seed ({self.game_seed_hash}) than this slot ({self.slot_seed_hash}). "
-                         f"In the Patch tab, choose this slot's patch file and press Install and play, then restart "
+                         f"In the Patch tab, choose this slot's patch file and press Play, then restart "
                          f"the game.")
             return False
         return True
@@ -391,11 +392,11 @@ class LASContext(CommonContext):
         self.set_option("emulator", found.exe)
         return True
 
-    def report(self, level: str, message: str) -> None:
-        """Logs a patching step and shows it in the Patch tab."""
+    def report(self, level: str, message: str, replace: bool = False) -> None:
+        """Logs a patching step and adds it to the Patch tab's progress lines; `replace` replaces the last one."""
         getattr(logger, level)(message)
         if self.ui and hasattr(self.ui, "patch_panel"):
-            self.ui.patch_panel.show_progress(level, message)
+            self.ui.patch_panel.show_progress(level, message, replace)
 
     def show_patch_tab(self) -> None:
         if self.ui and hasattr(self.ui, "show_patch_tab"):
@@ -406,8 +407,21 @@ class LASContext(CommonContext):
             self.ui.patch_panel.refresh()
 
     async def install_patch(self, force: bool = False, start: bool = False) -> None:
-        """Installs the mod for `patch_file` unless it is installed already (or `force`), then optionally starts the
-        emulator."""
+        """Installs the mod for `patch_file` unless the current one is installed (or `force`), then optionally starts
+        the emulator. The Patch tab's buttons are off meanwhile."""
+        if self.patching:
+            return
+        self.patching = True
+        self.refresh_patch_tab()
+        try:
+            await self._install_patch(force, start)
+        finally:
+            self.patching = False
+            self.refresh_patch_tab()
+
+    async def _install_patch(self, force: bool, start: bool) -> None:
+        if self.ui and hasattr(self.ui, "patch_panel"):
+            self.ui.patch_panel.clear_progress()
         checks = self.check_setup()
         if not checks.ready or checks.target is None:
             self.report("error", checks.problems())
@@ -421,18 +435,18 @@ class LASContext(CommonContext):
                 loop.call_soon_threadsafe(logger.info, line)
 
             open_already = bool(exe) and await asyncio.to_thread(emulators.is_running, exe)
-            self.report("info", f"Installing the mod for slot {checks.player_name}. This takes a few seconds.")
+            self.report("info", f"Installing the mod for slot {checks.player_name}... This takes a few seconds.")
             logger.info(f"Seed {checks.seed_hash}, into {target.mods} and {target.sd_card}.")
             try:
                 await asyncio.to_thread(patch_and_install, self.option("patcher_command"), Path(self.patch_file),
                                         checks.seed_hash, emulators.romfs_root(self.option("romfs_folder")),
                                         target.sd_card, target.mods, log, True)
             except (InstallError, OSError) as e:
-                self.report("error", f"Patching failed: {e} The Archipelago tab shows the patcher's output.")
+                self.report("error", f"Patching failed: {e} The Archipelago tab shows the patcher's output.", True)
                 self.show_patch_tab()
                 return
-            finally:
-                self.refresh_patch_tab()
+            self.report("info", f"Done: the mod for slot {checks.player_name} (seed {checks.seed_hash}) is installed.",
+                        True)
             if open_already:
                 self.report("warning", f"{emulators.display_name(exe)} is open: restart the game to load the new mod.")
         else:
@@ -487,7 +501,7 @@ async def prepare_patch(ctx: LASContext, patch: bool) -> None:
     ctx.refresh_patch_tab()
     if patch and detected:
         # never install into an emulator the player has not seen yet
-        ctx.report("info", "Check the settings below, then press Install and play.")
+        ctx.report("info", "Check the settings below, then press Play.")
     elif patch:
         await ctx.install_patch(start=True)
 
