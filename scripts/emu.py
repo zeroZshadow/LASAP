@@ -38,7 +38,9 @@ def start() -> None:
             "--input-id-1", "0", "--enable-keyboard", "--skip-user-profiles-manager",
             "--ignore-controller-applet", "--audio-volume", "0", GAME]
     out = open(os.path.join(SANDBOX, "emu_stdout.txt"), "w")
-    proc = subprocess.Popen(args, stdout=out, stderr=subprocess.STDOUT)
+    # --audio-volume 0 does not mute; SDL's dummy driver keeps the sandbox silent
+    env = dict(os.environ, SDL_AUDIO_DRIVER="dummy", SDL_AUDIODRIVER="dummy")
+    proc = subprocess.Popen(args, stdout=out, stderr=subprocess.STDOUT, env=env)
     with open(PIDFILE, "w") as f:
         f.write(str(proc.pid))
     print(proc.pid)

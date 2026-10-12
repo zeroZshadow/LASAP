@@ -233,9 +233,10 @@ Keysanity.createText = _add_placeholder_text
 
 
 class APModsProcess(mod_generator.ModsProcess):
-    def __init__(self, *args, seed_hash: str, **kwargs):
+    def __init__(self, *args, seed_hash: str, location_names: dict, **kwargs):
         super().__init__(*args, **kwargs)
         self.seed_hash = seed_hash
+        self.location_names = location_names
         self.failed = None
         self.error.connect(self._on_error)
 
@@ -246,6 +247,15 @@ class APModsProcess(mod_generator.ModsProcess):
         super().makeConfig()
         with open(self.config_dir / "config.ini", "a") as f:
             f.write(f"\n[archipelago]\nseed_hash = {self.seed_hash}\n")
+        # What each location holds, so the found text names it before the client connects (DESIGN.md)
+        with open(self.config_dir / "ap_names.txt", "w", encoding="utf-8", newline="\n") as f:
+            for local_id, (item, owner) in sorted(self.location_names.items()):
+                f.write(f"{local_id} {clean_name(item)}|{clean_name(owner)}\n")
+
+
+def clean_name(text: str) -> str:
+    """Names travel inside a line, separated by '|' (as in the client)."""
+    return " ".join(text.replace("|", "/").split())
 
 
 def load_patch(path: Path) -> dict:
@@ -350,7 +360,10 @@ def main() -> int:
     rng = random.Random(int(hashlib.sha256(seed.encode()).hexdigest()[:16], 16))
 
     proc = APModsProcess(placements, args.romfs, args.out, item_defs, seed, rng.getstate(),
-                         seed_hash=patch["seed_hash"])
+                         seed_hash=patch["seed_hash"],
+                         location_names={patch["location_ids"][loc]: names
+                                         for loc, names in patch.get("location_names", {}).items()
+                                         if loc in patch["location_ids"]})
     proc.run()
     if proc.failed:
         print(proc.failed)

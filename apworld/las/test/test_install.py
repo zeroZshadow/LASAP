@@ -18,6 +18,7 @@ for part in ("romfs", "exefs"):
     (game / part / "file").write_text(patch.read_text())
 (out / "config" / "lasr-exl").mkdir(parents=True)
 (out / "config" / "lasr-exl" / "config.ini").write_text("[archipelago]\\nseed_hash = " + patch.read_text() + "\\n")
+(out / "config" / "lasr-exl" / "ap_names.txt").write_text("1 Bow|")
 print("Mod written")
 """
 
@@ -59,6 +60,7 @@ class TestInstall(unittest.TestCase):
         self.assertEqual((mods / "exefs" / "file").read_text(), "bbbb0002")
         self.assertFalse((mods / "romfs" / "stale").exists())
         self.assertTrue((self.sd / CONFIG_PATH).exists())
+        self.assertTrue((self.sd / CONFIG_PATH).with_name("ap_names.txt").exists())
 
     def test_errors(self) -> None:
         self.command = ""

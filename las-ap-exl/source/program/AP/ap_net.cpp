@@ -20,6 +20,7 @@ namespace {
     // The loop sleeps 2 ms; drop a client that is silent for 10 s.
     constexpr int kKeepAliveTicks = 5000;
     constexpr size_t kMaxLine = 4096;
+    constexpr s32 kAcceptPollMs = 100;
 
     alignas(0x1000) u8 g_ThreadStack[0x8000];
     // Static so it does not depend on the game's heap being ready this early.
@@ -127,11 +128,16 @@ namespace {
         }
 
         while (true) {
-            if (g_Server < 0 && !CreateServer()) {
-                svcSleepThread(1'000'000'000);
-                continue;
+            if (g_Server < 0) {
+                if (!CreateServer()) {
+                    svcSleepThread(1'000'000'000);
+                    continue;
+                }
+                Logging.Log("[AP] listening");
             }
-            Logging.Log("[AP] listening");
+            // Accept only once a client waits: a thread blocked in Accept keeps emulators from closing the game.
+            pollfd waiting{g_Server, POLLIN, 0};
+            if (nn::socket::Poll(&waiting, 1, kAcceptPollMs) <= 0 || !(waiting.revents & POLLIN)) continue;
 
             sockaddr clientAddr{};
             u32 addrLen = sizeof(clientAddr);

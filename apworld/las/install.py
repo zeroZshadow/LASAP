@@ -67,8 +67,12 @@ def install(out: Path, sd_card: Path, mods: Path) -> None:
         if (mods / part).exists():
             shutil.rmtree(mods / part)
         shutil.copytree(built / part, mods / part)
-    (sd_card / CONFIG_PATH).parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(out / CONFIG_PATH, sd_card / CONFIG_PATH)
+    # the config folder (config.ini, the location names), config.ini last as it names the installed seed
+    config_dir = (sd_card / CONFIG_PATH).parent
+    config_dir.mkdir(parents=True, exist_ok=True)
+    for file in sorted((out / CONFIG_PATH).parent.iterdir(), key=lambda f: f.name == CONFIG_PATH.name):
+        if file.is_file():
+            shutil.copyfile(file, config_dir / file.name)
 
 
 def patch_and_install(command: str, patch_file: Path, seed_hash: str, romfs: Path, sd_card: Path, mods: Path,

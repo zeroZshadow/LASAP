@@ -28,7 +28,9 @@ Double-click `las.apworld`, or copy it into Archipelago's `custom_worlds` folder
 5. Press **Install and play**. The client patches the game, installs the mod and starts the emulator with the game.
    It connects to the server the patch names (patches from the website name their room) as your slot; otherwise,
    enter the address in the top bar.
-6. Start a new save file. Items arrive once the save is loaded.
+6. Start a new save file. Items arrive once the save is loaded. Once the client is connected to both the game and the
+   server, Link holds up the Archipelago logo: "Connected to Archipelago as <slot>!". The game also says when it loses
+   the client.
 
 The client remembers its settings. Opening the next seed's patch file installs it and starts the game without
 further questions. "Patch again" reinstalls the current seed.
@@ -57,5 +59,9 @@ The settings are saved in `host.yaml` under `las_options`.
   the Patch tab names.
 - **Patching failed.** The Archipelago tab shows the patcher's output. The RomFS dump must be of version 1.0.0.
 - **The emulator changed nothing.** Mods load when the game starts: close the game and start it again.
+- **The game shows "The Archipelago client is not connected."** Start the client; the game connects when it runs. The
+  Patch tab shows the game connection.
+- **The Patch tab says the modded game runs in two programs.** Close all emulators but one; the client may otherwise
+  talk to the wrong game.
 - **The client never connects to the game.** The game listens on TCP port 43384. Check `game_host`, and on a Switch,
   that the console and the computer are on the same network.

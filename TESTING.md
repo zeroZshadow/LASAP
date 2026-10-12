@@ -15,7 +15,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 
 - **Binary:** `D:\Games\Ryujinx\Ryujinx.exe` (Ryubing Canary).
 - **Game:** `D:\Games\Switch\The Legend of Zelda Links Awakening [01006BB00C6F0000][v0].nsp` (1.0.0). The RomFS dump is at `D:\Games\Switch\LASRomFS`.
-- **Sandbox data folder:** `D:\DEV\LASAP-sandbox\ryujinx`, a copy of the user's Ryujinx data (keys, firmware, saves). Tests never use `%APPDATA%\Ryujinx`. It contains `prod.keys`; never copy it into this repo.
+- **Sandbox data folder:** `D:\DEV\LASAP-sandbox\ryujinx`, a copy of the user's Ryujinx data (keys, firmware, saves). Tests never use `%APPDATA%\Ryujinx`. It contains `prod.keys`; never copy it into this repo. `emu.py` keeps it silent with SDL's dummy audio driver, as `--audio-volume 0` does not mute.
 - **Logs:** the emulator writes logs to `D:\Games\Ryujinx\Logs` even with `--root-data-dir`.
 
 | Script | Does |
@@ -105,6 +105,8 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Boot.** The module boots with LASR's randomizer hooks; the socket listens on 43384.
 - **Generation and patching.** Generate → patch → deploy → new game works end to end.
 - **Packaged world.** `las.apworld` built with "Build APWorlds" generates in a clean Archipelago checkout (`custom_worlds`), and its Launcher starts "Links Awakening Switch Client". The patcher runs in a fresh venv made from `patcher/requirements.txt`.
+- **Notices.** With the client connected to the game only, the game knows all location names from `ap_names.txt`. Connecting the server shows "Connected to Archipelago as ZeroLAS!", and stopping the client shows "Lost the connection to the Archipelago client." Neither counts as a check.
+- **Closing the emulator.** Windowed Ryujinx exits within a few seconds of closing its window, modded or vanilla. Headless Ryujinx (`--no-gui`) ignores a window close either way.
 - **Client install.** Opening an `.aplas` from the clean checkout's Launcher, or with the double-click command, opens the client on its Patch tab.
   - With a running Eden and no emulator set, it filled in Eden and the game from Eden's recent files, and installed nothing.
   - With Eden set, it installed into Eden's `load` folder, and the game in Eden reported the seed.

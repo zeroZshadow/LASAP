@@ -21,6 +21,8 @@ namespace AP {
     // (System.msbt). Their text is replaced at runtime (ap_text.cpp).
     constexpr const char* FOUND_LABEL = "ArchipelagoItem";
     constexpr const char* RECEIVED_LABEL = "APReceived";
+    // Location names the patcher writes next to config.ini.
+    constexpr const char* NAMES_PATH = "sd:/config/lasr-exl/ap_names.txt";
 
     // Network thread (ap_net.cpp)
     void StartNetwork();
@@ -52,4 +54,7 @@ namespace AP {
     void SetFoundLocation(int local_id);
     void ExpireFoundLocation();
     void SetReceivedText(const std::string& item, const std::string& sender);
+    // The received text shows this instead, until the next SetReceivedText.
+    void SetNoticeText(const std::string& text);
+    void LoadLocationNames();
 }

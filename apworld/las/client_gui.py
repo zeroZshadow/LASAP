@@ -105,6 +105,8 @@ class PatchPanel(ScrollView):
         self.content.add_widget(actions)
         self.progress = text()
         self.content.add_widget(self.progress)
+        self.game_line = text(small=True)
+        self.content.add_widget(self.game_line)
         self.installed = text(small=True)
         self.content.add_widget(self.installed)
 
@@ -151,7 +153,7 @@ class PatchPanel(ScrollView):
         if value == self.value(key):
             return
         if key == "patch_file":
-            self.ctx.patch_file = value or None
+            self.ctx.set_patch_file(value)
             self.refresh()
         else:
             self.ctx.set_option(key, value)
@@ -207,6 +209,7 @@ class PatchPanel(ScrollView):
         checks = self.ctx.check_setup()
         for key, label in self.statuses.items():
             label.text = status(checks.checks.get(key))
+        self.game_line.text = status(self.ctx.game_status)
         self.installed.text = "\n".join(
             filter(None, (status(checks.checks.get("installed")), status(checks.checks.get("other_mods")))))
         if Utils.is_windows:

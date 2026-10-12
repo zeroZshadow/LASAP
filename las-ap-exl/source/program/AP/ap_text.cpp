@@ -9,6 +9,8 @@
 #include "AP/ap.hpp"
 #include "offsets.hpp"
 #include "loggers.hpp"
+#include "Config/file_handler.hpp"
+#include <cstdlib>
 #include <cstring>
 #include <map>
 #include <string>
@@ -35,6 +37,7 @@ namespace {
     bool g_FoundFresh = false;      // g_FoundLocation was set during the current event
     int g_PresentLocation = -1;     // the popped mansion present holding a placeholder
     std::string g_RecvItem, g_RecvSender;
+    std::string g_Notice;           // when set, the received text shows this instead
     char g_FoundText[512];
     char g_RecvText[512];
 
@@ -109,6 +112,11 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
                 break;
             }
             case Kind::Received: {
+                if (!g_Notice.empty()) {
+                    out->length = Store(g_RecvText, sizeof(g_RecvText), g_Notice + kWaitInput);
+                    out->text = g_RecvText;
+                    break;
+                }
                 std::string t = "You got " + kColorItem + Clip(g_RecvItem, kItemNameMax) + kColorWhite;
                 t += g_RecvSender.empty() ? std::string("!")
                                           : "\nfrom " + kColorPlayer + Clip(g_RecvSender, kPlayerNameMax) + kColorWhite + "!";
@@ -170,5 +178,37 @@ namespace AP {
     void SetReceivedText(const std::string& item, const std::string& sender) {
         g_RecvItem = item;
         g_RecvSender = sender;
+        g_Notice.clear();
+    }
+
+    void SetNoticeText(const std::string& text) {
+        g_Notice = text;
+    }
+
+    void LoadLocationNames() {
+        // Written by the patcher: one "<local id> <item name>|<player name, empty for an own item>" per line, so
+        // found items are named before the client connects. NAME lines from the client replace them.
+        std::string text;
+        if (R_FAILED(FileHandler::ReadFile(NAMES_PATH, text))) {
+            Logging.Log("[AP] no location names file");
+            return;
+        }
+        size_t start = 0;
+        int count = 0;
+        while (start < text.size()) {
+            size_t end = text.find('\n', start);
+            if (end == std::string::npos) end = text.size();
+            std::string line = text.substr(start, end - start);
+            start = end + 1;
+            if (!line.empty() && line.back() == '\r') line.pop_back();
+            size_t space = line.find(' ');
+            if (space == std::string::npos) continue;
+            std::string names = line.substr(space + 1);
+            size_t bar = names.find('|');
+            SetLocationName(atoi(line.substr(0, space).c_str()), names.substr(0, bar),
+                            bar == std::string::npos ? "" : names.substr(bar + 1));
+            count++;
+        }
+        Logging.Log("[AP] location names: " + std::to_string(count));
     }
 }

@@ -280,3 +280,30 @@ def running_emulators() -> List[Running]:
 
 def is_running(exe: str) -> bool:
     return any(same_path(Path(r.exe), Path(exe)) for r in running_emulators())
+
+
+def port_owners(port: int) -> List[str]:
+    """Names of the programs listening on a TCP port (Windows only; elsewhere empty)."""
+    if sys.platform != "win32":
+        return []
+    flags = subprocess.CREATE_NO_WINDOW
+    try:
+        netstat = subprocess.run(["netstat", "-ano", "-p", "TCP"], capture_output=True, text=True, timeout=10,
+                                 creationflags=flags).stdout
+    except (OSError, subprocess.SubprocessError):
+        return []
+    pids = []
+    for line in netstat.splitlines():
+        parts = line.split()
+        if len(parts) >= 5 and parts[3] == "LISTENING" and parts[1].endswith(f":{port}") and parts[4] not in pids:
+            pids.append(parts[4])
+    names = []
+    for pid in pids:
+        try:
+            out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"], capture_output=True,
+                                 text=True, timeout=10, creationflags=flags).stdout
+        except (OSError, subprocess.SubprocessError):
+            continue
+        name = out.split(",")[0].strip().strip('"') if out.startswith('"') else pid
+        names.append(Path(name).stem)
+    return names

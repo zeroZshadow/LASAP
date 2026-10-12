@@ -97,6 +97,10 @@ An Archipelago player container (`container.py`, `APPlayerContainer`): a zip wit
 
 ASCII lines terminated by `\n`, fields separated by single spaces. The game accepts one client at a time. The client sends `PING` every 2 s, and the game drops a client that has been silent for 10 s.
 
+- The game listens and the client connects, so a Switch needs no address of the PC. The network thread waits for a client with `Poll` in 100 ms steps rather than a blocking `Accept`, which would keep emulators from closing the game.
+- The client drops a connection that gets no `HELLO` within 5 s. While it cannot reach the game, it looks for several programs listening on the port (two emulators running the modded game) and reports them in the Patch tab, which also shows the game connection.
+- Opened with a patch file, or given one in the Patch tab, the client logs in as the patch's slot.
+
 **Client → game**
 
 | Line | Meaning |
@@ -104,6 +108,7 @@ ASCII lines terminated by `\n`, fields separated by single spaces. The game acce
 | `PING` | Keep-alive; the game answers `PONG` |
 | `ITEM <n> <item-key> <count> <dungeon> <location> <item name>\|<sender>` | The n-th received item (1-based AP index). `item-key` is the game's item symbol (`SwordLv1`, `SmallKey`, …). `dungeon` is the dungeon level for dungeon items, else `-1`. `location` is the local id the item came from when it is this slot's own, else `-1`. `sender` is empty for own items and items from the server. The game applies it only if `n` = stored count + 1, then answers `RECV <count>` |
 | `NAME <local id> <item name>\|<owner>` | What a location holds, from `LocationScouts`; `owner` is empty for this slot's items. Sent for every location on connect |
+| `NOTICE <text>` | Shown to the player like a received item, with the Archipelago model; `\|` starts a new line. The client sends "Connected to Archipelago as <slot>!" (or a wrong-seed warning) once the game and the slot are both connected, and "Lost the connection to the Archipelago server." when the server goes away |
 | `SYNC` | Asks the game to send `RECV <count>` and `CHECKS ...` |
 | `DEATH` | DeathLink: sets the player's health to zero |
 | `MSG <text>` | Logged by the module |
@@ -130,7 +135,8 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 - Traps (`*Trap`, `$ENEMY`) cost one heart and never kill. Unknown keys are logged and counted as applied.
 
 **In-game text**
-- A found placeholder says what it is: "You found <item> for <player>!", or "You found your <item>!" for this slot's own items. Without names (client not connected yet), it says "You found an Archipelago item!".
+- A found placeholder says what it is: "You found <item> for <player>!", or "You found your <item>!" for this slot's own items. The patcher writes the names to `config/lasr-exl/ap_names.txt` (`NAME` lines without the command), which the module reads at boot, so this works before the client connects; `NAME` lines replace them. A location without a name says "You found an Archipelago item!".
+- The module shows its own notices: "Lost the connection to the Archipelago client." when the client goes away, and, once per boot, "The Archipelago client is not connected." after 20 s in a level without a client.
 - A received item from another player says "You got <item> from <player>!". Own items found here are not shown again; other own items and server items show the item's native text, except items whose native text names their vanilla source (the Boomerang, the capacity upgrades), which say "You got <item>!".
 - The patcher adds the messages `Place:ArchipelagoItem` and `System:APReceived` (with the native item-text window style) and the Item event entry point `APReceived`. The module hooks the game's MSBT label lookup and text getter and hands out the text for these two messages (`ap_text.cpp`).
 - The module learns the location from the placeholder's `AddItemID`, so placeholder flows add the item before playing the item-get (LASR's item-get chains and a TreasureBox branch); other items keep LASR's order. That location names the found text until the player is free again.

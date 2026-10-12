@@ -54,7 +54,7 @@ class LASCommandProcessor(ClientCommandProcessor):
     def _cmd_patch(self, patch_file: str = "") -> None:
         """Patch and install the mod again, from the given .aplas or the one this client was opened with."""
         if patch_file:
-            self.ctx.patch_file = patch_file
+            self.ctx.set_patch_file(patch_file)
         asyncio.create_task(self.ctx.install_patch(force=True))
 
     def _cmd_start(self) -> None:
@@ -81,6 +81,11 @@ class LASContext(CommonContext):
                  patch_file: Optional[str] = None):
         super().__init__(server_address, password)
         self.patch_file = patch_file
+        self.patch_slot = ""  # slot name from the patch file
+        self.game_status = checklist.Check(checklist.INFO, "Waiting for the game to start.")
+        self.notice_sent = False  # the game was told the server connection state
+        container = self.read_patch_file()
+        self.patch_slot = container.player_name if container else ""
         self.game_host = game_host
         self.game_port = game_port
         self.game_writer: Optional[asyncio.StreamWriter] = None
@@ -93,6 +98,37 @@ class LASContext(CommonContext):
         # Local location id -> "<item name>|<owner name, empty for our own items>", from LocationScouts.
         self.scouted_names: Dict[int, str] = {}
 
+    async def get_username(self) -> None:
+        # the slot comes from the patch file, as the server would otherwise ask for it
+        if not self.auth and self.patch_slot:
+            self.auth = self.patch_slot
+        await super().get_username()
+
+    def set_patch_file(self, path: Optional[str]) -> None:
+        """Takes the slot, and the server when the patch names one, from the patch file."""
+        self.patch_file = path or None
+        container = self.read_patch_file()
+        self.patch_slot = container.player_name if container else ""
+        if container is None or not self.patch_slot:
+            return
+        if self.input_requests > 0 and not self.slot:  # the server asked for the slot name
+            self.input_requests -= 1
+            self.input_queue.put_nowait(self.patch_slot)
+        elif self.slot and self.auth != self.patch_slot:
+            logger.warning(f"Connected as {self.auth}, but the patch file is for {self.patch_slot}.")
+        if container.server and not self.server:
+            asyncio.create_task(self.connect(container.server))
+
+    def read_patch_file(self) -> Optional[LASContainer]:
+        if not self.patch_file:
+            return None
+        container = LASContainer(self.patch_file)
+        try:
+            container.read()
+        except Exception:
+            return None
+        return container
+
     async def server_auth(self, password_requested: bool = False) -> None:
         if password_requested and not self.password:
             await super().server_auth(password_requested)
@@ -102,7 +138,9 @@ class LASContext(CommonContext):
     def on_package(self, cmd: str, args: dict) -> None:
         if cmd == "Connected":
             self.slot_seed_hash = args["slot_data"].get("seed_hash")
+            self.notice_sent = False
             self.check_seed()
+            self.send_notice()
             asyncio.create_task(self.flush_checks())
             asyncio.create_task(self.send_msgs([{"cmd": "LocationScouts", "locations": sorted(self.server_locations),
                                                  "create_as_hint": 0}]))
@@ -123,8 +161,27 @@ class LASContext(CommonContext):
         super().on_deathlink(data)
         self.send_game("DEATH")
 
+    def send_notice(self) -> None:
+        """Tells the player in the game, once per connection, whether the client is connected to their slot."""
+        if self.game_writer is None or self.game_seed_hash is None or not self.slot or self.notice_sent:
+            return
+        self.notice_sent = True
+        slot = clean(self.player_names.get(self.slot, self.auth or ""))
+        if self.slot_seed_hash and self.slot_seed_hash != self.game_seed_hash:
+            self.send_game(f"NOTICE This game has another seed|than slot {slot}! Reinstall its patch.")
+        else:
+            self.send_game(f"NOTICE Connected to Archipelago|as {slot}!")
+
+    async def connection_closed(self) -> None:
+        if self.slot and self.game_writer is not None:
+            self.send_game("NOTICE Lost the connection to the|Archipelago server.")
+        self.notice_sent = False
+        await super().connection_closed()
+
     def check_seed(self) -> bool:
         if self.slot_seed_hash and self.game_seed_hash and self.slot_seed_hash != self.game_seed_hash:
+            self.set_game_status(checklist.ERROR, f"The game runs another seed ({self.game_seed_hash}) than slot "
+                                 f"{self.auth} ({self.slot_seed_hash}). Press Install and play, then restart the game.")
             logger.error(f"The game runs another seed ({self.game_seed_hash}) than this slot ({self.slot_seed_hash}). "
                          f"In the Patch tab, choose this slot's patch file and press Install and play, then restart "
                          f"the game.")
@@ -178,7 +235,9 @@ class LASContext(CommonContext):
             if len(parts) < 2 or parts[1] != str(PROTOCOL_VERSION):
                 logger.error(f"Game protocol {parts[1:2]} does not match the client ({PROTOCOL_VERSION}).")
             logger.info(f"Connected to the game (seed hash {self.game_seed_hash}).")
+            self.set_game_status(checklist.OK, f"Connected to the game (seed {self.game_seed_hash}).")
             self.check_seed()
+            self.send_notice()
             self.send_location_names()
             self.send_game("SYNC")
         elif cmd == "RECV":
@@ -202,18 +261,48 @@ class LASContext(CommonContext):
         else:
             logger.info("game: " + line)
 
+    def set_game_status(self, level: str, text: str) -> None:
+        self.game_status = checklist.Check(level, text)
+        self.refresh_patch_tab()
+
+    async def check_game_listeners(self) -> None:
+        """Two modded games running at once both listen on the game port; the client may reach the wrong one."""
+        if self.game_host not in ("127.0.0.1", "localhost"):
+            return
+        names = await asyncio.to_thread(emulators.port_owners, self.game_port)
+        if len(names) > 1:
+            self.set_game_status(checklist.ERROR, f"Link's Awakening with the mod runs in {' and '.join(names)}. "
+                                                  f"Close all but one.")
+        elif self.game_status.level != checklist.INFO:
+            self.set_game_status(checklist.INFO, "Waiting for the game to start.")
+
     async def game_loop(self) -> None:
+        failures = 0
         while not self.exit_event.is_set():
+            writer = None
             try:
                 reader, writer = await asyncio.wait_for(
                     asyncio.open_connection(self.game_host, self.game_port), timeout=5)
+                # the game says HELLO right away; a listener that does not answer is not a running game
+                first = await asyncio.wait_for(reader.readline(), timeout=5)
             except (OSError, asyncio.TimeoutError):
+                if writer is not None:
+                    writer.close()
+                failures += 1
+                if failures % 5 == 1:
+                    await self.check_game_listeners()
                 await asyncio.sleep(2)
                 continue
+            failures = 0
             self.game_writer = writer
             self.game_recv = None
+            self.game_seed_hash = None
+            self.notice_sent = False
             ping = asyncio.create_task(self.ping_loop(writer))
             try:
+                line = first.decode(errors="replace").strip()
+                if line and line != "PONG":
+                    self.handle_game_line(line)
                 while not self.exit_event.is_set():
                     raw = await reader.readline()
                     if not raw:
@@ -228,6 +317,7 @@ class LASContext(CommonContext):
                 self.game_writer = None
                 writer.close()
                 logger.info("Lost connection to the game; retrying.")
+                self.set_game_status(checklist.INFO, "Waiting for the game to start.")
 
     async def ping_loop(self, writer: asyncio.StreamWriter) -> None:
         loop = asyncio.get_event_loop()
