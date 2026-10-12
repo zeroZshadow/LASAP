@@ -9,7 +9,7 @@ Archipelago multiworld support for The Legend of Zelda: Link's Awakening (2019, 
 | Game module | `las-ap-exl` | exlaunch code in the game: reports checks, applies received items, talks TCP on port 43384 |
 | Client | `apworld/las/client.py` | Connects the AP server and the game |
 
-DESIGN.md has the contracts between the parts, TESTING.md covers the test harness, and FEASIBILITY.md has the original assessment.
+DESIGN.md has the contracts between the parts, TESTING.md covers the test harness, TODO.md lists open work, and FEASIBILITY.md has the original assessment.
 
 ## Playing
 
