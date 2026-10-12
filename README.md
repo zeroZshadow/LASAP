@@ -15,41 +15,32 @@ DESIGN.md has the contracts between the parts, TESTING.md covers the test harnes
 
 The player's guide is `apworld/las/docs/setup_en.md`: install the world, open the `.aplas`, choose the emulator and the RomFS dump in the client's Patch tab, and press Install and play.
 
-On 64-bit Windows, the release's `las.apworld` is all a player installs: it carries the patcher and the game module, and the client uses them while its patcher command is empty. Elsewhere, or to run the patcher from this repository, do the one-time setup below.
+The release's `las.apworld` is all a player installs, on any system Archipelago runs on: it carries the patcher and the game module, and the client runs the patcher in its own process. The world is needed only by whoever generates the seed and by the LAS player; other players need nothing new.
 
 ### Building a release
 
-1. Build the module (`bash scripts/build_exl.sh`).
-2. Create the release venv once:
+1. Set up `.venv-lasr`, `.venv-ap` and `vendor/Archipelago` (TESTING.md) and build the module with `bash scripts/build_exl.sh` (Docker; it writes `patcher/exl/`, the same for every seed).
+2. Build:
    ```bash
-   uv venv .venv-release --python 3.12
+   .venv-lasr/Scripts/python.exe scripts/build_release.py
    ```
-   ```bash
-   uv pip install -r patcher/requirements.txt pyinstaller --python .venv-release
-   ```
-3. Build:
-   ```bash
-   .venv-release/Scripts/python.exe scripts/build_release.py
-   ```
-   It writes `build/release/LASAP-<world version>/` with `las.apworld` and the options template. It also needs `.venv-ap` and `vendor/Archipelago` (TESTING.md) for "Build APWorlds".
+   It writes `build/release/LASAP-<world version>/` with `las.apworld` and the options template.
 
-### One-time setup (patcher from this repository)
+### Developing
 
-1. **Install the world.** Copy `las.apworld` into Archipelago's `custom_worlds` folder. To build it, use the dev setup in TESTING.md (`vendor/Archipelago` with the `worlds/las` junction):
-   ```bash
-   .venv-ap/Scripts/python.exe scripts/ap.py Launcher.py "Build APWorlds" -- "Links Awakening Switch" --skip_open_folder
-   ```
-   The file lands in `vendor/Archipelago/build/apworlds`. The world is needed only by whoever generates the seed and by the LAS player for the client; other players need nothing new.
-2. **Dump the RomFS.** In Ryujinx, right-click the game, then Extract Data → RomFS.
-3. **Set up the patcher.** It runs in a Python 3.12 venv with `patcher/requirements.txt`; `requirements-assets.txt` adds the tools for rebuilding the assets. With `uv`:
-   ```bash
-   uv venv .venv-lasr --python 3.12
-   ```
-   ```bash
-   uv pip install -r patcher/requirements-assets.txt --python .venv-lasr
-   ```
-4. **Build the game module** with `bash scripts/build_exl.sh`. It needs Docker and writes `patcher/exl/`. The module is the same for every seed.
-5. **Point the client at the patcher.** In the client's Patch tab, under advanced settings, set the patcher command to `<repo>/.venv-lasr/Scripts/python.exe <repo>/patcher/las_ap_patch.py` (or `las_options.patcher_command` in `host.yaml`).
+- **The patcher venv.** The patcher and its tools run in a Python 3.12 venv; `requirements-assets.txt` adds the packages for rebuilding the assets to the patcher's own `requirements.txt`. With `uv`:
+  ```bash
+  uv venv .venv-lasr --python 3.12
+  ```
+  ```bash
+  uv pip install -r patcher/requirements-assets.txt --python .venv-lasr
+  ```
+- **The world from source.** With the `worlds/las` junction (TESTING.md), the client runs this repository's `patcher/` in its own process, which needs the patcher's libraries in Archipelago's environment:
+  ```bash
+  uv pip install -r patcher/requirements.txt --python .venv-ap
+  ```
+  Alternatively, set the Patch tab's patcher command (advanced settings) to `<repo>/.venv-lasr/Scripts/python.exe <repo>/patcher/las_ap_patch.py`: the client then runs that as a separate program.
+- **The world alone.** `.venv-ap/Scripts/python.exe scripts/ap.py Launcher.py "Build APWorlds" -- "Links Awakening Switch" --skip_open_folder` writes `las.apworld` without the patcher to `vendor/Archipelago/build/apworlds`.
 
 ### Each seed
 

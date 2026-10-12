@@ -14,6 +14,7 @@ import random
 import sys
 import zipfile
 from pathlib import Path
+from typing import List, Optional
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -410,12 +411,12 @@ def add_location_items(patch: dict, item_defs: dict) -> None:
         item_defs[location_item(loc)] = item_def
 
 
-def main() -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("patch", type=Path)
     parser.add_argument("--romfs", type=Path, required=True, help="RomFS dump of the base game (1.0.0)")
     parser.add_argument("--out", type=Path, required=True, help="Output folder (SD card root layout)")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     patch = load_patch(args.patch)
     if patch.get("format") != PATCH_FORMAT:

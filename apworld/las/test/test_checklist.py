@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from .. import checklist
@@ -38,11 +39,15 @@ class TestChecklist(unittest.TestCase):
     def test_problems(self) -> None:
         unknown = self.root / "emu.exe"
         unknown.write_bytes(b"")
-        result = checklist.check("", {"emulator": str(unknown), "romfs_folder": str(self.root)})
+        with mock.patch.object(checklist, "builtin_patcher_available", return_value=False):
+            result = checklist.check("", {"emulator": str(unknown), "romfs_folder": str(self.root)})
         self.assertEqual(result.checks["emulator"].level, checklist.ERROR)
         self.assertIn("SD card folder", result.checks["emulator"].text)
         self.assertEqual(result.checks["romfs_folder"].level, checklist.ERROR)
         self.assertEqual(result.checks["patcher_command"].level, checklist.ERROR)
+        with mock.patch.object(checklist, "builtin_patcher_available", return_value=True):
+            result = checklist.check("", {})
+        self.assertEqual(result.checks["patcher_command"].level, checklist.OK)
 
         result = checklist.check("", {"sd_card_folder": str(self.root / "missing")})
         self.assertEqual(result.checks["emulator"].level, checklist.ERROR)

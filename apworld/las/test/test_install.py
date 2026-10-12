@@ -1,4 +1,3 @@
-import io
 import sys
 import tempfile
 import unittest
@@ -23,6 +22,27 @@ for part in ("romfs", "exefs"):
 (out / "config" / "lasr-exl" / "config.ini").write_text("[archipelago]\\nseed_hash = " + patch.read_text() + "\\n")
 (out / "config" / "lasr-exl" / "ap_names.txt").write_text("1 Bow|")
 print("Mod written")
+"""
+
+
+# Stands in for las_ap_patch.py as the built-in patcher imports it: main(argv), with state in a module global that
+# a fresh import resets.
+FAKE_BUILTIN = """
+from pathlib import Path
+RUNS = []
+
+
+def main(argv):
+    RUNS.append(argv)
+    patch, out = Path(argv[0]), Path(argv[argv.index("--out") + 1])
+    game = out / "atmosphere" / "contents" / "01006BB00C6F0000"
+    for part in ("romfs", "exefs"):
+        (game / part).mkdir(parents=True)
+        (game / part / "file").write_text(patch.read_text())
+    (out / "config" / "lasr-exl").mkdir(parents=True)
+    (out / "config" / "lasr-exl" / "config.ini").write_text("[archipelago]\\nseed_hash = " + patch.read_text() + "\\n")
+    print(f"Mod written, run {len(RUNS)}")
+    return 0
 """
 
 
@@ -74,30 +94,44 @@ class TestInstall(unittest.TestCase):
             self.run_install("aaaa0001")
         self.assertIsNone(installed_seed(self.sd, self.mods))
 
-    def test_bundled_patcher(self) -> None:
-        """The release world's patcher is unpacked once per version; a new version replaces the old one."""
+    def test_builtin_patcher(self) -> None:
+        """With no command, the patcher runs in this process, its modules imported fresh for each run."""
+        root = Path(self.tmp.name) / "patcher"
+        root.mkdir()
+        (root / "las_ap_patch.py").write_text(FAKE_BUILTIN)
+        self.command = ""
+        saved_path = list(sys.path)
+        with mock.patch.object(install, "builtin_patcher_dir", return_value=root):
+            self.assertTrue(self.run_install("aaaa0001"))
+            self.assertTrue(self.run_install("bbbb0002", force=True))
+        self.assertEqual((self.mods / "exefs" / "file").read_text(), "bbbb0002")
+        self.assertEqual(self.lines.count("Mod written, run 1"), 2)
+        self.assertEqual(sys.path, saved_path)
+        self.assertNotIn("las_ap_patch", sys.modules)
+
+    def test_builtin_patcher_unpacks_once(self) -> None:
+        """The packaged world's patcher is unpacked once per build; a new build replaces the old one."""
         import Utils
         root = Path(self.tmp.name)
 
-        def bundle(version: str) -> Path:
-            data = io.BytesIO()
-            with zipfile.ZipFile(data, "w") as zf:
-                zf.writestr(install.BUNDLED_PATCHER_EXE.as_posix(), version)
-            path = root / f"bundle {version}.zip"
-            path.write_bytes(data.getvalue())
+        def world(build: str) -> Path:
+            path = root / f"las {build}.apworld"
+            with zipfile.ZipFile(path, "w") as zf:
+                zf.writestr(install.PATCHER_BUILD, build)
+                zf.writestr(install.PATCHER_PREFIX + "RandomizerCore/Data/items.yml", build)
             return path
 
-        with mock.patch.object(Utils.cache_path, "cached_path", str(root / "cache"), create=True),                 mock.patch.object(install, "bundled_patcher_resource", return_value=bundle("1")):
-            first = install.bundled_patcher(self.lines.append)
-            self.assertEqual(first.read_text(), "1")
-            self.assertEqual(install.bundled_patcher(self.lines.append), first)
+        with mock.patch.object(Utils.cache_path, "cached_path", str(root / "cache"), create=True):
+            with mock.patch.object(install, "_world_archive", return_value=world("1")):
+                self.assertTrue(install.builtin_patcher_available())
+                first = install.builtin_patcher_dir(self.lines.append)
+                self.assertEqual(install.builtin_patcher_dir(self.lines.append), first)
+            self.assertEqual((first / "RandomizerCore" / "Data" / "items.yml").read_text(), "1")
             self.assertEqual(sum("Unpacking" in line for line in self.lines), 1)
-            with mock.patch.object(install, "bundled_patcher_resource", return_value=bundle("2")):
-                second = install.bundled_patcher(self.lines.append)
-            self.assertEqual(second.read_text(), "2")
+            with mock.patch.object(install, "_world_archive", return_value=world("2")):
+                second = install.builtin_patcher_dir(self.lines.append)
+            self.assertEqual((second / "RandomizerCore" / "Data" / "items.yml").read_text(), "2")
             self.assertFalse(first.exists())
-        with mock.patch.object(install, "bundled_patcher_resource", return_value=None):
-            self.assertIsNone(install.bundled_patcher(self.lines.append))
 
     def test_split_command(self) -> None:
         self.assertEqual(split_command('"C:/Program Files/py.exe" D:\\a\\b.py'),

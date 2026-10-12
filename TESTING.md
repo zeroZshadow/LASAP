@@ -7,9 +7,8 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - Windows session **unlocked**. On a locked desktop the emulator stops presenting frames and the game loop stalls. Turning the monitors off is fine.
 - Docker Desktop with the image `devkitpro/devkita64:latest`.
 - Python venvs created with `uv` (Python 3.12):
-  - `.venv-ap`: Archipelago requirements (`vendor/Archipelago/requirements.txt`) plus pytest.
+  - `.venv-ap`: Archipelago requirements (`vendor/Archipelago/requirements.txt`) plus pytest, and the patcher's `requirements.txt` for the world from source.
   - `.venv-lasr`: the patcher's requirements with the asset tools (`patcher/requirements-assets.txt`: oead, quicktex, Pillow on top of `requirements.txt`).
-  - `.venv-release`: the same plus PyInstaller, for `build_release.py`.
 - `vendor/Archipelago`: Archipelago 0.6.8, with a junction `vendor/Archipelago/worlds/las` → `apworld/las`.
 
 ## Emulator: Ryubing (Ryujinx fork)
@@ -29,7 +28,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 | `las_client.py [--nogui --connect host:port --name Slot]` | Runs the LAS client without the Launcher |
 | `check_gsheet.py [--romfs dir] [files]` | Compares the pure-Python datasheet code with oead on every RomFS datasheet and the given files (values and bytes) |
 | `build_assets.py [--romfs dir]` | Rebuilds `patcher/assets` (DESIGN.md, Assets) from a RomFS dump, in `.venv-lasr` |
-| `build_release.py` | Builds the release world with the frozen Windows patcher inside (README, Building a release) |
+| `build_release.py` | Builds the release world with the patcher inside (README, Building a release), in `.venv-lasr` |
 | `make_test_patch.py <out.aplas>` | Writes a synthetic patch (all locations AP items) for patcher tests |
 | `verify_patch.py <patch> <out dir>` | Checks that every shuffled chest holds the placeholder (its model variant) with its local id |
 | `test_client.py` / `drive.py <script>` | Talk to the module directly on the sandbox port (only when no AP client is connected) |
@@ -118,7 +117,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Boot.** The module boots with LASR's randomizer hooks; the socket listens on 43384, or on the `config.ini` port: the sandbox on 43385 ran its boot tests while the user played on 43384.
 - **Generation and patching.** Generate → patch → deploy → new game works end to end.
 - **Packaged world.** `las.apworld` built with "Build APWorlds" generates in a clean Archipelago checkout (`custom_worlds`), and its Launcher starts "Links Awakening Switch Client". The patcher runs in a fresh venv made from `patcher/requirements.txt`.
-- **Release build.** The frozen patcher (`build_release.py`) writes the same files, byte for byte, as the patcher run from source for the same patch. The release `las.apworld` in a clean Archipelago checkout, with no patcher command, unpacks its patcher once into the cache and installs that same mod (2026-10-12).
+- **Patcher in the client.** The release `las.apworld` in a clean Archipelago checkout, with no patcher command and none of the patcher's libraries installed in Archipelago's environment, unpacks its patcher once into the cache and installs, twice in one process, the same files byte for byte as the patcher with oead, quicktex and Pillow did before the assets and the pure-Python datasheets, for a synthetic seed and for one with "Texture + Size" chests (2026-10-12).
 - **Notices.** With the client connected to the game only, the game knows all location names from `ap_names.txt`. Connecting the server shows "Archipelago connected as ZeroLAS" in the autosave popup, with the Archipelago logo and both lines of text; the game keeps running. The popup shows "Now saving." again afterwards (`DBG savepopup`).
 - **Closing the emulator.** Windowed Ryujinx exits within a few seconds of closing its window, modded or vanilla. Headless Ryujinx (`--no-gui`) ignores a window close either way.
 - **Client install.** Opening an `.aplas` from the clean checkout's Launcher, or with the double-click command, opens the client on its Patch tab.
