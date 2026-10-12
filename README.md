@@ -13,19 +13,48 @@ DESIGN.md has the contracts between the parts, TESTING.md covers the test harnes
 
 ## Playing
 
-1. **Install the world.** Put the world in Archipelago: build `las.apworld` with the Launcher's "Build APWorlds", or copy `apworld/las` into `custom_worlds`. Then generate as usual with `game: Links Awakening Switch`.
-2. **Build the game module** once: `bash scripts/build_exl.sh` (needs Docker).
-3. **Patch your game.** Use your own RomFS dump of version 1.0.0:
+You need:
+- Archipelago 0.6.8 or newer.
+- Link's Awakening 1.0.0 on Ryujinx, with no update applied.
+- Python 3.12 for the patcher.
+- Docker, to build the game module once.
+
+### One-time setup
+
+1. **Install the world.** Copy `las.apworld` into Archipelago's `custom_worlds` folder. To build it, use the dev setup in TESTING.md (`vendor/Archipelago` with the `worlds/las` junction):
    ```bash
-   .venv-lasr/Scripts/python.exe patcher/las_ap_patch.py AP_<seed>_P1_<slot>.aplas --romfs <romfs dump> --out <out dir>
+   .venv-ap/Scripts/python.exe scripts/ap.py Launcher.py "Build APWorlds" -- "Links Awakening Switch" --skip_open_folder
    ```
-4. **Install the mod.** Copy `<out dir>/atmosphere` and `<out dir>/config` to the SD card root, or to Ryujinx's `sdcard` folder.
-5. **Start a new save** and run the client:
+   The file lands in `vendor/Archipelago/build/apworlds`. The world is needed only by whoever generates the seed and by the LAS player for the client; other players need nothing new.
+2. **Dump the RomFS.** In Ryujinx, right-click the game, then Extract Data → RomFS.
+3. **Set up the patcher.** It runs in a Python 3.12 venv with `patcher/requirements.txt`. With `uv`:
    ```bash
-   .venv-ap/Scripts/python.exe scripts/las_client.py --connect <server:port> --name <slot>
+   uv venv .venv-lasr --python 3.12
    ```
-   - On a Switch, add `--game-host <switch ip>`.
-   - Every randomized location holds an Archipelago item. Once the client is connected, its text names the item and whose it is; your actual items arrive through the client, including your own.
+   ```bash
+   uv pip install -r patcher/requirements.txt --python .venv-lasr
+   ```
+4. **Build the game module** with `bash scripts/build_exl.sh`. It needs Docker and writes `patcher/exl/`. The module is the same for every seed.
+
+### Each seed
+
+1. **Options.** In the Launcher, "Generate Template Options" writes `Links Awakening Switch.yaml` to `Players/Templates`. Its defaults are LASR's default settings:
+   - Maps, compasses and stone beaks are in the starting inventory.
+   - Small keys stay in their own dungeon.
+   - Instruments can be anywhere.
+   - Traps are set to many.
+   - You start with the sword, shield, ocarina and Manbo's Mambo.
+
+   Set your `name`, put the file in `Players` with everyone else's, and generate. Host the result as usual, on archipelago.gg or with the Launcher's "Host".
+2. **Patch.** The output zip has a patch file per LAS slot, `AP_<seed>_P<n>_<slot>.aplas`. Patch with it:
+   ```bash
+   .venv-lasr/Scripts/python.exe patcher/las_ap_patch.py AP_<seed>_P<n>_<slot>.aplas --romfs <romfs dump> --out <out dir>
+   ```
+3. **Install the mod.** In Ryujinx, open File → Open Ryujinx Folder, then the `sdcard` folder. Delete a previous seed's `atmosphere/contents/01006BB00C6F0000`, then copy `<out dir>/atmosphere` and `<out dir>/config` into it. On a Switch, do the same on the SD card root.
+4. **Play.**
+   - Start a new save.
+   - In the Launcher, open "Links Awakening Switch Client" and connect to the server with your slot name. The client finds the game on `127.0.0.1`; Ryujinx needs no settings for that. On a Switch, start the client with `--game-host <switch ip>`.
+   - Every randomized location holds an Archipelago item, and its text names the item and whose it is. Your items, including the ones you find yourself, arrive through the client. Checks made while the client is offline are sent when it reconnects.
 
 ## Status
 

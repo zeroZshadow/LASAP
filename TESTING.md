@@ -24,7 +24,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 | `build_exl.sh` | Builds `las-ap-exl` in Docker and copies `subsdk9`/`main.npdm` to `patcher/exl/` |
 | `deploy_mod.sh <out dir>` | Installs a patcher output (SD layout) into the sandbox |
 | `reset_saves.sh` | Restores sandbox saves from the user's saves and clears `sdcard/lasap` |
-| `ap.py <Generate.py\|MultiServer.py> ...` | Runs an AP entry point from `vendor/Archipelago` in `.venv-ap` |
+| `ap.py <Generate.py\|MultiServer.py\|Launcher.py> ...` | Runs an AP entry point from `vendor/Archipelago` in `.venv-ap`; `LASAP_AP` points it at another checkout, such as a clean one with only `las.apworld` in `custom_worlds` |
 | `las_client.py [--nogui --connect host:port --name Slot]` | Runs the LAS client without the Launcher |
 | `make_test_patch.py <out.aplas>` | Writes a synthetic patch (all locations AP items) for patcher tests |
 | `verify_patch.py <patch> <out dir>` | Checks that every shuffled chest holds the placeholder with its local id |
@@ -63,6 +63,9 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Scripted AP session.** Run the client and server with stdin fed from a file (`tail -n0 -f cmds.txt | ...`) so `/dbg`, `/las`, `/game` and server `/send` commands can be appended while they run. `e2e.py` writes to these files in the folder `LASAP_E2E` names (default `D:\DEV\LASAP-sandbox\e2e`). `/game <line>` sends a raw protocol line, e.g. a hand-made `ITEM` or `NAME`. For texts naming another player, generate a two-slot seed (a second slot with a small game such as ChecksFinder) and send its items with `/send` or `/release`. Start MultiServer with `--release_mode goal --collect_mode goal` to keep a goal from releasing every location.
 - **Boot sequences.** `scripts/tests/*.txt` are `drive.py` scripts: boot to file 2, or create a new game in file 2.
 - **Overworld coordinates.** Screen `Field_<row><col>` (col A=0) is around x = 15·col + 7.5, z = 12·(row − 1) + 6.75. Mabe at Marin's door is (38.25, 10.5, 128.25); in front of the shop is (51.75, 10.5, 117), walk up to enter.
+- **Warps and pits.** Warp into a dungeon or house from `Field`: after a warp out of `TownWell` (Link standing in water) the screen can stay black until the emulator restarts. `pos` also sets the respawn point, so a `pos` over a pit makes Link fall again on every respawn until he dies; reset with a warp to another level and back.
+- **Health.** `poke 84 1c00` sets health to 7 hearts (quarter hearts, u16).
+- **Tarin's gift.** The detain scene on leaving the house only stops Link; talk to Tarin (A at about (9.4, 0, 6.0) in his house) to get the gift.
 - **Finding a location.** LASR's `Randomizers/*.py` map locations to rooms (`CHEST_ROOMS`, `HEART_ROOMS`, ...); `leb_actors.py` prints the actors there. Teleport one tile (1.5) south of a chest and press A facing up. A `pos` into a room that is not loaded lands on no floor; `e2e.py goto` hops through the rooms in between, and `warp Field ...` reloads the overworld at the target.
 
 ## Reverse engineering
@@ -89,6 +92,9 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 
 - **Boot.** The module boots with LASR's randomizer hooks; the socket listens on 43384.
 - **Generation and patching.** Generate → patch → deploy → new game works end to end.
+- **Packaged world.** `las.apworld` built with "Build APWorlds" generates in a clean Archipelago checkout (`custom_worlds`), and its Launcher starts "Links Awakening Switch Client". The patcher runs in a fresh venv made from `patcher/requirements.txt`.
+- **Multi-game generation.** Eight seeds with two LAS slots on default options plus Hollow Knight, The Messenger, TUNIC and ChecksFinder generate and write their patch files.
+- **Default options.** A new save on default options has the starting gear (sword, shield, ocarina, Manbo's Mambo); received progressive swords and shields upgrade it.
 - **First check.** Tarin's gift (the first check) reaches the server as a location check.
 - **Shop.** Buying the placeholder in the Mabe shop charges the price, plays the item get and reports the slot's location (`shop-slot3-1st`).
 - **Chests.** Opening `beach-chest` gives the placeholder and the server logs the check.
@@ -103,12 +109,15 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Seashell Mansion.** The 5, 15 and 30 shell presents name their items ("You found Map Width for Bob!") and report their checks.
 - **Item names in text.** A received item from another slot says "You got Hookshot from Bob!". A dungeon chest holding this slot's item says "You found your Stone Beak (Tail Cave)!" and the item is not shown a second time when it comes back from the server. The shop's price tag names the item and its owner, and a heart piece holding another slot's item says "You found Map Bombs for Bob!".
 - **Persistence.** The received count survives a restart without double grants. On a fresh save, everything is re-delivered.
+- **Instruments.** The Full Moon Cello pedestal gives the placeholder, names its item and reports its check.
+- **Release.** `/release` of another slot delivers its items in a burst, each saying "from <player>".
 - **Goal.** `ShadowClear` reports the goal to the server.
 - **Patch data.** `scripts/verify_patch.py` checks that every shuffled chest holds the placeholder with the right index, and that every randomized heart piece and seashell actor has its own index above the received range (static check).
 
 ## Not yet verified in-game
 
 - Owl statues and tree seashells as locations.
+- Dungeon floor small keys and boss drops. They use paths that are verified elsewhere: floor keys are small key actors with a `SmallKey.bfevfl` entry, like the bush and dug seashells; boss drops use `item_get_manager.get`, like the instruments.
 - DeathLink (out of scope for now) and real hardware.
 
 ## Building the exlaunch module
