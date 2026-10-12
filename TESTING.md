@@ -53,6 +53,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Scripted AP session.** Run the client and server with stdin fed from a file (`tail -f cmds.txt | ...`) so `/dbg`, `/las` and server `/send` commands can be appended while they run.
 - **Boot sequences.** `scripts/tests/*.txt` are `drive.py` scripts: boot to file 2, or create a new game in file 2.
 - **Overworld coordinates.** Screen `Field_<row><col>` (col A=0) is around x = 15·col + 7.5, z = 12·(row − 1) + 6.75. Mabe at Marin's door is (38.25, 10.5, 128.25); in front of the shop is (51.75, 10.5, 117), walk up to enter.
+- **Finding a location.** LASR's `Randomizers/chests.py` maps chests to rooms; `RandomizerCore.Tools.leb.Room` reads actor positions (`ObjTreasureBox*`) from `region_common/level/<area>/<room>.leb` in the RomFS. Teleport one tile (1.5) south of a chest and press A facing up. `pos` moves Link only within the current level, so leave interiors on foot.
 
 ## Verified (2026-10-12, Ryubing Canary 1.3.340, game 1.0.0)
 
@@ -60,14 +61,16 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Generation and patching.** Generate → patch → deploy → new game works end to end.
 - **First check.** Tarin's gift (the first check) reaches the server as a location check.
 - **Shop.** Buying the placeholder in the Mabe shop charges the price, plays the item get and reports the slot's location (`shop-slot3-1st`).
+- **Chests.** Opening `beach-chest` gives the placeholder and the server logs the check.
+- **Offline checks.** Checks are stored in the save's checks file and reach a server that had not seen them on the next connection.
 - **Received items.** Items from the server are applied in-game: progressive sword/shield/bracelet, feather, seashells, rupees, small key, tunic, heart container, golden leaf and a trap. A burst of 240 items also applied.
 - **Persistence.** The received count survives a restart without double grants. On a fresh save, everything is re-delivered.
 - **Goal.** `ShadowClear` reports the goal to the server.
-- **Chests.** All 110 shuffled chests hold the placeholder with the right index (static check).
+- **Chest data.** All 110 shuffled chests hold the placeholder with the right index (static check).
 
 ## Not yet verified in-game
 
-- Opening a chest, heart pieces, seashells, dungeon items, owl statues, Seashell Mansion.
+- Heart pieces, seashells, dungeon items, owl statues, Seashell Mansion.
 - DeathLink in both directions.
 - Real hardware.
 
