@@ -18,6 +18,10 @@ Flow:
 3. The game runs with the mod. The module listens on TCP port **43384**, or on the port `config.ini` sets (`[archipelago] port`); the client's `--game-port` must match. Players keep the default; the test sandbox uses its own port so it runs beside a modded game.
 4. The client connects to the AP server (websocket) and to the game (TCP), and relays checks and items.
 
+## Assets
+
+The files the mod changes the same way for every seed are assets (`patcher/ap_assets.py`): `StartUp.arc` (LASR's title screen logo and the notice look, `ap_ui.py`), `ItemArchipelago.bfres` (`ap_model.py`) and LASR's chest textures (`ObjTreasureBox{Junk,Key,LifeUpgrade}.bfres`, for "Texture + Size"). Building them needs native packages (oead's SARC, quicktex, Pillow). `scripts/build_assets.py` builds them from a RomFS dump and stores each in `patcher/assets` as a bsdiff4 patch against the RomFS file it comes from, with both files' SHA-256 in `assets.json`. The patcher applies the patches to the player's dump and checks the results; a dump of another game version fails with a message naming the file. After a change to `ap_ui.py`, `ap_model.py` or LASR's title screen or chest textures, rebuild and commit the assets.
+
 ## Release
 
 `scripts/build_release.py` (in `.venv-release`, after `build_exl.sh`) writes `build/release/LASAP-<world version>/`: `las.apworld` and the options template `Links Awakening Switch.yaml`.

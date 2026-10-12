@@ -1,10 +1,7 @@
-from PIL import Image
 import RandomizerCore.Tools.bntx_editor.bntx_editor as bntx_editor
 from RandomizerCore.Paths.randomizer_paths import RESOURCE_PATH, IS_RUNNING_FROM_SOURCE
 import os
 import struct
-import quicktex.dds as quicktex_dds
-import quicktex.s3tc.bc3 as bc3
 from io import BytesIO
 
 from RandomizerCore.Tools.bntx_editor import bfres
@@ -12,6 +9,11 @@ from RandomizerCore.Tools.bntx_editor import bfres
 
 # This method aims to create a custom BNTX archive based on the original one to add a custom title screen
 def createRandomizerTitleScreenArchive(sarc_data):
+    # Only the asset build (ap_assets.py) runs this; the patcher itself needs neither package.
+    from PIL import Image
+    import quicktex.dds as quicktex_dds
+    import quicktex.s3tc.bc3 as bc3
+
     editor = bntx_editor.BNTXEditor()
     editor.openFile(sarc_data.reader.get_file('timg/__Combined.bntx').data.tobytes())
 

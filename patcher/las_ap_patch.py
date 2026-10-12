@@ -41,14 +41,15 @@ from RandomizerCore.Fixes.Datasheets.items import ItemsDatasheetFixes  # noqa: E
 from RandomizerCore.Helpers.file_manager import FileManager  # noqa: E402
 from RandomizerCore.Helpers.flag_manager import FlagManager  # noqa: E402
 from RandomizerCore.Helpers.item_get_manager import ItemGetManager  # noqa: E402
+from RandomizerCore.Randomizers import chests as lasr_chests  # noqa: E402
 from RandomizerCore.Randomizers.chests import ChestRandomizer  # noqa: E402
 from RandomizerCore.Randomizers.keysanity import Keysanity  # noqa: E402
 from RandomizerCore.Randomizers.shop import TEXT_TO_CHANGE as SHOP_TEXT  # noqa: E402
 from RandomizerCore.Tools import event_tools  # noqa: E402
 from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct  # noqa: E402
+import ap_assets  # noqa: E402
 import ap_ghost  # noqa: E402
 import ap_model  # noqa: E402
-import ap_ui  # noqa: E402
 
 PATCH_FORMAT = 1
 PLACEHOLDER_KEY = "ArchipelagoItem"
@@ -287,6 +288,19 @@ Keysanity.addTextEvents = _add_placeholder_text_event
 Keysanity.createText = _add_placeholder_text
 
 
+def _chest_textures(chest_bfres: str, folder: str, textures) -> None:
+    """LASR's chest textures ("Texture + Size") come from the assets, into the folder LASR copies them from."""
+    romfs = Path(chest_bfres).parents[2]
+    Path(folder).mkdir(parents=True, exist_ok=True)
+    for path in ap_assets.CHEST_TEXTURES:
+        (Path(folder) / Path(path).name).write_bytes(ap_assets.load(romfs, path))
+
+
+# The title screen and the chest textures are the same for every seed: assets (ap_assets.py), not built here.
+mod_generator.TitleScreenFixes = lambda proc: None
+lasr_chests.createChestBfresWithCustomTexturesIfMissing = _chest_textures
+
+
 class APModsProcess(mod_generator.ModsProcess):
     def __init__(self, *args, seed_hash: str, location_names: dict, **kwargs):
         super().__init__(*args, **kwargs)
@@ -434,13 +448,12 @@ def main() -> int:
         return 1
     if patch["settings"].get("Ammo Ghost", True):  # the option's default, also for patches without it
         ap_ghost.add(proc.file_manager)
-    actor_dir = proc.romfs_dir / "region_common" / "actor"
-    actor_dir.mkdir(parents=True, exist_ok=True)
-    (actor_dir / ap_model.FILE_NAME).write_bytes(ap_model.build(str(args.romfs / "region_common" / "actor" / ap_model.SOURCE)))
-    ui_archive = proc.romfs_dir / ap_ui.ARCHIVE
-    ui_archive.parent.mkdir(parents=True, exist_ok=True)
-    source = ui_archive if ui_archive.exists() else args.romfs / ap_ui.ARCHIVE
-    ui_archive.write_bytes(ap_ui.build(source.read_bytes()))
+    try:
+        for path in (ap_assets.MODEL, ap_assets.UI):
+            ap_assets.install(args.romfs, proc.romfs_dir, path)
+    except ap_assets.AssetError as e:
+        print(e)
+        return 1
     print(f"Mod written to {args.out}")
     return 0
 

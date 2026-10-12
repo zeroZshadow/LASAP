@@ -27,6 +27,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 | `reset_saves.sh [newgame]` | Restores sandbox saves from the user's saves, or from the new-game snapshot, and clears `sdcard/lasap` |
 | `ap.py <Generate.py\|MultiServer.py\|Launcher.py> ...` | Runs an AP entry point from `vendor/Archipelago` in `.venv-ap`; `LASAP_AP` points it at another checkout, such as a clean one with only `las.apworld` in `custom_worlds` |
 | `las_client.py [--nogui --connect host:port --name Slot]` | Runs the LAS client without the Launcher |
+| `build_assets.py [--romfs dir]` | Rebuilds `patcher/assets` (DESIGN.md, Assets) from a RomFS dump, in `.venv-lasr` |
 | `build_release.py` | Builds the release world with the frozen Windows patcher inside (README, Building a release) |
 | `make_test_patch.py <out.aplas>` | Writes a synthetic patch (all locations AP items) for patcher tests |
 | `verify_patch.py <patch> <out dir>` | Checks that every shuffled chest holds the placeholder (its model variant) with its local id |

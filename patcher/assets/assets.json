@@ -1,0 +1,32 @@
+{
+ "region_common/actor/ItemArchipelago.bfres": {
+  "source": "region_common/actor/ItemShellRader.bfres",
+  "source_sha256": "a07e66cc3334e7e5f8f918930f65e87db440898fee0318a953ceee656423d3d3",
+  "patch": "ItemArchipelago.bfres.bsdiff4",
+  "sha256": "a082ced9b6f31e1f2c07577c5100a82c7a3bb6286ce6f70d6a5a1082bd1ffe33"
+ },
+ "region_common/actor/ObjTreasureBoxJunk.bfres": {
+  "source": "region_common/actor/ObjTreasureBox.bfres",
+  "source_sha256": "57b492c665c8e9e8d4dc24ad499543a570a392dd1aae4216df15819d31671a91",
+  "patch": "ObjTreasureBoxJunk.bfres.bsdiff4",
+  "sha256": "4b7d43d78971c9c4790d070a1f6e21dc6e757b0501d8af0c99d405d53bc482e6"
+ },
+ "region_common/actor/ObjTreasureBoxKey.bfres": {
+  "source": "region_common/actor/ObjTreasureBox.bfres",
+  "source_sha256": "57b492c665c8e9e8d4dc24ad499543a570a392dd1aae4216df15819d31671a91",
+  "patch": "ObjTreasureBoxKey.bfres.bsdiff4",
+  "sha256": "d7975ad889af501ca8b3ee8421bb10f84e643ece270a46d2b144c58f0a0fe07a"
+ },
+ "region_common/actor/ObjTreasureBoxLifeUpgrade.bfres": {
+  "source": "region_common/actor/ObjTreasureBox.bfres",
+  "source_sha256": "57b492c665c8e9e8d4dc24ad499543a570a392dd1aae4216df15819d31671a91",
+  "patch": "ObjTreasureBoxLifeUpgrade.bfres.bsdiff4",
+  "sha256": "1749ff53f277df884f9a9e6b8ef85949e76e6e127347b9f69855a00a1d447eb6"
+ },
+ "region_common/ui/StartUp.arc": {
+  "source": "region_common/ui/StartUp.arc",
+  "source_sha256": "9af42d950e386e3fcc17f39bff5e7a0dd355bad33840fd16957db0300d6eecb1",
+  "patch": "StartUp.arc.bsdiff4",
+  "sha256": "401121b72b34f4a34797f1cfa9acba3c723ca199dcf6293d58e4a285be2c2b10"
+ }
+}
