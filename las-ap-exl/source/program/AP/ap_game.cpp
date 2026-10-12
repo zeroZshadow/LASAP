@@ -568,7 +568,9 @@ namespace {
             }
             AP::Send("OK poke");
         } else if (cmd == "itemget" && a.size() >= 3) {
-            // DBG itemget <item key or id> [message entry]: the item event, without granting or waiting in the queue
+            // DBG itemget <item key or id> [message entry]: the item event, without granting or waiting in the queue.
+            // Only for looking at item models: it skips the checks that hold received items back, so it can break a
+            // running flow. Tests of received items use grant or ITEM lines.
             if (!PlayerReady()) return false;
             if (g_ItemEvent != ItemEvent::None) {
                 AP::Send("ERR itemget: a display is running");

@@ -47,7 +47,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
   | `input <buttons hex> <ms> [lx ly]` | Holds buttons and the left stick for a duration |
   | `grant <key> <count> <dungeon> [show 0\|1]` | Same path as `ITEM`, without touching the counter |
   | `text` | Prints the in-game text state: known location names, hooked messages, the last found location |
-  | `itemget <key or item id> [message entry]` | Plays the item-get display (the item event) without granting the item or waiting in the queue. Model variants by ID (from the patched `Items.gsheet`) |
+  | `itemget <key or item id> [message entry]` | Plays the item-get display (the item event) without granting the item or waiting in the queue. Only for looking at item models (variants by ID, from the patched `Items.gsheet`): it skips the checks that hold received items back (talk, held object, pending display), so it can break whatever flow is running. Tests of received items use `grant` or `ITEM` lines |
   | `give <id> <count> <index>` | Raw `Inventory::AddItemID` |
   | `collect <local id>` | Simulates a placeholder pickup |
   | `setrecv <n>` / `clearchecks` | Resets the counter or the checks file |

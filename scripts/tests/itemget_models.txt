@@ -1,5 +1,6 @@
 # Shows the item-get of the Archipelago model (item id 71) next to a red rupee, which is centered on its origin
-# like every item model, to compare their size and centering. Needs a free player.
+# like every item model, to compare their size and centering. Needs a free player. DBG itemget is only for models:
+# it skips the checks that hold received items back.
 # Screenshots: ig_ap, ig_rupee.
 free 30
 send DBG itemget 71 ArchipelagoItem
