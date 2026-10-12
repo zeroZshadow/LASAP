@@ -34,12 +34,15 @@ from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct  # noqa: E
 PATCH_FORMAT = 1
 PLACEHOLDER_KEY = "ArchipelagoItem"
 PLACEHOLDER_ITEM_ID = 71  # must match AP::PLACEHOLDER_ITEM_ID in the exlaunch module
-# ItemHeartPiece actors hide when the heart piece bit of their parameters[0] is set, and that index must be unique.
-# Received heart pieces take the lowest free bit below 32 (kHeartPieceBits in the module), so the randomized actors
-# get their own index from 32 up. LASR's misc items turned into heart piece actors already use 51-54.
-HEART_PIECE_ACTOR = 0xB0
-HEART_PIECE_ACTOR_INDICES = [i for i in range(32, 64) if not 50 <= i <= 54]
-_heart_actor_index: dict = {}
+# Item actors hide while the inventory bit of their parameters[0] is set: ItemHeartPiece checks the heart piece bits,
+# ItemSlimeKey (LASR's static seashells) the seashell bits. The index must be unique per actor type. Received items
+# take the lowest free bit below the game's count (32 heart pieces, 50 seashells; kHeartPieceBits and kSeashellBits in
+# the module), so the randomized actors get indices above that. LASR's misc items already use heart piece 51-54.
+ACTOR_INDICES = {
+    0xB0: [i for i in range(32, 64) if not 50 <= i <= 54],  # ItemHeartPiece
+    0x8A: list(range(50, 64)),  # ItemSlimeKey
+}
+_actor_index: dict = {}
 RECV_FLAG_BITS = 16
 PLACEHOLDER_TEXT = "You found an [COLOR_SKYBLUE]Archipelago item[COLOR_WHITE]!"
 # The exlaunch module replaces both texts at runtime with the item and player names (AP::FOUND_LABEL, AP::RECEIVED_LABEL).
@@ -159,15 +162,16 @@ def _chest_placeholder_branch(self) -> None:
 
 
 def _write_file(self, file_name: str, data) -> None:
-    """Randomized heart piece actors (and the sunken seashells LASR turns into them) show by their flag alone."""
+    """Randomized heart piece and seashell actors show by their location flag alone."""
     if file_name.endswith("leb"):
         for actor in data.actors:
-            if (actor.type == HEART_PIECE_ACTOR and actor.parameters[4] not in (b"", 0)
+            free = ACTOR_INDICES.get(actor.type)
+            if (free is not None and actor.parameters[4] not in (b"", 0)
                     and isinstance(actor.parameters[0], int) and actor.parameters[0] < 50):
-                entry = actor.parameters[3]
-                if entry not in _heart_actor_index:
-                    _heart_actor_index[entry] = HEART_PIECE_ACTOR_INDICES[len(_heart_actor_index)]
-                actor.parameters[0] = _heart_actor_index[entry]
+                key = (actor.type, actor.parameters[3])
+                if key not in _actor_index:
+                    _actor_index[key] = free[sum(1 for t, _ in _actor_index if t == actor.type)]
+                actor.parameters[0] = _actor_index[key]
     _original_write_file(self, file_name, data)
 
 

@@ -53,7 +53,8 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
   | `setrecv <n>` / `clearchecks` | Resets the counter or the checks file |
   | `pos <x> <y> <z>` | Teleports within the current level and sets the respawn point there. Ignored while Link is in some states (wading against a wall, events) |
   | `warp <level> <x> <y> <z>` | Reloads a level at a position (the game's restart path). Verified for `Field`, dungeons (`Lv01TailCave`) and interiors (`TownWell`). Only from another level: a warp within the current level does not reload it and leaves Link at the origin. Some targets spawn Link at the origin too; warp to Mabe and use `e2e.py goto` from there |
-  | `peek <p\|f\|i\|a\|c> <hex off> <hex len>` | Dumps bytes of the player, framework, level-load data, or the last item-get action and its control block |
+  | `peek <p\|f\|i\|a\|c> <hex off> <hex len>` | Dumps bytes of the player, framework, inventory, or the last item-get action and its control block |
+  | `poke <hex off> <hex bytes>` | Writes bytes into the inventory, e.g. `poke 88 ffffffffffff0300` sets seashells 0–49 |
   | `dumpmain` | Writes the loaded main module to `sd:/lasap/main.bin` |
 
   Button bits follow `nn::hid::NpadButton`: A `1`, B `2`, L+R `c0`, Plus `400`, D-pad left/up/right/down `1000`/`2000`/`4000`/`8000`. The stick range is ±32767.
@@ -94,6 +95,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Item-get display.** Each received item plays the game's item-get (pose and text) once the player is free: after the pause menu closes, after a dialogue or cutscene ends, after a level has loaded. Displays run one at a time; Link cannot move during one; A closes the text without starting a talk. A long queue skips filler.
 - **Marin's song.** The song gift is a check (`Mabe Village - Marin`).
 - **Heart pieces.** The Mabe Well and Pothole North pieces appear on a save that has received heart pieces, and report their checks. A received piece still counts toward a heart.
+- **Dug seashells.** The doghouse dig gives its item with all 50 seashell bits set, and reports its check.
 - **Item names in text.** A received item from another slot says "You got Hookshot from Bob!". A dungeon chest holding this slot's item says "You found your Stone Beak (Tail Cave)!" and the item is not shown a second time when it comes back from the server. The shop's price tag names the item and its owner, and a heart piece holding another slot's item says "You found Map Bombs for Bob!".
 - **Persistence.** The received count survives a restart without double grants. On a fresh save, everything is re-delivered.
 - **Goal.** `ShadowClear` reports the goal to the server.
@@ -101,7 +103,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 
 ## Not yet verified in-game
 
-- Seashells, owl statues, Seashell Mansion as locations.
+- Owl statues, Seashell Mansion, bush and tree seashells as locations.
 - DeathLink (out of scope for now) and real hardware.
 
 ## Building the exlaunch module

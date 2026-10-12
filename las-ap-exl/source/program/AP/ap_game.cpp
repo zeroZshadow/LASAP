@@ -19,9 +19,10 @@
 namespace {
     constexpr int kRecvBits = 16;
     constexpr size_t kChecksBytes = 65536 / 8;
-    // Heart piece bits for received pieces (the game has 32). The patcher gives every heart piece actor its own
-    // bit from 32 up, so receiving never hides one; the game counts pieces over all 64 bits.
+    // Bits for received heart pieces and seashells (the game has 32 and 50). The patcher gives the heart piece and
+    // seashell actors their own bits above these, so receiving never hides one; the game counts over all 64 bits.
     constexpr int kHeartPieceBits = 32;
+    constexpr int kSeashellBits = 50;
     // Time to wait after a level change before granting items.
     constexpr u64 kSettleMs = 1500;
 
@@ -245,7 +246,7 @@ namespace {
 
         int index = -1;
         switch (id) {
-            case 22: index = LowestClearBit(items->Seashells, 64); break;      // Seashell
+            case 22: index = LowestClearBit(items->Seashells, kSeashellBits); break; // Seashell
             case 23: index = LowestClearBit(items->GoldenLeaves, 5); break;    // GoldenLeaf
             case 58: index = LowestClearBit(items->HeartPieces, kHeartPieceBits); break; // HeartPiece
             case 59: index = LowestClearBit(items->HeartContainers, 16); break; // HeartContainer
@@ -429,6 +430,19 @@ namespace {
                 }
             }
             AP::Send(line);
+        } else if (cmd == "poke" && a.size() >= 4) {
+            // DBG poke <hex offset> <hex bytes>: writes bytes into the inventory
+            u8* base = *reinterpret_cast<u8**>(g_symbols["InventoryPtr"]);
+            size_t off = strtoull(a[2].c_str(), nullptr, 16);
+            const std::string& hex = a[3];
+            if (base == nullptr || hex.size() % 2 != 0 || off + hex.size() / 2 > sizeof(Game::Data::Inventory::InventoryItems)) {
+                AP::Send("ERR poke");
+                return true;
+            }
+            for (size_t i = 0; i < hex.size() / 2; i++) {
+                base[off + i] = static_cast<u8>(strtoul(hex.substr(i * 2, 2).c_str(), nullptr, 16));
+            }
+            AP::Send("OK poke");
         } else if (cmd == "itemget" && a.size() >= 3) {
             // DBG itemget <item key> [message entry]
             if (!PlayerReady()) return false;
