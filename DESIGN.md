@@ -42,7 +42,8 @@ Flow:
   - Traps and unmatched names show the Archipelago model.
 - The patch file's `location_models` carries these picks.
   - The patcher gives each such location a variant of the placeholder, `ArchipelagoItem_<item key>`. It shows the item's model on the ground and in shops.
-  - Each variant gets an `Items.gsheet` row with its own item ID, because the item-get picks its model by ID. IDs come from 72–99 and 103, 107, 109, 118, 119, which neither the game nor LASR uses; the most used models get IDs first, and variants past the free IDs fall back to the placeholder's ID 71.
+  - Each variant gets an `Items.gsheet` row with its own item ID, because the item-get picks its model by ID. IDs come from 72–99, 103, 107, 109, 118, 119, 132–199 and 203–255, which neither the game nor LASR uses. That is more IDs than LASR has models; should they run out, the most used models keep theirs and the rest fall back to the placeholder's ID 71.
+  - Item IDs are a byte. The item-get finds the row by searching `Items.gsheet` for the ID, and handles every one of these IDs the same way (the default case of its switch on the ID).
   - The module counts all these IDs as the placeholder (`AP::IsPlaceholderItem`).
 - The Archipelago model is six balls in the logo's colors. The patcher builds it from the player's Seashell Sensor model (`patcher/ap_model.py`) and writes it as `ItemArchipelago.bfres`, with its own Npc entry, `ItemArchipelago`.
 - Indexed items (heart pieces, seashells, golden leaves, heart containers) are granted at the lowest free index of their inventory bitfield. Received heart pieces stay below index 32 and seashells below 50, the game's totals.

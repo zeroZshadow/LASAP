@@ -39,8 +39,9 @@ PATCH_FORMAT = 1
 PLACEHOLDER_KEY = "ArchipelagoItem"
 PLACEHOLDER_ITEM_ID = 71  # must match AP::PLACEHOLDER_ITEM_ID in the exlaunch module
 # Item ids of the model variants: the item-get picks its model by id. Neither the game nor LASR uses these (LASR's
-# Dampe and shop dummies take 63-70), and the module counts them as the placeholder (AP::IsPlaceholderItem).
-VARIANT_ITEM_IDS = [*range(PLACEHOLDER_ITEM_ID + 1, 100), 103, 107, 109, 118, 119]
+# Dampe and shop dummies take 63-70, its traps 127-131 and its trade items 200-202), and the module counts them as the
+# placeholder (AP::IsPlaceholderItem). Item ids are a byte; the item-get treats all of these like the placeholder.
+VARIANT_ITEM_IDS = [*range(PLACEHOLDER_ITEM_ID + 1, 100), 103, 107, 109, 118, 119, *range(132, 200), *range(203, 256)]
 # Item actors hide while the inventory bit of their parameters[0] is set: ItemHeartPiece checks the heart piece bits,
 # ItemSlimeKey (LASR's static seashells) the seashell bits. The index must be unique per actor type. Received items
 # take the lowest free bit below the game's count (32 heart pieces, 50 seashells; kHeartPieceBits and kSeashellBits in

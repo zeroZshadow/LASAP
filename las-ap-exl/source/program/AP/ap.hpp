@@ -10,10 +10,11 @@ namespace AP {
     constexpr int PLACEHOLDER_ITEM_ID = 71;
     constexpr const char* PLACEHOLDER_KEY = "ArchipelagoItem";
     // Model variants of the placeholder (ArchipelagoItem_<item key>) take item ids that neither the game nor LASR
-    // uses (LASR's Dampe and shop dummies take 63-70); the item-get picks its model by id. They count as the
-    // placeholder too. Must match VARIANT_ITEM_IDS in the patcher.
+    // uses (LASR's Dampe and shop dummies take 63-70, its traps 127-131 and its trade items 200-202); the item-get
+    // picks its model by id. They count as the placeholder too. Must match VARIANT_ITEM_IDS in the patcher.
     constexpr bool IsPlaceholderItem(int id) {
-        return (id >= PLACEHOLDER_ITEM_ID && id <= 99) || id == 103 || id == 107 || id == 109 || id == 118 || id == 119;
+        return (id >= PLACEHOLDER_ITEM_ID && id <= 99) || id == 103 || id == 107 || id == 109 || id == 118 ||
+               id == 119 || (id >= 132 && id <= 199) || (id >= 203 && id <= 255);
     }
     constexpr int PORT = 43384;
     constexpr int PROTOCOL_VERSION = 2;
