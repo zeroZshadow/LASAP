@@ -98,9 +98,10 @@ def _patch_textures(data: bytes) -> bytes:
     raise ValueError(f"{TEXTURES} has no texture {ICON}")
 
 
-def build(romfs: Path) -> bytes:
-    """StartUp.arc with the popup changes, from the RomFS dump."""
-    sarc = oead.Sarc((romfs / ARCHIVE).read_bytes())
+def build(archive: bytes) -> bytes:
+    """StartUp.arc with the popup changes. LASR edits the same archive (the title screen's Randomizer logo), so this
+    takes LASR's output when there is one."""
+    sarc = oead.Sarc(archive)
     writer = oead.SarcWriter.from_sarc(sarc)
     # the alignments of the original archive
     writer.set_min_alignment(16)

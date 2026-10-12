@@ -388,7 +388,8 @@ def main() -> int:
     (actor_dir / ap_model.FILE_NAME).write_bytes(ap_model.build(str(args.romfs / "region_common" / "actor" / ap_model.SOURCE)))
     ui_archive = proc.romfs_dir / ap_ui.ARCHIVE
     ui_archive.parent.mkdir(parents=True, exist_ok=True)
-    ui_archive.write_bytes(ap_ui.build(args.romfs))
+    source = ui_archive if ui_archive.exists() else args.romfs / ap_ui.ARCHIVE
+    ui_archive.write_bytes(ap_ui.build(source.read_bytes()))
     print(f"Mod written to {args.out}")
     return 0
 
