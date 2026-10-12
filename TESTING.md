@@ -120,6 +120,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
   - Client disconnected from the server, a check is collected in game: the server gets it after `/connect`.
   - Client process stopped, a check is collected and another player sends an item: a new client reports the check and delivers the item.
   - The game shows "Archipelago server disconnected" and "Archipelago client disconnected" in the autosave popup, and "Archipelago connected" again on reconnect.
+- **Kanalet iron ball soldier.** With all five golden leaves held he still appears; without LASR's patch for him he does not, and his check is lost.
 - **Traps from another player.** A received trap costs one heart, and the autosave popup shows "Squish Trap / from Finder".
 - **Default options.** A new save on default options has the starting gear (sword, shield, ocarina, Manbo's Mambo); received progressive swords and shields upgrade it.
 - **First check.** Tarin's gift (the first check) reaches the server as a location check.

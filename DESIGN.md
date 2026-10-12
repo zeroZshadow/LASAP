@@ -10,7 +10,7 @@ How the pieces fit and the contracts between them. FEASIBILITY.md covers the bac
 | `patcher/` | Builds the romfs/exefs mod from an AP patch file; derived from LASR (MIT) | Python, `.venv-lasr` (oead, evfl, PyLibMS) |
 | `las-ap-exl/` | exlaunch module (subsdk9) derived from Owen-Splat/exlaunch (GPL-2.0) | C++, Docker `devkitpro/devkita64` |
 
-The module runs LASR's hooks, its optional code patches (`randoOptional` in `patches.hpp`: free book, stealing) and its underwater item rendering (`underwaterItems`). LASR's other code patch groups (`randoFixes`, `niceItems`, `damageModifier`) are not applied.
+The module runs LASR's hooks and its code patches (`patches.hpp`), except two of LASR's fixes (`lasrOnlyFixes`): the `CompareInt` event rewrite, which only LASR's own keysanity chest flows use, and item actors spawning by actor switch, which would undo the inventory-bit hiding of heart piece and seashell actors.
 
 Flow:
 1. AP generates a multiworld. The world writes `AP_<seed>_P<n>_<slot>.aplas` (the patch file).

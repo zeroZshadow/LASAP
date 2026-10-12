@@ -82,13 +82,6 @@ void randoFixes() {
     p.Seek(offset_manager.Offset(0x6a62f8));
     p.WriteInst(inst::Nop());
 
-    // Rewrite FlowControl::CompareInt event to check if the values are equal
-    // To match FlowControl::CompareString, it returns 0 if they are equal, 1 if not
-    // This allows us to check the index of items through the EventFlow system
-    // The main purpose of this will be for Keysanity to know which dungeon text to display
-    p.Seek(offset_manager.Offset(0x8049d8));
-    p.WriteInst(inst::Movz(reg::W8, 1));
-
     // NPCs hold the proper item model before giving it to the player
     // This is done by changing the itemID of the model to a new Items.gsheet entry with the proper model
     p.Seek(offset_manager.Offset(0x9fa0f0)); // bay-fisherman
@@ -108,15 +101,29 @@ void randoFixes() {
     p.Seek(offset_manager.Offset(0xd79804));
     p.WriteInst(inst::Branch(0xd799f8 - 0xd79804));
 
-    // item actors ignore inventory for spawn condition
-    // this works by forcing the condition to false, making it use the actor switch flag instead
-    p.Seek(offset_manager.Offset(0x8c45b8));
-    p.WriteInst(inst::Movz(reg::W0, 0));
-
     // Remove the actual call to the drop table for AreaShellDropper
     // we will then set the actor switch in its place
     p.Seek(offset_manager.Offset(0x856e4));
     p.WriteInst(inst::Nop());
+}
+
+// LASR patches that Archipelago does not apply:
+// - CompareInt: LASR's keysanity chest flows use it for dungeon items LASR places itself. Every shuffled dungeon item
+//   is an Archipelago item here, so the flows never run, and the rewrite would change the event action game-wide.
+// - Item actor spawn: heart piece and seashell actors hide by their inventory bit, which the patcher gives each one
+//   (DESIGN.md, item model); this patch would make them use their actor switch instead.
+void lasrOnlyFixes() {
+    // Rewrite FlowControl::CompareInt event to check if the values are equal
+    // To match FlowControl::CompareString, it returns 0 if they are equal, 1 if not
+    // This allows us to check the index of items through the EventFlow system
+    // The main purpose of this will be for Keysanity to know which dungeon text to display
+    patch::CodePatcher p(offset_manager.Offset(0x8049d8));
+    p.WriteInst(inst::Movz(reg::W8, 1));
+
+    // item actors ignore inventory for spawn condition
+    // this works by forcing the condition to false, making it use the actor switch flag instead
+    p.Seek(offset_manager.Offset(0x8c45b8));
+    p.WriteInst(inst::Movz(reg::W0, 0));
 }
 
 void underwaterItems() {
@@ -155,12 +162,12 @@ void runCodePatches() {
     if (global_config.stable_fps.enabled) {
         stableFPS();
     }
-    // niceItems();
-    // if (global_config.damage.mode != "normal") {
-    //     damageModifier();
-    // }
+    niceItems();
+    if (global_config.damage.mode != "normal") {
+        damageModifier();
+    }
     if (global_config.randomizer.enabled) {
-        // randoFixes();
+        randoFixes();
         underwaterItems();
         randoOptional();
     }
