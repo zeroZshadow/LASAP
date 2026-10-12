@@ -19,6 +19,9 @@
 namespace {
     constexpr int kRecvBits = 16;
     constexpr size_t kChecksBytes = 65536 / 8;
+    // Heart piece bits for received pieces (the game has 32). The patcher gives every heart piece actor its own
+    // bit from 32 up, so receiving never hides one; the game counts pieces over all 64 bits.
+    constexpr int kHeartPieceBits = 32;
     // Time to wait after a level change before granting items.
     constexpr u64 kSettleMs = 1500;
 
@@ -244,7 +247,7 @@ namespace {
         switch (id) {
             case 22: index = LowestClearBit(items->Seashells, 64); break;      // Seashell
             case 23: index = LowestClearBit(items->GoldenLeaves, 5); break;    // GoldenLeaf
-            case 58: index = LowestClearBit(items->HeartPieces, 64); break;    // HeartPiece
+            case 58: index = LowestClearBit(items->HeartPieces, kHeartPieceBits); break; // HeartPiece
             case 59: index = LowestClearBit(items->HeartContainers, 16); break; // HeartContainer
             case 44: case 45: case 47: case 48: case 49: index = dungeon; break; // dungeon items
             default: break;

@@ -22,6 +22,7 @@ import evfl  # noqa: E402
 import yaml  # noqa: E402
 from RandomizerCore import mod_generator  # noqa: E402
 from RandomizerCore.Fixes.Datasheets.items import ItemsDatasheetFixes  # noqa: E402
+from RandomizerCore.Helpers.file_manager import FileManager  # noqa: E402
 from RandomizerCore.Helpers.flag_manager import FlagManager  # noqa: E402
 from RandomizerCore.Helpers.item_get_manager import ItemGetManager  # noqa: E402
 from RandomizerCore.Randomizers.chests import ChestRandomizer  # noqa: E402
@@ -33,6 +34,12 @@ from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct  # noqa: E
 PATCH_FORMAT = 1
 PLACEHOLDER_KEY = "ArchipelagoItem"
 PLACEHOLDER_ITEM_ID = 71  # must match AP::PLACEHOLDER_ITEM_ID in the exlaunch module
+# ItemHeartPiece actors hide when the heart piece bit of their parameters[0] is set, and that index must be unique.
+# Received heart pieces take the lowest free bit below 32 (kHeartPieceBits in the module), so the randomized actors
+# get their own index from 32 up. LASR's misc items turned into heart piece actors already use 51-54.
+HEART_PIECE_ACTOR = 0xB0
+HEART_PIECE_ACTOR_INDICES = [i for i in range(32, 64) if not 50 <= i <= 54]
+_heart_actor_index: dict = {}
 RECV_FLAG_BITS = 16
 PLACEHOLDER_TEXT = "You found an [COLOR_SKYBLUE]Archipelago item[COLOR_WHITE]!"
 # The exlaunch module replaces both texts at runtime with the item and player names (AP::FOUND_LABEL, AP::RECEIVED_LABEL).
@@ -151,10 +158,25 @@ def _chest_placeholder_branch(self) -> None:
     files.writeFile("TreasureBox.bfevfl", flow)
 
 
+def _write_file(self, file_name: str, data) -> None:
+    """Randomized heart piece actors (and the sunken seashells LASR turns into them) show by their flag alone."""
+    if file_name.endswith("leb"):
+        for actor in data.actors:
+            if (actor.type == HEART_PIECE_ACTOR and actor.parameters[4] not in (b"", 0)
+                    and isinstance(actor.parameters[0], int) and actor.parameters[0] < 50):
+                entry = actor.parameters[3]
+                if entry not in _heart_actor_index:
+                    _heart_actor_index[entry] = HEART_PIECE_ACTOR_INDICES[len(_heart_actor_index)]
+                actor.parameters[0] = _heart_actor_index[entry]
+    _original_write_file(self, file_name, data)
+
+
 # UI.msbt entry -> shop name, filled from the patch file's location_names before the mod is built.
 SHOP_NAMES: dict = {}
 
 _original_get_with_animation = ItemGetManager.getWithAnimation
+_original_write_file = FileManager.writeFile
+FileManager.writeFile = _write_file
 _original_write_chest_event = ChestRandomizer.writeChestEvent
 ItemGetManager.getWithAnimation = _placeholder_get_first
 ChestRandomizer.writeChestEvent = _chest_placeholder_branch

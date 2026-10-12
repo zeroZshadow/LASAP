@@ -52,7 +52,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
   | `collect <local id>` | Simulates a placeholder pickup |
   | `setrecv <n>` / `clearchecks` | Resets the counter or the checks file |
   | `pos <x> <y> <z>` | Teleports within the current level and sets the respawn point there. Ignored while Link is in some states (wading against a wall, events) |
-  | `warp <level> <x> <y> <z>` | Reloads a level at a position (the game's restart path). Verified for `Field` and dungeons (`Lv01TailCave`) |
+  | `warp <level> <x> <y> <z>` | Reloads a level at a position (the game's restart path). Verified for `Field`, dungeons (`Lv01TailCave`) and interiors (`TownWell`). Only from another level: a warp within the current level does not reload it and leaves Link at the origin. Some targets spawn Link at the origin too; warp to Mabe and use `e2e.py goto` from there |
   | `peek <p\|f\|i\|a\|c> <hex off> <hex len>` | Dumps bytes of the player, framework, level-load data, or the last item-get action and its control block |
   | `dumpmain` | Writes the loaded main module to `sd:/lasap/main.bin` |
 
@@ -93,15 +93,15 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Receiving in any state.** Items are applied at once in the pause menu, during signs, NPC talk, Marin's song cutscene and a door transition, and are held back on the title screen and file select. Items sent while the game was closed, or while the client was down, arrive on the next load or connection.
 - **Item-get display.** Each received item plays the game's item-get (pose and text) once the player is free: after the pause menu closes, after a dialogue or cutscene ends, after a level has loaded. Displays run one at a time; Link cannot move during one; A closes the text without starting a talk. A long queue skips filler.
 - **Marin's song.** The song gift is a check (`Mabe Village - Marin`).
-- **Item names in text.** A received item from another slot says "You got Hookshot from Bob!". A dungeon chest holding this slot's item says "You found your Stone Beak (Tail Cave)!" and the item is not shown a second time when it comes back from the server. The shop's price tag names the item and its owner.
+- **Heart pieces.** The Mabe Well and Pothole North pieces appear on a save that has received heart pieces, and report their checks. A received piece still counts toward a heart.
+- **Item names in text.** A received item from another slot says "You got Hookshot from Bob!". A dungeon chest holding this slot's item says "You found your Stone Beak (Tail Cave)!" and the item is not shown a second time when it comes back from the server. The shop's price tag names the item and its owner, and a heart piece holding another slot's item says "You found Map Bombs for Bob!".
 - **Persistence.** The received count survives a restart without double grants. On a fresh save, everything is re-delivered.
 - **Goal.** `ShadowClear` reports the goal to the server.
 - **Chest data.** All 110 shuffled chests hold the placeholder with the right index (static check).
 
 ## Not yet verified in-game
 
-- Heart pieces, seashells, owl statues, Seashell Mansion as locations.
-- The found text for another slot's item in a chest or from an NPC (the shop tag is verified).
+- Seashells, owl statues, Seashell Mansion as locations.
 - DeathLink (out of scope for now) and real hardware.
 
 ## Building the exlaunch module

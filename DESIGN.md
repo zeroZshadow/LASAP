@@ -22,6 +22,8 @@ Flow:
 - The module's `Inventory::AddItemID` hook sees the placeholder item id, reports a check, and adds nothing to the inventory.
 - Every real item, including the player's own, arrives from the server and is granted by the module. The client uses `items_handling = 0b011`: starting inventory is granted by the patch (LASR's starting gear), so the server does not send it again.
 - Locations whose category is not shuffled keep their vanilla content. They are AP event locations (no id) with the vanilla item locked, and the patcher leaves them alone.
+- Indexed items (heart pieces, seashells, golden leaves, heart containers) are granted at the lowest free index of their inventory bitfield. Received heart pieces stay below index 32.
+- An `ItemHeartPiece` actor hides itself while the heart piece bit of its index (`parameters[0]`) is set, and the index must be unique within a level. The patcher gives every randomized heart piece actor, including LASR's sunken seashells, its own index from 32 up (LASR's converted misc items keep 51–54), so their visibility depends only on LASR's flag.
 
 ## IDs
 
