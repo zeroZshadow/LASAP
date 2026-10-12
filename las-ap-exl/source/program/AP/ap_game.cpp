@@ -116,10 +116,17 @@ namespace {
     constexpr u64 kItemGetTimeoutMs = 120000;
     constexpr size_t kShowQueueMax = 16;
     constexpr size_t kShowFillerMax = 8;          // with this many waiting, filler is no longer shown
+    constexpr u64 kFreeSettleMs = 600;            // the player must be free this long before an item-get starts
+    constexpr u64 kItemGetMinMs = 1500;           // an item-get done sooner was cancelled by the game
+    constexpr int kItemGetTries = 3;
+    constexpr u64 kTextButtons = 0x3;             // A, B
 
     SharedPtr g_ItemGetAction{};
+    int g_ItemGetId = -1;
+    int g_ItemGetTry = 0;
     u64 g_ItemGetSince = 0;
-    u64 g_NextShowAt = 0;
+    u64 g_FreeSince = 0;
+    bool g_WasFree = false;
     std::deque<int> g_ShowQueue;
 
     void ReleaseShared(SharedPtr& sp) {
@@ -153,8 +160,15 @@ namespace {
     bool ItemGetRunning() {
         if (g_ItemGetAction.ptr == nullptr) return false;
         u32 state = *reinterpret_cast<u32*>(reinterpret_cast<u8*>(g_ItemGetAction.ptr) + kActionState);
-        if (state != kActionDone && NowMs() - g_ItemGetSince < kItemGetTimeoutMs) return true;
+        u64 ran = NowMs() - g_ItemGetSince;
+        if (state != kActionDone && ran < kItemGetTimeoutMs) return true;
         ReleaseShared(g_ItemGetAction);
+        Logging.Log("[AP] item-get " + std::to_string(g_ItemGetId) + " ended after " + std::to_string(ran) + " ms, state " + std::to_string(state));
+        if (state == kActionDone && ran < kItemGetMinMs && ++g_ItemGetTry < kItemGetTries) {
+            g_ShowQueue.push_front(g_ItemGetId);
+        } else {
+            g_ItemGetTry = 0;
+        }
         return false;
     }
 
@@ -179,13 +193,19 @@ namespace {
 
     // Shows queued items one at a time while the player is free.
     void TickItemGet() {
-        if (ItemGetRunning()) return;
-        if (g_ShowQueue.empty() || NowMs() < g_NextShowAt || !PlayerFree()) return;
+        bool free = PlayerFree();
+        if (free && !g_WasFree) g_FreeSince = NowMs();
+        g_WasFree = free;
+        if (ItemGetRunning()) {
+            g_WasFree = false;  // the settle time starts again after each item-get
+            return;
+        }
+        if (g_ShowQueue.empty() || !free || NowMs() - g_FreeSince < kFreeSettleMs) return;
         int id = g_ShowQueue.front();
         g_ShowQueue.pop_front();
+        g_ItemGetId = id;
+        Logging.Log("[AP] item-get " + std::to_string(id) + " start");
         if (!StartItemGet(id, "")) AP::Log("item-get " + std::to_string(id) + " did not start");
-        // The game needs a moment between two item-gets.
-        g_NextShowAt = NowMs() + 400;
     }
 
     // Grants one item the way an in-game pickup would, including LASR's progressive items.
@@ -516,11 +536,18 @@ namespace AP {
     }
 
     void ApplyInjectedInput(nn::hid::NpadBaseState* state) {
-        if (NowMs() >= g_InjectUntil) return;
-        state->mButtons._storage[0] |= g_InjectButtons;
-        if (g_InjectLX != 0 || g_InjectLY != 0) {
-            state->mAnalogStickL.mX = g_InjectLX;
-            state->mAnalogStickL.mY = g_InjectLY;
+        if (NowMs() < g_InjectUntil) {
+            state->mButtons._storage[0] |= g_InjectButtons;
+            if (g_InjectLX != 0 || g_InjectLY != 0) {
+                state->mAnalogStickL.mX = g_InjectLX;
+                state->mAnalogStickL.mY = g_InjectLY;
+            }
+        }
+        // An item-get started outside an event does not lock the player, so only the text buttons get through.
+        if (g_ItemGetAction.ptr != nullptr) {
+            state->mButtons._storage[0] &= kTextButtons;
+            state->mAnalogStickL.mX = state->mAnalogStickL.mY = 0;
+            state->mAnalogStickR.mX = state->mAnalogStickR.mY = 0;
         }
     }
 }
