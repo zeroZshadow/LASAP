@@ -20,15 +20,15 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 
 | Script | Does |
 |---|---|
-| `emu.py start\|stop\|shot <png>\|log [regex]\|wait <regex> [s]` | Boots the game headless on the sandbox (Vulkan; override with `LASAP_GFX=OpenGl`), stops it by PID, captures the window, reads the newest log |
+| `emu.py start\|stop\|shot <png>\|log [regex]\|wait <regex> [s]` | Boots the game headless on the sandbox (Vulkan; override with `LASAP_GFX=OpenGl`), stops it by PID, captures the window, reads the newest log. Its window opens without focus and stays behind other windows, so the user can keep working or playing |
 | `build_exl.sh` | Builds `las-ap-exl` in Docker and copies `subsdk9`/`main.npdm` to `patcher/exl/` |
-| `deploy_mod.sh <out dir>` | Installs a patcher output (SD layout) into the sandbox |
+| `deploy_mod.sh <out dir>` | Installs a patcher output (SD layout) into the sandbox, with the sandbox game port (`LASAP_GAME_PORT`, default 43385) in `config.ini` |
 | `reset_saves.sh [newgame]` | Restores sandbox saves from the user's saves, or from the new-game snapshot, and clears `sdcard/lasap` |
 | `ap.py <Generate.py\|MultiServer.py\|Launcher.py> ...` | Runs an AP entry point from `vendor/Archipelago` in `.venv-ap`; `LASAP_AP` points it at another checkout, such as a clean one with only `las.apworld` in `custom_worlds` |
 | `las_client.py [--nogui --connect host:port --name Slot]` | Runs the LAS client without the Launcher |
 | `make_test_patch.py <out.aplas>` | Writes a synthetic patch (all locations AP items) for patcher tests |
 | `verify_patch.py <patch> <out dir>` | Checks that every shuffled chest holds the placeholder (its model variant) with its local id |
-| `test_client.py` / `drive.py <script>` | Talk to the module directly (only when no AP client is connected) |
+| `test_client.py` / `drive.py <script>` | Talk to the module directly on the sandbox port (only when no AP client is connected) |
 | `e2e.py send\|srv\|dbg\|cli\|state\|goto\|wait\|tail\|run` | Drives a scripted AP session (below): server `/send`, client `/dbg`, the game's STATE line, hop teleports, `drive.py` scripts through the client |
 | `reload_exl.sh` | Restarts the sandbox game with the freshly built module and boots to file 2 |
 | `leb_actors.py <room> [regex] [--romfs dir]` | Lists a room's actors with positions (run in `.venv-lasr`; point `--romfs` at the deployed mod for patched rooms) |
@@ -60,6 +60,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
   Button bits follow `nn::hid::NpadButton`: A `1`, B `2`, L+R `c0`, Plus `400`, D-pad left/up/right/down `1000`/`2000`/`4000`/`8000`. The stick range is ±32767.
 - **Inputs.** Hold at least 400 ms in dialogue; shorter presses are dropped. The title needs L+R held 500 ms and takes it once it has faded in, about 2.5 s after the intro is skipped. Menu inputs during a fade are dropped.
 - **Buttons in tests.** B is the sword (holding it charges a spin). Dismiss text with B next to signs and NPCs: A also starts a new "Check" or "Talk". Git Bash rewrites arguments that start with `/`; set `MSYS_NO_PATHCONV=1` for `e2e.py cli /las`.
+- **Sandbox port.** The sandbox game listens on 43385, so it runs beside the user's own modded game on 43384. Start the scripted client with `--game-port 43385`. A sandbox install done by the client (Patch tab) writes no port, so that game uses 43384.
 - **Scripted AP session.** Run the client and server with stdin fed from a file (`tail -n0 -f cmds.txt | ...`) so `/dbg`, `/las`, `/game` and server `/send` commands can be appended while they run. `e2e.py` writes to these files in the folder `LASAP_E2E` names (default `D:\DEV\LASAP-sandbox\e2e`). `/game <line>` sends a raw protocol line, e.g. a hand-made `ITEM` or `NAME`. For texts naming another player, generate a two-slot seed (a second slot with a small game such as ChecksFinder) and send its items with `/send` or `/release`. Start MultiServer with `--release_mode goal --collect_mode goal` to keep a goal from releasing every location.
 - **Script ops.** `e2e.py run` scripts (`scripts/tests/*.txt`) send lines and check the game between steps, so a failed step stops the script within seconds:
   - `send`, `wait`, `mash`, `expect <regex|HELLO> [s]`: the `drive.py` basics.
@@ -103,7 +104,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 
 ## Verified (2026-10-12, Ryubing Canary 1.3.340, game 1.0.0)
 
-- **Boot.** The module boots with LASR's randomizer hooks; the socket listens on 43384.
+- **Boot.** The module boots with LASR's randomizer hooks; the socket listens on 43384, or on the `config.ini` port: the sandbox on 43385 ran its boot tests while the user played on 43384.
 - **Generation and patching.** Generate → patch → deploy → new game works end to end.
 - **Packaged world.** `las.apworld` built with "Build APWorlds" generates in a clean Archipelago checkout (`custom_worlds`), and its Launcher starts "Links Awakening Switch Client". The patcher runs in a fresh venv made from `patcher/requirements.txt`.
 - **Notices.** With the client connected to the game only, the game knows all location names from `ap_names.txt`. Connecting the server shows "Archipelago connected as ZeroLAS" in the autosave popup, with the Archipelago logo and both lines of text; the game keeps running. The popup shows "Now saving." again afterwards (`DBG savepopup`).

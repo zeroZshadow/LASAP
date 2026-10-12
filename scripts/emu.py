@@ -5,7 +5,11 @@ python emu.py stop                  kill the instance started by this script (by
 python emu.py shot <out.png>        capture the game window
 python emu.py log [regex]           print matching lines of the newest emulator log
 python emu.py wait <regex> [secs]   wait until the newest log matches
+
+The emulator's windows open without taking focus and stay behind other windows (`tuck`), so the sandbox can run
+while the user works or plays. They stay open: a minimized window may stop presenting frames.
 """
+import ctypes
 import glob
 import os
 import re
@@ -20,6 +24,8 @@ GAME = r"D:\Games\Switch\The Legend of Zelda Links Awakening [01006BB00C6F0000][
 LOGS = r"D:\Games\Ryujinx\Logs"
 PIDFILE = os.path.join(SANDBOX, "emu.pid")
 HERE = os.path.dirname(os.path.abspath(__file__))
+TUCK_SECONDS = 90  # how long after the start new emulator windows are sent behind the others
+SW_SHOWNOACTIVATE = 4
 
 
 def newest_log() -> str:
@@ -40,10 +46,52 @@ def start() -> None:
     out = open(os.path.join(SANDBOX, "emu_stdout.txt"), "w")
     # --audio-volume 0 does not mute; SDL's dummy driver keeps the sandbox silent
     env = dict(os.environ, SDL_AUDIO_DRIVER="dummy", SDL_AUDIODRIVER="dummy")
-    proc = subprocess.Popen(args, stdout=out, stderr=subprocess.STDOUT, env=env)
+    foreground = ctypes.windll.user32.GetForegroundWindow()
+    info = subprocess.STARTUPINFO()
+    info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    info.wShowWindow = SW_SHOWNOACTIVATE
+    proc = subprocess.Popen(args, stdout=out, stderr=subprocess.STDOUT, env=env, startupinfo=info)
     with open(PIDFILE, "w") as f:
         f.write(str(proc.pid))
+    # pythonw has no console: a console process here would open a terminal window over the user's.
+    pythonw = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
+    subprocess.Popen([pythonw, os.path.abspath(__file__), "tuck", str(proc.pid), str(foreground or 0)],
+                     creationflags=subprocess.CREATE_NO_WINDOW, close_fds=True)
     print(proc.pid)
+
+
+def tuck(pid: int, foreground: int) -> None:
+    """Sends each new window of the emulator behind the other windows without activating it, and gives the
+    foreground back to the window that had it when the emulator started."""
+    from ctypes import wintypes
+    user32 = ctypes.windll.user32
+    user32.SetWindowPos.argtypes = [wintypes.HWND, wintypes.HWND] + [ctypes.c_int] * 4 + [wintypes.UINT]
+    HWND_BOTTOM, SWP_NOSIZE, SWP_NOMOVE, SWP_NOACTIVATE = 1, 0x1, 0x2, 0x10
+    proc = wintypes.DWORD()
+    seen = set()
+
+    def windows() -> list:
+        found = []
+
+        @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+        def each(hwnd, _):
+            user32.GetWindowThreadProcessId(hwnd, ctypes.byref(proc))
+            if proc.value == pid and user32.IsWindowVisible(hwnd):
+                found.append(hwnd)
+            return True
+        user32.EnumWindows(each, 0)
+        return found
+
+    deadline = time.time() + TUCK_SECONDS
+    while time.time() < deadline:
+        for hwnd in windows():
+            if hwnd not in seen:
+                seen.add(hwnd)
+                user32.SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
+            if foreground and user32.GetForegroundWindow() == hwnd:
+                user32.SetForegroundWindow(foreground)
+                user32.SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
+        time.sleep(0.2)
 
 
 def stop(quiet: bool = False) -> None:
@@ -96,5 +144,5 @@ def wait(pattern: str, secs: float = 120) -> None:
 if __name__ == "__main__":
     cmd, rest = sys.argv[1], sys.argv[2:]
     {"start": lambda: start(), "stop": lambda: stop(), "shot": lambda: shot(rest[0]),
-     "log": lambda: log(rest[0] if rest else ""),
+     "log": lambda: log(rest[0] if rest else ""), "tuck": lambda: tuck(int(rest[0]), int(rest[1])),
      "wait": lambda: wait(rest[0], float(rest[1]) if len(rest) > 1 else 120)}[cmd]()

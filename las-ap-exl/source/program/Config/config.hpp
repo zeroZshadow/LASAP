@@ -4,6 +4,7 @@
 #include <sstream>
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 
 struct PatchConfig {
     bool initialized = false;
@@ -48,6 +49,7 @@ struct PatchConfig {
 
     struct {
         std::string seed_hash;
+        int port = 0; // 0: AP::PORT
     } archipelago;
 
     void parse(std::string config_str) {
@@ -123,6 +125,9 @@ struct PatchConfig {
             else if (current_section == "archipelago") {
                 if (key == "seed_hash") {
                     archipelago.seed_hash = value;
+                }
+                else if (key == "port") {
+                    archipelago.port = std::atoi(value.c_str());
                 }
             }
         }

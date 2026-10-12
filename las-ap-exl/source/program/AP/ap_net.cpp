@@ -34,6 +34,7 @@ namespace {
     std::atomic<bool> g_NewConnection = false;
 
     s32 g_Server = -1;
+    u16 g_Port = AP::PORT;
     s32 g_Client = -1;
 
     void Lock() { nn::os::LockMutex(&g_Lock); }
@@ -51,7 +52,7 @@ namespace {
         sockaddr_in addr{};
         addr.sin_family = AF_INET;
         addr.sin_addr.s_addr = INADDR_ANY;
-        addr.sin_port = nn::socket::InetHtons(AP::PORT);
+        addr.sin_port = nn::socket::InetHtons(g_Port);
         if (nn::socket::Bind(g_Server, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0 ||
             nn::socket::Listen(g_Server, 1) < 0) {
             nn::socket::Close(g_Server);
@@ -133,7 +134,7 @@ namespace {
                     svcSleepThread(1'000'000'000);
                     continue;
                 }
-                Logging.Log("[AP] listening");
+                Logging.Log("[AP] listening on " + std::to_string(g_Port));
             }
             // Accept only once a client waits: a thread blocked in Accept keeps emulators from closing the game.
             pollfd waiting{g_Server, POLLIN, 0};
@@ -168,7 +169,8 @@ namespace {
 }
 
 namespace AP {
-    void StartNetwork() {
+    void StartNetwork(int port) {
+        g_Port = static_cast<u16>(port);
         nn::os::InitializeMutex(&g_Lock, false, 0);
         R_ABORT_UNLESS(nn::os::CreateThread(&g_Thread, ThreadMain, nullptr, g_ThreadStack, sizeof(g_ThreadStack), 16));
         nn::os::SetThreadName(&g_Thread, "APNet");

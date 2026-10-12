@@ -15,7 +15,7 @@ The module runs LASR's hooks, its optional code patches (`randoOptional` in `pat
 Flow:
 1. AP generates a multiworld. The world writes `AP_<seed>_P<n>_<slot>.aplas` (the patch file).
 2. The player opens the patch file with the Launcher, which starts the client with it. The client runs the patcher on the patch file plus the user's romfs dump, and installs its output (see Client install).
-3. The game runs with the mod. The module listens on TCP port **43384**.
+3. The game runs with the mod. The module listens on TCP port **43384**, or on the port `config.ini` sets (`[archipelago] port`); the client's `--game-port` must match. Players keep the default; the test sandbox uses its own port so it runs beside a modded game.
 4. The client connects to the AP server (websocket) and to the game (TCP), and relays checks and items.
 
 ## Client install

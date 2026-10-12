@@ -3,8 +3,11 @@ Script lines: 'send <line>' | 'wait <secs>' | 'shot <png>' | 'expect <regex> [se
 import re, socket, subprocess, sys, time, os
 HERE = os.path.dirname(os.path.abspath(__file__))
 
+# The sandbox game's port (deploy_mod.sh), so tests run beside a modded game on the default port.
+SANDBOX_PORT = int(os.environ.get("LASAP_GAME_PORT", "43385"))
+
 class Conn:
-    def __init__(self, host="127.0.0.1", port=43384):
+    def __init__(self, host="127.0.0.1", port=SANDBOX_PORT):
         deadline = time.time() + 60
         while True:
             try:

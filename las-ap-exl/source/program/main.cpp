@@ -29,7 +29,7 @@ HOOK_DEFINE_TRAMPOLINE(nnMain) {
         ModLoader::InstallCommonHooks();
         ModLoader::InstallRandomizerHooks();
         ModLoader::InstallMods();
-        AP::Init(global_config.archipelago.seed_hash);
+        AP::Init(global_config.archipelago.seed_hash, global_config.archipelago.port);
         Orig();
     }
 };

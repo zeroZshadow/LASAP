@@ -4,6 +4,7 @@ Usage: python test_client.py [--host H] [--port P] [--wait S] "CMD ..." ["CMD ..
 Each command is sent in order; every received line is printed. A PING is sent every 2 s.
 """
 import argparse
+import os
 import socket
 import sys
 import time
@@ -57,7 +58,8 @@ def run(host: str, port: int, commands: list[str], wait: float, connect_timeout:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=43384)
+    parser.add_argument("--port", type=int, default=int(os.environ.get("LASAP_GAME_PORT", "43385")),
+                        help="game port; the sandbox game's by default (deploy_mod.sh)")
     parser.add_argument("--wait", type=float, default=2.0)
     parser.add_argument("commands", nargs="*")
     args = parser.parse_args()

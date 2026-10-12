@@ -593,11 +593,11 @@ namespace {
 }
 
 namespace AP {
-    void Init(const std::string& seed_hash) {
+    void Init(const std::string& seed_hash, int port) {
         if (!seed_hash.empty()) g_SeedHash = seed_hash;
         InstallTextHooks();
         LoadLocationNames();
-        StartNetwork();
+        StartNetwork(port > 0 ? port : PORT);
     }
 
     std::string HelloLine() {

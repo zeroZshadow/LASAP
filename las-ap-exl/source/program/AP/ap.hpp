@@ -16,6 +16,7 @@ namespace AP {
         return (id >= PLACEHOLDER_ITEM_ID && id <= 99) || id == 103 || id == 107 || id == 109 || id == 118 ||
                id == 119 || (id >= 132 && id <= 199) || (id >= 203 && id <= 255);
     }
+    // The game's TCP port; config.ini can set another ([archipelago] port), e.g. for a second modded game on one PC.
     constexpr int PORT = 43384;
     constexpr int PROTOCOL_VERSION = 2;
     // Message labels the patcher adds: the found placeholder's text (Place.msbt) and the received-item text
@@ -26,7 +27,7 @@ namespace AP {
     constexpr const char* NAMES_PATH = "sd:/config/lasr-exl/ap_names.txt";
 
     // Network thread (ap_net.cpp)
-    void StartNetwork();
+    void StartNetwork(int port);
     bool IsClientConnected();
     void Send(const std::string& line);
     // Pops one received line into out. Returns false when the queue is empty.
@@ -37,7 +38,7 @@ namespace AP {
     bool TakeNewConnection();
 
     // Game side (ap_game.cpp)
-    void Init(const std::string& seed_hash);
+    void Init(const std::string& seed_hash, int port);
     void Tick();
     void OnPlaceholderCollected(int local_id);
     void OnGoal();
