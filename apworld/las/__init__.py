@@ -338,6 +338,7 @@ class LASWorld(World):
             "location_ids": {loc: LOCATION_OFFSETS[loc] for loc in self.shuffled},
             "location_names": self.placed_names(),
             "location_models": self.placed_models(),
+            "location_chests": self.placed_chests(),
             "dungeon_entrances": dict(lasr_settings.DUNGEON_ENTRANCES),
         }
 
@@ -360,6 +361,18 @@ class LASWorld(World):
             if model:
                 models[loc] = model
         return models
+
+    def placed_chests(self) -> Dict[str, List[Any]]:
+        """How the chest at each AP location looks (lasr_settings.chest_look)."""
+        looks = {}
+        for loc in self.shuffled:
+            item = self.multiworld.get_location(LOCATION_NAMES[loc], self.player).item
+            if item is None:
+                continue
+            own = item.player == self.player and item.name in ITEM_TABLE
+            looks[loc] = lasr_settings.chest_look(self.options, ITEM_TABLE[item.name].lasr_name if own else None,
+                                                  item.advancement, item.useful, item.trap)
+        return looks
 
     def generate_output(self, output_directory: str) -> None:
         name = self.multiworld.get_out_file_name_base(self.player) + LASContainer.patch_file_ending

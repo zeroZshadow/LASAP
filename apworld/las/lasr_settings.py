@@ -1,6 +1,6 @@
 """Maps the world's options to LASR settings: the patch file's settings dict, logic tokens, and location status."""
 import re
-from typing import Any, Dict, Iterable, Set
+from typing import Any, Dict, Iterable, List, Optional, Set
 
 from .lasr import CATEGORIES, ITEM_DEFS, ITEM_LOCATIONS, LOGIC
 from .options import LASOptions
@@ -33,6 +33,31 @@ _INSTRUMENTS = {0: "Vanilla", 1: "Dungeon Rewards", 2: "Own Dungeon", 3: "Anywhe
 _OWLS = {0: "None", 1: "Overworld", 2: "Dungeons", 3: "All"}
 _STEALING = {0: "Standard", 1: "Always", 2: "Never"}
 _TRAPS = {0: "None", 1: "Few", 2: "Many"}
+_CHEST_TYPES = {0: "Default", 1: "Size", 2: "Texture + Size"}
+
+
+def chest_look(options: LASOptions, lasr_item: Optional[str], progression: bool = False, useful: bool = False,
+               trap: bool = False) -> List[Optional[str]]:
+    """How a chest holding this item looks: [LASR item type, which sets the chest size; chest texture, None for the
+    plain chest]. lasr_item is the LASR item for this player's items, None for another player's item, which looks
+    by its classification. The types follow LASR's shuffler and its chest code for the "Size" setting."""
+    if lasr_item is None:
+        if trap or not (progression or useful):
+            return ["junk", "junk"]
+        return ["important" if progression else "good", None]
+    item_type = ITEM_DEFS[lasr_item]["type"]
+    if (lasr_item == "bomb" and options.shuffled_bombs) or (lasr_item == "powder" and options.shuffled_powder):
+        item_type = "important"
+    if lasr_item.startswith("key-") and options.keys.value == options.keys.option_anywhere:
+        item_type = "important"
+    if lasr_item.startswith("stone-beak-") and _OWLS[options.owl_statues.value] in ("Dungeons", "All"):
+        item_type = "important"
+    if options.chest_appearance.value == options.chest_appearance.option_size:
+        if lasr_item in ("heart-container", "red-tunic", "blue-tunic"):
+            item_type = "junk"
+        elif lasr_item.startswith("key-") or lasr_item.endswith("-capacity"):
+            item_type = "important"
+    return [item_type, ITEM_DEFS[lasr_item].get("chest-type")]
 
 
 def removed_locations(options: LASOptions) -> Set[str]:
@@ -95,7 +120,7 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Unrandomizer Mode": False,
         "Randomize Enemies": False,
         "Randomize Enemy Sizes": False,
-        "Chest Types": "Default",
+        "Chest Types": _CHEST_TYPES[o.chest_appearance.value],
         "Open Kanalet": bool(o.open_kanalet),
         "Open Mabe": bool(o.open_mabe),
         "Open Mamu": bool(o.open_mamu),

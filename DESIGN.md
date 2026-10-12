@@ -81,6 +81,7 @@ An Archipelago player container (`container.py`, `APPlayerContainer`): a zip wit
   "location_ids": { "<lasr location name>": "<local id (int)>" },
   "location_names": { "<lasr location name>": ["<AP item name>", "<owner's name, empty for this slot>"] },
   "location_models": { "<lasr location name>": "<lasr item name whose model it shows>" },
+  "location_chests": { "<lasr location name>": ["<LASR item type: chest size>", "<chest texture or null>"] },
   "dungeon_entrances": { "<dungeon>": "<dungeon>" }
 }
 ```
@@ -89,6 +90,7 @@ An Archipelago player container (`container.py`, `APPlayerContainer`): a zip wit
 - `placements` covers every LASR item location: shuffled ones are `"ap-item"`, vanilla ones carry their vanilla item. Owl statues that give no gift are left out, as in LASR.
 - `location_names` covers the AP locations. The patcher uses it for the shop's price tags; in-game text gets the same names at runtime from the client.
 - `location_models` leaves out locations that show the Archipelago model. It is optional: older patches show the Archipelago model everywhere.
+- `location_chests` gives each AP location's chest the size and texture of LASR's "Chest Types" setting (option `chest_appearance`): for this slot's items, the LASR item's type and `chest-type` with the adjustments LASR's shuffler makes; for other players' items, `important` for progression, `good` for useful, and `junk` with the junk texture for filler and traps (`lasr_settings.chest_look`). It is optional.
 - `dungeon_entrances` is an identity map; entrance shuffle is not supported.
 
 ## slot_data

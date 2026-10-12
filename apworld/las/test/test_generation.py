@@ -36,7 +36,7 @@ class TestDefault(LASTestBase):
 
         self.assertEqual(set(patch), {"format", "seed_name", "player", "slot_name", "seed_hash", "settings",
                                       "starting_items", "placements", "location_ids", "location_names",
-                                      "location_models", "dungeon_entrances"})
+                                      "location_models", "location_chests", "dungeon_entrances"})
         self.assertLessEqual(set(patch["location_models"]), set(patch["location_ids"]))
         self.assertEqual(patch["format"], 1)
         self.assertEqual(patch["seed_hash"], slot_data["seed_hash"])
@@ -189,3 +189,36 @@ class TestGlitched(LASTestBase):
 
 class TestHell(LASTestBase):
     options = {"logic": "hell", "keys": "anywhere", "stealing": "always"}
+
+
+class TestChestAppearance(LASTestBase):
+    options = {"chest_appearance": "texture_and_size", "keys": "own_dungeon"}
+
+    def test_every_location_has_a_chest_look(self) -> None:
+        from ..lasr_settings import lasr_settings
+        from ..locations import LOCATION_NAMES
+        self.assertEqual(lasr_settings(self.world.options)["Chest Types"], "Texture + Size")
+        looks = self.world.patch_data()["location_chests"]
+        # the test world is filled only up to pre_fill: dungeon items
+        filled = {loc for loc in self.world.shuffled
+                  if self.multiworld.get_location(LOCATION_NAMES[loc], self.player).item is not None}
+        self.assertTrue(filled)
+        self.assertEqual(set(looks), filled)
+        for loc, (item_type, chest_type) in looks.items():
+            self.assertIn(item_type, ("important", "important-health", "trade", "seashell", "good", "junk"), loc)
+            self.assertIn(chest_type, (None, "junk", "key", "life-upgrade"), loc)
+
+    def test_looks(self) -> None:
+        from ..lasr_settings import chest_look
+        options = self.world.options
+        self.assertEqual(chest_look(options, None, progression=True), ["important", None])
+        self.assertEqual(chest_look(options, None, useful=True), ["good", None])
+        self.assertEqual(chest_look(options, None), ["junk", "junk"])
+        self.assertEqual(chest_look(options, None, progression=True, trap=True), ["junk", "junk"])
+        # small keys count as important with keys anywhere, as in LASR's shuffler
+        self.assertEqual(chest_look(options, "key-D1"), ["good", "key"])
+        options.keys.value = options.keys.option_anywhere
+        self.assertEqual(chest_look(options, "key-D1"), ["important", "key"])
+        self.assertEqual(chest_look(options, "heart-container"), ["important-health", "life-upgrade"])
+        options.chest_appearance.value = options.chest_appearance.option_size
+        self.assertEqual(chest_look(options, "heart-container"), ["junk", "life-upgrade"])

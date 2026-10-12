@@ -144,6 +144,17 @@ class StartingInstruments(Range):
     default = 0
 
 
+class ChestAppearance(Choice):
+    """Whether a chest's look tells what it holds, as in the original randomizer.
+    uniform: every chest looks the same. size: big chests hold important items. texture_and_size: also a texture
+    for junk, keys and heart upgrades. Other players' items count as important when they are progression."""
+    display_name = "Chest Appearance"
+    option_uniform = 0
+    option_size = 1
+    option_texture_and_size = 2
+    default = 0
+
+
 class StartingRupees(Range):
     """Rupees in Link's wallet when he gets out of bed."""
     display_name = "Starting Rupees"
@@ -267,6 +278,7 @@ class LASOptions(PerGameCommonOptions):
     shuffled_bombs: ShuffledBombs
     shuffled_powder: ShuffledPowder
     stealing: Stealing
+    chest_appearance: ChestAppearance
     traps: Traps
     death_link: DeathLink
     start_inventory_from_pool: StartingGear
@@ -278,5 +290,5 @@ OPTION_GROUPS = [
     OptionGroup("Dungeon Items", [Keys, DungeonItems, Instruments]),
     OptionGroup("Start", [StartingInstruments, StartingRupees]),
     OptionGroup("World", [OpenMabe, OpenKanalet, OpenMamu, CompletedBridge, ClassicD2, BadPets, FreeBook, FastFishing,
-                          FastStalfos, ShuffledBombs, ShuffledPowder, Stealing]),
+                          FastStalfos, ShuffledBombs, ShuffledPowder, Stealing, ChestAppearance]),
 ]

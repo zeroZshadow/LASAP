@@ -38,6 +38,9 @@ A location shows the model of the item it holds. Items from other games show a L
 matches one (any shield shows the shield, any bomb bag the bombs); other items show the Archipelago logo as six colored
 balls. Picking one up names the item and whose it is.
 
+With `chest_appearance`, a chest's size, and optionally its texture, shows what it holds, as in the original
+randomizer. Another player's item counts as important when it is progression.
+
 ## When the player receives an item, what happens?
 
 Link holds the item up with its usual item text, naming the player who sent it. Items arriving during a cutscene or a

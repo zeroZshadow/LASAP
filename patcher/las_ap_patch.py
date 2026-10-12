@@ -317,9 +317,11 @@ def shop_name(names: list) -> str:
 
 def add_location_items(patch: dict, item_defs: dict) -> None:
     """Gives every AP location its own item definition: the model of the item it holds (`location_models`),
-    shown by the location and by the item-get, and in the shop a price tag naming the item."""
+    shown by the location and by the item-get, its chest's size and texture (`location_chests`, for LASR's
+    "Chest Types"), and in the shop a price tag naming the item."""
     names = patch.get("location_names", {})
     models = patch.get("location_models", {})
+    chests = patch.get("location_chests", {})
     for loc, item in patch["placements"].items():
         if item != "ap-item":
             continue
@@ -332,6 +334,12 @@ def add_location_items(patch: dict, item_defs: dict) -> None:
             VARIANT_USES[key] = VARIANT_USES.get(key, 0) + 1
             item_def.update({"item-key": key, "model-path": model["model-path"], "model-name": model["model-name"],
                              "npc-key": model["npc-key"]})
+        if loc in chests:
+            item_def["type"], chest_type = chests[loc]
+            if chest_type:
+                item_def["chest-type"] = chest_type
+            else:
+                item_def.pop("chest-type", None)
         if loc in SHOP_LOCATIONS and loc in names:
             key = f"ItemName_AP_{loc}"
             SHOP_NAMES[key] = shop_name(names[loc]).replace("[", "(").replace("]", ")")
