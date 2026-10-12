@@ -17,8 +17,15 @@
 namespace {
     constexpr int kRecvBits = 16;
     constexpr size_t kChecksBytes = 65536 / 8;
-    // Frames to wait after a level change before granting items.
-    constexpr int kSettleFrames = 60;
+    // Time to wait after a level change before granting items.
+    constexpr u64 kSettleMs = 1500;
+
+    // The game polls input several times per frame, so timing uses the system counter (19.2 MHz).
+    u64 NowMs() {
+        u64 ticks;
+        asm volatile("mrs %0, cntpct_el0" : "=r"(ticks));
+        return ticks / 19200;
+    }
 
     std::string g_SeedHash = "00000000";
     std::string g_ChecksPath;
@@ -26,12 +33,13 @@ namespace {
     bool g_ChecksLoaded = false;
 
     std::string g_LastLevel;
-    int g_FramesInLevel = 0;
+    int g_LastHealth = -1;
+    u64 g_LevelSince = 0;
 
     // Injected controller input (DBG input)
     u64 g_InjectButtons = 0;
     s32 g_InjectLX = 0, g_InjectLY = 0;
-    int g_InjectFrames = 0;
+    u64 g_InjectUntil = 0;
 
     std::vector<std::string> Split(const std::string& line) {
         std::vector<std::string> parts;
@@ -50,7 +58,7 @@ namespace {
 
     bool PlayerReady() {
         Game::Framework* fmwk = Game::GetFramework();
-        return fmwk != nullptr && fmwk->mPlayer != nullptr && g_FramesInLevel >= kSettleFrames;
+        return fmwk != nullptr && fmwk->mPlayer != nullptr && NowMs() - g_LevelSince >= kSettleMs;
     }
 
     int GetRecvCount() {
@@ -75,10 +83,20 @@ namespace {
         return limit - 1;
     }
 
+    void Damage(int quarterHearts) {
+        auto* items = *Game::Data::Inventory::Items;
+        items->Health = items->Health > quarterHearts ? items->Health - quarterHearts : 1;
+    }
+
     // Grants one item the way an in-game pickup would, including LASR's progressive items.
     void GrantItem(const std::string& key, int count, int dungeon) {
         auto* items = *Game::Data::Inventory::Items;
         std::string k = key;
+        if (k.ends_with("Trap") || k == "$ENEMY") {
+            // Traps from other worlds cost one heart; they never kill.
+            Damage(4);
+            return;
+        }
         if (k == "SwordLv1" && EventFlags::CheckFlag("SwordFoundFlag")) k = "SwordLv2";
         else if (k == "Shield" && EventFlags::CheckFlag("ShieldFoundFlag")) k = "MirrorShield";
         else if (k == "PowerBraceletLv1" && EventFlags::CheckFlag("BraceletFoundFlag")) k = "PowerBraceletLv2";
@@ -153,7 +171,7 @@ namespace {
         Game::Framework* fmwk = Game::GetFramework();
         auto* items = *Game::Data::Inventory::Items;
         std::string s = "STATE level=" + LevelSystem::GetCurrentLevel();
-        s += " frames_in_level=" + std::to_string(g_FramesInLevel);
+        s += " ms_in_level=" + std::to_string(NowMs() - g_LevelSince);
         s += " player=" + std::string(fmwk && fmwk->mPlayer ? "1" : "0");
         if (items != nullptr) {
             s += " health=" + std::to_string(items->Health);
@@ -208,9 +226,9 @@ namespace {
             LevelSystem::LoadLevel(a[2].c_str(), Game::Vec3{(float)atof(a[3].c_str()), (float)atof(a[4].c_str()), (float)atof(a[5].c_str())});
             AP::Send("OK warp");
         } else if (cmd == "input" && a.size() >= 4) {
-            // DBG input <buttons hex> <frames> [lx ly]
+            // DBG input <buttons hex> <milliseconds> [lx ly]
             g_InjectButtons = strtoull(a[2].c_str(), nullptr, 16);
-            g_InjectFrames = atoi(a[3].c_str());
+            g_InjectUntil = NowMs() + atoi(a[3].c_str());
             g_InjectLX = a.size() >= 6 ? atoi(a[4].c_str()) : 0;
             g_InjectLY = a.size() >= 6 ? atoi(a[5].c_str()) : 0;
             AP::Send("OK input");
@@ -248,6 +266,10 @@ namespace {
             if (!PlayerReady()) return false;
             AP::Send("RECV " + std::to_string(GetRecvCount()));
             SendAllChecks();
+            if (EventFlags::CheckFlag("ShadowClear")) AP::Send("GOAL");
+        } else if (a[0] == "DEATH") {
+            if (!PlayerReady()) return false;
+            (*Game::Data::Inventory::Items)->Health = 0;
         } else if (a[0] == "MSG") {
             Logging.Log("[AP] " + line.substr(4));
         } else if (a[0] == "DBG") {
@@ -284,13 +306,24 @@ namespace AP {
         Send("CHECK " + std::to_string(local_id));
     }
 
+    void OnGoal() {
+        Logging.Log("[AP] goal reached");
+        Send("GOAL");
+    }
+
     void Tick() {
         std::string level = LevelSystem::GetCurrentLevel();
         if (level != g_LastLevel) {
             g_LastLevel = level;
-            g_FramesInLevel = 0;
-        } else if (g_FramesInLevel < 1000000) {
-            g_FramesInLevel++;
+            g_LevelSince = NowMs();
+        }
+
+        // DeathLink: report the moment health reaches zero.
+        Game::Framework* fmwk = Game::GetFramework();
+        if (fmwk != nullptr && fmwk->mPlayer != nullptr && *Game::Data::Inventory::Items != nullptr) {
+            int health = (*Game::Data::Inventory::Items)->Health;
+            if (health <= 0 && g_LastHealth > 0) Send("DIED");
+            g_LastHealth = health;
         }
 
         if (TakeNewConnection()) {
@@ -309,8 +342,7 @@ namespace AP {
     }
 
     void ApplyInjectedInput(nn::hid::NpadBaseState* state) {
-        if (g_InjectFrames <= 0) return;
-        g_InjectFrames--;
+        if (NowMs() >= g_InjectUntil) return;
         state->mButtons._storage[0] |= g_InjectButtons;
         if (g_InjectLX != 0 || g_InjectLY != 0) {
             state->mAnalogStickL.mX = g_InjectLX;

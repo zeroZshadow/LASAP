@@ -1,0 +1,18 @@
+# Fresh boot to a new game in file 2 (saves reset with reset_saves.sh first).
+expect HELLO 60
+wait 22
+send DBG input c0 300
+wait 5
+send DBG input c0 300
+wait 5
+send DBG input 8000 200
+wait 1.5
+send DBG input 1 200
+wait 4
+send DBG input 1 200
+wait 4
+send DBG input 8000 200
+wait 1.5
+send DBG input 1 200
+wait 15
+mash 1 30 400 0.9

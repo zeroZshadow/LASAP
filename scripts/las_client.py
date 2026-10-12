@@ -1,0 +1,13 @@
+"""Starts the LAS client from vendor/Archipelago without the Launcher: python scripts/las_client.py [client args]"""
+import os
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+AP = os.path.join(ROOT, "vendor", "Archipelago")
+os.chdir(AP)
+sys.path.insert(0, AP)
+import ModuleUpdate  # noqa: E402
+ModuleUpdate.update_ran = True
+from worlds.las.client import launch  # noqa: E402
+
+launch(*sys.argv[1:])

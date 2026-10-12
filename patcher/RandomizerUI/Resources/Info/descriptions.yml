@@ -1,0 +1,144 @@
+Chests:
+  Chests outside of dungeons can contain progress items
+Free_Gifts:
+  Free gifts from NPCs can contain progress items
+Trade_Quest:
+  Trade Quest checks can contain progress items<br></br>Currently, Trade Quest items other than the Lens do not show in the inventory
+Golden_Leaves:
+  Golden Leaves can become progress items
+Heart_Pieces:
+  Heart Pieces can become progress items
+Seashells:
+  Hidden Seashells can become progress items
+Miscellaneous:
+  Miscellaneous standing items can become progress items
+Seashell_Mansion:
+  This controls the maximum number of seashells that the Seashell Mansion may require
+Boss_Drops:
+  Bosses can drop progress items
+Shop:
+  The shop can sell progress items
+Companions:
+  BowWow and the rooster become item checks<br></br>Once unlocked, you can swap between companions inside phone booths
+Blue_Rupees:
+  The 28 blue rupees in Color Dungeon can become progress items
+Owl_Gifts:
+  This controls if Owl Statues can give items
+Dampe:
+  Rewards from completing chamber dungeons can be progress items
+Rapids:
+  Items inside and from the Rapids Race can be progress items
+Fishing:
+  Rewards from the fishing minigame can be progress items
+Trendy_Game:
+  Trendy game can contain progress items
+Dungeon_Maps:
+  Controls where dungeon maps can be found
+Compasses:
+  Controls where compasses can be found
+Stone_Beaks:
+  Controls where stone beaks can be found
+Small_Keys:
+  Controls where small keys can be found
+Nightmare_Keys:
+  Controls where nightmare keys can be found
+Shuffle_Instruments:
+  Controls where instruments can be found
+Race_Mode:
+  Enables race mode<br></br>This disables the spoiler log and changes how items are randomized
+Required_Dungeons:
+  Controls how many dungeons will be required to beat the game in race mode
+Create_Spoiler_Log:
+  A spoiler log will be generated
+Unrandomizer_Mode:
+  Keeps all items in their vanilla locations while applying Quality of Life changes and user settings
+Randomize_Enemies:
+  Randomizes enemies
+Randomize_Enemy_Sizes:
+  Randomizes enemy sizes
+Chest_Types:
+  This controls if chest sizes and/or textures will reflect the contents
+Open_Kanalet:
+  The Kanalet Castle gate will always be open
+Open_Mabe:
+  Opens up Mabe Village from the start of the game
+Open_Mamu:
+  Sign Maze will already be completed
+Completed_Bridge:
+  The bridge next to Kanalet Castle will already be built
+Classic_D2:
+  Adds back the flower in front of D2 that the remake replaced with a rock
+Shuffled_Dungeons:
+  Randomizes the front entrances to dungeons
+Consumable_Drops:
+  Allows finding powder, bombs, and arrows by cutting grass
+Bad_Pets:
+  Allows companions to go inside dungeons with Link
+Fast_Fishing:
+  Removes the instrument requirements for finding fish
+Shuffled_Bombs:
+  Bombs can not be obtained until the player finds them as an item check
+Free_Book:
+  The book revealing the egg path will not need the Magnifying Lens to read
+Fast_Stalfos:
+  The first 3 Master Stalfos fights are already completed<br></br>This allows exploring more of the dungeon without needing bombs
+Shuffled_Powder:
+  Magic Powder can not be obtained until the player finds it as an item check
+Stealing:
+  Controls the requirements for being able to steal from the shop<br></br>The standard option requires the sword
+Boss_Cutscenes:
+  Boss animations are sped up
+Chest_Animations:
+  Chest spawn animation is sped up
+Key_Animations:
+  Key drop animation is sped up
+Song_Cutscenes:
+  Song learning cutscenes will be skipped
+Item_Get_Animations:
+  Animations from getting items will be sped up
+Movement_Speed:
+  Gives a 20% boost to movement speed when walking and swimming
+Item_Pool:
+  This controls how many progress items will be added to the item pool
+Traps:
+  This controls how many traps will be added to the item pool
+# Super_Weapons:
+#   Buffs several weapons. This does not affect logic
+Nice_Bombs:
+  There is no cooldown when placing bombs. You can use as many as you want
+Nice_Hookshot:
+  The hookshot can latch onto any solid surface
+Nice_Magic_Rod:
+  The magic rod no longer has any cooldown when shooting it
+Damage:
+  Controls how much damage the player recieves
+Music:
+  Randomize or remove music
+Randomize_Sound_Effects:
+  Randomizes sound effects
+Randomize_Text:
+  Randomizes text<br></br>Important text is not randomized
+Randomize_Environments:
+  Randomizes the environment in each area (Fog, Sand, Heat, etc.)
+Blur_Removal:
+  Removes the blur around the edge of the screen
+Instant_Text:
+  Textboxes will automatically advance by holding the B button
+360_Movement:
+  Gives full 360 degree movement instead of snapping to 8 directions
+Disable_Low_Health_Beep:
+  Removes the low health sound effect
+Disable_Guardian_Acorn:
+  Prevents Guardian Acorns from spawning
+Disable_Piece_of_Power:
+  Prevents Pieces of Power from spawning
+Starting_Instruments:
+  Choose how many random instruments you will start with
+Rupees:
+  Choose how many rupees to start with
+Containers:
+  Choose how many heart containers to start with
+Pieces:
+  Choose how many heart pieces to start with
+Preset:
+  Choose a preset of included and excluded tricks

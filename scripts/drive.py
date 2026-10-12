@@ -12,7 +12,7 @@ class Conn:
             except OSError:
                 if time.time() > deadline: raise
                 time.sleep(1)
-        self.s.settimeout(0.1); self.buf = b""; self.lines = []; self.last_ping = 0
+        self.s.settimeout(0.1); self.buf = b""; self.lines = []; self.last_ping = 0; self.consumed = 0
     def send(self, line):
         print(">", line, flush=True); self.s.sendall(line.encode() + b"\n")
     def pump(self, secs):
@@ -30,12 +30,15 @@ class Conn:
                 l, self.buf = self.buf.split(b"\n", 1); t = l.decode(errors="replace")
                 if t != "PONG": print("<", t, flush=True); self.lines.append(t)
     def expect(self, rx, secs):
-        r = re.compile(rx); end = time.time() + secs; seen = len(self.lines)
-        while time.time() < end:
+        """Waits for a line matching rx among lines not consumed by an earlier expect."""
+        r = re.compile(rx); end = time.time() + secs
+        while True:
+            for i in range(self.consumed, len(self.lines)):
+                if r.search(self.lines[i]):
+                    self.consumed = i + 1
+                    return self.lines[i]
+            if time.time() >= end: break
             self.pump(0.2)
-            for t in self.lines[seen:]:
-                if r.search(t): return t
-            seen = len(self.lines)
         raise SystemExit(f"EXPECT FAILED: {rx}")
 
 def main(path):
@@ -47,6 +50,13 @@ def main(path):
         cmd, _, arg = line.partition(" ")
         if cmd == "send": c.send(arg); c.pump(0.3)
         elif cmd == "wait": c.pump(float(arg))
+        elif cmd == "mash":
+            # mash <buttons hex> <count> [hold ms] [gap s]: repeated presses, e.g. to page through dialogue
+            p = arg.split()
+            hold = p[2] if len(p) > 2 else "400"
+            gap = float(p[3]) if len(p) > 3 else 0.9
+            for _ in range(int(p[1])):
+                c.send(f"DBG input {p[0]} {hold}"); c.pump(gap)
         elif cmd == "shot":
             subprocess.run([sys.executable, "-I", os.path.join(HERE, "emu.py"), "shot", arg])
         elif cmd == "expect":

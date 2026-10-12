@@ -7,3 +7,4 @@ build/
 deploy/
 out/
 *.log
+patcher/exl/

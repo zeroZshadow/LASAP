@@ -1,0 +1,1045 @@
+---
+Item_Pool:
+  sword:
+    type: important
+    quantity: 2
+    item-key: SwordLv1
+    model-path: ObjSinkingSword.bfres # ItemSwordLv1.bfres
+    model-name: SinkingSword #SwordLv1
+    npc-key: ItemSwordLv1
+    message: UI:ItemName_Sword1
+  shield:
+    type: important
+    quantity: 2
+    item-key: Shield
+    model-path: ItemShield.bfres
+    model-name: Shield
+    npc-key: ItemShield
+    message: UI:ItemName_Shield
+  bracelet:
+    type: important
+    quantity: 2
+    item-key: PowerBraceletLv1
+    model-path: ItemPowerBraceletLv1.bfres
+    model-name: PowerBraceletLv1
+    npc-key: ItemPowerBraceletLv1
+    message: UI:ItemName_Bracelet1
+  boots:
+    type: important
+    quantity: 1
+    item-key: PegasusBoots
+    model-path: ItemPegasusBoots.bfres
+    model-name: PegasusBoots
+    npc-key: ItemPegasusBoots
+    message: UI:ItemName_PegasusBoots
+  flippers:
+    type: important
+    quantity: 1
+    item-key: Flippers
+    model-path: ItemFlippers.bfres
+    model-name: Flippers
+    npc-key: ItemFlippers
+    message: UI:ItemName_Flippers
+  feather:
+    type: important
+    quantity: 1
+    item-key: RocsFeather
+    model-path: ItemRocsFeather.bfres
+    model-name: RocsFeather
+    npc-key: ItemRocsFeather
+    message: UI:ItemName_Feather
+  shovel:
+    type: important
+    quantity: 1
+    item-key: Shovel
+    model-path: ItemShovel.bfres
+    model-name: Shovel
+    npc-key: ItemShovel
+    message: UI:ItemName_Shovel
+  hookshot:
+    type: important
+    quantity: 1
+    item-key: HookShot
+    model-path: ItemHookShot.bfres
+    model-name: HookShot
+    npc-key: ItemHookShot
+    message: UI:ItemName_HookShot
+  bow:
+    type: important
+    quantity: 1
+    item-key: Bow
+    model-path: ItemBow.bfres
+    model-name: Bow
+    npc-key: ItemBow
+    message: UI:ItemName_Bow
+  rod:
+    type: important
+    quantity: 1
+    item-key: MagicRod
+    model-path: ItemMagicRod.bfres
+    model-name: MagicRod
+    npc-key: ItemMagicRod
+    message: UI:ItemName_MagicRod
+  boomerang:
+    type: important
+    quantity: 1
+    item-key: Boomerang
+    model-path: ItemBoomerang.bfres
+    model-name: Boomerang
+    npc-key: ItemBoomerang
+    message: UI:ItemName_Boomerang
+  ocarina:
+    type: important
+    quantity: 1
+    item-key: Ocarina
+    model-path: ItemOcarina.bfres
+    model-name: Ocarina
+    npc-key: ItemOcarina
+    message: UI:ItemName_Ocarina
+  song-ballad:
+    type: important
+    quantity: 1
+    item-key: Song_WindFish
+    model-path: NpcMarin.bfres
+    model-name: Marin
+    npc-key: NpcMarin
+    message: UI:ItemName_WindFish
+  song-mambo:
+    type: important
+    quantity: 1
+    item-key: Song_Mambo
+    model-path: NpcManboTamegoro.bfres
+    model-name: ManboTamegoro
+    npc-key: NpcManboTamegoro
+    message: UI:ItemName_Mambo
+  song-soul:
+    type: important
+    quantity: 1
+    item-key: Song_Soul
+    model-path: NpcMamu.bfres
+    model-name: Mamu
+    npc-key: NpcMamu
+    message: UI:ItemName_Soul
+  yoshi-doll:
+    type: trade
+    quantity: 1
+    item-key: YoshiDoll
+    model-path: ItemYoshiDoll.bfres
+    model-name: YoshiDoll
+    npc-key: ItemYoshiDoll
+    message: UI:ItemName_YoshiDoll
+  ribbon:
+    type: trade
+    quantity: 1
+    item-key: Ribbon
+    model-path: ItemRibbon.bfres
+    model-name: Ribbon
+    npc-key: ItemRibbon
+    message: UI:ItemName_Ribbon
+  dog-food:
+    type: trade
+    quantity: 1
+    item-key: DogFood
+    model-path: ItemDogFood.bfres
+    model-name: DogFood
+    npc-key: ItemDogFood
+    message: UI:ItemName_DogFood
+  bananas:
+    type: trade
+    quantity: 1
+    item-key: Bananas
+    model-path: ItemBananas.bfres
+    model-name: Bananas
+    npc-key: ItemBananas
+    message: UI:ItemName_Bananas
+  stick:
+    type: trade
+    quantity: 1
+    item-key: Stick
+    model-path: ItemStick.bfres
+    model-name: Stick
+    npc-key: ItemStick
+    message: UI:ItemName_Stick
+  honeycomb:
+    type: trade
+    quantity: 1
+    item-key: Honeycomb
+    model-path: ItemHoneycomb.bfres
+    model-name: Honeycomb
+    npc-key: PatchHoneycomb
+    message: UI:ItemName_Honeycomb
+  pineapple:
+    type: trade
+    quantity: 1
+    item-key: Pineapple
+    model-path: ItemPineapple.bfres
+    model-name: Pineapple
+    npc-key: ItemPineapple
+    message: UI:ItemName_Pineapple
+  hibiscus:
+    type: trade
+    quantity: 1
+    item-key: Hibiscus
+    model-path: ItemHibiscus.bfres
+    model-name: Hibiscus
+    npc-key: ItemHibiscus
+    message: UI:ItemName_Hibiscus
+  letter:
+    type: trade
+    quantity: 1
+    item-key: Letter
+    model-path: ItemLetter.bfres
+    model-name: Letter
+    npc-key: ItemLetter
+    message: UI:ItemName_Letter
+  broom:
+    type: trade
+    quantity: 1
+    item-key: Broom
+    model-path: ItemBroom.bfres
+    model-name: Broom
+    npc-key: ItemBroom
+    message: UI:ItemName_Broom
+  fishing-hook:
+    type: trade
+    quantity: 1
+    item-key: FishingHook
+    model-path: ItemFishingHook.bfres
+    model-name: FishingHook
+    npc-key: ItemFishingHook
+    message: UI:ItemName_FishingHook
+  necklace:
+    type: trade
+    quantity: 1
+    item-key: PinkBra
+    model-path: ItemNecklace.bfres
+    model-name: Necklace
+    npc-key: ItemPinkBra
+    message: UI:ItemName_PinkBra
+  mermaid-scale:
+    type: trade
+    quantity: 1
+    item-key: MermaidsScale
+    model-path: ItemMermaidsScale.bfres
+    model-name: MermaidsScale
+    npc-key: ItemMermaidsScale
+    message: UI:ItemName_MermaidsScale
+  magnifying-lens:
+    type: important
+    quantity: 1
+    item-key: MagnifyingLens
+    model-path: ItemMagnifyingLens.bfres
+    model-name: MagnifyingLens
+    npc-key: ItemMagnifyingLens
+    message: UI:ItemName_MagnifyingLens
+  golden-leaf:
+    type: important
+    quantity: 5
+    item-key: GoldenLeaf
+    model-path: ItemGoldenLeaf.bfres
+    model-name: GoldenLeaf
+    npc-key: ItemGoldenLeaf
+    message: Glossary:glossary_Item36 # redirect to Glossary.msbt of UI.msbt
+  mushroom:
+    type: important
+    quantity: 1
+    item-key: SleepyMushroom
+    model-path: ItemSleepyMushroom.bfres
+    model-name: SleepyMushroom
+    npc-key: ItemSleepyMushroom
+    message: UI:ItemName_SleepyMushroom
+  tail-key:
+    type: important
+    quantity: 1
+    item-key: TailKey
+    model-path: ItemTailKey.bfres
+    model-name: TailKey
+    npc-key: ItemTailKey
+    message: UI:ItemName_TailKey
+  slime-key:
+    type: important
+    quantity: 1
+    item-key: SlimeKey
+    model-path: ItemSlimeKey.bfres
+    model-name: SlimeKey
+    npc-key: ItemSlimeKey
+    message: UI:ItemName_SlimeKey
+  angler-key:
+    type: important
+    quantity: 1
+    item-key: AnglerKey
+    model-path: ItemAnglerKey.bfres
+    model-name: AnglerKey
+    npc-key: ItemAnglerKey
+    message: UI:ItemName_AnglerKey
+  face-key:
+    type: important
+    quantity: 1
+    item-key: FaceKey
+    model-path: ItemFaceKey.bfres
+    model-name: FaceKey
+    npc-key: ItemFaceKey
+    message: UI:ItemName_FaceKey
+  bird-key:
+    type: important
+    quantity: 1
+    item-key: BirdKey
+    model-path: ItemBirdKey.bfres
+    model-name: BirdKey
+    npc-key: ItemBirdKey
+    message: UI:ItemName_BirdKey
+  full-moon-cello:
+    type: important
+    quantity: 1
+    item-key: FullMoonCello
+    model-path: ItemFullMoonCello.bfres
+    model-name: FullMoonCello
+    npc-key: ItemFullMoonCello
+    message: UI:ItemName_Violin
+  conch-horn:
+    type: important
+    quantity: 1
+    item-key: ConchHorn
+    model-path: ItemConchHorn.bfres
+    model-name: ConchHorn
+    npc-key: ItemConchHorn
+    message: UI:ItemName_Horn
+  sea-lilys-bell:
+    type: important
+    quantity: 1
+    item-key: SeaLilysBell
+    model-path: ItemSeaLilysBell.bfres
+    model-name: SeaLilysBell
+    npc-key: ItemSeaLilysBell
+    message: UI:ItemName_Bell
+  surf-harp:
+    type: important
+    quantity: 1
+    item-key: SurfHarp
+    model-path: ItemSurfHarp.bfres
+    model-name: SurfHarp
+    npc-key: ItemSurfHarp
+    message: UI:ItemName_Harp
+  wind-marimba:
+    type: important
+    quantity: 1
+    item-key: WindMarimba
+    model-path: ItemWindMarimba.bfres
+    model-name: WindMarimba
+    npc-key: ItemWindMarimba
+    message: UI:ItemName_Marimba
+  coral-triangle:
+    type: important
+    quantity: 1
+    item-key: CoralTriangle
+    model-path: ItemCoralTriangle.bfres
+    model-name: CoralTriangle
+    npc-key: ItemCoralTriangle
+    message: UI:ItemName_Triangle
+  evening-calm-organ:
+    type: important
+    quantity: 1
+    item-key: EveningCalmOrgan
+    model-path: ItemEveningCalmOrgan.bfres
+    model-name: EveningCalmOrgan
+    npc-key: ItemEveningCalmOrgan
+    message: UI:ItemName_Organ
+  thunder-drum:
+    type: important
+    quantity: 1
+    item-key: ThunderDrum
+    model-path: ItemThunderDrum.bfres
+    model-name: ThunderDrum
+    npc-key: ItemThunderDrum
+    message: UI:ItemName_Drum
+  # bow-wow:
+  #   type: important
+  #   quantity: 1
+  #   item-key: BowWow
+  #   model-path: NpcBowWow.bfres
+  #   model-name: BowWow
+  # rooster:
+  #   type: important
+  #   quantity: 1
+  #   item-key: Rooster
+  #   model-path: NpcFlyingCucco.bfres
+  #   model-name: FlyingCucco
+  seashell:
+    type: seashell
+    quantity: 50
+    item-key: Seashell
+    model-path: ItemSecretSeashell.bfres
+    model-name: SecretSeashell
+    npc-key: ItemSecretSeashell
+    message: Glossary:glossary_Item34
+  bottle:
+    type: important-health
+    quantity: 3
+    item-key: Bottle
+    model-path: ItemBottle.bfres
+    model-name: Bottle
+    npc-key: ItemBottle
+    chest-type: life-upgrade
+    message: UI:ItemName_Bottle
+  heart-container:
+    type: important-health
+    quantity: 9
+    item-key: HeartContainer
+    model-path: ItemHeartContainer.bfres
+    model-name: HeartContainer
+    npc-key: ItemHeartContainer
+    chest-type: life-upgrade
+    message: Glossary:glossary_Item41
+  bomb-capacity:
+    type: good
+    quantity: 1
+    item-key: Bomb_MaxUp
+    model-path: ItemBomb.bfres
+    model-name: Bomb
+    npc-key: ItemBomb
+    message: UI:ItemName_Bomb
+  arrow-capacity:
+    type: good
+    quantity: 1
+    item-key: Arrow_MaxUp
+    model-path: ItemArrow.bfres
+    model-name: Arrow
+    npc-key: ItemArrow
+    message: Glossary:glossary_Item65
+  powder-capacity:
+    type: good
+    quantity: 1
+    item-key: MagicPowder_MaxUp
+    model-path: ItemMagicPowder.bfres
+    model-name: MagicPowder
+    npc-key: ItemMagicPowder
+    message: UI:ItemName_Powder
+  shell-sensor:
+    type: good
+    quantity: 1
+    item-key: ShellRader
+    model-path: ItemShellRader.bfres
+    model-name: ShellRader
+    npc-key: ItemShellRader
+    message: UI:ItemName_ShellRader
+  medicine:
+    type: important-health
+    quantity: 3
+    item-key: SecretMedicine
+    model-path: ItemSecretMedicine.bfres
+    model-name: SecretMedicine
+    npc-key: ItemSecretMedicine
+    chest-type: life-upgrade
+    message: UI:ItemName_SecretMedicine
+  red-tunic:
+    type: good
+    quantity: 1
+    item-key: ClothesRed
+    model-path: NpcSkeletalGuardRed.bfres
+    model-name: SkeletalGuardRed
+    npc-key: NpcSkeletalGuardRed
+    message: UI:ItemName_WearRed
+  blue-tunic:
+    type: good
+    quantity: 1
+    item-key: ClothesBlue
+    model-path: NpcSkeletalGuardBlue.bfres
+    model-name: SkeletalGuardBlue
+    npc-key: NpcSkeletalGuardBlue
+    message: UI:ItemName_WearBlue
+  rupee-300:
+    type: junk
+    quantity: 2
+    item-key: Rupee300
+    model-path: ItemRupeeGold.bfres
+    model-name: RupeeGold
+    npc-key: ItemRupeeGold
+    chest-type: junk
+    message: Glossary:glossary_Item38
+  heart-piece:
+    type: junk
+    quantity: 32
+    item-key: HeartPiece
+    model-path: ItemHeartPiece.bfres
+    model-name: HeartPiece
+    npc-key: ItemHeartPiece
+    chest-type: life-upgrade
+    message: Glossary:glossary_Item40
+  rupee-50:
+    type: junk
+    quantity: 19
+    item-key: Rupee50
+    model-path: ItemRupeePurple.bfres
+    model-name: RupeePurple
+    npc-key: ItemRupeePurple
+    chest-type: junk
+    message: Glossary:glossary_Item38
+  rupee-100:
+    type: junk
+    quantity: 5
+    item-key: Rupee100
+    model-path: ItemRupeeSilver.bfres
+    model-name: RupeeSilver
+    npc-key: ItemRupeeSilver
+    chest-type: junk
+    message: Glossary:glossary_Item38
+  chamber-stone:
+    type: junk
+    quantity: 14
+    item-key: PanelDungeonPiece
+    model-path: ItemPanelDungeonPiece.bfres
+    model-name: PanelDungeonPiece
+    npc-key: ItemPanelDungeonPiece
+    chest-type: junk
+    message: Glossary:glossary_panel11
+  rupee-20:
+    type: junk
+    quantity: 5
+    item-key: Rupee20
+    model-path: ItemRupeeRed.bfres
+    model-name: RupeeRed
+    npc-key: ItemRupeeRed
+    chest-type: junk
+    message: Glossary:glossary_Item38
+  rupee-5:
+    type: junk
+    quantity: 28
+    item-key: Rupee5
+    model-path: ItemRupeeBlue.bfres
+    model-name: RupeeBlue
+    npc-key: ItemRupeeBlue
+    chest-type: junk
+    message: Glossary:glossary_Item38
+  zol-trap:
+    type: junk
+    quantity: 4
+    item-key: $ENEMY
+    chest-type: junk
+  zap-trap:
+    type: junk
+    quantity: 0
+    item-key: ZapTrap
+    model-path: NpcToolShopkeeper.bfres
+    model-name: ToolShopkeeper
+    npc-key: NpcToolShopkeeper
+    chest-type: junk
+    message: Glossary:glossary_npc53
+  drown-trap:
+    type: junk
+    quantity: 0
+    item-key: DrownTrap
+    model-path: NpcToolShopkeeper.bfres
+    model-name: ToolShopkeeper
+    npc-key: NpcToolShopkeeper
+    chest-type: junk
+    message: Glossary:glossary_npc53
+  squish-trap:
+    type: junk
+    quantity: 0
+    item-key: SquishTrap
+    model-path: NpcToolShopkeeper.bfres
+    model-name: ToolShopkeeper
+    npc-key: NpcToolShopkeeper
+    chest-type: junk
+    message: Glossary:glossary_npc53
+  deathball-trap:
+    type: junk
+    quantity: 0
+    item-key: DeathballTrap
+    model-path: NpcToolShopkeeper.bfres
+    model-name: ToolShopkeeper
+    npc-key: NpcToolShopkeeper
+    chest-type: junk
+    message: Glossary:glossary_npc53
+  quake-trap:
+    type: junk
+    quantity: 0
+    item-key: QuakeTrap
+    model-path: NpcToolShopkeeper.bfres
+    model-name: ToolShopkeeper
+    npc-key: NpcToolShopkeeper
+    chest-type: junk
+    message: Glossary:glossary_npc53
+  bomb:
+    type: junk
+    quantity: 1
+    item-key: Bomb
+    model-path: ItemBomb.bfres
+    model-name: Bomb
+    npc-key: ItemBomb
+    message: UI:ItemName_Bomb
+  powder:
+    type: junk
+    quantity: 1
+    item-key: MagicPowder
+    model-path: ItemMagicPowder.bfres
+    model-name: MagicPowder
+    npc-key: ItemMagicPowder
+    message: UI:ItemName_Powder
+  stalfos-note:
+    type: junk
+    quantity: 1
+    item-key: $EXT:MasterStalfonLetter
+    chest-type: junk
+  key-D1:
+    type: good
+    quantity: 3
+    item-key: SmallKey
+    model-path: ItemSmallKey.bfres
+    model-name: SmallKey
+    npc-key: ItemClothesGreen
+    chest-type: key
+    message: Place:Keysanity1
+  nightmare-key-D1:
+    type: important
+    quantity: 1
+    item-key: NightmareKey
+    model-path: ItemNightmareKey.bfres
+    model-name: NightmareKey
+    npc-key: ItemNightmareKey
+    chest-type: key
+    message: Place:Keysanity1
+  stone-beak-D1:
+    type: junk
+    quantity: 1
+    item-key: StoneBeak
+    model-path: ItemStoneBeak.bfres
+    model-name: StoneBeak
+    npc-key: ItemStoneBeak
+    chest-type: junk
+    message: Place:Keysanity1
+  compass-D1:
+    type: junk
+    quantity: 1
+    item-key: Compass
+    model-path: ItemCompass.bfres
+    model-name: Compass
+    npc-key: ItemCompass
+    chest-type: junk
+    message: Place:Keysanity1
+  map-D1:
+    type: junk
+    quantity: 1
+    item-key: DungeonMap
+    model-path: ItemDungeonMap.bfres
+    model-name: DungeonMap
+    npc-key: ItemDungeonMap
+    chest-type: junk
+    message: Place:Keysanity1
+  key-D2:
+    type: good
+    quantity: 5
+    item-key: SmallKey
+    model-path: ItemSmallKey.bfres
+    model-name: SmallKey
+    npc-key: ItemClothesGreen
+    chest-type: key
+    message: Place:Keysanity2
+  nightmare-key-D2:
+    type: important
+    quantity: 1
+    item-key: NightmareKey
+    model-path: ItemNightmareKey.bfres
+    model-name: NightmareKey
+    npc-key: ItemNightmareKey
+    chest-type: key
+    message: Place:Keysanity2
+  stone-beak-D2:
+    type: junk
+    quantity: 1
+    item-key: StoneBeak
+    model-path: ItemStoneBeak.bfres
+    model-name: StoneBeak
+    npc-key: ItemStoneBeak
+    chest-type: junk
+    message: Place:Keysanity2
+  compass-D2:
+    type: junk
+    quantity: 1
+    item-key: Compass
+    model-path: ItemCompass.bfres
+    model-name: Compass
+    npc-key: ItemCompass
+    chest-type: junk
+    message: Place:Keysanity2
+  map-D2:
+    type: junk
+    quantity: 1
+    item-key: DungeonMap
+    model-path: ItemDungeonMap.bfres
+    model-name: DungeonMap
+    npc-key: ItemDungeonMap
+    chest-type: junk
+    message: Place:Keysanity2
+  key-D3:
+    type: good
+    quantity: 9
+    item-key: SmallKey
+    model-path: ItemSmallKey.bfres
+    model-name: SmallKey
+    npc-key: ItemClothesGreen
+    chest-type: key
+    message: Place:Keysanity3
+  nightmare-key-D3:
+    type: important
+    quantity: 1
+    item-key: NightmareKey
+    model-path: ItemNightmareKey.bfres
+    model-name: NightmareKey
+    npc-key: ItemNightmareKey
+    chest-type: key
+    message: Place:Keysanity3
+  stone-beak-D3:
+    type: junk
+    quantity: 1
+    item-key: StoneBeak
+    model-path: ItemStoneBeak.bfres
+    model-name: StoneBeak
+    npc-key: ItemStoneBeak
+    chest-type: junk
+    message: Place:Keysanity3
+  compass-D3:
+    type: junk
+    quantity: 1
+    item-key: Compass
+    model-path: ItemCompass.bfres
+    model-name: Compass
+    npc-key: ItemCompass
+    chest-type: junk
+    message: Place:Keysanity3
+  map-D3:
+    type: junk
+    quantity: 1
+    item-key: DungeonMap
+    model-path: ItemDungeonMap.bfres
+    model-name: DungeonMap
+    npc-key: ItemDungeonMap
+    chest-type: junk
+    message: Place:Keysanity3
+  key-D4:
+    type: good
+    quantity: 5
+    item-key: SmallKey
+    model-path: ItemSmallKey.bfres
+    model-name: SmallKey
+    npc-key: ItemClothesGreen
+    chest-type: key
+    message: Place:Keysanity4
+  nightmare-key-D4:
+    type: important
+    quantity: 1
+    item-key: NightmareKey
+    model-path: ItemNightmareKey.bfres
+    model-name: NightmareKey
+    npc-key: ItemNightmareKey
+    chest-type: key
+    message: Place:Keysanity4
+  stone-beak-D4:
+    type: junk
+    quantity: 1
+    item-key: StoneBeak
+    model-path: ItemStoneBeak.bfres
+    model-name: StoneBeak
+    npc-key: ItemStoneBeak
+    chest-type: junk
+    message: Place:Keysanity4
+  compass-D4:
+    type: junk
+    quantity: 1
+    item-key: Compass
+    model-path: ItemCompass.bfres
+    model-name: Compass
+    npc-key: ItemCompass
+    chest-type: junk
+    message: Place:Keysanity4
+  map-D4:
+    type: junk
+    quantity: 1
+    item-key: DungeonMap
+    model-path: ItemDungeonMap.bfres
+    model-name: DungeonMap
+    npc-key: ItemDungeonMap
+    chest-type: junk
+    message: Place:Keysanity4
+  key-D5:
+    type: good
+    quantity: 3
+    item-key: SmallKey
+    model-path: ItemSmallKey.bfres
+    model-name: SmallKey
+    npc-key: ItemClothesGreen
+    chest-type: key
+    message: Place:Keysanity5
+  nightmare-key-D5:
+    type: important
+    quantity: 1
+    item-key: NightmareKey
+    model-path: ItemNightmareKey.bfres
+    model-name: NightmareKey
+    npc-key: ItemNightmareKey
+    chest-type: key
+    message: Place:Keysanity5
+  stone-beak-D5:
+    type: junk
+    quantity: 1
+    item-key: StoneBeak
+    model-path: ItemStoneBeak.bfres
+    model-name: StoneBeak
+    npc-key: ItemStoneBeak
+    chest-type: junk
+    message: Place:Keysanity5
+  compass-D5:
+    type: junk
+    quantity: 1
+    item-key: Compass
+    model-path: ItemCompass.bfres
+    model-name: Compass
+    npc-key: ItemCompass
+    chest-type: junk
+    message: Place:Keysanity5
+  map-D5:
+    type: junk
+    quantity: 1
+    item-key: DungeonMap
+    model-path: ItemDungeonMap.bfres
+    model-name: DungeonMap
+    npc-key: ItemDungeonMap
+    chest-type: junk
+    message: Place:Keysanity5
+  key-D6:
+    type: good
+    quantity: 3
+    item-key: SmallKey
+    model-path: ItemSmallKey.bfres
+    model-name: SmallKey
+    npc-key: ItemClothesGreen
+    chest-type: key
+    message: Place:Keysanity6
+  nightmare-key-D6:
+    type: important
+    quantity: 1
+    item-key: NightmareKey
+    model-path: ItemNightmareKey.bfres
+    model-name: NightmareKey
+    npc-key: ItemNightmareKey
+    chest-type: key
+    message: Place:Keysanity6
+  stone-beak-D6:
+    type: junk
+    quantity: 1
+    item-key: StoneBeak
+    model-path: ItemStoneBeak.bfres
+    model-name: StoneBeak
+    npc-key: ItemStoneBeak
+    chest-type: junk
+    message: Place:Keysanity6
+  compass-D6:
+    type: junk
+    quantity: 1
+    item-key: Compass
+    model-path: ItemCompass.bfres
+    model-name: Compass
+    npc-key: ItemCompass
+    chest-type: junk
+    message: Place:Keysanity6
+  map-D6:
+    type: junk
+    quantity: 1
+    item-key: DungeonMap
+    model-path: ItemDungeonMap.bfres
+    model-name: DungeonMap
+    npc-key: ItemDungeonMap
+    chest-type: junk
+    message: Place:Keysanity6
+  key-D7:
+    type: good
+    quantity: 3
+    item-key: SmallKey
+    model-path: ItemSmallKey.bfres
+    model-name: SmallKey
+    npc-key: ItemClothesGreen
+    chest-type: key
+    message: Place:Keysanity7
+  nightmare-key-D7:
+    type: important
+    quantity: 1
+    item-key: NightmareKey
+    model-path: ItemNightmareKey.bfres
+    model-name: NightmareKey
+    npc-key: ItemNightmareKey
+    chest-type: key
+    message: Place:Keysanity7
+  stone-beak-D7:
+    type: junk
+    quantity: 1
+    item-key: StoneBeak
+    model-path: ItemStoneBeak.bfres
+    model-name: StoneBeak
+    npc-key: ItemStoneBeak
+    chest-type: junk
+    message: Place:Keysanity7
+  compass-D7:
+    type: junk
+    quantity: 1
+    item-key: Compass
+    model-path: ItemCompass.bfres
+    model-name: Compass
+    npc-key: ItemCompass
+    chest-type: junk
+    message: Place:Keysanity7
+  map-D7:
+    type: junk
+    quantity: 1
+    item-key: DungeonMap
+    model-path: ItemDungeonMap.bfres
+    model-name: DungeonMap
+    npc-key: ItemDungeonMap
+    chest-type: junk
+    message: Place:Keysanity7
+  key-D8:
+    type: good
+    quantity: 7
+    item-key: SmallKey
+    model-path: ItemSmallKey.bfres
+    model-name: SmallKey
+    npc-key: ItemClothesGreen
+    chest-type: key
+    message: Place:Keysanity8
+  nightmare-key-D8:
+    type: important
+    quantity: 1
+    item-key: NightmareKey
+    model-path: ItemNightmareKey.bfres
+    model-name: NightmareKey
+    npc-key: ItemNightmareKey
+    chest-type: key
+    message: Place:Keysanity8
+  stone-beak-D8:
+    type: junk
+    quantity: 1
+    item-key: StoneBeak
+    model-path: ItemStoneBeak.bfres
+    model-name: StoneBeak
+    npc-key: ItemStoneBeak
+    chest-type: junk
+    message: Place:Keysanity8
+  compass-D8:
+    type: junk
+    quantity: 1
+    item-key: Compass
+    model-path: ItemCompass.bfres
+    model-name: Compass
+    npc-key: ItemCompass
+    chest-type: junk
+    message: Place:Keysanity8
+  map-D8:
+    type: junk
+    quantity: 1
+    item-key: DungeonMap
+    model-path: ItemDungeonMap.bfres
+    model-name: DungeonMap
+    npc-key: ItemDungeonMap
+    chest-type: junk
+    message: Place:Keysanity8
+  key-D0:
+    type: good
+    quantity: 3
+    item-key: SmallKey
+    model-path: ItemSmallKey.bfres
+    model-name: SmallKey
+    npc-key: ItemClothesGreen
+    chest-type: key
+    message: Place:Keysanity9
+  nightmare-key-D0:
+    type: important
+    quantity: 1
+    item-key: NightmareKey
+    model-path: ItemNightmareKey.bfres
+    model-name: NightmareKey
+    npc-key: ItemNightmareKey
+    chest-type: key
+    message: Place:Keysanity9
+  stone-beak-D0:
+    type: junk
+    quantity: 1
+    item-key: StoneBeak
+    model-path: ItemStoneBeak.bfres
+    model-name: StoneBeak
+    npc-key: ItemStoneBeak
+    chest-type: junk
+    message: Place:Keysanity9
+  compass-D0:
+    type: junk
+    quantity: 1
+    item-key: Compass
+    model-path: ItemCompass.bfres
+    model-name: Compass
+    npc-key: ItemCompass
+    chest-type: junk
+    message: Place:Keysanity9
+  map-D0:
+    type: junk
+    quantity: 1
+    item-key: DungeonMap
+    model-path: ItemDungeonMap.bfres
+    model-name: DungeonMap
+    npc-key: ItemDungeonMap
+    chest-type: junk
+    message: Place:Keysanity9
+
+Starting_Items:
+  - sword
+  - sword
+  - shield
+  - shield
+  - bracelet
+  - bracelet
+  - boots
+  - flippers
+  - feather
+  - shovel
+  - hookshot
+  - bow
+  - rod
+  - boomerang
+  - bomb
+  - powder
+  - ocarina
+  - song-ballad
+  - song-mambo
+  - song-soul
+  # - yoshi-doll
+  - ribbon
+  - dog-food
+  - bananas
+  - stick
+  - honeycomb
+  - pineapple
+  - hibiscus
+  - letter
+  - broom
+  - fishing-hook
+  - necklace
+  - mermaid-scale
+  - magnifying-lens
+  - mushroom
+  - tail-key
+  - slime-key
+  - angler-key
+  - face-key
+  - bird-key
+  - full-moon-cello
+  - conch-horn
+  - sea-lilys-bell
+  - surf-harp
+  - wind-marimba
+  - coral-triangle
+  - evening-calm-organ
+  - thunder-drum
+  - bomb-capacity
+  - arrow-capacity
+  - powder-capacity
+  - shell-sensor
+  - red-tunic
+  - blue-tunic
+...

@@ -1,0 +1,13 @@
+# From a fresh boot: skip intro, open file select, load (or create) file 2.
+expect HELLO 60
+wait 22
+send DBG input c0 300
+wait 5
+send DBG input c0 300
+wait 5
+send DBG input 8000 150
+wait 1.5
+send DBG input 1 150
+wait 4
+send DBG input 1 150
+wait 12

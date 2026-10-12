@@ -26,6 +26,7 @@ namespace AP {
     void Init(const std::string& seed_hash);
     void Tick();
     void OnPlaceholderCollected(int local_id);
+    void OnGoal();
     void ApplyInjectedInput(nn::hid::NpadBaseState* state);
     void Log(const std::string& text);
     std::string HelloLine();

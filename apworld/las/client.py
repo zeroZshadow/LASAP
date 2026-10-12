@@ -1,0 +1,218 @@
+"""PC client: bridges the Archipelago server and the game's exlaunch module (TCP line protocol, see DESIGN.md)."""
+import asyncio
+from typing import Dict, Optional, Set
+
+import Utils
+from CommonClient import ClientCommandProcessor, CommonContext, get_base_parser, gui_enabled, logger, server_loop
+from NetUtils import ClientStatus
+
+from .ids import LOCATION_BASE
+from .items import GAME, ITEM_GAME_INFO
+
+GAME_PORT = 43384
+PROTOCOL_VERSION = 1
+PING_INTERVAL = 2.0
+RESEND_INTERVAL = 3.0
+
+
+class LASCommandProcessor(ClientCommandProcessor):
+    ctx: "LASContext"
+
+    def _cmd_las(self) -> None:
+        """Show the connection state to the game."""
+        ctx = self.ctx
+        if ctx.game_writer is None:
+            logger.info(f"Not connected to the game ({ctx.game_host}:{ctx.game_port}).")
+        else:
+            logger.info(f"Connected to the game. Seed hash {ctx.game_seed_hash}, "
+                        f"{ctx.game_recv} of {len(ctx.items_received)} items applied.")
+
+    def _cmd_dbg(self, *args: str) -> None:
+        """Send a debug command to the game module (testing only), e.g. /dbg state."""
+        self.ctx.send_game("DBG " + " ".join(args))
+
+    def _cmd_resync(self) -> None:
+        """Ask the game to resend its received-item count and collected locations."""
+        self.ctx.send_game("SYNC")
+
+
+class LASContext(CommonContext):
+    game = GAME
+    # Remote items: the server sends this world's own items too. Starting inventory is granted by the patch.
+    items_handling = 0b011
+    command_processor = LASCommandProcessor
+
+    def __init__(self, server_address: Optional[str], password: Optional[str], game_host: str, game_port: int):
+        super().__init__(server_address, password)
+        self.game_host = game_host
+        self.game_port = game_port
+        self.game_writer: Optional[asyncio.StreamWriter] = None
+        self.game_seed_hash: Optional[str] = None
+        self.game_recv: Optional[int] = None
+        self.slot_seed_hash: Optional[str] = None
+        self.game_checked: Set[int] = set()
+        self.goal_reached = False
+        self.last_item_sent = 0.0
+
+    async def server_auth(self, password_requested: bool = False) -> None:
+        if password_requested and not self.password:
+            await super().server_auth(password_requested)
+        await self.get_username()
+        await self.send_connect()
+
+    def on_package(self, cmd: str, args: dict) -> None:
+        if cmd == "Connected":
+            self.slot_seed_hash = args["slot_data"].get("seed_hash")
+            self.check_seed()
+            asyncio.create_task(self.flush_checks())
+            if args["slot_data"].get("death_link"):
+                asyncio.create_task(self.update_death_link(True))
+        elif cmd == "ReceivedItems":
+            self.send_next_item()
+
+    def on_deathlink(self, data: Dict) -> None:
+        super().on_deathlink(data)
+        self.send_game("DEATH")
+
+    def check_seed(self) -> bool:
+        if self.slot_seed_hash and self.game_seed_hash and self.slot_seed_hash != self.game_seed_hash:
+            logger.error(f"The game runs seed {self.game_seed_hash} but this slot needs {self.slot_seed_hash}. "
+                         f"Install the mod generated for this slot.")
+            return False
+        return True
+
+    def send_game(self, line: str) -> None:
+        if self.game_writer is not None:
+            self.game_writer.write(line.encode() + b"\n")
+
+    def send_next_item(self) -> None:
+        """Sends the next item the game has not applied yet; the game answers RECV with its new count."""
+        if self.game_writer is None or self.game_recv is None or not self.check_seed():
+            return
+        if self.game_recv >= len(self.items_received):
+            return
+        item = self.items_received[self.game_recv]
+        name = self.item_names.lookup_in_game(item.item, self.game)
+        key, dungeon = ITEM_GAME_INFO.get(name, ("", -1))
+        if not key:
+            logger.warning(f"No game item for {name}; skipping it.")
+            key = "None"
+        self.send_game(f"ITEM {self.game_recv + 1} {key} 1 {dungeon}")
+        self.last_item_sent = asyncio.get_event_loop().time()
+
+    async def flush_checks(self) -> None:
+        if not self.server or not self.slot:
+            return
+        new = self.game_checked - self.locations_checked
+        if new:
+            await self.check_locations(new)
+        if self.goal_reached and not self.finished_game:
+            await self.send_msgs([{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}])
+            self.finished_game = True
+
+    def handle_game_line(self, line: str) -> None:
+        parts = line.split()
+        if not parts:
+            return
+        cmd = parts[0]
+        if cmd == "HELLO":
+            self.game_seed_hash = parts[2] if len(parts) > 2 else None
+            if len(parts) < 2 or parts[1] != str(PROTOCOL_VERSION):
+                logger.error(f"Game protocol {parts[1:2]} does not match the client ({PROTOCOL_VERSION}).")
+            logger.info(f"Connected to the game (seed hash {self.game_seed_hash}).")
+            self.check_seed()
+            self.send_game("SYNC")
+        elif cmd == "RECV":
+            self.game_recv = int(parts[1])
+            self.send_next_item()
+        elif cmd in ("CHECK", "CHECKS"):
+            ids = {LOCATION_BASE + int(p) for p in parts[1:]}
+            if self.check_seed():
+                self.game_checked |= ids
+                asyncio.create_task(self.flush_checks())
+        elif cmd == "GOAL":
+            self.goal_reached = True
+            asyncio.create_task(self.flush_checks())
+        elif cmd == "DIED":
+            if "DeathLink" in self.tags:
+                asyncio.create_task(self.send_death(f"{self.player_names.get(self.slot, 'Link')} fell on Koholint."))
+        elif cmd == "LOG":
+            logger.debug("game: " + line[4:])
+        elif cmd == "ERR":
+            logger.warning("game: " + line)
+        else:
+            logger.info("game: " + line)
+
+    async def game_loop(self) -> None:
+        while not self.exit_event.is_set():
+            try:
+                reader, writer = await asyncio.wait_for(
+                    asyncio.open_connection(self.game_host, self.game_port), timeout=5)
+            except (OSError, asyncio.TimeoutError):
+                await asyncio.sleep(2)
+                continue
+            self.game_writer = writer
+            self.game_recv = None
+            ping = asyncio.create_task(self.ping_loop(writer))
+            try:
+                while not self.exit_event.is_set():
+                    raw = await reader.readline()
+                    if not raw:
+                        break
+                    line = raw.decode(errors="replace").strip()
+                    if line and line != "PONG":
+                        self.handle_game_line(line)
+            except (ConnectionError, OSError):
+                pass
+            finally:
+                ping.cancel()
+                self.game_writer = None
+                writer.close()
+                logger.info("Lost connection to the game; retrying.")
+
+    async def ping_loop(self, writer: asyncio.StreamWriter) -> None:
+        loop = asyncio.get_event_loop()
+        while True:
+            writer.write(b"PING\n")
+            await writer.drain()
+            # An ITEM can be dropped while the player is in a cutscene; resend it.
+            if self.game_recv is not None and loop.time() - self.last_item_sent > RESEND_INTERVAL:
+                self.send_next_item()
+            await asyncio.sleep(PING_INTERVAL)
+
+    def make_gui(self):
+        ui = super().make_gui()
+        ui.base_title = "Archipelago Link's Awakening (Switch) Client"
+        return ui
+
+
+def launch(*launch_args: str) -> None:
+    async def main(args) -> None:
+        ctx = LASContext(args.connect, args.password, args.game_host, args.game_port)
+        ctx.auth = args.name
+        ctx.server_task = asyncio.create_task(server_loop(ctx), name="server loop")
+        game_task = asyncio.create_task(ctx.game_loop(), name="game loop")
+        if gui_enabled and not args.nogui:
+            ctx.run_gui()
+        ctx.run_cli()
+        await ctx.exit_event.wait()
+        game_task.cancel()
+        await ctx.shutdown()
+
+    parser = get_base_parser(description="Link's Awakening (Switch) Archipelago client.")
+    parser.add_argument("--name", default=None, help="Slot name to connect as.")
+    parser.add_argument("--game-host", default="127.0.0.1", help="Address of the Switch or emulator running the game.")
+    parser.add_argument("--game-port", type=int, default=GAME_PORT)
+    if not hasattr(parser.parse_args([]), "nogui"):
+        parser.add_argument("--nogui", default=False, action="store_true")
+    parser.add_argument("url", nargs="?", help="Archipelago connection url")
+    args = parser.parse_args(launch_args)
+    if args.url:
+        from CommonClient import handle_url_arg
+        args = handle_url_arg(args, parser=parser)
+
+    Utils.init_logging("LASClient", exception_logger="Client")
+    import colorama
+    colorama.just_fix_windows_console()
+    asyncio.run(main(args))
+    colorama.deinit()
