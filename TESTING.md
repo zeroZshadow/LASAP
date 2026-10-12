@@ -104,7 +104,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Item names in text.** A received item from another slot says "You got Hookshot from Bob!". A dungeon chest holding this slot's item says "You found your Stone Beak (Tail Cave)!" and the item is not shown a second time when it comes back from the server. The shop's price tag names the item and its owner, and a heart piece holding another slot's item says "You found Map Bombs for Bob!".
 - **Persistence.** The received count survives a restart without double grants. On a fresh save, everything is re-delivered.
 - **Goal.** `ShadowClear` reports the goal to the server.
-- **Chest data.** All 110 shuffled chests hold the placeholder with the right index (static check).
+- **Patch data.** `scripts/verify_patch.py` checks that every shuffled chest holds the placeholder with the right index, and that every randomized heart piece and seashell actor has its own index above the received range (static check).
 
 ## Not yet verified in-game
 
