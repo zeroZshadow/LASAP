@@ -144,6 +144,14 @@ class StartingInstruments(Range):
     default = 0
 
 
+class StartingRupees(Range):
+    """Rupees in Link's wallet when he gets out of bed."""
+    display_name = "Starting Rupees"
+    range_start = 0
+    range_end = 999
+    default = 100
+
+
 class OpenMabe(DefaultOnToggle):
     """Opens up Mabe Village from the start of the game."""
     display_name = "Open Mabe"
@@ -246,6 +254,7 @@ class LASOptions(PerGameCommonOptions):
     dungeon_items: DungeonItems
     instruments: Instruments
     starting_instruments: StartingInstruments
+    starting_rupees: StartingRupees
     open_mabe: OpenMabe
     open_kanalet: OpenKanalet
     open_mamu: OpenMamu
@@ -266,7 +275,8 @@ class LASOptions(PerGameCommonOptions):
 OPTION_GROUPS = [
     OptionGroup("Locations", [Chests, FreeGifts, TradeQuest, GoldenLeaves, HeartPieces, Seashells, Miscellaneous, Shop,
                               BossDrops, Dampe, Rapids, Fishing, BlueRupees, OwlStatues, SeashellMansion]),
-    OptionGroup("Dungeon Items", [Keys, DungeonItems, Instruments, StartingInstruments]),
+    OptionGroup("Dungeon Items", [Keys, DungeonItems, Instruments]),
+    OptionGroup("Start", [StartingInstruments, StartingRupees]),
     OptionGroup("World", [OpenMabe, OpenKanalet, OpenMamu, CompletedBridge, ClassicD2, BadPets, FreeBook, FastFishing,
                           FastStalfos, ShuffledBombs, ShuffledPowder, Stealing]),
 ]

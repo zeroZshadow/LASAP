@@ -22,6 +22,12 @@ with its own option. The trade quest, Dampé, the rapids, fishing, blue rupees, 
 rewards can be added. Small keys, nightmare keys, maps, compasses, stone beaks and instruments can stay in their own
 dungeon or go anywhere.
 
+## What does the player start with?
+
+By default, a sword, a shield, the ocarina with Manbo's Mambo, and 100 rupees, as in the original randomizer. The
+`start_inventory_from_pool` option lists the starting items (they leave the item pool) and `starting_rupees` sets the
+rupees. With `dungeon_items: start_with`, the player also starts with every dungeon's map, compass and stone beak.
+
 ## Which items can be in another player's world?
 
 Any shuffled item, including dungeon items and instruments when their options allow it.

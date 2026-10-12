@@ -171,7 +171,12 @@ class TestDungeonRewards(LASTestBase):
         "stealing": "never",
         "shuffled_bombs": False,
         "shuffled_powder": False,
+        "starting_rupees": 0,
     }
+
+    def test_starting_rupees(self) -> None:
+        from ..lasr_settings import lasr_settings
+        self.assertEqual(lasr_settings(self.world.options)["Rupees"], 0)
 
 
 class TestAdvanced(LASTestBase):

@@ -132,7 +132,7 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Instant Text": False,
         "Disable Guardian Acorn": False,
         "Disable Piece of Power": False,
-        "Rupees": 100,
+        "Rupees": o.starting_rupees.value,
         "Containers": 0,
         "Pieces": 0,
     }
