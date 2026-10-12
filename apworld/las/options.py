@@ -121,6 +121,7 @@ class DungeonItems(DungeonItemPlacement):
     own_dungeon: inside their own dungeon. anywhere: anywhere in the multiworld. start_with: given at the start."""
     display_name = "Maps, Compasses and Stone Beaks"
     option_start_with = 2
+    default = 2
 
 
 class Instruments(Choice):
@@ -132,7 +133,7 @@ class Instruments(Choice):
     option_dungeon_rewards = 1
     option_own_dungeon = 2
     option_anywhere = 3
-    default = 0
+    default = 3
 
 
 class StartingInstruments(Range):
@@ -205,7 +206,7 @@ class Stealing(Choice):
     option_standard = 0
     option_always = 1
     option_never = 2
-    default = 0
+    default = 1
 
 
 class Traps(Choice):
@@ -214,7 +215,13 @@ class Traps(Choice):
     option_none = 0
     option_few = 1
     option_many = 2
-    default = 0
+    default = 2
+
+
+class StartingGear(StartInventoryPool):
+    """Start with the specified amount of these items and don't place them in the world; 50 Rupees take their place.
+    The default is the original randomizer's starting gear."""
+    default = {"Progressive Sword": 1, "Progressive Shield": 1, "Ocarina": 1, "Manbo's Mambo": 1}
 
 
 @dataclass
@@ -253,7 +260,7 @@ class LASOptions(PerGameCommonOptions):
     stealing: Stealing
     traps: Traps
     death_link: DeathLink
-    start_inventory_from_pool: StartInventoryPool
+    start_inventory_from_pool: StartingGear
 
 
 OPTION_GROUPS = [

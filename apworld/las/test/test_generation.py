@@ -71,6 +71,27 @@ class TestDefault(LASTestBase):
         self.multiworld.seed_name = seed_name
 
 
+class TestLASRDefaults(LASTestBase):
+    def test_defaults_match_lasr(self) -> None:
+        """The default options are the original randomizer's default settings."""
+        from ..lasr_settings import lasr_settings
+        from ..options import StartingGear
+        settings = lasr_settings(self.world.options)
+        expected = {"Preset": "Basic", "Chests": True, "Free Gifts": True, "Trade Quest": False, "Golden Leaves": True,
+                    "Heart Pieces": True, "Seashells": True, "Miscellaneous": True, "Shop": True, "Boss Drops": True,
+                    "Dampe": False, "Rapids": False, "Fishing": False, "Blue Rupees": False, "Owl Gifts": "None",
+                    "Seashell Mansion": 30, "Dungeon Maps": "Start With", "Compasses": "Start With",
+                    "Stone Beaks": "Start With", "Small Keys": "Own Dungeon", "Nightmare Keys": "Own Dungeon",
+                    "Shuffle Instruments": "Anywhere", "Starting Instruments": 0, "Open Kanalet": True,
+                    "Open Mabe": True, "Open Mamu": True, "Completed Bridge": True, "Classic D2": False,
+                    "Bad Pets": False, "Fast Fishing": True, "Shuffled Bombs": True, "Free Book": True,
+                    "Fast Stalfos": True, "Shuffled Powder": True, "Stealing": "Always", "Traps": "Many",
+                    "Damage": "Normal", "Rupees": 100}
+        self.assertEqual({k: settings[k] for k in expected}, expected)
+        self.assertEqual(StartingGear.default, {"Progressive Sword": 1, "Progressive Shield": 1, "Ocarina": 1,
+                                                "Manbo's Mambo": 1})
+
+
 class TestEverythingShuffled(LASTestBase):
     options = {
         "trade_quest": True,
