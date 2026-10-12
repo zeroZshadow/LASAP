@@ -22,7 +22,7 @@ SETTINGS = {
     "Randomize Enemies": False, "Randomize Enemy Sizes": False, "Chest Types": "Default", "Open Kanalet": False,
     "Open Mabe": False, "Open Mamu": False, "Completed Bridge": False, "Classic D2": False,
     "Shuffled Dungeons": False, "Consumable Drops": True, "Bad Pets": False, "Fast Fishing": True,
-    "Shuffled Bombs": False, "Free Book": True, "Fast Stalfos": True, "Shuffled Powder": False,
+    "Shuffled Bombs": False, "Free Book": True, "Fast Stalfos": True, "Shuffled Powder": False, "Ammo Ghost": True,
     "Stealing": "Always", "Boss Cutscenes": True, "Song Cutscenes": False, "Movement Speed": True,
     "Chest Animations": True, "Key Animations": True, "Item Get Animations": False, "Item Pool": "Standard",
     "Traps": "None", "Nice Bombs": True, "Nice Hookshot": False, "Nice Magic Rod": True, "Damage": "Normal",

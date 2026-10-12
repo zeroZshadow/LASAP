@@ -218,6 +218,12 @@ class ShuffledPowder(DefaultOnToggle):
     display_name = "Shuffled Powder"
 
 
+class AmmoGhost(DefaultOnToggle):
+    """A ghost in Tarin's house tops your bombs and arrows up to 15 when you talk to him. He shows up once you have
+    bombs or the bow."""
+    display_name = "Ammo Ghost"
+
+
 class Stealing(Choice):
     """Whether logic may expect stealing from the shop.
     standard: only with a sword. always: with or without one. never: logic never expects it."""
@@ -277,6 +283,7 @@ class LASOptions(PerGameCommonOptions):
     fast_stalfos: FastStalfos
     shuffled_bombs: ShuffledBombs
     shuffled_powder: ShuffledPowder
+    ammo_ghost: AmmoGhost
     stealing: Stealing
     chest_appearance: ChestAppearance
     traps: Traps
@@ -290,5 +297,5 @@ OPTION_GROUPS = [
     OptionGroup("Dungeon Items", [Keys, DungeonItems, Instruments]),
     OptionGroup("Start", [StartingInstruments, StartingRupees]),
     OptionGroup("World", [OpenMabe, OpenKanalet, OpenMamu, CompletedBridge, ClassicD2, BadPets, FreeBook, FastFishing,
-                          FastStalfos, ShuffledBombs, ShuffledPowder, Stealing, ChestAppearance]),
+                          FastStalfos, ShuffledBombs, ShuffledPowder, AmmoGhost, Stealing, ChestAppearance]),
 ]

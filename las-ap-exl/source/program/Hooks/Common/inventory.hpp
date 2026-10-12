@@ -120,6 +120,14 @@ HOOK_DEFINE_TRAMPOLINE(Inventory__AddItemID) {
             return;
         }
 
+        // The ghost in Tarin's house: tops bombs (4) or arrows (60) up to count
+        if ((ID == 4 || ID == 60) && index == AP::AMMO_REFILL_INDEX) {
+            auto* items = *Game::Data::Inventory::Items;
+            int have = ID == 4 ? items->BombCount : items->ArrowCount;
+            if (have < count) Orig(ID, count - have, -1);
+            return;
+        }
+
         // Automatically set item GettingFlags so that we dont need as many cases
         if (!EventFlags::CheckGettingFlag(ID)) {
             EventFlags::SetGettingFlag(ID);

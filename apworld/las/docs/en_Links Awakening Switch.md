@@ -47,6 +47,12 @@ Link holds the item up with its usual item text, naming the player who sent it. 
 menu wait until Link is free. A trap plays its effect from the original randomizer (a shock, a squish, ...), and a small
 popup at the bottom right names the trap and its sender. On normal damage a trap never takes the last quarter heart.
 
+## Where do I get more bombs and arrows?
+
+With the Ammo Ghost option (on by default), a ghost waits in Tarin's house once you have bombs or the bow. Talk to him
+and he tops your bombs and arrows up to 15 (10 bombs become 15; more than 15 stay as they are), as often as you
+like. Together with the warp menu below, this keeps you from getting stuck without ammo.
+
 ## How do I get back to the start?
 
 Hold Minus for a second: a menu asks "Return to Tarin's house?". Warp home takes Link into Tarin's house in Mabe

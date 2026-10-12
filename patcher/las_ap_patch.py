@@ -32,6 +32,7 @@ from RandomizerCore.Randomizers.keysanity import Keysanity  # noqa: E402
 from RandomizerCore.Randomizers.shop import TEXT_TO_CHANGE as SHOP_TEXT  # noqa: E402
 from RandomizerCore.Tools import event_tools  # noqa: E402
 from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct  # noqa: E402
+import ap_ghost  # noqa: E402
 import ap_model  # noqa: E402
 import ap_ui  # noqa: E402
 
@@ -102,6 +103,7 @@ def _add_ap_flags(self) -> None:
     _original_add_custom_flags(self)
     for i in range(RECV_FLAG_BITS):
         self.addFlag(f"APRecv{i}")
+    self.addFlag(ap_ghost.BOW_FLAG)
 
 
 def _add_placeholder_row(self, sheet) -> None:
@@ -229,7 +231,8 @@ def _chest_placeholder_branch(self) -> None:
 def _write_file(self, file_name: str, data) -> None:
     """Randomized heart piece and seashell actors show by their location flag alone. The Archipelago model gets an
     Npc entry, which the item-get shows."""
-    if file_name == "Npc.gsheet":
+    # Once: the sheet is written again after LASR's run (ap_ghost).
+    if file_name == "Npc.gsheet" and not any(row["symbol"] == PLACEHOLDER_DEF["npc-key"] for row in data["values"]):
         # Parsed before appending: appending to the sheet invalidates references to its rows.
         source = next(parseStruct(row) for row in data["values"] if row["symbol"] == PLACEHOLDER_SOURCE_NPC)
         source["symbol"] = PLACEHOLDER_DEF["npc-key"]
@@ -415,6 +418,8 @@ def main() -> int:
     if proc.failed:
         print(proc.failed)
         return 1
+    if patch["settings"].get("Ammo Ghost", True):  # the option's default, also for patches without it
+        ap_ghost.add(proc.file_manager)
     actor_dir = proc.romfs_dir / "region_common" / "actor"
     actor_dir.mkdir(parents=True, exist_ok=True)
     (actor_dir / ap_model.FILE_NAME).write_bytes(ap_model.build(str(args.romfs / "region_common" / "actor" / ap_model.SOURCE)))

@@ -134,6 +134,7 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Free Book": bool(o.free_book),
         "Fast Stalfos": bool(o.fast_stalfos),
         "Shuffled Powder": bool(o.shuffled_powder),
+        "Ammo Ghost": bool(o.ammo_ghost),  # read by the AP patcher (ap_ghost.py), not by LASR
         "Stealing": _STEALING[o.stealing.value],
         "Boss Cutscenes": True,
         "Song Cutscenes": False,

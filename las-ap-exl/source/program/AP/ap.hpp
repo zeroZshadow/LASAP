@@ -30,6 +30,9 @@ namespace AP {
     constexpr const char* TRAP_EVENT_PREFIX = "AP";
     // Common.bfevfl entry the patcher adds for the warp menu: a choice between warping to Tarin's house and going on.
     constexpr const char* WARP_MENU_ENTRY = "APWarpMenu";
+    // Index the ghost in Tarin's house adds bombs and arrows with (patcher ap_ghost.py): the count is what Link's
+    // bombs or arrows are topped up to, not an amount to add.
+    constexpr int AMMO_REFILL_INDEX = 1000;
     // Location names the patcher writes next to config.ini.
     constexpr const char* NAMES_PATH = "sd:/config/lasr-exl/ap_names.txt";
 

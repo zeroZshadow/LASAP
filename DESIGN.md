@@ -163,6 +163,11 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 - The module hides Minus from the game while it is held; released sooner, a short press reaches the game, so a tap still opens and closes the map.
 - The menu opens only when an item display could start (player free, holding nothing, no display running) and not in levels where a warp would break what runs there: the Wind Fish's Egg, the Chamber Dungeons and their editor (`Panel*`), the fishing pond, the trendy game, the ending and Marin's event levels.
 
+**Ammo ghost** (option `ammo_ghost`, settings key `Ammo Ghost`; `patcher/ap_ghost.py`)
+- A ghost stands in Tarin's house once Link has found bombs or the bow, and tops bombs and arrows (of those he has) up to 15 each time Link talks to him. The option is on by default; a patch without the settings key gets him too.
+- He is an `NpcGhost` actor added to `MarinTarinHouse_01A`. The follower ghost that used `NpcGhost` never spawns in LASR (the ghost's reward is at his grave), so the patcher rewrites the entry: Tarin's talk settings, a talk trigger on the `Ghost.bfevfl` entry `APAmmoGhost`, and layout conditions on the flags `BombsFoundFlag` (LASR's getting flag for bombs) and `APBowFound` (the bow's getting flag, which the patcher adds). Every added item sets its getting flag. He has no collision: Link walks through him.
+- The event shows `Scenario:APAmmoGhost`, then adds `Bomb` and `Arrow` with count 15 and index `AP::AMMO_REFILL_INDEX`, each behind a check of its flag. With that index the module's `AddItemID` hook adds only what is missing to reach the count.
+
 **Persistence**
 - **Received-item count:** event flags `APRecv0`..`APRecv15`, read as a 16-bit counter. The patcher adds them to `GlobalFlags.gsheet`.
 - **Collected locations:** a bitset file `sd:/lasap/<seed_hash>.chk`, written on each check, so checks made while disconnected are reported later.
