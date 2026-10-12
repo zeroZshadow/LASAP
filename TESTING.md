@@ -99,6 +99,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Marin's song.** The song gift is a check (`Mabe Village - Marin`).
 - **Heart pieces.** The Mabe Well and Pothole North pieces appear on a save that has received heart pieces, and report their checks. A received piece still counts toward a heart.
 - **Dug seashells.** The doghouse dig gives its item with all 50 seashell bits set, and reports its check.
+- **Bush seashells.** Cutting the plant beside the Seashell Mansion drops its item, which names Bob's item and reports the check.
 - **Seashell Mansion.** The 5, 15 and 30 shell presents name their items ("You found Map Width for Bob!") and report their checks.
 - **Item names in text.** A received item from another slot says "You got Hookshot from Bob!". A dungeon chest holding this slot's item says "You found your Stone Beak (Tail Cave)!" and the item is not shown a second time when it comes back from the server. The shop's price tag names the item and its owner, and a heart piece holding another slot's item says "You found Map Bombs for Bob!".
 - **Persistence.** The received count survives a restart without double grants. On a fresh save, everything is re-delivered.
@@ -107,7 +108,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 
 ## Not yet verified in-game
 
-- Owl statues, bush and tree seashells as locations.
+- Owl statues and tree seashells as locations.
 - DeathLink (out of scope for now) and real hardware.
 
 ## Building the exlaunch module
