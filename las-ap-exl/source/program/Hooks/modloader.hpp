@@ -1,6 +1,5 @@
 #pragma once
 #include "Config/config.hpp"
-// #include "Hooks/Common/actorswitch.hpp"
 // #include "Hooks/Common/audio.hpp"
 #include "Hooks/Common/eventflags.hpp"
 #include "Hooks/Common/input.hpp"
@@ -20,7 +19,6 @@
 
 namespace ModLoader {
     inline void InstallCommonHooks() {
-        // ActorSwitchManager::InstallHooks();
         // AudioSystem::InstallHooks();
         EventFlags::InstallHooks();
         InputSystem::InstallHooks();

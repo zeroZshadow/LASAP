@@ -2,18 +2,14 @@
 #include "../lib.hpp"
 #include "offsets.hpp"
 
-HOOK_DEFINE_TRAMPOLINE(SetActorSwitch) {
-    static void Callback(long arg1, long arg2, long arg3) {
-        Orig(arg1, arg2, arg3);
-    }
-};
-
 namespace ActorSwitchManager {
-    void SetSwitch(long addr, long switchIndex, bool state) {
-        SetActorSwitch::Callback(*(long*)addr, switchIndex, state & 1);
-    }
+    // The game's function that sets an actor switch: (switch holder, switch index, state).
+    using SetActorSwitchFn = void (*)(long holder, long switchIndex, long state);
+    constexpr uintptr_t kSetActorSwitch = 0x231b0;
 
-    void InstallHooks() {
-        SetActorSwitch::InstallAtOffset(offset_manager.Offset(0x231b0));
+    // addr is the actor's switch holder pointer (actor + 0x250).
+    inline void SetSwitch(long addr, long switchIndex, bool state) {
+        auto fn = reinterpret_cast<SetActorSwitchFn>(g_BaseAddress + offset_manager.Offset(kSetActorSwitch));
+        fn(*(long*)addr, switchIndex, state & 1);
     }
 }

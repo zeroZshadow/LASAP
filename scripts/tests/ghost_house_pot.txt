@@ -1,0 +1,30 @@
+# Lifts the Ghost House pot that holds ghost-house-pot (GhostHouse_01A, pot at 12 0 8.25) from the tile south of it
+# and throws it. Link enters through the door in Field_16G: a warp into GhostHouse puts him at the room origin, over
+# a pit. Grants the Power Bracelet (sandbox saves only).
+# Screenshots: pot_1 below the pot, pot_2 pot lifted, pot_3 pot thrown, pot_4 the item-get.
+send DBG grant PowerBraceletLv1 1 -1 0
+warp Field 99.75 7.5 186.75
+at 99.75 186.75
+send DBG input 0 1500 0 32767
+inlevel 15
+free 10
+send DBG pos 12 0 9.75
+wait 1
+at 12 9.75
+send DBG input 0 400 0 32767
+wait 0.8
+shot D:/DEV/LASAP-sandbox/pot_1.png
+send DBG input 1 400
+wait 1.5
+state
+shot D:/DEV/LASAP-sandbox/pot_2.png
+send DBG input 1 400
+wait 2
+state
+shot D:/DEV/LASAP-sandbox/pot_3.png
+# The item drops where the pot stood; walk into it.
+send DBG input 0 600 0 32767
+wait 3
+shot D:/DEV/LASAP-sandbox/pot_4.png
+dismiss 15
+state
