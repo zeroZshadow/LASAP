@@ -1,10 +1,15 @@
 """Turns an .aplas into an installed mod: runs the patcher, then copies its output to the game's SD card."""
 import configparser
+import hashlib
+import io
+import platform
 import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
+import zipfile
+from importlib import resources
 from pathlib import Path
 from typing import Callable, List, Optional
 
@@ -12,6 +17,9 @@ from .emulators import TITLE_ID
 
 CONFIG_PATH = Path("config", "lasr-exl", "config.ini")
 MOD_PARTS = ("romfs", "exefs")
+# The release build of the world carries a frozen patcher (scripts/build_release.py) for these systems.
+BUNDLED_PATCHERS = {("win32", "AMD64"): "patcher-windows-x64.zip"}
+BUNDLED_PATCHER_EXE = Path("las_ap_patcher", "las_ap_patcher.exe")
 
 
 class InstallError(Exception):
@@ -38,10 +46,56 @@ def installed_seed(sd_card: Path, mods: Path) -> Optional[str]:
     return config.get("archipelago", "seed_hash", fallback=None)
 
 
+def bundled_patcher_resource():
+    """The frozen patcher in this world package for this system, or None (other systems, or a world from source)."""
+    name = BUNDLED_PATCHERS.get((sys.platform, platform.machine()))
+    if name is None:
+        return None
+    resource = resources.files(__package__).joinpath("bin", name)
+    return resource if resource.is_file() else None
+
+
+def bundled_patcher(log: Callable[[str], None]) -> Optional[Path]:
+    """The frozen patcher's program, unpacked into Archipelago's cache folder once per patcher version."""
+    resource = bundled_patcher_resource()
+    if resource is None:
+        return None
+    import Utils
+    data = resource.read_bytes()
+    cache = Path(Utils.cache_path("las", "patcher"))
+    target = cache / hashlib.sha256(data).hexdigest()[:16]
+    done = target / ".complete"
+    if not done.is_file():
+        log("Unpacking the patcher. This happens once for each version of the world.")
+        if cache.is_dir():
+            for old in cache.iterdir():
+                shutil.rmtree(old, ignore_errors=True)
+        cache.mkdir(parents=True, exist_ok=True)
+        tmp = Path(tempfile.mkdtemp(dir=cache))
+        try:
+            with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                zf.extractall(tmp)
+            tmp.rename(target)
+        except BaseException:
+            shutil.rmtree(tmp, ignore_errors=True)
+            raise
+        done.touch()
+    return target / BUNDLED_PATCHER_EXE
+
+
+def patcher_command(command: str, log: Callable[[str], None]) -> List[str]:
+    """The patcher command, or the patcher this world carries when it is empty."""
+    if command.strip():
+        return split_command(command)
+    exe = bundled_patcher(log)
+    if exe is None:
+        raise InstallError("This copy of the world has no patcher for this computer: set the patcher command under "
+                           "Advanced settings (see the setup guide).")
+    return [str(exe)]
+
+
 def run_patcher(command: str, patch_file: Path, romfs: Path, out: Path, log: Callable[[str], None]) -> None:
-    if not command.strip():
-        raise InstallError("The patcher command is empty; set it to the command that runs patcher/las_ap_patch.py.")
-    args = split_command(command) + [str(patch_file), "--romfs", str(romfs), "--out", str(out)]
+    args = patcher_command(command, log) + [str(patch_file), "--romfs", str(romfs), "--out", str(out)]
     flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
     try:
         proc = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,

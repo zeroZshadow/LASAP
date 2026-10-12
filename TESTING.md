@@ -8,7 +8,8 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - Docker Desktop with the image `devkitpro/devkita64:latest`.
 - Python venvs created with `uv` (Python 3.12):
   - `.venv-ap`: Archipelago requirements (`vendor/Archipelago/requirements.txt`) plus pytest.
-  - `.venv-lasr`: LASR requirements (oead, evfl, PyLibMS, PySide6, ...).
+  - `.venv-lasr`: the patcher's requirements (`patcher/requirements.txt`: oead, evfl, PyLibMS, ...).
+  - `.venv-release`: the same plus PyInstaller, for `build_release.py`.
 - `vendor/Archipelago`: Archipelago 0.6.8, with a junction `vendor/Archipelago/worlds/las` → `apworld/las`.
 
 ## Emulator: Ryubing (Ryujinx fork)
@@ -26,6 +27,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 | `reset_saves.sh [newgame]` | Restores sandbox saves from the user's saves, or from the new-game snapshot, and clears `sdcard/lasap` |
 | `ap.py <Generate.py\|MultiServer.py\|Launcher.py> ...` | Runs an AP entry point from `vendor/Archipelago` in `.venv-ap`; `LASAP_AP` points it at another checkout, such as a clean one with only `las.apworld` in `custom_worlds` |
 | `las_client.py [--nogui --connect host:port --name Slot]` | Runs the LAS client without the Launcher |
+| `build_release.py` | Builds the release world with the frozen Windows patcher inside (README, Building a release) |
 | `make_test_patch.py <out.aplas>` | Writes a synthetic patch (all locations AP items) for patcher tests |
 | `verify_patch.py <patch> <out dir>` | Checks that every shuffled chest holds the placeholder (its model variant) with its local id |
 | `test_client.py` / `drive.py <script>` | Talk to the module directly on the sandbox port (only when no AP client is connected) |
@@ -114,6 +116,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Boot.** The module boots with LASR's randomizer hooks; the socket listens on 43384, or on the `config.ini` port: the sandbox on 43385 ran its boot tests while the user played on 43384.
 - **Generation and patching.** Generate → patch → deploy → new game works end to end.
 - **Packaged world.** `las.apworld` built with "Build APWorlds" generates in a clean Archipelago checkout (`custom_worlds`), and its Launcher starts "Links Awakening Switch Client". The patcher runs in a fresh venv made from `patcher/requirements.txt`.
+- **Release build.** The frozen patcher (`build_release.py`) writes the same files, byte for byte, as the patcher run from source for the same patch. The release `las.apworld` in a clean Archipelago checkout, with no patcher command, unpacks its patcher once into the cache and installs that same mod (2026-10-12).
 - **Notices.** With the client connected to the game only, the game knows all location names from `ap_names.txt`. Connecting the server shows "Archipelago connected as ZeroLAS" in the autosave popup, with the Archipelago logo and both lines of text; the game keeps running. The popup shows "Now saving." again afterwards (`DBG savepopup`).
 - **Closing the emulator.** Windowed Ryujinx exits within a few seconds of closing its window, modded or vanilla. Headless Ryujinx (`--no-gui`) ignores a window close either way.
 - **Client install.** Opening an `.aplas` from the clean checkout's Launcher, or with the double-click command, opens the client on its Patch tab.

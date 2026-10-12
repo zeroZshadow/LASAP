@@ -7,8 +7,8 @@
   Ryujinx and Eden are tested; other yuzu-based emulators should work the same way. A Switch with Atmosphère is
   untested.
 - A RomFS dump of the game. In Ryujinx: right-click the game, then Extract Data, RomFS.
-- The LAS patcher from the LASAP repository (`patcher/las_ap_patch.py` in its Python 3.12 venv, with the game module
-  built into `patcher/exl`). The repository's README describes the setup.
+- On 64-bit Windows, nothing else: the world carries the patcher. On other systems, the LAS patcher from the LASAP
+  repository; its README describes the setup.
 
 ## Installing the world
 
@@ -46,7 +46,7 @@ The Patch tab's advanced settings are for setups the client cannot find by itsel
 |---|---|
 | SD card folder | An emulator the client does not know, a Ryujinx data folder used with `--root-data-dir` (choose its `sdcard` folder; the client then starts Ryujinx with that data folder), or a Switch's SD card |
 | Mod folder | Mods go somewhere other than the emulator's default: `<SD card>/atmosphere/contents/01006BB00C6F0000` for Ryujinx and a Switch, `<data folder>/load/01006BB00C6F0000/Archipelago` for yuzu-based emulators |
-| Patcher command | The command that runs the LAS patcher (see the repository's README) |
+| Patcher command | Leave it empty on Windows to use the patcher the world carries. Otherwise the command that runs the LAS patcher (see the repository's README) |
 | Game address | The Switch's IP address when the game runs on a Switch; `127.0.0.1` for an emulator on this computer |
 
 The settings are saved in `host.yaml` under `las_options`.

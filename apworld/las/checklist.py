@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from . import emulators
-from .install import installed_seed
+from .install import bundled_patcher_resource, installed_seed
 
 OK, TODO, ERROR, INFO = "ok", "todo", "error", "info"
 
@@ -121,6 +121,8 @@ def check(patch_file: str, options: Dict[str, str]) -> Checklist:
     # patcher
     if options.get("patcher_command", "").strip():
         checks["patcher_command"] = Check(OK, "")
+    elif bundled_patcher_resource() is not None:
+        checks["patcher_command"] = Check(OK, "Built-in patcher.")
     else:
         checks["patcher_command"] = Check(ERROR, "The patcher is not set up: set the patcher command under Advanced "
                                                  "settings (see the setup guide).")

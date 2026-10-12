@@ -35,7 +35,8 @@ class LASSettings(settings.Group):
 
     class PatcherCommand(str):
         """
-        Command that runs the LAS patcher (patcher/las_ap_patch.py in the LASAP repository, in its Python 3.12 venv).
+        Command that runs the LAS patcher. Empty: the patcher the world carries (the release build, on 64-bit
+        Windows). Otherwise patcher/las_ap_patch.py in the LASAP repository, in its Python 3.12 venv.
         The client appends: <patch file> --romfs <romfs_folder> --out <temporary folder>
         Example: "D:/LASAP/.venv-lasr/Scripts/python.exe D:/LASAP/patcher/las_ap_patch.py"
         """

@@ -7,7 +7,7 @@ How the pieces fit and the contracts between them. FEASIBILITY.md covers the bac
 | Dir | What | Language / runtime |
 |---|---|---|
 | `apworld/las/` | Archipelago world (`Links Awakening Switch`) plus PC client | Python, AP's venv (`.venv-ap`, Py 3.12) |
-| `patcher/` | Builds the romfs/exefs mod from an AP patch file; derived from LASR (MIT) | Python, `.venv-lasr` (oead, evfl, PyLibMS) |
+| `patcher/` | Builds the romfs/exefs mod from an AP patch file; derived from LASR (MIT) | Python, `.venv-lasr` (oead, evfl, PyLibMS); frozen with PyInstaller for the release |
 | `las-ap-exl/` | exlaunch module (subsdk9) derived from Owen-Splat/exlaunch (GPL-2.0) | C++, Docker `devkitpro/devkita64` |
 
 The module runs LASR's hooks and its code patches (`patches.hpp`), except two of LASR's fixes (`lasrOnlyFixes`): the `CompareInt` event rewrite, which only LASR's own keysanity chest flows use, and item actors spawning by actor switch, which would undo the inventory-bit hiding of heart piece and seashell actors.
@@ -18,6 +18,12 @@ Flow:
 3. The game runs with the mod. The module listens on TCP port **43384**, or on the port `config.ini` sets (`[archipelago] port`); the client's `--game-port` must match. Players keep the default; the test sandbox uses its own port so it runs beside a modded game.
 4. The client connects to the AP server (websocket) and to the game (TCP), and relays checks and items.
 
+## Release
+
+`scripts/build_release.py` (in `.venv-release`, after `build_exl.sh`) writes `build/release/LASAP-<world version>/`: `las.apworld` and the options template `Links Awakening Switch.yaml`.
+- The patcher is frozen with PyInstaller as a folder (`las_ap_patcher.exe` with LASR's data, resources and the game module) and zipped into the world as `las/bin/patcher-windows-x64.zip`. Players install the one file; the world's own build ("Build APWorlds") is the same without it.
+- LASR imports PySide6 only for its GUI thread and signals; `patcher/lasr_qt.py` stands in for it, so the patcher needs no Qt. `las_ap_patch.py` sets LASR's paths (`randomizer_paths`) to its own folder, which is also where the frozen patcher keeps them.
+
 ## Client install
 
 - The client's Patch tab (`client_gui.py`) edits the settings in `host.yaml` under `las_options` (`host_settings.py`): `emulator`, `game_file`, `romfs_folder`, `sd_card_folder`, `mod_folder`, `patcher_command`, `game_host`. `checklist.py` turns them into one status line per setting and decides whether everything needed to install is valid.
@@ -27,7 +33,7 @@ Flow:
   - The game is the `.nsp` or `.xci` whose name holds the title id, or whose PFS0 file list holds the base game's ticket.
   - An SD card folder in the settings overrides the emulator's; for Ryujinx, its parent is the data folder, passed as `--root-data-dir` when it is not the default.
   - When no emulator is set, the client takes a running one (Windows, with Ryujinx's `--root-data-dir`), and opens the Patch tab instead of installing.
-- Install: the client runs `patcher_command <patch> --romfs <dump> --out <temp dir>` as a subprocess and logs its output (`install.py`). The patcher needs its own Python 3.12 venv (oead, evfl), so it does not run inside Archipelago. It then replaces `romfs` and `exefs` in the mod folder and copies `config/lasr-exl/config.ini` to the SD card, config last.
+- Install: the client runs `patcher_command <patch> --romfs <dump> --out <temp dir>` as a subprocess and logs its output (`install.py`). The patcher needs native packages (oead, evfl), so it does not run inside Archipelago. With `patcher_command` empty, the client runs the frozen patcher the release world carries (`las/bin/patcher-windows-x64.zip`, on 64-bit Windows), unpacked once per patcher version into Archipelago's cache folder (`las/patcher/<hash>`). It then replaces `romfs` and `exefs` in the mod folder and copies `config/lasr-exl/config.ini` to the SD card, config last.
 - The mod is current when the installed `config.ini`'s `[archipelago] seed_hash` matches the patch and both mod folders exist; then Install and play skips patching. Other Link's Awakening mod folders the emulator would also load are reported.
 - Opened with a patch file and a known emulator, the client installs, starts the emulator with the game (unless it runs), and connects to the patch's `server` as its `player_name`.
 - `file_types.py` registers `.aplas` for the current user (`HKCU\Software\Classes`), opening with the Archipelago Launcher, which hands the file to the client. It runs only from the Patch tab's button.

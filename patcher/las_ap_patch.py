@@ -16,9 +16,23 @@ import zipfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-# LASR resolves its data, resources and exl folder relative to sys.argv[0].
-sys.argv[0] = str(HERE / "las_ap_patch.py")
 sys.path.insert(0, str(HERE))
+
+import lasr_qt  # noqa: E402
+
+lasr_qt.install()
+# LASR looks for its data, resources and module next to its entry script, or elsewhere when it runs frozen
+# (PyInstaller). The patcher keeps them next to this file in both cases, where the frozen patcher has them too.
+from RandomizerCore.Paths import randomizer_paths  # noqa: E402
+
+randomizer_paths.IS_RUNNING_FROM_SOURCE = True
+randomizer_paths.ROOT_PATH = HERE
+randomizer_paths.SETTINGS_PATH = HERE / "settings.txt"
+randomizer_paths.LOGS_PATH = HERE / "log.txt"
+randomizer_paths.EXL_PATH = HERE / "exl"
+randomizer_paths.DATA_PATH = HERE / "RandomizerCore" / "Data"
+randomizer_paths.RESOURCE_PATH = HERE / "RandomizerUI" / "Resources"
+randomizer_paths.VERSION_PATH = HERE / "version.txt"
 
 import evfl  # noqa: E402
 import yaml  # noqa: E402

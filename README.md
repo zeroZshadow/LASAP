@@ -13,9 +13,27 @@ DESIGN.md has the contracts between the parts, TESTING.md covers the test harnes
 
 ## Playing
 
-The player's guide is `apworld/las/docs/setup_en.md`: install the world, open the `.aplas`, choose the emulator and the RomFS dump in the client's Patch tab, and press Install and play. The patcher runs from this repository, so it needs a one-time setup.
+The player's guide is `apworld/las/docs/setup_en.md`: install the world, open the `.aplas`, choose the emulator and the RomFS dump in the client's Patch tab, and press Install and play.
 
-### One-time setup
+On 64-bit Windows, the release's `las.apworld` is all a player installs: it carries the patcher and the game module, and the client uses them while its patcher command is empty. Elsewhere, or to run the patcher from this repository, do the one-time setup below.
+
+### Building a release
+
+1. Build the module (`bash scripts/build_exl.sh`).
+2. Create the release venv once:
+   ```bash
+   uv venv .venv-release --python 3.12
+   ```
+   ```bash
+   uv pip install -r patcher/requirements.txt pyinstaller --python .venv-release
+   ```
+3. Build:
+   ```bash
+   .venv-release/Scripts/python.exe scripts/build_release.py
+   ```
+   It writes `build/release/LASAP-<world version>/` with `las.apworld` and the options template. It also needs `.venv-ap` and `vendor/Archipelago` (TESTING.md) for "Build APWorlds".
+
+### One-time setup (patcher from this repository)
 
 1. **Install the world.** Copy `las.apworld` into Archipelago's `custom_worlds` folder. To build it, use the dev setup in TESTING.md (`vendor/Archipelago` with the `worlds/las` junction):
    ```bash

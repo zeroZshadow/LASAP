@@ -1,9 +1,12 @@
+import io
 import sys
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
+from unittest import mock
 
-from .. import emulators
+from .. import emulators, install
 from ..emulators import TITLE_ID
 from ..install import CONFIG_PATH, InstallError, installed_seed, patch_and_install, split_command
 
@@ -70,6 +73,31 @@ class TestInstall(unittest.TestCase):
         with self.assertRaises(InstallError):
             self.run_install("aaaa0001")
         self.assertIsNone(installed_seed(self.sd, self.mods))
+
+    def test_bundled_patcher(self) -> None:
+        """The release world's patcher is unpacked once per version; a new version replaces the old one."""
+        import Utils
+        root = Path(self.tmp.name)
+
+        def bundle(version: str) -> Path:
+            data = io.BytesIO()
+            with zipfile.ZipFile(data, "w") as zf:
+                zf.writestr(install.BUNDLED_PATCHER_EXE.as_posix(), version)
+            path = root / f"bundle {version}.zip"
+            path.write_bytes(data.getvalue())
+            return path
+
+        with mock.patch.object(Utils.cache_path, "cached_path", str(root / "cache"), create=True),                 mock.patch.object(install, "bundled_patcher_resource", return_value=bundle("1")):
+            first = install.bundled_patcher(self.lines.append)
+            self.assertEqual(first.read_text(), "1")
+            self.assertEqual(install.bundled_patcher(self.lines.append), first)
+            self.assertEqual(sum("Unpacking" in line for line in self.lines), 1)
+            with mock.patch.object(install, "bundled_patcher_resource", return_value=bundle("2")):
+                second = install.bundled_patcher(self.lines.append)
+            self.assertEqual(second.read_text(), "2")
+            self.assertFalse(first.exists())
+        with mock.patch.object(install, "bundled_patcher_resource", return_value=None):
+            self.assertIsNone(install.bundled_patcher(self.lines.append))
 
     def test_split_command(self) -> None:
         self.assertEqual(split_command('"C:/Program Files/py.exe" D:\\a\\b.py'),
