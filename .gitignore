@@ -8,3 +8,4 @@ deploy/
 out/
 *.log
 patcher/exl/
+patcher/RandomizerUI/Resources/textures/chest/bfres/
