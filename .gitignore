@@ -1,0 +1,9 @@
+reference/
+vendor/
+.venv*/
+__pycache__/
+*.pyc
+build/
+deploy/
+out/
+*.log
