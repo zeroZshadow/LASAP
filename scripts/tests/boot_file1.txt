@@ -1,0 +1,20 @@
+# From a fresh boot: skip the intro, open file select, load file 1 (a played file: the user's, or the one in the
+# new-game snapshot). Each step checks the screen the module reports (STATE screen=) and stops the script within
+# seconds if it fails. Menu presses can be dropped, so each one is repeated until the screen it leads to shows.
+expect HELLO 60
+# Any button skips the intro to the title; L+R opens file select once the title has faded in.
+press 1 200 title
+press c0 500 menu 5
+# The cursor starts on the last file used and stops at file 1, so a few presses up always end there, also when
+# some are dropped.
+send DBG input 2000 200
+wait 0.6
+send DBG input 2000 200
+wait 0.6
+send DBG input 2000 200
+wait 0.6
+send DBG input 2000 200
+wait 0.6
+# A opens file 1, A again starts it.
+press 1 300 loading|level 6
+loaded 60

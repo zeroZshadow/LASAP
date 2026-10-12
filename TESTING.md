@@ -64,14 +64,15 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Script ops.** `e2e.py run` scripts (`scripts/tests/*.txt`) send lines and check the game between steps, so a failed step stops the script within seconds:
   - `send`, `wait`, `mash`, `expect <regex|HELLO> [s]`: the `drive.py` basics.
   - `state`, `shot <png>`: print the STATE line, capture the window.
-  - `screen <name> [s]`: wait for a screen. `press <buttons> <ms> <screen> [tries]`: press until that screen shows.
+  - `screen <name> [s]`: wait for a screen. `press <buttons> <ms> <screen> [tries]`: press until that screen shows; `<screen>` may list alternatives (`loading|level`). `level <name>`: stop unless the player is in that level.
   - `free [s]`: wait until the player can move and no item-get shows or waits. `loaded [s]`: the same in a level entered after the last `send`. `inlevel [s]`: a level entered after the last `send` has loaded.
   - `dismiss [s]`: press B until the player is free.
   - `warp <level> <x> <y> <z>`: reload a level there (through another level when it is the current one) and wait. `goto <x> <y> <z>`: hop there within the level. `at <x> <z> [tol]`: stop unless the player stands there.
 - **Test scripts.**
-  - `boot_file2` and `newgame_file2` boot to file 2. The new-game one ends free in Tarin's house, with Marin's lines closed by B.
+  - `newgame_file2` boots to a new game in file 2 (after `reset_saves.sh newgame`) and ends free in Tarin's house, with Marin's lines closed by B. `boot_file1` loads file 1, a played file.
+  - Menu presses can be dropped, during the file menu's fade-in and at random. The boot scripts never depend on one press: they repeat A until the game loads, and move the cursor only upwards, where it stops at file 1. `newgame_file2` checks the level it ends in. Both passed 5 runs in a row from a fresh start (2026-10-12).
   - `beach_chest` (lifts the rock in front of the chest), `island_bush` (cuts a bush), `diamond_island` (walks into a free-standing item) `ghost_house_pot` (lifts the Ghost House pot and picks up its item) and `itemget_models` (the AP model next to a rupee) each check a kind of location and save screenshots in the sandbox.
-- **New-game snapshot.** `D:\DEV\LASAP-sandbox\save-newgame` is the sandbox save folder right after file 2 was created (file select, file 2, Normal, OK on the name entry) and before any play. `reset_saves.sh newgame` restores it, so new-game tests skip the name entry. The file-select cursor starts on the last file used.
+- **New-game snapshot.** `D:\DEV\LASAP-sandbox\save-newgame` is the sandbox save folder right after file 2 was created (file select, file 2, Normal, OK on the name entry) and before any play. File 1 and the autosave are a copy of the user's played file. `reset_saves.sh newgame` restores it, so new-game tests skip the name entry. The file-select cursor starts on the last file used, file 2 in the snapshot, and stops at file 1 and the autosave instead of wrapping.
 - **Overworld coordinates.** Screen `Field_<row><col>` (col A=0) is around x = 15·col + 7.5, z = 12·(row − 1) + 6.75. Mabe at Marin's door is (38.25, 10.5, 128.25); in front of the shop is (51.75, 10.5, 117), walk up to enter.
 - **Warps and pits.** Warp into a dungeon or house from `Field`: after a warp out of `TownWell` (Link standing in water) the screen can stay black until the emulator restarts. `pos` also sets the respawn point, so a `pos` over a pit makes Link fall again on every respawn until he dies; reset with a warp to another level and back.
 - **Health.** `poke 84 1c00` sets health to 7 hearts (quarter hearts, u16).

@@ -12,7 +12,8 @@ python e2e.py run <script.txt>                     runs a drive.py script throug
                                                    also `state` (print the STATE line), `free [secs]` (wait until
                                                    the player can move), `loaded [secs]` (free in a level entered
                                                    after the last send, e.g. a warp), `at <x> <z> [tol]` (stop
-                                                   unless the player is there), `warp <level> <x> <y> <z>` (reload
+                                                   unless the player is there), `level <name>` (stop unless the
+                                                   player is in that level), `warp <level> <x> <y> <z>` (reload
                                                    there and wait), `goto <x> <y> <z>` and `shot <png>`
 
 Environment: LASAP_E2E (session folder, default D:/DEV/LASAP-sandbox/e2e), LASAP_SLOT (default Link).
@@ -149,6 +150,11 @@ def run(script: Path) -> None:
             wait_free(40, since=time.time())
         elif op == "goto":
             print(goto(*[float(v) for v in rest.split()][:3], step=9.0))
+        elif op == "level":
+            # level <name>: stops the script unless the player is in that level
+            line = state()
+            if f" level={rest} " not in line:
+                raise SystemExit(f"not in level {rest}: {line}")
         elif op == "at":
             # at <x> <z> [tolerance]: stops the script unless the player stands there
             p = [float(v) for v in rest.split()]
@@ -175,11 +181,11 @@ def wait_free(seconds: float, since: float = 0) -> None:
 
 
 def wait_screen(name: str, seconds: float, fail: bool = True) -> bool:
-    """Waits until the STATE line shows `screen=<name>`."""
+    """Waits until the STATE line shows `screen=<name>`; `name` may list alternatives: `loading|level`."""
     end = time.time() + seconds
     while True:
         line = state()
-        if f"screen={name} " in line:
+        if any(f"screen={n} " in line for n in name.split("|")):
             return True
         if time.time() > end:
             if fail:
