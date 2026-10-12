@@ -31,7 +31,8 @@ class TestDefault(LASTestBase):
                 patch = json.load(f)
 
         self.assertEqual(set(patch), {"format", "seed_name", "player", "slot_name", "seed_hash", "settings",
-                                      "starting_items", "placements", "location_ids", "dungeon_entrances"})
+                                      "starting_items", "placements", "location_ids", "location_names",
+                                      "dungeon_entrances"})
         self.assertEqual(patch["format"], 1)
         self.assertEqual(patch["seed_hash"], slot_data["seed_hash"])
         self.assertEqual(patch["player"], self.player)
@@ -44,6 +45,11 @@ class TestDefault(LASTestBase):
             self.assertTrue(item == "ap-item" or item in ITEM_DEFS, (loc, item))
         shuffled = {loc for loc, item in patch["placements"].items() if item == "ap-item"}
         self.assertEqual(set(patch["location_ids"]), shuffled)
+        self.assertEqual(set(patch["location_names"]), shuffled)
+        for loc, (item_name, owner) in patch["location_names"].items():
+            item = self.multiworld.get_location(LOCATION_NAMES[loc], self.player).item
+            self.assertEqual(item_name, item.name)
+            self.assertEqual(owner, "" if item.player == self.player else self.multiworld.player_name[item.player])
         for loc, local_id in patch["location_ids"].items():
             self.assertEqual(local_id, LOCATION_OFFSETS[loc])
             self.assertLess(local_id, 0x10000)
