@@ -108,12 +108,12 @@ namespace {
     // It returns the running action as a libc++ shared_ptr.
     struct StrView { const char* data; size_t len; };
     struct SharedPtr { void* ptr; void* ctrl; };
-    using ItemGetSequenceFn = void (*)(SharedPtr* out, void* player, int itemId, bool keepCarry, StrView* messageEntry);
     using ReleaseWeakFn = void (*)(void* ctrl);
     constexpr uintptr_t kItemGetSequence = 0xd795d0;
     constexpr uintptr_t kSharedWeakReleaseWeak = 0x14311f0;
     // Offsets found by memory comparison (TESTING.md, "Reverse engineering").
     constexpr size_t kPlayerEventState = 0x4ed;   // u8, 0 while the player is free (no talk, event or cutscene)
+    constexpr size_t kPlayerCarried = 0x19b0;     // pointer, set while Link holds something over his head
     constexpr size_t kFrameworkPaused = 0x510;    // u8, 1 while the pause menu is open
     constexpr size_t kFrameworkScreen = 0xb0;     // u8: 2 intro and title, 5 file menus, 0x0b level load, 0x17 level
     constexpr size_t kFrameworkIntro = 0x6d0;     // pointer, set only while the intro plays
@@ -130,27 +130,27 @@ namespace {
             default: return std::to_string(f[kFrameworkScreen]);
         }
     }
-    constexpr size_t kActionState = 0x38;         // u32 of the item-get action
-    constexpr u32 kActionDone = 0x2a;             // ... once its text is closed
     constexpr u64 kItemGetTimeoutMs = 120000;
+    constexpr u64 kItemEventStartMs = 3000;      // a requested item event that has not started by then is retried
     constexpr size_t kShowQueueMax = 16;
     constexpr size_t kShowFillerMax = 3;          // with this many waiting, filler is no longer shown
     constexpr u64 kFreeSettleMs = 600;            // the player must be free this long before an item-get starts
-    constexpr u64 kItemGetMinMs = 1500;           // an item-get done sooner was cancelled by the game
-    constexpr int kItemGetTries = 3;
-    constexpr u64 kTextButtons = 0x3;             // A, B
-    constexpr u64 kButtonB = 0x2;
+    constexpr int kItemEventTries = 3;
 
-    SharedPtr g_ItemGetAction{};
-    int g_ItemGetId = -1;
-    int g_ItemGetTry = 0;
-    u64 g_ItemGetSince = 0;
+    int g_ItemEventTry = 0;
     u64 g_FreeSince = 0;
     bool g_WasFree = false;
     // A received item waiting to be shown; with a sender, it shows "You got <item> from <sender>!".
     struct Show { int id; std::string item; std::string sender; };
     std::deque<Show> g_ShowQueue;
-    Show g_Showing{};
+    Show g_Showing{};  // the item of the current event; id -1 for a DBG itemget, which is not retried
+    // A received item plays as the Common.bfevfl event AP::ITEM_EVENT_ENTRY: requested, then running until the
+    // player is free again.
+    enum class ItemEvent { None, Requested, Running };
+    ItemEvent g_ItemEvent = ItemEvent::None;
+    u64 g_ItemEventSince = 0;
+    int g_ItemEventId = -1;            // what the event's item-get shows instead of the placeholder
+    std::string g_ItemEventMessage;    // and its message entry
 
     // Client connection notices
     constexpr u64 kNoClientNoticeMs = 20000;   // in a level this long without a client: say so, once per boot
@@ -170,35 +170,60 @@ namespace {
         sp = SharedPtr{};
     }
 
-    bool StartItemGet(int itemId, const std::string& messageEntry) {
-        Game::Framework* fmwk = Game::GetFramework();
-        if (fmwk == nullptr || fmwk->mPlayer == nullptr) return false;
-        auto fn = reinterpret_cast<ItemGetSequenceFn>(g_BaseAddress + offset_manager.Offset(kItemGetSequence));
-        StrView msg{messageEntry.c_str(), messageEntry.size()};
-        SharedPtr out{};
-        fn(&out, fmwk->mPlayer, itemId, false, &msg);
-        if (out.ptr == nullptr) {
-            ReleaseShared(out);
-            return false;
-        }
-        g_ItemGetAction = out;
-        g_ItemGetSince = NowMs();
-        return true;
+    // Starting an event of Common.bfevfl, as the game does for its game over:
+    // load the flowchart resource, make an event for the entry, prepare it and hand it to the event manager.
+    constexpr uintptr_t kResourceManager = 0x1cc6db8;   // global: resource manager pointer
+    constexpr uintptr_t kEventManager = 0x1cb24d8;      // global: event manager pointer
+    constexpr uintptr_t kLoadResource = 0xfbbd80;       // (out handle, manager, StringView* path)
+    constexpr uintptr_t kWaitResource = 0x3dc20;        // (resource)
+    constexpr uintptr_t kResourceFlowchart = 0x3d9f0;   // (out flowchart, handle*)
+    constexpr uintptr_t kCreateEvent = 0x80c290;        // (out event, flowchart*, StringView* entry)
+    constexpr uintptr_t kPrepareEvent = 0x80db00;       // (event)
+    constexpr uintptr_t kRequestEvent = 0x81f2e0;       // (out, event manager, event*)
+
+    template<typename T>
+    T GameFn(uintptr_t offset) { return reinterpret_cast<T>(g_BaseAddress + offset_manager.Offset(offset)); }
+
+    void* GameGlobal(uintptr_t offset) {
+        return *reinterpret_cast<void**>(g_BaseAddress + offset_manager.Offset(offset));
     }
 
-    bool ItemGetRunning() {
-        if (g_ItemGetAction.ptr == nullptr) return false;
-        u32 state = *reinterpret_cast<u32*>(reinterpret_cast<u8*>(g_ItemGetAction.ptr) + kActionState);
-        u64 ran = NowMs() - g_ItemGetSince;
-        if (state != kActionDone && ran < kItemGetTimeoutMs) return true;
-        ReleaseShared(g_ItemGetAction);
-        Logging.Log("[AP] item-get " + std::to_string(g_ItemGetId) + " ended after " + std::to_string(ran) + " ms, state " + std::to_string(state));
-        if (state == kActionDone && ran < kItemGetMinMs && ++g_ItemGetTry < kItemGetTries) {
-            g_ShowQueue.push_front(g_Showing);
-        } else {
-            g_ItemGetTry = 0;
+    bool RequestCommonEvent(const char* entry) {
+        void* resources = GameGlobal(kResourceManager);
+        void* events = GameGlobal(kEventManager);
+        if (resources == nullptr || events == nullptr) return false;
+        static const char kPath[] = "event/Common.bfevfl";
+        StrView path{kPath, sizeof(kPath) - 1};
+        StrView name{entry, strlen(entry)};
+        SharedPtr handle{}, flowchart{}, event{}, request{};
+        GameFn<void (*)(SharedPtr*, void*, StrView*)>(kLoadResource)(&handle, resources, &path);
+        if (handle.ptr != nullptr) GameFn<void (*)(void*)>(kWaitResource)(handle.ptr);
+        GameFn<void (*)(SharedPtr*, SharedPtr*)>(kResourceFlowchart)(&flowchart, &handle);
+        bool ok = false;
+        if (flowchart.ptr != nullptr) {
+            GameFn<void (*)(SharedPtr*, SharedPtr*, StrView*)>(kCreateEvent)(&event, &flowchart, &name);
+            if (event.ptr != nullptr) {
+                GameFn<void (*)(void*)>(kPrepareEvent)(event.ptr);
+                GameFn<void (*)(SharedPtr*, void*, SharedPtr*)>(kRequestEvent)(&request, events, &event);
+                ok = true;
+            }
         }
-        return false;
+        ReleaseShared(request);
+        ReleaseShared(event);
+        ReleaseShared(flowchart);
+        ReleaseShared(handle);
+        return ok;
+    }
+
+    // Plays an item-get of itemId with that message entry ("" for the item's own text) as the item event.
+    bool StartItemEvent(int itemId, const std::string& messageEntry) {
+        g_ItemEventId = itemId;
+        g_ItemEventMessage = messageEntry;
+        Logging.Log("[AP] item event " + std::to_string(itemId) + " request");
+        if (!RequestCommonEvent(AP::ITEM_EVENT_ENTRY)) return false;
+        g_ItemEvent = ItemEvent::Requested;
+        g_ItemEventSince = NowMs();
+        return true;
     }
 
     // True when the player can move: no talk, event, cutscene or pause menu.
@@ -207,6 +232,13 @@ namespace {
         if (!PlayerReady()) return false;
         if (reinterpret_cast<u8*>(fmwk)[kFrameworkPaused] != 0) return false;
         return reinterpret_cast<u8*>(fmwk->mPlayer)[kPlayerEventState] == 0;
+    }
+
+    // An item-get takes what Link holds over his head out of the game, so items wait until he puts it down.
+    bool PlayerCarrying() {
+        Game::Framework* fmwk = Game::GetFramework();
+        if (fmwk == nullptr || fmwk->mPlayer == nullptr) return false;
+        return *reinterpret_cast<void**>(reinterpret_cast<u8*>(fmwk->mPlayer) + kPlayerCarried) != nullptr;
     }
 
     // Items whose own text tells where they came from in the vanilla game (the Boomerang's trade, the Mad Batter's
@@ -247,29 +279,68 @@ namespace {
         g_ShowQueue.push_back(show);
     }
 
-    // Shows queued items one at a time while the player is free.
+    // True while a received item's event is requested or running.
+    bool ItemEventActive(bool free) {
+        u64 since = NowMs() - g_ItemEventSince;
+        switch (g_ItemEvent) {
+            case ItemEvent::None:
+                return false;
+            case ItemEvent::Requested:
+                // The hook marks it running once its item-get starts.
+                if (since < kItemEventStartMs) return true;
+                Logging.Log("[AP] item event " + std::to_string(g_ItemEventId) + " did not start");
+                if (g_Showing.id >= 0 && ++g_ItemEventTry < kItemEventTries) g_ShowQueue.push_front(g_Showing);
+                else g_ItemEventTry = 0;
+                break;
+            case ItemEvent::Running:
+                if (!free && since < kItemGetTimeoutMs) return true;
+                Logging.Log("[AP] item event " + std::to_string(g_ItemEventId) + " ended after " + std::to_string(since) + " ms");
+                g_ItemEventTry = 0;
+                break;
+        }
+        g_ItemEvent = ItemEvent::None;
+        return false;
+    }
+
+    // Shows queued items one at a time, each as an event, once the player is free and holds nothing.
     void TickItemGet() {
         bool free = PlayerFree();
         if (free && !g_WasFree) g_FreeSince = NowMs();
         if (free) AP::ExpireFoundLocation();
         g_WasFree = free;
-        if (ItemGetRunning()) {
+        if (ItemEventActive(free)) {
             g_WasFree = false;  // the settle time starts again after each item-get
             return;
         }
-        if (g_ShowQueue.empty() || !free || NowMs() - g_FreeSince < kFreeSettleMs) return;
+        if (g_ShowQueue.empty() || !free || PlayerCarrying() || NowMs() - g_FreeSince < kFreeSettleMs) return;
         g_Showing = g_ShowQueue.front();
         g_ShowQueue.pop_front();
         int id = g_Showing.id;
-        g_ItemGetId = id;
-        Logging.Log("[AP] item-get " + std::to_string(id) + " start");
         std::string message;
         if (!g_Showing.sender.empty() || HasSourceText(id)) {
             AP::SetReceivedText(g_Showing.item, g_Showing.sender);
             message = AP::RECEIVED_LABEL;
         }
-        if (!StartItemGet(id, message)) AP::Log("item-get " + std::to_string(id) + " did not start");
+        if (!StartItemEvent(id, message)) AP::Log("item event " + std::to_string(id) + " could not be requested");
     }
+
+    // The item event's item-get shows the placeholder with RECEIVED_LABEL as message entry; the requested item
+    // and its message take their place.
+    HOOK_DEFINE_TRAMPOLINE(ItemGetSequence) {
+        static void Callback(SharedPtr* out, void* player, int itemId, bool keepCarry, StrView* messageEntry) {
+            size_t len = strlen(AP::RECEIVED_LABEL);
+            if (g_ItemEvent == ItemEvent::Requested && itemId == AP::PLACEHOLDER_ITEM_ID && messageEntry != nullptr &&
+                messageEntry->len == len && memcmp(messageEntry->data, AP::RECEIVED_LABEL, len) == 0) {
+                StrView message{g_ItemEventMessage.c_str(), g_ItemEventMessage.size()};
+                g_ItemEvent = ItemEvent::Running;
+                g_ItemEventSince = NowMs();
+                Logging.Log("[AP] item event " + std::to_string(g_ItemEventId) + " start");
+                Orig(out, player, g_ItemEventId, keepCarry, &message);
+                return;
+            }
+            Orig(out, player, itemId, keepCarry, messageEntry);
+        }
+    };
 
     bool IsTrapKey(const std::string& key) { return key.ends_with("Trap") || key == "$ENEMY"; }
 
@@ -399,8 +470,9 @@ namespace {
         if (fmwk && fmwk->mPlayer) {
             s += " event=" + std::to_string(reinterpret_cast<u8*>(fmwk->mPlayer)[kPlayerEventState]);
             s += " paused=" + std::to_string(reinterpret_cast<u8*>(fmwk)[kFrameworkPaused]);
+            s += std::string(" carry=") + (PlayerCarrying() ? "1" : "0");
         }
-        s += " showq=" + std::to_string(g_ShowQueue.size()) + (g_ItemGetAction.ptr ? "+1" : "");
+        s += " showq=" + std::to_string(g_ShowQueue.size()) + (g_ItemEvent != ItemEvent::None ? "+1" : "");
         return s;
     }
 
@@ -460,14 +532,12 @@ namespace {
         } else if (cmd == "text") {
             AP::Send(AP::TextState());
         } else if (cmd == "peek" && a.size() >= 5) {
-            // DBG peek <p|f|i|a|c> <hex offset> <hex length>: bytes of the player, the framework the level-load data, or the last item-get action and its control block
+            // DBG peek <p|f|i> <hex offset> <hex length>: bytes of the player, the framework or the inventory
             Game::Framework* fmwk = Game::GetFramework();
             const u8* base = nullptr;
             if (a[2] == "p") base = fmwk ? reinterpret_cast<const u8*>(fmwk->mPlayer) : nullptr;
             else if (a[2] == "f") base = reinterpret_cast<const u8*>(fmwk);
             else if (a[2] == "i") base = *reinterpret_cast<const u8**>(g_symbols["InventoryPtr"]);
-            else if (a[2] == "a") base = reinterpret_cast<const u8*>(g_ItemGetAction.ptr);
-            else if (a[2] == "c") base = reinterpret_cast<const u8*>(g_ItemGetAction.ctrl);
             if (base == nullptr) {
                 AP::Send("ERR peek: no object");
                 return true;
@@ -498,16 +568,17 @@ namespace {
             }
             AP::Send("OK poke");
         } else if (cmd == "itemget" && a.size() >= 3) {
-            // DBG itemget <item key or id> [message entry]
+            // DBG itemget <item key or id> [message entry]: the item event, without granting or waiting in the queue
             if (!PlayerReady()) return false;
-            if (ItemGetRunning()) {
+            if (g_ItemEvent != ItemEvent::None) {
                 AP::Send("ERR itemget: a display is running");
                 return true;
             }
             bool numeric = !a[2].empty() && a[2].find_first_not_of("0123456789") == std::string::npos;
             int id = numeric ? std::stoi(a[2]) : ItemIdFromKey(a[2]);
-            bool ok = id >= 0 && StartItemGet(id, a.size() >= 4 ? a[3] : "");  // bypasses the queue
-            AP::Send(std::string(ok ? "OK" : "ERR") + " itemget " + std::to_string(id) + " action=" + HexU64((u64)g_ItemGetAction.ptr));
+            g_Showing = Show{-1, "", ""};
+            bool ok = id >= 0 && StartItemEvent(id, a.size() >= 4 ? a[3] : "");
+            AP::Send(std::string(ok ? "OK" : "ERR") + " itemget " + std::to_string(id));
         } else if (cmd == "dumpmain") {
             // Writes the loaded, decrypted main module (text..data) to sd:/lasap/main.bin for reverse engineering.
             const auto& info = exl::util::GetMainModuleInfo();
@@ -596,6 +667,7 @@ namespace AP {
     void Init(const std::string& seed_hash, int port) {
         if (!seed_hash.empty()) g_SeedHash = seed_hash;
         InstallTextHooks();
+        ItemGetSequence::InstallAtOffset(offset_manager.Offset(kItemGetSequence));
         LoadLocationNames();
         StartNetwork(port > 0 ? port : PORT);
     }
@@ -671,14 +743,6 @@ namespace AP {
                 state->mAnalogStickL.mX = g_InjectLX;
                 state->mAnalogStickL.mY = g_InjectLY;
             }
-        }
-        // An item-get started outside an event does not lock the player, so only the text buttons get through.
-        // A becomes B: the press that closes the text would otherwise also talk to or lift what Link faces.
-        if (g_ItemGetAction.ptr != nullptr) {
-            u64 buttons = state->mButtons._storage[0];
-            state->mButtons._storage[0] = (buttons & kTextButtons) ? kButtonB : 0;
-            state->mAnalogStickL.mX = state->mAnalogStickL.mY = 0;
-            state->mAnalogStickR.mX = state->mAnalogStickR.mY = 0;
         }
     }
 }

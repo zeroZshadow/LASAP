@@ -23,6 +23,9 @@ namespace AP {
     // (System.msbt). Their text is replaced at runtime (ap_text.cpp).
     constexpr const char* FOUND_LABEL = "ArchipelagoItem";
     constexpr const char* RECEIVED_LABEL = "APReceived";
+    // Common.bfevfl entry the patcher adds: Link's item-get of the placeholder with RECEIVED_LABEL as its message
+    // entry. Received items play as this event; the module swaps in the received item and its text.
+    constexpr const char* ITEM_EVENT_ENTRY = "APItemGet";
     // Location names the patcher writes next to config.ini.
     constexpr const char* NAMES_PATH = "sd:/config/lasr-exl/ap_names.txt";
 

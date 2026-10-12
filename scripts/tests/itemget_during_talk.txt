@@ -1,0 +1,29 @@
+# An item arrives while Link talks to the Mabe shopkeeper (10.5 0 7.5, talked to from the tile below). Its item-get
+# waits for the talk to end, then plays as its own event; afterwards Link is free and nothing waits.
+# Screenshots: talk_1 the talk with the item waiting, talk_2 the item-get, talk_3 after it (the camera back on
+# the whole room).
+warp Field 51.75 10.5 117
+send DBG input 0 1200 0 32767
+inlevel 20
+level Shop
+free 10
+send DBG pos 10.5 0 9
+wait 1
+at 10.5 9
+send DBG input 0 300 0 32767
+wait 0.8
+send DBG input 1 400
+wait 2
+check event=22
+send DBG grant Seashell 1 -1 1
+wait 2
+check event=22 paused=0 carry=0 showq=1(\s|$)
+shot D:/DEV/LASAP-sandbox/talk_1.png
+# B closes the talk; the item-get starts once Link has been free for a moment.
+mash 2 1
+wait 1.5
+check showq=0\+1
+shot D:/DEV/LASAP-sandbox/talk_2.png
+dismiss 20
+wait 2
+shot D:/DEV/LASAP-sandbox/talk_3.png

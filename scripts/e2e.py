@@ -13,7 +13,8 @@ python e2e.py run <script.txt>                     runs a drive.py script throug
                                                    the player can move), `loaded [secs]` (free in a level entered
                                                    after the last send, e.g. a warp), `at <x> <z> [tol]` (stop
                                                    unless the player is there), `level <name>` (stop unless the
-                                                   player is in that level), `warp <level> <x> <y> <z>` (reload
+                                                   player is in that level), `check <regex>` (stop unless the
+                                                   STATE line matches), `await <secs> <regex>` (wait for it), `warp <level> <x> <y> <z>` (reload
                                                    there and wait), `goto <x> <y> <z>` and `shot <png>`
 
 Environment: LASAP_E2E (session folder, default D:/DEV/LASAP-sandbox/e2e), LASAP_SLOT (default Link).
@@ -150,6 +151,19 @@ def run(script: Path) -> None:
             wait_free(40, since=time.time())
         elif op == "goto":
             print(goto(*[float(v) for v in rest.split()][:3], step=9.0))
+        elif op == "check":
+            # check <regex>: stops the script unless the STATE line matches
+            line = state()
+            if not re.search(rest, line):
+                raise SystemExit(f"STATE does not match /{rest}/: {line}")
+        elif op == "await":
+            # await <secs> <regex>: waits until the STATE line matches, or stops the script
+            secs, _, rx = rest.partition(" ")
+            end = time.time() + float(secs)
+            while not re.search(rx, line := state()):
+                if time.time() > end:
+                    raise SystemExit(f"timeout waiting for STATE /{rx}/: {line}")
+                time.sleep(0.5)
         elif op == "level":
             # level <name>: stops the script unless the player is in that level
             line = state()

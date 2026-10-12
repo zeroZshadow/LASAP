@@ -153,9 +153,8 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 
 **Showing received items**
 - The module grants an item the moment its `ITEM` line is handled, and queues a display of it.
-- A display is the game's own item-get (Link holds the item up, the item's text shows). The module calls the code behind the event action `Link.GenericItemGetSequenceByKey` directly.
-- A display starts once the player has been free for 0.6 s: no talk, event, cutscene, pause menu or level load. Displays run one at a time.
-- During a display only A and B reach the game, and A arrives as B, so Link cannot walk away and the closing press does not start a talk.
+- A display is the game's own item-get (Link holds the item up, the item's text shows), played as an event: the patcher adds the `Common.bfevfl` entry `APItemGet`, Link's item-get of the placeholder with the message entry `APReceived`. The module starts that entry the way the game starts its game over, and hooks the item-get code behind `Link.GenericItemGetSequenceByKey` to show the received item and its text instead. As an event, the game locks Link's controls and returns the camera when it ends; an item-get outside an event leaves the camera zoomed in.
+- A display starts once the player has been free for 0.6 s (no talk, event, cutscene, pause menu or level load) and holds nothing over his head: an item-get takes a held object out of the game, such as a shop item. Displays run one at a time.
 - With three or more displays waiting, filler (rupees, ammo, drops) is granted without a display. The queue is not saved; a restart drops pending displays, not items.
 - Traps show no item-get; the autosave popup names the trap and its sender.
 

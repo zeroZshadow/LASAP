@@ -56,6 +56,9 @@ PLACEHOLDER_TEXT = "You found an [COLOR_SKYBLUE]Archipelago item[COLOR_WHITE]!"
 # The exlaunch module replaces both texts at runtime with the item and player names (AP::FOUND_LABEL, AP::RECEIVED_LABEL).
 RECEIVED_KEY = "APReceived"
 RECEIVED_TEXT = "You got an [COLOR_PINK]Archipelago item[COLOR_WHITE]!"
+# The module plays a received item's item-get as this Common.bfevfl event, so the game locks the controls and returns
+# the camera when it ends. The module swaps the placeholder and message for the received item (AP::ITEM_EVENT_ENTRY).
+ITEM_EVENT_ENTRY = "APItemGet"
 ITEM_TEXT_STYLE_FROM = "GetHookShot"  # System.msbt entry whose window style the AP texts use
 PLACEHOLDER_NAME_KEY = "ItemName_ArchipelagoItem"
 PLACEHOLDER_NAME = "Archipelago Item"
@@ -129,6 +132,13 @@ def _add_placeholder_text_event(self) -> None:
         ("Dialog", "Show", {"message": f"System:{RECEIVED_KEY}"})
     ])
     self.parent.file_manager.writeFile("Item.bfevfl", flow)
+    common = self.parent.file_manager.readFile("Common.bfevfl")
+    event_tools.addEntryPoint(common.flowchart, ITEM_EVENT_ENTRY)
+    event_tools.createActionChain(common.flowchart, ITEM_EVENT_ENTRY, [
+        ("Link", "GenericItemGetSequenceByKey", {"itemKey": PLACEHOLDER_KEY, "keepCarry": False,
+                                                 "messageEntry": RECEIVED_KEY}),
+    ])
+    self.parent.file_manager.writeFile("Common.bfevfl", common)
 
 
 def _add_placeholder_text(self) -> None:

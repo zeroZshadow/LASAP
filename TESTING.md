@@ -42,18 +42,18 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 
   | Command | Effect |
   |---|---|
-  | `state` | Prints level, screen (`intro`, `title`, `menu`, `loading`, `level` or the raw ID), position, health, rupees, key inventory bits, the received counter, the player's event state, the pause flag and the item-get display queue (`+1` while one shows) |
+  | `state` | Prints level, screen (`intro`, `title`, `menu`, `loading`, `level` or the raw ID), position, health, rupees, key inventory bits, the received counter, the player's event state, the pause flag, whether Link holds something over his head (`carry`) and the item-get display queue (`+1` while one shows) |
   | `flag <name>` / `setflag <name> 0\|1` | Reads or sets an event flag |
   | `input <buttons hex> <ms> [lx ly]` | Holds buttons and the left stick for a duration |
   | `grant <key> <count> <dungeon> [show 0\|1]` | Same path as `ITEM`, without touching the counter |
   | `text` | Prints the in-game text state: known location names, hooked messages, the last found location |
-  | `itemget <key or item id> [message entry]` | Starts the native item-get display directly, bypassing the queue. Model variants by ID (from the patched `Items.gsheet`) |
+  | `itemget <key or item id> [message entry]` | Plays the item-get display (the item event) without granting the item or waiting in the queue. Model variants by ID (from the patched `Items.gsheet`) |
   | `give <id> <count> <index>` | Raw `Inventory::AddItemID` |
   | `collect <local id>` | Simulates a placeholder pickup |
   | `setrecv <n>` / `clearchecks` | Resets the counter or the checks file |
   | `pos <x> <y> <z>` | Teleports within the current level and sets the respawn point there. Ignored while Link is in some states (wading against a wall, events) |
   | `warp <level> <x> <y> <z>` | Reloads a level at a position (the game's restart path). Verified for `Field`, dungeons (`Lv01TailCave`) and interiors (`TownWell`). Only from another level: a warp within the current level does not reload it and leaves Link at the origin. Some targets spawn Link at the origin too (`GhostHouse`, over a pit); warp to Mabe and use `e2e.py goto` from there, or warp outside the door and walk in. `<level>` is the level name (`GhostHouse`), not the room (`GhostHouse_01A`); a room name crashes the game |
-  | `peek <p\|f\|i\|a\|c> <hex off> <hex len>` | Dumps bytes of the player, framework, inventory, or the last item-get action and its control block |
+  | `peek <p\|f\|i> <hex off> <hex len>` | Dumps bytes of the player, framework or inventory |
   | `poke <hex off> <hex bytes>` | Writes bytes into the inventory, e.g. `poke 88 ffffffffffff0300` sets seashells 0–49 |
   | `dumpmain` | Writes the loaded main module to `sd:/lasap/main.bin` |
 
@@ -68,11 +68,13 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
   - `screen <name> [s]`: wait for a screen. `press <buttons> <ms> <screen> [tries]`: press until that screen shows; `<screen>` may list alternatives (`loading|level`). `level <name>`: stop unless the player is in that level.
   - `free [s]`: wait until the player can move and no item-get shows or waits. `loaded [s]`: the same in a level entered after the last `send`. `inlevel [s]`: a level entered after the last `send` has loaded.
   - `dismiss [s]`: press B until the player is free.
+  - `check <regex>`: stop unless the STATE line matches. `await <s> <regex>`: wait until it matches.
   - `warp <level> <x> <y> <z>`: reload a level there (through another level when it is the current one) and wait. `goto <x> <y> <z>`: hop there within the level. `at <x> <z> [tol]`: stop unless the player stands there.
 - **Test scripts.**
   - `newgame_file2` boots to a new game in file 2 (after `reset_saves.sh newgame`) and ends free in Tarin's house, with Marin's lines closed by B. `boot_file1` loads file 1, a played file.
   - Menu presses can be dropped, during the file menu's fade-in and at random. The boot scripts never depend on one press: they repeat A until the game loads, and move the cursor only upwards, where it stops at file 1. `newgame_file2` checks the level it ends in. Both passed 5 runs in a row from a fresh start (2026-10-12).
   - `beach_chest` (lifts the rock in front of the chest), `island_bush` (cuts a bush), `diamond_island` (walks into a free-standing item) `ghost_house_pot` (lifts the Ghost House pot and picks up its item) and `itemget_models` (the AP model next to a rupee) each check a kind of location and save screenshots in the sandbox.
+  - `shop_carry` (an item arrives while Link holds a shop item), `itemget_during_talk` (while he talks to the shopkeeper) and `newgame_items` (while he wakes up in a new game; run like `newgame_file2`) check when received items show: each waits, then plays as an event.
 - **New-game snapshot.** `D:\DEV\LASAP-sandbox\save-newgame` is the sandbox save folder right after file 2 was created (file select, file 2, Normal, OK on the name entry) and before any play. File 1 and the autosave are a copy of the user's played file. `reset_saves.sh newgame` restores it, so new-game tests skip the name entry. The file-select cursor starts on the last file used, file 2 in the snapshot, and stops at file 1 and the autosave instead of wrapping.
 - **Overworld coordinates.** Screen `Field_<row><col>` (col A=0) is around x = 15·col + 7.5, z = 12·(row − 1) + 6.75. Mabe at Marin's door is (38.25, 10.5, 128.25); in front of the shop is (51.75, 10.5, 117), walk up to enter.
 - **Warps and pits.** Warp into a dungeon or house from `Field`: after a warp out of `TownWell` (Link standing in water) the screen can stay black until the emulator restarts. `pos` also sets the respawn point, so a `pos` over a pit makes Link fall again on every respawn until he dies; reset with a warp to another level and back.
@@ -90,11 +92,14 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 
 | Offset | What |
 |---|---|
-| `0xd795d0` | Item-get sequence: `(shared_ptr* out, Player*, int itemId, bool keepCarry, StringView* messageEntry)`, the body of `Link.GenericItemGetSequenceByKey` |
+| `0xd795d0` | Item-get sequence: `(shared_ptr* out, Player*, int itemId, bool keepCarry, StringView* messageEntry)`, the body of `Link.GenericItemGetSequenceByKey`; hooked to show received items |
+| `0x1cc6db8` / `0x1cb24d8` | Globals: resource manager and event manager pointers |
+| `0xfbbd80` / `0x3dc20` / `0x3d9f0` | Load a resource `(out handle, manager, StringView* path)`, wait for it, take its flowchart `(out, handle*)` |
+| `0x80c290` / `0x80db00` / `0x81f2e0` | Make an event for a flowchart entry `(out, flowchart*, StringView* entry)`, prepare it, request it from the event manager `(out, manager, event*)`; the game's game over does these steps for `event/Common.bfevfl` |
 | `0x14311f0` | libc++ `__shared_weak_count::__release_weak` |
 | Player `+0x4ed` | u8, 0 while the player is free; 22 during talk, events and cutscenes |
+| Player `+0x19b0` | Pointer, set while Link holds something over his head (pot, rock, shop item) |
 | Framework `+0x510` | u8, 1 while the pause menu is open or a level loads |
-| Item-get action `+0x38` | u32, 0x2a once the item-get text is closed |
 | Level-load data `+0xdc` | Restart position, used by `warp` |
 | `0x10aaf40` / `0x10aa5a0` | MSBT label lookup and text getter, hooked for the AP texts |
 | `0xa35994` | In `ShellMansionMaster.PopBox`, the call that creates the present: `x3` = item key view, `w4` = item index |
@@ -129,7 +134,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Offline checks.** Checks are stored in the save's checks file and reach a server that had not seen them on the next connection.
 - **Received items.** Items from the server are applied in-game: progressive sword/shield/bracelet, feather, seashells, rupees, small key, tunic, heart container, golden leaf and a trap. A burst of 240 items also applied.
 - **Receiving in any state.** Items are applied at once in the pause menu, during signs, NPC talk, Marin's song cutscene and a door transition, and are held back on the title screen and file select. Items sent while the game was closed, or while the client was down, arrive on the next load or connection.
-- **Item-get display.** Each received item plays the game's item-get (pose and text) once the player is free: after the pause menu closes, after a dialogue or cutscene ends, after a level has loaded. Displays run one at a time; Link cannot move during one; A closes the text without starting a talk. A long queue skips filler.
+- **Item-get display.** Each received item plays the game's item-get (pose and text) as an event once the player is free: after the pause menu closes, after a dialogue or cutscene ends, after a level has loaded, after Marin's lines in a new game, after a held shop item is put back (the item stays in the shop). Displays run one at a time; Link's controls are locked during one, and the camera returns to the room afterwards. A long queue skips filler.
 - **Marin's song.** The song gift is a check (`Mabe Village - Marin`).
 - **Heart pieces.** The Mabe Well and Pothole North pieces appear on a save that has received heart pieces, and report their checks. A received piece still counts toward a heart.
 - **Dug seashells.** The doghouse dig gives its item with all 50 seashell bits set, and reports its check.
