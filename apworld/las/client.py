@@ -166,15 +166,16 @@ class LASContext(CommonContext):
         if self.game_writer is None or self.game_seed_hash is None or not self.slot or self.notice_sent:
             return
         self.notice_sent = True
-        slot = clean(self.player_names.get(self.slot, self.auth or ""))
+        # the popup holds two lines of about 22 characters
+        slot = clean(self.player_names.get(self.slot, self.auth or ""))[:16]
         if self.slot_seed_hash and self.slot_seed_hash != self.game_seed_hash:
-            self.send_game(f"NOTICE This game has another seed|than slot {slot}! Reinstall its patch.")
+            self.send_game(f"NOTICE Wrong seed for {slot}|Reinstall the patch")
         else:
-            self.send_game(f"NOTICE Connected to Archipelago|as {slot}!")
+            self.send_game(f"NOTICE Archipelago connected|as {slot}")
 
     async def connection_closed(self) -> None:
         if self.slot and self.game_writer is not None:
-            self.send_game("NOTICE Lost the connection to the|Archipelago server.")
+            self.send_game("NOTICE Archipelago server|disconnected")
         self.notice_sent = False
         await super().connection_closed()
 

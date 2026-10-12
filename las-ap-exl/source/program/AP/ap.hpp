@@ -54,7 +54,9 @@ namespace AP {
     void SetFoundLocation(int local_id);
     void ExpireFoundLocation();
     void SetReceivedText(const std::string& item, const std::string& sender);
-    // The received text shows this instead, until the next SetReceivedText.
-    void SetNoticeText(const std::string& text);
     void LoadLocationNames();
+    // A short message in the autosave popup ("Now Saving"), which does not stop the game; '\n' starts a new line.
+    void QueueToast(const std::string& text);
+    // Shows the next toast once the popup is free; only in a level.
+    void TickToasts(bool inLevel);
 }

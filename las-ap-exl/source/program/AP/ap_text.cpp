@@ -12,6 +12,7 @@
 #include "Config/file_handler.hpp"
 #include <cstdlib>
 #include <cstring>
+#include <deque>
 #include <map>
 #include <string>
 
@@ -26,7 +27,31 @@ namespace {
     constexpr uintptr_t kMansionPopBoxCreate = 0xa35994;
     struct StrView { const char* data; s64 length; };
 
-    enum class Kind { None, Found, Received };
+    // Toasts reuse the autosave popup (Ld_ThrobberSave, "Now Saving"). Its UI object runs a state machine at
+    // +0x80 (state byte at +0x8d: 0 None, 1 In, 2 Loop, 3 Out, 4 InAuto, 5 LoopAuto); LoopAuto counts the float
+    // at +0x290 down and slides out at zero. The text pane holder at +0x278 shows the message UI:SystemSaving.
+    constexpr uintptr_t kThrobberShow = 0xf895c0;         // void(bool auto): None/Out -> InAuto (0.5 s) or In
+    constexpr uintptr_t kThrobberSetState = 0xf85d20;     // void(state machine*, int state)
+    constexpr uintptr_t kPaneSetMessage = 0xf8c8b0;       // void(pane holder*, const StrView* "file:label")
+    constexpr size_t kThrobberMachine = 0x80;
+    constexpr size_t kThrobberState = 0x8d;
+    constexpr size_t kThrobberPane = 0x278;
+    constexpr size_t kThrobberTimer = 0x290;
+    constexpr int kStateNone = 0, kStateInAuto = 4;
+    constexpr float kToastSeconds = 3.0f;
+    constexpr const char* kSavingLabel = "SystemSaving";
+    using ThrobberShowFn = void (*)(bool);
+    using PaneSetMessageFn = void (*)(void*, const StrView*);
+
+    u8* g_Throbber = nullptr;       // the popup's UI object, seen by the state hook
+    bool g_ToastStarting = false;   // our ShowThrobber call is running
+    bool g_ToastShowing = false;    // the popup shows our text
+    bool g_ToastText = false;       // the text getter hands out the toast for UI:SystemSaving
+    std::deque<std::string> g_Toasts;
+    std::string g_Toast;
+    char g_ToastBuf[256];
+
+    enum class Kind { None, Found, Received, Saving };
     struct Slot { void* msbt; s32 index; Kind kind; };
     Slot g_Slots[16];
     int g_SlotCount = 0;
@@ -37,7 +62,6 @@ namespace {
     bool g_FoundFresh = false;      // g_FoundLocation was set during the current event
     int g_PresentLocation = -1;     // the popped mansion present holding a placeholder
     std::string g_RecvItem, g_RecvSender;
-    std::string g_Notice;           // when set, the received text shows this instead
     char g_FoundText[512];
     char g_RecvText[512];
 
@@ -87,6 +111,7 @@ HOOK_DEFINE_TRAMPOLINE(MsbtFindLabel) {
         g_FindCalls++;
         if (LabelIs(label, len, AP::FOUND_LABEL)) Remember(msbt, out->index, Kind::Found);
         else if (LabelIs(label, len, AP::RECEIVED_LABEL)) Remember(msbt, out->index, Kind::Received);
+        else if (LabelIs(label, len, kSavingLabel)) Remember(msbt, out->index, Kind::Saving);
         else return;
         Logging.Log("[AP] text label " + std::string(label, len) + " index " + std::to_string(out->index));
     }
@@ -112,11 +137,6 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
                 break;
             }
             case Kind::Received: {
-                if (!g_Notice.empty()) {
-                    out->length = Store(g_RecvText, sizeof(g_RecvText), g_Notice + kWaitInput);
-                    out->text = g_RecvText;
-                    break;
-                }
                 std::string t = "You got " + kColorItem + Clip(g_RecvItem, kItemNameMax) + kColorWhite;
                 t += g_RecvSender.empty() ? std::string("!")
                                           : "\nfrom " + kColorPlayer + Clip(g_RecvSender, kPlayerNameMax) + kColorWhite + "!";
@@ -124,8 +144,42 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
                 out->text = g_RecvText;
                 break;
             }
+            case Kind::Saving:
+                if (!g_ToastText) return;
+                out->length = Store(g_ToastBuf, sizeof(g_ToastBuf), g_Toast);
+                out->text = g_ToastBuf;
+                break;
             case Kind::None:
                 break;
+        }
+    }
+};
+
+namespace {
+    // Sets the popup's text from UI:SystemSaving: the toast while `toast`, else the game's own "Now Saving".
+    void SetThrobberText(bool toast) {
+        if (g_Throbber == nullptr) return;
+        static const char label[] = "UI:SystemSaving";
+        StrView view{label, sizeof(label) - 1};
+        g_ToastText = toast;
+        reinterpret_cast<PaneSetMessageFn>(g_BaseAddress + offset_manager.Offset(kPaneSetMessage))(
+            g_Throbber + kThrobberPane, &view);
+        g_ToastText = false;
+    }
+}
+
+HOOK_DEFINE_TRAMPOLINE(ThrobberSetState) {
+    static void Callback(void* machine, s32 state) {
+        Orig(machine, state);
+        g_Throbber = reinterpret_cast<u8*>(machine) - kThrobberMachine;
+        if (g_ToastStarting && state == kStateInAuto) {
+            // our ShowThrobber call: show the toast's text for its time
+            *reinterpret_cast<float*>(g_Throbber + kThrobberTimer) = kToastSeconds;
+            SetThrobberText(true);
+            g_ToastShowing = true;
+        } else if (g_ToastShowing && state == kStateNone) {
+            SetThrobberText(false);
+            g_ToastShowing = false;
         }
     }
 };
@@ -149,6 +203,25 @@ namespace AP {
         MsbtFindLabel::InstallAtOffset(offset_manager.Offset(kMsbtFindLabel));
         MsbtGetText::InstallAtOffset(offset_manager.Offset(kMsbtGetText));
         MansionPopBox::InstallAtOffset(offset_manager.Offset(kMansionPopBoxCreate));
+        ThrobberSetState::InstallAtOffset(offset_manager.Offset(kThrobberSetState));
+    }
+
+    void QueueToast(const std::string& text) {
+        if (g_Toasts.size() < 8) g_Toasts.push_back(text);
+    }
+
+    void TickToasts(bool inLevel) {
+        if (g_ToastShowing || g_Toasts.empty() || !inLevel) return;
+        // ShowThrobber does nothing while the popup is busy (a real save); the toast then waits
+        if (g_Throbber != nullptr && g_Throbber[kThrobberState] != kStateNone) return;
+        g_Toast = g_Toasts.front();
+        g_ToastStarting = true;
+        reinterpret_cast<ThrobberShowFn>(g_BaseAddress + offset_manager.Offset(kThrobberShow))(true);
+        g_ToastStarting = false;
+        if (g_ToastShowing) {
+            g_Toasts.pop_front();
+            Logging.Log("[AP] toast: " + g_Toast);
+        }
     }
 
     void SetLocationName(int local_id, const std::string& item, const std::string& player) {
@@ -178,11 +251,6 @@ namespace AP {
     void SetReceivedText(const std::string& item, const std::string& sender) {
         g_RecvItem = item;
         g_RecvSender = sender;
-        g_Notice.clear();
-    }
-
-    void SetNoticeText(const std::string& text) {
-        g_Notice = text;
     }
 
     void LoadLocationNames() {

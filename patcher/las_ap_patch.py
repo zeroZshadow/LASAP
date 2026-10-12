@@ -33,6 +33,7 @@ from RandomizerCore.Randomizers.shop import TEXT_TO_CHANGE as SHOP_TEXT  # noqa:
 from RandomizerCore.Tools import event_tools  # noqa: E402
 from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct  # noqa: E402
 import ap_model  # noqa: E402
+import ap_ui  # noqa: E402
 
 PATCH_FORMAT = 1
 PLACEHOLDER_KEY = "ArchipelagoItem"
@@ -371,6 +372,9 @@ def main() -> int:
     actor_dir = proc.romfs_dir / "region_common" / "actor"
     actor_dir.mkdir(parents=True, exist_ok=True)
     (actor_dir / ap_model.FILE_NAME).write_bytes(ap_model.build(str(args.romfs / "region_common" / "actor" / ap_model.SOURCE)))
+    ui_archive = proc.romfs_dir / ap_ui.ARCHIVE
+    ui_archive.parent.mkdir(parents=True, exist_ok=True)
+    ui_archive.write_bytes(ap_ui.build(args.romfs))
     print(f"Mod written to {args.out}")
     return 0
 

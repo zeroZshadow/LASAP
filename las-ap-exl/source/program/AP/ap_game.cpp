@@ -147,12 +147,10 @@ namespace {
     u64 g_ItemGetSince = 0;
     u64 g_FreeSince = 0;
     bool g_WasFree = false;
-    // A received item waiting to be shown; with a sender, it shows "You got <item> from <sender>!". A notice shows
-    // its text with the Archipelago model instead.
-    struct Show { int id; std::string item; std::string sender; std::string notice; };
+    // A received item waiting to be shown; with a sender, it shows "You got <item> from <sender>!".
+    struct Show { int id; std::string item; std::string sender; };
     std::deque<Show> g_ShowQueue;
     Show g_Showing{};
-    bool g_NoticeRunning = false;   // the running item-get shows a notice; it must not count as a check
 
     // Client connection notices
     constexpr u64 kNoClientNoticeMs = 20000;   // in a level this long without a client: say so, once per boot
@@ -194,7 +192,6 @@ namespace {
         u64 ran = NowMs() - g_ItemGetSince;
         if (state != kActionDone && ran < kItemGetTimeoutMs) return true;
         ReleaseShared(g_ItemGetAction);
-        g_NoticeRunning = false;
         Logging.Log("[AP] item-get " + std::to_string(g_ItemGetId) + " ended after " + std::to_string(ran) + " ms, state " + std::to_string(state));
         if (state == kActionDone && ran < kItemGetMinMs && ++g_ItemGetTry < kItemGetTries) {
             g_ShowQueue.push_front(g_Showing);
@@ -223,23 +220,24 @@ namespace {
         return itemId == 4 || itemId == 11 || itemId == 60 || itemId >= 100;
     }
 
+    // A toast in the autosave popup; '|' starts a new line.
     void QueueNotice(std::string text) {
         for (auto& c : text) if (c == '|') c = '\n';
-        g_ShowQueue.push_front(Show{AP::PLACEHOLDER_ITEM_ID, "", "", text});
+        AP::QueueToast(text);
     }
 
     // Tells the player when the client connects, goes away, or never came.
     void TickConnection() {
         bool connected = AP::IsClientConnected();
         if (g_WasConnected && !connected) {
-            QueueNotice("Lost the connection to the|Archipelago client.");
+            QueueNotice("Archipelago client|disconnected");
         }
         if (connected) g_EverConnected = true;
         g_WasConnected = connected;
         if (!g_EverConnected && !g_NoClientShown && PlayerFree() && g_LevelSince != 0 &&
             NowMs() - g_LevelSince > kNoClientNoticeMs) {
             g_NoClientShown = true;
-            QueueNotice("The Archipelago client is not|connected. Your checks are kept.");
+            QueueNotice("Archipelago client|not connected");
         }
     }
 
@@ -266,11 +264,7 @@ namespace {
         g_ItemGetId = id;
         Logging.Log("[AP] item-get " + std::to_string(id) + " start");
         std::string message;
-        if (!g_Showing.notice.empty()) {
-            AP::SetNoticeText(g_Showing.notice);
-            message = AP::RECEIVED_LABEL;
-            g_NoticeRunning = true;
-        } else if (!g_Showing.sender.empty() || HasSourceText(id)) {
+        if (!g_Showing.sender.empty() || HasSourceText(id)) {
             AP::SetReceivedText(g_Showing.item, g_Showing.sender);
             message = AP::RECEIVED_LABEL;
         }
@@ -530,6 +524,10 @@ namespace {
             AP::Send("OK dumpmain base=" + HexU64(start) + " size=" + HexU64(size) +
                      " text=" + HexU64(info.m_Text.m_Size) + " rodata=" + HexU64(info.m_Rodata.m_Start - start) +
                      " data=" + HexU64(info.m_Data.m_Start - start));
+        } else if (cmd == "savepopup") {
+            // Shows the game's own autosave popup, to check that toasts give its text back
+            reinterpret_cast<void (*)(bool)>(g_BaseAddress + offset_manager.Offset(0xf895c0))(true);
+            AP::Send("OK savepopup");
         } else if (cmd == "collect" && a.size() >= 3) {
             // Simulates picking up a placeholder: DBG collect <local_id>
             AP::OnPlaceholderCollected(atoi(a[2].c_str()));
@@ -577,7 +575,7 @@ namespace {
             AP::SetLocationName(atoi(a[1].c_str()), names.substr(0, bar),
                                 bar == std::string::npos ? "" : names.substr(bar + 1));
         } else if (a[0] == "NOTICE" && a.size() >= 2) {
-            // NOTICE <text>: shown like a received item, with the Archipelago model; '|' starts a new line
+            // NOTICE <text>: a toast in the autosave popup; '|' starts a new line
             QueueNotice(RestAfter(line, 1));
         } else if (a[0] == "MSG") {
             Logging.Log("[AP] " + line.substr(4));
@@ -608,10 +606,6 @@ namespace AP {
     }
 
     void OnPlaceholderCollected(int local_id) {
-        if (g_NoticeRunning) {
-            Logging.Log("[AP] placeholder added by a notice; ignored");
-            return;
-        }
         SetFoundLocation(local_id);
         if (!g_ChecksLoaded) LoadChecks();
         if (local_id >= 0 && local_id < (int)(kChecksBytes * 8)) {
@@ -649,6 +643,7 @@ namespace AP {
         }
 
         TickConnection();
+        AP::TickToasts(PlayerReady());
         TickItemGet();
 
         // Lines that need a loaded save wait in g_Deferred; everything else runs right away.

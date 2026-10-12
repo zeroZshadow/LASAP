@@ -105,7 +105,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Boot.** The module boots with LASR's randomizer hooks; the socket listens on 43384.
 - **Generation and patching.** Generate → patch → deploy → new game works end to end.
 - **Packaged world.** `las.apworld` built with "Build APWorlds" generates in a clean Archipelago checkout (`custom_worlds`), and its Launcher starts "Links Awakening Switch Client". The patcher runs in a fresh venv made from `patcher/requirements.txt`.
-- **Notices.** With the client connected to the game only, the game knows all location names from `ap_names.txt`. Connecting the server shows "Connected to Archipelago as ZeroLAS!", and stopping the client shows "Lost the connection to the Archipelago client." Neither counts as a check.
+- **Notices.** With the client connected to the game only, the game knows all location names from `ap_names.txt`. Connecting the server shows "Archipelago connected as ZeroLAS" in the autosave popup, with the Archipelago logo and both lines of text; the game keeps running. The popup shows "Now saving." again afterwards (`DBG savepopup`).
 - **Closing the emulator.** Windowed Ryujinx exits within a few seconds of closing its window, modded or vanilla. Headless Ryujinx (`--no-gui`) ignores a window close either way.
 - **Client install.** Opening an `.aplas` from the clean checkout's Launcher, or with the double-click command, opens the client on its Patch tab.
   - With a running Eden and no emulator set, it filled in Eden and the game from Eden's recent files, and installed nothing.
