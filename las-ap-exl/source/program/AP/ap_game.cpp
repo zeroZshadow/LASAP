@@ -120,6 +120,7 @@ namespace {
     constexpr u64 kItemGetMinMs = 1500;           // an item-get done sooner was cancelled by the game
     constexpr int kItemGetTries = 3;
     constexpr u64 kTextButtons = 0x3;             // A, B
+    constexpr u64 kButtonB = 0x2;
 
     SharedPtr g_ItemGetAction{};
     int g_ItemGetId = -1;
@@ -544,8 +545,10 @@ namespace AP {
             }
         }
         // An item-get started outside an event does not lock the player, so only the text buttons get through.
+        // A becomes B: the press that closes the text would otherwise also talk to or lift what Link faces.
         if (g_ItemGetAction.ptr != nullptr) {
-            state->mButtons._storage[0] &= kTextButtons;
+            u64 buttons = state->mButtons._storage[0];
+            state->mButtons._storage[0] = (buttons & kTextButtons) ? kButtonB : 0;
             state->mAnalogStickL.mX = state->mAnalogStickL.mY = 0;
             state->mAnalogStickR.mX = state->mAnalogStickR.mY = 0;
         }
