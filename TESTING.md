@@ -105,6 +105,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Boot.** The module boots with LASR's randomizer hooks; the socket listens on 43384.
 - **Generation and patching.** Generate → patch → deploy → new game works end to end.
 - **Packaged world.** `las.apworld` built with "Build APWorlds" generates in a clean Archipelago checkout (`custom_worlds`), and its Launcher starts "Links Awakening Switch Client". The patcher runs in a fresh venv made from `patcher/requirements.txt`.
+- **Client install.** Opening an `.aplas` with the clean checkout's Launcher starts the client, which patches and installs the mod into the sandbox SD card in about 6 s, skips patching on the next open of the same seed, and the booted game reports that seed. The clean checkout's `host.yaml` sets `las_options.sd_card_folder` to the sandbox SD card; its default is the user's Ryujinx folder.
 - **Multi-game generation.** Eight seeds with two LAS slots on default options plus Hollow Knight, The Messenger, TUNIC and ChecksFinder generate and write their patch files.
 - **Default options.** A new save on default options has the starting gear (sword, shield, ocarina, Manbo's Mambo); received progressive swords and shields upgrade it.
 - **First check.** Tarin's gift (the first check) reaches the server as a location check.

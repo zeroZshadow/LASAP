@@ -12,9 +12,17 @@ How the pieces fit and the contracts between them. FEASIBILITY.md covers the bac
 
 Flow:
 1. AP generates a multiworld. The world writes `AP_<seed>_P<n>_<slot>.aplas` (the patch file).
-2. The patcher reads the patch file plus the user's romfs dump and writes `atmosphere/contents/01006BB00C6F0000/{romfs,exefs}` and `config/lasr-exl/config.ini`.
+2. The player opens the patch file with the Launcher, which starts the client with it. The client runs the patcher on the patch file plus the user's romfs dump, and installs its output (see Client install).
 3. The game runs with the mod. The module listens on TCP port **43384**.
 4. The client connects to the AP server (websocket) and to the game (TCP), and relays checks and items.
+
+## Client install
+
+- The client's paths live in `host.yaml` under `las_options` (`host_settings.py`): `romfs_folder`, `sd_card_folder`, `mod_folder`, `patcher_command`, `game_start`, `game_host`. A missing RomFS or SD card folder opens a folder browser.
+- The client runs `patcher_command <patch> --romfs <romfs_folder> --out <temp dir>` as a subprocess and logs its output (`install.py`). The patcher needs its own Python 3.12 venv (oead, evfl), so it does not run inside Archipelago.
+- It then replaces `romfs` and `exefs` in `mod_folder` (default `<sd_card_folder>/atmosphere/contents/01006BB00C6F0000`) and copies `config/lasr-exl/config.ini` to `sd_card_folder`, config last.
+- The mod is current when the installed `config.ini`'s `[archipelago] seed_hash` matches the patch and both mod folders exist; then the client skips patching. `/patch` forces it.
+- After installing, the client runs `game_start` if set, and connects to the patch's `server` as its `player_name`.
 
 ## Item model: remote items
 
@@ -48,7 +56,9 @@ Flow:
 - **LASR names** (`sword`, `key-D1`, `D1-west-hallway`) are used in the patch file and in `ids.json`.
 - The world keeps the mapping between the two.
 
-## Patch file (`.aplas`, UTF-8 JSON)
+## Patch file (`.aplas`)
+
+An Archipelago player container (`container.py`, `APPlayerContainer`): a zip with `archipelago.json` (game, player, player name, server; WebHost fills in the room's server) and `patch.json`. The patcher also accepts a bare `patch.json`. `patch.json` is UTF-8 JSON:
 
 ```json
 {

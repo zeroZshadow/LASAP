@@ -12,6 +12,7 @@ import hashlib
 import json
 import random
 import sys
+import zipfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -247,6 +248,14 @@ class APModsProcess(mod_generator.ModsProcess):
             f.write(f"\n[archipelago]\nseed_hash = {self.seed_hash}\n")
 
 
+def load_patch(path: Path) -> dict:
+    """An .aplas is a zip with patch.json (an Archipelago player container); a bare patch.json works too."""
+    if zipfile.is_zipfile(path):
+        with zipfile.ZipFile(path) as zf:
+            return json.loads(zf.read("patch.json").decode("utf-8"))
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def load_yaml(name: str):
     with open(HERE / "RandomizerCore" / "Data" / name, "r") as f:
         return yaml.safe_load(f)
@@ -320,7 +329,7 @@ def main() -> int:
     parser.add_argument("--out", type=Path, required=True, help="Output folder (SD card root layout)")
     args = parser.parse_args()
 
-    patch = json.loads(args.patch.read_text(encoding="utf-8"))
+    patch = load_patch(args.patch)
     if patch.get("format") != PATCH_FORMAT:
         print(f"Unsupported patch format {patch.get('format')}, expected {PATCH_FORMAT}")
         return 1

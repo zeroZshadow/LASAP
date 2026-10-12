@@ -1,13 +1,15 @@
 import hashlib
-import json
 import os
 from collections import Counter
-from typing import Any, Dict, List, Mapping, Set
+from typing import Any, ClassVar, Dict, List, Mapping, Set
 
-from BaseClasses import CollectionState, Item, ItemClassification, Region
+from BaseClasses import CollectionState, Item, ItemClassification, Region, Tutorial
 from Fill import fill_restrictive
 from worlds.AutoWorld import WebWorld, World
-from worlds.LauncherComponents import Component, Type, components, launch as launch_component
+from worlds.LauncherComponents import Component, SuffixIdentifier, Type, components, launch as launch_component
+
+from .container import LASContainer
+from .host_settings import LASSettings
 
 from .ids import LOCATION_OFFSETS
 from .items import FILLER_ITEM, GAME, ITEM_GAME_INFO, ITEM_NAME_GROUPS, ITEM_TABLE, LASR_TO_ITEM, LASItem
@@ -30,13 +32,21 @@ def launch_client(*args: str) -> None:
 
 
 components.append(Component("Links Awakening Switch Client", func=launch_client, game_name=GAME,
-                            component_type=Type.CLIENT, supports_uri=True))
+                            component_type=Type.CLIENT, supports_uri=True,
+                            file_identifier=SuffixIdentifier(LASContainer.patch_file_ending)))
 
 
 class LASWeb(WebWorld):
     theme = "grassFlowers"
     option_groups = OPTION_GROUPS
-    tutorials = []
+    tutorials = [Tutorial(
+        "Multiworld Setup Guide",
+        "Setting up Link's Awakening (Switch) for Archipelago.",
+        "English",
+        "setup_en.md",
+        "setup/en",
+        ["LASAP"],
+    )]
 
 
 GOAL_LOCATION = "Wind Fish"
@@ -53,6 +63,7 @@ class LASWorld(World):
     """
     game = GAME
     web = LASWeb()
+    settings: ClassVar[LASSettings]
     options_dataclass = LASOptions
     options: LASOptions
     topology_present = False
@@ -351,7 +362,7 @@ class LASWorld(World):
         return models
 
     def generate_output(self, output_directory: str) -> None:
-        path = os.path.join(output_directory, f"{self.multiworld.get_out_file_name_base(self.player)}.aplas")
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(self.patch_data(), f, indent=1)
+        name = self.multiworld.get_out_file_name_base(self.player) + LASContainer.patch_file_ending
+        LASContainer(os.path.join(output_directory, name), self.patch_data(), self.player,
+                     self.multiworld.get_player_name(self.player)).write()
 

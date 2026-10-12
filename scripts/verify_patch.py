@@ -4,7 +4,6 @@ the received range (DESIGN.md, item model).
 
 python scripts/verify_patch.py <patch.aplas> <patcher output dir>
 """
-import json
 import sys
 from pathlib import Path
 
@@ -12,9 +11,9 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "patcher"))
 from RandomizerCore.Randomizers.chests import CHEST_ROOMS  # noqa: E402
 from RandomizerCore.Tools.leb import Room  # noqa: E402
-from las_ap_patch import ACTOR_INDICES, PLACEHOLDER_KEY, load_yaml  # noqa: E402
+from las_ap_patch import ACTOR_INDICES, PLACEHOLDER_KEY, load_patch, load_yaml  # noqa: E402
 
-patch = json.loads(Path(sys.argv[1]).read_text())
+patch = load_patch(Path(sys.argv[1]))
 item_defs = load_yaml("items.yml")["Item_Pool"]
 models = patch.get("location_models", {})
 level_dir = Path(sys.argv[2]) / "atmosphere/contents/01006BB00C6F0000/romfs/region_common/level"

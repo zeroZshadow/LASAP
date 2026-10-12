@@ -1,4 +1,3 @@
-import json
 import os
 import re
 import tempfile
@@ -6,6 +5,7 @@ import tempfile
 from worlds.AutoWorld import call_all
 
 from . import LASTestBase
+from ..container import LASContainer
 from ..ids import LOCATION_OFFSETS
 from ..lasr import CATEGORIES, ITEM_DEFS, ITEM_LOCATIONS
 from ..locations import LOCATION_NAMES
@@ -27,8 +27,12 @@ class TestDefault(LASTestBase):
             files = os.listdir(directory)
             self.assertEqual(len(files), 1)
             self.assertTrue(files[0].endswith(".aplas"))
-            with open(os.path.join(directory, files[0]), encoding="utf-8") as f:
-                patch = json.load(f)
+            container = LASContainer(os.path.join(directory, files[0]))
+            container.read()
+            patch = container.patch
+            self.assertEqual(container.game, self.world.game)
+            self.assertEqual(container.player, self.player)
+            self.assertEqual(container.player_name, self.multiworld.player_name[self.player])
 
         self.assertEqual(set(patch), {"format", "seed_name", "player", "slot_name", "seed_hash", "settings",
                                       "starting_items", "placements", "location_ids", "location_names",

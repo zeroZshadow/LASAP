@@ -7,17 +7,13 @@ Archipelago multiworld support for The Legend of Zelda: Link's Awakening (2019, 
 | Archipelago world | `apworld/las` | Items, locations, LASR's logic as AP rules, options; writes an `.aplas` patch per slot |
 | Patcher | `patcher/las_ap_patch.py` | Turns an `.aplas` plus your RomFS dump into an Atmosphère/emulator mod (LASR's mod generator) |
 | Game module | `las-ap-exl` | exlaunch code in the game: reports checks, applies received items, talks TCP on port 43384 |
-| Client | `apworld/las/client.py` | Connects the AP server and the game |
+| Client | `apworld/las/client.py` | Patches and installs the mod from an `.aplas`, connects the AP server and the game |
 
 DESIGN.md has the contracts between the parts, TESTING.md covers the test harness, TODO.md lists open work, and FEASIBILITY.md has the original assessment.
 
 ## Playing
 
-You need:
-- Archipelago 0.6.8 or newer.
-- Link's Awakening 1.0.0 on Ryujinx, with no update applied.
-- Python 3.12 for the patcher.
-- Docker, to build the game module once.
+The player's guide is `apworld/las/docs/setup_en.md`: install the world, set `las_options` in `host.yaml`, then open the `.aplas` with the Launcher. The client patches the game, installs the mod and connects. The patcher runs from this repository, so it needs a one-time setup.
 
 ### One-time setup
 
@@ -35,6 +31,7 @@ You need:
    uv pip install -r patcher/requirements.txt --python .venv-lasr
    ```
 4. **Build the game module** with `bash scripts/build_exl.sh`. It needs Docker and writes `patcher/exl/`. The module is the same for every seed.
+5. **Configure the client.** In `host.yaml`, set `las_options.patcher_command` to `<repo>/.venv-lasr/Scripts/python.exe <repo>/patcher/las_ap_patch.py`, and `romfs_folder` and `sd_card_folder` (the setup guide lists them per emulator).
 
 ### Each seed
 
@@ -46,15 +43,13 @@ You need:
    - You start with the sword, shield, ocarina and Manbo's Mambo.
 
    Set your `name`, put the file in `Players` with everyone else's, and generate. Host the result as usual, on archipelago.gg or with the Launcher's "Host".
-2. **Patch.** The output zip has a patch file per LAS slot, `AP_<seed>_P<n>_<slot>.aplas`. Patch with it:
-   ```bash
-   .venv-lasr/Scripts/python.exe patcher/las_ap_patch.py AP_<seed>_P<n>_<slot>.aplas --romfs <romfs dump> --out <out dir>
-   ```
-3. **Install the mod.** In Ryujinx, open File → Open Ryujinx Folder, then the `sdcard` folder. Delete a previous seed's `atmosphere/contents/01006BB00C6F0000`, then copy `<out dir>/atmosphere` and `<out dir>/config` into it. On a Switch, do the same on the SD card root.
-4. **Play.**
+2. **Open the patch.** The output zip has a patch file per LAS slot, `AP_<seed>_P<n>_<slot>.aplas`. Open it with the Launcher (double-click, drag onto the Launcher, or "Open Patch"). The Links Awakening Switch Client patches and installs the mod unless that seed is installed already, starts the game when `game_start` is set, and connects to the server named in the patch. `/patch` in the client patches again.
+3. **Play.**
    - Start a new save.
-   - In the Launcher, open "Links Awakening Switch Client" and connect to the server with your slot name. The client finds the game on `127.0.0.1`; Ryujinx needs no settings for that. On a Switch, start the client with `--game-host <switch ip>`.
+   - Connect the client to the server if the patch named none. The client finds the game at `game_host`, `127.0.0.1` by default; Ryujinx needs no settings for that.
    - Every randomized location holds an Archipelago item. It shows the item's model when the item is a LAS item or its name matches one (`apworld/las/data/item_models.yml`), otherwise the Archipelago model, and its text names the item and whose it is. Your items, including the ones you find yourself, arrive through the client. Checks made while the client is offline are sent when it reconnects.
+
+The patcher also runs on its own: `.venv-lasr/Scripts/python.exe patcher/las_ap_patch.py <patch.aplas> --romfs <romfs dump> --out <out dir>` writes the SD card layout (`atmosphere/contents/01006BB00C6F0000`, `config/lasr-exl/config.ini`) to `<out dir>`.
 
 ## Status
 

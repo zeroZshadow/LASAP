@@ -1,12 +1,15 @@
 """PC client: bridges the Archipelago server and the game's exlaunch module (TCP line protocol, see DESIGN.md)."""
 import asyncio
+from pathlib import Path
 from typing import Dict, Optional, Set
 
 import Utils
 from CommonClient import ClientCommandProcessor, CommonContext, get_base_parser, gui_enabled, logger, server_loop
 from NetUtils import ClientStatus
 
+from .container import LASContainer
 from .ids import LOCATION_BASE
+from .install import InstallError, mod_dir, patch_and_install, start_game
 from .items import GAME, ITEM_GAME_INFO
 
 GAME_PORT = 43384
@@ -44,6 +47,15 @@ class LASCommandProcessor(ClientCommandProcessor):
         """Ask the game to resend its received-item count and collected locations."""
         self.ctx.send_game("SYNC")
 
+    def _cmd_patch(self, patch_file: str = "") -> None:
+        """Patch and install the mod again, from the given .aplas or the one this client was opened with."""
+        if patch_file:
+            self.ctx.patch_file = patch_file
+        if not self.ctx.patch_file:
+            logger.info("No patch file; use /patch <path to .aplas>.")
+            return
+        asyncio.create_task(self.ctx.install_patch(force=True))
+
 
 class LASContext(CommonContext):
     game = GAME
@@ -51,8 +63,10 @@ class LASContext(CommonContext):
     items_handling = 0b011
     command_processor = LASCommandProcessor
 
-    def __init__(self, server_address: Optional[str], password: Optional[str], game_host: str, game_port: int):
+    def __init__(self, server_address: Optional[str], password: Optional[str], game_host: str, game_port: int,
+                 patch_file: Optional[str] = None):
         super().__init__(server_address, password)
+        self.patch_file = patch_file
         self.game_host = game_host
         self.game_port = game_port
         self.game_writer: Optional[asyncio.StreamWriter] = None
@@ -210,6 +224,38 @@ class LASContext(CommonContext):
                 self.send_next_item()
             await asyncio.sleep(PING_INTERVAL)
 
+    async def install_patch(self, force: bool = False, start: bool = False) -> None:
+        """Patches the game with `patch_file` and installs the mod, using the paths in host.yaml (las_options)."""
+        import settings
+        from . import LASWorld
+        options = LASWorld.settings
+        try:
+            container = LASContainer(self.patch_file)
+            container.read()
+            romfs, sd_card = Path(options.romfs_folder), Path(options.sd_card_folder)
+        except FileNotFoundError as e:
+            logger.error(f"Cannot patch: {e}. Set the folders in las_options in host.yaml.")
+            return
+        except Exception as e:
+            logger.error(f"Cannot read {self.patch_file}: {e}")
+            return
+        if settings.get_settings().changed:
+            settings.get_settings().save()
+        loop = asyncio.get_running_loop()
+
+        def log(line: str) -> None:
+            loop.call_soon_threadsafe(logger.info, line)
+
+        try:
+            await asyncio.to_thread(patch_and_install, options.patcher_command, Path(self.patch_file),
+                                    container.patch["seed_hash"], romfs, sd_card,
+                                    mod_dir(sd_card, options.mod_folder), log, force)
+        except (InstallError, OSError) as e:
+            logger.error(f"Patching failed: {e}")
+            return
+        if start:
+            start_game(options.game_start, logger.info)
+
     def make_gui(self):
         ui = super().make_gui()
         ui.base_title = "Archipelago Link's Awakening (Switch) Client"
@@ -218,28 +264,45 @@ class LASContext(CommonContext):
 
 def launch(*launch_args: str) -> None:
     async def main(args) -> None:
-        ctx = LASContext(args.connect, args.password, args.game_host, args.game_port)
+        ctx = LASContext(args.connect, args.password, args.game_host, args.game_port, args.patch)
         ctx.auth = args.name
         ctx.server_task = asyncio.create_task(server_loop(ctx), name="server loop")
         game_task = asyncio.create_task(ctx.game_loop(), name="game loop")
         if gui_enabled and not args.nogui:
             ctx.run_gui()
         ctx.run_cli()
+        if args.patch:
+            asyncio.create_task(ctx.install_patch(start=True), name="patch")
         await ctx.exit_event.wait()
         game_task.cancel()
         await ctx.shutdown()
 
     parser = get_base_parser(description="Link's Awakening (Switch) Archipelago client.")
     parser.add_argument("--name", default=None, help="Slot name to connect as.")
-    parser.add_argument("--game-host", default="127.0.0.1", help="Address of the Switch or emulator running the game.")
+    parser.add_argument("--game-host", default=None,
+                        help="Address of the Switch or emulator running the game (default: las_options.game_host).")
     parser.add_argument("--game-port", type=int, default=GAME_PORT)
     if not hasattr(parser.parse_args([]), "nogui"):
         parser.add_argument("--nogui", default=False, action="store_true")
-    parser.add_argument("url", nargs="?", help="Archipelago connection url")
+    parser.add_argument("url", nargs="?", help="Archipelago connection url, or an .aplas patch file to install")
     args = parser.parse_args(launch_args)
+    args.patch = None
+    if args.url and args.url.lower().endswith(LASContainer.patch_file_ending):
+        # Opened with a patch file: install its mod, then connect to the server and slot it names.
+        args.patch, args.url = args.url, None
+        container = LASContainer(args.patch)
+        try:
+            container.read()
+            args.connect = args.connect or container.server or None
+            args.name = args.name or container.player_name or None
+        except Exception:
+            pass  # install_patch reports it
     if args.url:
         from CommonClient import handle_url_arg
         args = handle_url_arg(args, parser=parser)
+    if args.game_host is None:
+        from . import LASWorld
+        args.game_host = LASWorld.settings.game_host
 
     Utils.init_logging("LASClient", exception_logger="Client")
     import colorama
