@@ -23,11 +23,11 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 | `emu.py start\|stop\|shot <png>\|log [regex]\|wait <regex> [s]` | Boots the game headless on the sandbox (Vulkan; override with `LASAP_GFX=OpenGl`), stops it by PID, captures the window, reads the newest log |
 | `build_exl.sh` | Builds `las-ap-exl` in Docker and copies `subsdk9`/`main.npdm` to `patcher/exl/` |
 | `deploy_mod.sh <out dir>` | Installs a patcher output (SD layout) into the sandbox |
-| `reset_saves.sh` | Restores sandbox saves from the user's saves and clears `sdcard/lasap` |
+| `reset_saves.sh [newgame]` | Restores sandbox saves from the user's saves, or from the new-game snapshot, and clears `sdcard/lasap` |
 | `ap.py <Generate.py\|MultiServer.py\|Launcher.py> ...` | Runs an AP entry point from `vendor/Archipelago` in `.venv-ap`; `LASAP_AP` points it at another checkout, such as a clean one with only `las.apworld` in `custom_worlds` |
 | `las_client.py [--nogui --connect host:port --name Slot]` | Runs the LAS client without the Launcher |
 | `make_test_patch.py <out.aplas>` | Writes a synthetic patch (all locations AP items) for patcher tests |
-| `verify_patch.py <patch> <out dir>` | Checks that every shuffled chest holds the placeholder with its local id |
+| `verify_patch.py <patch> <out dir>` | Checks that every shuffled chest holds the placeholder (its model variant) with its local id |
 | `test_client.py` / `drive.py <script>` | Talk to the module directly (only when no AP client is connected) |
 | `e2e.py send\|srv\|dbg\|cli\|state\|goto\|wait\|tail\|run` | Drives a scripted AP session (below): server `/send`, client `/dbg`, the game's STATE line, hop teleports, `drive.py` scripts through the client |
 | `reload_exl.sh` | Restarts the sandbox game with the freshly built module and boots to file 2 |
@@ -42,12 +42,12 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 
   | Command | Effect |
   |---|---|
-  | `state` | Prints level, position, health, rupees, key inventory bits, the received counter, the player's event state, the pause flag and the item-get display queue |
+  | `state` | Prints level, screen (`intro`, `title`, `menu`, `loading`, `level` or the raw ID), position, health, rupees, key inventory bits, the received counter, the player's event state, the pause flag and the item-get display queue (`+1` while one shows) |
   | `flag <name>` / `setflag <name> 0\|1` | Reads or sets an event flag |
   | `input <buttons hex> <ms> [lx ly]` | Holds buttons and the left stick for a duration |
   | `grant <key> <count> <dungeon> [show 0\|1]` | Same path as `ITEM`, without touching the counter |
   | `text` | Prints the in-game text state: known location names, hooked messages, the last found location |
-  | `itemget <key> [message entry]` | Starts the native item-get display directly, bypassing the queue |
+  | `itemget <key or item id> [message entry]` | Starts the native item-get display directly, bypassing the queue. Model variants by ID (from the patched `Items.gsheet`) |
   | `give <id> <count> <index>` | Raw `Inventory::AddItemID` |
   | `collect <local id>` | Simulates a placeholder pickup |
   | `setrecv <n>` / `clearchecks` | Resets the counter or the checks file |
@@ -58,10 +58,20 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
   | `dumpmain` | Writes the loaded main module to `sd:/lasap/main.bin` |
 
   Button bits follow `nn::hid::NpadButton`: A `1`, B `2`, L+R `c0`, Plus `400`, D-pad left/up/right/down `1000`/`2000`/`4000`/`8000`. The stick range is ±32767.
-- **Inputs.** Hold at least 400 ms. Shorter presses are dropped in dialogue.
+- **Inputs.** Hold at least 400 ms in dialogue; shorter presses are dropped. The title needs L+R held 500 ms and takes it once it has faded in, about 2.5 s after the intro is skipped. Menu inputs during a fade are dropped.
 - **Buttons in tests.** B is the sword (holding it charges a spin). Dismiss text with B next to signs and NPCs: A also starts a new "Check" or "Talk". Git Bash rewrites arguments that start with `/`; set `MSYS_NO_PATHCONV=1` for `e2e.py cli /las`.
 - **Scripted AP session.** Run the client and server with stdin fed from a file (`tail -n0 -f cmds.txt | ...`) so `/dbg`, `/las`, `/game` and server `/send` commands can be appended while they run. `e2e.py` writes to these files in the folder `LASAP_E2E` names (default `D:\DEV\LASAP-sandbox\e2e`). `/game <line>` sends a raw protocol line, e.g. a hand-made `ITEM` or `NAME`. For texts naming another player, generate a two-slot seed (a second slot with a small game such as ChecksFinder) and send its items with `/send` or `/release`. Start MultiServer with `--release_mode goal --collect_mode goal` to keep a goal from releasing every location.
-- **Boot sequences.** `scripts/tests/*.txt` are `drive.py` scripts: boot to file 2, or create a new game in file 2.
+- **Script ops.** `e2e.py run` scripts (`scripts/tests/*.txt`) send lines and check the game between steps, so a failed step stops the script within seconds:
+  - `send`, `wait`, `mash`, `expect <regex|HELLO> [s]`: the `drive.py` basics.
+  - `state`, `shot <png>`: print the STATE line, capture the window.
+  - `screen <name> [s]`: wait for a screen. `press <buttons> <ms> <screen> [tries]`: press until that screen shows.
+  - `free [s]`: wait until the player can move and no item-get shows or waits. `loaded [s]`: the same in a level entered after the last `send`. `inlevel [s]`: a level entered after the last `send` has loaded.
+  - `dismiss [s]`: press B until the player is free.
+  - `warp <level> <x> <y> <z>`: reload a level there (through another level when it is the current one) and wait. `goto <x> <y> <z>`: hop there within the level. `at <x> <z> [tol]`: stop unless the player stands there.
+- **Test scripts.**
+  - `boot_file2` and `newgame_file2` boot to file 2. The new-game one ends free in Tarin's house, with Marin's lines closed by B.
+  - `beach_chest` (lifts the rock in front of the chest), `island_bush` (cuts a bush), `diamond_island` (walks into a free-standing item) and `itemget_models` (the AP model next to a rupee) each check a kind of location and save screenshots in the sandbox.
+- **New-game snapshot.** `D:\DEV\LASAP-sandbox\save-newgame` is the sandbox save folder right after file 2 was created (file select, file 2, Normal, OK on the name entry) and before any play. `reset_saves.sh newgame` restores it, so new-game tests skip the name entry. The file-select cursor starts on the last file used.
 - **Overworld coordinates.** Screen `Field_<row><col>` (col A=0) is around x = 15·col + 7.5, z = 12·(row − 1) + 6.75. Mabe at Marin's door is (38.25, 10.5, 128.25); in front of the shop is (51.75, 10.5, 117), walk up to enter.
 - **Warps and pits.** Warp into a dungeon or house from `Field`: after a warp out of `TownWell` (Link standing in water) the screen can stay black until the emulator restarts. `pos` also sets the respawn point, so a `pos` over a pit makes Link fall again on every respawn until he dies; reset with a warp to another level and back.
 - **Health.** `poke 84 1c00` sets health to 7 hearts (quarter hearts, u16).
@@ -87,6 +97,8 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 | `0x10aaf40` / `0x10aa5a0` | MSBT label lookup and text getter, hooked for the AP texts |
 | `0xa35994` | In `ShellMansionMaster.PopBox`, the call that creates the present: `x3` = item key view, `w4` = item index |
 | `0x148b10` | Collected check `(kind, count, index)` that item actors use to hide: kind 8 tests heart piece bit `index`, kind 9 seashell bit `index` |
+| Framework `+0xb0` | u8 screen: 2 intro and title, 5 file menus, 0x0b level load, 0x17 level |
+| Framework `+0x6d0` | Pointer, set only while the intro plays |
 
 ## Verified (2026-10-12, Ryubing Canary 1.3.340, game 1.0.0)
 
@@ -112,11 +124,13 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Instruments.** The Full Moon Cello pedestal gives the placeholder, names its item and reports its check.
 - **Release.** `/release` of another slot delivers its items in a burst, each saying "from <player>".
 - **Goal.** `ShadowClear` reports the goal to the server.
+- **Item models.** Chest item-gets, bush drops and free-standing items show the model of the item they hold: this slot's Piece of Heart and Wind Marimba, another slot's unmatched item as the Archipelago model (six balls in the logo's colors with a soft white rim light, centered in the item-get glow like a rupee).
 - **Patch data.** `scripts/verify_patch.py` checks that every shuffled chest holds the placeholder with the right index, and that every randomized heart piece and seashell actor has its own index above the received range (static check).
 
 ## Not yet verified in-game
 
 - Owl statues and tree seashells as locations.
+- Model variants in shop shelves and Seashell Mansion presents.
 - Dungeon floor small keys and boss drops. They use paths that are verified elsewhere: floor keys are small key actors with a `SmallKey.bfevfl` entry, like the bush and dug seashells; boss drops use `item_get_manager.get`, like the instruments.
 - DeathLink (out of scope for now) and real hardware.
 

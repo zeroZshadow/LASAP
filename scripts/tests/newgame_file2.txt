@@ -1,18 +1,25 @@
-# Fresh boot to a new game in file 2 (saves reset with reset_saves.sh first).
+# From a fresh boot to a new game in file 2. Restore the never-played file 2 first: reset_saves.sh newgame.
+# The module says HELLO once the intro plays. Each step checks the screen the module reports (STATE screen=) and
+# stops the script within seconds if it fails.
 expect HELLO 60
-wait 22
-send DBG input c0 300
-wait 5
-send DBG input c0 300
-wait 5
+# Any button skips the intro to the title; L+R opens file select once the title has faded in.
+press 1 200 title
+press c0 500 menu 5
+# The cursor starts on the last file used: up to file 1, down to file 2, open it (difficulty: Normal). Inputs
+# during the menu's fade-in are dropped.
+wait 1
+send DBG input 2000 200
+wait 0.5
+send DBG input 2000 200
+wait 0.5
 send DBG input 8000 200
+wait 0.6
+send DBG input 1 200
 wait 1.5
 send DBG input 1 200
-wait 4
-send DBG input 1 200
-wait 4
-send DBG input 8000 200
-wait 1.5
-send DBG input 1 200
-wait 15
-mash 1 30 400 0.9
+screen loading 5
+# Link wakes up in Tarin's house; B closes Marin's lines without talking to her again. B before the level has
+# loaded would back out of the menus.
+inlevel 60
+dismiss 90
+state

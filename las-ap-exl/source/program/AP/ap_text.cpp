@@ -127,7 +127,8 @@ HOOK_DEFINE_INLINE(MansionPopBox) {
         auto* key = reinterpret_cast<const StrView*>(ctx->X[3]);
         int index = static_cast<int>(ctx->X[4]);
         size_t len = std::strlen(AP::PLACEHOLDER_KEY);
-        if (key != nullptr && key->data != nullptr && static_cast<size_t>(key->length) == len &&
+        // The placeholder's key, or a model variant of it (ArchipelagoItem_<item key>).
+        if (key != nullptr && key->data != nullptr && static_cast<size_t>(key->length) >= len &&
             std::memcmp(key->data, AP::PLACEHOLDER_KEY, len) == 0) {
             g_PresentLocation = index;
             Logging.Log("[AP] present holds location " + std::to_string(index));

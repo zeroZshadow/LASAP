@@ -1,0 +1,12 @@
+# Shows the item-get of the Archipelago model (item id 71) next to a red rupee, which is centered on its origin
+# like every item model, to compare their size and centering. Needs a free player.
+# Screenshots: ig_ap, ig_rupee.
+free 30
+send DBG itemget 71 ArchipelagoItem
+wait 2.5
+shot D:/DEV/LASAP-sandbox/ig_ap.png
+dismiss 15
+send DBG itemget Rupee20
+wait 2.5
+shot D:/DEV/LASAP-sandbox/ig_rupee.png
+dismiss 15

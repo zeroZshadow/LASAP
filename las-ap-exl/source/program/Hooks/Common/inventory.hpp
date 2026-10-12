@@ -102,7 +102,7 @@ HOOK_DEFINE_TRAMPOLINE(Inventory__AddItemID) {
         EXL_ASSERT(global_config.initialized);
 
         // Archipelago placeholder: the index is the location's local id
-        if (ID == AP::PLACEHOLDER_ITEM_ID) {
+        if (AP::IsPlaceholderItem(ID)) {
             AP::OnPlaceholderCollected(index);
             return;
         }

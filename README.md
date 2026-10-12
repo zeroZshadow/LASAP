@@ -54,7 +54,7 @@ You need:
 4. **Play.**
    - Start a new save.
    - In the Launcher, open "Links Awakening Switch Client" and connect to the server with your slot name. The client finds the game on `127.0.0.1`; Ryujinx needs no settings for that. On a Switch, start the client with `--game-host <switch ip>`.
-   - Every randomized location holds an Archipelago item, and its text names the item and whose it is. Your items, including the ones you find yourself, arrive through the client. Checks made while the client is offline are sent when it reconnects.
+   - Every randomized location holds an Archipelago item. It shows the item's model when the item is a LAS item or its name matches one (`apworld/las/data/item_models.yml`), otherwise the Archipelago model, and its text names the item and whose it is. Your items, including the ones you find yourself, arrive through the client. Checks made while the client is offline are sent when it reconnects.
 
 ## Status
 

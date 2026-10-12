@@ -115,6 +115,21 @@ namespace {
     // Offsets found by memory comparison (TESTING.md, "Reverse engineering").
     constexpr size_t kPlayerEventState = 0x4ed;   // u8, 0 while the player is free (no talk, event or cutscene)
     constexpr size_t kFrameworkPaused = 0x510;    // u8, 1 while the pause menu is open
+    constexpr size_t kFrameworkScreen = 0xb0;     // u8: 2 intro and title, 5 file menus, 0x0b level load, 0x17 level
+    constexpr size_t kFrameworkIntro = 0x6d0;     // pointer, set only while the intro plays
+
+    // Which screen the game shows, for test scripts.
+    std::string ScreenName(Game::Framework* fmwk) {
+        if (fmwk == nullptr) return "none";
+        const u8* f = reinterpret_cast<const u8*>(fmwk);
+        switch (f[kFrameworkScreen]) {
+            case 0x02: return *reinterpret_cast<const u64*>(f + kFrameworkIntro) != 0 ? "intro" : "title";
+            case 0x05: return "menu";
+            case 0x0b: return "loading";
+            case 0x17: return "level";
+            default: return std::to_string(f[kFrameworkScreen]);
+        }
+    }
     constexpr size_t kActionState = 0x38;         // u32 of the item-get action
     constexpr u32 kActionDone = 0x2a;             // ... once its text is closed
     constexpr u64 kItemGetTimeoutMs = 120000;
@@ -326,6 +341,7 @@ namespace {
         Game::Framework* fmwk = Game::GetFramework();
         auto* items = *Game::Data::Inventory::Items;
         std::string s = "STATE level=" + LevelSystem::GetCurrentLevel();
+        s += " screen=" + ScreenName(fmwk);
         s += " ms_in_level=" + std::to_string(NowMs() - g_LevelSince);
         s += " player=" + std::string(fmwk && fmwk->mPlayer ? "1" : "0");
         if (items != nullptr) {
@@ -453,13 +469,14 @@ namespace {
             }
             AP::Send("OK poke");
         } else if (cmd == "itemget" && a.size() >= 3) {
-            // DBG itemget <item key> [message entry]
+            // DBG itemget <item key or id> [message entry]
             if (!PlayerReady()) return false;
             if (ItemGetRunning()) {
                 AP::Send("ERR itemget: a display is running");
                 return true;
             }
-            int id = ItemIdFromKey(a[2]);
+            bool numeric = !a[2].empty() && a[2].find_first_not_of("0123456789") == std::string::npos;
+            int id = numeric ? std::stoi(a[2]) : ItemIdFromKey(a[2]);
             bool ok = id >= 0 && StartItemGet(id, a.size() >= 4 ? a[3] : "");  // bypasses the queue
             AP::Send(std::string(ok ? "OK" : "ERR") + " itemget " + std::to_string(id) + " action=" + HexU64((u64)g_ItemGetAction.ptr));
         } else if (cmd == "dumpmain") {
@@ -574,6 +591,7 @@ namespace AP {
         if (level != g_LastLevel) {
             g_LastLevel = level;
             g_LevelSince = NowMs();
+            Send("LOG level " + level);  // test scripts wait on these
         }
 
         // DeathLink: report the moment health reaches zero.

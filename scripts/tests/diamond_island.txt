@@ -1,0 +1,12 @@
+# Picks up the free-standing item on the grass island among the holes (diamond-island, Field_05E, a heart piece
+# actor at 66.75 13.5 54.75). Link stands one cell south of it and walks up into it.
+# Starts from Mabe.
+# Screenshots: diamond_1 below the item, diamond_2 the item-get.
+warp Field 38.25 10.5 128.25
+goto 66.75 13.5 56.25
+at 66.75 56.25
+shot D:/DEV/LASAP-sandbox/diamond_1.png
+send DBG input 0 400 0 32767
+wait 2.5
+state
+shot D:/DEV/LASAP-sandbox/diamond_2.png

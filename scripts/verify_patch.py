@@ -1,5 +1,6 @@
-"""Static checks on patcher output: every chest location holds the AP placeholder with its local id, and every
-randomized heart piece and seashell actor has a unique index above the received range (DESIGN.md, item model).
+"""Static checks on patcher output: every chest location holds the AP placeholder (the model variant of
+`location_models`) with its local id, and every randomized heart piece and seashell actor has a unique index above
+the received range (DESIGN.md, item model).
 
 python scripts/verify_patch.py <patch.aplas> <patcher output dir>
 """
@@ -11,9 +12,11 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "patcher"))
 from RandomizerCore.Randomizers.chests import CHEST_ROOMS  # noqa: E402
 from RandomizerCore.Tools.leb import Room  # noqa: E402
-from las_ap_patch import ACTOR_INDICES  # noqa: E402
+from las_ap_patch import ACTOR_INDICES, PLACEHOLDER_KEY, load_yaml  # noqa: E402
 
 patch = json.loads(Path(sys.argv[1]).read_text())
+item_defs = load_yaml("items.yml")["Item_Pool"]
+models = patch.get("location_models", {})
 level_dir = Path(sys.argv[2]) / "atmosphere/contents/01006BB00C6F0000/romfs/region_common/level"
 ok = bad = 0
 for loc, room_name in CHEST_ROOMS.items():
@@ -24,7 +27,8 @@ for loc, room_name in CHEST_ROOMS.items():
     room = Room(path.read_bytes())
     chests = [a for a in room.actors if a.type == 0xF7]
     found = [(c.parameters[1], c.parameters[2]) for c in chests]
-    want = (b"ArchipelagoItem", patch["location_ids"][loc])
+    key = PLACEHOLDER_KEY + (f"_{item_defs[models[loc]]['item-key']}" if loc in models else "")
+    want = (key.encode(), patch["location_ids"][loc])
     if any(k == want[0] and v == want[1] for k, v in found):
         ok += 1
     else:

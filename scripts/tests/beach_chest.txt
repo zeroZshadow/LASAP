@@ -1,0 +1,29 @@
+# Opens beach-chest (Field_15F) while the player is free. The chest (87.75 6 171.75) is blocked from the front by
+# a rock (87.75 6 173.25). Link stands left of the rock on the sand, faces it (walking into it), lifts it, turns
+# left and throws it, then opens the chest from the rock's tile facing up. Grants the Power Bracelet (sandbox saves
+# only).
+# Screenshots: chest_1 beside the rock, chest_2 rock lifted, chest_3 in front of the chest, chest_4 the item-get.
+send DBG grant PowerBraceletLv1 1 -1 0
+warp Field 86.25 6 173.25
+at 86.25 173.25
+send DBG input 0 400 32767 0
+wait 0.8
+shot D:/DEV/LASAP-sandbox/chest_1.png
+send DBG input 1 400
+wait 1.5
+shot D:/DEV/LASAP-sandbox/chest_2.png
+send DBG input 0 400 -32767 0
+wait 0.8
+send DBG input 1 400
+wait 2
+send DBG pos 87.75 6 173.25
+wait 1
+at 87.75 173.25
+send DBG input 0 400 0 32767
+wait 0.8
+state
+shot D:/DEV/LASAP-sandbox/chest_3.png
+send DBG input 1 400
+wait 4
+state
+shot D:/DEV/LASAP-sandbox/chest_4.png

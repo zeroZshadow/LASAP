@@ -15,6 +15,7 @@ from .lasr import (CATEGORIES, DUNGEON_REWARD_LOCATIONS, FOLLOWERS, INSTRUMENT_L
                    ITEM_LOCATIONS, LOGIC, TRAPS, item_dungeon, location_dungeon)
 from .locations import LOCATION_NAME_GROUPS, LOCATION_NAME_TO_ID, LOCATION_NAMES, LASLocation
 from .logic import LogicCompiler, make_rule, referenced_regions
+from .models import model_for
 from .options import OPTION_GROUPS, LASOptions
 from . import lasr_settings
 
@@ -325,6 +326,7 @@ class LASWorld(World):
             "placements": {loc: placements[loc] for loc in ITEM_LOCATIONS if loc in placements},
             "location_ids": {loc: LOCATION_OFFSETS[loc] for loc in self.shuffled},
             "location_names": self.placed_names(),
+            "location_models": self.placed_models(),
             "dungeon_entrances": dict(lasr_settings.DUNGEON_ENTRANCES),
         }
 
@@ -337,6 +339,16 @@ class LASWorld(World):
                 owner = "" if item.player == self.player else self.multiworld.player_name[item.player]
                 names[loc] = [item.name, owner]
         return names
+
+    def placed_models(self) -> Dict[str, str]:
+        """The LASR item whose model each AP location shows; locations left out show the Archipelago model."""
+        models = {}
+        for loc in self.shuffled:
+            item = self.multiworld.get_location(LOCATION_NAMES[loc], self.player).item
+            model = model_for(item) if item is not None else ""
+            if model:
+                models[loc] = model
+        return models
 
     def generate_output(self, output_directory: str) -> None:
         path = os.path.join(output_directory, f"{self.multiworld.get_out_file_name_base(self.player)}.aplas")

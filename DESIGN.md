@@ -22,6 +22,15 @@ Flow:
 - The module's `Inventory::AddItemID` hook sees the placeholder item id, reports a check, and adds nothing to the inventory.
 - Every real item, including the player's own, arrives from the server and is granted by the module. The client uses `items_handling = 0b011`: starting inventory is granted by the patch (LASR's starting gear), so the server does not send it again.
 - Locations whose category is not shuffled keep their vanilla content. They are AP event locations (no id) with the vanilla item locked, and the patcher leaves them alone.
+- Each location shows a model for the item it holds. The world picks it (`models.py`):
+  - LAS items show their own model.
+  - Other games' items are matched by name against `data/item_models.yml` (e.g. any shield shows the shield).
+  - Traps and unmatched names show the Archipelago model.
+- The patch file's `location_models` carries these picks.
+  - The patcher gives each such location a variant of the placeholder, `ArchipelagoItem_<item key>`. It shows the item's model on the ground and in shops.
+  - Each variant gets an `Items.gsheet` row with its own item ID, because the item-get picks its model by ID. IDs come from 72–99 and 103, 107, 109, 118, 119, which neither the game nor LASR uses; the most used models get IDs first, and variants past the free IDs fall back to the placeholder's ID 71.
+  - The module counts all these IDs as the placeholder (`AP::IsPlaceholderItem`).
+- The Archipelago model is six balls in the logo's colors. The patcher builds it from the player's Seashell Sensor model (`patcher/ap_model.py`) and writes it as `ItemArchipelago.bfres`, with its own Npc entry, `ItemArchipelago`.
 - Indexed items (heart pieces, seashells, golden leaves, heart containers) are granted at the lowest free index of their inventory bitfield. Received heart pieces stay below index 32 and seashells below 50, the game's totals.
 - Item actors hide themselves while the inventory bit of their index (`parameters[0]`) is set: `ItemHeartPiece` checks the heart piece bits, `ItemSlimeKey` (LASR's static seashells) the seashell bits. The index must be unique within a level. The patcher gives every randomized heart piece and seashell actor its own index above the received range (LASR's converted misc items keep heart piece 51–54), so their visibility depends only on LASR's flag.
 
@@ -53,6 +62,7 @@ Flow:
   "placements": { "<lasr location name>": "<lasr item name> | \"ap-item\"" },
   "location_ids": { "<lasr location name>": "<local id (int)>" },
   "location_names": { "<lasr location name>": ["<AP item name>", "<owner's name, empty for this slot>"] },
+  "location_models": { "<lasr location name>": "<lasr item name whose model it shows>" },
   "dungeon_entrances": { "<dungeon>": "<dungeon>" }
 }
 ```
@@ -60,6 +70,7 @@ Flow:
 - `settings` uses LASR's `SettingsManager.fetch()["Settings"]` keys.
 - `placements` covers every LASR item location: shuffled ones are `"ap-item"`, vanilla ones carry their vanilla item. Owl statues that give no gift are left out, as in LASR.
 - `location_names` covers the AP locations. The patcher uses it for the shop's price tags; in-game text gets the same names at runtime from the client.
+- `location_models` leaves out locations that show the Archipelago model. It is optional: older patches show the Archipelago model everywhere.
 - `dungeon_entrances` is an identity map; entrance shuffle is not supported.
 
 ## slot_data
@@ -93,7 +104,7 @@ ASCII lines terminated by `\n`, fields separated by single spaces. The game acce
 | `CHECKS <id> <id> ...` | Every collected location, sent on connect and on `SYNC` (possibly several lines) |
 | `GOAL` | Goal completed: the `ShadowClear` flag was set (also resent on `SYNC`) |
 | `DIED` | DeathLink: the player's health reached zero |
-| `LOG <text>` | Debug text |
+| `LOG <text>` | Debug text; `LOG level <name>` on every level change |
 
 Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until the player has been in the current level for 1.5 s; other lines are handled immediately.
 

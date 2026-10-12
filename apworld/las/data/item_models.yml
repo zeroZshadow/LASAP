@@ -1,0 +1,131 @@
+# Which LAS model shows an item from another game, by the item's name.
+# Entries are checked in order; the first entry with a pattern found in the name wins. Patterns are
+# case-insensitive regular expressions searched anywhere in the name (\b marks a word boundary).
+# `model` is a LASR item name from items.yml; dungeon items use the D1 one, since the model is the same.
+# Names that match nothing, and traps, show the Archipelago model.
+# Items from Link's Awakening Switch itself always show their own model.
+
+- model: full-moon-cello
+  names: ['\bcello\b']
+- model: conch-horn
+  names: ['\bconch\b']
+- model: sea-lilys-bell
+  names: ['\bbell\b']
+- model: surf-harp
+  names: ['\bharp\b']
+- model: wind-marimba
+  names: ['marimba', 'xylophone']
+- model: coral-triangle
+  names: ['\btriangle\b']
+- model: evening-calm-organ
+  names: ['\borgan\b']
+- model: thunder-drum
+  names: ['\bdrums?\b']
+- model: song-ballad
+  names: ['\bballad\b']
+
+- model: heart-container
+  names: ['heart container', 'energy tank', 'life upgrade', 'health upgrade', 'max(imum)? (health|hp|life)',
+          'heart upgrade', '\bhp up\b']
+- model: heart-piece
+  names: ['piece of heart', 'heart pieces?', 'heart fragment', 'mask shard', 'quarter heart']
+- model: nightmare-key-D1
+  names: ['nightmare key', 'boss key', 'big key', 'master key']
+- model: stone-beak-D1
+  names: ['stone beak', 'owl beak']
+- model: map-D1
+  names: ['^(dungeon )?map\b(?! (width|height|bombs?))', '\bmap \(', 'dungeon map']
+- model: compass-D1
+  names: ['\bcompass']
+- model: key-D1
+  names: ['small key', '\bkeys?\b(?! item)', 'key ring']
+
+- model: mermaid-scale
+  names: ["mermaid'?s scale"]
+- model: necklace
+  names: ['necklace', 'pendant']
+- model: magnifying-lens
+  names: ['magnifying', '\blens\b']
+- model: fishing-hook
+  names: ['fishing']
+- model: hookshot
+  names: ['hook ?shot', 'long ?shot', 'claw ?shot', 'grappl', 'grapple']
+- model: boomerang
+  names: ['boomerang']
+- model: rod
+  names: ['\b(fire|ice|magic|bombos|ether|quake|somaria|byrna) ?(rod|cane|wand)\b', '\brod\b', '\bwand\b']
+- model: arrow-capacity
+  names: ['\barrows?\b', 'quiver']
+- model: bow
+  names: ['\bbows?\b', 'slingshot', 'sling shot']
+- model: bomb
+  names: ['\bbombs?\b', 'bombchu', 'bomb bag']
+- model: powder
+  names: ['powder']
+- model: sword
+  names: ['\bswords?\b', '\bblade\b', 'master sword', '\bsaber\b', 'longsword', 'katana']
+- model: shield
+  names: ['\bshields?\b', '\bbuckler\b']
+- model: boots
+  names: ['\bboots\b', 'pegasus', 'dash', 'speed booster']
+- model: feather
+  names: ['feather', '\bcape\b', 'double jump', 'wings?\b', 'high jump']
+- model: bracelet
+  names: ['bracelet', '\bgloves?\b', 'gauntlets?', '\bmitts?\b', 'strength']
+- model: flippers
+  names: ['flippers', '\bzora', 'swim', '\bsilver scale', '\bgold(en)? scale', 'gravity suit']
+- model: ocarina
+  names: ['ocarina', '\bflute\b', '\bsong\b', 'sonata', 'minuet', 'bolero', 'serenade', 'nocturne', 'requiem',
+          'prelude', 'lullaby']
+- model: shovel
+  names: ['shovel', '\bspade\b']
+- model: mushroom
+  names: ['mushroom', 'toadstool']
+- model: bottle
+  names: ['\bbottle', '\bjar\b', 'flask']
+- model: medicine
+  names: ['medicine', 'potion', 'elixir', '\bfairy\b']
+- model: red-tunic
+  names: ['tunic', '\bmail\b', 'armou?r', 'clothes', 'varia suit']
+- model: seashell
+  names: ['seashell', '\bshells?\b']
+- model: golden-leaf
+  names: ['\bleaf\b', '\bleaves\b']
+- model: chamber-stone
+  names: ['chamber stone', 'stone tablet', 'tablet']
+- model: yoshi-doll
+  names: ['yoshi', '\bdoll\b']
+- model: ribbon
+  names: ['ribbon']
+- model: dog-food
+  names: ['dog food']
+- model: bananas
+  names: ['banana']
+- model: stick
+  names: ['\bsticks?\b']
+- model: honeycomb
+  names: ['honey']
+- model: pineapple
+  names: ['pineapple']
+- model: hibiscus
+  names: ['hibiscus', '\bflower\b']
+- model: letter
+  names: ['\bletter\b']
+- model: broom
+  names: ['\bbroom\b']
+
+# Currency by amount: 300 and up, 100-299, 50-99, 20-49, anything else.
+- model: rupee-300
+  names: ['\b(rupees?|money|geo|coins?)\b.*(?<!\d)([3-9]\d\d|\d{4,})(?!\d)',
+          '(?<!\d)([3-9]\d\d|\d{4,})(?!\d).*\b(rupees?|money|geo|coins?)\b', '(gold|huge) rupee']
+- model: rupee-100
+  names: ['\b(rupees?|money|geo|coins?)\b.*(?<!\d)[12]\d\d(?!\d)', '(?<!\d)[12]\d\d(?!\d).*\b(rupees?|money|geo|coins?)\b',
+          'silver rupee']
+- model: rupee-50
+  names: ['\b(rupees?|money|geo|coins?)\b.*(?<!\d)[5-9]\d(?!\d)', '(?<!\d)[5-9]\d(?!\d).*\b(rupees?|money|geo|coins?)\b',
+          'purple rupee']
+- model: rupee-20
+  names: ['\b(rupees?|money|geo|coins?)\b.*(?<!\d)[2-4]\d(?!\d)', '(?<!\d)[2-4]\d(?!\d).*\b(rupees?|money|geo|coins?)\b',
+          'red rupee']
+- model: rupee-5
+  names: ['\b(rupees?|money|geo|coins?)\b']

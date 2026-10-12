@@ -7,6 +7,7 @@ Runs LASR's mod generator (RandomizerCore, MIT) on the placements from the AP pa
 whose AddItemID index is the location's local id; the exlaunch module reports it as a check.
 """
 import argparse
+import copy
 import hashlib
 import json
 import random
@@ -30,10 +31,14 @@ from RandomizerCore.Randomizers.keysanity import Keysanity  # noqa: E402
 from RandomizerCore.Randomizers.shop import TEXT_TO_CHANGE as SHOP_TEXT  # noqa: E402
 from RandomizerCore.Tools import event_tools  # noqa: E402
 from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct  # noqa: E402
+import ap_model  # noqa: E402
 
 PATCH_FORMAT = 1
 PLACEHOLDER_KEY = "ArchipelagoItem"
 PLACEHOLDER_ITEM_ID = 71  # must match AP::PLACEHOLDER_ITEM_ID in the exlaunch module
+# Item ids of the model variants: the item-get picks its model by id. Neither the game nor LASR uses these (LASR's
+# Dampe and shop dummies take 63-70), and the module counts them as the placeholder (AP::IsPlaceholderItem).
+VARIANT_ITEM_IDS = [*range(PLACEHOLDER_ITEM_ID + 1, 100), 103, 107, 109, 118, 119]
 # Item actors hide while the inventory bit of their parameters[0] is set: ItemHeartPiece checks the heart piece bits,
 # ItemSlimeKey (LASR's static seashells) the seashell bits. The index must be unique per actor type. Received items
 # take the lowest free bit below the game's count (32 heart pieces, 50 seashells; kHeartPieceBits and kSeashellBits in
@@ -55,13 +60,15 @@ NAME_MAX = 40
 # Shop slots show the item's name on the price tag; each AP item there gets its own name entry in UI.msbt.
 SHOP_LOCATIONS = tuple(SHOP_TEXT)
 
+# The placeholder shows the Archipelago model (ap_model.py), built from the Seashell Sensor's.
+PLACEHOLDER_SOURCE_NPC = "ItemShellRader"
 PLACEHOLDER_DEF = {
     "type": "junk",
     "quantity": 0,
     "item-key": PLACEHOLDER_KEY,
-    "model-path": "ItemShellRader.bfres",
-    "model-name": "ShellRader",
-    "npc-key": "ItemShellRader",
+    "model-path": ap_model.FILE_NAME,
+    "model-name": ap_model.MODEL_NAME,
+    "npc-key": "ItemArchipelago",
     "message": f"UI:{PLACEHOLDER_NAME_KEY}",
     "chest-type": "junk",
 }
@@ -78,23 +85,37 @@ def _add_ap_flags(self) -> None:
 
 
 def _add_placeholder_row(self, sheet) -> None:
+    """The placeholder and its model variants: rows with the placeholder's item id that differ in their model."""
     _original_make_item_changes(self, sheet)
-    base = next(item for item in sheet["values"] if item["symbol"] == "SmallKey")
-    row = parseStruct(base)
-    row["symbol"] = PLACEHOLDER_KEY
-    row["itemID"] = PLACEHOLDER_ITEM_ID
-    row["gettingFlag"] = ""
-    row["npcKey"] = PLACEHOLDER_DEF["npc-key"]
-    sheet["values"].append(dictToStruct(row))
+    # Parsed up front: appending to the sheet invalidates references to its rows.
+    rows = {str(item["symbol"]): parseStruct(item) for item in sheet["values"]}
+    taken = {row["itemID"] for row in rows.values()} & {PLACEHOLDER_ITEM_ID, *VARIANT_ITEM_IDS}
+    if taken:
+        raise ValueError(f"Items.gsheet already uses the placeholder's item ids {sorted(taken)}")
+    variants = [(PLACEHOLDER_KEY, PLACEHOLDER_DEF["npc-key"], PLACEHOLDER_ITEM_ID)]
+    # The most used models get ids first; variants past the free ids keep the placeholder's id, and so its model in
+    # the item-get.
+    used = sorted(VARIANTS.items(), key=lambda v: (-VARIANT_USES[v[0]], v[0]))
+    for i, (key, (item_key, npc_key)) in enumerate(used):
+        item_id = VARIANT_ITEM_IDS[i] if i < len(VARIANT_ITEM_IDS) else PLACEHOLDER_ITEM_ID
+        variants.append((key, rows.get(item_key, {}).get("npcKey") or npc_key, item_id))
+    for key, npc_key, item_id in variants:
+        row = copy.deepcopy(rows["SmallKey"])
+        row["symbol"] = key
+        row["itemID"] = item_id
+        row["gettingFlag"] = ""
+        row["npcKey"] = npc_key
+        sheet["values"].append(dictToStruct(row))
 
 
 def _add_placeholder_text_event(self) -> None:
     _original_add_text_events(self)
     flow = self.parent.file_manager.readFile("Item.bfevfl")
-    event_tools.addEntryPoint(flow.flowchart, PLACEHOLDER_KEY)
-    event_tools.createActionChain(flow.flowchart, PLACEHOLDER_KEY, [
-        ("Dialog", "Show", {"message": f"Place:{PLACEHOLDER_KEY}"})
-    ])
+    for key in [PLACEHOLDER_KEY, *sorted(VARIANTS)]:
+        event_tools.addEntryPoint(flow.flowchart, key)
+        event_tools.createActionChain(flow.flowchart, key, [
+            ("Dialog", "Show", {"message": f"Place:{PLACEHOLDER_KEY}"})
+        ])
     # The module starts received items' item-get with this entry point as its message entry.
     event_tools.addEntryPoint(flow.flowchart, RECEIVED_KEY)
     event_tools.createActionChain(flow.flowchart, RECEIVED_KEY, [
@@ -122,6 +143,8 @@ def _add_placeholder_text(self) -> None:
         files.writeTextFile(relative_path, "System.msbt", msbt)
     for relative_path, msbt in files.getAllTextFiles("UI.msbt"):
         msbt.addEntry(PLACEHOLDER_NAME_KEY, PLACEHOLDER_NAME)
+        for key in sorted(VARIANTS):
+            msbt.addEntry(f"ItemName_{key}", PLACEHOLDER_NAME)
         for key, name in SHOP_NAMES.items():
             msbt.addEntry(key, name)
         files.writeTextFile(relative_path, "UI.msbt", msbt)
@@ -130,11 +153,12 @@ def _add_placeholder_text(self) -> None:
 def _placeholder_get_first(self, flowchart, item, index, before=None, after=None):
     """The placeholder is added before its item-get, unlike LASR's other items: the module learns the location
     from the AddItemID call and names the item in the text that follows."""
-    if item != PLACEHOLDER_KEY:
+    if not item.startswith(PLACEHOLDER_KEY):
         return _original_get_with_animation(self, flowchart, item, index, before, after)
     return event_tools.createActionChain(flowchart, before, [
-        ("Inventory", "AddItemByKey", {"itemKey": item, "count": 1, "index": index, "autoEquip": False}),
-        ("Link", "GenericItemGetSequenceByKey", {"itemKey": item, "keepCarry": False, "messageEntry": item}),
+        ("Inventory", "AddItemByKey", {"itemKey": PLACEHOLDER_KEY, "count": 1, "index": index, "autoEquip": False}),
+        ("Link", "GenericItemGetSequenceByKey", {"itemKey": item, "keepCarry": False,
+                                                 "messageEntry": PLACEHOLDER_KEY}),
     ], after)
 
 
@@ -151,18 +175,28 @@ def _chest_placeholder_branch(self) -> None:
     ap_get = event_tools.createActionChain(chart, None, [
         ("Inventory", "AddItemByKey", {"itemKey": PLACEHOLDER_KEY, "count": 1,
                                        "index": evfl.common.Argument("itemIndex"), "autoEquip": False}),
-        ("Link", "GenericItemGetSequenceByKey", {"itemKey": PLACEHOLDER_KEY, "keepCarry": False,
+        ("Link", "GenericItemGetSequenceByKey", {"itemKey": evfl.common.Argument("itemKey"), "keepCarry": False,
                                                  "messageEntry": PLACEHOLDER_KEY}),
     ], auto_save)
-    ap_check = event_tools.createSwitchEvent(chart, "FlowControl", "CompareString",
-        {"value1": "itemKey", "value2": PLACEHOLDER_KEY}, {0: ap_get, 1: open_next})
+    ap_check = open_next
+    for key in [PLACEHOLDER_KEY, *sorted(VARIANTS)]:
+        ap_check = event_tools.createSwitchEvent(chart, "FlowControl", "CompareString",
+            {"value1": "itemKey", "value2": key}, {0: ap_get, 1: ap_check})
     event_tools.insertEventAfter(chart, "Event32", ap_check)
     event_tools.insertEventAfter(chart, "Event28", ap_check)
     files.writeFile("TreasureBox.bfevfl", flow)
 
 
 def _write_file(self, file_name: str, data) -> None:
-    """Randomized heart piece and seashell actors show by their location flag alone."""
+    """Randomized heart piece and seashell actors show by their location flag alone. The Archipelago model gets an
+    Npc entry, which the item-get shows."""
+    if file_name == "Npc.gsheet":
+        # Parsed before appending: appending to the sheet invalidates references to its rows.
+        source = next(parseStruct(row) for row in data["values"] if row["symbol"] == PLACEHOLDER_SOURCE_NPC)
+        source["symbol"] = PLACEHOLDER_DEF["npc-key"]
+        source["graphics"]["path"] = ap_model.FILE_NAME
+        source["graphics"]["model"] = ap_model.MODEL_NAME
+        data["values"].append(dictToStruct(source))
     if file_name.endswith("leb"):
         for actor in data.actors:
             free = ACTOR_INDICES.get(actor.type)
@@ -177,6 +211,9 @@ def _write_file(self, file_name: str, data) -> None:
 
 # UI.msbt entry -> shop name, filled from the patch file's location_names before the mod is built.
 SHOP_NAMES: dict = {}
+# Placeholder item keys that show another item's model: key -> (that item's key, its npc key in items.yml).
+VARIANTS: dict = {}
+VARIANT_USES: dict = {}  # key -> number of locations showing it
 
 _original_get_with_animation = ItemGetManager.getWithAnimation
 _original_write_file = FileManager.writeFile
@@ -235,8 +272,7 @@ def build_placements(patch: dict, logic: dict) -> dict:
         placements[loc] = item
         if item == "ap-item":
             placements["indexes"][loc] = int(patch["location_ids"][loc])
-            if loc in SHOP_LOCATIONS and loc in patch.get("location_names", {}):
-                placements[loc] = shop_item_key(loc)
+            placements[loc] = location_item(loc)
         elif item in INDEXED_ITEMS and "index" in logic.get(loc, {}):
             placements["indexes"][loc] = logic[loc]["index"]
         elif item.startswith(DUNGEON_ITEM_PREFIXES) and item[-1].isdigit():
@@ -244,7 +280,7 @@ def build_placements(patch: dict, logic: dict) -> dict:
     return placements
 
 
-def shop_item_key(loc: str) -> str:
+def location_item(loc: str) -> str:
     return f"ap-item:{loc}"
 
 
@@ -254,13 +290,27 @@ def shop_name(names: list) -> str:
     return text if len(text) <= NAME_MAX else text[:NAME_MAX - 1] + "…"
 
 
-def add_shop_items(patch: dict, item_defs: dict) -> None:
-    """Gives every shop slot that holds an AP item its own item definition, named after the real item."""
-    for loc, names in patch.get("location_names", {}).items():
-        if loc in SHOP_LOCATIONS and patch["placements"].get(loc) == "ap-item":
+def add_location_items(patch: dict, item_defs: dict) -> None:
+    """Gives every AP location its own item definition: the model of the item it holds (`location_models`),
+    shown by the location and by the item-get, and in the shop a price tag naming the item."""
+    names = patch.get("location_names", {})
+    models = patch.get("location_models", {})
+    for loc, item in patch["placements"].items():
+        if item != "ap-item":
+            continue
+        item_def = dict(PLACEHOLDER_DEF)
+        model = item_defs.get(models.get(loc, ""), {})
+        if model.get("model-path") and not model["item-key"].startswith("$"):
+            key = f"{PLACEHOLDER_KEY}_{model['item-key']}"
+            VARIANTS[key] = (model["item-key"], model["npc-key"])
+            VARIANT_USES[key] = VARIANT_USES.get(key, 0) + 1
+            item_def.update({"item-key": key, "model-path": model["model-path"], "model-name": model["model-name"],
+                             "npc-key": model["npc-key"]})
+        if loc in SHOP_LOCATIONS and loc in names:
             key = f"ItemName_AP_{loc}"
-            SHOP_NAMES[key] = shop_name(names).replace("[", "(").replace("]", ")")
-            item_defs[shop_item_key(loc)] = dict(PLACEHOLDER_DEF, message=f"UI:{key}")
+            SHOP_NAMES[key] = shop_name(names[loc]).replace("[", "(").replace("]", ")")
+            item_def["message"] = f"UI:{key}"
+        item_defs[location_item(loc)] = item_def
 
 
 def main() -> int:
@@ -283,7 +333,7 @@ def main() -> int:
 
     item_defs = load_yaml("items.yml")["Item_Pool"]
     item_defs["ap-item"] = dict(PLACEHOLDER_DEF)
-    add_shop_items(patch, item_defs)
+    add_location_items(patch, item_defs)
     logic = load_yaml("logic.yml")
 
     placements = build_placements(patch, logic)
@@ -296,6 +346,9 @@ def main() -> int:
     if proc.failed:
         print(proc.failed)
         return 1
+    actor_dir = proc.romfs_dir / "region_common" / "actor"
+    actor_dir.mkdir(parents=True, exist_ok=True)
+    (actor_dir / ap_model.FILE_NAME).write_bytes(ap_model.build(str(args.romfs / "region_common" / "actor" / ap_model.SOURCE)))
     print(f"Mod written to {args.out}")
     return 0
 

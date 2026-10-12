@@ -1,0 +1,18 @@
+# Cuts the bush on the pond island east of Mabe (pond-island, Field_11G, bush at 99.75 9.75 125.25) and picks up
+# what it drops. Link stands on the island just south of the bush, faces up into it and cuts it with B.
+# Starts from Mabe.
+# Screenshots: island_1 facing the bush, island_2 the dropped item, island_3 the item-get.
+warp Field 38.25 10.5 128.25
+goto 99.75 9.75 126.75
+at 99.75 126.75
+send DBG input 0 400 0 32767
+wait 0.8
+at 99.75 126.75
+shot D:/DEV/LASAP-sandbox/island_1.png
+send DBG input 2 400
+wait 1.5
+shot D:/DEV/LASAP-sandbox/island_2.png
+send DBG input 0 400 0 32767
+wait 3
+state
+shot D:/DEV/LASAP-sandbox/island_3.png
