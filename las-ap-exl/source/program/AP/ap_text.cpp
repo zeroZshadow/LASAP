@@ -109,8 +109,9 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
                 break;
             }
             case Kind::Received: {
-                std::string t = "You got " + kColorItem + Clip(g_RecvItem, kItemNameMax) + kColorWhite + "\nfrom " +
-                                kColorPlayer + Clip(g_RecvSender, kPlayerNameMax) + kColorWhite + "!";
+                std::string t = "You got " + kColorItem + Clip(g_RecvItem, kItemNameMax) + kColorWhite;
+                t += g_RecvSender.empty() ? std::string("!")
+                                          : "\nfrom " + kColorPlayer + Clip(g_RecvSender, kPlayerNameMax) + kColorWhite + "!";
                 out->length = Store(g_RecvText, sizeof(g_RecvText), t + kWaitInput);
                 out->text = g_RecvText;
                 break;

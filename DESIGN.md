@@ -104,7 +104,7 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 
 **In-game text**
 - A found placeholder says what it is: "You found <item> for <player>!", or "You found your <item>!" for this slot's own items. Without names (client not connected yet), it says "You found an Archipelago item!".
-- A received item from another player says "You got <item> from <player>!". Own items found here are not shown again; other own items and server items show the item's native text.
+- A received item from another player says "You got <item> from <player>!". Own items found here are not shown again; other own items and server items show the item's native text, except items whose native text names their vanilla source (the Boomerang, the capacity upgrades), which say "You got <item>!".
 - The patcher adds the messages `Place:ArchipelagoItem` and `System:APReceived` (with the native item-text window style) and the Item event entry point `APReceived`. The module hooks the game's MSBT label lookup and text getter and hands out the text for these two messages (`ap_text.cpp`).
 - The module learns the location from the placeholder's `AddItemID`, so placeholder flows add the item before playing the item-get (LASR's item-get chains and a TreasureBox branch); other items keep LASR's order. That location names the found text until the player is free again.
 - The Seashell Mansion's presents add their item after the item-get. The module reads the location from `ShellMansionMaster.PopBox` when the present appears.

@@ -188,6 +188,12 @@ namespace {
         return reinterpret_cast<u8*>(fmwk->mPlayer)[kPlayerEventState] == 0;
     }
 
+    // Items whose own text tells where they came from in the vanilla game (the Boomerang's trade, the Mad Batter's
+    // capacity upgrades); they show the AP text instead.
+    bool HasSourceText(int itemId) {
+        return itemId == 7 || itemId == 123 || itemId == 124 || itemId == 125;
+    }
+
     bool IsFiller(int itemId) {
         // Rupees, ammo, hearts and other drops.
         return itemId == 4 || itemId == 11 || itemId == 60 || itemId >= 100;
@@ -216,7 +222,7 @@ namespace {
         g_ItemGetId = id;
         Logging.Log("[AP] item-get " + std::to_string(id) + " start");
         std::string message;
-        if (!g_Showing.sender.empty()) {
+        if (!g_Showing.sender.empty() || HasSourceText(id)) {
             AP::SetReceivedText(g_Showing.item, g_Showing.sender);
             message = AP::RECEIVED_LABEL;
         }
