@@ -7,7 +7,9 @@
 #include "Game/framework.hpp"
 #include "Game/Data/inventory.hpp"
 #include "nn/fs.hpp"
+#include <algorithm>
 #include <bit>
+#include <deque>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -31,6 +33,15 @@ namespace {
     std::string g_ChecksPath;
     std::vector<u8> g_Checks(kChecksBytes, 0);
     bool g_ChecksLoaded = false;
+
+    std::deque<std::string> g_Deferred;
+
+    void Defer(const std::string& line) {
+        // The client resends SYNC and ITEM lines, so keep one copy of each.
+        if (std::find(g_Deferred.begin(), g_Deferred.end(), line) != g_Deferred.end()) return;
+        if (g_Deferred.size() >= 64) g_Deferred.pop_front();
+        g_Deferred.push_back(line);
+    }
 
     std::string g_LastLevel;
     int g_LastHealth = -1;
@@ -225,6 +236,12 @@ namespace {
             if (!PlayerReady()) return false;
             LevelSystem::LoadLevel(a[2].c_str(), Game::Vec3{(float)atof(a[3].c_str()), (float)atof(a[4].c_str()), (float)atof(a[5].c_str())});
             AP::Send("OK warp");
+        } else if (cmd == "pos" && a.size() >= 5) {
+            // Moves the player within the current level: DBG pos <x> <y> <z>
+            if (!PlayerReady()) return false;
+            auto* col = Game::GetFramework()->mPlayer->playerCollision;
+            col->coordsNew.pos = Game::Vec3{(float)atof(a[2].c_str()), (float)atof(a[3].c_str()), (float)atof(a[4].c_str())};
+            AP::Send("OK pos");
         } else if (cmd == "input" && a.size() >= 4) {
             // DBG input <buttons hex> <milliseconds> [lx ly]
             g_InjectButtons = strtoull(a[2].c_str(), nullptr, 16);
@@ -331,13 +348,17 @@ namespace AP {
             SendAllChecks();
         }
 
-        // Handle a bounded number of lines per frame; stop at the first one that must wait.
-        std::string line;
-        for (int i = 0; i < 8 && PopLine(line); i++) {
-            if (!HandleLine(line)) {
-                PushFront(line);
-                break;
+        // Lines that need a loaded save wait in g_Deferred; everything else runs right away.
+        if (!g_Deferred.empty() && PlayerReady()) {
+            std::deque<std::string> retry;
+            retry.swap(g_Deferred);
+            for (const auto& line : retry) {
+                if (!HandleLine(line)) Defer(line);
             }
+        }
+        std::string line;
+        for (int i = 0; i < 16 && PopLine(line); i++) {
+            if (!HandleLine(line)) Defer(line);
         }
     }
 

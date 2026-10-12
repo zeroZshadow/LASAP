@@ -20,7 +20,7 @@ Flow:
 
 - Every randomized location in the patched game gives the **AP placeholder item**, with `index` = the location's **local id** (AP location id − `LOCATION_BASE`).
 - The module's `Inventory::AddItemID` hook sees the placeholder item id, reports a check, and adds nothing to the inventory.
-- Every real item, including the player's own, arrives from the server (`items_handling = 0b111`) and is granted by the module.
+- Every real item, including the player's own, arrives from the server and is granted by the module. The client uses `items_handling = 0b011`: starting inventory is granted by the patch (LASR's starting gear), so the server does not send it again.
 - Locations whose category is not shuffled keep their vanilla content. They are AP event locations (no id) with the vanilla item locked, and the patcher leaves them alone.
 
 ## IDs
@@ -50,12 +50,13 @@ Flow:
   "starting_items": ["<lasr item name>"],
   "placements": { "<lasr location name>": "<lasr item name> | \"ap-item\"" },
   "location_ids": { "<lasr location name>": "<local id (int)>" },
-  "dungeon_entrances": { }
+  "dungeon_entrances": { "<dungeon>": "<dungeon>" }
 }
 ```
 
 - `settings` uses LASR's `SettingsManager.fetch()["Settings"]` keys.
-- `placements` covers every LASR item location: shuffled ones are `"ap-item"`, vanilla ones carry their vanilla item.
+- `placements` covers every LASR item location: shuffled ones are `"ap-item"`, vanilla ones carry their vanilla item. Owl statues that give no gift are left out, as in LASR.
+- `dungeon_entrances` is an identity map; entrance shuffle is not supported.
 
 ## slot_data
 
@@ -72,7 +73,8 @@ ASCII lines terminated by `\n`, fields separated by single spaces. The game acce
 | `PING` | Keep-alive; the game answers `PONG` |
 | `ITEM <n> <item-key> <count> <dungeon>` | The n-th received item (1-based AP index). `item-key` is the game's item symbol (`SwordLv1`, `SmallKey`, …). `dungeon` is the dungeon level for dungeon items, else `-1`. The game applies it only if `n` = stored count + 1, then answers `RECV <count>` |
 | `SYNC` | Asks the game to send `RECV <count>` and `CHECKS ...` |
-| `MSG <text>` | Optional: show or log a message |
+| `DEATH` | DeathLink: sets the player's health to zero |
+| `MSG <text>` | Logged by the module |
 | `DBG <cmd> [args]` | Test-only debug commands (see the module source) |
 
 **Game → client**
@@ -84,8 +86,16 @@ ASCII lines terminated by `\n`, fields separated by single spaces. The game acce
 | `RECV <count>` | Number of items applied, stored in the save as a flag-bit counter |
 | `CHECK <local_id>` | A location was collected |
 | `CHECKS <id> <id> ...` | Every collected location, sent on connect and on `SYNC` (possibly several lines) |
-| `GOAL` | Goal completed |
+| `GOAL` | Goal completed: the `ShadowClear` flag was set (also resent on `SYNC`) |
+| `DIED` | DeathLink: the player's health reached zero |
 | `LOG <text>` | Debug text |
+
+Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until the player has been in the current level for 1.5 s; other lines are handled immediately.
+
+**Items with special handling in the module**
+- Progressive sword, shield and bracelet arrive as their Lv1 key; the module upgrades when LASR's `*FoundFlag` is set.
+- Seashells, heart pieces, heart containers and golden leaves take the lowest unused in-game index.
+- Traps (`*Trap`, `$ENEMY`) cost one heart and never kill. Unknown keys are logged and counted as applied.
 
 **Persistence**
 - **Received-item count:** event flags `APRecv0`..`APRecv15`, read as a 16-bit counter. The patcher adds them to `GlobalFlags.gsheet`.
