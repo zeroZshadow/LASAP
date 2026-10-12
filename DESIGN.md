@@ -158,6 +158,11 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 - With three or more displays waiting, filler (rupees, ammo, drops) is granted without a display. The queue is not saved; a restart drops pending displays, not items.
 - A trap plays LASR's effect of that trap instead of an item-get, as the `Common.bfevfl` event `AP<trap key>` the patcher builds with LASR's trap flow (animation, damage, autosave), and the autosave popup names the trap and its sender. The damage follows the damage mode; in the normal mode a trap leaves at least a quarter heart (the module raises health first if needed). The Zol Trap has no such flow (in a chest it spawns enemies) and costs one heart.
 
+**Warp menu**
+- Holding Minus for a second opens "Return to Tarin's house?" with Warp home and Continue, the `Common.bfevfl` event `APWarpMenu` (a `Dialog.Show` of `System:APWarpMenu`, then `GameControl.RequestLevelJump` to `MarinTarinHouse`, locator `MarinTarinHouse_01A`: inside the house at its door). The cursor starts on Warp home; B moves it to Continue, as on the game's yes/no prompts.
+- The module hides Minus from the game while it is held; released sooner, a short press reaches the game, so a tap still opens and closes the map.
+- The menu opens only when an item display could start (player free, holding nothing, no display running) and not in levels where a warp would break what runs there: the Wind Fish's Egg, the Chamber Dungeons and their editor (`Panel*`), the fishing pond, the trendy game, the ending and Marin's event levels.
+
 **Persistence**
 - **Received-item count:** event flags `APRecv0`..`APRecv15`, read as a 16-bit counter. The patcher adds them to `GlobalFlags.gsheet`.
 - **Collected locations:** a bitset file `sd:/lasap/<seed_hash>.chk`, written on each check, so checks made while disconnected are reported later.

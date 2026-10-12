@@ -46,3 +46,10 @@ randomizer. Another player's item counts as important when it is progression.
 Link holds the item up with its usual item text, naming the player who sent it. Items arriving during a cutscene or a
 menu wait until Link is free. A trap plays its effect from the original randomizer (a shock, a squish, ...), and a small
 popup at the bottom right names the trap and its sender. On normal damage a trap never takes the last quarter heart.
+
+## How do I get back to the start?
+
+Hold Minus for a second: a menu asks "Return to Tarin's house?". Warp home takes Link into Tarin's house in Mabe
+Village; Continue (or B) closes the menu. A short press of Minus still opens the map. The menu does not open during a
+cutscene, while Link holds something, or in the Wind Fish's Egg, the Chamber Dungeons, the fishing pond and the trendy
+game.

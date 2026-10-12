@@ -1,0 +1,33 @@
+# The warp menu: a short Minus press still opens the map; holding Minus opens "Return to Tarin's house?" with
+# Warp home / Continue. The cursor starts on Warp home, which warps into Tarin's house through its door; B moves it
+# to Continue, as on the game's yes/no prompts.
+# Starts outside Marin's house in Mabe. Screenshots: warp_map, warp_menu, warp_home.
+warp Field 38.25 10.5 128.25
+send DBG input 800 200
+await 3 paused=1
+shot D:/DEV/LASAP-sandbox/warp_map.png
+send DBG input 800 200
+await 3 paused=0
+free 10
+level Field
+send DBG input 800 1500
+await 4 event=[1-9]
+# B before the choices show is lost (commands reach the game through the client with some delay).
+wait 4
+shot D:/DEV/LASAP-sandbox/warp_menu.png
+# B moves the cursor to Continue; twice, as test presses can be dropped (a second B keeps it there).
+send DBG input 2 400
+wait 0.8
+send DBG input 2 400
+wait 0.8
+send DBG input 1 400
+free 10
+level Field
+send DBG input 800 1500
+await 4 event=[1-9]
+wait 1
+send DBG input 1 400
+inlevel 20
+level MarinTarinHouse
+loaded 20
+shot D:/DEV/LASAP-sandbox/warp_home.png

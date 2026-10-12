@@ -28,6 +28,8 @@ namespace AP {
     constexpr const char* ITEM_EVENT_ENTRY = "APItemGet";
     // Common.bfevfl entries the patcher adds for received traps: AP<trap key> plays LASR's effect of that trap.
     constexpr const char* TRAP_EVENT_PREFIX = "AP";
+    // Common.bfevfl entry the patcher adds for the warp menu: a choice between warping to Tarin's house and going on.
+    constexpr const char* WARP_MENU_ENTRY = "APWarpMenu";
     // Location names the patcher writes next to config.ini.
     constexpr const char* NAMES_PATH = "sd:/config/lasr-exl/ap_names.txt";
 

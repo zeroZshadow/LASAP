@@ -56,6 +56,19 @@ namespace {
     s32 g_InjectLX = 0, g_InjectLY = 0;
     u64 g_InjectUntil = 0;
 
+    // Holding Minus opens the warp menu; a short press still reaches the game (the map), sent when Minus is released.
+    constexpr u64 kButtonMinus = 0x800;
+    constexpr u64 kWarpMenuHoldMs = 1000;
+    constexpr u64 kMinusReleasedMs = 60;   // no poll has seen Minus this long: it was released
+    constexpr u64 kMinusTapMs = 120;       // how long the short press is passed on
+    bool g_MinusHeld = false;
+    bool g_MinusLong = false;              // held long enough for the menu
+    bool g_WarpMenuWanted = false;         // the game thread opens the menu if it can
+    bool g_WarpMenuShown = false;          // it did: releasing Minus sends nothing
+    u64 g_MinusDownSince = 0;
+    u64 g_MinusLastSeen = 0;
+    u64 g_MinusTapUntil = 0;
+
     std::vector<std::string> Split(const std::string& line) {
         std::vector<std::string> parts;
         std::stringstream ss(line);
@@ -741,6 +754,35 @@ namespace AP {
         Send("GOAL");
     }
 
+}
+
+namespace {
+    // Levels where a warp would break what runs there: the final dungeon, the Chamber Dungeons and their editor, the
+    // fishing pond, the trendy game, the ending and Marin's event levels.
+    bool WarpMenuBlockedLevel(const std::string& level) {
+        static const char* kBlocked[] = {"Lv09WindFishsEgg", "PanelEdit", "FishingPond", "CraneGame", "Ending",
+                                         "EventMarin01", "EventMarin02"};
+        if (level.starts_with("Panel")) return true;
+        for (const char* b : kBlocked) {
+            if (level == b) return true;
+        }
+        return false;
+    }
+
+    // Minus held long enough: opens the warp menu when the player is free, holds nothing and no item display
+    // waits to start. The game does not tick this while paused (the map), so the menu needs Minus still held.
+    void TickWarpMenu() {
+        if (!g_WarpMenuWanted) return;
+        g_WarpMenuWanted = false;
+        if (g_MinusHeld && PlayerFree() && !PlayerCarrying() && g_ItemEvent == ItemEvent::None &&
+            !WarpMenuBlockedLevel(LevelSystem::GetCurrentLevel())) {
+            g_WarpMenuShown = RequestCommonEvent(AP::WARP_MENU_ENTRY);
+            Logging.Log(std::string("[AP] warp menu ") + (g_WarpMenuShown ? "opened" : "could not be requested"));
+        }
+    }
+}
+
+namespace AP {
     void Tick() {
         std::string level = LevelSystem::GetCurrentLevel();
         if (level != g_LastLevel) {
@@ -765,6 +807,7 @@ namespace AP {
         TickConnection();
         AP::TickToasts(PlayerReady());
         TickItemGet();
+        TickWarpMenu();
 
         // Lines that need a loaded save wait in g_Deferred; everything else runs right away.
         if (!g_Deferred.empty() && PlayerReady()) {
@@ -781,12 +824,36 @@ namespace AP {
     }
 
     void ApplyInjectedInput(nn::hid::NpadBaseState* state) {
-        if (NowMs() < g_InjectUntil) {
+        u64 now = NowMs();
+        if (now < g_InjectUntil) {
             state->mButtons._storage[0] |= g_InjectButtons;
             if (g_InjectLX != 0 || g_InjectLY != 0) {
                 state->mAnalogStickL.mX = g_InjectLX;
                 state->mAnalogStickL.mY = g_InjectLY;
             }
         }
+        // The game does not see Minus while it is held (TickWarpMenu). Each controller style is polled, so only a
+        // poll that sees Minus counts; its release is noticed when no poll has seen it for a moment.
+        u64& buttons = state->mButtons._storage[0];
+        if (g_MinusHeld && !(buttons & kButtonMinus) && now - g_MinusLastSeen > kMinusReleasedMs) {
+            // Released: a short press reaches the game unless the menu opened.
+            g_MinusHeld = false;
+            if (!g_WarpMenuShown) g_MinusTapUntil = now + kMinusTapMs;
+        }
+        if (buttons & kButtonMinus) {
+            if (!g_MinusHeld) {
+                g_MinusHeld = true;
+                g_MinusLong = false;
+                g_WarpMenuShown = false;
+                g_MinusDownSince = now;
+            }
+            g_MinusLastSeen = now;
+            if (!g_MinusLong && now - g_MinusDownSince >= kWarpMenuHoldMs) {
+                g_MinusLong = true;
+                g_WarpMenuWanted = true;
+            }
+            buttons &= ~kButtonMinus;
+        }
+        if (now < g_MinusTapUntil) buttons |= kButtonMinus;
     }
 }

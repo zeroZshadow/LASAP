@@ -62,6 +62,13 @@ ITEM_EVENT_ENTRY = "APItemGet"
 # Received traps play LASR's trap effects as the Common.bfevfl events AP<trap key> (AP::TRAP_EVENT_PREFIX).
 TRAP_EVENT_PREFIX = "AP"
 TRAP_EVENT_KEYS = ("ZapTrap", "DrownTrap", "SquishTrap", "DeathballTrap", "QuakeTrap")
+# Holding Minus opens this Common.bfevfl event (AP::WARP_MENU_ENTRY): a choice to warp to Tarin's house, through its
+# door. B picks the bottom choice, so Continue is there.
+WARP_MENU_ENTRY = "APWarpMenu"
+WARP_MENU_KEY = "APWarpMenu"
+WARP_MENU_TEXT = "Return to Tarin's house?[CHOICE_TOP]Warp home[CHOICE_BOTTOM]Continue"
+WARP_MENU_STYLE_FROM = "CheckShieldBook"  # a vanilla yes/no prompt in System.msbt
+WARP_HOME = {"level": "MarinTarinHouse", "locator": "MarinTarinHouse_01A", "offsetX": 0.0, "offsetZ": 0.0}
 ITEM_TEXT_STYLE_FROM = "GetHookShot"  # System.msbt entry whose window style the AP texts use
 PLACEHOLDER_NAME_KEY = "ItemName_ArchipelagoItem"
 PLACEHOLDER_NAME = "Archipelago Item"
@@ -145,6 +152,12 @@ def _add_placeholder_text_event(self) -> None:
         entry = TRAP_EVENT_PREFIX + key
         event_tools.addEntryPoint(common.flowchart, entry)
         self.parent.item_get_manager.getWithAnimation(common.flowchart, key, -1, entry)
+    warp = event_tools.createActionEvent(common.flowchart, "GameControl", "RequestLevelJump", dict(WARP_HOME))
+    choice = event_tools.createSwitchEvent(common.flowchart, "Dialog", "GetLastResult", {}, {0: warp})
+    event_tools.addEntryPoint(common.flowchart, WARP_MENU_ENTRY)
+    event_tools.createActionChain(common.flowchart, WARP_MENU_ENTRY, [
+        ("Dialog", "Show", {"message": f"System:{WARP_MENU_KEY}"}),
+    ], choice)
     self.parent.file_manager.writeFile("Common.bfevfl", common)
 
 
@@ -164,6 +177,8 @@ def _add_placeholder_text(self) -> None:
         entry = msbt.getEntry(RECEIVED_KEY)
         entry.message.text += "[1:4]"
         entry.style_index = styles[relative_path]
+        msbt.addEntry(WARP_MENU_KEY, WARP_MENU_TEXT)
+        msbt.getEntry(WARP_MENU_KEY).style_index = msbt.getEntry(WARP_MENU_STYLE_FROM).style_index
         files.writeTextFile(relative_path, "System.msbt", msbt)
     for relative_path, msbt in files.getAllTextFiles("UI.msbt"):
         msbt.addEntry(PLACEHOLDER_NAME_KEY, PLACEHOLDER_NAME)
