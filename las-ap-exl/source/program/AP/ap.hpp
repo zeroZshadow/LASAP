@@ -9,7 +9,11 @@ namespace AP {
     // Its AddItemID index is the location's local id.
     constexpr int PLACEHOLDER_ITEM_ID = 71;
     constexpr int PORT = 43384;
-    constexpr int PROTOCOL_VERSION = 1;
+    constexpr int PROTOCOL_VERSION = 2;
+    // Message labels the patcher adds: the found placeholder's text (Place.msbt) and the received-item text
+    // (System.msbt). Their text is replaced at runtime (ap_text.cpp).
+    constexpr const char* FOUND_LABEL = "ArchipelagoItem";
+    constexpr const char* RECEIVED_LABEL = "APReceived";
 
     // Network thread (ap_net.cpp)
     void StartNetwork();
@@ -30,4 +34,13 @@ namespace AP {
     void ApplyInjectedInput(nn::hid::NpadBaseState* state);
     void Log(const std::string& text);
     std::string HelloLine();
+
+    // In-game text (ap_text.cpp)
+    void InstallTextHooks();
+    // What a location holds: item name and, for another player's item, that player's name.
+    void SetLocationName(int local_id, const std::string& item, const std::string& player);
+    bool HasLocationName(int local_id);
+    std::string TextState();
+    void SetFoundLocation(int local_id);
+    void SetReceivedText(const std::string& item, const std::string& sender);
 }

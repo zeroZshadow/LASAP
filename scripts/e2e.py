@@ -83,6 +83,12 @@ def run(script: Path) -> None:
             parts = rest.split()
             rx = "Connected to the game" if parts[0] == "HELLO" else parts[0]
             print(wait(rx, float(parts[1]) if len(parts) > 1 else 10, "client", origin if parts[0] == "HELLO" else size("client")))
+        elif op == "mash":
+            # mash <buttons hex> <count> [hold ms] [gap s]
+            p = rest.split()
+            for _ in range(int(p[1])):
+                append(DIR / "cmds.txt", f"/dbg input {p[0]} {p[2] if len(p) > 2 else '400'}")
+                time.sleep(float(p[3]) if len(p) > 3 else 0.9)
         elif op == "shot":
             subprocess.run([sys.executable, str(Path(__file__).parent / "emu.py"), "shot", rest], check=True)
 

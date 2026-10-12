@@ -10,16 +10,20 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "patcher"))
 from RandomizerCore.Tools.leb import Room  # noqa: E402
 
+DEFAULT_ROMFS = "D:/Games/Switch/LASRomFS"
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("room")
     parser.add_argument("pattern", nargs="?", default="")
-    parser.add_argument("--romfs", default="D:/Games/Switch/LASRomFS")
+    parser.add_argument("--romfs", default=DEFAULT_ROMFS)
     args = parser.parse_args()
 
     area = args.room.split("_")[0]
     path = Path(args.romfs) / "region_common" / "level" / area / f"{args.room}.leb"
+    if not path.exists():  # rooms the mod does not change are only in the base RomFS
+        path = Path(DEFAULT_ROMFS) / "region_common" / "level" / area / f"{args.room}.leb"
     room = Room(path.read_bytes())
     rx = re.compile(args.pattern, re.I)
     for actor in room.actors:

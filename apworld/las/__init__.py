@@ -324,8 +324,19 @@ class LASWorld(World):
             "starting_items": starting,
             "placements": {loc: placements[loc] for loc in ITEM_LOCATIONS if loc in placements},
             "location_ids": {loc: LOCATION_OFFSETS[loc] for loc in self.shuffled},
+            "location_names": self.placed_names(),
             "dungeon_entrances": dict(lasr_settings.DUNGEON_ENTRANCES),
         }
+
+    def placed_names(self) -> Dict[str, List[str]]:
+        """What each AP location holds: [item name, owner name], the owner empty for this player's items."""
+        names = {}
+        for loc in self.shuffled:
+            item = self.multiworld.get_location(LOCATION_NAMES[loc], self.player).item
+            if item is not None:
+                owner = "" if item.player == self.player else self.multiworld.player_name[item.player]
+                names[loc] = [item.name, owner]
+        return names
 
     def generate_output(self, output_directory: str) -> None:
         path = os.path.join(output_directory, f"{self.multiworld.get_out_file_name_base(self.player)}.aplas")

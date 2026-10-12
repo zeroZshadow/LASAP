@@ -18,11 +18,15 @@ HERE = Path(__file__).resolve().parent
 sys.argv[0] = str(HERE / "las_ap_patch.py")
 sys.path.insert(0, str(HERE))
 
+import evfl  # noqa: E402
 import yaml  # noqa: E402
 from RandomizerCore import mod_generator  # noqa: E402
 from RandomizerCore.Fixes.Datasheets.items import ItemsDatasheetFixes  # noqa: E402
 from RandomizerCore.Helpers.flag_manager import FlagManager  # noqa: E402
+from RandomizerCore.Helpers.item_get_manager import ItemGetManager  # noqa: E402
+from RandomizerCore.Randomizers.chests import ChestRandomizer  # noqa: E402
 from RandomizerCore.Randomizers.keysanity import Keysanity  # noqa: E402
+from RandomizerCore.Randomizers.shop import TEXT_TO_CHANGE as SHOP_TEXT  # noqa: E402
 from RandomizerCore.Tools import event_tools  # noqa: E402
 from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct  # noqa: E402
 
@@ -31,6 +35,15 @@ PLACEHOLDER_KEY = "ArchipelagoItem"
 PLACEHOLDER_ITEM_ID = 71  # must match AP::PLACEHOLDER_ITEM_ID in the exlaunch module
 RECV_FLAG_BITS = 16
 PLACEHOLDER_TEXT = "You found an [COLOR_SKYBLUE]Archipelago item[COLOR_WHITE]!"
+# The exlaunch module replaces both texts at runtime with the item and player names (AP::FOUND_LABEL, AP::RECEIVED_LABEL).
+RECEIVED_KEY = "APReceived"
+RECEIVED_TEXT = "You got an [COLOR_PINK]Archipelago item[COLOR_WHITE]!"
+ITEM_TEXT_STYLE_FROM = "GetHookShot"  # System.msbt entry whose window style the AP texts use
+PLACEHOLDER_NAME_KEY = "ItemName_ArchipelagoItem"
+PLACEHOLDER_NAME = "Archipelago Item"
+NAME_MAX = 40
+# Shop slots show the item's name on the price tag; each AP item there gets its own name entry in UI.msbt.
+SHOP_LOCATIONS = tuple(SHOP_TEXT)
 
 PLACEHOLDER_DEF = {
     "type": "junk",
@@ -39,7 +52,7 @@ PLACEHOLDER_DEF = {
     "model-path": "ItemShellRader.bfres",
     "model-name": "ShellRader",
     "npc-key": "ItemShellRader",
-    "message": "UI:ItemName_ShellRader",
+    "message": f"UI:{PLACEHOLDER_NAME_KEY}",
     "chest-type": "junk",
 }
 
@@ -72,18 +85,79 @@ def _add_placeholder_text_event(self) -> None:
     event_tools.createActionChain(flow.flowchart, PLACEHOLDER_KEY, [
         ("Dialog", "Show", {"message": f"Place:{PLACEHOLDER_KEY}"})
     ])
+    # The module starts received items' item-get with this entry point as its message entry.
+    event_tools.addEntryPoint(flow.flowchart, RECEIVED_KEY)
+    event_tools.createActionChain(flow.flowchart, RECEIVED_KEY, [
+        ("Dialog", "Show", {"message": f"System:{RECEIVED_KEY}"})
+    ])
     self.parent.file_manager.writeFile("Item.bfevfl", flow)
 
 
 def _add_placeholder_text(self) -> None:
     _original_create_text(self)
-    for relative_path, msbt in self.parent.file_manager.getAllTextFiles("Place.msbt"):
+    files = self.parent.file_manager
+    # Our texts use the window style of native item texts; added entries otherwise copy the file's first entry.
+    styles = {path: msbt.getEntry(ITEM_TEXT_STYLE_FROM).style_index for path, msbt in files.getAllTextFiles("System.msbt")}
+    for relative_path, msbt in files.getAllTextFiles("Place.msbt"):
         msbt.addEntry(PLACEHOLDER_KEY, PLACEHOLDER_TEXT)
         entry = msbt.getEntry(PLACEHOLDER_KEY)
         entry.message.text += "[1:4]"  # wait for input, as LASR's keysanity text does
-        self.parent.file_manager.writeTextFile(relative_path, "Place.msbt", msbt)
+        entry.style_index = styles[relative_path]
+        files.writeTextFile(relative_path, "Place.msbt", msbt)
+    for relative_path, msbt in files.getAllTextFiles("System.msbt"):
+        msbt.addEntry(RECEIVED_KEY, RECEIVED_TEXT)
+        entry = msbt.getEntry(RECEIVED_KEY)
+        entry.message.text += "[1:4]"
+        entry.style_index = styles[relative_path]
+        files.writeTextFile(relative_path, "System.msbt", msbt)
+    for relative_path, msbt in files.getAllTextFiles("UI.msbt"):
+        msbt.addEntry(PLACEHOLDER_NAME_KEY, PLACEHOLDER_NAME)
+        for key, name in SHOP_NAMES.items():
+            msbt.addEntry(key, name)
+        files.writeTextFile(relative_path, "UI.msbt", msbt)
 
 
+def _placeholder_get_first(self, flowchart, item, index, before=None, after=None):
+    """The placeholder is added before its item-get, unlike LASR's other items: the module learns the location
+    from the AddItemID call and names the item in the text that follows."""
+    if item != PLACEHOLDER_KEY:
+        return _original_get_with_animation(self, flowchart, item, index, before, after)
+    return event_tools.createActionChain(flowchart, before, [
+        ("Inventory", "AddItemByKey", {"itemKey": item, "count": 1, "index": index, "autoEquip": False}),
+        ("Link", "GenericItemGetSequenceByKey", {"itemKey": item, "keepCarry": False, "messageEntry": item}),
+    ], after)
+
+
+def _chest_placeholder_branch(self) -> None:
+    """Vanilla chests play the item-get before adding the item; chests with the placeholder add it first."""
+    _original_write_chest_event(self)
+    if not self.parent.thread_active:
+        return
+    files = self.parent.file_manager
+    flow = files.readFile("TreasureBox.bfevfl")
+    chart = flow.flowchart
+    open_next = event_tools.findEvent(chart, "Event32").data.nxt.v.name  # LASR's item switch chain
+    auto_save = event_tools.findEvent(chart, "Event40").data.nxt.v.name  # LASR's RequestAutoSave
+    ap_get = event_tools.createActionChain(chart, None, [
+        ("Inventory", "AddItemByKey", {"itemKey": PLACEHOLDER_KEY, "count": 1,
+                                       "index": evfl.common.Argument("itemIndex"), "autoEquip": False}),
+        ("Link", "GenericItemGetSequenceByKey", {"itemKey": PLACEHOLDER_KEY, "keepCarry": False,
+                                                 "messageEntry": PLACEHOLDER_KEY}),
+    ], auto_save)
+    ap_check = event_tools.createSwitchEvent(chart, "FlowControl", "CompareString",
+        {"value1": "itemKey", "value2": PLACEHOLDER_KEY}, {0: ap_get, 1: open_next})
+    event_tools.insertEventAfter(chart, "Event32", ap_check)
+    event_tools.insertEventAfter(chart, "Event28", ap_check)
+    files.writeFile("TreasureBox.bfevfl", flow)
+
+
+# UI.msbt entry -> shop name, filled from the patch file's location_names before the mod is built.
+SHOP_NAMES: dict = {}
+
+_original_get_with_animation = ItemGetManager.getWithAnimation
+_original_write_chest_event = ChestRandomizer.writeChestEvent
+ItemGetManager.getWithAnimation = _placeholder_get_first
+ChestRandomizer.writeChestEvent = _chest_placeholder_branch
 _original_add_custom_flags = FlagManager.addCustomFlags
 _original_make_item_changes = ItemsDatasheetFixes.makeItemChanges
 _original_add_text_events = Keysanity.addTextEvents
@@ -135,11 +209,32 @@ def build_placements(patch: dict, logic: dict) -> dict:
         placements[loc] = item
         if item == "ap-item":
             placements["indexes"][loc] = int(patch["location_ids"][loc])
+            if loc in SHOP_LOCATIONS and loc in patch.get("location_names", {}):
+                placements[loc] = shop_item_key(loc)
         elif item in INDEXED_ITEMS and "index" in logic.get(loc, {}):
             placements["indexes"][loc] = logic[loc]["index"]
         elif item.startswith(DUNGEON_ITEM_PREFIXES) and item[-1].isdigit():
             placements["indexes"][loc] = int(item[-1])
     return placements
+
+
+def shop_item_key(loc: str) -> str:
+    return f"ap-item:{loc}"
+
+
+def shop_name(names: list) -> str:
+    item, owner = names
+    text = f"{item} for {owner}" if owner else item
+    return text if len(text) <= NAME_MAX else text[:NAME_MAX - 1] + "…"
+
+
+def add_shop_items(patch: dict, item_defs: dict) -> None:
+    """Gives every shop slot that holds an AP item its own item definition, named after the real item."""
+    for loc, names in patch.get("location_names", {}).items():
+        if loc in SHOP_LOCATIONS and patch["placements"].get(loc) == "ap-item":
+            key = f"ItemName_AP_{loc}"
+            SHOP_NAMES[key] = shop_name(names).replace("[", "(").replace("]", ")")
+            item_defs[shop_item_key(loc)] = dict(PLACEHOLDER_DEF, message=f"UI:{key}")
 
 
 def main() -> int:
@@ -162,6 +257,7 @@ def main() -> int:
 
     item_defs = load_yaml("items.yml")["Item_Pool"]
     item_defs["ap-item"] = dict(PLACEHOLDER_DEF)
+    add_shop_items(patch, item_defs)
     logic = load_yaml("logic.yml")
 
     placements = build_placements(patch, logic)

@@ -128,7 +128,10 @@ namespace {
     u64 g_ItemGetSince = 0;
     u64 g_FreeSince = 0;
     bool g_WasFree = false;
-    std::deque<int> g_ShowQueue;
+    // A received item waiting to be shown; with a sender, it shows "You got <item> from <sender>!".
+    struct Show { int id; std::string item; std::string sender; };
+    std::deque<Show> g_ShowQueue;
+    Show g_Showing{};
 
     void ReleaseShared(SharedPtr& sp) {
         if (sp.ctrl != nullptr) {
@@ -166,7 +169,7 @@ namespace {
         ReleaseShared(g_ItemGetAction);
         Logging.Log("[AP] item-get " + std::to_string(g_ItemGetId) + " ended after " + std::to_string(ran) + " ms, state " + std::to_string(state));
         if (state == kActionDone && ran < kItemGetMinMs && ++g_ItemGetTry < kItemGetTries) {
-            g_ShowQueue.push_front(g_ItemGetId);
+            g_ShowQueue.push_front(g_Showing);
         } else {
             g_ItemGetTry = 0;
         }
@@ -186,10 +189,10 @@ namespace {
         return itemId == 4 || itemId == 11 || itemId == 60 || itemId >= 100;
     }
 
-    void QueueShow(int itemId) {
+    void QueueShow(const Show& show) {
         if (g_ShowQueue.size() >= kShowQueueMax) return;
-        if (g_ShowQueue.size() >= kShowFillerMax && IsFiller(itemId)) return;
-        g_ShowQueue.push_back(itemId);
+        if (g_ShowQueue.size() >= kShowFillerMax && IsFiller(show.id)) return;
+        g_ShowQueue.push_back(show);
     }
 
     // Shows queued items one at a time while the player is free.
@@ -202,22 +205,28 @@ namespace {
             return;
         }
         if (g_ShowQueue.empty() || !free || NowMs() - g_FreeSince < kFreeSettleMs) return;
-        int id = g_ShowQueue.front();
+        g_Showing = g_ShowQueue.front();
         g_ShowQueue.pop_front();
+        int id = g_Showing.id;
         g_ItemGetId = id;
         Logging.Log("[AP] item-get " + std::to_string(id) + " start");
-        if (!StartItemGet(id, "")) AP::Log("item-get " + std::to_string(id) + " did not start");
+        std::string message;
+        if (!g_Showing.sender.empty()) {
+            AP::SetReceivedText(g_Showing.item, g_Showing.sender);
+            message = AP::RECEIVED_LABEL;
+        }
+        if (!StartItemGet(id, message)) AP::Log("item-get " + std::to_string(id) + " did not start");
     }
 
     // Grants one item the way an in-game pickup would, including LASR's progressive items.
-    // With show, the item-get is queued for display.
-    void GrantItem(const std::string& key, int count, int dungeon, bool show) {
+    // Returns the item id granted, or -1 for traps and unknown keys.
+    int GrantItem(const std::string& key, int count, int dungeon) {
         auto* items = *Game::Data::Inventory::Items;
         std::string k = key;
         if (k.ends_with("Trap") || k == "$ENEMY") {
             // Traps from other worlds cost one heart; they never kill.
             Damage(4);
-            return;
+            return -1;
         }
         if (k == "SwordLv1" && EventFlags::CheckFlag("SwordFoundFlag")) k = "SwordLv2";
         else if (k == "Shield" && EventFlags::CheckFlag("ShieldFoundFlag")) k = "MirrorShield";
@@ -228,7 +237,7 @@ namespace {
         int id = ItemIdFromKey(k);
         if (id < 0) {
             AP::Log("unknown item key " + key);
-            return;
+            return -1;
         }
 
         int index = -1;
@@ -241,7 +250,17 @@ namespace {
             default: break;
         }
         Inventory::AddItemID(id, count, index);
-        if (show) QueueShow(id);
+        return id;
+    }
+
+    // The text after the first n space-separated fields of a line.
+    std::string RestAfter(const std::string& line, int n) {
+        size_t pos = 0;
+        for (int i = 0; i < n && pos != std::string::npos; i++) {
+            pos = line.find_first_not_of(' ', pos);
+            pos = pos == std::string::npos ? pos : line.find(' ', pos);
+        }
+        return pos == std::string::npos ? "" : line.substr(pos + 1);
     }
 
     void LoadChecks() {
@@ -346,7 +365,8 @@ namespace {
         } else if (cmd == "grant" && a.size() >= 5) {
             // Same path as ITEM without touching the received counter: DBG grant <key> <count> <dungeon> [show 0|1]
             if (!PlayerReady()) return false;
-            GrantItem(a[2], atoi(a[3].c_str()), atoi(a[4].c_str()), a.size() < 6 || a[5] != "0");
+            int id = GrantItem(a[2], atoi(a[3].c_str()), atoi(a[4].c_str()));
+            if (id >= 0 && (a.size() < 6 || a[5] != "0")) QueueShow(Show{id, "", ""});
             AP::Send("OK grant");
         } else if (cmd == "warp" && a.size() >= 6) {
             // DBG warp <level> <x> <y> <z>
@@ -379,6 +399,8 @@ namespace {
             std::fill(g_Checks.begin(), g_Checks.end(), 0);
             SaveChecks();
             AP::Send("OK clearchecks");
+        } else if (cmd == "text") {
+            AP::Send(AP::TextState());
         } else if (cmd == "peek" && a.size() >= 5) {
             // DBG peek <p|f|i|a|c> <hex offset> <hex length>: bytes of the player, the framework the level-load data, or the last item-get action and its control block
             Game::Framework* fmwk = Game::GetFramework();
@@ -407,6 +429,10 @@ namespace {
         } else if (cmd == "itemget" && a.size() >= 3) {
             // DBG itemget <item key> [message entry]
             if (!PlayerReady()) return false;
+            if (ItemGetRunning()) {
+                AP::Send("ERR itemget: a display is running");
+                return true;
+            }
             int id = ItemIdFromKey(a[2]);
             bool ok = id >= 0 && StartItemGet(id, a.size() >= 4 ? a[3] : "");  // bypasses the queue
             AP::Send(std::string(ok ? "OK" : "ERR") + " itemget " + std::to_string(id) + " action=" + HexU64((u64)g_ItemGetAction.ptr));
@@ -446,7 +472,16 @@ namespace {
             int n = atoi(a[1].c_str());
             int have = GetRecvCount();
             if (n == have + 1) {
-                GrantItem(a[2], atoi(a[3].c_str()), atoi(a[4].c_str()), true);
+                // ITEM <n> <key> <count> <dungeon> [<location> <item name>|<sender>]
+                int id = GrantItem(a[2], atoi(a[3].c_str()), atoi(a[4].c_str()));
+                int location = a.size() >= 6 ? atoi(a[5].c_str()) : -1;
+                std::string names = RestAfter(line, 6);
+                size_t bar = names.find('|');
+                std::string item = bar == std::string::npos ? names : names.substr(0, bar);
+                std::string sender = bar == std::string::npos ? "" : names.substr(bar + 1);
+                // An own item found here was named by the found text already.
+                bool namedWhenFound = sender.empty() && location >= 0 && AP::HasLocationName(location);
+                if (id >= 0 && !namedWhenFound) QueueShow(Show{id, item, sender});
                 SetRecvCount(n);
                 have = n;
             }
@@ -459,6 +494,12 @@ namespace {
         } else if (a[0] == "DEATH") {
             if (!PlayerReady()) return false;
             (*Game::Data::Inventory::Items)->Health = 0;
+        } else if (a[0] == "NAME" && a.size() >= 2) {
+            // NAME <local id> <item name>|<player name, empty for an own item>
+            std::string names = RestAfter(line, 2);
+            size_t bar = names.find('|');
+            AP::SetLocationName(atoi(a[1].c_str()), names.substr(0, bar),
+                                bar == std::string::npos ? "" : names.substr(bar + 1));
         } else if (a[0] == "MSG") {
             Logging.Log("[AP] " + line.substr(4));
         } else if (a[0] == "DBG") {
@@ -473,6 +514,7 @@ namespace {
 namespace AP {
     void Init(const std::string& seed_hash) {
         if (!seed_hash.empty()) g_SeedHash = seed_hash;
+        InstallTextHooks();
         StartNetwork();
     }
 
@@ -486,6 +528,7 @@ namespace AP {
     }
 
     void OnPlaceholderCollected(int local_id) {
+        SetFoundLocation(local_id);
         if (!g_ChecksLoaded) LoadChecks();
         if (local_id >= 0 && local_id < (int)(kChecksBytes * 8)) {
             g_Checks[local_id / 8] |= (1 << (local_id % 8));

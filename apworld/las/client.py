@@ -10,9 +10,14 @@ from .ids import LOCATION_BASE
 from .items import GAME, ITEM_GAME_INFO
 
 GAME_PORT = 43384
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 PING_INTERVAL = 2.0
 RESEND_INTERVAL = 3.0
+
+
+def clean(text: str) -> str:
+    """Names travel inside a line, separated by '|'."""
+    return " ".join(text.replace("|", "/").split())
 
 
 class LASCommandProcessor(ClientCommandProcessor):
@@ -30,6 +35,10 @@ class LASCommandProcessor(ClientCommandProcessor):
     def _cmd_dbg(self, *args: str) -> None:
         """Send a debug command to the game module (testing only), e.g. /dbg state."""
         self.ctx.send_game("DBG " + " ".join(args))
+
+    def _cmd_game(self, *args: str) -> None:
+        """Send a raw protocol line to the game module (testing only)."""
+        self.ctx.send_game(" ".join(args))
 
     def _cmd_resync(self) -> None:
         """Ask the game to resend its received-item count and collected locations."""
@@ -53,6 +62,8 @@ class LASContext(CommonContext):
         self.game_checked: Set[int] = set()
         self.goal_reached = False
         self.last_item_sent = 0.0
+        # Local location id -> "<item name>|<owner name, empty for our own items>", from LocationScouts.
+        self.scouted_names: Dict[int, str] = {}
 
     async def server_auth(self, password_requested: bool = False) -> None:
         if password_requested and not self.password:
@@ -65,10 +76,20 @@ class LASContext(CommonContext):
             self.slot_seed_hash = args["slot_data"].get("seed_hash")
             self.check_seed()
             asyncio.create_task(self.flush_checks())
+            asyncio.create_task(self.send_msgs([{"cmd": "LocationScouts", "locations": sorted(self.server_locations),
+                                                 "create_as_hint": 0}]))
             if args["slot_data"].get("death_link"):
                 asyncio.create_task(self.update_death_link(True))
         elif cmd == "ReceivedItems":
             self.send_next_item()
+        elif cmd == "LocationInfo":
+            for item in args["locations"]:
+                if item.location < LOCATION_BASE:
+                    continue
+                owner = "" if item.player == self.slot else self.player_names.get(item.player, "")
+                name = self.item_names.lookup_in_slot(item.item, item.player)
+                self.scouted_names[item.location - LOCATION_BASE] = f"{clean(name)}|{clean(owner)}"
+            self.send_location_names()
 
     def on_deathlink(self, data: Dict) -> None:
         super().on_deathlink(data)
@@ -85,6 +106,10 @@ class LASContext(CommonContext):
         if self.game_writer is not None:
             self.game_writer.write(line.encode() + b"\n")
 
+    def send_location_names(self) -> None:
+        for local_id, names in sorted(self.scouted_names.items()):
+            self.send_game(f"NAME {local_id} {names}")
+
     def send_next_item(self) -> None:
         """Sends the next item the game has not applied yet; the game answers RECV with its new count."""
         if self.game_writer is None or self.game_recv is None or not self.check_seed():
@@ -97,7 +122,11 @@ class LASContext(CommonContext):
         if not key:
             logger.warning(f"No game item for {name}; skipping it.")
             key = "None"
-        self.send_game(f"ITEM {self.game_recv + 1} {key} 1 {dungeon}")
+        # Our own items carry the location they came from; other players' items name the sender.
+        own = item.player == self.slot
+        location = item.location - LOCATION_BASE if own and item.location >= LOCATION_BASE else -1
+        sender = "" if own or item.player == 0 else clean(self.player_names.get(item.player, ""))
+        self.send_game(f"ITEM {self.game_recv + 1} {key} 1 {dungeon} {location} {clean(name)}|{sender}")
         self.last_item_sent = asyncio.get_event_loop().time()
 
     async def flush_checks(self) -> None:
@@ -121,6 +150,7 @@ class LASContext(CommonContext):
                 logger.error(f"Game protocol {parts[1:2]} does not match the client ({PROTOCOL_VERSION}).")
             logger.info(f"Connected to the game (seed hash {self.game_seed_hash}).")
             self.check_seed()
+            self.send_location_names()
             self.send_game("SYNC")
         elif cmd == "RECV":
             self.game_recv = int(parts[1])
