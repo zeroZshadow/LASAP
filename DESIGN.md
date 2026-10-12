@@ -18,11 +18,17 @@ Flow:
 
 ## Client install
 
-- The client's paths live in `host.yaml` under `las_options` (`host_settings.py`): `romfs_folder`, `sd_card_folder`, `mod_folder`, `patcher_command`, `game_start`, `game_host`. A missing RomFS or SD card folder opens a folder browser.
-- The client runs `patcher_command <patch> --romfs <romfs_folder> --out <temp dir>` as a subprocess and logs its output (`install.py`). The patcher needs its own Python 3.12 venv (oead, evfl), so it does not run inside Archipelago.
-- It then replaces `romfs` and `exefs` in `mod_folder` (default `<sd_card_folder>/atmosphere/contents/01006BB00C6F0000`) and copies `config/lasr-exl/config.ini` to `sd_card_folder`, config last.
-- The mod is current when the installed `config.ini`'s `[archipelago] seed_hash` matches the patch and both mod folders exist; then the client skips patching. `/patch` forces it.
-- After installing, the client runs `game_start` if set, and connects to the patch's `server` as its `player_name`.
+- The client's Patch tab (`client_gui.py`) edits the settings in `host.yaml` under `las_options` (`host_settings.py`): `emulator`, `game_file`, `romfs_folder`, `sd_card_folder`, `mod_folder`, `patcher_command`, `game_host`. `checklist.py` turns them into one status line per setting and decides whether everything needed to install is valid.
+- `emulators.py` derives the rest from the emulator's executable:
+  - Ryujinx: data folder `portable` next to the executable, else the per-user `Ryujinx` folder. SD card `<data>/sdcard`, mods `<SD card>/atmosphere/contents/01006BB00C6F0000`, game folders from `Config.json`.
+  - Yuzu and its forks (Eden, Citron, Sudachi, Suyu, Torzu): data folder `user` next to the executable, else the per-user folder named after the emulator. `config/qt-config.ini` gives the SD card (`sdmc_directory`), mods (`load_directory`, plus `01006BB00C6F0000/Archipelago`; their SD card's `atmosphere/contents` loads only RomFS mods), RomFS dumps (`dump_directory`), game folders and recent files.
+  - The game is the `.nsp` or `.xci` whose name holds the title id, or whose PFS0 file list holds the base game's ticket.
+  - An SD card folder in the settings overrides the emulator's; for Ryujinx, its parent is the data folder, passed as `--root-data-dir` when it is not the default.
+  - When no emulator is set, the client takes a running one (Windows, with Ryujinx's `--root-data-dir`), and opens the Patch tab instead of installing.
+- Install: the client runs `patcher_command <patch> --romfs <dump> --out <temp dir>` as a subprocess and logs its output (`install.py`). The patcher needs its own Python 3.12 venv (oead, evfl), so it does not run inside Archipelago. It then replaces `romfs` and `exefs` in the mod folder and copies `config/lasr-exl/config.ini` to the SD card, config last.
+- The mod is current when the installed `config.ini`'s `[archipelago] seed_hash` matches the patch and both mod folders exist; then Install and play skips patching. Other Link's Awakening mod folders the emulator would also load are reported.
+- Opened with a patch file and a known emulator, the client installs, starts the emulator with the game (unless it runs), and connects to the patch's `server` as its `player_name`.
+- `file_types.py` registers `.aplas` for the current user (`HKCU\Software\Classes`), opening with the Archipelago Launcher, which hands the file to the client. It runs only from the Patch tab's button.
 
 ## Item model: remote items
 

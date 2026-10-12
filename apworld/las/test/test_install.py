@@ -3,7 +3,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ..install import CONFIG_PATH, TITLE_ID, InstallError, installed_seed, mod_dir, patch_and_install, split_command
+from .. import emulators
+from ..emulators import TITLE_ID
+from ..install import CONFIG_PATH, InstallError, installed_seed, patch_and_install, split_command
 
 # Stands in for las_ap_patch.py: writes the patcher's output layout for the seed named in the patch file.
 FAKE_PATCHER = """
@@ -32,17 +34,18 @@ class TestInstall(unittest.TestCase):
         self.command = f'"{sys.executable}" "{script}"'
         self.patch = root / "seed.aplas"
         self.lines = []
+        self.mods = self.sd / "atmosphere" / "contents" / TITLE_ID
 
     def tearDown(self) -> None:
         self.tmp.cleanup()
 
     def run_install(self, seed: str, force: bool = False) -> bool:
         self.patch.write_text(seed)
-        return patch_and_install(self.command, self.patch, seed, self.romfs, self.sd, mod_dir(self.sd, ""),
-                                 self.lines.append, force)
+        return patch_and_install(self.command, self.patch, seed, self.romfs, self.sd, self.mods, self.lines.append,
+                                 force)
 
     def test_installs_once_per_seed(self) -> None:
-        mods = self.sd / "atmosphere" / "contents" / TITLE_ID
+        mods = self.mods
         self.assertIsNone(installed_seed(self.sd, mods))
         self.assertTrue(self.run_install("aaaa0001"))
         self.assertIn("Mod written", self.lines)
@@ -57,9 +60,6 @@ class TestInstall(unittest.TestCase):
         self.assertFalse((mods / "romfs" / "stale").exists())
         self.assertTrue((self.sd / CONFIG_PATH).exists())
 
-    def test_mod_folder(self) -> None:
-        self.assertEqual(mod_dir(self.sd, "D:/emu/load/X/Archipelago"), Path("D:/emu/load/X/Archipelago"))
-
     def test_errors(self) -> None:
         self.command = ""
         with self.assertRaises(InstallError):
@@ -67,9 +67,48 @@ class TestInstall(unittest.TestCase):
         self.command = f'"{sys.executable}" -c "raise SystemExit(3)"'
         with self.assertRaises(InstallError):
             self.run_install("aaaa0001")
-        self.assertIsNone(installed_seed(self.sd, mod_dir(self.sd, "")))
+        self.assertIsNone(installed_seed(self.sd, self.mods))
 
     def test_split_command(self) -> None:
         self.assertEqual(split_command('"C:/Program Files/py.exe" D:\\a\\b.py'),
                          ["C:/Program Files/py.exe", "D:\\a\\b.py"] if sys.platform == "win32"
                          else ["C:/Program Files/py.exe", "D:ab.py"])
+
+
+class TestEmulators(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+
+    def tearDown(self) -> None:
+        self.tmp.cleanup()
+
+    def test_ryujinx_portable(self) -> None:
+        exe = self.root / "Ryujinx" / "Ryujinx.exe"
+        (exe.parent / "portable").mkdir(parents=True)
+        target = emulators.target(str(exe), "", "")
+        self.assertEqual(target.sd_card, exe.parent / "portable" / "sdcard")
+        self.assertEqual(target.mods, exe.parent / "portable" / "sdcard" / "atmosphere" / "contents" / TITLE_ID)
+        self.assertEqual(emulators.start_args(str(exe), "game.nsp", target.data_dir), [str(exe), "game.nsp"])
+
+    def test_ryujinx_custom_data_folder(self) -> None:
+        exe = self.root / "Ryujinx.exe"
+        data = self.root / "data"
+        target = emulators.target(str(exe), str(data / "sdcard"), "")
+        self.assertEqual(target.mods, data / "sdcard" / "atmosphere" / "contents" / TITLE_ID)
+        self.assertEqual(emulators.start_args(str(exe), "game.nsp", target.data_dir),
+                         [str(exe), "--root-data-dir", str(data), "game.nsp"])
+
+    def test_yuzu_based(self) -> None:
+        exe = self.root / "eden" / "eden.exe"
+        (exe.parent / "user").mkdir(parents=True)
+        target = emulators.target(str(exe), "", "")
+        self.assertEqual(target.kind, "yuzu")
+        self.assertEqual(target.sd_card, exe.parent / "user" / "sdmc")
+        self.assertEqual(target.mods, exe.parent / "user" / "load" / TITLE_ID / "Archipelago")
+        self.assertEqual(emulators.start_args(str(exe), "game.nsp", target.data_dir), [str(exe), "-g", "game.nsp"])
+
+    def test_without_emulator(self) -> None:
+        self.assertIsNone(emulators.target("", "", ""))
+        target = emulators.target("", str(self.root / "sd"), str(self.root / "mods"))
+        self.assertEqual((target.sd_card, target.mods), (self.root / "sd", self.root / "mods"))

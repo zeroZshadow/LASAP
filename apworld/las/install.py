@@ -1,6 +1,5 @@
 """Turns an .aplas into an installed mod: runs the patcher, then copies its output to the game's SD card."""
 import configparser
-import os
 import shlex
 import shutil
 import subprocess
@@ -9,7 +8,8 @@ import tempfile
 from pathlib import Path
 from typing import Callable, List, Optional
 
-TITLE_ID = "01006BB00C6F0000"
+from .emulators import TITLE_ID
+
 CONFIG_PATH = Path("config", "lasr-exl", "config.ini")
 MOD_PARTS = ("romfs", "exefs")
 
@@ -26,10 +26,6 @@ def split_command(command: str) -> List[str]:
             for part in shlex.split(command, posix=False)]
 
 
-def mod_dir(sd_card: Path, mod_folder: str) -> Path:
-    return Path(mod_folder) if mod_folder else sd_card / "atmosphere" / "contents" / TITLE_ID
-
-
 def installed_seed(sd_card: Path, mods: Path) -> Optional[str]:
     """The seed hash of the installed mod, or None when no complete mod is installed."""
     config = configparser.ConfigParser()
@@ -44,8 +40,7 @@ def installed_seed(sd_card: Path, mods: Path) -> Optional[str]:
 
 def run_patcher(command: str, patch_file: Path, romfs: Path, out: Path, log: Callable[[str], None]) -> None:
     if not command.strip():
-        raise InstallError("las_options.patcher_command in host.yaml is empty; set it to the command that runs "
-                           "patcher/las_ap_patch.py.")
+        raise InstallError("The patcher command is empty; set it to the command that runs patcher/las_ap_patch.py.")
     args = split_command(command) + [str(patch_file), "--romfs", str(romfs), "--out", str(out)]
     flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
     try:
@@ -90,15 +85,3 @@ def patch_and_install(command: str, patch_file: Path, seed_hash: str, romfs: Pat
         install(Path(tmp), sd_card, mods)
     log(f"Installed the mod for seed {seed_hash}: {mods} and {sd_card / CONFIG_PATH}.")
     return True
-
-
-def start_game(command: str, log: Callable[[str], None]) -> None:
-    if not command.strip():
-        return
-    args = split_command(command)
-    try:
-        subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                         cwd=os.path.dirname(args[0]) or None)
-        log(f"Started {args[0]}.")
-    except OSError as e:
-        log(f"Could not start the game ({args[0]}): {e}")

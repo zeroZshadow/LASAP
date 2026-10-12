@@ -13,7 +13,7 @@ DESIGN.md has the contracts between the parts, TESTING.md covers the test harnes
 
 ## Playing
 
-The player's guide is `apworld/las/docs/setup_en.md`: install the world, set `las_options` in `host.yaml`, then open the `.aplas` with the Launcher. The client patches the game, installs the mod and connects. The patcher runs from this repository, so it needs a one-time setup.
+The player's guide is `apworld/las/docs/setup_en.md`: install the world, open the `.aplas`, choose the emulator and the RomFS dump in the client's Patch tab, and press Install and play. The patcher runs from this repository, so it needs a one-time setup.
 
 ### One-time setup
 
@@ -31,7 +31,7 @@ The player's guide is `apworld/las/docs/setup_en.md`: install the world, set `la
    uv pip install -r patcher/requirements.txt --python .venv-lasr
    ```
 4. **Build the game module** with `bash scripts/build_exl.sh`. It needs Docker and writes `patcher/exl/`. The module is the same for every seed.
-5. **Configure the client.** In `host.yaml`, set `las_options.patcher_command` to `<repo>/.venv-lasr/Scripts/python.exe <repo>/patcher/las_ap_patch.py`, and `romfs_folder` and `sd_card_folder` (the setup guide lists them per emulator).
+5. **Point the client at the patcher.** In the client's Patch tab, under advanced settings, set the patcher command to `<repo>/.venv-lasr/Scripts/python.exe <repo>/patcher/las_ap_patch.py` (or `las_options.patcher_command` in `host.yaml`).
 
 ### Each seed
 
@@ -43,10 +43,10 @@ The player's guide is `apworld/las/docs/setup_en.md`: install the world, set `la
    - You start with the sword, shield, ocarina and Manbo's Mambo.
 
    Set your `name`, put the file in `Players` with everyone else's, and generate. Host the result as usual, on archipelago.gg or with the Launcher's "Host".
-2. **Open the patch.** The output zip has a patch file per LAS slot, `AP_<seed>_P<n>_<slot>.aplas`. Open it with the Launcher (double-click, drag onto the Launcher, or "Open Patch"). The Links Awakening Switch Client patches and installs the mod unless that seed is installed already, starts the game when `game_start` is set, and connects to the server named in the patch. `/patch` in the client patches again.
+2. **Open the patch.** The output zip has a patch file per LAS slot, `AP_<seed>_P<n>_<slot>.aplas`. Open it with the Launcher (double-click, drag onto the Launcher, or "Open Patch"). The Links Awakening Switch Client opens on its Patch tab; the first time, choose the emulator and the RomFS dump there. Install and play patches and installs the mod unless that seed is installed already, starts the emulator with the game, and the client connects to the server named in the patch.
 3. **Play.**
    - Start a new save.
-   - Connect the client to the server if the patch named none. The client finds the game at `game_host`, `127.0.0.1` by default; Ryujinx needs no settings for that.
+   - Connect the client to the server if the patch named none. The client finds the game at the game address, `127.0.0.1` by default; emulators need no settings for that.
    - Every randomized location holds an Archipelago item. It shows the item's model when the item is a LAS item or its name matches one (`apworld/las/data/item_models.yml`), otherwise the Archipelago model, and its text names the item and whose it is. Your items, including the ones you find yourself, arrive through the client. Checks made while the client is offline are sent when it reconnects.
 
 The patcher also runs on its own: `.venv-lasr/Scripts/python.exe patcher/las_ap_patch.py <patch.aplas> --romfs <romfs dump> --out <out dir>` writes the SD card layout (`atmosphere/contents/01006BB00C6F0000`, `config/lasr-exl/config.ini`) to `<out dir>`.

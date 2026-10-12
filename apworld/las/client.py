@@ -1,7 +1,7 @@
 """PC client: bridges the Archipelago server and the game's exlaunch module (TCP line protocol, see DESIGN.md)."""
 import asyncio
 from pathlib import Path
-from typing import Dict, Optional, Set
+from typing import Dict, List, Optional, Set
 
 import Utils
 from CommonClient import ClientCommandProcessor, CommonContext, get_base_parser, gui_enabled, logger, server_loop
@@ -9,7 +9,8 @@ from NetUtils import ClientStatus
 
 from .container import LASContainer
 from .ids import LOCATION_BASE
-from .install import InstallError, mod_dir, patch_and_install, start_game
+from . import checklist, emulators
+from .install import InstallError, patch_and_install
 from .items import GAME, ITEM_GAME_INFO
 
 GAME_PORT = 43384
@@ -21,6 +22,9 @@ RESEND_INTERVAL = 3.0
 def clean(text: str) -> str:
     """Names travel inside a line, separated by '|'."""
     return " ".join(text.replace("|", "/").split())
+
+
+OPTION_KEYS = ("emulator", "game_file", "romfs_folder", "sd_card_folder", "mod_folder", "patcher_command", "game_host")
 
 
 class LASCommandProcessor(ClientCommandProcessor):
@@ -51,10 +55,20 @@ class LASCommandProcessor(ClientCommandProcessor):
         """Patch and install the mod again, from the given .aplas or the one this client was opened with."""
         if patch_file:
             self.ctx.patch_file = patch_file
-        if not self.ctx.patch_file:
-            logger.info("No patch file; use /patch <path to .aplas>.")
-            return
         asyncio.create_task(self.ctx.install_patch(force=True))
+
+    def _cmd_start(self) -> None:
+        """Start the emulator with the game."""
+        asyncio.create_task(self.ctx.start_emulator())
+
+    def _cmd_setup(self) -> None:
+        """Show the patch settings and what is missing (the Patch tab has the same)."""
+        checks = self.ctx.check_setup()
+        for key in OPTION_KEYS:
+            check = checks.checks.get(key)
+            note = f" - {check.text}" if check and check.text else ""
+            logger.info(f"{key}: {self.ctx.option(key) or '(empty)'}{note}")
+        logger.info(checks.checks["installed"].text)
 
 
 class LASContext(CommonContext):
@@ -111,8 +125,9 @@ class LASContext(CommonContext):
 
     def check_seed(self) -> bool:
         if self.slot_seed_hash and self.game_seed_hash and self.slot_seed_hash != self.game_seed_hash:
-            logger.error(f"The game runs seed {self.game_seed_hash} but this slot needs {self.slot_seed_hash}. "
-                         f"Install the mod generated for this slot.")
+            logger.error(f"The game runs another seed ({self.game_seed_hash}) than this slot ({self.slot_seed_hash}). "
+                         f"In the Patch tab, choose this slot's patch file and press Install and play, then restart "
+                         f"the game.")
             return False
         return True
 
@@ -224,42 +239,166 @@ class LASContext(CommonContext):
                 self.send_next_item()
             await asyncio.sleep(PING_INTERVAL)
 
-    async def install_patch(self, force: bool = False, start: bool = False) -> None:
-        """Patches the game with `patch_file` and installs the mod, using the paths in host.yaml (las_options)."""
+    # Patching: settings live in host.yaml (las_options); the Patch tab shows and edits them.
+
+    @staticmethod
+    def option(key: str) -> str:
+        from . import LASWorld
+        return str(getattr(LASWorld.settings, key) or "")
+
+    def set_option(self, key: str, value: str, detect: bool = True) -> None:
         import settings
         from . import LASWorld
+        value = value.strip().strip('"')
+        if self.option(key) == value:
+            return
         options = LASWorld.settings
-        try:
-            container = LASContainer(self.patch_file)
-            container.read()
-            romfs, sd_card = Path(options.romfs_folder), Path(options.sd_card_folder)
-        except FileNotFoundError as e:
-            logger.error(f"Cannot patch: {e}. Set the folders in las_options in host.yaml.")
-            return
-        except Exception as e:
-            logger.error(f"Cannot read {self.patch_file}: {e}")
-            return
-        if settings.get_settings().changed:
-            settings.get_settings().save()
-        loop = asyncio.get_running_loop()
+        setattr(options, key, type(getattr(options, key))(value))
+        settings.get_settings().save()
+        if key == "game_host":
+            self.game_host = value or "127.0.0.1"
+        if key == "emulator" and detect:
+            self.detect_from_emulator()
+        self.refresh_patch_tab()
 
-        def log(line: str) -> None:
-            loop.call_soon_threadsafe(logger.info, line)
+    def install_target(self) -> Optional[emulators.Target]:
+        return emulators.target(self.option("emulator"), self.option("sd_card_folder"), self.option("mod_folder"))
 
-        try:
-            await asyncio.to_thread(patch_and_install, options.patcher_command, Path(self.patch_file),
-                                    container.patch["seed_hash"], romfs, sd_card,
-                                    mod_dir(sd_card, options.mod_folder), log, force)
-        except (InstallError, OSError) as e:
-            logger.error(f"Patching failed: {e}")
+    def check_setup(self) -> checklist.Checklist:
+        return checklist.check(self.patch_file or "", {key: self.option(key) for key in OPTION_KEYS})
+
+    def detect_from_emulator(self) -> None:
+        """Fills in the game file and RomFS dump the emulator knows about, when they are empty."""
+        exe = self.option("emulator")
+        if not exe:
             return
+        target = self.install_target()
+        data_dir = target.data_dir if target else None
+        if not self.option("game_file"):
+            game = emulators.find_game(emulators.game_dirs(exe, data_dir),
+                                       recent=emulators.recent_games(exe, data_dir))
+            if game:
+                self.set_option("game_file", str(game), detect=False)
+                logger.info(f"Found the game: {game}")
+        if not self.option("romfs_folder"):
+            romfs = emulators.find_romfs(exe, data_dir)
+            if romfs:
+                self.set_option("romfs_folder", str(romfs), detect=False)
+                logger.info(f"Found the RomFS dump: {romfs}")
+
+    async def detect_running_emulator(self) -> bool:
+        """Takes a running emulator, with Ryujinx's --root-data-dir, when no emulator is set. Returns whether it did."""
+        if self.option("emulator") or self.option("sd_card_folder"):
+            return False
+        running = await asyncio.to_thread(emulators.running_emulators)
+        if not running:
+            return False
+        found = running[0]
+        if found.data_dir is not None and emulators.kind_of(found.exe) == "ryujinx":
+            self.set_option("sd_card_folder", str(found.data_dir / "sdcard"), detect=False)
+        self.report("info", f"Found {emulators.display_name(found.exe)} running: {found.exe}")
+        self.set_option("emulator", found.exe)
+        return True
+
+    def report(self, level: str, message: str) -> None:
+        """Logs a patching step and shows it in the Patch tab."""
+        getattr(logger, level)(message)
+        if self.ui and hasattr(self.ui, "patch_panel"):
+            self.ui.patch_panel.show_progress(level, message)
+
+    def show_patch_tab(self) -> None:
+        if self.ui and hasattr(self.ui, "show_patch_tab"):
+            self.ui.show_patch_tab()
+
+    def refresh_patch_tab(self) -> None:
+        if self.ui and hasattr(self.ui, "patch_panel"):
+            self.ui.patch_panel.refresh()
+
+    async def install_patch(self, force: bool = False, start: bool = False) -> None:
+        """Installs the mod for `patch_file` unless it is installed already (or `force`), then optionally starts the
+        emulator."""
+        checks = self.check_setup()
+        if not checks.ready or checks.target is None:
+            self.report("error", checks.problems())
+            self.show_patch_tab()
+            return
+        target, exe = checks.target, self.option("emulator")
+        if force or checks.checks["installed"].level != checklist.OK:
+            loop = asyncio.get_running_loop()
+
+            def log(line: str) -> None:
+                loop.call_soon_threadsafe(logger.info, line)
+
+            open_already = bool(exe) and await asyncio.to_thread(emulators.is_running, exe)
+            self.report("info", f"Installing the mod for slot {checks.player_name}. This takes a few seconds.")
+            logger.info(f"Seed {checks.seed_hash}, into {target.mods} and {target.sd_card}.")
+            try:
+                await asyncio.to_thread(patch_and_install, self.option("patcher_command"), Path(self.patch_file),
+                                        checks.seed_hash, emulators.romfs_root(self.option("romfs_folder")),
+                                        target.sd_card, target.mods, log, True)
+            except (InstallError, OSError) as e:
+                self.report("error", f"Patching failed: {e} The Archipelago tab shows the patcher's output.")
+                self.show_patch_tab()
+                return
+            finally:
+                self.refresh_patch_tab()
+            if open_already:
+                self.report("warning", f"{emulators.display_name(exe)} is open: restart the game to load the new mod.")
+        else:
+            self.report("info", f"The mod for slot {checks.player_name} (seed {checks.seed_hash}) is installed.")
+        if "other_mods" in checks.checks:
+            self.report("warning", checks.checks["other_mods"].text)
         if start:
-            start_game(options.game_start, logger.info)
+            await self.start_emulator()
+
+    async def start_emulator(self) -> None:
+        exe = self.option("emulator")
+        if not exe:
+            self.report("error", "Choose your emulator in the Patch tab first.")
+            self.show_patch_tab()
+            return
+        name = emulators.display_name(exe)
+        if self.game_writer is not None:
+            self.report("info", "The game is running already.")
+            return
+        if await asyncio.to_thread(emulators.is_running, exe):
+            self.report("info", f"{name} is open already. Start Link's Awakening there.")
+            return
+        target = self.install_target()
+        game = self.option("game_file")
+        args = emulators.start_args(exe, game, target.data_dir if target else None)
+        import subprocess
+        try:
+            subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             cwd=str(Path(exe).parent))
+        except OSError as e:
+            self.report("error", f"Could not start {name}: {e}")
+            return
+        self.report("info", f"Started {name}." + ("" if game else " Start Link's Awakening from its game list."))
+        logger.debug("Emulator command: " + " ".join(f'"{a}"' if " " in a else a for a in args))
 
     def make_gui(self):
-        ui = super().make_gui()
-        ui.base_title = "Archipelago Link's Awakening (Switch) Client"
-        return ui
+        from .client_gui import make_manager
+        return make_manager(super().make_gui())
+
+
+async def prepare_patch(ctx: LASContext, patch: bool) -> None:
+    """Once the window shows the log: finds the emulator and its folders, then installs and starts the game when the
+    client was opened with a patch file."""
+    for _ in range(100):
+        if not ctx.ui or hasattr(ctx.ui, "patch_tab"):
+            break
+        await asyncio.sleep(0.1)
+    if patch:
+        ctx.show_patch_tab()
+    detected = await ctx.detect_running_emulator()
+    ctx.detect_from_emulator()
+    ctx.refresh_patch_tab()
+    if patch and detected:
+        # never install into an emulator the player has not seen yet
+        ctx.report("info", "Check the settings below, then press Install and play.")
+    elif patch:
+        await ctx.install_patch(start=True)
 
 
 def launch(*launch_args: str) -> None:
@@ -271,7 +410,9 @@ def launch(*launch_args: str) -> None:
         if gui_enabled and not args.nogui:
             ctx.run_gui()
         ctx.run_cli()
-        if args.patch:
+        if ctx.ui:
+            asyncio.create_task(prepare_patch(ctx, bool(args.patch)), name="patch")
+        elif args.patch:
             asyncio.create_task(ctx.install_patch(start=True), name="patch")
         await ctx.exit_event.wait()
         game_task.cancel()

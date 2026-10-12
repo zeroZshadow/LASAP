@@ -1,43 +1,36 @@
-"""host.yaml section `las_options`: where the client finds the patcher, the RomFS dump and the game's SD card."""
-import os
-import sys
-
+"""host.yaml section `las_options`. The client's Patch tab shows and edits these values."""
 import settings
 
 
-def _ryujinx_sd_card() -> str:
-    if sys.platform == "win32":
-        base = os.environ.get("APPDATA", "")
-    elif sys.platform == "darwin":
-        base = os.path.expanduser("~/Library/Application Support")
-    else:
-        base = os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
-    return os.path.join(base, "Ryujinx", "sdcard").replace("\\", "/")
-
-
 class LASSettings(settings.Group):
-    class RomfsFolder(settings.UserFolderPath):
+    class Emulator(str):
+        """
+        Emulator executable, e.g. "C:/Ryujinx/Ryujinx.exe" or "C:/Eden/eden.exe". The client finds the emulator's SD
+        card, mod folder, game and (yuzu-based emulators) RomFS dump from it, and starts it with game_file.
+        """
+
+    class GameFile(str):
+        """The game file the emulator opens, e.g. "D:/Games/Link's Awakening.nsp". Empty: the emulator starts
+        without a game."""
+
+    class RomfsFolder(str):
         """
         RomFS dump of Link's Awakening 1.0.0, without an update.
         Ryujinx: right-click the game, Extract Data, RomFS. Other emulators have a similar "Dump RomFS" entry.
         """
-        description = "Link's Awakening RomFS dump"
 
-    class SdCardFolder(settings.UserFolderPath):
+    class SdCardFolder(str):
         """
-        The SD card the game sees. The client writes config/lasr-exl/config.ini here, and the game keeps its
-        collected checks in lasap/.
-          Ryujinx: the sdcard folder in the Ryujinx folder (File, Open Ryujinx Folder)
-          Yuzu-based emulators: the sdmc folder in the emulator's data folder
-          Switch: the SD card root
+        The SD card the game sees, when it is not the emulator's own: a Switch's SD card root, or a Ryujinx data
+        folder used with --root-data-dir (its sdcard folder). Empty: the emulator's own SD card.
+        The client writes config/lasr-exl/config.ini here, and the game keeps its collected checks in lasap/.
         """
-        description = "SD card folder of the emulator or Switch"
 
     class ModFolder(str):
         """
         Folder the mod's romfs and exefs folders go into. The client replaces these two folders on each new seed.
-        Empty: <sd_card_folder>/atmosphere/contents/01006BB00C6F0000 (Ryujinx and Atmosphere).
-          Yuzu-based emulators: "<data folder>/load/01006BB00C6F0000/Archipelago"
+        Empty: <SD card>/atmosphere/contents/01006BB00C6F0000 (Ryujinx, Atmosphere), or
+        <data folder>/load/01006BB00C6F0000/Archipelago for yuzu-based emulators.
         """
 
     class PatcherCommand(str):
@@ -47,18 +40,13 @@ class LASSettings(settings.Group):
         Example: "D:/LASAP/.venv-lasr/Scripts/python.exe D:/LASAP/patcher/las_ap_patch.py"
         """
 
-    class GameStart(str):
-        """
-        Command that starts the game after a patch file is opened. Empty: the client starts nothing.
-        Example: "C:/Ryujinx/Ryujinx.exe D:/Games/LinksAwakening.nsp"
-        """
-
     class GameHost(str):
         """Address of the console or emulator running the game. 127.0.0.1 for an emulator on this computer."""
 
-    romfs_folder: RomfsFolder = RomfsFolder("las_romfs")
-    sd_card_folder: SdCardFolder = SdCardFolder(_ryujinx_sd_card())
+    emulator: Emulator = Emulator("")
+    game_file: GameFile = GameFile("")
+    romfs_folder: RomfsFolder = RomfsFolder("")
+    sd_card_folder: SdCardFolder = SdCardFolder("")
     mod_folder: ModFolder = ModFolder("")
     patcher_command: PatcherCommand = PatcherCommand("")
-    game_start: GameStart = GameStart("")
     game_host: GameHost = GameHost("127.0.0.1")
