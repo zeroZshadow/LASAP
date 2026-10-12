@@ -50,12 +50,14 @@ Flow:
   "starting_items": ["<lasr item name>"],
   "placements": { "<lasr location name>": "<lasr item name> | \"ap-item\"" },
   "location_ids": { "<lasr location name>": "<local id (int)>" },
+  "location_names": { "<lasr location name>": ["<AP item name>", "<owner's name, empty for this slot>"] },
   "dungeon_entrances": { "<dungeon>": "<dungeon>" }
 }
 ```
 
 - `settings` uses LASR's `SettingsManager.fetch()["Settings"]` keys.
 - `placements` covers every LASR item location: shuffled ones are `"ap-item"`, vanilla ones carry their vanilla item. Owl statues that give no gift are left out, as in LASR.
+- `location_names` covers the AP locations. The patcher uses it for the shop's price tags; in-game text gets the same names at runtime from the client.
 - `dungeon_entrances` is an identity map; entrance shuffle is not supported.
 
 ## slot_data
@@ -71,7 +73,8 @@ ASCII lines terminated by `\n`, fields separated by single spaces. The game acce
 | Line | Meaning |
 |---|---|
 | `PING` | Keep-alive; the game answers `PONG` |
-| `ITEM <n> <item-key> <count> <dungeon>` | The n-th received item (1-based AP index). `item-key` is the game's item symbol (`SwordLv1`, `SmallKey`, …). `dungeon` is the dungeon level for dungeon items, else `-1`. The game applies it only if `n` = stored count + 1, then answers `RECV <count>` |
+| `ITEM <n> <item-key> <count> <dungeon> <location> <item name>\|<sender>` | The n-th received item (1-based AP index). `item-key` is the game's item symbol (`SwordLv1`, `SmallKey`, …). `dungeon` is the dungeon level for dungeon items, else `-1`. `location` is the local id the item came from when it is this slot's own, else `-1`. `sender` is empty for own items and items from the server. The game applies it only if `n` = stored count + 1, then answers `RECV <count>` |
+| `NAME <local id> <item name>\|<owner>` | What a location holds, from `LocationScouts`; `owner` is empty for this slot's items. Sent for every location on connect |
 | `SYNC` | Asks the game to send `RECV <count>` and `CHECKS ...` |
 | `DEATH` | DeathLink: sets the player's health to zero |
 | `MSG <text>` | Logged by the module |
@@ -81,7 +84,7 @@ ASCII lines terminated by `\n`, fields separated by single spaces. The game acce
 
 | Line | Meaning |
 |---|---|
-| `HELLO <proto=1> <seed_hash>` | Sent on connect |
+| `HELLO <proto=2> <seed_hash>` | Sent on connect |
 | `PONG` | Answer to `PING` |
 | `RECV <count>` | Number of items applied, stored in the save as a flag-bit counter |
 | `CHECK <local_id>` | A location was collected |
@@ -96,6 +99,12 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 - Progressive sword, shield and bracelet arrive as their Lv1 key; the module upgrades when LASR's `*FoundFlag` is set.
 - Seashells, heart pieces, heart containers and golden leaves take the lowest unused in-game index.
 - Traps (`*Trap`, `$ENEMY`) cost one heart and never kill. Unknown keys are logged and counted as applied.
+
+**In-game text**
+- A found placeholder says what it is: "You found <item> for <player>!", or "You found your <item>!" for this slot's own items. Without names (client not connected yet), it says "You found an Archipelago item!".
+- A received item from another player says "You got <item> from <player>!". Own items found here are not shown again; other own items and server items show the item's native text.
+- The patcher adds the messages `Place:ArchipelagoItem` and `System:APReceived` (with the native item-text window style) and the Item event entry point `APReceived`. The module hooks the game's MSBT label lookup and text getter and hands out the text for these two messages (`ap_text.cpp`).
+- The module learns the location from the placeholder's `AddItemID`, so placeholder flows add the item before playing the item-get (LASR's item-get chains and a TreasureBox branch); other items keep LASR's order.
 
 **Showing received items**
 - The module grants an item the moment its `ITEM` line is handled, and queues a display of it.

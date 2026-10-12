@@ -49,6 +49,12 @@ def stop(quiet: bool = False) -> None:
         return
     pid = open(PIDFILE).read().strip()
     subprocess.run(["taskkill", "/PID", pid, "/F"], capture_output=True)
+    # The process keeps the mod files open for a moment; wait until it is gone so they can be replaced.
+    for _ in range(40):
+        out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/NH"], capture_output=True, text=True).stdout
+        if pid not in out:
+            break
+        time.sleep(0.25)
     os.remove(PIDFILE)
     if not quiet:
         print("stopped", pid)
