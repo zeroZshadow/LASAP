@@ -10,6 +10,7 @@ namespace nn::fs {
         size: Size of the file to create.
     */
     Result CreateFile(char const* path, s64 size);
+    Result DeleteFile(char const* path);
 
     /*
         Open a file.

@@ -99,8 +99,98 @@ namespace {
         items->Health = items->Health > quarterHearts ? items->Health - quarterHearts : 1;
     }
 
+    // Native item-get (Link holds the item up and the item text shows). This is the body of the event action
+    // Link.GenericItemGetSequenceByKey; it only displays, the inventory is changed separately.
+    // It returns the running action as a libc++ shared_ptr.
+    struct StrView { const char* data; size_t len; };
+    struct SharedPtr { void* ptr; void* ctrl; };
+    using ItemGetSequenceFn = void (*)(SharedPtr* out, void* player, int itemId, bool keepCarry, StrView* messageEntry);
+    using ReleaseWeakFn = void (*)(void* ctrl);
+    constexpr uintptr_t kItemGetSequence = 0xd795d0;
+    constexpr uintptr_t kSharedWeakReleaseWeak = 0x14311f0;
+    // Offsets found by memory comparison (TESTING.md, "Reverse engineering").
+    constexpr size_t kPlayerEventState = 0x4ed;   // u8, 0 while the player is free (no talk, event or cutscene)
+    constexpr size_t kFrameworkPaused = 0x510;    // u8, 1 while the pause menu is open
+    constexpr size_t kActionState = 0x38;         // u32 of the item-get action
+    constexpr u32 kActionDone = 0x2a;             // ... once its text is closed
+    constexpr u64 kItemGetTimeoutMs = 120000;
+    constexpr size_t kShowQueueMax = 16;
+    constexpr size_t kShowFillerMax = 8;          // with this many waiting, filler is no longer shown
+
+    SharedPtr g_ItemGetAction{};
+    u64 g_ItemGetSince = 0;
+    u64 g_NextShowAt = 0;
+    std::deque<int> g_ShowQueue;
+
+    void ReleaseShared(SharedPtr& sp) {
+        if (sp.ctrl != nullptr) {
+            auto* owners = reinterpret_cast<long*>(reinterpret_cast<u8*>(sp.ctrl) + 8);
+            if (__atomic_fetch_sub(owners, 1, __ATOMIC_ACQ_REL) == 0) {
+                auto** vtable = *reinterpret_cast<void (***)(void*)>(sp.ctrl);
+                vtable[2](sp.ctrl);  // __on_zero_shared
+                reinterpret_cast<ReleaseWeakFn>(g_BaseAddress + offset_manager.Offset(kSharedWeakReleaseWeak))(sp.ctrl);
+            }
+        }
+        sp = SharedPtr{};
+    }
+
+    bool StartItemGet(int itemId, const std::string& messageEntry) {
+        Game::Framework* fmwk = Game::GetFramework();
+        if (fmwk == nullptr || fmwk->mPlayer == nullptr) return false;
+        auto fn = reinterpret_cast<ItemGetSequenceFn>(g_BaseAddress + offset_manager.Offset(kItemGetSequence));
+        StrView msg{messageEntry.c_str(), messageEntry.size()};
+        SharedPtr out{};
+        fn(&out, fmwk->mPlayer, itemId, false, &msg);
+        if (out.ptr == nullptr) {
+            ReleaseShared(out);
+            return false;
+        }
+        g_ItemGetAction = out;
+        g_ItemGetSince = NowMs();
+        return true;
+    }
+
+    bool ItemGetRunning() {
+        if (g_ItemGetAction.ptr == nullptr) return false;
+        u32 state = *reinterpret_cast<u32*>(reinterpret_cast<u8*>(g_ItemGetAction.ptr) + kActionState);
+        if (state != kActionDone && NowMs() - g_ItemGetSince < kItemGetTimeoutMs) return true;
+        ReleaseShared(g_ItemGetAction);
+        return false;
+    }
+
+    // True when the player can move: no talk, event, cutscene or pause menu.
+    bool PlayerFree() {
+        Game::Framework* fmwk = Game::GetFramework();
+        if (!PlayerReady()) return false;
+        if (reinterpret_cast<u8*>(fmwk)[kFrameworkPaused] != 0) return false;
+        return reinterpret_cast<u8*>(fmwk->mPlayer)[kPlayerEventState] == 0;
+    }
+
+    bool IsFiller(int itemId) {
+        // Rupees, ammo, hearts and other drops.
+        return itemId == 4 || itemId == 11 || itemId == 60 || itemId >= 100;
+    }
+
+    void QueueShow(int itemId) {
+        if (g_ShowQueue.size() >= kShowQueueMax) return;
+        if (g_ShowQueue.size() >= kShowFillerMax && IsFiller(itemId)) return;
+        g_ShowQueue.push_back(itemId);
+    }
+
+    // Shows queued items one at a time while the player is free.
+    void TickItemGet() {
+        if (ItemGetRunning()) return;
+        if (g_ShowQueue.empty() || NowMs() < g_NextShowAt || !PlayerFree()) return;
+        int id = g_ShowQueue.front();
+        g_ShowQueue.pop_front();
+        if (!StartItemGet(id, "")) AP::Log("item-get " + std::to_string(id) + " did not start");
+        // The game needs a moment between two item-gets.
+        g_NextShowAt = NowMs() + 400;
+    }
+
     // Grants one item the way an in-game pickup would, including LASR's progressive items.
-    void GrantItem(const std::string& key, int count, int dungeon) {
+    // With show, the item-get is queued for display.
+    void GrantItem(const std::string& key, int count, int dungeon, bool show) {
         auto* items = *Game::Data::Inventory::Items;
         std::string k = key;
         if (k.ends_with("Trap") || k == "$ENEMY") {
@@ -130,6 +220,7 @@ namespace {
             default: break;
         }
         Inventory::AddItemID(id, count, index);
+        if (show) QueueShow(id);
     }
 
     void LoadChecks() {
@@ -207,6 +298,11 @@ namespace {
             s += buf;
         }
         s += " recv=" + std::to_string(GetRecvCount());
+        if (fmwk && fmwk->mPlayer) {
+            s += " event=" + std::to_string(reinterpret_cast<u8*>(fmwk->mPlayer)[kPlayerEventState]);
+            s += " paused=" + std::to_string(reinterpret_cast<u8*>(fmwk)[kFrameworkPaused]);
+        }
+        s += " showq=" + std::to_string(g_ShowQueue.size()) + (g_ItemGetAction.ptr ? "+1" : "");
         return s;
     }
 
@@ -227,9 +323,9 @@ namespace {
             Inventory::AddItemID(atoi(a[2].c_str()), atoi(a[3].c_str()), atoi(a[4].c_str()));
             AP::Send("OK give");
         } else if (cmd == "grant" && a.size() >= 5) {
-            // Same path as ITEM without touching the received counter: DBG grant <key> <count> <dungeon>
+            // Same path as ITEM without touching the received counter: DBG grant <key> <count> <dungeon> [show 0|1]
             if (!PlayerReady()) return false;
-            GrantItem(a[2], atoi(a[3].c_str()), atoi(a[4].c_str()));
+            GrantItem(a[2], atoi(a[3].c_str()), atoi(a[4].c_str()), a.size() < 6 || a[5] != "0");
             AP::Send("OK grant");
         } else if (cmd == "warp" && a.size() >= 6) {
             // DBG warp <level> <x> <y> <z>
@@ -239,8 +335,14 @@ namespace {
         } else if (cmd == "pos" && a.size() >= 5) {
             // Moves the player within the current level: DBG pos <x> <y> <z>
             if (!PlayerReady()) return false;
-            auto* col = Game::GetFramework()->mPlayer->playerCollision;
-            col->coordsNew.pos = Game::Vec3{(float)atof(a[2].c_str()), (float)atof(a[3].c_str()), (float)atof(a[4].c_str())};
+            // Setting the respawn point too means a fall into a room that is not loaded yet lands at the target.
+            auto* player = Game::GetFramework()->mPlayer;
+            auto* col = player->playerCollision;
+            Game::Vec3 target{(float)atof(a[2].c_str()), (float)atof(a[3].c_str()), (float)atof(a[4].c_str())};
+            col->coordsNew.pos = target;
+            col->coords.pos = target;
+            col->needsCoordUpdate = true;
+            player->respawnCoords.pos = target;
             AP::Send("OK pos");
         } else if (cmd == "input" && a.size() >= 4) {
             // DBG input <buttons hex> <milliseconds> [lx ly]
@@ -256,6 +358,55 @@ namespace {
             std::fill(g_Checks.begin(), g_Checks.end(), 0);
             SaveChecks();
             AP::Send("OK clearchecks");
+        } else if (cmd == "peek" && a.size() >= 5) {
+            // DBG peek <p|f|i|a|c> <hex offset> <hex length>: bytes of the player, the framework the level-load data, or the last item-get action and its control block
+            Game::Framework* fmwk = Game::GetFramework();
+            const u8* base = nullptr;
+            if (a[2] == "p") base = fmwk ? reinterpret_cast<const u8*>(fmwk->mPlayer) : nullptr;
+            else if (a[2] == "f") base = reinterpret_cast<const u8*>(fmwk);
+            else if (a[2] == "i") base = *reinterpret_cast<const u8**>(g_symbols["InventoryPtr"]);
+            else if (a[2] == "a") base = reinterpret_cast<const u8*>(g_ItemGetAction.ptr);
+            else if (a[2] == "c") base = reinterpret_cast<const u8*>(g_ItemGetAction.ctrl);
+            if (base == nullptr) {
+                AP::Send("ERR peek: no object");
+                return true;
+            }
+            size_t off = strtoull(a[3].c_str(), nullptr, 16), len = std::min<size_t>(strtoull(a[4].c_str(), nullptr, 16), 0x2000);
+            std::string line = "PEEK " + a[2] + " " + a[3] + " ";
+            char hex[3];
+            for (size_t i = 0; i < len; i++) {
+                snprintf(hex, sizeof(hex), "%02x", base[off + i]);
+                line += hex;
+                if (line.size() > 1800) {
+                    AP::Send(line);
+                    line = "PEEK+ ";
+                }
+            }
+            AP::Send(line);
+        } else if (cmd == "itemget" && a.size() >= 3) {
+            // DBG itemget <item key> [message entry]
+            if (!PlayerReady()) return false;
+            int id = ItemIdFromKey(a[2]);
+            bool ok = id >= 0 && StartItemGet(id, a.size() >= 4 ? a[3] : "");  // bypasses the queue
+            AP::Send(std::string(ok ? "OK" : "ERR") + " itemget " + std::to_string(id) + " action=" + HexU64((u64)g_ItemGetAction.ptr));
+        } else if (cmd == "dumpmain") {
+            // Writes the loaded, decrypted main module (text..data) to sd:/lasap/main.bin for reverse engineering.
+            const auto& info = exl::util::GetMainModuleInfo();
+            uintptr_t start = info.m_Total.m_Start;
+            size_t size = info.m_Data.m_Start + info.m_Data.m_Size - start;
+            nn::fs::CreateDirectory("sd:/lasap");
+            nn::fs::DeleteFile("sd:/lasap/main.bin");
+            nn::fs::CreateFile("sd:/lasap/main.bin", size);
+            nn::fs::FileHandle h{};
+            if (R_FAILED(nn::fs::OpenFile(&h, "sd:/lasap/main.bin", nn::fs::OpenMode_Write))) {
+                AP::Send("ERR cannot open main.bin");
+                return true;
+            }
+            nn::fs::WriteFile(h, 0, reinterpret_cast<void*>(start), size, nn::fs::WriteOption{nn::fs::WriteOptionFlag_Flush});
+            nn::fs::CloseFile(h);
+            AP::Send("OK dumpmain base=" + HexU64(start) + " size=" + HexU64(size) +
+                     " text=" + HexU64(info.m_Text.m_Size) + " rodata=" + HexU64(info.m_Rodata.m_Start - start) +
+                     " data=" + HexU64(info.m_Data.m_Start - start));
         } else if (cmd == "collect" && a.size() >= 3) {
             // Simulates picking up a placeholder: DBG collect <local_id>
             AP::OnPlaceholderCollected(atoi(a[2].c_str()));
@@ -274,7 +425,7 @@ namespace {
             int n = atoi(a[1].c_str());
             int have = GetRecvCount();
             if (n == have + 1) {
-                GrantItem(a[2], atoi(a[3].c_str()), atoi(a[4].c_str()));
+                GrantItem(a[2], atoi(a[3].c_str()), atoi(a[4].c_str()), true);
                 SetRecvCount(n);
                 have = n;
             }
@@ -347,6 +498,8 @@ namespace AP {
             if (!g_ChecksLoaded) LoadChecks();
             SendAllChecks();
         }
+
+        TickItemGet();
 
         // Lines that need a loaded save wait in g_Deferred; everything else runs right away.
         if (!g_Deferred.empty() && PlayerReady()) {
