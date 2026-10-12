@@ -29,7 +29,6 @@ namespace {
     Slot g_Slots[16];
     int g_SlotCount = 0;
     int g_FindCalls = 0, g_GetCalls = 0;
-    std::string g_LastLabel;
 
     std::map<int, std::pair<std::string, std::string>> g_LocationNames;
     int g_FoundLocation = -1;
@@ -83,7 +82,6 @@ HOOK_DEFINE_TRAMPOLINE(MsbtFindLabel) {
     static void Callback(MsbtHandle* out, void* msbt, const char* label, size_t len) {
         Orig(out, msbt, label, len);
         g_FindCalls++;
-        g_LastLabel.assign(label, std::min<size_t>(len, 40));
         if (LabelIs(label, len, AP::FOUND_LABEL)) Remember(msbt, out->index, Kind::Found);
         else if (LabelIs(label, len, AP::RECEIVED_LABEL)) Remember(msbt, out->index, Kind::Received);
         else return;
@@ -97,7 +95,6 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
         g_GetCalls++;
         if (out->text == nullptr) return;
         Kind kind = KindOf(msbt, index);
-        if (kind != Kind::None) Logging.Log("[AP] text get index " + std::to_string(index) + " found " + std::to_string(g_FoundLocation));
         switch (kind) {
             case Kind::Found: {
                 auto it = g_LocationNames.find(g_FoundFresh ? g_FoundLocation : g_PresentLocation);
@@ -151,7 +148,7 @@ namespace AP {
     std::string TextState() {
         return "TEXT names=" + std::to_string(g_LocationNames.size()) + " slots=" + std::to_string(g_SlotCount) +
                " found=" + std::to_string(g_FoundLocation) + " finds=" + std::to_string(g_FindCalls) +
-               " gets=" + std::to_string(g_GetCalls) + " last=" + g_LastLabel;
+               " gets=" + std::to_string(g_GetCalls) + " present=" + std::to_string(g_PresentLocation);
     }
 
     bool HasLocationName(int local_id) {
