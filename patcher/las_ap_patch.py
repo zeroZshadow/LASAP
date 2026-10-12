@@ -59,6 +59,9 @@ RECEIVED_TEXT = "You got an [COLOR_PINK]Archipelago item[COLOR_WHITE]!"
 # The module plays a received item's item-get as this Common.bfevfl event, so the game locks the controls and returns
 # the camera when it ends. The module swaps the placeholder and message for the received item (AP::ITEM_EVENT_ENTRY).
 ITEM_EVENT_ENTRY = "APItemGet"
+# Received traps play LASR's trap effects as the Common.bfevfl events AP<trap key> (AP::TRAP_EVENT_PREFIX).
+TRAP_EVENT_PREFIX = "AP"
+TRAP_EVENT_KEYS = ("ZapTrap", "DrownTrap", "SquishTrap", "DeathballTrap", "QuakeTrap")
 ITEM_TEXT_STYLE_FROM = "GetHookShot"  # System.msbt entry whose window style the AP texts use
 PLACEHOLDER_NAME_KEY = "ItemName_ArchipelagoItem"
 PLACEHOLDER_NAME = "Archipelago Item"
@@ -138,6 +141,10 @@ def _add_placeholder_text_event(self) -> None:
         ("Link", "GenericItemGetSequenceByKey", {"itemKey": PLACEHOLDER_KEY, "keepCarry": False,
                                                  "messageEntry": RECEIVED_KEY}),
     ])
+    for key in TRAP_EVENT_KEYS:
+        entry = TRAP_EVENT_PREFIX + key
+        event_tools.addEntryPoint(common.flowchart, entry)
+        self.parent.item_get_manager.getWithAnimation(common.flowchart, key, -1, entry)
     self.parent.file_manager.writeFile("Common.bfevfl", common)
 
 

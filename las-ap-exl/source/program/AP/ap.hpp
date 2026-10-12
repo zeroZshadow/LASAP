@@ -26,6 +26,8 @@ namespace AP {
     // Common.bfevfl entry the patcher adds: Link's item-get of the placeholder with RECEIVED_LABEL as its message
     // entry. Received items play as this event; the module swaps in the received item and its text.
     constexpr const char* ITEM_EVENT_ENTRY = "APItemGet";
+    // Common.bfevfl entries the patcher adds for received traps: AP<trap key> plays LASR's effect of that trap.
+    constexpr const char* TRAP_EVENT_PREFIX = "AP";
     // Location names the patcher writes next to config.ini.
     constexpr const char* NAMES_PATH = "sd:/config/lasr-exl/ap_names.txt";
 

@@ -44,4 +44,5 @@ randomizer. Another player's item counts as important when it is progression.
 ## When the player receives an item, what happens?
 
 Link holds the item up with its usual item text, naming the player who sent it. Items arriving during a cutscene or a
-menu wait until Link is free. A trap costs a heart, and a small popup at the bottom right names the trap and its sender.
+menu wait until Link is free. A trap plays its effect from the original randomizer (a shock, a squish, ...), and a small
+popup at the bottom right names the trap and its sender. On normal damage a trap never takes the last quarter heart.

@@ -138,7 +138,7 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 **Items with special handling in the module**
 - Progressive sword, shield and bracelet arrive as their Lv1 key; the module upgrades when LASR's `*FoundFlag` is set.
 - Seashells, heart pieces, heart containers and golden leaves take the lowest unused in-game index.
-- Traps (`*Trap`, `$ENEMY`) cost one heart and never kill; a notice names the trap and its sender. Unknown keys are logged and counted as applied.
+- Traps (`*Trap`, `$ENEMY`) wait like item displays (below). Unknown keys are logged and counted as applied.
 
 **In-game text**
 - A found placeholder says what it is: "You found <item> for <player>!", or "You found your <item>!" for this slot's own items. The patcher writes the names to `config/lasr-exl/ap_names.txt` (`NAME` lines without the command), which the module reads at boot, so this works before the client connects; `NAME` lines replace them. A location without a name says "You found an Archipelago item!".
@@ -156,7 +156,7 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 - A display is the game's own item-get (Link holds the item up, the item's text shows), played as an event: the patcher adds the `Common.bfevfl` entry `APItemGet`, Link's item-get of the placeholder with the message entry `APReceived`. The module starts that entry the way the game starts its game over, and hooks the item-get code behind `Link.GenericItemGetSequenceByKey` to show the received item and its text instead. As an event, the game locks Link's controls and returns the camera when it ends; an item-get outside an event leaves the camera zoomed in.
 - A display starts once the player has been free for 0.6 s (no talk, event, cutscene, pause menu or level load) and holds nothing over his head: an item-get takes a held object out of the game, such as a shop item. Displays run one at a time.
 - With three or more displays waiting, filler (rupees, ammo, drops) is granted without a display. The queue is not saved; a restart drops pending displays, not items.
-- Traps show no item-get; the autosave popup names the trap and its sender.
+- A trap plays LASR's effect of that trap instead of an item-get, as the `Common.bfevfl` event `AP<trap key>` the patcher builds with LASR's trap flow (animation, damage, autosave), and the autosave popup names the trap and its sender. The damage follows the damage mode; in the normal mode a trap leaves at least a quarter heart (the module raises health first if needed). The Zol Trap has no such flow (in a chest it spawns enemies) and costs one heart.
 
 **Persistence**
 - **Received-item count:** event flags `APRecv0`..`APRecv15`, read as a 16-bit counter. The patcher adds them to `GlobalFlags.gsheet`.

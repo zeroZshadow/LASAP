@@ -141,11 +141,12 @@ namespace {
     u64 g_FreeSince = 0;
     bool g_WasFree = false;
     // A received item waiting to be shown; with a sender, it shows "You got <item> from <sender>!".
-    struct Show { int id; std::string item; std::string sender; };
+    // A trap (trap = its key) plays its effect instead; id is then -1.
+    struct Show { int id; std::string item; std::string sender; std::string trap; };
     std::deque<Show> g_ShowQueue;
-    Show g_Showing{};  // the item of the current event; id -1 for a DBG itemget, which is not retried
-    // A received item plays as the Common.bfevfl event AP::ITEM_EVENT_ENTRY: requested, then running until the
-    // player is free again.
+    Show g_Showing{};  // what the current event shows; DBG itemget sets id -1 and no trap, which is not retried
+    // A received item plays as the Common.bfevfl event AP::ITEM_EVENT_ENTRY, a trap as its own event: requested,
+    // then running until the player is free again.
     enum class ItemEvent { None, Requested, Running };
     ItemEvent g_ItemEvent = ItemEvent::None;
     u64 g_ItemEventSince = 0;
@@ -226,6 +227,32 @@ namespace {
         return true;
     }
 
+    // Quarter hearts each trap event takes in the normal damage mode (LASR's trap flows).
+    int TrapEventDamage(const std::string& key) {
+        if (key == "ZapTrap") return 6;
+        if (key == "SquishTrap") return 4;
+        if (key == "DrownTrap" || key == "DeathballTrap" || key == "QuakeTrap") return 2;
+        return -1;  // no event: the Zol Trap, which spawns enemies from a chest
+    }
+
+    // Plays a trap's effect as its event. In the normal damage mode a trap leaves at least a quarter heart.
+    bool StartTrapEvent(const std::string& key) {
+        int damage = TrapEventDamage(key);
+        auto* items = *Game::Data::Inventory::Items;
+        if (damage < 0) {
+            Damage(4);
+            return true;
+        }
+        if (global_config.damage.mode == "normal" && items->Health <= damage) items->Health = damage + 1;
+        std::string entry = std::string(AP::TRAP_EVENT_PREFIX) + key;
+        g_ItemEventId = -1;
+        Logging.Log("[AP] trap event " + key + " request");
+        if (!RequestCommonEvent(entry.c_str())) return false;
+        g_ItemEvent = ItemEvent::Requested;
+        g_ItemEventSince = NowMs();
+        return true;
+    }
+
     // True when the player can move: no talk, event, cutscene or pause menu.
     bool PlayerFree() {
         Game::Framework* fmwk = Game::GetFramework();
@@ -286,10 +313,16 @@ namespace {
             case ItemEvent::None:
                 return false;
             case ItemEvent::Requested:
-                // The hook marks it running once its item-get starts.
+                // It runs once it takes the player (a trap) or its item-get starts (the hook).
+                if (!free) {
+                    g_ItemEvent = ItemEvent::Running;
+                    return true;
+                }
                 if (since < kItemEventStartMs) return true;
                 Logging.Log("[AP] item event " + std::to_string(g_ItemEventId) + " did not start");
-                if (g_Showing.id >= 0 && ++g_ItemEventTry < kItemEventTries) g_ShowQueue.push_front(g_Showing);
+                if ((g_Showing.id >= 0 || !g_Showing.trap.empty()) && ++g_ItemEventTry < kItemEventTries) {
+                    g_ShowQueue.push_front(g_Showing);
+                }
                 else g_ItemEventTry = 0;
                 break;
             case ItemEvent::Running:
@@ -315,6 +348,14 @@ namespace {
         if (g_ShowQueue.empty() || !free || PlayerCarrying() || NowMs() - g_FreeSince < kFreeSettleMs) return;
         g_Showing = g_ShowQueue.front();
         g_ShowQueue.pop_front();
+        if (!g_Showing.trap.empty()) {
+            // The notice names the trap and who sent it; a retry does not repeat it.
+            if (g_ItemEventTry == 0) {
+                AP::QueueToast(g_Showing.item + (g_Showing.sender.empty() ? "" : "\nfrom " + g_Showing.sender));
+            }
+            if (!StartTrapEvent(g_Showing.trap)) AP::Log("trap event " + g_Showing.trap + " could not be requested");
+            return;
+        }
         int id = g_Showing.id;
         std::string message;
         if (!g_Showing.sender.empty() || HasSourceText(id)) {
@@ -344,16 +385,17 @@ namespace {
 
     bool IsTrapKey(const std::string& key) { return key.ends_with("Trap") || key == "$ENEMY"; }
 
+    // A received trap waits like an item display, then plays its effect (StartTrapEvent).
+    void QueueTrap(const std::string& key, const std::string& item, const std::string& sender) {
+        QueueShow(Show{-1, item.empty() ? key : item, sender, key});
+    }
+
     // Grants one item the way an in-game pickup would, including LASR's progressive items.
-    // Returns the item id granted, or -1 for traps and unknown keys.
+    // Returns the item id granted, or -1 for traps (QueueTrap) and unknown keys.
     int GrantItem(const std::string& key, int count, int dungeon) {
         auto* items = *Game::Data::Inventory::Items;
         std::string k = key;
-        if (IsTrapKey(k)) {
-            // Traps from other worlds cost one heart; they never kill.
-            Damage(4);
-            return -1;
-        }
+        if (IsTrapKey(k)) return -1;
         // LASR's "$EXT:" keys only name a chest text (Master Stalfos' Note); "None" is an item the client has no key for.
         if (k.starts_with("$EXT:") || k == "None") return -1;
         if (k == "SwordLv1" && EventFlags::CheckFlag("SwordFoundFlag")) k = "SwordLv2";
@@ -496,7 +538,8 @@ namespace {
             // Same path as ITEM without touching the received counter: DBG grant <key> <count> <dungeon> [show 0|1]
             if (!PlayerReady()) return false;
             int id = GrantItem(a[2], atoi(a[3].c_str()), atoi(a[4].c_str()));
-            if (id >= 0 && (a.size() < 6 || a[5] != "0")) QueueShow(Show{id, "", ""});
+            if (IsTrapKey(a[2])) QueueTrap(a[2], "", "");
+            else if (id >= 0 && (a.size() < 6 || a[5] != "0")) QueueShow(Show{id, "", "", ""});
             AP::Send("OK grant");
         } else if (cmd == "warp" && a.size() >= 6) {
             // DBG warp <level> <x> <y> <z>
@@ -578,7 +621,7 @@ namespace {
             }
             bool numeric = !a[2].empty() && a[2].find_first_not_of("0123456789") == std::string::npos;
             int id = numeric ? std::stoi(a[2]) : ItemIdFromKey(a[2]);
-            g_Showing = Show{-1, "", ""};
+            g_Showing = Show{-1, "", "", ""};
             bool ok = id >= 0 && StartItemEvent(id, a.size() >= 4 ? a[3] : "");
             AP::Send(std::string(ok ? "OK" : "ERR") + " itemget " + std::to_string(id));
         } else if (cmd == "dumpmain") {
@@ -630,9 +673,8 @@ namespace {
                 std::string sender = bar == std::string::npos ? "" : names.substr(bar + 1);
                 // An own item found here was named by the found text already.
                 bool namedWhenFound = sender.empty() && location >= 0 && AP::HasLocationName(location);
-                if (id >= 0 && !namedWhenFound) QueueShow(Show{id, item, sender});
-                // Traps show nothing of their own; a notice says what hit the player and who sent it.
-                if (IsTrapKey(a[2])) AP::QueueToast((item.empty() ? a[2] : item) + (sender.empty() ? "" : "\nfrom " + sender));
+                if (IsTrapKey(a[2])) QueueTrap(a[2], item, sender);
+                else if (id >= 0 && !namedWhenFound) QueueShow(Show{id, item, sender, ""});
                 SetRecvCount(n);
                 have = n;
             }
