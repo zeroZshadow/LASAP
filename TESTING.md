@@ -113,6 +113,12 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
   - With Ryujinx and the sandbox SD card, it found the game in the sandbox's game folders, installed in about 6 s, and started Ryujinx with `--root-data-dir` and the game. Opening the same seed again skipped patching.
   - The clean checkout's `host.yaml` has the RomFS dump and patcher command; tests that set an emulator use the sandbox SD card or Eden (installed for testing).
 - **Multi-game generation.** Eight seeds with two LAS slots on default options plus Hollow Knight, The Messenger, TUNIC and ChecksFinder generate and write their patch files.
+- **Connection loss** (two-slot seed with ChecksFinder, items sent with the server's `/send_location`):
+  - Client disconnected from the server, another player sends an item: it arrives in game after `/connect`.
+  - Client disconnected from the server, a check is collected in game: the server gets it after `/connect`.
+  - Client process stopped, a check is collected and another player sends an item: a new client reports the check and delivers the item.
+  - The game shows "Archipelago server disconnected" and "Archipelago client disconnected" in the autosave popup, and "Archipelago connected" again on reconnect.
+- **Traps from another player.** A received Zap Trap costs one heart and shows nothing.
 - **Default options.** A new save on default options has the starting gear (sword, shield, ocarina, Manbo's Mambo); received progressive swords and shields upgrade it.
 - **First check.** Tarin's gift (the first check) reaches the server as a location check.
 - **Shop.** Buying the placeholder in the Mabe shop charges the price, plays the item get and reports the slot's location (`shop-slot3-1st`).
