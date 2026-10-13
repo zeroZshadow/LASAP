@@ -30,11 +30,12 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 | `build_assets.py [--romfs dir]` | Rebuilds `patcher/assets` (DESIGN.md, Assets) from a RomFS dump, in `.venv-lasr` |
 | `build_release.py` | Builds the release world with the patcher inside (README, Building a release), in `.venv-lasr` |
 | `make_test_patch.py <out.aplas>` | Writes a synthetic patch (all locations AP items) for patcher tests |
-| `verify_patch.py <patch> <out dir>` | Checks that every shuffled chest holds the placeholder (its model variant) with its local id |
+| `verify_patch.py <patch> <out dir>` | Checks that every shuffled chest holds the placeholder (its model variant) with its local id, and with the map tracker on that every location has an icon |
 | `test_client.py` / `drive.py <script>` | Talk to the module directly on the sandbox port (only when no AP client is connected) |
 | `e2e.py send\|srv\|dbg\|cli\|state\|goto\|wait\|tail\|run` | Drives a scripted AP session (below): server `/send`, client `/dbg`, the game's STATE line, hop teleports, `drive.py` scripts through the client |
 | `reload_exl.sh` | Restarts the sandbox game with the freshly built module and boots to file 2 |
 | `leb_actors.py <room> [regex] [--romfs dir]` | Lists a room's actors with positions (run in `.venv-lasr`; point `--romfs` at the deployed mod for patched rooms) |
+| `map_positions.py [<pack>]` | Writes `patcher/map_positions.json`, the map tracker's positions (DESIGN.md, Map tracker), from the RomFS rooms and the PopTracker pack's pins, in `.venv-ap`; prints the pin fit's error |
 | `poptracker_map.py <pack>` | Writes the Archipelago id tables (`scripts/autotracking/*_mapping.lua`) of the LASR PopTracker pack (Br00ty/lasr_brooty) and checks every code against the pack, in `.venv-lasr` |
 | `re/scan.py str\|xref\|xstr\|callers\|dis\|func\|ptr` | Static queries on a memory dump of the game (see "Reverse engineering") |
 
@@ -50,6 +51,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
   | `flag <name>` / `setflag <name> 0\|1` | Reads or sets an event flag |
   | `input <buttons hex> <ms> [lx ly]` | Holds buttons and the left stick for a duration |
   | `grant <key> <count> <dungeon> [show 0\|1]` | Same path as `ITEM`, without touching the counter |
+  | `map [0\|1]` | Prints the map tracker's state: on, overworld icons shown/total, and how often the dungeon map read its flags, icons updated and icons of ours matched. `map 0` turns the tracker off until `map 1`, for comparisons |
   | `text` | Prints the in-game text state: known location names, hooked messages, the last found location |
   | `itemget <key or item id> [message entry]` | Plays the item-get display (the item event) without granting the item or waiting in the queue. Only for looking at item models (variants by ID, from the patched `Items.gsheet`): it skips the checks that hold received items back (talk, held object, pending display), so it can break whatever flow is running. Tests of received items use `grant` or `ITEM` lines |
   | `give <id> <count> <index>` | Raw `Inventory::AddItemID` |
@@ -80,6 +82,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
   - `beach_chest` (lifts the rock in front of the chest), `island_bush` (cuts a bush), `diamond_island` (walks into a free-standing item) `ghost_house_pot` (lifts the Ghost House pot and picks up its item) and `itemget_models` (the AP model next to a rupee) each check a kind of location and save screenshots in the sandbox.
   - `shop_carry` (an item arrives while Link holds a shop item), `itemget_during_talk` (while he talks to the shopkeeper) and `newgame_items` (while he wakes up in a new game; run like `newgame_file2`) check when received items show: each waits, then plays as an event. `traps` plays each trap's effect and checks its damage.
   - `warp_menu` checks that a Minus tap opens and closes the map, and that holding Minus opens the warp menu, where Continue stays and Warp home lands in Tarin's house. `warp_bowwow` warps home with BowWow following (it sets his companion bit and `BowWowJoin` in the sandbox save).
+  - `map_tracker` (run after `newgame_file2`, on a mod patched with `Map Tracker` on) checks that every overworld icon shows in a new game and that opening the Tail Cave map runs the dungeon hooks; screenshots `map_overworld` and `map_dungeon` show the revealed maps.
   - `ammo_ghost` (run after `newgame_file2`, on a mod patched with `Ammo Ghost` on) checks that the ghost in Tarin's house is missing without bombs or the bow, then tops bombs and arrows up to 15 and never past it.
 - **New-game snapshot.** `D:\DEV\LASAP-sandbox\save-newgame` is the sandbox save folder right after file 2 was created (file select, file 2, Normal, OK on the name entry) and before any play. File 1 and the autosave are a copy of the user's played file. `reset_saves.sh newgame` restores it, so new-game tests skip the name entry. The file-select cursor starts on the last file used, file 2 in the snapshot, and stops at file 1 and the autosave instead of wrapping.
 - **Overworld coordinates.** Screen `Field_<row><col>` (col A=0) is around x = 15·col + 7.5, z = 12·(row − 1) + 6.75. Mabe at Marin's door is (38.25, 10.5, 128.25); in front of the shop is (51.75, 10.5, 117), walk up to enter.
@@ -107,7 +110,11 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 | Player `+0x19b0` | Pointer, set while Link holds something over his head (pot, rock, shop item) |
 | Framework `+0x510` | u8, 1 while the pause menu is open or a level loads |
 | Level-load data `+0xdc` | Restart position, used by `warp` |
-| `0x10aaf40` / `0x10aa5a0` | MSBT label lookup and text getter, hooked for the AP texts |
+| `0x10aaf40` / `0x10aa5a0` | MSBT label lookup and text getter, hooked for the AP texts and the map tracker's icon names |
+| `0xdfa920` | `EventFlags::CheckFlag(flags, StringView* name)`; hooked for the map tracker's flags |
+| `0xe76204` | Dungeon map init, after it reads the dungeon's flags byte into `w8` (bit 0 compass, bit 1 map) |
+| `0xf38040` | Dungeon map icon update `(icon*, actor*)`: shown and open from the actor's switches (`+0x1e`/`+0x20`, `+0x22`/`+0x24`); position at `+0x4`/`+0xc`; the open and closed panes at icon `+0xa0`/`+0xb8` |
+| `0x1cc11b0` / `0x1cc13c8` | `DungeonItems` (per dungeon a pointer to its entry: flags byte `+1`, visited-room mask `+8`) and the current dungeon index (0xff outside dungeons) |
 | `0xa35994` | In `ShellMansionMaster.PopBox`, the call that creates the present: `x3` = item key view, `w4` = item index |
 | `0x148b10` | Collected check `(kind, count, index)` that item actors use to hide: kind 8 tests heart piece bit `index`, kind 9 seashell bit `index` |
 | Framework `+0xb0` | u8 screen: 2 intro and title, 5 file menus, 0x0b level load, 0x17 level |
@@ -159,6 +166,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Goal.** `ShadowClear` reports the goal to the server.
 - **Online multiworld** (with Super Metroid on archipelago.gg, 2026-10-12/13): a playthrough to the Wind Fish, which reported the goal; the server then released the remaining items. Items went both ways throughout. Checks played by kind: chests (overworld and D1–D4), digs, hidden items (bushes, the Ghost House pot, bonk trees), standing and sunken items, dungeon small key drops, the golden leaf enemies (crow, mad bomber, final guard) and the Kanalet kill room drop, Lanmola's drop, NPC gifts (Tarin, Marin, Manbo, the walrus, the ghost), shop slots and the 5 and 15 shell Seashell Mansion rewards. The 15 shell present showed this slot's Piece of Heart model, and a shop shelf showed another player's Varia Suit as the Red Tunic.
 - **Item models.** Chest item-gets, bush drops and free-standing items show the model of the item they hold: this slot's Piece of Heart and Wind Marimba, another slot's unmatched item as the Archipelago model (six balls in the logo's colors with a soft white rim light, centered in the item-get glow like a rupee).
+- **Map tracker** (two-slot seeds with ChecksFinder, 2026-10-13). In a new game the overworld map is revealed with an icon per spot with checks; hovering one shows the unchecked locations (`Shop Slot3 2nd, Shop Slot6` after the server's `/send_location` of Slot3 1st). An icon disappears when its location is collected and the map reopens, without a level change. In Tail Cave without map or compass the map shows every room, its chests and the added chest icons, and the sidebar shows no items; an added icon shows open once its location is checked in the game or on the server (`map_tracker`).
 - **Chamber Stone variant.** A chest holding it (key cut to 31 characters) loads its room, and the item-get shows the stone (2026-10-13).
 - **Patch data.** `scripts/verify_patch.py` checks that every shuffled chest holds the placeholder with the right index and a key of at most 31 characters, and that every randomized heart piece and seashell actor has its own index above the received range (static check).
 

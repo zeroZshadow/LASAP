@@ -151,6 +151,9 @@ class LASContext(CommonContext):
             if args["slot_data"].get("death_link"):
                 asyncio.create_task(self.update_death_link(True))
             asyncio.create_task(self.send_level())
+            self.send_checked(self.checked_locations)
+        elif cmd == "RoomUpdate":
+            self.send_checked(args.get("checked_locations", []))
         elif cmd == "ReceivedItems":
             self.send_next_item()
         elif cmd == "LocationInfo":
@@ -197,6 +200,14 @@ class LASContext(CommonContext):
     def send_game(self, line: str) -> None:
         if self.game_writer is not None:
             self.game_writer.write(line.encode() + b"\n")
+
+    def send_checked(self, locations) -> None:
+        """Tells the game which locations the server has as checked, for the map tracker."""
+        if not self.slot or (self.slot_seed_hash and self.game_seed_hash and self.slot_seed_hash != self.game_seed_hash):
+            return
+        ids = sorted(loc - LOCATION_BASE for loc in locations if loc >= LOCATION_BASE)
+        for i in range(0, len(ids), 64):
+            self.send_game("CHECKED " + " ".join(str(local_id) for local_id in ids[i:i + 64]))
 
     def send_location_names(self) -> None:
         for local_id, names in sorted(self.scouted_names.items()):
@@ -245,6 +256,7 @@ class LASContext(CommonContext):
             self.check_seed()
             self.send_notice()
             self.send_location_names()
+            self.send_checked(self.checked_locations)
             self.send_game("SYNC")
         elif cmd == "RECV":
             self.game_recv = int(parts[1])

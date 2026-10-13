@@ -1,0 +1,24 @@
+# The map tracker: run after newgame_file2 on a mod patched with Map Tracker on. In a new game every overworld icon
+# shows; the overworld map is revealed and the Tail Cave map shows every room and its chests (screenshots
+# map_overworld and map_dungeon). DBG map prints "map=<on> icons=<shown>/<total> hooks=<dungeon map opens>,
+# <icon updates>,<icons of ours>".
+send DBG map
+expect map=1.icons=(\d+)/\1. 5
+warp Field 38.25 10.5 128.25
+send DBG input 800 200
+await 3 paused=1
+wait 3
+shot D:/DEV/LASAP-sandbox/map_overworld.png
+send DBG input 800 200
+await 3 paused=0
+free 10
+warp Lv01TailCave 52.5 0 92.25
+send DBG input 800 200
+await 3 paused=1
+wait 3
+# Opening the dungeon map ran the reveal hooks and updated the added icons.
+send DBG map
+expect hooks=[1-9]\d*,[1-9]\d*,[1-9] 5
+shot D:/DEV/LASAP-sandbox/map_dungeon.png
+send DBG input 800 200
+await 3 paused=0

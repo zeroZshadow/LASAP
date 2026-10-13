@@ -1,0 +1,1910 @@
+{
+ "overworld": {
+  "sale": [
+   53.55,
+   170.33
+  ],
+  "south-bay-dig": [
+   157.46,
+   161.41
+  ],
+  "mermaid-cave": [
+   145.35,
+   168.81
+  ],
+  "animal-village-northwest": [
+   179.25,
+   146.25
+  ],
+  "animal-village-cave": [
+   207.75,
+   144.38
+  ],
+  "christine-trade": [
+   199.53,
+   147.63
+  ],
+  "christine-grateful": [
+   199.53,
+   147.63
+  ],
+  "invisible-zora": [
+   203.72,
+   147.61
+  ],
+  "chef-bear": [
+   204.0,
+   156.2
+  ],
+  "grandma-yahoo": [
+   203.72,
+   147.61
+  ],
+  "beach-chest": [
+   87.75,
+   171.75
+  ],
+  "beach-dig": [
+   76.5,
+   187.82
+  ],
+  "washed-up": [
+   36.16,
+   188.05
+  ],
+  "goriya-trader": [
+   61.11,
+   176.07
+  ],
+  "dampe-page-1": [
+   111.97,
+   40.04
+  ],
+  "dampe-heart-challenge": [
+   111.97,
+   40.04
+  ],
+  "dampe-page-2": [
+   111.97,
+   40.04
+  ],
+  "dampe-bottle-challenge": [
+   111.97,
+   40.04
+  ],
+  "dampe-final": [
+   111.97,
+   40.04
+  ],
+  "taltal-entrance-blocks": [
+   110.25,
+   15.75
+  ],
+  "taltal-entrance-chest": [
+   110.25,
+   15.75
+  ],
+  "taltal-east-left-chest": [
+   126.75,
+   17.25
+  ],
+  "wasteland-dig": [
+   113.25,
+   50.25
+  ],
+  "north-wasteland": [
+   113.25,
+   50.25
+  ],
+  "north-of-moblin-cave": [
+   83.25,
+   29.25
+  ],
+  "lanmola": [
+   218.29,
+   147.52
+  ],
+  "desert-cave": [
+   236.25,
+   146.25
+  ],
+  "walrus": [
+   208.29,
+   180.0
+  ],
+  "desert-dig": [
+   231.04,
+   148.15
+  ],
+  "desert-south": [
+   233.25,
+   188.25
+  ],
+  "ghost-reward": [
+   63.99,
+   80.77
+  ],
+  "ghost-grave-dig": [
+   70.0,
+   90.6
+  ],
+  "graveyard-cave": [
+   80.25,
+   89.25
+  ],
+  "ghost-house-pot": [
+   99.75,
+   184.88
+  ],
+  "taltal-heights-hole": [
+   196.5,
+   34.5
+  ],
+  "kanalet-crow": [
+   128.25,
+   68.25
+  ],
+  "kanalet-mad-bomber": [
+   158.25,
+   66.75
+  ],
+  "kanalet-kill-room": [
+   143.25,
+   76.88
+  ],
+  "kanalet-bombed-guard": [
+   143.25,
+   76.88
+  ],
+  "kanalet-final-guard": [
+   143.25,
+   66.38
+  ],
+  "dream-shrine-right": [
+   48.88,
+   100.59
+  ],
+  "dream-shrine-left": [
+   48.88,
+   100.59
+  ],
+  "mabe-bushes": [
+   53.71,
+   123.82
+  ],
+  "doghouse-dig": [
+   23.25,
+   125.63
+  ],
+  "mabe-well": [
+   8.54,
+   126.34
+  ],
+  "fishing-orange": [
+   24.29,
+   101.44
+  ],
+  "fishing-50": [
+   24.29,
+   101.44
+  ],
+  "fishing-100": [
+   24.29,
+   101.44
+  ],
+  "fishing-150": [
+   24.29,
+   101.44
+  ],
+  "fishing-cheep-cheep": [
+   24.29,
+   101.44
+  ],
+  "fishing-ol-baron": [
+   24.29,
+   101.44
+  ],
+  "fishing-loose": [
+   24.29,
+   101.44
+  ],
+  "tarin": [
+   37.96,
+   124.62
+  ],
+  "marin": [
+   42.97,
+   117.54
+  ],
+  "shop-slot3-1st": [
+   52.53,
+   114.67
+  ],
+  "shop-slot3-2nd": [
+   52.53,
+   114.67
+  ],
+  "shop-slot5-1st": [
+   52.53,
+   114.67
+  ],
+  "shop-slot5-2nd": [
+   52.53,
+   114.67
+  ],
+  "shop-slot5-3rd": [
+   52.53,
+   114.67
+  ],
+  "shop-slot5-4th": [
+   52.53,
+   114.67
+  ],
+  "shop-slot5-5th": [
+   52.53,
+   114.67
+  ],
+  "shop-slot5-6th": [
+   52.53,
+   114.67
+  ],
+  "shop-slot5-7th": [
+   52.53,
+   114.67
+  ],
+  "shop-slot6": [
+   52.53,
+   114.67
+  ],
+  "mamasha": [
+   40.04,
+   98.67
+  ],
+  "ciao-ciao": [
+   24.48,
+   123.85
+  ],
+  "tail-cave-bonk-tree": [
+   36.0,
+   163.5
+  ],
+  "beach-bonk-tree": [
+   15.0,
+   178.5
+  ],
+  "armos-cave": [
+   216.75,
+   125.25
+  ],
+  "rock-maze": [
+   227.25,
+   104.25
+  ],
+  "armos-knight": [
+   189.14,
+   123.73
+  ],
+  "goponga-cave-left": [
+   17.25,
+   28.88
+  ],
+  "goponga-cave-right": [
+   17.25,
+   28.88
+  ],
+  "goponga-west-dig": [
+   27.75,
+   24.75
+  ],
+  "mr-write": [
+   11.42,
+   42.46
+  ],
+  "pond-island": [
+   100.16,
+   124.96
+  ],
+  "southwest-bay-bush": [
+   144.75,
+   177.75
+  ],
+  "beside-seashell-mansion": [
+   171.65,
+   104.38
+  ],
+  "small-coast-island": [
+   127.42,
+   181.5
+  ],
+  "above-cave-dig": [
+   127.3,
+   127.05
+  ],
+  "above-d3": [
+   83.59,
+   123.36
+  ],
+  "under-skull-rock": [
+   113.55,
+   113.6
+  ],
+  "ukuku-cave-west-chest": [
+   74.25,
+   103.88
+  ],
+  "ukuku-cave-west-loose": [
+   74.25,
+   103.88
+  ],
+  "ukuku-cave-east-chest": [
+   92.25,
+   100.88
+  ],
+  "ukuku-cave-east-loose": [
+   92.25,
+   100.88
+  ],
+  "mad-batter-bay": [
+   101.73,
+   167.94
+  ],
+  "bay-passage-sunken": [
+   146.25,
+   186.75
+  ],
+  "river-crossing-cave": [
+   162.75,
+   126.75
+  ],
+  "kiki": [
+   172.46,
+   96.91
+  ],
+  "tarin-ukuku": [
+   112.9,
+   101.91
+  ],
+  "kanalet-south-cave": [
+   123.75,
+   93.75
+  ],
+  "plains-rock-maze": [
+   141.75,
+   137.25
+  ],
+  "ukuku-bonk-tree": [
+   70.5,
+   124.5
+  ],
+  "5-seashell-reward": [
+   158.71,
+   103.61
+  ],
+  "15-seashell-reward": [
+   158.71,
+   103.61
+  ],
+  "30-seashell-reward": [
+   158.71,
+   103.61
+  ],
+  "40-seashell-reward": [
+   158.71,
+   103.61
+  ],
+  "50-seashell-reward": [
+   158.71,
+   103.61
+  ],
+  "rapids-west-island": [
+   187.5,
+   61.5
+  ],
+  "rapids-middle-island": [
+   204.75,
+   60.75
+  ],
+  "rapids-east-island": [
+   216.08,
+   70.5
+  ],
+  "rapids-south-island": [
+   185.25,
+   75.75
+  ],
+  "rapids-race-45": [
+   229.45,
+   42.87
+  ],
+  "rapids-race-35": [
+   229.45,
+   42.87
+  ],
+  "rapids-race-30": [
+   229.45,
+   42.87
+  ],
+  "rapids-ascent-cave": [
+   225.75,
+   96.38
+  ],
+  "mermaid-martha": [
+   149.99,
+   147.64
+  ],
+  "bay-fisherman": [
+   160.11,
+   170.27
+  ],
+  "kanalet-moat-north": [
+   128.73,
+   46.5
+  ],
+  "kanalet-moat-south": [
+   135.75,
+   87.75
+  ],
+  "south-bay-sunken": [
+   144.75,
+   177.75
+  ],
+  "mamu": [
+   72.58,
+   159.65
+  ],
+  "swamp-chest": [
+   62.25,
+   38.25
+  ],
+  "taltal-left-ascent-cave": [
+   147.75,
+   19.88
+  ],
+  "papahl": [
+   142.56,
+   14.49
+  ],
+  "taltal-bomb-hole": [
+   148.5,
+   13.5
+  ],
+  "taltal-rooster-cave": [
+   161.77,
+   11.13
+  ],
+  "taltal-crossing-cave": [
+   110.25,
+   15.75
+  ],
+  "taltal-east-bridge": [
+   192.75,
+   11.25
+  ],
+  "taltal-sunken": [
+   190.46,
+   22.5
+  ],
+  "taltal-ledge-chest": [
+   203.25,
+   21.75
+  ],
+  "taltal-5-chest-puzzle": [
+   197.25,
+   12.38
+  ],
+  "manbo": [
+   159.96,
+   33.7
+  ],
+  "taltal-east-drop": [
+   218.25,
+   25.13
+  ],
+  "taltal-west-chest": [
+   68.25,
+   12.75
+  ],
+  "mad-batter-taltal": [
+   70.24,
+   10.4
+  ],
+  "taltal-west-rock": [
+   84.75,
+   12.75
+  ],
+  "taltal-west-escape": [
+   27.75,
+   24.75
+  ],
+  "taltal-west-dig": [
+   41.74,
+   13.5
+  ],
+  "above-turtle-rock": [
+   6.75,
+   8.25
+  ],
+  "trendy-prize-1": [
+   53.63,
+   135.8
+  ],
+  "trendy-prize-2": [
+   53.63,
+   135.8
+  ],
+  "trendy-prize-3": [
+   53.63,
+   135.8
+  ],
+  "trendy-prize-4": [
+   53.63,
+   135.8
+  ],
+  "trendy-prize-5": [
+   53.63,
+   135.8
+  ],
+  "trendy-prize-6": [
+   53.63,
+   135.8
+  ],
+  "trendy-prize-final": [
+   53.63,
+   135.8
+  ],
+  "villa-cave": [
+   95.25,
+   150.38
+  ],
+  "pothole-north": [
+   111.75,
+   141.75
+  ],
+  "pothole-final": [
+   101.72,
+   146.37
+  ],
+  "woods-crossing-cave-chest": [
+   41.25,
+   76.88
+  ],
+  "woods-crossing-cave-loose": [
+   41.25,
+   76.88
+  ],
+  "woods-north-cave-chest": [
+   35.25,
+   52.88
+  ],
+  "woods-north-cave-loose": [
+   35.25,
+   52.88
+  ],
+  "mad-batter-woods": [
+   41.3,
+   65.82
+  ],
+  "woods-south-chest": [
+   21.75,
+   92.25
+  ],
+  "woods-north-chest": [
+   21.75,
+   53.25
+  ],
+  "woods-west-dig": [
+   7.6,
+   52.77
+  ],
+  "woods-east-dig": [
+   36.84,
+   69.09
+  ],
+  "woods-loose": [
+   4.15,
+   67.03
+  ],
+  "diamond-island": [
+   66.75,
+   54.75
+  ],
+  "syrup": [
+   82.02,
+   75.17
+  ],
+  "owl-statue-below-D8": [
+   17.43,
+   21.14
+  ],
+  "owl-statue-moblin-cave": [
+   80.46,
+   46.71
+  ],
+  "owl-statue-pothole": [
+   101.72,
+   146.37
+  ],
+  "owl-statue-above-cave": [
+   127.3,
+   127.05
+  ],
+  "owl-statue-south-bay": [
+   157.46,
+   161.41
+  ],
+  "owl-statue-desert": [
+   231.04,
+   142.93
+  ],
+  "owl-statue-maze": [
+   237.04,
+   104.28
+  ],
+  "owl-statue-rapids": [
+   202.41,
+   64.03
+  ],
+  "owl-statue-taltal-east": [
+   212.96,
+   17.18
+  ]
+ },
+ "dungeon": {
+  "D1-instrument": [
+   "Lv01TailCave_03G",
+   93.75,
+   27.0
+  ],
+  "D1-moldorm": [
+   "Lv01TailCave_04G",
+   93.75,
+   39.0
+  ],
+  "D1-west-hallway": [
+   "Lv01TailCave_05A",
+   6.75,
+   51.75
+  ],
+  "D1-middle-ledge": [
+   "Lv01TailCave_05D",
+   51.75,
+   50.25
+  ],
+  "D1-3-of-a-kind": [
+   "Lv01TailCave_05F",
+   78.75,
+   51.0
+  ],
+  "D1-bomb-room": [
+   "Lv01TailCave_06B",
+   21.75,
+   65.25
+  ],
+  "D1-middle-kill-chest": [
+   "Lv01TailCave_06C",
+   45.0,
+   63.75
+  ],
+  "D1-spark-chest": [
+   "Lv01TailCave_06D",
+   51.75,
+   63.75
+  ],
+  "D1-button-chest": [
+   "Lv01TailCave_07D",
+   57.75,
+   74.25
+  ],
+  "D1-stalfos-chest": [
+   "Lv01TailCave_07E",
+   72.75,
+   77.25
+  ],
+  "D1-4-zols-chest": [
+   "Lv01TailCave_08B",
+   20.25,
+   89.25
+  ],
+  "D1-beetles": [
+   "Lv01TailCave_08C",
+   33.75,
+   89.25
+  ],
+  "D1-owl-statue-long-hallway": [
+   "Lv01TailCave_04C",
+   35.25,
+   36.75
+  ],
+  "D1-owl-statue-spinies": [
+   "Lv01TailCave_04B",
+   23.25,
+   36.75
+  ],
+  "D1-owl-statue-3-of-a-kind": [
+   "Lv01TailCave_05F",
+   78.75,
+   51.0
+  ],
+  "D2-instrument": [
+   "Lv02BottleGrotto_04F",
+   78.75,
+   39.0
+  ],
+  "D2-genie": [
+   "Lv02BottleGrotto_04G",
+   93.75,
+   39.0
+  ],
+  "D2-boos": [
+   "Lv02BottleGrotto_02B",
+   27.75,
+   15.75
+  ],
+  "D2-long-room-west": [
+   "Lv02BottleGrotto_02C",
+   41.25,
+   15.75
+  ],
+  "D2-long-room-east": [
+   "Lv02BottleGrotto_02D",
+   56.25,
+   15.75
+  ],
+  "D2-vacuum-mouth-room": [
+   "Lv02BottleGrotto_03C",
+   33.75,
+   27.75
+  ],
+  "D2-kill-puzzle": [
+   "Lv02BottleGrotto_03F",
+   87.75,
+   27.75
+  ],
+  "D2-west-chest": [
+   "Lv02BottleGrotto_06B",
+   21.75,
+   63.75
+  ],
+  "D2-double-stalfos": [
+   "Lv02BottleGrotto_07D",
+   48.75,
+   77.25
+  ],
+  "D2-double-shy-guys": [
+   "Lv02BottleGrotto_07F",
+   78.75,
+   77.25
+  ],
+  "D2-entrance-chest": [
+   "Lv02BottleGrotto_08C",
+   32.25,
+   87.75
+  ],
+  "D2-single-shy-guy": [
+   "Lv02BottleGrotto_08D",
+   57.75,
+   87.75
+  ],
+  "D2-peg-circle": [
+   "Lv02BottleGrotto_08E",
+   65.25,
+   90.75
+  ],
+  "D2-button-chest": [
+   "Lv02BottleGrotto_08F",
+   87.75,
+   87.75
+  ],
+  "D2-owl-statue-first-switch": [
+   "Lv02BottleGrotto_07E",
+   66.75,
+   72.75
+  ],
+  "D2-owl-statue-push-puzzle": [
+   "Lv02BottleGrotto_06G",
+   93.75,
+   60.75
+  ],
+  "D2-owl-statue-past-hinox": [
+   "Lv02BottleGrotto_04C",
+   38.25,
+   36.75
+  ],
+  "D3-instrument": [
+   "Lv03KeyCavern_06G",
+   93.75,
+   63.0
+  ],
+  "D3-slime-eye": [
+   "Lv03KeyCavern_07G",
+   93.75,
+   75.0
+  ],
+  "D3-pre-boss": [
+   "Lv03KeyCavern_08G",
+   93.75,
+   89.25
+  ],
+  "D3-triple-bombites": [
+   "Lv03KeyCavern_01B",
+   18.75,
+   5.25
+  ],
+  "D3-north-chest": [
+   "Lv03KeyCavern_01C",
+   36.75,
+   3.75
+  ],
+  "D3-central-ledge": [
+   "Lv03KeyCavern_02A",
+   12.75,
+   15.75
+  ],
+  "D3-central-chest": [
+   "Lv03KeyCavern_02C",
+   36.75,
+   15.75
+  ],
+  "D3-east-ledge": [
+   "Lv03KeyCavern_02D",
+   48.75,
+   15.0
+  ],
+  "D3-pairodds": [
+   "Lv03KeyCavern_03A",
+   3.75,
+   29.25
+  ],
+  "D3-five-zols": [
+   "Lv03KeyCavern_04C",
+   33.75,
+   41.25
+  ],
+  "D3-basement-north": [
+   "Lv03KeyCavern_03G",
+   93.75,
+   27.0
+  ],
+  "D3-basement-west": [
+   "Lv03KeyCavern_04F",
+   78.75,
+   41.25
+  ],
+  "D3-basement-south": [
+   "Lv03KeyCavern_05G",
+   93.75,
+   53.25
+  ],
+  "D3-hallway-4": [
+   "Lv03KeyCavern_04B",
+   20.25,
+   41.25
+  ],
+  "D3-hallway-3": [
+   "Lv03KeyCavern_05B",
+   27.75,
+   51.75
+  ],
+  "D3-hallway-2": [
+   "Lv03KeyCavern_06B",
+   27.75,
+   62.25
+  ],
+  "D3-hallway-side-room": [
+   "Lv03KeyCavern_06C",
+   38.25,
+   65.25
+  ],
+  "D3-hallway-1": [
+   "Lv03KeyCavern_07B",
+   27.75,
+   75.75
+  ],
+  "D3-vacuum-mouth": [
+   "Lv03KeyCavern_08C",
+   42.75,
+   87.75
+  ],
+  "D3-owl-statue-basement-north": [
+   "Lv03KeyCavern_03G",
+   93.75,
+   27.0
+  ],
+  "D3-owl-statue-arrow": [
+   "Lv03KeyCavern_02D",
+   48.75,
+   15.0
+  ],
+  "D3-owl-statue-northwest": [
+   "Lv03KeyCavern_01A",
+   6.75,
+   0.75
+  ],
+  "D4-instrument": [
+   "Lv04AnglersTunnel_03B",
+   18.75,
+   27.0
+  ],
+  "D4-angler": [
+   "Lv04AnglersTunnel_04B",
+   18.75,
+   39.0
+  ],
+  "D4-north-chest": [
+   "Lv04AnglersTunnel_02D",
+   51.75,
+   15.75
+  ],
+  "D4-east-side-north": [
+   "Lv04AnglersTunnel_03G",
+   98.25,
+   27.75
+  ],
+  "D4-east-side-south": [
+   "Lv04AnglersTunnel_05G",
+   101.25,
+   53.25
+  ],
+  "D4-west-ledge": [
+   "Lv04AnglersTunnel_07C",
+   33.75,
+   74.25
+  ],
+  "D4-east-of-puzzle": [
+   "Lv04AnglersTunnel_04D",
+   48.75,
+   39.75
+  ],
+  "D4-south-of-puzzle": [
+   "Lv04AnglersTunnel_05C",
+   39.75,
+   53.25
+  ],
+  "D4-sunken-item": [
+   "Lv04AnglersTunnel_04E",
+   65.25,
+   41.25
+  ],
+  "D4-central-room": [
+   "Lv04AnglersTunnel_05D",
+   54.75,
+   53.25
+  ],
+  "D4-small-island": [
+   "Lv04AnglersTunnel_06F",
+   78.75,
+   65.25
+  ],
+  "D4-ledge-north": [
+   "Lv04AnglersTunnel_04F",
+   77.4,
+   44.25
+  ],
+  "D4-statues-chest": [
+   "Lv04AnglersTunnel_07F",
+   81.75,
+   75.75
+  ],
+  "D4-lobby": [
+   "Lv04AnglersTunnel_07E",
+   69.75,
+   78.75
+  ],
+  "D4-crystals": [
+   "Lv04AnglersTunnel_08E",
+   66.75,
+   90.75
+  ],
+  "D4-owl-statue": [
+   "Lv04AnglersTunnel_05E",
+   65.25,
+   54.75
+  ],
+  "D5-instrument": [
+   "Lv05CatfishsMaw_01D",
+   48.75,
+   3.0
+  ],
+  "D5-slime-eel": [
+   "Lv05CatfishsMaw_02D",
+   48.75,
+   15.0
+  ],
+  "D5-master-stalfos": [
+   "Lv05CatfishsMaw_01B",
+   21.75,
+   5.25
+  ],
+  "D5-crystal-blocks": [
+   "Lv05CatfishsMaw_01C",
+   33.75,
+   3.75
+  ],
+  "D5-past-master-stalfos-3": [
+   "Lv05CatfishsMaw_01E",
+   66.75,
+   3.75
+  ],
+  "D5-water-tunnel": [
+   "Lv05CatfishsMaw_02E",
+   63.75,
+   15.75
+  ],
+  "D5-right-side-north": [
+   "Lv05CatfishsMaw_02G",
+   102.75,
+   14.25
+  ],
+  "D5-right-side-middle": [
+   "Lv05CatfishsMaw_03G",
+   101.25,
+   26.25
+  ],
+  "D5-right-side-east": [
+   "Lv05CatfishsMaw_03H",
+   117.75,
+   29.25
+  ],
+  "D5-past-master-stalfos-1": [
+   "Lv05CatfishsMaw_05G",
+   93.75,
+   51.75
+  ],
+  "D5-west-chest": [
+   "Lv05CatfishsMaw_06C",
+   35.25,
+   63.75
+  ],
+  "D5-helmasaurs": [
+   "Lv05CatfishsMaw_07D",
+   57.75,
+   75.75
+  ],
+  "D5-west-stairs-chest": [
+   "Lv05CatfishsMaw_08E",
+   71.25,
+   87.75
+  ],
+  "D5-near-entrance": [
+   "Lv05CatfishsMaw_08G",
+   101.25,
+   86.25
+  ],
+  "D5-owl-statue-triple-stalfos": [
+   "Lv05CatfishsMaw_06F",
+   86.25,
+   60.75
+  ],
+  "D5-owl-statue-before-slime-eel": [
+   "Lv05CatfishsMaw_03C",
+   38.25,
+   24.75
+  ],
+  "D6-instrument": [
+   "Lv06FaceShrine_03E",
+   63.75,
+   27.0
+  ],
+  "D6-facade": [
+   "Lv06FaceShrine_04E",
+   63.75,
+   39.0
+  ],
+  "D6-far-northwest": [
+   "Lv06FaceShrine_02A",
+   11.25,
+   15.75
+  ],
+  "D6-far-northeast": [
+   "Lv06FaceShrine_02H",
+   108.75,
+   15.75
+  ],
+  "D6-statue-line-north": [
+   "Lv06FaceShrine_03B",
+   20.25,
+   30.75
+  ],
+  "D6-statue-line-south": [
+   "Lv06FaceShrine_04B",
+   20.25,
+   38.25
+  ],
+  "D6-wizzrobe-pegs": [
+   "Lv06FaceShrine_03D",
+   50.25,
+   29.25
+  ],
+  "D6-pot-chest": [
+   "Lv06FaceShrine_03G",
+   93.75,
+   27.0
+  ],
+  "D6-canal": [
+   "Lv06FaceShrine_04G",
+   99.75,
+   38.25
+  ],
+  "D6-3-wizzrobes": [
+   "Lv06FaceShrine_05A",
+   12.75,
+   51.75
+  ],
+  "D6-tile-room": [
+   "Lv06FaceShrine_05D",
+   48.75,
+   53.25
+  ],
+  "D6-gated-hallway-north": [
+   "Lv06FaceShrine_06C",
+   41.25,
+   63.75
+  ],
+  "D6-gated-hallway-south": [
+   "Lv06FaceShrine_07C",
+   41.25,
+   77.25
+  ],
+  "D6-southwest-chest": [
+   "Lv06FaceShrine_07B",
+   18.0,
+   74.25
+  ],
+  "D6-wizzrobes-ledge": [
+   "Lv06FaceShrine_07G",
+   102.75,
+   80.25
+  ],
+  "D6-owl-statue-ledge": [
+   "Lv06FaceShrine_04D",
+   53.25,
+   44.25
+  ],
+  "D6-owl-statue-southeast": [
+   "Lv06FaceShrine_08G",
+   92.25,
+   84.75
+  ],
+  "D6-owl-statue-canal": [
+   "Lv06FaceShrine_03G",
+   93.75,
+   27.0
+  ],
+  "D7-instrument": [
+   "Lv07EagleTower_02G",
+   93.75,
+   15.0
+  ],
+  "D7-eagle": [
+   "Lv07EagleTower_03G",
+   93.75,
+   27.0
+  ],
+  "D7-like-likes": [
+   "Lv07EagleTower_08D",
+   48.75,
+   113.25
+  ],
+  "D7-1f-west": [
+   "Lv07EagleTower_07A",
+   8.25,
+   99.75
+  ],
+  "D7-west-ledge": [
+   "Lv07EagleTower_05A",
+   2.25,
+   74.25
+  ],
+  "D7-east-ledge": [
+   "Lv07EagleTower_05D",
+   48.75,
+   51.0
+  ],
+  "D7-3ofakind-north": [
+   "Lv07EagleTower_01B",
+   27.75,
+   3.75
+  ],
+  "D7-2f-horseheads": [
+   "Lv07EagleTower_01C",
+   42.75,
+   3.75
+  ],
+  "D7-hinox": [
+   "Lv07EagleTower_04A",
+   3.75,
+   41.25
+  ],
+  "D7-3ofakind-south": [
+   "Lv07EagleTower_04B",
+   18.75,
+   39.0
+  ],
+  "D7-blue-pegs-chest": [
+   "Lv07EagleTower_03D",
+   50.25,
+   27.75
+  ],
+  "D7-3f-horseheads": [
+   "Lv07EagleTower_01G",
+   132.75,
+   3.75
+  ],
+  "D7-grim-creeper": [
+   "Lv07EagleTower_02H",
+   147.75,
+   15.75
+  ],
+  "D7-owl-statue-ball": [
+   "Lv07EagleTower_02D",
+   47.25,
+   12.75
+  ],
+  "D7-owl-statue-kirbys": [
+   "Lv07EagleTower_05D",
+   48.75,
+   51.0
+  ],
+  "D7-owl-statue-hookshot-chest": [
+   "Lv07EagleTower_04B",
+   18.75,
+   39.0
+  ],
+  "D8-instrument": [
+   "Lv08TurtleRock_01D",
+   48.75,
+   3.0
+  ],
+  "D8-hothead": [
+   "Lv08TurtleRock_02D",
+   48.75,
+   15.0
+  ],
+  "D8-far-northwest": [
+   "Lv08TurtleRock_02A",
+   12.75,
+   15.75
+  ],
+  "D8-far-northeast": [
+   "Lv08TurtleRock_02H",
+   110.25,
+   14.25
+  ],
+  "D8-left-exit-chest": [
+   "Lv08TurtleRock_03C",
+   42.75,
+   26.25
+  ],
+  "D8-dodongos": [
+   "Lv08TurtleRock_03F",
+   86.25,
+   26.25
+  ],
+  "D8-northern-ledge": [
+   "Lv08TurtleRock_02E",
+   65.25,
+   13.5
+  ],
+  "D8-gibdos": [
+   "Lv08TurtleRock_03G",
+   97.5,
+   33.75
+  ],
+  "D8-beamos-chest": [
+   "Lv08TurtleRock_04B",
+   24.75,
+   41.25
+  ],
+  "D8-statue": [
+   "Lv08TurtleRock_04C",
+   33.75,
+   39.0
+  ],
+  "D8-torches": [
+   "Lv08TurtleRock_05B",
+   27.75,
+   51.75
+  ],
+  "D8-west-vire": [
+   "Lv08TurtleRock_06A",
+   3.75,
+   65.25
+  ],
+  "D8-west-roomba": [
+   "Lv08TurtleRock_06B",
+   27.75,
+   63.75
+  ],
+  "D8-surrounded-by-blocks": [
+   "Lv08TurtleRock_06D",
+   50.25,
+   63.75
+  ],
+  "D8-sparks-chest": [
+   "Lv08TurtleRock_07B",
+   24.75,
+   75.75
+  ],
+  "D8-east-of-pots": [
+   "Lv08TurtleRock_07F",
+   81.75,
+   78.75
+  ],
+  "D8-east-roomba": [
+   "Lv08TurtleRock_07G",
+   92.25,
+   77.25
+  ],
+  "D8-far-southwest": [
+   "Lv08TurtleRock_08A",
+   6.75,
+   90.0
+  ],
+  "D8-far-southeast": [
+   "Lv08TurtleRock_08H",
+   117.75,
+   87.75
+  ],
+  "D8-owl-statue-above-smasher": [
+   "Lv08TurtleRock_06H",
+   107.25,
+   67.88
+  ],
+  "D8-owl-statue-below-gibdos": [
+   "Lv08TurtleRock_04G",
+   101.25,
+   36.75
+  ],
+  "D8-owl-statue-eye-statue": [
+   "Lv08TurtleRock_04C",
+   33.75,
+   39.0
+  ],
+  "D0-northern-chest": [
+   "Lv10ClothesDungeon_04F",
+   81.75,
+   38.25
+  ],
+  "D0-zol-pots": [
+   "Lv10ClothesDungeon_05D",
+   57.75,
+   51.75
+  ],
+  "D0-north-orbs": [
+   "Lv10ClothesDungeon_05E",
+   66.75,
+   53.25
+  ],
+  "D0-south-orbs": [
+   "Lv10ClothesDungeon_07F",
+   87.75,
+   75.75
+  ],
+  "D0-east-color-puzzle": [
+   "Lv10ClothesDungeon_05F",
+   78.75,
+   51.0
+  ],
+  "D0-west-color-puzzle": [
+   "Lv10ClothesDungeon_07D",
+   48.75,
+   75.0
+  ],
+  "D0-putters": [
+   "Lv10ClothesDungeon_08E",
+   63.75,
+   92.25
+  ],
+  "D0-fairy-1": [
+   "Lv10ClothesDungeon_04C",
+   37.5,
+   39.75
+  ],
+  "D0-fairy-2": [
+   "Lv10ClothesDungeon_04C",
+   37.5,
+   39.75
+  ],
+  "D0-owl-statue-nine-switches": [
+   "Lv10ClothesDungeon_06C",
+   35.25,
+   60.75
+  ],
+  "D0-owl-statue-first-switches": [
+   "Lv10ClothesDungeon_07D",
+   48.75,
+   75.0
+  ],
+  "D0-owl-statue-before-mini-boss": [
+   "Lv10ClothesDungeon_05F",
+   78.75,
+   51.0
+  ],
+  "D0-rupee-1": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-2": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-3": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-4": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-5": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-6": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-7": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-8": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-9": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-10": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-11": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-12": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-13": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-14": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-15": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-16": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-17": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-18": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-19": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-20": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-21": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-22": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-23": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-24": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-25": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-26": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-27": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ],
+  "D0-rupee-28": [
+   "Lv10ClothesDungeon_08D",
+   48.75,
+   87.0
+  ]
+ },
+ "names": {
+  "sale": "Toronbo Shores - Sale",
+  "south-bay-dig": "Martha's Bay - South Bay Dig",
+  "mermaid-cave": "Martha's Bay - Mermaid Cave",
+  "animal-village-northwest": "Animal Village - Animal Village Northwest",
+  "animal-village-cave": "Animal Village - Animal Village Cave",
+  "christine-trade": "Animal Village - Christine Trade",
+  "christine-grateful": "Animal Village - Christine Grateful",
+  "invisible-zora": "Animal Village - Invisible Zora",
+  "chef-bear": "Animal Village - Chef Bear",
+  "grandma-yahoo": "Animal Village - Grandma Yahoo",
+  "beach-chest": "Toronbo Shores - Beach Chest",
+  "beach-dig": "Toronbo Shores - Beach Dig",
+  "washed-up": "Toronbo Shores - Washed Up",
+  "goriya-trader": "Toronbo Shores - Goriya Trader",
+  "dampe-page-1": "Tal Tal Heights - Dampe Page 1",
+  "dampe-heart-challenge": "Tal Tal Heights - Dampe Heart Challenge",
+  "dampe-page-2": "Tal Tal Heights - Dampe Page 2",
+  "dampe-bottle-challenge": "Tal Tal Heights - Dampe Bottle Challenge",
+  "dampe-final": "Tal Tal Heights - Dampe Final",
+  "taltal-entrance-blocks": "Tal Tal Mountains East - Taltal Entrance Blocks",
+  "taltal-entrance-chest": "Tal Tal Mountains East - Taltal Entrance Chest",
+  "taltal-east-left-chest": "Tal Tal Mountains East - Taltal East Left Chest",
+  "wasteland-dig": "Tabahl Wasteland - Wasteland Dig",
+  "north-wasteland": "Tabahl Wasteland - North Wasteland",
+  "north-of-moblin-cave": "Tal Tal Heights - North of Moblin Cave",
+  "lanmola": "Yarna Desert - Lanmola",
+  "desert-cave": "Yarna Desert - Desert Cave",
+  "walrus": "Yarna Desert - Walrus",
+  "desert-dig": "Yarna Desert - Desert Dig",
+  "desert-south": "Yarna Desert - Desert South",
+  "ghost-reward": "Koholint Prairie - Ghost Reward",
+  "ghost-grave-dig": "Koholint Prairie - Ghost Grave Dig",
+  "graveyard-cave": "Koholint Prairie - Graveyard Cave",
+  "ghost-house-pot": "Martha's Bay - Ghost House Pot",
+  "taltal-heights-hole": "Tal Tal Heights - Taltal Heights Hole",
+  "kanalet-crow": "Kanalet Castle - Kanalet Crow",
+  "kanalet-mad-bomber": "Kanalet Castle - Kanalet Mad Bomber",
+  "kanalet-kill-room": "Kanalet Castle - Kanalet Kill Room",
+  "kanalet-bombed-guard": "Kanalet Castle - Kanalet Bombed Guard",
+  "kanalet-final-guard": "Kanalet Castle - Kanalet Final Guard",
+  "dream-shrine-right": "Mabe Village - Dream Shrine Right",
+  "dream-shrine-left": "Mabe Village - Dream Shrine Left",
+  "mabe-bushes": "Mabe Village - Mabe Bushes",
+  "doghouse-dig": "Mabe Village - Doghouse Dig",
+  "mabe-well": "Mabe Village - Mabe Well",
+  "fishing-orange": "Mabe Village - Fishing Orange",
+  "fishing-50": "Mabe Village - Fishing 50",
+  "fishing-100": "Mabe Village - Fishing 100",
+  "fishing-150": "Mabe Village - Fishing 150",
+  "fishing-cheep-cheep": "Mabe Village - Fishing Cheep Cheep",
+  "fishing-ol-baron": "Mabe Village - Fishing Ol' Baron",
+  "fishing-loose": "Mabe Village - Fishing Loose",
+  "tarin": "Mabe Village - Tarin",
+  "marin": "Mabe Village - Marin",
+  "shop-slot3-1st": "Mabe Village - Shop Slot3 1st",
+  "shop-slot3-2nd": "Mabe Village - Shop Slot3 2nd",
+  "shop-slot5-1st": "Mabe Village - Shop Slot5 1st",
+  "shop-slot5-2nd": "Mabe Village - Shop Slot5 2nd",
+  "shop-slot5-3rd": "Mabe Village - Shop Slot5 3rd",
+  "shop-slot5-4th": "Mabe Village - Shop Slot5 4th",
+  "shop-slot5-5th": "Mabe Village - Shop Slot5 5th",
+  "shop-slot5-6th": "Mabe Village - Shop Slot5 6th",
+  "shop-slot5-7th": "Mabe Village - Shop Slot5 7th",
+  "shop-slot6": "Mabe Village - Shop Slot6",
+  "mamasha": "Mabe Village - Mamasha",
+  "ciao-ciao": "Mabe Village - Ciao Ciao",
+  "tail-cave-bonk-tree": "Toronbo Shores - Tail Cave Bonk Tree",
+  "beach-bonk-tree": "Toronbo Shores - Beach Bonk Tree",
+  "armos-cave": "Ancient Ruins - Armos Cave",
+  "rock-maze": "Ancient Ruins - Rock Maze",
+  "armos-knight": "Ancient Ruins - Armos Knight",
+  "goponga-cave-left": "Goponga Swamp - Goponga Cave Left",
+  "goponga-cave-right": "Goponga Swamp - Goponga Cave Right",
+  "goponga-west-dig": "Goponga Swamp - Goponga West Dig",
+  "mr-write": "Goponga Swamp - Mr Write",
+  "pond-island": "Ukuku Prairie - Pond Island",
+  "southwest-bay-bush": "Martha's Bay - Southwest Bay Bush",
+  "beside-seashell-mansion": "Ukuku Prairie - Beside Seashell Mansion",
+  "small-coast-island": "Martha's Bay - Small Coast Island",
+  "above-cave-dig": "Martha's Bay - Above Cave Dig",
+  "above-d3": "Ukuku Prairie - Above D3",
+  "under-skull-rock": "Ukuku Prairie - Under Skull Rock",
+  "ukuku-cave-west-chest": "Ukuku Prairie - Ukuku Cave West Chest",
+  "ukuku-cave-west-loose": "Ukuku Prairie - Ukuku Cave West Loose",
+  "ukuku-cave-east-chest": "Ukuku Prairie - Ukuku Cave East Chest",
+  "ukuku-cave-east-loose": "Ukuku Prairie - Ukuku Cave East Loose",
+  "mad-batter-bay": "Martha's Bay - Mad Batter Bay",
+  "bay-passage-sunken": "Martha's Bay - Bay Passage Sunken",
+  "river-crossing-cave": "Martha's Bay - River Crossing Cave",
+  "kiki": "Ukuku Prairie - Kiki",
+  "tarin-ukuku": "Ukuku Prairie - Tarin Ukuku",
+  "kanalet-south-cave": "Ukuku Prairie - Kanalet South Cave",
+  "plains-rock-maze": "Martha's Bay - Plains Rock Maze",
+  "ukuku-bonk-tree": "Ukuku Prairie - Ukuku Bonk Tree",
+  "5-seashell-reward": "Ukuku Prairie - 5 Seashell Reward",
+  "15-seashell-reward": "Ukuku Prairie - 15 Seashell Reward",
+  "30-seashell-reward": "Ukuku Prairie - 30 Seashell Reward",
+  "40-seashell-reward": "Ukuku Prairie - 40 Seashell Reward",
+  "50-seashell-reward": "Ukuku Prairie - 50 Seashell Reward",
+  "rapids-west-island": "Rapids Ride - Rapids West Island",
+  "rapids-middle-island": "Rapids Ride - Rapids Middle Island",
+  "rapids-east-island": "Rapids Ride - Rapids East Island",
+  "rapids-south-island": "Rapids Ride - Rapids South Island",
+  "rapids-race-45": "Rapids Ride - Rapids Race 45",
+  "rapids-race-35": "Rapids Ride - Rapids Race 35",
+  "rapids-race-30": "Rapids Ride - Rapids Race 30",
+  "rapids-ascent-cave": "Rapids Ride - Rapids Ascent Cave",
+  "mermaid-martha": "Martha's Bay - Mermaid Martha",
+  "bay-fisherman": "Martha's Bay - Bay Fisherman",
+  "kanalet-moat-north": "Kanalet Castle - Kanalet Moat North",
+  "kanalet-moat-south": "Kanalet Castle - Kanalet Moat South",
+  "south-bay-sunken": "Martha's Bay - South Bay Sunken",
+  "mamu": "Sign Maze - Mamu",
+  "swamp-chest": "Goponga Swamp - Swamp Chest",
+  "taltal-left-ascent-cave": "Tal Tal Mountains East - Taltal Left Ascent Cave",
+  "papahl": "Tal Tal Mountains East - Papahl",
+  "taltal-bomb-hole": "Tal Tal Mountains East - Taltal Bomb Hole",
+  "taltal-rooster-cave": "Tal Tal Mountains East - Taltal Rooster Cave",
+  "taltal-crossing-cave": "Tal Tal Mountains East - Taltal Crossing Cave",
+  "taltal-east-bridge": "Tal Tal Mountains East - Taltal East Bridge",
+  "taltal-sunken": "Tal Tal Mountains East - Taltal Sunken",
+  "taltal-ledge-chest": "Tal Tal Mountains East - Taltal Ledge Chest",
+  "taltal-5-chest-puzzle": "Tal Tal Mountains East - Taltal 5 Chest Puzzle",
+  "manbo": "Tal Tal Heights - Manbo",
+  "taltal-east-drop": "Tal Tal Heights - Taltal East Drop",
+  "taltal-west-chest": "Tal Tal Mountains West - Taltal West Chest",
+  "mad-batter-taltal": "Tal Tal Mountains West - Mad Batter Taltal",
+  "taltal-west-rock": "Tal Tal Mountains West - Taltal West Rock",
+  "taltal-west-escape": "Tal Tal Mountains West - Taltal West Escape",
+  "taltal-west-dig": "Tal Tal Mountains West - Taltal West Dig",
+  "above-turtle-rock": "Tal Tal Mountains West - Above Turtle Rock",
+  "trendy-prize-1": "Mabe Village - Trendy Prize 1",
+  "trendy-prize-2": "Mabe Village - Trendy Prize 2",
+  "trendy-prize-3": "Mabe Village - Trendy Prize 3",
+  "trendy-prize-4": "Mabe Village - Trendy Prize 4",
+  "trendy-prize-5": "Mabe Village - Trendy Prize 5",
+  "trendy-prize-6": "Mabe Village - Trendy Prize 6",
+  "trendy-prize-final": "Mabe Village - Trendy Prize Final",
+  "villa-cave": "Pothole Field - Villa Cave",
+  "pothole-north": "Pothole Field - Pothole North",
+  "pothole-final": "Pothole Field - Pothole Final",
+  "woods-crossing-cave-chest": "Mysterious Woods - Woods Crossing Cave Chest",
+  "woods-crossing-cave-loose": "Mysterious Woods - Woods Crossing Cave Loose",
+  "woods-north-cave-chest": "Mysterious Woods - Woods North Cave Chest",
+  "woods-north-cave-loose": "Mysterious Woods - Woods North Cave Loose",
+  "mad-batter-woods": "Mysterious Woods - Mad Batter Woods",
+  "woods-south-chest": "Mysterious Woods - Woods South Chest",
+  "woods-north-chest": "Mysterious Woods - Woods North Chest",
+  "woods-west-dig": "Mysterious Woods - Woods West Dig",
+  "woods-east-dig": "Mysterious Woods - Woods East Dig",
+  "woods-loose": "Mysterious Woods - Woods Loose",
+  "diamond-island": "Koholint Prairie - Diamond Island",
+  "syrup": "Koholint Prairie - Syrup",
+  "D1-instrument": "Tail Cave - Instrument",
+  "D1-moldorm": "Tail Cave - Moldorm",
+  "D1-west-hallway": "Tail Cave - West Hallway",
+  "D1-middle-ledge": "Tail Cave - Middle Ledge",
+  "D1-3-of-a-kind": "Tail Cave - 3 of a Kind",
+  "D1-bomb-room": "Tail Cave - Bomb Room",
+  "D1-middle-kill-chest": "Tail Cave - Middle Kill Chest",
+  "D1-spark-chest": "Tail Cave - Spark Chest",
+  "D1-button-chest": "Tail Cave - Button Chest",
+  "D1-stalfos-chest": "Tail Cave - Stalfos Chest",
+  "D1-4-zols-chest": "Tail Cave - 4 Zols Chest",
+  "D1-beetles": "Tail Cave - Beetles",
+  "D1-owl-statue-long-hallway": "Tail Cave - Owl Statue Long Hallway",
+  "D1-owl-statue-spinies": "Tail Cave - Owl Statue Spinies",
+  "D1-owl-statue-3-of-a-kind": "Tail Cave - Owl Statue 3 of a Kind",
+  "D2-instrument": "Bottle Grotto - Instrument",
+  "D2-genie": "Bottle Grotto - Genie",
+  "D2-boos": "Bottle Grotto - Boos",
+  "D2-long-room-west": "Bottle Grotto - Long Room West",
+  "D2-long-room-east": "Bottle Grotto - Long Room East",
+  "D2-vacuum-mouth-room": "Bottle Grotto - Vacuum Mouth Room",
+  "D2-kill-puzzle": "Bottle Grotto - Kill Puzzle",
+  "D2-west-chest": "Bottle Grotto - West Chest",
+  "D2-double-stalfos": "Bottle Grotto - Double Stalfos",
+  "D2-double-shy-guys": "Bottle Grotto - Double Shy Guys",
+  "D2-entrance-chest": "Bottle Grotto - Entrance Chest",
+  "D2-single-shy-guy": "Bottle Grotto - Single Shy Guy",
+  "D2-peg-circle": "Bottle Grotto - Peg Circle",
+  "D2-button-chest": "Bottle Grotto - Button Chest",
+  "D2-owl-statue-first-switch": "Bottle Grotto - Owl Statue First Switch",
+  "D2-owl-statue-push-puzzle": "Bottle Grotto - Owl Statue Push Puzzle",
+  "D2-owl-statue-past-hinox": "Bottle Grotto - Owl Statue Past Hinox",
+  "D3-instrument": "Key Cavern - Instrument",
+  "D3-slime-eye": "Key Cavern - Slime Eye",
+  "D3-pre-boss": "Key Cavern - Pre Boss",
+  "D3-triple-bombites": "Key Cavern - Triple Bombites",
+  "D3-north-chest": "Key Cavern - North Chest",
+  "D3-central-ledge": "Key Cavern - Central Ledge",
+  "D3-central-chest": "Key Cavern - Central Chest",
+  "D3-east-ledge": "Key Cavern - East Ledge",
+  "D3-pairodds": "Key Cavern - Pairodds",
+  "D3-five-zols": "Key Cavern - Five Zols",
+  "D3-basement-north": "Key Cavern - Basement North",
+  "D3-basement-west": "Key Cavern - Basement West",
+  "D3-basement-south": "Key Cavern - Basement South",
+  "D3-hallway-4": "Key Cavern - Hallway 4",
+  "D3-hallway-3": "Key Cavern - Hallway 3",
+  "D3-hallway-2": "Key Cavern - Hallway 2",
+  "D3-hallway-side-room": "Key Cavern - Hallway Side Room",
+  "D3-hallway-1": "Key Cavern - Hallway 1",
+  "D3-vacuum-mouth": "Key Cavern - Vacuum Mouth",
+  "D3-owl-statue-basement-north": "Key Cavern - Owl Statue Basement North",
+  "D3-owl-statue-arrow": "Key Cavern - Owl Statue Arrow",
+  "D3-owl-statue-northwest": "Key Cavern - Owl Statue Northwest",
+  "D4-instrument": "Angler's Tunnel - Instrument",
+  "D4-angler": "Angler's Tunnel - Angler",
+  "D4-north-chest": "Angler's Tunnel - North Chest",
+  "D4-east-side-north": "Angler's Tunnel - East Side North",
+  "D4-east-side-south": "Angler's Tunnel - East Side South",
+  "D4-west-ledge": "Angler's Tunnel - West Ledge",
+  "D4-east-of-puzzle": "Angler's Tunnel - East of Puzzle",
+  "D4-south-of-puzzle": "Angler's Tunnel - South of Puzzle",
+  "D4-sunken-item": "Angler's Tunnel - Sunken Item",
+  "D4-central-room": "Angler's Tunnel - Central Room",
+  "D4-small-island": "Angler's Tunnel - Small Island",
+  "D4-ledge-north": "Angler's Tunnel - Ledge North",
+  "D4-statues-chest": "Angler's Tunnel - Statues Chest",
+  "D4-lobby": "Angler's Tunnel - Lobby",
+  "D4-crystals": "Angler's Tunnel - Crystals",
+  "D4-owl-statue": "Angler's Tunnel - Owl Statue",
+  "D5-instrument": "Catfish's Maw - Instrument",
+  "D5-slime-eel": "Catfish's Maw - Slime Eel",
+  "D5-master-stalfos": "Catfish's Maw - Master Stalfos",
+  "D5-crystal-blocks": "Catfish's Maw - Crystal Blocks",
+  "D5-past-master-stalfos-3": "Catfish's Maw - Past Master Stalfos 3",
+  "D5-water-tunnel": "Catfish's Maw - Water Tunnel",
+  "D5-right-side-north": "Catfish's Maw - Right Side North",
+  "D5-right-side-middle": "Catfish's Maw - Right Side Middle",
+  "D5-right-side-east": "Catfish's Maw - Right Side East",
+  "D5-past-master-stalfos-1": "Catfish's Maw - Past Master Stalfos 1",
+  "D5-west-chest": "Catfish's Maw - West Chest",
+  "D5-helmasaurs": "Catfish's Maw - Helmasaurs",
+  "D5-west-stairs-chest": "Catfish's Maw - West Stairs Chest",
+  "D5-near-entrance": "Catfish's Maw - Near Entrance",
+  "D5-owl-statue-triple-stalfos": "Catfish's Maw - Owl Statue Triple Stalfos",
+  "D5-owl-statue-before-slime-eel": "Catfish's Maw - Owl Statue Before Slime Eel",
+  "D6-instrument": "Face Shrine - Instrument",
+  "D6-facade": "Face Shrine - Facade",
+  "D6-far-northwest": "Face Shrine - Far Northwest",
+  "D6-far-northeast": "Face Shrine - Far Northeast",
+  "D6-statue-line-north": "Face Shrine - Statue Line North",
+  "D6-statue-line-south": "Face Shrine - Statue Line South",
+  "D6-wizzrobe-pegs": "Face Shrine - Wizzrobe Pegs",
+  "D6-pot-chest": "Face Shrine - Pot Chest",
+  "D6-canal": "Face Shrine - Canal",
+  "D6-3-wizzrobes": "Face Shrine - 3 Wizzrobes",
+  "D6-tile-room": "Face Shrine - Tile Room",
+  "D6-gated-hallway-north": "Face Shrine - Gated Hallway North",
+  "D6-gated-hallway-south": "Face Shrine - Gated Hallway South",
+  "D6-southwest-chest": "Face Shrine - Southwest Chest",
+  "D6-wizzrobes-ledge": "Face Shrine - Wizzrobes Ledge",
+  "D6-owl-statue-ledge": "Face Shrine - Owl Statue Ledge",
+  "D6-owl-statue-southeast": "Face Shrine - Owl Statue Southeast",
+  "D6-owl-statue-canal": "Face Shrine - Owl Statue Canal",
+  "D7-instrument": "Eagle's Tower - Instrument",
+  "D7-eagle": "Eagle's Tower - Eagle",
+  "D7-like-likes": "Eagle's Tower - Like Likes",
+  "D7-1f-west": "Eagle's Tower - 1F West",
+  "D7-west-ledge": "Eagle's Tower - West Ledge",
+  "D7-east-ledge": "Eagle's Tower - East Ledge",
+  "D7-3ofakind-north": "Eagle's Tower - 3 of a Kind North",
+  "D7-2f-horseheads": "Eagle's Tower - 2F Horseheads",
+  "D7-hinox": "Eagle's Tower - Hinox",
+  "D7-3ofakind-south": "Eagle's Tower - 3 of a Kind South",
+  "D7-blue-pegs-chest": "Eagle's Tower - Blue Pegs Chest",
+  "D7-3f-horseheads": "Eagle's Tower - 3F Horseheads",
+  "D7-grim-creeper": "Eagle's Tower - Grim Creeper",
+  "D7-owl-statue-ball": "Eagle's Tower - Owl Statue Ball",
+  "D7-owl-statue-kirbys": "Eagle's Tower - Owl Statue Kirbys",
+  "D7-owl-statue-hookshot-chest": "Eagle's Tower - Owl Statue Hookshot Chest",
+  "D8-instrument": "Turtle Rock - Instrument",
+  "D8-hothead": "Turtle Rock - Hothead",
+  "D8-far-northwest": "Turtle Rock - Far Northwest",
+  "D8-far-northeast": "Turtle Rock - Far Northeast",
+  "D8-left-exit-chest": "Turtle Rock - Left Exit Chest",
+  "D8-dodongos": "Turtle Rock - Dodongos",
+  "D8-northern-ledge": "Turtle Rock - Northern Ledge",
+  "D8-gibdos": "Turtle Rock - Gibdos",
+  "D8-beamos-chest": "Turtle Rock - Beamos Chest",
+  "D8-statue": "Turtle Rock - Statue",
+  "D8-torches": "Turtle Rock - Torches",
+  "D8-west-vire": "Turtle Rock - West Vire",
+  "D8-west-roomba": "Turtle Rock - West Roomba",
+  "D8-surrounded-by-blocks": "Turtle Rock - Surrounded by Blocks",
+  "D8-sparks-chest": "Turtle Rock - Sparks Chest",
+  "D8-east-of-pots": "Turtle Rock - East of Pots",
+  "D8-east-roomba": "Turtle Rock - East Roomba",
+  "D8-far-southwest": "Turtle Rock - Far Southwest",
+  "D8-far-southeast": "Turtle Rock - Far Southeast",
+  "D8-owl-statue-above-smasher": "Turtle Rock - Owl Statue Above Smasher",
+  "D8-owl-statue-below-gibdos": "Turtle Rock - Owl Statue Below Gibdos",
+  "D8-owl-statue-eye-statue": "Turtle Rock - Owl Statue Eye Statue",
+  "D0-northern-chest": "Color Dungeon - Northern Chest",
+  "D0-zol-pots": "Color Dungeon - Zol Pots",
+  "D0-north-orbs": "Color Dungeon - North Orbs",
+  "D0-south-orbs": "Color Dungeon - South Orbs",
+  "D0-east-color-puzzle": "Color Dungeon - East Color Puzzle",
+  "D0-west-color-puzzle": "Color Dungeon - West Color Puzzle",
+  "D0-putters": "Color Dungeon - Putters",
+  "D0-fairy-1": "Color Dungeon - Fairy 1",
+  "D0-fairy-2": "Color Dungeon - Fairy 2",
+  "D0-owl-statue-nine-switches": "Color Dungeon - Owl Statue Nine Switches",
+  "D0-owl-statue-first-switches": "Color Dungeon - Owl Statue First Switches",
+  "D0-owl-statue-before-mini-boss": "Color Dungeon - Owl Statue Before Mini Boss",
+  "D0-rupee-1": "Color Dungeon - Rupee 1",
+  "D0-rupee-2": "Color Dungeon - Rupee 2",
+  "D0-rupee-3": "Color Dungeon - Rupee 3",
+  "D0-rupee-4": "Color Dungeon - Rupee 4",
+  "D0-rupee-5": "Color Dungeon - Rupee 5",
+  "D0-rupee-6": "Color Dungeon - Rupee 6",
+  "D0-rupee-7": "Color Dungeon - Rupee 7",
+  "D0-rupee-8": "Color Dungeon - Rupee 8",
+  "D0-rupee-9": "Color Dungeon - Rupee 9",
+  "D0-rupee-10": "Color Dungeon - Rupee 10",
+  "D0-rupee-11": "Color Dungeon - Rupee 11",
+  "D0-rupee-12": "Color Dungeon - Rupee 12",
+  "D0-rupee-13": "Color Dungeon - Rupee 13",
+  "D0-rupee-14": "Color Dungeon - Rupee 14",
+  "D0-rupee-15": "Color Dungeon - Rupee 15",
+  "D0-rupee-16": "Color Dungeon - Rupee 16",
+  "D0-rupee-17": "Color Dungeon - Rupee 17",
+  "D0-rupee-18": "Color Dungeon - Rupee 18",
+  "D0-rupee-19": "Color Dungeon - Rupee 19",
+  "D0-rupee-20": "Color Dungeon - Rupee 20",
+  "D0-rupee-21": "Color Dungeon - Rupee 21",
+  "D0-rupee-22": "Color Dungeon - Rupee 22",
+  "D0-rupee-23": "Color Dungeon - Rupee 23",
+  "D0-rupee-24": "Color Dungeon - Rupee 24",
+  "D0-rupee-25": "Color Dungeon - Rupee 25",
+  "D0-rupee-26": "Color Dungeon - Rupee 26",
+  "D0-rupee-27": "Color Dungeon - Rupee 27",
+  "D0-rupee-28": "Color Dungeon - Rupee 28",
+  "owl-statue-below-D8": "Goponga Swamp - Owl Statue Below D8",
+  "owl-statue-moblin-cave": "Tal Tal Heights - Owl Statue Moblin Cave",
+  "owl-statue-pothole": "Pothole Field - Owl Statue Pothole",
+  "owl-statue-above-cave": "Martha's Bay - Owl Statue Above Cave",
+  "owl-statue-south-bay": "Martha's Bay - Owl Statue South Bay",
+  "owl-statue-desert": "Yarna Desert - Owl Statue Desert",
+  "owl-statue-maze": "Ancient Ruins - Owl Statue Maze",
+  "owl-statue-rapids": "Rapids Ride - Owl Statue Rapids",
+  "owl-statue-taltal-east": "Tal Tal Mountains East - Owl Statue Taltal East"
+ }
+}

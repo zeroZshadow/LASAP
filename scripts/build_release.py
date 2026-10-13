@@ -25,10 +25,10 @@ BUILD = ROOT / "build" / "release"
 GAME = "Links Awakening Switch"
 PREFIX = "las/patcher/"  # install.py PATCHER_PREFIX
 # Patcher files and folders, relative to patcher/
-PATCHER_FILES = ("las_ap_patch.py", "ap_assets.py", "ap_ghost.py", "ap_model.py", "ap_ui.py", "lasr_qt.py",
-                 "version.txt", "LICENSE-LASR.txt", "RandomizerCore", "RandomizerUI/Resources/Info",
-                 "RandomizerUI/Resources/Menu", "RandomizerUI/Resources/Theme", "assets", "exl/subsdk9",
-                 "exl/main.npdm")
+PATCHER_FILES = ("las_ap_patch.py", "ap_assets.py", "ap_ghost.py", "ap_map.py", "ap_model.py", "ap_ui.py",
+                 "lasr_qt.py", "map_positions.json", "version.txt", "LICENSE-LASR.txt", "RandomizerCore",
+                 "RandomizerUI/Resources/Info", "RandomizerUI/Resources/Menu", "RandomizerUI/Resources/Theme", "assets",
+                 "exl/subsdk9", "exl/main.npdm")
 # Libraries for lib/: import name -> distribution name (for its license)
 LIBRARIES = {"evfl": "evfl", "lms": "pylibms", "appdirs": "appdirs"}
 MODULE_LICENSE = ROOT / "las-ap-exl" / "LICENSE"

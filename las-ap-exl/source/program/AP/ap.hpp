@@ -3,6 +3,7 @@
 #include "lib.hpp"
 #include "nn/hid.h"
 #include <string>
+#include <string_view>
 
 namespace AP {
     // Items.gsheet itemID of the placeholder that every randomized location gives.
@@ -35,6 +36,10 @@ namespace AP {
     constexpr int AMMO_REFILL_INDEX = 1000;
     // Location names the patcher writes next to config.ini.
     constexpr const char* NAMES_PATH = "sd:/config/lasr-exl/ap_names.txt";
+    // The map tracker's icons, written by the patcher when the option is on (ap_map.cpp).
+    constexpr const char* MAP_PATH = "sd:/config/lasr-exl/ap_map.txt";
+    // Event flag and Place.msbt label of an overworld icon: the prefix and the icon's group. Must match the patcher.
+    constexpr const char* MAP_FLAG_PREFIX = "APMap";
 
     // Network thread (ap_net.cpp)
     void StartNetwork(int port);
@@ -52,6 +57,8 @@ namespace AP {
     void Tick();
     void OnPlaceholderCollected(int local_id);
     void OnGoal();
+    // Checked in this game or, as the client reported, on the server.
+    bool IsLocationChecked(int local_id);
     void ApplyInjectedInput(nn::hid::NpadBaseState* state);
     void Log(const std::string& text);
     std::string HelloLine();
@@ -71,4 +78,16 @@ namespace AP {
     void QueueToast(const std::string& text);
     // Shows the next toast once the popup is free; only in a level.
     void TickToasts(bool inLevel);
+
+    // Map tracker (ap_map.cpp)
+    void LoadMap();
+    // Answers the map tracker's event flags; false for any other flag.
+    bool MapFlag(std::string_view name, bool& value);
+    // The icon group a Place.msbt label names, or -1; the hover text for a group.
+    int MapLabelGroup(std::string_view label);
+    std::string MapLabelText(int group);
+    std::string MapState();
+    void SetMapEnabled(bool enabled);
+    // Every room of the current dungeon counts as visited; once per tick.
+    void TickMap();
 }

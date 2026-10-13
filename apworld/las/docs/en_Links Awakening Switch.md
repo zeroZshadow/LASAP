@@ -53,6 +53,14 @@ With the Ammo Ghost option (on by default), a ghost waits in Tarin's house once 
 and he tops your bombs and arrows up to 15 (10 bombs become 15; more than 15 stay as they are), as often as you
 like. Together with the warp menu below, this keeps you from getting stuck without ammo.
 
+## Where are my checks?
+
+With the Map Tracker option (on by default), the map in the pause menu shows them. The whole overworld map is
+revealed from the start, and a seashell icon marks each spot with checks you have not done; hover it to see their
+names. In dungeons the map shows every room and the chests, and a chest icon in each room with other checks (key
+drops, owl statues, the boss) opens once they are done. The dungeon map, compass and stone beak are still items to
+find: the side panel shows the ones you have.
+
 ## How do I get back to the start?
 
 Hold Minus for a second: a menu asks "Return to Tarin's house?". Warp home takes Link into Tarin's house in Mabe

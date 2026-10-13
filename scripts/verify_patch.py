@@ -1,6 +1,7 @@
 """Static checks on patcher output: every chest location holds the AP placeholder (the model variant of
 `location_models`) with its local id, and every randomized heart piece and seashell actor has a unique index above
-the received range (DESIGN.md, item model).
+the received range (DESIGN.md, item model). With the map tracker on, every AP location has one icon in ap_map.txt and
+every icon its datasheet row.
 
 python scripts/verify_patch.py <patch.aplas> <patcher output dir>
 """
@@ -51,4 +52,30 @@ for path in sorted(level_dir.rglob("*.leb")):
             print(f"ACTOR INDEX {path.stem} {actor.name.decode()} index {index} (also {seen.get((actor.type, index))})")
         seen[(actor.type, index)] = path.stem
 print(f"item actors checked={len(seen)} bad={bad}")
+
+# Map tracker: every AP location has one icon, and every icon its datasheet row.
+if patch["settings"].get("Map Tracker"):
+    import ap_map  # noqa: E402
+    from RandomizerCore.Tools.oead_tools import readSheet  # noqa: E402
+    out = Path(sys.argv[2])
+    lines = [line.split() for line in (out / "config/lasr-exl" / ap_map.FILE_NAME).read_text(encoding="utf-8").splitlines()]
+    overworld = {int(p[1]): [int(i) for i in p[2:]] for p in lines if p[0] == "O"}
+    dungeon = {int(p[1]): (float(p[2]), float(p[3]), [int(i) for i in p[4:]]) for p in lines if p[0] == "D"}
+    iconed = [i for ids in overworld.values() for i in ids] + [i for *_, ids in dungeon.values() for i in ids]
+    positions = ap_map.load_positions()
+    want = [int(i) for loc, i in patch["location_ids"].items()
+            if loc in positions["overworld"] or (loc in positions["dungeon"] and loc not in CHEST_ROOMS)]
+    if sorted(iconed) != sorted(want):
+        bad += 1
+        print(f"MAP ICONS cover {len(iconed)} locations, want {len(want)}")
+    sheets = out / "atmosphere/contents/01006BB00C6F0000/romfs/region_common/datasheets"
+    flags = {str(row["mFirstShowFlagName"]) for row in readSheet(str(sheets / "UiFieldMapIcons.gsheet"))["values"]}
+    missing = [g for g in overworld if f"{ap_map.FLAG_PREFIX}{g}" not in flags]
+    rows = {(round(float(row["posX"]), 2), round(float(row["posZ"]), 2))
+            for row in readSheet(str(sheets / "UiDungeonIcon.gsheet"))["values"]}
+    missing += [g for g, (x, z, _) in dungeon.items() if (round(x, 2), round(z, 2)) not in rows]
+    if missing:
+        bad += 1
+        print(f"MAP ROWS missing for groups {missing}")
+    print(f"map icons overworld={len(overworld)} dungeon={len(dungeon)} locations={len(iconed)} bad={bad}")
 sys.exit(1 if bad else 0)

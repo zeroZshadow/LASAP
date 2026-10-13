@@ -85,6 +85,14 @@ class TestInstall(unittest.TestCase):
         self.assertTrue((self.sd / CONFIG_PATH).exists())
         self.assertTrue((self.sd / CONFIG_PATH).with_name("ap_names.txt").exists())
 
+    def test_removes_stale_map(self) -> None:
+        # The map tracker's file of a seed with the option does not stay for a seed without it.
+        self.assertTrue(self.run_install("aaaa0001"))
+        stale = (self.sd / CONFIG_PATH).with_name("ap_map.txt")
+        stale.write_text("O 0 1")
+        self.assertTrue(self.run_install("bbbb0002"))
+        self.assertFalse(stale.exists())
+
     def test_errors(self) -> None:
         self.command = ""
         with self.assertRaises(InstallError):

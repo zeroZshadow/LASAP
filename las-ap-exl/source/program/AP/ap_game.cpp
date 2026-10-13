@@ -37,6 +37,8 @@ namespace {
     std::string g_ChecksPath;
     std::vector<u8> g_Checks(kChecksBytes, 0);
     bool g_ChecksLoaded = false;
+    // Locations the server has as checked (CHECKED lines), for the map tracker.
+    std::vector<u8> g_ServerChecks(kChecksBytes, 0);
 
     std::deque<std::string> g_Deferred;
 
@@ -600,6 +602,9 @@ namespace {
             std::fill(g_Checks.begin(), g_Checks.end(), 0);
             SaveChecks();
             AP::Send("OK clearchecks");
+        } else if (cmd == "map") {
+            if (a.size() >= 3) AP::SetMapEnabled(a[2] == "1");
+            AP::Send(AP::MapState());
         } else if (cmd == "text") {
             AP::Send(AP::TextState());
         } else if (cmd == "peek" && a.size() >= 5) {
@@ -721,6 +726,12 @@ namespace {
             size_t bar = names.find('|');
             AP::SetLocationName(atoi(a[1].c_str()), names.substr(0, bar),
                                 bar == std::string::npos ? "" : names.substr(bar + 1));
+        } else if (a[0] == "CHECKED") {
+            // CHECKED <local id>...: locations the server has as checked
+            for (size_t i = 1; i < a.size(); i++) {
+                int id = atoi(a[i].c_str());
+                if (id >= 0 && id < (int)(kChecksBytes * 8)) g_ServerChecks[id / 8] |= (1 << (id % 8));
+            }
         } else if (a[0] == "NOTICE" && a.size() >= 2) {
             // NOTICE <text>: a toast in the autosave popup; '|' starts a new line
             QueueNotice(RestAfter(line, 1));
@@ -741,6 +752,7 @@ namespace AP {
         InstallTextHooks();
         ItemGetSequence::InstallAtOffset(offset_manager.Offset(kItemGetSequence));
         LoadLocationNames();
+        LoadMap();
         StartNetwork(port > 0 ? port : PORT);
     }
 
@@ -767,6 +779,12 @@ namespace AP {
     void OnGoal() {
         Logging.Log("[AP] goal reached");
         Send("GOAL");
+    }
+
+    bool IsLocationChecked(int local_id) {
+        if (local_id < 0 || local_id >= (int)(kChecksBytes * 8)) return false;
+        if (!g_ChecksLoaded) LoadChecks();
+        return ((g_Checks[local_id / 8] | g_ServerChecks[local_id / 8]) >> (local_id % 8)) & 1;
     }
 
 }
@@ -824,6 +842,7 @@ namespace AP {
         AP::TickToasts(PlayerReady());
         TickItemGet();
         TickWarpMenu();
+        TickMap();
 
         // Lines that need a loaded save wait in g_Deferred; everything else runs right away.
         if (!g_Deferred.empty() && PlayerReady()) {

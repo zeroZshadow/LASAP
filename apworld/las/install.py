@@ -16,6 +16,8 @@ from typing import Callable, List, Optional
 from .emulators import TITLE_ID
 
 CONFIG_PATH = Path("config", "lasr-exl", "config.ini")
+# Config files the patcher writes only for some options (the map tracker's icons); an install without one removes it.
+OPTIONAL_CONFIG = ("ap_map.txt",)
 # Next to the config: the build of the built-in patcher that wrote the installed mod, so a newer world reinstalls it.
 BUILD_PATH = CONFIG_PATH.with_name("patcher_build.txt")
 MOD_PARTS = ("romfs", "exefs")
@@ -238,6 +240,9 @@ def install(out: Path, sd_card: Path, mods: Path, build: Optional[str] = None) -
         (sd_card / BUILD_PATH).unlink(missing_ok=True)
     else:
         (sd_card / BUILD_PATH).write_text(build + "\n", encoding="utf-8")
+    for name in OPTIONAL_CONFIG:
+        if not ((out / CONFIG_PATH).parent / name).exists():
+            (config_dir / name).unlink(missing_ok=True)
     for file in sorted((out / CONFIG_PATH).parent.iterdir(), key=lambda f: f.name == CONFIG_PATH.name):
         if file.is_file():
             shutil.copyfile(file, config_dir / file.name)

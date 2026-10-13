@@ -20,6 +20,10 @@ HOOK_DEFINE_TRAMPOLINE(EventFlags__SetGettingFlag) {
 
 HOOK_DEFINE_TRAMPOLINE(EventFlags__CheckFlag) {
     static bool Callback(long arg1, long strAddr) {
+        // The flag name is a {data, length} view (a libstdc++ std::string starts the same way).
+        auto* name = reinterpret_cast<const std::pair<const char*, size_t>*>(strAddr);
+        bool value;
+        if (AP::MapFlag(std::string_view(name->first, name->second), value)) return value;
         return Orig(arg1, strAddr);
     }
 };

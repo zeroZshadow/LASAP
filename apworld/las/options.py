@@ -226,6 +226,13 @@ class AmmoGhost(DefaultOnToggle):
     display_name = "Ammo Ghost"
 
 
+class MapTracker(DefaultOnToggle):
+    """The pause map shows where your unchecked locations are: an icon on the overworld map for each spot (hover it
+    for the locations' names), and in dungeons the chests and a chest icon for each room with other checks. The
+    whole overworld map and all dungeon rooms are revealed from the start."""
+    display_name = "Map Tracker"
+
+
 class Stealing(Choice):
     """Whether logic may expect stealing from the shop.
     standard: only with a sword. always: with or without one. never: logic never expects it."""
@@ -286,6 +293,7 @@ class LASOptions(PerGameCommonOptions):
     shuffled_bombs: ShuffledBombs
     shuffled_powder: ShuffledPowder
     ammo_ghost: AmmoGhost
+    map_tracker: MapTracker
     stealing: Stealing
     chest_appearance: ChestAppearance
     traps: Traps
@@ -299,5 +307,6 @@ OPTION_GROUPS = [
     OptionGroup("Dungeon Items", [Keys, DungeonItems, Instruments]),
     OptionGroup("Start", [StartingInstruments, StartingRupees]),
     OptionGroup("World", [OpenMabe, OpenKanalet, OpenMamu, CompletedBridge, ClassicD2, BadPets, FreeBook, FastFishing,
-                          FastStalfos, ShuffledBombs, ShuffledPowder, AmmoGhost, Stealing, ChestAppearance]),
+                          FastStalfos, ShuffledBombs, ShuffledPowder, AmmoGhost, MapTracker, Stealing,
+                          ChestAppearance]),
 ]

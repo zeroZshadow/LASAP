@@ -57,6 +57,10 @@ namespace {
     int g_SlotCount = 0;
     int g_FindCalls = 0, g_GetCalls = 0;
 
+    // Place.msbt labels of the map tracker's icons: (msbt, index) -> icon group
+    std::map<std::pair<void*, s32>, int> g_MapLabels;
+    char g_MapText[512];
+
     std::map<int, std::pair<std::string, std::string>> g_LocationNames;
     int g_FoundLocation = -1;
     bool g_FoundFresh = false;      // g_FoundLocation was set during the current event
@@ -109,6 +113,13 @@ HOOK_DEFINE_TRAMPOLINE(MsbtFindLabel) {
     static void Callback(MsbtHandle* out, void* msbt, const char* label, size_t len) {
         Orig(out, msbt, label, len);
         g_FindCalls++;
+        int group = AP::MapLabelGroup(std::string_view(label, len));
+        if (group >= 0) {
+            if (out->index >= 0) g_MapLabels[{msbt, out->index}] = group;
+            return;
+        }
+        // Another message in the same place: message files are reloaded on language change.
+        if (!g_MapLabels.empty()) g_MapLabels.erase({msbt, out->index});
         if (LabelIs(label, len, AP::FOUND_LABEL)) Remember(msbt, out->index, Kind::Found);
         else if (LabelIs(label, len, AP::RECEIVED_LABEL)) Remember(msbt, out->index, Kind::Received);
         else if (LabelIs(label, len, kSavingLabel)) Remember(msbt, out->index, Kind::Saving);
@@ -122,6 +133,15 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
         Orig(out, msbt, index);
         g_GetCalls++;
         if (out->text == nullptr) return;
+        auto map = g_MapLabels.find({msbt, index});
+        if (map != g_MapLabels.end()) {
+            std::string text = AP::MapLabelText(map->second);
+            if (!text.empty()) {
+                out->length = Store(g_MapText, sizeof(g_MapText), text);
+                out->text = g_MapText;
+            }
+            return;
+        }
         Kind kind = KindOf(msbt, index);
         switch (kind) {
             case Kind::Found: {
