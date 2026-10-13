@@ -2,7 +2,8 @@
 import re
 from typing import Any, Dict, Iterable, List, Optional, Set
 
-from .lasr import CATEGORIES, ITEM_DEFS, ITEM_LOCATIONS, LOGIC
+from .items import LOGIC_ITEMS
+from .lasr import CATEGORIES, COMPANIONS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC
 from .options import LASOptions
 
 # Option attribute -> LASR location category it toggles.
@@ -21,9 +22,6 @@ CATEGORY_OPTIONS = {
     "fishing": "Fishing_Rewards",
     "blue_rupees": "Blue_Rupees",
 }
-# LASR's settings of the categories in CATEGORY_OPTIONS
-CATEGORY_SETTINGS = ("Chests", "Free Gifts", "Trade Quest", "Golden Leaves", "Heart Pieces", "Seashells",
-                     "Miscellaneous", "Shop", "Boss Drops", "Dampe", "Rapids", "Fishing", "Blue Rupees")
 MANSION_THRESHOLDS = {f"{n}-seashell-reward": n for n in (5, 15, 30, 40, 50)}
 
 DUNGEONS = ("tail-cave", "bottle-grotto", "key-cavern", "angler-tunnel", "catfish-maw", "face-shrine", "eagle-tower",
@@ -80,22 +78,40 @@ def fixed_locations() -> Set[str]:
 
 
 def kept_locations() -> Set[str]:
-    """AP locations that keep their vanilla item in the game, as the patcher cannot put the placeholder there: the
-    Trendy Game's prizes. They are always locked; the module reports them when the game adds their item."""
-    return set(CATEGORIES["Trendy_Rewards"])
+    """Locations the patcher cannot put the placeholder at: the Trendy Game's prizes and the companions. They are never
+    randomized; the module reports them when the game adds their item or sets their flag."""
+    return set(CATEGORIES["Trendy_Rewards"]) | set(COMPANIONS)
 
 
-def locked_locations(options: LASOptions) -> Set[str]:
-    """Locations the options leave unshuffled: AP locations holding their vanilla item, locked (instruments are
-    decided by the world)."""
-    locked: Set[str] = set()
+def unrandomized_locations(options: LASOptions) -> Set[str]:
+    """Locations whose default item stays, as the options do not randomize them (instruments are decided by the
+    world). The world makes them checks or leaves them out by default_item_matters."""
+    unrandomized: Set[str] = set()
     for attribute, category in CATEGORY_OPTIONS.items():
         if not getattr(options, attribute).value:
-            locked |= set(CATEGORIES[category])
-    locked |= {loc for loc, n in MANSION_THRESHOLDS.items() if n > options.seashell_mansion.value}
+            unrandomized |= set(CATEGORIES[category])
+    unrandomized |= {loc for loc, n in MANSION_THRESHOLDS.items() if n > options.seashell_mansion.value}
     if not options.rapids:
-        locked.add("owl-statue-rapids")  # LASR excludes it without the Rapids category
-    return (locked | kept_locations()) - fixed_locations()
+        unrandomized.add("owl-statue-rapids")  # LASR excludes it without the Rapids category
+    return (unrandomized | kept_locations()) - fixed_locations()
+
+
+def seashells_matter(options: LASOptions) -> bool:
+    """Seashells count only for the Seashell Mansion's randomized rewards."""
+    return options.seashell_mansion.value > 0
+
+
+def default_item_matters(loc: str, options: LASOptions) -> bool:
+    """Whether an unrandomized location's default item can matter for finishing the seed. Such a location is a check
+    holding its default item, locked; any other is no AP location and the logic leaves its item out, so the player
+    never needs it. The Mansion's unrandomized rewards never matter: of their items the logic asks only for the
+    level-2 sword, always with alternatives."""
+    if loc in MANSION_THRESHOLDS:
+        return False
+    content = LOGIC[loc]["content"]
+    if content == "seashell":
+        return seashells_matter(options)
+    return content in LOGIC_ITEMS
 
 
 # The settings trackers get in the slot data ("settings"): those that decide which checks exist and what reaches them.
@@ -103,7 +119,7 @@ TRACKER_SETTINGS = ("Preset", "Chests", "Free Gifts", "Trade Quest", "Golden Lea
                     "Miscellaneous", "Seashell Mansion", "Shop", "Boss Drops", "Dampe", "Rapids", "Fishing",
                     "Trendy Game", "Blue Rupees", "Owl Gifts", "Dungeon Maps", "Compasses", "Stone Beaks", "Small Keys",
                     "Nightmare Keys", "Shuffle Instruments", "Open Kanalet", "Open Mabe", "Open Mamu",
-                    "Completed Bridge", "Classic D2", "Shuffled Dungeons", "Bad Pets", "Fast Fishing", "Shuffled Bombs",
+                    "Completed Bridge", "Classic D2", "Shuffled Dungeons", "Fast Fishing", "Shuffled Bombs",
                     "Free Book", "Fast Stalfos", "Shuffled Powder", "Stealing")
 
 
@@ -151,7 +167,7 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Classic D2": bool(o.classic_d2),
         "Shuffled Dungeons": False,
         "Consumable Drops": True,
-        "Bad Pets": bool(o.bad_pets),
+        "Bad Pets": False,  # not supported
         "Fast Fishing": bool(o.fast_fishing),
         "Shuffled Bombs": bool(o.shuffled_bombs),
         "Free Book": bool(o.free_book),
@@ -189,17 +205,6 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
     # set by LASR's main window before shuffling
     settings["Seashells Important"] = any(loc not in vanilla for loc in CATEGORIES["Mansion"])
     settings["Trade Important"] = any(loc not in vanilla for loc in CATEGORIES["Trade_Gifts"])
-    return settings
-
-
-def checked_settings(options: LASOptions, fixed: Iterable[str] = ()) -> Dict[str, Any]:
-    """lasr_settings for the patch and for trackers. Every category's locations are AP locations, the unshuffled ones
-    holding their own item, so every category counts as on: the patcher puts the Archipelago item into the Color
-    Dungeon's blue rupees only with "Blue Rupees" on, and trackers show the categories that are on."""
-    settings = lasr_settings(options, fixed)
-    for setting in CATEGORY_SETTINGS:
-        settings[setting] = True
-    settings["Seashell Mansion"] = max(MANSION_THRESHOLDS.values())
     return settings
 
 

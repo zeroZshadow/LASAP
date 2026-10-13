@@ -19,9 +19,11 @@ Wake the Wind Fish.
 
 Chests, free gifts, golden leaves, heart pieces, seashells, the shop, boss drops and other item locations, each category
 with its own option. The trade quest, Dampé, the rapids, fishing, blue rupees, owl statues and the Seashell Mansion
-rewards can be added. A category left unshuffled keeps its items in their places, but its locations are still checks:
-they can be hinted, and the item arrives from the server when you pick it up. The Trendy Game's prizes are checks but are never shuffled: its first
-prize is the Yoshi Doll that starts the trade quest. Small keys, nightmare keys, maps, compasses, stone beaks and instruments can stay in their own
+rewards can be added. A category left unshuffled keeps its items in their places. Where the logic may need such an
+item (a song, a key, an instrument, a trade item), the spot is still a check: it can be hinted, and the item arrives
+from the server when you pick it up. The rest (rupees, heart pieces, seashells while the Seashell Mansion is off) are
+not checks and are never needed. The Trendy Game's prizes are never shuffled; its Yoshi Doll, which starts the trade
+quest, is a check. Saving Bow-Wow and reviving the rooster are checks too. Small keys, nightmare keys, maps, compasses, stone beaks and instruments can stay in their own
 dungeon or go anywhere.
 
 ## What does the player start with?

@@ -126,6 +126,9 @@ INDEXED_ITEMS = ("seashell", "heart-piece", "heart-container", "bottle", "golden
 INDEX_KINDS = {"seashell": "S", "heart-piece": "H", "golden-leaf": "L", "heart-container": "C"}
 INDICES_FILE = "ap_indices.txt"
 VANILLA_FILE = "ap_vanilla.txt"
+# The companions' locations and the flag their joining sets
+COMPANION_FLAGS = {"moblin-cave": "BowWowJoin", "rooster-statue": "RoosterFoundFlag"}
+ROOSTER_EVENT_FILE = "RoosterBones.bfevfl"
 DUNGEON_ITEM_PREFIXES = ("compass", "map", "stone", "key", "nightmare")
 
 
@@ -398,14 +401,32 @@ def write_indices(config_dir: Path, logic: dict, patch: dict) -> None:
 
 
 def write_vanilla(config_dir: Path, logic: dict, item_defs: dict, patch: dict) -> None:
-    """One line per AP location that keeps its vanilla item (the Trendy Game's prizes): the item's key, its index
-    (-1 for none) and the location's local id. The module sends the check when the game adds that item."""
+    """One line per AP location that keeps its vanilla item. The Trendy Game's prizes: the item's key, its index (-1
+    for none) and the location's local id; the module sends the check when the game adds that item. The companions:
+    `F`, the flag their joining sets and the local id; the module sends the check once the flag is set."""
     lines = []
     for loc, local_id in patch["location_ids"].items():
         item = patch["placements"].get(loc)
-        if item != "ap-item":
+        if loc in COMPANION_FLAGS:
+            lines.append(f"F {COMPANION_FLAGS[loc]} {int(local_id)}")
+        elif item != "ap-item":
             lines.append(f"{item_defs[item]['item-key']} {logic[loc].get('index', -1)} {int(local_id)}")
     (config_dir / VANILLA_FILE).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+
+
+def add_rooster_flag(files) -> None:
+    """Reviving the rooster (RoosterBones.bfevfl, FlyingCucco's Join) sets no flag; it sets RoosterFoundFlag (added by
+    LASR's flag manager) right after."""
+    flow = files.readFile(ROOSTER_EVENT_FILE)
+    chart = flow.flowchart
+    joins = [event for event in chart.events if getattr(event.data, "actor", None) is not None
+             and event.data.actor.v.identifier.name == "FlyingCucco" and str(event.data.actor_action.v) == "Join"]
+    assert len(joins) == 1, joins
+    after = joins[0].data.nxt.v.name if joins[0].data.nxt.v is not None else None
+    flag = event_tools.createActionEvent(chart, "EventFlags", "SetFlag",
+                                         {"symbol": COMPANION_FLAGS["rooster-statue"], "value": True}, after)
+    event_tools.insertEventAfter(chart, joins[0].name, flag)
+    files.writeFile(ROOSTER_EVENT_FILE, flow)
 
 
 def location_item(loc: str) -> str:
@@ -487,6 +508,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
     write_indices(proc.config_dir, logic, patch)
     write_vanilla(proc.config_dir, logic, item_defs, patch)
+    if "rooster-statue" in patch["location_ids"]:
+        add_rooster_flag(proc.file_manager)
     if patch["settings"].get("Ammo Ghost", True):  # the option's default, also for patches without it
         ap_ghost.add(proc.file_manager)
     map_tracker = patch["settings"].get("Map Tracker", False)  # off for patches from before the option

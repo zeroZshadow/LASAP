@@ -1,0 +1,7 @@
+# The companions are AP locations (DESIGN.md, Item model): the module sends the check once the flag their joining
+# sets is set (Bow-Wow: BowWowJoin; the rooster: RoosterFoundFlag, which the patcher adds after its Join). Run after
+# newgame_file2 with the client connected to the server. Setting the flags stands in for the events.
+send DBG setflag BowWowJoin 1
+await 10 recv=1
+send DBG setflag RoosterFoundFlag 1
+await 10 recv=2

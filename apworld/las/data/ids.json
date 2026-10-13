@@ -114,7 +114,9 @@
     "nightmare-key-D0": 112,
     "stone-beak-D0": 113,
     "compass-D0": 114,
-    "map-D0": 115
+    "map-D0": 115,
+    "bow-wow": 116,
+    "rooster": 117
   },
   "locations": {
     "sale": 1,
@@ -460,6 +462,8 @@
     "owl-statue-desert": 341,
     "owl-statue-maze": 342,
     "owl-statue-rapids": 343,
-    "owl-statue-taltal-east": 344
+    "owl-statue-taltal-east": 344,
+    "moblin-cave": 345,
+    "rooster-statue": 346
   }
 }

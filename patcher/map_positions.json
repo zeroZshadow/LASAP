@@ -809,6 +809,16 @@
    212.25,
    20.25,
    18.75
+  ],
+  "moblin-cave": [
+   84.75,
+   42.38,
+   13.5
+  ],
+  "rooster-statue": [
+   38.25,
+   114.75,
+   10.55
   ]
  },
  "dungeon": {
@@ -2067,6 +2077,8 @@
   "owl-statue-desert": "Yarna Desert - Owl Statue Desert",
   "owl-statue-maze": "Ancient Ruins - Owl Statue Maze",
   "owl-statue-rapids": "Rapids Ride - Owl Statue Rapids",
-  "owl-statue-taltal-east": "Tal Tal Mountains East - Owl Statue Taltal East"
+  "owl-statue-taltal-east": "Tal Tal Mountains East - Owl Statue Taltal East",
+  "moblin-cave": "Tal Tal Heights - Moblin Cave",
+  "rooster-statue": "Mabe Village - Rooster Statue"
  }
 }

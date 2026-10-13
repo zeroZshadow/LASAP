@@ -191,11 +191,6 @@ class ClassicD2(Toggle):
     display_name = "Classic D2"
 
 
-class BadPets(Toggle):
-    """Companions can go inside dungeons with Link. Logic may then expect them to be used there."""
-    display_name = "Bad Pets"
-
-
 class FreeBook(DefaultOnToggle):
     """The book revealing the Wind Fish's Egg path can be read without the Magnifying Lens."""
     display_name = "Free Book"
@@ -287,7 +282,6 @@ class LASOptions(PerGameCommonOptions):
     open_mamu: OpenMamu
     completed_bridge: CompletedBridge
     classic_d2: ClassicD2
-    bad_pets: BadPets
     free_book: FreeBook
     fast_fishing: FastFishing
     fast_stalfos: FastStalfos
@@ -307,7 +301,7 @@ OPTION_GROUPS = [
                               BossDrops, Dampe, Rapids, Fishing, BlueRupees, OwlStatues, SeashellMansion]),
     OptionGroup("Dungeon Items", [Keys, DungeonItems, Instruments]),
     OptionGroup("Start", [StartingInstruments, StartingRupees]),
-    OptionGroup("World", [OpenMabe, OpenKanalet, OpenMamu, CompletedBridge, ClassicD2, BadPets, FreeBook, FastFishing,
+    OptionGroup("World", [OpenMabe, OpenKanalet, OpenMamu, CompletedBridge, ClassicD2, FreeBook, FastFishing,
                           FastStalfos, ShuffledBombs, ShuffledPowder, AmmoGhost, MapTracker, Stealing,
                           ChestAppearance]),
 ]

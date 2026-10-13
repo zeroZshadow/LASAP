@@ -13,7 +13,7 @@ from .host_settings import LASSettings
 
 from .ids import LOCATION_OFFSETS
 from .items import FILLER_ITEM, GAME, ITEM_GAME_INFO, ITEM_NAME_GROUPS, ITEM_TABLE, LASR_TO_ITEM, LASItem
-from .lasr import (CATEGORIES, DUNGEON_REWARD_LOCATIONS, FOLLOWER_EVENTS, FOLLOWERS, INSTRUMENT_LOCATIONS,
+from .lasr import (CATEGORIES, DUNGEON_REWARD_LOCATIONS, INSTRUMENT_LOCATIONS,
                    INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC, TRAPS, item_dungeon, location_dungeon)
 from .locations import LOCATION_NAME_GROUPS, LOCATION_NAME_TO_ID, LOCATION_NAMES, LASLocation
 from .logic import LogicCompiler, make_rule, referenced_regions
@@ -74,8 +74,9 @@ class LASWorld(World):
 
     compiler: LogicCompiler
     shuffled: List[str]  # LASR item locations that are AP locations
-    locked: List[str]  # AP locations the options leave unshuffled: they hold their vanilla item, locked
+    locked: List[str]  # AP locations the options leave unrandomized: they hold their default item, locked
     vanilla: List[str]  # LASR item locations that keep their vanilla content and are no AP locations
+    plain: List[str]  # unrandomized locations whose default item never matters: no AP locations, left out of logic
     starting_items: List[str]  # LASR item names given at the start by options
     pre_fill_items: List[Item]
     restricted: Dict[str, Set[str]]  # AP item name -> LASR locations it must be placed in
@@ -84,7 +85,7 @@ class LASWorld(World):
         options = self.options
         self.settings_tokens = lasr_settings.logic_tokens(options)
         self.compiler = LogicCompiler(LOGIC, options.logic.current_key, self.settings_tokens,
-                                      {**LASR_TO_ITEM, **FOLLOWER_EVENTS})
+                                      LASR_TO_ITEM)
 
         self.starting_instruments = self.random.sample(INSTRUMENTS, options.starting_instruments.value)
         self.starting_items = list(self.starting_instruments)
@@ -94,14 +95,17 @@ class LASWorld(World):
 
         removed = lasr_settings.removed_locations(options)
         vanilla = lasr_settings.fixed_locations()
-        locked = lasr_settings.locked_locations(options)
+        unrandomized = lasr_settings.unrandomized_locations(options)
         if options.instruments == options.instruments.option_vanilla:
             started = {f"D{INSTRUMENTS.index(i) + 1}-instrument" for i in self.starting_instruments}
-            locked |= set(INSTRUMENT_LOCATIONS) - started
+            unrandomized |= set(INSTRUMENT_LOCATIONS) - started
+        self.seashells_matter = lasr_settings.seashells_matter(options)
+        plain = {loc for loc in unrandomized if not lasr_settings.default_item_matters(loc, options)}
         self.removed = [loc for loc in ITEM_LOCATIONS if loc in removed]
         self.vanilla = [loc for loc in ITEM_LOCATIONS if loc in vanilla and loc not in removed]
-        self.shuffled = [loc for loc in ITEM_LOCATIONS if loc not in vanilla and loc not in removed]
-        self.locked = [loc for loc in self.shuffled if loc in locked]
+        self.plain = [loc for loc in ITEM_LOCATIONS if loc in plain and loc not in removed]
+        self.shuffled = [loc for loc in ITEM_LOCATIONS if loc not in vanilla and loc not in plain and loc not in removed]
+        self.locked = [loc for loc in self.shuffled if loc in unrandomized]
         self.pre_fill_items = []
         self.restricted = {}
 
@@ -111,7 +115,7 @@ class LASWorld(World):
         menu = Region("Menu", self.player, self.multiworld)
         self.multiworld.regions.append(menu)
         # LASR regions, rooms and the few nodes on reference cycles are AP regions entered from Menu
-        roots = self.shuffled + self.vanilla + FOLLOWERS + ["kill-nightmare"] +             [k for k, v in LOGIC.items() if v["type"] == "region"]
+        roots = self.shuffled + self.vanilla + ["kill-nightmare"] +             [k for k, v in LOGIC.items() if v["type"] == "region"]
         needed = set(self.compiler.dependencies(roots)) & self.compiler.region_nodes
         self.node_regions: Dict[str, Region] = {}
         for name in LOGIC:
@@ -128,22 +132,23 @@ class LASWorld(World):
             if self._is_progression(self.content(loc)):
                 region = self.node_regions[LOGIC[loc]["region"]]
                 region.locations.append(LASLocation(self.player, LOCATION_NAMES[loc], None, region))
-        for follower in FOLLOWERS:
-            region = self.node_regions[LOGIC[follower]["region"]]
-            region.locations.append(LASLocation(self.player, follower, None, region))
         menu.locations.append(LASLocation(self.player, GOAL_LOCATION, None, menu))
 
     def content(self, loc: str) -> str:
         return LOGIC[loc]["content"]
 
     def _is_progression(self, lasr_item: str) -> bool:
-        return bool(ITEM_TABLE[LASR_TO_ITEM[lasr_item]].classification & ItemClassification.progression)
+        return bool(self.classification(LASR_TO_ITEM[lasr_item]) & ItemClassification.progression)
+
+    def classification(self, name: str) -> ItemClassification:
+        if name == LASR_TO_ITEM["seashell"] and not getattr(self, "seashells_matter", True):
+            return ItemClassification.filler
+        return ITEM_TABLE[name].classification
 
     # --- items ---
 
     def create_item(self, name: str) -> LASItem:
-        data = ITEM_TABLE[name]
-        return LASItem(name, data.classification, data.code, self.player)
+        return LASItem(name, self.classification(name), ITEM_TABLE[name].code, self.player)
 
     def create_event(self, name: str, classification=ItemClassification.progression) -> LASItem:
         return LASItem(name, classification, None, self.player)
@@ -157,7 +162,7 @@ class LASWorld(World):
         pool = Counter({k: v["quantity"] for k, v in ITEM_DEFS.items()})
         for category in ("Overworld_Owl_Statues", "Dungeon_Owl_Statues"):
             pool["rupee-20"] += sum(1 for loc in CATEGORIES[category] if loc not in self.removed)
-        for loc in self.vanilla + self.locked:
+        for loc in self.vanilla + self.plain + self.locked:
             pool[self.content(loc)] -= 1
         for item in self.starting_items:
             if pool[item] > 0:
@@ -188,9 +193,6 @@ class LASWorld(World):
                 self.get_location(LOCATION_NAMES[loc]).place_locked_item(item)
         for loc in self.locked:
             self.get_location(LOCATION_NAMES[loc]).place_locked_item(self.create_item(LASR_TO_ITEM[self.content(loc)]))
-        for follower in FOLLOWERS:
-            content = FOLLOWER_EVENTS[LOGIC[follower]["content"]]
-            self.get_location(follower).place_locked_item(self.create_event(content))
         self.get_location(GOAL_LOCATION).place_locked_item(self.create_event(GOAL_EVENT))
 
         for item in self.starting_items:
@@ -253,8 +255,6 @@ class LASWorld(World):
         for loc in self.shuffled + self.vanilla:
             if loc in self.shuffled or self._is_progression(self.content(loc)):
                 self.get_location(LOCATION_NAMES[loc]).access_rule = rule(self.compiler.node_expr(loc))
-        for follower in FOLLOWERS:
-            self.get_location(follower).access_rule = rule(self.compiler.node_expr(follower))
         self.get_location(GOAL_LOCATION).access_rule = rule(self.compiler.token("kill-nightmare", 1))
         self.multiworld.completion_condition[self.player] = lambda state: state.has(GOAL_EVENT, self.player)
 
@@ -319,11 +319,14 @@ class LASWorld(World):
 
     # --- output ---
 
+    def unrandomized(self) -> List[str]:
+        return self.vanilla + self.plain + self.locked
+
     def seed_hash(self) -> str:
         return hashlib.sha256(f"{self.multiworld.seed_name}:{self.player}".encode()).hexdigest()[:8]
 
     def fill_slot_data(self) -> Mapping[str, Any]:
-        settings = lasr_settings.checked_settings(self.options, self.vanilla)
+        settings = lasr_settings.lasr_settings(self.options, self.unrandomized())
         return {
             "seed_hash": self.seed_hash(),
             "goal": "wind_fish",
@@ -344,7 +347,7 @@ class LASWorld(World):
     def patch_data(self) -> Dict[str, Any]:
         kept = lasr_settings.kept_locations()
         placements = {loc: self.content(loc) if loc in kept else "ap-item" for loc in self.shuffled}
-        placements.update({loc: self.content(loc) for loc in self.vanilla})
+        placements.update({loc: self.content(loc) for loc in self.vanilla + self.plain})
         starting = [ITEM_TABLE[item.name].lasr_name for item in self.multiworld.precollected_items[self.player]
                     if item.name in ITEM_TABLE]
         return {
@@ -353,7 +356,7 @@ class LASWorld(World):
             "player": self.player,
             "slot_name": self.multiworld.player_name[self.player],
             "seed_hash": self.seed_hash(),
-            "settings": lasr_settings.checked_settings(self.options, self.vanilla),
+            "settings": lasr_settings.lasr_settings(self.options, self.unrandomized()),
             "starting_items": starting,
             "placements": {loc: placements[loc] for loc in ITEM_LOCATIONS if loc in placements},
             "location_ids": {loc: LOCATION_OFFSETS[loc] for loc in self.shuffled},

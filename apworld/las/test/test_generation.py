@@ -53,8 +53,9 @@ class TestDefault(LASTestBase):
             self.assertTrue(item == "ap-item" or item in ITEM_DEFS, (loc, item))
         from ..lasr_settings import kept_locations
         shuffled = {loc for loc, item in patch["placements"].items() if item == "ap-item"}
-        kept = kept_locations()
+        kept = kept_locations() & set(patch["location_ids"])
         self.assertEqual(set(patch["location_ids"]), shuffled | kept)
+        self.assertIn("rooster-statue", kept)
         self.assertFalse(shuffled & kept)
         self.assertEqual(set(patch["location_names"]), shuffled | kept)
         for loc in kept:
@@ -121,8 +122,9 @@ class TestEverythingShuffled(LASTestBase):
     }
 
     def test_counts(self) -> None:
-        # every LASR location except the shop slots LASR does not shuffle
-        self.assertEqual(len(self.world.shuffled), 344 - 7)
+        # every LASR location and the two companions, except the shop slots LASR does not shuffle and the Trendy
+        # Game's heart pieces and chamber stones, whose items never matter
+        self.assertEqual(len(self.world.shuffled), 344 + 2 - 7 - 4)
 
 
 class TestVanillaHeavy(LASTestBase):
@@ -144,15 +146,26 @@ class TestVanillaHeavy(LASTestBase):
         "completed_bridge": False,
     }
 
-    def test_unshuffled_locations_are_locked(self) -> None:
-        """Locations the options leave unshuffled are AP locations holding their own vanilla item."""
+    def test_unrandomized_locations(self) -> None:
+        """An unrandomized location whose default item the logic can need is a check holding that item, locked; any
+        other is no AP location."""
+        from BaseClasses import ItemClassification
         from ..items import LASR_TO_ITEM
         from ..lasr import LOGIC
-        from ..lasr_settings import CATEGORY_SETTINGS, fixed_locations, kept_locations
-        locked = set(self.world.locked)
-        self.assertIn("40-seashell-reward", locked)
+        from ..lasr_settings import MANSION_THRESHOLDS, fixed_locations, kept_locations
+        locked, plain = set(self.world.locked), set(self.world.plain)
+        # the Mansion at 0: its rewards and the seashells never matter
+        self.assertLessEqual(set(MANSION_THRESHOLDS), plain)
+        self.assertIn("pond-island", plain)
+        self.assertEqual(self.world.create_item("Secret Seashell").classification, ItemClassification.filler)
+        self.assertIn("mabe-well", plain)  # a heart piece
+        self.assertTrue(any(LOGIC[loc]["content"] == "tail-key" for loc in locked))
+        self.assertLessEqual({"moblin-cave", "rooster-statue", "trendy-prize-1"}, locked)
         instruments = {f"D{n}-instrument" for n in range(1, 9)}
         self.assertEqual(len(instruments & locked), 8 - len(self.world.starting_instruments))
+        self.assertFalse(plain & set(self.world.shuffled))
+        names = {loc.name for loc in self.multiworld.get_locations(self.player)}
+        self.assertFalse({LOCATION_NAMES[loc] for loc in plain} & names)
         for loc in locked:
             location = self.multiworld.get_location(LOCATION_NAMES[loc], self.player)
             self.assertEqual(location.address, self.world.location_name_to_id[LOCATION_NAMES[loc]])
@@ -161,9 +174,13 @@ class TestVanillaHeavy(LASTestBase):
             self.assertEqual(location.item.player, self.player)
         self.assertFalse(fixed_locations() & set(self.world.shuffled))
         patch = self.world.patch_data()
-        self.assertEqual({loc for loc in locked if patch["placements"][loc] != "ap-item"}, kept_locations())
+        self.assertEqual({loc for loc in locked if patch["placements"][loc] != "ap-item"}, kept_locations() & locked)
         self.assertLessEqual(locked, set(patch["location_ids"]))
-        self.assertTrue(all(patch["settings"][s] is True for s in CATEGORY_SETTINGS))
+        self.assertTrue(all(patch["placements"][loc] == LOGIC[loc]["content"] for loc in plain))
+        # trackers and the patcher get the options as they are
+        settings = patch["settings"]
+        self.assertEqual((settings["Heart Pieces"], settings["Seashell Mansion"], settings["Seashells Important"]),
+                         (False, 0, False))
 
     def test_tracker_counts_a_locked_item_once(self) -> None:
         """A checked locked location stops counting its item: the received copy counts instead."""
@@ -228,7 +245,6 @@ class TestDungeonRewards(LASTestBase):
         "starting_instruments": 3,
         "dungeon_items": "start_with",
         "classic_d2": True,
-        "bad_pets": True,
         "stealing": "never",
         "shuffled_bombs": False,
         "shuffled_powder": False,

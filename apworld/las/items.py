@@ -92,6 +92,7 @@ _DUNGEON_ITEM_NAMES = {
     "compass": "Compass",
     "map": "Dungeon Map",
 }
+_DISPLAY_NAMES.update({"bow-wow": "Bow-Wow", "rooster": "Flying Rooster"})
 
 
 def display_name(lasr_item: str) -> str:
@@ -109,14 +110,14 @@ class ItemData(NamedTuple):
 
 
 # Everything the logic can ask for is progression, whatever its LASR pool type.
-_LOGIC_ITEMS: Set[str] = {t.split("[")[0] for t in referenced_tokens(LOGIC)} & set(ITEM_DEFS)
+LOGIC_ITEMS: Set[str] = {t.split("[")[0] for t in referenced_tokens(LOGIC)} & set(ITEM_DEFS)
 
 
 def _classify(lasr_item: str) -> ItemClassification:
     lasr_type = ITEM_DEFS[lasr_item]["type"]
     if lasr_item == "seashell":
         return ItemClassification.progression_skip_balancing
-    if lasr_item in _LOGIC_ITEMS or lasr_type in ("important", "trade"):
+    if lasr_item in LOGIC_ITEMS or lasr_type in ("important", "trade"):
         return ItemClassification.progression
     if lasr_item.endswith("-trap"):
         return ItemClassification.trap

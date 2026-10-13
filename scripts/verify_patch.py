@@ -12,8 +12,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "patcher"))
 from RandomizerCore.Randomizers.chests import CHEST_ROOMS  # noqa: E402
 from RandomizerCore.Tools.leb import Room  # noqa: E402
-from las_ap_patch import (ACTOR_INDICES, INDEX_KINDS, INDICES_FILE, PLACEHOLDER_KEY, VANILLA_FILE,  # noqa: E402
-                          VARIANT_KEY_MAX, load_patch, load_yaml, variant_key)
+from las_ap_patch import (ACTOR_INDICES, COMPANION_FLAGS, INDEX_KINDS, INDICES_FILE, PLACEHOLDER_KEY,  # noqa: E402
+                          VANILLA_FILE, VARIANT_KEY_MAX, load_patch, load_yaml, variant_key)
 
 patch = load_patch(Path(sys.argv[1]))
 item_defs = load_yaml("items.yml")["Item_Pool"]
@@ -103,11 +103,12 @@ if len(entries) != sum(len(v) for v in counts.values()) or sorted(counts) != sor
     print(f"INDICES duplicate bits or missing kinds: {sorted(counts)}")
 print("indices " + " ".join(f"{k}={len(v)}" for k, v in sorted(counts.items())) +
       f" vanilla={sum(1 for e in entries if e[2] == '-1')} bad={bad}")
-# Kept locations: every AP location without the placeholder, with its vanilla item's key.
+# Kept locations: every AP location without the placeholder, with its vanilla item's key or its companion's flag.
 kept = [line.split() for line in (Path(sys.argv[2]) / "config/lasr-exl" / VANILLA_FILE).read_text().splitlines()]
-expected = {str(patch["location_ids"][loc]): item_defs[item]["item-key"]
+expected = {str(patch["location_ids"][loc]): COMPANION_FLAGS.get(loc) or item_defs[item]["item-key"]
             for loc, item in patch["placements"].items() if item != "ap-item" and loc in patch["location_ids"]}
-if {local_id: key for key, _, local_id in kept} != expected or len(kept) != len(expected):
+found = {local_id: flag if key == "F" else key for key, flag, local_id in kept}
+if found != expected or len(kept) != len(expected):
     bad += 1
     print(f"KEPT {kept} != {expected}")
 print(f"kept locations={len(kept)} bad={bad}")

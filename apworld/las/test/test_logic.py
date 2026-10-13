@@ -13,7 +13,7 @@ from worlds.AutoWorld import AutoWorldRegister
 
 from .lasr_eval import LASREvaluator
 from ..items import ITEM_TABLE, LASR_TO_ITEM
-from ..lasr import FOLLOWERS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC
+from ..lasr import ITEM_DEFS, ITEM_LOCATIONS, LOGIC
 from ..locations import LOCATION_NAMES
 from ..logic import parse
 
@@ -26,7 +26,7 @@ OPTION_SETS = [
     {"logic": "glitched"},
     {"logic": "hell"},
     {"open_mabe": False, "open_kanalet": False, "open_mamu": False, "completed_bridge": False,
-     "classic_d2": True, "bad_pets": True, "stealing": "never", "shuffled_bombs": False, "shuffled_powder": False},
+     "classic_d2": True, "stealing": "never", "shuffled_bombs": False, "shuffled_powder": False},
     {"logic": "hell", "owl_statues": "all", "blue_rupees": True, "trade_quest": True, "dampe": True,
      "rapids": True, "fishing": True, "seashell_mansion": 50, "free_book": False, "fast_fishing": False,
      "fast_stalfos": False, "stealing": "always"},
@@ -43,8 +43,6 @@ def lasr_reachable(world, lasr_items: Counter) -> set:
     placements = {k: None for k, v in logic_defs.items() if v["type"] in ("item", "follower")}
     for loc in world.vanilla + world.locked:
         placements[loc] = LOGIC[loc]["content"]
-    for follower in FOLLOWERS:
-        placements[follower] = LOGIC[follower]["content"]
     access = dict(lasr_items)
     access.update({token: 1 for token in world.settings_tokens})
     evaluator = LASREvaluator(world.options.logic.current_key, logic_defs, placements)

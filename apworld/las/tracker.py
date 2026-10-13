@@ -11,7 +11,7 @@ from typing import Callable, Dict, Iterable, List, Mapping, Set, Tuple
 from BaseClasses import ItemClassification
 
 from .items import ITEM_TABLE, LASR_TO_ITEM
-from .lasr import FOLLOWER_EVENTS, FOLLOWERS, LOGIC
+from .lasr import LOGIC
 from .logic import LogicCompiler, make_rule
 
 PLAYER = 1
@@ -39,9 +39,9 @@ class LogicTracker:
                  locked: Iterable[str] = ()):
         """`vanilla`: LASR locations that keep a progression item and are no AP locations; `shuffled`: the slot's
         LASR locations; `locked`: those of them that hold their own progression item, locked."""
-        compiler = LogicCompiler(LOGIC, preset, tokens, {**LASR_TO_ITEM, **FOLLOWER_EVENTS})
+        compiler = LogicCompiler(LOGIC, preset, tokens, LASR_TO_ITEM)
         vanilla, self.shuffled = list(vanilla) + list(locked), list(shuffled)
-        needed = set(compiler.dependencies(self.shuffled + vanilla + FOLLOWERS)) & compiler.region_nodes
+        needed = set(compiler.dependencies(self.shuffled + vanilla)) & compiler.region_nodes
         self.regions: Dict[str, _Region] = {name: _Region() for name in needed}
 
         def rule(name: str):
@@ -53,8 +53,6 @@ class LogicTracker:
         self.events: List[Tuple[str, _Region, Callable, str]] = [
             (loc, self.regions[LOGIC[loc]["region"]], rule(loc), LASR_TO_ITEM[LOGIC[loc]["content"]])
             for loc in vanilla]
-        self.events += [(f, self.regions[LOGIC[f]["region"]], rule(f), FOLLOWER_EVENTS[LOGIC[f]["content"]])
-                        for f in FOLLOWERS]
 
     def in_logic(self, item_names: Iterable[str], checked: Iterable[str] = ()) -> Set[str]:
         """The shuffled locations reachable with these items (AP item names, starting items included). A locked

@@ -33,6 +33,12 @@ CONDITION_EDITS = {
 }
 # logic.yml spells one vanilla content differently from items.yml.
 CONTENT_ALIASES = {"powders-capacity": "powder-capacity"}
+# The companions: LASR's followers become item locations holding their companion (kept, see lasr_settings), and the
+# companions items the logic counts.
+COMPANIONS = {"moblin-cave": "bow-wow", "rooster-statue": "rooster"}
+COMPANION_ITEMS = {"bow-wow": {"type": "important", "quantity": 1, "item-key": "None"},
+                   "rooster": {"type": "important", "quantity": 1, "item-key": "None"}}
+ITEM_DEFS.update(COMPANION_ITEMS)
 
 
 def _fixed_logic() -> Dict[str, Dict[str, Any]]:
@@ -43,6 +49,9 @@ def _fixed_logic() -> Dict[str, Dict[str, Any]]:
     for node, definition in EXTRA_NODES.items():
         assert node not in logic, node
         logic[node] = dict(definition)
+    for node, content in COMPANIONS.items():
+        assert logic[node]["type"] == "follower" and logic[node]["content"] == content, node
+        logic[node].update(type="item", subtype="companion")
     for definition in logic.values():
         if "content" in definition:
             definition["content"] = CONTENT_ALIASES.get(definition["content"], definition["content"])
@@ -52,9 +61,6 @@ def _fixed_logic() -> Dict[str, Dict[str, Any]]:
 LOGIC: Dict[str, Dict[str, Any]] = _fixed_logic()
 
 ITEM_LOCATIONS: List[str] = [k for k, v in LOGIC.items() if v["type"] == "item"]
-FOLLOWERS: List[str] = [k for k, v in LOGIC.items() if v["type"] == "follower"]
-# Follower content -> the event item a reached follower gives
-FOLLOWER_EVENTS = {"bow-wow": "bow-wow", "rooster": "rooster"}
 
 # Dungeon number used in LASR names (D1..D8, D0 = Color Dungeon) -> in-game dungeon level index.
 # Same as LASR shuffler: level = number - 1, and the Color Dungeon is level 9.

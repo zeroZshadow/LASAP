@@ -25,6 +25,7 @@ ITEMS = {
     "shovel": ("shovel", "toggle"), "hookshot": ("hookshot", "toggle"), "bow": ("bow", "toggle"),
     "rod": ("rod", "toggle"), "boomerang": ("boomerang", "toggle"), "ocarina": ("ocarina", "toggle"),
     "song-ballad": ("ballad", "toggle"), "song-mambo": ("manbo", "toggle"), "song-soul": ("soul", "toggle"),
+    "bow-wow": ("bowwow", "toggle"), "rooster": ("rooster", "toggle"),
     "yoshi-doll": ("yoshi", "toggle"), "ribbon": ("ribbon", "toggle"), "dog-food": ("food", "toggle"),
     "bananas": ("bananas", "toggle"), "stick": ("stick", "toggle"), "honeycomb": ("honey", "toggle"),
     "pineapple": ("pineapple", "toggle"), "hibiscus": ("flower", "toggle"), "letter": ("letter", "toggle"),
@@ -49,6 +50,8 @@ for n in range(9):
 
 # Overworld checks whose pack section has another name: LASR location -> pack location id/section.
 LOCATIONS = {
+    "moblin-cave": "Moblin Cave/Save Bowwow",
+    "rooster-statue": "Weathervane/Rooster",
     "sale": "Crocodile Sale/Trade Dog Food",
     "mermaid-cave": "Mermaid Statue/Move Statue",
     "christine-trade": "Christine's House/Trade Flower",

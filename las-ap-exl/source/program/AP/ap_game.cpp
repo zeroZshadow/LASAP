@@ -178,9 +178,11 @@ namespace {
     std::string g_ItemEventMessage;    // and its message entry
 
     // AP locations that keep their vanilla item (VANILLA_PATH): the game adds the item with this id and index (-1:
-    // any) when the location is collected.
-    struct KeptLocation { int item; int index; int local_id; };
+    // any) when the location is collected, or, for a companion, sets this flag (item -1).
+    struct KeptLocation { int item; int index; int local_id; std::string flag; };
     std::vector<KeptLocation> g_Kept;
+    constexpr u64 kKeptFlagPollMs = 500;
+    u64 g_KeptFlagsPolled = 0;
     bool g_Granting = false;  // GrantItem adds a received item
 
     // Connection notices: in a level this long without the client or the server, say so, then again this often while
@@ -528,7 +530,7 @@ namespace {
                                             [&](const KeptLocation& kept) { return kept.local_id == local_id; });
     }
 
-    // "<item key> <index> <local id>" lines (patcher las_ap_patch.write_vanilla)
+    // "<item key> <index> <local id>" and "F <flag> <local id>" lines (patcher las_ap_patch.write_vanilla)
     void LoadKept() {
         std::string text;
         if (R_FAILED(FileHandler::ReadFile(AP::VANILLA_PATH, text))) return;
@@ -537,6 +539,12 @@ namespace {
         while (std::getline(lines, line)) {
             std::stringstream ss(line);
             std::string key;
+            if (line.starts_with("F ")) {
+                std::string flag;
+                int local_id;
+                if (ss >> key >> flag >> local_id) g_Kept.push_back({-1, -1, local_id, flag});
+                continue;
+            }
             int index, local_id;
             if (!(ss >> key >> index >> local_id)) continue;
             int item = ItemIdFromKey(key);
@@ -544,9 +552,20 @@ namespace {
                 AP::Log("unknown kept item " + key);
                 continue;
             }
-            g_Kept.push_back({item, index, local_id});
+            g_Kept.push_back({item, index, local_id, ""});
         }
         Logging.Log("[AP] kept locations: " + std::to_string(g_Kept.size()));
+    }
+
+    // Reports a companion once the flag its joining sets is set.
+    void TickKeptFlags() {
+        if (!PlayerReady() || NowMs() - g_KeptFlagsPolled < kKeptFlagPollMs) return;
+        g_KeptFlagsPolled = NowMs();
+        for (const auto& kept : g_Kept) {
+            if (!kept.flag.empty() && !CollectedHere(kept.local_id) && EventFlags::CheckFlag(kept.flag.c_str())) {
+                RecordCheck(kept.local_id);
+            }
+        }
     }
 
     void SendAllChecks() {
@@ -935,6 +954,7 @@ namespace AP {
         }
 
         TickConnection();
+        TickKeptFlags();
         AP::TickToasts(PlayerReady());
         TickItemGet();
         TickWarpMenu();
