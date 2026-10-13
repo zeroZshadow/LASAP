@@ -53,6 +53,7 @@ from RandomizerCore.Tools import event_tools  # noqa: E402
 from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct  # noqa: E402
 import ap_assets  # noqa: E402
 import ap_ghost  # noqa: E402
+import ap_hints  # noqa: E402
 import ap_goal  # noqa: E402
 import ap_map  # noqa: E402
 import ap_model  # noqa: E402
@@ -139,6 +140,7 @@ DUNGEON_ITEM_PREFIXES = ("compass", "map", "stone", "key", "nightmare")
 # over the values the patch file carries. Their default and, for choices, the values allowed.
 PLAYER_SETTINGS = {
     "360 Movement": False,
+    "Movement Speed": True,
     "Blur Removal": False,
     "Song Cutscenes": False,
     "Nice Hookshot": False,
@@ -148,8 +150,12 @@ PLAYER_SETTINGS = {
     "Randomize Environments": False,
     "Disable Guardian Acorn": False,
     "Disable Piece of Power": False,
+    "Instant Text": False,
+    "Disable Low Health Beep": False,
 }
 PLAYER_CHOICES = {"Damage": ("None", "Normal", "OHKO"), "Music": ("Vanilla", "Shuffled", "Removed")}
+# Walking and swimming speed with Movement Speed on: LASR's single speed (dashing stays at 1.0)
+MOVEMENT_SPEED = 1.2
 # ItemDrop.gsheet rows the game drops after a run of kills without damage; the settings empty them.
 BUFF_DROPS = {"Disable Guardian Acorn": "GuardianAcorn", "Disable Piece of Power": "PowerPiece"}
 
@@ -159,6 +165,8 @@ def _add_ap_flags(self) -> None:
     for i in range(RECV_FLAG_BITS):
         self.addFlag(f"APRecv{i}")
     self.addFlag(ap_ghost.BOW_FLAG)
+    for flag in ap_hints.FLAGS:
+        self.addFlag(flag)
 
 
 def _add_placeholder_row(self, sheet) -> None:
@@ -378,10 +386,15 @@ class APModsProcess(mod_generator.ModsProcess):
 
     def makeConfig(self) -> None:
         super().makeConfig()
-        # LASR names 360 movement full_direction; the module reads full_360.
+        # LASR writes full_direction and speed; the module reads full_360 and a speed per kind of movement.
+        speed = MOVEMENT_SPEED if self.settings["Movement Speed"] else 1.0
         path = self.config_dir / "config.ini"
         text = path.read_text()
-        text = text.replace("full_direction = ", f"full_360 = {self.settings['360 Movement']}\nfull_direction = ", 1)
+        text = text.replace("full_direction = ", f"full_360 = {self.settings['360 Movement']}\n"
+                            f"walk_speed = {speed}\nswim_speed = {speed}\nfull_direction = ", 1)
+        # Settings LASR lists but never implemented; the module does them.
+        text += (f"\n[tweaks]\ninstant_text = {self.settings.get('Instant Text', False)}\n"
+                 f"no_low_health_beep = {self.settings.get('Disable Low Health Beep', False)}\n")
         path.write_text(text + f"\n[archipelago]\nseed_hash = {self.seed_hash}\n")
         # What each location holds, so the found text names it before the client connects (DESIGN.md)
         with open(self.config_dir / "ap_names.txt", "w", encoding="utf-8", newline="\n") as f:
@@ -578,6 +591,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     logic = load_yaml("logic.yml")
 
     placements = build_placements(patch, logic)
+    hints = patch.get("hints", {})
+    ap_hints.prepare(hints)
     STARTING_BITS.update(starting_bits(logic, patch))
     seed = patch["seed_name"] + str(patch["player"])
     rng = random.Random(int(hashlib.sha256(seed.encode()).hexdigest()[:16], 16))
@@ -597,6 +612,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         add_rooster_flag(proc.file_manager)
     if patch["settings"].get("Ammo Ghost", True):  # the option's default, also for patches without it
         ap_ghost.add(proc.file_manager)
+    if hints:
+        ap_hints.add(proc.file_manager, proc.config_dir, hints)
     # all eight for patches from before the option
     ap_goal.set_instrument_count(proc.file_manager, patch["settings"].get("Instruments Required", 8))
     map_tracker = patch["settings"].get("Map Tracker", False)  # off for patches from before the option

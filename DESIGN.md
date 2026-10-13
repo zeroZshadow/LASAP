@@ -33,8 +33,9 @@ Datasheets (`.gsheet`) are read and written by `RandomizerCore/Tools/gsheet.py`,
 ## Client install
 
 - The client's Patch tab (`client_gui.py`) edits the settings in `host.yaml` under `las_options` (`host_settings.py`): `emulator`, `game_file`, `romfs_folder`, `sd_card_folder`, `mod_folder`, `patcher_command`, `game_host`. `checklist.py` turns them into one status line per setting and decides whether everything needed to install is valid.
-- **Player settings.** LASR settings that change neither the logic nor the item pool are the player's, chosen at patch time for every seed: the Patch tab's "Game settings" (also `/setting` in the client), stored in `las_options` (`host_settings.PLAYER_SETTINGS`): 360 Movement, Blur Removal, Song Cutscenes (skips them), Nice Hookshot, Damage, Music, Randomize Text, Randomize Environments, Disable Guardian Acorn, Disable Piece of Power. The patch file carries their defaults; the client passes the player's values to the patcher as `--settings <JSON object>`, which replace them (`las_ap_patch.PLAYER_SETTINGS`, the same keys and defaults; the patcher rejects any other key). LASR does not implement Instant Text, Disable Low Health Beep, Item Get Animations or Randomize Sound Effects, so they stay off.
-  - The patcher writes `full_360` in `config.ini`'s `[movement]`, the key the module reads (LASR writes `full_direction`), and empties the `ItemDrop.gsheet` rows `GuardianAcorn` and `PowerPiece` (the drops after a run of kills without damage) for the two Disable settings.
+- **Player settings.** LASR settings that change neither the logic nor the item pool are the player's, chosen at patch time for every seed: the Patch tab's "Game settings" (also `/setting` in the client), stored in `las_options` (`host_settings.PLAYER_SETTINGS`): 360 Movement, Movement Speed (on by default, as in LASR), Blur Removal, Song Cutscenes (skips them), Nice Hookshot, Damage, Music, Randomize Text, Randomize Environments, Disable Guardian Acorn, Disable Piece of Power, Instant Text, Disable Low Health Beep. The patch file carries their defaults; the client passes the player's values to the patcher as `--settings <JSON object>`, which replace them (`las_ap_patch.PLAYER_SETTINGS`, the same keys and defaults; the patcher rejects any other key). LASR does not implement Item Get Animations or Randomize Sound Effects, so they stay off.
+  - The patcher writes the `[movement]` keys the module reads into `config.ini`: `full_360` (LASR writes `full_direction`), and `walk_speed` and `swim_speed`, 1.2 with Movement Speed on and 1.0 off (LASR writes a single `speed`; dashing keeps the module's default). It also empties the `ItemDrop.gsheet` rows `GuardianAcorn` and `PowerPiece` (the drops after a run of kills without damage) for the two Disable settings.
+  - Instant Text and Disable Low Health Beep, which LASR lists but never implemented, are the module's: the patcher writes them to `config.ini` (`[tweaks]` `instant_text`, `no_low_health_beep`). With Instant Text the module does what B does while a page of text appears (the message window's Reading state): it shows the page whole and skips the text's pauses; waits for input stay. Disable Low Health Beep removes the two calls that play `SE_SY_HP_ALLEART` (`Hooks/Mods/tweaks.hpp`).
 - `emulators.py` derives the rest from the emulator's executable:
   - Ryujinx: data folder `portable` next to the executable, else the per-user `Ryujinx` folder. SD card `<data>/sdcard`, mods `<SD card>/atmosphere/contents/01006BB00C6F0000`, game folders from `Config.json`.
   - Yuzu and its forks (Eden, Citron, Sudachi, Suyu, Torzu): data folder `user` next to the executable, else the per-user folder named after the emulator. `config/qt-config.ini` gives the SD card (`sdmc_directory`), mods (`load_directory`, plus `01006BB00C6F0000/Archipelago`; their SD card's `atmosphere/contents` loads only RomFS mods), RomFS dumps (`dump_directory`), game folders and recent files.
@@ -102,7 +103,8 @@ An Archipelago player container (`container.py`, `APPlayerContainer`): a zip wit
   "location_names": { "<lasr location name>": ["<AP item name>", "<owner's name, empty for this slot>"] },
   "location_models": { "<lasr location name>": "<lasr item name whose model it shows>" },
   "location_chests": { "<lasr location name>": ["<LASR item type: chest size>", "<chest texture or null>"] },
-  "dungeon_entrances": { "<dungeon>": "<dungeon>" }
+  "dungeon_entrances": { "<dungeon>": "<dungeon>" },
+  "hints": { "<hint source>": { "text": "<hint text>", "player": "<slot of the location (int)>", "location": "<AP location id (int)>" } }
 }
 ```
 
@@ -113,6 +115,7 @@ An Archipelago player container (`container.py`, `APPlayerContainer`): a zip wit
 - `location_models` leaves out locations that show the Archipelago model. It is optional: older patches show the Archipelago model everywhere.
 - `location_chests` gives each AP location's chest the size and texture of LASR's "Chest Types" setting (option `chest_appearance`): for this slot's items, the LASR item's type and `chest-type` with the adjustments LASR's shuffler makes; for other players' items, `important` for progression, `good` for useful, and `junk` with the junk texture for filler and traps (`lasr_settings.chest_look`). It is optional.
 - `dungeon_entrances` is an identity map; entrance shuffle is not supported.
+- `hints` gives each in-game hint source its text (In-game hints). `player` and `location` name the hinted location when reading the hint makes a server hint. It is optional and empty with the option off.
 
 ## slot_data
 
@@ -163,6 +166,7 @@ ASCII lines terminated by `\n`, fields separated by single spaces. The game acce
 | `RECV <count>` | Number of items applied, stored in the save as a flag-bit counter |
 | `CHECK <local_id>` | A location was collected |
 | `CHECKS <id> <id> ...` | Every collected location, sent on connect and on `SYNC` (possibly several lines) |
+| `HINT <slot> <location id>` | An in-game hint was read (its flag is set): once per hint and connection, and all read hints again on `SYNC` |
 | `GOAL` | Goal completed: the `ShadowClear` flag was set (also resent on `SYNC`) |
 | `DIED` | DeathLink: the player's health reached zero |
 | `LOG <text>` | Debug text; `LOG level <name>` on every level change and when a client connects |
@@ -219,6 +223,13 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 - **Dungeon icons.** Every room with locations that are not chests (key drops, instruments, bosses, owl statues, the Color Dungeon's rupees and fairies) gets a `UiDungeonIcon.gsheet` row with the chest icon (`mActorID` 0xF7). The game makes these icons from the rows like actors whose switches are unset, so the module hooks the icon update and shows the icon open once all of the room's locations are checked. The same hook shows a dungeon chest open once its location is checked on the server.
 - **ap_map.txt.** The patcher writes `config/lasr-exl/ap_map.txt` next to `config.ini`: `O <group> <local id>...` per overworld icon, `D <group> <x> <z> <local id>...` per dungeon icon (the module finds an icon by its position), `C <level> <x> <z> <local id>` per dungeon chest of the slot (found by the placeholder and local id in the room's actors) and `N <local id> <short name>`. The module turns the tracker on when the file exists. An install without the option removes it (`install.OPTIONAL_CONFIG`).
 
+**In-game hints** (option `in_game_hints`; `hints.py`, `patcher/ap_hints.py`)
+- The hint sources are the 9 overworld owl statues, the 24 dungeon owl statues (by the LASR name of their location) and six of the library's books (`book-<color><n>`, the book actor's name); the map, the egg book and the Color Dungeon's book keep their text. Dungeon owl statues need their dungeon's stone beak, as in the game.
+- The world picks the hints once the multiworld is filled (`choose_hints`, with the world's random): each source names a different location, in any world, holding one of this slot's progression items, then useful items, then a joke line. It leaves out the locations whose item is known anyway: unrandomized, kept and locked locations of this slot, items in `start_hints` and locations in `start_location_hints`, seashells, dungeon items in their own dungeon, and an owl statue's own gift for that statue. The text says "Your <item> is at <location>." or "Your <item> is in <player>'s world at <location>.". The spoiler lists the hints.
+- The patcher gives each source its own message, `Hint:APHint<n>` for owl statues and `System:APHint<n>` for books (n: the source's place in `ap_hints.SOURCES`), wrapped to 42 characters and 3 lines per box, with the window style of the text it replaces; a line never starts with the dash between a location's region and spot. The books' question before reading names them "Koholint Lost and Found, Volume <n>". Owl statues that share an entry point (Tail Cave 04B and 05F, the three Color Dungeon statues) get entries of their own, as LASR's Owl Gifts give them, with their own copy of the statue's events. With Owl Gifts on, the gift follows the hint.
+- With `server`, a hint sets the event flag `APHint<n>` after its text (added to `GlobalFlags.gsheet`), and the patcher writes `config/lasr-exl/ap_hints.txt`: per hint `<n> <flag> <slot> <location id>` (`install.OPTIONAL_CONFIG`). The module polls the flags, which the save keeps, and sends `HINT` lines; the client sends `CreateHints` with priority status for each new one, or on servers before 0.6.2 `LocationScouts` with `create_as_hint` 2 for this slot's own locations. It sends them again after each server connection; the server skips hints it has.
+
 **Persistence**
 - **Received-item count:** event flags `APRecv0`..`APRecv15`, read as a 16-bit counter. The patcher adds them to `GlobalFlags.gsheet`.
 - **Collected locations:** a bitset file `sd:/lasap/<seed_hash>.chk`, written on each check, so checks made while disconnected are reported later.
+- **Read hints:** event flags `APHint<n>` (In-game hints).

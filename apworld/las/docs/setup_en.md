@@ -41,11 +41,12 @@ the Archipelago Launcher. It is needed once, as Archipelago's installer only doe
 
 ### Game settings
 
-The Patch tab's game settings change how your own game looks and plays, for every seed: 360° movement, no blur at
-the screen's edges, skipping the song cutscenes, a hookshot that grabs any surface, the damage Link takes (None,
-Normal or OHKO), the music (Vanilla, Shuffled or Removed), shuffled dialogue, shuffled room lighting, and no Guardian
-Acorns or Pieces of Power. After a change, Play reinstalls the mod; restart the game to see it. They change nothing
-for the other players.
+The Patch tab's game settings change how your own game looks and plays, for every seed: 360° movement, walking and
+swimming 20% faster (on unless you turn it off), no blur at the screen's edges, skipping the song cutscenes, a
+hookshot that grabs any surface, the damage Link takes (None, Normal or OHKO), the music (Vanilla, Shuffled or
+Removed), shuffled dialogue, shuffled room lighting, no Guardian Acorns or Pieces of Power, text that shows a page at
+once instead of letter by letter, and no beep at low health. After a change, Play reinstalls the mod; restart the
+game to see it. They change nothing for the other players.
 
 To start with more hearts, add Heart Containers to `start_inventory_from_pool` in your options file, e.g.
 `Heart Container: 2` for five hearts.
@@ -62,6 +63,13 @@ The Patch tab's advanced settings are for setups the client cannot find by itsel
 | Game address | The Switch's IP address when the game runs on a Switch; `127.0.0.1` for an emulator on this computer |
 
 The settings are saved in `host.yaml` under `las_options`.
+
+## In-game hints
+
+Owl statues and the library's books tell where your items are (option In-Game Hints): each one names a location, in
+your world or another player's, that holds one of your progression items. Dungeon owl statues need that dungeon's
+stone beak. With the default setting `server`, a hint you read also shows in the server's hint list, as `!hint` would,
+without costing hint points. Hints read while the client is not connected reach the server once it is.
 
 ## Troubleshooting
 
