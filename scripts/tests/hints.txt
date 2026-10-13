@@ -1,0 +1,69 @@
+# In-game hints (DESIGN.md, In-game hints): reading an owl statue or a library book shows its hint, sets its flag,
+# and the client makes it a server hint. Run after newgame_file2 with the client connected to the server, on a seed
+# with In-Game Hints server, Owl Statues all and dungeon items in their own dungeon (no stone beaks at the start).
+# Flags: APHint4 Martha's Bay owl, APHint9 Tail Cave 04B owl, APHint11 Tail Cave 04C owl, APHint33 the shield book.
+# Screenshots: hint_owl, hint_book, hint_nobeak, hint_dungeon.
+# Martha's Bay owl (no beak needed): the hint, then its Owl Gift.
+warp Field 156.75 7.5 162.75
+send DBG input 0 150 0 32767
+wait 1
+send DBG input 1 400
+await 5 event=[1-9]
+wait 2
+shot D:/DEV/LASAP-sandbox/hint_owl.png
+dismiss 30
+send DBG flag APHint4
+expect FLAG.APHint4.1
+logged \[Hint\] 20
+# The library's shield book: A, then Yes.
+warp Library 12.76 0 5.74
+send DBG input 0 150 0 32767
+wait 1
+send DBG input 1 400
+await 5 event=[1-9]
+wait 2
+send DBG input 1 400
+wait 3
+shot D:/DEV/LASAP-sandbox/hint_book.png
+dismiss 30
+send DBG flag APHint33
+expect FLAG.APHint33.1
+# Tail Cave 04B (an owl that shared its entry with 05F): without the beak it says nothing new.
+warp Lv01TailCave 23.25 0 38.25
+send DBG input 0 150 0 32767
+wait 1
+send DBG input 1 400
+await 5 event=[1-9]
+wait 2
+shot D:/DEV/LASAP-sandbox/hint_nobeak.png
+dismiss 30
+send DBG flag APHint9
+expect FLAG.APHint9.0
+# With Tail Cave's beak: the hint, then its Owl Gift.
+send DBG grant StoneBeak 1 0 0
+wait 1
+goto 23.25 0 38.25
+send DBG input 0 150 0 32767
+wait 1
+send DBG input 1 400
+await 5 event=[1-9]
+wait 4
+shot D:/DEV/LASAP-sandbox/hint_dungeon.png
+dismiss 30
+send DBG flag APHint9
+expect FLAG.APHint9.1
+# A hint read while the server is away reaches it on the next connection.
+send /disconnect
+wait 3
+warp Lv01TailCave 35.25 0 38.25
+send DBG input 0 150 0 32767
+wait 1
+send DBG input 1 400
+await 5 event=[1-9]
+wait 4
+dismiss 30
+send DBG flag APHint11
+expect FLAG.APHint11.1
+send /connect
+expect Hint.*Tail.Cave|Hint.*Finder 30
+state

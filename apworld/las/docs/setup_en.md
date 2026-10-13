@@ -52,6 +52,13 @@ The Patch tab's advanced settings are for setups the client cannot find by itsel
 
 The settings are saved in `host.yaml` under `las_options`.
 
+## In-game hints
+
+Owl statues and the library's books tell where your items are (option In-Game Hints): each one names a location, in
+your world or another player's, that holds one of your progression items. Dungeon owl statues need that dungeon's
+stone beak. With the default setting `server`, a hint you read also shows in the server's hint list, as `!hint` would,
+without costing hint points. Hints read while the client is not connected reach the server once it is.
+
 ## Troubleshooting
 
 - **The client says the game runs another seed.** The installed mod belongs to another slot or seed. Open this slot's

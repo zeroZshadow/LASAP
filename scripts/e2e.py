@@ -15,7 +15,9 @@ python e2e.py run <script.txt>                     runs a drive.py script throug
                                                    unless the player is there), `level <name>` (stop unless the
                                                    player is in that level), `check <regex>` (stop unless the
                                                    STATE line matches), `await <secs> <regex>` (wait for it), `warp <level> <x> <y> <z>` (reload
-                                                   there and wait), `goto <x> <y> <z>` and `shot <png>`
+                                                   there and wait), `goto <x> <y> <z>`, `shot <png>` and
+                                                   `logged <regex> [secs] [client|server]` (a line logged since
+                                                   the script started)
 
 Environment: LASAP_E2E (session folder, default D:/DEV/LASAP-sandbox/e2e), LASAP_SLOT (default Link).
 """
@@ -77,6 +79,7 @@ def goto(x: float, y: float, z: float, step: float) -> str:
 
 def run(script: Path) -> None:
     origin = size("client")
+    origins = {"client": origin, "server": size("server")}
     sent = time.time()
     for raw in script.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
@@ -92,6 +95,11 @@ def run(script: Path) -> None:
             parts = rest.split()
             rx = "Connected to the game" if parts[0] == "HELLO" else parts[0]
             print(wait(rx, float(parts[1]) if len(parts) > 1 else 10, "client", origin if parts[0] == "HELLO" else size("client")))
+        elif op == "logged":
+            # logged <regex> [secs] [client|server]: waits for a line logged since the script started
+            parts = rest.split()
+            log = parts[2] if len(parts) > 2 else "client"
+            print(wait(parts[0], float(parts[1]) if len(parts) > 1 else 10, log, origins[log]))
         elif op == "mash":
             # mash <buttons hex> <count> [hold ms] [gap s]
             p = rest.split()
