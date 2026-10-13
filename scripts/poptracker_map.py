@@ -5,7 +5,7 @@ Writes <pack>/scripts/autotracking/item_mapping.lua and location_mapping.lua fro
 tables below, and checks every pack code against the pack's items.json and locations.
 Locations: overworld checks match the pack's section of the same name (LASR's name without dashes); the rest are
 listed in LOCATIONS by hand. Dungeon checks are named by their room on the pack's dungeon maps (DUNGEON_ROOMS), found from
-LASR's room files and the pins' positions; each one updates both the dungeon map pin and the dungeon's overworld pin.
+LASR's room files and the pins' positions. The dungeons' overworld pins mirror those sections.
 """
 import json
 import re
@@ -191,8 +191,11 @@ def load(path: Path):
     return json.loads(text)
 
 
+REFS: dict = {}  # full section code -> the section it mirrors ("ref")
+
+
 def pack_sections(pack: Path) -> dict:
-    """Full location id -> section names."""
+    """Full location id -> section names. Fills REFS."""
     sections = {}
 
     def walk(locations, parent):
@@ -200,6 +203,9 @@ def pack_sections(pack: Path) -> dict:
             loc_id = f"{parent}/{loc['name']}" if parent else loc["name"]
             if loc.get("sections"):
                 sections[loc_id] = [s.get("name", "") for s in loc["sections"]]
+                for s in loc["sections"]:
+                    if s.get("ref"):
+                        REFS[f"@{loc_id}/{s.get('name', '')}"] = s["ref"]
             walk(loc.get("children", []), loc_id)
 
     for name in ("overworld.json", "dungeons.json"):
@@ -233,8 +239,12 @@ def location_codes(sections: dict) -> dict:
             overworld, folder = DUNGEONS[int(m.group(1))]
             dungeon_secs = sections[f"Dungeons/{folder}/{room}"]
             dungeon_sec = section or next(s for s in dungeon_secs if not s.startswith("Owl (") or len(dungeon_secs) == 1)
-            codes[lasr] = [resolve(sections, f"World/{overworld}/{section or room}"),
-                           resolve(sections, f"Dungeons/{folder}/{room}/{dungeon_sec}")]
+            dungeon_code = resolve(sections, f"Dungeons/{folder}/{room}/{dungeon_sec}")
+            overworld_code = resolve(sections, f"World/{overworld}/{section or room}")
+            # The overworld pin's section mirrors the dungeon map's ("ref"); otherwise both are set.
+            ref = REFS.get(overworld_code)
+            mirrored = ref is not None and dungeon_code.endswith("/" + ref)
+            codes[lasr] = [dungeon_code] if mirrored else [dungeon_code, overworld_code]
         elif lasr in LOCATIONS:
             codes[lasr] = [resolve(sections, LOCATIONS[lasr])]
         else:
@@ -274,13 +284,13 @@ def main() -> None:
         value = kind if isinstance(kind, int) else lua_string(kind)
         lines.append(f"    [{ITEM_BASE + IDS['items'][lasr]}] = {{{lua_string(code)}, {value}}},  -- {lasr}")
     lines.append("}")
-    (out / "item_mapping.lua").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (out / "item_mapping.lua").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
     lines = [header, "-- Archipelago location id -> pack sections", "LOCATION_MAPPING = {"]
     for lasr, offset in sorted(IDS["locations"].items(), key=lambda kv: kv[1]):
         sections = ", ".join(lua_string(c) for c in codes[lasr])
         lines.append(f"    [{LOCATION_BASE + offset}] = {{{sections}}},  -- {lasr}")
     lines.append("}")
-    (out / "location_mapping.lua").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (out / "location_mapping.lua").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
     print(f"{len(ITEMS)} items, {len(codes)} locations written to {out}")
 
 

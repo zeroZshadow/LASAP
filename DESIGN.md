@@ -113,6 +113,10 @@ An Archipelago player container (`container.py`, `APPlayerContainer`): a zip wit
 
 `settings` holds the seed's LASR settings that decide which checks exist and what reaches them (`TRACKER_SETTINGS` in `lasr_settings.py`), under LASR's names and values (`"Preset": "Basic"`, `"Owl Gifts": "None"`, `"Seashell Mansion": 15`, ...). Trackers such as PopTracker packs read them on connect.
 
+## Data storage
+
+The client keeps the level the game shows (`Field`, `Lv01TailCave`, ...) in `las_level_<team>_<slot>`, from the game's `LOG level` lines. Trackers watch it to show the current dungeon's map.
+
 ## Game ↔ client protocol (TCP 43384, game listens)
 
 ASCII lines terminated by `\n`, fields separated by single spaces. The game accepts one client at a time. The client sends `PING` every 2 s, and the game drops a client that has been silent for 10 s.
@@ -145,7 +149,7 @@ ASCII lines terminated by `\n`, fields separated by single spaces. The game acce
 | `CHECKS <id> <id> ...` | Every collected location, sent on connect and on `SYNC` (possibly several lines) |
 | `GOAL` | Goal completed: the `ShadowClear` flag was set (also resent on `SYNC`) |
 | `DIED` | DeathLink: the player's health reached zero |
-| `LOG <text>` | Debug text; `LOG level <name>` on every level change |
+| `LOG <text>` | Debug text; `LOG level <name>` on every level change and when a client connects |
 
 Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until the player has been in the current level for 1.5 s; other lines are handled immediately.
 

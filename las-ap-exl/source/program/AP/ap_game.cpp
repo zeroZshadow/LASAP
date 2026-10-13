@@ -817,6 +817,7 @@ namespace AP {
         if (TakeNewConnection()) {
             if (!g_ChecksLoaded) LoadChecks();
             SendAllChecks();
+            Send("LOG level " + g_LastLevel);  // the client passes it on to trackers
         }
 
         TickConnection();

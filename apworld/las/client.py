@@ -17,6 +17,8 @@ GAME_PORT = 43384
 PROTOCOL_VERSION = 2
 PING_INTERVAL = 2.0
 RESEND_INTERVAL = 3.0
+# Data storage key holding the level the game shows (LASR level names: Field, Lv01TailCave, ...), for trackers
+LEVEL_KEY = "las_level_{team}_{slot}"
 
 
 def clean(text: str) -> str:
@@ -95,6 +97,7 @@ class LASContext(CommonContext):
         self.slot_seed_hash: Optional[str] = None
         self.game_checked: Set[int] = set()
         self.goal_reached = False
+        self.game_level: Optional[str] = None  # the level the game shows, from its LOG level lines
         self.last_item_sent = 0.0
         # Local location id -> "<item name>|<owner name, empty for our own items>", from LocationScouts.
         self.scouted_names: Dict[int, str] = {}
@@ -147,6 +150,7 @@ class LASContext(CommonContext):
                                                  "create_as_hint": 0}]))
             if args["slot_data"].get("death_link"):
                 asyncio.create_task(self.update_death_link(True))
+            asyncio.create_task(self.send_level())
         elif cmd == "ReceivedItems":
             self.send_next_item()
         elif cmd == "LocationInfo":
@@ -257,11 +261,21 @@ class LASContext(CommonContext):
             if "DeathLink" in self.tags:
                 asyncio.create_task(self.send_death(f"{self.player_names.get(self.slot, 'Link')} fell on Koholint."))
         elif cmd == "LOG":
+            if len(parts) == 3 and parts[1] == "level":
+                self.game_level = parts[2]
+                asyncio.create_task(self.send_level())
             logger.debug("game: " + line[4:])
         elif cmd == "ERR":
             logger.warning("game: " + line)
         else:
             logger.info("game: " + line)
+
+    async def send_level(self) -> None:
+        """Puts the game's level in the server's data storage, where trackers follow it (LEVEL_KEY)."""
+        if self.game_level is None or self.slot is None:
+            return
+        await self.send_msgs([{"cmd": "Set", "key": LEVEL_KEY.format(team=self.team, slot=self.slot), "default": "",
+                               "want_reply": False, "operations": [{"operation": "replace", "value": self.game_level}]}])
 
     def set_game_status(self, level: str, text: str) -> None:
         self.game_status = checklist.Check(level, text)
