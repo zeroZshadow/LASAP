@@ -13,8 +13,8 @@ from .host_settings import LASSettings
 
 from .ids import LOCATION_OFFSETS
 from .items import FILLER_ITEM, GAME, ITEM_GAME_INFO, ITEM_NAME_GROUPS, ITEM_TABLE, LASR_TO_ITEM, LASItem
-from .lasr import (CATEGORIES, DUNGEON_REWARD_LOCATIONS, FOLLOWERS, INSTRUMENT_LOCATIONS, INSTRUMENTS, ITEM_DEFS,
-                   ITEM_LOCATIONS, LOGIC, TRAPS, item_dungeon, location_dungeon)
+from .lasr import (CATEGORIES, DUNGEON_REWARD_LOCATIONS, FOLLOWER_EVENTS, FOLLOWERS, INSTRUMENT_LOCATIONS,
+                   INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC, TRAPS, item_dungeon, location_dungeon)
 from .locations import LOCATION_NAME_GROUPS, LOCATION_NAME_TO_ID, LOCATION_NAMES, LASLocation
 from .logic import LogicCompiler, make_rule, referenced_regions
 from .models import model_for
@@ -51,7 +51,6 @@ class LASWeb(WebWorld):
 
 GOAL_LOCATION = "Wind Fish"
 GOAL_EVENT = "Victory"
-FOLLOWER_EVENTS = {"bow-wow": "bow-wow", "rooster": "rooster"}
 PATCH_FORMAT = 1
 EARLY_LOCATIONS_WANTED = 10
 
@@ -325,6 +324,12 @@ class LASWorld(World):
             "death_link": bool(self.options.death_link.value),
             "location_count": len(self.shuffled),
             "settings": {key: settings[key] for key in lasr_settings.TRACKER_SETTINGS},
+            # what the slot's rules depend on, for the client's in-logic locations (tracker.py)
+            "logic": {
+                "preset": self.options.logic.current_key,
+                "tokens": self.settings_tokens,
+                "vanilla": [loc for loc in self.vanilla if self._is_progression(self.content(loc))],
+            },
         }
 
     def patch_data(self) -> Dict[str, Any]:

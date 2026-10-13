@@ -8,10 +8,11 @@ from CommonClient import ClientCommandProcessor, CommonContext, get_base_parser,
 from NetUtils import ClientStatus
 
 from .container import LASContainer
-from .ids import LOCATION_BASE
+from .ids import LOCATION_BASE, LOCATION_OFFSETS
 from . import checklist, emulators
 from .install import InstallError, patch_and_install
 from .items import GAME, ITEM_GAME_INFO
+from .tracker import LogicTracker
 
 GAME_PORT = 43384
 PROTOCOL_VERSION = 2
@@ -101,6 +102,8 @@ class LASContext(CommonContext):
         self.last_item_sent = 0.0
         # Local location id -> "<item name>|<owner name, empty for our own items>", from LocationScouts.
         self.scouted_names: Dict[int, str] = {}
+        self.logic_tracker: Optional[LogicTracker] = None  # the slot's rules, for the map tracker
+        self.in_logic: Optional[Set[int]] = None  # local ids last sent to the game as in logic
 
     async def get_username(self) -> None:
         # the slot comes from the patch file, as the server would otherwise ask for it
@@ -152,10 +155,18 @@ class LASContext(CommonContext):
                 asyncio.create_task(self.update_death_link(True))
             asyncio.create_task(self.send_level())
             self.send_checked(self.checked_locations)
+            logic = args["slot_data"].get("logic")
+            names = {offset: loc for loc, offset in LOCATION_OFFSETS.items()}
+            self.logic_tracker = LogicTracker(
+                logic["preset"], logic["tokens"], logic["vanilla"],
+                [names[loc - LOCATION_BASE] for loc in sorted(self.server_locations)]) if logic else None
+            self.in_logic = None
+            self.send_logic()
         elif cmd == "RoomUpdate":
             self.send_checked(args.get("checked_locations", []))
         elif cmd == "ReceivedItems":
             self.send_next_item()
+            self.send_logic()
         elif cmd == "LocationInfo":
             for item in args["locations"]:
                 if item.location < LOCATION_BASE:
@@ -209,6 +220,22 @@ class LASContext(CommonContext):
         for i in range(0, len(ids), 64):
             self.send_game("CHECKED " + " ".join(str(local_id) for local_id in ids[i:i + 64]))
 
+    def send_logic(self, force: bool = False) -> None:
+        """Tells the game which locations are in logic for the items received, when that changed."""
+        if self.logic_tracker is None or self.game_writer is None or not self.slot:
+            return
+        if self.slot_seed_hash and self.game_seed_hash and self.slot_seed_hash != self.game_seed_hash:
+            return
+        names = [self.item_names.lookup_in_game(item.item, self.game) for item in self.items_received]
+        ids = {LOCATION_OFFSETS[loc] for loc in self.logic_tracker.in_logic(names)}
+        if ids == self.in_logic and not force:
+            return
+        self.in_logic = ids
+        self.send_game("INLOGIC CLEAR")
+        ordered = sorted(ids)
+        for i in range(0, len(ordered), 64):
+            self.send_game("INLOGIC " + " ".join(str(local_id) for local_id in ordered[i:i + 64]))
+
     def send_location_names(self) -> None:
         for local_id, names in sorted(self.scouted_names.items()):
             self.send_game(f"NAME {local_id} {names}")
@@ -257,6 +284,7 @@ class LASContext(CommonContext):
             self.send_notice()
             self.send_location_names()
             self.send_checked(self.checked_locations)
+            self.send_logic(force=True)
             self.send_game("SYNC")
         elif cmd == "RECV":
             self.game_recv = int(parts[1])

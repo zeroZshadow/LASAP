@@ -1,22 +1,28 @@
 // Map tracker (DESIGN.md, Map tracker): the pause map shows the slot's unchecked locations, and the whole overworld
 // and every dungeon room are revealed.
 //
-// The patcher adds a UiFieldMapIcons row per overworld spot holding checks (a group). The map shows a row's icon
-// while the event flag named in the row is set; those flags (MAP_FLAG_PREFIX<group>) are answered here: set while a
-// location of the group is unchecked. Hovering an icon shows Place:MAP_FLAG_PREFIX<group>, whose text names the
-// unchecked locations (ap_text.cpp). The overworld's areas show once their UI_FieldMapTraverse_<area> flag is set
+// The patcher adds four UiFieldMapIcons rows per overworld spot holding checks (a group), one per look. The map shows
+// a row's icon while the event flag named in the row is set; those flags are answered here. The flag is
+// MAP_FLAG_PREFIX<group> for the in-logic look and MAP_FLAG_PREFIX<mark><group> for the others (MAP_LOOK_MARKS); the
+// group's look is set and the others are not. In logic: every unchecked location of the group is in logic, or what is
+// in logic is not known yet (the client sends it); partly in logic: some are; out of logic: none is; collected: all
+// are checked. Hovering an icon shows Place:<its flag>, whose text names the unchecked locations, or the collected
+// ones (ap_text.cpp). The overworld's areas show once their UI_FieldMapTraverse_<area> flag is set
 // (UI_FieldMapOpen_<area> once the reveal has played); both read as set.
 //
 // In dungeons the map draws the rooms Link visited and, with the compass, the chests (open or closed). Both come
 // from the dungeon's DungeonItems entry: its visited-room mask is filled while Link is in the dungeon (the rooms then
 // count as visited in the save), and an inline hook makes the compass and map owned for the map screen only, so the
-// items keep their use. Dungeon checks that are not chests get UiDungeonIcon rows (chest icons) from the patcher;
-// the icon's update shows them open once all of the room's checks are done.
+// items keep their use. The icon update shows a chest open once its location is checked, also on the server. Dungeon
+// checks that are not chests get UiDungeonIcon rows (chest icons) from the patcher; the icon update shows them open
+// once all of the room's checks are done.
 #include "AP/ap.hpp"
 #include "offsets.hpp"
 #include "symbols.hpp"
 #include "loggers.hpp"
 #include "Config/file_handler.hpp"
+#include "Hooks/Common/level.hpp"
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <cstdlib>
@@ -51,16 +57,55 @@ namespace {
         float x, z;
         std::vector<int> ids;
     };
+    struct Chest {
+        std::string level;
+        float x, z;
+        int id;
+    };
 
     bool g_Loaded = false;
     bool g_Enabled = false;  // loaded and not switched off for a test (DBG map 0)
+    bool g_IconsHidden = false;  // revealed maps without overworld icons, for screenshots (DBG map 2)
     std::vector<std::vector<int>> g_Overworld;  // group -> local ids
     std::vector<DungeonGroup> g_Dungeon;
+    std::vector<Chest> g_Chests;
     std::map<int, std::string> g_Names;         // local id -> location name
-    int g_FlagsCalls = 0, g_IconCalls = 0, g_IconMatches = 0;  // for DBG map
+    int g_FlagsCalls = 0, g_IconCalls = 0, g_IconMatches = 0, g_ChestMatches = 0;  // for DBG map
 
     bool StartsWith(std::string_view s, const char* prefix) {
         return s.substr(0, std::strlen(prefix)) == prefix;
+    }
+
+    // InLogic, then the looks of MAP_LOOK_MARKS in their order.
+    enum Look { InLogic, Partial, OutOfLogic, Collected, kLooks };
+
+    bool Reachable(int id) {
+        return !AP::HasLogic() || AP::IsInLogic(id);
+    }
+
+    Look GroupLook(const std::vector<int>& ids) {
+        size_t left = 0, reachable = 0;
+        for (int id : ids) {
+            if (AP::IsLocationChecked(id)) continue;
+            left++;
+            if (Reachable(id)) reachable++;
+        }
+        if (left == 0) return Collected;
+        return reachable == left ? InLogic : reachable > 0 ? Partial : OutOfLogic;
+    }
+
+    // The group and look a flag or label names (MAP_FLAG_PREFIX[mark]<group>), or -1.
+    int ParseIcon(std::string_view name, Look& look) {
+        if (!StartsWith(name, AP::MAP_FLAG_PREFIX)) return -1;
+        name.remove_prefix(std::strlen(AP::MAP_FLAG_PREFIX));
+        look = InLogic;
+        const char* mark = name.empty() ? nullptr : std::strchr(AP::MAP_LOOK_MARKS, name[0]);
+        if (mark != nullptr && *mark != '\0') {
+            look = static_cast<Look>(InLogic + 1 + (mark - AP::MAP_LOOK_MARKS));
+            name.remove_prefix(1);
+        }
+        if (name.empty() || name[0] < '0' || name[0] > '9') return -1;
+        return std::atoi(std::string(name).c_str());
     }
 
     bool AnyUnchecked(const std::vector<int>& ids) {
@@ -89,9 +134,24 @@ HOOK_DEFINE_TRAMPOLINE(DungeonIconUpdate) {
     static void Callback(u8* icon, const u8* actor) {
         Orig(icon, actor);
         g_IconCalls++;
-        if (!g_Enabled || actor[kActorShownKind] != kSwitchAlways) return;
+        if (!g_Enabled) return;
         float x = *reinterpret_cast<const float*>(actor + kActorPosX);
         float z = *reinterpret_cast<const float*>(actor + kActorPosZ);
+        if (actor[kActorShownKind] != kSwitchAlways) {
+            // A room actor's icon: a chest whose location is checked shows open, as when it is opened in the game.
+            if (g_Chests.empty()) return;
+            std::string level = LevelSystem::GetCurrentLevel();
+            for (const auto& chest : g_Chests) {
+                if (chest.level == level && std::fabs(chest.x - x) < 0.01f && std::fabs(chest.z - z) < 0.01f &&
+                    AP::IsLocationChecked(chest.id)) {
+                    g_ChestMatches++;
+                    SetPane(icon, kIconClosedPane, false);
+                    SetPane(icon, kIconOpenPane, true);
+                    return;
+                }
+            }
+            return;
+        }
         for (const auto& group : g_Dungeon) {
             if (std::fabs(group.x - x) < 0.01f && std::fabs(group.z - z) < 0.01f) {
                 g_IconMatches++;
@@ -106,8 +166,8 @@ HOOK_DEFINE_TRAMPOLINE(DungeonIconUpdate) {
 
 namespace AP {
     void LoadMap() {
-        // Written by the patcher (ap_map.py): "O <group> <local id>...", "D <group> <x> <z> <local id>..." and
-        // "N <local id> <location name>" lines.
+        // Written by the patcher (ap_map.py): "O <group> <local id>...", "D <group> <x> <z> <local id>...",
+        // "C <level> <x> <z> <local id>" (a dungeon chest) and "N <local id> <location name>" lines.
         std::string text;
         if (R_FAILED(FileHandler::ReadFile(MAP_PATH, text))) {
             Logging.Log("[AP] no map tracker file");
@@ -128,6 +188,11 @@ namespace AP {
                 g_Names[id] = name.empty() ? name : name.substr(1);
                 continue;
             }
+            if (kind == "C") {
+                Chest chest{};
+                if (ss >> chest.level >> chest.x >> chest.z >> chest.id) g_Chests.push_back(chest);
+                continue;
+            }
             size_t group;
             if (!(ss >> group)) continue;
             std::vector<int> ids;
@@ -146,14 +211,17 @@ namespace AP {
         DungeonMapFlags::InstallAtOffset(offset_manager.Offset(kDungeonMapFlags));
         DungeonIconUpdate::InstallAtOffset(offset_manager.Offset(kDungeonIconUpdate));
         Logging.Log("[AP] map tracker: " + std::to_string(g_Overworld.size()) + " overworld and " +
-                    std::to_string(g_Dungeon.size()) + " dungeon icons");
+                    std::to_string(g_Dungeon.size()) + " dungeon icons, " + std::to_string(g_Chests.size()) +
+                    " chests");
     }
 
     bool MapFlag(std::string_view name, bool& value) {
         if (!g_Enabled || name.size() < 6) return false;
-        if (StartsWith(name, MAP_FLAG_PREFIX)) {
-            size_t group = std::strtoul(std::string(name.substr(std::strlen(MAP_FLAG_PREFIX))).c_str(), nullptr, 10);
-            value = group < g_Overworld.size() && AnyUnchecked(g_Overworld[group]);
+        Look look;
+        int group = ParseIcon(name, look);
+        if (group >= 0) {
+            value = !g_IconsHidden && static_cast<size_t>(group) < g_Overworld.size() &&
+                    GroupLook(g_Overworld[group]) == look;
             return true;
         }
         if (StartsWith(name, kTraversePrefix) || StartsWith(name, kOpenPrefix)) {
@@ -164,23 +232,35 @@ namespace AP {
     }
 
     int MapLabelGroup(std::string_view label) {
-        if (!g_Enabled || !StartsWith(label, MAP_FLAG_PREFIX)) return -1;
-        return std::atoi(std::string(label.substr(std::strlen(MAP_FLAG_PREFIX))).c_str());
+        Look look;
+        return g_Enabled ? ParseIcon(label, look) : -1;
     }
 
     std::string MapLabelText(int group) {
-        // The unchecked locations of the group on one line (the hover box has one), as many as fit, then "+<rest>".
+        // On one line (the hover box has one): the unchecked locations of the group, those in logic first, after
+        // "<in logic>/<unchecked> in logic: " when only some are; or the collected locations. As many as fit, then
+        // "+<rest>".
         constexpr size_t kWidth = 36;
-        std::vector<std::string> names;
+        std::vector<int> ids;
         if (group >= 0 && static_cast<size_t>(group) < g_Overworld.size()) {
             for (int id : g_Overworld[group]) {
-                if (!IsLocationChecked(id)) names.push_back(g_Names.count(id) ? g_Names[id] : std::to_string(id));
+                if (!IsLocationChecked(id)) ids.push_back(id);
             }
+            if (ids.empty()) ids = g_Overworld[group];
         }
+        auto reachable = std::stable_partition(ids.begin(), ids.end(), [](int id) {
+            return IsLocationChecked(id) || Reachable(id);
+        });
+        std::string head;
+        if (reachable != ids.begin() && reachable != ids.end()) {
+            head = std::to_string(reachable - ids.begin()) + "/" + std::to_string(ids.size()) + " in logic: ";
+        }
+        std::vector<std::string> names;
+        for (int id : ids) names.push_back(g_Names.count(id) ? g_Names[id] : std::to_string(id));
         std::string text;
         size_t shown = 0;
         for (; shown < names.size(); shown++) {
-            std::string next = shown == 0 ? names[0] : text + ", " + names[shown];
+            std::string next = shown == 0 ? head + names[0] : text + ", " + names[shown];
             if (shown > 0 && next.size() > kWidth) break;
             text = next;
         }
@@ -196,17 +276,20 @@ namespace AP {
         *reinterpret_cast<u64*>(entries[dungeon] + kDungeonVisited) = ~0ULL;
     }
 
-    void SetMapEnabled(bool enabled) {
-        g_Enabled = g_Loaded && enabled;
+    void SetMapMode(int mode) {
+        g_Enabled = g_Loaded && mode != 0;
+        g_IconsHidden = mode == 2;
     }
 
     std::string MapState() {
-        size_t open = 0, total = 0;
-        for (const auto& ids : g_Overworld) {
-            total++;
-            if (AnyUnchecked(ids)) open++;
-        }
+        size_t looks[kLooks] = {};
+        for (const auto& ids : g_Overworld) looks[GroupLook(ids)]++;
+        size_t open = g_Overworld.size() - looks[Collected];
         return "map=" + std::string(g_Enabled ? "1" : "0") + " icons=" + std::to_string(open) + "/" +
-               std::to_string(total) + " hooks=" + std::to_string(g_FlagsCalls) + "," + std::to_string(g_IconCalls) + "," + std::to_string(g_IconMatches);
+               std::to_string(g_Overworld.size()) + " looks=" + std::to_string(looks[InLogic]) + "," +
+               std::to_string(looks[Partial]) + "," + std::to_string(looks[OutOfLogic]) + "," +
+               std::to_string(looks[Collected]) + " logic=" + (HasLogic() ? "1" : "0") +
+               " hooks=" + std::to_string(g_FlagsCalls) + "," + std::to_string(g_IconCalls) + "," +
+               std::to_string(g_IconMatches) + "," + std::to_string(g_ChestMatches);
     }
 }

@@ -40,6 +40,8 @@ namespace AP {
     constexpr const char* MAP_PATH = "sd:/config/lasr-exl/ap_map.txt";
     // Event flag and Place.msbt label of an overworld icon: the prefix and the icon's group. Must match the patcher.
     constexpr const char* MAP_FLAG_PREFIX = "APMap";
+    // After the prefix, the icon's look other than in logic: partly in logic, out of logic, collected.
+    constexpr const char* MAP_LOOK_MARKS = "PXC";
 
     // Network thread (ap_net.cpp)
     void StartNetwork(int port);
@@ -59,6 +61,9 @@ namespace AP {
     void OnGoal();
     // Checked in this game or, as the client reported, on the server.
     bool IsLocationChecked(int local_id);
+    // In logic for the items received, as the client reported (INLOGIC); HasLogic once it has.
+    bool HasLogic();
+    bool IsInLogic(int local_id);
     void ApplyInjectedInput(nn::hid::NpadBaseState* state);
     void Log(const std::string& text);
     std::string HelloLine();
@@ -87,7 +92,8 @@ namespace AP {
     int MapLabelGroup(std::string_view label);
     std::string MapLabelText(int group);
     std::string MapState();
-    void SetMapEnabled(bool enabled);
+    // 0 off, 1 on, 2 maps revealed without overworld icons (DBG map, for tests and screenshots)
+    void SetMapMode(int mode);
     // Every room of the current dungeon counts as visited; once per tick.
     void TickMap();
 }

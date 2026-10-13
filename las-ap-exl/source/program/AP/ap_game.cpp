@@ -39,6 +39,9 @@ namespace {
     bool g_ChecksLoaded = false;
     // Locations the server has as checked (CHECKED lines), for the map tracker.
     std::vector<u8> g_ServerChecks(kChecksBytes, 0);
+    // Locations in logic for the items received (INLOGIC lines), for the map tracker.
+    std::vector<u8> g_InLogic(kChecksBytes, 0);
+    bool g_HasLogic = false;
 
     std::deque<std::string> g_Deferred;
 
@@ -603,7 +606,7 @@ namespace {
             SaveChecks();
             AP::Send("OK clearchecks");
         } else if (cmd == "map") {
-            if (a.size() >= 3) AP::SetMapEnabled(a[2] == "1");
+            if (a.size() >= 3) AP::SetMapMode(atoi(a[2].c_str()));
             AP::Send(AP::MapState());
         } else if (cmd == "text") {
             AP::Send(AP::TextState());
@@ -732,6 +735,16 @@ namespace {
                 int id = atoi(a[i].c_str());
                 if (id >= 0 && id < (int)(kChecksBytes * 8)) g_ServerChecks[id / 8] |= (1 << (id % 8));
             }
+        } else if (a[0] == "INLOGIC") {
+            // INLOGIC CLEAR, then INLOGIC <local id>...: the locations in logic for the items received
+            if (a.size() >= 2 && a[1] == "CLEAR") {
+                std::fill(g_InLogic.begin(), g_InLogic.end(), 0);
+                g_HasLogic = true;
+            }
+            for (size_t i = 1; i < a.size(); i++) {
+                int id = atoi(a[i].c_str());
+                if (a[i] != "CLEAR" && id >= 0 && id < (int)(kChecksBytes * 8)) g_InLogic[id / 8] |= (1 << (id % 8));
+            }
         } else if (a[0] == "NOTICE" && a.size() >= 2) {
             // NOTICE <text>: a toast in the autosave popup; '|' starts a new line
             QueueNotice(RestAfter(line, 1));
@@ -779,6 +792,14 @@ namespace AP {
     void OnGoal() {
         Logging.Log("[AP] goal reached");
         Send("GOAL");
+    }
+
+    bool HasLogic() {
+        return g_HasLogic;
+    }
+
+    bool IsInLogic(int local_id) {
+        return local_id >= 0 && local_id < (int)(kChecksBytes * 8) && ((g_InLogic[local_id / 8] >> (local_id % 8)) & 1);
     }
 
     bool IsLocationChecked(int local_id) {

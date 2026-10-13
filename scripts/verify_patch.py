@@ -68,9 +68,14 @@ if patch["settings"].get("Map Tracker"):
     if sorted(iconed) != sorted(want):
         bad += 1
         print(f"MAP ICONS cover {len(iconed)} locations, want {len(want)}")
+    chests = [int(p[4]) for p in lines if p[0] == "C"]
+    want = [int(i) for loc, i in patch["location_ids"].items() if CHEST_ROOMS.get(loc, "").startswith("Lv")]
+    if sorted(chests) != sorted(want):
+        bad += 1
+        print(f"MAP CHESTS found {len(chests)}, want {len(want)}")
     sheets = out / "atmosphere/contents/01006BB00C6F0000/romfs/region_common/datasheets"
     flags = {str(row["mFirstShowFlagName"]) for row in readSheet(str(sheets / "UiFieldMapIcons.gsheet"))["values"]}
-    missing = [g for g in overworld if f"{ap_map.FLAG_PREFIX}{g}" not in flags]
+    missing = [g for g in overworld if any(f"{ap_map.FLAG_PREFIX}{mark}{g}" not in flags for mark, _ in ap_map.LOOKS)]
     rows = {(round(float(row["posX"]), 2), round(float(row["posZ"]), 2))
             for row in readSheet(str(sheets / "UiDungeonIcon.gsheet"))["values"]}
     missing += [g for g, (x, z, _) in dungeon.items() if (round(x, 2), round(z, 2)) not in rows]

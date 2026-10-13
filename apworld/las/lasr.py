@@ -53,6 +53,8 @@ LOGIC: Dict[str, Dict[str, Any]] = _fixed_logic()
 
 ITEM_LOCATIONS: List[str] = [k for k, v in LOGIC.items() if v["type"] == "item"]
 FOLLOWERS: List[str] = [k for k, v in LOGIC.items() if v["type"] == "follower"]
+# Follower content -> the event item a reached follower gives
+FOLLOWER_EVENTS = {"bow-wow": "bow-wow", "rooster": "rooster"}
 
 # Dungeon number used in LASR names (D1..D8, D0 = Color Dungeon) -> in-game dungeon level index.
 # Same as LASR shuffler: level = number - 1, and the Color Dungeon is level 9.
