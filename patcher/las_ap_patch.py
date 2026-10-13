@@ -53,6 +53,7 @@ from RandomizerCore.Tools import event_tools  # noqa: E402
 from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct  # noqa: E402
 import ap_assets  # noqa: E402
 import ap_ghost  # noqa: E402
+import ap_goal  # noqa: E402
 import ap_map  # noqa: E402
 import ap_model  # noqa: E402
 
@@ -601,6 +602,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         add_rooster_flag(proc.file_manager)
     if patch["settings"].get("Ammo Ghost", True):  # the option's default, also for patches without it
         ap_ghost.add(proc.file_manager)
+    # all eight for patches from before the option
+    ap_goal.set_instrument_count(proc.file_manager, patch["settings"].get("Instruments Required", 8))
     map_tracker = patch["settings"].get("Map Tracker", False)  # off for patches from before the option
     if map_tracker:
         ap_map.add(proc.file_manager, proc.config_dir, patch["location_ids"], PLACEHOLDER_KEY)

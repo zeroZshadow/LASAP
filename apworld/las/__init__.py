@@ -14,8 +14,8 @@ from .host_settings import LASSettings
 
 from .ids import LOCATION_OFFSETS
 from .items import FILLER_ITEM, GAME, ITEM_GAME_INFO, ITEM_NAME_GROUPS, ITEM_TABLE, LASR_TO_ITEM, LASItem
-from .lasr import (CATEGORIES, DUNGEON_REWARD_LOCATIONS, INSTRUMENT_LOCATIONS,
-                   INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC, TRAPS, item_dungeon, location_dungeon)
+from .lasr import (CATEGORIES, COUNTED, DUNGEON_REWARD_LOCATIONS, INSTRUMENT_LOCATIONS,
+                   INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC, TRAPS, goal_logic, item_dungeon, location_dungeon)
 from .locations import LOCATION_NAME_GROUPS, LOCATION_NAME_TO_ID, LOCATION_NAMES, LASLocation
 from .logic import LogicCompiler, make_rule, referenced_regions
 from .models import model_for
@@ -99,8 +99,8 @@ class LASWorld(World):
                 setattr(self.options, name, LASOptions.type_hints[name].from_any(value))
         options = self.options
         self.settings_tokens = lasr_settings.logic_tokens(options)
-        self.compiler = LogicCompiler(LOGIC, options.logic.current_key, self.settings_tokens,
-                                      LASR_TO_ITEM)
+        self.compiler = LogicCompiler(goal_logic(options.instruments_required.value), options.logic.current_key,
+                                      self.settings_tokens, LASR_TO_ITEM, COUNTED)
 
         if passthrough:
             self.starting_instruments = list(passthrough["starting_instruments"])
@@ -348,6 +348,7 @@ class LASWorld(World):
         return {
             "seed_hash": self.seed_hash(),
             "goal": "wind_fish",
+            "instruments_required": self.options.instruments_required.value,
             "death_link": bool(self.options.death_link.value),
             "location_count": len(self.shuffled),
             "settings": {key: settings[key] for key in lasr_settings.TRACKER_SETTINGS},
