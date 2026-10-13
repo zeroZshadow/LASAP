@@ -16,8 +16,8 @@ python e2e.py run <script.txt>                     runs a drive.py script throug
                                                    player is in that level), `check <regex>` (stop unless the
                                                    STATE line matches), `await <secs> <regex>` (wait for it), `warp <level> <x> <y> <z>` (reload
                                                    there and wait), `goto <x> <y> <z>`, `shot <png>` and
-                                                   `logged <regex> [secs] [client|server]` (a line logged since
-                                                   the script started)
+                                                   `logged <regex> [secs] [client|server] [count]` (that many
+                                                   lines logged since the script started)
 
 Environment: LASAP_E2E (session folder, default D:/DEV/LASAP-sandbox/e2e), LASAP_SLOT (default Link).
 """
@@ -42,15 +42,16 @@ def size(log: str) -> int:
     return LOGS[log].stat().st_size if LOGS[log].exists() else 0
 
 
-def wait(pattern: str, seconds: float, log: str, start: int) -> str:
+def wait(pattern: str, seconds: float, log: str, start: int, count: int = 1) -> str:
+    """Waits until `count` lines logged after `start` match; returns the last of them."""
     rx = re.compile(pattern)
     end = time.time() + seconds
     while time.time() < end:
         with open(LOGS[log], "rb") as f:
             f.seek(start)
-            for line in f.read().decode("utf-8", "replace").splitlines():
-                if rx.search(line):
-                    return line
+            found = [line for line in f.read().decode("utf-8", "replace").splitlines() if rx.search(line)]
+        if len(found) >= count:
+            return found[count - 1]
         time.sleep(0.25)
     raise SystemExit(f"timeout waiting for /{pattern}/ in {log}.log")
 
@@ -96,10 +97,12 @@ def run(script: Path) -> None:
             rx = "Connected to the game" if parts[0] == "HELLO" else parts[0]
             print(wait(rx, float(parts[1]) if len(parts) > 1 else 10, "client", origin if parts[0] == "HELLO" else size("client")))
         elif op == "logged":
-            # logged <regex> [secs] [client|server]: waits for a line logged since the script started
+            # logged <regex> [secs] [client|server] [count]: waits until `count` (default 1) lines logged since the
+            # script started match
             parts = rest.split()
             log = parts[2] if len(parts) > 2 else "client"
-            print(wait(parts[0], float(parts[1]) if len(parts) > 1 else 10, log, origins[log]))
+            count = int(parts[3]) if len(parts) > 3 else 1
+            print(wait(parts[0], float(parts[1]) if len(parts) > 1 else 10, log, origins[log], count))
         elif op == "mash":
             # mash <buttons hex> <count> [hold ms] [gap s]
             p = rest.split()

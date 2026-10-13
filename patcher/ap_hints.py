@@ -76,6 +76,16 @@ BOOKS = {
     "book-Blue2": "ReadWarpRule",
     "book-Red1": "ReadLiftBomb",
 }
+# The books' question before they are read (System.msbt) gets a title that fits a hint, numbered in BOOKS' order.
+BOOK_PROMPTS = {
+    "book-Blue4": "CheckShieldBook",
+    "book-Green1": "CheckItemSelect",
+    "book-Orange2": "CheckMapandMemo",
+    "book-Red3": "CheckTurnAttack",
+    "book-Blue2": "CheckWarpRule",
+    "book-Red1": "CheckLiftBomb",
+}
+BOOK_PROMPT = '"Koholint Lost and Found, Volume {}"\n\nRead this book?[1:7][0:4]Yes[0:4][1:9]No'
 SOURCES = (*FIELD_OWLS, *DUNGEON_OWLS, *BOOKS)  # flag and label numbers, in this order
 BEAK_ITEM_TYPE = 63  # Inventory.HasItem itemType of the dungeon's stone beak
 
@@ -94,8 +104,14 @@ def clean(text: str) -> str:
 
 def wrap(text: str) -> list:
     """The text's pages, each a list of up to PAGE_LINES lines of up to LINE_WIDTH characters."""
-    lines, line = [], ""
+    words = []
     for word in clean(text).split(" "):
+        if word == "-" and words:  # a line never starts with the dash of "<region> - <spot>"
+            words[-1] += " -"
+        else:
+            words.append(word)
+    lines, line = [], ""
+    for word in words:
         while len(word) > LINE_WIDTH:  # a name without spaces
             if line:
                 lines.append(line)
@@ -250,4 +266,6 @@ def _text(files, file_name: str, hints: dict, owl: bool) -> None:
         for source, hint in hints.items():
             msbt.addEntry(label(source), message(hint["text"], owl))
             msbt.getEntry(label(source)).style_index = msbt.getEntry(style_from[source]).style_index
+            if source in BOOK_PROMPTS:
+                msbt.addEntry(BOOK_PROMPTS[source], BOOK_PROMPT.format(list(BOOKS).index(source) + 1))
         files.writeTextFile(relative_path, file_name, msbt)

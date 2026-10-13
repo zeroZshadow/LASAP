@@ -148,6 +148,8 @@ if hints:
             problems.append(f"shown by {shown} events")
         if " ".join(" ".join(page) for page in pages) != ap_hints.clean(hint["text"]):
             problems.append(f"text {text!r}")
+        if source in ap_hints.BOOK_PROMPTS and "Lost and Found" not in texts["System.msbt"][ap_hints.BOOK_PROMPTS[source]]:
+            problems.append("the book keeps its title")
         if any(len(page) > ap_hints.PAGE_LINES or any(len(line) > ap_hints.LINE_WIDTH for line in page)
                for page in pages):
             problems.append(f"does not fit: {pages}")
