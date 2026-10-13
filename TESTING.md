@@ -32,7 +32,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 | `build_assets.py [--romfs dir]` | Rebuilds `patcher/assets` (DESIGN.md, Assets) from a RomFS dump, in `.venv-lasr` |
 | `build_release.py` | Builds the release world with the patcher inside (README, Building a release), in `.venv-lasr` |
 | `make_test_patch.py <out.aplas>` | Writes a synthetic patch (all locations AP items) for patcher tests |
-| `verify_patch.py <patch> <out dir>` | Checks that every shuffled chest holds the placeholder (its model variant) with its local id, that `ap_indices.txt` lists each indexed source once, that `ap_vanilla.txt` lists every kept location with its item or companion flag, and with the map tracker on that every location has an icon |
+| `verify_patch.py <patch> <out dir>` | Checks that every shuffled chest holds the placeholder (its model variant) with its local id, that `ap_indices.txt` lists each indexed source once, that `ap_vanilla.txt` lists every kept location with its item or companion flag, with the map tracker on that every location has an icon, and below eight required instruments that the egg's event checks single instruments |
 | `test_client.py` / `drive.py <script>` | Talk to the module directly on the sandbox port (only when no AP client is connected) |
 | `e2e.py send\|srv\|dbg\|cli\|state\|goto\|wait\|tail\|run` | Drives a scripted AP session (below): server `/send`, client `/dbg`, the game's STATE line, hop teleports, `drive.py` scripts through the client |
 | `reload_exl.sh` | Restarts the sandbox game with the freshly built module and boots to file 2 |
@@ -196,12 +196,14 @@ The sandbox is shared with every other session: take the lock (Emulator, "Sharin
 - **Connection reminders** (2026-10-13, scripted client, no server at first). With the client connected and no server, `DBG map` reports `server=0`, the toast "Archipelago server not connected" shows about 20 s into the level, and the map caption reads "Offline: logic unknown" over all-green dots. After `/connect`: "Archipelago connected", `server=1`, logic. With the server process killed: "Archipelago server disconnected", `server=0`, and the caption "Offline: toggle out of logic" over the last logic's dots.
 - **Out-of-logic toggle** (2026-10-13). On the overworld map X hides the red dots and shows them again without leaving the map; closed while hidden, the map opens without them. Y (hide markers) leaves them hidden. X on the Tail Cave map opens no memories. The caption reads "Toggle out of logic" with the X glyph (`map_tracker`).
 - **Chamber Stone variant.** A chest holding it (key cut to 31 characters) loads its room, and the item-get shows the stone (2026-10-13).
+- **Instruments Required** (2026-10-14). With 1 required, each instrument alone (granted with the Ballad in a new game) opens the egg after the Ballad and Link enters `Lv09WindFishsEgg`; with none it stays shut. So `HasItem` itemType 45–52 are Full Moon Cello to Thunder Drum. The song shows only the instruments held. With 3 required, two instruments leave it shut and a third opens it (`egg_goal`). `verify_patch.py` finds no `HasAllInstruments` left below eight.
 - **Patch data.** `scripts/verify_patch.py` checks that every shuffled chest holds the placeholder with the right index and a key of at most 31 characters, and that every randomized heart piece and seashell actor has its own index above the received range (static check).
 
 ## Not yet verified in-game
 
 - Owl statues as locations.
 - The dungeon bosses' and the Armos Knight's drops, and the Kanalet bombed guard. Boss drops use `item_get_manager.get`, like Lanmola's and the instruments.
+- The ending with fewer than eight instruments. Statically: no event of the egg dungeon or the ending (`WindFish.bfevfl`) checks instruments, and `ending_part3` sets `ShadowClear` without conditions.
 - DeathLink (out of scope for now) and real hardware.
 
 ## Building the exlaunch module
