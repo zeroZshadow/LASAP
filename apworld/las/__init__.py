@@ -74,7 +74,8 @@ class LASWorld(World):
 
     compiler: LogicCompiler
     shuffled: List[str]  # LASR item locations that are AP locations
-    vanilla: List[str]  # LASR item locations that keep their vanilla content
+    locked: List[str]  # AP locations the options leave unshuffled: they hold their vanilla item, locked
+    vanilla: List[str]  # LASR item locations that keep their vanilla content and are no AP locations
     starting_items: List[str]  # LASR item names given at the start by options
     pre_fill_items: List[Item]
     restricted: Dict[str, Set[str]]  # AP item name -> LASR locations it must be placed in
@@ -92,13 +93,15 @@ class LASWorld(World):
                 self.starting_items += [f"map-D{number}", f"compass-D{number}", f"stone-beak-D{number}"]
 
         removed = lasr_settings.removed_locations(options)
-        vanilla = lasr_settings.vanilla_locations(options)
+        vanilla = lasr_settings.fixed_locations()
+        locked = lasr_settings.locked_locations(options)
         if options.instruments == options.instruments.option_vanilla:
             started = {f"D{INSTRUMENTS.index(i) + 1}-instrument" for i in self.starting_instruments}
-            vanilla |= set(INSTRUMENT_LOCATIONS) - started
+            locked |= set(INSTRUMENT_LOCATIONS) - started
         self.removed = [loc for loc in ITEM_LOCATIONS if loc in removed]
         self.vanilla = [loc for loc in ITEM_LOCATIONS if loc in vanilla and loc not in removed]
         self.shuffled = [loc for loc in ITEM_LOCATIONS if loc not in vanilla and loc not in removed]
+        self.locked = [loc for loc in self.shuffled if loc in locked]
         self.pre_fill_items = []
         self.restricted = {}
 
@@ -154,7 +157,7 @@ class LASWorld(World):
         pool = Counter({k: v["quantity"] for k, v in ITEM_DEFS.items()})
         for category in ("Overworld_Owl_Statues", "Dungeon_Owl_Statues"):
             pool["rupee-20"] += sum(1 for loc in CATEGORIES[category] if loc not in self.removed)
-        for loc in self.vanilla:
+        for loc in self.vanilla + self.locked:
             pool[self.content(loc)] -= 1
         for item in self.starting_items:
             if pool[item] > 0:
@@ -173,7 +176,8 @@ class LASWorld(World):
                 for _ in range(taken):
                     pool[self.random.choice(TRAPS)] += 1
         assert all(n >= 0 for n in pool.values()), pool
-        assert sum(pool.values()) == len(self.shuffled), (sum(pool.values()), len(self.shuffled))
+        filled = len(self.shuffled) - len(self.locked)
+        assert sum(pool.values()) == filled, (sum(pool.values()), filled)
         return pool
 
     def create_items(self) -> None:
@@ -182,6 +186,8 @@ class LASWorld(World):
             if self._is_progression(content):
                 item = self.create_event(LASR_TO_ITEM[content], ITEM_TABLE[LASR_TO_ITEM[content]].classification)
                 self.get_location(LOCATION_NAMES[loc]).place_locked_item(item)
+        for loc in self.locked:
+            self.get_location(LOCATION_NAMES[loc]).place_locked_item(self.create_item(LASR_TO_ITEM[self.content(loc)]))
         for follower in FOLLOWERS:
             content = FOLLOWER_EVENTS[LOGIC[follower]["content"]]
             self.get_location(follower).place_locked_item(self.create_event(content))
@@ -202,7 +208,7 @@ class LASWorld(World):
     def _restricted_items(self) -> Dict[str, Set[str]]:
         options = self.options
         restricted: Dict[str, Set[str]] = {}
-        shuffled = set(self.shuffled)
+        shuffled = set(self.shuffled) - set(self.locked)
 
         def in_dungeon(number: int) -> Set[str]:
             return {loc for loc in shuffled if location_dungeon(loc) == number}
@@ -317,7 +323,7 @@ class LASWorld(World):
         return hashlib.sha256(f"{self.multiworld.seed_name}:{self.player}".encode()).hexdigest()[:8]
 
     def fill_slot_data(self) -> Mapping[str, Any]:
-        settings = lasr_settings.lasr_settings(self.options, self.vanilla)
+        settings = lasr_settings.checked_settings(self.options, self.vanilla)
         return {
             "seed_hash": self.seed_hash(),
             "goal": "wind_fish",
@@ -329,6 +335,7 @@ class LASWorld(World):
                 "preset": self.options.logic.current_key,
                 "tokens": self.settings_tokens,
                 "vanilla": [loc for loc in self.vanilla if self._is_progression(self.content(loc))],
+                "locked": [loc for loc in self.locked if self._is_progression(self.content(loc))],
             },
         }
 
@@ -343,7 +350,7 @@ class LASWorld(World):
             "player": self.player,
             "slot_name": self.multiworld.player_name[self.player],
             "seed_hash": self.seed_hash(),
-            "settings": lasr_settings.lasr_settings(self.options, self.vanilla),
+            "settings": lasr_settings.checked_settings(self.options, self.vanilla),
             "starting_items": starting,
             "placements": {loc: placements[loc] for loc in ITEM_LOCATIONS if loc in placements},
             "location_ids": {loc: LOCATION_OFFSETS[loc] for loc in self.shuffled},

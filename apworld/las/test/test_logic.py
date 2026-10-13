@@ -41,7 +41,7 @@ def lasr_reachable(world, lasr_items: Counter) -> set:
     for loc in world.removed:
         del logic_defs[loc]
     placements = {k: None for k, v in logic_defs.items() if v["type"] in ("item", "follower")}
-    for loc in world.vanilla:
+    for loc in world.vanilla + world.locked:
         placements[loc] = LOGIC[loc]["content"]
     for follower in FOLLOWERS:
         placements[follower] = LOGIC[follower]["content"]

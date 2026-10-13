@@ -20,7 +20,7 @@ class TestTracker(unittest.TestCase):
         world = multiworld.worlds[1]
         logic = world.fill_slot_data()["logic"]
         # The client knows the slot's locations from the server, and the rest from the slot data.
-        tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], world.shuffled)
+        tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], world.shuffled, logic["locked"])
         pool = [item for item in multiworld.itempool + world.get_pre_fill_items() if item.player == 1]
         precollected = list(multiworld.precollected_items[1])
         rng = random.Random(seed)

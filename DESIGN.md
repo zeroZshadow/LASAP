@@ -49,7 +49,8 @@ Datasheets (`.gsheet`) are read and written by `RandomizerCore/Tools/gsheet.py`,
 - Every randomized location in the patched game gives the **AP placeholder item**, with `index` = the location's **local id** (AP location id − `LOCATION_BASE`).
 - The module's `Inventory::AddItemID` hook sees the placeholder item id, reports a check, and adds nothing to the inventory.
 - Every real item, including the player's own, arrives from the server and is granted by the module. The client uses `items_handling = 0b011`: starting inventory is granted by the patch (LASR's starting gear), so the server does not send it again.
-- Locations whose category is not shuffled keep their vanilla content. They are AP event locations (no id) with the vanilla item locked, and the patcher leaves them alone.
+- Locations whose category is not shuffled are AP locations like the others, holding their vanilla item, locked (`LASWorld.locked`, from `lasr_settings.locked_locations`): they hold the placeholder, report a check and can be hinted, and the item arrives from the server.
+- The patcher cannot place items at the Trendy Game's claw prizes and at the shop slots LASR does not shuffle (`lasr_settings.fixed_locations`). Those keep their vanilla content and are AP event locations (no id) with the vanilla item locked, if it is progression.
 - Each location shows a model for the item it holds. The world picks it (`models.py`):
   - LAS items show their own model.
   - Other games' items are matched by name against `data/item_models.yml` (e.g. any shield shows the shield).
@@ -101,8 +102,8 @@ An Archipelago player container (`container.py`, `APPlayerContainer`): a zip wit
 }
 ```
 
-- `settings` uses LASR's `SettingsManager.fetch()["Settings"]` keys.
-- `placements` covers every LASR item location: shuffled ones are `"ap-item"`, vanilla ones carry their vanilla item. Owl statues that give no gift are left out, as in LASR.
+- `settings` uses LASR's `SettingsManager.fetch()["Settings"]` keys (`lasr_settings.checked_settings`). Every category's locations are AP locations, so every category setting is on and "Seashell Mansion" is 50; the options decide only whether their items are shuffled. "Blue Rupees" on makes the patcher place items at the Color Dungeon's rupees.
+- `placements` covers every LASR item location: AP locations are `"ap-item"`, the fixed ones carry their vanilla item. Owl statues that give no gift are left out, as in LASR.
 - `location_names` covers the AP locations. The patcher uses it for the shop's price tags; in-game text gets the same names at runtime from the client.
 - `location_models` leaves out locations that show the Archipelago model. It is optional: older patches show the Archipelago model everywhere.
 - `location_chests` gives each AP location's chest the size and texture of LASR's "Chest Types" setting (option `chest_appearance`): for this slot's items, the LASR item's type and `chest-type` with the adjustments LASR's shuffler makes; for other players' items, `important` for progression, `good` for useful, and `junk` with the junk texture for filler and traps (`lasr_settings.chest_look`). It is optional.
@@ -112,9 +113,9 @@ An Archipelago player container (`container.py`, `APPlayerContainer`): a zip wit
 
 `{"seed_hash": str, "goal": str, "death_link": bool, "location_count": int, "settings": {...}, "logic": {...}}`
 
-`settings` holds the seed's LASR settings that decide which checks exist and what reaches them (`TRACKER_SETTINGS` in `lasr_settings.py`), under LASR's names and values (`"Preset": "Basic"`, `"Owl Gifts": "None"`, `"Seashell Mansion": 15`, ...). Trackers such as PopTracker packs read them on connect.
+`settings` holds the seed's LASR settings that decide which checks exist and what reaches them (`TRACKER_SETTINGS` in `lasr_settings.py`), under LASR's names and values (`"Preset": "Basic"`, `"Owl Gifts": "None"`, ...), as in the patch: every category is on. Trackers such as PopTracker packs read them on connect.
 
-`logic` is what the client needs to evaluate the world's rules for the map tracker (`tracker.py`): `preset` (the logic option), `tokens` (the settings tokens the rules test) and `vanilla` (LASR locations that keep a progression item, whose items count as found once they are reachable).
+`logic` is what the client needs to evaluate the world's rules for the map tracker (`tracker.py`): `preset` (the logic option), `tokens` (the settings tokens the rules test), `vanilla` (fixed locations that keep a progression item, whose items count as found once they are reachable) and `locked` (AP locations holding their own progression item, whose items count as found once they are reachable, until the location is checked and the received item counts instead).
 
 ## Data storage
 

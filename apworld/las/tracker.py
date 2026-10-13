@@ -35,10 +35,12 @@ def is_progression(item_name: str) -> bool:
 
 
 class LogicTracker:
-    def __init__(self, preset: str, tokens: Mapping[str, bool], vanilla: Iterable[str], shuffled: Iterable[str]):
-        """`vanilla`: LASR locations that keep a progression item; `shuffled`: the slot's LASR locations."""
+    def __init__(self, preset: str, tokens: Mapping[str, bool], vanilla: Iterable[str], shuffled: Iterable[str],
+                 locked: Iterable[str] = ()):
+        """`vanilla`: LASR locations that keep a progression item and are no AP locations; `shuffled`: the slot's
+        LASR locations; `locked`: those of them that hold their own progression item, locked."""
         compiler = LogicCompiler(LOGIC, preset, tokens, {**LASR_TO_ITEM, **FOLLOWER_EVENTS})
-        vanilla, self.shuffled = list(vanilla), list(shuffled)
+        vanilla, self.shuffled = list(vanilla) + list(locked), list(shuffled)
         needed = set(compiler.dependencies(self.shuffled + vanilla + FOLLOWERS)) & compiler.region_nodes
         self.regions: Dict[str, _Region] = {name: _Region() for name in needed}
 
@@ -47,19 +49,22 @@ class LogicTracker:
 
         self.entrances = [(self.regions[name], rule(name)) for name in LOGIC if name in needed]
         self.locations = [(loc, self.regions[LOGIC[loc]["region"]], rule(loc)) for loc in self.shuffled]
-        # (region, rule, event item): what a reachable vanilla location or follower adds
-        self.events: List[Tuple[_Region, Callable, str]] = [
-            (self.regions[LOGIC[loc]["region"]], rule(loc), LASR_TO_ITEM[LOGIC[loc]["content"]]) for loc in vanilla]
-        self.events += [(self.regions[LOGIC[f]["region"]], rule(f), FOLLOWER_EVENTS[LOGIC[f]["content"]])
+        # (location, region, rule, event item): what a reachable vanilla or locked location, or follower, adds
+        self.events: List[Tuple[str, _Region, Callable, str]] = [
+            (loc, self.regions[LOGIC[loc]["region"]], rule(loc), LASR_TO_ITEM[LOGIC[loc]["content"]])
+            for loc in vanilla]
+        self.events += [(f, self.regions[LOGIC[f]["region"]], rule(f), FOLLOWER_EVENTS[LOGIC[f]["content"]])
                         for f in FOLLOWERS]
 
-    def in_logic(self, item_names: Iterable[str]) -> Set[str]:
-        """The shuffled locations reachable with these items (AP item names, starting items included)."""
+    def in_logic(self, item_names: Iterable[str], checked: Iterable[str] = ()) -> Set[str]:
+        """The shuffled locations reachable with these items (AP item names, starting items included). A locked
+        location counts its item once reachable until it is `checked` (LASR names); then the received copy counts."""
         counts = Counter(name for name in item_names if name in ITEM_TABLE and is_progression(name))
         state = _State(counts)
         for region in self.regions.values():
             region.reached = False
-        pending = list(self.events)
+        checked = set(checked)
+        pending = [event for event in self.events if event[0] not in checked]
         changed = True
         while changed:
             changed = False
@@ -67,7 +72,7 @@ class LogicTracker:
                 if not region.reached and rule(state):
                     region.reached = changed = True
             for event in list(pending):
-                region, rule, item = event
+                _, region, rule, item = event
                 if region.reached and rule(state):
                     counts[item] += 1
                     pending.remove(event)

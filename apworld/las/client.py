@@ -161,11 +161,13 @@ class LASContext(CommonContext):
             names = {offset: loc for loc, offset in LOCATION_OFFSETS.items()}
             self.logic_tracker = LogicTracker(
                 logic["preset"], logic["tokens"], logic["vanilla"],
-                [names[loc - LOCATION_BASE] for loc in sorted(self.server_locations)]) if logic else None
+                [names[loc - LOCATION_BASE] for loc in sorted(self.server_locations)],
+                logic.get("locked", [])) if logic else None
             self.in_logic = None
             self.send_logic()
         elif cmd == "RoomUpdate":
             self.send_checked(args.get("checked_locations", []))
+            self.send_logic()
         elif cmd == "ReceivedItems":
             self.send_next_item()
             self.send_logic()
@@ -249,7 +251,9 @@ class LASContext(CommonContext):
         if self.slot_seed_hash and self.game_seed_hash and self.slot_seed_hash != self.game_seed_hash:
             return
         names = [self.item_names.lookup_in_game(item.item, self.game) for item in self.items_received]
-        ids = {LOCATION_OFFSETS[loc] for loc in self.logic_tracker.in_logic(names)}
+        names_by_id = {offset: loc for loc, offset in LOCATION_OFFSETS.items()}
+        checked = [names_by_id[loc - LOCATION_BASE] for loc in self.checked_locations if loc >= LOCATION_BASE]
+        ids = {LOCATION_OFFSETS[loc] for loc in self.logic_tracker.in_logic(names, checked)}
         if ids == self.in_logic and not force:
             return
         self.in_logic = ids

@@ -139,6 +139,39 @@ class TestVanillaHeavy(LASTestBase):
         "completed_bridge": False,
     }
 
+    def test_unshuffled_locations_are_locked(self) -> None:
+        """Locations the options leave unshuffled are AP locations holding their own vanilla item."""
+        from ..items import LASR_TO_ITEM
+        from ..lasr import LOGIC
+        from ..lasr_settings import CATEGORY_SETTINGS, fixed_locations
+        locked = set(self.world.locked)
+        self.assertIn("40-seashell-reward", locked)
+        self.assertIn("D1-instrument", locked)
+        for loc in locked:
+            location = self.multiworld.get_location(LOCATION_NAMES[loc], self.player)
+            self.assertEqual(location.address, self.world.location_name_to_id[LOCATION_NAMES[loc]])
+            self.assertTrue(location.locked, loc)
+            self.assertEqual(location.item.name, LASR_TO_ITEM[LOGIC[loc]["content"]], loc)
+            self.assertEqual(location.item.player, self.player)
+        self.assertFalse(fixed_locations() & set(self.world.shuffled))
+        patch = self.world.patch_data()
+        self.assertEqual({loc for loc in locked if patch["placements"][loc] != "ap-item"}, set())
+        self.assertLessEqual(locked, set(patch["location_ids"]))
+        self.assertTrue(all(patch["settings"][s] is True for s in CATEGORY_SETTINGS))
+
+    def test_tracker_counts_a_locked_item_once(self) -> None:
+        """A checked locked location stops counting its item: the received copy counts instead."""
+        from ..tracker import LogicTracker
+        logic = self.world.fill_slot_data()["logic"]
+        tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], self.world.shuffled,
+                               logic["locked"])
+        start = [item.name for item in self.multiworld.precollected_items[self.player]]
+        before = tracker.in_logic(start)
+        reachable_locked = [loc for loc in logic["locked"] if loc in before]
+        self.assertTrue(reachable_locked)
+        # the checked locations' items not received yet: nothing more is in logic than before
+        self.assertLessEqual(tracker.in_logic(start, reachable_locked), before)
+
 
 class TestOwnDungeon(LASTestBase):
     options = {
