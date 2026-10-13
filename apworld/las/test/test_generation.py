@@ -161,6 +161,25 @@ class TestOwnDungeon(LASTestBase):
                 self.assertEqual(INSTRUMENTS.index(lasr_item) + 1, dungeon, location.name)
 
 
+class TestAnyDungeon(LASTestBase):
+    options = {"instruments": "any_dungeon", "starting_instruments": 1}
+
+    def test_instruments_in_dungeons(self) -> None:
+        from ..lasr import location_dungeon, INSTRUMENTS
+        from ..items import ITEM_TABLE
+        from ..locations import LASR_LOCATIONS
+        from ..lasr_settings import lasr_settings
+        self.assertEqual(lasr_settings(self.world.options)["Shuffle Instruments"], "Any Dungeon")
+        placed = 0
+        for location in self.multiworld.get_locations(self.player):
+            if location.address is None or location.item is None or location.item.player != self.player:
+                continue
+            if ITEM_TABLE[location.item.name].lasr_name in INSTRUMENTS:
+                placed += 1
+                self.assertGreaterEqual(location_dungeon(LASR_LOCATIONS[location.name]), 0, location.name)
+        self.assertEqual(placed, len(INSTRUMENTS) - 1)
+
+
 class TestDungeonRewards(LASTestBase):
     options = {
         "instruments": "dungeon_rewards",

@@ -127,12 +127,14 @@ class DungeonItems(DungeonItemPlacement):
 class Instruments(Choice):
     """Where the eight instruments of the Sirens are placed.
     vanilla: at the end of their dungeon. dungeon_rewards: at a dungeon end or with the Color Dungeon fairy.
-    own_dungeon: inside their own dungeon. anywhere: anywhere in the multiworld."""
+    own_dungeon: inside their own dungeon. any_dungeon: inside any dungeon, the Color Dungeon included.
+    anywhere: anywhere in the multiworld."""
     display_name = "Instruments"
     option_vanilla = 0
     option_dungeon_rewards = 1
     option_own_dungeon = 2
     option_anywhere = 3
+    option_any_dungeon = 4
     default = 3
 
 

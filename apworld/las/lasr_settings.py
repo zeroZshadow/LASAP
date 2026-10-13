@@ -29,7 +29,7 @@ DUNGEON_ENTRANCES = {d: d for d in DUNGEONS}  # dungeon entrance shuffle is not 
 
 _PRESETS = {0: "Basic", 1: "Advanced", 2: "Glitched", 3: "Hell"}
 _DUNGEON_ITEMS = {0: "Own Dungeon", 1: "Anywhere", 2: "Start With"}
-_INSTRUMENTS = {0: "Vanilla", 1: "Dungeon Rewards", 2: "Own Dungeon", 3: "Anywhere"}
+_INSTRUMENTS = {0: "Vanilla", 1: "Dungeon Rewards", 2: "Own Dungeon", 3: "Anywhere", 4: "Any Dungeon"}
 _OWLS = {0: "None", 1: "Overworld", 2: "Dungeons", 3: "All"}
 _STEALING = {0: "Standard", 1: "Always", 2: "Never"}
 _TRAPS = {0: "None", 1: "Few", 2: "Many"}

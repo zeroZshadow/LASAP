@@ -224,6 +224,10 @@ class LASWorld(World):
         elif options.instruments == options.instruments.option_own_dungeon:
             for number, instrument in enumerate(INSTRUMENTS, 1):
                 restricted[LASR_TO_ITEM[instrument]] = in_dungeon(number)
+        elif options.instruments == options.instruments.option_any_dungeon:
+            any_dungeon = {loc for loc in shuffled if location_dungeon(loc) >= 0}
+            for instrument in INSTRUMENTS:
+                restricted[LASR_TO_ITEM[instrument]] = any_dungeon
         return restricted
 
     def get_pre_fill_items(self) -> List[Item]:
