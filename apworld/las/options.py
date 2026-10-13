@@ -258,7 +258,7 @@ class Traps(Choice):
 
 class StartingGear(StartInventoryPool):
     """Start with the specified amount of these items and don't place them in the world; 50 Rupees take their place.
-    The default is the original randomizer's starting gear."""
+    The default is the original randomizer's starting gear. Each Heart Container adds a starting heart."""
     default = {"Progressive Sword": 1, "Progressive Shield": 1, "Ocarina": 1, "Manbo's Mambo": 1}
 
 

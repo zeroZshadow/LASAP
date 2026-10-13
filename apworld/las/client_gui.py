@@ -9,14 +9,17 @@ import Utils
 from CommonClient import logger
 from kivy.clock import Clock
 from kivy.metrics import dp
+from kivy.uix.gridlayout import GridLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.widget import Widget
 from kivy.utils import escape_markup
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDButton, MDButtonText
 from kivymd.uix.label import MDLabel
+from kivymd.uix.selectioncontrol import MDCheckbox
 
 from . import checklist, file_types
+from .host_settings import PLAYER_SETTINGS, PlayerSetting
 
 if TYPE_CHECKING:
     from .client import LASContext
@@ -115,6 +118,16 @@ class PatchPanel(ScrollView):
         self.installed = text(small=True)
         self.content.add_widget(self.installed)
 
+        self.content.add_widget(text("[b]Game settings[/b]"))
+        self.content.add_widget(text("For every seed. After a change, Play reinstalls the mod.", small=True))
+        grid = GridLayout(cols=2, size_hint_y=None, row_force_default=True, row_default_height=ROW_HEIGHT)
+        grid.bind(minimum_height=grid.setter("height"))
+        self.player_checks: Dict[str, MDCheckbox] = {}
+        self.player_choices: Dict[str, MDButton] = {}
+        for setting in PLAYER_SETTINGS:
+            grid.add_widget(self.player_setting(setting))
+        self.content.add_widget(grid)
+
         self.advanced = MDBoxLayout(orientation="vertical", spacing=dp(2), adaptive_height=True)
         self.advanced.add_widget(text(ADVANCED_HELP, small=True))
         for key, label in ADVANCED:
@@ -149,6 +162,28 @@ class PatchPanel(ScrollView):
         self.statuses[key] = text(small=True)
         line.add_widget(self.statuses[key])
         parent.add_widget(line)
+
+    def player_setting(self, setting: PlayerSetting) -> MDBoxLayout:
+        """A check box for an on/off setting; for a choice, a button that steps through the values."""
+        row = MDBoxLayout(orientation="horizontal", spacing=dp(6))
+        if setting.choices is None:
+            check = MDCheckbox(size_hint=(None, None), size=(dp(36), dp(36)), pos_hint={"center_y": 0.5})
+            check.bind(active=lambda c, active, k=setting.key: self.ctx.set_player_option(k, bool(active)))
+            self.player_checks[setting.key] = check
+            row.add_widget(check)
+            row.add_widget(MDLabel(text=setting.label))
+        else:
+            row.add_widget(MDLabel(text=setting.label, size_hint_x=None, width=dp(80)))
+            choice = button("", lambda s=setting: self.next_choice(s), dp(120), "outlined")
+            self.player_choices[setting.key] = choice
+            row.add_widget(choice)
+            row.add_widget(Widget())
+        return row
+
+    def next_choice(self, setting: PlayerSetting) -> None:
+        choices = setting.choices or ()
+        current = self.ctx.player_option(setting.key)
+        self.ctx.set_player_option(setting.key, choices[(choices.index(current) + 1) % len(choices)])
 
     def value(self, key: str) -> str:
         return (self.ctx.patch_file or "") if key == "patch_file" else self.ctx.option(key)
@@ -220,6 +255,10 @@ class PatchPanel(ScrollView):
         for key, field in self.fields.items():
             if not field.focus:
                 field.text = self.value(key)
+        for key, check in self.player_checks.items():
+            check.active = self.ctx.player_option(key)
+        for key, choice in self.player_choices.items():
+            choice.children[0].text = self.ctx.player_option(key)
         checks = self.ctx.check_setup()
         for key, label in self.statuses.items():
             label.text = status(checks.checks.get(key))

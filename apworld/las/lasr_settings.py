@@ -124,7 +124,8 @@ TRACKER_SETTINGS = ("Preset", "Chests", "Free Gifts", "Trade Quest", "Golden Lea
 
 
 def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str, Any]:
-    """LASR's SettingsManager.fetch()["Settings"] for these options; unsupported settings keep LASR's defaults."""
+    """LASR's SettingsManager.fetch()["Settings"] for these options; unsupported settings keep LASR's defaults.
+    The player settings (host_settings.PLAYER_SETTINGS) carry their defaults: the client sets them when patching."""
     vanilla = set(vanilla)
     o = options
     settings: Dict[str, Any] = {
@@ -178,27 +179,29 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Instruments Required": o.instruments_required.value,  # read by the AP patcher (ap_goal.py), not by LASR
         "Stealing": _STEALING[o.stealing.value],
         "Boss Cutscenes": True,
-        "Song Cutscenes": False,
+        "Song Cutscenes": False,  # player setting
         "Movement Speed": True,
         "Chest Animations": True,
         "Key Animations": True,
-        "Item Get Animations": False,
+        "Item Get Animations": False,  # not implemented by LASR
         "Item Pool": "Standard",
         "Traps": _TRAPS[o.traps.value],
         "Nice Bombs": True,
-        "Nice Hookshot": False,
+        "Nice Hookshot": False,  # player setting
         "Nice Magic Rod": True,
+        # player settings
         "Damage": "Normal",
         "Music": "Vanilla",
-        "Randomize Sound Effects": False,
         "Randomize Text": False,
         "Randomize Environments": False,
-        "Disable Low Health Beep": False,
         "360 Movement": False,
         "Blur Removal": False,
-        "Instant Text": False,
         "Disable Guardian Acorn": False,
         "Disable Piece of Power": False,
+        # not implemented by LASR
+        "Randomize Sound Effects": False,
+        "Disable Low Health Beep": False,
+        "Instant Text": False,
         "Rupees": o.starting_rupees.value,
         "Containers": 0,
         "Pieces": 0,

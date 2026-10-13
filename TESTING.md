@@ -197,6 +197,14 @@ The sandbox is shared with every other session: take the lock (Emulator, "Sharin
 - **Out-of-logic toggle** (2026-10-13). On the overworld map X hides the red dots and shows them again without leaving the map; closed while hidden, the map opens without them. Y (hide markers) leaves them hidden. X on the Tail Cave map opens no memories. The caption reads "Toggle out of logic" with the X glyph (`map_tracker`).
 - **Chamber Stone variant.** A chest holding it (key cut to 31 characters) loads its room, and the item-get shows the stone (2026-10-13).
 - **Instruments Required** (2026-10-14). With 1 required, each instrument alone (granted with the Ballad in a new game) opens the egg after the Ballad and Link enters `Lv09WindFishsEgg`; with none it stays shut. So `HasItem` itemType 45–52 are Full Moon Cello to Thunder Drum. The song shows only the instruments held. With 3 required, two instruments leave it shut and a third opens it (`egg_goal`). `verify_patch.py` finds no `HasAllInstruments` left below eight.
+- **Player settings** (2026-10-14, two-slot seed with ChecksFinder, patched with every player setting changed from its default and Damage Normal). The installed `config.ini` has `full_360`, the nice hookshot and blur removal; `ItemDrop.gsheet` has no drop in `GuardianAcorn` and `PowerPiece`. In game:
+  - Randomize Text: Marin's line names another speaker. The AP texts are intact: "You got Piece of Heart from Finder!", "You found Map Bombs for Finder!" (`island_bush`), the warp menu's question and choices (`warp_menu`).
+  - Song Cutscenes: talking to Marin with the Ocarina skips her song; Link makes a sad face and gets her item ("You found your Secret Seashell!"), and the server gets the check. Marin is in the village only after Link has walked out of Tarin's house once, which sets LASR's start flags.
+  - 360 Movement: a stick held 20° below horizontal moves Link at 19.97° (eight directions would snap to 0°).
+  - Randomize Environments: Tarin's house shows another environment's lighting.
+  - Reinstall: through `patch_and_install` into the sandbox, the same settings skip patching and changed settings patch again.
+  - Starting Gear with two Heart Containers: a new game starts with five hearts (`hc=3`, bits 0 and 1).
+  - Client window: the Patch tab shows the game settings below the install status; `/setting music shuffled` and `/setting movement_360 on` (fed to the window's stdin) update the tab and `host.yaml`, and an unknown value is refused.
 - **Patch data.** `scripts/verify_patch.py` checks that every shuffled chest holds the placeholder with the right index and a key of at most 31 characters, and that every randomized heart piece and seashell actor has its own index above the received range (static check).
 
 ## Not yet verified in-game
@@ -205,6 +213,8 @@ The sandbox is shared with every other session: take the lock (Emulator, "Sharin
 - The dungeon bosses' and the Armos Knight's drops, and the Kanalet bombed guard. Boss drops use `item_get_manager.get`, like Lanmola's and the instruments.
 - The ending with fewer than eight instruments. Statically: no event of the egg dungeon or the ending (`WindFish.bfevfl`) checks instruments, and `ending_part3` sets `ShadowClear` without conditions.
 - DeathLink (out of scope for now) and real hardware.
+- Player settings without a visible or textual effect in the sandbox: Music (the sandbox emulator is muted), Damage None and OHKO, Nice Hookshot, Blur Removal, and that enemies never drop Guardian Acorns or Pieces of Power with the Disable settings.
+- Mouse clicks on the Patch tab's game settings (SDL ignores clicks posted from outside; `/setting` changes them).
 
 ## Building the exlaunch module
 
