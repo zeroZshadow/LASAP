@@ -127,8 +127,9 @@ if egg.exists():
 if required < 8 and (ap_goal.ALL_QUERY in queries or ap_goal.ITEM_QUERY not in queries):
     bad += 1
     print(f"EGG still checks {ap_goal.ALL_QUERY} with {required} instruments required")
-if required >= 8 and egg.exists():
+# LASR writes the egg's event in every patch; with all eight required its switches stay as they are.
+if required >= 8 and egg.exists() and queries.count(ap_goal.ALL_QUERY) != ap_goal.SWITCHES:
     bad += 1
-    print("EGG event changed with all instruments required")
+    print(f"EGG event lost its {ap_goal.ALL_QUERY} checks with all instruments required")
 print(f"egg instruments={required} item checks={queries.count(ap_goal.ITEM_QUERY)} bad={bad}")
 sys.exit(1 if bad else 0)
