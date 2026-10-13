@@ -197,10 +197,10 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Blur Removal": False,
         "Disable Guardian Acorn": False,
         "Disable Piece of Power": False,
+        "Instant Text": False,  # done by the module; LASR never implemented it
+        "Disable Low Health Beep": False,  # done by the module; LASR never implemented it
         # not implemented by LASR
         "Randomize Sound Effects": False,
-        "Disable Low Health Beep": False,
-        "Instant Text": False,
         "Rupees": o.starting_rupees.value,
         "Containers": 0,
         "Pieces": 0,

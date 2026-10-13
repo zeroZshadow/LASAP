@@ -15,6 +15,7 @@
 #include "Hooks/Randomizer/seashells.hpp"
 #include "Hooks/Mods/controls.hpp"
 #include "Hooks/Mods/fixes.hpp"
+#include "Hooks/Mods/tweaks.hpp"
 // #include "Hooks/Mods/test_mods.hpp"
 
 namespace ModLoader {
@@ -45,6 +46,7 @@ namespace ModLoader {
     inline void InstallMods() {
         Controls::InstallHooks();
         GeneralFixes::InstallHooks();
+        Tweaks::Install();
         // TestMods::InstallHooks();
     }
 }

@@ -147,6 +147,8 @@ PLAYER_SETTINGS = {
     "Randomize Environments": False,
     "Disable Guardian Acorn": False,
     "Disable Piece of Power": False,
+    "Instant Text": False,
+    "Disable Low Health Beep": False,
 }
 PLAYER_CHOICES = {"Damage": ("None", "Normal", "OHKO"), "Music": ("Vanilla", "Shuffled", "Removed")}
 # ItemDrop.gsheet rows the game drops after a run of kills without damage; the settings empty them.
@@ -381,6 +383,9 @@ class APModsProcess(mod_generator.ModsProcess):
         path = self.config_dir / "config.ini"
         text = path.read_text()
         text = text.replace("full_direction = ", f"full_360 = {self.settings['360 Movement']}\nfull_direction = ", 1)
+        # Settings LASR lists but never implemented; the module does them.
+        text += (f"\n[tweaks]\ninstant_text = {self.settings.get('Instant Text', False)}\n"
+                 f"no_low_health_beep = {self.settings.get('Disable Low Health Beep', False)}\n")
         path.write_text(text + f"\n[archipelago]\nseed_hash = {self.seed_hash}\n")
         # What each location holds, so the found text names it before the client connects (DESIGN.md)
         with open(self.config_dir / "ap_names.txt", "w", encoding="utf-8", newline="\n") as f:
