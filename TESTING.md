@@ -125,6 +125,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
   - With a running Eden and no emulator set, it filled in Eden and the game from Eden's recent files, and installed nothing.
   - With Eden set, it installed into Eden's `load` folder, and the game in Eden reported the seed.
   - With Ryujinx and the sandbox SD card, it found the game in the sandbox's game folders, installed in about 6 s, and started Ryujinx with `--root-data-dir` and the game. Opening the same seed again skipped patching.
+  - Patch tab: Play and Reinstall mod are off while an install runs, and the tab ends with the green "Done" line (2026-10-13).
   - The clean checkout's `host.yaml` has the RomFS dump and patcher command; tests that set an emulator use the sandbox SD card or Eden (installed for testing).
 - **Multi-game generation.** Eight seeds with two LAS slots on default options plus Hollow Knight, The Messenger, TUNIC and ChecksFinder generate and write their patch files.
 - **Connection loss** (two-slot seed with ChecksFinder, items sent with the server's `/send_location`):
