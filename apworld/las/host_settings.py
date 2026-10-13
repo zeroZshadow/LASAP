@@ -17,6 +17,7 @@ class PlayerSetting(NamedTuple):
 # The patcher's PLAYER_SETTINGS has the same LASR settings and defaults.
 PLAYER_SETTINGS = (
     PlayerSetting("movement_360", "360 Movement", "360° movement", False),
+    PlayerSetting("movement_speed", "Movement Speed", "Walk and swim 20% faster", True),
     PlayerSetting("blur_removal", "Blur Removal", "No blur at the screen's edges", False),
     PlayerSetting("skip_song_cutscenes", "Song Cutscenes", "Skip the song cutscenes", False),
     PlayerSetting("nice_hookshot", "Nice Hookshot", "Hookshot grabs any surface", False),
@@ -91,6 +92,9 @@ class LASSettings(settings.Group):
     class Movement360(settings.Bool):
         """Walk in any direction instead of eight."""
 
+    class MovementSpeed(settings.Bool):
+        """Walk and swim 20% faster."""
+
     class BlurRemoval(settings.Bool):
         """Remove the blur at the edges of the screen."""
 
@@ -119,6 +123,7 @@ class LASSettings(settings.Group):
         """Enemies never drop a Piece of Power."""
 
     movement_360: Union[Movement360, bool] = False
+    movement_speed: Union[MovementSpeed, bool] = True
     blur_removal: Union[BlurRemoval, bool] = False
     skip_song_cutscenes: Union[SkipSongCutscenes, bool] = False
     nice_hookshot: Union[NiceHookshot, bool] = False

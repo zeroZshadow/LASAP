@@ -200,6 +200,7 @@ The sandbox is shared with every other session: take the lock (Emulator, "Sharin
   - Song Cutscenes: talking to Marin with the Ocarina skips her song; Link makes a sad face and gets her item ("You found your Secret Seashell!"), and the server gets the check. Marin is in the village only after Link has walked out of Tarin's house once, which sets LASR's start flags.
   - 360 Movement: a stick held 20° below horizontal moves Link at 19.97° (eight directions would snap to 0°).
   - Randomize Environments: Tarin's house shows another environment's lighting.
+  - Movement Speed (2026-10-14, synthetic patch, file 1): the module logs `walk_speed | 1.2`. Holding the stick south from (33, 10.5, 128.5) for 600 ms / 1600 ms walks 2.43 / 7.08 units off and 2.89 / 8.29 on, the same within 0.03 over three runs each: full walking speed 4.65 against 5.40 units/s (+16%).
   - Reinstall: through `patch_and_install` into the sandbox, the same settings skip patching and changed settings patch again.
   - Starting Gear with two Heart Containers: a new game starts with five hearts (`hc=3`, bits 0 and 1).
   - Client window: the Patch tab shows the game settings below the install status; `/setting music shuffled` and `/setting movement_360 on` (fed to the window's stdin) update the tab and `host.yaml`, and an unknown value is refused.
@@ -210,7 +211,7 @@ The sandbox is shared with every other session: take the lock (Emulator, "Sharin
 - Owl statues as locations.
 - The dungeon bosses' and the Armos Knight's drops, and the Kanalet bombed guard. Boss drops use `item_get_manager.get`, like Lanmola's and the instruments.
 - DeathLink (out of scope for now) and real hardware.
-- Player settings without a visible or textual effect in the sandbox: Music (the sandbox emulator is muted), Damage None and OHKO, Nice Hookshot, Blur Removal, and that enemies never drop Guardian Acorns or Pieces of Power with the Disable settings.
+- Player settings without a visible or textual effect in the sandbox: Music (the sandbox emulator is muted), Damage None and OHKO, Nice Hookshot, Blur Removal, Movement Speed while swimming, and that enemies never drop Guardian Acorns or Pieces of Power with the Disable settings.
 - Mouse clicks on the Patch tab's game settings (SDL ignores clicks posted from outside; `/setting` changes them).
 
 ## Building the exlaunch module

@@ -138,6 +138,7 @@ DUNGEON_ITEM_PREFIXES = ("compass", "map", "stone", "key", "nightmare")
 # over the values the patch file carries. Their default and, for choices, the values allowed.
 PLAYER_SETTINGS = {
     "360 Movement": False,
+    "Movement Speed": True,
     "Blur Removal": False,
     "Song Cutscenes": False,
     "Nice Hookshot": False,
@@ -149,6 +150,8 @@ PLAYER_SETTINGS = {
     "Disable Piece of Power": False,
 }
 PLAYER_CHOICES = {"Damage": ("None", "Normal", "OHKO"), "Music": ("Vanilla", "Shuffled", "Removed")}
+# Walking and swimming speed with Movement Speed on: LASR's single speed (dashing stays at 1.0)
+MOVEMENT_SPEED = 1.2
 # ItemDrop.gsheet rows the game drops after a run of kills without damage; the settings empty them.
 BUFF_DROPS = {"Disable Guardian Acorn": "GuardianAcorn", "Disable Piece of Power": "PowerPiece"}
 
@@ -377,10 +380,12 @@ class APModsProcess(mod_generator.ModsProcess):
 
     def makeConfig(self) -> None:
         super().makeConfig()
-        # LASR names 360 movement full_direction; the module reads full_360.
+        # LASR writes full_direction and speed; the module reads full_360 and a speed per kind of movement.
+        speed = MOVEMENT_SPEED if self.settings["Movement Speed"] else 1.0
         path = self.config_dir / "config.ini"
         text = path.read_text()
-        text = text.replace("full_direction = ", f"full_360 = {self.settings['360 Movement']}\nfull_direction = ", 1)
+        text = text.replace("full_direction = ", f"full_360 = {self.settings['360 Movement']}\n"
+                            f"walk_speed = {speed}\nswim_speed = {speed}\nfull_direction = ", 1)
         path.write_text(text + f"\n[archipelago]\nseed_hash = {self.seed_hash}\n")
         # What each location holds, so the found text names it before the client connects (DESIGN.md)
         with open(self.config_dir / "ap_names.txt", "w", encoding="utf-8", newline="\n") as f:
