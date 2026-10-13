@@ -42,10 +42,11 @@ the Archipelago Launcher. It is needed once, as Archipelago's installer only doe
 ### Game settings
 
 The Patch tab's game settings change how your own game looks and plays, for every seed: 360° movement, walking and
-swimming 20% faster (on unless you turn it off), no blur at the screen's edges, skipping the song cutscenes, a hookshot that grabs any surface, the damage Link takes (None,
-Normal or OHKO), the music (Vanilla, Shuffled or Removed), shuffled dialogue, shuffled room lighting, and no Guardian
-Acorns or Pieces of Power. After a change, Play reinstalls the mod; restart the game to see it. They change nothing
-for the other players.
+swimming 20% faster (on unless you turn it off), no blur at the screen's edges, skipping the song cutscenes, a
+hookshot that grabs any surface, the damage Link takes (None, Normal or OHKO), the music (Vanilla, Shuffled or
+Removed), shuffled dialogue, shuffled room lighting, no Guardian Acorns or Pieces of Power, text that shows a page at
+once instead of letter by letter, and no beep at low health. After a change, Play reinstalls the mod; restart the
+game to see it. They change nothing for the other players.
 
 To start with more hearts, add Heart Containers to `start_inventory_from_pool` in your options file, e.g.
 `Heart Container: 2` for five hearts.

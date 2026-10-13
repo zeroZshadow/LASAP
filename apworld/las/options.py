@@ -147,6 +147,14 @@ class StartingInstruments(Range):
     default = 0
 
 
+class InstrumentsRequired(Range):
+    """How many of the eight instruments open the Wind Fish's Egg. Starting instruments count toward it."""
+    display_name = "Instruments Required"
+    range_start = 0
+    range_end = 8
+    default = 8
+
+
 class ChestAppearance(Choice):
     """Whether a chest's look tells what it holds, as in the original randomizer.
     uniform: every chest looks the same. size: big chests hold important items. texture_and_size: also a texture
@@ -276,6 +284,7 @@ class LASOptions(PerGameCommonOptions):
     dungeon_items: DungeonItems
     instruments: Instruments
     starting_instruments: StartingInstruments
+    instruments_required: InstrumentsRequired
     starting_rupees: StartingRupees
     open_mabe: OpenMabe
     open_kanalet: OpenKanalet
@@ -299,6 +308,7 @@ class LASOptions(PerGameCommonOptions):
 OPTION_GROUPS = [
     OptionGroup("Locations", [Chests, FreeGifts, TradeQuest, GoldenLeaves, HeartPieces, Seashells, Miscellaneous, Shop,
                               BossDrops, Dampe, Rapids, Fishing, BlueRupees, OwlStatues, SeashellMansion]),
+    OptionGroup("Goal", [InstrumentsRequired]),
     OptionGroup("Dungeon Items", [Keys, DungeonItems, Instruments]),
     OptionGroup("Start", [StartingInstruments, StartingRupees]),
     OptionGroup("World", [OpenMabe, OpenKanalet, OpenMamu, CompletedBridge, ClassicD2, FreeBook, FastFishing,

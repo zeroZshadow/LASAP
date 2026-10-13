@@ -53,6 +53,7 @@ from RandomizerCore.Tools import event_tools  # noqa: E402
 from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct  # noqa: E402
 import ap_assets  # noqa: E402
 import ap_ghost  # noqa: E402
+import ap_goal  # noqa: E402
 import ap_map  # noqa: E402
 import ap_model  # noqa: E402
 
@@ -148,6 +149,8 @@ PLAYER_SETTINGS = {
     "Randomize Environments": False,
     "Disable Guardian Acorn": False,
     "Disable Piece of Power": False,
+    "Instant Text": False,
+    "Disable Low Health Beep": False,
 }
 PLAYER_CHOICES = {"Damage": ("None", "Normal", "OHKO"), "Music": ("Vanilla", "Shuffled", "Removed")}
 # Walking and swimming speed with Movement Speed on: LASR's single speed (dashing stays at 1.0)
@@ -386,6 +389,9 @@ class APModsProcess(mod_generator.ModsProcess):
         text = path.read_text()
         text = text.replace("full_direction = ", f"full_360 = {self.settings['360 Movement']}\n"
                             f"walk_speed = {speed}\nswim_speed = {speed}\nfull_direction = ", 1)
+        # Settings LASR lists but never implemented; the module does them.
+        text += (f"\n[tweaks]\ninstant_text = {self.settings.get('Instant Text', False)}\n"
+                 f"no_low_health_beep = {self.settings.get('Disable Low Health Beep', False)}\n")
         path.write_text(text + f"\n[archipelago]\nseed_hash = {self.seed_hash}\n")
         # What each location holds, so the found text names it before the client connects (DESIGN.md)
         with open(self.config_dir / "ap_names.txt", "w", encoding="utf-8", newline="\n") as f:
@@ -601,6 +607,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         add_rooster_flag(proc.file_manager)
     if patch["settings"].get("Ammo Ghost", True):  # the option's default, also for patches without it
         ap_ghost.add(proc.file_manager)
+    # all eight for patches from before the option
+    ap_goal.set_instrument_count(proc.file_manager, patch["settings"].get("Instruments Required", 8))
     map_tracker = patch["settings"].get("Map Tracker", False)  # off for patches from before the option
     if map_tracker:
         ap_map.add(proc.file_manager, proc.config_dir, patch["location_ids"], PLACEHOLDER_KEY)
