@@ -10,6 +10,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
   - `.venv-ap`: Archipelago requirements (`vendor/Archipelago/requirements.txt`) plus pytest, and the patcher's `requirements.txt` for the world from source.
   - `.venv-lasr`: the patcher's requirements with the asset tools (`patcher/requirements-assets.txt`: oead, quicktex, Pillow on top of `requirements.txt`).
 - `vendor/Archipelago`: Archipelago 0.6.8, with a junction `vendor/Archipelago/worlds/las` → `apworld/las`.
+  - Universal Tracker: `tracker.apworld` (FarisTheAncient/Archipelago releases) in `custom_worlds`, with an empty `Players` folder in `vendor/Archipelago` (without it, UT's settings open a folder browser). Headless, `launch("--nogui", "--list", "--name", <slot>, "--connect", <host:port>)` from `worlds.tracker.TrackerClient` logs the in-logic locations at error level; `sys.argv` must contain `--nogui` before the import.
 
 ## Emulator: Ryubing (Ryujinx fork)
 

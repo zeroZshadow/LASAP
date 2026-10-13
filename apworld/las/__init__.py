@@ -4,6 +4,7 @@ from collections import Counter
 from typing import Any, ClassVar, Dict, List, Mapping, Set
 
 from BaseClasses import CollectionState, Item, ItemClassification, Region, Tutorial
+from Options import PerGameCommonOptions
 from Fill import fill_restrictive
 from worlds.AutoWorld import WebWorld, World
 from worlds.LauncherComponents import Component, SuffixIdentifier, Type, components, launch as launch_component
@@ -53,6 +54,9 @@ GOAL_LOCATION = "Wind Fish"
 GOAL_EVENT = "Victory"
 PATCH_FORMAT = 1
 EARLY_LOCATIONS_WANTED = 10
+# the options in the slot data ("options"), from which Universal Tracker regenerates the slot
+SLOT_DATA_OPTIONS = tuple(name for name in LASOptions.type_hints
+                          if name not in PerGameCommonOptions.type_hints and name != "start_inventory_from_pool")
 
 
 class LASWorld(World):
@@ -81,13 +85,27 @@ class LASWorld(World):
     pre_fill_items: List[Item]
     restricted: Dict[str, Set[str]]  # AP item name -> LASR locations it must be placed in
 
+    ut_can_gen_without_yaml = True  # Universal Tracker regenerates the slot from its slot data
+
+    @staticmethod
+    def interpret_slot_data(slot_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Universal Tracker passes the result back to generate_early as multiworld.re_gen_passthrough[GAME]."""
+        return slot_data
+
     def generate_early(self) -> None:
+        passthrough = getattr(self.multiworld, "re_gen_passthrough", {}).get(GAME)
+        if passthrough:
+            for name, value in passthrough["options"].items():
+                setattr(self.options, name, LASOptions.type_hints[name].from_any(value))
         options = self.options
         self.settings_tokens = lasr_settings.logic_tokens(options)
         self.compiler = LogicCompiler(LOGIC, options.logic.current_key, self.settings_tokens,
                                       LASR_TO_ITEM)
 
-        self.starting_instruments = self.random.sample(INSTRUMENTS, options.starting_instruments.value)
+        if passthrough:
+            self.starting_instruments = list(passthrough["starting_instruments"])
+        else:
+            self.starting_instruments = self.random.sample(INSTRUMENTS, options.starting_instruments.value)
         self.starting_items = list(self.starting_instruments)
         if options.dungeon_items == options.dungeon_items.option_start_with:
             for number in range(9):
@@ -333,6 +351,9 @@ class LASWorld(World):
             "death_link": bool(self.options.death_link.value),
             "location_count": len(self.shuffled),
             "settings": {key: settings[key] for key in lasr_settings.TRACKER_SETTINGS},
+            # what Universal Tracker regenerates the slot from (interpret_slot_data)
+            "options": self.options.as_dict(*SLOT_DATA_OPTIONS),
+            "starting_instruments": self.starting_instruments,
             # what the slot's rules depend on, for the client's in-logic locations (tracker.py)
             "logic": {
                 "preset": self.options.logic.current_key,

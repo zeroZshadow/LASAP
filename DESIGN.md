@@ -113,11 +113,13 @@ An Archipelago player container (`container.py`, `APPlayerContainer`): a zip wit
 
 ## slot_data
 
-`{"seed_hash": str, "goal": str, "death_link": bool, "location_count": int, "settings": {...}, "logic": {...}}`
+`{"seed_hash": str, "goal": str, "death_link": bool, "location_count": int, "settings": {...}, "logic": {...}, "options": {...}, "starting_instruments": [...]}`
 
 `settings` holds the seed's LASR settings that decide which checks exist and what reaches them (`TRACKER_SETTINGS` in `lasr_settings.py`), under LASR's names and values (`"Preset": "Basic"`, `"Owl Gifts": "None"`, `"Seashell Mansion": 15`, ...), as the options set them. Trackers such as PopTracker packs read them on connect.
 
 `logic` is what the client needs to evaluate the world's rules for the map tracker (`tracker.py`): `preset` (the logic option), `tokens` (the settings tokens the rules test), `vanilla` (fixed locations that keep a progression item, whose items count as found once they are reachable), `locked` (AP locations holding their own progression item, whose items count as found once they are reachable, until the location is checked and the received item counts instead) and `starting` (the slot's starting items: the patch grants them, so the server does not send them).
+
+`options` (the world's own option values, `SLOT_DATA_OPTIONS`) and `starting_instruments` (the LASR instruments the slot starts with) let Universal Tracker regenerate the slot without a YAML: the world sets `ut_can_gen_without_yaml`, `interpret_slot_data` returns the slot data, and `generate_early` takes the options and starting instruments from `multiworld.re_gen_passthrough` instead of the YAML and the seed's random. Universal Tracker asks the server for the starting inventory (items_handling `0b111`), which the LAS client leaves out. `test_universal_tracker.py` checks that the regenerated slot has the same regions, locations, locked items and reachability. Universal Tracker sweeps only event locations, so it counts a locked location's item once the server sends it (after the check); the LAS client counts it once the location is reachable.
 
 ## Data storage
 
