@@ -431,11 +431,12 @@ class File:
             # Fixing this by adding one entry object per struct, and not one objet with number of structs
             # self.relocTbl.entries[-1].structs = [[pos + i * 8 for i in range(min(count, 0xFF))]]
             self.relocTbl.entries[-1].structs = []
+            # The name pointers are 16 bytes apart (one per dictionary node).
             for i in range(min(count, 0xFF)):
-                self.relocTbl.entries[-1].structs.append([pos + i * 8])
+                self.relocTbl.entries[-1].structs.append([pos + i * 16])
             self.relocTbl.entries[-1].paddingCount = 1
 
-            pos += min(count, 0xFF) * 8
+            pos += min(count, 0xFF) * 16
             count -= 0xFF
 
         self.texContainer.dictAddr = self.texNameDict.pos

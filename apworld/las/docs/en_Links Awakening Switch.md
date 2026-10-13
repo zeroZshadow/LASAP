@@ -56,9 +56,10 @@ like. Together with the warp menu below, this keeps you from getting stuck witho
 ## Where are my checks?
 
 With the Map Tracker option (on by default), the map in the pause menu shows them. The whole overworld map is
-revealed from the start, and an icon marks each spot with checks. Its look tells whether the items you have reach
-all of its checks you have not done, some of them, none yet, or whether they are all done; hover it to see their
-names. In dungeons the map shows every room and the chests (open once checked, also when a server command checked
+revealed from the start, and a dot marks each spot with checks, a larger one where there are several: green when
+the items you have reach all of its checks you have not done, yellow for some of them, red for none yet, grey with a
+tick once they are all done. A dot beside each dungeon's entrance does the same for the checks inside. Hover a dot to
+see the checks' names. Only checks your options shuffle get a dot. In dungeons the map shows every room and the chests (open once checked, also when a server command checked
 them), and a chest icon in each room with other checks (key drops, owl statues, the boss) opens once they are done. The dungeon map, compass and stone beak are still items to
 find: the side panel shows the ones you have.
 

@@ -2,14 +2,15 @@
 
 Run with .venv-ap: python scripts/map_positions.py [<PopTracker pack folder>] [--romfs D:/Games/Switch/LASRomFS]
 
-Overworld checks get world coordinates (x, z):
+Overworld checks get world coordinates (x, z, y; the map draws higher places further north):
 - an item actor in an overworld room (LASR's *_ROOMS tables): the actor's position;
 - a check inside a building or cave (a room table, or DOOR_LEVELS for NPCs, shops and games): the door into it on the
   overworld (its AreaLevelOpen actor);
 - an NPC or statue outside (ACTOR_PREFIXES): that actor;
 - anything else: the LASR PopTracker pack's pin (github.com/Br00ty/lasr_brooty).
 The pack's pins become world coordinates by an affine fit through the checks with an actor position; where a level
-has several doors or a prefix several actors, the one nearest the pin counts.
+has several doors or a prefix several actors, the one nearest the pin counts. A position without an actor (a room,
+a pin) takes the height of the overworld actor nearest to it.
 Dungeon checks get their room and level coordinates: the item actor or owl statue, else the room's upper left.
 """
 import argparse
@@ -130,12 +131,18 @@ class Level:
         for room in self.field_rooms():
             for actor in room.actors:
                 if actor.name.startswith(b"AreaLevelOpen") and isinstance(actor.parameters[0], bytes):
-                    doors.setdefault(actor.parameters[0].decode(), []).append((actor.posX, actor.posZ))
+                    doors.setdefault(actor.parameters[0].decode(), []).append((actor.posX, actor.posZ, actor.posY))
         return doors
 
     def field_actors(self, prefix: str) -> list:
-        return [(actor.posX, actor.posZ) for room in self.field_rooms() for actor in room.actors
+        return [(actor.posX, actor.posZ, actor.posY) for room in self.field_rooms() for actor in room.actors
                 if actor.name.startswith(prefix.encode())]
+
+    def height(self, point) -> tuple:
+        """(x, z, y): the point at the height of the overworld actor nearest to it."""
+        if "heights" not in self.cache:
+            self.cache["heights"] = [(a.posX, a.posZ, a.posY) for room in self.field_rooms() for a in room.actors]
+        return point[0], point[1], nearest(self.cache["heights"], point)[2]
 
 
 def item_actors(room: Room, prefixes=ITEM_ACTORS) -> list:
@@ -144,7 +151,7 @@ def item_actors(room: Room, prefixes=ITEM_ACTORS) -> list:
         param = actor.parameters[0] if actor.parameters else None
         if actor.name.startswith(tuple(p.encode() for p in prefixes)) or (
                 isinstance(param, bytes) and param.startswith(ITEM_PARAMS)):
-            found.append((actor.posX, actor.posZ))
+            found.append((actor.posX, actor.posZ, actor.posY))
     return found
 
 
@@ -224,7 +231,7 @@ def main() -> None:
         if re.match(r"D\d-", lasr):
             actors = item_actors(level.room(room), DUNGEON_ACTORS)
             if len(actors) == 1:
-                x, z = actors[0]
+                x, z, _ = actors[0]
             else:  # the room's upper left, clear of the boss icon in its middle
                 x0, z0 = room_rect(room)
                 x, z = x0 + ROOM_W / 4, z0 + ROOM_H / 4
@@ -239,7 +246,7 @@ def main() -> None:
     fx = solve3(rows, [w[0] for _, w in anchors])
     fz = solve3(rows, [w[1] for _, w in anchors])
     fitted = {loc: (fx[0] * p[0] + fx[1] * p[1] + fx[2], fz[0] * p[0] + fz[1] * p[1] + fz[2]) for loc, p in pins.items()}
-    errors = [math.dist(fitted[loc], exact[loc]) for loc in exact if loc in fitted]
+    errors = [math.dist(fitted[loc], exact[loc][:2]) for loc in exact if loc in fitted]
     print(f"pin fit: {len(anchors)} anchors, mean error {sum(errors) / len(errors):.1f}, max {max(errors):.1f}")
 
     sources = {}
@@ -252,16 +259,16 @@ def main() -> None:
         if lasr in exact:
             pos, source = exact[lasr], "actor"
         elif room and room.startswith("Field_"):
-            pos, source = clamp_to_room(pin, room), "room"
+            pos, source = level.height(clamp_to_room(pin, room)), "room"
         elif door_level in doors:
             pos, source = nearest(doors[door_level], pin), "door"
         elif lasr in ACTOR_PREFIXES:
             pos, source = nearest(level.field_actors(ACTOR_PREFIXES[lasr]), pin), "npc"
         elif pin:
-            pos, source = pin, "pin"
+            pos, source = level.height(pin), "pin"
         else:
             raise SystemExit(f"{lasr}: no position")
-        overworld[lasr] = [round(pos[0], 2), round(pos[1], 2)]
+        overworld[lasr] = [round(pos[0], 2), round(pos[1], 2), round(pos[2], 2)]
         sources[source] = sources.get(source, 0) + 1
     print("overworld:", sources, "dungeon:", len(dungeon))
 

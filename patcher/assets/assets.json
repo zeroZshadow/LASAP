@@ -23,6 +23,12 @@
   "patch": "ObjTreasureBoxLifeUpgrade.bfres.bsdiff4",
   "sha256": "1749ff53f277df884f9a9e6b8ef85949e76e6e127347b9f69855a00a1d447eb6"
  },
+ "region_common/ui/Game.arc": {
+  "source": "region_common/ui/Game.arc",
+  "source_sha256": "18ea6abf4b4504715aaa87197942743d1d1a15d677871f2ac5afdae08d065339",
+  "patch": "Game.arc.bsdiff4",
+  "sha256": "a2a443ce7ae98321b7bfbb3dbca1ebda54a01c42881a7cf0db6ad674f0b03bb1"
+ },
  "region_common/ui/StartUp.arc": {
   "source": "region_common/ui/StartUp.arc",
   "source_sha256": "9af42d950e386e3fcc17f39bff5e7a0dd355bad33840fd16957db0300d6eecb1",

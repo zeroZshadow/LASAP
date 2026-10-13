@@ -63,8 +63,12 @@ if patch["settings"].get("Map Tracker"):
     dungeon = {int(p[1]): (float(p[2]), float(p[3]), [int(i) for i in p[4:]]) for p in lines if p[0] == "D"}
     iconed = [i for ids in overworld.values() for i in ids] + [i for *_, ids in dungeon.values() for i in ids]
     positions = ap_map.load_positions()
-    want = [int(i) for loc, i in patch["location_ids"].items()
-            if loc in positions["overworld"] or (loc in positions["dungeon"] and loc not in CHEST_ROOMS)]
+    # overworld icons: overworld and dungeon checks (at the dungeon's entrance); dungeon icons: the dungeons' checks
+    # that are not chests
+    want = [int(i) for loc, i in patch["location_ids"].items() if loc in positions["overworld"]]
+    want += [int(i) for loc, i in patch["location_ids"].items() if loc in positions["dungeon"]]
+    want += [int(i) for loc, i in patch["location_ids"].items()
+             if loc in positions["dungeon"] and loc not in CHEST_ROOMS]
     if sorted(iconed) != sorted(want):
         bad += 1
         print(f"MAP ICONS cover {len(iconed)} locations, want {len(want)}")
@@ -75,7 +79,7 @@ if patch["settings"].get("Map Tracker"):
         print(f"MAP CHESTS found {len(chests)}, want {len(want)}")
     sheets = out / "atmosphere/contents/01006BB00C6F0000/romfs/region_common/datasheets"
     flags = {str(row["mFirstShowFlagName"]) for row in readSheet(str(sheets / "UiFieldMapIcons.gsheet"))["values"]}
-    missing = [g for g in overworld if any(f"{ap_map.FLAG_PREFIX}{mark}{g}" not in flags for mark, _ in ap_map.LOOKS)]
+    missing = [g for g in overworld if any(f"{ap_map.FLAG_PREFIX}{mark}{g}" not in flags for mark in ap_map.LOOKS)]
     rows = {(round(float(row["posX"]), 2), round(float(row["posZ"]), 2))
             for row in readSheet(str(sheets / "UiDungeonIcon.gsheet"))["values"]}
     missing += [g for g, (x, z, _) in dungeon.items() if (round(x, 2), round(z, 2)) not in rows]

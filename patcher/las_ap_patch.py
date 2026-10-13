@@ -458,10 +458,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
     if patch["settings"].get("Ammo Ghost", True):  # the option's default, also for patches without it
         ap_ghost.add(proc.file_manager)
-    if patch["settings"].get("Map Tracker", False):  # off for patches from before the option
+    map_tracker = patch["settings"].get("Map Tracker", False)  # off for patches from before the option
+    if map_tracker:
         ap_map.add(proc.file_manager, proc.config_dir, patch["location_ids"], PLACEHOLDER_KEY)
     try:
-        for path in (ap_assets.MODEL, ap_assets.UI):
+        for path in (ap_assets.MODEL, ap_assets.UI) + ((ap_assets.GAME,) if map_tracker else ()):
             ap_assets.install(args.romfs, proc.romfs_dir, path)
     except ap_assets.AssetError as e:
         print(e)
