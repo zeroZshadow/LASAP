@@ -4,9 +4,12 @@ Run with .venv-ap: python scripts/map_positions.py [<PopTracker pack folder>] [-
 
 Overworld checks get world coordinates (x, z):
 - an item actor in an overworld room (LASR's *_ROOMS tables): the actor's position;
-- a check inside a building or cave: the door into it on the overworld (its AreaLevelOpen actor);
-- anything else (NPCs, shops, games): the LASR PopTracker pack's pin (github.com/Br00ty/lasr_brooty), converted to
-  world coordinates by an affine fit through the checks with an actor position.
+- a check inside a building or cave (a room table, or DOOR_LEVELS for NPCs, shops and games): the door into it on the
+  overworld (its AreaLevelOpen actor);
+- an NPC or statue outside (ACTOR_PREFIXES): that actor;
+- anything else: the LASR PopTracker pack's pin (github.com/Br00ty/lasr_brooty).
+The pack's pins become world coordinates by an affine fit through the checks with an actor position; where a level
+has several doors or a prefix several actors, the one nearest the pin counts.
 Dungeon checks get their room and level coordinates: the item actor or owl statue, else the room's upper left.
 """
 import argparse
@@ -29,6 +32,31 @@ OUT = ROOT / "patcher" / "map_positions.json"
 IDS = json.loads((ROOT / "apworld" / "las" / "data" / "ids.json").read_text(encoding="utf-8"))
 RANDOMIZERS = ROOT / "patcher" / "RandomizerCore" / "Randomizers"
 ROOM_W, ROOM_H = 15.0, 12.0  # a room (screen) in world units; room <row><col> spans x 15·col.., z 12·(row - 1)..
+
+# Checks in buildings without a room table: the level whose overworld door marks them.
+DOOR_LEVELS = {
+    "sale": "BananaHouse", "mermaid-cave": "MermaidStatue", "christine-trade": "ChristineHouse",
+    "christine-grateful": "ChristineHouse", "invisible-zora": "HiddenZoraHouse", "chef-bear": "BearHouse",
+    "goriya-trader": "BoomerangCave", "tarin": "MarinTarinHouse", "mamasha": "QuadupletHouse", "ciao-ciao": "MadamHouse",
+    "armos-knight": "ArmosShrine", "mr-write": "DrWrightHouse", "mad-batter-bay": "MadBattersWell01",
+    "mad-batter-woods": "MadBattersWell02", "mad-batter-taltal": "MadBattersWell03", "mamu": "MamuCave",
+    "manbo": "MamboCave", "syrup": "MagicPowderHouse", "dream-shrine-left": "BedRoom",
+    **{f"dampe-{part}": "DanpeiHouse" for part in ("page-1", "heart-challenge", "page-2", "bottle-challenge", "final")},
+    **{loc: "Shop" for loc in ("shop-slot3-1st", "shop-slot3-2nd", "shop-slot5-1st", "shop-slot5-2nd", "shop-slot5-3rd",
+                               "shop-slot5-4th", "shop-slot5-5th", "shop-slot5-6th", "shop-slot5-7th", "shop-slot6")},
+    **{f"{n}-seashell-reward": "SeashellHouse" for n in (5, 15, 30, 40, 50)},
+    **{f"rapids-race-{n}": "RapidsRideTicket" for n in (45, 35, 30)},
+    **{f"trendy-prize-{n}": "CraneGame" for n in (1, 2, 3, 4, 5, 6, "final")},
+}
+# Checks at an NPC or statue outside: its actor's name prefix.
+ACTOR_PREFIXES = {
+    "walrus": "NpcWalrus", "kiki": "NpcKiki", "papahl": "NpcPapahl", "tarin-ukuku": "NpcTarin", "marin": "NpcMarin",
+    "mermaid-martha": "NpcMermaidMa", "lanmola": "EnemyLanmola", "ghost-reward": "ObjGhostsGrave",
+    "grandma-yahoo": "NpcGrandmaUl",
+    **{f"fishing-{part}": "NpcFisherman" for part in ("orange", "50", "100", "150", "cheep-cheep", "ol-baron", "loose")},
+    **{f"owl-statue-{place}": "ObjFieldOwlS" for place in ("below-D8", "moblin-cave", "pothole", "above-cave",
+                                                           "south-bay", "desert", "maze", "rapids", "taltal-east")},
+}
 
 # Actors that hold a check, by name prefix or by their first parameter (rocks, bushes and holes hiding an item).
 ITEM_ACTORS = ("ObjTreasureBox", "ItemHeartPiece", "ItemSeashell", "ItemGoldenLeaf", "ItemSmallKey", "ItemInstrument",
@@ -93,14 +121,21 @@ class Level:
             self.cache[name] = Room((self.root / name.split("_")[0] / f"{name}.leb").read_bytes())
         return self.cache[name]
 
+    def field_rooms(self):
+        return [self.room(path.stem) for path in sorted((self.root / "Field").glob("Field_*.leb"))]
+
     def field_doors(self) -> dict:
         """Level -> positions of the overworld doors (AreaLevelOpen) into it."""
         doors = {}
-        for path in sorted((self.root / "Field").glob("Field_*.leb")):
-            for actor in self.room(path.stem).actors:
+        for room in self.field_rooms():
+            for actor in room.actors:
                 if actor.name.startswith(b"AreaLevelOpen") and isinstance(actor.parameters[0], bytes):
                     doors.setdefault(actor.parameters[0].decode(), []).append((actor.posX, actor.posZ))
         return doors
+
+    def field_actors(self, prefix: str) -> list:
+        return [(actor.posX, actor.posZ) for room in self.field_rooms() for actor in room.actors
+                if actor.name.startswith(prefix.encode())]
 
 
 def item_actors(room: Room, prefixes=ITEM_ACTORS) -> list:
@@ -213,12 +248,15 @@ def main() -> None:
             continue
         room = rooms.get(lasr)
         pin = fitted.get(lasr)
+        door_level = DOOR_LEVELS.get(lasr) or (room.split("_")[0] if room else None)
         if lasr in exact:
             pos, source = exact[lasr], "actor"
         elif room and room.startswith("Field_"):
             pos, source = clamp_to_room(pin, room), "room"
-        elif room and room.split("_")[0] in doors:
-            pos, source = nearest(doors[room.split("_")[0]], pin), "door"
+        elif door_level in doors:
+            pos, source = nearest(doors[door_level], pin), "door"
+        elif lasr in ACTOR_PREFIXES:
+            pos, source = nearest(level.field_actors(ACTOR_PREFIXES[lasr]), pin), "npc"
         elif pin:
             pos, source = pin, "pin"
         else:
