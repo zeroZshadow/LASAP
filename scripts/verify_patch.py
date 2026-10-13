@@ -1,8 +1,9 @@
 """Static checks on patcher output: every chest location holds the AP placeholder (the model variant of
 `location_models`) with its local id, and every randomized heart piece and seashell actor has a unique index above
 the received range (DESIGN.md, item model). With the map tracker on, every AP location has one icon in ap_map.txt and
-every icon its datasheet row. With in-game hints, every hint source shows its own message, which fits the text box,
-and a server hint sets its flag, which ap_hints.txt names with the hinted location.
+every icon its datasheet row. Below eight required instruments, the egg's event checks single instruments instead of
+all of them. With in-game hints, every hint source shows its own message, which fits the text box, and a server hint
+sets its flag, which ap_hints.txt names with the hinted location.
 
 python scripts/verify_patch.py <patch.aplas> <patcher output dir>
 """
@@ -11,6 +12,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "patcher"))
+import ap_goal  # noqa: E402
+import evfl  # noqa: E402
 from RandomizerCore.Randomizers.chests import CHEST_ROOMS  # noqa: E402
 from RandomizerCore.Tools.leb import Room  # noqa: E402
 from las_ap_patch import (ACTOR_INDICES, COMPANION_FLAGS, INDEX_KINDS, INDICES_FILE, PLACEHOLDER_KEY,  # noqa: E402
@@ -118,7 +121,6 @@ print(f"kept locations={len(kept)} bad={bad}")
 hints = patch.get("hints", {})
 if hints:
     import re  # noqa: E402
-    import evfl  # noqa: E402
     import ap_hints  # noqa: E402
     from RandomizerCore.Tools.oead_tools import readSheet  # noqa: E402
     from RandomizerCore.Tools.text_tools import TextFile  # noqa: E402
@@ -176,4 +178,21 @@ if hints:
                 bad += 1
                 print(f"HINT {source}: {room} has {len(statues)} statues with {entry}")
     print(f"hints={len(hints)} server={len(want_lines)} bad={bad}")
+
+# Instruments Required: below eight, the egg's event checks single instruments instead of all of them.
+required = patch["settings"].get("Instruments Required", 8)
+egg = Path(sys.argv[2]) / "atmosphere/contents/01006BB00C6F0000/romfs/region_common/event" / ap_goal.EVENT_FILE
+queries = []
+if egg.exists():
+    flow = evfl.EventFlow()
+    flow.read(egg.read_bytes())
+    queries = [e.data.actor_query.v.v for e in flow.flowchart.events
+               if getattr(e.data, "actor_query", None) is not None]
+if required < 8 and (ap_goal.ALL_QUERY in queries or ap_goal.ITEM_QUERY not in queries):
+    bad += 1
+    print(f"EGG still checks {ap_goal.ALL_QUERY} with {required} instruments required")
+if required >= 8 and egg.exists():
+    bad += 1
+    print("EGG event changed with all instruments required")
+print(f"egg instruments={required} item checks={queries.count(ap_goal.ITEM_QUERY)} bad={bad}")
 sys.exit(1 if bad else 0)

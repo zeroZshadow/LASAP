@@ -1,7 +1,7 @@
 """PC client: bridges the Archipelago server and the game's exlaunch module (TCP line protocol, see DESIGN.md)."""
 import asyncio
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import Utils
 from CommonClient import ClientCommandProcessor, CommonContext, get_base_parser, gui_enabled, logger, server_loop
@@ -10,6 +10,7 @@ from NetUtils import ClientStatus, HintStatus
 from .container import LASContainer
 from .ids import LOCATION_BASE, LOCATION_OFFSETS
 from . import checklist, emulators
+from .host_settings import PLAYER_SETTINGS, player_value
 from .install import InstallError, patch_and_install
 from .items import GAME, ITEM_GAME_INFO
 from .tracker import LogicTracker
@@ -65,6 +66,32 @@ class LASCommandProcessor(ClientCommandProcessor):
     def _cmd_start(self) -> None:
         """Start the emulator with the game."""
         asyncio.create_task(self.ctx.start_emulator())
+
+    def _cmd_setting(self, key: str = "", value: str = "") -> None:
+        """Show the game settings, or set one, e.g. /setting music Shuffled or /setting nice_hookshot on."""
+        settings = {s.key: s for s in PLAYER_SETTINGS}
+        if not key:
+            for s in PLAYER_SETTINGS:
+                value = self.ctx.player_option(s.key)
+                shown = ("on" if value else "off") if s.choices is None else value
+                logger.info(f"{s.key}: {shown} ({'/'.join(s.choices or ('on', 'off'))}) - {s.label}")
+            return
+        if key not in settings or not value:
+            logger.error("Usage: /setting <name> <value>, with a name from /setting.")
+            return
+        setting = settings[key]
+        if setting.choices is None:
+            if value.lower() not in ("on", "off", "true", "false"):
+                logger.error(f"{key} is on or off.")
+                return
+            self.ctx.set_player_option(key, value.lower() in ("on", "true"))
+        else:
+            choice = next((c for c in setting.choices if c.lower() == value.lower()), None)
+            if choice is None:
+                logger.error(f"{key} is one of {', '.join(setting.choices)}.")
+                return
+            self.ctx.set_player_option(key, choice)
+        logger.info(self.ctx.check_setup().checks["installed"].text)
 
     def _cmd_setup(self) -> None:
         """Show the patch settings and what is missing (the Patch tab has the same)."""
@@ -466,11 +493,33 @@ class LASContext(CommonContext):
             self.detect_from_emulator()
         self.refresh_patch_tab()
 
+    @staticmethod
+    def player_option(key: str) -> Any:
+        """A player setting (host_settings.PLAYER_SETTINGS) as the patcher takes it."""
+        from . import LASWorld
+        setting = next(s for s in PLAYER_SETTINGS if s.key == key)
+        return player_value(setting, getattr(LASWorld.settings, key))
+
+    def set_player_option(self, key: str, value: Any) -> None:
+        import settings
+        from . import LASWorld
+        if self.player_option(key) == value:
+            return
+        setattr(LASWorld.settings, key, value)
+        settings.get_settings().save()
+        self.refresh_patch_tab()
+
+    @staticmethod
+    def player_settings() -> Dict[str, Any]:
+        from . import LASWorld
+        return LASWorld.settings.player_settings()
+
     def install_target(self) -> Optional[emulators.Target]:
         return emulators.target(self.option("emulator"), self.option("sd_card_folder"), self.option("mod_folder"))
 
     def check_setup(self) -> checklist.Checklist:
-        return checklist.check(self.patch_file or "", {key: self.option(key) for key in OPTION_KEYS})
+        return checklist.check(self.patch_file or "", {key: self.option(key) for key in OPTION_KEYS},
+                               self.player_settings())
 
     def detect_from_emulator(self) -> None:
         """Fills in the game file and RomFS dump the emulator knows about, when they are empty."""
@@ -553,7 +602,7 @@ class LASContext(CommonContext):
             try:
                 await asyncio.to_thread(patch_and_install, self.option("patcher_command"), Path(self.patch_file),
                                         checks.seed_hash, emulators.romfs_root(self.option("romfs_folder")),
-                                        target.sd_card, target.mods, log, True)
+                                        target.sd_card, target.mods, log, True, self.player_settings())
             except (InstallError, OSError) as e:
                 self.report("error", f"Patching failed: {e} The Archipelago tab shows the patcher's output.", True)
                 self.show_patch_tab()

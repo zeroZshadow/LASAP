@@ -48,6 +48,11 @@ struct PatchConfig {
     } randomizer;
 
     struct {
+        bool instant_text;
+        bool no_low_health_beep;
+    } tweaks;
+
+    struct {
         std::string seed_hash;
         int port = 0; // 0: AP::PORT
     } archipelago;
@@ -122,6 +127,9 @@ struct PatchConfig {
             else if (current_section == "randomizer") {
                 parseRandomizer(key, value);
             }
+            else if (current_section == "tweaks") {
+                parseTweaks(key, value);
+            }
             else if (current_section == "archipelago") {
                 if (key == "seed_hash") {
                     archipelago.seed_hash = value;
@@ -187,6 +195,15 @@ struct PatchConfig {
     void parseDamage(std::string key, std::string value) {
         if (key == "mode") {
             damage.mode = value;
+        }
+    }
+
+    void parseTweaks(std::string key, std::string value) {
+        if (key == "instant_text" && value == "true") {
+            tweaks.instant_text = true;
+        }
+        else if (key == "no_low_health_beep" && value == "true") {
+            tweaks.no_low_health_beep = true;
         }
     }
 

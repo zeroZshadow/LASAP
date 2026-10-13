@@ -124,7 +124,8 @@ TRACKER_SETTINGS = ("Preset", "Chests", "Free Gifts", "Trade Quest", "Golden Lea
 
 
 def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str, Any]:
-    """LASR's SettingsManager.fetch()["Settings"] for these options; unsupported settings keep LASR's defaults."""
+    """LASR's SettingsManager.fetch()["Settings"] for these options; unsupported settings keep LASR's defaults.
+    The player settings (host_settings.PLAYER_SETTINGS) carry their defaults: the client sets them when patching."""
     vanilla = set(vanilla)
     o = options
     settings: Dict[str, Any] = {
@@ -175,29 +176,32 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Shuffled Powder": bool(o.shuffled_powder),
         "Ammo Ghost": bool(o.ammo_ghost),  # read by the AP patcher (ap_ghost.py), not by LASR
         "Map Tracker": bool(o.map_tracker),  # read by the AP patcher (ap_map.py), not by LASR
+        "Instruments Required": o.instruments_required.value,  # read by the AP patcher (ap_goal.py), not by LASR
         "Stealing": _STEALING[o.stealing.value],
         "Boss Cutscenes": True,
-        "Song Cutscenes": False,
-        "Movement Speed": True,
+        "Song Cutscenes": False,  # player setting
         "Chest Animations": True,
         "Key Animations": True,
-        "Item Get Animations": False,
+        "Item Get Animations": False,  # not implemented by LASR
         "Item Pool": "Standard",
         "Traps": _TRAPS[o.traps.value],
         "Nice Bombs": True,
-        "Nice Hookshot": False,
+        "Nice Hookshot": False,  # player setting
         "Nice Magic Rod": True,
+        # player settings
         "Damage": "Normal",
         "Music": "Vanilla",
-        "Randomize Sound Effects": False,
         "Randomize Text": False,
         "Randomize Environments": False,
-        "Disable Low Health Beep": False,
         "360 Movement": False,
+        "Movement Speed": True,
         "Blur Removal": False,
-        "Instant Text": False,
         "Disable Guardian Acorn": False,
         "Disable Piece of Power": False,
+        "Instant Text": False,  # done by the module; LASR never implemented it
+        "Disable Low Health Beep": False,  # done by the module; LASR never implemented it
+        # not implemented by LASR
+        "Randomize Sound Effects": False,
         "Rupees": o.starting_rupees.value,
         "Containers": 0,
         "Pieces": 0,
