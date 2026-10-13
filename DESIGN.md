@@ -113,7 +113,9 @@ An Archipelago player container (`container.py`, `APPlayerContainer`): a zip wit
 
 ## slot_data
 
-`{"seed_hash": str, "goal": str, "death_link": bool, "location_count": int, "settings": {...}, "logic": {...}, "options": {...}, "starting_instruments": [...]}`
+`{"seed_hash": str, "goal": str, "instruments_required": int, "death_link": bool, "location_count": int, "settings": {...}, "logic": {...}, "options": {...}, "starting_instruments": [...]}`
+
+`goal` is always `wind_fish`: the Nightmare beaten after the egg opened with `instruments_required` instruments (Goal).
 
 `settings` holds the seed's LASR settings that decide which checks exist and what reaches them (`TRACKER_SETTINGS` in `lasr_settings.py`), under LASR's names and values (`"Preset": "Basic"`, `"Owl Gifts": "None"`, `"Seashell Mansion": 15`, ...), as the options set them. Trackers such as PopTracker packs read them on connect.
 
@@ -196,6 +198,11 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 - A ghost stands in Tarin's house once Link has found bombs or the bow, and tops bombs and arrows (of those he has) up to 15 each time Link talks to him. The option is on by default; a patch without the settings key gets him too.
 - He is an `NpcGhost` actor added to `MarinTarinHouse_01A`. The follower ghost that used `NpcGhost` never spawns in LASR (the ghost's reward is at his grave), so the patcher rewrites the entry: Tarin's talk settings, a talk trigger on the `Ghost.bfevfl` entry `APAmmoGhost`, and layout conditions on the flags `BombsFoundFlag` (LASR's getting flag for bombs) and `APBowFound` (the bow's getting flag, which the patcher adds). Every added item sets its getting flag. He has no collision: Link walks through him.
 - The event shows `Scenario:APAmmoGhost`, then adds `Bomb` and `Arrow` with count 15 and index `AP::AMMO_REFILL_INDEX`, each behind a check of its flag. With that index the module's `AddItemID` hook adds only what is missing to reach the count.
+
+**Goal** (option `instruments_required`, settings key `Instruments Required`; `patcher/ap_goal.py`)
+- The goal is the Nightmare beaten (`ShadowClear`, reported as `GOAL`). The Wind Fish's egg opens with `instruments_required` of the eight instruments (0–8, default 8); starting instruments count. All eight stay progression items.
+- **Logic.** LASR's `egg` region asks for all eight. With fewer, `lasr.goal_logic` replaces them by the count token `instruments:N`, which `LogicCompiler` resolves through `lasr.COUNTED`: it holds with N different instruments (`instruments:0` always holds).
+- **Patch.** The egg's song (`WindFishsEgg.bfevfl`, entry `orchestra`) asks `Inventory.HasAllInstruments` at four switches: the instruments' playing, the song's length, the fade, and whether the egg opens (`oepn`). Below eight, the patcher turns each into a chain of `Inventory.HasItem` checks, one per instrument (itemType 45–52, Full Moon Cello to Thunder Drum), that reaches the switch's case 1 once enough are held and its case 0 once they can no longer be. With eight, or without the settings key, the file stays as it is.
 
 **Map tracker** (option `map_tracker`, settings key `Map Tracker`; `patcher/ap_map.py`, `ap_map.cpp`)
 - The pause map shows the slot's unchecked locations, and the whole overworld and every dungeon room are revealed. Off for a patch without the settings key.

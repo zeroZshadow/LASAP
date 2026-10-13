@@ -90,6 +90,21 @@ INSTRUMENTS = (
 INSTRUMENT_LOCATIONS = tuple(f"D{i}-instrument" for i in range(1, 9))
 DUNGEON_REWARD_LOCATIONS = INSTRUMENT_LOCATIONS + ("D0-fairy-1", "D0-fairy-2")
 
+# The count token of the egg's condition: "instruments:N" holds with N different instruments (logic.py, counted).
+INSTRUMENTS_TOKEN = "instruments"
+COUNTED = {INSTRUMENTS_TOKEN: INSTRUMENTS}
+
+
+def goal_logic(instruments_required: int) -> Dict[str, Dict[str, Any]]:
+    """The logic with the Wind Fish's egg opening at this many instruments."""
+    if instruments_required >= len(INSTRUMENTS):
+        return LOGIC
+    parts = [part.strip() for part in LOGIC["egg"]["condition-basic"].split("&")]
+    assert set(INSTRUMENTS) <= set(parts), parts
+    parts = [part for part in parts if part not in INSTRUMENTS] + [f"{INSTRUMENTS_TOKEN}:{instruments_required}"]
+    return {**LOGIC, "egg": {**LOGIC["egg"], "condition-basic": " & ".join(parts)}}
+
+
 TRAPS = ("zap-trap", "drown-trap", "squish-trap", "deathball-trap", "quake-trap")
 
 

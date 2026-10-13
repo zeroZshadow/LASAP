@@ -10,6 +10,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "patcher"))
+import ap_goal  # noqa: E402
+import evfl  # noqa: E402
 from RandomizerCore.Randomizers.chests import CHEST_ROOMS  # noqa: E402
 from RandomizerCore.Tools.leb import Room  # noqa: E402
 from las_ap_patch import (ACTOR_INDICES, COMPANION_FLAGS, INDEX_KINDS, INDICES_FILE, PLACEHOLDER_KEY,  # noqa: E402
@@ -112,4 +114,20 @@ if found != expected or len(kept) != len(expected):
     bad += 1
     print(f"KEPT {kept} != {expected}")
 print(f"kept locations={len(kept)} bad={bad}")
+# Instruments Required: below eight, the egg's event checks single instruments instead of all of them.
+required = patch["settings"].get("Instruments Required", 8)
+egg = Path(sys.argv[2]) / "atmosphere/contents/01006BB00C6F0000/romfs/region_common/event" / ap_goal.EVENT_FILE
+queries = []
+if egg.exists():
+    flow = evfl.EventFlow()
+    flow.read(egg.read_bytes())
+    queries = [e.data.actor_query.v.v for e in flow.flowchart.events
+               if getattr(e.data, "actor_query", None) is not None]
+if required < 8 and (ap_goal.ALL_QUERY in queries or ap_goal.ITEM_QUERY not in queries):
+    bad += 1
+    print(f"EGG still checks {ap_goal.ALL_QUERY} with {required} instruments required")
+if required >= 8 and egg.exists():
+    bad += 1
+    print("EGG event changed with all instruments required")
+print(f"egg instruments={required} item checks={queries.count(ap_goal.ITEM_QUERY)} bad={bad}")
 sys.exit(1 if bad else 0)

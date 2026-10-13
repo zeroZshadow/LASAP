@@ -1,0 +1,44 @@
+# Instruments Required (DESIGN.md, Goal): with 3 required, the Wind Fish's egg stays shut with two instruments and
+# opens with a third. Run after newgame_file2 on a mod patched with Instruments Required 3 (default starting gear:
+# the ocarina and Manbo's Mambo). DBG grant adds the Ballad and the instruments without an item-get.
+send DBG grant Song_WindFish 1 -1 0
+expect OK.grant 10
+send DBG grant ConchHorn 1 -1 0
+expect OK.grant 10
+send DBG grant SeaLilysBell 1 -1 0
+expect OK.grant 10
+# On the stairs below the egg, inside the area where the Ballad starts its song.
+warp Field 98.25 32.25 8.25
+# The ocarina with the Ballad on X: the item menu's cursor starts top left, the ocarina is below it; X opens its
+# songs with the cursor on the last one (the Mambo), left moves to the Ballad, X sets it.
+send DBG input 400 300
+await 5 paused=1
+wait 2
+send DBG input 8000 300
+wait 1
+send DBG input 4 600
+wait 1.5
+send DBG input 1000 300
+wait 1
+send DBG input 4 600
+wait 1.5
+send DBG input 400 300
+await 5 paused=0
+wait 1
+# Two instruments: the song plays, the egg stays shut and walking north stays on the mountain.
+send DBG input 4 400
+await 10 event=22
+free 90
+send DBG input 0 3000 0 32767
+wait 5
+level Field
+# A third instrument opens it, and walking north enters the egg.
+send DBG grant CoralTriangle 1 -1 0
+expect OK.grant 10
+warp Field 98.25 32.25 8.25
+send DBG input 4 400
+await 10 event=22
+free 90
+send DBG input 0 3000 0 32767
+await 15 level=Lv09WindFishsEgg
+state
