@@ -146,7 +146,8 @@ class TestVanillaHeavy(LASTestBase):
         from ..lasr_settings import CATEGORY_SETTINGS, fixed_locations
         locked = set(self.world.locked)
         self.assertIn("40-seashell-reward", locked)
-        self.assertIn("D1-instrument", locked)
+        instruments = {f"D{n}-instrument" for n in range(1, 9)}
+        self.assertEqual(len(instruments & locked), 8 - len(self.world.starting_instruments))
         for loc in locked:
             location = self.multiworld.get_location(LOCATION_NAMES[loc], self.player)
             self.assertEqual(location.address, self.world.location_name_to_id[LOCATION_NAMES[loc]])
