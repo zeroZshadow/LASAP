@@ -39,6 +39,17 @@ seed again without starting the game.
 "Open .aplas files with a double-click" at the bottom of the Patch tab sets Windows up to open `.aplas` files with
 the Archipelago Launcher. It is needed once, as Archipelago's installer only does this for the games it ships with.
 
+### Game settings
+
+The Patch tab's game settings change how your own game looks and plays, for every seed: 360° movement, no blur at
+the screen's edges, skipping the song cutscenes, a hookshot that grabs any surface, the damage Link takes (None,
+Normal or OHKO), the music (Vanilla, Shuffled or Removed), shuffled dialogue, shuffled room lighting, and no Guardian
+Acorns or Pieces of Power. After a change, Play reinstalls the mod; restart the game to see it. They change nothing
+for the other players.
+
+To start with more hearts, add Heart Containers to `start_inventory_from_pool` in your options file, e.g.
+`Heart Container: 2` for five hearts.
+
 ### Advanced settings
 
 The Patch tab's advanced settings are for setups the client cannot find by itself:

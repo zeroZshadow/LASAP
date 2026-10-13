@@ -2,6 +2,7 @@
 import configparser
 import importlib
 import io
+import json
 import shlex
 import shutil
 import subprocess
@@ -11,18 +12,21 @@ import threading
 import traceback
 import zipfile
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from .emulators import TITLE_ID
+from .host_settings import PLAYER_DEFAULTS
 
 CONFIG_PATH = Path("config", "lasr-exl", "config.ini")
 # Config files the patcher writes only for some options (the map tracker's icons); an install without one removes it.
 OPTIONAL_CONFIG = ("ap_map.txt",)
 # Next to the config: the build of the built-in patcher that wrote the installed mod, so a newer world reinstalls it.
 BUILD_PATH = CONFIG_PATH.with_name("patcher_build.txt")
+# Next to the config: the player settings the installed mod was patched with; the patch's defaults when missing.
+SETTINGS_PATH = CONFIG_PATH.with_name("player_settings.json")
 MOD_PARTS = ("romfs", "exefs")
 # mod_state results
-CURRENT, OUTDATED, OTHER_SEED, NONE = "current", "outdated", "other seed", "none"
+CURRENT, OUTDATED, OTHER_SEED, NONE, CHANGED = "current", "outdated", "other seed", "none", "settings changed"
 # The release world carries the patcher in <world>/patcher (scripts/build_release.py); from source, it is the
 # repository's patcher folder.
 PATCHER_PREFIX = f"{Path(__file__).parent.name}/patcher/"
@@ -58,9 +62,18 @@ def installed_seed(sd_card: Path, mods: Path) -> Optional[str]:
     return config.get("archipelago", "seed_hash", fallback=None)
 
 
-def mod_state(sd_card: Path, mods: Path, seed_hash: Optional[str], command: str) -> str:
+def installed_settings(sd_card: Path) -> Dict[str, Any]:
+    """The player settings the installed mod was patched with."""
+    try:
+        return {**PLAYER_DEFAULTS, **json.loads((sd_card / SETTINGS_PATH).read_text(encoding="utf-8"))}
+    except (OSError, ValueError, TypeError):
+        return dict(PLAYER_DEFAULTS)
+
+
+def mod_state(sd_card: Path, mods: Path, seed_hash: Optional[str], command: str,
+              settings: Optional[Dict[str, Any]] = None) -> str:
     """Whether the installed mod is the current one for `seed_hash`: CURRENT, OUTDATED (written by another build of
-    the built-in patcher), OTHER_SEED or NONE."""
+    the built-in patcher), CHANGED (patched with other player `settings`), OTHER_SEED or NONE."""
     installed = installed_seed(sd_card, mods)
     if installed is None:
         return NONE
@@ -71,7 +84,11 @@ def mod_state(sd_card: Path, mods: Path, seed_hash: Optional[str], command: str)
         installed_build = (sd_card / BUILD_PATH).read_text(encoding="utf-8").strip()
     except OSError:
         installed_build = None
-    return OUTDATED if build is not None and installed_build != build else CURRENT
+    if build is not None and installed_build != build:
+        return OUTDATED
+    if settings is not None and installed_settings(sd_card) != {**PLAYER_DEFAULTS, **settings}:
+        return CHANGED
+    return CURRENT
 
 
 class _ThreadOutput(io.TextIOBase):
@@ -174,7 +191,8 @@ def _forget_patcher_modules() -> None:
             del sys.modules[name]
 
 
-def run_builtin_patcher(patch_file: Path, romfs: Path, out: Path, log: Callable[[str], None]) -> None:
+def run_builtin_patcher(patch_file: Path, romfs: Path, out: Path, log: Callable[[str], None],
+                        extra: List[str]) -> None:
     """Runs the patcher in this process. Its modules are imported fresh for each run, as it keeps state in module
     globals, and are dropped afterwards."""
     root = builtin_patcher_dir(log)
@@ -187,7 +205,7 @@ def run_builtin_patcher(patch_file: Path, romfs: Path, out: Path, log: Callable[
         sys.stderr = _ThreadOutput(saved_streams[1], log)
         try:
             patcher = importlib.import_module("las_ap_patch")
-            code = patcher.main([str(patch_file), "--romfs", str(romfs), "--out", str(out)])
+            code = patcher.main([str(patch_file), "--romfs", str(romfs), "--out", str(out), *extra])
         except Exception as e:
             log(traceback.format_exc())
             raise InstallError(f"The patcher failed: {e}") from e
@@ -201,12 +219,14 @@ def run_builtin_patcher(patch_file: Path, romfs: Path, out: Path, log: Callable[
         raise InstallError(f"The patcher failed (exit code {code}).")
 
 
-def run_patcher(command: str, patch_file: Path, romfs: Path, out: Path, log: Callable[[str], None]) -> None:
-    """Runs the patcher command, or the patcher the world carries when it is empty."""
+def run_patcher(command: str, patch_file: Path, romfs: Path, out: Path, log: Callable[[str], None],
+                settings: Optional[Dict[str, Any]] = None) -> None:
+    """Runs the patcher command, or the patcher the world carries when it is empty, with these player settings."""
+    extra = ["--settings", json.dumps(settings)] if settings else []
     if not command.strip():
-        run_builtin_patcher(patch_file, romfs, out, log)
+        run_builtin_patcher(patch_file, romfs, out, log, extra)
         return
-    args = split_command(command) + [str(patch_file), "--romfs", str(romfs), "--out", str(out)]
+    args = split_command(command) + [str(patch_file), "--romfs", str(romfs), "--out", str(out), *extra]
     flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
     try:
         proc = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -221,9 +241,10 @@ def run_patcher(command: str, patch_file: Path, romfs: Path, out: Path, log: Cal
         raise InstallError(f"The patcher failed (exit code {proc.returncode}).")
 
 
-def install(out: Path, sd_card: Path, mods: Path, build: Optional[str] = None) -> None:
+def install(out: Path, sd_card: Path, mods: Path, build: Optional[str] = None,
+            settings: Optional[Dict[str, Any]] = None) -> None:
     """Replaces the mod's romfs and exefs folders, then the config, which carries the seed hash. `build` names the
-    built-in patcher's build that wrote the mod."""
+    built-in patcher's build that wrote the mod, `settings` the player settings it was patched with."""
     built = out / "atmosphere" / "contents" / TITLE_ID
     for part in MOD_PARTS:
         if not (built / part).is_dir():
@@ -240,6 +261,8 @@ def install(out: Path, sd_card: Path, mods: Path, build: Optional[str] = None) -
         (sd_card / BUILD_PATH).unlink(missing_ok=True)
     else:
         (sd_card / BUILD_PATH).write_text(build + "\n", encoding="utf-8")
+    (sd_card / SETTINGS_PATH).write_text(json.dumps({**PLAYER_DEFAULTS, **(settings or {})}) + "\n",
+                                         encoding="utf-8")
     for name in OPTIONAL_CONFIG:
         if not ((out / CONFIG_PATH).parent / name).exists():
             (config_dir / name).unlink(missing_ok=True)
@@ -249,16 +272,18 @@ def install(out: Path, sd_card: Path, mods: Path, build: Optional[str] = None) -
 
 
 def patch_and_install(command: str, patch_file: Path, seed_hash: str, romfs: Path, sd_card: Path, mods: Path,
-                      log: Callable[[str], None], force: bool = False) -> bool:
-    """Installs the mod for `patch_file` unless the current one is installed already. Returns whether it patched."""
+                      log: Callable[[str], None], force: bool = False,
+                      settings: Optional[Dict[str, Any]] = None) -> bool:
+    """Installs the mod for `patch_file` with these player settings unless it is installed already. Returns whether
+    it patched."""
     if not sd_card.is_dir():
         raise InstallError(f"The SD card folder {sd_card} does not exist.")
-    if not force and mod_state(sd_card, mods, seed_hash, command) == CURRENT:
+    if not force and mod_state(sd_card, mods, seed_hash, command, settings) == CURRENT:
         log(f"The mod for seed {seed_hash} is already installed in {mods}.")
         return False
     with tempfile.TemporaryDirectory(prefix="las-ap-") as tmp:
         log(f"Patching {patch_file.name}.")
-        run_patcher(command, patch_file, romfs, Path(tmp), log)
-        install(Path(tmp), sd_card, mods, None if command.strip() else builtin_patcher_build())
+        run_patcher(command, patch_file, romfs, Path(tmp), log, settings)
+        install(Path(tmp), sd_card, mods, None if command.strip() else builtin_patcher_build(), settings)
     log(f"Installed the mod for seed {seed_hash}: {mods} and {sd_card / CONFIG_PATH}.")
     return True

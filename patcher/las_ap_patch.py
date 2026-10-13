@@ -1,10 +1,11 @@
 """Builds the Link's Awakening (Switch) mod for one Archipelago slot.
 
-python las_ap_patch.py <patch.aplas> --romfs <romfs dump> --out <output dir>
+python las_ap_patch.py <patch.aplas> --romfs <romfs dump> --out <output dir> [--settings <JSON object>]
 
 Runs LASR's mod generator (RandomizerCore, MIT) on the placements from the AP patch file
 (format in DESIGN.md). Every location holding "ap-item" gives the Archipelago placeholder,
 whose AddItemID index is the location's local id; the exlaunch module reports it as a check.
+--settings overrides the player settings (PLAYER_SETTINGS) the patch file carries.
 """
 import argparse
 import copy
@@ -39,6 +40,7 @@ randomizer_paths.VERSION_PATH = HERE / "version.txt"
 import evfl  # noqa: E402
 import yaml  # noqa: E402
 from RandomizerCore import mod_generator  # noqa: E402
+from RandomizerCore.Fixes.Datasheets.item_drop import ItemDropDatasheetFixes  # noqa: E402
 from RandomizerCore.Fixes.Datasheets.items import ItemsDatasheetFixes  # noqa: E402
 from RandomizerCore.Helpers.file_manager import FileManager  # noqa: E402
 from RandomizerCore.Helpers.flag_manager import FlagManager  # noqa: E402
@@ -124,12 +126,31 @@ def variant_key(item_key: str) -> str:
 INDEXED_ITEMS = ("seashell", "heart-piece", "heart-container", "bottle", "golden-leaf", "chamber-stone")
 # Items counted by inventory bits, as the module names them in ap_indices.txt (AP::INDICES_PATH): kind letter per item
 INDEX_KINDS = {"seashell": "S", "heart-piece": "H", "golden-leaf": "L", "heart-container": "C"}
+# Item key -> kind and the bits the module gives received ones (AP::GrantItem, kHeartPieceBits, kSeashellBits)
+INDEX_BITS = {"Seashell": ("S", 50), "HeartPiece": ("H", 32), "GoldenLeaf": ("L", 5), "HeartContainer": ("C", 16)}
 INDICES_FILE = "ap_indices.txt"
 VANILLA_FILE = "ap_vanilla.txt"
 # The companions' locations and the flag their joining sets
 COMPANION_FLAGS = {"moblin-cave": "BowWowJoin", "rooster-statue": "RoosterFoundFlag"}
 ROOSTER_EVENT_FILE = "RoosterBones.bfevfl"
 DUNGEON_ITEM_PREFIXES = ("compass", "map", "stone", "key", "nightmare")
+# LASR settings that change neither the logic nor the item pool: the player picks them when patching (--settings),
+# over the values the patch file carries. Their default and, for choices, the values allowed.
+PLAYER_SETTINGS = {
+    "360 Movement": False,
+    "Blur Removal": False,
+    "Song Cutscenes": False,
+    "Nice Hookshot": False,
+    "Damage": "Normal",
+    "Music": "Vanilla",
+    "Randomize Text": False,
+    "Randomize Environments": False,
+    "Disable Guardian Acorn": False,
+    "Disable Piece of Power": False,
+}
+PLAYER_CHOICES = {"Damage": ("None", "Normal", "OHKO"), "Music": ("Vanilla", "Shuffled", "Removed")}
+# ItemDrop.gsheet rows the game drops after a run of kills without damage; the settings empty them.
+BUFF_DROPS = {"Disable Guardian Acorn": "GuardianAcorn", "Disable Piece of Power": "PowerPiece"}
 
 
 def _add_ap_flags(self) -> None:
@@ -261,6 +282,24 @@ def _chest_placeholder_branch(self) -> None:
     files.writeFile("TreasureBox.bfevfl", flow)
 
 
+def _starting_index(self, item, index):
+    """LASR adds starting items with index -1, which counts for none of the inventory bits that make up the count of
+    indexed items (heart containers, heart pieces, seashells, golden leaves). They take the bits a received item would
+    (STARTING_BITS)."""
+    if index == -1 and STARTING_BITS.get(item):
+        index = STARTING_BITS[item].pop(0)
+    return _original_get_without_animation(self, item, index)
+
+
+def _drop_buffs(self, sheet, settings) -> None:
+    """Disabled Guardian Acorns and Pieces of Power drop nothing, as LASR does for the drops it removes."""
+    _original_item_drop_changes(self, sheet, settings)
+    keys = {BUFF_DROPS[k] for k in BUFF_DROPS if settings.get(k)}
+    for row in sheet["values"]:
+        if row["mKey"] in keys:
+            row["mLotTable"][0]["mType"] = ""
+
+
 def _write_file(self, file_name: str, data) -> None:
     """Randomized heart piece and seashell actors show by their location flag alone. The Archipelago model gets an
     Npc entry, which the item-get shows."""
@@ -289,6 +328,8 @@ SHOP_NAMES: dict = {}
 # Placeholder item keys that show another item's model: key -> (that item's key, its npc key in items.yml).
 VARIANTS: dict = {}
 VARIANT_USES: dict = {}  # key -> number of locations showing it
+# Indexed item key -> inventory bits for the starting items, lowest first (starting_bits)
+STARTING_BITS: dict = {}
 
 _original_get_with_animation = ItemGetManager.getWithAnimation
 _original_write_file = FileManager.writeFile
@@ -300,6 +341,10 @@ _original_add_custom_flags = FlagManager.addCustomFlags
 _original_make_item_changes = ItemsDatasheetFixes.makeItemChanges
 _original_add_text_events = Keysanity.addTextEvents
 _original_create_text = Keysanity.createText
+_original_get_without_animation = ItemGetManager.getWithoutAnimation
+ItemGetManager.getWithoutAnimation = _starting_index
+_original_item_drop_changes = ItemDropDatasheetFixes.makeDatasheetChanges
+ItemDropDatasheetFixes.makeDatasheetChanges = _drop_buffs
 FlagManager.addCustomFlags = _add_ap_flags
 ItemsDatasheetFixes.makeItemChanges = _add_placeholder_row
 Keysanity.addTextEvents = _add_placeholder_text_event
@@ -332,8 +377,11 @@ class APModsProcess(mod_generator.ModsProcess):
 
     def makeConfig(self) -> None:
         super().makeConfig()
-        with open(self.config_dir / "config.ini", "a") as f:
-            f.write(f"\n[archipelago]\nseed_hash = {self.seed_hash}\n")
+        # LASR names 360 movement full_direction; the module reads full_360.
+        path = self.config_dir / "config.ini"
+        text = path.read_text()
+        text = text.replace("full_direction = ", f"full_360 = {self.settings['360 Movement']}\nfull_direction = ", 1)
+        path.write_text(text + f"\n[archipelago]\nseed_hash = {self.seed_hash}\n")
         # What each location holds, so the found text names it before the client connects (DESIGN.md)
         with open(self.config_dir / "ap_names.txt", "w", encoding="utf-8", newline="\n") as f:
             for local_id, (item, owner) in sorted(self.location_names.items()):
@@ -351,6 +399,23 @@ def load_patch(path: Path) -> dict:
         with zipfile.ZipFile(path) as zf:
             return json.loads(zf.read("patch.json").decode("utf-8"))
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def player_settings(text: str) -> dict:
+    """The --settings JSON object: player settings only, with values of their kind."""
+    try:
+        values = json.loads(text)
+    except ValueError as e:
+        raise ValueError(f"--settings is not JSON: {e}") from None
+    if not isinstance(values, dict):
+        raise ValueError("--settings is not a JSON object")
+    for key, value in values.items():
+        if key not in PLAYER_SETTINGS:
+            raise ValueError(f"--settings: {key} is no player setting")
+        allowed = PLAYER_CHOICES.get(key, (False, True))
+        if value not in allowed or type(value) is not type(PLAYER_SETTINGS[key]):
+            raise ValueError(f"--settings: {key} must be one of {', '.join(map(str, allowed))}")
+    return values
 
 
 def load_yaml(name: str):
@@ -398,6 +463,17 @@ def write_indices(config_dir: Path, logic: dict, patch: dict) -> None:
             placeholder = patch["placements"].get(loc) == "ap-item"
             lines.append(f"{kind} {entry['index']} {int(patch['location_ids'][loc]) if placeholder else -1}")
     (config_dir / INDICES_FILE).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+
+
+def starting_bits(logic: dict, patch: dict) -> dict:
+    """Per indexed item key, the inventory bits no vanilla source of the seed sets (see write_indices), lowest first:
+    the bits the module gives received items, which the starting items take first."""
+    vanilla = {kind: set() for kind, _ in INDEX_BITS.values()}
+    for loc, entry in logic.items():
+        kind = INDEX_KINDS.get(entry.get("content"))
+        if kind and entry.get("type") == "item" and "index" in entry and patch["placements"].get(loc) != "ap-item":
+            vanilla[kind].add(entry["index"])
+    return {key: [i for i in range(count) if i not in vanilla[kind]] for key, (kind, count) in INDEX_BITS.items()}
 
 
 def write_vanilla(config_dir: Path, logic: dict, item_defs: dict, patch: dict) -> None:
@@ -475,11 +551,18 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("patch", type=Path)
     parser.add_argument("--romfs", type=Path, required=True, help="RomFS dump of the base game (1.0.0)")
     parser.add_argument("--out", type=Path, required=True, help="Output folder (SD card root layout)")
+    parser.add_argument("--settings", default="{}", help="JSON object of player settings, e.g. "
+                                                         "'{\"Music\": \"Shuffled\"}'")
     args = parser.parse_args(argv)
 
     patch = load_patch(args.patch)
     if patch.get("format") != PATCH_FORMAT:
         print(f"Unsupported patch format {patch.get('format')}, expected {PATCH_FORMAT}")
+        return 1
+    try:
+        patch["settings"].update(player_settings(args.settings))
+    except ValueError as e:
+        print(e)
         return 1
     if not (args.romfs / "region_common" / "event" / "PlayerStart.bfevfl").exists():
         print(f"{args.romfs} is not a Link's Awakening RomFS dump")
@@ -494,6 +577,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     logic = load_yaml("logic.yml")
 
     placements = build_placements(patch, logic)
+    STARTING_BITS.update(starting_bits(logic, patch))
     seed = patch["seed_name"] + str(patch["player"])
     rng = random.Random(int(hashlib.sha256(seed.encode()).hexdigest()[:16], 16))
 

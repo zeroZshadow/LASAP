@@ -1,10 +1,10 @@
 """What the Patch tab shows next to each setting, and whether everything is ready to install."""
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from . import emulators
-from .install import CURRENT, NONE, OTHER_SEED, builtin_patcher_available, installed_seed, mod_state
+from .install import CHANGED, CURRENT, NONE, OTHER_SEED, builtin_patcher_available, installed_seed, mod_state
 
 OK, TODO, ERROR, INFO = "ok", "todo", "error", "info"
 
@@ -47,7 +47,8 @@ def romfs_help(exe: str) -> str:
     return f"Needed once: dump the game's RomFS with {name} (\"Extract RomFS\" or \"Dump RomFS\"), then choose it here."
 
 
-def check(patch_file: str, options: Dict[str, str]) -> Checklist:
+def check(patch_file: str, options: Dict[str, str], settings: Optional[Dict[str, Any]] = None) -> Checklist:
+    """The status of each setting in `options` (las_options); `settings` are the player settings to install with."""
     from .container import LASContainer
     result = Checklist()
     checks = result.checks
@@ -130,12 +131,14 @@ def check(patch_file: str, options: Dict[str, str]) -> Checklist:
     # installed mod
     if result.target is not None and result.target.sd_card.is_dir():
         state = mod_state(result.target.sd_card, result.target.mods, result.seed_hash,
-                          options.get("patcher_command", ""))
+                          options.get("patcher_command", ""), settings)
         if state == CURRENT:
             checks["installed"] = Check(OK, "The mod for this seed is installed.")
         elif state == OTHER_SEED:
             installed = installed_seed(result.target.sd_card, result.target.mods)
             checks["installed"] = Check(INFO, f"The mod for another seed ({installed}) is installed; Play replaces it.")
+        elif state == CHANGED:
+            checks["installed"] = Check(INFO, "The game settings changed; Play reinstalls the mod with them.")
         elif state == NONE:
             checks["installed"] = Check(INFO, "No mod installed yet: Play installs it.")
         else:

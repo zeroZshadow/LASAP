@@ -1,3 +1,4 @@
+import ast
 import sys
 import tempfile
 import unittest
@@ -7,6 +8,7 @@ from unittest import mock
 
 from .. import emulators, install
 from ..emulators import TITLE_ID
+from ..host_settings import PLAYER_DEFAULTS, PLAYER_SETTINGS
 from ..install import CONFIG_PATH, InstallError, installed_seed, patch_and_install, split_command
 
 # Stands in for las_ap_patch.py: writes the patcher's output layout for the seed named in the patch file.
@@ -157,6 +159,53 @@ class TestInstall(unittest.TestCase):
                 self.assertEqual(install.mod_state(self.sd, self.mods, "bbbb0002", ""), install.OTHER_SEED)
                 self.assertTrue(self.run_install("aaaa0001"))
                 self.assertEqual(install.mod_state(self.sd, self.mods, "aaaa0001", ""), install.CURRENT)
+
+    def test_player_settings_reinstall(self) -> None:
+        """The patcher gets the player settings; a mod patched with other settings is reinstalled."""
+        root = Path(self.tmp.name) / "patcher"
+        root.mkdir()
+        (root / "las_ap_patch.py").write_text(FAKE_BUILTIN)
+        self.command = ""
+        music = {"Music": "Shuffled"}
+        with mock.patch.object(install, "builtin_patcher_dir", return_value=root):
+            self.assertTrue(self.run_install("aaaa0001"))
+            # an install without the settings file counts as the defaults
+            (self.sd / install.SETTINGS_PATH).unlink()
+            self.assertEqual(install.mod_state(self.sd, self.mods, "aaaa0001", "", dict(PLAYER_DEFAULTS)),
+                             install.CURRENT)
+            self.assertEqual(install.mod_state(self.sd, self.mods, "aaaa0001", "", music), install.CHANGED)
+            self.patch.write_text("aaaa0001")
+            self.assertTrue(patch_and_install("", self.patch, "aaaa0001", self.romfs, self.sd, self.mods,
+                                              self.lines.append, settings=music))
+            self.assertIn("Mod written, run 1", self.lines)
+            self.assertEqual(install.mod_state(self.sd, self.mods, "aaaa0001", "", music), install.CURRENT)
+            self.assertFalse(patch_and_install("", self.patch, "aaaa0001", self.romfs, self.sd, self.mods,
+                                               self.lines.append, settings=music))
+
+    def test_player_settings_arguments(self) -> None:
+        """The settings reach the patcher command as a JSON object."""
+        script = Path(self.tmp.name) / "args patcher.py"
+        script.write_text(FAKE_PATCHER + "\nprint('ARGS ' + repr(sys.argv[sys.argv.index('--settings') + 1]))\n")
+        self.command = f'"{sys.executable}" "{script}"'
+        self.patch.write_text("aaaa0001")
+        patch_and_install(self.command, self.patch, "aaaa0001", self.romfs, self.sd, self.mods, self.lines.append,
+                          settings={"Music": "Removed", "360 Movement": True})
+        self.assertIn("ARGS '{\"Music\": \"Removed\", \"360 Movement\": true}'", self.lines)
+
+    def test_player_settings_match_patcher(self) -> None:
+        """The client's player settings are the patcher's, with the same defaults and choices."""
+        source = install.SOURCE_PATCHER / "las_ap_patch.py"
+        if not source.is_file():
+            self.skipTest("no patcher source")
+        tree = ast.parse(source.read_text(encoding="utf-8"))
+        values = {node.targets[0].id: ast.literal_eval(node.value) for node in tree.body
+                  if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name)
+                  and node.targets[0].id in ("PLAYER_SETTINGS", "PLAYER_CHOICES")}
+        self.assertEqual(values["PLAYER_SETTINGS"], PLAYER_DEFAULTS)
+        self.assertEqual(values["PLAYER_CHOICES"], {s.lasr: s.choices for s in PLAYER_SETTINGS if s.choices})
+        from ..host_settings import LASSettings
+        for setting in PLAYER_SETTINGS:
+            self.assertEqual(getattr(LASSettings, setting.key), setting.default, setting.key)
 
     def test_split_command(self) -> None:
         self.assertEqual(split_command('"C:/Program Files/py.exe" D:\\a\\b.py'),
