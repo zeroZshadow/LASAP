@@ -1,6 +1,7 @@
 #!/bin/bash
 # Installs a patcher output folder (SD layout) into the sandbox emulator: deploy_mod.sh <out dir>
 set -e
+"${LASAP_PY:-/d/DEV/LASAP/.venv-lasr/Scripts/python.exe}" "$(dirname "$0")/emu.py" check
 SB=/d/DEV/LASAP-sandbox/ryujinx/sdcard
 OUT="$1"
 rm -rf "$SB/atmosphere/contents/01006BB00C6F0000"

@@ -3,6 +3,7 @@
 #   reset_saves.sh           from a copy of the user's real Ryujinx saves (read-only on their side)
 #   reset_saves.sh newgame   from D:\DEV\LASAP-sandbox\save-newgame: file 2 created (name confirmed) but never played
 set -e
+"${LASAP_PY:-/d/DEV/LASAP/.venv-lasr/Scripts/python.exe}" "$(dirname "$0")/emu.py" check
 case "$1" in
     newgame) SRC=/d/DEV/LASAP-sandbox/save-newgame ;;
     "") SRC="$APPDATA/Ryujinx/bis/user/save" ;;

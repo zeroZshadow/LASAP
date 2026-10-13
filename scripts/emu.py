@@ -5,6 +5,14 @@ python emu.py stop                  kill the instance started by this script (by
 python emu.py shot <out.png>        capture the game window
 python emu.py log [regex]           print matching lines of the newest emulator log
 python emu.py wait <regex> [secs]   wait until the newest log matches
+python emu.py lock <owner>          take the sandbox for a session; fails while another owner holds it
+python emu.py unlock <owner>        give it back
+python emu.py check                 fail unless the sandbox is free or held by $LASAP_SANDBOX_OWNER
+
+Sessions that run side by side share the sandbox (data folder, emu.pid, port 43385, the e2e folder). A session takes
+the lock before it deploys, resets saves or starts the emulator, runs those with LASAP_SANDBOX_OWNER set to its
+owner name, and unlocks when its test run is over. `start`, `stop`, deploy_mod.sh and reset_saves.sh refuse while
+another owner holds the lock.
 
 The emulator's windows open without taking focus and stay behind other windows (`tuck`), so the sandbox can run
 while the user works or plays. They stay open: a minimized window may stop presenting frames.
@@ -23,6 +31,7 @@ DATA = os.path.join(SANDBOX, "ryujinx")
 GAME = r"D:\Games\Switch\The Legend of Zelda Links Awakening [01006BB00C6F0000][v0].nsp"
 LOGS = r"D:\Games\Ryujinx\Logs"
 PIDFILE = os.path.join(SANDBOX, "emu.pid")
+LOCKFILE = os.path.join(SANDBOX, "sandbox.lock")
 HERE = os.path.dirname(os.path.abspath(__file__))
 TUCK_SECONDS = 90  # how long after the start new emulator windows are sent behind the others
 SW_SHOWNOACTIVATE = 4
@@ -38,7 +47,54 @@ def newest_log() -> str:
     return path if os.path.getctime(path) >= started - 1 else ""
 
 
+def holder() -> str:
+    try:
+        return open(LOCKFILE, encoding="utf-8").read().split("	")[0]
+    except FileNotFoundError:
+        return ""
+
+
+def held_by_other(owner: str) -> str:
+    """The lock's holder when someone other than owner holds it, with how long ago they took it."""
+    who = holder()
+    if not who or who == owner:
+        return ""
+    minutes = (time.time() - os.path.getmtime(LOCKFILE)) / 60
+    return f"{who} (for {minutes:.0f} min)"
+
+
+def lock(owner: str) -> None:
+    try:
+        fd = os.open(LOCKFILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        other = held_by_other(owner)
+        if other:
+            sys.exit(f"sandbox is held by {other}; wait for it to unlock")
+        os.utime(LOCKFILE)
+        print("sandbox already held by", owner)
+        return
+    os.write(fd, f"{owner}	{time.strftime('%Y-%m-%d %H:%M:%S')}".encode())
+    os.close(fd)
+    print("sandbox locked by", owner)
+
+
+def unlock(owner: str) -> None:
+    other = held_by_other(owner)
+    if other:
+        sys.exit(f"sandbox is held by {other}, not {owner}")
+    if os.path.exists(LOCKFILE):
+        os.remove(LOCKFILE)
+    print("sandbox unlocked")
+
+
+def check() -> None:
+    other = held_by_other(os.environ.get("LASAP_SANDBOX_OWNER", ""))
+    if other:
+        sys.exit(f"sandbox is held by {other}; set LASAP_SANDBOX_OWNER to the lock's owner or wait for it")
+
+
 def start() -> None:
+    check()
     stop(quiet=True)
     args = [RYU, "--no-gui", "--root-data-dir", DATA, "--graphics-backend", os.environ.get("LASAP_GFX", "Vulkan"),
             "--input-id-1", "0", "--enable-keyboard", "--skip-user-profiles-manager",
@@ -95,6 +151,7 @@ def tuck(pid: int, foreground: int) -> None:
 
 
 def stop(quiet: bool = False) -> None:
+    check()
     if not os.path.exists(PIDFILE):
         return
     pid = open(PIDFILE).read().strip()
@@ -145,4 +202,5 @@ if __name__ == "__main__":
     cmd, rest = sys.argv[1], sys.argv[2:]
     {"start": lambda: start(), "stop": lambda: stop(), "shot": lambda: shot(rest[0]),
      "log": lambda: log(rest[0] if rest else ""), "tuck": lambda: tuck(int(rest[0]), int(rest[1])),
-     "wait": lambda: wait(rest[0], float(rest[1]) if len(rest) > 1 else 120)}[cmd]()
+     "wait": lambda: wait(rest[0], float(rest[1]) if len(rest) > 1 else 120),
+     "lock": lambda: lock(rest[0]), "unlock": lambda: unlock(rest[0]), "check": lambda: check()}[cmd]()

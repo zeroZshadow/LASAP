@@ -17,10 +17,11 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Game:** `D:\Games\Switch\The Legend of Zelda Links Awakening [01006BB00C6F0000][v0].nsp` (1.0.0). The RomFS dump is at `D:\Games\Switch\LASRomFS`.
 - **Sandbox data folder:** `D:\DEV\LASAP-sandbox\ryujinx`, a copy of the user's Ryujinx data (keys, firmware, saves). Tests never use `%APPDATA%\Ryujinx`. It contains `prod.keys`; never copy it into this repo. `emu.py` keeps it silent with SDL's dummy audio driver, as `--audio-volume 0` does not mute.
 - **Logs:** the emulator writes logs to `D:\Games\Ryujinx\Logs` even with `--root-data-dir`.
+- **Sharing the sandbox.** There is one sandbox (data folder, `emu.pid`, port 43385, the e2e folder), so sessions working side by side take turns. Before deploying, resetting saves or starting the emulator, take it with `emu.py lock <owner>`; run those steps with `LASAP_SANDBOX_OWNER=<owner>`, and `emu.py unlock <owner>` when the test run is over. `emu.py start`/`stop`, `deploy_mod.sh` and `reset_saves.sh` refuse while another owner holds the lock. With the lock free they work as before.
 
 | Script | Does |
 |---|---|
-| `emu.py start\|stop\|shot <png>\|log [regex]\|wait <regex> [s]` | Boots the game headless on the sandbox (Vulkan; override with `LASAP_GFX=OpenGl`), stops it by PID, captures the window, reads the newest log. Its window opens without focus and stays behind other windows, so the user can keep working or playing |
+| `emu.py start\|stop\|shot <png>\|log [regex]\|wait <regex> [s]\|lock <owner>\|unlock <owner>\|check` | Boots the game headless on the sandbox (Vulkan; override with `LASAP_GFX=OpenGl`), stops it by PID, captures the window, reads the newest log, takes and gives back the sandbox lock. Its window opens without focus and stays behind other windows, so the user can keep working or playing |
 | `build_exl.sh` | Builds `las-ap-exl` in Docker and copies `subsdk9`/`main.npdm` to `patcher/exl/` |
 | `deploy_mod.sh <out dir>` | Installs a patcher output (SD layout) into the sandbox, with the sandbox game port (`LASAP_GAME_PORT`, default 43385) in `config.ini` |
 | `reset_saves.sh [newgame]` | Restores sandbox saves from the user's saves, or from the new-game snapshot, and clears `sdcard/lasap` |
