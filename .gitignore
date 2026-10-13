@@ -9,3 +9,4 @@ out/
 *.log
 patcher/exl/
 patcher/RandomizerUI/Resources/textures/chest/bfres/
+.claude/worktrees/

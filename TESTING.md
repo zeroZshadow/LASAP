@@ -41,6 +41,17 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 | `poptracker_map.py <pack>` | Writes the Archipelago id tables (`scripts/autotracking/*_mapping.lua`) of the LASR PopTracker pack (Br00ty/lasr_brooty) and checks every code against the pack, in `.venv-lasr` |
 | `re/scan.py str\|xref\|xstr\|callers\|dis\|func\|ptr` | Static queries on a memory dump of the game (see "Reverse engineering") |
 
+## Working in a worktree
+
+Sessions that change code work in their own git worktree and branch, so they never share a working tree or index. `vendor/`, the venvs and `patcher/exl/` are gitignored and exist only in the main checkout; `scripts/worktree.sh` (run in the worktree) covers the rest:
+
+- `worktree.sh setup` adds an Archipelago worktree at `vendor/Archipelago` (from the main checkout's, at its commit) with `worlds/las` pointing at this worktree's world, and copies the built module into `patcher/exl/`. The venvs are used from the main checkout by path (`<main>/.venv-ap/Scripts/python.exe`, `<main>/.venv-lasr/...`); nothing links to them, so deleting a worktree cannot reach them. `ap.py`, `las_client.py`, `build_exl.sh` and `reload_exl.sh` work from the worktree.
+- `worktree.sh test [pytest args]` runs the world's tests on this worktree's world.
+- `worktree.sh land` fast-forwards `master` in the main checkout to this branch, then removes the Archipelago worktree. It refuses when the worktree has uncommitted changes, when `master` has moved on (bring the branch up to date with `master`, rerun the tests, land again), or when the main checkout has uncommitted edits in files the branch changes (another session is working there: land after it has committed). Its other uncommitted edits are left alone.
+- `worktree.sh teardown` removes the Archipelago worktree without landing.
+
+The sandbox is shared with every other session: take the lock (Emulator, "Sharing the sandbox"). A local MultiServer outside a sandbox run uses a port of its own, not the default 38281.
+
 ## Observing and driving the game
 
 - **Guest log.** Module output (`[AP] ...`, `[exlaunch|...]`) goes to the emulator log via `svcOutputDebugString`.
