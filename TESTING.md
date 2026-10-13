@@ -157,7 +157,8 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Goal.** `ShadowClear` reports the goal to the server.
 - **Online multiworld** (with Super Metroid on archipelago.gg, 2026-10-12/13): a playthrough to the Wind Fish, which reported the goal; the server then released the remaining items. Items went both ways throughout. Checks played by kind: chests (overworld and D1–D4), digs, hidden items (bushes, the Ghost House pot, bonk trees), standing and sunken items, dungeon small key drops, the golden leaf enemies (crow, mad bomber, final guard) and the Kanalet kill room drop, Lanmola's drop, NPC gifts (Tarin, Marin, Manbo, the walrus, the ghost), shop slots and the 5 and 15 shell Seashell Mansion rewards. The 15 shell present showed this slot's Piece of Heart model, and a shop shelf showed another player's Varia Suit as the Red Tunic.
 - **Item models.** Chest item-gets, bush drops and free-standing items show the model of the item they hold: this slot's Piece of Heart and Wind Marimba, another slot's unmatched item as the Archipelago model (six balls in the logo's colors with a soft white rim light, centered in the item-get glow like a rupee).
-- **Patch data.** `scripts/verify_patch.py` checks that every shuffled chest holds the placeholder with the right index, and that every randomized heart piece and seashell actor has its own index above the received range (static check).
+- **Chamber Stone variant.** A chest holding it (key cut to 31 characters) loads its room, and the item-get shows the stone (2026-10-13).
+- **Patch data.** `scripts/verify_patch.py` checks that every shuffled chest holds the placeholder with the right index and a key of at most 31 characters, and that every randomized heart piece and seashell actor has its own index above the received range (static check).
 
 ## Not yet verified in-game
 

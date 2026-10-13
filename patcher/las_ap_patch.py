@@ -107,9 +107,6 @@ PLACEHOLDER_DEF = {
     "chest-type": "junk",
 }
 
-# Models a variant cannot take: a room with a chest holding a Chamber Stone variant crashes the game as it loads
-# (std::length_error). Such locations show the Archipelago model.
-NO_VARIANT_ITEM_KEYS = ("PanelDungeonPiece",)
 # A room with a chest whose item key has 32 characters or more crashes the game as it loads (std::length_error).
 # Longer variant keys are cut short and end in a hash of the item key, which keeps them unique.
 VARIANT_KEY_MAX = 31
@@ -403,8 +400,7 @@ def add_location_items(patch: dict, item_defs: dict) -> None:
             continue
         item_def = dict(PLACEHOLDER_DEF)
         model = item_defs.get(models.get(loc, ""), {})
-        if (model.get("model-path") and not model["item-key"].startswith("$")
-                and model["item-key"] not in NO_VARIANT_ITEM_KEYS):
+        if model.get("model-path") and not model["item-key"].startswith("$"):
             key = variant_key(model["item-key"])
             VARIANTS[key] = (model["item-key"], model["npc-key"])
             VARIANT_USES[key] = VARIANT_USES.get(key, 0) + 1
