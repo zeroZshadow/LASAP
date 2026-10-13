@@ -155,14 +155,15 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Instruments.** The Full Moon Cello pedestal gives the placeholder, names its item and reports its check.
 - **Release.** `/release` of another slot delivers its items in a burst, each saying "from <player>".
 - **Goal.** `ShadowClear` reports the goal to the server.
+- **Online multiworld** (with Super Metroid on archipelago.gg, 2026-10-12/13): a playthrough to the Wind Fish, which reported the goal; the server then released the remaining items. Items went both ways throughout. Checks played by kind: chests (overworld and D1–D4), digs, hidden items (bushes, the Ghost House pot, bonk trees), standing and sunken items, dungeon small key drops, the golden leaf enemies (crow, mad bomber, final guard) and the Kanalet kill room drop, Lanmola's drop, NPC gifts (Tarin, Marin, Manbo, the walrus, the ghost), shop slots and the 5 and 15 shell Seashell Mansion rewards.
 - **Item models.** Chest item-gets, bush drops and free-standing items show the model of the item they hold: this slot's Piece of Heart and Wind Marimba, another slot's unmatched item as the Archipelago model (six balls in the logo's colors with a soft white rim light, centered in the item-get glow like a rupee).
 - **Patch data.** `scripts/verify_patch.py` checks that every shuffled chest holds the placeholder with the right index, and that every randomized heart piece and seashell actor has its own index above the received range (static check).
 
 ## Not yet verified in-game
 
-- Owl statues and tree seashells as locations.
+- Owl statues as locations.
 - Model variants in shop shelves and Seashell Mansion presents.
-- Dungeon floor small keys and boss drops. They use paths that are verified elsewhere: floor keys are small key actors with a `SmallKey.bfevfl` entry, like the bush and dug seashells; boss drops use `item_get_manager.get`, like the instruments.
+- The dungeon bosses' and the Armos Knight's drops, and the Kanalet bombed guard. Boss drops use `item_get_manager.get`, like Lanmola's and the instruments.
 - DeathLink (out of scope for now) and real hardware.
 
 ## Building the exlaunch module
