@@ -1,11 +1,11 @@
 """PC client: bridges the Archipelago server and the game's exlaunch module (TCP line protocol, see DESIGN.md)."""
 import asyncio
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 import Utils
 from CommonClient import ClientCommandProcessor, CommonContext, get_base_parser, gui_enabled, logger, server_loop
-from NetUtils import ClientStatus
+from NetUtils import ClientStatus, HintStatus
 
 from .container import LASContainer
 from .ids import LOCATION_BASE, LOCATION_OFFSETS
@@ -18,6 +18,8 @@ GAME_PORT = 43384
 PROTOCOL_VERSION = 2
 PING_INTERVAL = 2.0
 RESEND_INTERVAL = 3.0
+# Servers before this have no CreateHints; on them, in-game hints of this slot's own locations become hints by scouting
+CREATE_HINTS_VERSION = Utils.Version(0, 6, 2)
 # Data storage key holding the level the game shows (LASR level names: Field, Lv01TailCave, ...), for trackers
 LEVEL_KEY = "las_level_{team}_{slot}"
 
@@ -97,6 +99,9 @@ class LASContext(CommonContext):
         self.game_recv: Optional[int] = None
         self.slot_seed_hash: Optional[str] = None
         self.game_checked: Set[int] = set()
+        # In-game hints the game reports as read, (slot, location id), and those sent to the server since connecting
+        self.game_hints: Set[Tuple[int, int]] = set()
+        self.hints_sent: Set[Tuple[int, int]] = set()
         self.goal_reached = False
         self.game_level: Optional[str] = None  # the level the game shows, from its LOG level lines
         self.last_item_sent = 0.0
@@ -152,6 +157,8 @@ class LASContext(CommonContext):
             self.send_server_state()
             self.refresh_patch_tab()
             asyncio.create_task(self.flush_checks())
+            self.hints_sent.clear()
+            asyncio.create_task(self.flush_hints())
             asyncio.create_task(self.send_msgs([{"cmd": "LocationScouts", "locations": sorted(self.server_locations),
                                                  "create_as_hint": 0}]))
             if args["slot_data"].get("death_link"):
@@ -298,6 +305,23 @@ class LASContext(CommonContext):
             await self.send_msgs([{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}])
             self.finished_game = True
 
+    async def flush_hints(self) -> None:
+        """Makes the in-game hints read in the game server hints, as !hint would (DESIGN.md, In-game hints)."""
+        if not self.server or not self.slot or not self.check_seed():
+            return
+        new = sorted(self.game_hints - self.hints_sent)
+        if not new:
+            return
+        self.hints_sent.update(new)
+        by_player: Dict[int, List[int]] = {}
+        for player, location in new:
+            by_player.setdefault(player, []).append(location)
+        if self.server_version >= CREATE_HINTS_VERSION:
+            await self.send_msgs([{"cmd": "CreateHints", "player": player, "locations": locations,
+                                   "status": HintStatus.HINT_PRIORITY} for player, locations in by_player.items()])
+        elif self.slot in by_player:
+            await self.send_msgs([{"cmd": "LocationScouts", "locations": by_player[self.slot], "create_as_hint": 2}])
+
     def handle_game_line(self, line: str) -> None:
         parts = line.split()
         if not parts:
@@ -305,6 +329,7 @@ class LASContext(CommonContext):
         cmd = parts[0]
         if cmd == "HELLO":
             self.game_seed_hash = parts[2] if len(parts) > 2 else None
+            self.game_hints.clear()
             if len(parts) < 2 or parts[1] != str(PROTOCOL_VERSION):
                 logger.error(f"Game protocol {parts[1:2]} does not match the client ({PROTOCOL_VERSION}).")
             logger.info(f"Connected to the game (seed hash {self.game_seed_hash}).")
@@ -324,6 +349,10 @@ class LASContext(CommonContext):
             if self.check_seed():
                 self.game_checked |= ids
                 asyncio.create_task(self.flush_checks())
+        elif cmd == "HINT" and len(parts) == 3:
+            # HINT <slot> <location id>: the player read an in-game hint
+            self.game_hints.add((int(parts[1]), int(parts[2])))
+            asyncio.create_task(self.flush_hints())
         elif cmd == "GOAL":
             self.goal_reached = True
             asyncio.create_task(self.flush_checks())

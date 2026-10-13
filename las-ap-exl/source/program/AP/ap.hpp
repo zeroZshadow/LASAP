@@ -40,6 +40,8 @@ namespace AP {
     constexpr const char* INDICES_PATH = "sd:/config/lasr-exl/ap_indices.txt";
     // AP locations that keep their vanilla item (the Trendy Game's prizes): "<item key> <index> <local id>" lines.
     constexpr const char* VANILLA_PATH = "sd:/config/lasr-exl/ap_vanilla.txt";
+    // In-game hints that become server hints when read: "<n> <flag> <slot> <location id>" lines (patcher ap_hints.py).
+    constexpr const char* HINTS_PATH = "sd:/config/lasr-exl/ap_hints.txt";
     // The map tracker's icons, written by the patcher when the option is on (ap_map.cpp).
     constexpr const char* MAP_PATH = "sd:/config/lasr-exl/ap_map.txt";
     // Event flag and Place.msbt label of an overworld icon: the prefix and the icon's group. Must match the patcher.

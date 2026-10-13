@@ -51,6 +51,7 @@ from RandomizerCore.Tools import event_tools  # noqa: E402
 from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct  # noqa: E402
 import ap_assets  # noqa: E402
 import ap_ghost  # noqa: E402
+import ap_hints  # noqa: E402
 import ap_map  # noqa: E402
 import ap_model  # noqa: E402
 
@@ -137,6 +138,8 @@ def _add_ap_flags(self) -> None:
     for i in range(RECV_FLAG_BITS):
         self.addFlag(f"APRecv{i}")
     self.addFlag(ap_ghost.BOW_FLAG)
+    for flag in ap_hints.FLAGS:
+        self.addFlag(flag)
 
 
 def _add_placeholder_row(self, sheet) -> None:
@@ -494,6 +497,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     logic = load_yaml("logic.yml")
 
     placements = build_placements(patch, logic)
+    hints = patch.get("hints", {})
+    ap_hints.prepare(hints)
     seed = patch["seed_name"] + str(patch["player"])
     rng = random.Random(int(hashlib.sha256(seed.encode()).hexdigest()[:16], 16))
 
@@ -512,6 +517,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         add_rooster_flag(proc.file_manager)
     if patch["settings"].get("Ammo Ghost", True):  # the option's default, also for patches without it
         ap_ghost.add(proc.file_manager)
+    if hints:
+        ap_hints.add(proc.file_manager, proc.config_dir, hints)
     map_tracker = patch["settings"].get("Map Tracker", False)  # off for patches from before the option
     if map_tracker:
         ap_map.add(proc.file_manager, proc.config_dir, patch["location_ids"], PLACEHOLDER_KEY)

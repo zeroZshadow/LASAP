@@ -229,6 +229,17 @@ class MapTracker(DefaultOnToggle):
     display_name = "Map Tracker"
 
 
+class InGameHints(Choice):
+    """Owl statues and library books tell where your progression items are, in your world or another's.
+    off: their original text. text: the hint text only. server: reading a hint also makes it a hint on the server,
+    as !hint does, without costing hint points. Dungeon owl statues need their dungeon's stone beak."""
+    display_name = "In-Game Hints"
+    option_off = 0
+    option_text = 1
+    option_server = 2
+    default = 2
+
+
 class Stealing(Choice):
     """Whether logic may expect stealing from the shop.
     standard: only with a sword. always: with or without one. never: logic never expects it."""
@@ -289,6 +300,7 @@ class LASOptions(PerGameCommonOptions):
     shuffled_powder: ShuffledPowder
     ammo_ghost: AmmoGhost
     map_tracker: MapTracker
+    in_game_hints: InGameHints
     stealing: Stealing
     chest_appearance: ChestAppearance
     traps: Traps
@@ -302,6 +314,6 @@ OPTION_GROUPS = [
     OptionGroup("Dungeon Items", [Keys, DungeonItems, Instruments]),
     OptionGroup("Start", [StartingInstruments, StartingRupees]),
     OptionGroup("World", [OpenMabe, OpenKanalet, OpenMamu, CompletedBridge, ClassicD2, FreeBook, FastFishing,
-                          FastStalfos, ShuffledBombs, ShuffledPowder, AmmoGhost, MapTracker, Stealing,
+                          FastStalfos, ShuffledBombs, ShuffledPowder, AmmoGhost, MapTracker, InGameHints, Stealing,
                           ChestAppearance]),
 ]

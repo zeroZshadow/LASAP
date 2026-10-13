@@ -1,7 +1,8 @@
 import hashlib
 import os
+import threading
 from collections import Counter
-from typing import Any, ClassVar, Dict, List, Mapping, Set
+from typing import Any, ClassVar, Dict, List, Mapping, Optional, Set, TextIO
 
 from BaseClasses import CollectionState, Item, ItemClassification, Region, Tutorial
 from Options import PerGameCommonOptions
@@ -10,6 +11,7 @@ from worlds.AutoWorld import WebWorld, World
 from worlds.LauncherComponents import Component, SuffixIdentifier, Type, components, launch as launch_component
 
 from .container import LASContainer
+from .hints import choose_hints, source_name
 from .host_settings import LASSettings
 
 from .ids import LOCATION_OFFSETS
@@ -385,7 +387,25 @@ class LASWorld(World):
             "location_models": self.placed_models(),
             "location_chests": self.placed_chests(),
             "dungeon_entrances": dict(lasr_settings.DUNGEON_ENTRANCES),
+            "hints": self.in_game_hints(),
         }
+
+    _hints: Optional[Dict[str, Dict[str, Any]]] = None
+    _hints_lock = threading.Lock()  # output and spoiler run on several threads
+
+    def in_game_hints(self) -> Dict[str, Dict[str, Any]]:
+        """The owl statues' and books' hints (hints.py), picked once the multiworld is filled."""
+        with self._hints_lock:
+            if self._hints is None:
+                self._hints = choose_hints(self)
+            return self._hints
+
+    def write_spoiler(self, spoiler_handle: TextIO) -> None:
+        hints = self.in_game_hints()
+        if hints:
+            spoiler_handle.write(f"\n\nIn-game hints ({self.multiworld.player_name[self.player]}):\n\n")
+            for source, hint in hints.items():
+                spoiler_handle.write(f"{source_name(source)}: {hint['text']}\n")
 
     def placed_names(self) -> Dict[str, List[str]]:
         """What each AP location holds: [item name, owner name], the owner empty for this player's items."""

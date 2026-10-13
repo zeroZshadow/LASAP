@@ -16,8 +16,9 @@ from typing import Callable, List, Optional
 from .emulators import TITLE_ID
 
 CONFIG_PATH = Path("config", "lasr-exl", "config.ini")
-# Config files the patcher writes only for some options (the map tracker's icons); an install without one removes it.
-OPTIONAL_CONFIG = ("ap_map.txt",)
+# Config files the patcher writes only for some options (the map tracker's icons, the server hints); an install
+# without one removes it.
+OPTIONAL_CONFIG = ("ap_map.txt", "ap_hints.txt")
 # Next to the config: the build of the built-in patcher that wrote the installed mod, so a newer world reinstalls it.
 BUILD_PATH = CONFIG_PATH.with_name("patcher_build.txt")
 MOD_PARTS = ("romfs", "exefs")
