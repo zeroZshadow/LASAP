@@ -98,5 +98,6 @@ def _event(files) -> None:
 def _text(files) -> None:
     for relative_path, msbt in files.getAllTextFiles(TEXT_FILE):
         msbt.addEntry(TEXT_KEY, TEXT)
+        msbt.getEntry(TEXT_KEY).message.text += "[1:4]"  # wait for input, as the game's own ghost lines do
         msbt.getEntry(TEXT_KEY).style_index = msbt.getEntry(TEXT_STYLE_FROM).style_index
         files.writeTextFile(relative_path, TEXT_FILE, msbt)

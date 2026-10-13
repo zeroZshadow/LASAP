@@ -26,6 +26,9 @@ shot D:/DEV/LASAP-sandbox/ghost_bombs.png
 send DBG input 1 400
 await 5 event=[1-9]
 shot D:/DEV/LASAP-sandbox/ghost_talk.png
+# His line stays until a button closes it.
+wait 3
+check event=[1-9]
 dismiss 20
 check bombs=15 arrows=0
 # 10 bombs become 15; 20 stay 20.

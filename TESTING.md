@@ -135,7 +135,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Kanalet iron ball soldier.** With all five golden leaves held he still appears; without LASR's patch for him he does not, and his check is lost.
 - **Traps from another player.** The autosave popup shows "Squish Trap / from Finder".
 - **Warp menu.** Holding Minus opens it in Mabe and in Tail Cave; Warp home lands inside Tarin's house at the door, Continue leaves Link where he is, and a Minus tap still toggles the map (`warp_menu`, 5 runs in a row). BowWow comes along into the house and follows Link out again (`warp_bowwow`).
-- **Ammo ghost.** In a new game he is not in Tarin's house; with bombs he appears and fills an empty bag to 15, 10 bombs to 15, and leaves 20 alone; with the bow he tops arrows up too (`ammo_ghost`, 2026-10-12). Without the option the patcher leaves Tarin's house unchanged.
+- **Ammo ghost.** In a new game he is not in Tarin's house; with bombs he appears and fills an empty bag to 15, 10 bombs to 15, and leaves 20 alone; with the bow he tops arrows up too; his line waits for a button (`ammo_ghost`, 2026-10-13). Without the option the patcher leaves Tarin's house unchanged.
 - **Trap effects.** Each received trap plays LASR's effect and damage (`traps`): Zap 6, Squish 4, Drown, Deathball and Quake 2 quarter hearts; with a quarter heart left, a Zap Trap leaves a quarter heart.
 - **Default options.** A new save on default options has the starting gear (sword, shield, ocarina, Manbo's Mambo); received progressive swords and shields upgrade it.
 - **First check.** Tarin's gift (the first check) reaches the server as a location check.
@@ -155,14 +155,13 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 - **Instruments.** The Full Moon Cello pedestal gives the placeholder, names its item and reports its check.
 - **Release.** `/release` of another slot delivers its items in a burst, each saying "from <player>".
 - **Goal.** `ShadowClear` reports the goal to the server.
-- **Online multiworld** (with Super Metroid on archipelago.gg, 2026-10-12/13): a playthrough to the Wind Fish, which reported the goal; the server then released the remaining items. Items went both ways throughout. Checks played by kind: chests (overworld and D1–D4), digs, hidden items (bushes, the Ghost House pot, bonk trees), standing and sunken items, dungeon small key drops, the golden leaf enemies (crow, mad bomber, final guard) and the Kanalet kill room drop, Lanmola's drop, NPC gifts (Tarin, Marin, Manbo, the walrus, the ghost), shop slots and the 5 and 15 shell Seashell Mansion rewards. The 15 shell present showed this slot's Piece of Heart model.
+- **Online multiworld** (with Super Metroid on archipelago.gg, 2026-10-12/13): a playthrough to the Wind Fish, which reported the goal; the server then released the remaining items. Items went both ways throughout. Checks played by kind: chests (overworld and D1–D4), digs, hidden items (bushes, the Ghost House pot, bonk trees), standing and sunken items, dungeon small key drops, the golden leaf enemies (crow, mad bomber, final guard) and the Kanalet kill room drop, Lanmola's drop, NPC gifts (Tarin, Marin, Manbo, the walrus, the ghost), shop slots and the 5 and 15 shell Seashell Mansion rewards. The 15 shell present showed this slot's Piece of Heart model, and a shop shelf showed another player's Varia Suit as the Red Tunic.
 - **Item models.** Chest item-gets, bush drops and free-standing items show the model of the item they hold: this slot's Piece of Heart and Wind Marimba, another slot's unmatched item as the Archipelago model (six balls in the logo's colors with a soft white rim light, centered in the item-get glow like a rupee).
 - **Patch data.** `scripts/verify_patch.py` checks that every shuffled chest holds the placeholder with the right index, and that every randomized heart piece and seashell actor has its own index above the received range (static check).
 
 ## Not yet verified in-game
 
 - Owl statues as locations.
-- Model variants on shop shelves.
 - The dungeon bosses' and the Armos Knight's drops, and the Kanalet bombed guard. Boss drops use `item_get_manager.get`, like Lanmola's and the instruments.
 - DeathLink (out of scope for now) and real hardware.
 
