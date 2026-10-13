@@ -1,7 +1,8 @@
 """Static checks on patcher output: every chest location holds the AP placeholder (the model variant of
 `location_models`) with its local id, and every randomized heart piece and seashell actor has a unique index above
 the received range (DESIGN.md, item model). With the map tracker on, every AP location has one icon in ap_map.txt and
-every icon its datasheet row.
+every icon its datasheet row. Below eight required instruments, the egg's event checks single instruments instead of
+all of them.
 
 python scripts/verify_patch.py <patch.aplas> <patcher output dir>
 """
