@@ -367,7 +367,10 @@ namespace AP {
     }
 
     std::string MapCaptionText() {
-        return g_Enabled ? "Toggle out of logic" : "";
+        // Offline, the looks are those of the last logic the client sent, or all in logic before it sent any.
+        if (!g_Enabled) return "";
+        if (AP::IsServerConnected()) return "Toggle out of logic";
+        return AP::HasLogic() ? "Offline: toggle out of logic" : "Offline: logic unknown";
     }
 
     void SetMapMode(int mode) {
@@ -383,6 +386,7 @@ namespace AP {
                std::to_string(g_Overworld.size()) + " looks=" + std::to_string(looks[InLogic]) + "," +
                std::to_string(looks[Partial]) + "," + std::to_string(looks[OutOfLogic]) + "," +
                std::to_string(looks[Collected]) + " logic=" + (HasLogic() ? "1" : "0") +
+               " server=" + (IsServerConnected() ? "1" : "0") +
                " hooks=" + std::to_string(g_FlagsCalls) + "," + std::to_string(g_IconCalls) + "," +
                std::to_string(g_IconMatches) + "," + std::to_string(g_ChestMatches) + " out=" +
                (g_OutHidden ? "hidden" : "shown");

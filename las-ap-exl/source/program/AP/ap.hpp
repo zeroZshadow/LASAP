@@ -71,6 +71,8 @@ namespace AP {
     // In logic for the items received, as the client reported (INLOGIC); HasLogic once it has.
     bool HasLogic();
     bool IsInLogic(int local_id);
+    // The client is connected and logged into the slot (SERVER lines).
+    bool IsServerConnected();
     void ApplyInjectedInput(nn::hid::NpadBaseState* state);
     void Log(const std::string& text);
     std::string HelloLine();

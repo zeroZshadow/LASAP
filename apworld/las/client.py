@@ -148,6 +148,8 @@ class LASContext(CommonContext):
             self.notice_sent = False
             self.check_seed()
             self.send_notice()
+            self.send_server_state()
+            self.refresh_patch_tab()
             asyncio.create_task(self.flush_checks())
             asyncio.create_task(self.send_msgs([{"cmd": "LocationScouts", "locations": sorted(self.server_locations),
                                                  "create_as_hint": 0}]))
@@ -197,6 +199,26 @@ class LASContext(CommonContext):
             self.send_game("NOTICE Archipelago server|disconnected")
         self.notice_sent = False
         await super().connection_closed()
+        self.send_server_state()
+        self.refresh_patch_tab()
+
+    def send_server_state(self) -> None:
+        """Tells the game whether the client is logged into the slot of the game's seed; the game reminds the player
+        while it is not."""
+        online = bool(self.server and self.slot) and not (
+            self.slot_seed_hash and self.game_seed_hash and self.slot_seed_hash != self.game_seed_hash)
+        self.send_game(f"SERVER {int(online)}")
+
+    @property
+    def server_status(self) -> checklist.Check:
+        """The server connection, for the Patch tab."""
+        if self.server and self.slot:
+            name = self.player_names.get(self.slot, self.auth or "")
+            return checklist.Check(checklist.OK, f"Connected to the Archipelago server as {name}.")
+        if self.server:
+            return checklist.Check(checklist.INFO, "Connecting to the Archipelago server...")
+        return checklist.Check(checklist.TODO, "Not connected to the Archipelago server: enter the room's address "
+                                               "(such as archipelago.gg:38281) at the top and press Connect.")
 
     def check_seed(self) -> bool:
         if self.slot_seed_hash and self.game_seed_hash and self.slot_seed_hash != self.game_seed_hash:
@@ -282,6 +304,7 @@ class LASContext(CommonContext):
             self.set_game_status(checklist.OK, f"Connected to the game (seed {self.game_seed_hash}).")
             self.check_seed()
             self.send_notice()
+            self.send_server_state()
             self.send_location_names()
             self.send_checked(self.checked_locations)
             self.send_logic(force=True)

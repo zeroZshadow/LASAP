@@ -60,7 +60,8 @@ revealed from the start, and a dot marks each spot with checks, a larger one whe
 the items you have reach all of its checks you have not done, yellow for some of them, red for none yet, grey with a
 tick once they are all done. A dot beside each dungeon's entrance does the same for the checks inside. Hover a dot to
 see the checks' names. Only checks your options shuffle get a dot. X on the map hides or shows the red dots (it
-replaces Memories while the Map Tracker option is on). In dungeons the map shows every room and the chests (open once checked, also when a server command checked
+replaces Memories while the Map Tracker option is on). "Offline" next to X means the client is not connected to the
+server: the colours are then those of the last connection, or all green before the first one. In dungeons the map shows every room and the chests (open once checked, also when a server command checked
 them), and a chest icon in each room with other checks (key drops, owl statues, the boss) opens once they are done. The dungeon map, compass and stone beak are still items to
 find: the side panel shows the ones you have.
 

@@ -62,6 +62,9 @@ The settings are saved in `host.yaml` under `las_options`.
 - **The emulator changed nothing.** Mods load when the game starts: close the game and start it again.
 - **The game shows "Archipelago client not connected".** Start the client; the game connects when it runs. The
   Patch tab shows the game connection.
+- **The game shows "Archipelago server not connected".** The client runs but is not in your slot: enter the room's
+  address at the top of the client and press Connect. Until then the map shows every check as reachable ("Offline"
+  on the map).
 - **The Patch tab says the modded game runs in two programs.** Close all emulators but one; the client may otherwise
   talk to the wrong game.
 - **The client never connects to the game.** The game listens on TCP port 43384. Check `game_host`, and on a Switch,

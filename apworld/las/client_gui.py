@@ -223,7 +223,7 @@ class PatchPanel(ScrollView):
         checks = self.ctx.check_setup()
         for key, label in self.statuses.items():
             label.text = status(checks.checks.get(key))
-        self.game_line.text = status(self.ctx.game_status)
+        self.game_line.text = "\n".join(filter(None, (status(self.ctx.server_status), status(self.ctx.game_status))))
         self.installed.text = "\n".join(
             filter(None, (status(checks.checks.get("installed")), status(checks.checks.get("other_mods")))))
         if Utils.is_windows:

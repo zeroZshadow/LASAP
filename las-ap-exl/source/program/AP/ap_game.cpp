@@ -176,11 +176,15 @@ namespace {
     int g_ItemEventShown = -1;         // the item the last item event's item-get showed; -1 until the swap (STATE)
     std::string g_ItemEventMessage;    // and its message entry
 
-    // Client connection notices
-    constexpr u64 kNoClientNoticeMs = 20000;   // in a level this long without a client: say so, once per boot
+    // Connection notices: in a level this long without the client or the server, say so, then again this often while
+    // it lasts.
+    constexpr u64 kOfflineNoticeMs = 20000;
+    constexpr u64 kOfflineRepeatMs = 300000;
+    enum class Link { Unknown, Online, NoClient, NoServer };
+    Link g_Link = Link::Unknown;
+    u64 g_NextOfflineNotice = 0;
     bool g_WasConnected = false;
-    bool g_EverConnected = false;
-    bool g_NoClientShown = false;
+    bool g_ServerConnected = false;  // the client is logged into the slot (SERVER lines)
 
     void ReleaseShared(SharedPtr& sp) {
         if (sp.ctrl != nullptr) {
@@ -311,19 +315,25 @@ namespace {
         AP::QueueToast(text);
     }
 
-    // Tells the player when the client connects, goes away, or never came.
+    // Tells the player when the client goes away, and while the client or the server is not connected.
     void TickConnection() {
-        bool connected = AP::IsClientConnected();
-        if (g_WasConnected && !connected) {
-            QueueNotice("Archipelago client|disconnected");
+        bool client = AP::IsClientConnected();
+        if (g_WasConnected && !client) QueueNotice("Archipelago client|disconnected");
+        g_WasConnected = client;
+        if (!client) g_ServerConnected = false;
+        Link link = !client ? Link::NoClient : g_ServerConnected ? Link::Online : Link::NoServer;
+        u64 now = NowMs();
+        if (link != g_Link) {
+            // A dropped connection was just announced (here, or by the client's NOTICE): remind later.
+            g_NextOfflineNotice = now + (g_Link == Link::Online ? kOfflineRepeatMs : kOfflineNoticeMs);
+            g_Link = link;
         }
-        if (connected) g_EverConnected = true;
-        g_WasConnected = connected;
-        if (!g_EverConnected && !g_NoClientShown && PlayerFree() && g_LevelSince != 0 &&
-            NowMs() - g_LevelSince > kNoClientNoticeMs) {
-            g_NoClientShown = true;
-            QueueNotice("Archipelago client|not connected");
+        if (link == Link::Online || now < g_NextOfflineNotice || !PlayerFree() || g_LevelSince == 0 ||
+            now - g_LevelSince < kOfflineNoticeMs) {
+            return;
         }
+        g_NextOfflineNotice = now + kOfflineRepeatMs;
+        QueueNotice(link == Link::NoClient ? "Archipelago client|not connected" : "Archipelago server|not connected");
     }
 
     void QueueShow(const Show& show) {
@@ -746,6 +756,9 @@ namespace {
                 int id = atoi(a[i].c_str());
                 if (a[i] != "CLEAR" && id >= 0 && id < (int)(kChecksBytes * 8)) g_InLogic[id / 8] |= (1 << (id % 8));
             }
+        } else if (a[0] == "SERVER" && a.size() >= 2) {
+            // SERVER 1|0: whether the client is logged into the slot
+            g_ServerConnected = a[1] == "1";
         } else if (a[0] == "NOTICE" && a.size() >= 2) {
             // NOTICE <text>: a toast in the autosave popup; '|' starts a new line
             QueueNotice(RestAfter(line, 1));
@@ -798,6 +811,10 @@ namespace AP {
 
     bool HasLogic() {
         return g_HasLogic;
+    }
+
+    bool IsServerConnected() {
+        return g_ServerConnected;
     }
 
     bool IsInLogic(int local_id) {
