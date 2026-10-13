@@ -36,12 +36,19 @@ namespace AP {
     constexpr int AMMO_REFILL_INDEX = 1000;
     // Location names the patcher writes next to config.ini.
     constexpr const char* NAMES_PATH = "sd:/config/lasr-exl/ap_names.txt";
+    // Per seashell, heart piece, golden leaf and heart container source: its bit and its location (ap_memory.cpp).
+    constexpr const char* INDICES_PATH = "sd:/config/lasr-exl/ap_indices.txt";
     // The map tracker's icons, written by the patcher when the option is on (ap_map.cpp).
     constexpr const char* MAP_PATH = "sd:/config/lasr-exl/ap_map.txt";
     // Event flag and Place.msbt label of an overworld icon: the prefix and the icon's group. Must match the patcher.
     constexpr const char* MAP_FLAG_PREFIX = "APMap";
     // After the prefix, the icon's look other than in logic: partly in logic, out of logic, collected.
     constexpr const char* MAP_LOOK_MARKS = "PXC";
+
+    // Inventory bits (ap_memory.cpp): kind 'S' seashells, 'H' heart pieces, 'L' golden leaves, 'C' heart containers
+    void LoadIndices();
+    // The bits the seed's vanilla sources of a kind set when collected; received items take others.
+    u64 VanillaBits(char kind);
 
     // Network thread (ap_net.cpp)
     void StartNetwork(int port);

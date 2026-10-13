@@ -19,8 +19,9 @@
 namespace {
     constexpr int kRecvBits = 16;
     constexpr size_t kChecksBytes = 65536 / 8;
-    // Bits for received heart pieces and seashells (the game has 32 and 50). The patcher gives the heart piece and
-    // seashell actors their own bits above these, so receiving never hides one; the game counts over all 64 bits.
+    // Bits for received heart pieces and seashells (the game has 32 and 50), less those of the seed's vanilla sources
+    // (AP::VanillaBits). The patcher gives the heart piece and seashell actors their own bits above these, so receiving
+    // never hides one; the game counts over all 64 bits.
     constexpr int kHeartPieceBits = 32;
     constexpr int kSeashellBits = 50;
     // Time to wait after a level change before granting items.
@@ -441,10 +442,10 @@ namespace {
 
         int index = -1;
         switch (id) {
-            case 22: index = LowestClearBit(items->Seashells, kSeashellBits); break; // Seashell
-            case 23: index = LowestClearBit(items->GoldenLeaves, 5); break;    // GoldenLeaf
-            case 58: index = LowestClearBit(items->HeartPieces, kHeartPieceBits); break; // HeartPiece
-            case 59: index = LowestClearBit(items->HeartContainers, 16); break; // HeartContainer
+            case 22: index = LowestClearBit(items->Seashells | AP::VanillaBits('S'), kSeashellBits); break;
+            case 23: index = LowestClearBit(items->GoldenLeaves | AP::VanillaBits('L'), 5); break;
+            case 58: index = LowestClearBit(items->HeartPieces | AP::VanillaBits('H'), kHeartPieceBits); break;
+            case 59: index = LowestClearBit(items->HeartContainers | AP::VanillaBits('C'), 16); break;
             case 44: case 45: case 47: case 48: case 49: index = dungeon; break; // dungeon items
             default: break;
         }
@@ -766,6 +767,7 @@ namespace AP {
         ItemGetSequence::InstallAtOffset(offset_manager.Offset(kItemGetSequence));
         LoadLocationNames();
         LoadMap();
+        LoadIndices();
         StartNetwork(port > 0 ? port : PORT);
     }
 

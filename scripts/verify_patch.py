@@ -12,7 +12,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "patcher"))
 from RandomizerCore.Randomizers.chests import CHEST_ROOMS  # noqa: E402
 from RandomizerCore.Tools.leb import Room  # noqa: E402
-from las_ap_patch import ACTOR_INDICES, PLACEHOLDER_KEY, VARIANT_KEY_MAX, load_patch, load_yaml, variant_key  # noqa: E402
+from las_ap_patch import (ACTOR_INDICES, INDEX_KINDS, INDICES_FILE, PLACEHOLDER_KEY, VARIANT_KEY_MAX,  # noqa: E402
+                          load_patch, load_yaml, variant_key)
 
 patch = load_patch(Path(sys.argv[1]))
 item_defs = load_yaml("items.yml")["Item_Pool"]
@@ -87,4 +88,19 @@ if patch["settings"].get("Map Tracker"):
         bad += 1
         print(f"MAP ROWS missing for groups {missing}")
     print(f"map icons overworld={len(overworld)} dungeon={len(dungeon)} locations={len(iconed)} bad={bad}")
+# Inventory bits: every seashell, heart piece, golden leaf and heart container source once per kind and bit, with
+# its local id when shuffled.
+entries = [line.split() for line in (Path(sys.argv[2]) / "config/lasr-exl" / INDICES_FILE).read_text().splitlines()]
+ids = {int(i) for i in patch["location_ids"].values()}
+counts = {}
+for kind, index, local_id in entries:
+    counts.setdefault(kind, set()).add(int(index))
+    if int(local_id) >= 0 and int(local_id) not in ids:
+        bad += 1
+        print(f"INDICES {kind} {index}: {local_id} is not a location of the slot")
+if len(entries) != sum(len(v) for v in counts.values()) or sorted(counts) != sorted(INDEX_KINDS.values()):
+    bad += 1
+    print(f"INDICES duplicate bits or missing kinds: {sorted(counts)}")
+print("indices " + " ".join(f"{k}={len(v)}" for k, v in sorted(counts.items())) +
+      f" vanilla={sum(1 for e in entries if e[2] == '-1')} bad={bad}")
 sys.exit(1 if bad else 0)

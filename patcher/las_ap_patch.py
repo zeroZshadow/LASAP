@@ -122,6 +122,9 @@ def variant_key(item_key: str) -> str:
 
 # Item kinds whose in-game index LASR takes from logic.yml for vanilla placements.
 INDEXED_ITEMS = ("seashell", "heart-piece", "heart-container", "bottle", "golden-leaf", "chamber-stone")
+# Items counted by inventory bits, as the module names them in ap_indices.txt (AP::INDICES_PATH): kind letter per item
+INDEX_KINDS = {"seashell": "S", "heart-piece": "H", "golden-leaf": "L", "heart-container": "C"}
+INDICES_FILE = "ap_indices.txt"
 DUNGEON_ITEM_PREFIXES = ("compass", "map", "stone", "key", "nightmare")
 
 
@@ -379,6 +382,18 @@ def build_placements(patch: dict, logic: dict) -> dict:
     return placements
 
 
+def write_indices(config_dir: Path, logic: dict, location_ids: dict) -> None:
+    """One line per seashell, heart piece, golden leaf and heart container location: its kind, its vanilla inventory
+    bit and the local id of the location when shuffled, else -1. An unshuffled location sets its bit when collected,
+    so the module gives received items other bits; the Memories map marks bit i's vanilla place."""
+    lines = []
+    for loc, entry in logic.items():
+        kind = INDEX_KINDS.get(entry.get("content"))
+        if kind and entry.get("type") == "item" and "index" in entry:
+            lines.append(f"{kind} {entry['index']} {int(location_ids.get(loc, -1))}")
+    (config_dir / INDICES_FILE).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+
+
 def location_item(loc: str) -> str:
     return f"ap-item:{loc}"
 
@@ -456,6 +471,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     if proc.failed:
         print(proc.failed)
         return 1
+    write_indices(proc.config_dir, logic, patch["location_ids"])
     if patch["settings"].get("Ammo Ghost", True):  # the option's default, also for patches without it
         ap_ghost.add(proc.file_manager)
     map_tracker = patch["settings"].get("Map Tracker", False)  # off for patches from before the option

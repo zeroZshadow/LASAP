@@ -61,8 +61,9 @@ Datasheets (`.gsheet`) are read and written by `RandomizerCore/Tools/gsheet.py`,
   - The module counts all these IDs as the placeholder (`AP::IsPlaceholderItem`).
   - A room with a chest whose item key has 32 characters or more crashes the game as it loads (`std::length_error`). Variant keys longer than 31 characters are cut short and end in a hash of the item key (`variant_key`).
 - The Archipelago model is six balls in the logo's colors. The patcher builds it from the player's Seashell Sensor model (`patcher/ap_model.py`) and writes it as `ItemArchipelago.bfres`, with its own Npc entry, `ItemArchipelago`.
-- Indexed items (heart pieces, seashells, golden leaves, heart containers) are granted at the lowest free index of their inventory bitfield. Received heart pieces stay below index 32 and seashells below 50, the game's totals.
-- Item actors hide themselves while the inventory bit of their index (`parameters[0]`) is set: `ItemHeartPiece` checks the heart piece bits, `ItemSlimeKey` (LASR's static seashells) the seashell bits. The index must be unique within a level. The patcher gives every randomized heart piece and seashell actor its own index above the received range (LASR's converted misc items keep heart piece 51–54), so their visibility depends only on LASR's flag.
+- Indexed items (heart pieces, seashells, golden leaves, heart containers) are counted by inventory bits: collecting one sets the bit of its source (its vanilla index, `index` in `logic.yml`), and the count is the number of bits set. The patcher writes `config/lasr-exl/ap_indices.txt`: per source its kind (`S`, `H`, `L`, `C`), its bit and the local id of its location when shuffled, else -1. A received item takes the lowest bit that is free and that no vanilla source of the seed sets, so a vanilla source collected later still counts. Received heart pieces stay below index 32 and seashells below 50, the game's totals.
+- The Memories map marks heart piece and seashell bit i at the vanilla place of source i (rows of `UiMemoryHearts.gsheet` and `UiMemoryShells.gsheet`). Received items hold the bits of shuffled sources, so the module (`ap_memory.cpp`) marks source i once it is done instead: a vanilla source by its bit, a shuffled one by its location's check.
+- Item actors hide themselves while the inventory bit of their index (`parameters[0]`) is set: `ItemHeartPiece` checks the heart piece bits, `ItemSlimeKey` (LASR's static seashells) the seashell bits. The index must be unique within a level. LASR gives every heart piece and seashell actor a flag, shuffled or not, and the patcher gives each of these actors its own index above the received range (LASR's converted misc items keep heart piece 51–54), so their visibility depends only on LASR's flag.
 
 ## IDs
 
@@ -159,7 +160,7 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 
 **Items with special handling in the module**
 - Progressive sword, shield and bracelet arrive as their Lv1 key; the module upgrades when LASR's `*FoundFlag` is set.
-- Seashells, heart pieces, heart containers and golden leaves take the lowest unused in-game index.
+- Seashells, heart pieces, heart containers and golden leaves take the lowest in-game index that is unused and that no vanilla source sets (Indexed items, above).
 - Traps (`*Trap`, `$ENEMY`) wait like item displays (below). Unknown keys are logged and counted as applied.
 
 **In-game text**
