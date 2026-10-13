@@ -336,6 +336,8 @@ class LASWorld(World):
                 "tokens": self.settings_tokens,
                 "vanilla": [loc for loc in self.vanilla if self._is_progression(self.content(loc))],
                 "locked": [loc for loc in self.locked if self._is_progression(self.content(loc))],
+                # the patch grants these, so the server does not send them (items_handling)
+                "starting": [item.name for item in self.multiworld.precollected_items[self.player]],
             },
         }
 

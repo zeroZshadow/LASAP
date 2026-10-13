@@ -104,6 +104,7 @@ class LASContext(CommonContext):
         self.scouted_names: Dict[int, str] = {}
         self.logic_tracker: Optional[LogicTracker] = None  # the slot's rules, for the map tracker
         self.in_logic: Optional[Set[int]] = None  # local ids last sent to the game as in logic
+        self.logic_starting: List[str] = []  # the slot's starting items, which the server does not send
 
     async def get_username(self) -> None:
         # the slot comes from the patch file, as the server would otherwise ask for it
@@ -163,6 +164,7 @@ class LASContext(CommonContext):
                 logic["preset"], logic["tokens"], logic["vanilla"],
                 [names[loc - LOCATION_BASE] for loc in sorted(self.server_locations)],
                 logic.get("locked", [])) if logic else None
+            self.logic_starting = logic.get("starting", []) if logic else []
             self.in_logic = None
             self.send_logic()
         elif cmd == "RoomUpdate":
@@ -250,7 +252,8 @@ class LASContext(CommonContext):
             return
         if self.slot_seed_hash and self.game_seed_hash and self.slot_seed_hash != self.game_seed_hash:
             return
-        names = [self.item_names.lookup_in_game(item.item, self.game) for item in self.items_received]
+        names = list(self.logic_starting) + [self.item_names.lookup_in_game(item.item, self.game)
+                                             for item in self.items_received]
         names_by_id = {offset: loc for loc, offset in LOCATION_OFFSETS.items()}
         checked = [names_by_id[loc - LOCATION_BASE] for loc in self.checked_locations if loc >= LOCATION_BASE]
         ids = {LOCATION_OFFSETS[loc] for loc in self.logic_tracker.in_logic(names, checked)}

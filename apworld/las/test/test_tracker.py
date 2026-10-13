@@ -22,7 +22,6 @@ class TestTracker(unittest.TestCase):
         # The client knows the slot's locations from the server, and the rest from the slot data.
         tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], world.shuffled, logic["locked"])
         pool = [item for item in multiworld.itempool + world.get_pre_fill_items() if item.player == 1]
-        precollected = list(multiworld.precollected_items[1])
         rng = random.Random(seed)
         for sample in range(self.samples):
             share = rng.choice((0.0, 0.15, 0.3, 0.5, 0.7, 1.0))
@@ -33,7 +32,8 @@ class TestTracker(unittest.TestCase):
             state.sweep_for_advancements()
             expected = {loc for loc in world.shuffled
                         if multiworld.get_location(LOCATION_NAMES[loc], 1).can_reach(state)}
-            got = tracker.in_logic(item.name for item in chosen + precollected)
+            # the client counts the slot data's starting items and the items received
+            got = tracker.in_logic(logic["starting"] + [item.name for item in chosen])
             with self.subTest(options=options, seed=seed, sample=sample, share=share):
                 self.assertEqual(sorted(got - expected), [], "in logic for the tracker only")
                 self.assertEqual(sorted(expected - got), [], "in logic for Archipelago only")
@@ -41,3 +41,16 @@ class TestTracker(unittest.TestCase):
     def test_option_sets(self) -> None:
         for index, options in enumerate(OPTION_SETS):
             self.check(options, seed=2000 + index)
+
+    def test_starting_items_count(self) -> None:
+        """The slot data's starting items count: Marin's song needs the Ocarina, a starting item by default."""
+        world_type = AutoWorldRegister.world_types["Links Awakening Switch"]
+        multiworld = setup_multiworld(world_type, STEPS, 3000, {})
+        world = multiworld.worlds[1]
+        # Generate applies the starting gear (start_inventory_from_pool) after the steps the test runs
+        multiworld.push_precollected(world.create_item("Ocarina"))
+        logic = world.fill_slot_data()["logic"]
+        self.assertIn("Ocarina", logic["starting"])
+        tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], world.shuffled, logic["locked"])
+        self.assertIn("marin", tracker.in_logic(logic["starting"]))
+        self.assertNotIn("marin", tracker.in_logic([]))

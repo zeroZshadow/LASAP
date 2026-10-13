@@ -5,12 +5,13 @@ Run with .venv-ap: python scripts/map_positions.py [<PopTracker pack folder>] [-
 Overworld checks get world coordinates (x, z, y; the map draws higher places further north):
 - an item actor in an overworld room (LASR's *_ROOMS tables): the actor's position;
 - a check inside a building or cave (a room table, or DOOR_LEVELS for NPCs, shops and games): the door into it on the
-  overworld (its AreaLevelOpen actor);
+  overworld (its AreaLevelOpen actor, or the AreaHole actor of a hole that drops into it, as into Mabe's well);
 - an NPC or statue outside (ACTOR_PREFIXES): that actor;
 - anything else: the LASR PopTracker pack's pin (github.com/Br00ty/lasr_brooty).
 The pack's pins become world coordinates by an affine fit through the checks with an actor position; where a level
 has several doors or a prefix several actors, the one nearest the pin counts. A position without an actor (a room,
-a pin) takes the height of the overworld actor nearest to it.
+a pin) takes the height of the overworld actor nearest to it, leaving out each room's static mesh (MapStatic), which
+sits at height 0.
 Dungeon checks get their room and level coordinates: the item actor or owl statue, else the room's upper left.
 """
 import argparse
@@ -126,11 +127,11 @@ class Level:
         return [self.room(path.stem) for path in sorted((self.root / "Field").glob("Field_*.leb"))]
 
     def field_doors(self) -> dict:
-        """Level -> positions of the overworld doors (AreaLevelOpen) into it."""
+        """Level -> positions of the overworld doors (AreaLevelOpen) and holes (AreaHole) into it."""
         doors = {}
         for room in self.field_rooms():
             for actor in room.actors:
-                if actor.name.startswith(b"AreaLevelOpen") and isinstance(actor.parameters[0], bytes):
+                if actor.name.startswith((b"AreaLevelOpen", b"AreaHole")) and isinstance(actor.parameters[0], bytes)                         and actor.parameters[0]:
                     doors.setdefault(actor.parameters[0].decode(), []).append((actor.posX, actor.posZ, actor.posY))
         return doors
 
@@ -141,7 +142,8 @@ class Level:
     def height(self, point) -> tuple:
         """(x, z, y): the point at the height of the overworld actor nearest to it."""
         if "heights" not in self.cache:
-            self.cache["heights"] = [(a.posX, a.posZ, a.posY) for room in self.field_rooms() for a in room.actors]
+            self.cache["heights"] = [(a.posX, a.posZ, a.posY) for room in self.field_rooms() for a in room.actors
+                                     if not a.name.startswith(b"MapStatic")]
         return point[0], point[1], nearest(self.cache["heights"], point)[2]
 
 
