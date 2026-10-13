@@ -1,7 +1,7 @@
 # The map tracker: run after newgame_file2 on a mod patched with Map Tracker on. In a new game every overworld icon
 # shows; the overworld map is revealed and the Tail Cave map shows every room and its chests (screenshots
 # map_overworld and map_dungeon). DBG map prints "map=<on> icons=<unchecked>/<total> ... hooks=<dungeon map opens>,
-# <icon updates>,<icons of ours>,<chests checked on the server>".
+# <icon updates>,<icons of ours>,<chests checked on the server> out=<shown|hidden>".
 send DBG map
 expect map=1.icons=(\d+)/\1. 5
 warp Field 38.25 10.5 128.25
@@ -9,6 +9,16 @@ send DBG input 800 200
 await 3 paused=1
 wait 3
 shot D:/DEV/LASAP-sandbox/map_overworld.png
+# X toggles the out-of-logic icons instead of opening the memories; the map stays open.
+send DBG input 4 150
+wait 2
+send DBG map
+expect out=hidden 5
+check paused=1
+send DBG input 4 150
+wait 2
+send DBG map
+expect out=shown 5
 send DBG input 800 200
 await 3 paused=0
 free 10

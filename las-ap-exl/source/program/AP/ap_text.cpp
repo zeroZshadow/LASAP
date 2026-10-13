@@ -51,7 +51,8 @@ namespace {
     std::string g_Toast;
     char g_ToastBuf[256];
 
-    enum class Kind { None, Found, Received, Saving };
+    enum class Kind { None, Found, Received, Saving, MapCaption };
+    constexpr const char* kMapCaptionLabel = "MapCaptionMemory";  // the map's X button: memories
     struct Slot { void* msbt; s32 index; Kind kind; };
     Slot g_Slots[16];
     int g_SlotCount = 0;
@@ -60,6 +61,7 @@ namespace {
     // Place.msbt labels of the map tracker's icons: (msbt, index) -> icon group
     std::map<std::pair<void*, s32>, int> g_MapLabels;
     char g_MapText[512];
+    char g_CaptionText[64];
 
     std::map<int, std::pair<std::string, std::string>> g_LocationNames;
     int g_FoundLocation = -1;
@@ -123,6 +125,7 @@ HOOK_DEFINE_TRAMPOLINE(MsbtFindLabel) {
         if (LabelIs(label, len, AP::FOUND_LABEL)) Remember(msbt, out->index, Kind::Found);
         else if (LabelIs(label, len, AP::RECEIVED_LABEL)) Remember(msbt, out->index, Kind::Received);
         else if (LabelIs(label, len, kSavingLabel)) Remember(msbt, out->index, Kind::Saving);
+        else if (LabelIs(label, len, kMapCaptionLabel)) Remember(msbt, out->index, Kind::MapCaption);
         else return;
         Logging.Log("[AP] text label " + std::string(label, len) + " index " + std::to_string(out->index));
     }
@@ -169,6 +172,19 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
                 out->length = Store(g_ToastBuf, sizeof(g_ToastBuf), g_Toast);
                 out->text = g_ToastBuf;
                 break;
+            case Kind::MapCaption: {
+                std::string text = AP::MapCaptionText();
+                if (text.empty()) return;
+                // The caption starts with a tag drawing the button (0x0E, group, type, parameter size, parameters).
+                s64 tags = 0;
+                while (tags + 7 <= out->length && out->text[tags] == 0x0e) {
+                    tags += 7 + static_cast<u8>(out->text[tags + 5]) + (static_cast<u8>(out->text[tags + 6]) << 8);
+                }
+                tags = std::min(tags, out->length);
+                out->length = Store(g_CaptionText, sizeof(g_CaptionText), std::string(out->text, tags) + text);
+                out->text = g_CaptionText;
+                break;
+            }
             case Kind::None:
                 break;
         }

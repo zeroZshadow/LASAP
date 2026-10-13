@@ -92,6 +92,8 @@ namespace AP {
     int MapLabelGroup(std::string_view label);
     std::string MapLabelText(int group);
     std::string MapState();
+    // The text of the map's X button caption (UI:MapCaptionMemory), or "" for the game's own.
+    std::string MapCaptionText();
     // 0 off, 1 on, 2 maps revealed without overworld icons (DBG map, for tests and screenshots)
     void SetMapMode(int mode);
     // Every room of the current dungeon counts as visited; once per tick.

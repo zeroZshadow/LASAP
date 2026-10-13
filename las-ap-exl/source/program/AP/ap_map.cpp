@@ -7,7 +7,9 @@
 // group's look is set and the others are not. In logic: every unchecked location of the group is in logic, or what is
 // in logic is not known yet (the client sends it); partly in logic: some are; out of logic: none is; collected: all
 // are checked. Hovering an icon shows Place:<its flag>, whose text names the unchecked locations, or the collected
-// ones (ap_text.cpp). The overworld's areas show once their UI_FieldMapTraverse_<area> flag is set
+// ones (ap_text.cpp). The map's X button, which opens the memories, instead hides or shows the out-of-logic icons
+// ("Toggle out of logic"): those icons are always made, and hidden after the map adds them while they are toggled
+// off; the toggle shows or hides the page's markers in place. The overworld's areas show once their UI_FieldMapTraverse_<area> flag is set
 // (UI_FieldMapOpen_<area> once the reveal has played); both read as set.
 //
 // In dungeons the map draws the rooms Link visited and, with the compass, the chests (open or closed). Both come
@@ -50,6 +52,24 @@ namespace {
     using PaneSetVisibleFn = void (*)(void*, bool);
     using PanePlayFn = void (*)(void*, float);
 
+    // Field map (game 1.0.0)
+    // The X button, which opens the memories: in the overworld map's KeyWait state w21 = X pressed (x19 page), and
+    // the dungeon map's check bool(page*).
+    constexpr uintptr_t kFieldMemoryButton = 0xe95278;
+    constexpr uintptr_t kMemoryButton = 0xe87840;
+    // In the map's icon setup, after a shown icon's marker joined the page's markers: x19 page, x26 marker.
+    constexpr uintptr_t kMarkerAdded = 0xe917c8;
+    constexpr size_t kPageMarkers = 0x710;          // std::vector<std::shared_ptr<marker>>: begin, end
+    constexpr size_t kMarkerRow = 0x240;            // UiFieldMapIcons row; its show flag name view at +0x20
+    constexpr size_t kRowFlagName = 0x20;
+    constexpr size_t kMarkerLayout = 0x48;          // virtual: the marker's layout, root pane at +0x18
+    constexpr size_t kLayoutPane = 0x18;
+    constexpr size_t kPaneFlags = 0x58;             // bit 0 visible
+    constexpr uintptr_t kPlaySound = 0xa57e0;       // void(const StrView* name, void*, float volume, float pitch)
+    struct StrView { const char* data; s64 length; };
+    using LayoutFn = u8* (*)(u8*);
+    using PlaySoundFn = void (*)(const StrView*, void*, float, float);
+
     constexpr const char* kTraversePrefix = "UI_FieldMapTraverse_";
     constexpr const char* kOpenPrefix = "UI_FieldMapOpen_";
 
@@ -66,6 +86,8 @@ namespace {
     bool g_Loaded = false;
     bool g_Enabled = false;  // loaded and not switched off for a test (DBG map 0)
     bool g_IconsHidden = false;  // revealed maps without overworld icons, for screenshots (DBG map 2)
+    bool g_OutHidden = false;    // out-of-logic icons toggled off with the X button
+    u8* g_MarkerPage = nullptr;  // the map page whose markers hold ours (the icon setup ran for it)
     std::vector<std::vector<int>> g_Overworld;  // group -> local ids
     std::vector<DungeonGroup> g_Dungeon;
     std::vector<Chest> g_Chests;
@@ -108,6 +130,45 @@ namespace {
         return std::atoi(std::string(name).c_str());
     }
 
+    // The group and look of a map marker's row, or -1.
+    int MarkerIcon(u8* marker, Look& look) {
+        const u8* row = *reinterpret_cast<u8**>(marker + kMarkerRow);
+        if (row == nullptr) return -1;
+        auto* name = reinterpret_cast<const std::pair<const char*, size_t>*>(row + kRowFlagName);
+        if (name->first == nullptr) return -1;
+        return ParseIcon(std::string_view(name->first, name->second), look);
+    }
+
+    void SetMarkerVisible(u8* marker, bool visible) {
+        void** vtable = *reinterpret_cast<void***>(marker);
+        u8* layout = reinterpret_cast<LayoutFn>(vtable[kMarkerLayout / 8])(marker);
+        u8* pane = *reinterpret_cast<u8**>(layout + kLayoutPane);
+        pane[kPaneFlags] = (pane[kPaneFlags] & ~1) | (visible ? 1 : 0);
+    }
+
+    // Shows or hides the page's out-of-logic markers as toggled.
+    void ApplyOutHidden(u8* page) {
+        auto** marker = *reinterpret_cast<u8***>(page + kPageMarkers);
+        auto** end = *reinterpret_cast<u8***>(page + kPageMarkers + 8);
+        for (; marker < end; marker += 2) {  // shared_ptr: object, control block
+            Look look;
+            if (*marker != nullptr && MarkerIcon(*marker, look) >= 0 && look == OutOfLogic) {
+                SetMarkerVisible(*marker, !g_OutHidden);
+            }
+        }
+    }
+
+    void PlaySound(const char* name) {
+        StrView view{name, static_cast<s64>(std::strlen(name))};
+        reinterpret_cast<PlaySoundFn>(g_BaseAddress + offset_manager.Offset(kPlaySound))(&view, nullptr, 1.0f, 1.0f);
+    }
+
+    void ToggleOutOfLogic(u8* page) {
+        g_OutHidden = !g_OutHidden;
+        if (page == g_MarkerPage) ApplyOutHidden(page);
+        PlaySound(g_OutHidden ? "SE_SY_MAP_PIN_OFF" : "SE_SY_MAP_PIN_ON");
+    }
+
     bool AnyUnchecked(const std::vector<int>& ids) {
         for (int id : ids) {
             if (!AP::IsLocationChecked(id)) return true;
@@ -127,6 +188,32 @@ HOOK_DEFINE_INLINE(DungeonMapFlags) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         g_FlagsCalls++;
         if (g_Enabled) ctx->W[8] |= 3;  // compass and map
+    }
+};
+
+HOOK_DEFINE_INLINE(MarkerAdded) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        g_MarkerPage = reinterpret_cast<u8*>(ctx->X[19]);
+        u8* marker = reinterpret_cast<u8*>(ctx->X[26]);
+        Look look;
+        if (g_OutHidden && MarkerIcon(marker, look) >= 0 && look == OutOfLogic) SetMarkerVisible(marker, false);
+    }
+};
+
+HOOK_DEFINE_INLINE(FieldMemoryButton) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        if (ctx->W[21] == 0 || !g_Enabled) return;
+        ToggleOutOfLogic(reinterpret_cast<u8*>(ctx->X[19]));
+        ctx->W[21] = 0;  // no memories
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(MemoryButton) {
+    static bool Callback(u8* page) {
+        bool pressed = Orig(page);
+        if (!pressed || !g_Enabled) return pressed;
+        ToggleOutOfLogic(page);
+        return false;  // no memories
     }
 };
 
@@ -210,6 +297,9 @@ namespace AP {
         g_Loaded = g_Enabled = true;
         DungeonMapFlags::InstallAtOffset(offset_manager.Offset(kDungeonMapFlags));
         DungeonIconUpdate::InstallAtOffset(offset_manager.Offset(kDungeonIconUpdate));
+        MarkerAdded::InstallAtOffset(offset_manager.Offset(kMarkerAdded));
+        MemoryButton::InstallAtOffset(offset_manager.Offset(kMemoryButton));
+        FieldMemoryButton::InstallAtOffset(offset_manager.Offset(kFieldMemoryButton));
         Logging.Log("[AP] map tracker: " + std::to_string(g_Overworld.size()) + " overworld and " +
                     std::to_string(g_Dungeon.size()) + " dungeon icons, " + std::to_string(g_Chests.size()) +
                     " chests");
@@ -276,6 +366,10 @@ namespace AP {
         *reinterpret_cast<u64*>(entries[dungeon] + kDungeonVisited) = ~0ULL;
     }
 
+    std::string MapCaptionText() {
+        return g_Enabled ? "Toggle out of logic" : "";
+    }
+
     void SetMapMode(int mode) {
         g_Enabled = g_Loaded && mode != 0;
         g_IconsHidden = mode == 2;
@@ -290,6 +384,7 @@ namespace AP {
                std::to_string(looks[Partial]) + "," + std::to_string(looks[OutOfLogic]) + "," +
                std::to_string(looks[Collected]) + " logic=" + (HasLogic() ? "1" : "0") +
                " hooks=" + std::to_string(g_FlagsCalls) + "," + std::to_string(g_IconCalls) + "," +
-               std::to_string(g_IconMatches) + "," + std::to_string(g_ChestMatches);
+               std::to_string(g_IconMatches) + "," + std::to_string(g_ChestMatches) + " out=" +
+               (g_OutHidden ? "hidden" : "shown");
     }
 }
