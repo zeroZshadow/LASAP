@@ -125,6 +125,7 @@ INDEXED_ITEMS = ("seashell", "heart-piece", "heart-container", "bottle", "golden
 # Items counted by inventory bits, as the module names them in ap_indices.txt (AP::INDICES_PATH): kind letter per item
 INDEX_KINDS = {"seashell": "S", "heart-piece": "H", "golden-leaf": "L", "heart-container": "C"}
 INDICES_FILE = "ap_indices.txt"
+VANILLA_FILE = "ap_vanilla.txt"
 DUNGEON_ITEM_PREFIXES = ("compass", "map", "stone", "key", "nightmare")
 
 
@@ -382,16 +383,29 @@ def build_placements(patch: dict, logic: dict) -> dict:
     return placements
 
 
-def write_indices(config_dir: Path, logic: dict, location_ids: dict) -> None:
+def write_indices(config_dir: Path, logic: dict, patch: dict) -> None:
     """One line per seashell, heart piece, golden leaf and heart container location: its kind, its vanilla inventory
-    bit and the local id of the location when shuffled, else -1. An unshuffled location sets its bit when collected,
-    so the module gives received items other bits; the Memories map marks bit i's vanilla place."""
+    bit and the local id of the location when it holds the placeholder, else -1. A location that keeps its vanilla
+    item sets its bit when collected, so the module gives received items other bits; the Memories map marks bit i's
+    vanilla place."""
     lines = []
     for loc, entry in logic.items():
         kind = INDEX_KINDS.get(entry.get("content"))
         if kind and entry.get("type") == "item" and "index" in entry:
-            lines.append(f"{kind} {entry['index']} {int(location_ids.get(loc, -1))}")
+            placeholder = patch["placements"].get(loc) == "ap-item"
+            lines.append(f"{kind} {entry['index']} {int(patch['location_ids'][loc]) if placeholder else -1}")
     (config_dir / INDICES_FILE).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+
+
+def write_vanilla(config_dir: Path, logic: dict, item_defs: dict, patch: dict) -> None:
+    """One line per AP location that keeps its vanilla item (the Trendy Game's prizes): the item's key, its index
+    (-1 for none) and the location's local id. The module sends the check when the game adds that item."""
+    lines = []
+    for loc, local_id in patch["location_ids"].items():
+        item = patch["placements"].get(loc)
+        if item != "ap-item":
+            lines.append(f"{item_defs[item]['item-key']} {logic[loc].get('index', -1)} {int(local_id)}")
+    (config_dir / VANILLA_FILE).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
 def location_item(loc: str) -> str:
@@ -471,7 +485,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     if proc.failed:
         print(proc.failed)
         return 1
-    write_indices(proc.config_dir, logic, patch["location_ids"])
+    write_indices(proc.config_dir, logic, patch)
+    write_vanilla(proc.config_dir, logic, item_defs, patch)
     if patch["settings"].get("Ammo Ghost", True):  # the option's default, also for patches without it
         ap_ghost.add(proc.file_manager)
     map_tracker = patch["settings"].get("Map Tracker", False)  # off for patches from before the option

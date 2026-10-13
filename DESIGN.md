@@ -50,7 +50,8 @@ Datasheets (`.gsheet`) are read and written by `RandomizerCore/Tools/gsheet.py`,
 - The module's `Inventory::AddItemID` hook sees the placeholder item id, reports a check, and adds nothing to the inventory.
 - Every real item, including the player's own, arrives from the server and is granted by the module. The client uses `items_handling = 0b011`: starting inventory is granted by the patch (LASR's starting gear), so the server does not send it again.
 - Locations whose category is not shuffled are AP locations like the others, holding their vanilla item, locked (`LASWorld.locked`, from `lasr_settings.locked_locations`): they hold the placeholder, report a check and can be hinted, and the item arrives from the server.
-- The patcher cannot place items at the Trendy Game's claw prizes and at the shop slots LASR does not shuffle (`lasr_settings.fixed_locations`). Those keep their vanilla content and are AP event locations (no id) with the vanilla item locked, if it is progression.
+- The Trendy Game's prizes cannot hold the placeholder (LASR does not place items in the crane game). They are locked AP locations that keep their vanilla item in the game (`lasr_settings.kept_locations`); the patch's `placements` give them that item. The patcher writes `config/lasr-exl/ap_vanilla.txt`: per such location the item's key, its index (-1 for none) and the local id. The module's `Inventory::AddItemID` hook reports the location's check when the game adds that item with that index (any index for -1), except while the module grants a received item. The server then sends the item back; the module does not grant it again when the location was collected here. Their heart pieces and seashells count as vanilla sources in `ap_indices.txt`.
+- The shop slots LASR does not shuffle (`lasr_settings.fixed_locations`) keep their vanilla content and are AP event locations (no id) with the vanilla item locked, if it is progression.
 - Each location shows a model for the item it holds. The world picks it (`models.py`):
   - LAS items show their own model.
   - Other games' items are matched by name against `data/item_models.yml` (e.g. any shield shows the shield).
@@ -103,7 +104,7 @@ An Archipelago player container (`container.py`, `APPlayerContainer`): a zip wit
 ```
 
 - `settings` uses LASR's `SettingsManager.fetch()["Settings"]` keys (`lasr_settings.checked_settings`). Every category's locations are AP locations, so every category setting is on and "Seashell Mansion" is 50; the options decide only whether their items are shuffled. "Blue Rupees" on makes the patcher place items at the Color Dungeon's rupees.
-- `placements` covers every LASR item location: AP locations are `"ap-item"`, the fixed ones carry their vanilla item. Owl statues that give no gift are left out, as in LASR.
+- `placements` covers every LASR item location: AP locations are `"ap-item"`, the kept and fixed ones carry their vanilla item. Owl statues that give no gift are left out, as in LASR.
 - `location_names` covers the AP locations. The patcher uses it for the shop's price tags; in-game text gets the same names at runtime from the client.
 - `location_models` leaves out locations that show the Archipelago model. It is optional: older patches show the Archipelago model everywhere.
 - `location_chests` gives each AP location's chest the size and texture of LASR's "Chest Types" setting (option `chest_appearance`): for this slot's items, the LASR item's type and `chest-type` with the adjustments LASR's shuffler makes; for other players' items, `important` for progression, `good` for useful, and `junk` with the junk texture for filler and traps (`lasr_settings.chest_look`). It is optional.

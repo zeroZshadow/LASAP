@@ -74,11 +74,15 @@ def removed_locations(options: LASOptions) -> Set[str]:
 
 
 def fixed_locations() -> Set[str]:
-    """Locations the patcher cannot put an item into: they keep their vanilla content and are no AP locations."""
-    # the Trendy Game's prizes, and the shop slots LASR does not shuffle (those not in Shop_Items)
-    fixed: Set[str] = set(CATEGORIES["Trendy_Rewards"])
-    fixed |= {k for k in ITEM_LOCATIONS if LOGIC[k]["subtype"] == "shop" and k not in CATEGORIES["Shop_Items"]}
-    return fixed
+    """Locations that keep their vanilla content and are no AP locations: the shop slots LASR does not shuffle (those
+    not in Shop_Items)."""
+    return {k for k in ITEM_LOCATIONS if LOGIC[k]["subtype"] == "shop" and k not in CATEGORIES["Shop_Items"]}
+
+
+def kept_locations() -> Set[str]:
+    """AP locations that keep their vanilla item in the game, as the patcher cannot put the placeholder there: the
+    Trendy Game's prizes. They are always locked; the module reports them when the game adds their item."""
+    return set(CATEGORIES["Trendy_Rewards"])
 
 
 def locked_locations(options: LASOptions) -> Set[str]:
@@ -91,7 +95,7 @@ def locked_locations(options: LASOptions) -> Set[str]:
     locked |= {loc for loc, n in MANSION_THRESHOLDS.items() if n > options.seashell_mansion.value}
     if not options.rapids:
         locked.add("owl-statue-rapids")  # LASR excludes it without the Rapids category
-    return locked - fixed_locations()
+    return (locked | kept_locations()) - fixed_locations()
 
 
 # The settings trackers get in the slot data ("settings"): those that decide which checks exist and what reaches them.

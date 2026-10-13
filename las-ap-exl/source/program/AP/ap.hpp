@@ -38,6 +38,8 @@ namespace AP {
     constexpr const char* NAMES_PATH = "sd:/config/lasr-exl/ap_names.txt";
     // Per seashell, heart piece, golden leaf and heart container source: its bit and its location (ap_memory.cpp).
     constexpr const char* INDICES_PATH = "sd:/config/lasr-exl/ap_indices.txt";
+    // AP locations that keep their vanilla item (the Trendy Game's prizes): "<item key> <index> <local id>" lines.
+    constexpr const char* VANILLA_PATH = "sd:/config/lasr-exl/ap_vanilla.txt";
     // The map tracker's icons, written by the patcher when the option is on (ap_map.cpp).
     constexpr const char* MAP_PATH = "sd:/config/lasr-exl/ap_map.txt";
     // Event flag and Place.msbt label of an overworld icon: the prefix and the icon's group. Must match the patcher.
@@ -65,6 +67,8 @@ namespace AP {
     void Init(const std::string& seed_hash, int port);
     void Tick();
     void OnPlaceholderCollected(int local_id);
+    // The game adds an item (Inventory::AddItemID): reports the check of a location that keeps this vanilla item.
+    void OnItemAdded(int item_id, int index);
     void OnGoal();
     // Checked in this game or, as the client reported, on the server.
     bool IsLocationChecked(int local_id);

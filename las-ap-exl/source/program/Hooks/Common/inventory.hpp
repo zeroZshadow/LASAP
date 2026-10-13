@@ -106,6 +106,7 @@ HOOK_DEFINE_TRAMPOLINE(Inventory__AddItemID) {
             AP::OnPlaceholderCollected(index);
             return;
         }
+        AP::OnItemAdded(ID, index);
         // if (global_config.debug_mode.enabled) {
         //     std::string itemName = itemsDict.at(ID);
         //     std::string indexStr = "";

@@ -7,7 +7,7 @@ from worlds.AutoWorld import call_all
 from . import LASTestBase
 from ..container import LASContainer
 from ..ids import LOCATION_OFFSETS
-from ..lasr import CATEGORIES, ITEM_DEFS, ITEM_LOCATIONS
+from ..lasr import CATEGORIES, ITEM_DEFS, ITEM_LOCATIONS, LOGIC
 from ..locations import LOCATION_NAMES
 
 
@@ -51,9 +51,14 @@ class TestDefault(LASTestBase):
         self.assertEqual(set(patch["placements"]), set(ITEM_LOCATIONS) - owls)  # owls are off by default
         for loc, item in patch["placements"].items():
             self.assertTrue(item == "ap-item" or item in ITEM_DEFS, (loc, item))
+        from ..lasr_settings import kept_locations
         shuffled = {loc for loc, item in patch["placements"].items() if item == "ap-item"}
-        self.assertEqual(set(patch["location_ids"]), shuffled)
-        self.assertEqual(set(patch["location_names"]), shuffled)
+        kept = kept_locations()
+        self.assertEqual(set(patch["location_ids"]), shuffled | kept)
+        self.assertFalse(shuffled & kept)
+        self.assertEqual(set(patch["location_names"]), shuffled | kept)
+        for loc in kept:
+            self.assertEqual(patch["placements"][loc], LOGIC[loc]["content"])
         for loc, (item_name, owner) in patch["location_names"].items():
             item = self.multiworld.get_location(LOCATION_NAMES[loc], self.player).item
             self.assertEqual(item_name, item.name)
@@ -116,8 +121,8 @@ class TestEverythingShuffled(LASTestBase):
     }
 
     def test_counts(self) -> None:
-        # every LASR location except the always-vanilla shop slots and Trendy prizes
-        self.assertEqual(len(self.world.shuffled), 344 - 7 - 7)
+        # every LASR location except the shop slots LASR does not shuffle
+        self.assertEqual(len(self.world.shuffled), 344 - 7)
 
 
 class TestVanillaHeavy(LASTestBase):
@@ -143,7 +148,7 @@ class TestVanillaHeavy(LASTestBase):
         """Locations the options leave unshuffled are AP locations holding their own vanilla item."""
         from ..items import LASR_TO_ITEM
         from ..lasr import LOGIC
-        from ..lasr_settings import CATEGORY_SETTINGS, fixed_locations
+        from ..lasr_settings import CATEGORY_SETTINGS, fixed_locations, kept_locations
         locked = set(self.world.locked)
         self.assertIn("40-seashell-reward", locked)
         instruments = {f"D{n}-instrument" for n in range(1, 9)}
@@ -156,7 +161,7 @@ class TestVanillaHeavy(LASTestBase):
             self.assertEqual(location.item.player, self.player)
         self.assertFalse(fixed_locations() & set(self.world.shuffled))
         patch = self.world.patch_data()
-        self.assertEqual({loc for loc in locked if patch["placements"][loc] != "ap-item"}, set())
+        self.assertEqual({loc for loc in locked if patch["placements"][loc] != "ap-item"}, kept_locations())
         self.assertLessEqual(locked, set(patch["location_ids"]))
         self.assertTrue(all(patch["settings"][s] is True for s in CATEGORY_SETTINGS))
 
@@ -256,7 +261,8 @@ class TestChestAppearance(LASTestBase):
         self.assertEqual(lasr_settings(self.world.options)["Chest Types"], "Texture + Size")
         looks = self.world.patch_data()["location_chests"]
         # the test world is filled only up to pre_fill: dungeon items
-        filled = {loc for loc in self.world.shuffled
+        from ..lasr_settings import kept_locations
+        filled = {loc for loc in set(self.world.shuffled) - kept_locations()
                   if self.multiworld.get_location(LOCATION_NAMES[loc], self.player).item is not None}
         self.assertTrue(filled)
         self.assertEqual(set(looks), filled)

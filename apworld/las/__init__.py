@@ -340,7 +340,8 @@ class LASWorld(World):
         }
 
     def patch_data(self) -> Dict[str, Any]:
-        placements = {loc: "ap-item" for loc in self.shuffled}
+        kept = lasr_settings.kept_locations()
+        placements = {loc: self.content(loc) if loc in kept else "ap-item" for loc in self.shuffled}
         placements.update({loc: self.content(loc) for loc in self.vanilla})
         starting = [ITEM_TABLE[item.name].lasr_name for item in self.multiworld.precollected_items[self.player]
                     if item.name in ITEM_TABLE]
@@ -373,7 +374,7 @@ class LASWorld(World):
     def placed_models(self) -> Dict[str, str]:
         """The LASR item whose model each AP location shows; locations left out show the Archipelago model."""
         models = {}
-        for loc in self.shuffled:
+        for loc in set(self.shuffled) - lasr_settings.kept_locations():
             item = self.multiworld.get_location(LOCATION_NAMES[loc], self.player).item
             model = model_for(item) if item is not None else ""
             if model:
@@ -383,7 +384,7 @@ class LASWorld(World):
     def placed_chests(self) -> Dict[str, List[Any]]:
         """How the chest at each AP location looks (lasr_settings.chest_look)."""
         looks = {}
-        for loc in self.shuffled:
+        for loc in set(self.shuffled) - lasr_settings.kept_locations():
             item = self.multiworld.get_location(LOCATION_NAMES[loc], self.player).item
             if item is None:
                 continue

@@ -7,6 +7,7 @@
 #include "Game/framework.hpp"
 #include "Game/Data/inventory.hpp"
 #include "nn/fs.hpp"
+#include "Config/file_handler.hpp"
 #include <algorithm>
 #include <bit>
 #include <deque>
@@ -175,6 +176,12 @@ namespace {
     bool g_ItemEventSwap = false;
     int g_ItemEventShown = -1;         // the item the last item event's item-get showed; -1 until the swap (STATE)
     std::string g_ItemEventMessage;    // and its message entry
+
+    // AP locations that keep their vanilla item (VANILLA_PATH): the game adds the item with this id and index (-1:
+    // any) when the location is collected.
+    struct KeptLocation { int item; int index; int local_id; };
+    std::vector<KeptLocation> g_Kept;
+    bool g_Granting = false;  // GrantItem adds a received item
 
     // Connection notices: in a level this long without the client or the server, say so, then again this often while
     // it lasts.
@@ -459,7 +466,9 @@ namespace {
             case 44: case 45: case 47: case 48: case 49: index = dungeon; break; // dungeon items
             default: break;
         }
+        g_Granting = true;
         Inventory::AddItemID(id, count, index);
+        g_Granting = false;
         return id;
     }
 
@@ -495,6 +504,49 @@ namespace {
         }
         nn::fs::WriteFile(h, 0, g_Checks.data(), kChecksBytes, nn::fs::WriteOption{nn::fs::WriteOptionFlag_Flush});
         nn::fs::CloseFile(h);
+    }
+
+    // Saves a location collected here and reports it.
+    void RecordCheck(int local_id) {
+        if (!g_ChecksLoaded) LoadChecks();
+        if (local_id >= 0 && local_id < (int)(kChecksBytes * 8)) {
+            g_Checks[local_id / 8] |= (1 << (local_id % 8));
+            SaveChecks();
+        }
+        Logging.Log("[AP] collected location " + std::to_string(local_id));
+        AP::Send("CHECK " + std::to_string(local_id));
+    }
+
+    bool CollectedHere(int local_id) {
+        if (local_id < 0 || local_id >= (int)(kChecksBytes * 8)) return false;
+        if (!g_ChecksLoaded) LoadChecks();
+        return (g_Checks[local_id / 8] >> (local_id % 8)) & 1;
+    }
+
+    bool IsKept(int local_id) {
+        return local_id >= 0 && std::any_of(g_Kept.begin(), g_Kept.end(),
+                                            [&](const KeptLocation& kept) { return kept.local_id == local_id; });
+    }
+
+    // "<item key> <index> <local id>" lines (patcher las_ap_patch.write_vanilla)
+    void LoadKept() {
+        std::string text;
+        if (R_FAILED(FileHandler::ReadFile(AP::VANILLA_PATH, text))) return;
+        std::stringstream lines(text);
+        std::string line;
+        while (std::getline(lines, line)) {
+            std::stringstream ss(line);
+            std::string key;
+            int index, local_id;
+            if (!(ss >> key >> index >> local_id)) continue;
+            int item = ItemIdFromKey(key);
+            if (item < 0) {
+                AP::Log("unknown kept item " + key);
+                continue;
+            }
+            g_Kept.push_back({item, index, local_id});
+        }
+        Logging.Log("[AP] kept locations: " + std::to_string(g_Kept.size()));
     }
 
     void SendAllChecks() {
@@ -712,8 +764,10 @@ namespace {
             int have = GetRecvCount();
             if (n == have + 1) {
                 // ITEM <n> <key> <count> <dungeon> [<location> <item name>|<sender>]
-                int id = GrantItem(a[2], atoi(a[3].c_str()), atoi(a[4].c_str()));
                 int location = a.size() >= 6 ? atoi(a[5].c_str()) : -1;
+                // A location that keeps its vanilla item gave it already when it was collected here.
+                int id = IsKept(location) && CollectedHere(location)
+                             ? -1 : GrantItem(a[2], atoi(a[3].c_str()), atoi(a[4].c_str()));
                 std::string names = RestAfter(line, 6);
                 size_t bar = names.find('|');
                 std::string item = bar == std::string::npos ? names : names.substr(0, bar);
@@ -781,6 +835,7 @@ namespace AP {
         LoadLocationNames();
         LoadMap();
         LoadIndices();
+        LoadKept();
         StartNetwork(port > 0 ? port : PORT);
     }
 
@@ -795,13 +850,14 @@ namespace AP {
 
     void OnPlaceholderCollected(int local_id) {
         SetFoundLocation(local_id);
-        if (!g_ChecksLoaded) LoadChecks();
-        if (local_id >= 0 && local_id < (int)(kChecksBytes * 8)) {
-            g_Checks[local_id / 8] |= (1 << (local_id % 8));
-            SaveChecks();
+        RecordCheck(local_id);
+    }
+
+    void OnItemAdded(int item_id, int index) {
+        if (g_Granting) return;
+        for (const auto& kept : g_Kept) {
+            if (kept.item == item_id && (kept.index < 0 || kept.index == index)) RecordCheck(kept.local_id);
         }
-        Logging.Log("[AP] collected location " + std::to_string(local_id));
-        Send("CHECK " + std::to_string(local_id));
     }
 
     void OnGoal() {

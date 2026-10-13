@@ -27,7 +27,7 @@ class FreeGifts(DefaultOnToggle):
 
 class TradeQuest(Toggle):
     """Shuffle the rewards of the trading sequence. The Yoshi Doll that starts it stays in the Trendy Game, whose
-    prizes are never shuffled; trading it to Mamasha is the first check."""
+    prizes are checks that are never shuffled."""
     display_name = "Trade Quest"
 
 
