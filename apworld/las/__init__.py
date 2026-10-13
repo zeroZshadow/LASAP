@@ -318,11 +318,13 @@ class LASWorld(World):
         return hashlib.sha256(f"{self.multiworld.seed_name}:{self.player}".encode()).hexdigest()[:8]
 
     def fill_slot_data(self) -> Mapping[str, Any]:
+        settings = lasr_settings.lasr_settings(self.options, self.vanilla)
         return {
             "seed_hash": self.seed_hash(),
             "goal": "wind_fish",
             "death_link": bool(self.options.death_link.value),
             "location_count": len(self.shuffled),
+            "settings": {key: settings[key] for key in lasr_settings.TRACKER_SETTINGS},
         }
 
     def patch_data(self) -> Dict[str, Any]:

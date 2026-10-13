@@ -109,7 +109,9 @@ An Archipelago player container (`container.py`, `APPlayerContainer`): a zip wit
 
 ## slot_data
 
-`{"seed_hash": str, "goal": str, "death_link": bool, "location_count": int}`
+`{"seed_hash": str, "goal": str, "death_link": bool, "location_count": int, "settings": {...}}`
+
+`settings` holds the seed's LASR settings that decide which checks exist and what reaches them (`TRACKER_SETTINGS` in `lasr_settings.py`), under LASR's names and values (`"Preset": "Basic"`, `"Owl Gifts": "None"`, `"Seashell Mansion": 15`, ...). Trackers such as PopTracker packs read them on connect.
 
 ## Game ↔ client protocol (TCP 43384, game listens)
 

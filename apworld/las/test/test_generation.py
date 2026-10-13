@@ -17,7 +17,10 @@ class TestDefault(LASTestBase):
         distribute_items_restrictive(self.multiworld)
         call_all(self.multiworld, "post_fill")
         slot_data = self.world.fill_slot_data()
-        self.assertEqual(set(slot_data), {"seed_hash", "goal", "death_link", "location_count"})
+        self.assertEqual(set(slot_data), {"seed_hash", "goal", "death_link", "location_count", "settings"})
+        from ..lasr_settings import TRACKER_SETTINGS
+        self.assertEqual(tuple(slot_data["settings"]), TRACKER_SETTINGS)
+        self.assertEqual(slot_data["settings"]["Shuffle Instruments"], "Anywhere")
         self.assertRegex(slot_data["seed_hash"], r"^[0-9a-f]{8}$")
         self.assertEqual(slot_data["location_count"],
                          len([loc for loc in self.multiworld.get_locations(self.player) if loc.address is not None]))

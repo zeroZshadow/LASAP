@@ -84,6 +84,15 @@ def vanilla_locations(options: LASOptions) -> Set[str]:
     return vanilla
 
 
+# The settings trackers get in the slot data ("settings"): those that decide which checks exist and what reaches them.
+TRACKER_SETTINGS = ("Preset", "Chests", "Free Gifts", "Trade Quest", "Golden Leaves", "Heart Pieces", "Seashells",
+                    "Miscellaneous", "Seashell Mansion", "Shop", "Boss Drops", "Dampe", "Rapids", "Fishing",
+                    "Trendy Game", "Blue Rupees", "Owl Gifts", "Dungeon Maps", "Compasses", "Stone Beaks", "Small Keys",
+                    "Nightmare Keys", "Shuffle Instruments", "Open Kanalet", "Open Mabe", "Open Mamu",
+                    "Completed Bridge", "Classic D2", "Shuffled Dungeons", "Bad Pets", "Fast Fishing", "Shuffled Bombs",
+                    "Free Book", "Fast Stalfos", "Shuffled Powder", "Stealing")
+
+
 def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str, Any]:
     """LASR's SettingsManager.fetch()["Settings"] for these options; unsupported settings keep LASR's defaults."""
     vanilla = set(vanilla)
