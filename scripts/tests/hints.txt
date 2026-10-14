@@ -2,14 +2,12 @@
 # and the client makes it a server hint. Run after newgame_file2 with the client connected to the server, on a seed
 # with In-Game Hints server, Owl Statues all and dungeon items in their own dungeon (no stone beaks at the start).
 # Flags: APHint4 Martha's Bay owl, APHint30 and APHint31 Color Dungeon 06C and 07D owls, APHint33 the shield book.
-# Screenshots: hint_owl, hint_book, hint_nobeak, hint_dungeon.
+# Screenshots: hint_owl, hint_book, hint_nobeak, hint_dungeon, each once the text waits for a button.
 # Martha's Bay owl (no beak needed): the hint, then its Owl Gift.
 warp Field 156.75 7.5 162.75
-send DBG input 0 150 0 32767
-wait 1
-send DBG input 1 400
-await 5 event=[1-9]
-wait 2
+face up
+interact
+until textready 10
 shot D:/DEV/LASAP-sandbox/hint_owl.png
 dismiss 30
 send DBG flag APHint4
@@ -17,13 +15,11 @@ expect FLAG.APHint4.1
 logged \[Hint\] 20 server 1
 # The library's shield book: A, then Yes.
 warp Library 12.76 0 5.74
-send DBG input 0 150 0 32767
-wait 1
-send DBG input 1 400
-await 5 event=[1-9]
-wait 2
-send DBG input 1 400
-wait 3
+face up
+interact
+until msg:Selecting 10
+choose 0
+until textready 10
 shot D:/DEV/LASAP-sandbox/hint_book.png
 dismiss 30
 send DBG flag APHint33
@@ -32,24 +28,20 @@ logged \[Hint\] 20 server 2
 # Color Dungeon 06C (its three statues shared one entry point; the rooms have no enemies): without the beak it says
 # nothing new.
 warp Lv10ClothesDungeon 35.25 0 62.25
-send DBG input 0 150 0 32767
-wait 1
-send DBG input 1 400
-await 5 event=[1-9]
-wait 2
+face up
+interact
+until textready 10
 shot D:/DEV/LASAP-sandbox/hint_nobeak.png
 dismiss 30
 send DBG flag APHint30
 expect FLAG.APHint30.0
 # With the Color Dungeon's beak: the hint, then its Owl Gift.
 send DBG grant StoneBeak 1 9 0
-wait 1
+expect OK.grant 5
 goto 35.25 0 62.25
-send DBG input 0 150 0 32767
-wait 1
-send DBG input 1 400
-await 5 event=[1-9]
-wait 4
+face up
+interact
+until textready 10
 shot D:/DEV/LASAP-sandbox/hint_dungeon.png
 dismiss 30
 send DBG flag APHint30
@@ -57,13 +49,11 @@ expect FLAG.APHint30.1
 logged \[Hint\] 20 server 3
 # A hint read while the server is away (Color Dungeon 07D) reaches it on the next connection.
 send /disconnect
-wait 3
-goto 53.25 0 74.25
-send DBG input 0 150 0 32767
-wait 1
-send DBG input 1 400
-await 5 event=[1-9]
-wait 4
+until server=0 10
+warp Lv10ClothesDungeon 53.25 0 74.25
+face up
+interact
+until textready 10
 dismiss 30
 send DBG flag APHint31
 expect FLAG.APHint31.1

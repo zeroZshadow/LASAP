@@ -12,6 +12,7 @@
 #include "AP/ap.hpp"
 #include "AP/ap_debug.hpp"
 #include "Game/framework.hpp"
+#include "Game/Data/inventory.hpp"
 #include "Hooks/Common/level.hpp"
 #include "nn/socket.hpp"
 #include "nn/os.hpp"
@@ -212,7 +213,9 @@ namespace {
     // Layout (game 1.0.0): u32 frames in the state at +0x8, current state +0xd (0xff none), previous +0xe, owner
     // +0x40, per state {enter, update, exit} member functions from +0x48 (0x30 each), then for N states a bitset at
     // +0x50 + N*0x30 and the name pointers at +0x58 + N*0x30. Each class has its own ChangeState(machine, state).
-    struct SmHook { const char* name; uintptr_t offset; int states; };
+    // A hook on a ChangeState(machine, state) function (owner = -1), or on a state's update(owner) for machines whose
+    // class changes state inline: the machine is then at owner + `owner`.
+    struct SmHook { const char* name; uintptr_t offset; int states; ptrdiff_t owner = -1; };
     constexpr SmHook kSmHooks[] = {
         {"six", 0x87f1b0, 6},       // shared by 6-state machines, among them the title (L+R at 0xf87ec0)
         {"choice", 0xf83750, 6},    // system choice dialog (L_SystemChoice_)
@@ -220,6 +223,8 @@ namespace {
         {"file", 0xebde10, 11},     // file select (UI:SystemTitleLoad)
         {"name", 0xeaf540, 7},      // name entry
         {"files", 0xe60b90, 39},    // title file menu (UI:DataTitleInitial): files, copy, delete, difficulty
+        {"map", 0xe95090, 17, 0xf0},   // overworld map, from its KeyWait update: Deactive, Open, KeyWait, ...
+        {"dmap", 0xe7a0f0, 16, 0xf0},  // dungeon map, from its KeyWait update
     };
     constexpr int kSmHookCount = sizeof(kSmHooks) / sizeof(kSmHooks[0]);
     // Names for the owner classes found in the trace (owner vtable, module offset).
@@ -244,6 +249,9 @@ namespace {
     Machine g_Machines[kMaxMachines];
     std::atomic<int> g_MachineHook[kMaxMachines];  // hook index + 1, set right after the slot is taken
     u32 g_NextMachineId = 1;
+    // Frames the last message page spent printing (Reading), -1 before the first.
+    int g_ReadFrames = -1;
+    u32 g_ReadSince = 0;
 
     void Register(int hook, uintptr_t sm) {
         for (auto& m : g_Machines) {
@@ -263,6 +271,14 @@ namespace {
         static void Callback(void* sm, u32 state) {
             Register(K, reinterpret_cast<uintptr_t>(sm));
             SmChange::Orig(sm, state);
+        }
+    };
+
+    template<int K>
+    struct SmUpdate : public exl::hook::impl::TrampolineHook<SmUpdate<K>> {
+        static void Callback(void* owner) {
+            Register(K, reinterpret_cast<uintptr_t>(owner) + kSmHooks[K].owner);
+            SmUpdate::Orig(owner);
         }
     };
 
@@ -300,7 +316,7 @@ namespace {
     struct Field { const char* key; std::string value; };
     Field g_Fields[] = {{"screen", ""}, {"level", ""}, {"event", ""}, {"paused", ""}, {"free", ""},
                         {"lock", ""}, {"pad", ""}, {"show", ""}, {"text", ""}, {"choice", ""}, {"client", ""},
-                        {"server", ""}, {"file", ""}, {"face", ""}};
+                        {"server", ""}, {"file", ""}, {"face", ""}, {"carry", ""}, {"health", ""}};
     void SetField(int i, const std::string& value) {
         if (g_Fields[i].value == value) return;
         g_Fields[i].value = value;
@@ -447,6 +463,10 @@ namespace {
                 continue;
             }
             if (state != m.state) {
+                if (std::strcmp(kSmHooks[m.hook].name, "msg") == 0) {
+                    if (StateName(m, state) == "Reading") g_ReadSince = g_FrameNo;
+                    else if (StateName(m, m.state) == "Reading") g_ReadFrames = g_FrameNo - g_ReadSince;
+                }
                 m.state = state;
                 Trace("ui " + std::to_string(m.id) + " " + m.label + " " + StateName(m, state));
             }
@@ -463,11 +483,13 @@ namespace {
     }
 
     // Any message window that is not closed.
+    // A message that holds Link. One in EventWaiting takes no button and leaves him free (the shop shows one
+    // beside play after an item-get).
     bool MessageOpen() {
         for (auto& m : g_Machines) {
             if (!m.ready || m.sm.load() == 0 || std::strcmp(kSmHooks[m.hook].name, "msg") != 0) continue;
             std::string s = StateName(m, m.state);
-            if (s != "Closed" && s != "-") return true;
+            if (s != "Closed" && s != "EventWaiting" && s != "-") return true;
         }
         return false;
     }
@@ -477,6 +499,7 @@ namespace {
         for (auto& m : g_Machines) {
             if (!m.ready || m.sm.load() == 0 || std::strcmp(kSmHooks[m.hook].name, "msg") != 0) continue;
             std::string s = StateName(m, m.state);
+            if (s == "-") continue;  // a window of a level that is gone
             if (out.empty() || s != "Closed") out = s;
         }
         return out.empty() ? "none" : out;
@@ -551,6 +574,19 @@ namespace {
         return "up";
     }
 
+    // A choice takes buttons once its layout's animation has run: the Selecting update (0xef2300) returns while the
+    // float at +0x3c of the object at owner + (s32 at +0x1cc4) * 0x18 + 0x58 is not 0.
+    constexpr size_t kMsgChoiceLayout = 0x1cc4, kMsgLayouts = 0x58, kLayoutAnim = 0x3c;
+    bool ChoiceReady() {
+        Machine* m = OpenMessage();
+        if (m == nullptr || StateName(*m, m->state) != "Selecting") return false;
+        uintptr_t owner = MessageOwner(m), layout = 0;
+        s32 index = 0;
+        float anim = 1;
+        return Read(owner + kMsgChoiceLayout, index) && index >= 0 && index < 16 &&
+               Read(owner + kMsgLayouts + index * 0x18, layout) && Read(layout + kLayoutAnim, anim) && anim == 0;
+    }
+
     int ChoiceCursor() {
         Machine* m = OpenMessage();
         u8 cursor = 0;
@@ -562,10 +598,13 @@ namespace {
     //   free             the player can move, no message is open and no item display waits
     //   unlocked         the game's controller takes input (lock=0)
     //   textready        the open message waits for a button and takes one now
+    //   choiceready      a choice is open and takes buttons now
     //   choice=<n>       a choice is open with the cursor on option n (from 0)
     //   <field>=<value>  a traced field: screen, level, event, paused, free, lock, pad, show, text, choice,
     //                    client (the AP client is connected), server (the client is logged into the slot),
-    //                    file (the file menu's cursor, 0 = file 1), face (up, down, left, right: where Link faces)
+    //                    file (the file menu's cursor, 0 = file 1), face (up, down, left, right: where Link faces),
+    //                    carry (Link holds something over his head), health (quarter hearts)
+    //   dead             Link is in a level with no health left
     //   <machine>:<state> a UI machine (its label or hook name) in that state
     bool HoldsOne(const std::string& c) {
         if (c.empty()) return true;
@@ -573,6 +612,8 @@ namespace {
         if (c == "free") return AP::TestPlayerFree() && !AP::TestItemDisplayPending() && !MessageOpen();
         if (c == "unlocked") return g_Fields[5].value == "0";
         if (c == "textready") return TextReady();
+        if (c == "choiceready") return ChoiceReady();
+        if (c == "dead") return g_Fields[2].value != "-" && g_Fields[15].value == "0";
         size_t eq = c.find('=');
         if (eq != std::string::npos) {
             for (const auto& f : g_Fields) {
@@ -688,6 +729,7 @@ namespace {
         int client = -1;
         bool pressed = false;    // pressed in the current wait
         u32 pressedAt = 0;
+        u32 idleFrom = 0;        // free with no text since this frame, before the first press
         int presses = 0;
         int retries = 0;
     } g_Advance;
@@ -717,7 +759,18 @@ namespace {
             a.presses++;
             return;
         }
-        if (!busy && Holds("free")) {
+        bool free = !busy && Holds("free");
+        if (free && a.presses == 0) {
+            // Nothing to advance: Link stays free and no text opens (a talk that missed its NPC).
+            if (a.idleFrom == 0) a.idleFrom = g_FrameNo;
+            if (g_FrameNo - a.idleFrom > kRetryFrames) {
+                Push(a.client, "FAIL advance no text");
+                a.on = false;
+            }
+            return;
+        }
+        a.idleFrom = 0;
+        if (free) {
             Push(a.client, "DONE advance " + std::to_string(a.presses) + " retries=" + std::to_string(a.retries));
             Trace("advance done " + std::to_string(a.presses));
             a.on = false;
@@ -754,7 +807,7 @@ namespace {
             c.confirmed = false;
             c.lastCursor = -1;
         }
-        if (cursor >= 0 && (cursor != c.lastCursor || g_FrameNo - c.movedAt > kRetryFrames)) {
+        if (cursor >= 0 && ChoiceReady() && (cursor != c.lastCursor || g_FrameNo - c.movedAt > kRetryFrames)) {
             if (cursor == c.lastCursor) Trace("choose retry");
             c.lastCursor = cursor;
             c.movedAt = g_FrameNo;
@@ -798,6 +851,40 @@ namespace {
             g_Presses.back().internal = true;
             t.pressedAt = g_FrameNo;
             t.presses++;
+        }
+    }
+
+    // DBG interact [buttons hex] [timeout ms]: once Link is free, one press (A by default) that must start something:
+    // an event, a message or a lift. FAIL interact nothing when Link is still free and empty-handed after the press.
+    struct Interact {
+        bool on = false;
+        u64 buttons = 1;
+        u64 deadline = 0;
+        int client = -1;
+        bool pressed = false;
+        u32 pressedAt = 0;
+    } g_Interact;
+
+    void StepInteract() {
+        Interact& t = g_Interact;
+        if (!t.on) return;
+        bool idle = Holds("free+carry=0");
+        if (t.pressed && !idle) {
+            Push(t.client, "DONE interact f=" + std::to_string(t.pressedAt));
+            Trace("interact done");
+            t.on = false;
+        } else if (t.pressed && g_Presses.empty() && g_FrameNo - t.pressedAt > kRetryFrames) {
+            Push(t.client, "FAIL interact nothing");
+            Trace("interact nothing");
+            t.on = false;
+        } else if (NowMs() > t.deadline) {
+            Push(t.client, std::string("FAIL interact ") + (t.pressed ? "nothing" : "never free"));
+            t.on = false;
+        } else if (!t.pressed && g_Presses.empty() && idle) {
+            g_Presses.push_back({t.buttons, 0, 0, kAdvanceFrames, kAdvanceFrames, "", ~0ull, t.client});
+            g_Presses.back().internal = true;
+            t.pressed = true;
+            t.pressedAt = g_FrameNo;
         }
     }
 
@@ -857,7 +944,54 @@ namespace {
         int file = FileCursor();
         SetField(12, file < 0 ? "-" : std::to_string(file));
         SetField(13, FaceField());
+        SetField(14, AP::TestPlayerCarrying() ? "1" : "0");
+        auto* items = Game::Data::Inventory::Items != nullptr ? *Game::Data::Inventory::Items : nullptr;
+        SetField(15, items != nullptr ? std::to_string(items->Health) : "-");
         SampleWatches();
+    }
+
+    // DBG guard <condition>: a state a test must never reach. When one starts to hold, every pending op fails with
+    // "alert <condition>" and all debug clients get "ALERT <condition> <fields>". "dead" is always guarded; "hurt"
+    // holds once health drops below what it was when the guard was set (or last healed to).
+    struct Guard { std::string cond; bool held; int health = -1; };
+    std::vector<Guard> g_Guards = {{"dead", false}};
+
+    bool GuardHolds(Guard& g) {
+        if (g.cond != "hurt") return Holds(g.cond);
+        if (g_Fields[15].value == "-") return false;
+        int health = atoi(g_Fields[15].value.c_str());
+        if (g.health < 0 || health > g.health) g.health = health;
+        return health < g.health;
+    }
+
+    void FailOps(const std::string& why) {
+        for (const auto& w : g_Awaits) Push(w.client, "FAIL await " + w.cond + " " + why);
+        g_Awaits.clear();
+        for (const auto& p : g_Presses) {
+            if (!p.internal) Push(p.client, "FAIL press " + Hex(p.buttons) + " " + why);
+        }
+        g_Presses.clear();
+        g_HoldUntil = 0;
+        if (g_Advance.on) Push(g_Advance.client, "FAIL advance " + why);
+        if (g_Choose.on) Push(g_Choose.client, "FAIL choose " + why);
+        if (g_TapUntil.on) Push(g_TapUntil.client, "FAIL tapuntil " + why);
+        if (g_Hold.on) Push(g_Hold.client, "FAIL hold " + why);
+        if (g_Interact.on) Push(g_Interact.client, "FAIL interact " + why);
+        g_Advance.on = g_Choose.on = g_TapUntil.on = g_Hold.on = g_Interact.on = false;
+    }
+
+    void StepGuards() {
+        for (auto& g : g_Guards) {
+            bool held = GuardHolds(g);
+            if (held && !g.held) {
+                std::string fields;
+                for (const auto& f : g_Fields) fields += std::string(" ") + f.key + "=" + f.value;
+                Broadcast("ALERT " + g.cond + fields);
+                Trace("alert " + g.cond);
+                FailOps("alert " + g.cond);
+            }
+            g.held = held;
+        }
     }
 
     // Runs at the first input poll of each frame, before that poll's buttons are set.
@@ -872,10 +1006,12 @@ namespace {
         g_OpHold = 0;
         g_OpLX = g_OpLY = 0;
         Sample();
+        StepGuards();
         StepAwaits();
         StepAdvance();
         StepChoose();
         StepTapUntil();
+        StepInteract();
         StepHold();
         StepPresses();
     }
@@ -1061,7 +1197,28 @@ namespace AP::Test {
             g_Choose.on = false;
             g_TapUntil.on = false;
             g_Hold.on = false;
+            g_Interact.on = false;
             AP::Send("OK release");
+        } else if (cmd == "interact") {
+            // DBG interact [buttons hex] [timeout ms]
+            g_Interact = Interact{};
+            g_Interact.on = true;
+            g_Interact.buttons = a.size() >= 3 ? strtoull(a[2].c_str(), nullptr, 16) : 1;
+            g_Interact.deadline = NowMs() + (a.size() >= 4 ? strtoull(a[3].c_str(), nullptr, 10) : 10000);
+            g_Interact.client = client;
+            AP::Send("OK interact");
+        } else if (cmd == "guard" && a.size() >= 3) {
+            // DBG guard <condition> | DBG guard off <condition> | DBG guard reset (back to "dead" alone)
+            if (a[2] == "reset") {
+                g_Guards = {{"dead", false}};
+            } else if (a[2] == "off" && a.size() >= 4) {
+                std::erase_if(g_Guards, [&](const Guard& g) { return g.cond == a[3]; });
+            } else if (std::none_of(g_Guards.begin(), g_Guards.end(), [&](const Guard& g) { return g.cond == a[2]; })) {
+                g_Guards.push_back({a[2], false});
+            }
+            std::string list;
+            for (const auto& g : g_Guards) list += " " + g.cond;
+            AP::Send("OK guard" + list);
         } else if (cmd == "trace" && a.size() >= 3) {
             g_Trace = a[2] == "on";
             if (g_Trace) {
@@ -1117,7 +1274,8 @@ namespace AP::Test {
         char yaw[16];
         snprintf(yaw, sizeof(yaw), "%.0f", PlayerYaw());
         return " frame=" + std::to_string(g_FrameNo) + " msg=" + MessageState() + " choice=" + g_Fields[9].value +
-               " face=" + g_Fields[13].value + " yaw=" + yaw;
+               " face=" + g_Fields[13].value + " yaw=" + yaw + " file=" + g_Fields[12].value +
+               " read=" + std::to_string(g_ReadFrames);
     }
 
     void InstallHooks() {
@@ -1127,7 +1285,9 @@ namespace AP::Test {
         SmChange<3>::InstallAtOffset(offset_manager.Offset(kSmHooks[3].offset));
         SmChange<4>::InstallAtOffset(offset_manager.Offset(kSmHooks[4].offset));
         SmChange<5>::InstallAtOffset(offset_manager.Offset(kSmHooks[5].offset));
-        static_assert(kSmHookCount == 6);
+        SmUpdate<6>::InstallAtOffset(offset_manager.Offset(kSmHooks[6].offset));
+        SmUpdate<7>::InstallAtOffset(offset_manager.Offset(kSmHooks[7].offset));
+        static_assert(kSmHookCount == 8);
     }
 }
 #endif

@@ -2,15 +2,18 @@
 # reset_saves.sh newgame, from a fresh boot). The item-gets wait for Marin's lines, then play one at a time; the
 # script ends free in Tarin's house with nothing waiting.
 # Screenshot: newgame_2 the end (the camera back on the whole room).
-expect HELLO 60
-press 1 200 title
-press c0 500 menu 5
-press 1 300 loading|level 6
+connect 90
+tapuntil 1 screen=title when title:Deactive 30
+tapuntil c0 title:GameStart when title:WaitLR+unlocked 20
+select 1
+tapuntil 1 files:DataSelectConfirm when files:DataSelectKeyWait
+tapuntil 1 files:GameStart when files:DataSelectConfirm
 inlevel 60
 level MarinTarinHouse
 send DBG grant Seashell 1 -1 1
+expect OK.grant 5
 send DBG grant Rupee20 1 -1 1
-wait 1
+expect OK.grant 5
 check showq=2
 # B closes Marin's lines and each item-get's text.
 dismiss 120
@@ -18,4 +21,6 @@ level MarinTarinHouse
 check event=0 paused=0 carry=0 showq=0(\s|$)
 # The item-gets showed the received items (the last one, Rupee20), not the placeholder.
 check shown=104(\s|$)
+# The screenshot waits for the camera to return.
+wait 1
 shot D:/DEV/LASAP-sandbox/newgame_2.png

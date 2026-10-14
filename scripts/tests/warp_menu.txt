@@ -3,30 +3,25 @@
 # to Continue, as on the game's yes/no prompts.
 # Starts outside Marin's house in Mabe. Screenshots: warp_map, warp_menu, warp_home.
 warp Field 38.25 10.5 128.25
-send DBG input 800 200
-await 3 paused=1
+tapuntil 800 paused=1 when free 5
 shot D:/DEV/LASAP-sandbox/warp_map.png
-send DBG input 800 200
-await 3 paused=0
+tapuntil 800 paused=0 5
 free 10
 level Field
-send DBG input 800 1500
-await 4 event=[1-9]
-# B before the choices show is lost (commands reach the game through the client with some delay).
-wait 4
+# Held Minus opens the menu once Link is free; the menu's event takes him.
+hold 800 0 0 until !event=0 5
+until msg:Selecting 10
+check choice=0
 shot D:/DEV/LASAP-sandbox/warp_menu.png
-# B moves the cursor to Continue; twice, as test presses can be dropped (a second B keeps it there).
-send DBG input 2 400
-wait 0.8
-send DBG input 2 400
-wait 0.8
-send DBG input 1 400
+# B moves the cursor to Continue; A takes it.
+tap 2 2 2 when choiceready
+until choice=1 3
+tap 1 2 2 when choice=1+choiceready
 free 10
 level Field
-send DBG input 800 1500
-await 4 event=[1-9]
-wait 1
-send DBG input 1 400
+hold 800 0 0 until !event=0 5
+until msg:Selecting 10
+choose 0
 inlevel 20
 level MarinTarinHouse
 loaded 20

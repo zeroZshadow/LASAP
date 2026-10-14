@@ -1,36 +1,39 @@
 # An item arrives while Link holds a shop item (the heart, second from the left on the Mabe shop's counter). Its
 # item-get waits until he puts the heart back, and the heart stays in the shop: Link can lift it again.
 # Screenshots: carry_1 holding the heart with the item waiting, carry_2 the item-get, carry_3 the heart lifted again.
+guard hurt
 warp Field 51.75 10.5 117
-send DBG input 0 1200 0 32767
+hold 0 0 32767 until level=Shop 5
 inlevel 20
 level Shop
 free 10
-send DBG pos 5.25 0 6
-wait 1
+goto 5.25 0 6
 at 5.25 6
-send DBG input 0 300 0 32767
-wait 0.8
-send DBG input 1 400
-wait 2.5
+face up
+interact
+until carry=1+event=0 5
 check event=0 paused=0 carry=1
 send DBG grant Seashell 1 -1 1
-wait 3
+expect OK.grant 5
+# The item waits while Link holds the heart.
+wait 2
 check event=0 paused=0 carry=1 showq=1(\s|$)
 shot D:/DEV/LASAP-sandbox/carry_1.png
 # A at the counter puts the heart back; then the item-get plays as an event.
-send DBG input 1 400
-await 5 carry=0
+tap 1
+until carry=0 5
 await 5 event=22
 # It shows the received item, not the placeholder.
 await 3 shown=22(\s|$)
+until textready 10
 shot D:/DEV/LASAP-sandbox/carry_2.png
 dismiss 20
 # The item-get leaves Link facing the camera; he turns back to the counter to lift the heart again.
-send DBG input 0 300 0 32767
-wait 0.8
-send DBG input 1 400
-await 5 event=0 paused=0 carry=1
+face up
+interact
+until carry=1+event=0 5
+check event=0 paused=0
 shot D:/DEV/LASAP-sandbox/carry_3.png
-send DBG input 1 400
-await 5 event=0 paused=0 carry=0
+tap 1
+until carry=0+event=0 5
+check event=0 paused=0

@@ -1,63 +1,62 @@
 # The ghost in Tarin's house (Ammo Ghost option): not there without bombs or the bow; with bombs he tops them up to
 # 15, never past it; once the bow is found he tops up arrows too. Run after newgame_file2 (a new game: no bombs, no
-# bow) on a mod patched with the option on. Talks to him from one tile south; Link walks through him, so each talk
-# starts from there.
+# bow) on a mod patched with the option on. Talks to him from one tile south, facing up; Link walks through him, so
+# each talk starts from there.
 # Changes the sandbox save's inventory. Screenshots: ghost_none, ghost_bombs, ghost_talk, ghost_both.
 check bombbag=0 bow=0
 warp Field 38.25 10.5 128.25
 warp MarinTarinHouse 7.5 0 10
 goto 5.5 0 8.5
-send DBG input 0 150 0 32767
-wait 1
+face up
 shot D:/DEV/LASAP-sandbox/ghost_none.png
-send DBG input 1 400
-wait 3
+# Nobody to talk to: A starts nothing.
+tap 1
+wait 1
 check event=0
 # Bombs: he shows up after the room reloads and fills an empty bag to 15.
 send DBG grant Bomb 1 -1 0
-wait 1
+expect OK.grant 5
 send DBG poke 9e 00
+expect OK.poke 5
 warp Field 38.25 10.5 128.25
 warp MarinTarinHouse 7.5 0 10
 goto 5.5 0 8.5
-send DBG input 0 150 0 32767
-wait 1
+face up
 shot D:/DEV/LASAP-sandbox/ghost_bombs.png
-send DBG input 1 400
-await 5 event=[1-9]
+interact
+until textready 10
 shot D:/DEV/LASAP-sandbox/ghost_talk.png
 # His line stays until a button closes it.
-wait 3
-check event=[1-9]
+wait 2
+check msg=KeyWaiting
 dismiss 20
 check bombs=15 arrows=0
 # 10 bombs become 15; 20 stay 20.
 send DBG poke 9e 0a
+expect OK.poke 5
 goto 5.5 0 8.5
-send DBG input 0 150 0 32767
-wait 1
-send DBG input 1 400
-await 5 event=[1-9]
+face up
+interact
+until textready 10
 dismiss 20
 check bombs=15 arrows=0
 send DBG poke 9e 14
+expect OK.poke 5
 goto 5.5 0 8.5
-send DBG input 0 150 0 32767
-wait 1
-send DBG input 1 400
-await 5 event=[1-9]
+face up
+interact
+until textready 10
 dismiss 20
 check bombs=20 arrows=0
 # The bow: he tops up arrows too.
 send DBG grant Bow 1 -1 0
-wait 1
+expect OK.grant 5
 send DBG poke 9e 0000
+expect OK.poke 5
 goto 5.5 0 8.5
-send DBG input 0 150 0 32767
-wait 1
-send DBG input 1 400
-await 5 event=[1-9]
-wait 1
+face up
+interact
+until textready 10
 shot D:/DEV/LASAP-sandbox/ghost_both.png
 dismiss 20
 check bombs=15 arrows=15

@@ -23,8 +23,8 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 | Script | Does |
 |---|---|
 | `emu.py start\|stop\|shot <png>\|log [regex]\|wait <regex> [s]\|lock <owner>\|unlock <owner>\|check` | Boots the game headless on the sandbox (Vulkan; override with `LASAP_GFX=OpenGl`), stops it by PID, captures the window, reads the newest log, takes and gives back the sandbox lock. Its window opens without focus and stays behind other windows, so the user can keep working or playing |
-| `build_exl.sh` | Builds `las-ap-exl` in Docker and copies `subsdk9`/`main.npdm` to `patcher/exl/` |
-| `deploy_mod.sh <out dir>` | Installs a patcher output (SD layout) into the sandbox, with the sandbox game port (`LASAP_GAME_PORT`, default 43385) in `config.ini` |
+| `build_exl.sh` | Builds `las-ap-exl` in Docker twice: the release module to `patcher/exl/` and the test build to `patcher/exl-test/` ("Building the exlaunch module"); checks that only the test build has the debug port |
+| `deploy_mod.sh <out dir>` | Installs a patcher output (SD layout) into the sandbox with the test build's `subsdk9`, and the sandbox game port (`LASAP_GAME_PORT`, default 43385) in `config.ini` |
 | `reset_saves.sh [newgame]` | Restores sandbox saves from the user's saves, or from the new-game snapshot, and clears `sdcard/lasap` |
 | `ap.py <Generate.py\|MultiServer.py\|Launcher.py> ...` | Runs an AP entry point from `vendor/Archipelago` in `.venv-ap`; `LASAP_AP` points it at another checkout, such as a clean one with only `las.apworld` in `custom_worlds` |
 | `las_client.py [--nogui --connect host:port --name Slot]` | Runs the LAS client without the Launcher |
@@ -34,18 +34,18 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 | `make_test_patch.py <out.aplas>` | Writes a synthetic patch (all locations AP items) for patcher tests |
 | `verify_patch.py <patch> <out dir>` | Checks that every shuffled chest holds the placeholder (its model variant) with its local id, that `ap_indices.txt` lists each indexed source once, that `ap_vanilla.txt` lists every kept location with its item or companion flag, with the map tracker on that every location has an icon, below eight required instruments that the egg's event checks single instruments, and with in-game hints that every source shows its own message, which fits the text box, and that `ap_hints.txt` names each server hint's flag and location |
 | `test_client.py` / `drive.py <script>` | Talk to the module directly on the sandbox port (only when no AP client is connected) |
-| `e2e.py send\|srv\|dbg\|cli\|state\|goto\|wait\|tail\|run` | Drives a scripted AP session (below): server `/send`, client `/dbg`, the game's STATE line, hop teleports, `drive.py` scripts through the client |
-| `reload_exl.sh` | Restarts the sandbox game with the freshly built module and boots to file 2 |
+| `e2e.py send\|srv\|dbg\|cli\|state\|goto\|wait\|trace\|tail\|run` | Drives the game through the test build's debug port and a scripted AP session (below): server `/send`, DBG commands, the game's STATE line, teleports within a room, the trace, test scripts (`run <script> [trace file]`) |
+| `reload_exl.sh` | Restarts the sandbox game with the freshly built test module and boots to file 2 |
 | `leb_actors.py <room> [regex] [--romfs dir]` | Lists a room's actors with positions (run in `.venv-lasr`; point `--romfs` at the deployed mod for patched rooms) |
 | `map_positions.py [<pack>]` | Writes `patcher/map_positions.json`, the map tracker's positions with heights (DESIGN.md, Map tracker), from the RomFS rooms and the PopTracker pack's pins, in `.venv-ap`; prints the pin fit's error |
 | `poptracker_map.py <pack>` | Writes the Archipelago id tables (`scripts/autotracking/*_mapping.lua`) of the LASR PopTracker pack (Br00ty/lasr_brooty) and checks every code against the pack, in `.venv-lasr` |
-| `re/scan.py str\|xref\|xstr\|callers\|dis\|func\|ptr` | Static queries on a memory dump of the game (see "Reverse engineering") |
+| `re/scan.py str\|strs\|xref\|xstr\|callers\|dis\|func\|ptr\|sms` | Static queries on a memory dump of the game (see "Reverse engineering") |
 
 ## Working in a worktree
 
-Sessions that change code work in their own git worktree and branch, so they never share a working tree or index. `vendor/`, the venvs and `patcher/exl/` are gitignored and exist only in the main checkout; `scripts/worktree.sh` (run in the worktree) covers the rest:
+Sessions that change code work in their own git worktree and branch, so they never share a working tree or index. `vendor/`, the venvs, `patcher/exl/` and `patcher/exl-test/` are gitignored and exist only in the main checkout; `scripts/worktree.sh` (run in the worktree) covers the rest:
 
-- `worktree.sh setup` adds an Archipelago worktree at `vendor/Archipelago` (from the main checkout's, at its commit) with `worlds/las` pointing at this worktree's world, and copies the built module into `patcher/exl/`. The venvs are used from the main checkout by path (`<main>/.venv-ap/Scripts/python.exe`, `<main>/.venv-lasr/...`); nothing links to them, so deleting a worktree cannot reach them. `ap.py`, `las_client.py`, `build_exl.sh` and `reload_exl.sh` work from the worktree.
+- `worktree.sh setup` adds an Archipelago worktree at `vendor/Archipelago` (from the main checkout's, at its commit) with `worlds/las` pointing at this worktree's world, and copies the built modules into `patcher/exl/` and `patcher/exl-test/`. The venvs are used from the main checkout by path (`<main>/.venv-ap/Scripts/python.exe`, `<main>/.venv-lasr/...`); nothing links to them, so deleting a worktree cannot reach them. `ap.py`, `las_client.py`, `build_exl.sh` and `reload_exl.sh` work from the worktree.
 - `worktree.sh test [pytest args]` runs the world's tests on this worktree's world.
 - `worktree.sh land` fast-forwards `master` in the main checkout to this branch, then removes the Archipelago worktree. It refuses when the worktree has uncommitted changes, when `master` has moved on (bring the branch up to date with `master`, rerun the tests, land again), or when the main checkout has uncommitted edits in files the branch changes (another session is working there: land after it has committed). Its other uncommitted edits are left alone.
 - `worktree.sh teardown` removes the Archipelago worktree without landing.
@@ -56,7 +56,7 @@ The sandbox is shared with every other session: take the lock (Emulator, "Sharin
 
 - **Guest log.** Module output (`[AP] ...`, `[exlaunch|...]`) goes to the emulator log via `svcOutputDebugString`.
 - **Screenshots.** `emu.py shot` uses `PrintWindow`; it works while the window is covered or unfocused.
-- **Debug commands** (`DBG ...` on the game socket; `/dbg ...` in the LAS client):
+- **Debug commands** exist only in the test build ("Building the exlaunch module"): `DBG ...` on the debug port (the game port + 100, 43485 in the sandbox) or the game socket, `/dbg ...` in the LAS client. The debug port answers within milliseconds; the client's `/dbg` path takes 0.2–1 s per command, as the client polls its stdin.
 
   | Command | Effect |
   |---|---|
@@ -75,30 +75,43 @@ The sandbox is shared with every other session: take the lock (Emulator, "Sharin
   | `peek <p\|f\|i> <hex off> <hex len>` | Dumps bytes of the player, framework or inventory |
   | `poke <hex off> <hex bytes>` | Writes bytes into the inventory, e.g. `poke 88 ffffffffffff0300` sets seashells 0–49 |
   | `dumpmain` | Writes the loaded main module to `sd:/lasap/main.bin` |
+  | `press <buttons> [down] [up] [lx ly] [when <condition> [ms]]` | Holds buttons (and the stick) for `down` frames, then none for `up` (default 2/2), starting on the first frame the condition holds; `DONE press <buttons> f=<frame>` or `FAIL press` after the timeout |
+  | `await <condition> [ms]` / `holds <condition>` | `HELD <condition> f=<frame>` once it holds, or `FAIL await`; whether it holds now |
+  | `advance [buttons] [ms] [fast]` | Turns pages: one press (B by default) each time the open message takes a button (`textready`), until Link is free (`DONE advance <presses> retries=<n>`) or a choice opens (`CHOICE advance`). `fast` holds the button while a page prints. Fails with `no text` when Link stays free with no message open for 20 frames |
+  | `choose <option from 0> [ms]` | At a choice: Down/Up until the cursor is on the option, then A once the choice takes buttons (`choiceready`) |
+  | `tapuntil <buttons> <until> [when <condition>] [ms]` | Taps whenever the `when` condition holds until `until` holds; taps again only after a tap changed nothing for 20 frames |
+  | `interact [buttons] [ms]` | Once Link is free, one press (A by default) that must start an event, a message or a lift; `FAIL interact nothing` when he is still free and empty-handed 20 frames later |
+  | `hold <buttons> <lx> <ly> until <condition> [ms]` | Holds buttons and the stick every frame until the condition holds |
+  | `release` | Drops every pending press, hold and op |
+  | `guard <condition>` / `guard off <condition>` / `guard reset` | A state a test must never reach: when one starts to hold, every pending op fails with `alert <condition>` and every debug client gets `ALERT <condition> <fields>`. `dead` is always guarded; `hurt` holds once health drops below what it was when the guard was set. `e2e.py` resets the guards when it connects |
+  | `trace on\|off` | The trace ("Game state") |
+  | `ui` | Lists the UI state machines seen so far with their states |
+  | `watch <base> <hex off> <hex len>` / `watch off` | Traces changes of a memory range. Bases: `f` framework, `p` player, `i` inventory, `c` controller, `m<id>`/`o<id>` (or `m:<label>`/`o:<label>`) a UI machine or its owner, `g<hex>` a module offset, `x<hex>` an address |
 
-  Button bits follow `nn::hid::NpadButton`: A `1`, B `2`, L+R `c0`, Plus `400`, D-pad left/up/right/down `1000`/`2000`/`4000`/`8000`. The stick range is ±32767.
-- **Inputs.** Hold at least 400 ms in dialogue; shorter presses are dropped. The title needs L+R held 500 ms and takes it once it has faded in, about 2.5 s after the intro is skipped. Menu inputs during a fade are dropped.
+  Button bits follow `nn::hid::NpadButton`: A `1`, B `2`, X `4`, L+R `c0`, Plus `400`, Minus `800`, D-pad left/up/right/down `1000`/`2000`/`4000`/`8000`. The stick range is ±32767. Buttons from `input` and `press` are added to the physical ones in the game's input poll.
+- **Inputs.** Press when the game's state takes the press ("Game state") rather than after a delay: a press the game drops leaves no trace, a press it takes changes a state within a few frames.
 - **Buttons in tests.** B is the sword (holding it charges a spin). Dismiss text with B next to signs and NPCs: A also starts a new "Check" or "Talk". Git Bash rewrites arguments that start with `/`; set `MSYS_NO_PATHCONV=1` for `e2e.py cli /las`.
 - **Sandbox port.** The sandbox game listens on 43385, so it runs beside the user's own modded game on 43384. Start the scripted client with `--game-port 43385`. A sandbox install done by the client (Patch tab) writes no port, so that game uses 43384.
 - **Scripted AP session.** Run the client and server with stdin fed from a file (`tail -n0 -f cmds.txt | ...`) so `/dbg`, `/las`, `/game` and server `/send` commands can be appended while they run. `e2e.py` writes to these files in the folder `LASAP_E2E` names (default `D:\DEV\LASAP-sandbox\e2e`). `/game <line>` sends a raw protocol line, e.g. a hand-made `ITEM` or `NAME`. For texts naming another player, generate a two-slot seed (a second slot with a small game such as ChecksFinder) and send its items with `/send` or `/release`. Start MultiServer with `--release_mode goal --collect_mode goal` to keep a goal from releasing every location.
-- **Script ops.** `e2e.py run` scripts (`scripts/tests/*.txt`) send lines and check the game between steps, so a failed step stops the script within seconds:
-  - `send`, `wait`, `mash`, `expect <regex|HELLO> [s]`: the `drive.py` basics.
-  - `logged <regex> [s] [client|server]`: wait for a line logged since the script started.
-  - `state`, `shot <png>`: print the STATE line, capture the window.
-  - `screen <name> [s]`: wait for a screen. `press <buttons> <ms> <screen> [tries]`: press until that screen shows; `<screen>` may list alternatives (`loading|level`). `level <name>`: stop unless the player is in that level.
-  - `free [s]`: wait until the player can move and no item-get shows or waits. `loaded [s]`: the same in a level entered after the last `send`. `inlevel [s]`: a level entered after the last `send` has loaded.
-  - `dismiss [s]`: press B until the player is free.
-  - `check <regex>`: stop unless the STATE line matches. `await <s> <regex>`: wait until it matches.
-  - `warp <level> <x> <y> <z>`: reload a level there (through another level when it is the current one) and wait. `goto <x> <y> <z>`: hop there within the level. `at <x> <z> [tol]`: stop unless the player stands there.
+- **Script ops.** `e2e.py run <script> [trace file]` scripts (`scripts/tests/*.txt`) drive the game on the debug port and check it between steps; a failed step stops the script with the STATE line, and so does an `ALERT` (a guard tripped: Link died, or a script's own `guard`). Each line prints with the seconds since the script started, and the run ends with `SCRIPT OK in <s> s`. Conditions are the module's ("Game state").
+  - `connect [s]`: wait for the debug port (the game has started). `expect HELLO [s]`: wait until the AP client is connected, also when it connected before the script started. `expect <regex> [s]`: a debug reply or client log line since the last send.
+  - `send <line>`: a `DBG` line goes to the debug port, anything else to the client's stdin. `logged <regex> [s] [client|server] [count]`: wait for log lines since the script started. `wait <s>`: sleep, only for checking that something stays as it is.
+  - `until <condition> [s]`: wait until a condition holds. `tap <buttons> [down] [up] [lx ly] [when <condition> [ms]]`, `tapuntil <buttons> <until> [when <condition>] [s]`, `hold <buttons> <lx> <ly> until <condition> [s]`, `interact [buttons] [s]`, `choose <option> [s]`: the module ops of the same name. `guard <condition>` / `guard off <condition>`: the module's guards.
+  - `face up|down|left|right`: hold the stick until Link faces that way (he may take a step).
+  - `select <slot>`: in the file menu, move the cursor to a slot (0 = file 1).
+  - `dismiss [s]`: close the open text with B, holding B while pages print; fails at a choice and when there is no text. `advance [buttons] [s] [fast]`: the same, stopping at a choice.
+  - `free [s]`: wait until the player can move, no item-get shows or waits and no message holds him. `loaded [s]`: the same in a level entered after the last `send` or input op. `inlevel [s]`: a level entered after the last `send` or input op has loaded. `level <name>`: stop unless the player is in that level.
+  - `state`, `shot <png>`: print the STATE line, capture the window. `check <regex>`: stop unless the STATE line matches. `await <s> <regex>`: wait until it matches.
+  - `warp <level> <x> <y> <z>`: reload a level there (through another level when it is the current one) and wait. `goto <x> <y> <z>`: teleport within the loaded room and wait until Link stands there. `at <x> <z> [tol]`: stop unless the player stands there.
+  - `screen`, `press <buttons> <ms> <screen> [tries]`, `mash`: timed presses through `input`, for scripts that have no state to wait for.
 - **Test scripts.**
-  - `newgame_file2` boots to a new game in file 2 (after `reset_saves.sh newgame`) and ends free in Tarin's house, with Marin's lines closed by B. `boot_file1` loads file 1, a played file.
-  - Menu presses can be dropped, during the file menu's fade-in and at random. The boot scripts never depend on one press: they repeat A until the game loads, and move the cursor only upwards, where it stops at file 1. `newgame_file2` checks the level it ends in. Both passed 5 runs in a row from a fresh start (2026-10-12).
+  - `newgame_file2` boots to a new game in file 2 (after `reset_saves.sh newgame`) and ends free in Tarin's house, with Marin's lines closed by B. `boot_file1` loads file 1, a played file. Each press waits for the state that takes it (the title's `WaitLR`, the file menu's `DataSelectKeyWait`, the message window's `KeyWaiting`) and is repeated only when it changed nothing, so no press reaches Link while he is free. Both passed 5 runs in a row from a fresh start (2026-10-14).
   - `beach_chest` (lifts the rock in front of the chest), `island_bush` (cuts a bush), `diamond_island` (walks into a free-standing item) `ghost_house_pot` (lifts the Ghost House pot and picks up its item) and `itemget_models` (the AP model next to a rupee) each check a kind of location and save screenshots in the sandbox.
   - `shop_carry` (an item arrives while Link holds a shop item), `itemget_during_talk` (while he talks to the shopkeeper) and `newgame_items` (while he wakes up in a new game; run like `newgame_file2`) check when received items show: each waits, then plays as an event. `traps` plays each trap's effect and checks its damage.
   - `warp_menu` checks that a Minus tap opens and closes the map, and that holding Minus opens the warp menu, where Continue stays and Warp home lands in Tarin's house. `warp_bowwow` warps home with BowWow following (it sets his companion bit and `BowWowJoin` in the sandbox save).
   - `map_tracker` (run after `newgame_file2`, on a mod patched with `Map Tracker` on) checks that every overworld icon shows in a new game, that X toggles the out-of-logic icons without leaving the map, and that opening the Tail Cave map runs the dungeon hooks; screenshots `map_overworld` and `map_dungeon` show the revealed maps.
   - `hints` (run after `newgame_file2` with the client connected to the server, on a seed with In-Game Hints `server`, Owl Statues `all` and dungeon items in their own dungeon) reads the Martha's Bay owl statue, the library's shield book and the Color Dungeon statues in rooms 06C (without and with the stone beak) and 07D (while the server is disconnected), and checks each hint's flag and the server hints; screenshots `hint_owl`, `hint_book`, `hint_nobeak` and `hint_dungeon`.
-  - `instant_text` (run after `newgame_file2`, on a mod patched with `Instant Text` on) shows a received item's text and Marin's lines, checks that each waits for a button, and saves screenshots taken while letter by letter they would still be appearing.
+  - `instant_text` (run after `newgame_file2`, on a mod patched with `Instant Text` on, with a server that has sent no items yet) shows a received item's text and Marin's lines, checks that each waits for a button, and saves screenshots taken while letter by letter they would still be appearing.
   - `ammo_ghost` (run after `newgame_file2`, on a mod patched with `Ammo Ghost` on) checks that the ghost in Tarin's house is missing without bombs or the bow, then tops bombs and arrows up to 15 and never past it.
   - `egg_goal` (run after `newgame_file2`, on a mod patched with `Instruments Required` 3) plays the Ballad at the egg: with two instruments it stays shut, with a third walking north enters `Lv09WindFishsEgg`. It sets the ocarina with the Ballad on X in the item menu: down to the ocarina, X opens its songs on the last one, left to the Ballad, X.
 - **New-game snapshot.** `D:\DEV\LASAP-sandbox\save-newgame` is the sandbox save folder right after file 2 was created (file select, file 2, Normal, OK on the name entry) and before any play. File 1 and the autosave are a copy of the user's played file. `reset_saves.sh newgame` restores it, so new-game tests skip the name entry. The file-select cursor starts on the last file used, file 2 in the snapshot, and stops at file 1 and the autosave instead of wrapping.
@@ -106,12 +119,32 @@ The sandbox is shared with every other session: take the lock (Emulator, "Sharin
 - **Warps and pits.** Warp into a dungeon or house from `Field`: after a warp out of `TownWell` (Link standing in water) the screen can stay black until the emulator restarts. `pos` also sets the respawn point, so a `pos` over a pit makes Link fall again on every respawn until he dies; reset with a warp to another level and back.
 - **Health.** `poke 84 1c00` sets health to 7 hearts (quarter hearts, u16).
 - **Tarin's gift.** The detain scene on leaving the house only stops Link; talk to Tarin (A at about (9.4, 0, 6.0) in his house) to get the gift.
-- **Finding a location.** LASR's `Randomizers/*.py` map locations to rooms (`CHEST_ROOMS`, `HEART_ROOMS`, ...); `leb_actors.py` prints the actors there. Teleport one tile (1.5) south of a chest and press A facing up. A `pos` into a room that is not loaded lands on no floor; `e2e.py goto` hops through the rooms in between, and `warp Field ...` reloads the overworld at the target.
+- **Finding a location.** LASR's `Randomizers/*.py` map locations to rooms (`CHEST_ROOMS`, `HEART_ROOMS`, ...); `leb_actors.py` prints the actors there. Teleport one tile (1.5) south of a chest and press A facing up. A `pos` into a room that is not loaded lands on no floor; `warp` loads the target's room.
+
+## Game state
+
+The test build reports the game's state so tests press when the game takes a press instead of after a delay.
+
+- **STATE** ends with `frame` (frames since boot, counted at the first input poll of each), `msg` (the message window's state), `choice` (its cursor, 0 = first option), `face` (`up`, `down`, `left`, `right`, from Link's rotation) and `yaw` (degrees, 0 = down), `file` (the file menu's cursor) and `read` (frames the last page spent in `Reading`).
+- **Fields** conditions test: `screen`, `level`, `event`, `paused`, `free`, `lock` (the game's controller ignores input), `pad` (the controller's buttons), `show` (an item-get waits or shows), `text` (the message window's state with its wait counter, `KeyWaiting,6/6`), `choice`, `client`, `server`, `file`, `face`, `carry`, `health`.
+- **Conditions** (`await`, `press ... when`, script ops): `<field>=<value>`, `<machine>:<state>` (`title:WaitLR`, `files:DataSelectKeyWait`, `msg:KeyWaiting`), `free` (Link can move, no item-get pending, no message holds him; one in `EventWaiting` does not), `unlocked`, `textready` (the open message waits for a button and takes one now), `choiceready` (a choice takes buttons now), `dead` (in a level with no health). `!` negates; `+` joins (`choice=1+choiceready`).
+- **UI state machines.** The title (`title`), the file menu (`files`), the message window (`msg`), its choices (`choice`), the file and name screens (`file`, `name`), the overworld and dungeon maps (`map`, `dmap`) are learned from their state changes and named by their own state tables; `DBG ui` lists them.
+- **Trace.** `DBG trace on` (or `e2e.py run <script> <trace file>`) sends `T <ms> <frame> <what>` on every change of a field, a UI machine's state, the buttons each frame's input polls carried (`hid phys=<buttons> inj=<buttons>`), every press and op step, and watched memory.
+- **What takes a press** (2026-10-14, Ryubing, game 1.0.0, sandbox):
+  - The intro takes a tap about 20 frames after the title's machine appears; earlier taps change nothing.
+  - The title takes L+R on the first frame of `WaitLR` with the controller unlocked, a 2-frame tap is enough.
+  - The file menu takes A on the first frames of `DataSelectKeyWait` and of `DataSelectConfirm`; Up/Down move the cursor one slot per tap.
+  - The message window takes a button in `KeyWaiting` once its wait counter reaches its limit, 6 frames after it enters the state (10 in `PreSelecting`). A choice (`Selecting`) takes buttons once its layout animation ends; an A on the sixth frame of `Selecting` was dropped.
+  - Holding B while a page prints shows it whole; with Instant Text a page needs 1–3 frames of `Reading`.
+- **Boot timeline** (2026-10-14, `newgame_file2` on modB with Instant Text, from the debug port's first trace line): intro to title machine 0.85 s, title fade-in to `WaitLR` 1.1 s, title to file menu 1 s, file menu to `DataSelectKeyWait` 0.8 s, two A's 0.4 s, the file loads in 2.4 s, Tarin's house loads in 0.6 s; Marin's wake-up scene runs 6.2 s before her first line, the lines and the scene's end take 4 s. Link is free 18.2 s after the intro shows.
+- **Boot times** (2026-10-14, default seed, from `emu.py start` to the script's end, which includes the emulator's start): `boot_file1` 18.0–18.4 s and `newgame_file2` 26.2–29.1 s over 5 runs in a row each. The boot scripts that pressed after fixed delays took 31.7 s and 50.2–52.6 s (2 runs each).
 
 ## Reverse engineering
 
 - `DBG dumpmain` writes the decrypted, relocated main module from memory (runtime base 0x8504000 on Ryubing). Keep it in `D:\DEV\LASAP-sandbox\re`, outside the repo.
-- `re/scan.py` finds strings, the code that loads a string's address, and callers of a function, using module offsets (the ones `InstallAtOffset` takes). Event actions are dispatched by name, so `xstr <action name>` leads to the action's handler.
+- `re/scan.py` finds strings, the code that loads a string's address, and callers of a function, using module offsets (the ones `InstallAtOffset` takes). Event actions are dispatched by name, so `xstr <action name>` leads to the action's handler. `strs <off>` lists the strings a function loads; `sms` lists the UI state machines (their `ChangeState` functions, state names and callers).
+- UI state machines (game 1.0.0): u32 frames in the state `+0x8`, u8 state `+0xd` (0xff none), previous state `+0xe`, owner `+0x40`; per state an enter, update and exit member function from `+0x48`, `0x30` apart, and its name at `+0x58 + state * 0x30`.
+- Ghidra (scoop `ghidra`) decompiles single functions headless: import `main.bin` raw (AARCH64 little endian, base 0x8504000) into a scratch project outside the repo without auto-analysis, then run a post script that disassembles and decompiles the function at an address.
 - `DBG peek` snapshots taken in different game states, compared byte by byte, found the player's event state and the pause flag.
 
 **Offsets used by the module (game 1.0.0)**
@@ -135,7 +168,11 @@ The sandbox is shared with every other session: take the lock (Emulator, "Sharin
 | `0xe917c8` | Overworld map icon setup, after a shown icon's marker joined the page's markers (`x19` page, `x26` marker): the markers are a vector of shared pointers at page `+0x710`; a marker's row at `+0x240` (show flag name view at `+0x20`), its layout from virtual `+0x48` (root pane `+0x18`, visible bit 0 of `+0x58`) |
 | `0xa57e0` | Play a sound `(StringView* name, nullptr, volume, pitch)` |
 | `0xeabeb0` / `0xeabf44` | The low-health warning's calls of `0xa57e0` with `SE_SY_HP_ALLEART` (the first five beeps, then quieter ones); the SE names are plain strings in main, `xstr` finds their callers |
-| `0xef1960` | Message window, update of its state `Reading` `(window*)`, which shows a page letter by letter. The window's state machine sits at `+0x1260` (state byte `+0x126d`; per state an enter, update and exit member function from `+0x12a8`, `0x30` apart, names from `+0x1588`: Closed, Opening, FadeIn, Reading, TextFadeOut, KeyWaiting, PreSelecting, Selecting, Selected and more). Window `+0xe18` text, `+0x1b6a` u16 letters in the page, `+0x1d1a` u8 skipping (set by B: pages show whole, pauses are skipped) |
+| `0x87f1b0` / `0xebde10` / `0xeaf540` / `0xe60b90` / `0xf83750` / `0xef0f40` | `ChangeState(machine*, state)` of the title, file screen, name entry, file menu (owner vtable `0x1c274a0`, cursor u8 at owner `+0x159b0`, 0 = file 1), choice and message window (owner vtable `0x1c2abd0`) state machines; hooked in the test build |
+| `0xe95090` / `0xe7a0f0` | Overworld and dungeon map `KeyWait` updates; their machines sit at owner `+0xf0` |
+| `0x1c97188` | Controller manager global: `+0x518` holds the game's controller, input lock u8 `+0x234`, buttons u32 `+0x220` |
+| Framework `+0x4d4` | u32 frame counter |
+| `0xef1960` | Message window, update of its state `Reading` `(window*)`, which shows a page letter by letter. Its `KeyWaiting` takes a button once s16 `+0x1cf4` reaches `+0x1cf6`; in `Selecting` (update `0xef2300`) the cursor is u8 `+0x1cc8` and A waits until the float at `+0x3c` of the layout at `+0x58 + (s32 +0x1cc4) * 0x18` is 0. The window's state machine sits at `+0x1260` (state byte `+0x126d`; per state an enter, update and exit member function from `+0x12a8`, `0x30` apart, names from `+0x1588`: Closed, Opening, FadeIn, Reading, TextFadeOut, KeyWaiting, PreSelecting, Selecting, Selected and more). Window `+0xe18` text, `+0x1b6a` u16 letters in the page, `+0x1d1a` u8 skipping (set by B: pages show whole, pauses are skipped) |
 | `0xf53b60` | Show a message text's first letters at once `(text*, int letters)`; text `+0x288` s32 letters shown |
 | `0xe91c28` / `0xe91ee0` | Memories map marker setup, at `tst x8, x9` for heart piece and seashell row `x21`: `x8` = the inventory's bits, `x9` = `1 << x21` |
 | `0xf38040` | Dungeon map icon update `(icon*, actor*)`: shown and open from the actor's switches (`+0x1e`/`+0x20`, `+0x22`/`+0x24`); position at `+0x4`/`+0xc`; the open and closed panes at icon `+0xa0`/`+0xb8` |
@@ -230,7 +267,10 @@ The sandbox is shared with every other session: take the lock (Emulator, "Sharin
 
 ## Building the exlaunch module
 
-The module is `las-ap-exl` (from Owen-Splat/exlaunch, GPL-2.0). Run `bash scripts/build_exl.sh`.
+The module is `las-ap-exl` (from Owen-Splat/exlaunch, GPL-2.0). Run `bash scripts/build_exl.sh`; it builds two modules:
+
+- The release module (`patcher/exl/`), which the patcher installs for players. It has no debug commands, debug port, trace or input injection.
+- The test build (`patcher/exl-test/`, `make BUILD=build-test DEFINES=-DLASAP_TEST`), which `deploy_mod.sh` and `reload_exl.sh` install in the sandbox. Everything tests need beyond the game lives under `#ifdef LASAP_TEST`, in `AP/ap_debug.cpp` and the guarded parts of `ap_game.cpp` and `ap_net.cpp`.
 
 ## Why Ryubing, not Eden
 

@@ -1,26 +1,30 @@
 # Instant Text (run after newgame_file2, on a mod patched with Instant Text on): each page of text shows whole at
 # once and still waits for a button. A received item's text, then Marin's lines (A talks to her and turns the pages).
-# Screenshots: text_received 1 s into the item's text; text_talk_1 and text_talk_2 0.8 s into Marin's first two
-# pages (letter by letter they would still be appearing).
+# STATE read= counts the frames the last page spent printing (the message window's Reading state): a few frames
+# with Instant Text, dozens letter by letter.
+# Screenshots: text_received, text_talk_1 and text_talk_2, each as soon as the page waits for a button.
 level MarinTarinHouse
 send /game ITEM 1 Rupee20 1 -1 -1 Progressive Mirror Shield|Finder
-await 5 showq=1
-wait 2
+await 5 showq=(1|0\+1)(\s|$)
+until msg:KeyWaiting 10
+check read=[0-3](\s|$)
 shot D:/DEV/LASAP-sandbox/text_received.png
-wait 3
-check event=[1-9].* showq=0\+1
+# The page stays until a button.
+wait 2
+check event=[1-9].* showq=0\+1 .*msg=KeyWaiting
 dismiss 20
 check showq=0
 # Marin stands to the right of Link.
-send DBG input 0 200 32767 0
-wait 0.8
-send DBG input 1 400
-await 4 event=[1-9]
-wait 0.8
+face right
+interact
+until msg:KeyWaiting 5
+check read=[0-3](\s|$)
 shot D:/DEV/LASAP-sandbox/text_talk_1.png
-wait 3
-check event=[1-9]
-send DBG input 1 400
-wait 0.8
+wait 2
+check event=[1-9].*msg=KeyWaiting
+# B turns the page: the module sees it leave KeyWaiting on the frame it does (a page turn takes a few frames).
+tapuntil 2 !msg:KeyWaiting when textready 5
+until msg:KeyWaiting 5
+check read=[0-3](\s|$)
 shot D:/DEV/LASAP-sandbox/text_talk_2.png
 dismiss 20

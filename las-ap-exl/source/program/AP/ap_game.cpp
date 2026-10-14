@@ -939,6 +939,7 @@ namespace AP {
     bool HandleTestLine(const std::string& line) { return HandleLine(line); }
     bool TestPlayerFree() { return PlayerFree(); }
     bool TestItemDisplayPending() { return !g_ShowQueue.empty() || g_ItemEvent != ItemEvent::None; }
+    bool TestPlayerCarrying() { return PlayerCarrying(); }
     std::string TestScreenName() { return ScreenName(Game::GetFramework()); }
 #endif
 

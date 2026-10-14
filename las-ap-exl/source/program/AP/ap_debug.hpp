@@ -34,6 +34,7 @@ namespace AP {
     bool HandleTestLine(const std::string& line);
     bool TestPlayerFree();
     bool TestItemDisplayPending();
+    bool TestPlayerCarrying();
     std::string TestScreenName();
 }
 #endif

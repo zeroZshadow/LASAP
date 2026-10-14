@@ -7,7 +7,7 @@ python e2e.py srv <server command>                 any server console command
 python e2e.py dbg <args>                           a DBG command on the debug port; prints its replies
 python e2e.py cli <client command>                 any client console command
 python e2e.py state                                prints the game's STATE line
-python e2e.py goto <x> <y> <z> [step]              teleports in hops (default 9 units) so each room loads first
+python e2e.py goto <x> <y> <z>                     teleports within the loaded room, waits until Link stands there
 python e2e.py wait <regex> [seconds] [client|server]  waits for a new log line
 python e2e.py trace [seconds] [file]               prints (or writes) the module's trace for a while
 python e2e.py tail [n]                             last lines of both logs
@@ -35,7 +35,8 @@ REPLY = re.compile(r"^(OK|ERR|DONE|FAIL|HELD|HOLDS|CHOICE|STATE|FLAG|UI|FRAME|PE
 
 class Debug:
     """A connection to the test module's debug port. A reader thread keeps every line; trace lines (T ...) also go
-    to the trace file when one is open."""
+    to the trace file when one is open. Connecting resets the module's guards to "dead" alone; an ALERT (a guard
+    tripped) ends any wait."""
 
     def __init__(self, wait: float = 60):
         deadline = time.time() + wait
@@ -56,6 +57,7 @@ class Debug:
         threading.Thread(target=self._ping, daemon=True).start()
         if self.wait(r"^HELLO", 5, 0) is None:
             raise SystemExit("the debug port did not greet")
+        self.request("DBG guard reset", r"^OK guard")
 
     def _read(self) -> None:
         buf = b""
@@ -110,11 +112,18 @@ class Debug:
                 while i < len(self.lines):
                     if rx.search(self.lines[i]):
                         return self.lines[i]
+                    if self.lines[i].startswith("ALERT "):
+                        raise SystemExit(f"game alert: {self.lines[i]}")
                     i += 1
                 left = end - time.time()
                 if left <= 0 or self.closed:
                     return None
                 self.cond.wait(left)
+
+    def alert(self, start: int) -> str | None:
+        """The first ALERT line from index `start` on."""
+        with self.cond:
+            return next((l for l in self.lines[start:] if l.startswith("ALERT ")), None)
 
     def request(self, line: str, pattern: str, seconds: float = 10) -> str:
         start = self.send(line)
@@ -172,30 +181,23 @@ def position(line: str) -> tuple[float, float, float] | None:
     return (float(m.group(1)), float(m.group(2)), float(m.group(3))) if m else None
 
 
-def goto(x: float, y: float, z: float, step: float) -> str:
-    """A teleport into a room that is not loaded has no floor, so hop through the rooms in between: each hop waits
-    until Link stands still at the hop (the room under him has loaded)."""
-    here = position(state())
-    if here is None:
-        raise SystemExit("no player position")
-    cx, cy, cz = here
-    hops = max(1, int(max(abs(x - cx), abs(z - cz)) / step + 0.999))
-    for i in range(1, hops + 1):
-        t = i / hops
-        hx, hy, hz = cx + (x - cx) * t, (y if i == hops else max(cy, y)), cz + (z - cz) * t
-        game().request(f"DBG pos {hx:.2f} {hy:.2f} {hz:.2f}", r"^OK pos")
-        settle(hx, hz)
-    return state()
+def goto(x: float, y: float, z: float) -> str:
+    """Teleports within the loaded room and waits until Link stands still there. A room that is not loaded has no
+    floor: warp to a target in another room. The game ignores `pos` during an event, so it waits for none first."""
+    until("event=0", 10)
+    game().request(f"DBG pos {x:.2f} {y:.2f} {z:.2f}", r"^OK pos")
+    return settle(x, z)
 
 
 def settle(x: float, z: float, seconds: float = 10) -> str:
-    """Waits until Link stands at (x, z) with the same position in two STATE lines 0.1 s apart."""
+    """Waits until Link stands at (x, z) with the same position in two STATE lines 0.1 s apart, in no event (a
+    landing plays one, and `pos` is ignored during it)."""
     end = time.time() + seconds
     last = None
     while True:
         line = state()
         pos = position(line)
-        if pos and abs(pos[0] - x) < 0.75 and abs(pos[2] - z) < 0.75 and last and \
+        if pos and abs(pos[0] - x) < 0.75 and abs(pos[2] - z) < 0.75 and last and " event=0 " in line and \
                 max(abs(a - b) for a, b in zip(pos, last)) < 0.02:
             return line
         if time.time() > end:
@@ -244,10 +246,17 @@ def run(script: Path, trace: str | None = None) -> None:
     if trace:
         game().trace_file = open(trace, "w", encoding="utf-8")
         game().request("DBG trace on", r"^OK trace")
+    script_mark: int | None = None   # alerts from here on stop the script
     for raw in script.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
+        if _debug is not None:
+            if script_mark is None:
+                script_mark = _debug.mark()
+            alert = _debug.alert(script_mark)
+            if alert:
+                raise SystemExit(f"game alert: {alert}; {state()}")
         print(f"[{time.time() - began:7.2f}] {line}", flush=True)
         op, _, rest = line.partition(" ")
         if op == "send":
@@ -317,6 +326,8 @@ def run(script: Path, trace: str | None = None) -> None:
                 raise SystemExit(f"pressing {p[0]} never reached screen={p[2]}: {state()}")
         elif op == "tap":
             # tap <buttons hex> [down frames] [up frames] [lx ly] [when <condition> [timeout ms]]
+            # The level change or event a tap starts counts as after the last send.
+            sent = time.time()
             start = dbg("press " + rest)
             timeout = 10.0
             m = re.search(r"\bwhen \S+ (\d+)", rest)
@@ -325,7 +336,6 @@ def run(script: Path, trace: str | None = None) -> None:
             reply = game().wait(r"^(DONE|FAIL) press", timeout + 5, start)
             if reply is None or reply.startswith("FAIL"):
                 raise SystemExit(f"tap {rest}: {reply or 'no reply'}; {state()}")
-            sent = time.time()
         elif op == "until":
             # until <condition> [secs]: waits until the module's condition holds (DBG await)
             p = rest.split()
@@ -336,31 +346,52 @@ def run(script: Path, trace: str | None = None) -> None:
             p = rest.split()
             secs = float(p[-1]) if len(p) in (3, 5) else 10
             when = f" when {p[3]}" if len(p) >= 4 and p[2] == "when" else ""
-            module_op(f"tapuntil {p[0]} {p[1]}{when} {int(secs * 1000)}", "tapuntil", secs)
             sent = time.time()
+            module_op(f"tapuntil {p[0]} {p[1]}{when} {int(secs * 1000)}", "tapuntil", secs)
+        elif op == "interact":
+            # interact [buttons hex] [secs]: once Link is free, one press (A by default) that must start something (an
+            # event, text, a lift); fails at once when it starts nothing (no NPC, sign or chest in front of him)
+            p = rest.split()
+            secs = float(p[1]) if len(p) > 1 else 10
+            sent = time.time()
+            module_op(f"interact {p[0] if p else '1'} {int(secs * 1000)}", "interact", secs)
+        elif op == "guard":
+            # guard <condition> | guard off <condition>: the script fails the moment the condition starts to hold
+            # ("dead" is always guarded)
+            print(game().request(f"DBG guard {rest}", r"^OK guard"))
         elif op == "hold":
             # hold <buttons hex> <lx> <ly> until <condition> [secs]: holds buttons and the stick until it holds
             p = rest.split()
             secs = float(p[5]) if len(p) > 5 else 10
-            module_op(f"hold {p[0]} {p[1]} {p[2]} until {p[4]} {int(secs * 1000)}", "hold", secs)
             sent = time.time()
+            module_op(f"hold {p[0]} {p[1]} {p[2]} until {p[4]} {int(secs * 1000)}", "hold", secs)
         elif op == "face":
             # face <up|down|left|right>: holds the stick that way until Link faces it (he may take a step)
             lx, ly = {"up": (0, 32767), "down": (0, -32767), "left": (-32767, 0), "right": (32767, 0)}[rest]
             module_op(f"hold 0 {lx} {ly} until face={rest} 3000", "hold", 3)
+        elif op == "select":
+            # select <slot from 0>: in the file menu, Up/Down until the cursor is on that slot (0 = file 1)
+            m = re.search(r" file=(\d+)", until("files:DataSelectKeyWait", 15) and state())
+            if m is None:
+                raise SystemExit(f"no file menu cursor: {state()}")
+            if int(m.group(1)) != int(rest):
+                button = "2000" if int(m.group(1)) > int(rest) else "8000"
+                module_op(f"tapuntil {button} file={rest} when files:DataSelectKeyWait 5000", "tapuntil", 5)
         elif op == "choose":
             # choose <option from 0> [secs]: at a choice, moves the cursor there and confirms it with A
             p = rest.split()
             secs = float(p[1]) if len(p) > 1 else 10
+            sent = time.time()
             module_op(f"choose {p[0]} {int(secs * 1000)}", "choose", secs)
         elif op == "free":
             wait_free(float(rest or 30))
         elif op in ("dismiss", "advance"):
             # dismiss [secs] / advance [buttons hex] [secs] [fast]: presses (B by default) once per page when the
             # message takes a button, until no message is open and the player is free; never while he is free.
-            # fast holds the button while the text prints. advance stops at a choice (CHOICE), dismiss fails there.
+            # fast (always for dismiss) holds the button while the text prints. advance stops at a choice (CHOICE),
+            # dismiss fails there.
             p = rest.split()
-            fast = "fast" in p
+            fast = "fast" in p or op == "dismiss"
             p = [v for v in p if v != "fast"]
             buttons = p[0] if op == "advance" and p else "2"
             secs = float(p[-1]) if p and (op == "dismiss" or len(p) > 1) else 60
@@ -392,7 +423,7 @@ def run(script: Path, trace: str | None = None) -> None:
             game().request(f"DBG warp {rest}", r"^OK warp", 30)
             wait_free(40, since=at)
         elif op == "goto":
-            print(goto(*[float(v) for v in rest.split()][:3], step=9.0))
+            print(goto(*[float(v) for v in rest.split()][:3]))
         elif op == "check":
             # check <regex>: stops the script unless the STATE line matches
             line = state()
@@ -443,11 +474,11 @@ def wait_screen(name: str, seconds: float, fail: bool = True) -> bool:
 
 def is_free(line: str, since: float = 0) -> bool:
     """The STATE line shows the player free in a level entered after `since`, for at least 1.5 s, with no message
-    open and no item-get showing or queued."""
+    holding him (one in EventWaiting does not) and no item-get showing or queued."""
     ms = re.search(r"ms_in_level=(\d+)", line)
     if not ms or "player=1" not in line or "event=0 paused=0" not in line or not re.search(r"showq=0(\s|$)", line):
         return False
-    if not re.search(r"msg=(Closed|none)(\s|$)", line):
+    if not re.search(r"msg=(Closed|EventWaiting|none)(\s|$)", line):
         return False
     return int(ms.group(1)) > 1500 and time.time() - int(ms.group(1)) / 1000 > since
 
@@ -480,8 +511,7 @@ def main() -> None:
     elif cmd == "state":
         print(state())
     elif cmd == "goto":
-        x, y, z = map(float, args[:3])
-        print(goto(x, y, z, float(args[3]) if len(args) > 3 else 9.0))
+        print(goto(*map(float, args[:3])))
     elif cmd == "wait":
         log = args[2] if len(args) > 2 else "client"
         print(wait(args[0], float(args[1]) if len(args) > 1 else 10, log, size(log)))

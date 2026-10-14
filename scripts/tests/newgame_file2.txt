@@ -1,16 +1,15 @@
-# From a fresh boot to a new game in file 2. Restore the never-played file 2 first: reset_saves.sh newgame. The
-# file menu's cursor then starts on file 2, the last file used, so no menu navigation is needed.
-# Each step checks the screen the module reports (STATE screen=) and stops the script within seconds if it fails.
-# Menu presses can be dropped (during the menu's fade-in, and at random while the emulator stutters), so each one
-# is repeated until the screen it leads to shows.
-expect HELLO 60
-# Any button skips the intro to the title; L+R opens file select once the title has faded in.
-press 1 200 title
-press c0 500 menu 5
-# A opens file 2, A again starts it (difficulty: Normal).
-press 1 300 loading|level 6
-# Link wakes up in Tarin's house; B closes Marin's lines without talking to her again. B before the level has
-# loaded would back out of the menus.
+# From a fresh boot to a new game in file 2. Restore the never-played file 2 first: reset_saves.sh newgame. Each press
+# waits until the screen takes it (TESTING.md, "Game state") and stops the script within seconds when it is not
+# taken.
+connect 90
+# The intro ends on a button once the title exists; the title takes L+R in WaitLR.
+tapuntil 1 screen=title when title:Deactive 30
+tapuntil c0 title:GameStart when title:WaitLR+unlocked 20
+# File 2 is slot 1 (the cursor starts there, on the last file used). A opens it, A again starts it.
+select 1
+tapuntil 1 files:DataSelectConfirm when files:DataSelectKeyWait
+tapuntil 1 files:GameStart when files:DataSelectConfirm
+# Link wakes up in Tarin's house; Marin's lines close with B, pressed only while a line waits for it.
 inlevel 60
 level MarinTarinHouse
 dismiss 90
