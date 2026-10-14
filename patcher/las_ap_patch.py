@@ -55,6 +55,7 @@ from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct  # noqa: E
 import ap_assets  # noqa: E402
 import ap_deathlink  # noqa: E402
 import ap_ghost  # noqa: E402
+import ap_player_ghost  # noqa: E402
 import ap_hints  # noqa: E402
 import ap_goal  # noqa: E402
 import ap_map  # noqa: E402
@@ -639,6 +640,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     write_vanilla(proc.config_dir, logic, item_defs, patch)
     if "rooster-statue" in patch["location_ids"]:
         add_rooster_flag(proc.file_manager)
+    ap_player_ghost.add(proc.file_manager)  # from NpcGhost's row before the Ammo Ghost rewrites it
     if patch["settings"].get("Ammo Ghost", True):  # the option's default, also for patches without it
         ap_ghost.add(proc.file_manager)
     if hints:
@@ -649,7 +651,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     if map_tracker:
         ap_map.add(proc.file_manager, proc.config_dir, patch["location_ids"], PLACEHOLDER_KEY)
     try:
-        for path in (ap_assets.MODEL, ap_assets.UI) + ((ap_assets.GAME,) if map_tracker else ()):
+        for path in (ap_assets.MODEL, ap_assets.PLAYER_GHOST, ap_assets.UI) + ((ap_assets.GAME,) if map_tracker else ()):
             ap_assets.install(args.romfs, proc.romfs_dir, path)
     except ap_assets.AssetError as e:
         print(e)

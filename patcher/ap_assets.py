@@ -1,5 +1,5 @@
 """Files the mod changes the same way for every seed: the title screen and the notice look (StartUp.arc), the
-Archipelago item model, LASR's chest textures, and the map tracker's icons (Game.arc). Building them takes native packages (oead's SARC, quicktex,
+Archipelago item model, LASR's chest textures, the map tracker's icons (Game.arc) and the multiplayer ghosts' model. Building them takes native packages (oead's SARC, quicktex,
 Pillow), so scripts/build_assets.py builds them once from a RomFS dump and stores each as a binary patch (bsdiff4)
 against the RomFS file it comes from. The patcher only applies these patches to the player's dump.
 
@@ -18,9 +18,11 @@ UI = "region_common/ui/StartUp.arc"
 GAME = "region_common/ui/Game.arc"  # ap_map_icons.ARCHIVE
 ACTOR = "region_common/actor"
 MODEL = f"{ACTOR}/ItemArchipelago.bfres"  # ap_model.FILE_NAME
+PLAYER_GHOST = f"{ACTOR}/PlayerGhost.bfres"  # ap_player_ghost.FILE_NAME
 CHEST = f"{ACTOR}/ObjTreasureBox.bfres"
 CHEST_TEXTURES = tuple(f"{ACTOR}/ObjTreasureBox{kind}.bfres" for kind in ("Junk", "Key", "LifeUpgrade"))
-SOURCES = {UI: UI, GAME: GAME, MODEL: f"{ACTOR}/ItemShellRader.bfres", **{path: CHEST for path in CHEST_TEXTURES}}
+SOURCES = {UI: UI, GAME: GAME, MODEL: f"{ACTOR}/ItemShellRader.bfres", PLAYER_GHOST: f"{ACTOR}/Playerlink.bfres",
+           **{path: CHEST for path in CHEST_TEXTURES}}
 
 
 class AssetError(Exception):
@@ -35,6 +37,7 @@ def build(romfs: Path) -> Dict[str, bytes]:
     """Every asset, built from the RomFS dump with LASR's and the patcher's own code (needs the native packages)."""
     import ap_map_icons
     import ap_model
+    import ap_player_ghost
     import ap_ui
     from RandomizerCore.Randomizers.chests import CHEST_TEXTURES as LASR_CHEST_TEXTURES
     from RandomizerCore.Tools.bntx_tools import (createChestBfresWithCustomTexturesIfMissing,
@@ -46,6 +49,7 @@ def build(romfs: Path) -> Dict[str, bytes]:
     createRandomizerTitleScreenArchive(sarc)  # LASR's title screen logo
     built[UI] = ap_ui.build(bytes(sarc.repack()))
     built[MODEL] = ap_model.build(str(romfs / SOURCES[MODEL]))
+    built[PLAYER_GHOST] = ap_player_ghost.build(str(romfs / SOURCES[PLAYER_GHOST]))
     built[GAME] = ap_map_icons.build((romfs / GAME).read_bytes())
     with tempfile.TemporaryDirectory() as tmp:
         createChestBfresWithCustomTexturesIfMissing(str(romfs / CHEST), tmp, LASR_CHEST_TEXTURES)
