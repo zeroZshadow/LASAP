@@ -85,13 +85,13 @@ ITEM_EVENT_ENTRY = "APItemGet"
 # Received traps play LASR's trap effects as the Common.bfevfl events AP<trap key> (AP::TRAP_EVENT_PREFIX).
 TRAP_EVENT_PREFIX = "AP"
 TRAP_EVENT_KEYS = ("ZapTrap", "DrownTrap", "SquishTrap", "DeathballTrap", "QuakeTrap")
-# Holding Minus opens this Common.bfevfl event (AP::WARP_MENU_ENTRY): a choice to warp to Tarin's house, through its
-# door. B picks the bottom choice, so Continue is there.
+# Holding Minus opens this Common.bfevfl event (AP::WARP_MENU_ENTRY): a choice to warp home, to the start point outside
+# Tarin's door that leaving the house uses (Field_11C, ExitOut). B picks the bottom choice, so Continue is there.
 WARP_MENU_ENTRY = "APWarpMenu"
 WARP_MENU_KEY = "APWarpMenu"
 WARP_MENU_TEXT = "Return to Tarin's house?[CHOICE_TOP]Warp home[CHOICE_BOTTOM]Continue"
 WARP_MENU_STYLE_FROM = "CheckShieldBook"  # a vanilla yes/no prompt in System.msbt
-WARP_HOME = {"level": "MarinTarinHouse", "locator": "MarinTarinHouse_01A", "offsetX": 0.0, "offsetZ": 0.0}
+WARP_HOME = {"level": "Field", "locator": "Field_11C", "offsetX": 0.0, "offsetZ": 0.0}
 ITEM_TEXT_STYLE_FROM = "GetHookShot"  # System.msbt entry whose window style the AP texts use
 PLACEHOLDER_NAME_KEY = "ItemName_ArchipelagoItem"
 PLACEHOLDER_NAME = "Archipelago Item"

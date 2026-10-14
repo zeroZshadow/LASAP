@@ -74,7 +74,7 @@ find: the side panel shows the ones you have.
 
 ## How do I get back to the start?
 
-Hold Minus for a second: a menu asks "Return to Tarin's house?". Warp home takes Link into Tarin's house in Mabe
-Village; Continue (or B) closes the menu. A short press of Minus still opens the map. The menu does not open during a
+Hold Minus for a second: a menu asks "Return to Tarin's house?". Warp home takes Link to Mabe Village, walking out
+of Tarin's house; Continue (or B) closes the menu. A short press of Minus still opens the map. The menu does not open during a
 cutscene, while Link holds something, or in the Wind Fish's Egg, the Chamber Dungeons, the fishing pond and the trendy
 game.
