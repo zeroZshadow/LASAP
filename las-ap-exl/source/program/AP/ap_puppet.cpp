@@ -138,7 +138,9 @@ namespace {
     constexpr int kTrack = 32;
     constexpr double kExtrapolateMs = 100, kOffsetRise = 0.02;
     constexpr s64 kResetMs = 1000;
-    double g_BufferMs = 100;  // DBG puppet buffer
+    // Two frames: what the player does shows almost at once; between the lines (20 a second while moving) the
+    // position mostly runs on along the last segment.
+    double g_BufferMs = 33;  // DBG puppet buffer
     using Frame = AP::GhostNet::Frame;
     struct Track {
         Frame frames[kTrack];  // newest at frames[(count - 1) % kTrack]
