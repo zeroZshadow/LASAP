@@ -41,6 +41,7 @@ NpcGhost_Register 0x08ec13f0 f vtable +0x78: joins an update list
 Actor_AddComponent 0x08ec4550 f (out, actor, StringView* name, x3)
 NpcGhost_MakeNpcComponent 0x08ec4870 f (out, args*, x3): passes the row key NpcGhost (0x16ebdf4)
 NpcGhost_MakeEventChara 0x08ec5070 f vtable +0x220 override
+NpcComponent_PlayMaterialAnimation 0x08ec5b30 f (out[2], npc component, StringView* name, bool at once): the event helper; e.g. "clothes"
 NpcAnimation_PlayByName2 0x08ee3590 f a subclass's override of 0x949260
 PanelShadowLink_Init 0x0920fe50 f the Chamber Dungeon's Shadow Link: PlayerAnimation controller at +0x16e0
 Player_Init 0x0922f030 f player vtable +0x10
@@ -49,9 +50,12 @@ Player_InitAnimator 0x09231a00 f makes the 2-slot layered animator, layer 1 mask
 Player_UpdateAnimation 0x092395c0 f per frame: nextKey chains through PlayerAnimation_Play
 Player_UpdateState 0x0923ce70 f the big state update; inlines Player_ShowItem
 Player_ShowItem 0x09242390 f (player, u8 item, bool): sword/shield level from inventory +0x9c bits 0/1
+Player_SetBuffGlow 0x09242a40 f (player, bool defence): material animation powerUp or defence on slot 5
+Player_MakeDamageColor 0x09243bf0 f the damage flash component at player +0x348
 Player_InitAnimations 0x092440f0 f registers every PlayerAnimation.gsheet row with the controller
 Player_EventAnimation 0x0924a070 f event-driven animation by name
 PlayerAnimation_Make 0x0924eca0 f creates the controller (player +0x1568)
+PlayerBow_Init 0x09263dc0 f bow model holder at player +0x1bb8
 PlayerBottle_Init 0x09269ee0 f bottle model wrapper at player +0x1bb0
 Player_ItemGetSequence 0x0927d5d0 f (shared_ptr* out, Player*, int itemId, bool keepCarry, StringView* messageEntry)
 PartsVisibility_AddShape 0x09290a80 f (parts, group, name)
@@ -93,7 +97,9 @@ Entity_EraseChild 0x094b44e0 f (parent, shared_ptr*)
 Entity_AddChildBody 0x094b5250 f
 Entity_HasChild 0x094b5ef0 f (parent, shared_ptr*)
 Entity_AddChild 0x094b7290 f (parent, shared_ptr*)
+SkeletalModel_Attach 0x094bc320 f (model component, shared_ptr* locator, bool, int* flags): e.g. the bow to itemA_R
 Resource_Load 0x094bfd80 f (out handle, manager, StringView* path)
+Locator_Update 0x094d83a0 f (locator), per frame
 ModelRenderer_Draw 0x094e8020 f draws shape i when its byte (M +0x378) is 1 and its material and bone bits are set
 ShaderSelector_SetOption 0x094f7dd0 f (selector, option, value)
 GfxContext_SetRasterState 0x094fd430 f (context, state): cached at context +0xa0
@@ -102,7 +108,9 @@ AnimationLayers_SetAnimation 0x095392a0 f (layers, layer, animSp*)
 AnimationLayers_SetBoneMask 0x09539390 f (layers, layer, const char* bone, bool children)
 AnimationLayers_SetEnabled 0x095395f0 f (layers, layer, bool)
 ResModel_ShapeIndex 0x0953fbf0 f (res model, name)
+ModelResource_Get 0x0954a190 f (out, resource holder, const char* model name)
 AnimationSet_Make 0x0954a480 f (out, animation set, const char* name)
+SkeletalModel_CreateInstance 0x09551b10 f sets the shape bytes from the initial mask at component +0x300
 SkeletalModel_SetShapeVisibleByName 0x09553a80 f vtable +0x98 (smc, name, bool)
 SkeletalModel_SetShapeVisible 0x09553ae0 f vtable +0xa0 (smc, index, bool): M +0x378[index]
 SkeletalModel_ShapeIndex 0x09553bf0 f vtable +0xb8 (smc, name)
@@ -112,6 +120,7 @@ LayeredAnimation_Ctor 0x0955d200 f (sac, owner, smcSp*, slot count)
 LayeredAnimation_SetAnimation 0x0955d8f0 f vtable +0x88: slot 0
 LayeredAnimation_SetSlot 0x0955ddd0 f (sac, slot, animSp*, f32 blend, f32 start)
 SkeletalModel_IsShapeVisible 0x0955f7d0 f vtable +0xa8
+SkeletalModel_MakeLocator 0x09560070 f (out shared_ptr, model component, const char* bone, translate, rotate, scale)
 Msbt_GetText 0x095ae5a0 f
 Msbt_FindLabel 0x095aef40 f
 GameTextBox_SetString16 0x095e20b0 f vtable 0x1c52940 +0x100 (textbox, const char16_t*, u16 index)
@@ -139,6 +148,7 @@ PlayerBottle_vtable 0x0a11d918 l vtable
 HudInteract_vtable 0x0a130eb0 l vtable
 AnimationLayer_vtable 0x0a14b2f8 l vtable
 AnimationLayers_vtable 0x0a14b438 l vtable
+MultiMaterialAnimation_vtable 0x0a14d9f0 l vtable
 SkeletalAnimation_vtable 0x0a14dd70 l single layer, 0x1b0 bytes (NPCs)
 LayeredAnimation_vtable 0x0a14dee8 l 0x220 bytes (Link)
 SkeletalModel_vtable 0x0a14e060 l vtable
