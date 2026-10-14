@@ -54,6 +54,14 @@ namespace {
     float g_PrevX = 0, g_PrevY = 0, g_PrevZ = 0;
     AP::GhostNet::Anim g_Anim;
     const void* g_AnimRow = nullptr;
+#ifdef LASAP_TEST
+    // DBG ghostnet: Link's animation starts and the GHOST lines with a start, by frame
+    std::vector<std::string> g_StartLog;
+    u32 FrameNow() {
+        Game::Framework* fmwk = Game::GetFramework();
+        return fmwk != nullptr ? fmwk->mFrameCount : 0;
+    }
+#endif
     u32 g_PosLines = 0;
     std::string g_LastPos;
     AP::GhostNet::Ghost g_Ghosts[AP::GhostNet::SLOTS];
@@ -120,6 +128,10 @@ namespace {
         if (anim != g_Anim.anim || row != g_AnimRow ||
             (anim != 0 && frame + 0.5f < prevFrame && At<s32>(row, kRowPolicy) != 1)) {
             if (anim != 0) g_Anim.starts++;
+#ifdef LASAP_TEST
+            const char* name = anim != 0 ? At<const char*>(row, kRowName) : nullptr;
+            if (name != nullptr && g_StartLog.size() < 60) g_StartLog.push_back(std::string(name) + "@" + std::to_string(FrameNow()));
+#endif
         }
         g_AnimRow = row;
         g_Anim.anim = anim;
@@ -263,6 +275,12 @@ namespace AP::GhostNet {
         ghost.flags = atoi(a[9].c_str());
         ghost.name = a[11];
         ghost.receivedMs = NowMs();
+#ifdef LASAP_TEST
+        if ((ghost.flags & 8) && g_StartLog.size() < 60) {
+            const char* name = AnimName(ghost.anim);
+            g_StartLog.push_back("rx:" + std::string(name != nullptr ? name : "?") + "@" + std::to_string(FrameNow()));
+        }
+#endif
         ghost.history[ghost.frames % HISTORY] = Frame{ghost.timeMs, ghost.receivedMs, ghost.x, ghost.y, ghost.z,
                                                       ghost.yaw, ghost.anim, ghost.animFrame, ghost.flags};
         ghost.frames++;
@@ -297,6 +315,13 @@ namespace AP::GhostNet {
                      g.frames);
             s += buf;
         }
+#ifdef LASAP_TEST
+        if (!g_StartLog.empty()) {
+            s += " | starts";
+            for (auto& e : g_StartLog) s += " " + e;
+            g_StartLog.clear();
+        }
+#endif
         return s;
     }
 }

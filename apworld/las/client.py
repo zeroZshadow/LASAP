@@ -1,5 +1,6 @@
 """PC client: bridges the Archipelago server and the game's exlaunch module (TCP line protocol, see DESIGN.md)."""
 import asyncio
+import socket
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -448,6 +449,9 @@ class LASContext(CommonContext):
             try:
                 reader, writer = await asyncio.wait_for(
                     asyncio.open_connection(self.game_host, self.game_port), timeout=HELLO_TIMEOUT)
+                sock = writer.get_extra_info("socket")
+                if sock is not None:  # GHOST lines go out as written, not held back for an ACK
+                    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                 # the game says HELLO right away; while it serves another client, it takes no new one
                 first = await asyncio.wait_for(reader.readline(), timeout=HELLO_TIMEOUT)
             except (OSError, asyncio.TimeoutError):

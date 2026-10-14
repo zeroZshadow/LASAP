@@ -82,7 +82,7 @@ namespace {
     }
 
     // Animations by name: the NPC's animation component (actor +0x2b0) has a virtual play (0x949260, overridden by
-    // 0x9df590): (component, {name, length}*, mode, blend frames, frame). Mode 0 looks the name up in its animation
+    // 0x9df590): (component, {name, length}*, mode, blend seconds, frame). Mode 0 looks the name up in its animation
     // set (+0x1e8, cache +0x218) and hands it to its animation player (+0xe8) at frame 0 and rate 0 (the player's
     // virtual +0xc0 frame, +0xd8 rate); mode 2 sets the rate 1. The slot is found in the component's vtable at its
     // first use. The animation player's +0x90 is the model object it animates.
@@ -135,7 +135,10 @@ namespace {
     // puppet's model), from the frame it started at, played when the replay reaches that frame; for a sender that
     // sends none (anim id 0), by speed (units per second): each from its threshold on, with a margin either side so a
     // speed near one does not switch back and forth.
-    constexpr float kAnimBlend = 4;
+    // Blend times in seconds (the layer adds the frame's time to its progress): Link's own (PlayerAnimation's
+    // default, 0x16afc44) for the sender's animations, a little longer between gaits.
+    float g_AnimBlend = 0.0667f;  // DBG puppet blend
+    constexpr float kGaitBlend = 0.1f;
     constexpr int kFlagStarted = 8;
     constexpr const char* kGaits[] = {"wait", "walk", "run", "dash_lp"};
     constexpr float kGaitFrom[] = {0, 0.4f, 3.5f, 7.5f}, kGaitMargin = 0.3f;
@@ -485,7 +488,7 @@ namespace {
         if (fa.anim > 0) {
             bool started = (fa.flags & kFlagStarted) != 0 && tr.started != a;
             if (fa.anim != tr.anim || started) {
-                if (const char* name = AP::GhostNet::AnimName(fa.anim)) PlayAnim(p, name, kAnimBlend, fa.animFrame / 10.0f);
+                if (const char* name = AP::GhostNet::AnimName(fa.anim)) PlayAnim(p, name, g_AnimBlend, fa.animFrame / 10.0f);
                 tr.anim = fa.anim;
                 tr.started = a;
                 tr.gait = -1;
@@ -495,7 +498,7 @@ namespace {
         int gait = tr.gait < 0 ? GaitAt(speed) : std::clamp(tr.gait, GaitAt(speed - kGaitMargin),
                                                              GaitAt(speed + kGaitMargin));
         if (gait != tr.gait) {
-            PlayAnim(p, kGaits[gait], 6, 0);
+            PlayAnim(p, kGaits[gait], kGaitBlend, 0);
             tr.gait = gait;
             tr.anim = -1;
         }
@@ -547,7 +550,7 @@ namespace {
         ClearSpan(IndexOf(p));
         p.model = model;
 #ifdef LASAP_TEST
-        if (model != nullptr && p.animLog.size() < 40) p.animLog.push_back("model@" + std::to_string(g_LastFrame - p.shownAt));
+        if (model != nullptr && p.animLog.size() < 40) p.animLog.push_back("model@" + std::to_string(g_LastFrame));
 #endif
         p.look = Look::Unknown;
         p.track.gait = -1;
@@ -668,7 +671,7 @@ namespace {
         Puppet& p = g_Puppets[kTest];
         if (p.ctrl == nullptr) return;
         if (!g_AnimPending.empty()) {
-            PlayAnim(p, g_AnimPending.c_str(), 6, 0);
+            PlayAnim(p, g_AnimPending.c_str(), kGaitBlend, 0);
             g_AnimPending.clear();
         }
         if (g_Delay >= 0 && g_HistoryValid && static_cast<u32>(g_Delay) < g_HistoryFrame) {
@@ -705,6 +708,7 @@ namespace {
     std::string Info() {
         std::string s = "PUPPET delay=" + std::to_string(g_Delay) + " steer=" + std::to_string(g_SteerHz) +
                         " buffer=" + std::to_string(static_cast<int>(g_BufferMs)) +
+                        " blend=" + std::to_string(g_AnimBlend).substr(0, 6) +
                         " dithered=" + std::to_string(g_GhostDraws);
         for (auto& p : g_Puppets) {
             if (!Alive(p)) continue;
@@ -752,7 +756,7 @@ HOOK_DEFINE_TRAMPOLINE(PlayByName) {
         if (mode == 0 && comp != nullptr) {
             for (auto& p : g_Puppets) {
                 if (comp == AnimComp(p) && p.animLog.size() < 40)
-                    p.animLog.push_back(std::string(name->ptr, name->len) + "@" + std::to_string(g_LastFrame - p.shownAt));
+                    p.animLog.push_back(std::string(name->ptr, name->len) + "@" + std::to_string(g_LastFrame));
             }
         }
         Orig(comp, name, mode, blend, frame);
@@ -889,6 +893,9 @@ namespace AP::Puppet {
             // DBG puppet steer <hz>: with follow, the path taken this many times a second and replayed; 0: exact
             g_SteerHz = atoi(a[3].c_str());
             ResetTrack(p.track);
+        } else if (sub == "blend" && a.size() >= 4) {
+            // DBG puppet blend <s>: the blend time of the sender's animations on the puppets
+            g_AnimBlend = std::clamp(static_cast<float>(atof(a[3].c_str())), 0.0f, 2.0f);
         } else if (sub == "buffer" && a.size() >= 4) {
             // DBG puppet buffer <ms>: how far behind the newest frame (on the sender's clock) puppets replay
             g_BufferMs = std::clamp(atof(a[3].c_str()), 0.0, 1000.0);

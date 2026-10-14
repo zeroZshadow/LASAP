@@ -72,9 +72,9 @@ def field(col: int, row: int) -> Tuple[float, float]:
 
 
 class TestRelay(unittest.TestCase):
-    def run_relay(self, test) -> None:
+    def run_relay(self, test, echo: Optional[float] = None) -> None:
         async def main() -> None:
-            relay = wire.Relay()
+            relay = wire.Relay(echo)
             server = await asyncio.start_server(relay.handle, "127.0.0.1", 0)
             port = server.sockets[0].getsockname()[1]
             try:
@@ -82,6 +82,22 @@ class TestRelay(unittest.TestCase):
             finally:
                 server.close()
         asyncio.run(main())
+
+    def test_echo(self) -> None:
+        async def test(port: int, relay: wire.Relay) -> None:
+            a = FakeClient(port)
+            await a.join("secret1", "A")
+            players = [m for m in await a.collect() if m[0] == wire.PLAYER]
+            self.assertEqual([(struct.unpack_from(">H", m, 1)[0], wire.read_name(m, 3)[0]) for m in players],
+                             [(wire.ECHO_ID, "Echo")])
+            # each frame comes back as the echo's, along x; leaving the level turns the echo off
+            a.pos(FIELD, *field(2, 11))
+            x, z = field(2, 11)
+            self.assertEqual(frames(await a.collect()), [(wire.ECHO_ID, x + 2, z)])
+            a.nowhere()
+            self.assertEqual(offs(await a.collect()), [(wire.ECHO_ID, wire.OFF_AREA)])
+            a.close()
+        self.run_relay(test, echo=2.0)
 
     def test_screens(self) -> None:
         self.assertEqual(wire.field_screen(*field(0, 1)), (0, 1))

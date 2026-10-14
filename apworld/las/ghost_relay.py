@@ -35,6 +35,7 @@ OFF = 0x84  # u16 player id, u8 reason (OFF_AREA, OFF_LEFT): stop showing that p
 PONG = 0x85
 ERROR = 0x86  # UTF-8 text; the relay closes the connection
 
+ECHO_ID = 0xFFFF  # --echo: the player a member's own frames come back as (new_id never gives it)
 OFF_AREA = 0  # left the receiver's area, or is in no level
 OFF_LEFT = 1  # left the group
 
@@ -188,7 +189,8 @@ class Member:
 
 
 class Relay:
-    def __init__(self):
+    def __init__(self, echo: Optional[float] = None):
+        self.echo = echo  # for tests: each member also sees itself as ECHO_ID, this far along x
         self.groups: Dict[bytes, List[Member]] = {}
         self.members: Dict[int, Member] = {}
         self.connections: Set[Member] = set()
@@ -259,6 +261,8 @@ class Relay:
             member.send(bytes([PLAYER]) + struct.pack(">H", other.id) + name_bytes(other.slot) +
                         name_bytes(other.player))
             other.send(announce)
+        if self.echo is not None:
+            member.send(bytes([PLAYER]) + struct.pack(">H", ECHO_ID) + name_bytes("Echo") + name_bytes("Echo"))
         members.append(member)
         self.log.info(f"join: player {member.id}, {len(members)} in the group, {len(self.members)} on the relay")
 
@@ -294,10 +298,16 @@ class Relay:
             member.body = body
             member.last_pos = time.monotonic()
             self.update(member, True)
+            if self.echo is not None:
+                fields = list(POS_BODY.unpack(body))
+                fields[3] += self.echo
+                member.send(bytes([FRAME]) + struct.pack(">H", ECHO_ID) + POS_BODY.pack(*fields), droppable=True)
         elif kind == NOWHERE and member.group is not None:
             member.body = None
             member.level = NO_LEVEL
             member.last_pos = time.monotonic()
+            if self.echo is not None:
+                member.send(bytes([OFF]) + struct.pack(">HB", ECHO_ID, OFF_AREA))
             self.update(member, False)
 
     def update(self, member: Member, moved: bool) -> None:
@@ -339,8 +349,8 @@ class Relay:
                     self.update(member, False)
 
 
-async def serve(host: str, port: int) -> None:
-    relay = Relay()
+async def serve(host: str, port: int, echo: Optional[float] = None) -> None:
+    relay = Relay(echo)
     server = await asyncio.start_server(relay.handle, host, port)
     sweep = asyncio.create_task(relay.sweep())
     relay.log.info("listening on " + ", ".join(str(s.getsockname()) for s in server.sockets))
@@ -356,11 +366,13 @@ def main() -> None:
     parser.add_argument("--host", default="0.0.0.0", help="Address to listen on (default: all).")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--quiet", action="store_true", help="Log errors only, not each join and leave.")
+    parser.add_argument("--echo", type=float, metavar="DX",
+                        help="For tests: each player also sees its own frames as a player Echo, DX units along x.")
     args = parser.parse_args()
     logging.basicConfig(level=logging.WARNING if args.quiet else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
     try:
-        asyncio.run(serve(args.host, args.port))
+        asyncio.run(serve(args.host, args.port, args.echo))
     except KeyboardInterrupt:
         pass
 

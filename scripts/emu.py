@@ -101,6 +101,10 @@ def start() -> None:
             "--ignore-controller-applet", "--audio-volume", "0", GAME]
     if os.environ.get("LASAP_PTC") != "1":
         args.insert(-1, "--disable-ptc")
+    if os.environ.get("LASAP_INPUT") == "config":
+        # a person plays: the data folder's Config.json input (its controller) instead of the keyboard as player 1
+        i = args.index("--input-id-1")
+        del args[i:i + 2]
     out = open(os.path.join(SANDBOX, "emu_stdout.txt"), "w")
     # --audio-volume 0 does not mute; SDL's dummy driver keeps the sandbox silent. --disable-ptc keeps translations
     # of one run from the next; LASAP_PTC=1 keeps the translation cache on, as players have it.

@@ -169,6 +169,10 @@ namespace {
                 g_Server = -1;
                 continue;
             }
+            // lines go out as written (ghost positions are sent as they happen), not held back for an ACK
+            constexpr s32 kTcpNoDelay = 1;
+            s32 noDelay = 1;
+            nn::socket::SetSockOpt(g_Client, IPPROTO_TCP, kTcpNoDelay, &noDelay, sizeof(noDelay));
 
             Lock();
             g_Inbound.clear();
