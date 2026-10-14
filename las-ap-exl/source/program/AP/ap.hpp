@@ -128,6 +128,14 @@ namespace AP {
 namespace AP::GhostNet {
     // Ghosts the client shows at once; GHOST lines name a slot 0..SLOTS-1.
     constexpr int SLOTS = 4;
+    // The last GHOST lines of a slot are kept: the puppet replays them on the sender's timeline.
+    constexpr int HISTORY = 16;
+    struct Frame {
+        s64 timeMs;        // the sender's clock, unwrapped
+        u64 receivedMs;    // this system's counter when the line arrived
+        float x, y, z, yaw;
+        int anim, animMs, flags;
+    };
     // Another player in this area, as the last GHOST line for its slot gave it.
     struct Ghost {
         bool active = false;  // false: nobody in this slot (GHOST <n> off, GHOSTS 0, no client)
@@ -137,9 +145,12 @@ namespace AP::GhostNet {
         float yaw = 0;          // degrees, 0 = +z (the bottom of the screen), 90 = +x
         int anim = 0;           // animation id (0 until there are ids)
         int animMs = 0;         // time into the animation
-        int flags = 0;          // 1: warped (snap, do not move there), 2: hidden
+        int flags = 0;          // 1: warped (snap, do not move there), 2: hidden, 4: still since the previous frame
         u64 receivedMs = 0;     // when the line arrived (system counter, ms)
+        s64 timeMs = 0;         // the sender's clock when it was taken (ms, unwrapped)
+        u32 timelineFrom = 0;   // the first line of the sender's clock as unwrapped now (a new one after an off)
         u32 frames = 0;         // GHOST lines for this slot so far
+        Frame history[HISTORY]; // the last lines, the newest at history[(frames - 1) % HISTORY]
     };
     // Once per tick: sends Link's position while the client asks for it.
     void Tick();

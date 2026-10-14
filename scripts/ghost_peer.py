@@ -76,20 +76,18 @@ async def main(args) -> None:
     if not args.no_stdin:
         asyncio.create_task(commands())
     start = time.monotonic()
-    seq = 0
     while time.monotonic() - start < args.seconds and not receiver.done():
         if place["here"]:
             t = time.monotonic() - start
             x, y, z = place["at"]
             angle = t * 1.5
-            body = wire.POS_BODY.pack(seq & 0xFFFF, wire.LEVEL_IDS[place["level"]],
+            body = wire.POS_BODY.pack(int(t * 1000) & 0xFFFF, wire.LEVEL_IDS[place["level"]],
                                       wire.room_index(place["level"], x, z), x + args.radius * math.cos(angle), y,
                                       z + args.radius * math.sin(angle), int((angle * 180 / math.pi + 90) % 360
                                                                                 * 65536 / 360) & 0xFFFF, 0, 0, 0)
             writer.write(wire.frame(bytes([wire.POS]) + body))
         else:
             writer.write(wire.frame(bytes([wire.NOWHERE])))
-        seq += 1
         await writer.drain()
         await asyncio.sleep(0.05)
     writer.close()

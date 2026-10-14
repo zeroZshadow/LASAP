@@ -10,7 +10,7 @@ from . import checklist
 from . import ghost_relay as wire
 
 GHOST_SLOTS = 4  # ghosts the game shows at once
-MIN_INTERVAL = 0.045  # at most ~20 frames a second go to the relay; a new animation id goes at once
+MIN_INTERVAL = 0.045  # at most ~20 frames a second go to the relay; what the player does (see GhostLink.queue) goes at once
 PING_INTERVAL = 10.0
 SILENT_TIMEOUT = 30.0  # the relay answers pings; a link that hears nothing this long reconnects
 RETRY_DELAYS = (2, 5, 10, 30, 60)
@@ -23,9 +23,10 @@ def parse_address(address: str) -> Tuple[str, int]:
     return host.strip("[]"), int(port)
 
 
-def pos_body(parts: List[str], seq: int) -> Optional[bytes]:
-    """A POS line's fields (`POS <level> <room> <x> <y> <z> <yaw> <anim> <anim_ms> [<flags>]`) as a frame body, or
-    None when Link is in no level the relay knows (`POS none`, a level missing from wire.LEVELS)."""
+def pos_body(parts: List[str], now_ms: int) -> Optional[bytes]:
+    """A POS line's fields (`POS <level> <room> <x> <y> <z> <yaw> <anim> <anim_ms> [<flags> [<time>]]`) as a frame
+    body, or None when Link is in no level the relay knows (`POS none`, a level missing from wire.LEVELS). The time
+    is the game's clock (ms) when it took the position; without it, now_ms."""
     if len(parts) < 9 or parts[1] not in wire.LEVEL_IDS:
         return None
     try:
@@ -33,21 +34,22 @@ def pos_body(parts: List[str], seq: int) -> Optional[bytes]:
         x, y, z, yaw = (float(p) for p in parts[3:7])
         anim, anim_ms = int(parts[7]), int(parts[8])
         flags = int(parts[9]) if len(parts) > 9 else 0
+        time_ms = int(parts[10]) if len(parts) > 10 else now_ms
     except ValueError:
         return None
     if not all(map(math.isfinite, (x, y, z, yaw))):
         return None
-    return wire.POS_BODY.pack(seq & 0xFFFF, wire.LEVEL_IDS[parts[1]], room & 0xFF, x, y, z,
+    return wire.POS_BODY.pack(time_ms & 0xFFFF, wire.LEVEL_IDS[parts[1]], room & 0xFF, x, y, z,
                               round(yaw % 360 * 65536 / 360) & 0xFFFF, anim & 0xFFFF, anim_ms & 0xFFFF, flags & 0xFF)
 
 
 def ghost_line(n: int, slot: str, body: bytes) -> Optional[str]:
-    _, level, _, x, y, z, yaw, anim, anim_ms, flags = wire.POS_BODY.unpack(body)
+    time_ms, level, _, x, y, z, yaw, anim, anim_ms, flags = wire.POS_BODY.unpack(body)
     if level >= len(wire.LEVELS):
         return None
     name = " ".join(slot.replace("|", "/").split()) or "?"
     return (f"GHOST {n} {wire.LEVELS[level]} {x:.3f} {y:.3f} {z:.3f} {yaw * 360 / 65536:.1f} {anim} {anim_ms} {flags} "
-            f"{name}")
+            f"{time_ms} {name}")
 
 
 class GhostLink:
@@ -69,10 +71,9 @@ class GhostLink:
         self.own_id = -1
         self.players: Dict[int, Tuple[str, str]] = {}  # the group's other members: id -> (slot, player name)
         self.ghosts: List[Optional[int]] = [None] * GHOST_SLOTS  # the player id each ghost slot shows
-        self.seq = 0
         self.last_sent = 0.0
         self.pending: Optional[bytes] = None  # a POS body waiting for MIN_INTERVAL; b"" for NOWHERE
-        self.sent_anim = -1  # the animation id of the last frame sent
+        self.sent_action: Optional[Tuple[int, int, int]] = None  # (yaw, animation id, flags) of the last frame sent
         self.flush_handle: Optional[asyncio.TimerHandle] = None
         self.sent_frames = 0
         self.received_frames = 0
@@ -121,14 +122,22 @@ class GhostLink:
 
     def on_pos(self, parts: List[str]) -> None:
         """A POS line from the game."""
-        body = pos_body(parts, self.seq)
+        body = pos_body(parts, int(asyncio.get_running_loop().time() * 1000))
         self.queue(body if body is not None else b"")
 
+    @staticmethod
+    def action(body: bytes) -> Tuple[int, int, int]:
+        """What the player does in a frame: facing, animation, flags (warped, hidden, still)."""
+        fields = wire.POS_BODY.unpack(body)
+        return fields[6], fields[7], fields[9]
+
     def queue(self, body: bytes) -> None:
+        """Sends a frame at most every MIN_INTERVAL, the last one included; a frame in which the player turns, plays
+        another animation, starts or stops goes at once, so the receiver sees it at its time."""
         self.pending = body
         if not self.joined:
             return
-        if body and wire.POS_BODY.unpack(body)[7] != self.sent_anim:
+        if body and self.action(body) != self.sent_action:
             if self.flush_handle is not None:
                 self.flush_handle.cancel()
             self.flush()
@@ -148,9 +157,7 @@ class GhostLink:
             return
         body, self.pending = self.pending, None
         if body:
-            body = struct.pack(">H", self.seq & 0xFFFF) + body[2:]
-            self.seq += 1
-            self.sent_anim = wire.POS_BODY.unpack(body)[7]
+            self.sent_action = self.action(body)
             self.write(bytes([wire.POS]) + body)
             self.sent_frames += 1
         else:

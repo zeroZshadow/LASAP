@@ -1,7 +1,8 @@
 // Test build only (LASAP_TEST): the ghosts of multiplayer ghosts (DESIGN.md, Ghosts). One puppet per ghost slot of
 // AP::GhostNet, and one for DBG puppet: an NPC actor spawned at runtime through the game's actor factory (as a chest
 // pops its enemy), drawn with Link's model (its Npc row, set up by ghost_puppet.py) dithered by alpha-to-coverage,
-// and moved by hand every frame: steered toward the positions it is fed, playing Link's animations by its speed.
+// and moved by hand every frame: replaying the positions it is fed on their sender's clock, playing Link's animations
+// by its speed.
 // The actor system owns the actors, and they outlive level changes: each puppet keeps a weak reference to its actor
 // and reuses it for the whole session, hidden while its ghost is not shown.
 #ifdef LASAP_TEST
@@ -105,26 +106,27 @@ namespace {
     const char* const kShownMaterials[] = {"MI_body", "MI_boots", "MI_ear", "MI_eye", "MI_mouth", "MI_hair",
                                            "linkShieldA_MI_shieldA", "linkSwordA_MI_sowrdA", "linkSwordA_MI_sowrdAball"};
 
-    // Steering: a puppet is fed target positions (a ghost's lines, or Link's own path for DBG puppet) and moves
-    // toward them each frame: dead reckoning along the target's velocity plus a correction toward it, capped; it
-    // snaps across jumps (warps, respawns). It turns toward where it goes, or the target's facing when still. The
-    // target's velocity spans the targets of the last kVelocityFrames: lines arrive unevenly (sent on a timer, carried
-    // by the network, read once a frame), and the last two alone give a speed that jumps.
-    constexpr float kFrame = 1.0f / 60, kSnap = 4, kMaxSpeed = 12, kGain = 4, kTurnRate = 12;  // per second
-    constexpr u32 kVelocityFrames = 18;
-    u32 g_MinVelocityFrames = 6;  // DBG puppet window: 1 takes the last two targets
-    constexpr int kFeeds = 16;
-    struct Feeding { u32 frame; Game::Vec3 pos; };
-    struct Steer {
-        bool valid = false;
-        Game::Vec3 pos{}, target{}, targetVel{};
-        float yaw = 0, targetYaw = 0, speed = 0, age = 0;  // yaw in radians, 0 = +z
-        u32 lastFeed = 0;
-        int gait = -1;  // index in kGaits, -1: none played yet
-        Feeding feeds[kFeeds];  // the last targets, newest at feeds[(count - 1) % kFeeds]
+    // Replay: a puppet is fed frames (a ghost's lines, or Link's own path for DBG puppet), each stamped with the
+    // sender's clock, and shows them on that timeline g_BufferMs behind: its position between the two frames around
+    // that time, its facing that of the last frame before it (Link turns in steps: a turn is not smoothed). The
+    // sender's clock maps to this one by the least delay seen, drifting up slowly, so a line that arrives late waits
+    // less instead of moving the ghost faster. Past the newest frame it goes on along the last segment for up to
+    // kExtrapolateMs, unless that frame stood still, then holds. A warped frame is jumped to at its time. A frame more
+    // than kResetMs behind the newest starts a new timeline.
+    constexpr int kTrack = 32;
+    constexpr double kExtrapolateMs = 100, kOffsetRise = 0.02;
+    constexpr s64 kResetMs = 1000;
+    double g_BufferMs = 100;  // DBG puppet buffer
+    using Frame = AP::GhostNet::Frame;
+    struct Track {
+        Frame frames[kTrack];  // newest at frames[(count - 1) % kTrack]
         u32 count = 0;
-        float moved[60] = {};   // distance moved in each of the last 60 frames (DBG puppet: smoothness)
-        u32 frames = 0;
+        double offset = 0;     // this clock minus the sender's (ms), the least seen
+        int gait = -1;         // index in kGaits, -1: none played yet
+        Game::Vec3 pos{};
+        double lastNow = 0;
+        float moved[60] = {};  // speed in each of the last 60 frames (DBG puppet: smoothness)
+        u32 shownFrames = 0;
     };
     // Animations by speed (units per second): each from its threshold on, with a margin either side so a speed near
     // one does not switch back and forth.
@@ -141,7 +143,7 @@ namespace {
     // A ghost whose last line is older than this is not shown (the relay and the client send offs; this covers a
     // lost one). A still player's game sends a position twice a second.
     constexpr u64 kStaleMs = 5000;
-    constexpr int kFlagWarped = 1, kFlagHidden = 2;
+    constexpr int kFlagWarped = 1, kFlagHidden = 2, kFlagStill = 4;
     constexpr u32 kRespawnFrames = 60;  // after a failed spawn
 
     enum class Look { Unknown, Ghost, Hidden };
@@ -153,8 +155,8 @@ namespace {
         bool shown = false;
         u64 hiddenSince = 0;     // ms
         u32 spawnAfter = 0;      // frame
-        Steer steer;
-        u32 framesSeen = 0;      // the ghost's line count fed so far
+        Track track;
+        u32 framesSeen = 0;      // the ghost's lines fed so far
         std::vector<std::string> animLog;  // its plays, for DBG puppet animlog
     };
     Puppet g_Puppets[kPuppets];
@@ -169,15 +171,17 @@ namespace {
     int g_SteerHz = 0;
     Game::Vec3 g_At{};
     Sample g_History[kHistory];
-    u32 g_HistoryFrame = 0, g_LastFrame = 0;
+    u32 g_HistoryFrame = 0, g_LastFrame = 0, g_TestFedFrame = 0;
     bool g_HistoryValid = false;
     std::string g_AnimPending;  // from DBG puppet anim, played on the game thread
 
-    u64 NowMs() {
+    u64 Ticks() {
         u64 ticks;
         asm volatile("mrs %0, cntpct_el0" : "=r"(ticks));
-        return ticks / 19200;
+        return ticks;
     }
+    u64 NowMs() { return Ticks() / 19200; }
+    double NowMsFine() { return static_cast<double>(Ticks()) / 19200; }
 
     Game::Actors::Player* Player() {
         Game::Framework* fmwk = Game::GetFramework();
@@ -245,7 +249,7 @@ namespace {
         if (Alive(p)) SetLook(p, Look::Hidden);
         if (p.shown) p.hiddenSince = now;
         p.shown = false;
-        p.steer = Steer{};
+        p.track = Track{};
     }
 
     // Has the game destroy the actor (at the entity manager's next flush) and lets it go.
@@ -361,85 +365,76 @@ namespace {
         root->needsCoordUpdate = true;
     }
 
-    // One frame of steering toward the puppet's target; picks the animation from the speed.
-    void SteerFrame(Puppet& p) {
-        Steer& st = p.steer;
-        st.age += kFrame;
-        Game::Vec3 aim{st.target.x + st.targetVel.x * st.age, st.target.y + st.targetVel.y * st.age,
-                       st.target.z + st.targetVel.z * st.age};
-        float ex = aim.x - st.pos.x, ey = aim.y - st.pos.y, ez = aim.z - st.pos.z;
-        if (ex * ex + ey * ey + ez * ez > kSnap * kSnap) {
-            st.pos = aim;
-            ex = ey = ez = 0;
-        }
-        float vx = st.targetVel.x + ex * kGain, vy = st.targetVel.y + ey * kGain, vz = st.targetVel.z + ez * kGain;
-        float sp = std::sqrt(vx * vx + vz * vz);
-        if (sp > kMaxSpeed) {
-            vx *= kMaxSpeed / sp;
-            vz *= kMaxSpeed / sp;
-            sp = kMaxSpeed;
-        }
-        st.pos.x += vx * kFrame;
-        st.pos.y += vy * kFrame;
-        st.pos.z += vz * kFrame;
-        st.moved[st.frames++ % 60] = sp * kFrame;
-        st.speed = st.speed * 0.8f + sp * 0.2f;
-        float want = st.speed > 0.5f ? std::atan2(vx, vz) : st.targetYaw;
-        float d = std::remainder(want - st.yaw, 2 * static_cast<float>(M_PI));
-        float step = kTurnRate * kFrame;
-        st.yaw += std::clamp(d, -step, step);
-        Game::Vec4 q = QuatOf(st.yaw);
-        Place(p, st.pos, &q);
-        // From the model's load on: the NPC plays its own idle as it loads.
-        int gait = st.gait < 0 ? GaitAt(st.speed) : std::clamp(st.gait, GaitAt(st.speed - kGaitMargin),
-                                                                 GaitAt(st.speed + kGaitMargin));
-        if (gait != st.gait && p.model != nullptr) {
-            PlayAnim(p, kGaits[gait], 6);
-            st.gait = gait;
-        }
+    void ResetTrack(Track& tr) {
+        int gait = tr.gait;
+        tr = Track{};
+        tr.gait = gait;
     }
 
-    // A new target; snap: jump there (a warp, or shown again) instead of steering.
-    void Feed(Puppet& p, const Game::Vec3& pos, float yaw, u32 frame, bool snap) {
-        Steer& st = p.steer;
-        float jump = std::hypot(pos.x - st.target.x, pos.z - st.target.z);
-        if (!st.valid || snap || jump > kSnap) {
-            int gait = st.gait;
-            bool keepPos = st.valid && !snap;  // a jump: steer there from where it stands (snaps if far)
-            Game::Vec3 at = st.pos;
-            float facing = st.yaw;
-            st = Steer{};
-            st.valid = true;
-            st.pos = keepPos ? at : pos;
-            st.yaw = keepPos ? facing : yaw;
-            st.target = pos;
-            st.targetYaw = yaw;
-            st.lastFeed = frame;
-            st.gait = gait;
-            st.feeds[0] = {frame, pos};
-            st.count = 1;
-            return;
+    void Push(Track& tr, const Frame& f) {
+        if (tr.count > 0) {
+            const Frame& newest = tr.frames[(tr.count - 1) % kTrack];
+            if (f.timeMs < newest.timeMs - kResetMs) ResetTrack(tr);
+            else if (f.timeMs <= newest.timeMs) return;
         }
-        st.feeds[st.count % kFeeds] = {frame, pos};
-        st.count++;
-        // the oldest target within the window, at least kMinVelocityFrames back
-        const Feeding* from = nullptr;
-        for (u32 k = 1; k < std::min<u32>(st.count, kFeeds); k++) {
-            const Feeding& f = st.feeds[(st.count - 1 - k) % kFeeds];
-            if (frame - f.frame > kVelocityFrames) break;
-            if (frame - f.frame >= g_MinVelocityFrames) from = &f;
-            if (from != nullptr && g_MinVelocityFrames <= 1) break;
+        double delay = static_cast<double>(f.receivedMs) - static_cast<double>(f.timeMs);
+        if (tr.count == 0 || delay < tr.offset) tr.offset = delay;
+        else tr.offset += (delay - tr.offset) * kOffsetRise;
+        tr.frames[tr.count % kTrack] = f;
+        tr.count++;
+    }
+
+    Game::Vec3 PosOf(const Frame& f) { return Game::Vec3{f.x, f.y, f.z}; }
+
+    // a + (b - a) * t
+    Game::Vec3 Along(const Frame& a, const Frame& b, float t) {
+        return Game::Vec3{a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t};
+    }
+
+    // One frame of the replay; picks the animation from the speed.
+    void ReplayFrame(Puppet& p, double now) {
+        Track& tr = p.track;
+        if (tr.count == 0) return;
+        double t = now - tr.offset - g_BufferMs;
+        u32 oldest = tr.count > kTrack ? tr.count - kTrack : 0;
+        // the last frame at or before t (the oldest while t is before them all)
+        u32 a = tr.count - 1;
+        while (a > oldest && static_cast<double>(tr.frames[a % kTrack].timeMs) > t) a--;
+        const Frame& fa = tr.frames[a % kTrack];
+        Game::Vec3 pos = PosOf(fa);
+        float speed = 0;
+        if (static_cast<double>(fa.timeMs) <= t) {
+            if (a + 1 < tr.count) {
+                const Frame& fb = tr.frames[(a + 1) % kTrack];
+                float span = static_cast<float>(fb.timeMs - fa.timeMs);
+                if (!(fb.flags & kFlagWarped) && span > 0) {
+                    pos = Along(fa, fb, static_cast<float>(t - fa.timeMs) / span);
+                    speed = std::hypot(fb.x - fa.x, fb.z - fa.z) * 1000 / span;
+                }
+            } else if (!(fa.flags & (kFlagStill | kFlagWarped)) && a > oldest && t - fa.timeMs < kExtrapolateMs) {
+                const Frame& fp = tr.frames[(a - 1) % kTrack];
+                float span = static_cast<float>(fa.timeMs - fp.timeMs);
+                if (span > 0) {
+                    pos = Along(fp, fa, 1 + static_cast<float>(t - fa.timeMs) / span);
+                    speed = std::hypot(fa.x - fp.x, fa.z - fp.z) * 1000 / span;
+                }
+            }
         }
-        if (from != nullptr) {
-            float dt = (frame - from->frame) * kFrame;
-            st.targetVel = Game::Vec3{(pos.x - from->pos.x) / dt, (pos.y - from->pos.y) / dt, (pos.z - from->pos.z) / dt};
-        } else if (frame - st.lastFeed > kVelocityFrames) {
-            st.targetVel = Game::Vec3{};  // after a pause
+        double dt = now - tr.lastNow;
+        if (tr.shownFrames > 0 && dt > 0)
+            tr.moved[tr.shownFrames % 60] = static_cast<float>(std::hypot(pos.x - tr.pos.x, pos.z - tr.pos.z) * 1000 / dt);
+        tr.shownFrames++;
+        tr.lastNow = now;
+        tr.pos = pos;
+        Game::Vec4 q = QuatOf(fa.yaw * static_cast<float>(M_PI) / 180);
+        Place(p, pos, &q);
+        // From the model's load on: the NPC plays its own idle as it loads.
+        int gait = tr.gait < 0 ? GaitAt(speed) : std::clamp(tr.gait, GaitAt(speed - kGaitMargin),
+                                                             GaitAt(speed + kGaitMargin));
+        if (gait != tr.gait && p.model != nullptr) {
+            PlayAnim(p, kGaits[gait], 6);
+            tr.gait = gait;
         }
-        st.target = pos;
-        st.targetYaw = yaw;
-        st.age = 0;
-        st.lastFeed = frame;
     }
 
     bool IsLinkModel(const u8* model) {
@@ -488,7 +483,7 @@ namespace {
         ClearSpan(IndexOf(p));
         p.model = model;
         p.look = Look::Unknown;
-        p.steer.gait = -1;
+        p.track.gait = -1;
     }
 
     // Last each frame for each puppet with an actor: drawn as a ghost (dithered) or hidden. The model's setup sets
@@ -570,8 +565,8 @@ namespace {
     }
 
     // GhostNet's slot n: shown while the client is connected, the ghost is in Link's level and not hidden, and its
-    // last line is recent; fed at each new line, steered every frame. A puppet not shown stays hidden for reuse.
-    void DriveGhost(int n, const std::string& level, u32 frame, u64 now) {
+    // last line is recent; fed its new lines, replayed every frame. A puppet not shown stays hidden for reuse.
+    void DriveGhost(int n, const std::string& level, u32 frame, u64 now, double nowFine) {
         Puppet& p = g_Puppets[n];
         const AP::GhostNet::Ghost& g = AP::GhostNet::Get(n);
         bool shown = AP::IsClientConnected() && g.active && !(g.flags & kFlagHidden) && g.level == level &&
@@ -581,21 +576,26 @@ namespace {
             else if (p.ctrl != nullptr && now - p.hiddenSince >= kHiddenRemoveMs) Remove(p);
             return;
         }
-        Game::Vec3 pos{g.x, g.y, g.z};
-        bool snap = !p.shown || (g.flags & kFlagWarped) != 0;
         if (!p.shown) {
             std::string err;
-            if (frame < p.spawnAfter || !Spawn(p, kGhostActor, pos, frame, err)) return;
+            if (frame < p.spawnAfter || !Spawn(p, kGhostActor, Game::Vec3{g.x, g.y, g.z}, frame, err)) return;
+            p.framesSeen = g.timelineFrom;
         }
-        if (g.frames != p.framesSeen || snap) {
-            Feed(p, pos, g.yaw * static_cast<float>(M_PI) / 180, frame, snap);
-            p.framesSeen = g.frames;
+        if (p.framesSeen < g.timelineFrom) {
+            // the sender's clock started over
+            ResetTrack(p.track);
+            p.framesSeen = g.timelineFrom;
         }
-        SteerFrame(p);
+        constexpr u32 kKept = AP::GhostNet::HISTORY;
+        for (u32 k = std::max(p.framesSeen, g.frames > kKept ? g.frames - kKept : 0); k < g.frames; k++)
+            Push(p.track, g.history[k % kKept]);
+        p.framesSeen = g.frames;
+        ReplayFrame(p, nowFine);
     }
 
-    // DBG puppet: on Link's path g_Delay frames late, exactly or steered; or standing at g_At.
-    void DriveTest(u32 frame) {
+    // DBG puppet: on Link's path g_Delay frames late, exactly or replayed from frames taken g_SteerHz times a second;
+    // or standing at g_At.
+    void DriveTest(u32 frame, u64 now, double nowFine) {
         Puppet& p = g_Puppets[kTest];
         if (p.ctrl == nullptr) return;
         if (!g_AnimPending.empty()) {
@@ -608,8 +608,14 @@ namespace {
                 Place(p, s.pos, &s.rot);
             } else {
                 u32 every = std::max(1, 60 / g_SteerHz);
-                if (!p.steer.valid || frame - p.steer.lastFeed >= every) Feed(p, s.pos, YawOf(s.rot), frame, false);
-                SteerFrame(p);
+                if (p.track.count == 0 || frame - g_TestFedFrame >= every) {
+                    const Frame* last = p.track.count > 0 ? &p.track.frames[(p.track.count - 1) % kTrack] : nullptr;
+                    bool still = last != nullptr && last->x == s.pos.x && last->y == s.pos.y && last->z == s.pos.z;
+                    Push(p.track, Frame{static_cast<s64>(now), now, s.pos.x, s.pos.y, s.pos.z,
+                                        YawOf(s.rot) * 180 / static_cast<float>(M_PI), 0, 0, still ? kFlagStill : 0});
+                    g_TestFedFrame = frame;
+                }
+                ReplayFrame(p, nowFine);
             }
         } else if (g_Delay == -1) {
             Place(p, g_At, nullptr);
@@ -625,6 +631,7 @@ namespace {
     // DBG puppet: "PUPPET ... | <n> ..." per puppet with an actor (n = ghost slot, test for DBG puppet's).
     std::string Info() {
         std::string s = "PUPPET delay=" + std::to_string(g_Delay) + " steer=" + std::to_string(g_SteerHz) +
+                        " buffer=" + std::to_string(static_cast<int>(g_BufferMs)) +
                         " dithered=" + std::to_string(g_GhostDraws);
         for (auto& p : g_Puppets) {
             if (!Alive(p)) continue;
@@ -635,13 +642,13 @@ namespace {
                  std::string(name, strnlen(name, 0x20));
             if (auto* root = At<Game::RootComp*>(p.actor, kActorRoot)) s += " pos=" + PosText(root->coordsNew.pos);
             s += " model=" + (p.model != nullptr ? Hex(reinterpret_cast<uintptr_t>(p.model)) : "-");
-            s += " anim=" + std::string(p.steer.gait >= 0 ? kGaits[p.steer.gait] : "-");
-            if (p.steer.frames >= 60) {
-                // speed over the last second: mean and standard deviation, units per second
+            s += " anim=" + std::string(p.track.gait >= 0 ? kGaits[p.track.gait] : "-");
+            if (p.track.shownFrames > 60) {
+                // speed over the last 60 frames: mean and standard deviation, units per second
                 float sum = 0, sq = 0;
-                for (float m : p.steer.moved) {
-                    sum += m / kFrame;
-                    sq += (m / kFrame) * (m / kFrame);
+                for (float m : p.track.moved) {
+                    sum += m;
+                    sq += m * m;
                 }
                 char buf[48];
                 snprintf(buf, sizeof(buf), " speed=%.2f~%.2f", sum / 60, std::sqrt(std::max(0.0f, sq / 60 - (sum / 60) * (sum / 60))));
@@ -744,8 +751,9 @@ namespace AP::Puppet {
         }
         std::string level = LevelSystem::GetCurrentLevel();
         u64 now = NowMs();
-        for (int n = 0; n < kGhosts; n++) DriveGhost(n, level, frame, now);
-        DriveTest(frame);
+        double nowFine = NowMsFine();
+        for (int n = 0; n < kGhosts; n++) DriveGhost(n, level, frame, now, nowFine);
+        DriveTest(frame, now, nowFine);
         for (auto& p : g_Puppets) {
             if (Alive(p)) Update(p, frame);
         }
@@ -792,13 +800,12 @@ namespace AP::Puppet {
             // DBG puppet follow <frames>: Link's path (position and rotation) that many frames late
             g_Delay = std::min(atoi(a[3].c_str()), kHistory - 1);
         } else if (sub == "steer" && a.size() >= 4) {
-            // DBG puppet steer <hz>: with follow, the path fed this many times a second and steered; 0: exact
+            // DBG puppet steer <hz>: with follow, the path taken this many times a second and replayed; 0: exact
             g_SteerHz = atoi(a[3].c_str());
-            p.steer.valid = false;
-        } else if (sub == "window" && a.size() >= 4) {
-            // DBG puppet window <frames>: the least span of targets the steering takes a velocity over (1: the
-            // last two)
-            g_MinVelocityFrames = std::clamp(atoi(a[3].c_str()), 1, static_cast<int>(kVelocityFrames));
+            ResetTrack(p.track);
+        } else if (sub == "buffer" && a.size() >= 4) {
+            // DBG puppet buffer <ms>: how far behind the newest frame (on the sender's clock) puppets replay
+            g_BufferMs = std::clamp(atof(a[3].c_str()), 0.0, 1000.0);
         } else if (sub == "anim" && a.size() >= 4) {
             // DBG puppet anim <name>: plays one of the model's animations (on the game thread)
             g_AnimPending = a[3];

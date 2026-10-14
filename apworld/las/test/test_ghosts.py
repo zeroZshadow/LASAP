@@ -238,22 +238,27 @@ class TestGhostLink(unittest.TestCase):
                 self.fail(f"timed out; lines: {lines}")
 
             await until(lambda: all("GHOSTS 1" in lines[n] for n in lines) and len(links["A"].players) == 1)
-            links["A"].on_pos("POS Field 170 38.250 10.500 128.250 90.0 0 0 1".split())
-            links["B"].on_pos("POS Field 171 50.000 10.500 128.250 270.0 0 0".split())
+            # the game's time goes along, 16 bits of it
+            links["A"].on_pos("POS Field 170 38.250 10.500 128.250 90.0 0 0 1 70000".split())
+            links["B"].on_pos("POS Field 171 50.000 10.500 128.250 270.0 0 0 0 5".split())
             await until(lambda: any(l.startswith("GHOST 0 ") for l in lines["B"]))
-            self.assertIn("GHOST 0 Field 38.250 10.500 128.250 90.0 0 0 1 A", lines["B"])
-            await until(lambda: "GHOST 0 Field 50.000 10.500 128.250 270.0 0 0 0 B" in lines["A"])
+            self.assertIn("GHOST 0 Field 38.250 10.500 128.250 90.0 0 0 1 4464 A", lines["B"])
+            await until(lambda: "GHOST 0 Field 50.000 10.500 128.250 270.0 0 0 0 5 B" in lines["A"])
             # rate: a burst of positions goes out at most every MIN_INTERVAL, the last one included
             for i in range(10):
-                links["A"].on_pos(f"POS Field 170 {39 + i} 10.5 128.25 90 0 0".split())
-            await until(lambda: "GHOST 0 Field 48.000 10.500 128.250 90.0 0 0 0 A" in lines["B"])
+                links["A"].on_pos(f"POS Field 170 {39 + i} 10.5 128.25 90 0 0 0 {100 + i}".split())
+            await until(lambda: "GHOST 0 Field 48.000 10.500 128.250 90.0 0 0 0 109 A" in lines["B"])
             self.assertLess(sum(l.startswith("GHOST 0 Field 4") for l in lines["B"]), 5)
-            # a new animation id is not held back by the rate
-            links["A"].on_pos("POS Field 170 48 10.5 128.25 90 0 0".split())
-            links["A"].on_pos("POS Field 170 48 10.5 128.25 90 7 0".split())
-            links["A"].on_pos("POS Field 170 48 10.5 128.25 90 7 40".split())
-            await until(lambda: "GHOST 0 Field 48.000 10.500 128.250 90.0 7 0 0 A" in lines["B"])
-            await until(lambda: "GHOST 0 Field 48.000 10.500 128.250 90.0 7 40 0 A" in lines["B"])
+            # what the player does is not held back by the rate: another animation, a turn, stopping
+            links["A"].on_pos("POS Field 170 48 10.5 128.25 90 0 0 0 110".split())
+            links["A"].on_pos("POS Field 170 48 10.5 128.25 90 7 0 0 111".split())
+            links["A"].on_pos("POS Field 170 48 10.5 128.25 90 7 40 0 112".split())
+            links["A"].on_pos("POS Field 170 48 10.5 128.25 135 7 50 0 113".split())
+            links["A"].on_pos("POS Field 170 48 10.5 128.25 135 7 60 4 114".split())
+            for time_ms in (111, 113, 114):
+                await until(lambda: any(l.startswith("GHOST 0 Field 48.000 ") and f" {time_ms} A" in l
+                                        for l in lines["B"]))
+            self.assertIn("GHOST 0 Field 48.000 10.500 128.250 135.0 7 60 4 114 A", lines["B"])
             # A goes inside: B's ghost of A turns off
             links["A"].on_pos("POS Shop 255 1 0 1 0 0 0".split())
             await until(lambda: "GHOST 0 off" in lines["B"])

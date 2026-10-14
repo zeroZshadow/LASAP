@@ -12,13 +12,16 @@
 #include <vector>
 
 namespace {
-    // 20 Hz while anything changes, a keep-alive at 2 Hz while Link stands still. A new animation goes out at once;
-    // its time running on is no change (the receiver plays it on from anim_ms).
+    // 20 Hz while anything changes, a keep-alive at 2 Hz while Link stands still. What the player does goes out at
+    // once: a new animation, a turn of kTurnDeg or more, starting or stopping; an animation's time running on is no
+    // change (the receiver plays it on from anim_ms). Each line carries the time it was taken: the receiver replays
+    // them on that timeline, so their delivery may be uneven.
     constexpr u64 kMovingMs = 50;
     constexpr u64 kStillMs = 500;
+    constexpr float kTurnDeg = 10;
     // A jump this far between two sent positions is a warp (respawn, warp, door within a level): the ghost snaps.
     constexpr float kWarpDistance = 4.0f;
-    constexpr int kFlagWarped = 1;
+    constexpr int kFlagWarped = 1, kFlagStill = 4;
 
     struct Sample {
         bool inLevel = false;
@@ -26,12 +29,17 @@ namespace {
         int room = 255;
         float x = 0, y = 0, z = 0, yaw = 0;
         int anim = 0, animMs = 0;  // no animation ids yet
+        bool still = false;        // not moved since the previous frame
     };
 
     bool g_Wanted = false;  // the client relays positions (GHOSTS 1)
     Sample g_Sent;
     bool g_SentAny = false;
     u64 g_SentAt = 0;
+    // Link's position in the previous frame, for still
+    u32 g_Frame = 0;
+    bool g_PrevValid = false, g_Still = false;
+    float g_PrevX = 0, g_PrevY = 0, g_PrevZ = 0;
     u32 g_PosLines = 0;
     std::string g_LastPos;
     AP::GhostNet::Ghost g_Ghosts[AP::GhostNet::SLOTS];
@@ -83,16 +91,37 @@ namespace {
         s.yaw = std::atan2(2 * (q.x * q.z + q.t * q.y), 1 - 2 * (q.x * q.x + q.y * q.y)) * 180.0f / 3.14159265f;
         if (s.yaw < 0) s.yaw += 360;
         s.room = RoomIndex(s.level, s.x, s.z);
+        // AP::Tick runs once per input poll, which can be more than once a frame
+        if (fmwk->mFrameCount != g_Frame) {
+            g_Still = g_PrevValid && std::fabs(s.x - g_PrevX) < 0.001f && std::fabs(s.y - g_PrevY) < 0.001f &&
+                      std::fabs(s.z - g_PrevZ) < 0.001f;
+            g_Frame = fmwk->mFrameCount;
+            g_PrevValid = true;
+            g_PrevX = s.x;
+            g_PrevY = s.y;
+            g_PrevZ = s.z;
+        }
+        s.still = g_Still;
         return s;
+    }
+
+    float Turn(const Sample& a, const Sample& b) {
+        float turn = std::fabs(a.yaw - b.yaw);
+        return std::min(turn, 360 - turn);
+    }
+
+    // What the player did, sent at once: another level, animation, facing, or starting or stopping.
+    bool Acted(const Sample& a, const Sample& b) {
+        if (a.inLevel != b.inLevel || a.level != b.level) return true;
+        return a.inLevel && (a.anim != b.anim || a.still != b.still || Turn(a, b) >= kTurnDeg);
     }
 
     bool Changed(const Sample& a, const Sample& b) {
         if (a.inLevel != b.inLevel || a.level != b.level) return true;
         if (!a.inLevel) return false;
-        if (a.anim != b.anim) return true;
-        float turn = std::fabs(a.yaw - b.yaw);
+        if (a.anim != b.anim || a.still != b.still) return true;
         return std::fabs(a.x - b.x) > 0.01f || std::fabs(a.y - b.y) > 0.01f || std::fabs(a.z - b.z) > 0.01f ||
-               std::min(turn, 360 - turn) > 1.0f;
+               Turn(a, b) > 1.0f;
     }
 
     void SendPos(const Sample& s, u64 now) {
@@ -101,11 +130,12 @@ namespace {
                           std::hypot(s.x - g_Sent.x, s.y - g_Sent.y, s.z - g_Sent.z) > kWarpDistance)) {
             flags |= kFlagWarped;
         }
+        if (s.still) flags |= kFlagStill;
         char buf[160];
         if (s.inLevel) {
-            // POS <level> <room> <x> <y> <z> <yaw> <anim> <anim_ms> <flags>; no animation ids yet
-            snprintf(buf, sizeof(buf), "POS %s %d %.3f %.3f %.3f %.1f %d %d %d", s.level.c_str(), s.room, s.x, s.y,
-                     s.z, s.yaw, s.anim, s.animMs, flags);
+            // POS <level> <room> <x> <y> <z> <yaw> <anim> <anim_ms> <flags> <time ms>; no animation ids yet
+            snprintf(buf, sizeof(buf), "POS %s %d %.3f %.3f %.3f %.1f %d %d %d %u", s.level.c_str(), s.room, s.x, s.y,
+                     s.z, s.yaw, s.anim, s.animMs, flags, static_cast<u32>(now));
         } else {
             snprintf(buf, sizeof(buf), "POS none");
         }
@@ -123,8 +153,8 @@ namespace AP::GhostNet {
         if (!g_Wanted || !AP::IsClientConnected()) return;
         u64 now = NowMs();
         Sample s = Current();
-        bool newAnim = g_SentAny && s.inLevel && g_Sent.inLevel && s.anim != g_Sent.anim;
-        if (now - g_SentAt < kMovingMs && !newAnim) return;
+        bool acted = g_SentAny && Acted(s, g_Sent);
+        if (now - g_SentAt < kMovingMs && !acted) return;
         if (!g_SentAny || Changed(s, g_Sent) || now - g_SentAt >= kStillMs) SendPos(s, now);
     }
 
@@ -135,7 +165,7 @@ namespace AP::GhostNet {
     }
 
     void HandleLine(const std::string& line) {
-        auto a = Split(line, 11);
+        auto a = Split(line, 12);
         if (a[0] == "GHOSTS" && a.size() >= 2) {
             // GHOSTS 1|0: whether the client relays positions; with 0 no ghost shows
             g_Wanted = a[1] == "1";
@@ -155,8 +185,16 @@ namespace AP::GhostNet {
             ghost.active = false;
             return;
         }
-        if (a.size() < 11) return;
-        // GHOST <n> <level> <x> <y> <z> <yaw> <anim> <anim_ms> <flags> <slot name>
+        if (a.size() < 12) return;
+        // GHOST <n> <level> <x> <y> <z> <yaw> <anim> <anim_ms> <flags> <time> <slot name>; time is the sender's
+        // clock (ms, 16 bits): unwrapped against the slot's previous line, a new timeline after an off
+        u16 time = static_cast<u16>(strtoul(a[10].c_str(), nullptr, 10));
+        if (ghost.active && ghost.frames > 0) {
+            ghost.timeMs += static_cast<s16>(static_cast<u16>(time - static_cast<u16>(ghost.timeMs)));
+        } else {
+            ghost.timeMs = 0x10000 + time;
+            ghost.timelineFrom = ghost.frames;
+        }
         ghost.active = true;
         ghost.level = a[2];
         ghost.x = strtof(a[3].c_str(), nullptr);
@@ -166,8 +204,10 @@ namespace AP::GhostNet {
         ghost.anim = atoi(a[7].c_str());
         ghost.animMs = atoi(a[8].c_str());
         ghost.flags = atoi(a[9].c_str());
-        ghost.name = a[10];
+        ghost.name = a[11];
         ghost.receivedMs = NowMs();
+        ghost.history[ghost.frames % HISTORY] = Frame{ghost.timeMs, ghost.receivedMs, ghost.x, ghost.y, ghost.z,
+                                                      ghost.yaw, ghost.anim, ghost.animMs, ghost.flags};
         ghost.frames++;
     }
 

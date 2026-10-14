@@ -38,10 +38,12 @@ ERROR = 0x86  # UTF-8 text; the relay closes the connection
 OFF_AREA = 0  # left the receiver's area, or is in no level
 OFF_LEFT = 1  # left the group
 
-# seq, level id, room, x, y, z, yaw (360 degrees = 65536), anim id, anim time (ms), flags
+# time (the sender's clock in ms, 16 bits), level id, room, x, y, z, yaw (360 degrees = 65536), anim id, anim time
+# (ms), flags
 POS_BODY = struct.Struct(">HHBfffHHHB")
 FLAG_WARPED = 1  # the position jumped (level load, respawn, warp): snap instead of moving there
 FLAG_HIDDEN = 2  # Link is not drawn
+FLAG_STILL = 4  # Link did not move since the previous frame
 
 NO_LEVEL = 0xFFFF
 NO_ROOM = 0xFF
