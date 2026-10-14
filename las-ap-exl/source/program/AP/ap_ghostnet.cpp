@@ -4,6 +4,7 @@
 #include "AP/ap.hpp"
 #include "Game/framework.hpp"
 #include "Hooks/Common/level.hpp"
+#include "Game/Data/inventory.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -33,6 +34,13 @@ namespace {
     constexpr uintptr_t kPlayerAnimSheet = 0x1cbaf70;
     constexpr size_t kSheetData = 0x70, kDataRows = 0x20, kDataCount = 0x28, kRowSize = 0x48, kRowName = 0x8,
                      kRowPolicy = 0x1c;
+    // Link's look: his model component (player +0x2a8) -> model instance (+0x148) -> one byte per shape (+0x378), 1
+    // drawn (Player_ShowItem shows the items he holds this way); the shape count is the g3d model object's (instance
+    // +0x60 -> +0x10, +0x30). His tunic is the inventory's upgrade bits (+0x9c): 6 red, 7 blue, red first.
+    constexpr size_t kPlayerModelComp = 0x2a8, kModelCompInstance = 0x148, kInstanceShapes = 0x378,
+                     kInstanceModel = 0x60, kModelObject = 0x10, kModelShapeCount = 0x30;
+    constexpr size_t kInventoryUpgrades = 0x9c;
+    constexpr u8 kUpgradeRed = 0x40, kUpgradeBlue = 0x80;
 
     struct Sample {
         bool inLevel = false;
@@ -42,6 +50,7 @@ namespace {
         int anim = 0, animFrame = 0;  // AP::GhostNet::Anim
         u32 starts = 0;
         bool still = false;           // not moved since the previous frame
+        u32 look = AP::GhostNet::LOOK_DEFAULT;
     };
 
     bool g_Wanted = false;  // the client relays positions (GHOSTS 1)
@@ -54,6 +63,7 @@ namespace {
     float g_PrevX = 0, g_PrevY = 0, g_PrevZ = 0;
     AP::GhostNet::Anim g_Anim;
     const void* g_AnimRow = nullptr;
+    u32 g_Look = AP::GhostNet::LOOK_DEFAULT;
 #ifdef LASAP_TEST
     // DBG ghostnet: Link's animation starts and the GHOST lines with a start, by frame
     std::vector<std::string> g_StartLog;
@@ -138,6 +148,20 @@ namespace {
         g_Anim.frame = std::min(static_cast<int>(frame * 10), 0xffff);
     }
 
+    u32 ReadLook(const void* player) {
+        const u8* instance = At<const u8*>(At<const u8*>(player, kPlayerModelComp), kModelCompInstance);
+        const u8* shapes = At<const u8*>(instance, kInstanceShapes);
+        const u8* model = At<const u8*>(At<const u8*>(instance, kInstanceModel), kModelObject);
+        int count = std::min<int>(At<u16>(model, kModelShapeCount), AP::GhostNet::LOOK_SHAPES);
+        if (shapes == nullptr || count == 0) return AP::GhostNet::LOOK_DEFAULT;
+        u32 look = 0;
+        for (int i = 0; i < count; i++)
+            if (shapes[i] != 0) look |= 1u << i;
+        u8 upgrades = At<u8>(*Game::Data::Inventory::Items, kInventoryUpgrades);
+        u32 tunic = (upgrades & kUpgradeRed) ? 1 : (upgrades & kUpgradeBlue) ? 2 : 0;
+        return look | tunic << AP::GhostNet::LOOK_TUNIC_SHIFT;
+    }
+
     Sample Current() {
         Sample s;
         Game::Framework* fmwk = Game::GetFramework();
@@ -165,11 +189,13 @@ namespace {
             g_PrevY = s.y;
             g_PrevZ = s.z;
             ReadAnim(fmwk->mPlayer);
+            g_Look = ReadLook(fmwk->mPlayer);
         }
         s.still = g_Still;
         s.anim = g_Anim.anim;
         s.animFrame = g_Anim.frame;
         s.starts = g_Anim.starts;
+        s.look = g_Look;
         return s;
     }
 
@@ -178,16 +204,16 @@ namespace {
         return std::min(turn, 360 - turn);
     }
 
-    // What the player did, sent at once: another level, animation, facing, or starting or stopping.
+    // What the player did, sent at once: another level, animation, facing or look, or starting or stopping.
     bool Acted(const Sample& a, const Sample& b) {
         if (a.inLevel != b.inLevel || a.level != b.level) return true;
-        return a.inLevel && (a.starts != b.starts || a.still != b.still || Turn(a, b) >= kTurnDeg);
+        return a.inLevel && (a.starts != b.starts || a.still != b.still || a.look != b.look || Turn(a, b) >= kTurnDeg);
     }
 
     bool Changed(const Sample& a, const Sample& b) {
         if (a.inLevel != b.inLevel || a.level != b.level) return true;
         if (!a.inLevel) return false;
-        if (a.starts != b.starts || a.still != b.still) return true;
+        if (a.starts != b.starts || a.still != b.still || a.look != b.look) return true;
         return std::fabs(a.x - b.x) > 0.01f || std::fabs(a.y - b.y) > 0.01f || std::fabs(a.z - b.z) > 0.01f ||
                Turn(a, b) > 1.0f;
     }
@@ -202,9 +228,9 @@ namespace {
         if (g_SentAny && s.starts != g_Sent.starts) flags |= kFlagStarted;
         char buf[160];
         if (s.inLevel) {
-            // POS <level> <room> <x> <y> <z> <yaw> <anim> <anim frame> <flags> <time ms>
-            snprintf(buf, sizeof(buf), "POS %s %d %.3f %.3f %.3f %.1f %d %d %d %u", s.level.c_str(), s.room, s.x, s.y,
-                     s.z, s.yaw, s.anim, s.animFrame, flags, static_cast<u32>(now));
+            // POS <level> <room> <x> <y> <z> <yaw> <anim> <anim frame> <flags> <time ms> <look>
+            snprintf(buf, sizeof(buf), "POS %s %d %.3f %.3f %.3f %.1f %d %d %d %u %u", s.level.c_str(), s.room, s.x,
+                     s.y, s.z, s.yaw, s.anim, s.animFrame, flags, static_cast<u32>(now), s.look);
         } else {
             snprintf(buf, sizeof(buf), "POS none");
         }
@@ -234,7 +260,7 @@ namespace AP::GhostNet {
     }
 
     void HandleLine(const std::string& line) {
-        auto a = Split(line, 12);
+        auto a = Split(line, 13);
         if (a[0] == "GHOSTS" && a.size() >= 2) {
             // GHOSTS 1|0: whether the client relays positions; with 0 no ghost shows
             g_Wanted = a[1] == "1";
@@ -254,9 +280,9 @@ namespace AP::GhostNet {
             ghost.active = false;
             return;
         }
-        if (a.size() < 12) return;
-        // GHOST <n> <level> <x> <y> <z> <yaw> <anim> <anim frame> <flags> <time> <slot name>; time is the sender's
-        // clock (ms, 16 bits): unwrapped against the slot's previous line, a new timeline after an off
+        if (a.size() < 13) return;
+        // GHOST <n> <level> <x> <y> <z> <yaw> <anim> <anim frame> <flags> <time> <look> <slot name>; time is the
+        // sender's clock (ms, 16 bits): unwrapped against the slot's previous line, a new timeline after an off
         u16 time = static_cast<u16>(strtoul(a[10].c_str(), nullptr, 10));
         if (ghost.active && ghost.frames > 0) {
             ghost.timeMs += static_cast<s16>(static_cast<u16>(time - static_cast<u16>(ghost.timeMs)));
@@ -273,7 +299,8 @@ namespace AP::GhostNet {
         ghost.anim = atoi(a[7].c_str());
         ghost.animFrame = atoi(a[8].c_str());
         ghost.flags = atoi(a[9].c_str());
-        ghost.name = a[11];
+        ghost.look = static_cast<u32>(strtoul(a[11].c_str(), nullptr, 10));
+        ghost.name = a[12];
         ghost.receivedMs = NowMs();
 #ifdef LASAP_TEST
         if ((ghost.flags & 8) && g_StartLog.size() < 60) {
@@ -282,7 +309,8 @@ namespace AP::GhostNet {
         }
 #endif
         ghost.history[ghost.frames % HISTORY] = Frame{ghost.timeMs, ghost.receivedMs, ghost.x, ghost.y, ghost.z,
-                                                      ghost.yaw, ghost.anim, ghost.animFrame, ghost.flags};
+                                                      ghost.yaw, ghost.anim, ghost.animFrame, ghost.flags,
+                                                      ghost.look};
         ghost.frames++;
     }
 
@@ -292,6 +320,10 @@ namespace AP::GhostNet {
 
     Anim LinkAnim() {
         return g_Anim;
+    }
+
+    u32 LinkLook() {
+        return g_Look;
     }
 
     const char* AnimName(int anim) {
@@ -310,9 +342,9 @@ namespace AP::GhostNet {
             if (!g.active) continue;
             char buf[200];
             const char* anim = AnimName(g.anim);
-            snprintf(buf, sizeof(buf), " | %d %s %s %.2f,%.2f,%.2f yaw=%.0f anim=%s flags=%d frames=%u", n,
+            snprintf(buf, sizeof(buf), " | %d %s %s %.2f,%.2f,%.2f yaw=%.0f anim=%s flags=%d look=%x frames=%u", n,
                      g.name.c_str(), g.level.c_str(), g.x, g.y, g.z, g.yaw, anim != nullptr ? anim : "-", g.flags,
-                     g.frames);
+                     g.look, g.frames);
             s += buf;
         }
 #ifdef LASAP_TEST

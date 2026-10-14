@@ -130,11 +130,16 @@ namespace AP::GhostNet {
     constexpr int SLOTS = 4;
     // The last GHOST lines of a slot are kept: the puppet replays them on the sender's timeline.
     constexpr int HISTORY = 16;
+    // Look: bit i shows shape i of Link's model (his body and the items he holds), bits 20-21 his tunic (0 green, 1
+    // red, 2 blue). LOOK_DEFAULT: the body, the first sword and shield, green.
+    constexpr int LOOK_SHAPES = 20, LOOK_TUNIC_SHIFT = 20;
+    constexpr u32 LOOK_DEFAULT = 0x32bf8;
     struct Frame {
         s64 timeMs;        // the sender's clock, unwrapped
         u64 receivedMs;    // this system's counter when the line arrived
         float x, y, z, yaw;
         int anim, animFrame, flags;
+        u32 look;
     };
     // Another player in this area, as the last GHOST line for its slot gave it.
     struct Ghost {
@@ -147,6 +152,7 @@ namespace AP::GhostNet {
         int animFrame = 0;      // its frame, in tenths
         int flags = 0;          // 1: warped (snap, do not move there), 2: hidden, 4: still since the previous frame,
                                 // 8: an animation started since the previous line
+        u32 look = LOOK_DEFAULT;
         u64 receivedMs = 0;     // when the line arrived (system counter, ms)
         s64 timeMs = 0;         // the sender's clock when it was taken (ms, unwrapped)
         u32 timelineFrom = 0;   // the first line of the sender's clock as unwrapped now (a new one after an off)
@@ -158,6 +164,8 @@ namespace AP::GhostNet {
     // Link's animation as POS sends it: anim id (0: none), frame in tenths, animations started so far.
     struct Anim { int anim = 0, frame = 0; u32 starts = 0; };
     Anim LinkAnim();
+    // Link's look as POS sends it.
+    u32 LinkLook();
     // The name of an anim id (PlayerAnimation.gsheet's fileName, the FSKA in Link's model), or nullptr.
     const char* AnimName(int anim);
     // A new client connection: no positions until it asks, no ghosts.

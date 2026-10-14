@@ -4,8 +4,8 @@ and logs what the relay sends it (DESIGN.md, Ghosts).
 python scripts/ghost_peer.py --relay 127.0.0.1:43390 --secret <ghost secret> [--slot Peer]
                              [--level Field] [--at x,y,z] [--radius 1.5] [--seconds 60]
 Logs "PLAYER <id> <slot>", "FRAME <id> <level> <x> <y> <z> <yaw>" (the first of each player, then every 20th) and
-"OFF <id> <reason>" lines. stdin takes "goto <level> <x> <y> <z>", "radius <r>" (0: stand still) and "nowhere" while
-it runs.
+"OFF <id> <reason>" lines. stdin takes "goto <level> <x> <y> <z>", "radius <r>" (0: stand still), "look <hex>" (the
+look it sends, ghost_relay.py) and "nowhere" while it runs.
 """
 import argparse
 import asyncio
@@ -30,7 +30,8 @@ async def main(args) -> None:
     host, _, port = args.relay.rpartition(":")
     reader, writer = await asyncio.open_connection(host, int(port))
     writer.write(wire.frame(wire.join_message(wire.group_id(args.secret), args.slot, args.slot)))
-    place = {"level": args.level, "at": [float(v) for v in args.at.split(",")], "here": True, "radius": args.radius}
+    place = {"level": args.level, "at": [float(v) for v in args.at.split(",")], "here": True, "radius": args.radius,
+             "look": wire.LOOK_DEFAULT}
     names = {}
     counts = {}
 
@@ -46,12 +47,12 @@ async def main(args) -> None:
                 log(f"PLAYER {player_id} {names[player_id]}")
             elif kind == wire.FRAME:
                 player_id = struct.unpack_from(">H", payload, 1)[0]
-                _, level, room, x, y, z, yaw, anim, _, flags = wire.POS_BODY.unpack(payload[3:])
+                _, level, room, x, y, z, yaw, anim, _, flags, look = wire.POS_BODY.unpack(payload[3:])
                 counts[player_id] = counts.get(player_id, 0) + 1
                 if counts[player_id] % 20 == 1:
                     name = wire.LEVELS[level] if level < len(wire.LEVELS) else level
                     log(f"FRAME {player_id} {name} {x:.2f} {y:.2f} {z:.2f} {yaw * 360 / 65536:.0f} room={room} "
-                        f"anim={anim} flags={flags} n={counts[player_id]}")
+                        f"anim={anim} flags={flags} look={look:x} n={counts[player_id]}")
             elif kind == wire.OFF:
                 player_id, reason = struct.unpack_from(">HB", payload, 1)
                 counts.pop(player_id, None)
@@ -72,6 +73,9 @@ async def main(args) -> None:
             elif len(parts) == 2 and parts[0] == "radius":
                 place["radius"] = float(parts[1])
                 log(f"RADIUS {parts[1]}")
+            elif len(parts) == 2 and parts[0] == "look":
+                place["look"] = int(parts[1], 16)
+                log(f"LOOK {parts[1]}")
             elif parts == ["nowhere"]:
                 place["here"] = False
                 log("NOWHERE")
@@ -90,7 +94,7 @@ async def main(args) -> None:
                                       wire.room_index(place["level"], x, z), x + radius * math.cos(angle), y,
                                       z + radius * math.sin(angle), int((-angle * 180 / math.pi) % 360
                                                                         * 65536 / 360) & 0xFFFF, 0, 0,
-                                      0 if radius else wire.FLAG_STILL)
+                                      0 if radius else wire.FLAG_STILL, place["look"])
             writer.write(wire.frame(bytes([wire.POS]) + body))
         else:
             writer.write(wire.frame(bytes([wire.NOWHERE])))

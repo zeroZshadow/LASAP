@@ -27,7 +27,7 @@
   "source": "region_common/actor/Playerlink.bfres",
   "source_sha256": "812cfae3d46878032e9f5f9f6ac8b50ce75f33364af07e2890d7a3ed22e40b53",
   "patch": "PlayerGhost.bfres.bsdiff4",
-  "sha256": "ad61074affa65a3c19a45652018d7695a3ef60e61ed84705ece4b9e910d66090"
+  "sha256": "23a27d580158d4a44aea16819be217a88a66219df7db21fb50501324eccdde5a"
  },
  "region_common/ui/Game.arc": {
   "source": "region_common/ui/Game.arc",

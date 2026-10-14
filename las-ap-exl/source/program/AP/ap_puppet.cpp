@@ -102,10 +102,31 @@ namespace {
     constexpr size_t kShapeStride = 0x70, kShapeBlock = 0x18;
     constexpr size_t kMatStride = 0x80, kMatCopies = 0x20, kMatBlock = 0x38, kMatBlockSize = 0x60;
     constexpr size_t kPoolGpu = 0x50;
-    // Link's materials drawn for a ghost: the body and the first sword and shield. The others are the items (rod,
-    // ocarina, shovel, hookshot, flippers, second sword and shields) the player shows only in use.
+    // Link's materials drawn for a ghost: his body and the items on his model. Which of its shapes draw is the
+    // ghost's look (SetGear).
     const char* const kShownMaterials[] = {"MI_body", "MI_boots", "MI_ear", "MI_eye", "MI_mouth", "MI_hair",
-                                           "linkShieldA_MI_shieldA", "linkSwordA_MI_sowrdA", "linkSwordA_MI_sowrdAball"};
+                                           "linkShieldA_MI_shieldA", "linkSwordA_MI_sowrdA", "linkSwordA_MI_sowrdAball",
+                                           "MI_flippers", "MagicRod_MI_magicRod", "Ocarina_MI_ocarina", "Shovel_MI_shovel",
+                                           "linkHookShot_MI_hookShot", "linkShieldB_MI_shieldB",
+                                           "linkShieldB_MI_shieldBMirror", "linkSwordB_MI_sowrdB",
+                                           "linkSwordB_MI_sowrdBball"};
+    // The look's shapes: the animation player's model instance (+0x88) has one byte per shape (+0x378), 1 drawn; a
+    // shape draws only with its byte, its material's visibility bit and its bone's all set. Nothing but the model's
+    // creation and the shape setters writes them.
+    constexpr size_t kAnimPlayerInstance = 0x88, kInstanceShapes = 0x378, kInstanceModel = 0x60, kModelObject = 0x10;
+    // The look's tunic: the material animation "clothes" swaps MI_body's albedo (frames 0 green, 1 red, 3 blue).
+    // NpcComponent_PlayMaterialAnimation (0x9c1b30: out shared_ptr, NPC component, {name, length}*, at once) puts it
+    // on a slot of the NPC's material animation component (NPC component +0x1b8; slots +0xa0, count +0xb8; a slot's
+    // +0x8 its animation); the slot is the facial ones' count (NPC component +0x198 -> +0xf0: +0x38, one more each
+    // for +0x18 and +0x28 set) unless +0x198 is missing or its +0x43 bit 6 is set, then 0. Slot virtuals +0x48 set
+    // frame, +0x60 set rate.
+    constexpr uintptr_t kPlayMaterialAnim = 0x9c1b30;
+    constexpr size_t kNpcFacial = 0x198, kFacialFlags = 0x43, kFacialSet = 0xf0, kFacialCount = 0x38,
+                     kFacialExtraA = 0x18, kFacialExtraB = 0x28;
+    constexpr size_t kNpcMaterialAnim = 0x1b8, kMatAnimSlots = 0xa0, kMatAnimSlotCount = 0xb8, kSlotAnim = 0x8;
+    constexpr size_t kSlotSetFrame = 0x48 / 8, kSlotSetRate = 0x60 / 8;
+    constexpr float kTunicFrames[] = {0, 1, 3};
+    constexpr int kNoTunic = -2;
 
     // Replay: a puppet is fed frames (a ghost's lines, or Link's own path for DBG puppet), each stamped with the
     // sender's clock, and shows them on that timeline g_BufferMs behind: its position between the two frames around
@@ -167,6 +188,9 @@ namespace {
         void* ctrl = nullptr;    // a weak reference to the actor
         u8* model = nullptr;     // once loaded
         Look look = Look::Unknown;
+        u32 gear = AP::GhostNet::LOOK_DEFAULT;  // the look of the frame replayed
+        int tunic = -1;                          // the tunic set, -1: none yet, kNoTunic: the model has none
+        void* tunicAnim = nullptr;               // the animation on the tunic's slot when it was set
         bool shown = false;
         u64 hiddenSince = 0;     // ms
         u32 spawnAfter = 0;      // frame
@@ -483,6 +507,7 @@ namespace {
         tr.pos = pos;
         Game::Vec4 q = QuatOf(fa.yaw * static_cast<float>(M_PI) / 180);
         Place(p, pos, &q);
+        p.gear = fa.look;
         // From the model's load on: the NPC plays its own idle as it loads.
         if (p.model == nullptr) return;
         if (fa.anim > 0) {
@@ -553,8 +578,57 @@ namespace {
         if (model != nullptr && p.animLog.size() < 40) p.animLog.push_back("model@" + std::to_string(g_LastFrame));
 #endif
         p.look = Look::Unknown;
+        p.tunic = -1;
+        p.tunicAnim = nullptr;
         p.track.gait = -1;
         p.track.anim = -1;
+    }
+
+    // The look's shapes on the puppet's model.
+    void SetShapes(Puppet& p) {
+        u8* instance = At<u8*>(At<void*>(AnimComp(p), kAnimCompPlayer), kAnimPlayerInstance);
+        if (At<u8*>(At<u8*>(instance, kInstanceModel), kModelObject) != p.model) return;
+        u8* shapes = At<u8*>(instance, kInstanceShapes);
+        if (shapes == nullptr) return;
+        int count = std::min<int>(At<u16>(p.model, kModelShapeCount), AP::GhostNet::LOOK_SHAPES);
+        for (int i = 0; i < count; i++) shapes[i] = (p.gear >> i) & 1;
+    }
+
+    void* TunicSlot(const Puppet& p, int& index) {
+        u8* npc = static_cast<u8*>(AnimComp(p));
+        u8* mat = At<u8*>(npc, kNpcMaterialAnim);
+        const u8* facial = At<const u8*>(npc, kNpcFacial);
+        index = 0;
+        if (facial != nullptr && !((At<u8>(facial, kFacialFlags) >> 6) & 1)) {
+            const u8* set = At<const u8*>(facial, kFacialSet);
+            index = At<s32>(set, kFacialCount) + (At<s32>(set, kFacialExtraA) != 0) + (At<s32>(set, kFacialExtraB) != 0);
+        }
+        if (mat == nullptr || index < 0 || index >= At<s32>(mat, kMatAnimSlotCount)) return nullptr;
+        return At<void**>(mat, kMatAnimSlots)[index];
+    }
+
+    // The look's tunic: "clothes" on its slot (again when something else took the slot), held at the tunic's frame.
+    void SetTunic(Puppet& p) {
+        int tunic = std::min<int>((p.gear >> AP::GhostNet::LOOK_TUNIC_SHIFT) & 3, 2);
+        int index;
+        void* slot = TunicSlot(p, index);
+        if (slot == nullptr || p.tunic == kNoTunic) return;
+        void* playing = At<void*>(slot, kSlotAnim);
+        if (p.tunicAnim == nullptr || playing != p.tunicAnim) {
+            SharedPtr out{};
+            StringView name{"clothes", 7};
+            GameFn<void (*)(SharedPtr*, void*, StringView*, bool)>(kPlayMaterialAnim)(&out, AnimComp(p), &name, true);
+            ReleaseShared(out.ctrl);
+            p.tunicAnim = At<void*>(slot, kSlotAnim);
+            // not put there (the model has no "clothes"): no tunic for this model
+            p.tunic = p.tunicAnim == nullptr || p.tunicAnim == playing ? kNoTunic : -1;
+            if (p.tunic == kNoTunic) return;
+        }
+        if (tunic == p.tunic) return;
+        uintptr_t* vtable = *reinterpret_cast<uintptr_t**>(slot);
+        reinterpret_cast<void (*)(void*, float)>(vtable[kSlotSetRate])(slot, 0);
+        reinterpret_cast<void (*)(void*, float)>(vtable[kSlotSetFrame])(slot, kTunicFrames[tunic]);
+        p.tunic = tunic;
     }
 
     // Last each frame for each puppet with an actor: drawn as a ghost (dithered) or hidden. The model's setup sets
@@ -563,7 +637,10 @@ namespace {
         if (p.model == nullptr) return;
         if (frame % 30 == 0) p.look = Look::Unknown;
         SetLook(p, p.shown ? Look::Ghost : Look::Hidden);
-        if (p.shown) PublishSpan(IndexOf(p), p.model);
+        if (!p.shown) return;
+        SetShapes(p);
+        SetTunic(p);
+        PublishSpan(IndexOf(p), p.model);
     }
 
     // Screen-space dither on the puppets only: the model file's shown albedos carry a constant alpha (render pass
@@ -688,7 +765,8 @@ namespace {
                     int flags = (still ? kFlagStill : 0) | (anim.starts != g_TestStarts ? kFlagStarted : 0);
                     g_TestStarts = anim.starts;
                     Push(p.track, Frame{static_cast<s64>(now), now, s.pos.x, s.pos.y, s.pos.z,
-                                        YawOf(s.rot) * 180 / static_cast<float>(M_PI), anim.anim, anim.frame, flags});
+                                        YawOf(s.rot) * 180 / static_cast<float>(M_PI), anim.anim, anim.frame, flags,
+                                        AP::GhostNet::LinkLook()});
                     g_TestFedFrame = frame;
                 }
                 ReplayFrame(p, nowFine);
@@ -722,6 +800,9 @@ namespace {
             const char* anim = p.track.anim > 0 ? AP::GhostNet::AnimName(p.track.anim)
                                                 : p.track.gait >= 0 ? kGaits[p.track.gait] : nullptr;
             s += " anim=" + std::string(anim != nullptr ? anim : "-");
+            int slot;
+            TunicSlot(p, slot);
+            s += " gear=" + Hex(p.gear) + " tunic=" + std::to_string(p.tunic) + "@" + std::to_string(slot);
             if (p.track.shownFrames > 60) {
                 // speed over the last 60 frames: mean and standard deviation, units per second
                 float sum = 0, sq = 0;
@@ -855,7 +936,10 @@ namespace AP::Puppet {
             shown += g_Spans[i].hi.load() != 0;
             actors += g_Puppets[i].ctrl != nullptr;
         }
-        return std::to_string(shown) + "/" + std::to_string(actors);
+        // and ghost slot 0's look on its model: the shapes and tunic last set
+        const auto& p = g_Puppets[0];
+        std::string gear = p.model != nullptr && p.shown ? Hex(p.gear) + "/" + std::to_string(p.tunic) : "-";
+        return std::to_string(shown) + "/" + std::to_string(actors) + " gear=" + gear;
     }
 
     bool Command(const std::vector<std::string>& a) {

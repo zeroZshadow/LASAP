@@ -24,9 +24,9 @@ def parse_address(address: str) -> Tuple[str, int]:
 
 
 def pos_body(parts: List[str], now_ms: int) -> Optional[bytes]:
-    """A POS line's fields (`POS <level> <room> <x> <y> <z> <yaw> <anim> <anim frame> [<flags> [<time>]]`) as a frame
-    body, or None when Link is in no level the relay knows (`POS none`, a level missing from wire.LEVELS). The time
-    is the game's clock (ms) when it took the position; without it, now_ms."""
+    """A POS line's fields (`POS <level> <room> <x> <y> <z> <yaw> <anim> <anim frame> [<flags> [<time> [<look>]]]`)
+    as a frame body, or None when Link is in no level the relay knows (`POS none`, a level missing from wire.LEVELS).
+    The time is the game's clock (ms) when it took the position; without it, now_ms."""
     if len(parts) < 9 or parts[1] not in wire.LEVEL_IDS:
         return None
     try:
@@ -35,21 +35,23 @@ def pos_body(parts: List[str], now_ms: int) -> Optional[bytes]:
         anim, anim_frame = int(parts[7]), int(parts[8])
         flags = int(parts[9]) if len(parts) > 9 else 0
         time_ms = int(parts[10]) if len(parts) > 10 else now_ms
+        look = int(parts[11]) if len(parts) > 11 else wire.LOOK_DEFAULT
     except ValueError:
         return None
     if not all(map(math.isfinite, (x, y, z, yaw))):
         return None
     return wire.POS_BODY.pack(time_ms & 0xFFFF, wire.LEVEL_IDS[parts[1]], room & 0xFF, x, y, z,
-                              round(yaw % 360 * 65536 / 360) & 0xFFFF, anim & 0xFFFF, anim_frame & 0xFFFF, flags & 0xFF)
+                              round(yaw % 360 * 65536 / 360) & 0xFFFF, anim & 0xFFFF, anim_frame & 0xFFFF, flags & 0xFF,
+                              look & 0xFFFFFFFF)
 
 
 def ghost_line(n: int, slot: str, body: bytes) -> Optional[str]:
-    time_ms, level, _, x, y, z, yaw, anim, anim_frame, flags = wire.POS_BODY.unpack(body)
+    time_ms, level, _, x, y, z, yaw, anim, anim_frame, flags, look = wire.POS_BODY.unpack(body)
     if level >= len(wire.LEVELS):
         return None
     name = " ".join(slot.replace("|", "/").split()) or "?"
     return (f"GHOST {n} {wire.LEVELS[level]} {x:.3f} {y:.3f} {z:.3f} {yaw * 360 / 65536:.1f} {anim} {anim_frame} {flags} "
-            f"{time_ms} {name}")
+            f"{time_ms} {look} {name}")
 
 
 class GhostLink:
@@ -126,14 +128,15 @@ class GhostLink:
         self.queue(body if body is not None else b"")
 
     @staticmethod
-    def action(body: bytes) -> Tuple[int, int, int]:
-        """What the player does in a frame: facing, animation, flags (warped, hidden, still, an animation started)."""
+    def action(body: bytes) -> Tuple[int, int, int, int]:
+        """What the player does in a frame: facing, animation, flags (warped, hidden, still, an animation started),
+        look."""
         fields = wire.POS_BODY.unpack(body)
-        return fields[6], fields[7], fields[9]
+        return fields[6], fields[7], fields[9], fields[10]
 
     def queue(self, body: bytes) -> None:
         """Sends a frame at most every MIN_INTERVAL, the last one included; a frame in which the player turns, plays
-        another animation, starts or stops goes at once, so the receiver sees it at its time."""
+        another animation, starts or stops or changes its look goes at once, so the receiver sees it at its time."""
         self.pending = body
         if not self.joined:
             return

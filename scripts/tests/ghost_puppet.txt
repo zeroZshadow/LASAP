@@ -42,6 +42,11 @@ await 5 puppets=0/1
 await 15 puppets=0/0
 send /ghosts on
 await 10 puppets=1/1
+# the peer's look: the puppet draws its shapes and tunic (red, the mirror shield and the second sword, the ocarina)
+peer look 1ccbfa
+await 5 gear=1ccbfa/1\s
+peer look 32bf8
+await 5 gear=32bf8/0\s
 # the ghost does not block Link: the peer stands in his way, he runs through it (blocked, he would stop near 44.2)
 peer radius 0
 peer goto Field 44.6 10.5 137

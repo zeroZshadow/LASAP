@@ -19,7 +19,7 @@ import struct
 import time
 from typing import Dict, List, Optional, Set, Tuple
 
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 DEFAULT_PORT = 43390
 
 # Client -> relay
@@ -40,12 +40,17 @@ OFF_AREA = 0  # left the receiver's area, or is in no level
 OFF_LEFT = 1  # left the group
 
 # time (the sender's clock in ms, 16 bits), level id, room, x, y, z, yaw (360 degrees = 65536), anim id (Link's
-# PlayerAnimation.gsheet key + 1, 0 none), anim frame (tenths), flags
-POS_BODY = struct.Struct(">HHBfffHHHB")
+# PlayerAnimation.gsheet key + 1, 0 none), anim frame (tenths), flags, look
+POS_BODY = struct.Struct(">HHBfffHHHBI")
 FLAG_WARPED = 1  # the position jumped (level load, respawn, warp): snap instead of moving there
 FLAG_HIDDEN = 2  # Link is not drawn
 FLAG_STILL = 4  # Link did not move since the previous frame
 FLAG_STARTED = 8  # an animation started since the previous frame sent (the same id again: it restarted)
+# Look: bit i shows shape i of Link's model (20 shapes: his body and the items he holds, LOOK_SHAPES), bits 20-21 his
+# tunic (0 green, 1 red, 2 blue)
+LOOK_SHAPES = 20
+LOOK_TUNIC_SHIFT = 20
+LOOK_DEFAULT = 0x32bf8  # body, sword and shield, green tunic
 
 NO_LEVEL = 0xFFFF
 NO_ROOM = 0xFF
@@ -290,7 +295,7 @@ class Relay:
             if len(payload) != 1 + POS_BODY.size or not member.allow():
                 return
             body = payload[1:]
-            _, level, _, x, y, z, _, _, _, _ = POS_BODY.unpack(body)
+            _, level, _, x, y, z, _, _, _, _, _ = POS_BODY.unpack(body)
             if not all(map(math.isfinite, (x, y, z))):
                 return
             member.level = level  # ids past LEVELS (a newer client's) still compare

@@ -1,9 +1,10 @@
 """Multiplayer ghosts (DESIGN.md, Ghosts): the model and the Npc row the module draws other players with.
 
 PlayerGhost.bfres is Link's model (Playerlink.bfres) made for a ghost: the albedo textures of the materials a ghost
-shows as BC3 with a constant alpha (their colour blocks kept) in render pass 1, so the module's alpha-to-coverage
-dithers them in screen space; the textures a ghost never shows shrunk to 4x4 to make room. Building it takes native
-packages, so it is an asset (ap_assets.py).
+shows (Link and the items on his model: the module shows those its player shows) as BC3 with a constant alpha (their
+colour blocks kept) in render pass 1, so the module's alpha-to-coverage dithers them in screen space; the red and blue
+tunics at half size and the items' other maps (normal, smoothness, metalness; the mirror shield keeps its, without
+them it draws black) and the textures of the items that are other models shrunk to 4x4 to make room. Building it takes native packages, so it is an asset (ap_assets.py).
 
 The row APGhost is NpcGhost's row drawing that model with Link's animations, with no collision, action, event
 triggers or conditions. The module spawns ghosts as NpcGhost actors that read the APGhost row. It is copied from
@@ -18,14 +19,21 @@ MODEL_NAME = "link"
 ROW = "APGhost"
 FROM_ROW = "NpcGhost"
 ALPHA = 128
-# Albedo textures of the shown materials, made BC3 with ALPHA
-ALPHA_TEXTURES = ("MI_body_alb.0", "MI_hair_alb", "MI_shieldA_alb", "MI_sowrdA_alb")
+# Albedo textures of the shown materials, made BC3 with ALPHA (a BC3 one keeps its alpha, scaled by ALPHA)
+ALPHA_TEXTURES = ("MI_body_alb.0", "MI_body_alb.1", "MI_body_alb.2", "MI_hair_alb", "MI_shieldA_alb", "MI_sowrdA_alb",
+                  "MI_magicRod_alb", "MI_ocarina_alb", "MI_shovel_alb", "MI_flippers_alb", "MI_hookShot_alb",
+                  "MI_shieldB_alb", "MI_shieldBMirror_alb", "MI_sowrdB_alb")
 ALPHA_PREFIXES = ("MI_ear_alb", "MI_eye_alb", "MI_mouth_alb")
+# Without their largest mip level: the red and blue tunics (material animation "clothes")
+HALF_TEXTURES = ("MI_body_alb.1", "MI_body_alb.2")
 # Material names in texture names: their other textures (normal, mask maps) stay as they are
-SHOWN_TEXTURE_PARTS = ("MI_body", "MI_ear", "MI_eye", "MI_mouth", "MI_hair", "MI_shieldA", "MI_sowrdA", "MI_boots")
+SHOWN_TEXTURE_PARTS = ("MI_body", "MI_ear", "MI_eye", "MI_mouth", "MI_hair", "MI_shieldA", "MI_sowrdA", "MI_boots",
+                       "MI_shieldB")
 # The materials drawn in render pass 1 (the module's kShownMaterials)
 SHOWN_MATERIALS = ("MI_body", "MI_boots", "MI_ear", "MI_eye", "MI_mouth", "MI_hair", "linkShieldA_MI_shieldA",
-                   "linkSwordA_MI_sowrdA", "linkSwordA_MI_sowrdAball")
+                   "linkSwordA_MI_sowrdA", "linkSwordA_MI_sowrdAball", "MI_flippers", "MagicRod_MI_magicRod",
+                   "Ocarina_MI_ocarina", "Shovel_MI_shovel", "linkHookShot_MI_hookShot", "linkShieldB_MI_shieldB",
+                   "linkShieldB_MI_shieldBMirror", "linkSwordB_MI_sowrdB", "linkSwordB_MI_sowrdBball")
 FORMAT_FOURCC = {0x1a06: b"DXT1", 0x1a01: b"DXT1", 0x1c06: b"DXT5", 0x1c01: b"DXT5", 0x1d01: b"BC4U",
                  0x1e01: b"BC5U", 0x1e02: b"BC5S"}
 # The row's animations: the NPC component's own (idle, talk, walk, run) by Link's names
@@ -63,6 +71,18 @@ def bc1_to_bc3(blocks: bytes, alpha: int) -> bytes:
                 c1 = c0 - 1
             bits = new_bits
         out += alpha_block + struct.pack("<HHI", c0, c1, bits)
+    return bytes(out)
+
+
+def bc3_scale_alpha(blocks: bytes, alpha: int) -> bytes:
+    """BC3 blocks with their alpha endpoints scaled by alpha / 255 (the 6-step mode kept: its endpoints stay apart)."""
+    out = bytearray(blocks)
+    for k in range(0, len(out), 16):
+        a0, a1 = out[k], out[k + 1]
+        b0, b1 = a0 * alpha // 255, a1 * alpha // 255
+        if a0 > a1 and b0 == b1:
+            b0 = b1 + 1
+        out[k], out[k + 1] = b0, b1
     return bytes(out)
 
 
@@ -108,10 +128,14 @@ def build(source: str) -> bytes:
         alpha = name in ALPHA_TEXTURES or name.startswith(ALPHA_PREFIXES)
         shown = any(name.startswith(m + "_") for m in SHOWN_TEXTURE_PARTS) and not name.startswith("MI_body_alb")
         new = None
-        if alpha and texture.format_ in (0x1a06, 0x1a01):
+        if alpha and texture.format_ in (0x1a06, 0x1a01, 0x1c06, 0x1c01):
             levels, _, _ = textures.rawData(texture)
-            converted = dds(texture.width, texture.height, b"DXT5", [bc1_to_bc3(bytes(l), ALPHA) for l in levels])
-            new = textures.replace(texture, texture.tileMode, texture.format_ == 0x1a06, False, False, True, converted)
+            width, height = texture.width, texture.height
+            if name in HALF_TEXTURES:
+                levels, width, height = levels[1:], width // 2, height // 2
+            convert = bc1_to_bc3 if texture.format_ in (0x1a06, 0x1a01) else bc3_scale_alpha
+            converted = dds(width, height, b"DXT5", [convert(bytes(l), ALPHA) for l in levels])
+            new = textures.replace(texture, texture.tileMode, (texture.format_ & 0xff) == 6, False, False, True, converted)
             if not new:
                 raise ValueError(f"could not convert {name}")
         elif not alpha and not shown and texture.format_ in FORMAT_FOURCC:
