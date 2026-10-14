@@ -386,6 +386,8 @@ class LASContext(CommonContext):
         elif cmd == "DIED":
             if "DeathLink" in self.tags:
                 asyncio.create_task(self.send_death(f"{self.player_names.get(self.slot, 'Link')} fell on Koholint."))
+        elif cmd == "DEATHDROPPED":
+            logger.info("DeathLink: ignored, no save is loaded in the game.")
         elif cmd == "LOG":
             if len(parts) == 3 and parts[1] == "level":
                 self.game_level = parts[2]

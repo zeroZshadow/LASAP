@@ -56,7 +56,11 @@ namespace {
     }
 
     std::string g_LastLevel;
-    int g_LastHealth = -1;
+    // DeathLink (DESIGN.md, DeathLink): when the last received death was applied, 0 when none is pending
+    u64 g_DeathLinkAt = 0;
+    u64 g_DiedPolled = 0;
+    constexpr u64 kDiedPollMs = 100;
+    constexpr u64 kDeathLinkClearMs = 10000;     // a received death that reached no game over by then is forgotten
     u64 g_LevelSince = 0;
 
     // Holding Minus opens the warp menu; a short press still reaches the game (the map), sent when Minus is released.
@@ -131,8 +135,15 @@ namespace {
     constexpr size_t kPlayerEventState = 0x4ed;   // u8, 0 while the player is free (no talk, event or cutscene)
     constexpr size_t kPlayerCarried = 0x19b0;     // pointer, set while Link holds something over his head
     constexpr size_t kFrameworkPaused = 0x510;    // u8, 1 while the pause menu is open
-#ifdef LASAP_TEST
     constexpr size_t kFrameworkScreen = 0xb0;     // u8: 2 intro and title, 5 file menus, 0x0b level load, 0x17 level
+
+    // The intro, the title or the file menus show: no save is loaded.
+    bool NoSaveLoaded(Game::Framework* fmwk) {
+        if (fmwk == nullptr) return true;
+        u8 screen = reinterpret_cast<const u8*>(fmwk)[kFrameworkScreen];
+        return screen == 0x02 || screen == 0x05;
+    }
+#ifdef LASAP_TEST
     constexpr size_t kFrameworkIntro = 0x6d0;     // pointer, set only while the intro plays
 
     // Which screen the game shows, for test scripts.
@@ -838,8 +849,23 @@ namespace {
             if (EventFlags::CheckFlag("ShadowClear")) AP::Send("GOAL");
             ReportHints(true);
         } else if (a[0] == "DEATH") {
-            if (!PlayerReady()) return false;
-            (*Game::Data::Inventory::Items)->Health = 0;
+            // A death from another player. Without a save (intro, title, file menus) or with Link dead already it
+            // is dropped; otherwise it waits until Link is free (no event, message or pause menu).
+            Game::Framework* fmwk = Game::GetFramework();
+            auto* items = *Game::Data::Inventory::Items;
+            if (NoSaveLoaded(fmwk)) {
+                Logging.Log("[AP] DeathLink dropped: no save loaded");
+                AP::Send("DEATHDROPPED");
+                return true;
+            }
+            if (fmwk->mPlayer == nullptr || items == nullptr) return false;
+            if (items->Health <= 0) return true;
+            if (!PlayerFree()) return false;
+            // The game over flow skips the bottled fairy and reports no death for it (patcher, APDeathLink).
+            EventFlags::SetFlag(AP::DEATHLINK_FLAG, true);
+            g_DeathLinkAt = NowMs();
+            items->Health = 0;
+            Logging.Log("[AP] DeathLink applied");
         } else if (a[0] == "NAME" && a.size() >= 2) {
             // NAME <local id> <item name>|<player name, empty for an own item>
             std::string names = RestAfter(line, 2);
@@ -986,12 +1012,21 @@ namespace AP {
             Send("LOG level " + level);  // test scripts wait on these
         }
 
-        // DeathLink: report the moment health reaches zero.
+        // DeathLink: the game over flow sets APDied for a death that no bottled fairy saved and no received death
+        // caused (patcher).
         Game::Framework* fmwk = Game::GetFramework();
-        if (fmwk != nullptr && fmwk->mPlayer != nullptr && *Game::Data::Inventory::Items != nullptr) {
-            int health = (*Game::Data::Inventory::Items)->Health;
-            if (health <= 0 && g_LastHealth > 0) Send("DIED");
-            g_LastHealth = health;
+        if (fmwk != nullptr && fmwk->mPlayer != nullptr && NowMs() - g_DiedPolled >= kDiedPollMs) {
+            g_DiedPolled = NowMs();
+            if (EventFlags::CheckFlag(AP::DIED_FLAG)) {
+                EventFlags::SetFlag(AP::DIED_FLAG, false);
+                Send("DIED");
+            }
+            auto* items = *Game::Data::Inventory::Items;
+            if (g_DeathLinkAt != 0 && NowMs() - g_DeathLinkAt > kDeathLinkClearMs && items != nullptr &&
+                items->Health > 0) {
+                g_DeathLinkAt = 0;
+                EventFlags::SetFlag(AP::DEATHLINK_FLAG, false);
+            }
         }
 
         if (TakeNewConnection()) {

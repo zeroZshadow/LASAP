@@ -153,7 +153,7 @@ ASCII lines terminated by `\n`, fields separated by single spaces. The game acce
 | `SYNC` | Asks the game to send `RECV <count>` and `CHECKS ...` |
 | `CHECKED <id> <id> ...` | Locations the server has as checked, for the map tracker: all on connect (possibly several lines), then new ones from `RoomUpdate`. Kept in memory only |
 | `INLOGIC CLEAR` / `INLOGIC <id> <id> ...` | Locations in logic for the items received, for the map tracker: `CLEAR`, then all of them (possibly several lines), each time the set changes. Kept in memory only |
-| `DEATH` | DeathLink: sets the player's health to zero |
+| `DEATH` | DeathLink: another player died (see DeathLink) |
 | `MSG <text>` | Logged by the module |
 | `DBG <cmd> [args]` | Test-only debug commands (see the module source) |
 
@@ -168,7 +168,8 @@ ASCII lines terminated by `\n`, fields separated by single spaces. The game acce
 | `CHECKS <id> <id> ...` | Every collected location, sent on connect and on `SYNC` (possibly several lines) |
 | `HINT <slot> <location id>` | An in-game hint was read (its flag is set): once per hint and connection, and all read hints again on `SYNC` |
 | `GOAL` | Goal completed: the `ShadowClear` flag was set (also resent on `SYNC`) |
-| `DIED` | DeathLink: the player's health reached zero |
+| `DIED` | DeathLink: Link died, and no bottled fairy saved him (see DeathLink) |
+| `DEATHDROPPED` | DeathLink: a `DEATH` arrived with no save loaded and was dropped; the client logs it |
 | `LOG <text>` | Debug text; `LOG level <name>` on every level change and when a client connects |
 
 Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until the player has been in the current level for 1.5 s; other lines are handled immediately.
@@ -200,6 +201,11 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 - Holding Minus for a second opens "Return to Tarin's house?" with Warp home and Continue, the `Common.bfevfl` event `APWarpMenu` (a `Dialog.Show` of `System:APWarpMenu`, then `GameControl.RequestLevelJump` to `Field`, locator `Field_11C`: the start point outside Tarin's door (`ExitOut`) that the house's exit leads to, so Link comes out of the house as if he had left it). The cursor starts on Warp home; B moves it to Continue, as on the game's yes/no prompts.
 - The module hides Minus from the game while it is held; released sooner, a short press reaches the game, so a tap still opens and closes the map.
 - The menu opens only when an item display could start (player free, holding nothing, no display running) and not in levels where a warp would break what runs there: the Wind Fish's Egg, the Chamber Dungeons and their editor (`Panel*`), the fishing pond, the trendy game, the ending and Marin's event levels.
+
+**DeathLink** (option `death_link`; `patcher/ap_deathlink.py`)
+- The client takes the `DeathLink` tag when the slot data's `death_link` is on: it turns a `DIED` into a DeathLink ("<slot> fell on Koholint.") and a received DeathLink into `DEATH`.
+- The patcher changes `Common.bfevfl`'s `GameOver`, which plays Link's death animation and then saves him with a bottled fairy (`Inventory.HasItem` itemType 22) unless the shopkeeper takes revenge for a theft. After the animation it checks the flag `APDeathLink`: set, it clears it and goes to the game over without the fairy. A death that then stands (the shopkeeper's, or no fairy) sets `APDied` before the game over; the module polls that flag, clears it and sends `DIED`. So a fairy's rescue sends nothing, and a received death is never sent back.
+- `DEATH` is dropped (`DEATHDROPPED`) on the intro, the title and the file menus, and when Link is dead already. Otherwise it waits until Link is free (no event, message or pause menu), then the module sets `APDeathLink` and his health to zero. A received death kills Link even with a bottled fairy, which he keeps. `APDeathLink` set by a death that reached no game over within 10 s, while Link lives, is cleared.
 
 **Ammo ghost** (option `ammo_ghost`, settings key `Ammo Ghost`; `patcher/ap_ghost.py`)
 - A ghost stands in Tarin's house once Link has found bombs or the bow, and tops bombs and arrows (of those he has) up to 15 each time Link talks to him. The option is on by default; a patch without the settings key gets him too.

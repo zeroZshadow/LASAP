@@ -66,7 +66,7 @@ The core loop works on Ryujinx: checks, received items with the game's own item-
 
 **Known gaps:**
 - Dungeon entrance shuffle isn't supported.
-- DeathLink is untested. Not tested on hardware.
+- Not tested on hardware.
 
 ## Licenses
 

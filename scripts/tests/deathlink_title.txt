@@ -1,0 +1,16 @@
+# DeathLink before a save is loaded (after `emu.py start`, as boot_file1; the deathlink.txt setup): a death that
+# arrives on the intro or title is dropped, and file 1 then loads with Link alive.
+connect 90
+expect HELLO 60
+peer /die Finder fell on the title.
+logged DeathLink:\sFinder\sfell\son\sthe\stitle 10 client
+logged DeathLink:\signored 10 client
+tapuntil 1 screen=title when title:Deactive 30
+tapuntil c0 title:GameStart when title:WaitLR+unlocked 20
+select 0
+tapuntil 1 files:DataSelectConfirm when files:DataSelectKeyWait
+tapuntil 1 files:GameStart when files:DataSelectConfirm
+loaded 60
+wait 3
+check health=[1-9]
+logcount Sending\sdeath 0 client

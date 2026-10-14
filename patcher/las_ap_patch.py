@@ -52,6 +52,7 @@ from RandomizerCore.Randomizers.shop import TEXT_TO_CHANGE as SHOP_TEXT  # noqa:
 from RandomizerCore.Tools import event_tools  # noqa: E402
 from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct  # noqa: E402
 import ap_assets  # noqa: E402
+import ap_deathlink  # noqa: E402
 import ap_ghost  # noqa: E402
 import ap_hints  # noqa: E402
 import ap_goal  # noqa: E402
@@ -165,6 +166,8 @@ def _add_ap_flags(self) -> None:
     for i in range(RECV_FLAG_BITS):
         self.addFlag(f"APRecv{i}")
     self.addFlag(ap_ghost.BOW_FLAG)
+    for flag in ap_deathlink.FLAGS:
+        self.addFlag(flag)
     for flag in ap_hints.FLAGS:
         self.addFlag(flag)
 
@@ -223,6 +226,7 @@ def _add_placeholder_text_event(self) -> None:
     event_tools.createActionChain(common.flowchart, WARP_MENU_ENTRY, [
         ("Dialog", "Show", {"message": f"System:{WARP_MENU_KEY}"}),
     ], choice)
+    ap_deathlink.patch_game_over(common.flowchart)
     self.parent.file_manager.writeFile("Common.bfevfl", common)
 
 

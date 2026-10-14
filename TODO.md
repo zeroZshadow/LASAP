@@ -4,4 +4,3 @@
 - **Collected check.** `0x148b10` kind `0x14` tests a bit in a global table; find which actors use it and whether received items can set it.
 - **Linux and macOS.** The world, the client and the patcher are plain Python; untested on either system.
 - **Dungeon entrance shuffle.**
-- **DeathLink.** Wired up in the client (`DIED`, `send_death`) and the module (`DEATH`) but untested in game: deaths sent and received, no echo of a received death, deaths on the title screen or file select, a fairy in a bottle, a death arriving during an event.

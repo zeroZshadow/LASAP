@@ -28,7 +28,7 @@ from typing import TextIO
 
 DIR = Path(os.environ.get("LASAP_E2E", "D:/DEV/LASAP-sandbox/e2e"))
 SLOT = os.environ.get("LASAP_SLOT", "Link")
-LOGS = {"client": DIR / "client.log", "server": DIR / "server.log"}
+LOGS = {"client": DIR / "client.log", "server": DIR / "server.log", "peer": DIR / "peer.log"}
 DEBUG_PORT = int(os.environ.get("LASAP_GAME_PORT", "43385")) + 100
 REPLY = re.compile(r"^(OK|ERR|DONE|FAIL|HELD|HOLDS|CHOICE|STATE|FLAG|UI|FRAME|PEEK|RECV|MAP|TEXT|map=)")
 
@@ -242,7 +242,7 @@ def run(script: Path, trace: str | None = None) -> None:
     began = time.time()
     mark = 0          # debug lines from here on answer the last send
     client_mark = size("client")
-    origins = {"client": client_mark, "server": size("server")}
+    origins = {log: size(log) for log in LOGS}
     if trace:
         game().trace_file = open(trace, "w", encoding="utf-8")
         game().request("DBG trace on", r"^OK trace")
@@ -299,6 +299,21 @@ def run(script: Path, trace: str | None = None) -> None:
             log = parts[2] if len(parts) > 2 else "client"
             count = int(parts[3]) if len(parts) > 3 else 1
             print(wait(parts[0], float(parts[1]) if len(parts) > 1 else 10, log, origins[log], count))
+        elif op == "logcount":
+            # logcount <regex> <n> [client|server|peer]: stops unless exactly n lines logged since the script started
+            # match (0: none)
+            parts = rest.split()
+            log = parts[2] if len(parts) > 2 else "client"
+            found = []
+            if LOGS[log].exists():
+                with open(LOGS[log], "rb") as f:
+                    f.seek(origins[log])
+                    found = [l for l in f.read().decode("utf-8", "replace").splitlines() if re.search(parts[0], l)]
+            if len(found) != int(parts[1]):
+                raise SystemExit(f"{log}.log has {len(found)} lines with /{parts[0]}/, not {parts[1]}: {found}")
+        elif op == "peer":
+            # peer <command>: a console command for the DeathLink peer (scripts/deathlink_peer.py)
+            append(DIR / "peer_cmds.txt", rest)
         elif op == "mash":
             # mash <buttons hex> <count> [hold ms] [gap s]
             p = rest.split()
@@ -531,6 +546,8 @@ def main() -> None:
     elif cmd == "tail":
         n = int(args[0]) if args else 8
         for log, path in LOGS.items():
+            if not path.exists():
+                continue
             lines = path.read_text(encoding="utf-8", errors="replace").splitlines()[-n:]
             print(f"--- {log}")
             print("\n".join(re.sub(r"\x1b\[[0-9;]*m", "", l) for l in lines))

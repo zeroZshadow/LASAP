@@ -1,0 +1,59 @@
+# DeathLink with a second DeathLink player: scripts/deathlink_peer.py as slot Finder (`peer` op), on a seed with
+# death_link on (TESTING.md, "DeathLink"). Starts with Link free in a level (boot_file1); ends with him alive and free
+# in Mabe. Patterns use \s for spaces.
+guard off dead
+# A received death: Link dies and the game over shows; no death goes back, and the flag is cleared.
+warp Field 38.25 10.5 128.25
+peer /die Finder fell off the board.
+logged DeathLink:\sFinder\sfell\soff\sthe\sboard 10 client
+until health=0 10
+until paused=1 10
+wait 1
+logcount Sending\sdeath 0 client
+logcount DeathLink:\sLink 0 peer
+send DBG flag APDeathLink
+expect FLAG\sAPDeathLink\s0 5
+# Retry (A on the game over menu): Link comes back where he died.
+tapuntil 1 paused=0 when paused=1 20
+await 30 pos=[1-9]
+until free 20
+check health=[1-9]
+# An own death: with a quarter heart left, Link walks into an Octorok south of Mabe. Exactly one death goes out, with
+# its cause; twice.
+warp Field 41.25 9.0 147.75
+send DBG poke 84 0100
+hold 0 0 32767 until health=0 10
+until paused=1 10
+logged Link\sfell\son\sKoholint 10 peer
+wait 1
+logcount Sending\sdeath 1 client
+tapuntil 1 paused=0 when paused=1 20
+await 30 pos=[1-9]
+until free 20
+warp Field 41.25 9.0 147.75
+send DBG poke 84 0100
+hold 0 0 32767 until health=0 10
+until paused=1 10
+logged Link\sfell\son\sKoholint 10 peer 2
+wait 1
+logcount Sending\sdeath 2 client
+tapuntil 1 paused=0 when paused=1 20
+await 30 pos=[1-9]
+until free 20
+# A received death waits while Link is in an event: the warp menu is open when it arrives; Continue, then he dies.
+warp Field 38.25 10.5 128.25
+hold 800 0 0 until !event=0 5
+until msg:Selecting 10
+peer /die Finder fell again.
+logged DeathLink:\sFinder\sfell\sagain 10 client
+wait 2
+check health=[1-9]
+choose 1
+until health=0 10
+until paused=1 10
+wait 1
+logcount Sending\sdeath 2 client
+tapuntil 1 paused=0 when paused=1 20
+await 30 pos=[1-9]
+until free 20
+check health=[1-9]

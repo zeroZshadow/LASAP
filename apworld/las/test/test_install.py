@@ -207,6 +207,20 @@ class TestInstall(unittest.TestCase):
         for setting in PLAYER_SETTINGS:
             self.assertEqual(getattr(LASSettings, setting.key), setting.default, setting.key)
 
+    def test_patcher_modules_ship(self) -> None:
+        """Every top-level patcher module is in the release (build_release.py's PATCHER_FILES) and is unloaded after an
+        in-process run (install.PATCHER_MODULES)."""
+        modules = sorted(install.SOURCE_PATCHER.glob("*.py"))
+        if not modules:
+            self.skipTest("no patcher source")
+        tree = ast.parse((install.SOURCE_PATCHER.parent / "scripts" / "build_release.py").read_text(encoding="utf-8"))
+        files = next(ast.literal_eval(node.value) for node in tree.body if isinstance(node, ast.Assign)
+                     and isinstance(node.targets[0], ast.Name) and node.targets[0].id == "PATCHER_FILES")
+        for module in modules:
+            with self.subTest(module=module.name):
+                self.assertIn(module.name, files)
+                self.assertIn(module.stem, install.PATCHER_MODULES)
+
     def test_split_command(self) -> None:
         self.assertEqual(split_command('"C:/Program Files/py.exe" D:\\a\\b.py'),
                          ["C:/Program Files/py.exe", "D:\\a\\b.py"] if sys.platform == "win32"
