@@ -4,7 +4,8 @@ and logs what the relay sends it (DESIGN.md, Ghosts).
 python scripts/ghost_peer.py --relay 127.0.0.1:43390 --secret <ghost secret> [--slot Peer]
                              [--level Field] [--at x,y,z] [--radius 1.5] [--seconds 60]
 Logs "PLAYER <id> <slot>", "FRAME <id> <level> <x> <y> <z> <yaw>" (the first of each player, then every 20th) and
-"OFF <id> <reason>" lines. stdin takes "goto <level> <x> <y> <z>" and "nowhere" while it runs.
+"OFF <id> <reason>" lines. stdin takes "goto <level> <x> <y> <z>", "radius <r>" (0: stand still) and "nowhere" while
+it runs.
 """
 import argparse
 import asyncio
@@ -29,7 +30,7 @@ async def main(args) -> None:
     host, _, port = args.relay.rpartition(":")
     reader, writer = await asyncio.open_connection(host, int(port))
     writer.write(wire.frame(wire.join_message(wire.group_id(args.secret), args.slot, args.slot)))
-    place = {"level": args.level, "at": [float(v) for v in args.at.split(",")], "here": True}
+    place = {"level": args.level, "at": [float(v) for v in args.at.split(",")], "here": True, "radius": args.radius}
     names = {}
     counts = {}
 
@@ -68,6 +69,9 @@ async def main(args) -> None:
             if len(parts) == 5 and parts[0] == "goto":
                 place.update(level=parts[1], at=[float(v) for v in parts[2:5]], here=True)
                 log(f"AT {' '.join(parts[1:])}")
+            elif len(parts) == 2 and parts[0] == "radius":
+                place["radius"] = float(parts[1])
+                log(f"RADIUS {parts[1]}")
             elif parts == ["nowhere"]:
                 place["here"] = False
                 log("NOWHERE")
@@ -81,10 +85,12 @@ async def main(args) -> None:
             t = time.monotonic() - start
             x, y, z = place["at"]
             angle = t * 1.5
+            radius = place["radius"]
             body = wire.POS_BODY.pack(int(t * 1000) & 0xFFFF, wire.LEVEL_IDS[place["level"]],
-                                      wire.room_index(place["level"], x, z), x + args.radius * math.cos(angle), y,
-                                      z + args.radius * math.sin(angle), int((angle * 180 / math.pi + 90) % 360
-                                                                                * 65536 / 360) & 0xFFFF, 0, 0, 0)
+                                      wire.room_index(place["level"], x, z), x + radius * math.cos(angle), y,
+                                      z + radius * math.sin(angle), int((angle * 180 / math.pi + 90) % 360
+                                                                        * 65536 / 360) & 0xFFFF, 0, 0,
+                                      0 if radius else wire.FLAG_STILL)
             writer.write(wire.frame(bytes([wire.POS]) + body))
         else:
             writer.write(wire.frame(bytes([wire.NOWHERE])))

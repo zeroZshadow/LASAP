@@ -147,7 +147,9 @@ def add_ghost_row(src: Path, dst: Path) -> None:
                                     for n in ("wait", "talk", "walk", "run")]
         graphics["facial"] = ""
         row["eventTriggers"] = []
-        row["doAction"]["type"] = 0
+        row["doAction"]["type"] = 0  # no talk or other action, so no DoAction component
+        row["collision"]["shape"] = 0  # no Collision component: nothing blocks Link, nothing moves the ghost
+        row["damageCollision"]["enable"] = False
         row["layoutConditions"] = []
         sheet["values"].append(dictToStruct(row))
         writeSheet(str(dst), sheet)

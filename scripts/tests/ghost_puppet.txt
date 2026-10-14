@@ -42,6 +42,17 @@ await 5 puppets=0/1
 await 15 puppets=0/0
 send /ghosts on
 await 10 puppets=1/1
+# the ghost does not block Link: the peer stands in his way, he runs through it (blocked, he would stop near 44.2)
+peer radius 0
+peer goto Field 44.6 10.5 137
+logged RADIUS\s0 5 peer
+logged AT\sField\s44\.6 5 peer
+send DBG input 0 700 32767 0
+await 3 anim=run
+await 3 anim=wait
+at 46 137 1.2
+peer radius 1.5
+peer goto Field 46.5 10.5 137
 # Link's own animations, sent by id, on DBG puppet's puppet: his path 20 frames late, replayed as a ghost's lines are
 send DBG puppet spawn 179 0 -2
 send DBG puppet follow 20
