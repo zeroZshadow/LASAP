@@ -183,6 +183,12 @@ namespace {
     constexpr int kFlagWarped = 1, kFlagHidden = 2, kFlagStill = 4;
     constexpr u32 kRespawnFrames = 60;  // after a failed spawn
     constexpr u32 kNoRowFrames = 600;   // after a spawn without the APGhost row
+    // An actor spawned in a level's first frames can stay inactive (entity flags without bit 2, (f & 0x40000017) !=
+    // 0x17): never updated or drawn. One inactive this long is made again; an active one stays active through
+    // pauses and level changes.
+    constexpr u32 kActiveMask = 0x40000017, kActive = 0x17;
+    constexpr u32 kInactiveFrames = 30;
+    u32 g_Remade = 0;  // DBG puppet: actors made again
 
     enum class Look { Unknown, Ghost, Hidden };
     struct Puppet {
@@ -198,6 +204,7 @@ namespace {
         u32 spawnAfter = 0;      // frame
         Track track;
         u32 framesSeen = 0;      // the ghost's lines fed so far
+        u32 inactiveFrames = 0;  // shown with an inactive actor
 #ifdef LASAP_TEST
         std::vector<std::string> animLog;  // its plays and model loads, for DBG puppet animlog
         u32 shownAt = 0;                   // frame it was last shown
@@ -731,6 +738,15 @@ namespace {
             if (frame < p.spawnAfter || !Spawn(p, kGhostActor, Game::Vec3{g.x, g.y, g.z}, frame, err)) return;
             p.framesSeen = g.timelineFrom;
         }
+        if ((At<u32>(p.actor, kActorFlags) & kActiveMask) != kActive) {
+            if (++p.inactiveFrames >= kInactiveFrames) {
+                g_Remade++;
+                Remove(p);  // spawned again next frame
+                return;
+            }
+        } else {
+            p.inactiveFrames = 0;
+        }
         if (p.framesSeen < g.timelineFrom) {
             // the sender's clock started over
             ResetTrack(p.track);
@@ -789,7 +805,7 @@ namespace {
         std::string s = "PUPPET delay=" + std::to_string(g_Delay) + " steer=" + std::to_string(g_SteerHz) +
                         " buffer=" + std::to_string(static_cast<int>(g_BufferMs)) +
                         " blend=" + std::to_string(g_AnimBlend).substr(0, 6) +
-                        " dithered=" + std::to_string(g_GhostDraws);
+                        " dithered=" + std::to_string(g_GhostDraws) + " remade=" + std::to_string(g_Remade);
         for (auto& p : g_Puppets) {
             if (!Alive(p)) continue;
             int n = IndexOf(p);
@@ -799,6 +815,7 @@ namespace {
                  std::string(name, strnlen(name, 0x20));
             if (auto* root = At<Game::RootComp*>(p.actor, kActorRoot)) s += " pos=" + PosText(root->coordsNew.pos);
             s += " model=" + (p.model != nullptr ? Hex(reinterpret_cast<uintptr_t>(p.model)) : "-");
+            s += " flags=" + Hex(At<u32>(p.actor, kActorFlags));
             const char* anim = p.track.anim > 0 ? AP::GhostNet::AnimName(p.track.anim)
                                                 : p.track.gait >= 0 ? kGaits[p.track.gait] : nullptr;
             s += " anim=" + std::string(anim != nullptr ? anim : "-");
