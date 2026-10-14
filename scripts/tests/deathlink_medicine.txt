@@ -1,0 +1,43 @@
+# DeathLink with Tracy's Secret Medicine, the item the game over revives Link with (a bottled fairy never does), on
+# the deathlink.txt setup (after boot_file1 or deathlink), with Link not holding the medicine. DBG give 21 adds it:
+# bit 1 of the inventory's byte ac. A received death kills Link past the medicine, which he keeps; then an own death
+# (a quarter heart and an Octorok south of Mabe) ends in the medicine's rescue and sends nothing. Ends with Link alive
+# and free in Mabe, the medicine used up. Patterns use \s for spaces.
+guard off dead
+warp Field 38.25 10.5 128.25
+send DBG peek i ac 1
+expect PEEK\si\sac\s[0-9a-f][014589cd] 5
+send DBG give 21 1 0
+expect OK\sgive 5
+send DBG peek i ac 1
+expect PEEK\si\sac\s[0-9a-f][2367abef] 5
+# A received death: the game over shows despite the medicine, nothing goes back, and Link keeps the medicine.
+peer /die Finder fell past the medicine.
+logged DeathLink:\sFinder\sfell\spast\sthe\smedicine 10 client
+until health=0 10
+until paused=1 15
+wait 1
+logcount Sending\sdeath 0 client
+logcount DeathLink:\sLink 0 peer
+send DBG flag APDeathLink
+expect FLAG\sAPDeathLink\s0 5
+tapuntil 1 paused=0 when paused=1 20
+await 30 pos=[1-9]
+until free 20
+check health=[1-9]
+send DBG peek i ac 1
+expect PEEK\si\sac\s[0-9a-f][2367abef] 5
+# An own death: the medicine refills Link's hearts and he plays on; no game over, no death sent.
+warp Field 41.25 9.0 147.75
+send DBG poke 84 0100
+hold 0 0 32767 until health=0 10
+await 20 health=[1-9]
+until free 20
+check paused=0
+send DBG peek i ac 1
+expect PEEK\si\sac\s[0-9a-f][014589cd] 5
+wait 2
+check paused=0
+logcount Sending\sdeath 0 client
+logcount DeathLink:\sLink 0 peer
+warp Field 38.25 10.5 128.25

@@ -62,6 +62,9 @@ namespace {
     constexpr u64 kDiedPollMs = 100;
     constexpr u64 kDeathLinkClearMs = 10000;     // a received death that reached no game over by then is forgotten
     u64 g_LevelSince = 0;
+    // The game over menu showed: Retry stands Link up with full health for about a second, then reloads the level
+    // (a new player) under the same name. Nothing that needs the player starts until the reload.
+    bool g_GameOver = false;
 
     // Holding Minus opens the warp menu; a short press still reaches the game (the map), sent when Minus is released.
     constexpr u64 kButtonMinus = 0x800;
@@ -93,7 +96,7 @@ namespace {
 
     bool PlayerReady() {
         Game::Framework* fmwk = Game::GetFramework();
-        return fmwk != nullptr && fmwk->mPlayer != nullptr && NowMs() - g_LevelSince >= kSettleMs;
+        return fmwk != nullptr && fmwk->mPlayer != nullptr && !g_GameOver && NowMs() - g_LevelSince >= kSettleMs;
     }
 
     int GetRecvCount() {
@@ -322,6 +325,12 @@ namespace {
         return *reinterpret_cast<void**>(reinterpret_cast<u8*>(fmwk->mPlayer) + kPlayerCarried) != nullptr;
     }
 
+    // Health is zero: Link is dying (until the Secret Medicine or a game over's Retry refills it).
+    bool LinkDead() {
+        auto* items = *Game::Data::Inventory::Items;
+        return items != nullptr && items->Health <= 0;
+    }
+
     // Items whose own text tells where they came from in the vanilla game (the Boomerang's trade, the Mad Batter's
     // capacity upgrades); they show the AP text instead.
     bool HasSourceText(int itemId) {
@@ -406,7 +415,9 @@ namespace {
             g_WasFree = false;  // the settle time starts again after each item-get
             return;
         }
-        if (g_ShowQueue.empty() || !free || PlayerCarrying() || NowMs() - g_FreeSince < kFreeSettleMs) return;
+        if (g_ShowQueue.empty() || !free || PlayerCarrying() || LinkDead() || NowMs() - g_FreeSince < kFreeSettleMs) {
+            return;
+        }
         g_Showing = g_ShowQueue.front();
         g_ShowQueue.pop_front();
         if (!g_Showing.trap.empty()) {
@@ -850,7 +861,8 @@ namespace {
             ReportHints(true);
         } else if (a[0] == "DEATH") {
             // A death from another player. Without a save (intro, title, file menus) or with Link dead already it
-            // is dropped; otherwise it waits until Link is free (no event, message or pause menu).
+            // is dropped; otherwise it waits until Link is free (no event, message or pause menu) and no item display
+            // is starting or showing.
             Game::Framework* fmwk = Game::GetFramework();
             auto* items = *Game::Data::Inventory::Items;
             if (NoSaveLoaded(fmwk)) {
@@ -860,11 +872,13 @@ namespace {
             }
             if (fmwk->mPlayer == nullptr || items == nullptr) return false;
             if (items->Health <= 0) return true;
-            if (!PlayerFree()) return false;
-            // The game over flow skips the bottled fairy and reports no death for it (patcher, APDeathLink).
+            if (!PlayerFree() || g_ItemEvent != ItemEvent::None) return false;
+            // The game over flow skips the Secret Medicine and reports no death for it (patcher, APDeathLink).
             EventFlags::SetFlag(AP::DEATHLINK_FLAG, true);
             g_DeathLinkAt = NowMs();
             items->Health = 0;
+            std::string source = RestAfter(line, 1);
+            QueueNotice(source.empty() ? "DeathLink" : "DeathLink|from " + source);
             Logging.Log("[AP] DeathLink applied");
         } else if (a[0] == "NAME" && a.size() >= 2) {
             // NAME <local id> <item name>|<player name, empty for an own item>
@@ -995,7 +1009,7 @@ namespace {
     void TickWarpMenu() {
         if (!g_WarpMenuWanted) return;
         g_WarpMenuWanted = false;
-        if (g_MinusHeld && PlayerFree() && !PlayerCarrying() && g_ItemEvent == ItemEvent::None &&
+        if (g_MinusHeld && PlayerFree() && !PlayerCarrying() && !LinkDead() && g_ItemEvent == ItemEvent::None &&
             !WarpMenuBlockedLevel(LevelSystem::GetCurrentLevel())) {
             g_WarpMenuShown = RequestCommonEvent(AP::WARP_MENU_ENTRY);
             Logging.Log(std::string("[AP] warp menu ") + (g_WarpMenuShown ? "opened" : "could not be requested"));
@@ -1012,9 +1026,18 @@ namespace AP {
             Send("LOG level " + level);  // test scripts wait on these
         }
 
-        // DeathLink: the game over flow sets APDied for a death that no bottled fairy saved and no received death
-        // caused (patcher).
+        // A level (re)loads while there is no player: the settle time starts once he stands in it. The game over
+        // menu holds everything back until its Retry has reloaded the level.
         Game::Framework* fmwk = Game::GetFramework();
+        if (fmwk == nullptr || fmwk->mPlayer == nullptr) {
+            g_LevelSince = NowMs();
+            g_GameOver = false;
+        } else if (LinkDead() && reinterpret_cast<u8*>(fmwk)[kFrameworkPaused] != 0) {
+            g_GameOver = true;
+        }
+
+        // DeathLink: the game over flow sets APDied for a death that no Secret Medicine saved and no received death
+        // caused (patcher).
         if (fmwk != nullptr && fmwk->mPlayer != nullptr && NowMs() - g_DiedPolled >= kDiedPollMs) {
             g_DiedPolled = NowMs();
             if (EventFlags::CheckFlag(AP::DIED_FLAG)) {

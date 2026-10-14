@@ -218,7 +218,7 @@ class LASContext(CommonContext):
 
     def on_deathlink(self, data: Dict) -> None:
         super().on_deathlink(data)
-        self.send_game("DEATH")
+        self.send_game(f"DEATH {clean(str(data.get('source', '')))}".rstrip())
 
     def send_notice(self) -> None:
         """Tells the player in the game, once per connection, whether the client is connected to their slot."""

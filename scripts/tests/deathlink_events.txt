@@ -1,0 +1,66 @@
+# DeathLink deaths that arrive while Link is busy, on the deathlink.txt setup (after boot_file1 or deathlink). Each
+# waits until Link is free and no item display starts or shows, then kills him; each game over ends with Retry.
+# Ends with Link alive and free in Mabe. Patterns use \s for spaces.
+guard off dead
+# A talk with the Mabe shopkeeper (from the tile below him): a death and an item arrive. The death waits for the talk
+# to end and kills Link before the item shows; the item shows after Retry.
+warp Field 51.75 10.5 117
+hold 0 0 32767 until level=Shop 5
+inlevel 20
+level Shop
+free 10
+goto 10.5 0 9
+at 10.5 9
+face up
+interact
+until textready 10
+peer /die Finder fell during a talk.
+logged DeathLink:\sFinder\sfell\sduring\sa\stalk 10 client
+send DBG grant Seashell 1 -1 1
+expect OK.grant 5
+wait 2
+check health=[1-9].*event=[1-9]
+tap 2 2 2 when textready
+until health=0 10
+until paused=1 10
+check showq=1(\s|$)
+tapuntil 1 paused=0 when paused=1 20
+await 30 pos=[1-9]
+await 30 showq=0\+1
+until textready 10
+dismiss 20
+check health=[1-9]
+# An item-get display: a death that arrives while it shows waits until it is dismissed.
+warp Field 38.25 10.5 128.25
+send DBG grant Seashell 1 -1 1
+expect OK.grant 5
+await 10 showq=0\+1
+until textready 10
+peer /die Finder fell during an item.
+logged DeathLink:\sFinder\sfell\sduring\san\sitem 10 client
+wait 2
+check health=[1-9]
+tap 2 2 2 when textready
+until health=0 10
+until paused=1 10
+tapuntil 1 paused=0 when paused=1 20
+await 30 pos=[1-9]
+until free 20
+# A level load: a death sent right after a warp waits until Link is in the new level.
+send DBG warp MarinTarinHouse 6.85 0 3.83
+expect OK.warp 10
+peer /die Finder fell during a load.
+logged DeathLink:\sFinder\sfell\sduring\sa\sload 10 client
+until health=0 30
+level MarinTarinHouse
+until paused=1 10
+tapuntil 1 paused=0 when paused=1 20
+await 30 pos=[1-9]
+until free 20
+check health=[1-9]
+# None of these deaths went back.
+logcount Sending\sdeath 0 client
+logcount DeathLink:\sLink 0 peer
+send DBG flag APDeathLink
+expect FLAG\sAPDeathLink\s0 5
+warp Field 38.25 10.5 128.25
