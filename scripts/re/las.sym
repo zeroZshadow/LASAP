@@ -16,6 +16,8 @@ AreaLevelOpen_CompanionEntry 0x0857a050 f entry name with the companion suffix t
 AreaLevelOpen_LevelName 0x0857a0c0 f (out, actor): LEB param 0; a bl target after a noreturn call
 AreaLevelOpen_Locator 0x0857a150 f (out, actor): LEB param 1
 Sound_Play 0x085a97e0 f (StringView* name, nullptr, volume, pitch)
+Sound_PlayAtTracked 0x085a9a20 f (name, pos*, u64 extra, handle*, volume, pitch): 3D, extra unverified
+Sound_PlayAt 0x085a9c70 f (StringView* name, const Vec4* worldPos, SoundHandle* out|null, f32 volume, f32 pitch): 3D, request mode 2
 EventAction_PlayAnimation2 0x085f7bb0 f virtual +0x30 on the actor's root component
 EventAction_PlayAnimation 0x0861d0c0 f
 SkeletalModelComponent_Make 0x08646660 f (out, owner, StringView* name, rootSp*, resource, ...)
@@ -77,7 +79,9 @@ NpcComponent_MakeCollision 0x08e4f350 f vtable +0x210: null when the row's colli
 NpcComponent_MakeDamageCollision 0x08e52700 f vtable +0x218: only with damageCollision.enable
 NpcComponent_MakeEventChara 0x08e53220 f vtable +0x220
 NpcComponent_MakeDoAction 0x08e546a0 f vtable +0x228: only with doAction.type != 0
+NpcComponent_MakeTailorPlayer 0x08e54e60 f vtable +0x240: null without the row's graphics.drsb; TailorPlayer at component +0x158
 NpcComponent_MakeGroundAttr 0x08e55670 f vtable +0x250: only with a Collision, and groundCheck
+NpcComponent_LoadDrsb 0x08e5a260 f vtable +0x2e8 (out handle via x8, component): tailor/{row graphics.drsb}; handle at component +0x208
 NpcComponent_BuildComponents 0x08e5bd80 f vtable +0x388: the sub-components through the Make* slots
 NpcAnimation_ResolveName 0x08e62f30 f (out, component, StringView* name)
 NpcAnimator_Make 0x08e6a2e0 f base SkeletalAnimationComponent, 0x1b0 bytes, one layer at +0x60
@@ -95,7 +99,8 @@ NpcAnimation_PlayByName2 0x08ee3590 f a subclass's override of 0x949260
 ShopPanelItem_IsSold 0x091e4b70 f (row id): chamber stone bit of the ShopPanelItem row's mIndex
 ShopPanelItem_IsAvailable 0x091e4e00 f (row id): mCondition flag holds and the stone bit is clear
 PanelShadowLink_Init 0x0920fe50 f the Chamber Dungeon's Shadow Link: PlayerAnimation controller at +0x16e0
-Player_Init 0x0922f030 f player vtable +0x10
+Player_Dtor 0x0922f030 f player vtable +0x10 (vtable +0x18 the deleting destructor)
+Player_Setup 0x0922fc50 f player vtable +0x20: loads Playerlink.bfres and tailor/Player.drsb, TailorPlayer at +0x1e88
 Player_InitParts 0x09230c50 f registers the item shape groups at player +0x498
 Player_InitAnimator 0x09231a00 f makes the 2-slot layered animator, layer 1 masked to spine_a
 Player_UpdateAnimation 0x092395c0 f per frame: nextKey chains through PlayerAnimation_Play
@@ -125,6 +130,17 @@ DungeonMap_SubscribeZone 0x092f6ea0 f (out ids): subscribes DungeonMap_MarkZoneV
 DungeonMap_MarkZoneVisited 0x092f7370 f (Zone*): sets the visited bit col + 8*row of every area of the zone in the dungeon's DungeonItems entry
 SetCurrentLevel 0x092fe450 f (StringView* level, StringView* locator, Vec3* pos): save +0x0 level, +0x40 locator, +0xdc position; dungeon index from the level name; hooked by the module
 EventFlags_Check 0x092fe920 f (flags, StringView* name)
+TailorPlayer_Create 0x09328a10 f (out, owner, StringView* name, drsb handle*): vtable 0x1c26068 object
+TailorPlayer_Init 0x0933f6c0 f vtable +0x20: core +0x58, ActorTailorDelegate +0x68, plays Other=ac_Keep
+TailorPlayer_Update 0x09340660 f vtable +0xc0: ground material from provider +0xc0 to delegate +0x70, Motion frame from the SAC, core update
+TailorPlayer_SetAnimator 0x09341420 f (tp, shared_ptr<SAC>*): listener at SAC +0x180 sets Motion
+TailorPlayer_OnMotion 0x09341710 f listener: Tailor_StopChannel, Tailor_Play(core, Motion, FSKA name)
+TailorPlayer_SetLayeredAnimator 0x09341830 f layered SAC: slot 0 Motion, slot 1 LayerMotion
+TailorPlayer_SetStateProvider 0x09341d80 f (tp, provider): +0xc0, State channel
+TailorPlayer_Make 0x09342930 f (out, owner, handle*, animSp*, provider, StringView* name): NPCs and actors
+TailorPlayer_MakeLayered 0x09342a80 f (out, owner, handle*, layeredSp*, provider, name): the player's, adds LayerMotion
+TailorEffectClip_Start 0x09344bb0 f resolves the emitter set by name (resId from clip +0x3c)
+TailorEffectClip_Update 0x09347c90 f spawns and moves its emitter set (EffectManager_Create)
 LayoutWrapper_Build 0x0935d100 f (wrapper 0x78 bytes, StringView* bflyt file name, priority, archive set 0 Game.arc / 1 StartUp.arc, bool): the layout at wrapper +0x18, null if not built
 LayoutWrapper_Dtor 0x0935d470 f removes the layout from the draw list
 LayoutWrapper_DeletingDtor 0x0935d760 f wrapper vtable +0x18
@@ -181,8 +197,17 @@ LayeredAnimation_SetAnimation 0x0955d8f0 f vtable +0x88: slot 0
 LayeredAnimation_SetSlot 0x0955ddd0 f (sac, slot, animSp*, f32 blend, f32 start)
 SkeletalModel_IsShapeVisible 0x0955f7d0 f vtable +0xa8
 SkeletalModel_MakeLocator 0x09560070 f (out shared_ptr, model component, const char* bone, translate, rotate, scale)
+EffectManager_EntryResource 0x09586b70 f (mgr, resource sp*, resId): Common 0, Enemy 1, Npc 2, Object 3, Player 4, Bg 5
+EffectManager_Create 0x09586dd0 f (mgr, EffectParams*, vfxHandle** out|null) -> bool; resId, esetId, groupId must be >= 0
+EffectParams_SetEmitterSet 0x09586fe0 f (params*, StringView* name, resId): writes the esetId at params +4
 Msbt_GetText 0x095ae5a0 f
 Msbt_FindLabel 0x095aef40 f
+Tailor_StopChannel 0x095d7b50 f (core, const char* channel)
+Tailor_AddLayerChannel 0x095d7e60 f (core, const char* channel, const char* base, int, int): LayerMotion from Motion
+Tailor_Play 0x095d8340 f (core, StringView* channel, StringView* value): starts the drsb sequence channel/value
+Tailor_PrepareValue 0x095d8e10 f (core, StringView* channel, StringView* value): called before Tailor_Play for Other events; role unverified
+Tailor_IsPlaying 0x095d9330 f (core, const char* channel, StringView* value) -> bool
+Tailor_SetChannelFrame 0x095d9670 f (core, const char* channel, f32 frame)
 HudPass_Draw 0x095dce00 f draws each layout whose +0x71 byte is set, after the 3D scene, no depth test
 HudPass_Add 0x095dd4c0 f (pass, shared_ptr* layout, priority): sorted, lowest first
 HudPass_Remove 0x095def70 f
@@ -196,11 +221,19 @@ CmdBuf_BindRasterState 0x09642a70 f (wrapper, state)
 CmdBuf_BindUniformBuffer 0x09643d70 f (wrapper, stage, slot, {GPU address, offset}*, size)
 PipelineState_Build 0x0964a190 f (state, ?, descriptor): alpha-to-coverage from descriptor +0x1a
 Pane_FindByName 0x0966ae00 f pane vtable +0x60 (pane, name, recursive)
+vfx_EmitterSet_SetFade 0x0968cb10 f (eset): byte +9 = 1; role unverified
+vfx_EmitterSet_SetMatrix 0x0968cb20 f (eset, 4x float4 rows: axes, translation)
+vfx_EmitterSet_Kill 0x0968cc80 f (eset, bool)
+vfx_Handle_GetEmitterSet 0x0968ccb0 f (handle*) -> EmitterSet* or null; leaf
+vfx_System_CreateEmitterSetID 0x096a96d0 f nn::vfx System::CreateEmitterSetID
+vfx_System_KillEmitterSet 0x096a9930 f
+vfx_System_SearchEmitterSetID 0x096aa630 f (system, const char* name, resId) -> id or -1; leaf
 operator_new 0x09935170 f import stub
 shared_weak_count_release_weak 0x099351f0 f libc++ std::__shared_weak_count::__release_weak
 PlayerAnimation_DefaultBlend 0x09bb3c44 l f32 0.0667
 CranePrizeAddTable 0x09bb4cf8 l CranePrize_Add jump table, 21 s32 offsets
 AddItemIdTable 0x09bb6d60 l Inventory_AddItemID jump table, 0x7f s32 offsets
+str_drsb_Player 0x09be06c5 l "tailor/Player.drsb"
 str_NpcGhost 0x09befdf4 l "NpcGhost": the row key and the actor table's name
 NpcCollisionFilters 0x09c06080 l 7 u32 collision filters
 AreaLevelOpen_vtable 0x0a058b48 l vtable of the AreaLevelOpen actor
@@ -216,6 +249,8 @@ PanelShadowLink_vtable 0x0a11a730 l vtable
 Player_vtable 0x0a11bb70 l vtable
 PlayerItemModel_vtable 0x0a11d638 l bow and bottle model holders
 PlayerBottle_vtable 0x0a11d918 l vtable
+TailorPlayer_vtable 0x0a12a068 l vtable
+ActorTailorDelegate_vtable 0x0a12aa48 l vtable: ground material u16 at +0x70
 HudInteract_vtable 0x0a130eb0 l vtable
 AnimationLayer_vtable 0x0a14b2f8 l vtable
 AnimationLayers_vtable 0x0a14b438 l vtable
@@ -228,6 +263,7 @@ GameTextBox_vtable 0x0a156940 l vtable
 ui2d_TextBox_vtable 0x0a189270 l vtable
 IdentityQuat_ptr 0x0a197de8 l pointer to an identity quaternion
 OneScale_ptr 0x0a197df0 l pointer to a Vec4 of ones
+IdentityMtx43_ptr 0x0a197e30 l pointer to the identity matrix the effect params copy (0x40 bytes)
 got_nvnCommandBufferBindMultisampleState 0x0a1987c0 l
 got_nvnMultisampleStateSetDefaults 0x0a1991e8 l
 got_nvnMultisampleStateSetAlphaToCoverageEnable 0x0a199200 l
@@ -254,3 +290,4 @@ LevelIndex_ptr 0x0a1c53c8 l
 EntityManager_ptr 0x0a1cad98 l +0x6d8 u8 flushing
 ResourceManager_ptr 0x0a1cadb8 l
 FrameDelta 0x0a1cae88 l time units per update (blend progress)
+EffectManager_ptr 0x0a1d2f58 l EffectManager (0x228 bytes): *mgr is the nn::vfx::System
