@@ -432,6 +432,7 @@ class LASWorld(World):
             "dungeon_entrances": dict(lasr_settings.DUNGEON_ENTRANCES),
             "hints": self.in_game_hints(),
             "ghost_secret": self.ghost_secret(),
+            "ghost_relay": str(self.settings.ghost_relay or ""),
         }
 
     _hints: Optional[Dict[str, Dict[str, Any]]] = None

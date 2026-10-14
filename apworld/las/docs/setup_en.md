@@ -74,6 +74,22 @@ your world or another player's, that holds one of your progression items. Dungeo
 stone beak. With the default setting `server`, a hint you read also shows in the server's hint list, as `!hint` would,
 without costing hint points. Hints read while the client is not connected reach the server once it is.
 
+## Ghosts
+
+The other Links Awakening Switch players of your multiworld show as see-through Links when they are where you are: in
+the same house, cave or dungeon, or near you in the overworld. They show with their tunic and the items they hold.
+They can't touch you or anything else. Ghosts travel through a ghost relay, not the Archipelago server, and only
+players of the same generation see each other.
+
+- The person who generates sets the relay before generating: `ghost_relay` (`host:port`) under `las_options` in
+  `host.yaml`. Every patch file then carries it, and the players have nothing to set.
+- Otherwise each player enters it in the Patch tab's "Ghost relay", which also replaces the patch file's.
+- "Show ghosts" on the Patch tab, or `/ghosts off` in the client, turns them off. The Patch tab shows the relay status.
+
+To run a relay: `python ghost_relay.py` (in the world's folder; `las.apworld` is a zip holding it) needs only Python
+and listens on TCP port 43390 (`--port` changes it). Every player must be able to reach it: forward the port on your
+router, run it on a server, or have all players join one VPN (for example Tailscale) and use its address.
+
 ## Troubleshooting
 
 - **The client says the game runs another seed.** The installed mod belongs to another slot or seed. Open this slot's

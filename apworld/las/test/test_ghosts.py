@@ -325,3 +325,27 @@ class TestGhostSecret(unittest.TestCase):
                 ctx.update_ghosts()
                 self.assertEqual(ctx.ghosts.waiting_for(), "Ghosts are off: enter a ghost relay to turn them on.")
         asyncio.run(main())
+
+    def test_relay_from_the_patch_file_unless_set(self) -> None:
+        import os
+        import tempfile
+        from .. import LASWorld
+        from ..client import LASContext
+        from ..container import LASContainer
+
+        async def main() -> None:
+            with tempfile.TemporaryDirectory() as folder:
+                path = os.path.join(folder, "AP_1_P1_Link.aplas")
+                LASContainer(path, {"ghost_secret": "abc123", "ghost_relay": "relay.example:43390"}, 1, "Link").write()
+                ctx = LASContext(None, None, "127.0.0.1", 0, path)
+                ctx.update_ghosts()
+                self.assertEqual(ctx.ghosts.address, "relay.example:43390")
+                LASWorld.settings.ghost_relay = "own.example:1"
+                ctx.update_ghosts()
+                self.assertEqual(ctx.ghosts.address, "own.example:1")
+        saved = LASWorld.settings.ghost_relay
+        try:
+            LASWorld.settings.ghost_relay = ""
+            asyncio.run(main())
+        finally:
+            LASWorld.settings.ghost_relay = saved
