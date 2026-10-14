@@ -1289,6 +1289,19 @@ namespace AP::Test {
         } else if (cmd == "frame") {
             AP::Send("FRAME " + std::to_string(g_FrameNo) + " counter=" + std::to_string(g_Frame) + " ms=" +
                      std::to_string(NowMs()));
+        } else if (cmd == "memq" && a.size() >= 3) {
+            // DBG memq <hex address | +module offset>: the memory region there (start, size, type, permissions)
+            uintptr_t addr = a[2][0] == '+' ? g_BaseAddress + strtoull(a[2].c_str() + 1, nullptr, 16)
+                                            : strtoull(a[2].c_str(), nullptr, 16);
+            MemoryInfo mi{};
+            u32 pi = 0;
+            if (R_FAILED(svcQueryMemory(&mi, &pi, addr))) {
+                AP::Send("ERR memq");
+                return true;
+            }
+            char buf[96];
+            snprintf(buf, sizeof(buf), "MEMQ %lx start=%lx size=%lx type=%x perm=%x", addr, mi.addr, mi.size, mi.type, mi.perm);
+            AP::Send(buf);
         } else if (cmd == "mem" && a.size() >= 4) {
             // DBG mem <hex address> <hex length>: raw bytes, if readable
             uintptr_t addr = strtoull(a[2].c_str(), nullptr, 16);
@@ -1314,7 +1327,7 @@ namespace AP::Test {
     std::string StateFields() {
         char yaw[16];
         snprintf(yaw, sizeof(yaw), "%.0f", PlayerYaw());
-        return " puppets=" + std::to_string(AP::Puppet::Shown()) + " frame=" + std::to_string(g_FrameNo) +
+        return " puppets=" + AP::Puppet::StateField() + " frame=" + std::to_string(g_FrameNo) +
                " msg=" + MessageState() + " choice=" + g_Fields[9].value +
                " face=" + g_Fields[13].value + " yaw=" + yaw + " file=" + g_Fields[12].value +
                " read=" + std::to_string(g_ReadFrames);

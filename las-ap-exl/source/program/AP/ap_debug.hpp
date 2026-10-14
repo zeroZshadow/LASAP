@@ -35,8 +35,8 @@ namespace AP::Puppet {
     void InstallHooks();
     void Tick();
     bool Command(const std::vector<std::string>& a);
-    // Ghost puppets drawn with their model (for STATE)
-    int Shown();
+    // STATE puppets=<ghosts drawn, their model loaded>/<ghost slots with an actor>
+    std::string StateField();
 }
 
 namespace AP {

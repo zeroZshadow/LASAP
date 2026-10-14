@@ -44,7 +44,24 @@ namespace {
     constexpr size_t kActorRoom = 0xb0;
     constexpr size_t kFrameworkActorSystem = 0x498;  // shared_ptr
     constexpr size_t kActorRoot = 0x80;    // the root component (coordinates), as PopEnemy reads it
-    constexpr u16 kGhostActor = 0x179;     // NpcGhost, whose Npc row ghost_puppet.py points at the ghost model
+    // Ghosts are NpcGhost actors (0x179) with an Npc row of their own. Each NPC class passes its row's symbol, a
+    // literal in its code ("NpcGhost" at 0x16ebdf4), to the NPC component constructor (0x943e90: component, args,
+    // {name, length}*, ?), which looks the row up (0xfa6370: sheet, {name, length}*, row size 0x220; null when
+    // missing) in the Npc sheet (*(*0x1cb8360)). All of it runs inside the factory call, so while the module's own
+    // spawn runs the key is APGhost, if the sheet has that row (ghost_puppet.py adds it; a missing row crashes).
+    constexpr u16 kGhostActor = 0x179;
+    constexpr uintptr_t kNpcComponentCtor = 0x943e90, kFindRow = 0xfa6370, kNpcSheets = 0x1cb8360;
+    constexpr uintptr_t kNpcGhostKey = 0x16ebdf4;
+    constexpr size_t kNpcRowSize = 0x220;
+    struct StringView { const char* ptr; u64 len; };
+    StringView g_GhostRow{"APGhost", 7};
+    bool g_SpawningGhost = false;
+    // Removal as the game does it (0x8e3440): RemoveChild (0xfb00c0: parent, name, length, immediate) from the actor
+    // system, keyed by the actor's name (+0x18, length +0x38); not immediate, the entity manager destroys it at its
+    // next flush. Actor +0x40 flags: bit 30 destroy requested, bit 31 destroyed.
+    constexpr uintptr_t kRemoveChild = 0xfb00c0;
+    constexpr size_t kActorName = 0x18, kActorNameLength = 0x38, kActorFlags = 0x40;
+    constexpr u64 kHiddenRemoveMs = 10000;  // a ghost hidden this long loses its actor
     using CreateFn = void (*)(SharedPtr*, SharedPtr*, u8*);
     using DtorFn = void (*)(u8*);
     using ReleaseWeakFn = void (*)(void*);
@@ -68,7 +85,7 @@ namespace {
     // set (+0x1e8, cache +0x218) and hands it to its animation player (+0xe8) at frame 0 and rate 0 (the player's
     // virtual +0xc0 frame, +0xd8 rate); mode 2 sets the rate 1. The slot is found in the component's vtable at its
     // first use. The animation player's +0x90 is the model object it animates.
-    struct NameView { const char* ptr; u64 len; };
+    using NameView = StringView;
     using PlayByNameFn = void (*)(void* comp, NameView* name, u8 mode, float blend, float frame);
     constexpr uintptr_t kPlayByName[] = {0x949260, 0x9df590};
     constexpr size_t kActorAnimComp = 0x2b0, kAnimCompPlayer = 0xe8, kAnimPlayerModel = 0x90;
@@ -134,6 +151,7 @@ namespace {
         u8* model = nullptr;     // once loaded
         Look look = Look::Unknown;
         bool shown = false;
+        u64 hiddenSince = 0;     // ms
         u32 spawnAfter = 0;      // frame
         Steer steer;
         u32 framesSeen = 0;      // the ghost's line count fed so far
@@ -222,11 +240,23 @@ namespace {
         p.look = look;
     }
 
-    void Hide(Puppet& p) {
+    void Hide(Puppet& p, u64 now) {
         ClearSpan(IndexOf(p));
         if (Alive(p)) SetLook(p, Look::Hidden);
+        if (p.shown) p.hiddenSince = now;
         p.shown = false;
         p.steer = Steer{};
+    }
+
+    // Has the game destroy the actor (at the entity manager's next flush) and lets it go.
+    void Remove(Puppet& p) {
+        ClearSpan(IndexOf(p));
+        if (Alive(p) && (At<u32>(p.actor, kActorFlags) & 0xc0000000) == 0) {
+            void* system = *reinterpret_cast<void**>(reinterpret_cast<u8*>(Game::GetFramework()) + kFrameworkActorSystem);
+            GameFn<bool (*)(void*, const char*, u64, bool)>(kRemoveChild)(
+                system, reinterpret_cast<const char*>(p.actor) + kActorName, At<u64>(p.actor, kActorNameLength), false);
+        }
+        Forget(p);
     }
 
     void Place(Puppet& p, const Game::Vec3& pos, const Game::Vec4* rot);
@@ -266,7 +296,9 @@ namespace {
         // passes it.
         auto* system = reinterpret_cast<SharedPtr*>(reinterpret_cast<u8*>(Game::GetFramework()) + kFrameworkActorSystem);
         SharedPtr out{};
+        g_SpawningGhost = id == kGhostActor;
         GameFn<CreateFn>(kCreateActor)(&out, system, params);
+        g_SpawningGhost = false;
 
         void* weak = *reinterpret_cast<void**>(params + 0x1b8);
         if (weak != nullptr) GameFn<ReleaseWeakFn>(kReleaseWeak)(weak);
@@ -545,7 +577,8 @@ namespace {
         bool shown = AP::IsClientConnected() && g.active && !(g.flags & kFlagHidden) && g.level == level &&
                      now - g.receivedMs < kStaleMs;
         if (!shown) {
-            if (p.shown) Hide(p);
+            if (p.shown) Hide(p, now);
+            else if (p.ctrl != nullptr && now - p.hiddenSince >= kHiddenRemoveMs) Remove(p);
             return;
         }
         Game::Vec3 pos{g.x, g.y, g.z};
@@ -596,8 +629,10 @@ namespace {
         for (auto& p : g_Puppets) {
             if (!Alive(p)) continue;
             int n = IndexOf(p);
+            const char* name = reinterpret_cast<const char*>(p.actor) + kActorName;
             s += " | " + (n == kTest ? std::string("test") : std::to_string(n)) + " actor=" +
-                 Hex(reinterpret_cast<uintptr_t>(p.actor)) + (p.shown ? "" : " hidden");
+                 Hex(reinterpret_cast<uintptr_t>(p.actor)) + (p.shown ? "" : " hidden") + " name=" +
+                 std::string(name, strnlen(name, 0x20));
             if (auto* root = At<Game::RootComp*>(p.actor, kActorRoot)) s += " pos=" + PosText(root->coordsNew.pos);
             s += " model=" + (p.model != nullptr ? Hex(reinterpret_cast<uintptr_t>(p.model)) : "-");
             s += " anim=" + std::string(p.steer.gait >= 0 ? kGaits[p.steer.gait] : "-");
@@ -616,6 +651,18 @@ namespace {
         return s;
     }
 }
+
+// While the module spawns a ghost: NpcGhost's component looks up the APGhost row, if the sheet has it.
+HOOK_DEFINE_TRAMPOLINE(NpcComponentCtor) {
+    static void* Callback(void* self, void* args, StringView* rowKey, void* x3) {
+        if (g_SpawningGhost && rowKey != nullptr && rowKey->ptr == reinterpret_cast<const char*>(g_BaseAddress + kNpcGhostKey)) {
+            void* sheet = **reinterpret_cast<void***>(g_BaseAddress + kNpcSheets);
+            if (sheet != nullptr && GameFn<void* (*)(void*, StringView*, u64)>(kFindRow)(sheet, &g_GhostRow, kNpcRowSize) != nullptr)
+                rowKey = &g_GhostRow;
+        }
+        return Orig(self, args, rowKey, x3);
+    }
+};
 
 // The plays by name on the puppets' animation components (DBG puppet animlog).
 HOOK_DEFINE_TRAMPOLINE(PlayByName) {
@@ -665,6 +712,7 @@ HOOK_DEFINE_TRAMPOLINE(DrawElementsInstanced) {
 namespace AP::Puppet {
     void InstallHooks() {
         PlayByName::InstallAtOffset(offset_manager.Offset(kPlayByName[0]));
+        NpcComponentCtor::InstallAtOffset(offset_manager.Offset(kNpcComponentCtor));
         BindUniformBuffer::InstallAtOffset(offset_manager.Offset(kBindUniformBuffer));
         SetRasterState::InstallAtOffset(offset_manager.Offset(kSetRasterState));
         DrawElementsBaseVertex::InstallAtOffset(offset_manager.Offset(kDrawElementsBaseVertex));
@@ -703,10 +751,13 @@ namespace AP::Puppet {
         }
     }
 
-    int Shown() {
-        int n = 0;
-        for (int i = 0; i < kGhosts; i++) n += g_Spans[i].hi.load() != 0;
-        return n;
+    std::string StateField() {
+        int shown = 0, actors = 0;
+        for (int i = 0; i < kGhosts; i++) {
+            shown += g_Spans[i].hi.load() != 0;
+            actors += g_Puppets[i].ctrl != nullptr;
+        }
+        return std::to_string(shown) + "/" + std::to_string(actors);
     }
 
     bool Command(const std::vector<std::string>& a) {
@@ -764,8 +815,8 @@ namespace AP::Puppet {
             AP::Send(line);
             return true;
         } else if (sub == "drop") {
-            // DBG puppet drop: hides DBG puppet's actor (spawn shows it again)
-            Hide(p);
+            // DBG puppet drop: removes DBG puppet's actor
+            Remove(p);
             g_Delay = -2;
         }
         AP::Send(Info());

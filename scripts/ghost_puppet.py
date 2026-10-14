@@ -3,8 +3,9 @@
 install: writes romfs/region_common/actor/PlayerGhost.bfres, Link's model for a ghost: the albedo textures of the
 materials a ghost shows as BC3 with a constant alpha (their colour blocks kept) in render pass 1, so the module's
 alpha-to-coverage dithers them in screen space; the textures a ghost never shows shrunk to 4x4 to make room. Then
-points the deployed Npc.gsheet's NpcGhost row at it (model "link", Link's animations, not talkable), keeping the
-row's file as Npc.gsheet.before-puppet. NpcGhost is also the ammo ghost, who looks like Link while this is set up.
+adds the row APGhost to the deployed Npc.gsheet, NpcGhost's row drawing that model (model "link", Link's
+animations, not talkable), keeping the sheet as Npc.gsheet.before-puppet. The module spawns ghosts as NpcGhost
+actors that read the APGhost row.
 uninstall: removes the model and puts the kept Npc.gsheet back.
 
 Run with .venv-lasr (patcher/requirements-assets.txt):
@@ -130,12 +131,14 @@ def ghost_model(source: Path) -> bytes:
     return bytes(raw)
 
 
-def point_row_at_model(src: Path, dst: Path) -> None:
+def add_ghost_row(src: Path, dst: Path) -> None:
     sheet = readSheet(str(src))
-    for i, value in enumerate(sheet["values"]):
-        row = parseStruct(value)
+    rows = [parseStruct(value) for value in sheet["values"]]
+    sheet["values"] = [value for value, row in zip(sheet["values"], rows) if row["symbol"] != "APGhost"]
+    for row in rows:
         if row["symbol"] != "NpcGhost":
             continue
+        row["symbol"] = "APGhost"
         graphics = row["graphics"]
         graphics["path"] = "PlayerGhost.bfres"
         graphics["model"] = "link"
@@ -146,7 +149,7 @@ def point_row_at_model(src: Path, dst: Path) -> None:
         row["eventTriggers"] = []
         row["doAction"]["type"] = 0
         row["layoutConditions"] = []
-        sheet["values"][i] = dictToStruct(row)
+        sheet["values"].append(dictToStruct(row))
         writeSheet(str(dst), sheet)
         return
     raise SystemExit("no NpcGhost row")
@@ -168,8 +171,8 @@ def main() -> int:
             kept.parent.mkdir(parents=True, exist_ok=True)
             kept.write_bytes(sheet_path.read_bytes() if sheet_path.exists() else b"")
         source = kept if kept.stat().st_size else args.romfs / "region_common" / "datasheets" / "Npc.gsheet"
-        point_row_at_model(source, sheet_path)
-        print("installed", model_path.name, "and the NpcGhost row")
+        add_ghost_row(source, sheet_path)
+        print("installed", model_path.name, "and the APGhost row")
     else:
         model_path.unlink(missing_ok=True)
         if kept.exists():
