@@ -385,7 +385,8 @@ class UPnP:
         """The description URL of the first gateway that answers an SSDP search, sent on each of this computer's IPv4
         addresses (the default one may be a virtual or VPN adapter's)."""
         try:
-            addresses = sorted({str(info[4][0]) for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET)})
+            infos = socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET)
+            addresses = sorted({str(info[4][0]) for info in infos})
         except OSError:
             addresses = []
         sockets = []
