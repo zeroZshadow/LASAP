@@ -19,9 +19,9 @@ class FakeClient:
         self.id = -1
         self.seq = 0
 
-    async def join(self, seed: str, password: str, slot: str, version: int = wire.PROTOCOL_VERSION) -> bytes:
+    async def join(self, secret: str, slot: str, version: int = wire.PROTOCOL_VERSION) -> bytes:
         self.reader, self.writer = await asyncio.open_connection("127.0.0.1", self.port)
-        message = bytearray(wire.join_message(wire.group_id(seed, password), slot, slot + " (player)"))
+        message = bytearray(wire.join_message(wire.group_id(secret), slot, slot + " (player)"))
         message[1] = version
         self.writer.write(wire.frame(bytes(message)))
         first = await self.next()
@@ -93,10 +93,10 @@ class TestRelay(unittest.TestCase):
     def test_groups_and_area(self) -> None:
         async def test(port: int, relay: wire.Relay) -> None:
             a, b, c = FakeClient(port), FakeClient(port), FakeClient(port)
-            self.assertEqual((await a.join("1234abcd", "pw", "A"))[0], wire.WELCOME)
-            self.assertEqual((await b.join("1234abcd", "pw", "B"))[0], wire.WELCOME)
-            # another password: another group, though the seed is the same
-            self.assertEqual((await c.join("1234abcd", "other", "C"))[0], wire.WELCOME)
+            self.assertEqual((await a.join("secret1", "A"))[0], wire.WELCOME)
+            self.assertEqual((await b.join("secret1", "B"))[0], wire.WELCOME)
+            # another secret (another multiworld): another group
+            self.assertEqual((await c.join("secret2", "C"))[0], wire.WELCOME)
             players = [m for m in await a.collect() if m[0] == wire.PLAYER]
             self.assertEqual([wire.read_name(m, 3)[0] for m in players], ["B"])
             self.assertEqual([wire.read_name(m, 3)[0] for m in await b.collect() if m[0] == wire.PLAYER], ["A"])
@@ -152,20 +152,20 @@ class TestRelay(unittest.TestCase):
     def test_same_slot_again(self) -> None:
         async def test(port: int, relay: wire.Relay) -> None:
             a, b, a2 = FakeClient(port), FakeClient(port), FakeClient(port)
-            await a.join("1234abcd", "", "A")
-            await b.join("1234abcd", "", "B")
+            await a.join("secret1", "A")
+            await b.join("secret1", "B")
             a.pos(SHOP, 1, 1)
             b.pos(SHOP, 1, 1)
             await a.collect()
             await b.collect()
             # A reconnects before the relay noticed the old connection is gone: the old one is closed
-            await a2.join("1234abcd", "", "A")
+            await a2.join("secret1", "A")
             got = await b.collect()
             self.assertEqual(offs(got), [(a.id, wire.OFF_LEFT)])
             self.assertEqual([wire.read_name(m, 3)[0] for m in got if m[0] == wire.PLAYER], ["A"])
             with self.assertRaises(asyncio.IncompleteReadError):
                 await a.next()
-            self.assertEqual(len(relay.groups[wire.group_id("1234abcd", "")]), 2)
+            self.assertEqual(len(relay.groups[wire.group_id("secret1")]), 2)
             for client in (b, a2):
                 client.close()
         self.run_relay(test)
@@ -173,7 +173,7 @@ class TestRelay(unittest.TestCase):
     def test_refusals(self) -> None:
         async def test(port: int, relay: wire.Relay) -> None:
             old = FakeClient(port)
-            reply = await old.join("1234abcd", "", "A", version=wire.PROTOCOL_VERSION + 1)
+            reply = await old.join("secret1", "A", version=wire.PROTOCOL_VERSION + 1)
             self.assertEqual(reply[0], wire.ERROR)
             with self.assertRaises(asyncio.IncompleteReadError):
                 await old.next()
@@ -184,7 +184,7 @@ class TestRelay(unittest.TestCase):
             writer.close()
             # an oversized frame closes the connection
             a = FakeClient(port)
-            await a.join("1234abcd", "", "A")
+            await a.join("secret1", "A")
             a.writer.write(struct.pack(">H", wire.MAX_FRAME + 1) + bytes(wire.MAX_FRAME + 1))
             with self.assertRaises(asyncio.IncompleteReadError):
                 await a.next()
@@ -194,8 +194,8 @@ class TestRelay(unittest.TestCase):
     def test_silent_member_is_hidden(self) -> None:
         async def test(port: int, relay: wire.Relay) -> None:
             a, b = FakeClient(port), FakeClient(port)
-            await a.join("1234abcd", "", "A")
-            await b.join("1234abcd", "", "B")
+            await a.join("secret1", "A")
+            await b.join("secret1", "B")
             a.pos(SHOP, 1, 1)
             b.pos(SHOP, 1, 1)
             await a.collect()
@@ -227,7 +227,7 @@ class TestGhostLink(unittest.TestCase):
             tasks = []
             for name, link in links.items():
                 link.on_game_connected()
-                link.configure(True, address, "pw", "1234abcd", name, name)
+                link.configure(True, address, "secret1", name, name)
                 tasks.append(asyncio.create_task(link.run(exit_event)))
 
             async def until(test, seconds: float = 3) -> None:
@@ -258,7 +258,7 @@ class TestGhostLink(unittest.TestCase):
             links["A"].on_pos("POS Shop 255 1 0 1 0 0 0".split())
             await until(lambda: "GHOST 0 off" in lines["B"])
             # ghosts turned off: A's link leaves the group and tells the game
-            links["A"].configure(False, address, "pw", "1234abcd", "A", "A")
+            links["A"].configure(False, address, "secret1", "A", "A")
             await until(lambda: links["A"].status.text == "Ghosts are off." and not links["B"].players)
             self.assertEqual(lines["A"][-2:], ["GHOST 0 off", "GHOSTS 0"])
             exit_event.set()
@@ -266,4 +266,38 @@ class TestGhostLink(unittest.TestCase):
                 link.wake.set()
             await asyncio.gather(*tasks)
             server.close()
+        asyncio.run(main())
+
+
+class TestGhostSecret(unittest.TestCase):
+    def test_one_secret_per_multiworld(self) -> None:
+        from test.general import setup_multiworld
+        from worlds.AutoWorld import AutoWorldRegister
+        from ..items import GAME
+        world_type = AutoWorldRegister.world_types[GAME]
+        one = setup_multiworld([world_type, world_type], ())
+        other = setup_multiworld([world_type], ())
+        secret = one.worlds[1].ghost_secret()
+        self.assertRegex(secret, r"^[0-9a-f]{32}$")
+        self.assertEqual(one.worlds[2].ghost_secret(), secret)
+        self.assertNotEqual(other.worlds[1].ghost_secret(), secret)
+
+    def test_client_takes_it_from_the_patch_file(self) -> None:
+        import os
+        import tempfile
+        from ..client import LASContext
+        from ..container import LASContainer
+
+        async def main() -> None:
+            with tempfile.TemporaryDirectory() as folder:
+                path = os.path.join(folder, "AP_1_P1_Link.aplas")
+                LASContainer(path, {"ghost_secret": "abc123"}, 1, "Link").write()
+                ctx = LASContext(None, None, "127.0.0.1", 0, path)
+                ctx.ghost_relay_arg = "127.0.0.1:1"
+                ctx.update_ghosts()
+                self.assertEqual((ctx.ghosts.secret, ctx.ghosts.slot, ctx.ghosts.address),
+                                 ("abc123", "Link", "127.0.0.1:1"))
+                ctx.ghost_relay_arg = ""
+                ctx.update_ghosts()
+                self.assertEqual(ctx.ghosts.waiting_for(), "Ghosts are off: enter a ghost relay to turn them on.")
         asyncio.run(main())

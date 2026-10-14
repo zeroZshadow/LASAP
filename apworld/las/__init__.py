@@ -1,6 +1,8 @@
 import hashlib
 import os
+import secrets
 import threading
+import weakref
 from collections import Counter
 from typing import Any, ClassVar, Dict, List, Mapping, Optional, Set, TextIO
 
@@ -376,6 +378,15 @@ class LASWorld(World):
     def seed_hash(self) -> str:
         return hashlib.sha256(f"{self.multiworld.seed_name}:{self.player}".encode()).hexdigest()[:8]
 
+    # One random secret per multiworld, in every LAS slot's patch file: the ghost relay groups that multiworld's LAS
+    # players by it (DESIGN.md, Ghosts). Not in the slot data, which anyone who can log into a slot reads.
+    _ghost_secrets: ClassVar["weakref.WeakKeyDictionary[Any, str]"] = weakref.WeakKeyDictionary()
+    _ghost_lock = threading.Lock()
+
+    def ghost_secret(self) -> str:
+        with self._ghost_lock:
+            return self._ghost_secrets.setdefault(self.multiworld, secrets.token_hex(16))
+
     def fill_slot_data(self) -> Mapping[str, Any]:
         settings = lasr_settings.lasr_settings(self.options, self.unrandomized())
         return {
@@ -420,6 +431,7 @@ class LASWorld(World):
             "location_chests": self.placed_chests(),
             "dungeon_entrances": dict(lasr_settings.DUNGEON_ENTRANCES),
             "hints": self.in_game_hints(),
+            "ghost_secret": self.ghost_secret(),
         }
 
     _hints: Optional[Dict[str, Dict[str, Any]]] = None

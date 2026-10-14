@@ -9,8 +9,6 @@ from typing import Callable, Dict, List, Optional, Tuple
 from . import checklist
 from . import ghost_relay as wire
 
-# The community relay every player uses unless the client window names another (las_options.ghost_relay).
-RELAY_ADDRESS = ""
 GHOST_SLOTS = 4  # ghosts the game shows at once
 MIN_INTERVAL = 0.045  # at most ~20 frames a second go to the relay; a new animation id goes at once
 PING_INTERVAL = 10.0
@@ -53,16 +51,15 @@ def ghost_line(n: int, slot: str, body: bytes) -> Optional[str]:
 
 
 class GhostLink:
-    """Keeps the client joined to its run's group on the relay while ghosts are on, the address and the seed are
-    known; `configure` reconnects when any of them changes."""
+    """Keeps the client joined to its multiworld's group on the relay while ghosts are on and the relay address, the
+    ghost secret and the slot name are known; `configure` reconnects when any of them changes."""
 
     def __init__(self, send_game: Callable[[str], None], changed: Callable[[], None] = lambda: None):
         self.send_game = send_game
         self.changed = changed  # the status changed (the Patch tab shows it)
         self.enabled = False
         self.address = ""
-        self.password = ""
-        self.seed_hash = ""
+        self.secret = ""
         self.slot = ""
         self.player = ""
         self.game_connected = False
@@ -83,12 +80,11 @@ class GhostLink:
 
     # settings and state
 
-    def configure(self, enabled: bool, address: str, password: str, seed_hash: Optional[str], slot: str,
-                  player: str) -> None:
-        new = (enabled, address.strip(), password, seed_hash or "", slot, player or slot)
-        if new == (self.enabled, self.address, self.password, self.seed_hash, self.slot, self.player):
+    def configure(self, enabled: bool, address: str, secret: str, slot: str, player: str) -> None:
+        new = (enabled, address.strip(), secret, slot, player or slot)
+        if new == (self.enabled, self.address, self.secret, self.slot, self.player):
             return
-        self.enabled, self.address, self.password, self.seed_hash, self.slot, self.player = new
+        self.enabled, self.address, self.secret, self.slot, self.player = new
         self.drop()
         self.wake.set()
 
@@ -102,9 +98,9 @@ class GhostLink:
         if not self.enabled:
             return "Ghosts are off."
         if not self.address:
-            return "Ghosts: no relay address (advanced settings)."
-        if not self.seed_hash:
-            return "Ghosts: waiting for the game or the server, to learn the seed."
+            return "Ghosts are off: enter a ghost relay to turn them on."
+        if not self.secret:
+            return "Ghosts: open this slot's patch file (one made with ghosts) to find the other players."
         if not self.slot:
             return "Ghosts: waiting for the slot name (patch file or server)."
         return ""
@@ -218,7 +214,7 @@ class GhostLink:
     def joined_status(self) -> None:
         others = len(self.players)
         self.set_status(checklist.OK, f"Ghosts: connected to the relay, {others} other player"
-                                      f"{'' if others == 1 else 's'} of this run online.")
+                                      f"{'' if others == 1 else 's'} of this multiworld online.")
 
     def show(self, player_id: int, body: bytes) -> None:
         if player_id not in self.players or self.players[player_id][0] == self.slot:
@@ -284,8 +280,7 @@ class GhostLink:
         if sock is not None:
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.writer = writer
-        writer.write(wire.frame(wire.join_message(wire.group_id(self.seed_hash, self.password), self.slot,
-                                                  self.player)))
+        writer.write(wire.frame(wire.join_message(wire.group_id(self.secret), self.slot, self.player)))
         pinger = asyncio.create_task(self.ping(writer))
         try:
             while not self.wake.is_set():

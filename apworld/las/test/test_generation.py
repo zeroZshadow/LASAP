@@ -43,7 +43,8 @@ class TestDefault(LASTestBase):
 
         self.assertEqual(set(patch), {"format", "seed_name", "player", "slot_name", "seed_hash", "settings",
                                       "starting_items", "placements", "location_ids", "location_names",
-                                      "location_models", "location_chests", "dungeon_entrances", "hints"})
+                                      "location_models", "location_chests", "dungeon_entrances", "hints",
+                                      "ghost_secret"})
         self.assertLessEqual(set(patch["location_models"]), set(patch["location_ids"]))
         self.assertEqual(patch["format"], 1)
         self.assertEqual(patch["seed_hash"], slot_data["seed_hash"])

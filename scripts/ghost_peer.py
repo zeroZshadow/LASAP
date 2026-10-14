@@ -1,7 +1,7 @@
 """A second ghost player for tests: joins a ghost relay as another player of a run, walks a small circle somewhere,
 and logs what the relay sends it (DESIGN.md, Ghosts).
 
-python scripts/ghost_peer.py --relay 127.0.0.1:43390 --seed <seed hash> [--password pw] [--slot Peer]
+python scripts/ghost_peer.py --relay 127.0.0.1:43390 --secret <ghost secret> [--slot Peer]
                              [--level Field] [--at x,y,z] [--radius 1.5] [--seconds 60]
 Logs "PLAYER <id> <slot>", "FRAME <id> <level> <x> <y> <z> <yaw>" (the first of each player, then every 20th) and
 "OFF <id> <reason>" lines. stdin takes "goto <level> <x> <y> <z>" and "nowhere" while it runs.
@@ -28,7 +28,7 @@ def log(text: str) -> None:
 async def main(args) -> None:
     host, _, port = args.relay.rpartition(":")
     reader, writer = await asyncio.open_connection(host, int(port))
-    writer.write(wire.frame(wire.join_message(wire.group_id(args.seed, args.password), args.slot, args.slot)))
+    writer.write(wire.frame(wire.join_message(wire.group_id(args.secret), args.slot, args.slot)))
     place = {"level": args.level, "at": [float(v) for v in args.at.split(",")], "here": True}
     names = {}
     counts = {}
@@ -101,8 +101,7 @@ async def main(args) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--relay", default=f"127.0.0.1:{wire.DEFAULT_PORT}")
-    parser.add_argument("--seed", required=True)
-    parser.add_argument("--password", default="")
+    parser.add_argument("--secret", required=True, help="the multiworld's ghost secret (patch.json ghost_secret)")
     parser.add_argument("--slot", default="Peer")
     parser.add_argument("--level", default="Field")
     parser.add_argument("--at", default="38.25,10.5,126", help="x,y,z the circle is around")

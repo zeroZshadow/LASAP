@@ -76,14 +76,11 @@ class LASSettings(settings.Group):
         """Address of the console or emulator running the game. 127.0.0.1 for an emulator on this computer."""
 
     class Ghosts(settings.Bool):
-        """Show the other players of the run as ghosts where you are, and show them you."""
+        """Show the multiworld's other Link's Awakening players as ghosts where you are, and show them you. Needs a
+        ghost relay."""
 
     class GhostRelay(str):
-        """The ghost relay, host:port. Empty: the community relay."""
-
-    class GhostPassword(str):
-        """The run's ghost password: players see each other's ghosts when their patches are of the same seed and
-        they enter the same password here (or all leave it empty)."""
+        """The ghost relay, host:port. Empty: no ghosts."""
 
     emulator: Emulator = Emulator("")
     game_file: GameFile = GameFile("")
@@ -94,7 +91,6 @@ class LASSettings(settings.Group):
     game_host: GameHost = GameHost("127.0.0.1")
     ghosts: Union[Ghosts, bool] = True
     ghost_relay: GhostRelay = GhostRelay("")
-    ghost_password: GhostPassword = GhostPassword("")
 
     # Player settings (PLAYER_SETTINGS): the Patch tab's look and sound settings, for every seed.
     class BlurRemoval(settings.Bool):

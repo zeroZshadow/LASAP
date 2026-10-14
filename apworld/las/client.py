@@ -10,7 +10,7 @@ from NetUtils import ClientStatus, HintStatus
 from .container import LASContainer
 from .ids import LOCATION_BASE, LOCATION_OFFSETS
 from . import checklist, emulators
-from .ghosts import GhostLink, RELAY_ADDRESS
+from .ghosts import GhostLink
 from .host_settings import PLAYER_SETTINGS, player_value
 from .install import InstallError, patch_and_install
 from .items import GAME, ITEM_GAME_INFO
@@ -37,7 +37,7 @@ def clean(text: str) -> str:
 
 
 OPTION_KEYS = ("emulator", "game_file", "romfs_folder", "sd_card_folder", "mod_folder", "patcher_command", "game_host")
-GHOST_KEYS = ("ghost_relay", "ghost_password")
+GHOST_KEYS = ("ghost_relay",)
 
 
 class LASCommandProcessor(ClientCommandProcessor):
@@ -161,8 +161,8 @@ class LASContext(CommonContext):
         self.in_logic: Optional[Set[int]] = None  # local ids last sent to the game as in logic
         self.logic_starting: List[str] = []  # the slot's starting items, which the server does not send
         self.ghosts = GhostLink(self.send_game, self.refresh_patch_tab)
-        self.ghost_relay_arg: Optional[str] = None  # --ghost-relay and --ghost-password replace las_options
-        self.ghost_password_arg: Optional[str] = None
+        self.ghost_relay_arg: Optional[str] = None  # --ghost-relay replaces las_options.ghost_relay
+        self.ghost_secret_arg: Optional[str] = None  # --ghost-secret replaces the patch file's (tests)
 
     async def get_username(self) -> None:
         # the slot comes from the patch file, as the server would otherwise ask for it
@@ -564,15 +564,18 @@ class LASContext(CommonContext):
         self.refresh_patch_tab()
 
     def update_ghosts(self) -> None:
-        """Hands the ghost link its settings, the run's seed and the slot; it reconnects when they change."""
+        """Hands the ghost link its settings, the multiworld's ghost secret (from the patch file) and the slot; it
+        reconnects when they change."""
         from . import LASWorld
         options = LASWorld.settings
         slot = self.auth or self.patch_slot or ""
         player = self.player_names.get(self.slot, slot) if self.slot else slot
-        address = self.ghost_relay_arg if self.ghost_relay_arg is not None else options.ghost_relay or RELAY_ADDRESS
-        password = self.ghost_password_arg if self.ghost_password_arg is not None else options.ghost_password
-        self.ghosts.configure(bool(options.ghosts), address, password, self.game_seed_hash or self.slot_seed_hash,
-                              slot, player)
+        address = self.ghost_relay_arg if self.ghost_relay_arg is not None else options.ghost_relay
+        secret = self.ghost_secret_arg
+        if secret is None:
+            container = self.read_patch_file()
+            secret = str(container.patch.get("ghost_secret", "")) if container else ""
+        self.ghosts.configure(bool(options.ghosts), address, secret, slot, player)
 
     @property
     def ghost_status(self) -> checklist.Check:
@@ -728,7 +731,7 @@ def launch(*launch_args: str) -> None:
     async def main(args) -> None:
         ctx = LASContext(args.connect, args.password, args.game_host, args.game_port, args.patch)
         ctx.auth = args.name
-        ctx.ghost_relay_arg, ctx.ghost_password_arg = args.ghost_relay, args.ghost_password
+        ctx.ghost_relay_arg, ctx.ghost_secret_arg = args.ghost_relay, args.ghost_secret
         ctx.server_task = asyncio.create_task(server_loop(ctx), name="server loop")
         game_task = asyncio.create_task(ctx.game_loop(), name="game loop")
         ctx.update_ghosts()
@@ -752,8 +755,8 @@ def launch(*launch_args: str) -> None:
                         help="Address of the Switch or emulator running the game (default: las_options.game_host).")
     parser.add_argument("--game-port", type=int, default=GAME_PORT)
     parser.add_argument("--ghost-relay", default=None, help="Ghost relay host:port (default: las_options.ghost_relay).")
-    parser.add_argument("--ghost-password", default=None,
-                        help="The run's ghost password (default: las_options.ghost_password).")
+    parser.add_argument("--ghost-secret", default=None,
+                        help="The multiworld's ghost secret, for tests (default: the patch file's).")
     if not hasattr(parser.parse_args([]), "nogui"):
         parser.add_argument("--nogui", default=False, action="store_true")
     parser.add_argument("url", nargs="?", help="Archipelago connection url, or an .aplas patch file to install")

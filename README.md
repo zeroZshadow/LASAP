@@ -69,7 +69,7 @@ python3 ghost_relay.py --port 43390
 ```
 
 - It listens on all addresses by default (`--host` to change), plain TCP; open the port in the firewall. `--quiet` logs errors only.
-- Players reach it through `ghosts.RELAY_ADDRESS` in the world, or the client's "Ghost relay" setting.
+- Players enter its address (host:port) as "Ghost relay" in the client's Patch tab; without one, ghosts are off.
 - As a systemd service (`/etc/systemd/system/las-ghost-relay.service`):
   ```ini
   [Unit]

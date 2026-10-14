@@ -40,12 +40,11 @@ ADVANCED: List[Tuple[str, str]] = [
     ("mod_folder", "Mod folder"),
     ("patcher_command", "Patcher command"),
     ("game_host", "Game address"),
-    ("ghost_relay", "Ghost relay"),
 ]
 ADVANCED_HELP = ("SD card folder: leave it empty to use the emulator's own. Set it for an unknown emulator, a Switch's "
                  "SD card, or a Ryujinx data folder used with --root-data-dir (its sdcard folder). Mod folder: leave "
                  "it empty for the emulator's default. Game address: 127.0.0.1 when the game runs on this computer, "
-                 "else the Switch's IP address. Ghost relay: leave it empty for the community relay.")
+                 "else the Switch's IP address.")
 
 # key -> how Browse picks it: a file filter, or None for a folder. Keys without an entry have no Browse button.
 BROWSE: Dict[str, Optional[List[Tuple[str, List[str]]]]] = {
@@ -131,15 +130,16 @@ class PatchPanel(ScrollView):
         self.content.add_widget(grid)
 
         self.content.add_widget(text("[b]Ghosts[/b]"))
-        self.content.add_widget(text("The other players of this seed show as ghosts where you are. Players who enter "
-                                     "the same password (or all none) see each other.", small=True))
+        self.content.add_widget(text("The other Link's Awakening players of your multiworld show as ghosts where you "
+                                     "are. Enter the ghost relay your group uses (host:port); empty: no ghosts.",
+                                     small=True))
         row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=ROW_HEIGHT, spacing=dp(6))
         self.ghosts_check = MDCheckbox(size_hint=(None, None), size=(dp(36), dp(36)), pos_hint={"center_y": 0.5})
         self.ghosts_check.bind(active=lambda c, active: self.ctx.set_ghosts(bool(active)))
         row.add_widget(self.ghosts_check)
         row.add_widget(MDLabel(text="Show ghosts"))
         self.content.add_widget(row)
-        self.add_setting(self.content, "ghost_password", "Ghost password")
+        self.add_setting(self.content, "ghost_relay", "Ghost relay")
         self.ghost_line = text(small=True)
         self.content.add_widget(self.ghost_line)
 

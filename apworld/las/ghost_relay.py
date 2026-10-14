@@ -4,8 +4,8 @@ Ghosts). Also the wire protocol the client uses (ghosts.py). Standard library on
     python3 ghost_relay.py [--host 0.0.0.0] [--port 43390]
 
 Plain TCP with TCP_NODELAY. Every message is a frame: a u16 length (big-endian), then the payload, whose first byte is
-the message type. A client joins a group, SHA-256("lasghost" | seed hash | password), computed by the client, so the
-relay never sees the password. The relay forwards a player's position to the group's members in the same level, and in
+the message type. A client joins a group, SHA-256("lasghost" | secret), computed by the client from its multiworld's
+ghost secret (in the patch file), so the relay never sees the secret. The relay forwards a player's position to the group's members in the same level, and in
 the overworld (Field) only to those within the 3x3 screens around the sender; it sends an "off" for a player who
 leaves a member's area or the group.
 """
@@ -81,8 +81,8 @@ SILENT_DROP = 60.0  # a connection silent for this long is closed
 MAX_BACKLOG = 32 * 1024  # bytes waiting to go to a receiver; frames beyond it are dropped
 
 
-def group_id(seed_hash: str, password: str) -> bytes:
-    return hashlib.sha256(b"lasghost|" + seed_hash.encode() + b"|" + password.encode()).digest()
+def group_id(secret: str) -> bytes:
+    return hashlib.sha256(b"lasghost|" + secret.encode()).digest()
 
 
 def field_screen(x: float, z: float) -> Tuple[int, int]:

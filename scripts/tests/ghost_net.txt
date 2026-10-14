@@ -1,6 +1,6 @@
 # Multiplayer ghosts, the network half (DESIGN.md, Ghosts). Run after boot_file1, with a ghost relay, the client
-# joined to it (--ghost-relay, --ghost-password test) and scripts/ghost_peer.py in the same group (slot Peer, stdin
-# from peer_cmds.txt, output to peer.log) circling in front of Marin's door, Field_11C.
+# joined to it (--ghost-relay, --ghost-secret test) and scripts/ghost_peer.py in the same group (--secret test, slot
+# Peer, stdin from peer_cmds.txt, output to peer.log) circling in front of Marin's door, Field_11C.
 connect
 expect HELLO 30
 warp Field 38.25 10.5 128.25
