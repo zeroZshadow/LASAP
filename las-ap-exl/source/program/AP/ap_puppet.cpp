@@ -1,12 +1,13 @@
-// Test build only (LASAP_TEST): the ghosts of multiplayer ghosts (DESIGN.md, Ghosts). One puppet per ghost slot of
-// AP::GhostNet, and one for DBG puppet: an NPC actor spawned at runtime through the game's actor factory (as a chest
+// The ghosts of multiplayer ghosts (DESIGN.md, Ghosts). One puppet per ghost slot of AP::GhostNet, and in the test
+// build one for DBG puppet: an NPC actor spawned at runtime through the game's actor factory (as a chest
 // pops its enemy), drawn with Link's model (its Npc row, set up by ghost_puppet.py) dithered by alpha-to-coverage,
 // and moved by hand every frame: replaying the positions and animations it is fed on their sender's clock.
 // The actor system owns the actors, and they outlive level changes: each puppet keeps a weak reference to its actor
 // and reuses it for the whole session, hidden while its ghost is not shown.
-#ifdef LASAP_TEST
 #include "AP/ap.hpp"
+#ifdef LASAP_TEST
 #include "AP/ap_debug.hpp"
+#endif
 #include "Game/framework.hpp"
 #include "Hooks/Common/level.hpp"
 #include "offsets.hpp"
@@ -145,12 +146,17 @@ namespace {
     }
 
     // Puppets 0..SLOTS-1 show GhostNet's ghost slots; the last is DBG puppet's.
+#ifdef LASAP_TEST
     constexpr int kGhosts = AP::GhostNet::SLOTS, kTest = kGhosts, kPuppets = kGhosts + 1;
+#else
+    constexpr int kGhosts = AP::GhostNet::SLOTS, kPuppets = kGhosts;
+#endif
     // A ghost whose last line is older than this is not shown (the relay and the client send offs; this covers a
     // lost one). A still player's game sends a position twice a second.
     constexpr u64 kStaleMs = 5000;
     constexpr int kFlagWarped = 1, kFlagHidden = 2, kFlagStill = 4;
     constexpr u32 kRespawnFrames = 60;  // after a failed spawn
+    constexpr u32 kNoRowFrames = 600;   // after a spawn without the APGhost row
 
     enum class Look { Unknown, Ghost, Hidden };
     struct Puppet {
@@ -163,13 +169,17 @@ namespace {
         u32 spawnAfter = 0;      // frame
         Track track;
         u32 framesSeen = 0;      // the ghost's lines fed so far
+#ifdef LASAP_TEST
         std::vector<std::string> animLog;  // its plays, for DBG puppet animlog
+#endif
     };
     Puppet g_Puppets[kPuppets];
     // Each shown puppet's blocks as GPU addresses [lo, hi), for the render thread's hooks; hi 0: none.
     struct Span { std::atomic<u64> lo{0}, hi{0}; };
     Span g_Spans[kPuppets];
 
+    u32 g_LastFrame = 0;
+#ifdef LASAP_TEST
     struct Sample { Game::Vec3 pos; Game::Vec4 rot; };
     // DBG puppet: Link's path g_Delay frames late, fed g_SteerHz times a second (0: written as it is)
     constexpr int kHistory = 1024;
@@ -177,9 +187,10 @@ namespace {
     int g_SteerHz = 0;
     Game::Vec3 g_At{};
     Sample g_History[kHistory];
-    u32 g_HistoryFrame = 0, g_LastFrame = 0, g_TestFedFrame = 0, g_TestStarts = 0;
+    u32 g_HistoryFrame = 0, g_TestFedFrame = 0, g_TestStarts = 0;
     bool g_HistoryValid = false;
     std::string g_AnimPending;  // from DBG puppet anim, played on the game thread
+#endif
 
     u64 Ticks() {
         u64 ticks;
@@ -194,11 +205,13 @@ namespace {
         return fmwk != nullptr ? fmwk->mPlayer : nullptr;
     }
 
+#ifdef LASAP_TEST
     std::string Hex(u64 v) {
         char buf[24];
         snprintf(buf, sizeof(buf), "%lx", v);
         return buf;
     }
+#endif
 
     int IndexOf(const Puppet& p) { return static_cast<int>(&p - g_Puppets); }
 
@@ -225,9 +238,13 @@ namespace {
     void Forget(Puppet& p) {
         ClearSpan(IndexOf(p));
         if (p.ctrl != nullptr) GameFn<ReleaseWeakFn>(kReleaseWeak)(p.ctrl);
+#ifdef LASAP_TEST
         std::vector<std::string> log = std::move(p.animLog);
         p = Puppet{};
         p.animLog = std::move(log);
+#else
+        p = Puppet{};
+#endif
     }
 
     // Draws only the materials a ghost shows, or (hidden) none.
@@ -271,6 +288,12 @@ namespace {
 
     void Place(Puppet& p, const Game::Vec3& pos, const Game::Vec4* rot);
 
+    // Whether the Npc sheet has the APGhost row (the patcher adds it with the ghosts' model).
+    bool HasGhostRow() {
+        void* sheet = **reinterpret_cast<void***>(g_BaseAddress + kNpcSheets);
+        return sheet != nullptr && GameFn<void* (*)(void*, StringView*, u64)>(kFindRow)(sheet, &g_GhostRow, kNpcRowSize) != nullptr;
+    }
+
     // Creates actor <id> at pos as PopEnemy does, with the player as owner, and keeps a weak reference to it; a
     // puppet that has an actor shows it there again.
     bool Spawn(Puppet& p, u16 id, const Game::Vec3& pos, u32 frame, std::string& err) {
@@ -304,6 +327,11 @@ namespace {
 
         // The owner is the framework's actor system (a shared_ptr at Framework +0x498), as the player's hookshot
         // passes it.
+        if (id == kGhostActor && !HasGhostRow()) {
+            err = "no APGhost row (a mod patched before ghosts)";
+            p.spawnAfter = frame + kNoRowFrames;
+            return false;
+        }
         auto* system = reinterpret_cast<SharedPtr*>(reinterpret_cast<u8*>(Game::GetFramework()) + kFrameworkActorSystem);
         SharedPtr out{};
         g_SpawningGhost = id == kGhostActor;
@@ -328,7 +356,9 @@ namespace {
         ReleaseShared(out.ctrl);
         p.actor = out.ptr;
         p.ctrl = out.ctrl;
+#ifdef LASAP_TEST
         p.animLog.clear();
+#endif
         if (!Alive(p)) {
             err = "the actor system did not keep the actor";
             Forget(p);
@@ -362,7 +392,9 @@ namespace {
         }
     }
 
+#ifdef LASAP_TEST
     float YawOf(const Game::Vec4& q) { return 2 * std::atan2(q.y, q.t); }
+#endif
     Game::Vec4 QuatOf(float yaw) { return Game::Vec4{0, std::sin(yaw / 2), 0, std::cos(yaw / 2)}; }
 
     void Place(Puppet& p, const Game::Vec3& pos, const Game::Vec4* rot) {
@@ -619,6 +651,7 @@ namespace {
         ReplayFrame(p, nowFine);
     }
 
+#ifdef LASAP_TEST
     // DBG puppet: on Link's path g_Delay frames late, exactly or replayed from frames taken g_SteerHz times a second;
     // or standing at g_At.
     void DriveTest(u32 frame, u64 now, double nowFine) {
@@ -689,20 +722,20 @@ namespace {
         }
         return s;
     }
+#endif
 }
 
 // While the module spawns a ghost: NpcGhost's component looks up the APGhost row, if the sheet has it.
 HOOK_DEFINE_TRAMPOLINE(NpcComponentCtor) {
     static void* Callback(void* self, void* args, StringView* rowKey, void* x3) {
         if (g_SpawningGhost && rowKey != nullptr && rowKey->ptr == reinterpret_cast<const char*>(g_BaseAddress + kNpcGhostKey)) {
-            void* sheet = **reinterpret_cast<void***>(g_BaseAddress + kNpcSheets);
-            if (sheet != nullptr && GameFn<void* (*)(void*, StringView*, u64)>(kFindRow)(sheet, &g_GhostRow, kNpcRowSize) != nullptr)
-                rowKey = &g_GhostRow;
+            if (HasGhostRow()) rowKey = &g_GhostRow;
         }
         return Orig(self, args, rowKey, x3);
     }
 };
 
+#ifdef LASAP_TEST
 // The plays by name on the puppets' animation components (DBG puppet animlog).
 HOOK_DEFINE_TRAMPOLINE(PlayByName) {
     static void Callback(void* comp, NameView* name, u8 mode, float blend, float frame) {
@@ -714,6 +747,7 @@ HOOK_DEFINE_TRAMPOLINE(PlayByName) {
         Orig(comp, name, mode, blend, frame);
     }
 };
+#endif
 
 HOOK_DEFINE_TRAMPOLINE(BindUniformBuffer) {
     static void Callback(u8* wrapper, int stage, int slot, u64* bufferOffset, u64 size) {
@@ -750,7 +784,9 @@ HOOK_DEFINE_TRAMPOLINE(DrawElementsInstanced) {
 
 namespace AP::Puppet {
     void InstallHooks() {
+#ifdef LASAP_TEST
         PlayByName::InstallAtOffset(offset_manager.Offset(kPlayByName[0]));
+#endif
         NpcComponentCtor::InstallAtOffset(offset_manager.Offset(kNpcComponentCtor));
         BindUniformBuffer::InstallAtOffset(offset_manager.Offset(kBindUniformBuffer));
         SetRasterState::InstallAtOffset(offset_manager.Offset(kSetRasterState));
@@ -758,14 +794,16 @@ namespace AP::Puppet {
         DrawElementsInstanced::InstallAtOffset(offset_manager.Offset(kDrawElementsInstanced));
     }
 
-    // Once per input poll; samples Link and moves the puppets once per frame.
+    // Once per input poll (after GhostNet's); moves the puppets once per frame.
     void Tick() {
         auto* player = Player();
         Game::Framework* fmwk = Game::GetFramework();
         if (player == nullptr || fmwk == nullptr) {
             // a level loads
             for (int n = 0; n < kPuppets; n++) ClearSpan(n);
+#ifdef LASAP_TEST
             g_HistoryValid = false;
+#endif
             return;
         }
         u32 frame = fmwk->mFrameCount;
@@ -775,22 +813,27 @@ namespace AP::Puppet {
             if (p.ctrl != nullptr && !Alive(p)) Forget(p);
             if (p.ctrl != nullptr) RefreshModel(p);
         }
+#ifdef LASAP_TEST
         if (player->playerCollision != nullptr) {
             auto& c = player->playerCollision->coordsNew;
             g_History[g_HistoryFrame % kHistory] = Sample{c.pos, c.rotate};
             g_HistoryFrame++;
             g_HistoryValid = true;
         }
+#endif
         std::string level = LevelSystem::GetCurrentLevel();
         u64 now = NowMs();
         double nowFine = NowMsFine();
         for (int n = 0; n < kGhosts; n++) DriveGhost(n, level, frame, now, nowFine);
+#ifdef LASAP_TEST
         DriveTest(frame, now, nowFine);
+#endif
         for (auto& p : g_Puppets) {
             if (Alive(p)) Update(p, frame);
         }
     }
 
+#ifdef LASAP_TEST
     std::string StateField() {
         int shown = 0, actors = 0;
         for (int i = 0; i < kGhosts; i++) {
@@ -861,5 +904,5 @@ namespace AP::Puppet {
         AP::Send(Info());
         return true;
     }
-}
 #endif
+}

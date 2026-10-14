@@ -930,6 +930,7 @@ namespace AP {
     void Init(const std::string& seed_hash, int port) {
         if (!seed_hash.empty()) g_SeedHash = seed_hash;
         InstallTextHooks();
+        Puppet::InstallHooks();
         ItemGetSequence::InstallAtOffset(offset_manager.Offset(kItemGetSequence));
         LoadLocationNames();
         LoadMap();
@@ -1067,6 +1068,7 @@ namespace AP {
 
         TickConnection();
         GhostNet::Tick();
+        Puppet::Tick();
         TickKeptFlags();
         TickHintFlags();
         AP::TickToasts(PlayerReady());

@@ -31,9 +31,7 @@ namespace AP::Test {
 }
 
 namespace AP::Puppet {
-    // ap_puppet.cpp: a ghost puppet (an NPC actor spawned at runtime, drawn with Link's model and steered by hand)
-    void InstallHooks();
-    void Tick();
+    // DBG puppet (ap_puppet.cpp)
     bool Command(const std::vector<std::string>& a);
     // STATE puppets=<ghosts drawn, their model loaded>/<ghost slots with an actor>
     std::string StateField();

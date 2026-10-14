@@ -168,3 +168,10 @@ namespace AP::GhostNet {
     // DBG ghostnet: what was sent and what each slot holds.
     std::string State();
 }
+
+// Multiplayer ghosts, the puppets (ap_puppet.cpp): each ghost slot shown as an NPC drawn with Link's model.
+namespace AP::Puppet {
+    void InstallHooks();
+    // Once per tick, after GhostNet::Tick.
+    void Tick();
+}

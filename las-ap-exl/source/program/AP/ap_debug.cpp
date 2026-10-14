@@ -1089,7 +1089,6 @@ namespace AP::Test {
             g_ReplyTo = -1;
             if (!done && g_Retry.size() < 64) g_Retry.push_back(std::move(p));
         }
-        AP::Puppet::Tick();
     }
 
     void ApplyInput(nn::hid::NpadBaseState* state) {
@@ -1350,7 +1349,6 @@ namespace AP::Test {
         SmChange<8>::InstallAtOffset(offset_manager.Offset(kSmHooks[8].offset));
         SmChange<9>::InstallAtOffset(offset_manager.Offset(kSmHooks[9].offset));
         static_assert(kSmHookCount == 10);
-        AP::Puppet::InstallHooks();
     }
 }
 #endif
