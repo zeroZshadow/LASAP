@@ -7,6 +7,13 @@ Resource_Wait 0x08541c20 f (handle*)
 AreaCraneGame_Setup 0x08553b40 f loads actor/AreaCraneGame.bfres, builds the featured prizes
 CraneGame_BuildFeaturedPrizes 0x08557f30 f (this): CraneGame_NextFeaturedPrize for groups 0 and 1
 CraneGame_NextFeaturedPrize 0x08558ac0 f (out, group): first featured row not owned (CranePrize_Has with layout itemIndex) whose conditions hold
+AreaHoleLowerLevel_StartEvent 0x085767f0 f probably AreaHoleLowerLevel: Area.bfevfl event, default entry FallToLowerLevel, params levelName, locator, offsetX, offsetZ
+AreaLevelOpen_Factory 0x08576e90 f actor table factory for id 0x190
+AreaLevelOpen_StartEvent 0x08579ac0 f (out, actor): Area.bfevfl entry from LEB param 2 (default DefaultLevelOpen), params levelName/locator from LEB params 0/1
+AreaLevelOpen_EntryName 0x08579fb0 f (out, actor): LEB param 2
+AreaLevelOpen_CompanionEntry 0x0857a050 f entry name with the companion suffix through CompanionEventEntry
+AreaLevelOpen_LevelName 0x0857a0c0 f (out, actor): LEB param 0; a bl target after a noreturn call
+AreaLevelOpen_Locator 0x0857a150 f (out, actor): LEB param 1
 Sound_Play 0x085a97e0 f (StringView* name, nullptr, volume, pitch)
 EventAction_PlayAnimation2 0x085f7bb0 f virtual +0x30 on the actor's root component
 EventAction_PlayAnimation 0x0861d0c0 f
@@ -17,17 +24,32 @@ CranePrize_AddPanelPiece 0x0864cb08 l tail of CranePrize_Add for type 0x14: AddI
 CranePrize_Has 0x0864cb10 f (u8 prizeType, count, index): CranePrize row index as kind; replaces Item_IsCollected (not used by item actors)
 LayeredAnimation_Make 0x08b7fa70 f (out, parent entity, StringView* name, smcSp*, int* slots): a layered SkeletalAnimationComponent
 CraneQuery_HasPrize 0x08ce7260 f event query HasPrize (prizeType, count): CranePrize_Has(type, count, -1)
+GameControl_RequestLevelJump 0x08d03160 f event action body (out, ctx): params level, locator, offsetX, offsetZ -> GameControl_SetLevelJump
+GameControl_RequestLevelJumpInCurrentLevel 0x08d032d0 f event action body: level = the save's level
+GameControl_RequestRestartWarp 0x08d03580 f event action body
+GameControl_SaveForGameClear 0x08d03680 f event action body: save level Field, locator Field_01G
+GameControl_Retry 0x08d03710 f event action body: locator $RETRY
 Event_Make 0x08d10290 f (out, flowchart*, StringView* entry)
 Event_Prepare 0x08d11b00 f (event*)
 PanelQuery_Stone4 0x08d157e0 f event query lambda: save +0x5093 >= 5 and chamber stone 4 owned
+GameControl_FindAction 0x08d180e0 l leaf after udf, no prologue: GameControl action name -> std::function vtable
+GameControl_SetLevelJump 0x08d1f950 f (gc, StringView* level, StringView* locator, Vec2* offset): +0xa8/+0xe8 level, +0xf0/+0x130 locator, +0x140 offset
+GameControl_ProcessLevelJump 0x08d1fa80 f (gc): $RETRY, $QUIT, $ENDING, else LevelManager_LevelJump or LevelManager_WarpInLevel; a bl target after a noreturn call
 EventManager_Request 0x08d232e0 f (out, manager, event*)
+GameControl_Update 0x08d24bc0 f calls GameControl_ProcessLevelJump while a locator is pending (+0x130)
+CompanionEventEntry 0x08d26c20 f picks <entry>_Ghost, <entry>_Marin or {0}_Companion when the flowchart has it
 Datasheets_Load 0x08d3cb30 f boot: loads Npc.gsheet and NpcPhysicsTraits.gsheet into 0x1cb8360
+LevelLoad_Finish 0x08d59040 f on arrival: SetCurrentLevel with level +0x88, locator +0xd0, position +0x120 of its object
+LevelManager_LevelJump 0x08d68d50 f (mgr, StringView* level, StringView* locator, Vec2* offset) -> bool: only in state +0x3f8 == 1; +0x138 level, +0x180 locator, +0x1d0 offset, state 4
+LevelManager_WarpInLevel 0x08d694d0 f (mgr, StringView* locator, Vec2* offset, int): jump within the current level
+SetGameState 0x08d7f780 f (state machine, u32 state, bool): 4 reloads from the save, 1 quit, 5 ending; hooked by the module
 Title_ChangeState 0x08d831b0 f (machine*, state)
 ItemActor_CanAppear 0x08dc8510 f (actor): false when +0xc0 == 3 and Inventory_HasItem(+0x2e8 item, 1, +0xbc index)
 Npc_TraitsValue 0x08dcb490 f (npc component): a float of the row's collision.traits row in NpcPhysicsTraits, default without
 Inventory_AddItemID 0x08dd48e0 f (itemId, count, index); hooked by the module. Case 114 sets the chamber stone bit
 Inventory_HasItem 0x08dd5a30 f (itemId, count, index): 114 tests chamber stone bit index; the item actors' collected check
 Scene_ReleaseActors 0x08de72c0 f moves or removes the actors of a weak list (RemoveChild as the module does)
+LevelData_Parse 0x08dee780 f .lvb sections config, node, area, zone, tagPlayerStart, staticObject, condition
 Actor_Create 0x08df9ea0 f (shared_ptr* out, shared_ptr* owner, params*): the actor factory; owner Framework +0x498
 NpcComponent_Ctor 0x08e47e90 f (component, args, StringView* row key, x3): looks the Npc row up; row at +0x88
 NpcAnimation_PlayByName 0x08e4d260 f (component, StringView* name, u8 mode, f32 blend, f32 frame); vtable slot 29
@@ -83,6 +105,7 @@ PlayerAnimation_KeyOf 0x092f0fa0 f (controller, name) -> key or -1
 PlayerAnimation_PlayIfNew 0x092f1130 f (controller, key, slot, blend)
 PlayerAnimation_PlayByNameIfNew 0x092f1210 f (controller, StringView* name)
 PlayerAnimation_ClearUpper 0x092f1260 f clears slot 1
+SetCurrentLevel 0x092fe450 f (StringView* level, StringView* locator, Vec3* pos): save +0x0 level, +0x40 locator, +0xdc position; dungeon index from the level name; hooked by the module
 EventFlags_Check 0x092fe920 f (flags, StringView* name)
 LayoutWrapper_Build 0x0935d100 f (wrapper 0x78 bytes, StringView* bflyt file name, priority, archive set 0 Game.arc / 1 StartUp.arc, bool): the layout at wrapper +0x18, null if not built
 LayoutWrapper_Dtor 0x0935d470 f removes the layout from the draw list
@@ -162,6 +185,7 @@ CranePrizeAddTable 0x09bb4cf8 l CranePrize_Add jump table, 21 s32 offsets
 AddItemIdTable 0x09bb6d60 l Inventory_AddItemID jump table, 0x7f s32 offsets
 str_NpcGhost 0x09befdf4 l "NpcGhost": the row key and the actor table's name
 NpcCollisionFilters 0x09c06080 l 7 u32 collision filters
+AreaLevelOpen_vtable 0x0a058b48 l vtable of the AreaLevelOpen actor
 NpcComponent_vtable2 0x0a0c9290 l vtable
 ActorTable 0x0a0d0898 l 0x58 bytes per actor id; +0x50 name
 NpcComponent_vtable 0x0a0e0570 l vtable
@@ -195,6 +219,7 @@ NpcSheets_ptr 0x0a1bc360 l -> {shared_ptr Npc.gsheet, shared_ptr NpcPhysicsTrait
 PanelSheets_ptr 0x0a1bde50 l 0xa0 bytes of shared_ptrs: MapPieceList +0x0, MapPieceTheme +0x10, ShopPanelItem +0x40
 PlayerAnimationSheet_ptr 0x0a1bef70 l -> shared_ptr PlayerAnimation.gsheet
 GlobalSave 0x0a1bf200 l
+SaveCurrent 0x0a1c46e0 l static struct *Inventory_ptr points at: +0x0 level, +0x40 locator ($NONE = use +0xdc), +0xdc restart position
 EventFlags_ptr 0x0a1c5120 l
 DungeonItems_ptr 0x0a1c51b0 l
 PanelPieceSetBits 0x0a1c51e0 l {u8* bits, s32 bytes 2, s32 bits 13}: PanelDungeonPieceSet (item 115) owned
