@@ -19,8 +19,7 @@ Double-click `las.apworld`, or copy it into Archipelago's `custom_worlds` folder
 2. Open it: double-click it, drag it onto the Archipelago Launcher, or use the Launcher's "Open Patch". The Links
    Awakening Switch Client opens on its Patch tab.
 3. The first time, choose your emulator's program with Browse: `Ryujinx.exe`, or `eden.exe` (or another yuzu-based
-   emulator). The client finds the emulator's SD card and mod folder, and the game in the emulator's game list. When
-   the emulator is running, the client finds it by itself.
+   emulator). The client finds the emulator's SD card and mod folder, and the game in the emulator's game list.
 4. Choose the RomFS dump, also once. Each setting shows what to do when it is missing:
    - Ryujinx: right-click Link's Awakening, Extract Data, RomFS, and pick a folder. Choose that folder.
    - Yuzu-based emulators: right-click Link's Awakening, Dump RomFS. The client finds the dump by itself.

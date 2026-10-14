@@ -122,6 +122,7 @@ class LASContext(CommonContext):
         self.game_host = game_host
         self.game_port = game_port
         self.game_writer: Optional[asyncio.StreamWriter] = None
+        self.emulator_process: Optional["subprocess.Popen[bytes]"] = None  # the emulator this client started
         self.game_seed_hash: Optional[str] = None
         self.game_recv: Optional[int] = None
         self.slot_seed_hash: Optional[str] = None
@@ -409,17 +410,6 @@ class LASContext(CommonContext):
         self.game_status = checklist.Check(level, text)
         self.refresh_patch_tab()
 
-    async def check_game_listeners(self) -> None:
-        """Two modded games running at once both listen on the game port; the client may reach the wrong one."""
-        if self.game_host not in ("127.0.0.1", "localhost"):
-            return
-        names = await asyncio.to_thread(emulators.port_owners, self.game_port)
-        if len(names) > 1:
-            self.set_game_status(checklist.ERROR, f"Link's Awakening with the mod runs in {' and '.join(names)}. "
-                                                  f"Close all but one.")
-        elif self.game_status.level != checklist.INFO:
-            self.set_game_status(checklist.INFO, "Waiting for the game to start.")
-
     async def game_loop(self) -> None:
         failures = 0
         while not self.exit_event.is_set():
@@ -433,8 +423,8 @@ class LASContext(CommonContext):
                 if writer is not None:
                     writer.close()
                 failures += 1
-                if failures % 5 == 1:
-                    await self.check_game_listeners()
+                if failures % 5 == 1 and self.game_status.level != checklist.INFO:
+                    self.set_game_status(checklist.INFO, "Waiting for the game to start.")
                 await asyncio.sleep(2)
                 continue
             failures = 0
@@ -542,20 +532,6 @@ class LASContext(CommonContext):
                 self.set_option("romfs_folder", str(romfs), detect=False)
                 logger.info(f"Found the RomFS dump: {romfs}")
 
-    async def detect_running_emulator(self) -> bool:
-        """Takes a running emulator, with Ryujinx's --root-data-dir, when no emulator is set. Returns whether it did."""
-        if self.option("emulator") or self.option("sd_card_folder"):
-            return False
-        running = await asyncio.to_thread(emulators.running_emulators)
-        if not running:
-            return False
-        found = running[0]
-        if found.data_dir is not None and emulators.kind_of(found.exe) == "ryujinx":
-            self.set_option("sd_card_folder", str(found.data_dir / "sdcard"), detect=False)
-        self.report("info", f"Found {emulators.display_name(found.exe)} running: {found.exe}")
-        self.set_option("emulator", found.exe)
-        return True
-
     def report(self, level: str, message: str, replace: bool = False) -> None:
         """Logs a patching step and adds it to the Patch tab's progress lines; `replace` replaces the last one."""
         getattr(logger, level)(message)
@@ -591,14 +567,14 @@ class LASContext(CommonContext):
             self.report("error", checks.problems())
             self.show_patch_tab()
             return
-        target, exe = checks.target, self.option("emulator")
+        target = checks.target
         if force or checks.checks["installed"].level != checklist.OK:
             loop = asyncio.get_running_loop()
 
             def log(line: str) -> None:
                 loop.call_soon_threadsafe(logger.info, line)
 
-            open_already = bool(exe) and await asyncio.to_thread(emulators.is_running, exe)
+            open_already = self.game_writer is not None
             self.report("info", f"Installing the mod for slot {checks.player_name}... This takes a few seconds.")
             logger.info(f"Seed {checks.seed_hash}, into {target.mods} and {target.sd_card}.")
             try:
@@ -612,7 +588,7 @@ class LASContext(CommonContext):
             self.report("info", f"Done: the mod for slot {checks.player_name} (seed {checks.seed_hash}) is installed.",
                         True)
             if open_already:
-                self.report("warning", f"{emulators.display_name(exe)} is open: restart the game to load the new mod.")
+                self.report("warning", "The game is running: restart it to load the new mod.")
         else:
             self.report("info", f"The mod for slot {checks.player_name} (seed {checks.seed_hash}) is installed.")
         if "other_mods" in checks.checks:
@@ -630,7 +606,7 @@ class LASContext(CommonContext):
         if self.game_writer is not None:
             self.report("info", "The game is running already.")
             return
-        if await asyncio.to_thread(emulators.is_running, exe):
+        if self.emulator_process is not None and self.emulator_process.poll() is None:
             self.report("info", f"{name} is open already. Start Link's Awakening there.")
             return
         target = self.install_target()
@@ -638,8 +614,8 @@ class LASContext(CommonContext):
         args = emulators.start_args(exe, game, target.data_dir if target else None)
         import subprocess
         try:
-            subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                             cwd=str(Path(exe).parent))
+            self.emulator_process = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                                     stderr=subprocess.DEVNULL, cwd=str(Path(exe).parent))
         except OSError as e:
             self.report("error", f"Could not start {name}: {e}")
             return
@@ -660,13 +636,9 @@ async def prepare_patch(ctx: LASContext, patch: bool) -> None:
         await asyncio.sleep(0.1)
     if patch:
         ctx.show_patch_tab()
-    detected = await ctx.detect_running_emulator()
     ctx.detect_from_emulator()
     ctx.refresh_patch_tab()
-    if patch and detected:
-        # never install into an emulator the player has not seen yet
-        ctx.report("info", "Check the settings below, then press Play.")
-    elif patch:
+    if patch:
         await ctx.install_patch(start=True)
 
 

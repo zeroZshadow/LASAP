@@ -202,7 +202,6 @@ The test build reports the game's state so tests press when the game takes a pre
 - **Notices.** With the client connected to the game only, the game knows all location names from `ap_names.txt`. Connecting the server shows "Archipelago connected as ZeroLAS" in the autosave popup, with the Archipelago logo and both lines of text; the game keeps running. The popup shows "Now saving." again afterwards (`DBG savepopup`).
 - **Closing the emulator.** Windowed Ryujinx exits within a few seconds of closing its window, modded or vanilla. Headless Ryujinx (`--no-gui`) ignores a window close either way.
 - **Client install.** Opening an `.aplas` from the clean checkout's Launcher, or with the double-click command, opens the client on its Patch tab.
-  - With a running Eden and no emulator set, it filled in Eden and the game from Eden's recent files, and installed nothing.
   - With Eden set, it installed into Eden's `load` folder, and the game in Eden reported the seed.
   - With Ryujinx and the sandbox SD card, it found the game in the sandbox's game folders, installed in about 6 s, and started Ryujinx with `--root-data-dir` and the game. Opening the same seed again skipped patching.
   - Patch tab: Play and Reinstall mod are off while an install runs, and the tab ends with the green "Done" line (2026-10-13).
