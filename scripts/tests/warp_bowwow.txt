@@ -1,9 +1,9 @@
 # Warp home with BowWow following. Sets what rescuing him sets (companion bit 0 of inventory byte 0x9d, as LASR
-# uses it, and BowWowJoin), reloads Mabe so he spawns, warps home with the menu and walks back out the door.
-# Changes the sandbox save's companion. Screenshots: bowwow_1 Mabe, bowwow_2 Tarin's house, bowwow_3 outside again.
+# uses it, and BowWowJoin), warps into Tarin's house so he comes along, then warps home with the menu: Link and BowWow
+# come out of the door. Changes the sandbox save's companion. Screenshots: bowwow_1 in the house, bowwow_2 outside.
 send DBG setflag BowWowJoin 1
 send DBG poke 9d 01
-warp Field 38.25 10.5 128.25
+warp MarinTarinHouse 6.85 0 3.83
 wait 2
 shot D:/DEV/LASAP-sandbox/bowwow_1.png
 send DBG input 800 1500
@@ -11,14 +11,10 @@ await 4 event=[1-9]
 wait 4
 send DBG input 1 400
 inlevel 20
-level MarinTarinHouse
-loaded 20
-wait 2
-shot D:/DEV/LASAP-sandbox/bowwow_2.png
-send DBG input 0 1500 0 -32767
-inlevel 20
 level Field
 loaded 20
-wait 2
-shot D:/DEV/LASAP-sandbox/bowwow_3.png
+at 38.25 128.5 1.5
+# BowWow comes out of the door a few seconds after Link, as when walking out.
+wait 5
+shot D:/DEV/LASAP-sandbox/bowwow_2.png
 state

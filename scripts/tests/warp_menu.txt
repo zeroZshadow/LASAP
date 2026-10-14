@@ -1,8 +1,9 @@
 # The warp menu: a short Minus press still opens the map; holding Minus opens "Return to Tarin's house?" with
-# Warp home / Continue. The cursor starts on Warp home, which warps into Tarin's house through its door; B moves it
-# to Continue, as on the game's yes/no prompts.
-# Starts outside Marin's house in Mabe. Screenshots: warp_map, warp_menu, warp_home.
-warp Field 38.25 10.5 128.25
+# Warp home / Continue. The cursor starts on Warp home, which takes Link to Mabe Village, walking out of Tarin's house
+# (Field_11C); B moves it to Continue, as on the game's yes/no prompts.
+# Starts in front of the Mabe shop. Warps home from the overworld (a jump within Field) and from inside a house.
+# Screenshots: warp_map, warp_menu, warp_home (outside the door after the jump within Field).
+warp Field 51.75 10.5 117
 send DBG input 800 200
 await 3 paused=1
 shot D:/DEV/LASAP-sandbox/warp_map.png
@@ -23,11 +24,25 @@ wait 0.8
 send DBG input 1 400
 free 10
 level Field
+at 51.75 117 1.5
+# Warp home from the overworld: the level stays Field, so wait for Link to stand outside Tarin's door, free.
+send DBG input 800 1500
+await 4 event=[1-9]
+wait 1
+send DBG input 1 400
+await 30 pos=38\.[0-9]+,[0-9.]+,12[789]\.
+await 20 event=0 paused=0
+state
+level Field
+at 38.25 128.5 1.5
+shot D:/DEV/LASAP-sandbox/warp_home.png
+# Warp home from inside a house.
+warp MarinTarinHouse 6.85 0 3.83
 send DBG input 800 1500
 await 4 event=[1-9]
 wait 1
 send DBG input 1 400
 inlevel 20
-level MarinTarinHouse
+level Field
 loaded 20
-shot D:/DEV/LASAP-sandbox/warp_home.png
+at 38.25 128.5 1.5
