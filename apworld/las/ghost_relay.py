@@ -1,9 +1,9 @@
 """Ghost relay: passes players' positions between the LAS clients of one run, for multiplayer ghosts (DESIGN.md,
 Ghosts). Also the wire protocol the client uses (ghosts.py). Standard library only, so the file runs on its own:
 
-    python3 ghost_relay.py [--host 0.0.0.0] [--port 43390] [--upnp]
+    python3 ghost_relay.py [--host 0.0.0.0] [--port 43390] [--forward]
 
---upnp has the router forward the port to this computer while the relay runs (UPnP).
+--forward has the router forward the port to this computer while the relay runs (NAT-PMP, else UPnP).
 
 Plain TCP with TCP_NODELAY. Every message is a frame: a u16 length (big-endian), then the payload, whose first byte is
 the message type. A client joins a group, SHA-256("lasghost" | secret), computed by the client from its multiworld's
@@ -19,7 +19,7 @@ import math
 import socket
 import struct
 import time
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 PROTOCOL_VERSION = 2
 DEFAULT_PORT = 43390
@@ -356,7 +356,7 @@ class Relay:
                     self.update(member, False)
 
 
-class UPnPError(Exception):
+class ForwardError(Exception):
     pass
 
 
@@ -369,11 +369,13 @@ class UPnP:
                       "urn:schemas-upnp-org:service:WANIPConnection:1",
                       "urn:schemas-upnp-org:service:WANPPPConnection:1")
     SERVICES = ("urn:schemas-upnp-org:service:WANIPConnection:", "urn:schemas-upnp-org:service:WANPPPConnection:")
+    name = "UPnP"
     LEASE = 3600  # seconds; renewed every LEASE / 2
     DESCRIPTION = "LAS ghost relay"
 
     def __init__(self, port: int, location: Optional[str] = None):
         self.port = port
+        self.external_port = port
         self.location = location  # the router's description URL; None: found by SSDP
         self.control_url = ""
         self.service = ""
@@ -421,7 +423,7 @@ class UPnP:
         finally:
             for sock in sockets:
                 sock.close()
-        raise UPnPError("no router answered the UPnP search (is UPnP on in the router?)")
+        raise ForwardError("no router answered the UPnP search (is UPnP on in the router?)")
 
     def find_service(self, location: str) -> None:
         import urllib.parse
@@ -443,7 +445,7 @@ class UPnP:
                 self.control_url = urllib.parse.urljoin(base, fields["controlURL"])
                 break
         else:
-            raise UPnPError("the router offers no WAN connection service for port mappings")
+            raise ForwardError("the router offers no WAN connection service for port mappings")
         # this computer's address on the router's network
         host = urllib.parse.urlparse(self.control_url).hostname or ""
         probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -470,7 +472,7 @@ class UPnP:
         except urllib.error.HTTPError as error:
             text = error.read().decode("utf-8", "replace")
             code = text.partition("<errorCode>")[2].partition("<")[0]
-            raise UPnPError(f"{action} failed: UPnP error {code or error.code}") from None
+            raise ForwardError(f"{action} failed: UPnP error {code or error.code}") from None
         return {element.tag.rpartition("}")[2]: (element.text or "") for element in root.iter()}
 
     def add(self) -> None:
@@ -479,7 +481,7 @@ class UPnP:
                        NewPortMappingDescription=self.DESCRIPTION)
         try:
             self.call("AddPortMapping", **mapping, NewLeaseDuration=self.lease)
-        except UPnPError as error:
+        except ForwardError as error:
             if self.lease == 0 or "725" not in str(error):  # 725: only permanent leases
                 raise
             self.lease = 0
@@ -493,11 +495,112 @@ class UPnP:
         self.add()
         try:
             return self.call("GetExternalIPAddress").get("NewExternalIPAddress", "")
-        except UPnPError:
+        except ForwardError:
             return ""
 
     def close(self) -> None:
         self.call("DeletePortMapping", NewRemoteHost="", NewExternalPort=self.port, NewProtocol="TCP")
+
+
+def default_gateways() -> List[str]:
+    """The default gateway's address: the routing table (Linux), `route` (Windows, macOS), else x.y.z.1 of each of
+    this computer's IPv4 addresses."""
+    import re
+    import subprocess
+    import sys
+    found: List[str] = []
+    try:
+        if sys.platform.startswith("linux"):
+            with open("/proc/net/route") as table:
+                for line in table.read().splitlines()[1:]:
+                    fields = line.split()
+                    if len(fields) > 2 and fields[1] == "00000000":
+                        found.append(socket.inet_ntoa(struct.pack("<I", int(fields[2], 16))))
+        else:
+            command = ["route", "print", "-4", "0.0.0.0"] if sys.platform == "win32" \
+                else ["route", "-n", "get", "default"]
+            output = subprocess.run(command, capture_output=True, text=True, timeout=5).stdout
+            pattern = r"^\s*0\.0\.0\.0\s+0\.0\.0\.0\s+(\d+\.\d+\.\d+\.\d+)" if sys.platform == "win32" \
+                else r"gateway:\s*(\d+\.\d+\.\d+\.\d+)"
+            found += re.findall(pattern, output, re.MULTILINE)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        pass
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            found.append(str(info[4][0]).rpartition(".")[0] + ".1")
+    except OSError:
+        pass
+    return list(dict.fromkeys(address for address in found if not address.startswith("127.")))
+
+
+class NatPmp:
+    """Forwards the relay's port on the router with NAT-PMP (RFC 6886, UDP port 5351 of the default gateway): the
+    router maps a port to the computer that asks, for a lease renewed while the relay runs, and removes it on
+    request. The router picks the external port; it is the requested one when free."""
+    name = "NAT-PMP"
+    LEASE = 3600
+    PORT = 5351
+
+    def __init__(self, port: int, gateway: Optional[str] = None):
+        self.port = port
+        self.external_port = port
+        self.gateway = gateway  # None: the default gateway
+        self.internal_ip = ""
+        self.lease = self.LEASE
+
+    def request(self, payload: bytes, size: int) -> bytes:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.connect((self.gateway or "", self.PORT))
+            self.internal_ip = sock.getsockname()[0]
+            wait = 0.25
+            for _ in range(4):
+                sock.send(payload)
+                sock.settimeout(wait)
+                try:
+                    data = sock.recv(64)
+                except (socket.timeout, ConnectionResetError):
+                    wait *= 2
+                    continue
+                if len(data) >= size and data[1] == payload[1] + 128:
+                    result = struct.unpack_from(">H", data, 2)[0]
+                    if result != 0:
+                        raise ForwardError(f"the router refused (NAT-PMP result {result})")
+                    return data
+        finally:
+            sock.close()
+        raise ForwardError("the router does not answer NAT-PMP")
+
+    def add(self) -> None:
+        data = self.request(struct.pack(">BBHHHI", 0, 2, 0, self.port, self.external_port, self.lease), 16)
+        self.external_port, self.lease = struct.unpack_from(">HI", data, 10)
+
+    def open(self) -> str:
+        """Maps the port; returns the router's external address."""
+        for gateway in [self.gateway] if self.gateway else default_gateways():
+            self.gateway = gateway
+            try:
+                data = self.request(struct.pack(">BB", 0, 0), 12)
+            except (ForwardError, OSError):
+                continue
+            self.add()
+            return socket.inet_ntoa(data[8:12])
+        raise ForwardError("no gateway answers NAT-PMP")
+
+    def close(self) -> None:
+        self.request(struct.pack(">BBHHHI", 0, 2, 0, self.port, 0, 0), 16)
+
+
+def forward_port(port: int) -> Tuple[Union["NatPmp", UPnP], str]:
+    """Maps the port with NAT-PMP, else UPnP: the mapping (add, close, lease, external_port, internal_ip, name) and the
+    router's external address."""
+    errors = []
+    for mapping in (NatPmp(port), UPnP(port)):
+        try:
+            return mapping, mapping.open()
+        except (ForwardError, OSError) as error:
+            errors.append(f"{mapping.name}: {error}")
+    raise ForwardError("; ".join(errors))
 
 
 def is_public(address: str) -> bool:
@@ -509,34 +612,36 @@ def is_public(address: str) -> bool:
     return ip.is_global and ip not in ipaddress.ip_network("100.64.0.0/10")
 
 
-async def serve(host: str, port: int, echo: Optional[float] = None, upnp: Optional[UPnP] = None) -> None:
+async def serve(host: str, port: int, echo: Optional[float] = None, forward: bool = False) -> None:
     relay = Relay(echo)
     server = await asyncio.start_server(relay.handle, host, port)
     sweep = asyncio.create_task(relay.sweep())
     relay.log.info("listening on " + ", ".join(str(s.getsockname()) for s in server.sockets))
     renew = None
-    if upnp is not None:
+    mapping = None
+    if forward:
         try:
-            external = await asyncio.to_thread(upnp.open)
-        except (UPnPError, OSError) as error:
-            relay.log.error(f"UPnP: {error}. Forward TCP port {port} to this computer on the router instead.")
-            upnp = None
+            mapping, external = await asyncio.to_thread(forward_port, port)
+        except ForwardError as error:
+            relay.log.error(f"Port forwarding: {error}. Forward TCP port {port} to this computer on the router "
+                            "instead.")
         else:
-            relay.log.info(f"UPnP: the router forwards TCP port {port} to {upnp.internal_ip}")
+            m = mapping  # NatPmp or UPnP
+            relay.log.info(f"{m.name}: the router forwards TCP port {m.external_port} to {m.internal_ip}:{port}")
             if external and is_public(external):
-                relay.log.info(f"UPnP: players enter the relay {external}:{port}")
+                relay.log.info(f"{m.name}: players enter the relay {external}:{m.external_port}")
             else:
-                relay.log.warning(f"UPnP: the router's internet address is {external or 'unknown'}, not a public one "
-                                  "(the provider may share it between customers): players outside may not reach "
-                                  "the relay")
+                relay.log.warning(f"{m.name}: the router's internet address is {external or 'unknown'}, not a public "
+                                  "one (the provider may share it between customers): players outside may not "
+                                  "reach the relay")
 
             async def keep() -> None:
-                while upnp.lease:
-                    await asyncio.sleep(upnp.lease / 2)
+                while m.lease:
+                    await asyncio.sleep(m.lease / 2)
                     try:
-                        await asyncio.to_thread(upnp.add)
-                    except (UPnPError, OSError) as error:
-                        relay.log.warning(f"UPnP: renewing the port mapping failed: {error}")
+                        await asyncio.to_thread(m.add)
+                    except (ForwardError, OSError) as error:
+                        relay.log.warning(f"{m.name}: renewing the port mapping failed: {error}")
             renew = asyncio.create_task(keep())
     try:
         async with server:
@@ -545,12 +650,12 @@ async def serve(host: str, port: int, echo: Optional[float] = None, upnp: Option
         sweep.cancel()
         if renew is not None:
             renew.cancel()
-        if upnp is not None:
+        if mapping is not None:
             try:
-                upnp.close()
-                relay.log.info("UPnP: port mapping removed")
-            except (UPnPError, OSError) as error:
-                relay.log.warning(f"UPnP: removing the port mapping failed: {error}")
+                mapping.close()
+                relay.log.info(f"{mapping.name}: port mapping removed")
+            except (ForwardError, OSError) as error:
+                relay.log.warning(f"{mapping.name}: removing the port mapping failed: {error}")
 
 
 def main() -> None:
@@ -560,13 +665,14 @@ def main() -> None:
     parser.add_argument("--quiet", action="store_true", help="Log errors only, not each join and leave.")
     parser.add_argument("--echo", type=float, metavar="DX",
                         help="For tests: each player also sees its own frames as a player Echo, DX units along x.")
-    parser.add_argument("--upnp", action="store_true",
-                        help="Have the router forward the port to this computer (UPnP), while the relay runs.")
+    parser.add_argument("--forward", action="store_true",
+                        help="Have the router forward the port to this computer while the relay runs (NAT-PMP, "
+                             "else UPnP).")
     args = parser.parse_args()
     logging.basicConfig(level=logging.WARNING if args.quiet else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
     try:
-        asyncio.run(serve(args.host, args.port, args.echo, UPnP(args.port) if args.upnp else None))
+        asyncio.run(serve(args.host, args.port, args.echo, args.forward))
     except KeyboardInterrupt:
         pass
 

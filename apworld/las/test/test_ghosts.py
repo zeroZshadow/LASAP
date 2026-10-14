@@ -351,8 +351,8 @@ class TestGhostSecret(unittest.TestCase):
             LASWorld.settings.ghost_relay = saved
 
 
-class TestUPnP(unittest.TestCase):
-    def test_maps_and_removes_the_port(self) -> None:
+class TestPortForward(unittest.TestCase):
+    def test_upnp_maps_and_removes_the_port(self) -> None:
         import http.server
         import threading
         service = "urn:schemas-upnp-org:service:WANIPConnection:1"
@@ -410,3 +410,37 @@ class TestUPnP(unittest.TestCase):
         self.assertTrue(wire.is_public("203.0.113.7") is False)  # documentation range
         self.assertTrue(wire.is_public("8.8.8.8"))
         self.assertFalse(wire.is_public("100.70.1.2"))  # carrier-grade NAT
+
+    def test_nat_pmp_maps_and_removes_the_port(self) -> None:
+        import socket
+        import threading
+        gateway = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        gateway.bind(("127.0.0.1", 0))
+        requests: List[bytes] = []
+
+        def answer() -> None:
+            while True:
+                try:
+                    data, sender = gateway.recvfrom(64)
+                except OSError:
+                    return
+                requests.append(data)
+                if data[1] == 0:
+                    gateway.sendto(struct.pack(">BBHI4s", 0, 128, 0, 1, socket.inet_aton("198.51.100.9")), sender)
+                else:
+                    lifetime = struct.unpack_from(">I", data, 8)[0]
+                    # the router gives another external port, and a longer lease
+                    gateway.sendto(struct.pack(">BBHIHHI", 0, 130, 0, 1, 43390, 43391 if lifetime else 0,
+                                               7200 if lifetime else 0), sender)
+
+        threading.Thread(target=answer, daemon=True).start()
+        try:
+            mapping = wire.NatPmp(43390, "127.0.0.1")
+            mapping.PORT = gateway.getsockname()[1]
+            self.assertEqual(mapping.open(), "198.51.100.9")
+            self.assertEqual((mapping.external_port, mapping.lease, mapping.internal_ip), (43391, 7200, "127.0.0.1"))
+            mapping.close()
+        finally:
+            gateway.close()
+        self.assertEqual([r.hex() for r in requests], ["0000", "0002" + "0000" + "a97e" + "a97e" + "00000e10",
+                                                       "0002" + "0000" + "a97e" + "0000" + "00000000"])
