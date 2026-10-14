@@ -2,20 +2,19 @@
 # Item model): the module reports one when the game adds its item, and does not grant the server's copy again. On a
 # default seed these are Trendy Prize 1 (the Yoshi Doll) and Trendy Prizes 3 and 6 (seashells 42 and 43), as
 # `ap_vanilla.txt` lists them. Run after newgame_file2 with the client connected to a server that has sent no items
-# yet. DBG give adds an item as the game does (through the AddItemID hook). It goes through the client (/dbg): what the
-# module sends while it handles a debug-port command, the CHECK included, goes to the debug port only.
+# yet. DBG give adds an item as the game does (through the AddItemID hook).
 guard hurt
 expect HELLO 30
 free 10
 check recv=0\s
 # Trendy Prize 3, the seashell with index 42: its check comes back as an item that is not granted, so the seashells
 # keep the one bit 42.
-send /dbg give 22 1 42
+send DBG give 22 1 42
 logged Trendy\sPrize\s3 10 server
 await 10 recv=1\s
 check shells=40000000000\s
 # The Yoshi Doll (no index) sets its getting flag.
-send /dbg give 29 1 -1
+send DBG give 29 1 -1
 logged Trendy\sPrize\s1 10 server
 await 10 recv=2\s
 send DBG flag TradeYoshiDollGet

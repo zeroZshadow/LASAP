@@ -1023,6 +1023,16 @@ namespace {
 
     struct Pending { int client; std::string line; };
     std::deque<Pending> g_Retry;
+
+    // Protocol lines the AP client acts on (las/client.py), as opposed to replies to debug commands.
+    bool ForClient(const std::string& line) {
+        static const char* kVerbs[] = {"CHECK", "CHECKS", "HINT", "GOAL", "DIED", "DEATHDROPPED", "RECV", "LOG"};
+        std::string verb = line.substr(0, line.find(' '));
+        for (const char* v : kVerbs) {
+            if (verb == v) return true;
+        }
+        return false;
+    }
 }
 
 namespace AP::Test {
@@ -1047,11 +1057,18 @@ namespace AP::Test {
 
     bool Capture(const std::string& line) {
         int to = g_ReplyTo.load();
-        if (to >= 0) {
+        if (to >= 0 && !ForClient(line)) {
             Push(to, line);
             return true;
         }
-        Broadcast("AP " + line);
+        // A line for the AP client: the client gets it also when a debug command caused it (a give's CHECK), so the
+        // server sees what the game did; the debug client whose command it was gets it as its reply.
+        Lock();
+        for (int i = 0; i < kMaxClients; i++) {
+            auto& c = g_Clients[i];
+            if (c.fd >= 0 && c.out.size() < 4096) c.out.push_back((i == to ? "" : "AP ") + line + "\n");
+        }
+        Unlock();
         return false;
     }
 

@@ -15,7 +15,8 @@ namespace AP::Test {
     void NetStart(int port);
     void NetPoll();
     // AP::Send hands every line here first: a reply to a debug command goes to the debug client that sent it
-    // (true: not for the AP client); any other line is mirrored to the debug clients as "AP <line>".
+    // (true: not for the AP client). A line for the AP client (CHECK, RECV, ...) goes to the client also when a debug
+    // command caused it (false); the debug client whose command it was gets it as its reply, the others as "AP <line>".
     bool Capture(const std::string& line);
 
     // Game thread (ap_game.cpp)
