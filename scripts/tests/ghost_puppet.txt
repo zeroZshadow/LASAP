@@ -1,0 +1,42 @@
+# Multiplayer ghosts, the puppets (DESIGN.md, Ghosts). Run after boot_file1, set up as ghost_net (a ghost relay, the
+# client joined to it with --ghost-secret test, scripts/ghost_peer.py --secret test circling), on a mod with
+# ghost_puppet.py install. On the open lawn east of Mabe's phone booth tree (Field_12D).
+connect
+expect HELLO 30
+warp Field 43 10.5 137
+free 10
+# the peer beside Link: ghost slot 0 gets a puppet with Link's model
+peer goto Field 46.5 10.5 137
+await 5 ghosts=1
+await 5 puppets=1
+send DBG puppet
+expect \|\s0\sactor=\w+\spos=[\d.,]+\smodel=[0-9a-f]+
+# the peer leaves the level: the puppet hides; it comes back: the same actor shows again
+peer nowhere
+await 5 puppets=0
+send DBG puppet
+expect \|\s0\sactor=\w+\shidden
+peer goto Field 46.5 10.5 137
+await 5 puppets=1
+send DBG puppet
+expect \|\s0\sactor=\w+\spos=[\d.,]+\smodel=[0-9a-f]+
+# Link reloads the level with the ghost shown: the puppet goes with the old level, a new one shows
+warp Field 43 10.5 137
+free 10
+await 10 puppets=1
+# both in a house: the same actor shows there, with the model it loads in that level
+peer goto MarinTarinHouse 9 0 10
+warp MarinTarinHouse 7.5 0 10
+free 10
+await 10 puppets=1
+send DBG puppet
+expect \|\s0\sactor=\w+\spos=(7|8|9|10)\.\d+,0\.\d+,(8|9|10|11)\.\d+\smodel=[0-9a-f]+
+peer goto Field 46.5 10.5 137
+warp Field 43 10.5 137
+free 10
+await 10 puppets=1
+# ghosts off in the client: hidden
+send /ghosts off
+await 5 puppets=0
+send /ghosts on
+await 10 puppets=1

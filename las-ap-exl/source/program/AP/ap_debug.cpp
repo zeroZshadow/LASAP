@@ -1289,6 +1289,21 @@ namespace AP::Test {
         } else if (cmd == "frame") {
             AP::Send("FRAME " + std::to_string(g_FrameNo) + " counter=" + std::to_string(g_Frame) + " ms=" +
                      std::to_string(NowMs()));
+        } else if (cmd == "mem" && a.size() >= 4) {
+            // DBG mem <hex address> <hex length>: raw bytes, if readable
+            uintptr_t addr = strtoull(a[2].c_str(), nullptr, 16);
+            size_t len = std::min<size_t>(strtoull(a[3].c_str(), nullptr, 16), 0x1000);
+            if (!Readable(addr, len)) {
+                AP::Send("ERR mem: not readable");
+                return true;
+            }
+            std::string line = "MEM " + a[2] + " ";
+            char hex[3];
+            for (size_t i = 0; i < len; i++) {
+                snprintf(hex, sizeof(hex), "%02x", reinterpret_cast<const u8*>(addr)[i]);
+                line += hex;
+            }
+            AP::Send(line);
         } else if (AP::Puppet::Command(a)) {
         } else {
             return false;
@@ -1299,7 +1314,8 @@ namespace AP::Test {
     std::string StateFields() {
         char yaw[16];
         snprintf(yaw, sizeof(yaw), "%.0f", PlayerYaw());
-        return " frame=" + std::to_string(g_FrameNo) + " msg=" + MessageState() + " choice=" + g_Fields[9].value +
+        return " puppets=" + std::to_string(AP::Puppet::Shown()) + " frame=" + std::to_string(g_FrameNo) +
+               " msg=" + MessageState() + " choice=" + g_Fields[9].value +
                " face=" + g_Fields[13].value + " yaw=" + yaw + " file=" + g_Fields[12].value +
                " read=" + std::to_string(g_ReadFrames);
     }
