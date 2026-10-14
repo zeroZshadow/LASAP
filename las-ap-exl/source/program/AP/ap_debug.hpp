@@ -30,6 +30,13 @@ namespace AP::Test {
     void InstallHooks();
 }
 
+namespace AP::Puppet {
+    // ap_puppet.cpp: a ghost puppet (an NPC actor spawned at runtime, drawn with Link's model and steered by hand)
+    void InstallHooks();
+    void Tick();
+    bool Command(const std::vector<std::string>& a);
+}
+
 namespace AP {
     // ap_game.cpp, for the test build
     bool HandleTestLine(const std::string& line);
