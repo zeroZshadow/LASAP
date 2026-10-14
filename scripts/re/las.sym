@@ -4,18 +4,29 @@ ActorParams_Dtor2 0x085213b0 f member destructor at params +0x10
 Entity_DestroyThunk 0x085226d0 f actor vtable +0xa8: calls Entity_Destroy
 Resource_TakeFlowchart 0x085419f0 f (out, handle*)
 Resource_Wait 0x08541c20 f (handle*)
+AreaCraneGame_Setup 0x08553b40 f loads actor/AreaCraneGame.bfres, builds the featured prizes
+CraneGame_BuildFeaturedPrizes 0x08557f30 f (this): CraneGame_NextFeaturedPrize for groups 0 and 1
+CraneGame_NextFeaturedPrize 0x08558ac0 f (out, group): first featured row not owned (CranePrize_Has with layout itemIndex) whose conditions hold
 Sound_Play 0x085a97e0 f (StringView* name, nullptr, volume, pitch)
 EventAction_PlayAnimation2 0x085f7bb0 f virtual +0x30 on the actor's root component
 EventAction_PlayAnimation 0x0861d0c0 f
 SkeletalModelComponent_Make 0x08646660 f (out, owner, StringView* name, rootSp*, resource, ...)
-Item_IsCollected 0x0864cb10 f (kind, count, index): kind 8 heart piece bit, kind 9 seashell bit
+CranePrize_TypeByKey 0x0864c820 f (StringView* key) -> CranePrize row index, 0xff when missing
+CranePrize_Add 0x0864c9c0 f (u8 prizeType, count, index): AddItemID per prize; figurines 0xa-0x13 set inventory +0xe8 bits directly
+CranePrize_AddPanelPiece 0x0864cb08 l tail of CranePrize_Add for type 0x14: AddItemID(114, count, index)
+CranePrize_Has 0x0864cb10 f (u8 prizeType, count, index): CranePrize row index as kind; replaces Item_IsCollected (not used by item actors)
 LayeredAnimation_Make 0x08b7fa70 f (out, parent entity, StringView* name, smcSp*, int* slots): a layered SkeletalAnimationComponent
+CraneQuery_HasPrize 0x08ce7260 f event query HasPrize (prizeType, count): CranePrize_Has(type, count, -1)
 Event_Make 0x08d10290 f (out, flowchart*, StringView* entry)
 Event_Prepare 0x08d11b00 f (event*)
+PanelQuery_Stone4 0x08d157e0 f event query lambda: save +0x5093 >= 5 and chamber stone 4 owned
 EventManager_Request 0x08d232e0 f (out, manager, event*)
 Datasheets_Load 0x08d3cb30 f boot: loads Npc.gsheet and NpcPhysicsTraits.gsheet into 0x1cb8360
 Title_ChangeState 0x08d831b0 f (machine*, state)
+ItemActor_CanAppear 0x08dc8510 f (actor): false when +0xc0 == 3 and Inventory_HasItem(+0x2e8 item, 1, +0xbc index)
 Npc_TraitsValue 0x08dcb490 f (npc component): a float of the row's collision.traits row in NpcPhysicsTraits, default without
+Inventory_AddItemID 0x08dd48e0 f (itemId, count, index); hooked by the module. Case 114 sets the chamber stone bit
+Inventory_HasItem 0x08dd5a30 f (itemId, count, index): 114 tests chamber stone bit index; the item actors' collected check
 Scene_ReleaseActors 0x08de72c0 f moves or removes the actors of a weak list (RemoveChild as the module does)
 Actor_Create 0x08df9ea0 f (shared_ptr* out, shared_ptr* owner, params*): the actor factory; owner Framework +0x498
 NpcComponent_Ctor 0x08e47e90 f (component, args, StringView* row key, x3): looks the Npc row up; row at +0x88
@@ -43,6 +54,8 @@ NpcGhost_MakeNpcComponent 0x08ec4870 f (out, args*, x3): passes the row key NpcG
 NpcGhost_MakeEventChara 0x08ec5070 f vtable +0x220 override
 NpcComponent_PlayMaterialAnimation 0x08ec5b30 f (out[2], npc component, StringView* name, bool at once): the event helper; e.g. "clothes"
 NpcAnimation_PlayByName2 0x08ee3590 f a subclass's override of 0x949260
+ShopPanelItem_IsSold 0x091e4b70 f (row id): chamber stone bit of the ShopPanelItem row's mIndex
+ShopPanelItem_IsAvailable 0x091e4e00 f (row id): mCondition flag holds and the stone bit is clear
 PanelShadowLink_Init 0x0920fe50 f the Chamber Dungeon's Shadow Link: PlayerAnimation controller at +0x16e0
 Player_Init 0x0922f030 f player vtable +0x10
 Player_InitParts 0x09230c50 f registers the item shape groups at player +0x498
@@ -82,6 +95,7 @@ Hud_Update 0x093ae800 f places Gm_HUDInteract next to Link with WorldToLayout
 UiManager_BuildLayout 0x093dd050 f (out shared_ptr, UI manager, name, length, priority, archive set, flag)
 MessageWindow_Reading 0x093f5960 f update of the state Reading
 MessageWindow_PlaceBalloon 0x093fba30 f projects and clamps the balloon position
+MapPiece_CountMarked 0x09437900 f counts MapPieceList panels owned (set/stone bits) and marked in the second tables
 DungeonMapIcon_Update 0x0943c040 f (icon*, actor*)
 HudInteract_Setup 0x0943dea0 f text pane T_Interact_00, window W_Interact_00
 MessageText_ShowLetters 0x09457b60 f (text*, int letters)
@@ -144,6 +158,8 @@ Pane_FindByName 0x0966ae00 f pane vtable +0x60 (pane, name, recursive)
 operator_new 0x09935170 f import stub
 shared_weak_count_release_weak 0x099351f0 f libc++ std::__shared_weak_count::__release_weak
 PlayerAnimation_DefaultBlend 0x09bb3c44 l f32 0.0667
+CranePrizeAddTable 0x09bb4cf8 l CranePrize_Add jump table, 21 s32 offsets
+AddItemIdTable 0x09bb6d60 l Inventory_AddItemID jump table, 0x7f s32 offsets
 str_NpcGhost 0x09befdf4 l "NpcGhost": the row key and the actor table's name
 NpcCollisionFilters 0x09c06080 l 7 u32 collision filters
 NpcComponent_vtable2 0x0a0c9290 l vtable
@@ -173,12 +189,19 @@ got_nvnMultisampleStateSetAlphaToCoverageEnable 0x0a199200 l
 Framework_ptr 0x0a19b188 l Framework: +0x498 actor system, +0x4b8 player, +0x4d4 frame counter, +0x518 controller, +0x560 camera
 UiManager_ptr 0x0a19b1c0 l +0x88 archive slots, 0x10 apart
 HudPass_ptr 0x0a19b2c8 l
+CranePrizeSheets_ptr 0x0a1b0f28 l 0x40 bytes of shared_ptrs: CranePrize +0x0, featured groups 1/2 at +0x20/+0x30
 EventManager_ptr 0x0a1b64d8 l
 NpcSheets_ptr 0x0a1bc360 l -> {shared_ptr Npc.gsheet, shared_ptr NpcPhysicsTraits.gsheet}
+PanelSheets_ptr 0x0a1bde50 l 0xa0 bytes of shared_ptrs: MapPieceList +0x0, MapPieceTheme +0x10, ShopPanelItem +0x40
 PlayerAnimationSheet_ptr 0x0a1bef70 l -> shared_ptr PlayerAnimation.gsheet
 GlobalSave 0x0a1bf200 l
 EventFlags_ptr 0x0a1c5120 l
 DungeonItems_ptr 0x0a1c51b0 l
+PanelPieceSetBits 0x0a1c51e0 l {u8* bits, s32 bytes 2, s32 bits 13}: PanelDungeonPieceSet (item 115) owned
+PanelPieceBits 0x0a1c5208 l {u8* bits, s32 bytes 7, s32 bits 51}: chamber stones (item 114) owned; CranePrize kind 0x14
+PanelPieceSetBits2 0x0a1c5230 l {u8*, 2, 13}: second set table (seen/new, unverified)
+PanelPieceBits2 0x0a1c5258 l {u8*, 7, 51}: second stone table (seen/new, unverified)
+PanelNotifyBits 0x0a1c52a8 l {u8*, 1, 8}: bit 0 first stone, 2 later stone or set, 3 special stone (7,13,18,19,24,32)
 Inventory_ptr 0x0a1c5368 l +0x9c bits: 0 SwordLv2, 1 MirrorShield, 6 ClothesRed, 7 ClothesBlue
 LevelIndex_ptr 0x0a1c53c8 l
 EntityManager_ptr 0x0a1cad98 l +0x6d8 u8 flushing
