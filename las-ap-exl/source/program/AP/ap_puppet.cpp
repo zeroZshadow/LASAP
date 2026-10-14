@@ -170,7 +170,8 @@ namespace {
         Track track;
         u32 framesSeen = 0;      // the ghost's lines fed so far
 #ifdef LASAP_TEST
-        std::vector<std::string> animLog;  // its plays, for DBG puppet animlog
+        std::vector<std::string> animLog;  // its plays and model loads, for DBG puppet animlog
+        u32 shownAt = 0;                   // frame it was last shown
 #endif
     };
     Puppet g_Puppets[kPuppets];
@@ -300,6 +301,9 @@ namespace {
         if (Alive(p)) {
             Place(p, pos, nullptr);
             p.shown = true;
+#ifdef LASAP_TEST
+            p.shownAt = frame;
+#endif
             return true;
         }
         auto* player = Player();
@@ -366,6 +370,9 @@ namespace {
             return false;
         }
         p.shown = true;
+#ifdef LASAP_TEST
+        p.shownAt = frame;
+#endif
         return true;
     }
 
@@ -539,6 +546,9 @@ namespace {
         if (model == p.model) return;
         ClearSpan(IndexOf(p));
         p.model = model;
+#ifdef LASAP_TEST
+        if (model != nullptr && p.animLog.size() < 40) p.animLog.push_back("model@" + std::to_string(g_LastFrame - p.shownAt));
+#endif
         p.look = Look::Unknown;
         p.track.gait = -1;
         p.track.anim = -1;
@@ -741,7 +751,8 @@ HOOK_DEFINE_TRAMPOLINE(PlayByName) {
     static void Callback(void* comp, NameView* name, u8 mode, float blend, float frame) {
         if (mode == 0 && comp != nullptr) {
             for (auto& p : g_Puppets) {
-                if (comp == AnimComp(p) && p.animLog.size() < 40) p.animLog.emplace_back(name->ptr, name->len);
+                if (comp == AnimComp(p) && p.animLog.size() < 40)
+                    p.animLog.push_back(std::string(name->ptr, name->len) + "@" + std::to_string(g_LastFrame - p.shownAt));
             }
         }
         Orig(comp, name, mode, blend, frame);

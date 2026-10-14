@@ -84,11 +84,11 @@ async def main(args) -> None:
         if place["here"]:
             t = time.monotonic() - start
             x, y, z = place["at"]
-            angle = t * 1.5
+            angle = t * 1.5  # along (cos, sin) in x, z: heading -angle (yaw 0 = +z, 90 = +x)
             radius = place["radius"]
             body = wire.POS_BODY.pack(int(t * 1000) & 0xFFFF, wire.LEVEL_IDS[place["level"]],
                                       wire.room_index(place["level"], x, z), x + radius * math.cos(angle), y,
-                                      z + radius * math.sin(angle), int((angle * 180 / math.pi + 90) % 360
+                                      z + radius * math.sin(angle), int((-angle * 180 / math.pi) % 360
                                                                         * 65536 / 360) & 0xFFFF, 0, 0,
                                       0 if radius else wire.FLAG_STILL)
             writer.write(wire.frame(bytes([wire.POS]) + body))
