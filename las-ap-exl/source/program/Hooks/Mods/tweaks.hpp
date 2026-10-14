@@ -17,6 +17,12 @@ namespace Tweaks {
 
     // The low-health warning: the two calls that play SE_SY_HP_ALLEART (the first five beeps, then quieter ones)
     constexpr uintptr_t kLowHealthBeeps[] = {0xeabeb0, 0xeabf44};
+
+    // An enemy's death picks the buff that replaces its drop: a Guardian Acorn once KillCountNoDamage reaches 14
+    // (b.hs to it), else a Piece of Power once KillCount reaches maximum hearts + 32 (b.lt to the normal drop below it)
+    constexpr uintptr_t kGuardianAcornBranch = 0x89c038;
+    constexpr uintptr_t kPieceOfPowerBranch = 0x89c054;
+    constexpr uintptr_t kNormalDrop = 0x89ba3c;
 }
 
 HOOK_DEFINE_TRAMPOLINE(InstantPage) {
@@ -44,6 +50,15 @@ namespace Tweaks {
                 p.Seek(offset_manager.Offset(call));
                 p.WriteInst(exl::armv8::inst::Nop());
             }
+        }
+        exl::patch::CodePatcher p(0);
+        if (global_config.tweaks.no_guardian_acorn) {
+            p.Seek(offset_manager.Offset(kGuardianAcornBranch));
+            p.WriteInst(exl::armv8::inst::Nop());
+        }
+        if (global_config.tweaks.no_piece_of_power) {
+            p.Seek(offset_manager.Offset(kPieceOfPowerBranch));
+            p.WriteInst(exl::armv8::inst::Branch(-static_cast<int>(kPieceOfPowerBranch - kNormalDrop)));
         }
     }
 }

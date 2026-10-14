@@ -157,7 +157,8 @@ PLAYER_SETTINGS = {
 PLAYER_CHOICES = {"Damage": ("None", "Normal", "OHKO"), "Music": ("Vanilla", "Shuffled", "Removed")}
 # Walking and swimming speed with Movement Speed on: LASR's single speed (dashing stays at 1.0)
 MOVEMENT_SPEED = 1.2
-# ItemDrop.gsheet rows the game drops after a run of kills without damage; the settings empty them.
+# ItemDrop.gsheet rows of the two buffs; the settings empty them, for drops that name them. The buffs after a run of
+# kills come from the game's code, which the module skips (config.ini [tweaks]).
 BUFF_DROPS = {"Disable Guardian Acorn": "GuardianAcorn", "Disable Piece of Power": "PowerPiece"}
 
 
@@ -398,7 +399,9 @@ class APModsProcess(mod_generator.ModsProcess):
                             f"walk_speed = {speed}\nswim_speed = {speed}\nfull_direction = ", 1)
         # Settings LASR lists but never implemented; the module does them.
         text += (f"\n[tweaks]\ninstant_text = {self.settings.get('Instant Text', False)}\n"
-                 f"no_low_health_beep = {self.settings.get('Disable Low Health Beep', False)}\n")
+                 f"no_low_health_beep = {self.settings.get('Disable Low Health Beep', False)}\n"
+                 f"no_guardian_acorn = {self.settings.get('Disable Guardian Acorn', False)}\n"
+                 f"no_piece_of_power = {self.settings.get('Disable Piece of Power', False)}\n")
         path.write_text(text + f"\n[archipelago]\nseed_hash = {self.seed_hash}\n")
         # What each location holds, so the found text names it before the client connects (DESIGN.md)
         with open(self.config_dir / "ap_names.txt", "w", encoding="utf-8", newline="\n") as f:

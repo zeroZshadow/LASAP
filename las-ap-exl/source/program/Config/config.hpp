@@ -50,6 +50,8 @@ struct PatchConfig {
     struct {
         bool instant_text;
         bool no_low_health_beep;
+        bool no_guardian_acorn;
+        bool no_piece_of_power;
     } tweaks;
 
     struct {
@@ -204,6 +206,12 @@ struct PatchConfig {
         }
         else if (key == "no_low_health_beep" && value == "true") {
             tweaks.no_low_health_beep = true;
+        }
+        else if (key == "no_guardian_acorn" && value == "true") {
+            tweaks.no_guardian_acorn = true;
+        }
+        else if (key == "no_piece_of_power" && value == "true") {
+            tweaks.no_piece_of_power = true;
         }
     }
 
