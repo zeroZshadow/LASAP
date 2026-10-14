@@ -312,7 +312,7 @@ def run(script: Path, trace: str | None = None) -> None:
             if len(found) != int(parts[1]):
                 raise SystemExit(f"{log}.log has {len(found)} lines with /{parts[0]}/, not {parts[1]}: {found}")
         elif op == "peer":
-            # peer <command>: a console command for the DeathLink peer (scripts/deathlink_peer.py)
+            # peer <command>: a console command for the peer (scripts/deathlink_peer.py, scripts/ghost_peer.py)
             append(DIR / "peer_cmds.txt", rest)
         elif op == "mash":
             # mash <buttons hex> <count> [hold ms] [gap s]

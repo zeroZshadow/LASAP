@@ -75,6 +75,16 @@ class LASSettings(settings.Group):
     class GameHost(str):
         """Address of the console or emulator running the game. 127.0.0.1 for an emulator on this computer."""
 
+    class Ghosts(settings.Bool):
+        """Show the other players of the run as ghosts where you are, and show them you."""
+
+    class GhostRelay(str):
+        """The ghost relay, host:port. Empty: the community relay."""
+
+    class GhostPassword(str):
+        """The run's ghost password: players see each other's ghosts when their patches are of the same seed and
+        they enter the same password here (or all leave it empty)."""
+
     emulator: Emulator = Emulator("")
     game_file: GameFile = GameFile("")
     romfs_folder: RomfsFolder = RomfsFolder("")
@@ -82,6 +92,9 @@ class LASSettings(settings.Group):
     mod_folder: ModFolder = ModFolder("")
     patcher_command: PatcherCommand = PatcherCommand("")
     game_host: GameHost = GameHost("127.0.0.1")
+    ghosts: Union[Ghosts, bool] = True
+    ghost_relay: GhostRelay = GhostRelay("")
+    ghost_password: GhostPassword = GhostPassword("")
 
     # Player settings (PLAYER_SETTINGS): the Patch tab's look and sound settings, for every seed.
     class BlurRemoval(settings.Bool):

@@ -1133,6 +1133,11 @@ namespace AP::Test {
 
     bool Command(const std::vector<std::string>& a) {
         const std::string& cmd = a[1];
+        if (cmd == "ghostnet") {
+            // DBG ghostnet: the positions sent and the ghosts received (ap_ghostnet.cpp)
+            AP::Send("OK " + AP::GhostNet::State());
+            return true;
+        }
         int client = g_ReplyTo.load();
         if (cmd == "input" && a.size() >= 4) {
             // DBG input <buttons hex> <milliseconds> [lx ly]: held for that long, whatever the game does

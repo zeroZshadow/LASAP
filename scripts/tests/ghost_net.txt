@@ -1,0 +1,40 @@
+# Multiplayer ghosts, the network half (DESIGN.md, Ghosts). Run after boot_file1, with a ghost relay, the client
+# joined to it (--ghost-relay, --ghost-password test) and scripts/ghost_peer.py in the same group (slot Peer, stdin
+# from peer_cmds.txt, output to peer.log) circling in front of Marin's door, Field_11C.
+connect
+expect HELLO 30
+warp Field 38.25 10.5 128.25
+free 10
+send DBG ghostnet
+expect wanted=1
+# Link's positions reach the peer; the peer shows as ghost 0
+logged FRAME\s\d+\sField\s3[6-9]\. 10 peer
+await 5 ghosts=1
+send DBG ghostnet
+expect \|\s0\sPeer\sField\s3[6-9]\.
+# the peer two screens west (Field_11A): out of each other's area
+peer goto Field 7.5 10.5 126.75
+await 5 ghosts=0
+logged OFF\s\d+\sarea 5 peer
+# one screen west (Field_11B): in the area again
+peer goto Field 22.5 10.5 126.75
+await 5 ghosts=1
+logged FRAME\s\d+\sField 5 peer 2
+# another level, then no level (a level load)
+peer goto MarinTarinHouse 1 0 1
+await 5 ghosts=0
+peer goto Field 38.25 10.5 126
+await 5 ghosts=1
+peer nowhere
+await 5 ghosts=0
+peer goto Field 38.25 10.5 126
+await 5 ghosts=1
+# Link walks: the peer keeps getting frames; Link turns ghosts off: the peer gets an off, the game shows none
+goto 40.5 10.5 128.25
+send /ghosts off
+await 5 ghosts=0
+logged OFF\s\d+\sleft 5 peer
+send DBG ghostnet
+expect wanted=0
+send /ghosts on
+await 10 ghosts=1

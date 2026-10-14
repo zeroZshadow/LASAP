@@ -122,3 +122,32 @@ namespace AP {
     // Every room of the current dungeon counts as visited; once per tick.
     void TickMap();
 }
+
+// Multiplayer ghosts, the network half (ap_ghostnet.cpp, DESIGN.md "Ghosts"): POS lines to the client, GHOST lines
+// from it.
+namespace AP::GhostNet {
+    // Ghosts the client shows at once; GHOST lines name a slot 0..SLOTS-1.
+    constexpr int SLOTS = 4;
+    // Another player in this area, as the last GHOST line for its slot gave it.
+    struct Ghost {
+        bool active = false;  // false: nobody in this slot (GHOST <n> off, GHOSTS 0, no client)
+        std::string name;     // the player's slot name
+        std::string level;    // the level the player is in; it can lag behind a level change of this player
+        float x = 0, y = 0, z = 0;
+        float yaw = 0;          // degrees, 0 = +z (the bottom of the screen), 90 = +x
+        int anim = 0;           // animation id (0 until there are ids)
+        int animMs = 0;         // time into the animation
+        int flags = 0;          // 1: warped (snap, do not move there), 2: hidden
+        u64 receivedMs = 0;     // when the line arrived (system counter, ms)
+        u32 frames = 0;         // GHOST lines for this slot so far
+    };
+    // Once per tick: sends Link's position while the client asks for it.
+    void Tick();
+    // A new client connection: no positions until it asks, no ghosts.
+    void Reset();
+    // A GHOSTS or GHOST line from the client.
+    void HandleLine(const std::string& line);
+    const Ghost& Get(int n);
+    // DBG ghostnet: what was sent and what each slot holds.
+    std::string State();
+}

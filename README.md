@@ -60,6 +60,32 @@ The release's `las.apworld` is all a player installs, on any system Archipelago 
 
 The patcher also runs on its own: `.venv-lasr/Scripts/python.exe patcher/las_ap_patch.py <patch.aplas> --romfs <romfs dump> --out <out dir>` writes the SD card layout (`atmosphere/contents/01006BB00C6F0000`, `config/lasr-exl/config.ini`) to `<out dir>`.
 
+## Ghost relay
+
+Multiplayer ghosts (DESIGN.md, Ghosts) go through a small relay that whoever hosts it runs as a service. It is one file, `apworld/las/ghost_relay.py`, with no dependencies beyond Python 3.8+:
+
+```bash
+python3 ghost_relay.py --port 43390
+```
+
+- It listens on all addresses by default (`--host` to change), plain TCP; open the port in the firewall. `--quiet` logs errors only.
+- Players reach it through `ghosts.RELAY_ADDRESS` in the world, or the client's "Ghost relay" setting.
+- As a systemd service (`/etc/systemd/system/las-ghost-relay.service`):
+  ```ini
+  [Unit]
+  Description=LAS Archipelago ghost relay
+  After=network-online.target
+
+  [Service]
+  ExecStart=/usr/bin/python3 /opt/las-ghost-relay/ghost_relay.py --port 43390
+  DynamicUser=yes
+  Restart=always
+
+  [Install]
+  WantedBy=multi-user.target
+  ```
+  Then `systemctl enable --now las-ghost-relay`.
+
 ## Status
 
 The core loop works on Ryujinx: checks, received items with the game's own item-get display, resync, goal. TESTING.md lists what is verified and what is not.

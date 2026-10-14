@@ -10,6 +10,7 @@ from NetUtils import ClientStatus, HintStatus
 from .container import LASContainer
 from .ids import LOCATION_BASE, LOCATION_OFFSETS
 from . import checklist, emulators
+from .ghosts import GhostLink, RELAY_ADDRESS
 from .host_settings import PLAYER_SETTINGS, player_value
 from .install import InstallError, patch_and_install
 from .items import GAME, ITEM_GAME_INFO
@@ -36,6 +37,7 @@ def clean(text: str) -> str:
 
 
 OPTION_KEYS = ("emulator", "game_file", "romfs_folder", "sd_card_folder", "mod_folder", "patcher_command", "game_host")
+GHOST_KEYS = ("ghost_relay", "ghost_password")
 
 
 class LASCommandProcessor(ClientCommandProcessor):
@@ -57,6 +59,18 @@ class LASCommandProcessor(ClientCommandProcessor):
     def _cmd_game(self, *args: str) -> None:
         """Send a raw protocol line to the game module (testing only)."""
         self.ctx.send_game(" ".join(args))
+
+    def _cmd_ghosts(self, value: str = "") -> None:
+        """Show the ghosts' state, or turn them on or off: /ghosts on|off."""
+        ctx = self.ctx
+        if value:
+            if value.lower() not in ("on", "off"):
+                logger.error("Usage: /ghosts [on|off]")
+                return
+            ctx.set_ghosts(value.lower() == "on")
+        link = ctx.ghosts
+        logger.info(f"{link.status.text or link.waiting_for()} Relay {link.address or '(none)'}, "
+                    f"{link.sent_frames} frames sent, {link.received_frames} received, ghost slots {link.ghosts}.")
 
     def _cmd_resync(self) -> None:
         """Ask the game to resend its received-item count and collected locations."""
@@ -146,6 +160,9 @@ class LASContext(CommonContext):
         self.logic_tracker: Optional[LogicTracker] = None  # the slot's rules, for the map tracker
         self.in_logic: Optional[Set[int]] = None  # local ids last sent to the game as in logic
         self.logic_starting: List[str] = []  # the slot's starting items, which the server does not send
+        self.ghosts = GhostLink(self.send_game, self.refresh_patch_tab)
+        self.ghost_relay_arg: Optional[str] = None  # --ghost-relay and --ghost-password replace las_options
+        self.ghost_password_arg: Optional[str] = None
 
     async def get_username(self) -> None:
         # the slot comes from the patch file, as the server would otherwise ask for it
@@ -167,6 +184,7 @@ class LASContext(CommonContext):
             logger.warning(f"Connected as {self.auth}, but the patch file is for {self.patch_slot}.")
         if container.server and not self.server:
             asyncio.create_task(self.connect(container.server))
+        self.update_ghosts()
 
     def read_patch_file(self) -> Optional[LASContainer]:
         if not self.patch_file:
@@ -210,6 +228,7 @@ class LASContext(CommonContext):
             self.logic_starting = logic.get("starting", []) if logic else []
             self.in_logic = None
             self.send_logic()
+            self.update_ghosts()
         elif cmd == "RoomUpdate":
             self.send_checked(args.get("checked_locations", []))
             self.send_logic()
@@ -377,6 +396,10 @@ class LASContext(CommonContext):
             self.send_checked(self.checked_locations)
             self.send_logic(force=True)
             self.send_game("SYNC")
+            self.update_ghosts()
+            self.ghosts.on_game_connected()
+        elif cmd == "POS":
+            self.ghosts.on_pos(parts)
         elif cmd == "RECV":
             self.game_recv = int(parts[1])
             self.send_next_item()
@@ -465,6 +488,7 @@ class LASContext(CommonContext):
             finally:
                 ping.cancel()
                 self.game_writer = None
+                self.ghosts.on_game_lost()
                 writer.close()
                 logger.info("Lost connection to the game; retrying.")
                 self.set_game_status(checklist.INFO, "Waiting for the game to start.")
@@ -499,6 +523,8 @@ class LASContext(CommonContext):
             self.game_host = value or "127.0.0.1"
         if key == "emulator" and detect:
             self.detect_from_emulator()
+        if key in GHOST_KEYS:
+            self.update_ghosts()
         self.refresh_patch_tab()
 
     @staticmethod
@@ -521,6 +547,38 @@ class LASContext(CommonContext):
     def player_settings() -> Dict[str, Any]:
         from . import LASWorld
         return LASWorld.settings.player_settings()
+
+    @staticmethod
+    def ghosts_on() -> bool:
+        from . import LASWorld
+        return bool(LASWorld.settings.ghosts)
+
+    def set_ghosts(self, on: bool) -> None:
+        import settings
+        from . import LASWorld
+        if self.ghosts_on() == on:
+            return
+        LASWorld.settings.ghosts = on
+        settings.get_settings().save()
+        self.update_ghosts()
+        self.refresh_patch_tab()
+
+    def update_ghosts(self) -> None:
+        """Hands the ghost link its settings, the run's seed and the slot; it reconnects when they change."""
+        from . import LASWorld
+        options = LASWorld.settings
+        slot = self.auth or self.patch_slot or ""
+        player = self.player_names.get(self.slot, slot) if self.slot else slot
+        address = self.ghost_relay_arg if self.ghost_relay_arg is not None else options.ghost_relay or RELAY_ADDRESS
+        password = self.ghost_password_arg if self.ghost_password_arg is not None else options.ghost_password
+        self.ghosts.configure(bool(options.ghosts), address, password, self.game_seed_hash or self.slot_seed_hash,
+                              slot, player)
+
+    @property
+    def ghost_status(self) -> checklist.Check:
+        """The ghosts' link to the relay, for the Patch tab."""
+        return self.ghosts.status if self.ghosts.status.text else checklist.Check(checklist.INFO,
+                                                                                    self.ghosts.waiting_for())
 
     def install_target(self) -> Optional[emulators.Target]:
         return emulators.target(self.option("emulator"), self.option("sd_card_folder"), self.option("mod_folder"))
@@ -670,8 +728,11 @@ def launch(*launch_args: str) -> None:
     async def main(args) -> None:
         ctx = LASContext(args.connect, args.password, args.game_host, args.game_port, args.patch)
         ctx.auth = args.name
+        ctx.ghost_relay_arg, ctx.ghost_password_arg = args.ghost_relay, args.ghost_password
         ctx.server_task = asyncio.create_task(server_loop(ctx), name="server loop")
         game_task = asyncio.create_task(ctx.game_loop(), name="game loop")
+        ctx.update_ghosts()
+        ghost_task = asyncio.create_task(ctx.ghosts.run(ctx.exit_event), name="ghosts")
         if gui_enabled and not args.nogui:
             ctx.run_gui()
         ctx.run_cli()
@@ -681,6 +742,8 @@ def launch(*launch_args: str) -> None:
             asyncio.create_task(ctx.install_patch(start=True), name="patch")
         await ctx.exit_event.wait()
         game_task.cancel()
+        ghost_task.cancel()
+        ctx.ghosts.drop()
         await ctx.shutdown()
 
     parser = get_base_parser(description="Link's Awakening (Switch) Archipelago client.")
@@ -688,6 +751,9 @@ def launch(*launch_args: str) -> None:
     parser.add_argument("--game-host", default=None,
                         help="Address of the Switch or emulator running the game (default: las_options.game_host).")
     parser.add_argument("--game-port", type=int, default=GAME_PORT)
+    parser.add_argument("--ghost-relay", default=None, help="Ghost relay host:port (default: las_options.ghost_relay).")
+    parser.add_argument("--ghost-password", default=None,
+                        help="The run's ghost password (default: las_options.ghost_password).")
     if not hasattr(parser.parse_args([]), "nogui"):
         parser.add_argument("--nogui", default=False, action="store_true")
     parser.add_argument("url", nargs="?", help="Archipelago connection url, or an .aplas patch file to install")
