@@ -1,3 +1,4 @@
+SceneHolder_Lock 0x08515b70 f (shared_ptr* out, holder*): shared_ptr of holder +0x88/+0x90 when its type matches; the game passes *(Framework+0x4a8) and gets the scene (+0x618 room manager)
 ActorParams_Dtor0 0x08520f70 f member destructor at params +0xd0
 ActorParams_Dtor1 0x08521190 f member destructor at params +0x50
 ActorParams_Dtor2 0x085213b0 f member destructor at params +0x10
@@ -39,7 +40,9 @@ EventManager_Request 0x08d232e0 f (out, manager, event*)
 GameControl_Update 0x08d24bc0 f calls GameControl_ProcessLevelJump while a locator is pending (+0x130)
 CompanionEventEntry 0x08d26c20 f picks <entry>_Ghost, <entry>_Marin or {0}_Companion when the flowchart has it
 Datasheets_Load 0x08d3cb30 f boot: loads Npc.gsheet and NpcPhysicsTraits.gsheet into 0x1cb8360
+RoomManager_Update 0x08d569b0 f (manager): per frame in state 1 (+0x3f8); calls RoomManager_UpdateRooms when the camera system's +0x700 bit 3 is set
 LevelLoad_Finish 0x08d59040 f on arrival: SetCurrentLevel with level +0x88, locator +0xd0, position +0x120 of its object
+RoomManager_UpdateRooms 0x08d60280 f (manager, Vec4*, Vec4*, const Vec4* link position, bool): loads rooms around; +0x230 current Zone* (LevelData_ZoneAt), +0x228 nearest loaded room instance
 LevelManager_LevelJump 0x08d68d50 f (mgr, StringView* level, StringView* locator, Vec2* offset) -> bool: only in state +0x3f8 == 1; +0x138 level, +0x180 locator, +0x1d0 offset, state 4
 LevelManager_WarpInLevel 0x08d694d0 f (mgr, StringView* locator, Vec2* offset, int): jump within the current level
 SetGameState 0x08d7f780 f (state machine, u32 state, bool): 4 reloads from the save, 1 quit, 5 ending; hooked by the module
@@ -48,8 +51,21 @@ ItemActor_CanAppear 0x08dc8510 f (actor): false when +0xc0 == 3 and Inventory_Ha
 Npc_TraitsValue 0x08dcb490 f (npc component): a float of the row's collision.traits row in NpcPhysicsTraits, default without
 Inventory_AddItemID 0x08dd48e0 f (itemId, count, index); hooked by the module. Case 114 sets the chamber stone bit
 Inventory_HasItem 0x08dd5a30 f (itemId, count, index): 114 tests chamber stone bit index; the item actors' collected check
+Area_Ctor 0x08de2e00 f (area, lvb, entry, key): +0x20 min, +0x30 max, +0x64 zone index, +0x68 name, +0xc2 row, +0xc3 column
 Scene_ReleaseActors 0x08de72c0 f moves or removes the actors of a weak list (RemoveChild as the module does)
+LevelBvh_QueryPoint 0x08deb3b0 f (node, areas*, nodes*, const Vec4* pos, std::function*): recursive point query over the area BVH
 LevelData_Parse 0x08dee780 f .lvb sections config, node, area, zone, tagPlayerStart, staticObject, condition
+Lvb_Open 0x08dee7a0 f (view, resource): section pointers +0x68 config, +0x70 node, +0x78 area, +0x80 zone, +0x88 tagPlayerStart, +0x90 staticObject, +0x98 condition
+LevelData_Ctor 0x08df1720 f vtable 0x1bcc4c0; ends in LevelData_Load
+LevelData_Load 0x08df18d0 f (level, ...): nodes +0x1e0, areas +0x1f8, zones +0x210 from the LVB
+LevelData_AreaAt 0x08df4970 f vtable +0x20: shared_ptr<Area> (level, const Vec4* pos), returned through x8
+LevelData_ZoneAt 0x08df49e0 f vtable +0x28: Zone* (level, const Vec4* pos), null outside every area
+LevelData_ZoneById 0x08df4ae0 f vtable +0x30: Zone* (level, u32 id); leaf
+LevelData_ForEachAreaOfZone 0x08df4b60 f vtable +0x38: (level, Zone*, std::function*)
+LevelData_QueryPoint 0x08df4e80 f vtable +0x80: (level, const Vec4* pos, std::function*)
+LevelDataGrid_Load 0x08df70a0 f builds a LevelData with a 53x101 grid of generated areas and zones from template areas; probably the Chamber Dungeon
+Area_Make 0x08df8760 f (shared_ptr* out, lvb, entry, key): make_shared<Area>
+Zone_Ctor 0x08df87d0 f (zone, entry, Vec4[2] min/max): +0x0 id, +0x10 min, +0x20 max, +0xb9 side view, +0xba area count, +0xbc area indices
 Actor_Create 0x08df9ea0 f (shared_ptr* out, shared_ptr* owner, params*): the actor factory; owner Framework +0x498
 NpcComponent_Ctor 0x08e47e90 f (component, args, StringView* row key, x3): looks the Npc row up; row at +0x88
 NpcAnimation_PlayByName 0x08e4d260 f (component, StringView* name, u8 mode, f32 blend, f32 frame); vtable slot 29
@@ -105,6 +121,8 @@ PlayerAnimation_KeyOf 0x092f0fa0 f (controller, name) -> key or -1
 PlayerAnimation_PlayIfNew 0x092f1130 f (controller, key, slot, blend)
 PlayerAnimation_PlayByNameIfNew 0x092f1210 f (controller, StringView* name)
 PlayerAnimation_ClearUpper 0x092f1260 f clears slot 1
+DungeonMap_SubscribeZone 0x092f6ea0 f (out ids): subscribes DungeonMap_MarkZoneVisited to the scene's +0x708 dispatcher in dungeons, another one to +0x760 elsewhere
+DungeonMap_MarkZoneVisited 0x092f7370 f (Zone*): sets the visited bit col + 8*row of every area of the zone in the dungeon's DungeonItems entry
 SetCurrentLevel 0x092fe450 f (StringView* level, StringView* locator, Vec3* pos): save +0x0 level, +0x40 locator, +0xdc position; dungeon index from the level name; hooked by the module
 EventFlags_Check 0x092fe920 f (flags, StringView* name)
 LayoutWrapper_Build 0x0935d100 f (wrapper 0x78 bytes, StringView* bflyt file name, priority, archive set 0 Game.arc / 1 StartUp.arc, bool): the layout at wrapper +0x18, null if not built
@@ -187,6 +205,9 @@ str_NpcGhost 0x09befdf4 l "NpcGhost": the row key and the actor table's name
 NpcCollisionFilters 0x09c06080 l 7 u32 collision filters
 AreaLevelOpen_vtable 0x0a058b48 l vtable of the AreaLevelOpen actor
 NpcComponent_vtable2 0x0a0c9290 l vtable
+Area_vtable 0x0a0d00e0 l vtable
+LevelData_vtable 0x0a0d04c0 l vtable
+LevelDataBase_vtable 0x0a0d0608 l abstract base of the LevelData classes
 ActorTable 0x0a0d0898 l 0x58 bytes per actor id; +0x50 name
 NpcComponent_vtable 0x0a0e0570 l vtable
 NpcGhost_vtable 0x0a0e77c0 l vtable
@@ -213,6 +234,7 @@ got_nvnMultisampleStateSetAlphaToCoverageEnable 0x0a199200 l
 Framework_ptr 0x0a19b188 l Framework: +0x498 actor system, +0x4b8 player, +0x4d4 frame counter, +0x518 controller, +0x560 camera
 UiManager_ptr 0x0a19b1c0 l +0x88 archive slots, 0x10 apart
 HudPass_ptr 0x0a19b2c8 l
+CameraSystem_ptr 0x0a1b0b30 l shared_ptr; +0x600/+0x610 vectors passed to RoomManager_UpdateRooms, +0x700 flags (bit 3: room update requested)
 CranePrizeSheets_ptr 0x0a1b0f28 l 0x40 bytes of shared_ptrs: CranePrize +0x0, featured groups 1/2 at +0x20/+0x30
 EventManager_ptr 0x0a1b64d8 l
 NpcSheets_ptr 0x0a1bc360 l -> {shared_ptr Npc.gsheet, shared_ptr NpcPhysicsTraits.gsheet}
