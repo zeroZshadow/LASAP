@@ -71,10 +71,15 @@ PlayerAnimation_PlayIfNew 0x092f1130 f (controller, key, slot, blend)
 PlayerAnimation_PlayByNameIfNew 0x092f1210 f (controller, StringView* name)
 PlayerAnimation_ClearUpper 0x092f1260 f clears slot 1
 EventFlags_Check 0x092fe920 f (flags, StringView* name)
+LayoutWrapper_Build 0x0935d100 f (wrapper 0x78 bytes, StringView* bflyt file name, priority, archive set 0 Game.arc / 1 StartUp.arc, bool): the layout at wrapper +0x18, null if not built
+LayoutWrapper_Dtor 0x0935d470 f removes the layout from the draw list
+LayoutWrapper_DeletingDtor 0x0935d760 f wrapper vtable +0x18
 DungeonMap_KeyWait 0x0937e0f0 f
 DungeonMap_MemoriesButton 0x0938b840 f bool(page*)
 OverworldMap_KeyWait 0x09399090 f
+MapPopName_SetText 0x093a4960 f sizes the bubble: window width = text width / scale + 60
 Hud_Update 0x093ae800 f places Gm_HUDInteract next to Link with WorldToLayout
+UiManager_BuildLayout 0x093dd050 f (out shared_ptr, UI manager, name, length, priority, archive set, flag)
 MessageWindow_Reading 0x093f5960 f update of the state Reading
 MessageWindow_PlaceBalloon 0x093fba30 f projects and clamps the balloon position
 DungeonMapIcon_Update 0x0943c040 f (icon*, actor*)
@@ -123,6 +128,10 @@ SkeletalModel_IsShapeVisible 0x0955f7d0 f vtable +0xa8
 SkeletalModel_MakeLocator 0x09560070 f (out shared_ptr, model component, const char* bone, translate, rotate, scale)
 Msbt_GetText 0x095ae5a0 f
 Msbt_FindLabel 0x095aef40 f
+HudPass_Draw 0x095dce00 f draws each layout whose +0x71 byte is set, after the 3D scene, no depth test
+HudPass_Add 0x095dd4c0 f (pass, shared_ptr* layout, priority): sorted, lowest first
+HudPass_Remove 0x095def70 f
+Layouts_Update 0x095e0e60 f per frame: animates and calculates each built layout whose +0x70 byte is set
 GameTextBox_SetString16 0x095e20b0 f vtable 0x1c52940 +0x100 (textbox, const char16_t*, u16 index)
 GameTextBox_SetString8 0x095e21c0 f vtable 0x1c52940 +0x108 (textbox, const char*, u16 index)
 GameTextBox_RegisterGlyphs 0x095e2550 f
@@ -132,6 +141,7 @@ CmdBuf_BindRasterState 0x09642a70 f (wrapper, state)
 CmdBuf_BindUniformBuffer 0x09643d70 f (wrapper, stage, slot, {GPU address, offset}*, size)
 PipelineState_Build 0x0964a190 f (state, ?, descriptor): alpha-to-coverage from descriptor +0x1a
 Pane_FindByName 0x0966ae00 f pane vtable +0x60 (pane, name, recursive)
+operator_new 0x09935170 f import stub
 shared_weak_count_release_weak 0x099351f0 f libc++ std::__shared_weak_count::__release_weak
 PlayerAnimation_DefaultBlend 0x09bb3c44 l f32 0.0667
 str_NpcGhost 0x09befdf4 l "NpcGhost": the row key and the actor table's name
@@ -152,6 +162,7 @@ MultiMaterialAnimation_vtable 0x0a14d9f0 l vtable
 SkeletalAnimation_vtable 0x0a14dd70 l single layer, 0x1b0 bytes (NPCs)
 LayeredAnimation_vtable 0x0a14dee8 l 0x220 bytes (Link)
 SkeletalModel_vtable 0x0a14e060 l vtable
+Layout_vtable 0x0a1560c8 l the game layout, 0x78 bytes: +0x70 updated, +0x71 drawn
 GameTextBox_vtable 0x0a156940 l vtable
 ui2d_TextBox_vtable 0x0a189270 l vtable
 IdentityQuat_ptr 0x0a197de8 l pointer to an identity quaternion
@@ -160,6 +171,8 @@ got_nvnCommandBufferBindMultisampleState 0x0a1987c0 l
 got_nvnMultisampleStateSetDefaults 0x0a1991e8 l
 got_nvnMultisampleStateSetAlphaToCoverageEnable 0x0a199200 l
 Framework_ptr 0x0a19b188 l Framework: +0x498 actor system, +0x4b8 player, +0x4d4 frame counter, +0x518 controller, +0x560 camera
+UiManager_ptr 0x0a19b1c0 l +0x88 archive slots, 0x10 apart
+HudPass_ptr 0x0a19b2c8 l
 EventManager_ptr 0x0a1b64d8 l
 NpcSheets_ptr 0x0a1bc360 l -> {shared_ptr Npc.gsheet, shared_ptr NpcPhysicsTraits.gsheet}
 PlayerAnimationSheet_ptr 0x0a1bef70 l -> shared_ptr PlayerAnimation.gsheet
