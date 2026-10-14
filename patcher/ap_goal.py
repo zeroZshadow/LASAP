@@ -3,7 +3,10 @@
 The egg's song (`WindFishsEgg.bfevfl`, entry `orchestra`) asks `Inventory.HasAllInstruments` at four switches: whether
 the instruments play, which song plays, how the scene fades and whether the egg opens. Each switch becomes a chain of
 `Inventory.HasItem` checks, one per instrument, that takes the switch's case 1 once the required number is held and
-its case 0 once that number can no longer be reached."""
+its case 0 once that number can no longer be reached.
+
+The sign at the foot of the egg's stairs (`Place:SBMountTamaranch`, only used there) names the number, so a random
+number can be read in the game."""
 from typing import Dict, Optional
 
 from evfl.container import Container
@@ -18,15 +21,41 @@ ITEM_QUERY = "HasItem"
 SWITCHES = 4  # the switches on ALL_QUERY in the orchestra
 # Inventory.HasItem's itemType of the eight instruments, Full Moon Cello to Thunder Drum
 INSTRUMENT_ITEM_TYPES = tuple(range(45, 53))
+SIGN_FILE = "Place.msbt"
+SIGN_KEY = "SBMountTamaranch"
+SIGN_WAIT = "[1:4]"  # the sign's text ends waiting for input
 
 
 def set_instrument_count(files, count: int) -> None:
-    """Opens the egg with `count` instruments; with all of them the file stays as it is."""
+    """Opens the egg with `count` instruments and says so on the sign; with all of them the event stays as it is."""
+    _sign(files, count)
     if count >= len(INSTRUMENT_ITEM_TYPES):
         return
     flow = files.readFile(EVENT_FILE)
     rewrite(flow.flowchart, count)
     files.writeFile(EVENT_FILE, flow)
+
+
+def sign_text(count: int) -> str:
+    total = len(INSTRUMENT_ITEM_TYPES)
+    if count >= total:
+        needed = f"all {total} instruments"
+    elif count == 0:
+        needed = "no instruments"
+    else:
+        needed = f"{count} instrument{'s' if count > 1 else ''}"
+    return f"The Wind Fish's Egg opens\nwith {needed}."
+
+
+def _sign(files, count: int) -> None:
+    """Adds the count below the sign's place name, in every language (in English)."""
+    for relative_path, msbt in files.getAllTextFiles(SIGN_FILE):
+        entry = msbt.getEntry(SIGN_KEY)
+        text = entry.message.text
+        if text.endswith(SIGN_WAIT):
+            text = text[:-len(SIGN_WAIT)]
+        entry.message.text = f"{text}\n{sign_text(count)}{SIGN_WAIT}"
+        files.writeTextFile(relative_path, SIGN_FILE, msbt)
 
 
 def _query(event) -> Optional[str]:

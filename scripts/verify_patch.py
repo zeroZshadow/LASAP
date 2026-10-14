@@ -195,5 +195,11 @@ if required < 8 and (ap_goal.ALL_QUERY in queries or ap_goal.ITEM_QUERY not in q
 if required >= 8 and egg.exists() and queries.count(ap_goal.ALL_QUERY) != ap_goal.SWITCHES:
     bad += 1
     print(f"EGG event lost its {ap_goal.ALL_QUERY} checks with all instruments required")
+from RandomizerCore.Tools.text_tools import TextFile  # noqa: E402
+sign = TextFile(Path(sys.argv[2]) / "atmosphere/contents/01006BB00C6F0000/romfs/regionUS/USen/message" /
+                ap_goal.SIGN_FILE).getEntry(ap_goal.SIGN_KEY).message.text
+if ap_goal.sign_text(required) not in sign:
+    bad += 1
+    print(f"EGG sign does not name {required} instruments: {sign!r}")
 print(f"egg instruments={required} item checks={queries.count(ap_goal.ITEM_QUERY)} bad={bad}")
 sys.exit(1 if bad else 0)

@@ -43,6 +43,16 @@ class TestInstrumentsRequired(unittest.TestCase):
                     for instruments in (INSTRUMENTS[:held], INSTRUMENTS[len(INSTRUMENTS) - held:]):
                         self.assertEqual(self.beatable(multiworld, instruments), held >= required, instruments)
 
+    def test_random_count(self) -> None:
+        """A random count is rolled at generation; the slot data and the patch carry the rolled number."""
+        world_type = AutoWorldRegister.world_types[GAME]
+        for seed in range(5):
+            world = setup_multiworld(world_type, STEPS, 50 + seed, {"instruments_required": "random-range-2-6"}).worlds[1]
+            required = world.options.instruments_required.value
+            self.assertIn(required, range(2, 7))
+            self.assertEqual(world.fill_slot_data()["instruments_required"], required)
+            self.assertEqual(world.fill_slot_data()["options"]["instruments_required"], required)
+
     def test_starting_instruments_count(self) -> None:
         world_type = AutoWorldRegister.world_types[GAME]
         multiworld = setup_multiworld(world_type, STEPS, 30, {"instruments_required": 3, "starting_instruments": 2})
@@ -63,14 +73,15 @@ class TestEggEvent(unittest.TestCase):
         try:
             import evfl
             import ap_goal
+            from RandomizerCore.Tools.text_tools import TextFile
         finally:
             sys.path[:] = saved
-        cls.evfl, cls.ap_goal = evfl, ap_goal
+        cls.evfl, cls.ap_goal, cls.TextFile = evfl, ap_goal, TextFile
 
     @classmethod
     def tearDownClass(cls) -> None:
         for name in list(sys.modules):
-            if name.split(".")[0] in ("ap_goal", "RandomizerCore"):
+            if name.split(".")[0] in ("ap_goal", "RandomizerCore", "lms"):
                 del sys.modules[name]
 
     def read(self):
@@ -146,3 +157,26 @@ class TestEggEvent(unittest.TestCase):
         held = {0, 2, 4, 6, 7}
         self.assertEqual(self.visited(again.flowchart, held, 5), self.visited(flow.flowchart, held, 5))
         self.assertNotEqual(self.visited(again.flowchart, held - {7}, 5), self.visited(again.flowchart, held, 5))
+
+    def test_sign_names_the_count(self) -> None:
+        """The sign below the egg keeps its place name and adds the count, within a text box (3 lines of 42)."""
+        path = ROMFS / "regionUS" / "USen" / "message"
+        written = {}
+
+        class Files:
+            @staticmethod
+            def getAllTextFiles(name):
+                return [(path, self.TextFile(path / name))]
+
+            @staticmethod
+            def writeTextFile(relative_path, name, msbt):
+                written[name] = msbt
+
+        for count, wording in ((0, "with no instruments."), (1, "with 1 instrument."), (5, "with 5 instruments."),
+                               (8, "with all 8 instruments.")):
+            self.ap_goal._sign(Files, count)
+            text = written[self.ap_goal.SIGN_FILE].getEntry(self.ap_goal.SIGN_KEY).message.text
+            self.assertEqual(text, f"Mt. Tamaranch\nThe Wind Fish's Egg opens\n{wording}[1:4]")
+            lines = text[:-len("[1:4]")].split("\n")
+            self.assertLessEqual(len(lines), 3)
+            self.assertLessEqual(max(map(len, lines)), 42)

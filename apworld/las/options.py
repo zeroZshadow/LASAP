@@ -148,7 +148,9 @@ class StartingInstruments(Range):
 
 
 class InstrumentsRequired(Range):
-    """How many of the eight instruments open the Wind Fish's Egg. Starting instruments count toward it."""
+    """How many of the eight instruments open the Wind Fish's Egg. Starting instruments count toward it. The sign at
+    the foot of the egg's stairs tells the number, so it can be left to chance: random, random-low, random-high or
+    random-range-<min>-<max>."""
     display_name = "Instruments Required"
     range_start = 0
     range_end = 8
