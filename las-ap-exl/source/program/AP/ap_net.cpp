@@ -5,6 +5,7 @@
 // - errno is unreliable and fcntl non-blocking fails; Recv with MSG_DONTWAIT works
 // - a dead peer is only noticed through a keep-alive timeout
 #include "AP/ap.hpp"
+#include "AP/ap_debug.hpp"
 #include "nn/socket.hpp"
 #include "nn/os.hpp"
 #include <netinet/in.h>
@@ -20,7 +21,11 @@ namespace {
     // The loop sleeps 2 ms; drop a client that is silent for 10 s.
     constexpr int kKeepAliveTicks = 5000;
     constexpr size_t kMaxLine = 4096;
+#ifdef LASAP_TEST
+    constexpr s32 kAcceptPollMs = 2;    // the debug port is served from this loop too
+#else
     constexpr s32 kAcceptPollMs = 100;
+#endif
 
     alignas(0x1000) u8 g_ThreadStack[0x8000];
     // Static so it does not depend on the game's heap being ready this early.
@@ -39,6 +44,13 @@ namespace {
 
     void Lock() { nn::os::LockMutex(&g_Lock); }
     void Unlock() { nn::os::UnlockMutex(&g_Lock); }
+
+    // Lines this thread sends itself (HELLO, PONG), past AP::Send.
+    void Queue(const std::string& line) {
+        Lock();
+        g_Outbound.push_back(line + "\n");
+        Unlock();
+    }
 
     bool CreateServer() {
         g_Server = nn::socket::Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -103,7 +115,7 @@ namespace {
                     if (!line.empty() && line.back() == '\r') line.pop_back();
                     if (line.empty()) continue;
                     if (line == "PING") {
-                        AP::Send("PONG");
+                        Queue("PONG");
                         continue;
                     }
                     Lock();
@@ -118,6 +130,9 @@ namespace {
 
             if (!SendPending()) return;
             if (--keepAlive <= 0) return;
+#ifdef LASAP_TEST
+            AP::Test::NetPoll();
+#endif
         }
     }
 
@@ -127,6 +142,9 @@ namespace {
             Logging.Log("[AP] socket init failed");
             return;
         }
+#ifdef LASAP_TEST
+        AP::Test::NetStart(g_Port + AP::Test::PORT_OFFSET);
+#endif
 
         while (true) {
             if (g_Server < 0) {
@@ -136,6 +154,9 @@ namespace {
                 }
                 Logging.Log("[AP] listening on " + std::to_string(g_Port));
             }
+#ifdef LASAP_TEST
+            AP::Test::NetPoll();
+#endif
             // Accept only once a client waits: a thread blocked in Accept keeps emulators from closing the game.
             pollfd waiting{g_Server, POLLIN, 0};
             if (nn::socket::Poll(&waiting, 1, kAcceptPollMs) <= 0 || !(waiting.revents & POLLIN)) continue;
@@ -156,7 +177,7 @@ namespace {
             g_Connected = true;
             g_NewConnection = true;
             Logging.Log("[AP] client connected");
-            AP::Send(AP::HelloLine());
+            Queue(AP::HelloLine());
 
             ServeClient();
 
@@ -182,6 +203,9 @@ namespace AP {
     }
 
     void Send(const std::string& line) {
+#ifdef LASAP_TEST
+        if (AP::Test::Capture(line)) return;  // a reply to a debug client
+#endif
         if (!g_Connected.load()) return;
         Lock();
         g_Outbound.push_back(line + "\n");

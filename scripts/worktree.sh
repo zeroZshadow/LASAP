@@ -1,7 +1,7 @@
 #!/bin/bash
 # Work in a git worktree of this repository beside other sessions (TESTING.md, "Working in a worktree").
 #   worktree.sh setup      own Archipelago worktree (vendor/Archipelago, worlds/las -> this worktree's world) and the
-#                          built module (patcher/exl) from the main checkout
+#                          built modules (patcher/exl, patcher/exl-test) from the main checkout
 #   worktree.sh test [args] the world's tests with pytest, on this worktree's world
 #   worktree.sh land       fast-forward master in the main checkout to this branch, then remove the Archipelago worktree
 #   worktree.sh teardown   remove the Archipelago worktree only
@@ -29,10 +29,12 @@ setup)
     if [ ! -e "$AP/worlds/las" ]; then
         cmd //c mklink //J "$(winpath "$AP/worlds/las")" "$(winpath "$ROOT/apworld/las")" > /dev/null
     fi
-    if [ ! -e "$ROOT/patcher/exl/subsdk9" ]; then
-        mkdir -p "$ROOT/patcher/exl"
-        cp "$MAIN/patcher/exl/"* "$ROOT/patcher/exl/"
-    fi
+    for dir in exl exl-test; do
+        if [ ! -e "$ROOT/patcher/$dir/subsdk9" ] && [ -e "$MAIN/patcher/$dir/subsdk9" ]; then
+            mkdir -p "$ROOT/patcher/$dir"
+            cp "$MAIN/patcher/$dir/"* "$ROOT/patcher/$dir/"
+        fi
+    done
     echo "worktree ready: Archipelago at vendor/Archipelago, venvs at $MAIN/.venv-ap and $MAIN/.venv-lasr"
     ;;
 test)

@@ -1,6 +1,7 @@
 // Game-thread side of the AP bridge: applies received items, reports collected locations,
 // and runs test-only debug commands. Tick() runs once per input poll on the game thread.
 #include "AP/ap.hpp"
+#include "AP/ap_debug.hpp"
 #include "Hooks/Common/eventflags.hpp"
 #include "Hooks/Common/inventory.hpp"
 #include "Hooks/Common/level.hpp"
@@ -57,11 +58,6 @@ namespace {
     std::string g_LastLevel;
     int g_LastHealth = -1;
     u64 g_LevelSince = 0;
-
-    // Injected controller input (DBG input)
-    u64 g_InjectButtons = 0;
-    s32 g_InjectLX = 0, g_InjectLY = 0;
-    u64 g_InjectUntil = 0;
 
     // Holding Minus opens the warp menu; a short press still reaches the game (the map), sent when Minus is released.
     constexpr u64 kButtonMinus = 0x800;
@@ -135,6 +131,7 @@ namespace {
     constexpr size_t kPlayerEventState = 0x4ed;   // u8, 0 while the player is free (no talk, event or cutscene)
     constexpr size_t kPlayerCarried = 0x19b0;     // pointer, set while Link holds something over his head
     constexpr size_t kFrameworkPaused = 0x510;    // u8, 1 while the pause menu is open
+#ifdef LASAP_TEST
     constexpr size_t kFrameworkScreen = 0xb0;     // u8: 2 intro and title, 5 file menus, 0x0b level load, 0x17 level
     constexpr size_t kFrameworkIntro = 0x6d0;     // pointer, set only while the intro plays
 
@@ -150,6 +147,7 @@ namespace {
             default: return std::to_string(f[kFrameworkScreen]);
         }
     }
+#endif
     constexpr u64 kItemGetTimeoutMs = 120000;
     constexpr u64 kItemEventStartMs = 3000;      // a requested item event that has not started by then is retried
     constexpr size_t kShowQueueMax = 16;
@@ -584,6 +582,8 @@ namespace {
         if (onLine > 0) AP::Send(line);
     }
 
+#ifdef LASAP_TEST
+    // Test-only commands (DBG) and the STATE line: only in the test build (scripts/build_exl.sh).
     std::string HexU64(u64 v) {
         char buf[24];
         snprintf(buf, sizeof(buf), "%lx", v);
@@ -630,6 +630,7 @@ namespace {
         }
         s += " showq=" + std::to_string(g_ShowQueue.size()) + (g_ItemEvent != ItemEvent::None ? "+1" : "");
         s += " shown=" + std::to_string(g_ItemEventShown);
+        s += AP::Test::StateFields();
         return s;
     }
 
@@ -673,13 +674,6 @@ namespace {
             col->needsCoordUpdate = true;
             player->respawnCoords.pos = target;
             AP::Send("OK pos");
-        } else if (cmd == "input" && a.size() >= 4) {
-            // DBG input <buttons hex> <milliseconds> [lx ly]
-            g_InjectButtons = strtoull(a[2].c_str(), nullptr, 16);
-            g_InjectUntil = NowMs() + atoi(a[3].c_str());
-            g_InjectLX = a.size() >= 6 ? atoi(a[4].c_str()) : 0;
-            g_InjectLY = a.size() >= 6 ? atoi(a[5].c_str()) : 0;
-            AP::Send("OK input");
         } else if (cmd == "setrecv" && a.size() >= 3) {
             SetRecvCount(atoi(a[2].c_str()));
             AP::Send("RECV " + std::to_string(GetRecvCount()));
@@ -767,11 +761,12 @@ namespace {
         } else if (cmd == "collect" && a.size() >= 3) {
             // Simulates picking up a placeholder: DBG collect <local_id>
             AP::OnPlaceholderCollected(atoi(a[2].c_str()));
-        } else {
+        } else if (!AP::Test::Command(a)) {
             AP::Send("ERR unknown debug command");
         }
         return true;
     }
+#endif
 
     // Returns false if the line must be retried on a later frame.
     bool HandleLine(const std::string& line) {
@@ -837,8 +832,10 @@ namespace {
             QueueNotice(RestAfter(line, 1));
         } else if (a[0] == "MSG") {
             Logging.Log("[AP] " + line.substr(4));
+#ifdef LASAP_TEST
         } else if (a[0] == "DBG") {
             return HandleDebug(a);
+#endif
         } else {
             AP::Send("ERR unknown command " + a[0]);
         }
@@ -855,6 +852,9 @@ namespace AP {
         LoadMap();
         LoadIndices();
         LoadKept();
+#ifdef LASAP_TEST
+        Test::InstallHooks();
+#endif
         StartNetwork(port > 0 ? port : PORT);
     }
 
@@ -895,6 +895,13 @@ namespace AP {
     bool IsInLogic(int local_id) {
         return local_id >= 0 && local_id < (int)(kChecksBytes * 8) && ((g_InLogic[local_id / 8] >> (local_id % 8)) & 1);
     }
+
+#ifdef LASAP_TEST
+    bool HandleTestLine(const std::string& line) { return HandleLine(line); }
+    bool TestPlayerFree() { return PlayerFree(); }
+    bool TestItemDisplayPending() { return !g_ShowQueue.empty() || g_ItemEvent != ItemEvent::None; }
+    std::string TestScreenName() { return ScreenName(Game::GetFramework()); }
+#endif
 
     bool IsLocationChecked(int local_id) {
         if (local_id < 0 || local_id >= (int)(kChecksBytes * 8)) return false;
@@ -959,6 +966,9 @@ namespace AP {
         TickItemGet();
         TickWarpMenu();
         TickMap();
+#ifdef LASAP_TEST
+        Test::Tick();
+#endif
 
         // Lines that need a loaded save wait in g_Deferred; everything else runs right away.
         if (!g_Deferred.empty() && PlayerReady()) {
@@ -976,13 +986,9 @@ namespace AP {
 
     void ApplyInjectedInput(nn::hid::NpadBaseState* state) {
         u64 now = NowMs();
-        if (now < g_InjectUntil) {
-            state->mButtons._storage[0] |= g_InjectButtons;
-            if (g_InjectLX != 0 || g_InjectLY != 0) {
-                state->mAnalogStickL.mX = g_InjectLX;
-                state->mAnalogStickL.mY = g_InjectLY;
-            }
-        }
+#ifdef LASAP_TEST
+        Test::ApplyInput(state);
+#endif
         // The game does not see Minus while it is held (TickWarpMenu). Each controller style is polled, so only a
         // poll that sees Minus counts; its release is noticed when no poll has seen it for a moment.
         u64& buttons = state->mButtons._storage[0];

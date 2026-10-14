@@ -1,34 +1,142 @@
-"""Drives a scripted AP session: a MultiServer and an LAS client whose stdin are fed from files (see TESTING.md).
+"""Drives the sandbox game for tests (TESTING.md, "Driving the game"): the test module's debug port for DBG
+commands and the game's state, and a scripted AP session (a MultiServer and an LAS client whose stdin are fed from
+files) for everything that goes through Archipelago.
 
 python e2e.py send <item name> [<item name> ...]   server /send to the slot
 python e2e.py srv <server command>                 any server console command
-python e2e.py dbg <args>                           client /dbg (game debug command)
+python e2e.py dbg <args>                           a DBG command on the debug port; prints its replies
 python e2e.py cli <client command>                 any client console command
 python e2e.py state                                prints the game's STATE line
 python e2e.py goto <x> <y> <z> [step]              teleports in hops (default 9 units) so each room loads first
 python e2e.py wait <regex> [seconds] [client|server]  waits for a new log line
+python e2e.py trace [seconds] [file]               prints (or writes) the module's trace for a while
 python e2e.py tail [n]                             last lines of both logs
-python e2e.py run <script.txt>                     runs a drive.py script through the client (HELLO = client connected);
-                                                   also `state` (print the STATE line), `free [secs]` (wait until
-                                                   the player can move), `loaded [secs]` (free in a level entered
-                                                   after the last send, e.g. a warp), `at <x> <z> [tol]` (stop
-                                                   unless the player is there), `level <name>` (stop unless the
-                                                   player is in that level), `check <regex>` (stop unless the
-                                                   STATE line matches), `await <secs> <regex>` (wait for it), `warp <level> <x> <y> <z>` (reload
-                                                   there and wait), `goto <x> <y> <z>` and `shot <png>`
+python e2e.py run <script.txt> [trace file]        runs a test script (TESTING.md, "Script ops")
 
-Environment: LASAP_E2E (session folder, default D:/DEV/LASAP-sandbox/e2e), LASAP_SLOT (default Link).
+Environment: LASAP_E2E (session folder, default D:/DEV/LASAP-sandbox/e2e), LASAP_SLOT (default Link),
+LASAP_GAME_PORT (the sandbox game port, default 43385; the debug port is 100 above it).
 """
 import os
 import re
+import socket
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
+from typing import TextIO
 
 DIR = Path(os.environ.get("LASAP_E2E", "D:/DEV/LASAP-sandbox/e2e"))
 SLOT = os.environ.get("LASAP_SLOT", "Link")
 LOGS = {"client": DIR / "client.log", "server": DIR / "server.log"}
+DEBUG_PORT = int(os.environ.get("LASAP_GAME_PORT", "43385")) + 100
+REPLY = re.compile(r"^(OK|ERR|DONE|FAIL|HELD|HOLDS|CHOICE|STATE|FLAG|UI|FRAME|PEEK|RECV|MAP|TEXT|map=)")
+
+
+class Debug:
+    """A connection to the test module's debug port. A reader thread keeps every line; trace lines (T ...) also go
+    to the trace file when one is open."""
+
+    def __init__(self, wait: float = 60):
+        deadline = time.time() + wait
+        while True:
+            try:
+                self.sock = socket.create_connection(("127.0.0.1", DEBUG_PORT), timeout=2)
+                break
+            except OSError:
+                if time.time() > deadline:
+                    raise SystemExit(f"no debug port on {DEBUG_PORT}: is the sandbox game running the test module?")
+                time.sleep(0.2)
+        self.sock.settimeout(None)
+        self.lines: list[str] = []
+        self.cond = threading.Condition()
+        self.trace_file: TextIO | None = None
+        self.closed = False
+        threading.Thread(target=self._read, daemon=True).start()
+        threading.Thread(target=self._ping, daemon=True).start()
+        if self.wait(r"^HELLO", 5, 0) is None:
+            raise SystemExit("the debug port did not greet")
+
+    def _read(self) -> None:
+        buf = b""
+        while True:
+            try:
+                data = self.sock.recv(65536)
+            except OSError:
+                data = b""
+            if not data:
+                with self.cond:
+                    self.closed = True
+                    self.cond.notify_all()
+                return
+            buf += data
+            *done, buf = buf.split(b"\n")
+            with self.cond:
+                for raw in done:
+                    line = raw.decode("utf-8", "replace").rstrip("\r")
+                    if line == "PONG":
+                        continue
+                    self.lines.append(line)
+                    if self.trace_file and (line.startswith("T ") or line.startswith("AP LOG level")):
+                        self.trace_file.write(line + "\n")
+                        self.trace_file.flush()
+                self.cond.notify_all()
+
+    def _ping(self) -> None:
+        # Keeps this connection the newest-heard, so the module never drops it for another client.
+        while not self.closed:
+            time.sleep(2)
+            try:
+                self.sock.sendall(b"PING\n")
+            except OSError:
+                return
+
+    def mark(self) -> int:
+        with self.cond:
+            return len(self.lines)
+
+    def send(self, line: str) -> int:
+        start = self.mark()
+        self.sock.sendall(line.encode() + b"\n")
+        return start
+
+    def wait(self, pattern: str, seconds: float, start: int) -> str | None:
+        """The first line from index `start` on that matches, or None after `seconds`."""
+        rx = re.compile(pattern)
+        end = time.time() + seconds
+        with self.cond:
+            i = start
+            while True:
+                while i < len(self.lines):
+                    if rx.search(self.lines[i]):
+                        return self.lines[i]
+                    i += 1
+                left = end - time.time()
+                if left <= 0 or self.closed:
+                    return None
+                self.cond.wait(left)
+
+    def request(self, line: str, pattern: str, seconds: float = 10) -> str:
+        start = self.send(line)
+        reply = self.wait(pattern, seconds, start)
+        if reply is None:
+            raise SystemExit(f"no reply /{pattern}/ to {line}")
+        return reply
+
+
+_debug: Debug | None = None
+
+
+def game(wait: float = 60) -> Debug:
+    global _debug
+    if _debug is None or _debug.closed:
+        _debug = Debug(wait)
+    return _debug
+
+
+def dbg(command: str) -> int:
+    """Sends a DBG command; returns the line index its replies start at."""
+    return game().send(command if command.startswith("DBG ") else "DBG " + command)
 
 
 def append(path: Path, line: str) -> None:
@@ -44,59 +152,140 @@ def wait(pattern: str, seconds: float, log: str, start: int) -> str:
     rx = re.compile(pattern)
     end = time.time() + seconds
     while time.time() < end:
-        with open(LOGS[log], "rb") as f:
-            f.seek(start)
-            for line in f.read().decode("utf-8", "replace").splitlines():
-                if rx.search(line):
-                    return line
-        time.sleep(0.25)
+        if LOGS[log].exists():
+            with open(LOGS[log], "rb") as f:
+                f.seek(start)
+                for line in f.read().decode("utf-8", "replace").splitlines():
+                    if rx.search(line):
+                        return line
+        time.sleep(0.1)
     raise SystemExit(f"timeout waiting for /{pattern}/ in {log}.log")
 
 
 def state() -> str:
-    start = size("client")
-    append(DIR / "cmds.txt", "/dbg state")
-    return wait(r"game: STATE", 10, "client", start)
+    return game().request("DBG state", r"^STATE ")
+
+
+def position(line: str) -> tuple[float, float, float] | None:
+    m = re.search(r"pos=([-\d.]+),([-\d.]+),([-\d.]+)", line)
+    return (float(m.group(1)), float(m.group(2)), float(m.group(3))) if m else None
 
 
 def goto(x: float, y: float, z: float, step: float) -> str:
-    """A teleport into a room that is not loaded has no floor, so hop through the rooms in between."""
-    m = re.search(r"pos=([-\d.]+),([-\d.]+),([-\d.]+)", state())
-    if not m:
+    """A teleport into a room that is not loaded has no floor, so hop through the rooms in between: each hop waits
+    until Link stands still at the hop (the room under him has loaded)."""
+    here = position(state())
+    if here is None:
         raise SystemExit("no player position")
-    cx, cy, cz = map(float, m.groups())
+    cx, cy, cz = here
     hops = max(1, int(max(abs(x - cx), abs(z - cz)) / step + 0.999))
     for i in range(1, hops + 1):
         t = i / hops
-        hy = y if i == hops else max(cy, y)
-        append(DIR / "cmds.txt", f"/dbg pos {cx + (x - cx) * t:.2f} {hy:.2f} {cz + (z - cz) * t:.2f}")
-        time.sleep(1.0)
-    time.sleep(1.0)
+        hx, hy, hz = cx + (x - cx) * t, (y if i == hops else max(cy, y)), cz + (z - cz) * t
+        game().request(f"DBG pos {hx:.2f} {hy:.2f} {hz:.2f}", r"^OK pos")
+        settle(hx, hz)
     return state()
 
 
-def run(script: Path) -> None:
-    origin = size("client")
+def settle(x: float, z: float, seconds: float = 10) -> str:
+    """Waits until Link stands at (x, z) with the same position in two STATE lines 0.1 s apart."""
+    end = time.time() + seconds
+    last = None
+    while True:
+        line = state()
+        pos = position(line)
+        if pos and abs(pos[0] - x) < 0.75 and abs(pos[2] - z) < 0.75 and last and \
+                max(abs(a - b) for a, b in zip(pos, last)) < 0.02:
+            return line
+        if time.time() > end:
+            raise SystemExit(f"Link did not settle at ({x:.2f}, {z:.2f}): {line}")
+        last = pos
+        time.sleep(0.1)
+
+
+def poll(test, seconds: float, what: str, interval: float = 0.05) -> str:
+    """Polls the STATE line until test(line) holds."""
+    end = time.time() + seconds
+    while True:
+        line = state()
+        if test(line):
+            return line
+        if time.time() > end:
+            raise SystemExit(f"timeout waiting for {what}: {line}")
+        time.sleep(interval)
+
+
+def until(cond: str, seconds: float) -> str:
+    """Waits for a module condition (DBG await): exact to the frame, without polling."""
+    start = dbg(f"await {cond} {int(seconds * 1000)}")
+    reply = game().wait(rf"^(HELD|FAIL await) {re.escape(cond)}( |$)", seconds + 5, start)
+    if reply is None or reply.startswith("FAIL"):
+        raise SystemExit(f"timeout waiting for {cond}: {state()}")
+    return reply
+
+
+def module_op(command: str, name: str, seconds: float) -> str:
+    """Runs a module op that replies DONE <name> or FAIL <name>; stops the script on FAIL."""
+    start = dbg(command)
+    reply = game().wait(rf"^(DONE|FAIL) {name}", seconds + 5, start)
+    if reply is None or reply.startswith("FAIL"):
+        raise SystemExit(f"{command}: {reply or 'no reply'}; {state()}")
+    print(reply)
+    return reply
+
+
+def run(script: Path, trace: str | None = None) -> None:
     sent = time.time()
+    began = time.time()
+    mark = 0          # debug lines from here on answer the last send
+    client_mark = size("client")
+    if trace:
+        game().trace_file = open(trace, "w", encoding="utf-8")
+        game().request("DBG trace on", r"^OK trace")
     for raw in script.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
+        print(f"[{time.time() - began:7.2f}] {line}", flush=True)
         op, _, rest = line.partition(" ")
         if op == "send":
-            append(DIR / "cmds.txt", "/dbg " + rest[4:] if rest.startswith("DBG ") else rest)
+            if rest.startswith("DBG "):
+                mark = game().send(rest)
+            else:
+                append(DIR / "cmds.txt", rest)
+            client_mark = size("client")
             sent = time.time()
         elif op == "wait":
             time.sleep(float(rest))
+        elif op == "connect":
+            # connect [secs]: waits for the test module's debug port (the game has started)
+            game(float(rest or 60))
         elif op == "expect":
             parts = rest.split()
-            rx = "Connected to the game" if parts[0] == "HELLO" else parts[0]
-            print(wait(rx, float(parts[1]) if len(parts) > 1 else 10, "client", origin if parts[0] == "HELLO" else size("client")))
+            secs = float(parts[1]) if len(parts) > 1 else 10
+            if parts[0] == "HELLO":
+                # The game reports whether the AP client is connected, so a client that connected before the
+                # script started counts too.
+                print(until("client=1", secs))
+                continue
+            # A reply on the debug port since the last send, or a new client log line.
+            reply = game().wait(parts[0], min(secs, 0.5), mark)
+            if reply is None and LOGS["client"].exists():
+                try:
+                    reply = wait(parts[0], secs, "client", client_mark)
+                except SystemExit:
+                    reply = None
+            if reply is None:
+                reply = game().wait(parts[0], 0.1, mark)
+            if reply is None:
+                raise SystemExit(f"timeout waiting for /{parts[0]}/")
+            mark = game().mark()
+            print(reply)
         elif op == "mash":
             # mash <buttons hex> <count> [hold ms] [gap s]
             p = rest.split()
             for _ in range(int(p[1])):
-                append(DIR / "cmds.txt", f"/dbg input {p[0]} {p[2] if len(p) > 2 else '400'}")
+                dbg(f"input {p[0]} {p[2] if len(p) > 2 else '400'}")
                 time.sleep(float(p[3]) if len(p) > 3 else 0.9)
         elif op == "shot":
             subprocess.run([sys.executable, str(Path(__file__).parent / "emu.py"), "shot", rest], check=True)
@@ -107,48 +296,92 @@ def run(script: Path) -> None:
             p = rest.split()
             wait_screen(p[0], float(p[1]) if len(p) > 1 else 5)
         elif op == "press":
-            # press <buttons hex> <ms> <screen> [tries]: presses until that screen shows, 2 s per try
+            # press <buttons hex> <ms> <screen> [tries]: presses until that screen shows, 2 s per try (a blind hold;
+            # tap ... when <condition> presses when the game takes it)
             p = rest.split()
             for _ in range(int(p[3]) if len(p) > 3 else 3):
-                append(DIR / "cmds.txt", f"/dbg input {p[0]} {p[1]}")
+                dbg(f"input {p[0]} {p[1]}")
                 sent = time.time()
                 if wait_screen(p[2], 2, fail=False):
                     break
             else:
                 raise SystemExit(f"pressing {p[0]} never reached screen={p[2]}: {state()}")
+        elif op == "tap":
+            # tap <buttons hex> [down frames] [up frames] [lx ly] [when <condition> [timeout ms]]
+            start = dbg("press " + rest)
+            timeout = 10.0
+            m = re.search(r"\bwhen \S+ (\d+)", rest)
+            if m:
+                timeout = int(m.group(1)) / 1000
+            reply = game().wait(r"^(DONE|FAIL) press", timeout + 5, start)
+            if reply is None or reply.startswith("FAIL"):
+                raise SystemExit(f"tap {rest}: {reply or 'no reply'}; {state()}")
+            sent = time.time()
+        elif op == "until":
+            # until <condition> [secs]: waits until the module's condition holds (DBG await)
+            p = rest.split()
+            until(p[0], float(p[1]) if len(p) > 1 else 10)
+        elif op == "tapuntil":
+            # tapuntil <buttons hex> <until> [when <condition>] [secs]: taps (when the condition holds) until the
+            # other condition holds; taps again only after one changed nothing
+            p = rest.split()
+            secs = float(p[-1]) if len(p) in (3, 5) else 10
+            when = f" when {p[3]}" if len(p) >= 4 and p[2] == "when" else ""
+            module_op(f"tapuntil {p[0]} {p[1]}{when} {int(secs * 1000)}", "tapuntil", secs)
+            sent = time.time()
+        elif op == "hold":
+            # hold <buttons hex> <lx> <ly> until <condition> [secs]: holds buttons and the stick until it holds
+            p = rest.split()
+            secs = float(p[5]) if len(p) > 5 else 10
+            module_op(f"hold {p[0]} {p[1]} {p[2]} until {p[4]} {int(secs * 1000)}", "hold", secs)
+            sent = time.time()
+        elif op == "face":
+            # face <up|down|left|right>: holds the stick that way until Link faces it (he may take a step)
+            lx, ly = {"up": (0, 32767), "down": (0, -32767), "left": (-32767, 0), "right": (32767, 0)}[rest]
+            module_op(f"hold 0 {lx} {ly} until face={rest} 3000", "hold", 3)
+        elif op == "choose":
+            # choose <option from 0> [secs]: at a choice, moves the cursor there and confirms it with A
+            p = rest.split()
+            secs = float(p[1]) if len(p) > 1 else 10
+            module_op(f"choose {p[0]} {int(secs * 1000)}", "choose", secs)
         elif op == "free":
             wait_free(float(rest or 30))
-        elif op == "dismiss":
-            # dismiss [secs]: presses B until the player can move. B closes text without starting a talk.
-            end = time.time() + float(rest or 60)
-            while not is_free(state()):
-                if time.time() > end:
-                    raise SystemExit("timeout dismissing")
-                append(DIR / "cmds.txt", "/dbg input 2 200")
-                time.sleep(0.8)
+        elif op in ("dismiss", "advance"):
+            # dismiss [secs] / advance [buttons hex] [secs] [fast]: presses (B by default) once per page when the
+            # message takes a button, until no message is open and the player is free; never while he is free.
+            # fast holds the button while the text prints. advance stops at a choice (CHOICE), dismiss fails there.
+            p = rest.split()
+            fast = "fast" in p
+            p = [v for v in p if v != "fast"]
+            buttons = p[0] if op == "advance" and p else "2"
+            secs = float(p[-1]) if p and (op == "dismiss" or len(p) > 1) else 60
+            start = dbg(f"advance {buttons} {int(secs * 1000)}" + (" fast" if fast else ""))
+            reply = game().wait(r"^(DONE|FAIL|CHOICE) advance", secs + 5, start)
+            if reply is None or reply.startswith("FAIL") or (op == "dismiss" and reply.startswith("CHOICE")):
+                raise SystemExit(f"{op}: {reply or 'no reply'}; {state()}")
+            print(reply)
+            if reply.startswith("DONE"):
+                wait_free(10)
         elif op == "loaded":
             wait_free(float(rest or 40), since=sent)
         elif op == "inlevel":
             # inlevel [secs]: waits until a level entered after the last send has loaded, free or not
-            end = time.time() + float(rest or 60)
-            while True:
-                line = state()
-                ms = re.search(r"ms_in_level=(\d+)", line)
-                if "player=1" in line and ms and time.time() - int(ms.group(1)) / 1000 > sent:
-                    break
-                if time.time() > end:
-                    raise SystemExit(f"timeout waiting for a level: {line}")
-                time.sleep(1)
+            def entered(l: str) -> bool:
+                ms = re.search(r"ms_in_level=(\d+)", l)
+                return "player=1" in l and ms is not None and time.time() - int(ms.group(1)) / 1000 > sent
+            poll(entered, float(rest or 60), "a level")
         elif op == "warp":
             # warp <level> <x> <y> <z>: reloads the level at that position, then waits until the player is free.
             # A warp within the current level does not reload it, so it passes through another level first.
             level = rest.split()[0]
             if f"level={level} " in state():
                 other = "Field 38.25 10.5 128.25" if level != "Field" else "MarinTarinHouse 6.85 0 3.83"
-                append(DIR / "cmds.txt", f"/dbg warp {other}")
-                wait_free(40, since=time.time())
-            append(DIR / "cmds.txt", f"/dbg warp {rest}")
-            wait_free(40, since=time.time())
+                at = time.time()
+                game().request(f"DBG warp {other}", r"^OK warp", 30)
+                wait_free(40, since=at)
+            at = time.time()
+            game().request(f"DBG warp {rest}", r"^OK warp", 30)
+            wait_free(40, since=at)
         elif op == "goto":
             print(goto(*[float(v) for v in rest.split()][:3], step=9.0))
         elif op == "check":
@@ -159,11 +392,7 @@ def run(script: Path) -> None:
         elif op == "await":
             # await <secs> <regex>: waits until the STATE line matches, or stops the script
             secs, _, rx = rest.partition(" ")
-            end = time.time() + float(secs)
-            while not re.search(rx, line := state()):
-                if time.time() > end:
-                    raise SystemExit(f"timeout waiting for STATE /{rx}/: {line}")
-                time.sleep(0.5)
+            poll(lambda l: re.search(rx, l) is not None, float(secs), f"STATE /{rx}/")
         elif op == "level":
             # level <name>: stops the script unless the player is in that level
             line = state()
@@ -173,46 +402,43 @@ def run(script: Path) -> None:
             # at <x> <z> [tolerance]: stops the script unless the player stands there
             p = [float(v) for v in rest.split()]
             line = state()
-            pos = re.search(r"pos=([-\d.]+),([-\d.]+),([-\d.]+)", line)
+            pos = position(line)
             if pos is None:
                 raise SystemExit(f"no player position: {line}")
-            x, z = float(pos.group(1)), float(pos.group(3))
-            if abs(x - p[0]) > (p[2] if len(p) > 2 else 0.75) or abs(z - p[1]) > (p[2] if len(p) > 2 else 0.75):
+            tol = p[2] if len(p) > 2 else 0.75
+            if abs(pos[0] - p[0]) > tol or abs(pos[2] - p[1]) > tol:
                 raise SystemExit(f"player not at ({p[0]}, {p[1]}): {line}")
+        else:
+            raise SystemExit(f"unknown op {op}")
+    if trace:
+        game().request("DBG trace off", r"^OK trace")
+    print(f"SCRIPT OK in {time.time() - began:.2f} s")
 
 
 def wait_free(seconds: float, since: float = 0) -> None:
     """Waits until the player can move (after a dialogue or an item-get). With `since`, the level must also have
     been entered after that time, so a warp has finished loading."""
-    end = time.time() + seconds
-    while True:
-        line = state()
-        if is_free(line, since):
-            return
-        if time.time() > end:
-            raise SystemExit(f"timeout waiting for the player to be free: {line}")
-        time.sleep(1)
+    poll(lambda l: is_free(l, since), seconds, "the player to be free")
 
 
 def wait_screen(name: str, seconds: float, fail: bool = True) -> bool:
     """Waits until the STATE line shows `screen=<name>`; `name` may list alternatives: `loading|level`."""
-    end = time.time() + seconds
-    while True:
-        line = state()
-        if any(f"screen={n} " in line for n in name.split("|")):
-            return True
-        if time.time() > end:
-            if fail:
-                raise SystemExit(f"timeout waiting for screen={name}: {line}")
-            return False
-        time.sleep(0.3)
+    try:
+        poll(lambda l: any(f"screen={n} " in l for n in name.split("|")), seconds, f"screen={name}")
+        return True
+    except SystemExit:
+        if fail:
+            raise
+        return False
 
 
 def is_free(line: str, since: float = 0) -> bool:
-    """The STATE line shows the player free in a level entered after `since`, for at least 1.5 s, with no item-get
-    showing or queued."""
+    """The STATE line shows the player free in a level entered after `since`, for at least 1.5 s, with no message
+    open and no item-get showing or queued."""
     ms = re.search(r"ms_in_level=(\d+)", line)
     if not ms or "player=1" not in line or "event=0 paused=0" not in line or not re.search(r"showq=0(\s|$)", line):
+        return False
+    if not re.search(r"msg=(Closed|none)(\s|$)", line):
         return False
     return int(ms.group(1)) > 1500 and time.time() - int(ms.group(1)) / 1000 > since
 
@@ -227,7 +453,19 @@ def main() -> None:
     elif cmd == "srv":
         append(DIR / "server_cmds.txt", " ".join(args))
     elif cmd == "dbg":
-        append(DIR / "cmds.txt", "/dbg " + " ".join(args))
+        start = dbg(" ".join(args))
+        end = time.time() + 1
+        i = start
+        while time.time() < end:
+            line = game().wait(r".", end - time.time(), i)
+            if line is None:
+                break
+            i = game().lines.index(line, i) + 1
+            if REPLY.match(line):
+                print(line)
+                if not line.startswith("OK await") and not line.startswith("OK press") and \
+                        not line.startswith("OK advance"):
+                    break
     elif cmd == "cli":
         append(DIR / "cmds.txt", " ".join(args))
     elif cmd == "state":
@@ -238,8 +476,19 @@ def main() -> None:
     elif cmd == "wait":
         log = args[2] if len(args) > 2 else "client"
         print(wait(args[0], float(args[1]) if len(args) > 1 else 10, log, size(log)))
+    elif cmd == "trace":
+        secs = float(args[0]) if args else 10
+        g = game()
+        if len(args) > 1:
+            g.trace_file = open(args[1], "w", encoding="utf-8")
+        start = g.mark()
+        g.request("DBG trace on", r"^OK trace")
+        time.sleep(secs)
+        g.request("DBG trace off", r"^OK trace")
+        if len(args) <= 1:
+            print("\n".join(l for l in g.lines[start:] if l.startswith("T ")))
     elif cmd == "run":
-        run(Path(args[0]))
+        run(Path(args[0]), args[1] if len(args) > 1 else None)
     elif cmd == "tail":
         n = int(args[0]) if args else 8
         for log, path in LOGS.items():

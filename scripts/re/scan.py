@@ -8,6 +8,8 @@ Run with .venv-lasr (needs capstone):
   python scan.py dis <off> [count]      disassembly
   python scan.py func <off>             guessed start of the function containing <off>
   python scan.py ptr <off>              8-byte words in rodata/data that hold base + <off> (vtables, tables)
+  python scan.py strs <off> [hexlen]    strings the code in [off, off+len) loads (default 0x600 bytes)
+  python scan.py sms [<from> <to>]      UI state machine ChangeState functions and their state counts
 Environment: LASAP_DUMP (default D:/DEV/LASAP-sandbox/re/main.bin), LASAP_BASE (runtime base, default 0x8504000).
 """
 import os
@@ -101,6 +103,52 @@ def strings(rx: str):
             yield TEXT_END + m.start(), s
 
 
+def loaded_strings(off: int, length: int):
+    """Strings an ADRP+ADD pair in [off, off+length) points at."""
+    w = words()
+    regs = {}
+    for a in range(off, off + length, 4):
+        insn = w[a // 4]
+        if (insn & 0x9F000000) == 0x90000000:
+            regs[insn & 0x1F] = (a & ~0xFFF) + (sx((((insn >> 5) & 0x7FFFF) << 2) | ((insn >> 29) & 3), 21) << 12)
+        elif (insn & 0xFF800000) == 0x91000000 and ((insn >> 5) & 0x1F) in regs:
+            t = regs[(insn >> 5) & 0x1F] + ((insn >> 10) & 0xFFF)
+            if TEXT_END <= t < len(data):
+                s = data[t:data.find(b"\0", t)]
+                if 1 < len(s) < 80 and all(32 <= c < 127 for c in s):
+                    yield a, t, s.decode()
+
+
+def state_machines(lo: int, hi: int):
+    """ChangeState(machine, state) functions: they store the new state at +0xd and the old one at +0xe, and name
+    the states from the table at +0x58 + N*0x30 (TESTING.md, "Game state"). Yields (function, N or None)."""
+    from capstone import CS_ARCH_ARM64, CS_MODE_ARM, Cs
+    md = Cs(CS_ARCH_ARM64, CS_MODE_ARM)
+    w = words()
+    seen = set()
+    for i in range(lo // 4, min(hi, TEXT_END) // 4):
+        insn = w[i]
+        if (insn & 0xFFFFFC00) != 0x39003400:  # strb wt, [xn, #0xd]
+            continue
+        n = (insn >> 5) & 0x1F
+        if not any((w[i + k] & 0xFFFFFC00) == 0x39003800 and ((w[i + k] >> 5) & 0x1F) == n for k in range(1, 8)):
+            continue
+        f = i * 4
+        while f > 0 and w[f // 4 - 1] != 0:  # functions are separated by udf #0 padding
+            f -= 4
+        if f in seen:
+            continue
+        seen.add(f)
+        states = None
+        for ins in md.disasm(data[f:f + 0x160], f):
+            if ins.mnemonic == "udf":
+                break
+            m = re.match(r"x\d+, \[x\d+, #(0x[0-9a-f]+)\]", ins.op_str)
+            if ins.mnemonic == "ldr" and m and int(m.group(1), 16) > 0x58 and (int(m.group(1), 16) - 0x58) % 0x30 == 0:
+                states = (int(m.group(1), 16) - 0x58) // 0x30
+        yield f, states
+
+
 def main() -> None:
     cmd, args = sys.argv[1], sys.argv[2:]
     if cmd == "str":
@@ -126,6 +174,13 @@ def main() -> None:
         for o in range(TEXT_END, len(data) - 7, 8):
             if struct.unpack_from("<Q", data, o)[0] == v:
                 print(f"{o:8x}")
+    elif cmd == "strs":
+        for a, t, s in loaded_strings(int(args[0], 16), int(args[1], 16) if len(args) > 1 else 0x600):
+            print(f"{a:8x}: {t:8x} {s}")
+    elif cmd == "sms":
+        lo, hi = (int(args[0], 16), int(args[1], 16)) if len(args) > 1 else (0, TEXT_END)
+        for f, n in state_machines(lo, hi):
+            print(f"{f:8x} states={n if n is not None else '?'} callers={len(callers(f))}")
     else:
         raise SystemExit(__doc__)
 

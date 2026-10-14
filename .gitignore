@@ -4,9 +4,11 @@ vendor/
 __pycache__/
 *.pyc
 build/
+build-test/
 deploy/
 out/
 *.log
 patcher/exl/
+patcher/exl-test/
 patcher/RandomizerUI/Resources/textures/chest/bfres/
 .claude/worktrees/
