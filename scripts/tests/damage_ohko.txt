@@ -1,0 +1,27 @@
+# Damage OHKO: any damage kills Link at once. Run after newgame_file2 (3 hearts, 12 quarter hearts) on a mod patched
+# with Damage OHKO. Each death ends with Retry on the game over; ends with Link alive and free in Mabe.
+guard off dead
+# A Zap Trap at full health (it takes 6 quarter hearts in the normal mode) kills him.
+warp Field 38.25 10.5 128.25
+send DBG poke 84 0c00
+expect OK.poke 5
+send DBG grant ZapTrap 1 -1 1
+until !health=12 10
+check health=0
+until paused=1 10
+tapuntil 1 paused=0 when paused=1 20
+await 30 pos=[1-9]
+until free 20
+# Walking into a Sea Urchin on Toronbo Shores (Field_15B, the urchin at 20.25 6 171.75, one tile south) kills him
+# at full health. The urchin stays put, so the Retry, which reloads the level with Link where he died, is safe.
+send DBG poke 84 0c00
+expect OK.poke 5
+warp Field 20.25 6.0 170.25
+check health=12
+hold 0 0 -32767 until !health=12 10
+check health=0
+until paused=1 10
+tapuntil 1 paused=0 when paused=1 20
+await 30 pos=[1-9]
+until free 20
+check health=[1-9]

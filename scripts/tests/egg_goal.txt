@@ -1,6 +1,20 @@
-# Instruments Required (DESIGN.md, Goal): with 3 required, the Wind Fish's egg stays shut with two instruments and
-# opens with a third. Run after newgame_file2 on a mod patched with Instruments Required 3 (default starting gear:
-# the ocarina and Manbo's Mambo). DBG grant adds the Ballad and the instruments without an item-get.
+# Instruments Required (DESIGN.md, Goal): with 3 required, the sign below the Wind Fish's egg says so, and the egg
+# stays shut with two instruments and opens with a third. Run after newgame_file2 on a mod patched with Instruments
+# Required 3 (default starting gear: the ocarina and Manbo's Mambo). DBG grant adds the Ballad and the instruments
+# without an item-get.
+# The sign one tile north: its text (Place:SBMountTamaranch) names the number. The owl in front of the stairs talks
+# when Link first stands there; FourteenClear marks that talk as done.
+send DBG setflag FourteenClear 1
+expect FLAG.FourteenClear.1 5
+warp Field 96.75 20.25 24.75
+face up
+interact
+until textready 10
+send DBG text SBMountTamaranch
+expect said=.*Egg\sopens\swith\s3\sinstruments\. 5
+dismiss 10
+send DBG setflag FourteenClear 0
+expect FLAG.FourteenClear.0 5
 send DBG grant Song_WindFish 1 -1 0
 expect OK.grant 10
 send DBG grant ConchHorn 1 -1 0

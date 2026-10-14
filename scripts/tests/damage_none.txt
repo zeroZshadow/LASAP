@@ -1,0 +1,24 @@
+# Damage None: Link takes no damage. Run after newgame_file2 (3 hearts, 12 quarter hearts) on a mod patched with
+# Damage None. Each received trap plays its effect (TESTING.md, "traps": 2 to 6 quarter hearts in the normal mode)
+# and leaves him at full health. Outside Marin's house in Mabe.
+warp Field 38.25 10.5 128.25
+send DBG poke 84 0c00
+expect OK.poke 5
+guard hurt
+send DBG grant ZapTrap 1 -1 1
+until !event=0 5
+free 30
+send DBG grant SquishTrap 1 -1 1
+until !event=0 5
+free 30
+send DBG grant DrownTrap 1 -1 1
+until !event=0 5
+free 30
+send DBG grant DeathballTrap 1 -1 1
+until !event=0 5
+free 30
+send DBG grant QuakeTrap 1 -1 1
+until !event=0 5
+free 30
+check health=12
+guard off hurt

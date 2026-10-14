@@ -1,0 +1,30 @@
+# Disable Guardian Acorn and Disable Piece of Power: forced buff drops drop nothing. Run after newgame_file2 (3 hearts:
+# 12 quarter hearts of maximum health) on a mod patched with both settings on. The game (1.0.0, at 0x89c02c) picks the
+# buff when an enemy dies: a Guardian Acorn (DefenceUp) once KillCountNoDamage (inventory a5) reaches 14, else a Piece
+# of Power (PowerUp) once KillCount (a4) reaches maximum hearts + 32, here 35. Each part sets the counts one short,
+# then a spin attack kills the Octorok one tile north of Link. The first acorn and piece in a new game show their
+# item-get text, so no message may start.
+guard msg:Reading
+send DBG grant SwordLv1 1 -1 0
+expect OK.grant 5
+# Guardian Acorn. A hit after the poke clears a5, and the kill then leaves it at 1: the check below fails then.
+warp Field 41.25 9.0 147.75
+face up
+send DBG poke a4 000d
+expect OK.poke 5
+send DBG input 2 1200
+wait 3
+send DBG peek i a4 2
+expect PEEK\si\sa4\s01(00|0e) 5
+check msg=Closed
+# Piece of Power (hits do not clear a4).
+warp Field 41.25 9.0 147.75
+face up
+send DBG poke a4 2200
+expect OK.poke 5
+send DBG input 2 1200
+wait 3
+send DBG peek i a4 1
+expect PEEK\si\sa4\s(00|23) 5
+check msg=Closed
+guard off msg:Reading

@@ -744,7 +744,7 @@ namespace {
             if (a.size() >= 3) AP::SetMapMode(atoi(a[2].c_str()));
             AP::Send(AP::MapState());
         } else if (cmd == "text") {
-            AP::Send(AP::TextState());
+            AP::Send(a.size() >= 3 ? AP::SeenText(a[2]) : AP::TextState());
         } else if (cmd == "peek" && a.size() >= 5) {
             // DBG peek <p|f|i> <hex offset> <hex length>: bytes of the player, the framework or the inventory
             Game::Framework* fmwk = Game::GetFramework();

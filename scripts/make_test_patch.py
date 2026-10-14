@@ -1,6 +1,8 @@
 """Writes a synthetic .aplas patch (every shuffleable location gives the AP placeholder) for patcher tests.
 
-python make_test_patch.py <out.aplas> [--seed-hash test0001] [--vanilla loc,loc,...]
+python make_test_patch.py <out.aplas> [--seed-hash test0001] [--vanilla loc,loc,...] [--settings JSON]
+
+--settings replaces settings in the patch, e.g. '{"Instruments Required": 3, "Damage": "OHKO"}'.
 """
 import argparse
 import json
@@ -42,6 +44,7 @@ def main() -> None:
     parser.add_argument("out", type=Path)
     parser.add_argument("--seed-hash", default="test0001")
     parser.add_argument("--vanilla", default="")
+    parser.add_argument("--settings", default="{}")
     args = parser.parse_args()
 
     logic = yaml.safe_load(open(DATA / "logic.yml"))
@@ -66,7 +69,8 @@ def main() -> None:
 
     patch = {
         "format": 1, "seed_name": "test", "player": 1, "slot_name": "Tester", "seed_hash": args.seed_hash,
-        "settings": SETTINGS, "starting_items": [], "placements": placements, "location_ids": location_ids,
+        "settings": {**SETTINGS, **json.loads(args.settings)}, "starting_items": [], "placements": placements,
+        "location_ids": location_ids,
         "dungeon_entrances": {d: d for d in DUNGEONS},
     }
     args.out.write_text(json.dumps(patch, indent=1))

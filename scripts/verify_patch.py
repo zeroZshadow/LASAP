@@ -108,7 +108,8 @@ if len(entries) != sum(len(v) for v in counts.values()) or sorted(counts) != sor
 print("indices " + " ".join(f"{k}={len(v)}" for k, v in sorted(counts.items())) +
       f" vanilla={sum(1 for e in entries if e[2] == '-1')} bad={bad}")
 # Kept locations: every AP location without the placeholder, with its vanilla item's key or its companion's flag.
-kept = [line.split() for line in (Path(sys.argv[2]) / "config/lasr-exl" / VANILLA_FILE).read_text().splitlines()]
+kept = [line.split() for line in (Path(sys.argv[2]) / "config/lasr-exl" / VANILLA_FILE).read_text().splitlines()
+        if line.strip()]
 expected = {str(patch["location_ids"][loc]): COMPANION_FLAGS.get(loc) or item_defs[item]["item-key"]
             for loc, item in patch["placements"].items() if item != "ap-item" and loc in patch["location_ids"]}
 found = {local_id: flag if key == "F" else key for key, flag, local_id in kept}

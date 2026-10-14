@@ -93,6 +93,10 @@ namespace AP {
     void SetLocationName(int local_id, const std::string& item, const std::string& player);
     bool HasLocationName(int local_id);
     std::string TextState();
+#ifdef LASAP_TEST
+    // DBG text <label>: the text the game last fetched for a message label (tags dropped, line breaks as spaces).
+    std::string SeenText(const std::string& label);
+#endif
     // The location of a placeholder just added; it names the found text until the player is free again.
     void SetFoundLocation(int local_id);
     void ExpireFoundLocation();

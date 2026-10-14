@@ -109,12 +109,47 @@ namespace {
     bool LabelIs(const char* label, size_t len, const char* name) {
         return len == std::strlen(name) && std::memcmp(label, name, len) == 0;
     }
+
+#ifdef LASAP_TEST
+    // Messages the game fetched, for DBG text <label>: (msbt, index) -> label from the lookups, label -> the text
+    // the getter handed out last, tags dropped and line breaks as spaces.
+    std::map<std::pair<void*, s32>, std::string> g_SeenLabels;
+    std::map<std::string, std::string> g_SeenTexts;
+
+    void SeeLabel(void* msbt, s32 index, const char* label, size_t len) {
+        if (index < 0) return;
+        if (g_SeenLabels.size() >= 512) g_SeenLabels.clear();
+        g_SeenLabels[{msbt, index}] = std::string(label, len);
+    }
+
+    void SeeText(void* msbt, s32 index, const char* text, s64 length) {
+        auto it = g_SeenLabels.find({msbt, index});
+        if (it == g_SeenLabels.end() || text == nullptr) return;
+        std::string plain;
+        for (s64 i = 0; i < length;) {
+            u8 c = static_cast<u8>(text[i]);
+            if (c == 0x0e && i + 7 <= length) {  // 0x0E, group, type, parameter size (u16 each), parameters
+                i += 7 + static_cast<u8>(text[i + 5]) + (static_cast<u8>(text[i + 6]) << 8);
+            } else if (c == 0x0f && i + 5 <= length) {  // 0x0F, group, type: a tag's end
+                i += 5;
+            } else {
+                plain += c == '\n' ? ' ' : static_cast<char>(c);
+                i++;
+            }
+        }
+        if (g_SeenTexts.size() >= 64 && !g_SeenTexts.count(it->second)) g_SeenTexts.clear();
+        g_SeenTexts[it->second] = plain;
+    }
+#endif
 }
 
 HOOK_DEFINE_TRAMPOLINE(MsbtFindLabel) {
     static void Callback(MsbtHandle* out, void* msbt, const char* label, size_t len) {
         Orig(out, msbt, label, len);
         g_FindCalls++;
+#ifdef LASAP_TEST
+        SeeLabel(msbt, out->index, label, len);
+#endif
         int group = AP::MapLabelGroup(std::string_view(label, len));
         if (group >= 0) {
             if (out->index >= 0) g_MapLabels[{msbt, out->index}] = group;
@@ -135,6 +170,14 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
     static void Callback(MsbtText* out, void* msbt, s32 index) {
         Orig(out, msbt, index);
         g_GetCalls++;
+        Resolve(out, msbt, index);
+#ifdef LASAP_TEST
+        SeeText(msbt, index, out->text, out->length);
+#endif
+    }
+
+    // Hands out our text for the messages that are ours.
+    static void Resolve(MsbtText* out, void* msbt, s32 index) {
         if (out->text == nullptr) return;
         auto map = g_MapLabels.find({msbt, index});
         if (map != g_MapLabels.end()) {
@@ -269,6 +312,13 @@ namespace AP {
                " found=" + std::to_string(g_FoundLocation) + " finds=" + std::to_string(g_FindCalls) +
                " gets=" + std::to_string(g_GetCalls) + " present=" + std::to_string(g_PresentLocation);
     }
+
+#ifdef LASAP_TEST
+    std::string SeenText(const std::string& label) {
+        auto it = g_SeenTexts.find(label);
+        return it == g_SeenTexts.end() ? "TEXT " + label + " unseen" : "TEXT " + label + " said=" + it->second;
+    }
+#endif
 
     bool HasLocationName(int local_id) {
         return g_LocationNames.count(local_id) != 0;
