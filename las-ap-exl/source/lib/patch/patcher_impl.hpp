@@ -3,6 +3,7 @@
 #include <lib/util/sys/rw_pages.hpp>
 #include <lib/util/sys/mem_layout.hpp>
 #include <lib/util/sys/modules.hpp>
+#include <lib/util/sys/written_code.hpp>
 #include <lib/util/typed_storage.hpp>
 #include <optional>
 

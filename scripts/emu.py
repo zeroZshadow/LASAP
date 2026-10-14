@@ -98,11 +98,12 @@ def start() -> None:
     stop(quiet=True)
     args = [RYU, "--no-gui", "--root-data-dir", DATA, "--graphics-backend", os.environ.get("LASAP_GFX", "Vulkan"),
             "--input-id-1", "0", "--enable-keyboard", "--skip-user-profiles-manager",
-            "--ignore-controller-applet", "--audio-volume", "0", "--disable-ptc", GAME]
+            "--ignore-controller-applet", "--audio-volume", "0", GAME]
+    if os.environ.get("LASAP_PTC") != "1":
+        args.insert(-1, "--disable-ptc")
     out = open(os.path.join(SANDBOX, "emu_stdout.txt"), "w")
-    # --audio-volume 0 does not mute; SDL's dummy driver keeps the sandbox silent. Without --disable-ptc the
-    # translation cache, keyed by the code files alone, can hold code translated before the module patched it
-    # differently under another config.ini (a Damage setting).
+    # --audio-volume 0 does not mute; SDL's dummy driver keeps the sandbox silent. --disable-ptc keeps translations
+    # of one run from the next; LASAP_PTC=1 keeps the translation cache on, as players have it.
     env = dict(os.environ, SDL_AUDIO_DRIVER="dummy", SDL_AUDIODRIVER="dummy")
     foreground = ctypes.windll.user32.GetForegroundWindow()
     info = subprocess.STARTUPINFO()

@@ -47,6 +47,10 @@ Datasheets (`.gsheet`) are read and written by `RandomizerCore/Tools/gsheet.py`,
 - Opened with a patch file and a known emulator, the client installs, starts the emulator with the game (unless it runs), and connects to the patch's `server` as its `player_name`.
 - `file_types.py` registers `.aplas` for the current user (`HKCU\Software\Classes`), opening with the Archipelago Launcher, which hands the file to the client. It runs only from the Patch tab's button.
 
+## Code the module writes
+
+The module patches and hooks the game's code at boot, after an emulator may already have translated it. Ryujinx's translation cache (PPTC, on by default) translates the functions of earlier runs at boot from the unpatched code, and drops a translation on an `IC IVAU` that overlaps it as Ryujinx registers it: from its entry, over its size. A translation that starts after a patched instruction (a switch case reached through `br`) and branches back over it covers the instruction without overlapping its line, so the flush of the written line alone leaves it running the unpatched code. Every code write in the exlaunch lib (`util::InvalidateWrittenCode`, used by the patchers and the hooks) therefore also invalidates the text after it, up to `WrittenCodeReach`. On hardware and on emulators without a translation cache this costs nothing that matters.
+
 ## Item model: remote items
 
 - Every randomized location in the patched game gives the **AP placeholder item**, with `index` = the location's **local id** (AP location id − `LOCATION_BASE`).

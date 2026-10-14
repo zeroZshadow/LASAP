@@ -31,6 +31,7 @@
 #include <stdlib.h>
 
 #include "util/sys/jit.hpp"
+#include "util/sys/written_code.hpp"
 #include "inline_impl.hpp"
 
 #include <lib/log/logger_mgr.hpp>
@@ -571,6 +572,7 @@ namespace exl::hook::nx64 {
             original[1] = 0xd61f0220u;  // BR X17
             *reinterpret_cast<int64_t*>(original + 2) = __intval(replace);
             __flush_cache(symbol, 5 * sizeof(uint32_t));
+            util::InvalidateWrittenCode(reinterpret_cast<uintptr_t>(symbol), 5 * sizeof(uint32_t));
         } else {
             const util::RwPages ctrl((uintptr_t)original, 1 * sizeof(uint32_t));
 
@@ -585,6 +587,7 @@ namespace exl::hook::nx64 {
 
             __sync_cmpswap(original, *original, 0x14000000u | (pc_offset & mask));  // "B" ADDR_PCREL26
             __flush_cache(symbol, 1 * sizeof(uint32_t));
+            util::InvalidateWrittenCode(reinterpret_cast<uintptr_t>(symbol), 1 * sizeof(uint32_t));
         }  // if
 
         return true;

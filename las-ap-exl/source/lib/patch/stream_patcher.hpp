@@ -23,7 +23,7 @@ namespace exl::patch {
 
             /* Flush data/instructions. */
             armDCacheFlush(rw, size);
-            armICacheInvalidate(ro, size);
+            util::InvalidateWrittenCode(reinterpret_cast<uintptr_t>(ro), size);
 
             /* Reset start position. */
             m_Start += size;
