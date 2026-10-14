@@ -40,6 +40,7 @@ randomizer_paths.VERSION_PATH = HERE / "version.txt"
 import evfl  # noqa: E402
 import yaml  # noqa: E402
 from RandomizerCore import mod_generator  # noqa: E402
+from RandomizerCore.Fixes.Datasheets.fishing import FishingDatasheetFixes  # noqa: E402
 from RandomizerCore.Fixes.Datasheets.item_drop import ItemDropDatasheetFixes  # noqa: E402
 from RandomizerCore.Fixes.Datasheets.items import ItemsDatasheetFixes  # noqa: E402
 from RandomizerCore.Helpers.file_manager import FileManager  # noqa: E402
@@ -153,6 +154,7 @@ PLAYER_SETTINGS = {
     "Disable Piece of Power": False,
     "Instant Text": False,
     "Disable Low Health Beep": False,
+    "Easy Fishing": True,
 }
 PLAYER_CHOICES = {"Damage": ("None", "Normal", "OHKO"), "Music": ("Vanilla", "Shuffled", "Removed")}
 # Walking and swimming speed with Movement Speed on: LASR's single speed (dashing stays at 1.0)
@@ -160,6 +162,9 @@ MOVEMENT_SPEED = 1.2
 # ItemDrop.gsheet rows of the two buffs; the settings empty them, for drops that name them. The buffs after a run of
 # kills come from the game's code, which the module skips (config.ini [tweaks]).
 BUFF_DROPS = {"Disable Guardian Acorn": "GuardianAcorn", "Disable Piece of Power": "PowerPiece"}
+# Easy Fishing: FishingSpot.gsheet weights of the deep spot (row mId 4, spot 2) by fish kind, Ol' Baron (kind 4) as
+# likely as the other fish there (vanilla [0, 25, 0, 0, 5, 0]). The line holds through the module (config.ini [tweaks]).
+EASY_FISHING_SPOT = (4, [0, 15, 0, 0, 15, 0])
 
 
 def _add_ap_flags(self) -> None:
@@ -314,6 +319,19 @@ def _drop_buffs(self, sheet, settings) -> None:
             row["mLotTable"][0]["mType"] = ""
 
 
+def _fishing_spots(self, mod_generator) -> None:
+    """With Easy Fishing, Ol' Baron bites more often in the deep spot."""
+    _original_fishing_fixes(self, mod_generator)
+    if not mod_generator.settings.get("Easy Fishing") or not mod_generator.thread_active:
+        return
+    sheet = mod_generator.file_manager.readFile("FishingSpot.gsheet")
+    row_id, weights = EASY_FISHING_SPOT
+    for row in sheet["values"]:
+        if row["mId"] == row_id:
+            row["mWeightTbl"] = list(weights)
+    mod_generator.file_manager.writeFile("FishingSpot.gsheet", sheet)
+
+
 def _write_file(self, file_name: str, data) -> None:
     """Randomized heart piece and seashell actors show by their location flag alone. The Archipelago model gets an
     Npc entry, which the item-get shows."""
@@ -359,6 +377,8 @@ _original_get_without_animation = ItemGetManager.getWithoutAnimation
 ItemGetManager.getWithoutAnimation = _starting_index
 _original_item_drop_changes = ItemDropDatasheetFixes.makeDatasheetChanges
 ItemDropDatasheetFixes.makeDatasheetChanges = _drop_buffs
+_original_fishing_fixes = FishingDatasheetFixes.__init__
+FishingDatasheetFixes.__init__ = _fishing_spots
 FlagManager.addCustomFlags = _add_ap_flags
 ItemsDatasheetFixes.makeItemChanges = _add_placeholder_row
 Keysanity.addTextEvents = _add_placeholder_text_event
@@ -401,7 +421,8 @@ class APModsProcess(mod_generator.ModsProcess):
         text += (f"\n[tweaks]\ninstant_text = {self.settings.get('Instant Text', False)}\n"
                  f"no_low_health_beep = {self.settings.get('Disable Low Health Beep', False)}\n"
                  f"no_guardian_acorn = {self.settings.get('Disable Guardian Acorn', False)}\n"
-                 f"no_piece_of_power = {self.settings.get('Disable Piece of Power', False)}\n")
+                 f"no_piece_of_power = {self.settings.get('Disable Piece of Power', False)}\n"
+                 f"easy_fishing = {self.settings.get('Easy Fishing', False)}\n")
         path.write_text(text + f"\n[archipelago]\nseed_hash = {self.seed_hash}\n")
         # What each location holds, so the found text names it before the client connects (DESIGN.md)
         with open(self.config_dir / "ap_names.txt", "w", encoding="utf-8", newline="\n") as f:

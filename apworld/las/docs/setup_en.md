@@ -44,7 +44,8 @@ The Patch tab's game settings change how your own game looks and plays, for ever
 swimming 20% faster (on unless you turn it off), no blur at the screen's edges, skipping the song cutscenes, a
 hookshot that grabs any surface, the damage Link takes (None, Normal or OHKO), the music (Vanilla, Shuffled or
 Removed), shuffled dialogue, shuffled room lighting, no Guardian Acorns or Pieces of Power, text that shows a page at
-once instead of letter by letter, and no beep at low health. After a change, Play reinstalls the mod; restart the
+once instead of letter by letter, no beep at low health, and a fishing line that never breaks, with Ol' Baron biting
+more often (on unless you turn it off). After a change, Play reinstalls the mod; restart the
 game to see it. They change nothing for the other players.
 
 To start with more hearts, add Heart Containers to `start_inventory_from_pool` in your options file, e.g.

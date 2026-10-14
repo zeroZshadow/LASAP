@@ -225,6 +225,8 @@ namespace {
         {"files", 0xe60b90, 39},    // title file menu (UI:DataTitleInitial): files, copy, delete, difficulty
         {"map", 0xe95090, 17, 0xf0},   // overworld map, from its KeyWait update: Deactive, Open, KeyWait, ...
         {"dmap", 0xe7a0f0, 16, 0xf0},  // dungeon map, from its KeyWait update
+        {"lure", 0xdb6680, 18},     // fishing rod and lure: Wait, Casting, ..., HitRetrieveHold, Catch, Lost, ...
+        {"fish", 0xb5e870, 21},     // each fishing pond fish: Enter, Wait, ..., MoveAngry, ..., MoveEscape, ...
     };
     constexpr int kSmHookCount = sizeof(kSmHooks) / sizeof(kSmHooks[0]);
     // Names for the owner classes found in the trace (owner vtable, module offset).
@@ -1304,7 +1306,9 @@ namespace AP::Test {
         SmChange<5>::InstallAtOffset(offset_manager.Offset(kSmHooks[5].offset));
         SmUpdate<6>::InstallAtOffset(offset_manager.Offset(kSmHooks[6].offset));
         SmUpdate<7>::InstallAtOffset(offset_manager.Offset(kSmHooks[7].offset));
-        static_assert(kSmHookCount == 8);
+        SmChange<8>::InstallAtOffset(offset_manager.Offset(kSmHooks[8].offset));
+        SmChange<9>::InstallAtOffset(offset_manager.Offset(kSmHooks[9].offset));
+        static_assert(kSmHookCount == 10);
     }
 }
 #endif

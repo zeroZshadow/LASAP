@@ -29,6 +29,7 @@ PLAYER_SETTINGS = (
     PlayerSetting("no_piece_of_power", "Disable Piece of Power", "No Pieces of Power", False),
     PlayerSetting("instant_text", "Instant Text", "Text shows at once", False),
     PlayerSetting("no_low_health_beep", "Disable Low Health Beep", "No low-health beep", False),
+    PlayerSetting("easy_fishing", "Easy Fishing", "Fishing line never breaks", True),
 )
 PLAYER_DEFAULTS = {s.lasr: s.default for s in PLAYER_SETTINGS}
 
@@ -130,6 +131,9 @@ class LASSettings(settings.Group):
     class NoLowHealthBeep(settings.Bool):
         """No warning beep at low health."""
 
+    class EasyFishing(settings.Bool):
+        """At the fishing pond the line never breaks, and Ol' Baron bites more often."""
+
     movement_360: Union[Movement360, bool] = False
     movement_speed: Union[MovementSpeed, bool] = True
     blur_removal: Union[BlurRemoval, bool] = False
@@ -143,6 +147,7 @@ class LASSettings(settings.Group):
     no_piece_of_power: Union[NoPieceOfPower, bool] = False
     instant_text: Union[InstantText, bool] = False
     no_low_health_beep: Union[NoLowHealthBeep, bool] = False
+    easy_fishing: Union[EasyFishing, bool] = True
 
     def player_settings(self) -> Dict[str, Any]:
         """The player settings under LASR's names, as the patcher takes them."""

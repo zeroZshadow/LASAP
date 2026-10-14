@@ -23,6 +23,11 @@ namespace Tweaks {
     constexpr uintptr_t kGuardianAcornBranch = 0x89c038;
     constexpr uintptr_t kPieceOfPowerBranch = 0x89c054;
     constexpr uintptr_t kNormalDrop = 0x89ba3c;
+
+    // A hooked fish's line tension (fish +0x9e4) rises while Link reels against it and falls otherwise; its fight
+    // states snap the line once it reaches the fish's limit. Easy Fishing stores 0 in place of the new tension.
+    constexpr uintptr_t kLineTensionStore = 0xb5c534;  // str w8, [x20, #0x9e4]
+    constexpr u32 kStoreZeroTension = 0xb909e69f;      // str wzr, [x20, #0x9e4]
 }
 
 HOOK_DEFINE_TRAMPOLINE(InstantPage) {
@@ -59,6 +64,10 @@ namespace Tweaks {
         if (global_config.tweaks.no_piece_of_power) {
             p.Seek(offset_manager.Offset(kPieceOfPowerBranch));
             p.WriteInst(exl::armv8::inst::Branch(-static_cast<int>(kPieceOfPowerBranch - kNormalDrop)));
+        }
+        if (global_config.tweaks.easy_fishing) {
+            p.Seek(offset_manager.Offset(kLineTensionStore));
+            p.WriteInst(exl::armv8::InstBitSet(kStoreZeroTension));
         }
     }
 }

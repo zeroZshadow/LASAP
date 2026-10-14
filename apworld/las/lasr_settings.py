@@ -200,6 +200,7 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Disable Piece of Power": False,
         "Instant Text": False,  # done by the module; LASR never implemented it
         "Disable Low Health Beep": False,  # done by the module; LASR never implemented it
+        "Easy Fishing": True,  # done by the module and the fishing spots; not a LASR setting
         # not implemented by LASR
         "Randomize Sound Effects": False,
         "Rupees": o.starting_rupees.value,

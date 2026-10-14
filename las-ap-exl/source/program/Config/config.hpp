@@ -52,6 +52,7 @@ struct PatchConfig {
         bool no_low_health_beep;
         bool no_guardian_acorn;
         bool no_piece_of_power;
+        bool easy_fishing;
     } tweaks;
 
     struct {
@@ -212,6 +213,9 @@ struct PatchConfig {
         }
         else if (key == "no_piece_of_power" && value == "true") {
             tweaks.no_piece_of_power = true;
+        }
+        else if (key == "easy_fishing" && value == "true") {
+            tweaks.easy_fishing = true;
         }
     }
 
