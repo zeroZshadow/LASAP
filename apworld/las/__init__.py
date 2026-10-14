@@ -1,7 +1,8 @@
 import hashlib
 import os
+import threading
 from collections import Counter
-from typing import Any, ClassVar, Dict, List, Mapping, Set
+from typing import Any, ClassVar, Dict, List, Mapping, Optional, Set, TextIO
 
 from BaseClasses import CollectionState, Item, ItemClassification, Region, Tutorial
 from Options import PerGameCommonOptions
@@ -10,12 +11,13 @@ from worlds.AutoWorld import WebWorld, World
 from worlds.LauncherComponents import Component, SuffixIdentifier, Type, components, launch as launch_component
 
 from .container import LASContainer
+from .hints import choose_hints, source_name
 from .host_settings import LASSettings
 
 from .ids import LOCATION_OFFSETS
 from .items import FILLER_ITEM, GAME, ITEM_GAME_INFO, ITEM_NAME_GROUPS, ITEM_TABLE, LASR_TO_ITEM, LASItem
-from .lasr import (CATEGORIES, DUNGEON_REWARD_LOCATIONS, INSTRUMENT_LOCATIONS,
-                   INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC, TRAPS, item_dungeon, location_dungeon)
+from .lasr import (CATEGORIES, COUNTED, DUNGEON_REWARD_LOCATIONS, INSTRUMENT_LOCATIONS,
+                   INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC, TRAPS, goal_logic, item_dungeon, location_dungeon)
 from .locations import LOCATION_NAME_GROUPS, LOCATION_NAME_TO_ID, LOCATION_NAMES, LASLocation
 from .logic import LogicCompiler, make_rule, referenced_regions
 from .models import model_for
@@ -99,8 +101,8 @@ class LASWorld(World):
                 setattr(self.options, name, LASOptions.type_hints[name].from_any(value))
         options = self.options
         self.settings_tokens = lasr_settings.logic_tokens(options)
-        self.compiler = LogicCompiler(LOGIC, options.logic.current_key, self.settings_tokens,
-                                      LASR_TO_ITEM)
+        self.compiler = LogicCompiler(goal_logic(options.instruments_required.value), options.logic.current_key,
+                                      self.settings_tokens, LASR_TO_ITEM, COUNTED)
 
         if passthrough:
             self.starting_instruments = list(passthrough["starting_instruments"])
@@ -348,6 +350,7 @@ class LASWorld(World):
         return {
             "seed_hash": self.seed_hash(),
             "goal": "wind_fish",
+            "instruments_required": self.options.instruments_required.value,
             "death_link": bool(self.options.death_link.value),
             "location_count": len(self.shuffled),
             "settings": {key: settings[key] for key in lasr_settings.TRACKER_SETTINGS},
@@ -385,7 +388,25 @@ class LASWorld(World):
             "location_models": self.placed_models(),
             "location_chests": self.placed_chests(),
             "dungeon_entrances": dict(lasr_settings.DUNGEON_ENTRANCES),
+            "hints": self.in_game_hints(),
         }
+
+    _hints: Optional[Dict[str, Dict[str, Any]]] = None
+    _hints_lock = threading.Lock()  # output and spoiler run on several threads
+
+    def in_game_hints(self) -> Dict[str, Dict[str, Any]]:
+        """The owl statues' and books' hints (hints.py), picked once the multiworld is filled."""
+        with self._hints_lock:
+            if self._hints is None:
+                self._hints = choose_hints(self)
+            return self._hints
+
+    def write_spoiler(self, spoiler_handle: TextIO) -> None:
+        hints = self.in_game_hints()
+        if hints:
+            spoiler_handle.write(f"\n\nIn-game hints ({self.multiworld.player_name[self.player]}):\n\n")
+            for source, hint in hints.items():
+                spoiler_handle.write(f"{source_name(source)}: {hint['text']}\n")
 
     def placed_names(self) -> Dict[str, List[str]]:
         """What each AP location holds: [item name, owner name], the owner empty for this player's items."""

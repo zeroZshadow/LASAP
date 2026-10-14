@@ -18,8 +18,9 @@ from .emulators import TITLE_ID
 from .host_settings import PLAYER_DEFAULTS
 
 CONFIG_PATH = Path("config", "lasr-exl", "config.ini")
-# Config files the patcher writes only for some options (the map tracker's icons); an install without one removes it.
-OPTIONAL_CONFIG = ("ap_map.txt",)
+# Config files the patcher writes only for some options (the map tracker's icons, the server hints); an install
+# without one removes it.
+OPTIONAL_CONFIG = ("ap_map.txt", "ap_hints.txt")
 # Next to the config: the build of the built-in patcher that wrote the installed mod, so a newer world reinstalls it.
 BUILD_PATH = CONFIG_PATH.with_name("patcher_build.txt")
 # Next to the config: the player settings the installed mod was patched with; the patch's defaults when missing.
@@ -33,8 +34,8 @@ PATCHER_PREFIX = f"{Path(__file__).parent.name}/patcher/"
 PATCHER_BUILD = PATCHER_PREFIX + "build.txt"
 SOURCE_PATCHER = Path(__file__).resolve().parent.parent.parent / "patcher"
 # Top-level modules of the patcher and the libraries it carries (patcher/lib)
-PATCHER_MODULES = {"las_ap_patch", "ap_assets", "ap_ghost", "ap_map", "ap_map_icons", "ap_model", "ap_ui", "lasr_qt",
-                   "RandomizerCore", "evfl", "lms", "appdirs", "PySide6"}
+PATCHER_MODULES = {"las_ap_patch", "ap_assets", "ap_ghost", "ap_goal", "ap_map", "ap_map_icons", "ap_model", "ap_ui",
+                   "lasr_qt", "RandomizerCore", "evfl", "lms", "appdirs", "PySide6"}
 _PATCHER_LOCK = threading.Lock()
 
 

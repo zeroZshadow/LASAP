@@ -13,7 +13,10 @@ needed in a different order than in the original game. The world needs the 2019 
 
 ## What is the goal?
 
-Wake the Wind Fish.
+Wake the Wind Fish: play the Ballad of the Wind Fish at the egg on Mt. Tamaranch, then beat the Nightmare inside.
+The egg opens with `instruments_required` of the eight instruments (all eight by default); instruments you start
+with count toward it. The sign at the foot of the egg's stairs tells how many, so the number can be random
+(`random`, or `random-range-3-6` for a number from 3 to 6).
 
 ## What items and locations get shuffled?
 

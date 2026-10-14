@@ -147,6 +147,16 @@ class StartingInstruments(Range):
     default = 0
 
 
+class InstrumentsRequired(Range):
+    """How many of the eight instruments open the Wind Fish's Egg. Starting instruments count toward it. The sign at
+    the foot of the egg's stairs tells the number, so it can be left to chance: random, random-low, random-high or
+    random-range-<min>-<max>."""
+    display_name = "Instruments Required"
+    range_start = 0
+    range_end = 8
+    default = 8
+
+
 class ChestAppearance(Choice):
     """Whether a chest's look tells what it holds, as in the original randomizer.
     uniform: every chest looks the same. size: big chests hold important items. texture_and_size: also a texture
@@ -229,6 +239,17 @@ class MapTracker(DefaultOnToggle):
     display_name = "Map Tracker"
 
 
+class InGameHints(Choice):
+    """Owl statues and library books tell where your progression items are, in your world or another's.
+    off: their original text. text: the hint text only. server: reading a hint also makes it a hint on the server,
+    as !hint does, without costing hint points. Dungeon owl statues need their dungeon's stone beak."""
+    display_name = "In-Game Hints"
+    option_off = 0
+    option_text = 1
+    option_server = 2
+    default = 2
+
+
 class Stealing(Choice):
     """Whether logic may expect stealing from the shop.
     standard: only with a sword. always: with or without one. never: logic never expects it."""
@@ -276,6 +297,7 @@ class LASOptions(PerGameCommonOptions):
     dungeon_items: DungeonItems
     instruments: Instruments
     starting_instruments: StartingInstruments
+    instruments_required: InstrumentsRequired
     starting_rupees: StartingRupees
     open_mabe: OpenMabe
     open_kanalet: OpenKanalet
@@ -289,6 +311,7 @@ class LASOptions(PerGameCommonOptions):
     shuffled_powder: ShuffledPowder
     ammo_ghost: AmmoGhost
     map_tracker: MapTracker
+    in_game_hints: InGameHints
     stealing: Stealing
     chest_appearance: ChestAppearance
     traps: Traps
@@ -299,9 +322,10 @@ class LASOptions(PerGameCommonOptions):
 OPTION_GROUPS = [
     OptionGroup("Locations", [Chests, FreeGifts, TradeQuest, GoldenLeaves, HeartPieces, Seashells, Miscellaneous, Shop,
                               BossDrops, Dampe, Rapids, Fishing, BlueRupees, OwlStatues, SeashellMansion]),
+    OptionGroup("Goal", [InstrumentsRequired]),
     OptionGroup("Dungeon Items", [Keys, DungeonItems, Instruments]),
     OptionGroup("Start", [StartingInstruments, StartingRupees]),
     OptionGroup("World", [OpenMabe, OpenKanalet, OpenMamu, CompletedBridge, ClassicD2, FreeBook, FastFishing,
-                          FastStalfos, ShuffledBombs, ShuffledPowder, AmmoGhost, MapTracker, Stealing,
+                          FastStalfos, ShuffledBombs, ShuffledPowder, AmmoGhost, MapTracker, InGameHints, Stealing,
                           ChestAppearance]),
 ]

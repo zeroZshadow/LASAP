@@ -148,16 +148,17 @@ def size(log: str) -> int:
     return LOGS[log].stat().st_size if LOGS[log].exists() else 0
 
 
-def wait(pattern: str, seconds: float, log: str, start: int) -> str:
+def wait(pattern: str, seconds: float, log: str, start: int, count: int = 1) -> str:
+    """Waits until `count` lines logged after `start` match; returns the last of them."""
     rx = re.compile(pattern)
     end = time.time() + seconds
     while time.time() < end:
         if LOGS[log].exists():
             with open(LOGS[log], "rb") as f:
                 f.seek(start)
-                for line in f.read().decode("utf-8", "replace").splitlines():
-                    if rx.search(line):
-                        return line
+                found = [line for line in f.read().decode("utf-8", "replace").splitlines() if rx.search(line)]
+            if len(found) >= count:
+                return found[count - 1]
         time.sleep(0.1)
     raise SystemExit(f"timeout waiting for /{pattern}/ in {log}.log")
 
@@ -239,6 +240,7 @@ def run(script: Path, trace: str | None = None) -> None:
     began = time.time()
     mark = 0          # debug lines from here on answer the last send
     client_mark = size("client")
+    origins = {"client": client_mark, "server": size("server")}
     if trace:
         game().trace_file = open(trace, "w", encoding="utf-8")
         game().request("DBG trace on", r"^OK trace")
@@ -281,6 +283,13 @@ def run(script: Path, trace: str | None = None) -> None:
                 raise SystemExit(f"timeout waiting for /{parts[0]}/")
             mark = game().mark()
             print(reply)
+        elif op == "logged":
+            # logged <regex> [secs] [client|server] [count]: waits until `count` (default 1) lines logged since the
+            # script started match
+            parts = rest.split()
+            log = parts[2] if len(parts) > 2 else "client"
+            count = int(parts[3]) if len(parts) > 3 else 1
+            print(wait(parts[0], float(parts[1]) if len(parts) > 1 else 10, log, origins[log], count))
         elif op == "mash":
             # mash <buttons hex> <count> [hold ms] [gap s]
             p = rest.split()

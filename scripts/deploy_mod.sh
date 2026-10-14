@@ -9,7 +9,7 @@ SB=/d/DEV/LASAP-sandbox/ryujinx/sdcard
 OUT="$1"
 rm -rf "$SB/atmosphere/contents/01006BB00C6F0000"
 mkdir -p "$SB/atmosphere/contents" "$SB/config/lasr-exl"
-rm -f "$SB/config/lasr-exl/ap_map.txt"
+rm -f "$SB/config/lasr-exl/ap_map.txt" "$SB/config/lasr-exl/ap_hints.txt"
 cp -r "$OUT/atmosphere/contents/01006BB00C6F0000" "$SB/atmosphere/contents/"
 cp "$TEST_MODULE" "$SB/atmosphere/contents/01006BB00C6F0000/exefs/subsdk9"
 cp "$OUT/config/lasr-exl/"* "$SB/config/lasr-exl/"

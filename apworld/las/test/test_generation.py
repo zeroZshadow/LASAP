@@ -17,8 +17,10 @@ class TestDefault(LASTestBase):
         distribute_items_restrictive(self.multiworld)
         call_all(self.multiworld, "post_fill")
         slot_data = self.world.fill_slot_data()
-        self.assertEqual(set(slot_data), {"seed_hash", "goal", "death_link", "location_count", "settings", "logic",
-                                          "options", "starting_instruments"})
+        self.assertEqual(set(slot_data), {"seed_hash", "goal", "instruments_required", "death_link", "location_count",
+                                          "settings", "logic", "options", "starting_instruments"})
+        self.assertEqual(slot_data["instruments_required"], 8)
+        self.assertEqual(self.world.patch_data()["settings"]["Instruments Required"], 8)
         from ..lasr_settings import TRACKER_SETTINGS
         self.assertEqual(tuple(slot_data["settings"]), TRACKER_SETTINGS)
         self.assertEqual(slot_data["settings"]["Shuffle Instruments"], "Anywhere")
@@ -40,7 +42,7 @@ class TestDefault(LASTestBase):
 
         self.assertEqual(set(patch), {"format", "seed_name", "player", "slot_name", "seed_hash", "settings",
                                       "starting_items", "placements", "location_ids", "location_names",
-                                      "location_models", "location_chests", "dungeon_entrances"})
+                                      "location_models", "location_chests", "dungeon_entrances", "hints"})
         self.assertLessEqual(set(patch["location_models"]), set(patch["location_ids"]))
         self.assertEqual(patch["format"], 1)
         self.assertEqual(patch["seed_hash"], slot_data["seed_hash"])

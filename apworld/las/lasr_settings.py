@@ -176,10 +176,10 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Shuffled Powder": bool(o.shuffled_powder),
         "Ammo Ghost": bool(o.ammo_ghost),  # read by the AP patcher (ap_ghost.py), not by LASR
         "Map Tracker": bool(o.map_tracker),  # read by the AP patcher (ap_map.py), not by LASR
+        "Instruments Required": o.instruments_required.value,  # read by the AP patcher (ap_goal.py), not by LASR
         "Stealing": _STEALING[o.stealing.value],
         "Boss Cutscenes": True,
         "Song Cutscenes": False,  # player setting
-        "Movement Speed": True,
         "Chest Animations": True,
         "Key Animations": True,
         "Item Get Animations": False,  # not implemented by LASR
@@ -194,13 +194,14 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Randomize Text": False,
         "Randomize Environments": False,
         "360 Movement": False,
+        "Movement Speed": True,
         "Blur Removal": False,
         "Disable Guardian Acorn": False,
         "Disable Piece of Power": False,
+        "Instant Text": False,  # done by the module; LASR never implemented it
+        "Disable Low Health Beep": False,  # done by the module; LASR never implemented it
         # not implemented by LASR
         "Randomize Sound Effects": False,
-        "Disable Low Health Beep": False,
-        "Instant Text": False,
         "Rupees": o.starting_rupees.value,
         "Containers": 0,
         "Pieces": 0,

@@ -183,6 +183,12 @@ namespace {
     u64 g_KeptFlagsPolled = 0;
     bool g_Granting = false;  // GrantItem adds a received item
 
+    // In-game hints the client makes server hints of (HINTS_PATH): the flag reading the hint sets, and the hinted
+    // location as "<slot> <location id>". Reported once per connection, and all again on SYNC.
+    struct HintFlag { std::string flag; std::string target; bool reported; };
+    std::vector<HintFlag> g_Hints;
+    u64 g_HintFlagsPolled = 0;
+
     // Connection notices: in a level this long without the client or the server, say so, then again this often while
     // it lasts.
     constexpr u64 kOfflineNoticeMs = 20000;
@@ -566,6 +572,37 @@ namespace {
         }
     }
 
+    // "<n> <flag> <slot> <location id>" lines (patcher ap_hints.py)
+    void LoadHints() {
+        std::string text;
+        if (R_FAILED(FileHandler::ReadFile(AP::HINTS_PATH, text))) return;
+        std::stringstream lines(text);
+        std::string line;
+        while (std::getline(lines, line)) {
+            std::stringstream ss(line);
+            std::string n, flag, slot, location;
+            if (ss >> n >> flag >> slot >> location) g_Hints.push_back({flag, slot + " " + location, false});
+        }
+        Logging.Log("[AP] hints: " + std::to_string(g_Hints.size()));
+    }
+
+    // Sends HINT for the hints read (their flag set) and not yet reported on this connection, or for all read.
+    void ReportHints(bool all) {
+        if (!AP::IsClientConnected()) return;
+        for (auto& hint : g_Hints) {
+            if ((all || !hint.reported) && EventFlags::CheckFlag(hint.flag.c_str())) {
+                AP::Send("HINT " + hint.target);
+                hint.reported = true;
+            }
+        }
+    }
+
+    void TickHintFlags() {
+        if (g_Hints.empty() || !PlayerReady() || NowMs() - g_HintFlagsPolled < kKeptFlagPollMs) return;
+        g_HintFlagsPolled = NowMs();
+        ReportHints(false);
+    }
+
     void SendAllChecks() {
         std::string line = "CHECKS";
         int onLine = 0;
@@ -799,6 +836,7 @@ namespace {
             AP::Send("RECV " + std::to_string(GetRecvCount()));
             SendAllChecks();
             if (EventFlags::CheckFlag("ShadowClear")) AP::Send("GOAL");
+            ReportHints(true);
         } else if (a[0] == "DEATH") {
             if (!PlayerReady()) return false;
             (*Game::Data::Inventory::Items)->Health = 0;
@@ -852,6 +890,7 @@ namespace AP {
         LoadMap();
         LoadIndices();
         LoadKept();
+        LoadHints();
 #ifdef LASAP_TEST
         Test::InstallHooks();
 #endif
@@ -958,10 +997,12 @@ namespace AP {
             if (!g_ChecksLoaded) LoadChecks();
             SendAllChecks();
             Send("LOG level " + g_LastLevel);  // the client passes it on to trackers
+            for (auto& hint : g_Hints) hint.reported = false;  // sent again once the save is loaded
         }
 
         TickConnection();
         TickKeptFlags();
+        TickHintFlags();
         AP::TickToasts(PlayerReady());
         TickItemGet();
         TickWarpMenu();

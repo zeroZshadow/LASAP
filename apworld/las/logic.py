@@ -8,13 +8,15 @@ Name resolution matches LASR's shuffler (``checkAccess``/``canReachLocation``):
 - logic nodes (region, room, interaction, enemy, trick) hold once their condition does; regions, rooms and
   nodes on a reference cycle become AP regions (checked with region reachability), the others are inlined;
 - ``kill-x[pit]`` / ``kill-x[heavy]`` hold when ``kill-x`` holds or the enemy's ``condition-pit``/``-heavy`` holds;
-- settings tokens are constants; anything else is undefined and never holds.
+- settings tokens are constants;
+- a counted group (``instruments:3``) holds with that many different items of the group;
+anything else is undefined and never holds.
 Nodes use condition-basic (or True when absent) OR the higher-preset conditions the preset enables; enemies only
 ever use condition-basic, as in LASR.
 """
 import re
 from functools import lru_cache
-from typing import Callable, Dict, Iterable, List, Mapping, Optional, Set, Tuple, Union
+from typing import Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple, Union
 
 PRESETS = ("basic", "advanced", "glitched", "hell")
 _TOKEN = re.compile(r"\s*(?:([a-zA-Z0-9\-\[\]]+)(?::(\d+))?|([&|!()]))")
@@ -131,16 +133,18 @@ def _or(parts: List[Expr]) -> Expr:
 class LogicCompiler:
     """Turns LASR logic into rule expressions for one player's options.
 
-    item_names maps LASR item names (and follower contents) to the AP item names counted in state.
+    item_names maps LASR item names (and follower contents) to the AP item names counted in state. counted maps group
+    tokens to their LASR items.
     Nodes in `region_nodes` are AP regions of the same name; rules reach them through `_R[name]`.
     """
 
     def __init__(self, logic: Mapping[str, Mapping], preset: str, settings: Mapping[str, bool],
-                 item_names: Mapping[str, str]):
+                 item_names: Mapping[str, str], counted: Mapping[str, Sequence[str]] = {}):
         self.logic = logic
         self.preset = preset
         self.settings = settings
         self.item_names = item_names
+        self.counted = counted
         self.extra_keys = condition_keys(preset)
         self.region_nodes = self._region_nodes()
         self._inline: Dict[str, Expr] = {}
@@ -214,6 +218,11 @@ class LogicCompiler:
             return _or([self._node(base), variant])
         if name in self.item_names:
             return self._count(self.item_names[name], count)
+        if name in self.counted:
+            if count <= 0:
+                return True
+            held = " + ".join(f"(c[{self.item_names[item]!r}] > 0)" for item in self.counted[name])
+            return f"({held} >= {count})"
         if name in self.logic and self.logic[name]["type"] != "item":
             # nodes are added to LASR's access once
             return self._node(name) if count <= 1 else False

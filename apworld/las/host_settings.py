@@ -17,6 +17,7 @@ class PlayerSetting(NamedTuple):
 # The patcher's PLAYER_SETTINGS has the same LASR settings and defaults.
 PLAYER_SETTINGS = (
     PlayerSetting("movement_360", "360 Movement", "360° movement", False),
+    PlayerSetting("movement_speed", "Movement Speed", "Walk and swim 20% faster", True),
     PlayerSetting("blur_removal", "Blur Removal", "No blur at the screen's edges", False),
     PlayerSetting("skip_song_cutscenes", "Song Cutscenes", "Skip the song cutscenes", False),
     PlayerSetting("nice_hookshot", "Nice Hookshot", "Hookshot grabs any surface", False),
@@ -26,6 +27,8 @@ PLAYER_SETTINGS = (
     PlayerSetting("randomize_environments", "Randomize Environments", "Shuffle the rooms' lighting", False),
     PlayerSetting("no_guardian_acorn", "Disable Guardian Acorn", "No Guardian Acorns", False),
     PlayerSetting("no_piece_of_power", "Disable Piece of Power", "No Pieces of Power", False),
+    PlayerSetting("instant_text", "Instant Text", "Text shows at once", False),
+    PlayerSetting("no_low_health_beep", "Disable Low Health Beep", "No low-health beep", False),
 )
 PLAYER_DEFAULTS = {s.lasr: s.default for s in PLAYER_SETTINGS}
 
@@ -91,6 +94,9 @@ class LASSettings(settings.Group):
     class Movement360(settings.Bool):
         """Walk in any direction instead of eight."""
 
+    class MovementSpeed(settings.Bool):
+        """Walk and swim 20% faster."""
+
     class BlurRemoval(settings.Bool):
         """Remove the blur at the edges of the screen."""
 
@@ -118,7 +124,14 @@ class LASSettings(settings.Group):
     class NoPieceOfPower(settings.Bool):
         """Enemies never drop a Piece of Power."""
 
+    class InstantText(settings.Bool):
+        """Each page of text shows at once instead of letter by letter."""
+
+    class NoLowHealthBeep(settings.Bool):
+        """No warning beep at low health."""
+
     movement_360: Union[Movement360, bool] = False
+    movement_speed: Union[MovementSpeed, bool] = True
     blur_removal: Union[BlurRemoval, bool] = False
     skip_song_cutscenes: Union[SkipSongCutscenes, bool] = False
     nice_hookshot: Union[NiceHookshot, bool] = False
@@ -128,6 +141,8 @@ class LASSettings(settings.Group):
     randomize_environments: Union[RandomizeEnvironments, bool] = False
     no_guardian_acorn: Union[NoGuardianAcorn, bool] = False
     no_piece_of_power: Union[NoPieceOfPower, bool] = False
+    instant_text: Union[InstantText, bool] = False
+    no_low_health_beep: Union[NoLowHealthBeep, bool] = False
 
     def player_settings(self) -> Dict[str, Any]:
         """The player settings under LASR's names, as the patcher takes them."""

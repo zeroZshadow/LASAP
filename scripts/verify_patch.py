@@ -1,7 +1,9 @@
 """Static checks on patcher output: every chest location holds the AP placeholder (the model variant of
 `location_models`) with its local id, and every randomized heart piece and seashell actor has a unique index above
 the received range (DESIGN.md, item model). With the map tracker on, every AP location has one icon in ap_map.txt and
-every icon its datasheet row.
+every icon its datasheet row. Below eight required instruments, the egg's event checks single instruments instead of
+all of them. With in-game hints, every hint source shows its own message, which fits the text box, and a server hint
+sets its flag, which ap_hints.txt names with the hinted location.
 
 python scripts/verify_patch.py <patch.aplas> <patcher output dir>
 """
@@ -10,6 +12,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "patcher"))
+import ap_goal  # noqa: E402
+import evfl  # noqa: E402
 from RandomizerCore.Randomizers.chests import CHEST_ROOMS  # noqa: E402
 from RandomizerCore.Tools.leb import Room  # noqa: E402
 from las_ap_patch import (ACTOR_INDICES, COMPANION_FLAGS, INDEX_KINDS, INDICES_FILE, PLACEHOLDER_KEY,  # noqa: E402
@@ -112,4 +116,90 @@ if found != expected or len(kept) != len(expected):
     bad += 1
     print(f"KEPT {kept} != {expected}")
 print(f"kept locations={len(kept)} bad={bad}")
+
+# In-game hints: each source's message, its wrapping, its flag and ap_hints.txt.
+hints = patch.get("hints", {})
+if hints:
+    import re  # noqa: E402
+    import ap_hints  # noqa: E402
+    from RandomizerCore.Tools.oead_tools import readSheet  # noqa: E402
+    from RandomizerCore.Tools.text_tools import TextFile  # noqa: E402
+    romfs = Path(sys.argv[2]) / "atmosphere/contents/01006BB00C6F0000/romfs"
+    flows = {}
+    for name in (ap_hints.FIELD_FLOW, ap_hints.DUNGEON_FLOW, ap_hints.BOOK_FLOW):
+        flow = evfl.EventFlow()
+        flow.read((romfs / "region_common/event" / name).read_bytes())
+        flows[name] = [dict(e.data.params.data) for e in flow.flowchart.events
+                       if type(e.data).__name__ == "ActionEvent" and e.data.params is not None]
+    texts = {name: TextFile(romfs / "regionUS/USen/message" / name).getTextDict() for name in ("Hint.msbt", "System.msbt")}
+    sheet = readSheet(str(romfs / "region_common/datasheets/GlobalFlags.gsheet"))
+    global_flags = {str(row["symbol"]) for row in sheet["values"]}
+    want_lines = []
+    for source, hint in hints.items():
+        label = ap_hints.label(source)
+        if source in ap_hints.BOOKS:
+            flow, text_file = ap_hints.BOOK_FLOW, "System"
+        else:
+            flow, text_file = ap_hints.FIELD_FLOW if source in ap_hints.FIELD_OWLS else ap_hints.DUNGEON_FLOW, "Hint"
+        shown = sum(1 for params in flows[flow] if params.get("message") == f"{text_file}:{label}")
+        flagged = sum(1 for params in flows[flow] if params.get("symbol") == label)
+        text = texts[f"{text_file}.msbt"].get(label, "")
+        pages = [re.sub(r"\[[^]]*\]", "", page).split("\n") for page in text.split(ap_hints.PAGE_BREAK)]
+        problems = []
+        if shown != 1:
+            problems.append(f"shown by {shown} events")
+        if " ".join(" ".join(page) for page in pages) != ap_hints.clean(hint["text"]):
+            problems.append(f"text {text!r}")
+        if source in ap_hints.BOOK_PROMPTS and "Lost and Found" not in texts["System.msbt"][ap_hints.BOOK_PROMPTS[source]]:
+            problems.append("the book keeps its title")
+        if any(len(page) > ap_hints.PAGE_LINES or any(len(line) > ap_hints.LINE_WIDTH for line in page)
+               for page in pages):
+            problems.append(f"does not fit: {pages}")
+        if "location" in hint:
+            want_lines.append(f"{ap_hints.SOURCES.index(source)} {label} {hint['player']} {hint['location']}")
+            if flagged != 1 or label not in global_flags:
+                problems.append(f"flag set by {flagged} events, in GlobalFlags: {label in global_flags}")
+        elif flagged:
+            problems.append("flag set without a location")
+        if problems:
+            bad += 1
+            print(f"HINT {source} {label}: " + "; ".join(problems))
+    hints_file = Path(sys.argv[2]) / "config/lasr-exl" / ap_hints.FILE_NAME
+    lines = hints_file.read_text(encoding="utf-8").splitlines() if hints_file.exists() else []
+    if lines != want_lines:
+        bad += 1
+        print(f"HINTS FILE {lines} != {want_lines}")
+    # the statues that shared an entry point have their own
+    for source, (entry, room, _) in ap_hints.OWN_ENTRIES.items():
+        if room and source in hints:
+            path = level_dir / room.split("_")[0] / f"{room}.leb"
+            statues = [a for a in Room(path.read_bytes()).actors if a.parameters and a.parameters[0] == entry.encode()]
+            if len(statues) != 1:
+                bad += 1
+                print(f"HINT {source}: {room} has {len(statues)} statues with {entry}")
+    print(f"hints={len(hints)} server={len(want_lines)} bad={bad}")
+
+# Instruments Required: below eight, the egg's event checks single instruments instead of all of them.
+required = patch["settings"].get("Instruments Required", 8)
+egg = Path(sys.argv[2]) / "atmosphere/contents/01006BB00C6F0000/romfs/region_common/event" / ap_goal.EVENT_FILE
+queries = []
+if egg.exists():
+    flow = evfl.EventFlow()
+    flow.read(egg.read_bytes())
+    queries = [e.data.actor_query.v.v for e in flow.flowchart.events
+               if getattr(e.data, "actor_query", None) is not None]
+if required < 8 and (ap_goal.ALL_QUERY in queries or ap_goal.ITEM_QUERY not in queries):
+    bad += 1
+    print(f"EGG still checks {ap_goal.ALL_QUERY} with {required} instruments required")
+# LASR writes the egg's event in every patch; with all eight required its switches stay as they are.
+if required >= 8 and egg.exists() and queries.count(ap_goal.ALL_QUERY) != ap_goal.SWITCHES:
+    bad += 1
+    print(f"EGG event lost its {ap_goal.ALL_QUERY} checks with all instruments required")
+from RandomizerCore.Tools.text_tools import TextFile  # noqa: E402
+sign = TextFile(Path(sys.argv[2]) / "atmosphere/contents/01006BB00C6F0000/romfs/regionUS/USen/message" /
+                ap_goal.SIGN_FILE).getEntry(ap_goal.SIGN_KEY).message.text
+if ap_goal.sign_text(required) not in sign:
+    bad += 1
+    print(f"EGG sign does not name {required} instruments: {sign!r}")
+print(f"egg instruments={required} item checks={queries.count(ap_goal.ITEM_QUERY)} bad={bad}")
 sys.exit(1 if bad else 0)
