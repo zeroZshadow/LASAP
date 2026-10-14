@@ -44,6 +44,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 | `map_positions.py [<pack>]` | Writes `patcher/map_positions.json`, the map tracker's positions with heights (DESIGN.md, Map tracker), from the RomFS rooms and the PopTracker pack's pins, in `.venv-ap`; prints the pin fit's error |
 | `poptracker_map.py <pack>` | Writes the Archipelago id tables (`scripts/autotracking/*_mapping.lua`) of the LASR PopTracker pack (Br00ty/lasr_brooty) and checks every code against the pack, in `.venv-lasr` |
 | `re/scan.py str\|strs\|xref\|xstr\|callers\|dis\|func\|ptr\|sms` | Static queries on a memory dump of the game (see "Reverse engineering") |
+| `re/decomp.sh <out.c> <hex offset>...` | Decompiles functions of the dump with Ghidra headless, named from `re/las.sym` (see "Reverse engineering") |
 
 ## Working in a worktree
 
@@ -163,7 +164,8 @@ The test build reports the game's state so tests press when the game takes a pre
 - `DBG dumpmain` writes the decrypted, relocated main module from memory (runtime base 0x8504000 on Ryubing). Keep it in `D:\DEV\LASAP-sandbox\re`, outside the repo.
 - `re/scan.py` finds strings, the code that loads a string's address, and callers of a function, using module offsets (the ones `InstallAtOffset` takes). Event actions are dispatched by name, so `xstr <action name>` leads to the action's handler. `strs <off>` lists the strings a function loads; `sms` lists the UI state machines (their `ChangeState` functions, state names and callers).
 - UI state machines (game 1.0.0): u32 frames in the state `+0x8`, u8 state `+0xd` (0xff none), previous state `+0xe`, owner `+0x40`; per state an enter, update and exit member function from `+0x48`, `0x30` apart, and its name at `+0x58 + state * 0x30`.
-- Ghidra (scoop `ghidra`) decompiles single functions headless: import `main.bin` raw (AARCH64 little endian, base 0x8504000) into a scratch project outside the repo without auto-analysis, then run a post script that disassembles and decompiles the function at an address.
+- Ghidra (scoop `ghidra`): `re/decomp.sh` imports `main.bin` raw (AARCH64 little endian, base 0x8504000, no auto-analysis) into a project next to it (`LASAP_RE`, default `D:\DEV\LASAP-sandbox\re`), names it from `re/las.sym` (`re/ghidra/ImportSymbols.java`) and decompiles the functions at the given offsets (`re/ghidra/Decomp.java`); the project opens read-only, so each run starts from the plain import.
+- `re/las.sym` names the functions, globals and vtables found so far, in the `.sym` format of Ghidra's former `ImportSymbolsScript.py`: `<name> <absolute address> f|l [note]`, f a function, l a label. In the Ghidra GUI, `re/ghidra/ImportSymbols.java` (Script Manager, script directory `scripts/re/ghidra`) imports it into a program imported at base 0x8504000. Each finding adds its symbols there; the tables below describe structures and fields.
 - `DBG peek` snapshots taken in different game states, compared byte by byte, found the player's event state and the pause flag.
 
 **Offsets used by the module (game 1.0.0)**
@@ -223,6 +225,19 @@ The test build reports the game's state so tests press when the game takes a pre
 | `0xb5e870` | Fishing pond fish (base vtable `0x1bffd60`; the big fish's `0x1c00320`): `ChangeState(machine, state)` of its machine at fish `+0x400` (21 states, Enter to WaitEscape; next state requested at fish `+0x8f0`); hooked in the test build |
 | `0xb5c410` / `0xb5c534` | A hooked fish's line tension (fish `+0x9e4`): each frame it can rise while the lure actor (fish `+0x2a8`) is in its states 12 or 13 (machine at lure `+0x320`, next state `+0x760`) and falls by 1 otherwise, never below 0, stored at `0xb5c534`; Easy Fishing stores 0 there instead |
 | `0xb59bf0` | Fish fight update (base class; the big fish's override `0xb66260` and the states at `0xb5ff68` and `0xb60654` do the same): `0xb5c830` true catches the fish (state Get), otherwise tension at or above the fish's limit (s16 at `[fish +0x968] +0x96`) or `0xb5bf60` (the fish's x past the pond's edge, -10 or 16) loses it through `0xb5c910` (`0xb5c970` plays `SE_PL_FISHING_FISH_LOST` and lets go of the lure) |
+
+**Other findings (game 1.0.0), not used by the module yet**
+
+| What | Where |
+|---|---|
+| Link's model | Model component `*(player+0x2a8)` (vtable `0x1c4a060`), its model instance `M = *(component+0x148)`, the g3d model object `*(*(M+0x60)+0x10)`. `*(u8**)(M+0x378)`: one byte per shape, 1 drawn; the renderer (`ModelRenderer_Draw`) draws a shape only when that byte is 1 and its material and bone bits are set. Component virtuals `+0xa0` set shape visible `(component, index, bool)`, `+0xa8` is visible, `+0xb8` shape index by name |
+| Link's shapes (`link` in `Playerlink.bfres`) | 20, by index: 0 magic rod, 1 ocarina, 2 shovel, 3–5 arm, belt, body, 6 boots, 7–9 face (ear, eye, mouth), 10 flippers, 11 hair, 12 hookshot handle, 13 shield, 14–15 mirror shield, 16–17 sword, 18–19 second sword. The bow, bottle, arrows, hookshot chain and boomerang are other models or actors |
+| Player `+0x498` | Item shape groups: a map group → node (`+0x10` s32 group, `+0x18` vector of shape indices, `+0x30` u8 visible): 0 sword, 1 shield, 2 ocarina, 3 shovel, 4 hookshot, 5 flippers, 6 magic rod, 7 boots, 8 second sword, 9 mirror shield. `Player_ShowItem (player, item, bool)` picks the sword and shield by inventory `+0x9c` bit 0 (`SwordLv2`) and bit 1 (`MirrorShield`); bits 6 and 7 are the red and blue tunics |
+| Player `+0x2b8` | Link's animator: a layered skeletal animation component (vtable `0x1c49ee8`, 0x220 bytes) with 2 slots; layers at `+0x1b0` (count `+0x1c8`, layer pointers `+0x1d0`); layer 1 is masked to `spine_a` and its children and carries only `idle_carry`, `bottle_use` and `eat`. An NPC's animator (NPC component `+0xe8`) is the single-layer base class (vtable `0x1c49d70`, 0x1b0 bytes, one layer at `+0x60`, model instance `+0x88`): it has no `+0x1c8`/`+0x1d0` |
+| Npc row (0x220 bytes) | `symbol` 0x0, `graphics` 0x10 (model 0x20), `eventTriggers` 0x100, `doAction` 0x110, `popConditions` 0x148, `layoutConditions` 0x160, `behavior` 0x178, `movement` 0x190, `collision` 0x1a0 (shape 0x1a0, traits 0x1a8, component 0x1b8, isStatic 0x1bc, filter 0x1c0, material 0x1c4, groundCheck 0x1c8, offset 0x1cc, rotation 0x1d8, parameters 0x1e8), `damageCollision` 0x1f8, `attribute` 0x218 |
+| Entity flags `+0x40` | Actors and components: bit 3 initialized, `(f & 0x40000017) == 0x17` active, bit 30 destroy requested, bit 31 destroyed. Children: three FNV-1a(name) maps at the parent's `+0x10`, `+0x38`, `+0x60`; the child's parent at `+0x48` |
+| `WorldToLayout` | `(const Vec4* world)` → s0/s1 layout coordinates (origin at the centre, x ±640, y ±360) through the camera at Framework `+0x560` (view `+0x20`, projection `+0xa0`); no check for points behind the camera. `Hud_Update` uses it to place the Gm_HUDInteract label (HUD `+0x4790`, text pane `T_Interact_00`, text object `+0x4868` set with `MessageText_SetLabel`) next to Link |
+| nn::ui2d pane | `+0x18` parent, `+0x30` translate, `+0x3c` rotate, `+0x48` scale, `+0x50` size, `+0x58` flags (bit 0 visible, bit 4 matrix dirty after a move), `+0xb0` name. Text box: the game's vtable `0x1c52940`, `+0x100` set string UTF-16 `(box, const char16_t*, u16 index)`, `+0x108` UTF-8, `+0xe8` allocate a larger buffer; `+0xd8` buffer, `+0x110` capacity, `+0x112` length |
 
 ## Verified (2026-10-12, Ryubing Canary 1.3.340, game 1.0.0)
 

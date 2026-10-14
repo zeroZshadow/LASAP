@@ -1,0 +1,163 @@
+ActorParams_Dtor0 0x08520f70 f member destructor at params +0xd0
+ActorParams_Dtor1 0x08521190 f member destructor at params +0x50
+ActorParams_Dtor2 0x085213b0 f member destructor at params +0x10
+Entity_DestroyThunk 0x085226d0 f actor vtable +0xa8: calls Entity_Destroy
+Resource_TakeFlowchart 0x085419f0 f (out, handle*)
+Resource_Wait 0x08541c20 f (handle*)
+Sound_Play 0x085a97e0 f (StringView* name, nullptr, volume, pitch)
+EventAction_PlayAnimation2 0x085f7bb0 f virtual +0x30 on the actor's root component
+EventAction_PlayAnimation 0x0861d0c0 f
+SkeletalModelComponent_Make 0x08646660 f (out, owner, StringView* name, rootSp*, resource, ...)
+Item_IsCollected 0x0864cb10 f (kind, count, index): kind 8 heart piece bit, kind 9 seashell bit
+LayeredAnimation_Make 0x08b7fa70 f (out, parent entity, StringView* name, smcSp*, int* slots): a layered SkeletalAnimationComponent
+Event_Make 0x08d10290 f (out, flowchart*, StringView* entry)
+Event_Prepare 0x08d11b00 f (event*)
+EventManager_Request 0x08d232e0 f (out, manager, event*)
+Datasheets_Load 0x08d3cb30 f boot: loads Npc.gsheet and NpcPhysicsTraits.gsheet into 0x1cb8360
+Title_ChangeState 0x08d831b0 f (machine*, state)
+Npc_TraitsValue 0x08dcb490 f (npc component): a float of the row's collision.traits row in NpcPhysicsTraits, default without
+Scene_ReleaseActors 0x08de72c0 f moves or removes the actors of a weak list (RemoveChild as the module does)
+Actor_Create 0x08df9ea0 f (shared_ptr* out, shared_ptr* owner, params*): the actor factory; owner Framework +0x498
+NpcComponent_Ctor 0x08e47e90 f (component, args, StringView* row key, x3): looks the Npc row up; row at +0x88
+NpcAnimation_PlayByName 0x08e4d260 f (component, StringView* name, u8 mode, f32 blend, f32 frame); vtable slot 29
+NpcComponent_CollisionFilter 0x08e4de00 f vtable +0x128: collision.filter 1..7 -> table 0x1702080
+NpcComponent_CollisionMaterial 0x08e4de30 f vtable +0x130
+NpcComponent_MakeModel 0x08e4f0c0 f vtable +0x200
+NpcComponent_MakeAnimator 0x08e4f310 f vtable +0x208: a single-layer SkeletalAnimationComponent (0x9662e0)
+NpcComponent_MakeCollision 0x08e4f350 f vtable +0x210: null when the row's collision.shape is 0
+NpcComponent_MakeDamageCollision 0x08e52700 f vtable +0x218: only with damageCollision.enable
+NpcComponent_MakeEventChara 0x08e53220 f vtable +0x220
+NpcComponent_MakeDoAction 0x08e546a0 f vtable +0x228: only with doAction.type != 0
+NpcComponent_MakeGroundAttr 0x08e55670 f vtable +0x250: only with a Collision, and groundCheck
+NpcComponent_BuildComponents 0x08e5bd80 f vtable +0x388: the sub-components through the Make* slots
+NpcAnimation_ResolveName 0x08e62f30 f (out, component, StringView* name)
+NpcAnimator_Make 0x08e6a2e0 f base SkeletalAnimationComponent, 0x1b0 bytes, one layer at +0x60
+NpcAnimation_Get 0x08e6b0d0 f (shared_ptr* out, component, name): the bound animation of the component's set (+0x1e8, cache +0x218)
+NpcGhost_Factory 0x08ec0540 f (out, owner, params): the actor table's factory for id 0x179
+NpcGhost_Create 0x08ec0680 f new, setup (vtable +0x78, +0x20), AddChild to the actor system
+NpcGhost_New 0x08ec0ab0 f allocates and constructs (vtable 0x1be37c0)
+NpcGhost_Setup 0x08ec0da0 f vtable +0x20: DeferredInit, root, Npc components
+NpcGhost_Register 0x08ec13f0 f vtable +0x78: joins an update list
+Actor_AddComponent 0x08ec4550 f (out, actor, StringView* name, x3)
+NpcGhost_MakeNpcComponent 0x08ec4870 f (out, args*, x3): passes the row key NpcGhost (0x16ebdf4)
+NpcGhost_MakeEventChara 0x08ec5070 f vtable +0x220 override
+NpcAnimation_PlayByName2 0x08ee3590 f a subclass's override of 0x949260
+PanelShadowLink_Init 0x0920fe50 f the Chamber Dungeon's Shadow Link: PlayerAnimation controller at +0x16e0
+Player_Init 0x0922f030 f player vtable +0x10
+Player_InitParts 0x09230c50 f registers the item shape groups at player +0x498
+Player_InitAnimator 0x09231a00 f makes the 2-slot layered animator, layer 1 masked to spine_a
+Player_UpdateAnimation 0x092395c0 f per frame: nextKey chains through PlayerAnimation_Play
+Player_UpdateState 0x0923ce70 f the big state update; inlines Player_ShowItem
+Player_ShowItem 0x09242390 f (player, u8 item, bool): sword/shield level from inventory +0x9c bits 0/1
+Player_InitAnimations 0x092440f0 f registers every PlayerAnimation.gsheet row with the controller
+Player_EventAnimation 0x0924a070 f event-driven animation by name
+PlayerAnimation_Make 0x0924eca0 f creates the controller (player +0x1568)
+PlayerBottle_Init 0x09269ee0 f bottle model wrapper at player +0x1bb0
+Player_ItemGetSequence 0x0927d5d0 f (shared_ptr* out, Player*, int itemId, bool keepCarry, StringView* messageEntry)
+PartsVisibility_AddShape 0x09290a80 f (parts, group, name)
+PartsVisibility_AddShapes 0x09290ec0 f (parts, group, vector of names)
+PartsVisibility_SetGroup 0x09291240 f (parts, group, bool)
+PlayerAnimation_Ctor 0x092ef320 f
+PlayerAnimation_Register 0x092f0020 f (controller, {sheet, row}*, animation*)
+PlayerAnimation_Play 0x092f0a80 f (controller, u32 key, u32 slot, f32 blend): every play of Link's animations; from frame 0
+PlayerAnimation_SetSlot 0x092f0d70 f hands the animation to the animator (0x1059dd0)
+PlayerAnimation_PlayByName 0x092f0f40 f (controller, StringView* name, f32 blend): slot 0
+PlayerAnimation_KeyOf 0x092f0fa0 f (controller, name) -> key or -1
+PlayerAnimation_PlayIfNew 0x092f1130 f (controller, key, slot, blend)
+PlayerAnimation_PlayByNameIfNew 0x092f1210 f (controller, StringView* name)
+PlayerAnimation_ClearUpper 0x092f1260 f clears slot 1
+EventFlags_Check 0x092fe920 f (flags, StringView* name)
+DungeonMap_KeyWait 0x0937e0f0 f
+DungeonMap_MemoriesButton 0x0938b840 f bool(page*)
+OverworldMap_KeyWait 0x09399090 f
+Hud_Update 0x093ae800 f places Gm_HUDInteract next to Link with WorldToLayout
+MessageWindow_Reading 0x093f5960 f update of the state Reading
+MessageWindow_PlaceBalloon 0x093fba30 f projects and clamps the balloon position
+DungeonMapIcon_Update 0x0943c040 f (icon*, actor*)
+HudInteract_Setup 0x0943dea0 f text pane T_Interact_00, window W_Interact_00
+MessageText_ShowLetters 0x09457b60 f (text*, int letters)
+WorldToLayout 0x0948cc40 f (const Vec4* world) -> s0/s1 layout coordinates (centre origin, x +-640, y +-360); no behind-camera check
+MessageText_SetLabel 0x094908b0 f (text object, StringView* MSBT label)
+Datasheet_FindRow 0x094aa370 f (sheet, StringView* key, u64 row size) -> row or null
+Actor_RemoveFromParent 0x094ab690 f actor vtable +0x8
+Actor_Destroy 0x094abd40 f actor vtable +0x58 (actor, bool immediate)
+Actor_DestroyNow 0x094abd80 f actor vtable +0x60
+Actor_DestroyComponents 0x094ac410 f (actor, bool)
+Entity_RequestDestroy 0x094afa60 f (entity, bool immediate): bit 30, queued for the manager's flush
+Entity_DestroyNow 0x094afd30 f
+Entity_Destroy 0x094aff70 f (entity)
+EntityManager_Flush 0x094b20e0 f runs the queued destroys
+Entity_RemoveChild 0x094b40c0 f (parent, const char* name, u64 length, bool immediate)
+Entity_FindChild 0x094b42d0 f
+Entity_EraseChild 0x094b44e0 f (parent, shared_ptr*)
+Entity_AddChildBody 0x094b5250 f
+Entity_HasChild 0x094b5ef0 f (parent, shared_ptr*)
+Entity_AddChild 0x094b7290 f (parent, shared_ptr*)
+Resource_Load 0x094bfd80 f (out handle, manager, StringView* path)
+ModelRenderer_Draw 0x094e8020 f draws shape i when its byte (M +0x378) is 1 and its material and bone bits are set
+ShaderSelector_SetOption 0x094f7dd0 f (selector, option, value)
+GfxContext_SetRasterState 0x094fd430 f (context, state): cached at context +0xa0
+Animation_Bind 0x09537c00 f (out, animation, model)
+AnimationLayers_SetAnimation 0x095392a0 f (layers, layer, animSp*)
+AnimationLayers_SetBoneMask 0x09539390 f (layers, layer, const char* bone, bool children)
+AnimationLayers_SetEnabled 0x095395f0 f (layers, layer, bool)
+ResModel_ShapeIndex 0x0953fbf0 f (res model, name)
+AnimationSet_Make 0x0954a480 f (out, animation set, const char* name)
+SkeletalModel_SetShapeVisibleByName 0x09553a80 f vtable +0x98 (smc, name, bool)
+SkeletalModel_SetShapeVisible 0x09553ae0 f vtable +0xa0 (smc, index, bool): M +0x378[index]
+SkeletalModel_ShapeIndex 0x09553bf0 f vtable +0xb8 (smc, name)
+SkeletalAnimation_BindModel 0x0955c130 f vtable +0x20: +0x88 model instance, +0x90 model object
+SkeletalAnimation_SetAnimation 0x0955c9e0 f vtable +0x88, single layer
+LayeredAnimation_Ctor 0x0955d200 f (sac, owner, smcSp*, slot count)
+LayeredAnimation_SetAnimation 0x0955d8f0 f vtable +0x88: slot 0
+LayeredAnimation_SetSlot 0x0955ddd0 f (sac, slot, animSp*, f32 blend, f32 start)
+SkeletalModel_IsShapeVisible 0x0955f7d0 f vtable +0xa8
+Msbt_GetText 0x095ae5a0 f
+Msbt_FindLabel 0x095aef40 f
+GameTextBox_SetString16 0x095e20b0 f vtable 0x1c52940 +0x100 (textbox, const char16_t*, u16 index)
+GameTextBox_SetString8 0x095e21c0 f vtable 0x1c52940 +0x108 (textbox, const char*, u16 index)
+GameTextBox_RegisterGlyphs 0x095e2550 f
+CmdBuf_DrawElementsBaseVertex 0x09642950 f (wrapper, ...)
+CmdBuf_DrawElementsInstanced 0x096429d0 f (wrapper, ...)
+CmdBuf_BindRasterState 0x09642a70 f (wrapper, state)
+CmdBuf_BindUniformBuffer 0x09643d70 f (wrapper, stage, slot, {GPU address, offset}*, size)
+PipelineState_Build 0x0964a190 f (state, ?, descriptor): alpha-to-coverage from descriptor +0x1a
+Pane_FindByName 0x0966ae00 f pane vtable +0x60 (pane, name, recursive)
+shared_weak_count_release_weak 0x099351f0 f libc++ std::__shared_weak_count::__release_weak
+PlayerAnimation_DefaultBlend 0x09bb3c44 l f32 0.0667
+str_NpcGhost 0x09befdf4 l "NpcGhost": the row key and the actor table's name
+NpcCollisionFilters 0x09c06080 l 7 u32 collision filters
+NpcComponent_vtable2 0x0a0c9290 l vtable
+ActorTable 0x0a0d0898 l 0x58 bytes per actor id; +0x50 name
+NpcComponent_vtable 0x0a0e0570 l vtable
+NpcGhost_vtable 0x0a0e77c0 l vtable
+NpcGhostComponent_vtable 0x0a0e7ad8 l vtable
+PanelShadowLink_vtable 0x0a11a730 l vtable
+Player_vtable 0x0a11bb70 l vtable
+PlayerItemModel_vtable 0x0a11d638 l bow and bottle model holders
+PlayerBottle_vtable 0x0a11d918 l vtable
+HudInteract_vtable 0x0a130eb0 l vtable
+AnimationLayer_vtable 0x0a14b2f8 l vtable
+AnimationLayers_vtable 0x0a14b438 l vtable
+SkeletalAnimation_vtable 0x0a14dd70 l single layer, 0x1b0 bytes (NPCs)
+LayeredAnimation_vtable 0x0a14dee8 l 0x220 bytes (Link)
+SkeletalModel_vtable 0x0a14e060 l vtable
+GameTextBox_vtable 0x0a156940 l vtable
+ui2d_TextBox_vtable 0x0a189270 l vtable
+IdentityQuat_ptr 0x0a197de8 l pointer to an identity quaternion
+OneScale_ptr 0x0a197df0 l pointer to a Vec4 of ones
+got_nvnCommandBufferBindMultisampleState 0x0a1987c0 l
+got_nvnMultisampleStateSetDefaults 0x0a1991e8 l
+got_nvnMultisampleStateSetAlphaToCoverageEnable 0x0a199200 l
+Framework_ptr 0x0a19b188 l Framework: +0x498 actor system, +0x4b8 player, +0x4d4 frame counter, +0x518 controller, +0x560 camera
+EventManager_ptr 0x0a1b64d8 l
+NpcSheets_ptr 0x0a1bc360 l -> {shared_ptr Npc.gsheet, shared_ptr NpcPhysicsTraits.gsheet}
+PlayerAnimationSheet_ptr 0x0a1bef70 l -> shared_ptr PlayerAnimation.gsheet
+GlobalSave 0x0a1bf200 l
+EventFlags_ptr 0x0a1c5120 l
+DungeonItems_ptr 0x0a1c51b0 l
+Inventory_ptr 0x0a1c5368 l +0x9c bits: 0 SwordLv2, 1 MirrorShield, 6 ClothesRed, 7 ClothesBlue
+LevelIndex_ptr 0x0a1c53c8 l
+EntityManager_ptr 0x0a1cad98 l +0x6d8 u8 flushing
+ResourceManager_ptr 0x0a1cadb8 l
+FrameDelta 0x0a1cae88 l time units per update (blend progress)
