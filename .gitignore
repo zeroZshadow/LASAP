@@ -1,14 +1,52 @@
+# Third-party checkouts and reference repos (read only, cloned locally)
 reference/
 vendor/
+
+# Python
 .venv*/
 __pycache__/
-*.pyc
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Build outputs: releases, the exlaunch module, assets
 build/
 build-test/
 deploy/
 out/
-*.log
 patcher/exl/
 patcher/exl-test/
 patcher/RandomizerUI/Resources/textures/chest/bfres/
-.claude/worktrees/
+
+# Nintendo data and keys: never commit game dumps, keys or saves
+*.keys
+*.nsp
+*.nsz
+*.xci
+*.xcz
+*.nca
+*.nro
+romfs/
+RomFS/
+*RomFS*/
+exefs/
+
+# Archipelago output: patches, multidata and spoilers of generated seeds
+*.aplas
+*.archipelago
+*.apsave
+AP_*.zip
+*_Spoiler.txt
+
+# Logs and local tool state
+*.log
+.claude/
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
