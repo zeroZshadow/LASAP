@@ -349,3 +349,64 @@ class TestGhostSecret(unittest.TestCase):
             asyncio.run(main())
         finally:
             LASWorld.settings.ghost_relay = saved
+
+
+class TestUPnP(unittest.TestCase):
+    def test_maps_and_removes_the_port(self) -> None:
+        import http.server
+        import threading
+        service = "urn:schemas-upnp-org:service:WANIPConnection:1"
+        actions: List[str] = []
+
+        class Router(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *args) -> None:
+                pass
+
+            def reply(self, status: int, body: str) -> None:
+                data = body.encode()
+                self.send_response(status)
+                self.send_header("Content-Type", "text/xml")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+            def do_GET(self) -> None:
+                self.reply(200, '<?xml version="1.0"?><root xmlns="urn:schemas-upnp-org:device-1-0"><device>'
+                                '<serviceList><service><serviceType>urn:schemas-upnp-org:service:Layer3Forwarding:1'
+                                '</serviceType><controlURL>/l3f</controlURL></service></serviceList><deviceList>'
+                                f'<device><serviceList><service><serviceType>{service}</serviceType>'
+                                '<controlURL>/ctl/IPConn</controlURL></service></serviceList></device></deviceList>'
+                                '</device></root>')
+
+            def do_POST(self) -> None:
+                body = self.rfile.read(int(self.headers["Content-Length"])).decode()
+                action = self.headers["SOAPAction"].strip('"').partition("#")[2]
+                actions.append(f"{self.path} {action}" + (" lease=" + body.partition("<NewLeaseDuration>")[2]
+                                                          .partition("<")[0] if "Lease" in body else ""))
+                if action == "AddPortMapping" and "<NewLeaseDuration>0<" not in body:
+                    # only permanent leases
+                    self.reply(500, '<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/'
+                                    'envelope/"><s:Body><s:Fault><detail><UPnPError><errorCode>725</errorCode>'
+                                    '</UPnPError></detail></s:Fault></s:Body></s:Envelope>')
+                    return
+                answer = "<NewExternalIPAddress>203.0.113.7</NewExternalIPAddress>" \
+                    if action == "GetExternalIPAddress" else ""
+                self.reply(200, '<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/'
+                                f'envelope/"><s:Body><u:{action}Response xmlns:u="{service}">{answer}'
+                                f'</u:{action}Response></s:Body></s:Envelope>')
+
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Router)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        try:
+            upnp = wire.UPnP(43390, f"http://127.0.0.1:{server.server_address[1]}/desc.xml")
+            self.assertEqual(upnp.open(), "203.0.113.7")
+            self.assertEqual(upnp.internal_ip, "127.0.0.1")
+            upnp.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+        self.assertEqual(actions, ["/ctl/IPConn AddPortMapping lease=3600", "/ctl/IPConn AddPortMapping lease=0",
+                                   "/ctl/IPConn GetExternalIPAddress", "/ctl/IPConn DeletePortMapping"])
+        self.assertTrue(wire.is_public("203.0.113.7") is False)  # documentation range
+        self.assertTrue(wire.is_public("8.8.8.8"))
+        self.assertFalse(wire.is_public("100.70.1.2"))  # carrier-grade NAT

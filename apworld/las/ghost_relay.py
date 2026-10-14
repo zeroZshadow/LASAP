@@ -1,7 +1,9 @@
 """Ghost relay: passes players' positions between the LAS clients of one run, for multiplayer ghosts (DESIGN.md,
 Ghosts). Also the wire protocol the client uses (ghosts.py). Standard library only, so the file runs on its own:
 
-    python3 ghost_relay.py [--host 0.0.0.0] [--port 43390]
+    python3 ghost_relay.py [--host 0.0.0.0] [--port 43390] [--upnp]
+
+--upnp has the router forward the port to this computer while the relay runs (UPnP).
 
 Plain TCP with TCP_NODELAY. Every message is a frame: a u16 length (big-endian), then the payload, whose first byte is
 the message type. A client joins a group, SHA-256("lasghost" | secret), computed by the client from its multiworld's
@@ -354,16 +356,200 @@ class Relay:
                     self.update(member, False)
 
 
-async def serve(host: str, port: int, echo: Optional[float] = None) -> None:
+class UPnPError(Exception):
+    pass
+
+
+class UPnP:
+    """Forwards the relay's port on the router (UPnP Internet Gateway Device): finds the router by SSDP, then adds a
+    TCP port mapping to this computer through its WANIPConnection or WANPPPConnection service, renewed while the relay
+    runs and removed when it stops."""
+    SEARCH_TARGETS = ("urn:schemas-upnp-org:device:InternetGatewayDevice:1",
+                      "urn:schemas-upnp-org:device:InternetGatewayDevice:2",
+                      "urn:schemas-upnp-org:service:WANIPConnection:1",
+                      "urn:schemas-upnp-org:service:WANPPPConnection:1")
+    SERVICES = ("urn:schemas-upnp-org:service:WANIPConnection:", "urn:schemas-upnp-org:service:WANPPPConnection:")
+    LEASE = 3600  # seconds; renewed every LEASE / 2
+    DESCRIPTION = "LAS ghost relay"
+
+    def __init__(self, port: int, location: Optional[str] = None):
+        self.port = port
+        self.location = location  # the router's description URL; None: found by SSDP
+        self.control_url = ""
+        self.service = ""
+        self.internal_ip = ""
+        self.lease = self.LEASE
+
+    @staticmethod
+    def discover(timeout: float = 3.0) -> str:
+        """The description URL of the first gateway that answers an SSDP search, sent on each of this computer's IPv4
+        addresses (the default one may be a virtual or VPN adapter's)."""
+        try:
+            addresses = sorted({str(info[4][0]) for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET)})
+        except OSError:
+            addresses = []
+        sockets = []
+        try:
+            for address in addresses or ["0.0.0.0"]:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+                sockets.append(sock)
+                try:
+                    sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
+                    if address != "0.0.0.0":
+                        sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, socket.inet_aton(address))
+                    sock.bind((address, 0))
+                    sock.setblocking(False)
+                    for target in UPnP.SEARCH_TARGETS:
+                        request = (f"M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nMAN: \"ssdp:discover\"\r\n"
+                                   f"MX: 2\r\nST: {target}\r\n\r\n")
+                        sock.sendto(request.encode(), ("239.255.255.250", 1900))
+                except OSError:
+                    continue
+            end = time.monotonic() + timeout
+            while time.monotonic() < end:
+                for sock in sockets:
+                    try:
+                        data, _ = sock.recvfrom(4096)
+                    except OSError:
+                        continue
+                    for line in data.decode("latin1").split("\r\n"):
+                        name, _, value = line.partition(":")
+                        if name.strip().lower() == "location" and value.strip():
+                            return value.strip()
+                time.sleep(0.05)
+        finally:
+            for sock in sockets:
+                sock.close()
+        raise UPnPError("no router answered the UPnP search (is UPnP on in the router?)")
+
+    def find_service(self, location: str) -> None:
+        import urllib.parse
+        import urllib.request
+        import xml.etree.ElementTree as ElementTree
+        with urllib.request.urlopen(location, timeout=5) as response:
+            root = ElementTree.fromstring(response.read())
+        base = location
+        for element in root.iter():
+            text = (element.text or "").strip()
+            if element.tag.endswith("URLBase") and text:
+                base = text
+        for service in root.iter():
+            if not service.tag.endswith("}service") and service.tag != "service":
+                continue
+            fields = {child.tag.rpartition("}")[2]: (child.text or "").strip() for child in service}
+            if fields.get("serviceType", "").startswith(self.SERVICES) and fields.get("controlURL"):
+                self.service = fields["serviceType"]
+                self.control_url = urllib.parse.urljoin(base, fields["controlURL"])
+                break
+        else:
+            raise UPnPError("the router offers no WAN connection service for port mappings")
+        # this computer's address on the router's network
+        host = urllib.parse.urlparse(self.control_url).hostname or ""
+        probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            probe.connect((host, 1900))
+            self.internal_ip = probe.getsockname()[0]
+        finally:
+            probe.close()
+
+    def call(self, action: str, **arguments: object) -> Dict[str, str]:
+        import urllib.error
+        import urllib.request
+        import xml.etree.ElementTree as ElementTree
+        from xml.sax.saxutils import escape
+        body = "".join(f"<{name}>{escape(str(value))}</{name}>" for name, value in arguments.items())
+        envelope = ('<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" '
+                    's:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body>'
+                    f'<u:{action} xmlns:u="{self.service}">{body}</u:{action}></s:Body></s:Envelope>')
+        request = urllib.request.Request(self.control_url, envelope.encode(), method="POST", headers={
+            "Content-Type": 'text/xml; charset="utf-8"', "SOAPAction": f'"{self.service}#{action}"'})
+        try:
+            with urllib.request.urlopen(request, timeout=5) as response:
+                root = ElementTree.fromstring(response.read())
+        except urllib.error.HTTPError as error:
+            text = error.read().decode("utf-8", "replace")
+            code = text.partition("<errorCode>")[2].partition("<")[0]
+            raise UPnPError(f"{action} failed: UPnP error {code or error.code}") from None
+        return {element.tag.rpartition("}")[2]: (element.text or "") for element in root.iter()}
+
+    def add(self) -> None:
+        mapping = dict(NewRemoteHost="", NewExternalPort=self.port, NewProtocol="TCP", NewInternalPort=self.port,
+                       NewInternalClient=self.internal_ip, NewEnabled=1,
+                       NewPortMappingDescription=self.DESCRIPTION)
+        try:
+            self.call("AddPortMapping", **mapping, NewLeaseDuration=self.lease)
+        except UPnPError as error:
+            if self.lease == 0 or "725" not in str(error):  # 725: only permanent leases
+                raise
+            self.lease = 0
+            self.call("AddPortMapping", **mapping, NewLeaseDuration=0)
+
+    def open(self) -> str:
+        """Maps the port; returns the router's external address."""
+        location = self.location or self.discover()
+        self.location = location
+        self.find_service(location)
+        self.add()
+        try:
+            return self.call("GetExternalIPAddress").get("NewExternalIPAddress", "")
+        except UPnPError:
+            return ""
+
+    def close(self) -> None:
+        self.call("DeletePortMapping", NewRemoteHost="", NewExternalPort=self.port, NewProtocol="TCP")
+
+
+def is_public(address: str) -> bool:
+    import ipaddress
+    try:
+        ip = ipaddress.ip_address(address)
+    except ValueError:
+        return False
+    return ip.is_global and ip not in ipaddress.ip_network("100.64.0.0/10")
+
+
+async def serve(host: str, port: int, echo: Optional[float] = None, upnp: Optional[UPnP] = None) -> None:
     relay = Relay(echo)
     server = await asyncio.start_server(relay.handle, host, port)
     sweep = asyncio.create_task(relay.sweep())
     relay.log.info("listening on " + ", ".join(str(s.getsockname()) for s in server.sockets))
+    renew = None
+    if upnp is not None:
+        try:
+            external = await asyncio.to_thread(upnp.open)
+        except (UPnPError, OSError) as error:
+            relay.log.error(f"UPnP: {error}. Forward TCP port {port} to this computer on the router instead.")
+            upnp = None
+        else:
+            relay.log.info(f"UPnP: the router forwards TCP port {port} to {upnp.internal_ip}")
+            if external and is_public(external):
+                relay.log.info(f"UPnP: players enter the relay {external}:{port}")
+            else:
+                relay.log.warning(f"UPnP: the router's internet address is {external or 'unknown'}, not a public one "
+                                  "(the provider may share it between customers): players outside may not reach "
+                                  "the relay")
+
+            async def keep() -> None:
+                while upnp.lease:
+                    await asyncio.sleep(upnp.lease / 2)
+                    try:
+                        await asyncio.to_thread(upnp.add)
+                    except (UPnPError, OSError) as error:
+                        relay.log.warning(f"UPnP: renewing the port mapping failed: {error}")
+            renew = asyncio.create_task(keep())
     try:
         async with server:
             await server.serve_forever()
     finally:
         sweep.cancel()
+        if renew is not None:
+            renew.cancel()
+        if upnp is not None:
+            try:
+                upnp.close()
+                relay.log.info("UPnP: port mapping removed")
+            except (UPnPError, OSError) as error:
+                relay.log.warning(f"UPnP: removing the port mapping failed: {error}")
 
 
 def main() -> None:
@@ -373,11 +559,13 @@ def main() -> None:
     parser.add_argument("--quiet", action="store_true", help="Log errors only, not each join and leave.")
     parser.add_argument("--echo", type=float, metavar="DX",
                         help="For tests: each player also sees its own frames as a player Echo, DX units along x.")
+    parser.add_argument("--upnp", action="store_true",
+                        help="Have the router forward the port to this computer (UPnP), while the relay runs.")
     args = parser.parse_args()
     logging.basicConfig(level=logging.WARNING if args.quiet else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
     try:
-        asyncio.run(serve(args.host, args.port, args.echo))
+        asyncio.run(serve(args.host, args.port, args.echo, UPnP(args.port) if args.upnp else None))
     except KeyboardInterrupt:
         pass
 
