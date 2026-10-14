@@ -13,7 +13,7 @@ COMMON_EVENT = ROMFS / "region_common" / "event" / "Common.bfevfl"
 
 @unittest.skipUnless(COMMON_EVENT.exists(), "RomFS dump not found (LASAP_ROMFS)")
 class TestGameOverFlow(unittest.TestCase):
-    """The game over after the patch, for each received death, shopkeeper's revenge, bottled fairy and Chamber
+    """The game over after the patch, for each received death, shopkeeper's revenge, Secret Medicine and Chamber
     Dungeon state."""
 
     @classmethod
@@ -38,7 +38,7 @@ class TestGameOverFlow(unittest.TestCase):
         flow.read(COMMON_EVENT.read_bytes())
         return flow.flowchart
 
-    def run_flow(self, chart, received: bool, revenge: bool, fairy: bool, panel: bool) -> list:
+    def run_flow(self, chart, received: bool, revenge: bool, medicine: bool, panel: bool) -> list:
         """The actions and subflows the GameOver entry runs, in order."""
         from evfl.event import ActionEvent, SubFlowEvent, SwitchEvent
         flags = {self.ap_deathlink.DEATHLINK_FLAG: received, "ShopKeeperCounterattack": revenge}
@@ -58,8 +58,8 @@ class TestGameOverFlow(unittest.TestCase):
                 if query == "CheckFlag":
                     value = flags[params["symbol"]]
                 elif query == "HasItem":
-                    self.assertEqual(params["itemType"], self.ap_deathlink.FAIRY_ITEM_TYPE)
-                    value = fairy
+                    self.assertEqual(params["itemType"], self.ap_deathlink.MEDICINE_ITEM_TYPE)
+                    value = medicine
                 elif query == "CheckPanelDungeon":
                     value = panel
                 else:
@@ -75,18 +75,18 @@ class TestGameOverFlow(unittest.TestCase):
         self.ap_deathlink.patch_game_over(chart)
         died = ("SetFlag", {"symbol": self.ap_deathlink.DIED_FLAG, "value": True})
         cleared = ("SetFlag", {"symbol": self.ap_deathlink.DEATHLINK_FLAG, "value": False})
-        for revenge, fairy, panel in itertools.product((False, True), repeat=3):
-            with self.subTest(revenge=revenge, fairy=fairy, panel=panel):
-                vanilla = self.run_flow(original, False, revenge, fairy, panel)
-                own = self.run_flow(chart, False, revenge, fairy, panel)
-                received = self.run_flow(chart, True, revenge, fairy, panel)
+        for revenge, medicine, panel in itertools.product((False, True), repeat=3):
+            with self.subTest(revenge=revenge, medicine=medicine, panel=panel):
+                vanilla = self.run_flow(original, False, revenge, medicine, panel)
+                own = self.run_flow(chart, False, revenge, medicine, panel)
+                received = self.run_flow(chart, True, revenge, medicine, panel)
                 self.assertEqual(vanilla[:4], own[:4])  # the death animation and the wait
                 self.assertEqual(vanilla[:4], received[:4])
                 # An own death runs as before and is reported when it stands.
                 self.assertEqual([s for s in own if s != died], vanilla)
-                stands = revenge or not fairy
+                stands = revenge or not medicine
                 self.assertEqual(own.count(died), int(stands))
-                # A received death stands without a fairy and is not reported.
+                # A received death stands without the medicine and is not reported.
                 self.assertNotIn(died, received)
                 self.assertIn(cleared, received)
                 self.assertFalse([s for s in received if s[0] in ("RemoveItem", "Heal")])
@@ -140,4 +140,4 @@ class TestClientDeathLink(unittest.TestCase):
             ctx = self.context({"AP", "DeathLink"})
             ctx.on_deathlink({"time": 1.0, "source": "Finder", "cause": "Finder fell."})
             return ctx.game_lines
-        self.assertEqual(asyncio.run(run()), ["DEATH"])
+        self.assertEqual(asyncio.run(run()), ["DEATH Finder"])

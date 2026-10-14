@@ -1,0 +1,23 @@
+# DeathLink off: a seed with death_link off and the DeathLink peer as the other slot (deathlink.txt setup otherwise),
+# after boot_file1. A death from the peer never reaches the game, and Link's own death sends nothing. Ends with Link
+# alive and free in Mabe. Patterns use \s for spaces.
+guard off dead
+warp Field 38.25 10.5 128.25
+peer /die Finder fell alone.
+logged DeathLink:\sSending 10 peer
+wait 3
+check health=[1-9]
+logcount DeathLink 0 client
+# An own death (a quarter heart and an Octorok south of Mabe): the game over shows, nothing goes out.
+warp Field 41.25 9.0 147.75
+send DBG poke 84 0100
+hold 0 0 32767 until health=0 10
+until paused=1 10
+wait 2
+logcount Sending\sdeath 0 client
+logcount DeathLink:\sLink 0 peer
+tapuntil 1 paused=0 when paused=1 20
+await 30 pos=[1-9]
+until free 20
+check health=[1-9]
+warp Field 38.25 10.5 128.25

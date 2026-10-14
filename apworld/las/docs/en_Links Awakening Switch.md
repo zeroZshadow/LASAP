@@ -81,7 +81,7 @@ game.
 
 ## How does DeathLink work?
 
-With the DeathLink option on, Link's deaths reach the other DeathLink players, and theirs kill Link. A death that a
-fairy in a bottle saves sends nothing. A death from another player waits until Link is free (not in a cutscene, a
-conversation or a menu) and kills him even with a fairy in a bottle, which he keeps. Deaths that arrive before a save is
-loaded are ignored.
+With the DeathLink option on, Link's deaths reach the other DeathLink players, and theirs kill Link. A death that
+Tracy's Secret Medicine saves sends nothing. A death from another player waits until Link is free (not in a cutscene, a
+conversation, an item display or a menu), shows who caused it, and kills him even with the Secret Medicine, which he
+keeps. Deaths that arrive before a save is loaded are ignored.

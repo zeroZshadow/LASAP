@@ -30,7 +30,7 @@ namespace AP {
     // Common.bfevfl entries the patcher adds for received traps: AP<trap key> plays LASR's effect of that trap.
     constexpr const char* TRAP_EVENT_PREFIX = "AP";
     // DeathLink event flags (patcher): the module sets DEATHLINK_FLAG with a received death, so the game over flow
-    // skips the bottled fairy and clears it; the flow sets DIED_FLAG for any other death, which the module reports.
+    // skips the Secret Medicine and clears it; the flow sets DIED_FLAG for any other death, which the module reports.
     constexpr const char* DEATHLINK_FLAG = "APDeathLink";
     constexpr const char* DIED_FLAG = "APDied";
     // Common.bfevfl entry the patcher adds for the warp menu: a choice between warping to Tarin's house and going on.
