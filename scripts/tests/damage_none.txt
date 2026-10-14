@@ -1,6 +1,6 @@
 # Damage None: Link takes no damage. Run after newgame_file2 (3 hearts, 12 quarter hearts) on a mod patched with
 # Damage None. Each received trap plays its effect (TESTING.md, "traps": 2 to 6 quarter hearts in the normal mode)
-# and leaves him at full health. Outside Marin's house in Mabe.
+# and leaves him at full health, and so does an enemy's hit. Outside Marin's house in Mabe.
 warp Field 38.25 10.5 128.25
 send DBG poke 84 0c00
 expect OK.poke 5
@@ -20,5 +20,11 @@ free 30
 send DBG grant QuakeTrap 1 -1 1
 until !event=0 5
 free 30
+check health=12
+# Walking into a Sea Urchin on Toronbo Shores (Field_15B, the urchin at 20.25 6 171.75, one tile south; 2 quarter
+# hearts in the normal mode) knocks him back (event 11) and takes nothing.
+warp Field 20.25 6.0 170.25
+hold 0 0 -32767 until event=11 10
+until free 10
 check health=12
 guard off hurt
