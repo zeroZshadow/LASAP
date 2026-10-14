@@ -238,6 +238,7 @@ The test build reports the game's state so tests press when the game takes a pre
 - **Release.** `/release` of another slot delivers its items in a burst, each saying "from <player>".
 - **Goal.** `ShadowClear` reports the goal to the server.
 - **Online multiworld** (with Super Metroid on archipelago.gg, 2026-10-12/13): a playthrough to the Wind Fish, which reported the goal; the server then released the remaining items. Items went both ways throughout. Checks played by kind: chests (overworld and D1–D4), digs, hidden items (bushes, the Ghost House pot, bonk trees), standing and sunken items, dungeon small key drops, the golden leaf enemies (crow, mad bomber, final guard) and the Kanalet kill room drop, Lanmola's drop, NPC gifts (Tarin, Marin, Manbo, the walrus, the ghost), shop slots and the 5 and 15 shell Seashell Mansion rewards. The 15 shell present showed this slot's Piece of Heart model, and a shop shelf showed another player's Varia Suit as the Red Tunic.
+- **Boss drops, instruments and the trade quest** (2026-10-13/14, a playthrough). The dungeon bosses' drops and the trade quest NPCs' gifts report their checks, and so does Eagle's Tower's instrument pedestal (Organ of Evening Calm), as the Full Moon Cello's does.
 - **Item models.** Chest item-gets, bush drops and free-standing items show the model of the item they hold: this slot's Piece of Heart and Wind Marimba, another slot's unmatched item as the Archipelago model (six balls in the logo's colors with a soft white rim light, centered in the item-get glow like a rupee).
 - **Map tracker** (two-slot seeds with ChecksFinder, 2026-10-13). In a new game the overworld map is revealed with an icon per spot with checks; hovering one shows the unchecked locations (`Shop Slot3 2nd, Shop Slot6` after the server's `/send_location` of Slot3 1st). An icon changes look when its location is collected and the map reopens, without a level change. In Tail Cave without map or compass the map shows every room, its chests and the added chest icons, and the sidebar shows no items; an added icon shows open once its location is checked in the game or on the server (`map_tracker`).
 - **Map tracker looks** (2026-10-13). In a new game 3 groups are in logic, 1 partly and 89 out of logic; after `/send` of Power Bracelet, Roc's Feather, Pegasus Boots and a sword, 37, 7 and 49; after `/send_location` of Tarin, that group is collected. A Tail Cave chest checked with `/send_location` shows open on the dungeon map.
@@ -271,8 +272,8 @@ The test build reports the game's state so tests press when the game takes a pre
 
 ## Not yet verified in-game
 
-- Owl statues as locations.
-- The dungeon bosses' and the Armos Knight's drops, and the Kanalet bombed guard. Boss drops use `item_get_manager.get`, like Lanmola's and the instruments.
+- Owl statues as locations: with In-Game Hints on the gift follows the hint (`hints`), but no test confirms that its check reaches the server, and owl gifts with In-Game Hints off are not played.
+- The Armos Knight's drop and the Kanalet bombed guard's golden leaf. Boss drops use `item_get_manager.get`, like Lanmola's and the instruments.
 - Real hardware.
 - Player settings without a visible or textual effect in the sandbox: Music (the sandbox emulator is muted), Nice Hookshot, Blur Removal, Movement Speed while swimming. Damage None against fall and drown damage.
 - Mouse clicks on the Patch tab's game settings (SDL ignores clicks posted from outside; `/setting` changes them).
