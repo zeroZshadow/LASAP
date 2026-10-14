@@ -1,8 +1,7 @@
 // Test build only (LASAP_TEST): the ghosts of multiplayer ghosts (DESIGN.md, Ghosts). One puppet per ghost slot of
 // AP::GhostNet, and one for DBG puppet: an NPC actor spawned at runtime through the game's actor factory (as a chest
 // pops its enemy), drawn with Link's model (its Npc row, set up by ghost_puppet.py) dithered by alpha-to-coverage,
-// and moved by hand every frame: replaying the positions it is fed on their sender's clock, playing Link's animations
-// by its speed.
+// and moved by hand every frame: replaying the positions and animations it is fed on their sender's clock.
 // The actor system owns the actors, and they outlive level changes: each puppet keeps a weak reference to its actor
 // and reuses it for the whole session, hidden while its ghost is not shown.
 #ifdef LASAP_TEST
@@ -90,6 +89,7 @@ namespace {
     using PlayByNameFn = void (*)(void* comp, NameView* name, u8 mode, float blend, float frame);
     constexpr uintptr_t kPlayByName[] = {0x949260, 0x9df590};
     constexpr size_t kActorAnimComp = 0x2b0, kAnimCompPlayer = 0xe8, kAnimPlayerModel = 0x90;
+    constexpr size_t kSetFrameSlot = 0xc0 / 8;
     int g_PlaySlot = -1;  // -1: not looked up; -2: not in the component's vtable
 
     // Model object: +0 the FMDL, +0x10 u32* material visibility bits, +0x30 u16 shape count, +0x32 u16 material
@@ -123,13 +123,19 @@ namespace {
         u32 count = 0;
         double offset = 0;     // this clock minus the sender's (ms), the least seen
         int gait = -1;         // index in kGaits, -1: none played yet
+        int anim = -1;         // the sender's animation id playing, -1: none played yet
+        u32 started = ~0u;     // the frame (count) whose animation start was played last
         Game::Vec3 pos{};
         double lastNow = 0;
         float moved[60] = {};  // speed in each of the last 60 frames (DBG puppet: smoothness)
         u32 shownFrames = 0;
     };
-    // Animations by speed (units per second): each from its threshold on, with a margin either side so a speed near
-    // one does not switch back and forth.
+    // Animations: the sender's (its PlayerAnimation.gsheet key, named in this game's sheet, the same FSKA in the
+    // puppet's model), from the frame it started at, played when the replay reaches that frame; for a sender that
+    // sends none (anim id 0), by speed (units per second): each from its threshold on, with a margin either side so a
+    // speed near one does not switch back and forth.
+    constexpr float kAnimBlend = 4;
+    constexpr int kFlagStarted = 8;
     constexpr const char* kGaits[] = {"wait", "walk", "run", "dash_lp"};
     constexpr float kGaitFrom[] = {0, 0.4f, 3.5f, 7.5f}, kGaitMargin = 0.3f;
     int GaitAt(float speed) {
@@ -171,7 +177,7 @@ namespace {
     int g_SteerHz = 0;
     Game::Vec3 g_At{};
     Sample g_History[kHistory];
-    u32 g_HistoryFrame = 0, g_LastFrame = 0, g_TestFedFrame = 0;
+    u32 g_HistoryFrame = 0, g_LastFrame = 0, g_TestFedFrame = 0, g_TestStarts = 0;
     bool g_HistoryValid = false;
     std::string g_AnimPending;  // from DBG puppet anim, played on the game thread
 
@@ -333,7 +339,8 @@ namespace {
         return true;
     }
 
-    void PlayAnim(Puppet& p, const char* name, float blend) {
+    // Plays an animation of the puppet's model by name from a frame (the animation player's virtual +0xc0).
+    void PlayAnim(Puppet& p, const char* name, float blend, float frame) {
         void* comp = AnimComp(p);
         if (comp == nullptr) return;
         uintptr_t* vtable = *reinterpret_cast<uintptr_t**>(comp);
@@ -348,6 +355,11 @@ namespace {
         auto play = reinterpret_cast<PlayByNameFn>(vtable[g_PlaySlot]);
         play(comp, &view, 0, blend, 0);
         play(comp, &view, 2, blend, 0);
+        void* player = At<void*>(comp, kAnimCompPlayer);
+        if (frame > 0 && player != nullptr) {
+            auto setFrame = reinterpret_cast<void (*)(void*, float)>((*reinterpret_cast<uintptr_t**>(player))[kSetFrameSlot]);
+            setFrame(player, frame);
+        }
     }
 
     float YawOf(const Game::Vec4& q) { return 2 * std::atan2(q.y, q.t); }
@@ -366,9 +378,10 @@ namespace {
     }
 
     void ResetTrack(Track& tr) {
-        int gait = tr.gait;
+        int gait = tr.gait, anim = tr.anim;
         tr = Track{};
         tr.gait = gait;
+        tr.anim = anim;
     }
 
     void Push(Track& tr, const Frame& f) {
@@ -429,11 +442,23 @@ namespace {
         Game::Vec4 q = QuatOf(fa.yaw * static_cast<float>(M_PI) / 180);
         Place(p, pos, &q);
         // From the model's load on: the NPC plays its own idle as it loads.
+        if (p.model == nullptr) return;
+        if (fa.anim > 0) {
+            bool started = (fa.flags & kFlagStarted) != 0 && tr.started != a;
+            if (fa.anim != tr.anim || started) {
+                if (const char* name = AP::GhostNet::AnimName(fa.anim)) PlayAnim(p, name, kAnimBlend, fa.animFrame / 10.0f);
+                tr.anim = fa.anim;
+                tr.started = a;
+                tr.gait = -1;
+            }
+            return;
+        }
         int gait = tr.gait < 0 ? GaitAt(speed) : std::clamp(tr.gait, GaitAt(speed - kGaitMargin),
                                                              GaitAt(speed + kGaitMargin));
-        if (gait != tr.gait && p.model != nullptr) {
-            PlayAnim(p, kGaits[gait], 6);
+        if (gait != tr.gait) {
+            PlayAnim(p, kGaits[gait], 6, 0);
             tr.gait = gait;
+            tr.anim = -1;
         }
     }
 
@@ -484,6 +509,7 @@ namespace {
         p.model = model;
         p.look = Look::Unknown;
         p.track.gait = -1;
+        p.track.anim = -1;
     }
 
     // Last each frame for each puppet with an actor: drawn as a ghost (dithered) or hidden. The model's setup sets
@@ -599,7 +625,7 @@ namespace {
         Puppet& p = g_Puppets[kTest];
         if (p.ctrl == nullptr) return;
         if (!g_AnimPending.empty()) {
-            PlayAnim(p, g_AnimPending.c_str(), 6);
+            PlayAnim(p, g_AnimPending.c_str(), 6, 0);
             g_AnimPending.clear();
         }
         if (g_Delay >= 0 && g_HistoryValid && static_cast<u32>(g_Delay) < g_HistoryFrame) {
@@ -611,8 +637,12 @@ namespace {
                 if (p.track.count == 0 || frame - g_TestFedFrame >= every) {
                     const Frame* last = p.track.count > 0 ? &p.track.frames[(p.track.count - 1) % kTrack] : nullptr;
                     bool still = last != nullptr && last->x == s.pos.x && last->y == s.pos.y && last->z == s.pos.z;
+                    // Link's animation now (with follow, ahead of his path by the delay)
+                    AP::GhostNet::Anim anim = AP::GhostNet::LinkAnim();
+                    int flags = (still ? kFlagStill : 0) | (anim.starts != g_TestStarts ? kFlagStarted : 0);
+                    g_TestStarts = anim.starts;
                     Push(p.track, Frame{static_cast<s64>(now), now, s.pos.x, s.pos.y, s.pos.z,
-                                        YawOf(s.rot) * 180 / static_cast<float>(M_PI), 0, 0, still ? kFlagStill : 0});
+                                        YawOf(s.rot) * 180 / static_cast<float>(M_PI), anim.anim, anim.frame, flags});
                     g_TestFedFrame = frame;
                 }
                 ReplayFrame(p, nowFine);
@@ -642,7 +672,9 @@ namespace {
                  std::string(name, strnlen(name, 0x20));
             if (auto* root = At<Game::RootComp*>(p.actor, kActorRoot)) s += " pos=" + PosText(root->coordsNew.pos);
             s += " model=" + (p.model != nullptr ? Hex(reinterpret_cast<uintptr_t>(p.model)) : "-");
-            s += " anim=" + std::string(p.track.gait >= 0 ? kGaits[p.track.gait] : "-");
+            const char* anim = p.track.anim > 0 ? AP::GhostNet::AnimName(p.track.anim)
+                                                : p.track.gait >= 0 ? kGaits[p.track.gait] : nullptr;
+            s += " anim=" + std::string(anim != nullptr ? anim : "-");
             if (p.track.shownFrames > 60) {
                 // speed over the last 60 frames: mean and standard deviation, units per second
                 float sum = 0, sq = 0;

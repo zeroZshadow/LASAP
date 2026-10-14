@@ -24,7 +24,7 @@ def parse_address(address: str) -> Tuple[str, int]:
 
 
 def pos_body(parts: List[str], now_ms: int) -> Optional[bytes]:
-    """A POS line's fields (`POS <level> <room> <x> <y> <z> <yaw> <anim> <anim_ms> [<flags> [<time>]]`) as a frame
+    """A POS line's fields (`POS <level> <room> <x> <y> <z> <yaw> <anim> <anim frame> [<flags> [<time>]]`) as a frame
     body, or None when Link is in no level the relay knows (`POS none`, a level missing from wire.LEVELS). The time
     is the game's clock (ms) when it took the position; without it, now_ms."""
     if len(parts) < 9 or parts[1] not in wire.LEVEL_IDS:
@@ -32,7 +32,7 @@ def pos_body(parts: List[str], now_ms: int) -> Optional[bytes]:
     try:
         room = int(parts[2])
         x, y, z, yaw = (float(p) for p in parts[3:7])
-        anim, anim_ms = int(parts[7]), int(parts[8])
+        anim, anim_frame = int(parts[7]), int(parts[8])
         flags = int(parts[9]) if len(parts) > 9 else 0
         time_ms = int(parts[10]) if len(parts) > 10 else now_ms
     except ValueError:
@@ -40,15 +40,15 @@ def pos_body(parts: List[str], now_ms: int) -> Optional[bytes]:
     if not all(map(math.isfinite, (x, y, z, yaw))):
         return None
     return wire.POS_BODY.pack(time_ms & 0xFFFF, wire.LEVEL_IDS[parts[1]], room & 0xFF, x, y, z,
-                              round(yaw % 360 * 65536 / 360) & 0xFFFF, anim & 0xFFFF, anim_ms & 0xFFFF, flags & 0xFF)
+                              round(yaw % 360 * 65536 / 360) & 0xFFFF, anim & 0xFFFF, anim_frame & 0xFFFF, flags & 0xFF)
 
 
 def ghost_line(n: int, slot: str, body: bytes) -> Optional[str]:
-    time_ms, level, _, x, y, z, yaw, anim, anim_ms, flags = wire.POS_BODY.unpack(body)
+    time_ms, level, _, x, y, z, yaw, anim, anim_frame, flags = wire.POS_BODY.unpack(body)
     if level >= len(wire.LEVELS):
         return None
     name = " ".join(slot.replace("|", "/").split()) or "?"
-    return (f"GHOST {n} {wire.LEVELS[level]} {x:.3f} {y:.3f} {z:.3f} {yaw * 360 / 65536:.1f} {anim} {anim_ms} {flags} "
+    return (f"GHOST {n} {wire.LEVELS[level]} {x:.3f} {y:.3f} {z:.3f} {yaw * 360 / 65536:.1f} {anim} {anim_frame} {flags} "
             f"{time_ms} {name}")
 
 
@@ -127,7 +127,7 @@ class GhostLink:
 
     @staticmethod
     def action(body: bytes) -> Tuple[int, int, int]:
-        """What the player does in a frame: facing, animation, flags (warped, hidden, still)."""
+        """What the player does in a frame: facing, animation, flags (warped, hidden, still, an animation started)."""
         fields = wire.POS_BODY.unpack(body)
         return fields[6], fields[7], fields[9]
 

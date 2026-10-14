@@ -45,12 +45,12 @@ async def main(args) -> None:
                 log(f"PLAYER {player_id} {names[player_id]}")
             elif kind == wire.FRAME:
                 player_id = struct.unpack_from(">H", payload, 1)[0]
-                _, level, room, x, y, z, yaw, anim, anim_ms, flags = wire.POS_BODY.unpack(payload[3:])
+                _, level, room, x, y, z, yaw, anim, _, flags = wire.POS_BODY.unpack(payload[3:])
                 counts[player_id] = counts.get(player_id, 0) + 1
                 if counts[player_id] % 20 == 1:
                     name = wire.LEVELS[level] if level < len(wire.LEVELS) else level
                     log(f"FRAME {player_id} {name} {x:.2f} {y:.2f} {z:.2f} {yaw * 360 / 65536:.0f} room={room} "
-                        f"flags={flags} n={counts[player_id]}")
+                        f"anim={anim} flags={flags} n={counts[player_id]}")
             elif kind == wire.OFF:
                 player_id, reason = struct.unpack_from(">HB", payload, 1)
                 counts.pop(player_id, None)

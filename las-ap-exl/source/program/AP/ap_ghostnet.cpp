@@ -13,23 +13,35 @@
 
 namespace {
     // 20 Hz while anything changes, a keep-alive at 2 Hz while Link stands still. What the player does goes out at
-    // once: a new animation, a turn of kTurnDeg or more, starting or stopping; an animation's time running on is no
-    // change (the receiver plays it on from anim_ms). Each line carries the time it was taken: the receiver replays
-    // them on that timeline, so their delivery may be uneven.
+    // once: an animation starting, a turn of kTurnDeg or more, starting or stopping to move; an animation's frame
+    // running on is no change (the receiver plays it on). Each line carries the time it was taken: the receiver
+    // replays them on that timeline, so their delivery may be uneven.
     constexpr u64 kMovingMs = 50;
     constexpr u64 kStillMs = 500;
     constexpr float kTurnDeg = 10;
     // A jump this far between two sent positions is a warp (respawn, warp, door within a level): the ghost snaps.
     constexpr float kWarpDistance = 4.0f;
-    constexpr int kFlagWarped = 1, kFlagStill = 4;
+    constexpr int kFlagWarped = 1, kFlagStill = 4, kFlagStarted = 8;
+    // Link's animations (game 1.0.0): the player's animation controller (player +0x1568) plays rows of
+    // PlayerAnimation.gsheet by key (the row index; its fileName names the FSKA in Link's model). Its slot entries
+    // (+0x78, 0x18 apart) hold the row playing (+0x10); slot 0 is the whole body. The frame is in the controller's
+    // skeletal animation component (+0x8): layer i (+0x1d0 array, count +0x1c8) is slot i, its bound animation
+    // (+0x8) -> +0 -> +0x8 the frame control (f32 frame at +0). The sheet: **(0x1cbaf70) (a shared_ptr), +0x70 -> data, rows at +0x20
+    // (0x48 apart), count +0x28; a row: s32 key, +0x8 fileName, +0x1c policy (1 loops).
+    constexpr size_t kPlayerAnimCtrl = 0x1568, kCtrlSac = 0x8, kCtrlSlots = 0x78, kSlotRow = 0x10;
+    constexpr size_t kSacLayerCount = 0x1c8, kSacLayers = 0x1d0, kLayerAnim = 0x8, kAnimFrameCtrl = 0x8;
+    constexpr uintptr_t kPlayerAnimSheet = 0x1cbaf70;
+    constexpr size_t kSheetData = 0x70, kDataRows = 0x20, kDataCount = 0x28, kRowSize = 0x48, kRowName = 0x8,
+                     kRowPolicy = 0x1c;
 
     struct Sample {
         bool inLevel = false;
         std::string level;
         int room = 255;
         float x = 0, y = 0, z = 0, yaw = 0;
-        int anim = 0, animMs = 0;  // no animation ids yet
-        bool still = false;        // not moved since the previous frame
+        int anim = 0, animFrame = 0;  // AP::GhostNet::Anim
+        u32 starts = 0;
+        bool still = false;           // not moved since the previous frame
     };
 
     bool g_Wanted = false;  // the client relays positions (GHOSTS 1)
@@ -40,6 +52,8 @@ namespace {
     u32 g_Frame = 0;
     bool g_PrevValid = false, g_Still = false;
     float g_PrevX = 0, g_PrevY = 0, g_PrevZ = 0;
+    AP::GhostNet::Anim g_Anim;
+    const void* g_AnimRow = nullptr;
     u32 g_PosLines = 0;
     std::string g_LastPos;
     AP::GhostNet::Ghost g_Ghosts[AP::GhostNet::SLOTS];
@@ -74,6 +88,44 @@ namespace {
         return row * 16 + col;
     }
 
+    template<typename T>
+    T At(const void* base, size_t offset) {
+        return base != nullptr ? *reinterpret_cast<const T*>(reinterpret_cast<const u8*>(base) + offset) : T{};
+    }
+
+    // The row playing on slot 0 of Link's animation controller and its frame, or nullptr.
+    const u8* LinkAnimRow(const void* player, float& frame) {
+        const u8* ctrl = At<const u8*>(player, kPlayerAnimCtrl);
+        const u8* slots = At<const u8*>(ctrl, kCtrlSlots);
+        if (slots == nullptr || slots == At<const u8*>(ctrl, kCtrlSlots + 8)) return nullptr;
+        const u8* row = At<const u8*>(slots, kSlotRow);
+        const u8* sac = At<const u8*>(ctrl, kCtrlSac);
+        const u8* fc = nullptr;
+        if (At<s32>(sac, kSacLayerCount) > 0) {
+            const u8* layer = At<const u8*>(At<const u8*>(sac, kSacLayers), 0);
+            fc = At<const u8*>(At<const u8*>(At<const u8*>(layer, kLayerAnim), 0), kAnimFrameCtrl);
+        }
+        frame = At<float>(fc, 0);
+        if (!std::isfinite(frame) || frame < 0) frame = 0;
+        return row;
+    }
+
+    // Once a frame: Link's animation, and whether one started (another row, or the same one from its start again
+    // unless it loops).
+    void ReadAnim(const void* player) {
+        float frame = 0;
+        const u8* row = LinkAnimRow(player, frame);
+        int anim = row != nullptr ? At<s32>(row, 0) + 1 : 0;
+        float prevFrame = g_Anim.frame / 10.0f;
+        if (anim != g_Anim.anim || row != g_AnimRow ||
+            (anim != 0 && frame + 0.5f < prevFrame && At<s32>(row, kRowPolicy) != 1)) {
+            if (anim != 0) g_Anim.starts++;
+        }
+        g_AnimRow = row;
+        g_Anim.anim = anim;
+        g_Anim.frame = std::min(static_cast<int>(frame * 10), 0xffff);
+    }
+
     Sample Current() {
         Sample s;
         Game::Framework* fmwk = Game::GetFramework();
@@ -100,8 +152,12 @@ namespace {
             g_PrevX = s.x;
             g_PrevY = s.y;
             g_PrevZ = s.z;
+            ReadAnim(fmwk->mPlayer);
         }
         s.still = g_Still;
+        s.anim = g_Anim.anim;
+        s.animFrame = g_Anim.frame;
+        s.starts = g_Anim.starts;
         return s;
     }
 
@@ -113,13 +169,13 @@ namespace {
     // What the player did, sent at once: another level, animation, facing, or starting or stopping.
     bool Acted(const Sample& a, const Sample& b) {
         if (a.inLevel != b.inLevel || a.level != b.level) return true;
-        return a.inLevel && (a.anim != b.anim || a.still != b.still || Turn(a, b) >= kTurnDeg);
+        return a.inLevel && (a.starts != b.starts || a.still != b.still || Turn(a, b) >= kTurnDeg);
     }
 
     bool Changed(const Sample& a, const Sample& b) {
         if (a.inLevel != b.inLevel || a.level != b.level) return true;
         if (!a.inLevel) return false;
-        if (a.anim != b.anim || a.still != b.still) return true;
+        if (a.starts != b.starts || a.still != b.still) return true;
         return std::fabs(a.x - b.x) > 0.01f || std::fabs(a.y - b.y) > 0.01f || std::fabs(a.z - b.z) > 0.01f ||
                Turn(a, b) > 1.0f;
     }
@@ -131,11 +187,12 @@ namespace {
             flags |= kFlagWarped;
         }
         if (s.still) flags |= kFlagStill;
+        if (g_SentAny && s.starts != g_Sent.starts) flags |= kFlagStarted;
         char buf[160];
         if (s.inLevel) {
-            // POS <level> <room> <x> <y> <z> <yaw> <anim> <anim_ms> <flags> <time ms>; no animation ids yet
+            // POS <level> <room> <x> <y> <z> <yaw> <anim> <anim frame> <flags> <time ms>
             snprintf(buf, sizeof(buf), "POS %s %d %.3f %.3f %.3f %.1f %d %d %d %u", s.level.c_str(), s.room, s.x, s.y,
-                     s.z, s.yaw, s.anim, s.animMs, flags, static_cast<u32>(now));
+                     s.z, s.yaw, s.anim, s.animFrame, flags, static_cast<u32>(now));
         } else {
             snprintf(buf, sizeof(buf), "POS none");
         }
@@ -150,9 +207,9 @@ namespace {
 
 namespace AP::GhostNet {
     void Tick() {
+        Sample s = Current();  // reads Link's animation once a frame (LinkAnim), sent or not
         if (!g_Wanted || !AP::IsClientConnected()) return;
         u64 now = NowMs();
-        Sample s = Current();
         bool acted = g_SentAny && Acted(s, g_Sent);
         if (now - g_SentAt < kMovingMs && !acted) return;
         if (!g_SentAny || Changed(s, g_Sent) || now - g_SentAt >= kStillMs) SendPos(s, now);
@@ -186,7 +243,7 @@ namespace AP::GhostNet {
             return;
         }
         if (a.size() < 12) return;
-        // GHOST <n> <level> <x> <y> <z> <yaw> <anim> <anim_ms> <flags> <time> <slot name>; time is the sender's
+        // GHOST <n> <level> <x> <y> <z> <yaw> <anim> <anim frame> <flags> <time> <slot name>; time is the sender's
         // clock (ms, 16 bits): unwrapped against the slot's previous line, a new timeline after an off
         u16 time = static_cast<u16>(strtoul(a[10].c_str(), nullptr, 10));
         if (ghost.active && ghost.frames > 0) {
@@ -202,17 +259,29 @@ namespace AP::GhostNet {
         ghost.z = strtof(a[5].c_str(), nullptr);
         ghost.yaw = strtof(a[6].c_str(), nullptr);
         ghost.anim = atoi(a[7].c_str());
-        ghost.animMs = atoi(a[8].c_str());
+        ghost.animFrame = atoi(a[8].c_str());
         ghost.flags = atoi(a[9].c_str());
         ghost.name = a[11];
         ghost.receivedMs = NowMs();
         ghost.history[ghost.frames % HISTORY] = Frame{ghost.timeMs, ghost.receivedMs, ghost.x, ghost.y, ghost.z,
-                                                      ghost.yaw, ghost.anim, ghost.animMs, ghost.flags};
+                                                      ghost.yaw, ghost.anim, ghost.animFrame, ghost.flags};
         ghost.frames++;
     }
 
     const Ghost& Get(int n) {
         return g_Ghosts[n];
+    }
+
+    Anim LinkAnim() {
+        return g_Anim;
+    }
+
+    const char* AnimName(int anim) {
+        const u8* holder = At<const u8*>(reinterpret_cast<const void*>(g_BaseAddress + kPlayerAnimSheet), 0);
+        const u8* sheet = At<const u8*>(holder, 0);
+        const u8* data = At<const u8*>(sheet, kSheetData);
+        if (anim <= 0 || static_cast<u32>(anim) > At<u32>(data, kDataCount)) return nullptr;
+        return At<const char*>(At<const u8*>(data, kDataRows) + (anim - 1) * kRowSize, kRowName);
     }
 
     std::string State() {
@@ -222,8 +291,10 @@ namespace AP::GhostNet {
             const Ghost& g = g_Ghosts[n];
             if (!g.active) continue;
             char buf[200];
-            snprintf(buf, sizeof(buf), " | %d %s %s %.2f,%.2f,%.2f yaw=%.0f flags=%d frames=%u", n, g.name.c_str(),
-                     g.level.c_str(), g.x, g.y, g.z, g.yaw, g.flags, g.frames);
+            const char* anim = AnimName(g.anim);
+            snprintf(buf, sizeof(buf), " | %d %s %s %.2f,%.2f,%.2f yaw=%.0f anim=%s flags=%d frames=%u", n,
+                     g.name.c_str(), g.level.c_str(), g.x, g.y, g.z, g.yaw, anim != nullptr ? anim : "-", g.flags,
+                     g.frames);
             s += buf;
         }
         return s;

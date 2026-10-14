@@ -1324,12 +1324,17 @@ namespace AP::Test {
         return true;
     }
 
+    std::string LinkAnimName() {
+        const char* name = AP::GhostNet::AnimName(AP::GhostNet::LinkAnim().anim);
+        return name != nullptr ? name : "-";
+    }
+
     std::string StateFields() {
         char yaw[16];
         snprintf(yaw, sizeof(yaw), "%.0f", PlayerYaw());
         return " puppets=" + AP::Puppet::StateField() + " frame=" + std::to_string(g_FrameNo) +
                " msg=" + MessageState() + " choice=" + g_Fields[9].value +
-               " face=" + g_Fields[13].value + " yaw=" + yaw + " file=" + g_Fields[12].value +
+               " face=" + g_Fields[13].value + " yaw=" + yaw + " anim=" + LinkAnimName() + " file=" + g_Fields[12].value +
                " read=" + std::to_string(g_ReadFrames);
     }
 

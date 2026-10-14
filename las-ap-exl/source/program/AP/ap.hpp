@@ -134,7 +134,7 @@ namespace AP::GhostNet {
         s64 timeMs;        // the sender's clock, unwrapped
         u64 receivedMs;    // this system's counter when the line arrived
         float x, y, z, yaw;
-        int anim, animMs, flags;
+        int anim, animFrame, flags;
     };
     // Another player in this area, as the last GHOST line for its slot gave it.
     struct Ghost {
@@ -143,9 +143,10 @@ namespace AP::GhostNet {
         std::string level;    // the level the player is in; it can lag behind a level change of this player
         float x = 0, y = 0, z = 0;
         float yaw = 0;          // degrees, 0 = +z (the bottom of the screen), 90 = +x
-        int anim = 0;           // animation id (0 until there are ids)
-        int animMs = 0;         // time into the animation
-        int flags = 0;          // 1: warped (snap, do not move there), 2: hidden, 4: still since the previous frame
+        int anim = 0;           // Link's animation: its PlayerAnimation.gsheet key + 1 (0: none)
+        int animFrame = 0;      // its frame, in tenths
+        int flags = 0;          // 1: warped (snap, do not move there), 2: hidden, 4: still since the previous frame,
+                                // 8: an animation started since the previous line
         u64 receivedMs = 0;     // when the line arrived (system counter, ms)
         s64 timeMs = 0;         // the sender's clock when it was taken (ms, unwrapped)
         u32 timelineFrom = 0;   // the first line of the sender's clock as unwrapped now (a new one after an off)
@@ -154,6 +155,11 @@ namespace AP::GhostNet {
     };
     // Once per tick: sends Link's position while the client asks for it.
     void Tick();
+    // Link's animation as POS sends it: anim id (0: none), frame in tenths, animations started so far.
+    struct Anim { int anim = 0, frame = 0; u32 starts = 0; };
+    Anim LinkAnim();
+    // The name of an anim id (PlayerAnimation.gsheet's fileName, the FSKA in Link's model), or nullptr.
+    const char* AnimName(int anim);
     // A new client connection: no positions until it asks, no ghosts.
     void Reset();
     // A GHOSTS or GHOST line from the client.

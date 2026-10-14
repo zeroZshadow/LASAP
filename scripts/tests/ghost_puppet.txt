@@ -42,3 +42,14 @@ await 5 puppets=0/1
 await 15 puppets=0/0
 send /ghosts on
 await 10 puppets=1/1
+# Link's own animations, sent by id, on DBG puppet's puppet: his path 20 frames late, replayed as a ghost's lines are
+send DBG puppet spawn 179 0 -2
+send DBG puppet follow 20
+send DBG puppet steer 20
+send DBG puppet animlog
+send DBG input 0 1200 32767 0
+await 3 anim=run
+await 3 anim=wait
+send DBG puppet animlog
+expect ANIMLOG.*\|\stest\s.*\srun\b
+send DBG puppet drop

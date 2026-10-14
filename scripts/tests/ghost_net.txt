@@ -7,8 +7,8 @@ warp Field 38.25 10.5 128.25
 free 10
 send DBG ghostnet
 expect wanted=1
-# Link's positions reach the peer; the peer shows as ghost 0
-logged FRAME\s\d+\sField\s3[6-9]\. 10 peer
+# Link's positions reach the peer, with his animation (wait: PlayerAnimation key 103 + 1); the peer shows as ghost 0
+logged FRAME\s\d+\sField\s3[6-9]\..*\sanim=104\s 10 peer
 await 5 ghosts=1
 send DBG ghostnet
 expect \|\s0\sPeer\sField\s3[6-9]\.
