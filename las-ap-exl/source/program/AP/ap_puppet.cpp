@@ -183,7 +183,7 @@ namespace {
     constexpr int kFlagWarped = 1, kFlagHidden = 2, kFlagStill = 4;
     constexpr u32 kRespawnFrames = 60;  // after a failed spawn
     constexpr float kTagHeight = 1.3f;  // the name tag's point above the ghost's feet
-    bool g_NameTags = false;            // off until their look is settled; DBG puppet tags on
+    bool g_NameTags = true;             // DBG puppet tags on|off
     bool g_DrawGhosts = true;           // DBG puppet draw off: models hidden, all else runs (finding the cost)
     bool g_Dither = true;               // DBG puppet dither off: drawn without the dither state
     u32 g_ShapeMask = 0xfffff;          // DBG puppet shapes: the look's shapes the puppets may draw
@@ -1088,10 +1088,10 @@ namespace AP::Puppet {
         for (auto& p : g_Puppets) {
             if (Alive(p)) Update(p, frame);
         }
-        // each shown ghost's name over its head, once its model is loaded
+        // the name over the head of each ghost drawn whole (each tag's text costs draws too; the crowd limits count them)
         for (int n = 0; n < kGhosts; n++) {
             const auto& p = g_Puppets[n];
-            if (g_NameTags && p.shown && p.detail > 0 && p.model != nullptr && Alive(p)) {
+            if (g_NameTags && p.shown && p.detail == 2 && p.model != nullptr && Alive(p)) {
                 const Game::Vec3& at = p.track.pos;
                 AP::NameTag::Show(n, Game::Vec3{at.x, at.y + kTagHeight, at.z}, AP::GhostNet::Get(n).name);
             } else {
@@ -1170,6 +1170,10 @@ namespace AP::Puppet {
         } else if (sub == "dither" && a.size() >= 4) {
             // DBG puppet dither on|off: the ghosts drawn with or without the dither state
             g_Dither = a[3] == "on";
+        } else if (sub == "tagstyle" && a.size() >= 6) {
+            // DBG puppet tagstyle <scale> <alpha 0-255> <raise>: the name tags' look
+            AP::NameTag::Style(static_cast<float>(atof(a[3].c_str())), atoi(a[4].c_str()),
+                               static_cast<float>(atof(a[5].c_str())));
         } else if (sub == "tags" && a.size() >= 4) {
             // DBG puppet tags on|off: the ghosts' name tags
             g_NameTags = a[3] == "on";

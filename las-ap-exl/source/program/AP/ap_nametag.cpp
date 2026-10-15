@@ -1,6 +1,6 @@
-// Multiplayer ghosts' name tags (DESIGN.md, Ghosts): each shown ghost's slot name in a speech bubble above its head,
-// the game's own map name bubble (Gm_MapPopName.bflyt of Game.arc) built as a layout of its own and placed on the
-// screen every frame. All on the game thread.
+// Multiplayer ghosts' name tags (DESIGN.md, Ghosts): each shown ghost's slot name above its head in small, see-through
+// text, the game's area name banner (Gm_HUDLocation.bflyt of Game.arc: white text with a dark edge) built as a layout
+// of its own and placed on the screen every frame. All on the game thread.
 #include "AP/ap.hpp"
 #include "Game/framework.hpp"
 #include "offsets.hpp"
@@ -33,7 +33,7 @@ namespace {
     // does nothing, so the tag queues its text box itself, without an owner. The queues: two std::lists at manager
     // +0xab40 (+0x18 each: end node {last, first}, size), nodes {previous, next, owner, count, text box, set}, emptied
     // by the manager on the game thread once the glyphs are drawn; a tag dropped before then takes its text box out.
-    constexpr size_t kPaneX = 0x30, kPaneY = 0x34, kPaneScaleX = 0x48, kPaneSizeX = 0x50, kPaneFlags = 0x58,
+    constexpr size_t kPaneX = 0x30, kPaneY = 0x34, kPaneScaleX = 0x48, kPaneScaleY = 0x4c, kPaneFlags = 0x58,
                      kPaneAlpha = 0x59, kPaneGlobalAlpha = 0x5a;
     constexpr u8 kPaneDirty = 0x10;
     constexpr size_t kFindPane = 0x60 / 8, kTextRect = 0x120 / 8, kHolderPane = 0x10, kTextGlyphsReady = 0x190;
@@ -41,10 +41,13 @@ namespace {
     constexpr size_t kUiGlyphQueues = 0xab40, kQueueStride = 0x18, kQueueSize = 0x10, kNodeCount = 0x18,
                      kNodeTextBox = 0x20;
     constexpr int kArchiveSet = 0;  // Game.arc
-    // Gm_MapPopName: the window (sized to the text as the map does: text width / scale + 60) with its pointer, about
-    // 44 to 90 layout units above the root; the text's alpha is 0 in the file (an animation raises it in the map).
-    constexpr const char* kLayoutFile = "Gm_MapPopName.bflyt", *kTextPane = "T_MarkerName_00", *kWindowPane = "W_window_00";
-    constexpr size_t kNameMax = 30;  // the text box's characters
+    // Gm_HUDLocation: the text in a group whose alpha is 0 in the file (an animation fades the banner in), placed at
+    // the screen's left; the tag sets both alphas, scales the root and centres the text on the root.
+    constexpr const char* kLayoutFile = "Gm_HUDLocation.bflyt", *kTextPane = "T_Location_00", *kGroupPane = "N_Location_00";
+    constexpr size_t kNameMax = 30;  // the text box takes 40 characters
+    // The look: the banner's text at this scale and alpha, this far above the projected point (layout units).
+    float g_Scale = 0.45f, g_Raise = 0;
+    u8 g_Alpha = 140;
     // Projection (WorldToLayout, 0xf88c40): the camera at Framework +0x560, view rows at +0x20..+0x50 (the last the
     // translation), projection rows at +0xa0..+0xd0; layout coordinates are NDC times (640, 360), y up. Hidden when
     // the head is behind the camera or off screen.
@@ -68,7 +71,6 @@ namespace {
         u8* layout = nullptr;
         u8* root = nullptr;
         u8* text = nullptr;
-        u8* window = nullptr;
         std::string name;
         bool drawn = false;
         alignas(8) u8 holder[0x18] = {};  // a text object for AP::SetPaneText: +0x10 the text pane
@@ -122,13 +124,17 @@ namespace {
         tag.layout = Field<u8*>(tag.wrapper, kWrapperLayout);
         tag.root = tag.layout != nullptr ? Field<u8*>(tag.layout, kLayoutRoot) : nullptr;
         tag.text = tag.root != nullptr ? FindPane(tag.root, kTextPane) : nullptr;
-        tag.window = tag.root != nullptr ? FindPane(tag.root, kWindowPane) : nullptr;
-        if (tag.text == nullptr || tag.window == nullptr) {
+        u8* group = tag.root != nullptr ? FindPane(tag.root, kGroupPane) : nullptr;
+        if (tag.text == nullptr || group == nullptr) {
             Drop(tag);
             return false;
         }
-        Field<u8>(tag.text, kPaneAlpha) = 255;
-        Field<u8>(tag.text, kPaneGlobalAlpha) = 255;
+        Field<u8>(group, kPaneAlpha) = 255;
+        Field<u8>(group, kPaneGlobalAlpha) = 255;
+        Field<u8>(tag.text, kPaneAlpha) = g_Alpha;
+        Field<u8>(tag.text, kPaneGlobalAlpha) = g_Alpha;
+        Field<float>(tag.root, kPaneScaleX) = g_Scale;
+        Field<float>(tag.root, kPaneScaleY) = g_Scale;
         Field<u8*>(tag.holder, kHolderPane) = tag.text;
         Field<u8>(tag.layout, kLayoutCalculate) = 0;
         Field<u8>(tag.layout, kLayoutDraw) = 0;
@@ -153,11 +159,13 @@ namespace {
         tag.name = name;
         GlyphRequest request{nullptr, nullptr, tag.text};
         GameFn<bool (*)(void*, GlyphRequest*, int)>(kQueueGlyphs)(UiManager(), &request, kArchiveSet);
+        // centred on the root: the text's middle at x 0, its bottom at g_Raise
         Rect extent = reinterpret_cast<Rect (*)(void*)>(VTable(tag.text)[kTextRect])(tag.text);
-        float scale = Field<float>(tag.window, kPaneScaleX);
-        if (scale > 0 && std::isfinite(extent.right - extent.left))
-            Field<float>(tag.window, kPaneSizeX) = (extent.right - extent.left) / scale + 60;
-        Field<u8>(tag.window, kPaneFlags) |= kPaneDirty;
+        if (std::isfinite(extent.left + extent.right + extent.bottom)) {
+            Field<float>(tag.text, kPaneX) = -(extent.left + extent.right) / 2;
+            Field<float>(tag.text, kPaneY) = g_Raise - std::min(extent.top, extent.bottom);
+        }
+        Field<u8>(tag.text, kPaneFlags) |= kPaneDirty;
     }
 
     // A world position on the screen in layout coordinates, or false when it is behind the camera or off screen.
@@ -210,6 +218,13 @@ namespace AP::NameTag {
 
     void DropAll() {
         for (auto& tag : g_Tags) Drop(tag);
+    }
+
+    void Style(float scale, int alpha, float raise) {
+        DropAll();
+        g_Scale = scale;
+        g_Alpha = static_cast<u8>(std::clamp(alpha, 0, 255));
+        g_Raise = raise;
     }
 
     std::string State() {

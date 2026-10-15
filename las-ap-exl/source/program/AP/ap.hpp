@@ -189,6 +189,8 @@ namespace AP::NameTag {
     void Hide(int n);
     // While a level loads: the tags are built again in the next.
     void DropAll();
+    // DBG puppet tagstyle: the tags' scale, alpha and height above the point (layout units); built again.
+    void Style(float scale, int alpha, float raise);
     // STATE's tags=: per slot "-" none, "h" hidden, "g" shown while the font draws the name's glyphs, "d" drawn.
     std::string State();
 }
