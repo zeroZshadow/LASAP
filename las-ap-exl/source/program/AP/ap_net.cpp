@@ -98,14 +98,15 @@ namespace {
 
     void ServeClient() {
         std::string partial;
-        char buf[512];
+        char buf[4096];
         int keepAlive = kKeepAliveTicks;
 
         while (true) {
             svcSleepThread(2'000'000);
 
-            ssize_t n = nn::socket::Recv(g_Client, buf, sizeof(buf), MSG_DONTWAIT);
-            if (n > 0) {
+            // all that has arrived: the client's lines can outrun one read per wake (30 ghosts send ~300 lines/s)
+            ssize_t n;
+            while ((n = nn::socket::Recv(g_Client, buf, sizeof(buf), MSG_DONTWAIT)) > 0) {
                 keepAlive = kKeepAliveTicks;
                 partial.append(buf, n);
                 size_t pos;
@@ -123,10 +124,9 @@ namespace {
                     Unlock();
                 }
                 if (partial.size() > kMaxLine) partial.clear();
-            } else if (n == 0) {
-                // Orderly shutdown by the peer.
-                return;
             }
+            // Orderly shutdown by the peer.
+            if (n == 0) return;
 
             if (!SendPending()) return;
             if (--keepAlive <= 0) return;

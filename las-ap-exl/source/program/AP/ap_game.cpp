@@ -1088,7 +1088,9 @@ namespace AP {
             }
         }
         std::string line;
-        for (int i = 0; i < 16 && PopLine(line); i++) {
+        // up to 16 lines a frame, GHOST lines not counted (30 ghosts send up to 600 a second; each is cheap)
+        for (int i = 0, all = 0; i < 16 && all < 1024 && PopLine(line); all++) {
+            if (line.compare(0, 6, "GHOST ") != 0) i++;
             if (!HandleLine(line)) Defer(line);
         }
     }
