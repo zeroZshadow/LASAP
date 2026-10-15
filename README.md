@@ -24,7 +24,7 @@ The release's `las.apworld` is all a player installs, on any system Archipelago 
    ```bash
    .venv-lasr/Scripts/python.exe scripts/build_release.py
    ```
-   It writes `build/release/LASAP-<world version>/` with `las.apworld` and the options template.
+   It writes `build/release/LASAP-<world version>/` with `las.apworld`, the options template and the setup guide (`Setup guide.md`, for players of a world that is not on the website).
 
 ### Developing
 

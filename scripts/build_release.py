@@ -2,9 +2,9 @@
 
 Run with .venv-lasr after scripts/build_exl.sh (it also needs .venv-ap and vendor/Archipelago for "Build APWorlds"):
   python scripts/build_release.py
-Writes build/release/LASAP-<world version>/: las.apworld and "Links Awakening Switch.yaml".
+Writes build/release/LASAP-<world version>/: las.apworld, "Links Awakening Switch.yaml" and the setup guide.
 The world carries the patcher as las/patcher/: its sources, LASR's data, the assets, the game module, and the pure
-Python libraries it needs in lib/. The client runs it in its own process when no patcher command is set
+Python libraries it needs in lib/. It leaves out the world's tests. The client runs it in its own process when no patcher command is set
 (apworld/las/install.py).
 """
 import hashlib
@@ -28,6 +28,7 @@ if not AP_PYTHON.exists():  # a worktree uses the main checkout's venv (TESTING.
 BUILD = ROOT / "build" / "release"
 GAME = "Links Awakening Switch"
 PREFIX = "las/patcher/"  # install.py PATCHER_PREFIX
+TESTS = "las/test/"  # the world's tests, which "Build APWorlds" packs and players do not need
 # Patcher files and folders, relative to patcher/
 PATCHER_FILES = ("las_ap_patch.py", "ap_assets.py", "ap_deathlink.py", "ap_ghost.py", "ap_goal.py", "ap_hints.py",
                  "ap_map.py", "ap_map_icons.py", "ap_model.py", "ap_ui.py", "lasr_qt.py", "map_positions.json", "version.txt", "LICENSE-LASR.txt",
@@ -80,7 +81,18 @@ def run_ap(code: str) -> set:
     return failed
 
 
+def check_module() -> None:
+    """Refuses a game module older than its source: build_exl.sh has not run since the source changed."""
+    module = PATCHER / "exl" / "subsdk9"
+    sources = [f for f in (ROOT / "las-ap-exl").rglob("*") if f.is_file() and f.suffix in (".cpp", ".hpp", ".h", ".c")
+               and not {"build", "build-test", "out", "deploy"} & set(f.relative_to(ROOT / "las-ap-exl").parts)]
+    newest = max(sources, key=lambda f: f.stat().st_mtime)
+    if module.exists() and newest.stat().st_mtime > module.stat().st_mtime:
+        sys.exit(f"patcher/exl/subsdk9 is older than {newest.relative_to(ROOT).as_posix()}: run scripts/build_exl.sh")
+
+
 def main() -> None:
+    check_module()
     files = patcher_files()
     digest = hashlib.sha256()
     for name in sorted(files):
@@ -94,8 +106,10 @@ def main() -> None:
     skipped = run_ap(f"import runpy; sys.argv = ['Launcher.py', 'Build APWorlds', '--', {GAME!r}, "
                      "'--skip_open_folder']; runpy.run_path('Launcher.py', run_name='__main__')")
     apworld = release / "las.apworld"
-    shutil.copyfile(AP / "build" / "apworlds" / "las.apworld", apworld)
-    with zipfile.ZipFile(apworld, "a", zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
+    with zipfile.ZipFile(AP / "build" / "apworlds" / "las.apworld") as built,             zipfile.ZipFile(apworld, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
+        for info in built.infolist():
+            if not info.filename.startswith(TESTS):
+                zf.writestr(info, built.read(info))
         for name in sorted(files):
             zf.write(files[name], name)
         zf.writestr(PREFIX + "build.txt", build_id + "\n")
@@ -104,6 +118,7 @@ def main() -> None:
     shutil.rmtree(templates, ignore_errors=True)
     skipped |= run_ap(f"import Options; Options.generate_yaml_templates({str(templates)!r}, False)")
     shutil.copyfile(templates / f"{GAME}.yaml", release / f"{GAME}.yaml")
+    shutil.copyfile(ROOT / "apworld" / "las" / "docs" / "setup_en.md", release / "Setup guide.md")
     size = apworld.stat().st_size / 1e6
     if skipped:
         print(f"Skipped other worlds that do not load in vendor/Archipelago: {', '.join(sorted(skipped))}")
