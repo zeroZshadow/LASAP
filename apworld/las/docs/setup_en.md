@@ -81,16 +81,19 @@ the same house, cave or dungeon, or near you in the overworld. They show with th
 They can't touch you or anything else. Ghosts travel through a ghost relay, not the Archipelago server, and only
 players of the same generation see each other.
 
-- The person who generates sets the relay before generating: `ghost_relay` (`host:port`) under `las_options` in
-  `host.yaml`. Every patch file then carries it, and the players have nothing to set.
+- The person who generates sets the relay before generating: `ghost_relay` (`host:port`, or `password@host:port` for
+  a relay with a password) under `las_options` in `host.yaml`. Every patch file then carries it, and the players have
+  nothing to set.
 - Otherwise each player enters it in the Patch tab's "Ghost relay", which also replaces the patch file's.
 - "Show ghosts" on the Patch tab, or `/ghosts off` in the client, turns them off. The Patch tab shows the relay status.
 
 To run a relay on Windows, double-click `LASGhostRelay.exe` (it comes with the release; it needs no Python). It
-listens on TCP port 43390, has your router forward that port while it runs (if the router allows NAT-PMP or UPnP) and
-prints the address players enter; close its window to stop it. Windows may ask once whether it may use the network:
-allow it. On other systems run `python3 ghost_relay.py --forward` (`las.apworld` is a zip holding
-`las/ghost_relay.py`; it needs only Python). Both take `--port` for another port and `--help` for the rest.
+asks for a password (press Enter for none: then anyone who knows the address can use your relay), listens on TCP port
+43390, has your router forward that port while it runs (if the router allows NAT-PMP or UPnP) and prints the address
+players enter; close its window to stop it. Windows may ask once whether it may use the network: allow it. On other
+systems run `python3 ghost_relay.py --forward` (`las.apworld` is a zip holding `las/ghost_relay.py`; it needs only
+Python), with `--password <password>` for a password. Both take `--port` for another port and `--help` for the rest.
+With a password, players enter the relay as `password@host:port`.
 Every player must be able to reach the relay: when the router does not forward the port, forward TCP 43390 on the
 router by hand, run the relay on a server, or have all players join one VPN (for example Tailscale) and use its
 address.

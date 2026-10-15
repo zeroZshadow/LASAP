@@ -72,13 +72,14 @@ class Walker:
                                   0 if moving else wire.FLAG_STILL, self.look)
 
 
-async def run(walker: Walker, host: str, port: int, source: str, secret: str, deadline: float) -> None:
+async def run(walker: Walker, relay: str, source: str, secret: str, deadline: float) -> None:
+    password, host, port = wire.parse_address(relay)
     try:
         reader, writer = await asyncio.open_connection(host, port, local_addr=(source, 0) if source else None)
     except OSError as e:
         walker.error = repr(e)
         return
-    writer.write(wire.frame(wire.join_message(wire.group_id(secret), walker.name, walker.name)))
+    writer.write(wire.frame(wire.join_message(wire.group_id(secret), walker.name, walker.name, password)))
 
     async def receive() -> None:
         while True:
@@ -133,7 +134,6 @@ def stats(walkers, started: float) -> str:
 
 
 async def main(args) -> None:
-    host, _, port = args.relay.rpartition(":")
     rng = random.Random(args.seed)
     walkers = []
     names = [n for n in args.names.split(",") if n] if args.names else []
@@ -144,7 +144,7 @@ async def main(args) -> None:
             name = names[len(walkers)] if len(walkers) < len(names) else f"{level[:8]}{i + 1:02d}"
             walkers.append(Walker(name, level, rect, float(y), rng, int(args.look, 16)))
     deadline = time.monotonic() + args.seconds
-    tasks = [asyncio.create_task(run(w, host, int(port), "" if args.one_address else f"127.0.0.{2 + n}",
+    tasks = [asyncio.create_task(run(w, args.relay, "" if args.one_address else f"127.0.0.{2 + n}",
                                      args.secret, deadline)) for n, w in enumerate(walkers)]
     started = time.monotonic()
     while not all(w.welcomed or w.error for w in walkers) and time.monotonic() < started + 10:

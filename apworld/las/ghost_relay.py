@@ -1,9 +1,11 @@
 """Ghost relay: passes players' positions between the LAS clients of one run, for multiplayer ghosts (DESIGN.md,
 Ghosts). Also the wire protocol the client uses (ghosts.py). Standard library only, so the file runs on its own:
 
-    python3 ghost_relay.py [--host 0.0.0.0] [--port 43390] [--forward]
+    python3 ghost_relay.py [--host 0.0.0.0] [--port 43390] [--forward] [--password PASSWORD]
 
---forward has the router forward the port to this computer while the relay runs (NAT-PMP, else UPnP).
+--forward has the router forward the port to this computer while the relay runs (NAT-PMP, else UPnP). --password (or
+the environment variable LAS_GHOST_RELAY_PASSWORD) lets in only clients that send it: players enter the relay as
+password@host:port.
 
 Plain TCP with TCP_NODELAY. Every message is a frame: a u16 length (big-endian), then the payload, whose first byte is
 the message type. A client joins a group, SHA-256("lasghost" | secret), computed by the client from its multiworld's
@@ -15,8 +17,10 @@ frames go out together every BATCH seconds.
 import argparse
 import asyncio
 import hashlib
+import hmac
 import logging
 import math
+import os
 import socket
 import struct
 import sys
@@ -28,7 +32,8 @@ PROTOCOL_VERSION = 2
 DEFAULT_PORT = 43390
 
 # Client -> relay
-JOIN = 0x01  # u8 version, 32 bytes group, slot name, player name (each a u8 length and UTF-8)
+JOIN = 0x01  # u8 version, 32 bytes group, slot name, player name, relay password (each a u8 length and UTF-8; the
+# password may be missing: none)
 POS = 0x02  # POS_BODY
 NOWHERE = 0x03  # the player is in no level (title, file menu, level load, game not connected)
 PING = 0x04  # keep-alive; the relay answers PONG
@@ -97,10 +102,27 @@ BATCH = 0.02  # a receiver's frames go out together this often: one TCP segment 
 MAX_SHOWN = 30  # players each member gets frames of at most: the nearest in its area (the game's ghost slots)
 CHOOSE_EVERY = 0.5  # how often the nearest are chosen again
 KEEP_MARGIN = 2.0  # a shown player stays unless another is this much nearer (units), so the choice does not flap
+MAX_NAME = 64  # bytes of a name or password in a join
+PASSWORD_ENV = "LAS_GHOST_RELAY_PASSWORD"
+WRONG_PASSWORD_DELAY = 1.0  # seconds before a wrong password is refused, so guessing is slow
 
 
 def group_id(secret: str) -> bytes:
     return hashlib.sha256(b"lasghost|" + secret.encode()).digest()
+
+
+def parse_address(address: str) -> Tuple[str, str, int]:
+    """A relay address, [password@]host[:port], as (password, host, port). The password may hold @ too."""
+    password, _, rest = address.strip().rpartition("@")
+    host, _, port = rest.strip().rpartition(":")
+    if not host:
+        return password, rest.strip(), DEFAULT_PORT
+    return password, host.strip("[]"), int(port)
+
+
+def shown_address(address: str) -> str:
+    """A relay address without its password, for messages."""
+    return address.strip().rpartition("@")[2]
 
 
 def field_screen(x: float, z: float) -> Tuple[int, int]:
@@ -123,7 +145,7 @@ def frame(payload: bytes) -> bytes:
 
 
 def name_bytes(text: str) -> bytes:
-    data = text.encode("utf-8")[:64]
+    data = text.encode("utf-8")[:MAX_NAME]
     return bytes([len(data)]) + data
 
 
@@ -134,17 +156,18 @@ def read_name(data: bytes, at: int) -> Tuple[str, int]:
     return data[at + 1:at + 1 + n].decode("utf-8", "replace"), at + 1 + n
 
 
-def join_message(group: bytes, slot: str, player: str) -> bytes:
-    return bytes([JOIN, PROTOCOL_VERSION]) + group + name_bytes(slot) + name_bytes(player)
+def join_message(group: bytes, slot: str, player: str, password: str = "") -> bytes:
+    return bytes([JOIN, PROTOCOL_VERSION]) + group + name_bytes(slot) + name_bytes(player) + name_bytes(password)
 
 
-def parse_join(payload: bytes) -> Tuple[int, bytes, str, str]:
+def parse_join(payload: bytes) -> Tuple[int, bytes, str, str, str]:
     version, group = payload[1], payload[2:34]
     if len(group) != 32:
         raise ValueError("short join")
     slot, at = read_name(payload, 34)
-    player, _ = read_name(payload, at)
-    return version, group, slot, player
+    player, at = read_name(payload, at)
+    password = read_name(payload, at)[0] if at < len(payload) else ""
+    return version, group, slot, player, password
 
 
 async def read_frame(reader: asyncio.StreamReader) -> bytes:
@@ -225,8 +248,9 @@ class Member:
 
 
 class Relay:
-    def __init__(self, echo: Optional[float] = None):
+    def __init__(self, echo: Optional[float] = None, password: str = ""):
         self.echo = echo  # for tests: each member also sees itself as ECHO_ID, this far along x
+        self.password = password  # "": anyone may join
         self.groups: Dict[bytes, List[Member]] = {}
         self.members: Dict[int, Member] = {}
         self.connections: Set[Member] = set()
@@ -257,10 +281,14 @@ class Relay:
             payload = await asyncio.wait_for(read_frame(reader), 10)
             if payload[0] != JOIN:
                 return self.refuse(member, "Join first.")
-            version, group, slot, player = parse_join(payload)
+            version, group, slot, player, password = parse_join(payload)
             if version != PROTOCOL_VERSION:
                 return self.refuse(member, f"The ghost relay speaks version {PROTOCOL_VERSION}, the client {version}. "
                                            f"Update the Link's Awakening world.")
+            if self.password and not hmac.compare_digest(password.encode(), self.password.encode()):
+                await asyncio.sleep(WRONG_PASSWORD_DELAY)
+                return self.refuse(member, "Wrong relay password. Enter the relay as password@host:port."
+                                   if password else "This relay needs a password: enter it as password@host:port.")
             if len(self.groups.get(group, ())) >= MAX_GROUP and not any(
                     m.slot == slot for m in self.groups.get(group, ())):
                 return self.refuse(member, "This group of players is full.")
@@ -716,12 +744,15 @@ def is_public(address: str) -> bool:
     return ip.is_global and ip not in ipaddress.ip_network("100.64.0.0/10")
 
 
-async def serve(host: str, port: int, echo: Optional[float] = None, forward: bool = False) -> None:
-    relay = Relay(echo)
+async def serve(host: str, port: int, echo: Optional[float] = None, forward: bool = False,
+                password: str = "") -> None:
+    relay = Relay(echo, password)
     server = await asyncio.start_server(relay.handle, host, port)
     sweep = asyncio.create_task(relay.sweep())
     choosing = asyncio.create_task(relay.choosing())
     relay.log.info("listening on " + ", ".join(str(s.getsockname()) for s in server.sockets))
+    if password:
+        relay.log.info("players need the password: they enter the relay as password@host:port")
     renew = None
     unmapper = None
     if forward:
@@ -773,11 +804,16 @@ def main() -> None:
     parser.add_argument("--forward", action="store_true",
                         help="Have the router forward the port to this computer while the relay runs (NAT-PMP, "
                              "else UPnP).")
+    parser.add_argument("--password", default=os.environ.get(PASSWORD_ENV, ""),
+                        help=f"Let in only players who enter the relay as password@host:port (default: the "
+                             f"environment variable {PASSWORD_ENV}, else none).")
     args = parser.parse_args()
+    if len(args.password.encode()) > MAX_NAME:
+        parser.error(f"--password: at most {MAX_NAME} bytes")
     logging.basicConfig(level=logging.WARNING if args.quiet else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
     try:
-        asyncio.run(serve(args.host, args.port, args.echo, args.forward))
+        asyncio.run(serve(args.host, args.port, args.echo, args.forward, args.password))
     except KeyboardInterrupt:
         pass
 

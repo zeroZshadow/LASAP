@@ -3,6 +3,7 @@ import asyncio
 import struct
 import unittest
 from typing import List, Optional, Tuple
+from unittest import mock
 
 from .. import ghost_relay as wire
 
@@ -19,9 +20,13 @@ class FakeClient:
         self.id = -1
         self.seq = 0
 
-    async def join(self, secret: str, slot: str, version: int = wire.PROTOCOL_VERSION) -> bytes:
+    async def join(self, secret: str, slot: str, version: int = wire.PROTOCOL_VERSION,
+                   password: Optional[str] = "") -> bytes:
+        """Joins; password None sends a join without the password field."""
         self.reader, self.writer = await asyncio.open_connection("127.0.0.1", self.port)
-        message = bytearray(wire.join_message(wire.group_id(secret), slot, slot + " (player)"))
+        message = bytearray(wire.join_message(wire.group_id(secret), slot, slot + " (player)", password or ""))
+        if password is None:
+            message = message[:-1]
         message[1] = version
         self.writer.write(wire.frame(bytes(message)))
         first = await self.next()
@@ -72,9 +77,9 @@ def field(col: int, row: int) -> Tuple[float, float]:
 
 
 class TestRelay(unittest.TestCase):
-    def run_relay(self, test, echo: Optional[float] = None) -> None:
+    def run_relay(self, test, echo: Optional[float] = None, password: str = "") -> None:
         async def main() -> None:
-            relay = wire.Relay(echo)
+            relay = wire.Relay(echo, password)
             server = await asyncio.start_server(relay.handle, "127.0.0.1", 0)
             port = server.sockets[0].getsockname()[1]
             try:
@@ -206,6 +211,35 @@ class TestRelay(unittest.TestCase):
                 await a.next()
             self.assertEqual(relay.members, {})
         self.run_relay(test)
+
+    def test_password(self) -> None:
+        self.assertEqual(wire.parse_address("relay.example"), ("", "relay.example", wire.DEFAULT_PORT))
+        self.assertEqual(wire.parse_address(" pass@word@relay.example:1234 "), ("pass@word", "relay.example", 1234))
+        self.assertEqual(wire.parse_address("pw@[::1]:5"), ("pw", "::1", 5))
+        self.assertEqual(wire.shown_address("pw@relay.example:1234"), "relay.example:1234")
+
+        async def test(port: int, relay: wire.Relay) -> None:
+            for password in (None, "", "wrong"):
+                client = FakeClient(port)
+                reply = await client.join("secret1", "A", password=password)
+                self.assertEqual(reply[0], wire.ERROR)
+                self.assertIn("Wrong" if password else "needs a password", reply[1:].decode())
+                client.close()
+            a = FakeClient(port)
+            self.assertEqual((await a.join("secret1", "A", password="sesame"))[0], wire.WELCOME)
+            self.assertEqual(len(relay.members), 1)
+            a.close()
+        with mock.patch.object(wire, "WRONG_PASSWORD_DELAY", 0):
+            self.run_relay(test, password="sesame")
+
+        async def open_relay(port: int, relay: wire.Relay) -> None:
+            # without a password on the relay, a join with or without one is let in
+            a, b = FakeClient(port), FakeClient(port)
+            self.assertEqual((await a.join("secret1", "A", password=None))[0], wire.WELCOME)
+            self.assertEqual((await b.join("secret1", "B", password="any"))[0], wire.WELCOME)
+            a.close()
+            b.close()
+        self.run_relay(open_relay)
 
     def test_frames_are_batched(self) -> None:
         async def test(port: int, relay: wire.Relay) -> None:
@@ -346,6 +380,38 @@ class TestGhostLink(unittest.TestCase):
             await asyncio.gather(*tasks)
             server.close()
         asyncio.run(main())
+
+    def test_link_sends_the_relay_password(self) -> None:
+        from .. import checklist
+        from ..ghosts import GhostLink
+
+        async def main() -> None:
+            relay = wire.Relay(password="sesame")
+            server = await asyncio.start_server(relay.handle, "127.0.0.1", 0)
+            address = f"127.0.0.1:{server.sockets[0].getsockname()[1]}"
+            link = GhostLink(lambda line: None)
+            exit_event = asyncio.Event()
+            task = asyncio.create_task(link.run(exit_event))
+
+            async def until(test) -> None:
+                for _ in range(150):
+                    if test():
+                        return
+                    await asyncio.sleep(0.02)
+                self.fail(f"timed out; status: {link.status.text}")
+
+            link.configure(True, "guess@" + address, "secret1", "A", "A")
+            await until(lambda: link.status.level == checklist.ERROR)
+            self.assertIn("Wrong relay password", link.status.text)
+            link.configure(True, "sesame@" + address, "secret1", "A", "A")
+            await until(lambda: link.joined)
+            self.assertNotIn("sesame", link.status.text)
+            exit_event.set()
+            link.wake.set()
+            await task
+            server.close()
+        with mock.patch.object(wire, "WRONG_PASSWORD_DELAY", 0):
+            asyncio.run(main())
 
 
 class TestGhostSecret(unittest.TestCase):

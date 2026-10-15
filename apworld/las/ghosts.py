@@ -16,13 +16,6 @@ SILENT_TIMEOUT = 30.0  # the relay answers pings; a link that hears nothing this
 RETRY_DELAYS = (2, 5, 10, 30, 60)
 
 
-def parse_address(address: str) -> Tuple[str, int]:
-    host, _, port = address.strip().rpartition(":")
-    if not host:
-        return address.strip(), wire.DEFAULT_PORT
-    return host.strip("[]"), int(port)
-
-
 def pos_body(parts: List[str], now_ms: int) -> Optional[bytes]:
     """A POS line's fields (`POS <level> <room> <x> <y> <z> <yaw> <anim> <anim frame> [<flags> [<time> [<look>]]]`)
     as a frame body, or None when Link is in no level the relay knows (`POS none`, a level missing from wire.LEVELS).
@@ -273,7 +266,8 @@ class GhostLink:
             except (OSError, asyncio.TimeoutError, asyncio.IncompleteReadError, ValueError, IndexError,
                     struct.error) as e:
                 if not self.wake.is_set():
-                    self.set_status(checklist.ERROR, f"Ghosts: cannot reach the relay {self.address} "
+                    self.set_status(checklist.ERROR, f"Ghosts: cannot reach the relay "
+                                                     f"{wire.shown_address(self.address)} "
                                                      f"({e.__class__.__name__}{': ' + str(e) if str(e) else ''}).")
             finally:
                 self.drop()
@@ -291,14 +285,14 @@ class GhostLink:
             pass
 
     async def session(self) -> None:
-        host, port = parse_address(self.address)
-        self.set_status(checklist.INFO, f"Ghosts: connecting to the relay {self.address}...")
+        password, host, port = wire.parse_address(self.address)
+        self.set_status(checklist.INFO, f"Ghosts: connecting to the relay {wire.shown_address(self.address)}...")
         reader, writer = await asyncio.wait_for(asyncio.open_connection(host, port), 10)
         sock = writer.get_extra_info("socket")
         if sock is not None:
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.writer = writer
-        writer.write(wire.frame(wire.join_message(wire.group_id(self.secret), self.slot, self.player)))
+        writer.write(wire.frame(wire.join_message(wire.group_id(self.secret), self.slot, self.player, password)))
         pinger = asyncio.create_task(self.ping(writer))
         try:
             while not self.wake.is_set():

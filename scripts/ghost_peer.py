@@ -27,9 +27,9 @@ def log(text: str) -> None:
 
 
 async def main(args) -> None:
-    host, _, port = args.relay.rpartition(":")
-    reader, writer = await asyncio.open_connection(host, int(port))
-    writer.write(wire.frame(wire.join_message(wire.group_id(args.secret), args.slot, args.slot)))
+    password, host, port = wire.parse_address(args.relay)
+    reader, writer = await asyncio.open_connection(host, port)
+    writer.write(wire.frame(wire.join_message(wire.group_id(args.secret), args.slot, args.slot, password)))
     place = {"level": args.level, "at": [float(v) for v in args.at.split(",")], "here": True, "radius": args.radius,
              "look": wire.LOOK_DEFAULT}
     names = {}
