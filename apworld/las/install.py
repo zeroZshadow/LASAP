@@ -43,6 +43,10 @@ class InstallError(Exception):
     pass
 
 
+class _PatcherExit(InstallError):
+    """The patcher ended with an error code; it printed why last."""
+
+
 def split_command(command: str) -> List[str]:
     """Splits a command line; on Windows, backslashes stay path separators and quotes only group."""
     if sys.platform != "win32":
@@ -217,13 +221,37 @@ def run_builtin_patcher(patch_file: Path, romfs: Path, out: Path, log: Callable[
             sys.path[:] = saved_path
             _forget_patcher_modules()
     if code != 0:
-        raise InstallError(f"The patcher failed (exit code {code}).")
+        raise _PatcherExit(f"The patcher failed (exit code {code}).")
+
+
+class _LastLine:
+    """Passes the patcher's lines on to the log and keeps the last one."""
+    def __init__(self, log: Callable[[str], None]) -> None:
+        self.log = log
+        self.line = ""
+
+    def __call__(self, text: str) -> None:
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        if lines:
+            self.line = lines[-1]
+        self.log(text)
 
 
 def run_patcher(command: str, patch_file: Path, romfs: Path, out: Path, log: Callable[[str], None],
                 settings: Optional[Dict[str, Any]] = None) -> None:
     """Runs the patcher command, or the patcher the world carries when it is empty, with these player settings."""
     extra = ["--settings", json.dumps(settings)] if settings else []
+    output = _LastLine(log)
+    try:
+        _run_patcher(command, patch_file, romfs, out, output, extra)
+    except _PatcherExit as e:
+        if output.line:
+            raise InstallError(output.line) from e
+        raise
+
+
+def _run_patcher(command: str, patch_file: Path, romfs: Path, out: Path, log: Callable[[str], None],
+                 extra: List[str]) -> None:
     if not command.strip():
         run_builtin_patcher(patch_file, romfs, out, log, extra)
         return
@@ -239,7 +267,7 @@ def run_patcher(command: str, patch_file: Path, romfs: Path, out: Path, log: Cal
         if line.strip():
             log(line.rstrip())
     if proc.wait() != 0:
-        raise InstallError(f"The patcher failed (exit code {proc.returncode}).")
+        raise _PatcherExit(f"The patcher failed (exit code {proc.returncode}).")
 
 
 def install(out: Path, sd_card: Path, mods: Path, build: Optional[str] = None,

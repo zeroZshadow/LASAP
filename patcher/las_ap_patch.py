@@ -609,6 +609,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not (args.romfs / "region_common" / "event" / "PlayerStart.bfevfl").exists():
         print(f"{args.romfs} is not a Link's Awakening RomFS dump")
         return 1
+    try:
+        ap_assets.check(args.romfs)
+    except ap_assets.AssetError as e:
+        print(e)
+        return 1
     if not (HERE / "exl" / "subsdk9").exists():
         print("patcher/exl/subsdk9 is missing; build the exlaunch module first (scripts/build_exl.sh)")
         return 1

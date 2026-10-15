@@ -69,12 +69,28 @@ def write(romfs: Path, built: Dict[str, bytes]) -> None:
     MANIFEST.write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
 
 
+def _source(romfs: Path, entry: Dict[str, str]) -> bytes:
+    """The RomFS file an asset comes from; AssetError unless it is the file of game version 1.0.0."""
+    try:
+        source = (romfs / entry["source"]).read_bytes()
+    except OSError:
+        source = b""
+    if _sha256(source) != entry["source_sha256"]:
+        raise AssetError(f"The RomFS dump is not of game version 1.0.0 ({entry['source']} differs). Turn the "
+                         f"game's update off in the emulator and dump the RomFS again (see the setup guide).")
+    return source
+
+
+def check(romfs: Path) -> None:
+    """AssetError unless the RomFS files the assets come from are those of game version 1.0.0."""
+    for entry in json.loads(MANIFEST.read_text(encoding="utf-8")).values():
+        _source(romfs, entry)
+
+
 def load(romfs: Path, path: str) -> bytes:
     """One asset, patched from the player's RomFS dump; checked against the build's checksums."""
     entry = json.loads(MANIFEST.read_text(encoding="utf-8"))[path]
-    source = (romfs / entry["source"]).read_bytes()
-    if _sha256(source) != entry["source_sha256"]:
-        raise AssetError(f"{entry['source']} in the RomFS dump is not the file of game version 1.0.0.")
+    source = _source(romfs, entry)
     data = bsdiff4.patch(source, (ASSET_DIR / entry["patch"]).read_bytes())
     if _sha256(data) != entry["sha256"]:
         raise AssetError(f"Patching {path} gave a different file than the release build.")

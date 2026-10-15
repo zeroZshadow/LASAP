@@ -100,9 +100,13 @@ class TestInstall(unittest.TestCase):
         with self.assertRaises(InstallError):
             self.run_install("aaaa0001")
         self.command = f'"{sys.executable}" -c "raise SystemExit(3)"'
-        with self.assertRaises(InstallError):
+        with self.assertRaisesRegex(InstallError, r"exit code 3"):
             self.run_install("aaaa0001")
         self.assertIsNone(installed_seed(self.sd, self.mods))
+        # the patcher prints why it failed last; the error names that
+        self.command = f'"{sys.executable}" -c "print(\'Patching\'); print(\'The RomFS dump is old.\'); exit(1)"'
+        with self.assertRaisesRegex(InstallError, r"^The RomFS dump is old\.$"):
+            self.run_install("aaaa0001")
 
     def test_builtin_patcher(self) -> None:
         """With no command, the patcher runs in this process, its modules imported fresh for each run."""
