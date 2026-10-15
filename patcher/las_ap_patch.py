@@ -132,9 +132,10 @@ def variant_key(item_key: str) -> str:
 # Item kinds whose in-game index LASR takes from logic.yml for vanilla placements.
 INDEXED_ITEMS = ("seashell", "heart-piece", "heart-container", "bottle", "golden-leaf", "chamber-stone")
 # Items counted by inventory bits, as the module names them in ap_indices.txt (AP::INDICES_PATH): kind letter per item
-INDEX_KINDS = {"seashell": "S", "heart-piece": "H", "golden-leaf": "L", "heart-container": "C"}
+INDEX_KINDS = {"seashell": "S", "heart-piece": "H", "golden-leaf": "L", "heart-container": "C", "bottle": "B"}
 # Item key -> kind and the bits the module gives received ones (AP::GrantItem, kHeartPieceBits, kSeashellBits)
-INDEX_BITS = {"Seashell": ("S", 50), "HeartPiece": ("H", 32), "GoldenLeaf": ("L", 5), "HeartContainer": ("C", 16)}
+INDEX_BITS = {"Seashell": ("S", 50), "HeartPiece": ("H", 32), "GoldenLeaf": ("L", 5), "HeartContainer": ("C", 16),
+              "Bottle": ("B", 3)}
 INDICES_FILE = "ap_indices.txt"
 VANILLA_FILE = "ap_vanilla.txt"
 # The companions' locations and the flag their joining sets
@@ -301,8 +302,8 @@ def _chest_placeholder_branch(self) -> None:
 
 def _starting_index(self, item, index):
     """LASR adds starting items with index -1, which counts for none of the inventory bits that make up the count of
-    indexed items (heart containers, heart pieces, seashells, golden leaves). They take the bits a received item would
-    (STARTING_BITS)."""
+    indexed items (heart containers, heart pieces, seashells, golden leaves, bottles). They take the bits a received
+    item would (STARTING_BITS)."""
     if index == -1 and STARTING_BITS.get(item):
         index = STARTING_BITS[item].pop(0)
     return _original_get_without_animation(self, item, index)
@@ -496,10 +497,10 @@ def build_placements(patch: dict, logic: dict) -> dict:
 
 
 def write_indices(config_dir: Path, logic: dict, patch: dict) -> None:
-    """One line per seashell, heart piece, golden leaf and heart container location: its kind, its vanilla inventory
-    bit and the local id of the location when it holds the placeholder, else -1. A location that keeps its vanilla
-    item sets its bit when collected, so the module gives received items other bits; the Memories map marks bit i's
-    vanilla place."""
+    """One line per seashell, heart piece, golden leaf, heart container and bottle location: its kind, its vanilla
+    inventory bit and the local id of the location when it holds the placeholder, else -1. A location that keeps its
+    vanilla item sets its bit when collected, so the module gives received items other bits; the Memories map marks
+    bit i's vanilla place."""
     lines = []
     for loc, entry in logic.items():
         kind = INDEX_KINDS.get(entry.get("content"))

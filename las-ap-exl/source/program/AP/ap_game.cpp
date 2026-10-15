@@ -121,6 +121,12 @@ namespace {
         return limit - 1;
     }
 
+    // The bottle slots Link has (Bottle0..2) as bits 0..2: an added bottle fills the slot of its index.
+    u64 BottleBits() {
+        const auto& main = (*Game::Data::Inventory::Items)->MainItems;
+        return main.Bottle0 | main.Bottle1 << 1 | main.Bottle2 << 2;
+    }
+
     void Damage(int quarterHearts) {
         auto* items = *Game::Data::Inventory::Items;
         items->Health = items->Health > quarterHearts ? items->Health - quarterHearts : 1;
@@ -491,6 +497,7 @@ namespace {
             case 23: index = LowestClearBit(items->GoldenLeaves | AP::VanillaBits('L'), 5); break;
             case 58: index = LowestClearBit(items->HeartPieces | AP::VanillaBits('H'), kHeartPieceBits); break;
             case 59: index = LowestClearBit(items->HeartContainers | AP::VanillaBits('C'), 16); break;
+            case 113: index = LowestClearBit(BottleBits() | AP::VanillaBits('B'), 3); break; // the bottle slot
             case 44: case 45: case 47: case 48: case 49: index = dungeon; break; // dungeon items
             default: break;
         }

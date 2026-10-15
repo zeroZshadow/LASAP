@@ -1,4 +1,4 @@
-// Inventory bits of seashells, heart pieces, golden leaves and heart containers (DESIGN.md, Received items).
+// Inventory bits of seashells, heart pieces, golden leaves, heart containers and bottles (DESIGN.md, Received items).
 //
 // The game counts these items by bits: collecting one sets the bit of its source, and the count is the number of
 // bits set. The patcher writes INDICES_PATH: per source its kind, its vanilla bit and the local id of its location
