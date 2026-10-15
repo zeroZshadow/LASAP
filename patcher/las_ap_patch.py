@@ -653,7 +653,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap_goal.set_instrument_count(proc.file_manager, patch["settings"].get("Instruments Required", 8))
     map_tracker = patch["settings"].get("Map Tracker", False)  # off for patches from before the option
     if map_tracker:
-        ap_map.add(proc.file_manager, proc.config_dir, patch["location_ids"], PLACEHOLDER_KEY)
+        ap_map.add(proc.file_manager, proc.config_dir, ap_map.shown(patch["location_ids"], patch["settings"]),
+                   PLACEHOLDER_KEY)
     try:
         for path in (ap_assets.MODEL, ap_assets.PLAYER_GHOST, ap_assets.UI) + ((ap_assets.GAME,) if map_tracker else ()):
             ap_assets.install(args.romfs, proc.romfs_dir, path)

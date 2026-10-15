@@ -20,8 +20,12 @@ class TestTracker(unittest.TestCase):
         world = multiworld.worlds[1]
         logic = world.fill_slot_data()["logic"]
         # The client knows the slot's locations from the server, and the rest from the slot data.
-        tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], world.shuffled, logic["locked"])
+        tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], world.shuffled)
+        # locked locations' items count once received, like the pool's
+        locked = [multiworld.get_location(LOCATION_NAMES[loc], 1) for loc in logic["locked"]]
         pool = [item for item in multiworld.itempool + world.get_pre_fill_items() if item.player == 1]
+        pool += [location.item for location in locked]
+        unlocked = [location for location in multiworld.get_locations() if location not in locked]
         rng = random.Random(seed)
         for sample in range(self.samples):
             share = rng.choice((0.0, 0.15, 0.3, 0.5, 0.7, 1.0))
@@ -29,7 +33,7 @@ class TestTracker(unittest.TestCase):
             state = CollectionState(multiworld)
             for item in chosen:
                 state.collect(item, prevent_sweep=True)
-            state.sweep_for_advancements()
+            state.sweep_for_advancements(unlocked)
             expected = {loc for loc in world.shuffled
                         if multiworld.get_location(LOCATION_NAMES[loc], 1).can_reach(state)}
             # the client counts the slot data's starting items and the items received
@@ -51,6 +55,6 @@ class TestTracker(unittest.TestCase):
         multiworld.push_precollected(world.create_item("Ocarina"))
         logic = world.fill_slot_data()["logic"]
         self.assertIn("Ocarina", logic["starting"])
-        tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], world.shuffled, logic["locked"])
+        tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], world.shuffled)
         self.assertIn("marin", tracker.in_logic(logic["starting"]))
         self.assertNotIn("marin", tracker.in_logic([]))

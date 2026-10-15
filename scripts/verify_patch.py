@@ -1,7 +1,7 @@
 """Static checks on patcher output: every chest location holds the AP placeholder (the model variant of
 `location_models`) with its local id, and every randomized heart piece and seashell actor has a unique index above
-the received range (DESIGN.md, item model). With the map tracker on, every AP location has one icon in ap_map.txt and
-every icon its datasheet row. Below eight required instruments, the egg's event checks single instruments instead of
+the received range (DESIGN.md, item model). With the map tracker on, every AP location has one icon in ap_map.txt
+(but the trade quest's when it is off) and every icon its datasheet row. Below eight required instruments, the egg's event checks single instruments instead of
 all of them. With in-game hints, every hint source shows its own message, which fits the text box, and a server hint
 sets its flag, which ap_hints.txt names with the hinted location.
 
@@ -58,7 +58,7 @@ for path in sorted(level_dir.rglob("*.leb")):
         seen[(actor.type, index)] = path.stem
 print(f"item actors checked={len(seen)} bad={bad}")
 
-# Map tracker: every AP location has one icon, and every icon its datasheet row.
+# Map tracker: every AP location has one icon (but the trade quest's when it is off), and every icon its datasheet row.
 if patch["settings"].get("Map Tracker"):
     import ap_map  # noqa: E402
     from RandomizerCore.Tools.oead_tools import readSheet  # noqa: E402
@@ -68,12 +68,12 @@ if patch["settings"].get("Map Tracker"):
     dungeon = {int(p[1]): (float(p[2]), float(p[3]), [int(i) for i in p[4:]]) for p in lines if p[0] == "D"}
     iconed = [i for ids in overworld.values() for i in ids] + [i for *_, ids in dungeon.values() for i in ids]
     positions = ap_map.load_positions()
+    shown = ap_map.shown(patch["location_ids"], patch["settings"])
     # overworld icons: overworld and dungeon checks (at the dungeon's entrance); dungeon icons: the dungeons' checks
     # that are not chests
-    want = [int(i) for loc, i in patch["location_ids"].items() if loc in positions["overworld"]]
-    want += [int(i) for loc, i in patch["location_ids"].items() if loc in positions["dungeon"]]
-    want += [int(i) for loc, i in patch["location_ids"].items()
-             if loc in positions["dungeon"] and loc not in CHEST_ROOMS]
+    want = [int(i) for loc, i in shown.items() if loc in positions["overworld"]]
+    want += [int(i) for loc, i in shown.items() if loc in positions["dungeon"]]
+    want += [int(i) for loc, i in shown.items() if loc in positions["dungeon"] and loc not in CHEST_ROOMS]
     if sorted(iconed) != sorted(want):
         bad += 1
         print(f"MAP ICONS cover {len(iconed)} locations, want {len(want)}")

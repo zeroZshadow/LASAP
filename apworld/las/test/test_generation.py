@@ -187,18 +187,24 @@ class TestVanillaHeavy(LASTestBase):
         self.assertEqual((settings["Heart Pieces"], settings["Seashell Mansion"], settings["Seashells Important"]),
                          (False, 0, False))
 
-    def test_tracker_counts_a_locked_item_once(self) -> None:
-        """A checked locked location stops counting its item: the received copy counts instead."""
+    def test_tracker_counts_a_locked_item_once_received(self) -> None:
+        """A locked location's item counts for the map's logic once received, not while the location is reachable:
+        Mamasha needs the Yoshi Doll in hand, not a reachable Trendy Game."""
+        from ..items import LASR_TO_ITEM
         from ..tracker import LogicTracker
         logic = self.world.fill_slot_data()["logic"]
-        tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], self.world.shuffled,
-                               logic["locked"])
-        start = [item.name for item in self.multiworld.precollected_items[self.player]]
-        before = tracker.in_logic(start)
-        reachable_locked = [loc for loc in logic["locked"] if loc in before]
-        self.assertTrue(reachable_locked)
-        # the checked locations' items not received yet: nothing more is in logic than before
-        self.assertLessEqual(tracker.in_logic(start, reachable_locked), before)
+        tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], self.world.shuffled)
+        doll = LASR_TO_ITEM[LOGIC["trendy-prize-1"]["content"]]
+        # every other item of the slot: the pool's, the starting ones and the other locked locations'
+        items = [item.name for item in self.multiworld.precollected_items[self.player]]
+        items += [item.name for item in self.multiworld.itempool + self.world.get_pre_fill_items()
+                  if item.player == self.player]
+        items += [self.multiworld.get_location(LOCATION_NAMES[loc], self.player).item.name for loc in logic["locked"]]
+        items = [name for name in items if name != doll]
+        before = tracker.in_logic(items)
+        self.assertIn("trendy-prize-1", before)
+        self.assertNotIn("mamasha", before)
+        self.assertIn("mamasha", tracker.in_logic(items + [doll]))
 
 
 class TestOwnDungeon(LASTestBase):

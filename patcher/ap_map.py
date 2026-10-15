@@ -84,6 +84,16 @@ def short_name(name: str) -> str:
     return name.split(" - ", 1)[-1]
 
 
+def shown(location_ids: dict, settings: dict) -> dict:
+    """The locations that get icons: the slot's AP locations, but not the trade quest's when it is off. Those stay
+    checks holding their trade item, as the logic needs it, but the player turned the trade quest off, and PopTracker
+    hides them too."""
+    if settings.get("Trade Quest", True):
+        return location_ids
+    from RandomizerCore.randomizer_data import TRADE_GIFT_LOCATIONS
+    return {loc: i for loc, i in location_ids.items() if loc not in TRADE_GIFT_LOCATIONS}
+
+
 def add(files, config_dir: Path, location_ids: dict, placeholder_key: str) -> None:
     positions = load_positions()
     overworld = overworld_groups(positions, location_ids) + entrance_groups(files, location_ids)
