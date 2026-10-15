@@ -47,6 +47,8 @@ namespace {
     bool g_ToastStarting = false;   // our ShowThrobber call is running
     bool g_ToastShowing = false;    // the popup shows our text
     bool g_ToastText = false;       // the text getter hands out the toast for UI:SystemSaving
+    const std::string* g_PaneText = nullptr;  // SetPaneText: the getter hands out this for UI:SystemSaving
+    char g_PaneBuf[128];
     std::deque<std::string> g_Toasts;
     std::string g_Toast;
     char g_ToastBuf[256];
@@ -213,6 +215,11 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
                 break;
             }
             case Kind::Saving:
+                if (g_PaneText != nullptr) {
+                    out->length = Store(g_PaneBuf, sizeof(g_PaneBuf), *g_PaneText);
+                    out->text = g_PaneBuf;
+                    return;
+                }
                 if (!g_ToastText) return;
                 out->length = Store(g_ToastBuf, sizeof(g_ToastBuf), g_Toast);
                 out->text = g_ToastBuf;
@@ -285,6 +292,14 @@ namespace AP {
         MsbtGetText::InstallAtOffset(offset_manager.Offset(kMsbtGetText));
         MansionPopBox::InstallAtOffset(offset_manager.Offset(kMansionPopBoxCreate));
         ThrobberSetState::InstallAtOffset(offset_manager.Offset(kThrobberSetState));
+    }
+
+    void SetPaneText(void* holder, const std::string& text) {
+        static const char label[] = "UI:SystemSaving";
+        StrView view{label, sizeof(label) - 1};
+        g_PaneText = &text;
+        reinterpret_cast<PaneSetMessageFn>(g_BaseAddress + offset_manager.Offset(kPaneSetMessage))(holder, &view);
+        g_PaneText = nullptr;
     }
 
     void QueueToast(const std::string& text) {

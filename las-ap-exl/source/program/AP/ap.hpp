@@ -104,6 +104,9 @@ namespace AP {
     void LoadLocationNames();
     // A short message in the autosave popup ("Now Saving"), which does not stop the game; '\n' starts a new line.
     void QueueToast(const std::string& text);
+    // Sets a text pane to a UTF-8 text through the game's message pipeline, as the game sets a pane to a message: the
+    // holder's +0x10 is the pane, as in the game's text objects.
+    void SetPaneText(void* holder, const std::string& text);
     // Shows the next toast once the popup is free; only in a level.
     void TickToasts(bool inLevel);
 
@@ -178,6 +181,18 @@ namespace AP::GhostNet {
 }
 
 // Multiplayer ghosts, the puppets (ap_puppet.cpp): each ghost slot shown as an NPC drawn with Link's model.
+namespace Game { struct Vec3; }
+// The ghosts' name tags (ap_nametag.cpp): ghost slot n's slot name in a bubble over a world position.
+namespace AP::NameTag {
+    // Shows the tag over that point (hidden while it is behind the camera or off screen).
+    void Show(int n, const Game::Vec3& head, const std::string& name);
+    void Hide(int n);
+    // While a level loads: the tags are built again in the next.
+    void DropAll();
+    // STATE's tags=: per slot "-" none, "h" hidden, "g" shown while the font draws the name's glyphs, "d" drawn.
+    std::string State();
+}
+
 namespace AP::Puppet {
     void InstallHooks();
     // Once per tick, after GhostNet::Tick.

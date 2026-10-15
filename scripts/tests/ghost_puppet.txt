@@ -12,9 +12,12 @@ await 5 ghosts=1
 await 5 puppets=1
 send DBG puppet
 expect \|\s0\sactor=\w+\sname=NpcGhost:\w+\spos=[\d.,]+\smodel=[0-9a-f]+
+# its name tag over its head, with the name's glyphs drawn
+await 5 tags=d---
 # the peer leaves the level: the puppet hides; it comes back: the same actor shows again
 peer nowhere
 await 5 puppets=0
+await 5 tags=h---
 send DBG puppet
 expect \|\s0\sactor=\w+\shidden
 peer goto Field 46.5 10.5 137
@@ -25,6 +28,7 @@ expect \|\s0\sactor=\w+\sname=\S+\spos=[\d.,]+\smodel=[0-9a-f]+
 warp Field 43 10.5 137
 free 10
 await 10 puppets=1
+await 5 tags=d---
 # both in a house: the same actor shows there, with the model it loads in that level
 peer goto MarinTarinHouse 9 0 10
 warp MarinTarinHouse 7.5 0 10

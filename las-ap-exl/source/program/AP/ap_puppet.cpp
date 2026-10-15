@@ -182,6 +182,7 @@ namespace {
     constexpr u64 kStaleMs = 5000;
     constexpr int kFlagWarped = 1, kFlagHidden = 2, kFlagStill = 4;
     constexpr u32 kRespawnFrames = 60;  // after a failed spawn
+    constexpr float kTagHeight = 1.3f;  // the name tag's point above the ghost's feet
     constexpr u32 kNoRowFrames = 600;   // after a spawn without the APGhost row
     // An actor spawned in a level's first frames can stay inactive (entity flags without bit 2, (f & 0x40000017) !=
     // 0x17): never updated or drawn. One inactive this long is made again; an active one stays active through
@@ -916,6 +917,7 @@ namespace AP::Puppet {
         if (player == nullptr || fmwk == nullptr) {
             // a level loads
             for (int n = 0; n < kPuppets; n++) ClearSpan(n);
+            AP::NameTag::DropAll();
 #ifdef LASAP_TEST
             g_HistoryValid = false;
 #endif
@@ -946,6 +948,16 @@ namespace AP::Puppet {
         for (auto& p : g_Puppets) {
             if (Alive(p)) Update(p, frame);
         }
+        // each shown ghost's name over its head, once its model is loaded
+        for (int n = 0; n < kGhosts; n++) {
+            const auto& p = g_Puppets[n];
+            if (p.shown && p.model != nullptr && Alive(p)) {
+                const Game::Vec3& at = p.track.pos;
+                AP::NameTag::Show(n, Game::Vec3{at.x, at.y + kTagHeight, at.z}, AP::GhostNet::Get(n).name);
+            } else {
+                AP::NameTag::Hide(n);
+            }
+        }
     }
 
 #ifdef LASAP_TEST
@@ -958,7 +970,7 @@ namespace AP::Puppet {
         // and ghost slot 0's look on its model: the shapes and tunic last set
         const auto& p = g_Puppets[0];
         std::string gear = p.model != nullptr && p.shown ? Hex(p.gear) + "/" + std::to_string(p.tunic) : "-";
-        return std::to_string(shown) + "/" + std::to_string(actors) + " gear=" + gear;
+        return std::to_string(shown) + "/" + std::to_string(actors) + " gear=" + gear + " " + AP::NameTag::State();
     }
 
     bool Command(const std::vector<std::string>& a) {

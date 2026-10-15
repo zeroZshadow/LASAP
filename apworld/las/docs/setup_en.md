@@ -77,7 +77,7 @@ without costing hint points. Hints read while the client is not connected reach 
 ## Ghosts
 
 The other Links Awakening Switch players of your multiworld show as see-through Links when they are where you are: in
-the same house, cave or dungeon, or near you in the overworld. They show with their tunic and the items they hold.
+the same house, cave or dungeon, or near you in the overworld. They show with their slot name over their heads, their tunic and the items they hold.
 They can't touch you or anything else. Ghosts travel through a ghost relay, not the Archipelago server, and only
 players of the same generation see each other.
 
