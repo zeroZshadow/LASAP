@@ -19,8 +19,11 @@ GAME_PORT = 43384
 PROTOCOL_VERSION = 2
 PING_INTERVAL = 2.0
 RESEND_INTERVAL = 3.0
+HELLO_TIMEOUT = 5.0
 # Servers before this have no CreateHints; on them, in-game hints of this slot's own locations become hints by scouting
 CREATE_HINTS_VERSION = Utils.Version(0, 6, 2)
+# The game takes one client at a time; another client's connection waits without an answer.
+BUSY_STATUS = "Another client is connected to the game: close the other Links Awakening Switch Client window."
 # Data storage key holding the level the game shows (LASR level names: Field, Lv01TailCave, ...), for trackers
 LEVEL_KEY = "las_level_{team}_{slot}"
 
@@ -122,6 +125,9 @@ class LASContext(CommonContext):
         self.game_host = game_host
         self.game_port = game_port
         self.game_writer: Optional[asyncio.StreamWriter] = None
+        # The game's port took the connection but the game did not answer: it serves another client
+        self.game_busy = False
+        self.game_probed = asyncio.Event()  # the game loop tried to connect once
         self.emulator_process: Optional["subprocess.Popen[bytes]"] = None  # the emulator this client started
         self.game_seed_hash: Optional[str] = None
         self.game_recv: Optional[int] = None
@@ -416,18 +422,26 @@ class LASContext(CommonContext):
             writer = None
             try:
                 reader, writer = await asyncio.wait_for(
-                    asyncio.open_connection(self.game_host, self.game_port), timeout=5)
-                # the game says HELLO right away; a listener that does not answer is not a running game
-                first = await asyncio.wait_for(reader.readline(), timeout=5)
+                    asyncio.open_connection(self.game_host, self.game_port), timeout=HELLO_TIMEOUT)
+                # the game says HELLO right away; while it serves another client, it takes no new one
+                first = await asyncio.wait_for(reader.readline(), timeout=HELLO_TIMEOUT)
             except (OSError, asyncio.TimeoutError):
+                busy = writer is not None
                 if writer is not None:
                     writer.close()
                 failures += 1
-                if failures % 5 == 1 and self.game_status.level != checklist.INFO:
-                    self.set_game_status(checklist.INFO, "Waiting for the game to start.")
+                if busy != self.game_busy or (failures % 5 == 1 and self.game_status.level != checklist.INFO):
+                    self.game_busy = busy
+                    if busy:
+                        self.set_game_status(checklist.TODO, BUSY_STATUS)
+                    else:
+                        self.set_game_status(checklist.INFO, "Waiting for the game to start.")
+                self.game_probed.set()
                 await asyncio.sleep(2)
                 continue
             failures = 0
+            self.game_busy = False
+            self.game_probed.set()
             self.game_writer = writer
             self.game_recv = None
             self.game_seed_hash = None
@@ -603,8 +617,15 @@ class LASContext(CommonContext):
             self.show_patch_tab()
             return
         name = emulators.display_name(exe)
+        try:  # whether the game runs already, from the game loop's first try
+            await asyncio.wait_for(self.game_probed.wait(), timeout=10)
+        except asyncio.TimeoutError:
+            pass
         if self.game_writer is not None:
             self.report("info", "The game is running already.")
+            return
+        if self.game_busy:
+            self.report("warning", "The game is running already. " + BUSY_STATUS)
             return
         if self.emulator_process is not None and self.emulator_process.poll() is None:
             self.report("info", f"{name} is open already. Start Link's Awakening there.")
