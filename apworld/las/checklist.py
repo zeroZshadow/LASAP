@@ -80,6 +80,9 @@ def check(patch_file: str, options: Dict[str, str], settings: Optional[Dict[str,
     if not exe and not sd_card:
         checks["emulator"] = Check(TODO, "Choose your emulator's program: Ryujinx.exe, or Eden, Citron or another "
                                          "yuzu-based emulator.")
+    elif exe and Path(exe).is_dir():
+        checks["emulator"] = Check(ERROR, "This is a folder: choose the emulator's program in it (Ryujinx.exe, "
+                                          "eden.exe, ...).")
     elif exe and not Path(exe).is_file():
         checks["emulator"] = Check(ERROR, "This program does not exist.")
     elif result.target is None:

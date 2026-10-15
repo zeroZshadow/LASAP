@@ -297,5 +297,5 @@ The module is `las-ap-exl` (from Owen-Splat/exlaunch, GPL-2.0). Run `bash script
 
 Eden (yuzu fork) offers no decisive advantage (assessed 2026-10-12):
 - Randovania's Dread exlaunch socket mod officially supports only Ryujinx.
-- Eden defaults to `airplane_mode=true`, which breaks TCP sockets until it is changed.
+- Eden's airplane mode (`airplane_mode`) breaks TCP sockets while it is on.
 - Eden's TAS player runs only in the Qt frontend.

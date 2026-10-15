@@ -3,10 +3,12 @@
 ## Required software
 
 - [Archipelago](https://github.com/ArchipelagoMW/Archipelago/releases) 0.6.7 or newer.
-- The Legend of Zelda: Link's Awakening (2019), game version 1.0.0 with no update applied, on a Switch emulator.
-  Ryujinx and Eden are tested; other yuzu-based emulators should work the same way. A Switch with Atmosphère is
-  untested.
-- A RomFS dump of the game. In Ryujinx: right-click the game, then Extract Data, RomFS.
+- The Legend of Zelda: Link's Awakening (2019), game version 1.0.0, on a Switch emulator. Ryujinx and Eden are
+  tested; other yuzu-based emulators should work the same way. A Switch with Atmosphère is untested.
+- The game's update turned off, if you installed it: in Ryujinx, right-click the game, Manage Title Updates, and
+  choose No Update; in Eden, right-click the game, Properties, Add-Ons, and untick Update.
+- A RomFS dump of the game, made with the update turned off. In Ryujinx: right-click the game, then Extract Data,
+  RomFS.
 - Nothing else: the world carries the patcher and runs it inside the client.
 
 ## Installing the world
@@ -77,14 +79,14 @@ without costing hint points. Hints read while the client is not connected reach 
   patch file, press Play, then restart the game.
 - **Another Link's Awakening mod is installed.** The emulator would load it together with this one. Delete the folder
   the Patch tab names.
-- **Patching failed.** The Archipelago tab shows the patcher's output. The RomFS dump must be of version 1.0.0.
+- **Patching failed.** The Patch tab says why, and the Archipelago tab shows the patcher's output. "The RomFS dump is
+  not of game version 1.0.0": turn the game's update off (Required software) and dump the RomFS again.
 - **The emulator changed nothing.** Mods load when the game starts: close the game and start it again.
 - **The game shows "Archipelago client not connected".** Start the client; the game connects when it runs. The
   Patch tab shows the game connection.
 - **The game shows "Archipelago server not connected".** The client runs but is not in your slot: enter the room's
   address at the top of the client and press Connect. Until then the map shows every check as reachable ("Offline"
   on the map).
-- **The Patch tab says the modded game runs in two programs.** Close all emulators but one; the client may otherwise
-  talk to the wrong game.
-- **The client never connects to the game.** The game listens on TCP port 43384. Check `game_host`, and on a Switch,
-  that the console and the computer are on the same network.
+- **The client never connects to the game.** The game listens on TCP port 43384: run one modded game at a time, and
+  turn the emulator's airplane mode off if it has one. Check the game address, and on a Switch, that the console and
+  the computer are on the same network.

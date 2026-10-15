@@ -143,7 +143,7 @@ The client keeps the level the game shows (`Field`, `Lv01TailCave`, ...) in `las
 ASCII lines terminated by `\n`, fields separated by single spaces. The game accepts one client at a time. The client sends `PING` every 2 s, and the game drops a client that has been silent for 10 s.
 
 - The game listens and the client connects, so a Switch needs no address of the PC. The network thread waits for a client with `Poll` in 100 ms steps rather than a blocking `Accept`, which would keep emulators from closing the game.
-- The client drops a connection that gets no `HELLO` within 5 s. While it cannot reach the game, it looks for several programs listening on the port (two emulators running the modded game) and reports them in the Patch tab, which also shows the game and server connections.
+- The client drops a connection that gets no `HELLO` within 5 s. The Patch tab shows the game and server connections.
 - Opened with a patch file, or given one in the Patch tab, the client logs in as the patch's slot.
 
 **Client → game**

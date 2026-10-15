@@ -49,6 +49,9 @@ class TestChecklist(unittest.TestCase):
             result = checklist.check("", {})
         self.assertEqual(result.checks["patcher_command"].level, checklist.OK)
 
+        result = checklist.check("", {"emulator": str(self.ryujinx.parent)})
+        self.assertIn("This is a folder", result.checks["emulator"].text)
+
         result = checklist.check("", {"sd_card_folder": str(self.root / "missing")})
         self.assertEqual(result.checks["emulator"].level, checklist.ERROR)
 
