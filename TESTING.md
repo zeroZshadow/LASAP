@@ -286,7 +286,7 @@ The test build reports the game's state so tests press when the game takes a pre
 - Real hardware.
 - Easy Fishing in play: the line holding while Link reels against a hooked fish (with the setting off it snaps). Fishing is a manual test.
 - Player settings without a visible or textual effect in the sandbox: Music (the sandbox emulator is muted), Nice Hookshot, Blur Removal, Movement Speed while swimming. Damage None against fall and drown damage.
-- Mouse clicks on the Patch tab's game settings (SDL ignores clicks posted from outside; `/setting` changes them).
+- Mouse clicks on the Patch tab's look and sound settings (SDL ignores clicks posted from outside; `/setting` changes them).
 
 ## Building the exlaunch module
 

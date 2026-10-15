@@ -141,7 +141,7 @@ def check(patch_file: str, options: Dict[str, str], settings: Optional[Dict[str,
             installed = installed_seed(result.target.sd_card, result.target.mods)
             checks["installed"] = Check(INFO, f"The mod for another seed ({installed}) is installed; Play replaces it.")
         elif state == CHANGED:
-            checks["installed"] = Check(INFO, "The game settings changed; Play reinstalls the mod with them.")
+            checks["installed"] = Check(INFO, "The look and sound settings changed; Play reinstalls the mod with them.")
         elif state == NONE:
             checks["installed"] = Check(INFO, "No mod installed yet: Play installs it.")
         else:

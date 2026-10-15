@@ -79,6 +79,15 @@ of Tarin's house; Continue (or B) closes the menu. A short press of Minus still 
 cutscene, while Link holds something, or in the Wind Fish's Egg, the Chamber Dungeons, the fishing pond and the trendy
 game.
 
+## Which options change how the game plays?
+
+The group "Gameplay": the damage Link takes (none, normal or one hit kills), walking and swimming 20% faster (on by
+default), 360° movement, skipping the song cutscenes, text that shows a page at once, a hookshot that grabs any
+surface (the logic does not count on it), no Guardian Acorns or Pieces of Power, and easy fishing: the line never
+breaks and Ol' Baron bites more often (on by default). They are options rather than client settings so that a seed
+plays the same for everyone in it. How the game looks and sounds (blur, music, shuffled dialogue and lighting, the
+low-health beep) is set in the client.
+
 ## How does DeathLink work?
 
 With the DeathLink option on, Link's deaths reach the other DeathLink players, and theirs kill Link. A death that

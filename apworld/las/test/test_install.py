@@ -178,6 +178,10 @@ class TestInstall(unittest.TestCase):
             self.assertEqual(install.mod_state(self.sd, self.mods, "aaaa0001", "", dict(PLAYER_DEFAULTS)),
                              install.CURRENT)
             self.assertEqual(install.mod_state(self.sd, self.mods, "aaaa0001", "", music), install.CHANGED)
+            # settings that are no player settings any more, from an older install, do not count
+            (self.sd / install.SETTINGS_PATH).write_text('{"Damage": "OHKO", "Music": "Vanilla"}')
+            self.assertEqual(install.mod_state(self.sd, self.mods, "aaaa0001", "", dict(PLAYER_DEFAULTS)),
+                             install.CURRENT)
             self.patch.write_text("aaaa0001")
             self.assertTrue(patch_and_install("", self.patch, "aaaa0001", self.romfs, self.sd, self.mods,
                                               self.lines.append, settings=music))
@@ -193,8 +197,8 @@ class TestInstall(unittest.TestCase):
         self.command = f'"{sys.executable}" "{script}"'
         self.patch.write_text("aaaa0001")
         patch_and_install(self.command, self.patch, "aaaa0001", self.romfs, self.sd, self.mods, self.lines.append,
-                          settings={"Music": "Removed", "360 Movement": True})
-        self.assertIn("ARGS '{\"Music\": \"Removed\", \"360 Movement\": true}'", self.lines)
+                          settings={"Music": "Removed", "Blur Removal": True})
+        self.assertIn("ARGS '{\"Music\": \"Removed\", \"Blur Removal\": true}'", self.lines)
 
     def test_player_settings_match_patcher(self) -> None:
         """The client's player settings are the patcher's, with the same defaults and choices."""

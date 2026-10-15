@@ -68,10 +68,11 @@ def installed_seed(sd_card: Path, mods: Path) -> Optional[str]:
 
 
 def installed_settings(sd_card: Path) -> Dict[str, Any]:
-    """The player settings the installed mod was patched with."""
+    """The player settings the installed mod was patched with (of those that are player settings now)."""
     try:
-        return {**PLAYER_DEFAULTS, **json.loads((sd_card / SETTINGS_PATH).read_text(encoding="utf-8"))}
-    except (OSError, ValueError, TypeError):
+        saved = json.loads((sd_card / SETTINGS_PATH).read_text(encoding="utf-8"))
+        return {key: saved.get(key, default) for key, default in PLAYER_DEFAULTS.items()}
+    except (OSError, ValueError, TypeError, AttributeError):
         return dict(PLAYER_DEFAULTS)
 
 

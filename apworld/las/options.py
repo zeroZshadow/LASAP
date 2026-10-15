@@ -269,6 +269,56 @@ class Traps(Choice):
     default = 2
 
 
+class Damage(Choice):
+    """How much damage Link takes. none: none at all, from enemies and traps. normal: as in the original game; a trap
+    never takes the last quarter heart. ohko: any hit kills him."""
+    display_name = "Damage"
+    option_none = 0
+    option_normal = 1
+    option_ohko = 2
+    default = 1
+
+
+class MovementSpeed(DefaultOnToggle):
+    """Link walks and swims 20% faster."""
+    display_name = "Movement Speed"
+
+
+class Movement360(Toggle):
+    """Link walks in any direction instead of eight."""
+    display_name = "360 Movement"
+
+
+class SkipSongCutscenes(Toggle):
+    """Skips the cutscenes of Marin's, Manbo's and Mamu's songs."""
+    display_name = "Skip Song Cutscenes"
+
+
+class InstantText(Toggle):
+    """Each page of text shows at once instead of letter by letter; it still waits for a button."""
+    display_name = "Instant Text"
+
+
+class NiceHookshot(Toggle):
+    """The hookshot grabs onto any surface. The logic does not count on it."""
+    display_name = "Nice Hookshot"
+
+
+class DisableGuardianAcorn(Toggle):
+    """Enemies never drop a Guardian Acorn."""
+    display_name = "Disable Guardian Acorn"
+
+
+class DisablePieceOfPower(Toggle):
+    """Enemies never drop a Piece of Power."""
+    display_name = "Disable Piece of Power"
+
+
+class EasyFishing(DefaultOnToggle):
+    """At the fishing pond the line never breaks, and Ol' Baron bites more often."""
+    display_name = "Easy Fishing"
+
+
 class StartingGear(StartInventoryPool):
     """Start with the specified amount of these items and don't place them in the world; 50 Rupees take their place.
     The default is the original randomizer's starting gear. Each Heart Container adds a starting heart."""
@@ -315,6 +365,15 @@ class LASOptions(PerGameCommonOptions):
     stealing: Stealing
     chest_appearance: ChestAppearance
     traps: Traps
+    damage: Damage
+    movement_speed: MovementSpeed
+    movement_360: Movement360
+    skip_song_cutscenes: SkipSongCutscenes
+    instant_text: InstantText
+    nice_hookshot: NiceHookshot
+    disable_guardian_acorn: DisableGuardianAcorn
+    disable_piece_of_power: DisablePieceOfPower
+    easy_fishing: EasyFishing
     death_link: DeathLink
     start_inventory_from_pool: StartingGear
 
@@ -328,4 +387,6 @@ OPTION_GROUPS = [
     OptionGroup("World", [OpenMabe, OpenKanalet, OpenMamu, CompletedBridge, ClassicD2, FreeBook, FastFishing,
                           FastStalfos, ShuffledBombs, ShuffledPowder, AmmoGhost, MapTracker, InGameHints, Stealing,
                           ChestAppearance]),
+    OptionGroup("Gameplay", [Damage, MovementSpeed, Movement360, SkipSongCutscenes, InstantText, NiceHookshot,
+                             DisableGuardianAcorn, DisablePieceOfPower, EasyFishing]),
 ]

@@ -323,3 +323,24 @@ class TestChestAppearance(LASTestBase):
         self.assertEqual(chest_look(options, "heart-container"), ["important-health", "life-upgrade"])
         options.chest_appearance.value = options.chest_appearance.option_size
         self.assertEqual(chest_look(options, "heart-container"), ["junk", "life-upgrade"])
+
+
+class TestGameplayOptions(LASTestBase):
+    """Settings that change how the game plays are options, so a seed plays the same for everyone; the client's player
+    settings are the visual and audio ones."""
+    options = {"damage": "ohko", "movement_speed": False, "movement_360": True, "skip_song_cutscenes": True,
+               "instant_text": True, "nice_hookshot": True, "disable_guardian_acorn": True,
+               "disable_piece_of_power": True, "easy_fishing": False}
+
+    def test_patch_settings(self) -> None:
+        from ..host_settings import PLAYER_DEFAULTS
+        settings = self.world.patch_data()["settings"]
+        self.assertEqual({k: settings[k] for k in ("Damage", "Movement Speed", "360 Movement", "Song Cutscenes",
+                                                   "Instant Text", "Nice Hookshot", "Disable Guardian Acorn",
+                                                   "Disable Piece of Power", "Easy Fishing")},
+                         {"Damage": "OHKO", "Movement Speed": False, "360 Movement": True, "Song Cutscenes": True,
+                          "Instant Text": True, "Nice Hookshot": True, "Disable Guardian Acorn": True,
+                          "Disable Piece of Power": True, "Easy Fishing": False})
+        self.assertFalse(set(PLAYER_DEFAULTS) & {"Damage", "Movement Speed", "360 Movement", "Song Cutscenes",
+                                                 "Instant Text", "Nice Hookshot", "Disable Guardian Acorn",
+                                                 "Disable Piece of Power", "Easy Fishing"})

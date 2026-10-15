@@ -40,15 +40,16 @@ seed again without starting the game.
 "Open .aplas files with a double-click" at the bottom of the Patch tab sets Windows up to open `.aplas` files with
 the Archipelago Launcher. It is needed once, as Archipelago's installer only does this for the games it ships with.
 
-### Game settings
+### Look and sound
 
-The Patch tab's game settings change how your own game looks and plays, for every seed: 360° movement, walking and
-swimming 20% faster (on unless you turn it off), no blur at the screen's edges, skipping the song cutscenes, a
-hookshot that grabs any surface, the damage Link takes (None, Normal or OHKO), the music (Vanilla, Shuffled or
-Removed), shuffled dialogue, shuffled room lighting, no Guardian Acorns or Pieces of Power, text that shows a page at
-once instead of letter by letter, no beep at low health, and a fishing line that never breaks, with Ol' Baron biting
-more often (on unless you turn it off). After a change, Play reinstalls the mod; restart the
-game to see it. They change nothing for the other players.
+The Patch tab's "Look and sound" settings change how your own game looks and sounds, for every seed: no blur at the
+screen's edges, the music (Vanilla, Shuffled or Removed), shuffled dialogue, shuffled room lighting and no beep at low
+health. After a change, Play reinstalls the mod; restart the game to see it. They change nothing for the other
+players.
+
+What changes how the game plays is in your options file (group "Gameplay"), the same for everyone in a seed: the
+damage Link takes, walking and swimming 20% faster, 360° movement, skipping the song cutscenes, text that shows a
+page at once, a hookshot that grabs any surface, no Guardian Acorns or Pieces of Power, and easy fishing.
 
 To start with more hearts, add Heart Containers to `start_inventory_from_pool` in your options file, e.g.
 `Heart Container: 2` for five hearts.
@@ -99,9 +100,9 @@ without costing hint points. Hints read while the client is not connected reach 
   golden leaf of the guard Link bombs in Kanalet Castle, Dampé's rewards (Dampe), the fishing pond's rewards
   (Fishing), the Rapids Ride (Rapids) and the Armos Knight's drop. If one gives nothing or the server does not mark it
   checked, report it.
-- The game setting "Fishing line never breaks" (on by default) has not been fished with yet. If the line still breaks
-  or a fish behaves oddly, report it; you can turn the setting off in the Patch tab.
-- The game settings Music, Nice Hookshot and Blur Removal are not confirmed in play.
+- The option Easy Fishing (on by default) has not been fished with yet. If the line still breaks or a fish behaves
+  oddly, report it; `easy_fishing: false` in your options file turns it off.
+- The option Nice Hookshot and the settings Music and Blur Removal are not confirmed in play.
 - Windows only so far: Linux and macOS are untested, and so is a Switch.
 - Dungeon entrance shuffle is not available.
 
@@ -113,6 +114,6 @@ Tell the person who gave you the world, with:
 - your slot name and the seed: the Patch tab's "Patch file" line names both;
 - the client's log: the newest `LASClient` file in Archipelago's `logs` folder (the Launcher's "Browse Files" opens
   Archipelago's folder);
-- your emulator and its version, and the game settings you changed in the Patch tab;
+- your emulator and its version, and the look and sound settings you changed in the Patch tab;
 - a screenshot or a short video of anything you see in the game;
 - after a crash, the emulator's newest log file as well (Ryujinx: File, Open Logs Folder).

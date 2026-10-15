@@ -118,8 +118,9 @@ class PatchPanel(ScrollView):
         self.installed = text(small=True)
         self.content.add_widget(self.installed)
 
-        self.content.add_widget(text("[b]Game settings[/b]"))
-        self.content.add_widget(text("For every seed. After a change, Play reinstalls the mod.", small=True))
+        self.content.add_widget(text("[b]Look and sound[/b]"))
+        self.content.add_widget(text("For every seed; how the game plays is in your options file. After a change, "
+                                     "Play reinstalls the mod.", small=True))
         grid = GridLayout(cols=2, size_hint_y=None, row_force_default=True, row_default_height=ROW_HEIGHT)
         grid.bind(minimum_height=grid.setter("height"))
         self.player_checks: Dict[str, MDCheckbox] = {}

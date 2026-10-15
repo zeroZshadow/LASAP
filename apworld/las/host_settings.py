@@ -5,8 +5,9 @@ import settings
 
 
 class PlayerSetting(NamedTuple):
-    """A LASR setting that changes neither the logic nor the item pool. The player picks it in the Patch tab; the
-    client hands it to the patcher (--settings), so it applies to every seed and a change only needs a reinstall."""
+    """A LASR setting that changes how the game looks or sounds, not how it plays (those are options, the same for
+    everyone in a seed). The player picks it in the Patch tab; the client hands it to the patcher (--settings), so it
+    applies to every seed and a change only needs a reinstall."""
     key: str  # in las_options
     lasr: str  # LASR's setting, as the patch file and the patcher name it
     label: str
@@ -16,20 +17,11 @@ class PlayerSetting(NamedTuple):
 
 # The patcher's PLAYER_SETTINGS has the same LASR settings and defaults.
 PLAYER_SETTINGS = (
-    PlayerSetting("movement_360", "360 Movement", "360° movement", False),
-    PlayerSetting("movement_speed", "Movement Speed", "Walk and swim 20% faster", True),
     PlayerSetting("blur_removal", "Blur Removal", "No blur at the screen's edges", False),
-    PlayerSetting("skip_song_cutscenes", "Song Cutscenes", "Skip the song cutscenes", False),
-    PlayerSetting("nice_hookshot", "Nice Hookshot", "Hookshot grabs any surface", False),
-    PlayerSetting("damage", "Damage", "Damage", "Normal", ("None", "Normal", "OHKO")),
     PlayerSetting("music", "Music", "Music", "Vanilla", ("Vanilla", "Shuffled", "Removed")),
     PlayerSetting("randomize_text", "Randomize Text", "Shuffle the dialogue", False),
     PlayerSetting("randomize_environments", "Randomize Environments", "Shuffle the rooms' lighting", False),
-    PlayerSetting("no_guardian_acorn", "Disable Guardian Acorn", "No Guardian Acorns", False),
-    PlayerSetting("no_piece_of_power", "Disable Piece of Power", "No Pieces of Power", False),
-    PlayerSetting("instant_text", "Instant Text", "Text shows at once", False),
     PlayerSetting("no_low_health_beep", "Disable Low Health Beep", "No low-health beep", False),
-    PlayerSetting("easy_fishing", "Easy Fishing", "Fishing line never breaks", True),
 )
 PLAYER_DEFAULTS = {s.lasr: s.default for s in PLAYER_SETTINGS}
 
@@ -91,24 +83,9 @@ class LASSettings(settings.Group):
     patcher_command: PatcherCommand = PatcherCommand("")
     game_host: GameHost = GameHost("127.0.0.1")
 
-    # Player settings (PLAYER_SETTINGS): the Patch tab's game settings, for every seed.
-    class Movement360(settings.Bool):
-        """Walk in any direction instead of eight."""
-
-    class MovementSpeed(settings.Bool):
-        """Walk and swim 20% faster."""
-
+    # Player settings (PLAYER_SETTINGS): the Patch tab's look and sound settings, for every seed.
     class BlurRemoval(settings.Bool):
         """Remove the blur at the edges of the screen."""
-
-    class SkipSongCutscenes(settings.Bool):
-        """Skip the cutscenes of Marin's, Manbo's and Mamu's songs."""
-
-    class NiceHookshot(settings.Bool):
-        """The hookshot grabs onto any surface."""
-
-    class Damage(str):
-        """Damage Link takes: None, Normal or OHKO (one hit kills)."""
 
     class Music(str):
         """Vanilla, Shuffled or Removed."""
@@ -119,35 +96,14 @@ class LASSettings(settings.Group):
     class RandomizeEnvironments(settings.Bool):
         """Shuffle the rooms' lighting and environments."""
 
-    class NoGuardianAcorn(settings.Bool):
-        """Enemies never drop a Guardian Acorn."""
-
-    class NoPieceOfPower(settings.Bool):
-        """Enemies never drop a Piece of Power."""
-
-    class InstantText(settings.Bool):
-        """Each page of text shows at once instead of letter by letter."""
-
     class NoLowHealthBeep(settings.Bool):
         """No warning beep at low health."""
 
-    class EasyFishing(settings.Bool):
-        """At the fishing pond the line never breaks, and Ol' Baron bites more often."""
-
-    movement_360: Union[Movement360, bool] = False
-    movement_speed: Union[MovementSpeed, bool] = True
     blur_removal: Union[BlurRemoval, bool] = False
-    skip_song_cutscenes: Union[SkipSongCutscenes, bool] = False
-    nice_hookshot: Union[NiceHookshot, bool] = False
-    damage: Damage = Damage("Normal")
     music: Music = Music("Vanilla")
     randomize_text: Union[RandomizeText, bool] = False
     randomize_environments: Union[RandomizeEnvironments, bool] = False
-    no_guardian_acorn: Union[NoGuardianAcorn, bool] = False
-    no_piece_of_power: Union[NoPieceOfPower, bool] = False
-    instant_text: Union[InstantText, bool] = False
     no_low_health_beep: Union[NoLowHealthBeep, bool] = False
-    easy_fishing: Union[EasyFishing, bool] = True
 
     def player_settings(self) -> Dict[str, Any]:
         """The player settings under LASR's names, as the patcher takes them."""

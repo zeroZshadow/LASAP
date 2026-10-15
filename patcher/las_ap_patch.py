@@ -138,25 +138,17 @@ VANILLA_FILE = "ap_vanilla.txt"
 COMPANION_FLAGS = {"moblin-cave": "BowWowJoin", "rooster-statue": "RoosterFoundFlag"}
 ROOSTER_EVENT_FILE = "RoosterBones.bfevfl"
 DUNGEON_ITEM_PREFIXES = ("compass", "map", "stone", "key", "nightmare")
-# LASR settings that change neither the logic nor the item pool: the player picks them when patching (--settings),
-# over the values the patch file carries. Their default and, for choices, the values allowed.
+# Visual and audio settings: the player picks them when patching (--settings), over the values the patch file
+# carries. Their default and, for choices, the values allowed. Settings that change how the game plays are options in
+# the patch file only, so a seed plays the same for everyone (races).
 PLAYER_SETTINGS = {
-    "360 Movement": False,
-    "Movement Speed": True,
     "Blur Removal": False,
-    "Song Cutscenes": False,
-    "Nice Hookshot": False,
-    "Damage": "Normal",
     "Music": "Vanilla",
     "Randomize Text": False,
     "Randomize Environments": False,
-    "Disable Guardian Acorn": False,
-    "Disable Piece of Power": False,
-    "Instant Text": False,
     "Disable Low Health Beep": False,
-    "Easy Fishing": True,
 }
-PLAYER_CHOICES = {"Damage": ("None", "Normal", "OHKO"), "Music": ("Vanilla", "Shuffled", "Removed")}
+PLAYER_CHOICES = {"Music": ("Vanilla", "Shuffled", "Removed")}
 # Walking and swimming speed with Movement Speed on: LASR's single speed (dashing stays at 1.0)
 MOVEMENT_SPEED = 1.2
 # ItemDrop.gsheet rows of the two buffs; the settings empty them, for drops that name them. The buffs after a run of

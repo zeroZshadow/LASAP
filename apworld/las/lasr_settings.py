@@ -34,6 +34,7 @@ _INSTRUMENTS = {0: "Vanilla", 1: "Dungeon Rewards", 2: "Own Dungeon", 3: "Anywhe
 _OWLS = {0: "None", 1: "Overworld", 2: "Dungeons", 3: "All"}
 _STEALING = {0: "Standard", 1: "Always", 2: "Never"}
 _TRAPS = {0: "None", 1: "Few", 2: "Many"}
+_DAMAGE = {0: "None", 1: "Normal", 2: "OHKO"}
 _CHEST_TYPES = {0: "Default", 1: "Size", 2: "Texture + Size"}
 
 
@@ -125,7 +126,8 @@ TRACKER_SETTINGS = ("Preset", "Chests", "Free Gifts", "Trade Quest", "Golden Lea
 
 def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str, Any]:
     """LASR's SettingsManager.fetch()["Settings"] for these options; unsupported settings keep LASR's defaults.
-    The player settings (host_settings.PLAYER_SETTINGS) carry their defaults: the client sets them when patching."""
+    The player settings (host_settings.PLAYER_SETTINGS, the visual and audio ones) carry their defaults: the client
+    sets them when patching."""
     vanilla = set(vanilla)
     o = options
     settings: Dict[str, Any] = {
@@ -179,28 +181,28 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Instruments Required": o.instruments_required.value,  # read by the AP patcher (ap_goal.py), not by LASR
         "Stealing": _STEALING[o.stealing.value],
         "Boss Cutscenes": True,
-        "Song Cutscenes": False,  # player setting
+        "Song Cutscenes": bool(o.skip_song_cutscenes),  # on skips them
         "Chest Animations": True,
         "Key Animations": True,
         "Item Get Animations": False,  # not implemented by LASR
         "Item Pool": "Standard",
         "Traps": _TRAPS[o.traps.value],
         "Nice Bombs": True,
-        "Nice Hookshot": False,  # player setting
+        "Nice Hookshot": bool(o.nice_hookshot),
         "Nice Magic Rod": True,
+        "Damage": _DAMAGE[o.damage.value],
+        "Movement Speed": bool(o.movement_speed),
+        "360 Movement": bool(o.movement_360),
+        "Instant Text": bool(o.instant_text),  # done by the module; LASR never implemented it
+        "Disable Guardian Acorn": bool(o.disable_guardian_acorn),
+        "Disable Piece of Power": bool(o.disable_piece_of_power),
+        "Easy Fishing": bool(o.easy_fishing),  # done by the module and the fishing spots; not a LASR setting
         # player settings
-        "Damage": "Normal",
         "Music": "Vanilla",
         "Randomize Text": False,
         "Randomize Environments": False,
-        "360 Movement": False,
-        "Movement Speed": True,
         "Blur Removal": False,
-        "Disable Guardian Acorn": False,
-        "Disable Piece of Power": False,
-        "Instant Text": False,  # done by the module; LASR never implemented it
         "Disable Low Health Beep": False,  # done by the module; LASR never implemented it
-        "Easy Fishing": True,  # done by the module and the fishing spots; not a LASR setting
         # not implemented by LASR
         "Randomize Sound Effects": False,
         "Rupees": o.starting_rupees.value,

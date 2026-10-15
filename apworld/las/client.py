@@ -73,7 +73,7 @@ class LASCommandProcessor(ClientCommandProcessor):
         asyncio.create_task(self.ctx.start_emulator())
 
     def _cmd_setting(self, key: str = "", value: str = "") -> None:
-        """Show the game settings, or set one, e.g. /setting music Shuffled or /setting nice_hookshot on."""
+        """Show the look and sound settings, or set one, e.g. /setting music Shuffled or /setting blur_removal on."""
         settings = {s.key: s for s in PLAYER_SETTINGS}
         if not key:
             for s in PLAYER_SETTINGS:
