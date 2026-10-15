@@ -117,7 +117,13 @@ def main() -> None:
     templates = BUILD / "templates"
     shutil.rmtree(templates, ignore_errors=True)
     skipped |= run_ap(f"import Options; Options.generate_yaml_templates({str(templates)!r}, False)")
-    shutil.copyfile(templates / f"{GAME}.yaml", release / f"{GAME}.yaml")
+    # the template asks for the Archipelago that built it; the world works from its minimum version on
+    template = (templates / f"{GAME}.yaml").read_text(encoding="utf-8-sig")
+    template, count = re.subn(r"(?m)^(  version: )[0-9.]+( # Version of Archipelago required)",
+                              rf"\g<1>{manifest['minimum_ap_version']}\g<2>", template)
+    if count != 1:
+        sys.exit("the options template has no Archipelago version to set")
+    (release / f"{GAME}.yaml").write_text(template, encoding="utf-8-sig")
     shutil.copyfile(ROOT / "apworld" / "las" / "docs" / "setup_en.md", release / "Setup guide.md")
     size = apworld.stat().st_size / 1e6
     if skipped:

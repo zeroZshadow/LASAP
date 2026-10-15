@@ -26,7 +26,7 @@ Datasheets (`.gsheet`) are read and written by `RandomizerCore/Tools/gsheet.py`,
 
 ## Release
 
-`scripts/build_release.py` (in `.venv-lasr`, after `build_exl.sh`) writes `build/release/LASAP-<world version>/`: `las.apworld`, the options template `Links Awakening Switch.yaml` and the setup guide `Setup guide.md` (`docs/setup_en.md`).
+`scripts/build_release.py` (in `.venv-lasr`, after `build_exl.sh`) writes `build/release/LASAP-<world version>/`: `las.apworld`, the options template `Links Awakening Switch.yaml` and the setup guide `Setup guide.md` (`docs/setup_en.md`). The template asks for the world's minimum Archipelago version (`archipelago.json`), not that of the checkout that wrote it.
 - The world carries the patcher as `las/patcher/`: its Python files, LASR's code and data (and the resources it reads), the assets, the game module, and in `lib/` the pure-Python libraries it needs (evfl, PyLibMS, appdirs, with their licenses). `build.txt` holds a hash of all of it. The world's own build ("Build APWorlds") is the same without it, and with the world's tests (`las/test`), which the release leaves out.
 - The patcher runs in Archipelago's Python: pure Python (Assets) plus PyYAML and bsdiff4, which Archipelago ships. LASR imports PySide6 only for its GUI thread and signals; `patcher/lasr_qt.py` stands in for it. `las_ap_patch.py` sets LASR's paths (`randomizer_paths`) to its own folder.
 
