@@ -184,6 +184,14 @@ namespace {
     constexpr u32 kRespawnFrames = 60;  // after a failed spawn
     constexpr float kTagHeight = 1.3f;  // the name tag's point above the ghost's feet
     bool g_NameTags = false;            // off until their look is settled; DBG puppet tags on
+    bool g_DrawGhosts = true;           // DBG puppet draw off: models hidden, all else runs (finding the cost)
+    bool g_Dither = true;               // DBG puppet dither off: drawn without the dither state
+    u32 g_ShapeMask = 0xfffff;          // DBG puppet shapes: the look's shapes the puppets may draw
+    u64 g_TickTicks[60] = {};           // the module's Tick per frame (system ticks), for DBG puppet
+#ifdef LASAP_TEST
+    u32 g_InfoDraws[8] = {};            // g_DrawsBy at the last DBG puppet
+    u32 g_InfoFrame = 0;
+#endif
     constexpr u32 kNoRowFrames = 600;   // after a spawn without the APGhost row
     // An actor spawned in a level's first frames can stay inactive (entity flags without bit 2, (f & 0x40000017) !=
     // 0x17): never updated or drawn. One inactive this long is made again; an active one stays active through
@@ -207,6 +215,7 @@ namespace {
         Track track;
         u32 framesSeen = 0;      // the ghost's lines fed so far
         u32 inactiveFrames = 0;  // shown with an inactive actor
+        int detail = 2;          // 2: its whole look drawn, 1: only kCrowdShapes, 0: none (crowds, Rank)
 #ifdef LASAP_TEST
         std::vector<std::string> animLog;  // its plays and model loads, for DBG puppet animlog
         u32 shownAt = 0;                   // frame it was last shown
@@ -218,6 +227,27 @@ namespace {
     Span g_Spans[kPuppets];
 
     u32 g_LastFrame = 0;
+
+    // Crowds. Each shape a ghost draws costs a draw call in each of two render passes, and on an emulator the draw
+    // calls limit the frame rate (2026-10-15, Ryubing: 60 fps up to about 120 ghost shapes a pass, whatever their
+    // size; a ghost in its usual look draws about 6). The nearest ghosts draw their whole look, the next ones only
+    // kCrowdShapes (hat, tunic, hair and skin), the farthest none. How many of each follows the frame rate: down by a
+    // quarter after a second under kSlowFps, up by one after kRaiseMs at kSteadyFps or more, but back to a count that
+    // was too slow only after kRetryMs. The kMinWhole nearest are always whole and the kMinDrawn nearest always drawn
+    // (the game's own slow moments, as after a level load, which kSettleMs skips, are no reason to hide a few).
+    constexpr u32 kCrowdShapes = (1u << 3) | (1u << 5) | (1u << 11);
+    constexpr float kSlowFps = 55, kSteadyFps = 59;
+    constexpr u64 kRaiseMs = 3000, kRetryMs = 30000, kSettleMs = 3000;
+    constexpr int kMinWhole = 6, kMinDrawn = 16;
+    int g_FullLimit = 8;         // ghosts drawn whole
+    int g_DrawnLimit = kGhosts;  // ghosts drawn at all
+    u32 g_CrowdMask = kCrowdShapes;
+    bool g_Adapt = true;         // DBG puppet lod <full> <drawn> fixes the limits, lod auto adapts them again
+    u64 g_FpsStart = 0, g_LastChange = 0, g_TooSlowAt = 0, g_SettleUntil = 0;
+    int g_TooSlowFull = kGhosts + 1, g_TooSlowDrawn = kGhosts + 1;  // the counts last found too slow
+    u32 g_FpsFrame = 0;
+    float g_Fps = 60;
+
 #ifdef LASAP_TEST
     struct Sample { Game::Vec3 pos; Game::Vec4 rot; };
     // DBG puppet: Link's path g_Delay frames late, fed g_SteerHz times a second (0: written as it is)
@@ -602,7 +632,8 @@ namespace {
         u8* shapes = At<u8*>(instance, kInstanceShapes);
         if (shapes == nullptr) return;
         int count = std::min<int>(At<u16>(p.model, kModelShapeCount), AP::GhostNet::LOOK_SHAPES);
-        for (int i = 0; i < count; i++) shapes[i] = (p.gear >> i) & 1;
+        u32 mask = p.detail == 2 ? g_ShapeMask : g_ShapeMask & g_CrowdMask;
+        for (int i = 0; i < count; i++) shapes[i] = (p.gear & mask) >> i & 1;
     }
 
     void* TunicSlot(const Puppet& p, int& index) {
@@ -647,11 +678,13 @@ namespace {
     void Update(Puppet& p, u32 frame) {
         if (p.model == nullptr) return;
         if (frame % 30 == 0) p.look = Look::Unknown;
-        SetLook(p, p.shown ? Look::Ghost : Look::Hidden);
+        bool draw = p.shown && g_DrawGhosts && p.detail > 0;
+        SetLook(p, draw ? Look::Ghost : Look::Hidden);
         if (!p.shown) return;
         SetShapes(p);
         SetTunic(p);
-        PublishSpan(IndexOf(p), p.model);
+        if (draw) PublishSpan(IndexOf(p), p.model);
+        else ClearSpan(IndexOf(p));
     }
 
     // Screen-space dither on the puppets only: the model file's shown albedos carry a constant alpha (render pass
@@ -674,6 +707,9 @@ namespace {
     void* g_GhostPending = nullptr;
     std::pair<void*, u8*> g_Contexts[8] = {};
     u32 g_GhostDraws = 0;
+    u32 g_DrawsBy[8] = {};    // puppet draws per wrapper (g_Contexts' order), for DBG puppet
+    u32 g_SkipMask = 0;       // DBG puppet skip: wrappers whose puppet draws are dropped (finding the cost)
+    void* g_SkipPending = nullptr;
 
     template<typename T>
     T NvnFn(uintptr_t got) {
@@ -713,9 +749,18 @@ namespace {
         }
     }
 
+    int WrapperIndex(void* wrapper) {
+        for (int i = 0; i < 8; i++) {
+            if (g_Contexts[i].first == wrapper) return i;
+        }
+        return -1;
+    }
+
     // After a puppet's draw on this wrapper: bind the raster state its context has cached.
     void EndGhostDraw(void* wrapper) {
         g_GhostDraws++;
+        int i = WrapperIndex(wrapper);
+        if (i >= 0) g_DrawsBy[i]++;
         g_GhostPending = nullptr;
         u8* context = ContextOf(wrapper);
         if (context == nullptr) return;
@@ -807,7 +852,23 @@ namespace {
         std::string s = "PUPPET delay=" + std::to_string(g_Delay) + " steer=" + std::to_string(g_SteerHz) +
                         " buffer=" + std::to_string(static_cast<int>(g_BufferMs)) +
                         " blend=" + std::to_string(g_AnimBlend).substr(0, 6) +
-                        " dithered=" + std::to_string(g_GhostDraws) + " remade=" + std::to_string(g_Remade);
+                        " dithered=" + std::to_string(g_GhostDraws) + " remade=" + std::to_string(g_Remade) + " fps=" + std::to_string(static_cast<int>(g_Fps + 0.5f)) +
+                        " lod=" + std::to_string(g_FullLimit) + "/" + std::to_string(g_DrawnLimit) + (g_Adapt ? "" : "fixed");
+        u64 sum = 0, most = 0;
+        for (u64 t : g_TickTicks) {
+            sum += t;
+            most = std::max(most, t);
+        }
+        s += " tick_us=" + std::to_string(sum * 10 / 192 / 60) + "/" + std::to_string(most * 10 / 192);
+        // puppet draws per frame on each command buffer since the last DBG puppet
+        u32 frames = std::max(1u, g_LastFrame - g_InfoFrame);
+        s += " draws/frame=";
+        for (int i = 0; i < 8; i++) {
+            if (g_Contexts[i].first == nullptr) continue;
+            s += std::to_string(i) + ":" + std::to_string((g_DrawsBy[i] - g_InfoDraws[i]) / frames) + ",";
+            g_InfoDraws[i] = g_DrawsBy[i];
+        }
+        g_InfoFrame = g_LastFrame;
         for (auto& p : g_Puppets) {
             if (!Alive(p)) continue;
             int n = IndexOf(p);
@@ -870,6 +931,15 @@ HOOK_DEFINE_TRAMPOLINE(BindUniformBuffer) {
     static void Callback(u8* wrapper, int stage, int slot, u64* bufferOffset, u64 size) {
         Orig(wrapper, stage, slot, bufferOffset, size);
         if (bufferOffset == nullptr || !IsPuppetBlock(bufferOffset[0] + bufferOffset[1])) return;
+        int i = WrapperIndex(wrapper);
+        if (i >= 0 && (g_SkipMask >> i & 1)) {
+            g_SkipPending = wrapper;
+            return;
+        }
+        if (!g_Dither) {
+            g_DrawsBy[i >= 0 ? i : 0]++;
+            return;
+        }
         BindGhostMs(*reinterpret_cast<void**>(wrapper + kWrapperCmdBuf));
         g_GhostPending = wrapper;
     }
@@ -887,6 +957,10 @@ HOOK_DEFINE_TRAMPOLINE(SetRasterState) {
 
 HOOK_DEFINE_TRAMPOLINE(DrawElementsBaseVertex) {
     static void Callback(void* wrapper, u64 a, u64 b, u64 c, u64 d, u64 e, u64 f) {
+        if (g_SkipPending != nullptr && g_SkipPending == wrapper) {
+            g_SkipPending = nullptr;
+            return;
+        }
         Orig(wrapper, a, b, c, d, e, f);
         if (g_GhostPending != nullptr && g_GhostPending == wrapper) EndGhostDraw(wrapper);
     }
@@ -894,6 +968,10 @@ HOOK_DEFINE_TRAMPOLINE(DrawElementsBaseVertex) {
 
 HOOK_DEFINE_TRAMPOLINE(DrawElementsInstanced) {
     static void Callback(void* wrapper, u64 a, u64 b, u64 c, u64 d, u64 e, u64 f) {
+        if (g_SkipPending != nullptr && g_SkipPending == wrapper) {
+            g_SkipPending = nullptr;
+            return;
+        }
         Orig(wrapper, a, b, c, d, e, f);
         if (g_GhostPending != nullptr && g_GhostPending == wrapper) EndGhostDraw(wrapper);
     }
@@ -912,12 +990,72 @@ namespace AP::Puppet {
     }
 
     // Once per input poll (after GhostNet's); moves the puppets once per frame.
+    // Once a second: the frame rate, and the crowd limits after it.
+    void Adapt(u32 frame, u64 now, int shown) {
+        // a window spanning a level load (no ticks then) starts again
+        if (g_FpsStart == 0 || now < g_FpsStart || frame < g_FpsFrame || now - g_FpsStart > 2000) {
+            g_FpsStart = now;
+            g_FpsFrame = frame;
+            return;
+        }
+        if (now - g_FpsStart < 1000) return;
+        g_Fps = static_cast<float>(frame - g_FpsFrame) * 1000 / static_cast<float>(now - g_FpsStart);
+        g_FpsStart = now;
+        g_FpsFrame = frame;
+        if (!g_Adapt || shown == 0 || now < g_SettleUntil) return;
+        int full = std::min(g_FullLimit, shown), drawn = std::min(g_DrawnLimit, shown);
+        bool retry = now - g_TooSlowAt >= kRetryMs;
+        if (g_Fps < kSlowFps) {
+            if (full > kMinWhole) {
+                g_TooSlowFull = full;
+                g_FullLimit = std::max(kMinWhole, full - full / 4 - 1);
+            } else if (drawn > kMinDrawn) {
+                g_TooSlowDrawn = drawn;
+                g_DrawnLimit = std::max(kMinDrawn, drawn - drawn / 4 - 1);
+            }
+            g_TooSlowAt = g_LastChange = now;
+        } else if (g_Fps >= kSteadyFps && now - g_LastChange >= kRaiseMs) {
+            if (drawn < shown && (drawn + 1 < g_TooSlowDrawn || retry)) g_DrawnLimit = drawn + 1;
+            else if (drawn >= shown && full < shown && (full + 1 < g_TooSlowFull || retry)) g_FullLimit = full + 1;
+            g_LastChange = now;
+        }
+    }
+
+    // Each frame: the shown ghosts by distance from Link, nearest first, get their detail.
+    void Rank(Game::Actors::Player* player, u32 frame, u64 now) {
+        int order[kGhosts];
+        int count = 0;
+        for (int n = 0; n < kGhosts; n++) {
+            if (g_Puppets[n].shown && g_Puppets[n].model != nullptr) order[count++] = n;
+        }
+        if (player->playerCollision != nullptr) {
+            const Game::Vec3 at = player->playerCollision->coordsNew.pos;
+            auto far = [&](int n) {
+                const Game::Vec3& p = g_Puppets[n].track.pos;
+                return (p.x - at.x) * (p.x - at.x) + (p.z - at.z) * (p.z - at.z);
+            };
+            std::sort(order, order + count, [&](int a, int b) { return far(a) < far(b); });
+        }
+        for (int i = 0; i < count; i++) g_Puppets[order[i]].detail = i < g_FullLimit ? 2 : i < g_DrawnLimit ? 1 : 0;
+        Adapt(frame, now, count);
+    }
+
+    void TickPuppets();
+
     void Tick() {
+        u64 t0 = Ticks();
+        u32 before = g_LastFrame;
+        TickPuppets();
+        if (g_LastFrame != before) g_TickTicks[g_LastFrame % 60] = Ticks() - t0;
+    }
+
+    void TickPuppets() {
         auto* player = Player();
         Game::Framework* fmwk = Game::GetFramework();
         if (player == nullptr || fmwk == nullptr) {
             // a level loads
             for (int n = 0; n < kPuppets; n++) ClearSpan(n);
+            g_SettleUntil = NowMs() + kSettleMs;
             AP::NameTag::DropAll();
 #ifdef LASAP_TEST
             g_HistoryValid = false;
@@ -946,13 +1084,14 @@ namespace AP::Puppet {
 #ifdef LASAP_TEST
         DriveTest(frame, now, nowFine);
 #endif
+        Rank(player, frame, now);
         for (auto& p : g_Puppets) {
             if (Alive(p)) Update(p, frame);
         }
         // each shown ghost's name over its head, once its model is loaded
         for (int n = 0; n < kGhosts; n++) {
             const auto& p = g_Puppets[n];
-            if (g_NameTags && p.shown && p.model != nullptr && Alive(p)) {
+            if (g_NameTags && p.shown && p.detail > 0 && p.model != nullptr && Alive(p)) {
                 const Game::Vec3& at = p.track.pos;
                 AP::NameTag::Show(n, Game::Vec3{at.x, at.y + kTagHeight, at.z}, AP::GhostNet::Get(n).name);
             } else {
@@ -1009,6 +1148,28 @@ namespace AP::Puppet {
             // DBG puppet steer <hz>: with follow, the path taken this many times a second and replayed; 0: exact
             g_SteerHz = atoi(a[3].c_str());
             ResetTrack(p.track);
+        } else if (sub == "draw" && a.size() >= 4) {
+            // DBG puppet draw on|off: the ghosts' models drawn or hidden; actors, animation and lines run on
+            g_DrawGhosts = a[3] == "on";
+        } else if (sub == "lod" && a.size() >= 4) {
+            // DBG puppet lod auto | lod <whole> <drawn>: the crowd limits follow the frame rate, or are fixed
+            g_Adapt = a[3] == "auto";
+            if (!g_Adapt && a.size() >= 5) {
+                g_FullLimit = std::clamp(atoi(a[3].c_str()), 0, kGhosts);  // below the minimums: for measuring
+                g_DrawnLimit = std::clamp(atoi(a[4].c_str()), 0, kGhosts);
+            }
+        } else if (sub == "crowdshapes" && a.size() >= 4) {
+            // DBG puppet crowdshapes <hex mask>: the shapes of ghosts drawn as part of a crowd
+            g_CrowdMask = strtoul(a[3].c_str(), nullptr, 16);
+        } else if (sub == "shapes" && a.size() >= 4) {
+            // DBG puppet shapes <hex mask>: only those of the look's shapes drawn
+            g_ShapeMask = strtoul(a[3].c_str(), nullptr, 16);
+        } else if (sub == "skip" && a.size() >= 4) {
+            // DBG puppet skip <hex mask>: drops the puppets' draws on those command buffers (draws/frame's order)
+            g_SkipMask = strtoul(a[3].c_str(), nullptr, 16);
+        } else if (sub == "dither" && a.size() >= 4) {
+            // DBG puppet dither on|off: the ghosts drawn with or without the dither state
+            g_Dither = a[3] == "on";
         } else if (sub == "tags" && a.size() >= 4) {
             // DBG puppet tags on|off: the ghosts' name tags
             g_NameTags = a[3] == "on";

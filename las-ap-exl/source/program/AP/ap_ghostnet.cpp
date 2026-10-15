@@ -259,7 +259,19 @@ namespace AP::GhostNet {
         for (auto& ghost : g_Ghosts) ghost.active = false;
     }
 
+    u64 g_HandleTicks = 0;  // time spent on GHOST lines (system ticks, 19.2 MHz), for DBG ghostnet
+
+    void Handle(const std::string& line);
+
     void HandleLine(const std::string& line) {
+        u64 t0, t1;
+        asm volatile("mrs %0, cntpct_el0" : "=r"(t0));
+        Handle(line);
+        asm volatile("mrs %0, cntpct_el0" : "=r"(t1));
+        g_HandleTicks += t1 - t0;
+    }
+
+    void Handle(const std::string& line) {
         auto a = Split(line, 13);
         if (a[0] == "GHOSTS" && a.size() >= 2) {
             // GHOSTS 1|0: whether the client relays positions; with 0 no ghost shows
@@ -336,7 +348,8 @@ namespace AP::GhostNet {
 
     std::string State() {
         std::string s = "GHOSTNET wanted=" + std::to_string(g_Wanted) + " pos=" + std::to_string(g_PosLines) +
-                        " ghostlines=" + std::to_string(g_GhostLines) + " last=" + g_LastPos;
+                        " ghostlines=" + std::to_string(g_GhostLines) + " handle_us=" + std::to_string(g_HandleTicks * 10 / 192) +
+                        " last=" + g_LastPos;
         for (int n = 0; n < SLOTS; n++) {
             const Ghost& g = g_Ghosts[n];
             if (!g.active) continue;
