@@ -238,6 +238,8 @@ The test build reports the game's state so tests press when the game takes a pre
 - **Bush seashells.** Cutting the plant beside the Seashell Mansion drops its item, which names Bob's item and reports the check.
 - **Seashell Mansion.** The 5, 15 and 30 shell presents name their items ("You found Map Width for Bob!") and report their checks.
 - **Item names in text.** A received item from another slot says "You got Hookshot from Bob!". A dungeon chest holding this slot's item says "You found your Stone Beak (Tail Cave)!" and the item is not shown a second time when it comes back from the server. The shop's price tag names the item and its owner, and a heart piece holding another slot's item says "You found Map Bombs for Bob!".
+- **Long and non-ASCII names** (2026-10-15, synthetic patch with `location_names`, client connected to the game only, `/game ITEM` and `NOTICE` lines). Accented Latin and Chinese characters show in received and found texts and in the toast ("You got Épée légendaire de Ünïcørn from 玩家二号!"). A long item name ends in "..." ("Progressive Mirror Shield of..."), and the shop's buy dialog reads "Progressive Mirror Shield of Dest... for Ünïcødé" with the price below.
+- **A second connection.** While the client is connected, another connection to the game's port gets no `HELLO`.
 - **Persistence.** The received count survives a restart without double grants. On a fresh save, everything is re-delivered.
 - **Instruments.** The Full Moon Cello pedestal gives the placeholder, names its item and reports its check.
 - **Release.** `/release` of another slot delivers its items in a burst, each saying "from <player>".

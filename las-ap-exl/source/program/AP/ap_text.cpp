@@ -79,11 +79,13 @@ namespace {
     constexpr size_t kItemNameMax = 32;
     constexpr size_t kPlayerNameMax = 16;
 
+    // At most `max` bytes; a name cut short ends in "...".
     std::string Clip(const std::string& s, size_t max) {
         if (s.size() <= max) return s;
-        size_t n = max;
+        size_t n = max - 3;
         while (n > 0 && (static_cast<u8>(s[n]) & 0xc0) == 0x80) n--;  // keep UTF-8 sequences whole
-        return s.substr(0, n);
+        while (n > 0 && s[n - 1] == ' ') n--;
+        return s.substr(0, n) + "...";
     }
 
     size_t Store(char* buf, size_t cap, const std::string& text) {

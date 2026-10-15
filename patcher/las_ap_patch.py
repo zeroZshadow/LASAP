@@ -97,7 +97,7 @@ WARP_HOME = {"level": "Field", "locator": "Field_11C", "offsetX": 0.0, "offsetZ"
 ITEM_TEXT_STYLE_FROM = "GetHookShot"  # System.msbt entry whose window style the AP texts use
 PLACEHOLDER_NAME_KEY = "ItemName_ArchipelagoItem"
 PLACEHOLDER_NAME = "Archipelago Item"
-NAME_MAX = 40
+NAME_MAX = 46  # characters on the shop dialog's first line
 # Shop slots show the item's name on the price tag; each AP item there gets its own name entry in UI.msbt.
 SHOP_LOCATIONS = tuple(SHOP_TEXT)
 
@@ -552,9 +552,13 @@ def location_item(loc: str) -> str:
 
 
 def shop_name(names: list) -> str:
+    """The price tag's name: the item and its owner in at most NAME_MAX characters; a long item name is cut short."""
     item, owner = names
-    text = f"{item} for {owner}" if owner else item
-    return text if len(text) <= NAME_MAX else text[:NAME_MAX - 1] + "…"
+    suffix = f" for {owner[:16]}" if owner else ""
+    room = NAME_MAX - len(suffix)
+    if len(item) > room:
+        item = item[:room - 1].rstrip() + "…"
+    return item + suffix
 
 
 def add_location_items(patch: dict, item_defs: dict) -> None:
