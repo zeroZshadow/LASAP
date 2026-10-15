@@ -4,7 +4,8 @@ points of its area, as a player's game sends (DESIGN.md, Ghosts).
 python scripts/ghost_crowd.py --relay 127.0.0.1:43390 --secret <ghost secret>
                               --crowd "20 Field 5,110,58,142 10.5" --crowd "10 CraneGame 3,6,12,8.5 0" [--seconds 600]
 A crowd is "<count> <level> <x0>,<z0>,<x1>,<z1> <y>": its players run (4.5 to 6.5 units/s, the module's run gait)
-inside that rectangle, stop for a moment now and then, and wear a random tunic. Each connects from its own loopback
+inside that rectangle, stop for a moment now and then, and wear a random tunic. --names "<a>,<b>,..." names the
+first players (in --crowd order; the others are <level><n>). Each connects from its own loopback
 address (127.0.0.2 and up; the relay takes 16 connections per address) unless --one-address. Prints "READY <n>" once
 all are welcomed, then every --report seconds and at the end "STATS" with the frames sent and received.
 """
@@ -129,11 +130,13 @@ async def main(args) -> None:
     host, _, port = args.relay.rpartition(":")
     rng = random.Random(args.seed)
     walkers = []
+    names = [n for n in args.names.split(",") if n] if args.names else []
     for spec_text in args.crowd:
         count, level, area, y = spec_text.split()
         rect = [float(v) for v in area.split(",")]
         for i in range(int(count)):
-            walkers.append(Walker(f"{level[:8]}{i + 1:02d}", level, rect, float(y), rng))
+            name = names[len(walkers)] if len(walkers) < len(names) else f"{level[:8]}{i + 1:02d}"
+            walkers.append(Walker(name, level, rect, float(y), rng))
     deadline = time.monotonic() + args.seconds
     tasks = [asyncio.create_task(run(w, host, int(port), "" if args.one_address else f"127.0.0.{2 + n}",
                                      args.secret, deadline)) for n, w in enumerate(walkers)]
@@ -159,6 +162,7 @@ if __name__ == "__main__":
     parser.add_argument("--relay", default=f"127.0.0.1:{wire.DEFAULT_PORT}")
     parser.add_argument("--secret", required=True, help="the multiworld's ghost secret (patch.json ghost_secret)")
     parser.add_argument("--crowd", action="append", required=True, help='"<count> <level> <x0>,<z0>,<x1>,<z1> <y>"')
+    parser.add_argument("--names", default="", help="slot names of the first players, comma separated")
     parser.add_argument("--seconds", type=float, default=600)
     parser.add_argument("--report", type=float, default=10)
     parser.add_argument("--seed", type=int, default=1)
