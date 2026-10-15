@@ -28,6 +28,18 @@ namespace Tweaks {
     // states snap the line once it reaches the fish's limit. Easy Fishing stores 0 in place of the new tension.
     constexpr uintptr_t kLineTensionStore = 0xb5c534;  // str w8, [x20, #0x9e4]
     constexpr u32 kStoreZeroTension = 0xb909e69f;      // str wzr, [x20, #0x9e4]
+
+    // Frame pacing (TESTING.md): the graphics system's init starts a vsync watcher (VsyncWatcher_Init: watcher,
+    // system), and while it runs each frame ends by waiting for the display's next vsync, so a frame that misses one
+    // waits for the next and the game drops from 60 to 30 fps at once. No 30 FPS Drops starts no watcher: frames end
+    // when the GPU is done. "emulator": only where the kernel is no Atmosphere (mesosphere answers
+    // svcGetInfo(InfoType_MesosphereMeta); Ryujinx and the yuzu-based emulators do not).
+    constexpr uintptr_t kVsyncWatcherInit = 0x10410d0;
+
+    bool OnEmulator() {
+        u64 version = 0;
+        return R_FAILED(svcGetInfo(&version, InfoType_MesosphereMeta, INVALID_HANDLE, 0));
+    }
 }
 
 HOOK_DEFINE_TRAMPOLINE(InstantPage) {
@@ -41,6 +53,10 @@ HOOK_DEFINE_TRAMPOLINE(InstantPage) {
         }
         Orig(window);
     }
+};
+
+HOOK_DEFINE_TRAMPOLINE(NoVsyncWatcher) {
+    static void Callback(u8*, u8*) {}
 };
 
 namespace Tweaks {
@@ -69,5 +85,11 @@ namespace Tweaks {
             p.Seek(offset_manager.Offset(kLineTensionStore));
             p.WriteInst(exl::armv8::InstBitSet(kStoreZeroTension));
         }
+        const std::string& drops = global_config.tweaks.no_30fps_drops;
+        bool emulator = OnEmulator();
+        if (drops == "true" || (drops == "emulator" && emulator)) {
+            NoVsyncWatcher::InstallAtOffset(offset_manager.Offset(kVsyncWatcherInit));
+        }
+        Logging.Log(std::string("[AP] ") + (emulator ? "emulator" : "Atmosphere") + ", no_30fps_drops=" + drops);
     }
 }

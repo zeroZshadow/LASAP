@@ -148,8 +148,11 @@ PLAYER_SETTINGS = {
     "Randomize Text": False,
     "Randomize Environments": False,
     "Disable Low Health Beep": False,
+    "No 30 FPS Drops": "On emulators",
 }
-PLAYER_CHOICES = {"Music": ("Vanilla", "Shuffled", "Removed")}
+PLAYER_CHOICES = {"Music": ("Vanilla", "Shuffled", "Removed"), "No 30 FPS Drops": ("On emulators", "Always", "Never")}
+# No 30 FPS Drops as config.ini [tweaks] no_30fps_drops: the module finds out whether it runs on an emulator
+NO_30FPS_DROPS = {"On emulators": "emulator", "Always": "true", "Never": "false"}
 # Walking and swimming speed with Movement Speed on: LASR's single speed (dashing stays at 1.0)
 MOVEMENT_SPEED = 1.2
 # ItemDrop.gsheet rows of the two buffs; the settings empty them, for drops that name them. The buffs after a run of
@@ -415,7 +418,8 @@ class APModsProcess(mod_generator.ModsProcess):
                  f"no_low_health_beep = {self.settings.get('Disable Low Health Beep', False)}\n"
                  f"no_guardian_acorn = {self.settings.get('Disable Guardian Acorn', False)}\n"
                  f"no_piece_of_power = {self.settings.get('Disable Piece of Power', False)}\n"
-                 f"easy_fishing = {self.settings.get('Easy Fishing', False)}\n")
+                 f"easy_fishing = {self.settings.get('Easy Fishing', False)}\n"
+                 f"no_30fps_drops = {NO_30FPS_DROPS[self.settings.get('No 30 FPS Drops', 'On emulators')]}\n")
         path.write_text(text + f"\n[archipelago]\nseed_hash = {self.seed_hash}\n")
         # What each location holds, so the found text names it before the client connects (DESIGN.md)
         with open(self.config_dir / "ap_names.txt", "w", encoding="utf-8", newline="\n") as f:

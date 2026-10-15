@@ -1285,10 +1285,11 @@ namespace AP::Puppet {
             return true;
         } else if (sub == "vsyncwait" && a.size() >= 4) {
             // DBG puppet vsyncwait on|off: whether each frame ends by waiting for the next vsync (the graphics system,
-            // *(0x1cc8b30)[1], +0x8169: its vsync watcher runs; the frame's end then clears and waits for its event)
+            // *(0x1cc8b30)[1], +0x8169: its vsync watcher runs; the frame's end then clears and waits for its event).
+            // Only with a watcher (+0x81b0 its thread): No 30 FPS Drops starts none, and nothing would signal the event.
             u8* graphics = *reinterpret_cast<u8**>(g_BaseAddress + 0x1cc8b30);
             u8* system = graphics != nullptr ? *reinterpret_cast<u8**>(graphics + 8) : nullptr;
-            if (system != nullptr) system[0x8169] = a[3] == "on";
+            if (system != nullptr && *reinterpret_cast<void**>(system + 0x81b0) != nullptr) system[0x8169] = a[3] == "on";
         } else if (sub == "trace" && a.size() >= 4) {
             // DBG puppet trace <slot>: records that ghost's next replay frames
             g_TraceSlot = atoi(a[3].c_str());

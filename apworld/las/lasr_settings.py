@@ -203,6 +203,7 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Randomize Environments": False,
         "Blur Removal": False,
         "Disable Low Health Beep": False,  # done by the module; LASR never implemented it
+        "No 30 FPS Drops": "On emulators",  # done by the module; not a LASR setting
         # not implemented by LASR
         "Randomize Sound Effects": False,
         "Rupees": o.starting_rupees.value,

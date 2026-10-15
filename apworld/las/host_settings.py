@@ -22,6 +22,8 @@ PLAYER_SETTINGS = (
     PlayerSetting("randomize_text", "Randomize Text", "Shuffle the dialogue", False),
     PlayerSetting("randomize_environments", "Randomize Environments", "Shuffle the rooms' lighting", False),
     PlayerSetting("no_low_health_beep", "Disable Low Health Beep", "No low-health beep", False),
+    PlayerSetting("no_30fps_drops", "No 30 FPS Drops", "No drops to 30 fps", "On emulators",
+                  ("On emulators", "Always", "Never")),
 )
 PLAYER_DEFAULTS = {s.lasr: s.default for s in PLAYER_SETTINGS}
 
@@ -113,11 +115,19 @@ class LASSettings(settings.Group):
     class NoLowHealthBeep(settings.Bool):
         """No warning beep at low health."""
 
+    class No30FpsDrops(str):
+        """
+        The game waits for the screen's next refresh after each frame, so a frame that is a little late halves the
+        frame rate (60 to 30 fps). Without the wait a late frame costs only its own time. On emulators (default),
+        Always or Never.
+        """
+
     blur_removal: Union[BlurRemoval, bool] = False
     music: Music = Music("Vanilla")
     randomize_text: Union[RandomizeText, bool] = False
     randomize_environments: Union[RandomizeEnvironments, bool] = False
     no_low_health_beep: Union[NoLowHealthBeep, bool] = False
+    no_30fps_drops: No30FpsDrops = No30FpsDrops("On emulators")
 
     def player_settings(self) -> Dict[str, Any]:
         """The player settings under LASR's names, as the patcher takes them."""

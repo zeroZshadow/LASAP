@@ -53,6 +53,7 @@ struct PatchConfig {
         bool no_guardian_acorn;
         bool no_piece_of_power;
         bool easy_fishing;
+        std::string no_30fps_drops = "emulator";  // emulator, true or false
     } tweaks;
 
     struct {
@@ -216,6 +217,9 @@ struct PatchConfig {
         }
         else if (key == "easy_fishing" && value == "true") {
             tweaks.easy_fishing = true;
+        }
+        else if (key == "no_30fps_drops") {
+            tweaks.no_30fps_drops = value;
         }
     }
 
