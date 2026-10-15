@@ -55,7 +55,9 @@ def build(romfs: Path) -> Dict[str, bytes]:
     built[PLAYER_GHOST] = ap_player_ghost.build(str(romfs / SOURCES[PLAYER_GHOST]))
     built[GAME] = ap_map_icons.build((romfs / GAME).read_bytes())
     with tempfile.TemporaryDirectory() as tmp:
-        createChestBfresWithCustomTexturesIfMissing(str(romfs / CHEST), tmp, LASR_CHEST_TEXTURES)
+        # LASR's own chests: it counts them, and las_ap_patch adds the seashell chest to its table
+        lasr_chests = {kind: name for kind, name in LASR_CHEST_TEXTURES.items() if name != ap_chest.FILE_NAME}
+        createChestBfresWithCustomTexturesIfMissing(str(romfs / CHEST), tmp, lasr_chests)
         for path in LASR_CHESTS:
             built[path] = (Path(tmp) / Path(path).name).read_bytes()
     built[SEASHELL_CHEST] = ap_chest.build(str(romfs / CHEST))
