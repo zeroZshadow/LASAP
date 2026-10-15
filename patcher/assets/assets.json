@@ -3,7 +3,7 @@
   "source": "region_common/actor/ItemShellRader.bfres",
   "source_sha256": "a07e66cc3334e7e5f8f918930f65e87db440898fee0318a953ceee656423d3d3",
   "patch": "ItemArchipelago.bfres.bsdiff4",
-  "sha256": "a082ced9b6f31e1f2c07577c5100a82c7a3bb6286ce6f70d6a5a1082bd1ffe33"
+  "sha256": "11017086f0af9dfc93c2e9fa3fe0eb784709d43fa63d79c4e30e039e545de1d5"
  },
  "region_common/actor/ObjTreasureBoxJunk.bfres": {
   "source": "region_common/actor/ObjTreasureBox.bfres",

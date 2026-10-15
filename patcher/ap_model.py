@@ -2,9 +2,10 @@
 
 It is built at patch time from the Seashell Sensor model in the player's RomFS (ItemShellRader.bfres): the first
 shape's vertex and index buffers are overwritten with six spheres, the other shapes are emptied, the textures are
-replaced with flat ones (the albedo holds one stripe per ball color), the material's rim light is softened and
-its glow turned off. The model inside keeps its name.
+replaced with flat ones (the albedo holds one stripe per ball color, the smoothness map makes them glossy), the
+material's rim light is white and kept to the balls' edges, and its glow is turned off. The model inside keeps its name.
 """
+import colorsys
 import io
 import math
 import struct
@@ -17,17 +18,31 @@ FILE_NAME = "ItemArchipelago.bfres"
 MODEL_NAME = "ShellRader"
 
 # Logo colors (data/icon.png in Archipelago), from the top ball clockwise as seen from the front.
-COLORS = [(201, 118, 130), (117, 194, 117), (202, 148, 194), (217, 160, 125), (118, 126, 189), (238, 227, 145)]
-# Material: a softer, white rim light than the sensor's pink one (intensity 0.7, edge 4), and no orange glow.
+LOGO_COLORS = [(201, 118, 130), (117, 194, 117), (202, 148, 194), (217, 160, 125), (118, 126, 189), (238, 227, 145)]
+# The game's item models have saturated colors; the logo's pastels look washed out next to them.
+SATURATION = 1.8
+
+
+def _saturated(color):
+    h, s, v = colorsys.rgb_to_hsv(*(c / 255 for c in color))
+    return tuple(round(c * 255) for c in colorsys.hsv_to_rgb(h, min(1.0, s * SATURATION), v))
+
+
+COLORS = [_saturated(c) for c in LOGO_COLORS]
+# Material: a softer, white rim light than the sensor's pink one (intensity 0.7, edge 4), and no orange glow. The
+# sensor's rim has power 1, which lightens the balls up to their centers; power 3 keeps it to their edges.
 MATERIAL_PARAMS = {
     "fresnel_effect_intensity": (0.3,),
     "fresnel_effect_edge_brightness": (2.0,),
+    "fresnel_effect_power": (3.0,),
     "fresnel_effect_color": (0.6, 0.6, 0.6, 1.0),
     "emissive": (0.0, 0.0, 0.0),
 }
+SMOOTHNESS = 200  # of 255: glossy, with a small highlight like the bomb's
 # Item models are centered on their origin, which the item-get puts in the middle of its glow (see ItemRupeeBlue).
-RING_RADIUS = 0.23
-BALL_RADIUS = 0.145
+# The size matches the heart container's.
+RING_RADIUS = 0.322
+BALL_RADIUS = 0.203
 CENTER_Y = 0.0
 
 # Vertex layout of the source model's shapes (stride 24): position half4, normal 10-10-10-2 snorm,
@@ -206,7 +221,7 @@ def _textures(width: int, height: int) -> dict:
         "_nml": (b"BC5S", lambda bx, by: bytes(16), 16, False),        # flat: x = y = 0
         "_mask01": (b"DXT1", lambda bx, by: _bc1((0, 0, 0)), 8, True),
         "_nml2": (b"DXT1", lambda bx, by: _bc1((128, 128, 255)), 8, True),
-        "_smt": (b"BC4U", lambda bx, by: bytes((40, 40, 0, 0, 0, 0, 0, 0)), 8, False),  # matte
+        "_smt": (b"BC4U", lambda bx, by: bytes((SMOOTHNESS, SMOOTHNESS, 0, 0, 0, 0, 0, 0)), 8, False),
     }
 
 
