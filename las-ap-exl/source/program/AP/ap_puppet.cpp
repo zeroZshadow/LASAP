@@ -183,6 +183,7 @@ namespace {
     constexpr int kFlagWarped = 1, kFlagHidden = 2, kFlagStill = 4;
     constexpr u32 kRespawnFrames = 60;  // after a failed spawn
     constexpr float kTagHeight = 1.3f;  // the name tag's point above the ghost's feet
+    bool g_NameTags = false;            // off until their look is settled; DBG puppet tags on
     constexpr u32 kNoRowFrames = 600;   // after a spawn without the APGhost row
     // An actor spawned in a level's first frames can stay inactive (entity flags without bit 2, (f & 0x40000017) !=
     // 0x17): never updated or drawn. One inactive this long is made again; an active one stays active through
@@ -951,7 +952,7 @@ namespace AP::Puppet {
         // each shown ghost's name over its head, once its model is loaded
         for (int n = 0; n < kGhosts; n++) {
             const auto& p = g_Puppets[n];
-            if (p.shown && p.model != nullptr && Alive(p)) {
+            if (g_NameTags && p.shown && p.model != nullptr && Alive(p)) {
                 const Game::Vec3& at = p.track.pos;
                 AP::NameTag::Show(n, Game::Vec3{at.x, at.y + kTagHeight, at.z}, AP::GhostNet::Get(n).name);
             } else {
@@ -1008,6 +1009,9 @@ namespace AP::Puppet {
             // DBG puppet steer <hz>: with follow, the path taken this many times a second and replayed; 0: exact
             g_SteerHz = atoi(a[3].c_str());
             ResetTrack(p.track);
+        } else if (sub == "tags" && a.size() >= 4) {
+            // DBG puppet tags on|off: the ghosts' name tags
+            g_NameTags = a[3] == "on";
         } else if (sub == "blend" && a.size() >= 4) {
             // DBG puppet blend <s>: the blend time of the sender's animations on the puppets
             g_AnimBlend = std::clamp(static_cast<float>(atof(a[3].c_str())), 0.0f, 2.0f);

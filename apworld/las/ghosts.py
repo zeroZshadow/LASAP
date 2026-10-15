@@ -9,7 +9,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 from . import checklist
 from . import ghost_relay as wire
 
-GHOST_SLOTS = 4  # ghosts the game shows at once
+GHOST_SLOTS = 30  # ghosts the game shows at once
 MIN_INTERVAL = 0.045  # at most ~20 frames a second go to the relay; what the player does (see GhostLink.queue) goes at once
 PING_INTERVAL = 10.0
 SILENT_TIMEOUT = 30.0  # the relay answers pings; a link that hears nothing this long reconnects

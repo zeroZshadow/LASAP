@@ -7,7 +7,7 @@ A crowd is "<count> <level> <x0>,<z0>,<x1>,<z1> <y>": its players run (4.5 to 6.
 inside that rectangle, stop for a moment now and then, and wear a random tunic. --names "<a>,<b>,..." names the
 first players (in --crowd order; the others are <level><n>). Each connects from its own loopback
 address (127.0.0.2 and up; the relay takes 16 connections per address) unless --one-address. Prints "READY <n>" once
-all are welcomed, then every --report seconds and at the end "STATS" with the frames sent and received.
+all are welcomed, then every --report seconds and at the end "STATS" with the frames and bytes sent and received.
 """
 import argparse
 import asyncio
@@ -39,6 +39,7 @@ class Walker:
         self.still_until = 0.0
         self.look = (wire.LOOK_DEFAULT & ~(3 << 20)) | (rng.randrange(3) << 20)
         self.sent = self.received = 0
+        self.sent_bytes = self.received_bytes = 0  # with each frame's 2-byte length
         self.players = set()
         self.welcomed = False
         self.error = ""
@@ -82,6 +83,7 @@ async def run(walker: Walker, host: str, port: int, source: str, secret: str, de
     async def receive() -> None:
         while True:
             payload = await wire.read_frame(reader)
+            walker.received_bytes += len(payload) + 2
             kind = payload[0]
             if kind == wire.WELCOME:
                 walker.welcomed = True
@@ -104,8 +106,10 @@ async def run(walker: Walker, host: str, port: int, source: str, secret: str, de
             last = now
             if now >= next_send or moving != was_moving:  # starting or stopping goes out at once, as in the game
                 was_moving = moving
-                writer.write(wire.frame(bytes([wire.POS]) + walker.body(int((now - start) * 1000), moving)))
+                data = wire.frame(bytes([wire.POS]) + walker.body(int((now - start) * 1000), moving))
+                writer.write(data)
                 walker.sent += 1
+                walker.sent_bytes += len(data)
                 next_send = now + (MOVING_INTERVAL if moving else STILL_INTERVAL)
                 await writer.drain()
             await asyncio.sleep(MOVING_INTERVAL)
@@ -121,9 +125,11 @@ def stats(walkers, started: float) -> str:
     received = sum(w.received for w in walkers)
     seen = sum(len(w.players) for w in walkers) / max(1, len(walkers))
     errors = sum(1 for w in walkers if w.error)
+    up = sum(w.sent_bytes for w in walkers) / secs / 1024
+    down = sum(w.received_bytes for w in walkers) / secs / 1024
     return (f"STATS t={secs:.0f}s players={len(walkers)} welcomed={sum(w.welcomed for w in walkers)} "
-            f"sent={sent} ({sent / secs:.0f}/s) received={received} ({received / secs:.0f}/s) "
-            f"in-area={seen:.1f} errors={errors}")
+            f"sent={sent} ({sent / secs:.0f}/s, {up:.1f} KiB/s) received={received} ({received / secs:.0f}/s, "
+            f"{down:.1f} KiB/s; {down / max(1, len(walkers)):.1f} KiB/s each) in-area={seen:.1f} errors={errors}")
 
 
 async def main(args) -> None:

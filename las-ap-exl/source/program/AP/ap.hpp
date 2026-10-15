@@ -130,7 +130,7 @@ namespace AP {
 // from it.
 namespace AP::GhostNet {
     // Ghosts the client shows at once; GHOST lines name a slot 0..SLOTS-1.
-    constexpr int SLOTS = 4;
+    constexpr int SLOTS = 30;
     // The last GHOST lines of a slot are kept: the puppet replays them on the sender's timeline.
     constexpr int HISTORY = 16;
     // Look: bit i shows shape i of Link's model (his body and the items he holds), bits 20-21 his tunic (0 green, 1
