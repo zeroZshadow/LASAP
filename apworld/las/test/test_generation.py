@@ -1,6 +1,7 @@
 import os
 import re
 import tempfile
+import unittest
 
 from worlds.AutoWorld import call_all
 
@@ -221,6 +222,25 @@ class TestOwnDungeon(LASTestBase):
                 self.assertEqual(item_dungeon(lasr_item), dungeon, location.name)
             elif lasr_item in INSTRUMENTS:
                 self.assertEqual(INSTRUMENTS.index(lasr_item) + 1, dungeon, location.name)
+
+
+class TestFewLocations(unittest.TestCase):
+    """Every location category off, dungeon items in their own dungeons, no starting gear: nearly all locations are in
+    dungeons, and only Tarin's is reachable at the start."""
+    options = {**{name: False for name in ("chests", "free_gifts", "golden_leaves", "heart_pieces", "seashells",
+                                           "miscellaneous", "shop", "boss_drops", "open_mabe")},
+               "seashell_mansion": 0, "keys": "own_dungeon", "dungeon_items": "own_dungeon",
+               "instruments": "any_dungeon", "start_inventory_from_pool": {}}
+
+    def test_pre_fill_leaves_room_for_progression(self) -> None:
+        from test.general import setup_multiworld
+        from .. import LASWorld
+        for seed in range(1, 9):
+            multiworld = setup_multiworld(LASWorld, seed=seed, options=self.options)
+            world = multiworld.worlds[1]
+            # an item that opens the most locations is placed early, though none opens EARLY_LOCATIONS_WANTED
+            self.assertEqual(len(multiworld.local_early_items[1]), 1, seed)
+            self.assertTrue(world._progression_fits(), seed)
 
 
 class TestAnyDungeon(LASTestBase):

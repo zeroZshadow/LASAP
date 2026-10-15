@@ -56,6 +56,8 @@ GOAL_LOCATION = "Wind Fish"
 GOAL_EVENT = "Victory"
 PATCH_FORMAT = 1
 EARLY_LOCATIONS_WANTED = 10
+PRE_FILL_ATTEMPTS = 10
+PROGRESSION_CHECKS = 3
 # the options in the slot data ("options"), from which Universal Tracker regenerates the slot
 SLOT_DATA_OPTIONS = tuple(name for name in LASOptions.type_hints
                           if name not in PerGameCommonOptions.type_hints and name != "start_inventory_from_pool")
@@ -290,14 +292,16 @@ class LASWorld(World):
         base = sum(loc.can_reach(state) for loc in mine)
         if base >= EARLY_LOCATIONS_WANTED:
             return
-        openers = []
+        gains = {}
         for name in sorted({item.name for item in self.multiworld.itempool
                             if item.player == self.player and item.advancement}):
             trial = state.copy()
             trial.collect(self.create_item(name), prevent_sweep=True)
             trial.sweep_for_advancements(events)
-            if sum(loc.can_reach(trial) for loc in mine) >= base + EARLY_LOCATIONS_WANTED:
-                openers.append(name)
+            gains[name] = sum(loc.can_reach(trial) for loc in mine) - base
+        # the items that open enough locations, else those that open the most (with few locations shuffled)
+        wanted = min(EARLY_LOCATIONS_WANTED, max(gains.values(), default=0))
+        openers = [name for name, gain in gains.items() if gain >= wanted > 0]
         if openers:
             self.multiworld.local_early_items[self.player][self.random.choice(openers)] = 1
 
@@ -331,11 +335,38 @@ class LASWorld(World):
                 return 2
             return 1 if lasr.startswith("key-") else 0
 
-        items = sorted(self.pre_fill_items, key=priority)
-        locations = sorted(candidates, key=lambda loc: loc.name)
-        self.random.shuffle(locations)
-        fill_restrictive(self.multiworld, state, locations, items, single_player_placement=True, lock=True,
-                         allow_excluded=True, name="LAS Dungeon Items")
+        for attempt in range(PRE_FILL_ATTEMPTS):
+            items = sorted(self.pre_fill_items, key=priority)
+            locations = sorted(candidates, key=lambda loc: loc.name)
+            self.random.shuffle(locations)
+            fill_restrictive(self.multiworld, state, locations, items, single_player_placement=True, lock=True,
+                             allow_excluded=True, name="LAS Dungeon Items")
+            if attempt == PRE_FILL_ATTEMPTS - 1 or self._progression_fits():
+                break
+            for location in candidates:  # try another placement
+                if location.item is not None and location.item.player == self.player and                         location.item.name in self.restricted:
+                    location.item.location = None
+                    location.item = None
+                    location.locked = False
+
+    def _progression_fits(self) -> bool:
+        """Whether this world's progression items fit into its own empty locations, in each of a few random fills.
+        With few locations (most categories off, dungeon items in their dungeons) a placement of the dungeon items can
+        leave no placement that works, or few that the main fill finds."""
+        empty = [loc for loc in self.multiworld.get_unfilled_locations(self.player)]
+        for _ in range(PROGRESSION_CHECKS):
+            items = [item for item in self.multiworld.itempool if item.player == self.player and item.advancement]
+            locations = list(empty)
+            self.random.shuffle(locations)
+            fill_restrictive(self.multiworld, CollectionState(self.multiworld), locations, items,
+                             single_player_placement=True, allow_partial=True, name="LAS Dungeon Items check")
+            for location in empty:
+                if location.item is not None:
+                    location.item.location = None
+                    location.item = None
+            if items:
+                return False
+        return True
 
     # --- output ---
 
