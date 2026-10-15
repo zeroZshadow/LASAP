@@ -19,6 +19,8 @@ import logging
 import math
 import socket
 import struct
+import sys
+import threading
 import time
 from typing import Dict, List, Optional, Set, Tuple, Union
 
@@ -646,6 +648,53 @@ class NatPmp:
         self.request(struct.pack(">BBHHHI", 0, 2, 0, self.port, 0, 0), 16)
 
 
+class Unmapper:
+    """Removes the router's port mapping once: when the relay stops, and on Windows also when its console window is
+    closed, the user logs off or Windows shuts down. Python turns only Ctrl+C and Ctrl+Break into KeyboardInterrupt;
+    after the other console events Windows ends the process once the handlers return (within about 5 s), so the
+    handler removes the mapping itself, on the thread Windows calls it on."""
+    CLOSE_EVENTS = (2, 5, 6)  # CTRL_CLOSE_EVENT, CTRL_LOGOFF_EVENT, CTRL_SHUTDOWN_EVENT
+
+    def __init__(self, mapping: Union["NatPmp", "UPnP"], log: logging.Logger):
+        self.mapping, self.log = mapping, log
+        self.lock = threading.Lock()
+        self.done = False
+        self.handler = None  # the console handler, kept referenced while installed
+
+    def remove(self) -> None:
+        with self.lock:
+            if self.done:
+                return
+            self.done = True
+        try:
+            self.mapping.close()
+            self.log.info(f"{self.mapping.name}: port mapping removed")
+        except (ForwardError, OSError) as error:
+            self.log.warning(f"{self.mapping.name}: removing the port mapping failed: {error}")
+
+    def console_event(self, event: int) -> bool:
+        """The console handler: removes the mapping on a close, logoff or shutdown; leaves Ctrl+C and Ctrl+Break to
+        Python's handler."""
+        if event in self.CLOSE_EVENTS:
+            self.remove()
+            return True
+        return False
+
+    def watch_console(self) -> None:
+        if sys.platform != "win32":
+            return
+        import ctypes
+        from ctypes import wintypes
+        self.handler = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.DWORD)(self.console_event)
+        ctypes.windll.kernel32.SetConsoleCtrlHandler(self.handler, True)
+
+    def unwatch_console(self) -> None:
+        if self.handler is not None:
+            import ctypes
+            ctypes.windll.kernel32.SetConsoleCtrlHandler(self.handler, False)
+            self.handler = None
+
+
 def forward_port(port: int) -> Tuple[Union["NatPmp", UPnP], str]:
     """Maps the port with NAT-PMP, else UPnP: the mapping (add, close, lease, external_port, internal_ip, name) and the
     router's external address."""
@@ -674,7 +723,7 @@ async def serve(host: str, port: int, echo: Optional[float] = None, forward: boo
     choosing = asyncio.create_task(relay.choosing())
     relay.log.info("listening on " + ", ".join(str(s.getsockname()) for s in server.sockets))
     renew = None
-    mapping = None
+    unmapper = None
     if forward:
         try:
             mapping, external = await asyncio.to_thread(forward_port, port)
@@ -683,6 +732,8 @@ async def serve(host: str, port: int, echo: Optional[float] = None, forward: boo
                             "instead.")
         else:
             m = mapping  # NatPmp or UPnP
+            unmapper = Unmapper(m, relay.log)
+            unmapper.watch_console()
             relay.log.info(f"{m.name}: the router forwards TCP port {m.external_port} to {m.internal_ip}:{port}")
             if external and is_public(external):
                 relay.log.info(f"{m.name}: players enter the relay {external}:{m.external_port}")
@@ -707,12 +758,9 @@ async def serve(host: str, port: int, echo: Optional[float] = None, forward: boo
         choosing.cancel()
         if renew is not None:
             renew.cancel()
-        if mapping is not None:
-            try:
-                mapping.close()
-                relay.log.info(f"{mapping.name}: port mapping removed")
-            except (ForwardError, OSError) as error:
-                relay.log.warning(f"{mapping.name}: removing the port mapping failed: {error}")
+        if unmapper is not None:
+            unmapper.remove()
+            unmapper.unwatch_console()
 
 
 def main() -> None:

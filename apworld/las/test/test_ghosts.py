@@ -479,6 +479,30 @@ class TestPortForward(unittest.TestCase):
         self.assertTrue(wire.is_public("8.8.8.8"))
         self.assertFalse(wire.is_public("100.70.1.2"))  # carrier-grade NAT
 
+    def test_unmapper_removes_the_mapping_once(self) -> None:
+        """Closing the console window, logging off or shutting down removes the router's mapping; Ctrl+C is left to
+        Python, and the relay's own stop afterwards removes nothing twice."""
+        import logging
+
+        class Mapping:
+            name = "UPnP"
+            closed = 0
+
+            def close(self) -> None:
+                self.closed += 1
+
+        for event in wire.Unmapper.CLOSE_EVENTS:
+            mapping = Mapping()
+            unmapper = wire.Unmapper(mapping, logging.getLogger("test"))
+            self.assertFalse(unmapper.console_event(0))  # CTRL_C_EVENT
+            self.assertEqual(mapping.closed, 0)
+            self.assertTrue(unmapper.console_event(event))
+            unmapper.remove()
+            self.assertEqual(mapping.closed, 1)
+        unmapper = wire.Unmapper(Mapping(), logging.getLogger("test"))
+        unmapper.watch_console()
+        unmapper.unwatch_console()
+
     def test_nat_pmp_maps_and_removes_the_port(self) -> None:
         import socket
         import threading

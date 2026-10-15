@@ -28,7 +28,8 @@ def run() -> None:
     if double_clicked:
         sys.argv.append("--forward")
         port = ghost_relay.DEFAULT_PORT
-        print("Ghost relay for Link's Awakening (Switch) Archipelago. Close this window to stop it.")
+        print("Ghost relay for Link's Awakening (Switch) Archipelago. Press Ctrl+C or close this window to stop it; "
+              "either removes the router's port forwarding again.")
         print(f"Players on this network enter {lan_address()}:{port} as the ghost relay; players elsewhere enter the "
               "address the relay names below once the router forwards the port.\n")
     try:
