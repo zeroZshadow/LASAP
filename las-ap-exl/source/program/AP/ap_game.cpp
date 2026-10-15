@@ -748,6 +748,30 @@ namespace {
             AP::Send(AP::MapState());
         } else if (cmd == "text") {
             AP::Send(a.size() >= 3 ? AP::SeenText(a[2]) : AP::TextState());
+        } else if (cmd == "name") {
+            // DBG name: the player's name as the game holds it for the save (UTF-16, up to 8 letters, at +0x8 of the
+            // object at 0x1cc1360), set by a new file's name entry on OK
+            const u8* info = *reinterpret_cast<const u8**>(g_BaseAddress + 0x1cc1360);
+            if (info == nullptr) {
+                AP::Send("ERR name: no object");
+                return true;
+            }
+            const char16_t* name = reinterpret_cast<const char16_t*>(info + 0x8);
+            std::string utf8;
+            for (int i = 0; i < 8 && name[i] != 0; i++) {
+                char16_t c = name[i];
+                if (c < 0x80) {
+                    utf8 += static_cast<char>(c);
+                } else if (c < 0x800) {
+                    utf8 += static_cast<char>(0xc0 | (c >> 6));
+                    utf8 += static_cast<char>(0x80 | (c & 0x3f));
+                } else {
+                    utf8 += static_cast<char>(0xe0 | (c >> 12));
+                    utf8 += static_cast<char>(0x80 | ((c >> 6) & 0x3f));
+                    utf8 += static_cast<char>(0x80 | (c & 0x3f));
+                }
+            }
+            AP::Send("PLAYERNAME " + utf8);
         } else if (cmd == "peek" && a.size() >= 5) {
             // DBG peek <p|f|i> <hex offset> <hex length>: bytes of the player, the framework or the inventory
             Game::Framework* fmwk = Game::GetFramework();

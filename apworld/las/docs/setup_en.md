@@ -29,9 +29,9 @@ Double-click `las.apworld`, or copy it into Archipelago's `custom_worlds` folder
    says when the mod is installed.
    It connects to the server the patch names (patches from the website name their room) as your slot; otherwise,
    enter the address in the top bar.
-6. Start a new save file. Items arrive once the save is loaded. Once the client is connected to both the game and the
-   server, a small popup at the bottom right says "Archipelago connected as <slot>". The game also says when it loses
-   the client.
+6. Start a new save file; its name starts as your slot name (cut to 8 characters). Items arrive once the save is
+   loaded. Once the client is connected to both the game and the server, a small popup at the bottom right says
+   "Archipelago connected as <slot>". The game also says when it loses the client.
 
 The client remembers its settings. Opening the next seed's patch file installs it and starts the game without
 further questions. Play also reinstalls the mod after an update of the world. "Reinstall mod" installs the current

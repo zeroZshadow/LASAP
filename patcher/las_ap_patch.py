@@ -60,6 +60,7 @@ import ap_hints  # noqa: E402
 import ap_goal  # noqa: E402
 import ap_map  # noqa: E402
 import ap_model  # noqa: E402
+import ap_save_name  # noqa: E402
 
 PATCH_FORMAT = 1
 PLACEHOLDER_KEY = "ArchipelagoItem"
@@ -651,6 +652,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         ap_hints.add(proc.file_manager, proc.config_dir, hints)
     # all eight for patches from before the option
     ap_goal.set_instrument_count(proc.file_manager, patch["settings"].get("Instruments Required", 8))
+    ap_save_name.set_default(proc.file_manager, patch.get("slot_name", ""))
     map_tracker = patch["settings"].get("Map Tracker", False)  # off for patches from before the option
     if map_tracker:
         ap_map.add(proc.file_manager, proc.config_dir, ap_map.shown(patch["location_ids"], patch["settings"]),

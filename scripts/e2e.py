@@ -237,6 +237,15 @@ def module_op(command: str, name: str, seconds: float) -> str:
     return reply
 
 
+def expand(line: str) -> str:
+    """${NAME} in a script line is the environment variable NAME."""
+    def value(m: re.Match) -> str:
+        if m.group(1) not in os.environ:
+            raise SystemExit(f"the script needs {m.group(1)} in the environment")
+        return os.environ[m.group(1)]
+    return re.sub(r"\$\{(\w+)\}", value, line)
+
+
 def run(script: Path, trace: str | None = None) -> None:
     sent = time.time()
     began = time.time()
@@ -251,6 +260,7 @@ def run(script: Path, trace: str | None = None) -> None:
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
+        line = expand(line)
         if _debug is not None:
             if script_mark is None:
                 script_mark = _debug.mark()

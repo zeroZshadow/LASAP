@@ -35,8 +35,8 @@ PATCHER_BUILD = PATCHER_PREFIX + "build.txt"
 SOURCE_PATCHER = Path(__file__).resolve().parent.parent.parent / "patcher"
 # Top-level modules of the patcher and the libraries it carries (patcher/lib)
 PATCHER_MODULES = {"las_ap_patch", "ap_assets", "ap_deathlink", "ap_ghost", "ap_goal", "ap_hints", "ap_map",
-                   "ap_map_icons", "ap_model", "ap_player_ghost", "ap_ui", "lasr_qt", "RandomizerCore", "evfl", "lms",
-                   "appdirs", "PySide6"}
+                   "ap_map_icons", "ap_model", "ap_player_ghost", "ap_save_name", "ap_ui", "lasr_qt", "RandomizerCore",
+                   "evfl", "lms", "appdirs", "PySide6"}
 _PATCHER_LOCK = threading.Lock()
 
 

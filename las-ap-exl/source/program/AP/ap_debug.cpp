@@ -318,7 +318,8 @@ namespace {
     struct Field { const char* key; std::string value; };
     Field g_Fields[] = {{"screen", ""}, {"level", ""}, {"event", ""}, {"paused", ""}, {"free", ""},
                         {"lock", ""}, {"pad", ""}, {"show", ""}, {"text", ""}, {"choice", ""}, {"client", ""},
-                        {"server", ""}, {"file", ""}, {"face", ""}, {"carry", ""}, {"health", ""}};
+                        {"server", ""}, {"file", ""}, {"face", ""}, {"carry", ""}, {"health", ""},
+                        {"entry", ""}};
     void SetField(int i, const std::string& value) {
         if (g_Fields[i].value == value) return;
         g_Fields[i].value = value;
@@ -547,14 +548,20 @@ namespace {
     // The file menu's cursor: u8 at the menu's owner (machine at owner +0x80) +0x159b0, the slot (0 = file 1); its
     // DataSelectKeyWait update (0xe61040) moves it.
     constexpr size_t kFilesMachine = 0x80, kFilesCursor = 0x159b0;
-    int FileCursor() {
+    // The name entry's cursor: u8 at its owner (machine at owner +0x80) +0x590, 0 on the name (A opens the
+    // keyboard), 1 on OK; its KeyWait update (0xeaf8a0) moves it.
+    constexpr size_t kNameMachine = 0x80, kNameCursor = 0x590;
+    // A byte of a hooked machine's owner, -1 while that machine is not there.
+    int OwnerByte(const char* hook, size_t machine, size_t offset) {
         for (auto& m : g_Machines) {
-            if (!m.ready || m.sm.load() == 0 || std::strcmp(kSmHooks[m.hook].name, "files") != 0) continue;
-            u8 cursor = 0;
-            if (Read(m.sm.load() - kFilesMachine + kFilesCursor, cursor)) return cursor;
+            if (!m.ready || m.sm.load() == 0 || std::strcmp(kSmHooks[m.hook].name, hook) != 0) continue;
+            u8 value = 0;
+            if (Read(m.sm.load() - machine + offset, value)) return value;
         }
         return -1;
     }
+    int FileCursor() { return OwnerByte("files", kFilesMachine, kFilesCursor); }
+    int NameCursor() { return OwnerByte("name", kNameMachine, kNameCursor); }
 
     // Where Link faces: his rotation (a quaternion about the vertical axis) turns the model's forward axis +z.
     // Returns the yaw in degrees (0 = +z, the bottom of the screen; 90 = +x, right), or NAN without a player.
@@ -949,6 +956,8 @@ namespace {
         SetField(14, AP::TestPlayerCarrying() ? "1" : "0");
         auto* items = Game::Data::Inventory::Items != nullptr ? *Game::Data::Inventory::Items : nullptr;
         SetField(15, items != nullptr ? std::to_string(items->Health) : "-");
+        int entry = NameCursor();
+        SetField(16, entry < 0 ? "-" : std::to_string(entry));
         SampleWatches();
     }
 
@@ -1334,6 +1343,7 @@ namespace AP::Test {
         return " puppets=" + AP::Puppet::StateField() + " frame=" + std::to_string(g_FrameNo) +
                " msg=" + MessageState() + " choice=" + g_Fields[9].value +
                " face=" + g_Fields[13].value + " yaw=" + yaw + " anim=" + LinkAnimName() + " file=" + g_Fields[12].value +
+               " entry=" + g_Fields[16].value +
                " read=" + std::to_string(g_ReadFrames);
     }
 

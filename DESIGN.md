@@ -91,6 +91,11 @@ The module patches and hooks the game's code at boot, after an emulator may alre
 - **LASR names** (`sword`, `key-D1`, `D1-west-hallway`) are used in the patch file and in `ids.json`.
 - The world keeps the mapping between the two.
 
+## Save name
+
+- A new file's name entry shows `UI:NameEntry_Default` ("Link" in the base game) until the player renames it, and OK keeps it. The patcher writes the patch's `slot_name` there in every language's `UI.msbt` (`ap_save_name.py`), so a new save is named after the slot; the player can still rename it on that screen. Files made before the mod keep their names.
+- The game takes up to 8 characters: its keyboard's limit, and OK cuts a longer name. From the slot name the patcher keeps printable ASCII except `@`, `%` and `\` (the keyboard refuses them) and `[`, `]` (they start a message tag), and the Latin-1 letters (`À`–`ÿ` without `×` and `÷`), which the game's fonts have for its European languages. Runs of spaces become one space, and the result is cut to 8 characters with no space at either end. When nothing is left (a slot name in another script, symbols or spaces only), the name is "Link". For example `Archipelago Player 7` gives `Archipel` and `Zoë[AP]_Archipelago` gives `ZoëAP_Ar`.
+
 ## Patch file (`.aplas`)
 
 An Archipelago player container (`container.py`, `APPlayerContainer`): a zip with `archipelago.json` (game, player, player name, server; WebHost fills in the room's server) and `patch.json`. The patcher also accepts a bare `patch.json`. `patch.json` is UTF-8 JSON:
@@ -122,6 +127,7 @@ An Archipelago player container (`container.py`, `APPlayerContainer`): a zip wit
 - `location_models` leaves out locations that show the Archipelago model. It is optional: older patches show the Archipelago model everywhere.
 - `location_chests` gives each AP location's chest the size and texture of LASR's "Chest Types" setting (option `chest_appearance`): for this slot's items, the LASR item's type and `chest-type` with the adjustments LASR's shuffler makes; for other players' items, `important` for progression, `good` for useful, and `junk` with the junk texture for filler and traps (`lasr_settings.chest_look`). It is optional.
 - `dungeon_entrances` is an identity map; entrance shuffle is not supported.
+- `slot_name` is also a new save's name (Save name).
 - `ghost_secret` groups the multiworld's LAS players on the ghost relay (Ghosts). It is optional: without it the client shows no ghosts.
 - `hints` gives each in-game hint source its text (In-game hints). `player` and `location` name the hinted location when reading the hint makes a server hint. It is optional and empty with the option off.
 

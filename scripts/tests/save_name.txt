@@ -1,0 +1,25 @@
+# A new game in file 3, the empty slot (after reset_saves.sh newgame): the name entry shows the name the patcher
+# wrote (UI:NameEntry_Default), and OK gives the save that name. LASAP_SAVE_NAME is the slot name as the game takes
+# it (DESIGN.md, "Save name"), with no spaces or regex characters; the test patch's slot (make_test_patch.py --slot)
+# sets it.
+connect 90
+tapuntil 1 screen=title when title:Deactive 30
+tapuntil c0 title:GameStart when title:WaitLR+unlocked 20
+# File 3 is slot 2. A on an empty file opens the difficulty choice (Normal first), on a played one it would not.
+select 2
+tapuntil 1 files:DataSelectFirstConfirm when files:DataSelectKeyWait 5
+tapuntil 1 files:InputNameWaitKey when files:DataSelectFirstConfirm 5
+until name:KeyWait 10
+send DBG text NameEntry_Default
+expect ^TEXT\sNameEntry_Default\ssaid=${LASAP_SAVE_NAME}$ 3
+shot D:/DEV/LASAP-sandbox/save_name_entry.png
+# The cursor starts on the name, where A opens the keyboard; Down moves it to OK.
+guard name:InputName
+check \sentry=0\s
+tapuntil 8000 entry=1 when name:KeyWait 5
+tapuntil 1 !name:KeyWait when name:KeyWait+entry=1 5
+guard off name:InputName
+inlevel 60
+level MarinTarinHouse
+send DBG name
+expect ^PLAYERNAME\s${LASAP_SAVE_NAME}$ 3
