@@ -529,14 +529,14 @@ class LASContext(CommonContext):
         return checklist.check(self.patch_file or "", {key: self.option(key) for key in OPTION_KEYS},
                                self.player_settings())
 
-    def detect_from_emulator(self) -> None:
-        """Fills in the game file and RomFS dump the emulator knows about, when they are empty."""
+    def detect_from_emulator(self, game: bool = True) -> None:
+        """Fills in the game file (unless not `game`) and RomFS dump the emulator knows about, when they are empty."""
         exe = self.option("emulator")
         if not exe:
             return
         target = self.install_target()
         data_dir = target.data_dir if target else None
-        if not self.option("game_file"):
+        if game and not self.option("game_file"):
             game = emulators.find_game(emulators.game_dirs(exe, data_dir),
                                        recent=emulators.recent_games(exe, data_dir))
             if game:
@@ -578,6 +578,7 @@ class LASContext(CommonContext):
     async def _install_patch(self, force: bool, start: bool) -> None:
         if self.ui and hasattr(self.ui, "patch_panel"):
             self.ui.patch_panel.clear_progress()
+        self.detect_from_emulator()  # a RomFS dump or game added since the client started
         checks = self.check_setup()
         if not checks.ready or checks.target is None:
             self.report("error", checks.problems())

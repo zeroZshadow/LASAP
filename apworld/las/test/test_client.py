@@ -66,3 +66,33 @@ class TestGameConnection(unittest.TestCase):
 
         with mock.patch.object(client, "HELLO_TIMEOUT", 0.2):
             asyncio.run(run())
+
+
+class TestDetection(unittest.TestCase):
+    def test_play_finds_a_dump_made_after_start(self) -> None:
+        """A yuzu-based emulator's RomFS dump made while the client runs is found when Play checks the setup."""
+        import tempfile
+        from pathlib import Path
+        from ..client import LASContext
+        from ..emulators import TITLE_ID
+
+        with tempfile.TemporaryDirectory() as tmp:
+            exe = Path(tmp) / "eden" / "eden.exe"
+            (exe.parent / "user" / "sdmc").mkdir(parents=True)
+            exe.write_bytes(b"")
+            options = {"emulator": str(exe)}
+
+            async def run() -> None:
+                ctx = LASContext(None, None, "127.0.0.1", 0)
+                with mock.patch.object(LASContext, "option", side_effect=lambda key: options.get(key, "")), \
+                        mock.patch.object(LASContext, "set_option",
+                                          side_effect=lambda key, value, detect=True: options.update({key: value})):
+                    ctx.report = lambda *args, **kwargs: None
+                    await ctx.install_patch()
+                    self.assertNotIn("romfs_folder", options)
+                    dump = exe.parent / "user" / "dump" / TITLE_ID / "romfs" / "region_common" / "event"
+                    dump.mkdir(parents=True)
+                    (dump / "PlayerStart.bfevfl").write_bytes(b"")
+                    await ctx.install_patch()
+                    self.assertEqual(options["romfs_folder"], str(dump.parent.parent))
+            asyncio.run(run())

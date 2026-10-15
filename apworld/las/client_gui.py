@@ -259,6 +259,8 @@ class PatchPanel(ScrollView):
             check.active = self.ctx.player_option(key)
         for key, choice in self.player_choices.items():
             choice.children[0].text = self.ctx.player_option(key)
+        if not self.ctx.option("romfs_folder"):
+            self.ctx.detect_from_emulator(game=False)  # the dump the Patch tab asks for, made while the client runs
         checks = self.ctx.check_setup()
         for key, label in self.statuses.items():
             label.text = status(checks.checks.get(key))
