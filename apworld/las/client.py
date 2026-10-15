@@ -22,8 +22,10 @@ RESEND_INTERVAL = 3.0
 HELLO_TIMEOUT = 5.0
 # Servers before this have no CreateHints; on them, in-game hints of this slot's own locations become hints by scouting
 CREATE_HINTS_VERSION = Utils.Version(0, 6, 2)
-# The game takes one client at a time; another client's connection waits without an answer.
-BUSY_STATUS = "Another client is connected to the game: close the other Links Awakening Switch Client window."
+# The game takes one client at a time; another client's connection waits without an answer (also for the 10 s the
+# game takes to drop a client that went away).
+BUSY_STATUS = ("Another client is connected to the game. If another Links Awakening Switch Client window is open, "
+               "close it.")
 # Data storage key holding the level the game shows (LASR level names: Field, Lv01TailCave, ...), for trackers
 LEVEL_KEY = "las_level_{team}_{slot}"
 

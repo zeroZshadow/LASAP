@@ -91,7 +91,7 @@ without costing hint points. Hints read while the client is not connected reach 
   turn the emulator's airplane mode off if it has one. Check the game address, and on a Switch, that the console and
   the computer are on the same network.
 - **The Patch tab says another client is connected to the game.** The game talks to one client at a time: close the
-  other Links Awakening Switch Client window.
+  other Links Awakening Switch Client window. Right after a client closes, the game takes a few seconds to notice.
 
 ## Known issues
 
