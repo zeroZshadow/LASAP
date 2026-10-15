@@ -2,7 +2,8 @@
 
 Run with .venv-lasr after scripts/build_exl.sh (it also needs .venv-ap and vendor/Archipelago for "Build APWorlds"):
   python scripts/build_release.py
-Writes build/release/LASAP-<world version>/: las.apworld, "Links Awakening Switch.yaml" and the setup guide.
+Writes build/release/LASAP-<world version>/: las.apworld, "Links Awakening Switch.yaml", the setup guide and, with
+.venv-relay, LASGhostRelay.exe (build_relay.py).
 The world carries the patcher as las/patcher/: its sources, LASR's data, the assets, the game module, and the pure
 Python libraries it needs in lib/. It leaves out the world's tests. The client runs it in its own process when no patcher command is set
 (apworld/las/install.py).
@@ -126,10 +127,14 @@ def main() -> None:
         sys.exit("the options template has no Archipelago version to set")
     (release / f"{GAME}.yaml").write_text(template, encoding="utf-8-sig")
     shutil.copyfile(ROOT / "apworld" / "las" / "docs" / "setup_en.md", release / "Setup guide.md")
+    import build_relay
+    relay = build_relay.build(release) if build_relay.available() else None
     size = apworld.stat().st_size / 1e6
     if skipped:
         print(f"Skipped other worlds that do not load in vendor/Archipelago: {', '.join(sorted(skipped))}")
     print(f"Release written to {release} (las.apworld {size:.1f} MB, patcher build {build_id})")
+    print(f"Ghost relay: {relay.name} ({relay.stat().st_size / 1e6:.1f} MB)" if relay else
+          "No .venv-relay, so no LASGhostRelay.exe (README, Building a release).")
 
 
 if __name__ == "__main__":

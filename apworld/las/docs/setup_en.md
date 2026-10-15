@@ -86,12 +86,14 @@ players of the same generation see each other.
 - Otherwise each player enters it in the Patch tab's "Ghost relay", which also replaces the patch file's.
 - "Show ghosts" on the Patch tab, or `/ghosts off` in the client, turns them off. The Patch tab shows the relay status.
 
-To run a relay: `python ghost_relay.py` (in the world's folder; `las.apworld` is a zip holding it) needs only Python
-and listens on TCP port 43390 (`--port` changes it). Every player must be able to reach it: `--forward` has your
-router forward the port while the relay runs and prints the address players enter (if the router allows NAT-PMP or
-UPnP);
-otherwise forward the port on your router by hand, run the relay on a server, or have all players join one VPN (for
-example Tailscale) and use its address.
+To run a relay on Windows, double-click `LASGhostRelay.exe` (it comes with the release; it needs no Python). It
+listens on TCP port 43390, has your router forward that port while it runs (if the router allows NAT-PMP or UPnP) and
+prints the address players enter; close its window to stop it. Windows may ask once whether it may use the network:
+allow it. On other systems run `python3 ghost_relay.py --forward` (`las.apworld` is a zip holding
+`las/ghost_relay.py`; it needs only Python). Both take `--port` for another port and `--help` for the rest.
+Every player must be able to reach the relay: when the router does not forward the port, forward TCP 43390 on the
+router by hand, run the relay on a server, or have all players join one VPN (for example Tailscale) and use its
+address.
 
 ## Troubleshooting
 

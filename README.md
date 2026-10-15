@@ -25,6 +25,13 @@ The release's `las.apworld` is all a player installs, on any system Archipelago 
    .venv-lasr/Scripts/python.exe scripts/build_release.py
    ```
    It writes `build/release/LASAP-<world version>/` with `las.apworld`, the options template and the setup guide (`Setup guide.md`, for players of a world that is not on the website).
+   With `.venv-relay` (PyInstaller) it also writes `LASGhostRelay.exe`, the ghost relay as one Windows program (`scripts/build_relay.py`, from `scripts/relay_exe.py`):
+   ```bash
+   uv venv .venv-relay --python 3.12
+   ```
+   ```bash
+   uv pip install pyinstaller --python .venv-relay
+   ```
 
 ### Developing
 
