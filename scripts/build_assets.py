@@ -1,6 +1,6 @@
 """Builds patcher/assets: the files the mod changes the same way for every seed, as patches against the RomFS
-(patcher/ap_assets.py). Run with .venv-lasr after changing ap_ui.py, ap_model.py or LASR's title screen or chest
-textures, and commit the result:
+(patcher/ap_assets.py). Run with .venv-lasr after changing ap_ui.py, ap_model.py, ap_chest.py or LASR's title screen
+or chest textures, and commit the result:
   python scripts/build_assets.py [--romfs D:/Games/Switch/LASRomFS]
 """
 import argparse

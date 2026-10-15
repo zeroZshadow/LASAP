@@ -23,6 +23,12 @@
   "patch": "ObjTreasureBoxLifeUpgrade.bfres.bsdiff4",
   "sha256": "1749ff53f277df884f9a9e6b8ef85949e76e6e127347b9f69855a00a1d447eb6"
  },
+ "region_common/actor/ObjTreasureBoxSeashell.bfres": {
+  "source": "region_common/actor/ObjTreasureBox.bfres",
+  "source_sha256": "57b492c665c8e9e8d4dc24ad499543a570a392dd1aae4216df15819d31671a91",
+  "patch": "ObjTreasureBoxSeashell.bfres.bsdiff4",
+  "sha256": "d4a124cfb02b0ebb2502dfa3ddef061f21d8eca4a11ff0401751c6a0e7fec275"
+ },
  "region_common/actor/PlayerGhost.bfres": {
   "source": "region_common/actor/Playerlink.bfres",
   "source_sha256": "812cfae3d46878032e9f5f9f6ac8b50ce75f33364af07e2890d7a3ed22e40b53",

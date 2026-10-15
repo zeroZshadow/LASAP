@@ -1,5 +1,5 @@
 """Files the mod changes the same way for every seed: the title screen and the notice look (StartUp.arc), the
-Archipelago item model, LASR's chest textures, the map tracker's icons (Game.arc) and the multiplayer ghosts' model. Building them takes native packages (oead's SARC, quicktex,
+Archipelago item model, LASR's chest textures and the seashell chest, the map tracker's icons (Game.arc) and the multiplayer ghosts' model. Building them takes native packages (oead's SARC, quicktex,
 Pillow), so scripts/build_assets.py builds them once from a RomFS dump and stores each as a binary patch (bsdiff4)
 against the RomFS file it comes from. The patcher only applies these patches to the player's dump.
 
@@ -20,7 +20,9 @@ ACTOR = "region_common/actor"
 MODEL = f"{ACTOR}/ItemArchipelago.bfres"  # ap_model.FILE_NAME
 PLAYER_GHOST = f"{ACTOR}/PlayerGhost.bfres"  # ap_player_ghost.FILE_NAME
 CHEST = f"{ACTOR}/ObjTreasureBox.bfres"
-CHEST_TEXTURES = tuple(f"{ACTOR}/ObjTreasureBox{kind}.bfres" for kind in ("Junk", "Key", "LifeUpgrade"))
+LASR_CHESTS = tuple(f"{ACTOR}/ObjTreasureBox{kind}.bfres" for kind in ("Junk", "Key", "LifeUpgrade"))
+SEASHELL_CHEST = f"{ACTOR}/ObjTreasureBoxSeashell.bfres"  # ap_chest.FILE_NAME
+CHEST_TEXTURES = LASR_CHESTS + (SEASHELL_CHEST,)
 SOURCES = {UI: UI, GAME: GAME, MODEL: f"{ACTOR}/ItemShellRader.bfres", PLAYER_GHOST: f"{ACTOR}/Playerlink.bfres",
            **{path: CHEST for path in CHEST_TEXTURES}}
 
@@ -35,6 +37,7 @@ def _sha256(data: bytes) -> str:
 
 def build(romfs: Path) -> Dict[str, bytes]:
     """Every asset, built from the RomFS dump with LASR's and the patcher's own code (needs the native packages)."""
+    import ap_chest
     import ap_map_icons
     import ap_model
     import ap_player_ghost
@@ -53,8 +56,9 @@ def build(romfs: Path) -> Dict[str, bytes]:
     built[GAME] = ap_map_icons.build((romfs / GAME).read_bytes())
     with tempfile.TemporaryDirectory() as tmp:
         createChestBfresWithCustomTexturesIfMissing(str(romfs / CHEST), tmp, LASR_CHEST_TEXTURES)
-        for path in CHEST_TEXTURES:
+        for path in LASR_CHESTS:
             built[path] = (Path(tmp) / Path(path).name).read_bytes()
+    built[SEASHELL_CHEST] = ap_chest.build(str(romfs / CHEST))
     return built
 
 

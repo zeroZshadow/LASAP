@@ -36,13 +36,15 @@ _STEALING = {0: "Standard", 1: "Always", 2: "Never"}
 _TRAPS = {0: "None", 1: "Few", 2: "Many"}
 _DAMAGE = {0: "None", 1: "Normal", 2: "OHKO"}
 _CHEST_TYPES = {0: "Default", 1: "Size", 2: "Texture + Size"}
+SEASHELL_CHEST = "seashell"  # the patcher's blue chest texture for seashells (ap_chest.CHEST_TYPE)
 
 
 def chest_look(options: LASOptions, lasr_item: Optional[str], progression: bool = False, useful: bool = False,
                trap: bool = False) -> List[Optional[str]]:
     """How a chest holding this item looks: [LASR item type, which sets the chest size; chest texture, None for the
     plain chest]. lasr_item is the LASR item for this player's items, None for another player's item, which looks
-    by its classification. The types follow LASR's shuffler and its chest code for the "Size" setting."""
+    by its classification. The types follow LASR's shuffler and its chest code for the "Size" setting; seashells
+    get the patcher's seashell texture."""
     if lasr_item is None:
         if trap or not (progression or useful):
             return ["junk", "junk"]
@@ -59,7 +61,7 @@ def chest_look(options: LASOptions, lasr_item: Optional[str], progression: bool 
             item_type = "junk"
         elif lasr_item.startswith("key-") or lasr_item.endswith("-capacity"):
             item_type = "important"
-    return [item_type, ITEM_DEFS[lasr_item].get("chest-type")]
+    return [item_type, SEASHELL_CHEST if lasr_item == "seashell" else ITEM_DEFS[lasr_item].get("chest-type")]
 
 
 def removed_locations(options: LASOptions) -> Set[str]:

@@ -46,7 +46,8 @@ matches one (any shield shows the shield, any bomb bag the bombs); other items s
 balls. Picking one up names the item and whose it is.
 
 With `chest_appearance`, a chest's size, and optionally its texture, shows what it holds, as in the original
-randomizer. Another player's item counts as important when it is progression.
+randomizer; with textures, chests holding a seashell are blue. Another player's item counts as important when it is
+progression.
 
 ## When the player receives an item, what happens?
 

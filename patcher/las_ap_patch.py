@@ -53,6 +53,7 @@ from RandomizerCore.Randomizers.shop import TEXT_TO_CHANGE as SHOP_TEXT  # noqa:
 from RandomizerCore.Tools import event_tools  # noqa: E402
 from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct  # noqa: E402
 import ap_assets  # noqa: E402
+import ap_chest  # noqa: E402
 import ap_deathlink  # noqa: E402
 import ap_ghost  # noqa: E402
 import ap_player_ghost  # noqa: E402
@@ -383,7 +384,8 @@ Keysanity.createText = _add_placeholder_text
 
 
 def _chest_textures(chest_bfres: str, folder: str, textures) -> None:
-    """LASR's chest textures ("Texture + Size") come from the assets, into the folder LASR copies them from."""
+    """LASR's chest textures ("Texture + Size") and the seashell chest come from the assets, into the folder LASR
+    copies them from."""
     romfs = Path(chest_bfres).parents[2]
     Path(folder).mkdir(parents=True, exist_ok=True)
     for path in ap_assets.CHEST_TEXTURES:
@@ -393,6 +395,8 @@ def _chest_textures(chest_bfres: str, folder: str, textures) -> None:
 # The title screen and the chest textures are the same for every seed: assets (ap_assets.py), not built here.
 mod_generator.TitleScreenFixes = lambda proc: None
 lasr_chests.createChestBfresWithCustomTexturesIfMissing = _chest_textures
+# Chests holding a seashell are blue (ap_chest.py); LASR's items.yml gives seashells no chest-type.
+lasr_chests.CHEST_TEXTURES[ap_chest.CHEST_TYPE] = ap_chest.FILE_NAME
 
 
 class APModsProcess(mod_generator.ModsProcess):
@@ -621,6 +625,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
 
     item_defs = load_yaml("items.yml")["Item_Pool"]
+    item_defs["seashell"]["chest-type"] = ap_chest.CHEST_TYPE
     item_defs["ap-item"] = dict(PLACEHOLDER_DEF)
     add_location_items(patch, item_defs)
     logic = load_yaml("logic.yml")

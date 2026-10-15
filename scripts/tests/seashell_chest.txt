@@ -1,0 +1,18 @@
+# Opens the Armos Maze cave chest (armos-cave, ArmosShrineCave_01A, a chest at 6.75 0 5.25) on a seed where it
+# keeps its vanilla seashell (index 17), with Chest Appearance texture_and_size: the room loads with the seashell chest
+# (ObjTreasureBoxSeashell.bfres, which verify_patch.py checks in the patched room) and the chest gives seashell 17.
+# Run after newgame_file2. Screenshots: seashell_chest_1 in front of the chest, seashell_chest_2 the item-get.
+guard hurt
+check shells=0\s
+warp ArmosShrineCave 6.75 0 6.75
+goto 6.75 0 6.75
+at 6.75 6.75
+face up
+shot D:/DEV/LASAP-sandbox/seashell_chest_1.png
+interact
+until textready 10
+state
+shot D:/DEV/LASAP-sandbox/seashell_chest_2.png
+dismiss 20
+free 10
+check shells=20000\s

@@ -1,5 +1,6 @@
 """Static checks on patcher output: every chest location holds the AP placeholder (the model variant of
-`location_models`) with its local id, and every randomized heart piece and seashell actor has a unique index above
+`location_models`) with its local id; with "Texture + Size" chests, the chests holding a seashell and only those are
+the seashell chest. Every randomized heart piece and seashell actor has a unique index above
 the received range (DESIGN.md, item model). With the map tracker on, every AP location has one icon in ap_map.txt
 (but the trade quest's when it is off) and every icon its datasheet row. Below eight required instruments, the egg's event checks single instruments instead of
 all of them. With in-game hints, every hint source shows its own message, which fits the text box, and a server hint
@@ -12,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "patcher"))
+import ap_chest  # noqa: E402
 import ap_goal  # noqa: E402
 import evfl  # noqa: E402
 from RandomizerCore.Randomizers.chests import CHEST_ROOMS  # noqa: E402
@@ -44,6 +46,26 @@ for loc, room_name in CHEST_ROOMS.items():
         bad += 1
         print(f"MISMATCH {loc} {room_name}: {found} want {want}")
 print(f"chests ok={ok} bad={bad}")
+
+# Chest textures ("Texture + Size"): every chest holding this slot's seashell, vanilla or a check, is the seashell
+# chest, and no other chest is.
+if patch["settings"].get("Chest Types") == "Texture + Size":
+    looks = patch.get("location_chests", {})
+    blue = 0
+    for loc, room_name in CHEST_ROOMS.items():
+        item = patch["placements"].get(loc)
+        if item is None:
+            continue
+        want = item == "seashell" or (item == "ap-item" and looks.get(loc, [None, None])[1] == ap_chest.CHEST_TYPE)
+        path = level_dir / room_name.split("_")[0] / f"{room_name}.leb"
+        chests = [a for a in Room(path.read_bytes()).actors if a.type == 0xF7]
+        written = chests[:5] if loc == "taltal-5-chest-puzzle" else chests[:1]  # LASR's setChestContent
+        models = {c.parameters[6] for c in written}
+        if (models == {ap_chest.FILE_NAME.encode()}) != want:
+            bad += 1
+            print(f"CHEST TEXTURE {loc} {room_name}: {models} for {item} {looks.get(loc)}")
+        blue += want
+    print(f"chest textures seashell={blue} bad={bad}")
 
 # Item actors hide while the inventory bit of their index is set, so each one needs its own bit above the received range.
 seen = {}

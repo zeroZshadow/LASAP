@@ -314,7 +314,7 @@ class TestChestAppearance(LASTestBase):
         self.assertEqual(set(looks), filled)
         for loc, (item_type, chest_type) in looks.items():
             self.assertIn(item_type, ("important", "important-health", "trade", "seashell", "good", "junk"), loc)
-            self.assertIn(chest_type, (None, "junk", "key", "life-upgrade"), loc)
+            self.assertIn(chest_type, (None, "junk", "key", "life-upgrade", "seashell"), loc)
 
     def test_looks(self) -> None:
         from ..lasr_settings import chest_look
@@ -328,6 +328,7 @@ class TestChestAppearance(LASTestBase):
         options.keys.value = options.keys.option_anywhere
         self.assertEqual(chest_look(options, "key-D1"), ["important", "key"])
         self.assertEqual(chest_look(options, "heart-container"), ["important-health", "life-upgrade"])
+        self.assertEqual(chest_look(options, "seashell"), ["seashell", "seashell"])
         options.chest_appearance.value = options.chest_appearance.option_size
         self.assertEqual(chest_look(options, "heart-container"), ["junk", "life-upgrade"])
 
