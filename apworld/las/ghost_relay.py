@@ -8,8 +8,9 @@ Ghosts). Also the wire protocol the client uses (ghosts.py). Standard library on
 Plain TCP with TCP_NODELAY. Every message is a frame: a u16 length (big-endian), then the payload, whose first byte is
 the message type. A client joins a group, SHA-256("lasghost" | secret), computed by the client from its multiworld's
 ghost secret (in the patch file), so the relay never sees the secret. The relay forwards a player's position to the group's members in the same level, and in
-the overworld (Field) only to those within the 3x3 screens around the sender; it sends an "off" for a player who
-leaves a member's area or the group.
+the overworld (Field) only to those within the 3x3 screens around the sender, each member getting the nearest
+MAX_SHOWN players of its area; it sends an "off" for a player who leaves a member's area or the group. A member's
+frames go out together every BATCH seconds.
 """
 import argparse
 import asyncio
@@ -90,6 +91,10 @@ MAX_RATE = 40.0  # frames per second a client may send; more are dropped
 SILENT_OFF = 10.0  # a member who sent no position for this long is shown to nobody
 SILENT_DROP = 60.0  # a connection silent for this long is closed
 MAX_BACKLOG = 32 * 1024  # bytes waiting to go to a receiver; frames beyond it are dropped
+BATCH = 0.02  # a receiver's frames go out together this often: one TCP segment instead of one per frame
+MAX_SHOWN = 30  # players each member gets frames of at most: the nearest in its area (the game's ghost slots)
+CHOOSE_EVERY = 0.5  # how often the nearest are chosen again
+KEEP_MARGIN = 2.0  # a shown player stays unless another is this much nearer (units), so the choice does not flap
 
 
 def group_id(secret: str) -> bytes:
@@ -162,7 +167,10 @@ class Member:
         self.body: Optional[bytes] = None  # the last POS_BODY, while in a level
         self.last_pos = 0.0  # when the last POS or NOWHERE arrived
         self.last_heard = time.monotonic()
-        self.visible: Set["Member"] = set()  # members whose frames this one gets
+        self.visible: Set["Member"] = set()  # members whose frames this one gets (at most MAX_SHOWN)
+        self.x = self.z = 0.0
+        self.outbox: List[bytes] = []  # frames waiting for the next flush
+        self.outbox_size = 0
         self.tokens = MAX_RATE
         self.token_time = time.monotonic()
         self.closed = False
@@ -170,9 +178,28 @@ class Member:
     def send(self, payload: bytes, droppable: bool = False) -> None:
         if self.closed:
             return
-        if droppable and self.writer.transport.get_write_buffer_size() > MAX_BACKLOG:
+        if droppable and self.writer.transport.get_write_buffer_size() + self.outbox_size > MAX_BACKLOG:
             return
-        self.writer.write(frame(payload))
+        data = frame(payload)
+        if not self.outbox:
+            asyncio.get_running_loop().call_later(BATCH, self.flush)
+        self.outbox.append(data)
+        self.outbox_size += len(data)
+
+    def flush(self) -> None:
+        if self.outbox and not self.closed and not self.writer.is_closing():
+            self.writer.write(b"".join(self.outbox))
+        self.outbox.clear()
+        self.outbox_size = 0
+
+    def close(self) -> None:
+        """Sends what waits, then closes the connection."""
+        self.flush()
+        self.closed = True
+        self.writer.close()
+
+    def distance(self, other: "Member") -> float:
+        return math.hypot(self.x - other.x, self.z - other.z)
 
     def present(self) -> bool:
         return self.body is not None and self.level != NO_LEVEL
@@ -247,7 +274,7 @@ class Relay:
         finally:
             self.leave(member)
             self.connections.discard(member)
-            writer.close()
+            member.close()
 
     def refuse(self, member: Member, text: str) -> None:
         member.send(bytes([ERROR]) + text.encode())
@@ -257,8 +284,7 @@ class Relay:
         for old in [m for m in members if m.slot == slot]:
             # the same slot again (a reconnect before the old connection timed out): the new connection wins
             self.leave(old)
-            old.closed = True
-            old.writer.close()
+            old.close()
         member.id = self.new_id()
         member.group, member.slot, member.player = group, slot, player
         self.members[member.id] = member
@@ -302,6 +328,7 @@ class Relay:
                 return
             member.level = level  # ids past LEVELS (a newer client's) still compare
             member.screen = field_screen(x, z)
+            member.x, member.z = x, z
             member.body = body
             member.last_pos = time.monotonic()
             self.update(member, True)
@@ -318,22 +345,50 @@ class Relay:
             self.update(member, False)
 
     def update(self, member: Member, moved: bool) -> None:
-        """After a member's position changed: forwards it to the members in its area, and fixes up who sees whom."""
+        """After a member's position changed: forwards it to the members in its area who are shown it, and fixes up
+        who sees whom. A member with MAX_SHOWN shown players gets a new one when choose() finds it among the
+        nearest."""
         own = bytes([FRAME]) + struct.pack(">H", member.id) + member.body if member.body is not None else b""
         for other in self.groups.get(member.group or b"", ()):
             if other is member:
                 continue
             if member.sees(other):
-                if moved:
+                if moved and (member in other.visible or len(other.visible) < MAX_SHOWN):
                     other.send(own, droppable=True)
                     other.visible.add(member)
-                if other not in member.visible and other.body is not None:
+                if other not in member.visible and other.body is not None and len(member.visible) < MAX_SHOWN:
                     # entered the area of a member who stands still: show it now, not at its next keep-alive
-                    member.send(bytes([FRAME]) + struct.pack(">H", other.id) + other.body, droppable=True)
-                    member.visible.add(other)
+                    self.show(member, other)
             else:
                 self.hide(member, other)
                 self.hide(other, member)
+
+    @staticmethod
+    def show(viewer: Member, shown: Member) -> None:
+        viewer.send(bytes([FRAME]) + struct.pack(">H", shown.id) + shown.body, droppable=True)
+        viewer.visible.add(shown)
+
+    def choose(self) -> None:
+        """Each member is shown the MAX_SHOWN nearest players in its area; one shown stays unless another is
+        KEEP_MARGIN nearer."""
+        for members in self.groups.values():
+            for viewer in members:
+                if viewer.body is None:
+                    continue
+                around = [m for m in members if m is not viewer and m.body is not None and viewer.sees(m)]
+                if len(around) <= MAX_SHOWN and all(m in viewer.visible for m in around):
+                    continue
+                around.sort(key=lambda m: viewer.distance(m) - (KEEP_MARGIN if m in viewer.visible else 0))
+                nearest = set(around[:MAX_SHOWN])
+                for gone in [m for m in viewer.visible if m not in nearest]:
+                    self.hide(viewer, gone)
+                for new in [m for m in around[:MAX_SHOWN] if m not in viewer.visible]:
+                    self.show(viewer, new)
+
+    async def choosing(self) -> None:
+        while True:
+            await asyncio.sleep(CHOOSE_EVERY)
+            self.choose()
 
     @staticmethod
     def hide(viewer: Member, shown: Member) -> None:
@@ -349,7 +404,7 @@ class Relay:
             now = time.monotonic()
             for member in list(self.members.values()):
                 if now - member.last_heard > SILENT_DROP:
-                    member.writer.close()
+                    member.close()
                 elif member.body is not None and now - member.last_pos > SILENT_OFF:
                     member.body = None
                     member.level = NO_LEVEL
@@ -616,6 +671,7 @@ async def serve(host: str, port: int, echo: Optional[float] = None, forward: boo
     relay = Relay(echo)
     server = await asyncio.start_server(relay.handle, host, port)
     sweep = asyncio.create_task(relay.sweep())
+    choosing = asyncio.create_task(relay.choosing())
     relay.log.info("listening on " + ", ".join(str(s.getsockname()) for s in server.sockets))
     renew = None
     mapping = None
@@ -648,6 +704,7 @@ async def serve(host: str, port: int, echo: Optional[float] = None, forward: boo
             await server.serve_forever()
     finally:
         sweep.cancel()
+        choosing.cancel()
         if renew is not None:
             renew.cancel()
         if mapping is not None:

@@ -207,6 +207,61 @@ class TestRelay(unittest.TestCase):
             self.assertEqual(relay.members, {})
         self.run_relay(test)
 
+    def test_frames_are_batched(self) -> None:
+        async def test(port: int, relay: wire.Relay) -> None:
+            a, b = FakeClient(port), FakeClient(port)
+            await a.join("secret1", "A")
+            await b.join("secret1", "B")
+            a.pos(SHOP, 1, 1)
+            b.pos(SHOP, 1, 1)
+            await a.collect()
+            await b.collect()
+            # frames sent within one batch reach the receiver in one write
+            for x in range(5):
+                a.pos(SHOP, x, 1)
+            await asyncio.sleep(wire.BATCH * 3)
+            data = await asyncio.wait_for(b.reader.read(4096), 2)
+            self.assertEqual(len(data), 5 * (2 + 3 + wire.POS_BODY.size))
+            a.close()
+            b.close()
+        self.run_relay(test)
+
+    def test_nearest_are_shown(self) -> None:
+        async def test(port: int, relay: wire.Relay) -> None:
+            viewer, near, middle, far = (FakeClient(port) for _ in range(4))
+            for client, slot in ((viewer, "V"), (near, "N"), (middle, "M"), (far, "F")):
+                await client.join("secret1", slot)
+            viewer.pos(SHOP, 0, 0)
+            await asyncio.sleep(0.05)
+            far.pos(SHOP, 9, 0)
+            middle.pos(SHOP, 5, 0)
+            await asyncio.sleep(0.05)
+            near.pos(SHOP, 1, 0)  # the viewer is shown 2 players already: the third waits for choose()
+            got = frames(await viewer.collect())
+            self.assertEqual({p for p, _, _ in got}, {far.id, middle.id})
+            await asyncio.sleep(0.05)
+            relay.choose()
+            got = await viewer.collect()
+            self.assertEqual(offs(got), [(far.id, wire.OFF_AREA)])
+            self.assertEqual(frames(got), [(near.id, 1, 0)])
+            # a shown player stays unless another is KEEP_MARGIN nearer
+            far.pos(SHOP, 4.5, 0)
+            await asyncio.sleep(0.05)
+            relay.choose()
+            self.assertEqual(offs(await viewer.collect()), [])
+            far.pos(SHOP, 2, 0)
+            await asyncio.sleep(0.05)
+            relay.choose()
+            self.assertEqual(offs(await viewer.collect()), [(middle.id, wire.OFF_AREA)])
+            for client in (viewer, near, middle, far):
+                client.close()
+        shown = wire.MAX_SHOWN
+        wire.MAX_SHOWN = 2
+        try:
+            self.run_relay(test)
+        finally:
+            wire.MAX_SHOWN = shown
+
     def test_silent_member_is_hidden(self) -> None:
         async def test(port: int, relay: wire.Relay) -> None:
             a, b = FakeClient(port), FakeClient(port)
