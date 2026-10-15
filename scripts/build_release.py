@@ -11,6 +11,7 @@ import hashlib
 import importlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -21,6 +22,9 @@ ROOT = Path(__file__).resolve().parent.parent
 PATCHER = ROOT / "patcher"
 AP = ROOT / "vendor" / "Archipelago"
 AP_PYTHON = ROOT / ".venv-ap" / "Scripts" / "python.exe"
+if not AP_PYTHON.exists():  # a worktree uses the main checkout's venv (TESTING.md, "Working in a worktree")
+    AP_PYTHON = Path(subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=ROOT,
+                                    capture_output=True, text=True).stdout.strip()).parent / ".venv-ap" / "Scripts" / "python.exe"
 BUILD = ROOT / "build" / "release"
 GAME = "Links Awakening Switch"
 PREFIX = "las/patcher/"  # install.py PATCHER_PREFIX
@@ -61,10 +65,19 @@ def patcher_files() -> dict:
     return files
 
 
-def run_ap(code: str) -> None:
+def run_ap(code: str) -> set:
+    """Runs code in vendor/Archipelago and returns the other worlds that failed to load there; their tracebacks are
+    not printed, as the release needs only this world. On any other failure it prints Archipelago's output."""
     env = dict(os.environ, SKIP_REQUIREMENTS_UPDATE="1")
     prelude = "import sys; sys.path.insert(0, '.'); import ModuleUpdate; ModuleUpdate.update_ran = True\n"
-    subprocess.run([str(AP_PYTHON), "-c", prelude + code], cwd=AP, env=env, check=True)
+    result = subprocess.run([str(AP_PYTHON), "-c", prelude + code], cwd=AP, env=env, capture_output=True, text=True,
+                            encoding="utf-8", errors="replace")
+    output = result.stdout + result.stderr
+    failed = set(re.findall(r"Could not load world WorldSource\((\w+),", output))
+    if result.returncode or "las" in failed:
+        print(output)
+        sys.exit("Archipelago failed: " + code[:80])
+    return failed
 
 
 def main() -> None:
@@ -78,8 +91,8 @@ def main() -> None:
     release = BUILD / f"LASAP-{manifest['world_version']}"
     shutil.rmtree(release, ignore_errors=True)
     release.mkdir(parents=True)
-    run_ap(f"import runpy; sys.argv = ['Launcher.py', 'Build APWorlds', '--', {GAME!r}, '--skip_open_folder']; "
-           "runpy.run_path('Launcher.py', run_name='__main__')")
+    skipped = run_ap(f"import runpy; sys.argv = ['Launcher.py', 'Build APWorlds', '--', {GAME!r}, "
+                     "'--skip_open_folder']; runpy.run_path('Launcher.py', run_name='__main__')")
     apworld = release / "las.apworld"
     shutil.copyfile(AP / "build" / "apworlds" / "las.apworld", apworld)
     with zipfile.ZipFile(apworld, "a", zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
@@ -89,9 +102,11 @@ def main() -> None:
 
     templates = BUILD / "templates"
     shutil.rmtree(templates, ignore_errors=True)
-    run_ap(f"import Options; Options.generate_yaml_templates({str(templates)!r}, False)")
+    skipped |= run_ap(f"import Options; Options.generate_yaml_templates({str(templates)!r}, False)")
     shutil.copyfile(templates / f"{GAME}.yaml", release / f"{GAME}.yaml")
     size = apworld.stat().st_size / 1e6
+    if skipped:
+        print(f"Skipped other worlds that do not load in vendor/Archipelago: {', '.join(sorted(skipped))}")
     print(f"Release written to {release} (las.apworld {size:.1f} MB, patcher build {build_id})")
 
 
