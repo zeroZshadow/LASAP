@@ -298,3 +298,10 @@ EntityManager_ptr 0x0a1cad98 l +0x6d8 u8 flushing
 ResourceManager_ptr 0x0a1cadb8 l
 FrameDelta 0x0a1cae88 l time units per update (blend progress)
 EffectManager_ptr 0x0a1d2f58 l EffectManager (0x228 bytes): *mgr is the nn::vfx::System
+ui2d_TextBox_AllocateStringBuffer 0x096763c0 f vtable +0xe8 (text box, gfx device, length): +0xf0 with the draw buffer's length the same
+ui2d_TextBox_AllocateStringBuffer2 0x096763d0 f vtable +0xf0 (text box, gfx device, length, drawn length): frees and allocates the string (+0xd8, capacity +0x110) and draw buffers
+ui2d_TextBox_FreeStringBuffer 0x096765a0 f vtable +0xf8
+ui2d_TextBox_SetString16 0x09676620 f (text box, const char16_t*, u16 index): cuts the string at the capacity
+Graphics_ptr 0x0a1ccb30 l the graphics object (200 bytes): +8 points at the gfx device
+GraphicsSystem_Init 0x0951d4c0 f (system, config): swap chain, display layer, VsyncWatcher_Init at +0x8168
+VsyncWatcher_Init 0x095450d0 f (watcher, system): the display's vsync event and a thread that signals a light event and counts each vsync

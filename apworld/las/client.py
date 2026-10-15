@@ -73,6 +73,16 @@ class LASCommandProcessor(ClientCommandProcessor):
         logger.info(f"{link.status.text or link.waiting_for()} Relay {link.address or '(none)'}, "
                     f"{link.sent_frames} frames sent, {link.received_frames} received, ghost slots {link.ghosts}.")
 
+    def _cmd_ghostnames(self, value: str = "") -> None:
+        """Show whether name tags show over the ghosts, or turn them on or off: /ghostnames on|off."""
+        ctx = self.ctx
+        if value:
+            if value.lower() not in ("on", "off"):
+                logger.error("Usage: /ghostnames [on|off]")
+                return
+            ctx.set_ghost_names(value.lower() == "on")
+        logger.info(f"Ghost name tags are {'on' if ctx.ghost_names_on() else 'off'}.")
+
     def _cmd_resync(self) -> None:
         """Ask the game to resend its received-item count and collected locations."""
         self.ctx.send_game("SYNC")
@@ -567,6 +577,20 @@ class LASContext(CommonContext):
         self.update_ghosts()
         self.refresh_patch_tab()
 
+    @staticmethod
+    def ghost_names_on() -> bool:
+        from . import LASWorld
+        return bool(LASWorld.settings.ghost_names)
+
+    def set_ghost_names(self, on: bool) -> None:
+        import settings
+        from . import LASWorld
+        if self.ghost_names_on() == on:
+            return
+        LASWorld.settings.ghost_names = on
+        settings.get_settings().save()
+        self.ghosts.set_names(on)
+
     def update_ghosts(self) -> None:
         """Hands the ghost link its settings, the multiworld's ghost secret (from the patch file) and the slot; it
         reconnects when they change. The relay is the client's setting, else the one the patch file was made with."""
@@ -583,6 +607,7 @@ class LASContext(CommonContext):
         if secret is None:
             secret = str(patch.get("ghost_secret", ""))
         self.ghosts.configure(bool(options.ghosts), address, secret, slot, player)
+        self.ghosts.set_names(bool(options.ghost_names))
 
     @property
     def ghost_status(self) -> checklist.Check:

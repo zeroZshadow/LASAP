@@ -54,6 +54,7 @@ namespace {
     };
 
     bool g_Wanted = false;  // the client relays positions (GHOSTS 1)
+    bool g_Names = true;    // name tags over the ghosts (GHOSTNAMES 1)
     Sample g_Sent;
     bool g_SentAny = false;
     u64 g_SentAt = 0;
@@ -255,6 +256,7 @@ namespace AP::GhostNet {
 
     void Reset() {
         g_Wanted = false;
+        g_Names = true;
         g_SentAny = false;
         for (auto& ghost : g_Ghosts) ghost.active = false;
     }
@@ -280,6 +282,11 @@ namespace AP::GhostNet {
             if (!g_Wanted) {
                 for (auto& ghost : g_Ghosts) ghost.active = false;
             }
+            return;
+        }
+        if (a[0] == "GHOSTNAMES" && a.size() >= 2) {
+            // GHOSTNAMES 1|0: whether name tags show over the ghosts
+            g_Names = a[1] == "1";
             return;
         }
         if (a[0] != "GHOST" || a.size() < 3) return;
@@ -330,6 +337,10 @@ namespace AP::GhostNet {
         return g_Ghosts[n];
     }
 
+    bool ShowNames() {
+        return g_Names;
+    }
+
     Anim LinkAnim() {
         return g_Anim;
     }
@@ -347,7 +358,7 @@ namespace AP::GhostNet {
     }
 
     std::string State() {
-        std::string s = "GHOSTNET wanted=" + std::to_string(g_Wanted) + " pos=" + std::to_string(g_PosLines) +
+        std::string s = "GHOSTNET wanted=" + std::to_string(g_Wanted) + " names=" + std::to_string(g_Names) + " pos=" + std::to_string(g_PosLines) +
                         " ghostlines=" + std::to_string(g_GhostLines) + " handle_us=" + std::to_string(g_HandleTicks * 10 / 192) +
                         " last=" + g_LastPos;
         for (int n = 0; n < SLOTS; n++) {

@@ -349,6 +349,19 @@ class TestGhostLink(unittest.TestCase):
 
 
 class TestGhostSecret(unittest.TestCase):
+    def test_name_tags_switch(self) -> None:
+        from ..ghosts import GhostLink
+
+        lines: List[str] = []
+        link = GhostLink(lines.append)
+        link.set_names(False)
+        self.assertEqual(lines, [])  # no game yet: it gets the switch when it connects
+        link.on_game_connected()
+        self.assertEqual(lines, ["GHOSTS 0", "GHOSTNAMES 0"])
+        link.set_names(True)
+        link.set_names(True)
+        self.assertEqual(lines[2:], ["GHOSTNAMES 1"])
+
     def test_one_secret_per_multiworld(self) -> None:
         from test.general import setup_multiworld
         from worlds.AutoWorld import AutoWorldRegister

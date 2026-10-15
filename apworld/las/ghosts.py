@@ -66,6 +66,7 @@ class GhostLink:
         self.secret = ""
         self.slot = ""
         self.player = ""
+        self.names = True  # name tags over the ghosts in the game
         self.game_connected = False
         self.status = checklist.Check(checklist.INFO, "")
         self.writer: Optional[asyncio.StreamWriter] = None
@@ -91,6 +92,12 @@ class GhostLink:
         self.drop()
         self.wake.set()
 
+    def set_names(self, on: bool) -> None:
+        if on != self.names:
+            self.names = on
+            if self.game_connected:
+                self.send_game(f"GHOSTNAMES {int(on)}")
+
     def set_status(self, level: str, text: str) -> None:
         if (level, text) != (self.status.level, self.status.text):
             self.status = checklist.Check(level, text)
@@ -113,6 +120,7 @@ class GhostLink:
     def on_game_connected(self) -> None:
         self.game_connected = True
         self.send_game(f"GHOSTS {int(self.joined)}")
+        self.send_game(f"GHOSTNAMES {int(self.names)}")
         for n, player_id in enumerate(self.ghosts):
             if player_id is not None:
                 self.send_game(f"GHOST {n} off")

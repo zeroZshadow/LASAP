@@ -171,9 +171,11 @@ namespace AP::GhostNet {
     u32 LinkLook();
     // The name of an anim id (PlayerAnimation.gsheet's fileName, the FSKA in Link's model), or nullptr.
     const char* AnimName(int anim);
-    // A new client connection: no positions until it asks, no ghosts.
+    // A new client connection: no positions until it asks, no ghosts, name tags on.
     void Reset();
-    // A GHOSTS or GHOST line from the client.
+    // Whether the client wants name tags over the ghosts (GHOSTNAMES).
+    bool ShowNames();
+    // A GHOSTS, GHOSTNAMES or GHOST line from the client.
     void HandleLine(const std::string& line);
     const Ghost& Get(int n);
     // DBG ghostnet: what was sent and what each slot holds.
@@ -182,15 +184,16 @@ namespace AP::GhostNet {
 
 // Multiplayer ghosts, the puppets (ap_puppet.cpp): each ghost slot shown as an NPC drawn with Link's model.
 namespace Game { struct Vec3; }
-// The ghosts' name tags (ap_nametag.cpp): ghost slot n's slot name in a bubble over a world position.
+// The ghosts' name tags (ap_nametag.cpp): ghost slot n's slot name in a small window over a world position.
 namespace AP::NameTag {
     // Shows the tag over that point (hidden while it is behind the camera or off screen).
     void Show(int n, const Game::Vec3& head, const std::string& name);
     void Hide(int n);
     // While a level loads: the tags are built again in the next.
     void DropAll();
-    // DBG puppet tagstyle: the tags' scale, alpha and height above the point (layout units); built again.
-    void Style(float scale, int alpha, float raise);
+    // DBG puppet tagstyle: the tags' scale, the text's and the window's alpha, the height above the point and the
+    // window's margins around the text (layout units); built again.
+    void Style(float scale, int alpha, int backAlpha, float raise, float padX, float padY);
     // STATE's tags=: per slot "-" none, "h" hidden, "g" shown while the font draws the name's glyphs, "d" drawn.
     std::string State();
 }

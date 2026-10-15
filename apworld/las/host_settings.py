@@ -79,6 +79,9 @@ class LASSettings(settings.Group):
         """Show the multiworld's other Link's Awakening players as ghosts where you are, and show them you. Needs a
         ghost relay."""
 
+    class GhostNames(settings.Bool):
+        """Show each nearby ghost's slot name over its head."""
+
     class GhostRelay(str):
         """The ghost relay, host:port. Generating writes it into each LAS patch file; the client uses it, or when it
         is empty the patch file's. With neither: no ghosts."""
@@ -91,6 +94,7 @@ class LASSettings(settings.Group):
     patcher_command: PatcherCommand = PatcherCommand("")
     game_host: GameHost = GameHost("127.0.0.1")
     ghosts: Union[Ghosts, bool] = True
+    ghost_names: Union[GhostNames, bool] = True
     ghost_relay: GhostRelay = GhostRelay("")
 
     # Player settings (PLAYER_SETTINGS): the Patch tab's look and sound settings, for every seed.

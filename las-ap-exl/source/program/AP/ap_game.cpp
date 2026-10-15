@@ -911,7 +911,7 @@ namespace {
         } else if (a[0] == "NOTICE" && a.size() >= 2) {
             // NOTICE <text>: a toast in the autosave popup; '|' starts a new line
             QueueNotice(RestAfter(line, 1));
-        } else if (a[0] == "GHOST" || a[0] == "GHOSTS") {
+        } else if (a[0] == "GHOST" || a[0] == "GHOSTS" || a[0] == "GHOSTNAMES") {
             AP::GhostNet::HandleLine(line);
         } else if (a[0] == "MSG") {
             Logging.Log("[AP] " + line.substr(4));

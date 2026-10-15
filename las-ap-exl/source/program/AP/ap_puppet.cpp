@@ -134,13 +134,17 @@ namespace {
     // sender's clock maps to this one by the least delay seen, drifting up slowly, so a line that arrives late waits
     // less instead of moving the ghost faster. Past the newest frame it goes on along the last segment for up to
     // kExtrapolateMs, unless that frame stood still, then holds. A warped frame is jumped to at its time. A frame more
-    // than kResetMs behind the newest starts a new timeline.
+    // than kResetMs behind the newest starts a new timeline. When new lines move the replay's position (the sender
+    // turned or stopped while the replay ran on past its newest line), the puppet does not jump: the difference is
+    // added to where it shows and fades out with the time constant kCorrectMs (unless it is over kCorrectMax units).
     constexpr int kTrack = 32;
-    constexpr double kExtrapolateMs = 100, kOffsetRise = 0.02;
+    constexpr double kExtrapolateMs = 100, kOffsetRise = 0.02, kCorrectMs = 100;
+    constexpr float kCorrectMax = 2;
     constexpr s64 kResetMs = 1000;
-    // Two frames: what the player does shows almost at once; between the lines (20 a second while moving) the
-    // position mostly runs on along the last segment.
-    double g_BufferMs = 33;  // DBG puppet buffer
+    // Two lines' time (20 a second while moving), so the next line has mostly arrived when the replay needs it: a
+    // shorter buffer runs on past the newest line and corrects when the next one comes in, which shows as jerks
+    // (2026-10-15, 30 ghosts: per-frame speed spread 1.06 at 33 ms, 0.31 at 66, 0.24 at 100).
+    double g_BufferMs = 100;  // DBG puppet buffer
     using Frame = AP::GhostNet::Frame;
     struct Track {
         Frame frames[kTrack];  // newest at frames[(count - 1) % kTrack]
@@ -150,6 +154,8 @@ namespace {
         int anim = -1;         // the sender's animation id playing, -1: none played yet
         u32 started = ~0u;     // the frame (count) whose animation start was played last
         Game::Vec3 pos{};
+        Game::Vec3 error{};    // added to the replay's position, fading out (kCorrectMs)
+        u32 replayed = 0;      // count at the last frame
         double lastNow = 0;
         float moved[60] = {};  // speed in each of the last 60 frames (DBG puppet: smoothness)
         u32 shownFrames = 0;
@@ -231,17 +237,21 @@ namespace {
     // Crowds. Each shape a ghost draws costs a draw call in each of two render passes, and on an emulator the draw
     // calls limit the frame rate (2026-10-15, Ryubing: 60 fps up to about 120 ghost shapes a pass, whatever their
     // size; a ghost in its usual look draws about 6). The nearest ghosts draw their whole look, the next ones only
-    // kCrowdShapes (hat, tunic, hair and skin), the farthest none. How many of each follows the frame rate: down by a
+    // kCrowdShapes (hat, face, tunic, hair and skin), the farthest none. How many of each follows the frame rate: down by a
     // quarter after a second under kSlowFps, up by one after kRaiseMs at kSteadyFps or more, but back to a count that
     // was too slow only after kRetryMs. The kMinWhole nearest are always whole and the kMinDrawn nearest always drawn
     // (the game's own slow moments, as after a level load, which kSettleMs skips, are no reason to hide a few).
-    constexpr u32 kCrowdShapes = (1u << 3) | (1u << 5) | (1u << 11);
+    // Ranked by distance, less g_KeepMargin per step of detail a ghost has: one near a limit keeps its detail until
+    // another is that much nearer, so ghosts walking about at about the same distance do not switch back and forth.
+    constexpr u32 kCrowdShapes = (1u << 3) | (1u << 4) | (1u << 5) | (1u << 11);
     constexpr float kSlowFps = 55, kSteadyFps = 59;
     constexpr u64 kRaiseMs = 3000, kRetryMs = 30000, kSettleMs = 3000;
     constexpr int kMinWhole = 6, kMinDrawn = 16;
     int g_FullLimit = 8;         // ghosts drawn whole
     int g_DrawnLimit = kGhosts;  // ghosts drawn at all
     u32 g_CrowdMask = kCrowdShapes;
+    float g_KeepMargin = 2;      // DBG puppet keep
+    u32 g_DetailChanges = 0;     // DBG puppet: ghosts' detail changed by Rank
     bool g_Adapt = true;         // DBG puppet lod <full> <drawn> fixes the limits, lod auto adapts them again
     u64 g_FpsStart = 0, g_LastChange = 0, g_TooSlowAt = 0, g_SettleUntil = 0;
     int g_TooSlowFull = kGhosts + 1, g_TooSlowDrawn = kGhosts + 1;  // the counts last found too slow
@@ -506,9 +516,59 @@ namespace {
 
     Game::Vec3 PosOf(const Frame& f) { return Game::Vec3{f.x, f.y, f.z}; }
 
+#ifdef LASAP_TEST
+    // DBG puppet trace <slot>: the next kTraceRows replay frames of that ghost slot (DBG puppet tracedump)
+    // and, per frame, how many ghosts ran past their newest line (extrapolating, or holding it)
+    struct TraceRow { double now, t; s64 at; u32 a, count; char mode; float x, z; int past, held, lines; };
+    constexpr u32 kTraceRows = 180;
+    TraceRow g_Trace[kTraceRows];
+    TraceRow g_TraceNext{};
+    u32 g_TraceCount = 0;
+    int g_TraceSlot = -1, g_Past = 0, g_Held = 0;
+    u32 g_LinesSeen = 0;  // GHOST lines of all slots, at the last frame
+#endif
+
     // a + (b - a) * t
     Game::Vec3 Along(const Frame& a, const Frame& b, float t) {
         return Game::Vec3{a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t};
+    }
+
+    // The replay at time t from the track's first count frames: the position, the speed, the frame at or before t and
+    // how it was found ('i' between two frames, 'e' on past the last, 'h' holding the last, 'b' before them all).
+    struct Replayed {
+        Game::Vec3 pos;
+        float speed = 0;
+        u32 a = 0;
+        char mode = 'b';
+    };
+    Replayed ReplayAt(const Track& tr, double t, u32 count) {
+        Replayed r;
+        u32 oldest = tr.count > kTrack ? tr.count - kTrack : 0;
+        // the last frame at or before t (the oldest while t is before them all)
+        r.a = count - 1;
+        while (r.a > oldest && static_cast<double>(tr.frames[r.a % kTrack].timeMs) > t) r.a--;
+        const Frame& fa = tr.frames[r.a % kTrack];
+        r.pos = PosOf(fa);
+        if (static_cast<double>(fa.timeMs) > t) return r;
+        r.mode = 'h';
+        if (r.a + 1 < count) {
+            r.mode = 'i';
+            const Frame& fb = tr.frames[(r.a + 1) % kTrack];
+            float span = static_cast<float>(fb.timeMs - fa.timeMs);
+            if (!(fb.flags & kFlagWarped) && span > 0) {
+                r.pos = Along(fa, fb, static_cast<float>(t - fa.timeMs) / span);
+                r.speed = std::hypot(fb.x - fa.x, fb.z - fa.z) * 1000 / span;
+            }
+        } else if (!(fa.flags & (kFlagStill | kFlagWarped)) && r.a > oldest && t - fa.timeMs < kExtrapolateMs) {
+            const Frame& fp = tr.frames[(r.a - 1) % kTrack];
+            float span = static_cast<float>(fa.timeMs - fp.timeMs);
+            if (span > 0) {
+                r.mode = 'e';
+                r.pos = Along(fp, fa, 1 + static_cast<float>(t - fa.timeMs) / span);
+                r.speed = std::hypot(fa.x - fp.x, fa.z - fp.z) * 1000 / span;
+            }
+        }
+        return r;
     }
 
     // One frame of the replay; picks the animation from the speed.
@@ -516,35 +576,36 @@ namespace {
         Track& tr = p.track;
         if (tr.count == 0) return;
         double t = now - tr.offset - g_BufferMs;
+        Replayed r = ReplayAt(tr, t, tr.count);
         u32 oldest = tr.count > kTrack ? tr.count - kTrack : 0;
-        // the last frame at or before t (the oldest while t is before them all)
-        u32 a = tr.count - 1;
-        while (a > oldest && static_cast<double>(tr.frames[a % kTrack].timeMs) > t) a--;
-        const Frame& fa = tr.frames[a % kTrack];
-        Game::Vec3 pos = PosOf(fa);
-        float speed = 0;
-        if (static_cast<double>(fa.timeMs) <= t) {
-            if (a + 1 < tr.count) {
-                const Frame& fb = tr.frames[(a + 1) % kTrack];
-                float span = static_cast<float>(fb.timeMs - fa.timeMs);
-                if (!(fb.flags & kFlagWarped) && span > 0) {
-                    pos = Along(fa, fb, static_cast<float>(t - fa.timeMs) / span);
-                    speed = std::hypot(fb.x - fa.x, fb.z - fa.z) * 1000 / span;
-                }
-            } else if (!(fa.flags & (kFlagStill | kFlagWarped)) && a > oldest && t - fa.timeMs < kExtrapolateMs) {
-                const Frame& fp = tr.frames[(a - 1) % kTrack];
-                float span = static_cast<float>(fa.timeMs - fp.timeMs);
-                if (span > 0) {
-                    pos = Along(fp, fa, 1 + static_cast<float>(t - fa.timeMs) / span);
-                    speed = std::hypot(fa.x - fp.x, fa.z - fp.z) * 1000 / span;
-                }
-            }
+        if (tr.replayed > oldest && tr.replayed < tr.count) {
+            // new lines: where the replay had the puppet without them, less where it has it now
+            bool warped = false;
+            for (u32 k = tr.replayed; k < tr.count; k++) warped |= (tr.frames[k % kTrack].flags & kFlagWarped) != 0;
+            Game::Vec3 was = ReplayAt(tr, t, tr.replayed).pos;
+            if (!warped) tr.error = Game::Vec3{tr.error.x + was.x - r.pos.x, tr.error.y + was.y - r.pos.y,
+                                               tr.error.z + was.z - r.pos.z};
+            else tr.error = Game::Vec3{};
         }
+        tr.replayed = tr.count;
         double dt = now - tr.lastNow;
+        float fade = tr.shownFrames > 0 && dt > 0 ? static_cast<float>(std::exp(-dt / kCorrectMs)) : 0;
+        tr.error = Game::Vec3{tr.error.x * fade, tr.error.y * fade, tr.error.z * fade};
+        if (std::fabs(tr.error.x) + std::fabs(tr.error.y) + std::fabs(tr.error.z) > kCorrectMax) tr.error = Game::Vec3{};
+        Game::Vec3 pos{r.pos.x + tr.error.x, r.pos.y + tr.error.y, r.pos.z + tr.error.z};
+        const Frame& fa = tr.frames[r.a % kTrack];
+        u32 a = r.a;
+        float speed = r.speed;
+        [[maybe_unused]] char mode = r.mode;
         if (tr.shownFrames > 0 && dt > 0)
             tr.moved[tr.shownFrames % 60] = static_cast<float>(std::hypot(pos.x - tr.pos.x, pos.z - tr.pos.z) * 1000 / dt);
         tr.shownFrames++;
         tr.lastNow = now;
+#ifdef LASAP_TEST
+        if (mode == 'e') g_Past++;
+        if (mode == 'h' && !(fa.flags & kFlagStill)) g_Held++;
+        if (IndexOf(p) == g_TraceSlot) g_TraceNext = TraceRow{now, t, fa.timeMs, a, tr.count, mode, pos.x, pos.z, 0, 0, 0};
+#endif
         tr.pos = pos;
         Game::Vec4 q = QuatOf(fa.yaw * static_cast<float>(M_PI) / 180);
         Place(p, pos, &q);
@@ -853,7 +914,8 @@ namespace {
                         " buffer=" + std::to_string(static_cast<int>(g_BufferMs)) +
                         " blend=" + std::to_string(g_AnimBlend).substr(0, 6) +
                         " dithered=" + std::to_string(g_GhostDraws) + " remade=" + std::to_string(g_Remade) + " fps=" + std::to_string(static_cast<int>(g_Fps + 0.5f)) +
-                        " lod=" + std::to_string(g_FullLimit) + "/" + std::to_string(g_DrawnLimit) + (g_Adapt ? "" : "fixed");
+                        " lod=" + std::to_string(g_FullLimit) + "/" + std::to_string(g_DrawnLimit) + (g_Adapt ? "" : "fixed") +
+                        " changes=" + std::to_string(g_DetailChanges);
         u64 sum = 0, most = 0;
         for (u64 t : g_TickTicks) {
             sum += t;
@@ -1030,13 +1092,19 @@ namespace AP::Puppet {
         }
         if (player->playerCollision != nullptr) {
             const Game::Vec3 at = player->playerCollision->coordsNew.pos;
-            auto far = [&](int n) {
-                const Game::Vec3& p = g_Puppets[n].track.pos;
-                return (p.x - at.x) * (p.x - at.x) + (p.z - at.z) * (p.z - at.z);
-            };
-            std::sort(order, order + count, [&](int a, int b) { return far(a) < far(b); });
+            float key[kGhosts];
+            for (int i = 0; i < count; i++) {
+                const auto& p = g_Puppets[order[i]];
+                key[order[i]] = std::hypot(p.track.pos.x - at.x, p.track.pos.z - at.z) - g_KeepMargin * p.detail;
+            }
+            std::sort(order, order + count, [&](int a, int b) { return key[a] < key[b]; });
         }
-        for (int i = 0; i < count; i++) g_Puppets[order[i]].detail = i < g_FullLimit ? 2 : i < g_DrawnLimit ? 1 : 0;
+        for (int i = 0; i < count; i++) {
+            int& detail = g_Puppets[order[i]].detail;
+            int now = i < g_FullLimit ? 2 : i < g_DrawnLimit ? 1 : 0;
+            if (now != detail) g_DetailChanges++;
+            detail = now;
+        }
         Adapt(frame, now, count);
     }
 
@@ -1080,8 +1148,21 @@ namespace AP::Puppet {
         std::string level = LevelSystem::GetCurrentLevel();
         u64 now = NowMs();
         double nowFine = NowMsFine();
+#ifdef LASAP_TEST
+        g_Past = g_Held = 0;
+        g_TraceNext.now = 0;
+#endif
         for (int n = 0; n < kGhosts; n++) DriveGhost(n, level, frame, now, nowFine);
 #ifdef LASAP_TEST
+        if (g_TraceNext.now != 0 && g_TraceCount < kTraceRows) {
+            g_TraceNext.past = g_Past;
+            g_TraceNext.held = g_Held;
+            u32 lines = 0;
+            for (int n = 0; n < kGhosts; n++) lines += AP::GhostNet::Get(n).frames;
+            g_TraceNext.lines = static_cast<int>(lines - g_LinesSeen);
+            g_LinesSeen = lines;
+            g_Trace[g_TraceCount++] = g_TraceNext;
+        }
         DriveTest(frame, now, nowFine);
 #endif
         Rank(player, frame, now);
@@ -1091,7 +1172,7 @@ namespace AP::Puppet {
         // the name over the head of each ghost drawn whole (each tag's text costs draws too; the crowd limits count them)
         for (int n = 0; n < kGhosts; n++) {
             const auto& p = g_Puppets[n];
-            if (g_NameTags && p.shown && p.detail == 2 && p.model != nullptr && Alive(p)) {
+            if (g_NameTags && AP::GhostNet::ShowNames() && p.shown && p.detail == 2 && p.model != nullptr && Alive(p)) {
                 const Game::Vec3& at = p.track.pos;
                 AP::NameTag::Show(n, Game::Vec3{at.x, at.y + kTagHeight, at.z}, AP::GhostNet::Get(n).name);
             } else {
@@ -1158,6 +1239,9 @@ namespace AP::Puppet {
                 g_FullLimit = std::clamp(atoi(a[3].c_str()), 0, kGhosts);  // below the minimums: for measuring
                 g_DrawnLimit = std::clamp(atoi(a[4].c_str()), 0, kGhosts);
             }
+        } else if (sub == "keep" && a.size() >= 4) {
+            // DBG puppet keep <units>: the crowd ranking's margin for a ghost's present detail
+            g_KeepMargin = static_cast<float>(atof(a[3].c_str()));
         } else if (sub == "crowdshapes" && a.size() >= 4) {
             // DBG puppet crowdshapes <hex mask>: the shapes of ghosts drawn as part of a crowd
             g_CrowdMask = strtoul(a[3].c_str(), nullptr, 16);
@@ -1170,10 +1254,11 @@ namespace AP::Puppet {
         } else if (sub == "dither" && a.size() >= 4) {
             // DBG puppet dither on|off: the ghosts drawn with or without the dither state
             g_Dither = a[3] == "on";
-        } else if (sub == "tagstyle" && a.size() >= 6) {
-            // DBG puppet tagstyle <scale> <alpha 0-255> <raise>: the name tags' look
-            AP::NameTag::Style(static_cast<float>(atof(a[3].c_str())), atoi(a[4].c_str()),
-                               static_cast<float>(atof(a[5].c_str())));
+        } else if (sub == "tagstyle" && a.size() >= 9) {
+            // DBG puppet tagstyle <scale> <text alpha> <window alpha> <raise> <margin x> <margin y>: the tags' look
+            AP::NameTag::Style(static_cast<float>(atof(a[3].c_str())), atoi(a[4].c_str()), atoi(a[5].c_str()),
+                               static_cast<float>(atof(a[6].c_str())), static_cast<float>(atof(a[7].c_str())),
+                               static_cast<float>(atof(a[8].c_str())));
         } else if (sub == "tags" && a.size() >= 4) {
             // DBG puppet tags on|off: the ghosts' name tags
             g_NameTags = a[3] == "on";
@@ -1197,6 +1282,28 @@ namespace AP::Puppet {
                 q.animLog.clear();
             }
             AP::Send(line);
+            return true;
+        } else if (sub == "vsyncwait" && a.size() >= 4) {
+            // DBG puppet vsyncwait on|off: whether each frame ends by waiting for the next vsync (the graphics system,
+            // *(0x1cc8b30)[1], +0x8169: its vsync watcher runs; the frame's end then clears and waits for its event)
+            u8* graphics = *reinterpret_cast<u8**>(g_BaseAddress + 0x1cc8b30);
+            u8* system = graphics != nullptr ? *reinterpret_cast<u8**>(graphics + 8) : nullptr;
+            if (system != nullptr) system[0x8169] = a[3] == "on";
+        } else if (sub == "trace" && a.size() >= 4) {
+            // DBG puppet trace <slot>: records that ghost's next replay frames
+            g_TraceSlot = atoi(a[3].c_str());
+            g_TraceCount = 0;
+        } else if (sub == "tracedump") {
+            // DBG puppet tracedump: "TRACE <now ms> <replay time ms> <frame's time> <frame>/<frames> <mode> <x> <z> <past> <held> <lines>"
+            // per recorded frame
+            for (u32 i = 0; i < g_TraceCount; i++) {
+                const TraceRow& r = g_Trace[i];
+                char buf[96];
+                snprintf(buf, sizeof(buf), "TRACE %.2f %.2f %lld %u/%u %c %.3f %.3f %d %d %d", r.now, r.t,
+                         static_cast<long long>(r.at), r.a, r.count, r.mode, r.x, r.z, r.past, r.held, r.lines);
+                AP::Send(buf);
+            }
+            AP::Send("TRACE end");
             return true;
         } else if (sub == "drop") {
             // DBG puppet drop: removes DBG puppet's actor
