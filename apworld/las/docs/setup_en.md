@@ -90,3 +90,29 @@ without costing hint points. Hints read while the client is not connected reach 
 - **The client never connects to the game.** The game listens on TCP port 43384: run one modded game at a time, and
   turn the emulator's airplane mode off if it has one. Check the game address, and on a Switch, that the console and
   the computer are on the same network.
+- **The Patch tab says another client is connected to the game.** The game talks to one client at a time: close the
+  other Links Awakening Switch Client window.
+
+## Known issues
+
+- Some checks have not been played yet and may not reach the server: the owl statues' gifts (option Owl Statues), the
+  golden leaf of the guard Link bombs in Kanalet Castle, Dampé's rewards (Dampe), the fishing pond's rewards
+  (Fishing), the Rapids Ride (Rapids) and the Armos Knight's drop. If one gives nothing or the server does not mark it
+  checked, report it.
+- The game setting "Fishing line never breaks" (on by default) has not been fished with yet. If the line still breaks
+  or a fish behaves oddly, report it; you can turn the setting off in the Patch tab.
+- The game settings Music, Nice Hookshot and Blur Removal are not confirmed in play.
+- Windows only so far: Linux and macOS are untested, and so is a Switch.
+- Dungeon entrance shuffle is not available.
+
+## Reporting a problem
+
+Tell the person who gave you the world, with:
+
+- what happened, what you expected, and where (the area, or the check's name from the map or the server);
+- your slot name and the seed: the Patch tab's "Patch file" line names both;
+- the client's log: the newest `LASClient` file in Archipelago's `logs` folder (the Launcher's "Browse Files" opens
+  Archipelago's folder);
+- your emulator and its version, and the game settings you changed in the Patch tab;
+- a screenshot or a short video of anything you see in the game;
+- after a crash, the emulator's newest log file as well (Ryujinx: File, Open Logs Folder).
