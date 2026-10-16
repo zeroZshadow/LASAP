@@ -70,15 +70,6 @@ PLACEHOLDER_ITEM_ID = 71  # must match AP::PLACEHOLDER_ITEM_ID in the exlaunch m
 # Dampe and shop dummies take 63-70, its traps 127-131 and its trade items 200-202), and the module counts them as the
 # placeholder (AP::IsPlaceholderItem). Item ids are a byte; the item-get treats all of these like the placeholder.
 VARIANT_ITEM_IDS = [*range(PLACEHOLDER_ITEM_ID + 1, 100), 103, 107, 109, 118, 119, *range(132, 200), *range(203, 256)]
-# Item actors hide while the inventory bit of their parameters[0] is set: ItemHeartPiece checks the heart piece bits,
-# ItemSlimeKey (LASR's static seashells) the seashell bits. The index must be unique per actor type. Received items
-# take the lowest free bit below the game's count (32 heart pieces, 50 seashells; kHeartPieceBits and kSeashellBits in
-# the module), so the randomized actors get indices above that. LASR's misc items already use heart piece 51-54.
-ACTOR_INDICES = {
-    0xB0: [i for i in range(32, 64) if not 50 <= i <= 54],  # ItemHeartPiece
-    0x8A: list(range(50, 64)),  # ItemSlimeKey
-}
-_actor_index: dict = {}
 RECV_FLAG_BITS = 16
 PLACEHOLDER_TEXT = "You found an [COLOR_SKYBLUE]Archipelago item[COLOR_WHITE]!"
 # The exlaunch module replaces both texts at runtime with the item and player names (AP::FOUND_LABEL, AP::RECEIVED_LABEL).
@@ -332,8 +323,7 @@ def _fishing_spots(self, mod_generator) -> None:
 
 
 def _write_file(self, file_name: str, data) -> None:
-    """Randomized heart piece and seashell actors show by their location flag alone. The Archipelago model gets an
-    Npc entry, which the item-get shows."""
+    """The Archipelago model gets an Npc entry, which the item-get shows."""
     # Once: the sheet is written again after LASR's run (ap_ghost).
     if file_name == "Npc.gsheet" and not any(row["symbol"] == PLACEHOLDER_DEF["npc-key"] for row in data["values"]):
         # Parsed before appending: appending to the sheet invalidates references to its rows.
@@ -342,15 +332,6 @@ def _write_file(self, file_name: str, data) -> None:
         source["graphics"]["path"] = ap_model.FILE_NAME
         source["graphics"]["model"] = ap_model.MODEL_NAME
         data["values"].append(dictToStruct(source))
-    if file_name.endswith("leb"):
-        for actor in data.actors:
-            free = ACTOR_INDICES.get(actor.type)
-            if (free is not None and actor.parameters[4] not in (b"", 0)
-                    and isinstance(actor.parameters[0], int) and actor.parameters[0] < 50):
-                key = (actor.type, actor.parameters[3])
-                if key not in _actor_index:
-                    _actor_index[key] = free[sum(1 for t, _ in _actor_index if t == actor.type)]
-                actor.parameters[0] = _actor_index[key]
     _original_write_file(self, file_name, data)
 
 

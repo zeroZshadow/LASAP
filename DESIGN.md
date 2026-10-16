@@ -10,7 +10,7 @@ How the pieces fit and the contracts between them. FEASIBILITY.md covers the bac
 | `patcher/` | Builds the romfs/exefs mod from an AP patch file; derived from LASR (MIT) | Python: pure Python plus `bsdiff4` for patching (`requirements.txt`); oead, quicktex and Pillow only to build the assets (`requirements-assets.txt`) |
 | `las-ap-exl/` | exlaunch module (subsdk9) derived from Owen-Splat/exlaunch (GPL-2.0) | C++, Docker `devkitpro/devkita64` |
 
-The module runs LASR's hooks and its code patches (`patches.hpp`), except two of LASR's fixes (`lasrOnlyFixes`): the `CompareInt` event rewrite, which only LASR's own keysanity chest flows use, and item actors spawning by actor switch, which would undo the inventory-bit hiding of heart piece and seashell actors.
+The module runs LASR's hooks and its code patches (`patches.hpp`), except LASR's `CompareInt` event rewrite (`lasrOnlyFixes`), which only LASR's own keysanity chest flows use.
 
 Flow:
 1. AP generates a multiworld. The world writes `AP_<seed>_P<n>_<slot>.aplas` (the patch file).
@@ -75,7 +75,7 @@ The module patches and hooks the game's code at boot, after an emulator may alre
 - The Archipelago model is six balls in the logo's colors. The patcher builds it from the player's Seashell Sensor model (`patcher/ap_model.py`) and writes it as `ItemArchipelago.bfres`, with its own Npc entry, `ItemArchipelago`.
 - Indexed items (heart pieces, seashells, golden leaves, heart containers, bottles) are counted by inventory bits: collecting one sets the bit of its source (its vanilla index, `index` in `logic.yml`), and the count is the number of bits set. A bottle's bit is its slot (`Bottle0`..`Bottle2`); one added with index -1 sets no bit and the player has no bottle. The patcher writes `config/lasr-exl/ap_indices.txt`: per source its kind (`S`, `H`, `L`, `C`, `B`), its bit and the local id of its location when shuffled, else -1. A received item takes the lowest bit that is free and that no vanilla source of the seed sets, so a vanilla source collected later still counts. Received heart pieces stay below index 32 and seashells below 50, the game's totals.
 - The Memories map marks heart piece and seashell bit i at the vanilla place of source i (rows of `UiMemoryHearts.gsheet` and `UiMemoryShells.gsheet`). Received items hold the bits of shuffled sources, so the module (`ap_memory.cpp`) marks source i once it is done instead: a vanilla source by its bit, a shuffled one by its location's check.
-- Item actors hide themselves while the inventory bit of their index (`parameters[0]`) is set: `ItemHeartPiece` checks the heart piece bits, `ItemSlimeKey` (LASR's static seashells) the seashell bits. The index must be unique within a level. LASR gives every heart piece and seashell actor a flag, shuffled or not, and the patcher gives each of these actors its own index above the received range (LASR's converted misc items keep heart piece 51–54), so their visibility depends only on LASR's flag.
+- Item actors show by their flag or actor switch alone, as in LASR: LASR's code patch in `randoFixes` stops the game's inventory check (`ItemActor_CanAppear`, TESTING.md), which hides an item actor while the player has its item, by index for heart pieces, seashells and golden leaves and by the item alone for the others. LASR gives every heart piece and seashell actor a flag, shuffled or not; its dig items are `ItemSlimeKey` actors, which the check hid once the Slime Key was owned. Received heart pieces and seashells therefore never hide an actor.
 
 ## IDs
 

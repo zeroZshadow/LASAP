@@ -49,7 +49,7 @@ LevelManager_LevelJump 0x08d68d50 f (mgr, StringView* level, StringView* locator
 LevelManager_WarpInLevel 0x08d694d0 f (mgr, StringView* locator, Vec2* offset, int): jump within the current level
 SetGameState 0x08d7f780 f (state machine, u32 state, bool): 4 reloads from the save, 1 quit, 5 ending; hooked by the module
 Title_ChangeState 0x08d831b0 f (machine*, state)
-ItemActor_CanAppear 0x08dc8510 f (actor): false when +0xc0 == 3 and Inventory_HasItem(+0x2e8 item, 1, +0xbc index)
+ItemActor_CanAppear 0x08dc8510 f (actor): when vtable +0x3e0 holds, false while Inventory_HasItem(+0x2e8 item, 1, +0xbc index if +0xc0 == 3 else -1); the call at +0x8c45b8 is LASR's patch site
 Npc_TraitsValue 0x08dcb490 f (npc component): a float of the row's collision.traits row in NpcPhysicsTraits, default without
 Inventory_AddItemID 0x08dd48e0 f (itemId, count, index); hooked by the module. Case 114 sets the chamber stone bit
 Inventory_HasItem 0x08dd5a30 f (itemId, count, index): 114 tests chamber stone bit index; the item actors' collected check

@@ -105,13 +105,18 @@ void randoFixes() {
     // we will then set the actor switch in its place
     p.Seek(offset_manager.Offset(0x856e4));
     p.WriteInst(inst::Nop());
+
+    // item actors ignore inventory for spawn condition
+    // this works by forcing the condition to false, making it use the actor switch flag instead
+    // (ItemActor_CanAppear's Inventory_HasItem(item, 1, index): without it, LASR's dig items, ItemSlimeKey actors,
+    // hide while the Slime Key is owned, and Kiki's stick and the honeycomb while that trade item is held)
+    p.Seek(offset_manager.Offset(0x8c45b8));
+    p.WriteInst(inst::Movz(reg::W0, 0));
 }
 
-// LASR patches that Archipelago does not apply:
-// - CompareInt: LASR's keysanity chest flows use it for dungeon items LASR places itself. Every shuffled dungeon item
-//   is an Archipelago item here, so the flows never run, and the rewrite would change the event action game-wide.
-// - Item actor spawn: heart piece and seashell actors hide by their inventory bit, which the patcher gives each one
-//   (DESIGN.md, item model); this patch would make them use their actor switch instead.
+// LASR patch that Archipelago does not apply: the CompareInt rewrite. LASR's keysanity chest flows use it for dungeon
+// items LASR places itself. Every shuffled dungeon item is an Archipelago item here, so the flows never run, and the
+// rewrite would change the event action game-wide.
 void lasrOnlyFixes() {
     // Rewrite FlowControl::CompareInt event to check if the values are equal
     // To match FlowControl::CompareString, it returns 0 if they are equal, 1 if not
@@ -119,11 +124,6 @@ void lasrOnlyFixes() {
     // The main purpose of this will be for Keysanity to know which dungeon text to display
     patch::CodePatcher p(offset_manager.Offset(0x8049d8));
     p.WriteInst(inst::Movz(reg::W8, 1));
-
-    // item actors ignore inventory for spawn condition
-    // this works by forcing the condition to false, making it use the actor switch flag instead
-    p.Seek(offset_manager.Offset(0x8c45b8));
-    p.WriteInst(inst::Movz(reg::W0, 0));
 }
 
 void underwaterItems() {

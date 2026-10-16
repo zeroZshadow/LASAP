@@ -18,7 +18,7 @@ import ap_goal  # noqa: E402
 import evfl  # noqa: E402
 from RandomizerCore.Randomizers.chests import CHEST_ROOMS  # noqa: E402
 from RandomizerCore.Tools.leb import Room  # noqa: E402
-from las_ap_patch import (ACTOR_INDICES, COMPANION_FLAGS, INDEX_KINDS, INDICES_FILE, PLACEHOLDER_KEY,  # noqa: E402
+from las_ap_patch import (COMPANION_FLAGS, INDEX_KINDS, INDICES_FILE, PLACEHOLDER_KEY,  # noqa: E402
                           VANILLA_FILE, VARIANT_KEY_MAX, load_patch, load_yaml, variant_key)
 
 patch = load_patch(Path(sys.argv[1]))
@@ -66,19 +66,6 @@ if patch["settings"].get("Chest Types") == "Texture + Size":
             print(f"CHEST TEXTURE {loc} {room_name}: {models} for {item} {looks.get(loc)}")
         blue += want
     print(f"chest textures seashell={blue} bad={bad}")
-
-# Item actors hide while the inventory bit of their index is set, so each one needs its own bit above the received range.
-seen = {}
-for path in sorted(level_dir.rglob("*.leb")):
-    for actor in Room(path.read_bytes()).actors:
-        if actor.type not in ACTOR_INDICES or actor.parameters[4] in (b"", 0) or not isinstance(actor.parameters[0], int):
-            continue
-        index = actor.parameters[0]
-        if index < min(ACTOR_INDICES[actor.type]) or (actor.type, index) in seen:
-            bad += 1
-            print(f"ACTOR INDEX {path.stem} {actor.name.decode()} index {index} (also {seen.get((actor.type, index))})")
-        seen[(actor.type, index)] = path.stem
-print(f"item actors checked={len(seen)} bad={bad}")
 
 # Map tracker: every AP location has one icon (but the trade quest's when it is off), and every icon its datasheet row.
 if patch["settings"].get("Map Tracker"):

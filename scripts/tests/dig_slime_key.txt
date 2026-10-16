@@ -1,0 +1,26 @@
+# Digs up the item under the skull rock (under-skull-rock, Field_10H, an ItemSlimeKey actor at 113.25 9.75 116.25)
+# with the Slime Key owned, which hides LASR's dig items unless their inventory check is patched out (DESIGN.md, item
+# model). Run on a save where the location is unchecked (after newgame_file2 or boot_file1). Grants the Slime Key and
+# the Shovel and puts the Shovel on Y (sandbox saves only); Link digs the cell north of him.
+# Screenshots: dig_1 after the dig, dig_2 the item-get.
+guard hurt
+send DBG grant SlimeKey 1 -1 0
+expect OK.grant 5
+send DBG grant Shovel 1 -1 0
+expect OK.grant 5
+send DBG poke a2 07
+expect OK.poke 5
+warp Field 110.25 9.75 115.5
+free 15
+goto 113.25 9.75 117.75
+face up
+tap 8
+free 5
+shot D:/DEV/LASAP-sandbox/dig_1.png
+# The location's item may be a trap.
+guard off hurt
+hold 0 0 32767 until !free 5
+until textready 10
+state
+shot D:/DEV/LASAP-sandbox/dig_2.png
+dismiss 20

@@ -22,8 +22,8 @@ namespace {
     constexpr int kRecvBits = 16;
     constexpr size_t kChecksBytes = 65536 / 8;
     // Bits for received heart pieces and seashells (the game has 32 and 50), less those of the seed's vanilla sources
-    // (AP::VanillaBits). The patcher gives the heart piece and seashell actors their own bits above these, so receiving
-    // never hides one; the game counts over all 64 bits.
+    // (AP::VanillaBits). Item actors ignore the inventory (randoFixes in patches.hpp), so receiving never hides one; the
+    // game counts over all 64 bits.
     constexpr int kHeartPieceBits = 32;
     constexpr int kSeashellBits = 50;
     // Time to wait after a level change before granting items.
