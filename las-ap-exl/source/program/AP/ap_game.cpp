@@ -173,6 +173,9 @@ namespace {
     constexpr size_t kShowQueueMax = 16;
     constexpr size_t kShowFillerMax = 3;          // with this many waiting, filler is no longer shown
     constexpr u64 kFreeSettleMs = 600;            // the player must be free this long before an item-get starts
+    // The trendy game: Link counts as free while the player steers the crane, which an item-get would cut off, so
+    // displays wait until he leaves the shop.
+    constexpr const char* kCraneGameLevel = "CraneGame";
     constexpr int kItemEventTries = 3;
 
     int g_ItemEventTry = 0;
@@ -421,7 +424,8 @@ namespace {
             g_WasFree = false;  // the settle time starts again after each item-get
             return;
         }
-        if (g_ShowQueue.empty() || !free || PlayerCarrying() || LinkDead() || NowMs() - g_FreeSince < kFreeSettleMs) {
+        if (g_ShowQueue.empty() || !free || PlayerCarrying() || LinkDead() || NowMs() - g_FreeSince < kFreeSettleMs ||
+            g_LastLevel == kCraneGameLevel) {
             return;
         }
         g_Showing = g_ShowQueue.front();
@@ -1032,7 +1036,7 @@ namespace {
     // Levels where a warp would break what runs there: the final dungeon, the Chamber Dungeons and their editor, the
     // fishing pond, the trendy game, the ending and Marin's event levels.
     bool WarpMenuBlockedLevel(const std::string& level) {
-        static const char* kBlocked[] = {"Lv09WindFishsEgg", "PanelEdit", "FishingPond", "CraneGame", "Ending",
+        static const char* kBlocked[] = {"Lv09WindFishsEgg", "PanelEdit", "FishingPond", kCraneGameLevel, "Ending",
                                          "EventMarin01", "EventMarin02"};
         if (level.starts_with("Panel")) return true;
         for (const char* b : kBlocked) {
