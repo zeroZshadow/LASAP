@@ -214,6 +214,19 @@ namespace AP::NameTag {
     std::string State();
 }
 
+#ifdef LASAP_TEST
+// The Jukebox pane, a spike (ap_jukebox.cpp, JUKEBOX_PLAN.md): the pause menu's fourth pane as a mode of System's slot.
+namespace AP::JukeboxPane {
+    void InstallHooks();
+    // Each input poll's buttons (nn::hid).
+    void OnPad(u64 buttons);
+    // STATE's " pane=<0-3|-> navi=<header state> jbox=<cursor>/<top>"
+    std::string StateField(bool paused);
+    // DBG jukebox
+    std::string Info();
+}
+#endif
+
 namespace AP::Puppet {
     void InstallHooks();
     // Once per tick, after GhostNet::Tick.
