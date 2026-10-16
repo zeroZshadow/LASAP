@@ -14,6 +14,11 @@ A fourth pause-menu pane, "Jukebox", next to Map, Items and System, reached with
   5. When the page exists, `Navi_PaneReady` stores it at Navi `+0x12f0 + index*0x10`. It hangs the page's layout under the header's anchor pane for that index (`N_Map_00`, `N_Item_00`, `N_System_00`) with `LayoutWrapper_AttachTo`, and sets the button guide (`Navi_SetGuide`) and the titles (`Navi_SetTitles`).
   6. Open waits for the page's In animation (page virtual `+0x98`), then goes back to WaitKey.
 - **Header text.** `Navi_SetTitles(navi, index)` fills three message texts: `T_Navih1_00` (the current page), `T_NaviBack_00` (the page under L) and `T_NaviNext_00` (under R). The labels are `UI:SubScreenTitleMap`, `Item`, `System` and `Memory`. Index 3 is an empty case and 4 is the map's Memories view. There are no tab panes, so a fourth page needs no layout change in the header.
+- **One slot, different pages.** The game already puts different UIs in one slot: index 0 is the overworld map (0xf) or the dungeon map (0xe), and index 2 is System (10) or the Chamber Dungeon's page (0xb). `Navi_Setup` picks them when the menu opens.
+- **Memories is not a page.** It is a sub-screen of the map:
+  - the map's own code requests its UI (`UiManager_Request`: 0x1a, `Gm_Memory.bflyt`, from the overworld map; 0x10 from the dungeon map);
+  - the map sets the header with `Navi_SetTitles(navi, 4)` and `Navi_SetGuide(navi, 4)`, and the header plays MemoryIn/MemoryOut;
+  - inside Memories, L/R switch its own four tabs (`Gm_Memory`'s icons and `Cm_TabCursor`), not the header's pages.
 - **Arrays sized 3.** The id table, the page slots at `+0x12f0`, the anchor handles at `+0x12a8` and the R/L wrap all assume three pages. Index 3 would read the current and target bytes as an id, and the next slot would land on the map's saved state at `+0x1320`.
 
 ## Approach
@@ -132,6 +137,13 @@ The fallback, if a game object of our own is ever needed (a page outside index 2
 | Test and docs | Scripted test, TESTING.md and DESIGN.md | 1–2 days |
 
 In all: about two weeks. The spike settles the biggest risk before any UI work.
+
+### Alternative: a sub-screen of System, as Memories is of the map
+
+The Jukebox could be a choice on System (its hidden fourth row, `L_SystemChoice_03`) that opens a sub-screen:
+- **What it is:** a UI of the module's own over System, with the header retitled to "Jukebox" the way the map retitles it to "Memories".
+- **What it saves:** it needs none of the Navi switching hooks and no 2-to-2 rebuild.
+- **What it costs:** the Jukebox is then not on L/R. That is the trade-off against the chosen design.
 
 ### Fallback
 
