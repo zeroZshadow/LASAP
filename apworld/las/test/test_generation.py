@@ -286,6 +286,30 @@ class TestDungeonRewards(LASTestBase):
         self.assertEqual(lasr_settings(self.world.options)["Rupees"], 0)
 
 
+class TestTrapsanity(LASTestBase):
+    options = {"traps": "trapsanity", "blue_rupees": True, "owl_statues": "all"}
+
+    def test_every_junk_item_is_a_trap(self) -> None:
+        from .. import JUNK
+        from ..lasr import TRAPS
+        from ..lasr_settings import lasr_settings
+        pool = self.world.item_pool()
+        self.assertFalse({item for item in JUNK if pool[item]})
+        self.assertGreater(sum(pool[trap] for trap in TRAPS), 100)
+        self.assertEqual(lasr_settings(self.world.options)["Traps"], "Trapsanity")
+
+
+class TestTrapCount(LASTestBase):
+    options = {"traps": 25}
+
+    def test_count(self) -> None:
+        from ..lasr import TRAPS
+        from ..lasr_settings import lasr_settings
+        pool = self.world.item_pool()
+        self.assertEqual(sum(pool[trap] for trap in TRAPS), 25)
+        self.assertEqual(lasr_settings(self.world.options)["Traps"], "Many")
+
+
 class TestAdvanced(LASTestBase):
     options = {"logic": "advanced"}
 

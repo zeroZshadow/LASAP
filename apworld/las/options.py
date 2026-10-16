@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from Options import (Choice, DeathLink, DefaultOnToggle, OptionGroup, PerGameCommonOptions, Range, StartInventoryPool,
-                     Toggle)
+from Options import (Choice, DeathLink, DefaultOnToggle, NamedRange, OptionGroup, PerGameCommonOptions, Range,
+                     StartInventoryPool, Toggle)
 
 
 class Logic(Choice):
@@ -261,13 +261,17 @@ class Stealing(Choice):
     default = 1
 
 
-class Traps(Choice):
-    """Replace some 50 rupee items with traps."""
+class Traps(NamedRange):
+    """How many junk items (rupees and chamber stones, 50 rupees first) become traps.
+    none: 0. few: 3. many: 17. trapsanity: every junk item. A number above the junk in the pool also turns all of it
+    into traps. The 50 Rupees that take the place of Starting Gear stay rupees. Logic never needs rupee items: rupees
+    for Mamu, the shop and the games come from cutting grass and defeating enemies, so with many traps a higher
+    Starting Rupees saves grinding."""
     display_name = "Traps"
-    option_none = 0
-    option_few = 1
-    option_many = 2
-    default = 2
+    range_start = 0
+    range_end = 999
+    default = 17
+    special_range_names = {"none": 0, "few": 3, "many": 17, "trapsanity": 999}
 
 
 class Damage(Choice):

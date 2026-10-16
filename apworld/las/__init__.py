@@ -60,6 +60,8 @@ PATCH_FORMAT = 1
 EARLY_LOCATIONS_WANTED = 10
 PRE_FILL_ATTEMPTS = 10
 PROGRESSION_CHECKS = 3
+# the items traps replace, in this order; logic never needs them (rupees it needs come from farming)
+JUNK = ("rupee-50", "rupee-20", "rupee-5", "rupee-100", "chamber-stone", "rupee-300")
 # the options in the slot data ("options"), from which Universal Tracker regenerates the slot
 SLOT_DATA_OPTIONS = tuple(name for name in LASOptions.type_hints
                           if name not in PerGameCommonOptions.type_hints and name != "start_inventory_from_pool")
@@ -192,13 +194,13 @@ class LASWorld(World):
             if pool[item] > 0:
                 pool[item] -= 1
                 pool["rupee-50"] += 1
-        if options.traps != options.traps.option_none:
+        if options.traps.value:
             # LASR trades three zol traps for 500 rupees, then replaces purple rupees with traps
             for replacement in ("rupee-100", "rupee-100", "rupee-300")[:min(3, pool["zol-trap"])]:
                 pool["zol-trap"] -= 1
                 pool[replacement] += 1
-            count = {options.traps.option_few: 3, options.traps.option_many: 17}[options.traps.value]
-            for junk in ("rupee-50", "rupee-20", "rupee-5", "rupee-100", "chamber-stone"):
+            count = options.traps.value
+            for junk in JUNK:
                 taken = min(count, pool[junk])
                 pool[junk] -= taken
                 count -= taken

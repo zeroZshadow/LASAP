@@ -33,7 +33,7 @@ _DUNGEON_ITEMS = {0: "Own Dungeon", 1: "Anywhere", 2: "Start With"}
 _INSTRUMENTS = {0: "Vanilla", 1: "Dungeon Rewards", 2: "Own Dungeon", 3: "Anywhere", 4: "Any Dungeon"}
 _OWLS = {0: "None", 1: "Overworld", 2: "Dungeons", 3: "All"}
 _STEALING = {0: "Standard", 1: "Always", 2: "Never"}
-_TRAPS = {0: "None", 1: "Few", 2: "Many"}
+_TRAPS = {0: "None", 3: "Few", 999: "Trapsanity"}  # other counts are "Many"; LASR only tells "None" from the rest
 _DAMAGE = {0: "None", 1: "Normal", 2: "OHKO"}
 _CHEST_TYPES = {0: "Default", 1: "Size", 2: "Texture + Size"}
 SEASHELL_CHEST = "seashell"  # the patcher's blue chest texture for seashells (ap_chest.CHEST_TYPE)
@@ -188,7 +188,7 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Key Animations": True,
         "Item Get Animations": False,  # not implemented by LASR
         "Item Pool": "Standard",
-        "Traps": _TRAPS[o.traps.value],
+        "Traps": _TRAPS.get(o.traps.value, "Many"),
         "Nice Bombs": True,
         "Nice Hookshot": bool(o.nice_hookshot),
         "Nice Magic Rod": True,
