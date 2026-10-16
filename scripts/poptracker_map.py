@@ -4,7 +4,7 @@ Run with .venv-lasr: python scripts/poptracker_map.py <pack folder>
 Writes <pack>/scripts/autotracking/item_mapping.lua and location_mapping.lua from apworld/las/data/ids.json and the
 tables below, and checks every pack code against the pack's items.json and locations.
 Locations: overworld checks match the pack's section of the same name (LASR's name without dashes); the rest are
-listed in LOCATIONS by hand. Dungeon checks are named by their room on the pack's dungeon maps (DUNGEON_ROOMS), found from
+listed in LOCATIONS by hand, with every section that shows them. Dungeon checks are named by their room on the pack's dungeon maps (DUNGEON_ROOMS), found from
 LASR's room files and the pins' positions. The dungeons' overworld pins mirror those sections.
 """
 import json
@@ -48,7 +48,9 @@ for n in range(9):
     ITEMS[f"nightmare-key-D{n}"] = (f"d{n}bk", "toggle")
     ITEMS[f"stone-beak-D{n}"] = (f"d{n}beak", "toggle")
 
-# Overworld checks whose pack section has another name: LASR location -> pack location id/section.
+# Overworld checks whose pack section has another name: LASR location -> pack location id/section, or a list of
+# them. With Trendy Game off the pack hides the Trendy prizes and shows Prize 1 as its Yoshi Doll (Trade Quest) and
+# Prize 3 as its Seashell (Seashells).
 LOCATIONS = {
     "moblin-cave": "Moblin Cave/Save Bowwow",
     "rooster-statue": "Weathervane/Rooster",
@@ -86,9 +88,9 @@ LOCATIONS = {
     "mermaid-martha": "Mermaid/Trade Necklace",
     "bay-fisherman": "Fisherman under the Bridge/Trade Hook",
     "papahl": "Papahl/Trade Pineapple",
-    "trendy-prize-1": "Trendy Store/Trendy Prizes 1-3",
+    "trendy-prize-1": ["Trendy Store/Trendy Prizes 1-3", "Trendy Store/Yoshi Doll"],
     "trendy-prize-2": "Trendy Store/Trendy Prizes 1-3",
-    "trendy-prize-3": "Trendy Store/Trendy Prizes 1-3",
+    "trendy-prize-3": ["Trendy Store/Trendy Prizes 1-3", "Trendy Store/Seashell"],
     "pothole-north": "Pothole Field Loose/Heart Piece",
     "pothole-final": "Pothole Field/Pothole Field/Slime Key",
     "woods-loose": "Toadstool/Toadstool Spot",
@@ -249,7 +251,8 @@ def location_codes(sections: dict) -> dict:
             mirrored = ref is not None and dungeon_code.endswith("/" + ref)
             codes[lasr] = [dungeon_code] if mirrored else [dungeon_code, overworld_code]
         elif lasr in LOCATIONS:
-            codes[lasr] = [resolve(sections, LOCATIONS[lasr])]
+            names = LOCATIONS[lasr]
+            codes[lasr] = [resolve(sections, name) for name in ([names] if isinstance(names, str) else names)]
         else:
             found = by_section.get(re.sub(r"[^a-z0-9]", "", lasr.lower()), [])
             if len(found) != 1:
