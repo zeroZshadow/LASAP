@@ -703,6 +703,7 @@ namespace {
         int ghosts = 0;
         for (int n = 0; n < AP::GhostNet::SLOTS; n++) ghosts += AP::GhostNet::Get(n).active;
         s += " ghosts=" + std::to_string(ghosts);
+        s += AP::Music::StateField();
         s += AP::Test::StateFields();
         return s;
     }
@@ -759,6 +760,9 @@ namespace {
             AP::Send(AP::MapState());
         } else if (cmd == "text") {
             AP::Send(a.size() >= 3 ? AP::SeenText(a[2]) : AP::TextState());
+        } else if (cmd == "music") {
+            // DBG music: the jukebox's STATE fields and the last BGM requests
+            AP::Send("MUSIC" + AP::Music::StateField() + " " + AP::Music::LogText());
         } else if (cmd == "name") {
             // DBG name: the player's name as the game holds it for the save (UTF-16, up to 8 letters, at +0x8 of the
             // object at 0x1cc1360), set by a new file's name entry on OK
@@ -948,6 +952,8 @@ namespace {
             QueueNotice(RestAfter(line, 1));
         } else if (a[0] == "GHOST" || a[0] == "GHOSTS" || a[0] == "GHOSTNAMES") {
             AP::GhostNet::HandleLine(line);
+        } else if (a[0] == "MUSIC") {
+            AP::Music::HandleLine(a);
         } else if (a[0] == "MSG") {
             Logging.Log("[AP] " + line.substr(4));
 #ifdef LASAP_TEST
@@ -966,6 +972,7 @@ namespace AP {
         if (!seed_hash.empty()) g_SeedHash = seed_hash;
         InstallTextHooks();
         Puppet::InstallHooks();
+        Music::InstallHooks();
         ItemGetSequence::InstallAtOffset(offset_manager.Offset(kItemGetSequence));
         LoadLocationNames();
         LoadMap();
@@ -1110,6 +1117,7 @@ namespace AP {
         TickItemGet();
         TickWarpMenu();
         TickMap();
+        Music::Tick();
 #ifdef LASAP_TEST
         Test::Tick();
 #endif

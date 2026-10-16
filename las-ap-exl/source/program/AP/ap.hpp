@@ -4,6 +4,7 @@
 #include "nn/hid.h"
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace AP {
     // Items.gsheet itemID of the placeholder that every randomized location gives.
@@ -124,6 +125,21 @@ namespace AP {
     void SetMapMode(int mode);
     // Every room of the current dungeon counts as visited; once per tick.
     void TickMap();
+}
+
+// Jukebox (ap_music.cpp, DESIGN.md "Music"): a chosen BGM plays instead of the zone's music.
+namespace AP::Music {
+    void InstallHooks();
+    // MUSIC <track> | MUSIC off, split on spaces
+    void HandleLine(const std::vector<std::string>& a);
+    // Once per tick: switches to the chosen track (or back) once a level is loaded.
+    void Tick();
+#ifdef LASAP_TEST
+    // STATE's " music=<chosen track or -> zonebgm=<the zone's track> bgm=<playing tracks as name:kind, or ->"
+    std::string StateField();
+    // DBG music log: the last BGM requests
+    std::string LogText();
+#endif
 }
 
 // Multiplayer ghosts, the network half (ap_ghostnet.cpp, DESIGN.md "Ghosts"): POS lines to the client, GHOST lines

@@ -1,0 +1,39 @@
+# The jukebox (DESIGN.md, Music): /music in the client plays a track instead of the zone's music, through a room
+# change within Field and through doors, until /music off brings the zone's own track back. Run after boot_file1,
+# with the client connected to the game (no server needed). STATE's zonebgm= is the zone's track, bgm= what plays
+# (name:kind), music= the chosen track; DBG music's log lists the BGM requests with the track each was swapped for and
+# the return address of the call (+9f008: the zone update; +a6988: PlayZoneBgm, which a level's start calls).
+expect HELLO 30
+# The debug warp starts no music, as the game's restart path; walking out through Tarin's door starts Mabe's.
+warp MarinTarinHouse 6.85 0 3.83
+hold 0 0 -32767 until level=Field 10
+loaded 20
+await 10 music=- zonebgm=(\S+) bgm=\1:1\s
+send /music fairy
+logged Music:\sBGM_FAIRY 5 client
+# The zone's track fades out.
+await 10 music=BGM_FAIRY zonebgm=\S+ bgm=BGM_FAIRY:1\s
+# A room change within Field: the zone south of Mabe asks for its own track and gets the chosen one.
+goto 41.25 9.0 147.75
+await 5 zonebgm=(?!BGM_MEVE\s)\S+ bgm=BGM_FAIRY:1\s
+wait 2
+check music=BGM_FAIRY zonebgm=(?!BGM_MEVE\s)\S+ bgm=BGM_FAIRY:1\s
+send DBG music
+expect play\s(?!BGM_MEVE)\S+->BGM_FAIRY\s\+9f008\s000\s-\s*$
+# Through a door into Tarin's house and out again: each level asks for its track, the chosen one plays.
+goto 38.25 10.5 129.75
+hold 0 0 32767 until level=MarinTarinHouse 10
+loaded 20
+await 10 music=BGM_FAIRY zonebgm=BGM_HOUSE bgm=BGM_FAIRY:1\s
+send DBG music
+expect play\sBGM_HOUSE->BGM_FAIRY\s\S+\s000\snew\s*$
+hold 0 0 -32767 until level=Field 10
+loaded 20
+await 10 music=BGM_FAIRY zonebgm=BGM_MEVE bgm=BGM_FAIRY:1\s
+# Off: the zone's own track comes back and the chosen one fades out.
+send /music off
+await 10 music=- zonebgm=(\S+) bgm=\1:1\s
+# A name the game does not know is refused and changes nothing.
+send /music BGM_NOPE
+logged music:\sunknown\strack\sBGM_NOPE 10 client
+check music=- zonebgm=(\S+) bgm=\1:1\s

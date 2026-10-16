@@ -10,7 +10,7 @@ from NetUtils import ClientStatus, HintStatus
 
 from .container import LASContainer
 from .ids import LOCATION_BASE, LOCATION_OFFSETS
-from . import checklist, emulators
+from . import checklist, emulators, music
 from .ghosts import GhostLink
 from .host_settings import PLAYER_SETTINGS, player_value
 from .install import InstallError, patch_and_install
@@ -82,6 +82,26 @@ class LASCommandProcessor(ClientCommandProcessor):
                 return
             ctx.set_ghost_names(value.lower() == "on")
         logger.info(f"Ghost name tags are {'on' if ctx.ghost_names_on() else 'off'}.")
+
+    def _cmd_music(self, track: str = "") -> None:
+        """Play a BGM track instead of the zone's music until /music off: /music <track> (e.g. /music fairy or
+        /music BGM_FIELD_NORMAL). Without a track, shows the one playing and the tracks."""
+        ctx = self.ctx
+        if not track:
+            playing = ctx.music or "the game's own"
+            logger.info(f"Music: {playing}. Tracks: {', '.join(music.TRACKS)}.")
+            return
+        if track.lower() == "off":
+            ctx.set_music(None)
+            logger.info("Music: the game's own.")
+            return
+        chosen, matches = music.resolve(track)
+        if chosen is None:
+            logger.error(f"{track} could be {', '.join(matches)}." if matches else
+                         f"No track {track}. /music lists them.")
+            return
+        ctx.set_music(chosen)
+        logger.info(f"Music: {chosen}." + ("" if ctx.game_writer else " It plays once the game is connected."))
 
     def _cmd_resync(self) -> None:
         """Ask the game to resend its received-item count and collected locations."""
@@ -174,6 +194,7 @@ class LASContext(CommonContext):
         self.ghosts = GhostLink(self.send_game, self.refresh_patch_tab)
         self.ghost_relay_arg: Optional[str] = None  # --ghost-relay replaces las_options.ghost_relay
         self.ghost_secret_arg: Optional[str] = None  # --ghost-secret replaces the patch file's (tests)
+        self.music: Optional[str] = None  # the BGM /music chose, None: the game's own; sent on each game connection
 
     async def get_username(self) -> None:
         # the slot comes from the patch file, as the server would otherwise ask for it
@@ -406,6 +427,7 @@ class LASContext(CommonContext):
             self.send_game("SYNC")
             self.update_ghosts()
             self.ghosts.on_game_connected()
+            self.send_game(f"MUSIC {self.music or 'off'}")
         elif cmd == "POS":
             self.ghosts.on_pos(parts)
         elif cmd == "RECV":
@@ -432,7 +454,11 @@ class LASContext(CommonContext):
             if len(parts) == 3 and parts[1] == "level":
                 self.game_level = parts[2]
                 asyncio.create_task(self.send_level())
-            logger.debug("game: " + line[4:])
+            if len(parts) >= 2 and parts[1] == "music:":  # the game refused the track
+                self.music = None
+                logger.warning("game: " + line[4:])
+            else:
+                logger.debug("game: " + line[4:])
         elif cmd == "ERR":
             logger.warning("game: " + line)
         else:
@@ -587,6 +613,11 @@ class LASContext(CommonContext):
         LASWorld.settings.ghost_names = on
         settings.get_settings().save()
         self.ghosts.set_names(on)
+
+    def set_music(self, track: Optional[str]) -> None:
+        if track != self.music:
+            self.music = track
+            self.send_game(f"MUSIC {track or 'off'}")
 
     def update_ghosts(self) -> None:
         """Hands the ghost link its settings, the multiworld's ghost secret (from the patch file) and the slot; it

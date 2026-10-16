@@ -15,9 +15,13 @@ AreaLevelOpen_EntryName 0x08579fb0 f (out, actor): LEB param 2
 AreaLevelOpen_CompanionEntry 0x0857a050 f entry name with the companion suffix through CompanionEventEntry
 AreaLevelOpen_LevelName 0x0857a0c0 f (out, actor): LEB param 0; a bl target after a noreturn call
 AreaLevelOpen_Locator 0x0857a150 f (out, actor): LEB param 1
+BgmManager_StopByName 0x0859f7b0 f (StringView* name, u32 fade frames) on the static BgmManager
+BgmZoneUpdate_PlayCall 0x085a3004 l the zone update's BgmManager_Play call with the zone's track (volume from zone +0x4c); when it returns an instance, the other kind 1 instances fade out
+BgmManager_Play 0x085a3d60 f (f32 volume, BgmManager*, StringView* name, bool, bool, bool force) -> instance, null for an unknown name or a track already playing; instance +0x10 name (std::string), +0xf0 kind (1 zone and event BGM), +0xf8 id
 Sound_Play 0x085a97e0 f (StringView* name, nullptr, volume, pitch)
 Sound_PlayAtTracked 0x085a9a20 f (name, pos*, u64 extra, handle*, volume, pitch): 3D, extra unverified
 Sound_PlayAt 0x085a9c70 f (StringView* name, const Vec4* worldPos, SoundHandle* out|null, f32 volume, f32 pitch): 3D, request mode 2
+PlayZoneBgm 0x085aa790 f (bool fadeOthers) -> instance: BgmManager_Play of the zone's track (BgmManager +0x9250, volume +0x932c); fades nothing while a Guardian Acorn's or Piece of Power's music plays
 EventAction_PlayAnimation2 0x085f7bb0 f virtual +0x30 on the actor's root component
 EventAction_PlayAnimation 0x0861d0c0 f
 SkeletalModelComponent_Make 0x08646660 f (out, owner, StringView* name, rootSp*, resource, ...)
@@ -32,6 +36,9 @@ GameControl_RequestLevelJumpInCurrentLevel 0x08d032d0 f event action body: level
 GameControl_RequestRestartWarp 0x08d03580 f event action body
 GameControl_SaveForGameClear 0x08d03680 f event action body: save level Field, locator Field_01G
 GameControl_Retry 0x08d03710 f event action body: locator $RETRY
+EventAction_PlayBGM 0x08d09a30 f Audio.PlayBGM body (out, ctx): params label, volume; volume 0.2 while a buff's music plays
+EventAction_StopBGM 0x08d09e20 f Audio.StopBGM body (out, ctx): params label, duration (seconds, times 60 for frames) -> BgmManager_StopByName
+EventAction_PlayZoneBGM 0x08d0a4b0 f Audio.PlayZoneBGM body (out, ctx) -> PlayZoneBgm
 Event_Make 0x08d10290 f (out, flowchart*, StringView* entry)
 Event_Prepare 0x08d11b00 f (event*)
 PanelQuery_Stone4 0x08d157e0 f event query lambda: save +0x5093 >= 5 and chamber stone 4 owned
@@ -166,6 +173,7 @@ Swkbd_ShowName 0x0948db50 f (out string, name view): nn::swkbd UserName preset, 
 Swkbd_CheckName 0x0948e440 f the keyboard's text check: refuses spaces only (UI:NameEntry_NoName) and vulgar words (UI:NameEntry_VulgarCheck)
 GameTextBox_Calculate 0x095e1f90 f draws the text only once each glyph is in the font's texture cache (+0x190 set then)
 GameTextBox_SetString 0x095e20b0 f calls the std::function at +0x160 (scene layouts: queues the text box's glyphs), then the base setter
+BgmTable_Find 0x095e63d0 f (BgmTable*, const char* name) -> track id, -1 for an unknown name
 TextBox_RegisterGlyphs 0x09622cb0 f (text box, lock group): Font_RegisterGlyph for each character, returns how many were new
 Font_RegisterGlyph 0x096228c0 f (scalable font, char code, lock group): adds the glyph to the texture cache, drawn by the next cache update
 UiManager_LockGroup 0x093d47c0 f (UI manager, archive set) -> the font lock group of that set
@@ -284,6 +292,8 @@ got_nvnMultisampleStateSetAlphaToCoverageEnable 0x0a199200 l
 Framework_ptr 0x0a19b188 l Framework: +0x498 actor system, +0x4b8 player, +0x4d4 frame counter, +0x518 controller, +0x560 camera
 UiManager_ptr 0x0a19b1c0 l +0x88 archive slots, 0x10 apart
 HudPass_ptr 0x0a19b2c8 l
+BgmManager 0x0a1a5d70 l static (guard 0x0a1af240): +0x6280 the playing instances (begin, end), +0x9250 the zone's track (char[64], length +0x9290)
+BgmTable 0x0a1afa28 l static (guard 0x0a1b0378), made by BgmManager_Play
 CameraSystem_ptr 0x0a1b0b30 l shared_ptr; +0x600/+0x610 vectors passed to RoomManager_UpdateRooms, +0x700 flags (bit 3: room update requested)
 CranePrizeSheets_ptr 0x0a1b0f28 l 0x40 bytes of shared_ptrs: CranePrize +0x0, featured groups 1/2 at +0x20/+0x30
 EventManager_ptr 0x0a1b64d8 l
