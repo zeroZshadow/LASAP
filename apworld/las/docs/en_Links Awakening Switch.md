@@ -21,8 +21,8 @@ with count toward it. The sign at the foot of the egg's stairs tells how many, s
 ## What items and locations get shuffled?
 
 Chests, free gifts, golden leaves, heart pieces, seashells, the shop, boss drops and other item locations, each category
-with its own option. The trade quest, Dampé, the rapids, fishing, blue rupees, owl statues and the Seashell Mansion
-rewards can be added. A category left unshuffled keeps its items in their places. Where the logic may need such an
+with its own option. The trade quest, Dampé, the Rapids Ride (its race and the items on its islands), fishing, blue
+rupees, owl statues and the Seashell Mansion rewards can be added. A category left unshuffled keeps its items in their places. Where the logic may need such an
 item (a song, a key, an instrument, a trade item), the spot is still a check: it can be hinted, and the item arrives
 from the server when you pick it up. The rest (rupees, heart pieces, seashells while the Seashell Mansion is off) are
 not checks and are never needed. The Trendy Game's prizes are never shuffled; its Yoshi Doll, which starts the trade

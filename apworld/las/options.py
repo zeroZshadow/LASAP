@@ -68,7 +68,8 @@ class Dampe(Toggle):
 
 
 class Rapids(Toggle):
-    """Shuffle the rewards of the Rapids Ride."""
+    """Shuffle the Rapids Ride: the race's rewards and the items on its west, middle and east islands (a heart piece,
+    a chest and a seashell dig), and with owl statues on, its owl statue's gift."""
     display_name = "Rapids"
 
 
