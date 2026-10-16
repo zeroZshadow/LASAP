@@ -1,0 +1,30 @@
+# The jukebox through the washed-up sword's event (SinkingSword.bfevfl, entry examine): the event stops all music
+# (Audio.StopAllBGM), shows the item, then plays BGM_FIELD_NORMAL_INTRO (Audio.PlayBGM, with Music Vanilla). The
+# chosen track must play again once Link is free. Run after newgame_file2 (a new game, the beach item not taken), with
+# the client connected to the game (no server needed).
+expect HELLO 30
+# The client sends its choice again on each connection: start from none.
+send /music off
+await 10 music=-
+# The debug warp starts no music; choosing the track afterwards asks for the zone's music (PlayZoneBgm), which the
+# jukebox swaps.
+warp Field 37.5 3.75 186.0
+send /music fairy
+logged Music:\sBGM_FAIRY 5 client
+await 10 music=BGM_FAIRY zonebgm=\S+ bgm=BGM_FAIRY:1\s
+state
+# Link walks south into the item (37.59 3.56 188.02) at the water's edge; the event starts on touch.
+goto 37.59 3.75 186.75
+hold 0 0 -32767 until !free 3
+until textready 20
+dismiss 20
+free 30
+state
+send DBG music
+expect MUSICLOG
+# The chosen track plays again, alone.
+await 10 music=BGM_FAIRY zonebgm=\S+ bgm=BGM_FAIRY:1\s
+# Off: the zone's own track, as the game has it after the sword.
+send /music off
+await 10 music=- zonebgm=(\S+) bgm=\1:1\s
+state

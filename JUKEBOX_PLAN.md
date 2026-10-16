@@ -102,6 +102,11 @@ The fallback, if a game object of our own is ever needed (a page outside index 2
 - Glyphs: the list's text boxes are outside a scene layout, so missing glyphs draw nothing until queued (known from the name tags).
 - The map pages call `Navi_SetTitles` themselves (index 0 leaving Memories, 4 entering it). The hook acts on index 0 and 2 only, so Memories keeps its title, and leaving Memories gets Back = Jukebox like any map title.
 - The audible preview: `PlayZoneBgm` from the pause menu has not been tried. The sandbox is muted (SDL dummy audio), so only the BGM manager's state can be checked there; the sound needs a check on real audio by the user.
+- **Event songs that replace the zone's music.** The override swaps only the zone music's calls, and two events play a zone-like track with PlayBGM and never call PlayZoneBGM after it:
+  - the washed-up sword (`SinkingSword.bfevfl`): `StopAllBGM`, the item-get, then `BGM_FIELD_NORMAL_INTRO`;
+  - the new game's wake-up (`PlayerStart.bfevfl`): `BGM_HOUSE_FIRST`.
+
+  After either, the event's track plays instead of the chosen one until the next level change (seen in the sandbox, test `jukebox_sword`). Every other event PlayBGM in the RomFS is a song the event means to play (bosses, the owl, the telephone, Marin's songs, fanfares). The fix is in `ap_music.cpp`, not the pane: swap these two labels in the event action's call (return address `0x805bc4`) as the zone calls are.
 - The CloseOldUi state is entered inline (the update writes the state bytes itself), so the post-hook must check the state byte rather than rely on `Navi_ChangeState`.
 
 ## Open questions
@@ -111,6 +116,7 @@ The fallback, if a game object of our own is ever needed (a page outside index 2
 3. What should the track names be? The table needs names a player recognises; some tracks have no obvious place (`BGM_DANPEI`, `BGM_CHICKEN_HURT`).
 4. Should there be a Jukebox in the Chamber Dungeon, whose third page is id 0xb?
 5. Should X on the Jukebox do something (e.g. "Game music")?
+6. Should the chosen track also replace the event songs that stand in for the zone's music (the washed-up sword's `BGM_FIELD_NORMAL_INTRO`, the wake-up's `BGM_HOUSE_FIRST`)? `jukebox_sword` expects it to.
 
 ## Order of work and size
 
@@ -150,3 +156,4 @@ The test `jukebox_pane` runs after `boot_file1`, with the client connected (no s
   7. Check that the module logged no page leak: `DBG jukebox` shows no list wrapper with the menu closed.
 - **Guards:** `dead`. A guard on `navi` in Close while `pane=3` before step 5 catches a B that closes too early.
 - **World tests:** the name table matches `music.TRACKS`, and the client takes `MUSIC` from the game and sends it again on the next connection.
+- **Override tests the pane relies on:** `jukebox` (room and level changes, off, unknown names) and `jukebox_sword` (a new game: the washed-up sword's event, which stops all music and plays its own track).
