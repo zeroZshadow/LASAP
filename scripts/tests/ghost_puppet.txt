@@ -15,6 +15,13 @@ expect \|\s0\sactor=\w+\sname=NpcGhost:\w+\spos=[\d.,]+\smodel=[0-9a-f]+
 # its name tag over its head, with the name's glyphs drawn
 send DBG puppet tags on
 await 5 tags=d---
+# d-pad up turns the name tags off and on again; the client keeps the setting
+tap 2000 when free
+await 5 tags=h---
+logged Ghost\sname\stags\sare\soff 5 client
+tap 2000 when free
+await 5 tags=d---
+logged Ghost\sname\stags\sare\son 5 client
 # the peer leaves the level: the puppet hides; it comes back: the same actor shows again
 peer nowhere
 await 5 puppets=0
@@ -48,10 +55,19 @@ await 15 puppets=0/0
 send /ghosts on
 await 10 puppets=1/1
 # the peer's look: the puppet draws its shapes and tunic (red, the mirror shield and the second sword, the ocarina)
-peer look 1ccbfa
-await 5 gear=1ccbfa/1\s
-peer look 32bf8
-await 5 gear=32bf8/0\s
+peer shapes ccbfa
+peer tunic 1
+await 5 gear=ccbfa/1/
+peer shapes 32bf8
+peer tunic 0
+await 5 gear=32bf8/0/
+# the peer's face (the item-get's) and upper body (carrying): on the puppet's face slots and upper layer
+peer face 3 3 0
+peer upper 38
+await 5 gear=32bf8/0/3,3,0/38\s
+peer face 0 0 0
+peer upper 0
+await 5 gear=32bf8/0/0,0,0/0\s
 # the ghost does not block Link: the peer stands in his way, he runs through it (blocked, he would stop near 44.2)
 peer radius 0
 peer goto Field 44.6 10.5 137

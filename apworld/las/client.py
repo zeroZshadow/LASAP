@@ -436,6 +436,10 @@ class LASContext(CommonContext):
             self.music_report = "wait"  # the game reports its track first (DESIGN.md, Music)
         elif cmd == "POS":
             self.ghosts.on_pos(parts)
+        elif cmd == "GHOSTNAMES" and len(parts) == 2:
+            # the player turned the name tags on or off in the game (d-pad up)
+            self.set_ghost_names(parts[1] == "1")
+            logger.info(f"Ghost name tags are {'on' if self.ghost_names_on() else 'off'}.")
         elif cmd == "MUSIC" and len(parts) == 2:
             self.on_game_music(None if parts[1] == "off" else parts[1])
         elif cmd == "RECV":
