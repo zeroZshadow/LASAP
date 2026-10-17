@@ -765,7 +765,7 @@ namespace {
             // DBG music: the jukebox's STATE fields and the last BGM requests
             AP::Send("MUSIC" + AP::Music::StateField() + " " + AP::Music::LogText());
         } else if (cmd == "jukebox") {
-            // DBG jukebox: the Jukebox pane spike's state
+            // DBG jukebox: the Jukebox page's state
             AP::Send(AP::JukeboxPane::Info());
         } else if (cmd == "name") {
             // DBG name: the player's name as the game holds it for the save (UTF-16, up to 8 letters, at +0x8 of the
@@ -983,9 +983,9 @@ namespace AP {
         LoadIndices();
         LoadKept();
         LoadHints();
+        JukeboxPane::InstallHooks();
 #ifdef LASAP_TEST
         Test::InstallHooks();
-        JukeboxPane::InstallHooks();
 #endif
         StartNetwork(port > 0 ? port : PORT);
     }
@@ -1148,8 +1148,8 @@ namespace AP {
         u64 now = NowMs();
 #ifdef LASAP_TEST
         Test::ApplyInput(state);
-        JukeboxPane::OnPad(state->mButtons._storage[0]);
 #endif
+        JukeboxPane::OnPad(state->mButtons._storage[0]);
         // The game does not see Minus while it is held (TickWarpMenu). Each controller style is polled, so only a
         // poll that sees Minus counts; its release is noticed when no poll has seen it for a moment.
         u64& buttons = state->mButtons._storage[0];

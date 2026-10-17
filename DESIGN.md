@@ -279,6 +279,17 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 - On a change the module calls `PlayZoneBgm` with fading: the new choice (or, with off, the zone's own track) starts and the other zone and event tracks fade out; the track chosen before is also stopped by name (1 s fade), for the cases where nothing new starts (a zone without a track, a buff's music playing). An unknown name (`BgmTable_Find`) is refused and clears the choice.
 - Offsets and structures: TESTING.md, Reverse engineering; symbols in `scripts/re/las.sym`.
 
+**Jukebox page** (`ap_jukebox.cpp`, `ap_tracks.hpp`)
+- The pause menu's fourth page, after System: Map, Items, System, Jukebox, round with L and R. The header names it: "Jukebox" with System under L and Map under R, and "Jukebox" as System's R and the map's L neighbour. Plus, Minus and B work as on any page. The menu never opens on it. There is none in the Chamber Dungeon, whose third page is the dungeon's own.
+- The header (Navi, `Gm_Navi.bflyt`) has room for three pages, so the Jukebox is a mode of index 2, System's slot: while the module's flag is set, the `Gm_System` page the header builds for index 2 hides its content and shows the Jukebox. The module steers the moves that differ from the game's: R on System and L on the Jukebox change index 2 to index 2 (System is removed and built again, as on any page change); L on the map lands on the Jukebox; every other change leaves it.
+- The page is built from the game's layouts, hung under the page's root with `LayoutWrapper_AttachTo`, faded in with the page and out as the header leaves it, and freed with the page:
+  - the track list, `Gm_MemoryList` (the Memories list), on the right: row 0 "Game music" (no track chosen), then `music.TRACKS` in order with the names of `ap_tracks.hpp`. The chosen track's row is lit (`W_Add` alpha, as the row animation On sets it) and marked with a note. The list opens with the cursor on the chosen track;
+  - "Now playing", `Gm_MemoryCollect` (the Memories count card), on the left: the name of the track that plays (the zone's own while Game music is chosen, "Silence" in a zone without music) and its number in the list. A note in its paper window bobs, and notes float up out of it while music plays (the font's U+266A in `Gm_SystemOpUnit` text boxes);
+  - the name and description of the track under the cursor, at the bottom, where the Items page names its item (`Gm_Item`'s `N_Info_00`);
+  - the guide: the Items page's (`Navi_SetGuide` with index 1), whose X/Y caption `UI:ItemCaptionSet` reads "Ⓐ Play" during that call (`ap_text.cpp`), and "Ⓑ Back".
+- Up and Down move the cursor (held: again after 20 frames, then every 5). A chooses the track through `AP::Music::Choose` and applies it at once with `AP::Music::Tick`, which does not run while the menu is open, so the track plays in the menu and the client learns the choice.
+- `ap_tracks.hpp` holds each track's name (at most 24 characters, one list row) and description (at most 80 characters, two lines of 40); `test_music` checks it against `music.TRACKS`. Names come from where the game plays each track (zone tables in the levels, event flows, stream names in the sound archive).
+
 **Persistence**
 - **Received-item count:** event flags `APRecv0`..`APRecv15`, read as a 16-bit counter. The patcher adds them to `GlobalFlags.gsheet`.
 - **Collected locations:** a bitset file `sd:/lasap/<seed_hash>.chk`, written on each check, so checks made while disconnected are reported later.

@@ -140,6 +140,9 @@ namespace AP::Music {
     void Report();
     // Once per tick: switches to the chosen track (or back) once a level is loaded.
     void Tick();
+    // The chosen track, "" for none; the zone's own track, "" when not known.
+    std::string Track();
+    std::string ZoneTrack();
 #ifdef LASAP_TEST
     // STATE's " music=<chosen track or -> zonebgm=<the zone's track> bgm=<playing tracks as name:kind, or ->"
     std::string StateField();
@@ -220,18 +223,20 @@ namespace AP::NameTag {
     std::string State();
 }
 
-#ifdef LASAP_TEST
-// The Jukebox pane, a spike (ap_jukebox.cpp, JUKEBOX_PLAN.md): the pause menu's fourth pane as a mode of System's slot.
+// The Jukebox page (ap_jukebox.cpp, DESIGN.md "Jukebox page"): the pause menu's fourth page as a mode of System's slot.
 namespace AP::JukeboxPane {
     void InstallHooks();
     // Each input poll's buttons (nn::hid).
     void OnPad(u64 buttons);
+    // The Items page's X/Y caption while the Jukebox fills the guide with it ("A Play"), else "".
+    std::string GuideCaption();
+#ifdef LASAP_TEST
     // STATE's " pane=<0-3|-> navi=<header state> jbox=<cursor>/<top>"
     std::string StateField(bool paused);
     // DBG jukebox
     std::string Info();
-}
 #endif
+}
 
 namespace AP::Puppet {
     void InstallHooks();

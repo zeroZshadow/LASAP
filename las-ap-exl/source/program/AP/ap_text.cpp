@@ -53,8 +53,9 @@ namespace {
     std::string g_Toast;
     char g_ToastBuf[256];
 
-    enum class Kind { None, Found, Received, Saving, MapCaption };
+    enum class Kind { None, Found, Received, Saving, MapCaption, ItemCaption };
     constexpr const char* kMapCaptionLabel = "MapCaptionMemory";  // the map's X button: memories
+    constexpr const char* kItemCaptionLabel = "ItemCaptionSet";   // the Items page's X/Y button: set item
     struct Slot { void* msbt; s32 index; Kind kind; };
     Slot g_Slots[16];
     int g_SlotCount = 0;
@@ -165,6 +166,7 @@ HOOK_DEFINE_TRAMPOLINE(MsbtFindLabel) {
         else if (LabelIs(label, len, AP::RECEIVED_LABEL)) Remember(msbt, out->index, Kind::Received);
         else if (LabelIs(label, len, kSavingLabel)) Remember(msbt, out->index, Kind::Saving);
         else if (LabelIs(label, len, kMapCaptionLabel)) Remember(msbt, out->index, Kind::MapCaption);
+        else if (LabelIs(label, len, kItemCaptionLabel)) Remember(msbt, out->index, Kind::ItemCaption);
         else return;
         Logging.Log("[AP] text label " + std::string(label, len) + " index " + std::to_string(out->index));
     }
@@ -234,6 +236,14 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
                 }
                 tags = std::min(tags, out->length);
                 out->length = Store(g_CaptionText, sizeof(g_CaptionText), std::string(out->text, tags) + text);
+                out->text = g_CaptionText;
+                break;
+            }
+            case Kind::ItemCaption: {
+                // the Jukebox's guide: the whole caption, button tag included
+                std::string text = AP::JukeboxPane::GuideCaption();
+                if (text.empty()) return;
+                out->length = Store(g_CaptionText, sizeof(g_CaptionText), text);
                 out->text = g_CaptionText;
                 break;
             }

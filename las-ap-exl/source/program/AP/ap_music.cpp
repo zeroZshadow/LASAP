@@ -170,11 +170,18 @@ namespace AP::Music {
         GameFn<void* (*)(bool)>(kPlayZoneBgm)(true);
         // PlayZoneBgm fades nothing when nothing new starts (the zone has no track, or a buff's music plays): the
         // track chosen before stops by name, unless it is what plays now.
-        if (!g_Previous.empty() && g_Previous != std::string(g_Track, g_TrackLen) && g_Previous != ZoneTrack(manager)) {
+        if (!g_Previous.empty() && g_Previous != std::string(g_Track, g_TrackLen) && g_Previous != ::ZoneTrack(manager)) {
             StrView view{g_Previous.c_str(), g_Previous.size()};
             GameFn<void (*)(StrView*, u32)>(kBgmStop)(&view, kFadeFrames);
         }
         g_Previous.clear();
+    }
+
+    std::string Track() { return std::string(g_Track, g_TrackLen); }
+
+    std::string ZoneTrack() {
+        const u8* manager = Manager();
+        return manager != nullptr ? ::ZoneTrack(manager) : std::string();
     }
 
 #ifdef LASAP_TEST
@@ -182,7 +189,7 @@ namespace AP::Music {
         const u8* manager = Manager();
         std::string s = std::string(" music=") + (g_TrackLen > 0 ? g_Track : "-");
         if (manager == nullptr) return s + " zonebgm=- bgm=-";
-        s += " zonebgm=" + ZoneTrack(manager) + " bgm=";
+        s += " zonebgm=" + ::ZoneTrack(manager) + " bgm=";
         u8* const* it = *reinterpret_cast<u8* const* const*>(manager + kActive);
         u8* const* end = *reinterpret_cast<u8* const* const*>(manager + kActive + 8);
         if (it == end) return s + "-";

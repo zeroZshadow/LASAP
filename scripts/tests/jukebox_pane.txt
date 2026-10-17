@@ -1,33 +1,41 @@
-# The Jukebox pane spike (ap_jukebox.cpp, JUKEBOX_PLAN.md): the pause menu's fourth pane, Map, Items, System,
-# Jukebox, as a mode of System's slot. Run after boot_file1 with the client connected (no server needed). STATE's
-# pane= is the page the player sees (3 the Jukebox), navi= the header's state (2 WaitKey), jbox= the list's cursor and
-# first row; DBG jukebox counts the list layouts built and dropped.
+# The Jukebox page (ap_jukebox.cpp, DESIGN.md "Jukebox page"): the pause menu's fourth page, Map, Items, System,
+# Jukebox, as a mode of System's slot. Run after boot_file1 with the client connected (no server needed). STATE's pane= is the
+# page the player sees (3 the Jukebox), navi= the header's state (2 WaitKey), jbox= the list's cursor and first row;
+# DBG jukebox counts the pages built and dropped and the text boxes whose glyphs are drawn.
 expect HELLO 30
-send /game MUSIC off
+send /music off
 await 10 music=-
 free 20
 tap 400 when free 3000
 await 10 pane=1\snavi=2
 tap 80
 await 10 pane=2\snavi=2
-# R on System: System is removed and built again as the Jukebox.
+# R on System: System is removed and built again as the Jukebox, the cursor on Game music (nothing chosen).
 tap 80
 await 10 pane=3\snavi=2\sjbox=0/0
 send DBG jukebox
-expect JUKEBOX\smode=1.*rows=7\sdrawn=7
-# Down to the first track; A plays it while the menu is open.
+expect JUKEBOX\smode=1.*rows=7\sdrawn=7\stexts=6\stextsdrawn=6.*name=Game\smusic 5
+# Down to the first track; A plays it while the menu is open, and the client learns the choice.
 tap 8000
 await 5 jbox=1/0
 tap 1
 await 5 music=BGM_DUNGEON_LV6_FACE\szonebgm=\S+\sbgm=BGM_DUNGEON_LV6_FACE:1\s
 check paused=1
+logged Music:\sBGM_DUNGEON_LV6_FACE\. 10 client
+send DBG jukebox
+expect JUKEBOX.*name=Face\sShrine 5
+# Down held: the cursor repeats and the list scrolls; Up comes back one row at a time.
+tap 8000 10
+await 5 jbox=([7-9]|[1-6][0-9])/[1-9][0-9]*\s
+tap 2000
+tap 2000
 # L: System again in place; R twice through the map and back with L.
 tap 40
 await 10 pane=2\snavi=2
 send DBG jukebox
-expect JUKEBOX\smode=0
+expect JUKEBOX\smode=0 5
 tap 80
-await 10 pane=3\snavi=2
+await 10 pane=3\snavi=2\sjbox=1/0
 tap 80
 await 10 pane=0\snavi=2
 tap 40
@@ -43,12 +51,13 @@ tap 800
 await 10 pane=0\snavi=2
 tap 40
 await 10 pane=3\snavi=2
-# B closes the menu from the Jukebox; the list is dropped, the track keeps playing.
+# B closes the menu from the Jukebox; the page is dropped, the track keeps playing.
 tap 2
 await 10 paused=0
 free 10
 check music=BGM_DUNGEON_LV6_FACE\szonebgm=\S+\sbgm=BGM_DUNGEON_LV6_FACE:1\s
 send DBG jukebox
-expect JUKEBOX\smode=0.*page=0\slist=0
-send /game MUSIC off
+expect JUKEBOX\smode=0.*page=0\slist=0 5
+# The client's /music off reaches the game: the client took the game's choice as its own.
+send /music off
 await 10 music=-
