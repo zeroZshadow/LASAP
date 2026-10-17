@@ -40,6 +40,20 @@ class TestHintLines(unittest.TestCase):
         self.assertEqual(sent, [{"cmd": "LocationScouts", "locations": [1279393846], "create_as_hint": 2}])
 
 
+class TestGhostNamesFromGame(unittest.TestCase):
+    def test_dpad_toggle_keeps_the_setting(self) -> None:
+        """GHOSTNAMES from the game (the d-pad's up) sets the client's ghost_names, as /ghostnames does."""
+        from ..client import LASContext
+
+        async def run() -> list:
+            ctx = LASContext(None, None, "127.0.0.1", 0)
+            with mock.patch.object(LASContext, "set_ghost_names") as set_names:
+                ctx.handle_game_line("GHOSTNAMES 0")
+                ctx.handle_game_line("GHOSTNAMES 1")
+            return set_names.call_args_list
+        self.assertEqual(asyncio.run(run()), [mock.call(False), mock.call(True)])
+
+
 class TestGameConnection(unittest.TestCase):
     def test_game_busy_with_another_client(self) -> None:
         """A port that takes the connection but sends no HELLO is a game serving another client: the client says so

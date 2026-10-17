@@ -30,14 +30,15 @@ PAUSE_CHANCE, PAUSE = 0.3, (0.5, 2.5)  # at a waypoint: the chance to stand stil
 
 
 class Walker:
-    def __init__(self, name: str, level: str, area, y: float, rng: random.Random, look: int):
+    def __init__(self, name: str, level: str, area, y: float, rng: random.Random, shapes: int):
         self.name, self.level, self.area, self.y, self.rng = name, level, area, y, rng
         self.x, self.z = self.point()
         self.target = self.point()
         self.speed = rng.uniform(*SPEED)
         self.yaw = 0.0
         self.still_until = 0.0
-        self.look = (look & ~(3 << 20)) | (rng.randrange(3) << 20)
+        self.shapes = shapes
+        self.tunic = rng.choice((wire.TUNIC_GREEN, wire.TUNIC_RED, wire.TUNIC_BLUE))
         self.sent = self.received = 0
         self.sent_bytes = self.received_bytes = 0  # with each frame's 2-byte length
         self.players = set()
@@ -67,9 +68,9 @@ class Walker:
         return True
 
     def body(self, t_ms: int, moving: bool) -> bytes:
-        return wire.POS_BODY.pack(t_ms & 0xFFFF, wire.LEVEL_IDS[self.level], wire.room_index(self.level, self.x, self.z),
-                                  self.x, self.y, self.z, int(self.yaw * 65536 / 360) & 0xFFFF, 0, 0,
-                                  0 if moving else wire.FLAG_STILL, self.look)
+        return wire.Pos(t_ms & 0xFFFF, wire.LEVEL_IDS[self.level], self.x, self.y, self.z,
+                        int(self.yaw * 65536 / 360) & 0xFFFF, 0, 0, 0, 0 if moving else wire.FLAG_STILL, self.shapes,
+                        self.tunic, 0, 0, 0).pack()
 
 
 async def run(walker: Walker, relay: str, source: str, secret: str, deadline: float) -> None:
@@ -142,7 +143,7 @@ async def main(args) -> None:
         rect = [float(v) for v in area.split(",")]
         for i in range(int(count)):
             name = names[len(walkers)] if len(walkers) < len(names) else f"{level[:8]}{i + 1:02d}"
-            walkers.append(Walker(name, level, rect, float(y), rng, int(args.look, 16)))
+            walkers.append(Walker(name, level, rect, float(y), rng, int(args.shapes, 16)))
     deadline = time.monotonic() + args.seconds
     tasks = [asyncio.create_task(run(w, args.relay, "" if args.one_address else f"127.0.0.{2 + n}",
                                      args.secret, deadline)) for n, w in enumerate(walkers)]
@@ -168,7 +169,8 @@ if __name__ == "__main__":
     parser.add_argument("--relay", default=f"127.0.0.1:{wire.DEFAULT_PORT}")
     parser.add_argument("--secret", required=True, help="the multiworld's ghost secret (patch.json ghost_secret)")
     parser.add_argument("--crowd", action="append", required=True, help='"<count> <level> <x0>,<z0>,<x1>,<z1> <y>"')
-    parser.add_argument("--look", default=f"{wire.LOOK_DEFAULT:x}", help="the shapes drawn (hex, ghost_relay.py's look)")
+    parser.add_argument("--shapes", default=f"{wire.SHAPES_DEFAULT:x}",
+                        help="the shapes drawn (hex, ghost_relay.py's Pos)")
     parser.add_argument("--names", default="", help="slot names of the first players, comma separated")
     parser.add_argument("--seconds", type=float, default=600)
     parser.add_argument("--report", type=float, default=10)

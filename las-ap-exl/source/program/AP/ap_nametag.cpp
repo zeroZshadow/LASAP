@@ -6,6 +6,7 @@
 #include "offsets.hpp"
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <string>
 
@@ -57,6 +58,9 @@ namespace {
     // The look: the prompt at this scale, the text and the window at these alphas, the window this much wider and
     // higher than the text, the tag this far above the projected point (layout units).
     float g_Scale = 0.6f, g_Raise = 0, g_PadX = 24, g_PadY = 8;
+    // The text box's line holds more room above the letters than below them: the text goes up this part of its
+    // height, so the letters (capital top to baseline) sit in the window's middle.
+    constexpr float kTextLift = 0.14f;
     u8 g_Alpha = 230, g_BackAlpha = 200;
     // Projection (WorldToLayout, 0xf88c40): the camera at Framework +0x560, view rows at +0x20..+0x50 (the last the
     // translation), projection rows at +0xa0..+0xd0; layout coordinates are NDC times (640, 360), y up. Hidden when
@@ -84,6 +88,8 @@ namespace {
         u8* window = nullptr;
         std::string name;
         bool drawn = false;
+        bool measured = false;  // laid out with the name's glyphs drawn
+        float extent[4] = {};   // the text's extent it was laid out with (left, top, right, bottom)
         alignas(8) u8 holder[0x18] = {};  // a text object for AP::SetPaneText: +0x10 the text pane
     };
     Tag g_Tags[AP::GhostNet::SLOTS];
@@ -183,18 +189,18 @@ namespace {
         return out;
     }
 
-    void SetName(Tag& tag, const std::string& name) {
-        AP::SetPaneText(tag.holder, Clip(name));
-        tag.name = name;
-        GlyphRequest request{nullptr, nullptr, tag.text};
-        GameFn<bool (*)(void*, GlyphRequest*, int)>(kQueueGlyphs)(UiManager(), &request, kArchiveSet);
-        // centred on the root: the text's middle at x 0, the window's bottom at g_Raise, the window around the text
+    // Centred on the root: the text's middle at x 0, the window's bottom at g_Raise, the window around the text.
+    void Layout(Tag& tag) {
         Rect extent = reinterpret_cast<Rect (*)(void*)>(VTable(tag.text)[kTextRect])(tag.text);
+        tag.extent[0] = extent.left;
+        tag.extent[1] = extent.top;
+        tag.extent[2] = extent.right;
+        tag.extent[3] = extent.bottom;
         if (std::isfinite(extent.left + extent.right + extent.top + extent.bottom)) {
             float width = std::fabs(extent.right - extent.left), height = std::fabs(extent.top - extent.bottom);
             float middle = g_Raise + g_PadY + height / 2;
             Field<float>(tag.text, kPaneX) = -(extent.left + extent.right) / 2;
-            Field<float>(tag.text, kPaneY) = middle - (extent.top + extent.bottom) / 2;
+            Field<float>(tag.text, kPaneY) = middle - (extent.top + extent.bottom) / 2 + kTextLift * height;
             Field<float>(tag.window, kPaneX) = -width / 2 - g_PadX;
             Field<float>(tag.window, kPaneY) = middle;
             Field<float>(tag.window, kPaneWidth) = width + 2 * g_PadX;
@@ -202,6 +208,15 @@ namespace {
         }
         Field<u8>(tag.text, kPaneFlags) |= kPaneDirty;
         Field<u8>(tag.window, kPaneFlags) |= kPaneDirty;
+    }
+
+    void SetName(Tag& tag, const std::string& name) {
+        AP::SetPaneText(tag.holder, Clip(name));
+        tag.name = name;
+        GlyphRequest request{nullptr, nullptr, tag.text};
+        GameFn<bool (*)(void*, GlyphRequest*, int)>(kQueueGlyphs)(UiManager(), &request, kArchiveSet);
+        tag.measured = false;
+        Layout(tag);
     }
 
     // A world position on the screen in layout coordinates, or false when it is behind the camera or off screen.
@@ -237,6 +252,11 @@ namespace AP::NameTag {
         Tag& tag = g_Tags[n];
         if (tag.wrapper == nullptr && !Build(tag)) return;
         if (name != tag.name) SetName(tag, name);
+        // again once the font has drawn the name's glyphs: the extent can change with them
+        if (!tag.measured && Field<u8>(tag.text, kTextGlyphsReady)) {
+            Layout(tag);
+            tag.measured = true;
+        }
         float x, y;
         if (!Project(head, x, y)) {
             SetDrawn(tag, false);
@@ -265,6 +285,22 @@ namespace AP::NameTag {
         g_PadX = padX;
         g_PadY = padY;
     }
+
+#ifdef LASAP_TEST
+    // DBG puppet tags: each tag's text extent (left, top, right, bottom) as laid out
+    std::string Info() {
+        std::string s = "TAGS";
+        for (int n = 0; n < GhostNet::SLOTS; n++) {
+            const Tag& tag = g_Tags[n];
+            if (tag.wrapper == nullptr) continue;
+            char buf[96];
+            snprintf(buf, sizeof(buf), " | %d %.1f,%.1f,%.1f,%.1f%s", n, tag.extent[0], tag.extent[1], tag.extent[2],
+                     tag.extent[3], tag.measured ? " measured" : "");
+            s += buf;
+        }
+        return s;
+    }
+#endif
 
     std::string State() {
         std::string s = "tags=";

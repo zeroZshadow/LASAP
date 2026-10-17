@@ -26,9 +26,9 @@ import struct
 import sys
 import threading
 import time
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import Dict, List, NamedTuple, Optional, Set, Tuple, Union
 
-PROTOCOL_VERSION = 2
+PROTOCOL_VERSION = 3
 DEFAULT_PORT = 43390
 
 # Client -> relay
@@ -49,21 +49,44 @@ ECHO_ID = 0xFFFF  # --echo: the player a member's own frames come back as (new_i
 OFF_AREA = 0  # left the receiver's area, or is in no level
 OFF_LEFT = 1  # left the group
 
-# time (the sender's clock in ms, 16 bits), level id, room, x, y, z, yaw (360 degrees = 65536), anim id (Link's
-# PlayerAnimation.gsheet key + 1, 0 none), anim frame (tenths), flags, look
-POS_BODY = struct.Struct(">HHBfffHHHBI")
+# A position (Pos's fields, in order)
+POS_BODY = struct.Struct(">HHfffHHHHBIBBBB")
 FLAG_WARPED = 1  # the position jumped (level load, respawn, warp): snap instead of moving there
 FLAG_HIDDEN = 2  # Link is not drawn
 FLAG_STILL = 4  # Link did not move since the previous frame
 FLAG_STARTED = 8  # an animation started since the previous frame sent (the same id again: it restarted)
-# Look: bit i shows shape i of Link's model (20 shapes: his body and the items he holds, LOOK_SHAPES), bits 20-21 his
-# tunic (0 green, 1 red, 2 blue)
-LOOK_SHAPES = 20
-LOOK_TUNIC_SHIFT = 20
-LOOK_DEFAULT = 0x32bf8  # body, sword and shield, green tunic
+SHAPE_COUNT = 20  # Link's model's shapes: his body and the items on it
+SHAPES_DEFAULT = 0x32bf8  # body, sword and shield
+TUNIC_GREEN, TUNIC_RED, TUNIC_BLUE = 0, 1, 2
 
 NO_LEVEL = 0xFFFF
-NO_ROOM = 0xFF
+
+
+class Pos(NamedTuple):
+    """A player's position as POS and FRAME carry it (POS_BODY)."""
+    time_ms: int  # the sender's game clock when it took the position (ms, 16 bits)
+    level: int  # level id (LEVELS)
+    x: float
+    y: float
+    z: float
+    yaw: int  # 360 degrees = 65536, 0 = +z (the bottom of the screen)
+    anim: int  # Link's animation: its PlayerAnimation.gsheet key + 1, 0 none
+    anim_frame: int  # its frame, in tenths
+    upper_anim: int  # the animation on his upper body (from the bone spine_a up; idle_carry while he holds something
+    # over his head), as anim
+    flags: int  # FLAG_*
+    shapes: int  # bit i: shape i of Link's model drawn (SHAPE_COUNT; the game shows the items he holds this way)
+    tunic: int  # TUNIC_*
+    eye: int  # the frame of his eyes' material animation ("eye": 0 open, 1 closed, ...)
+    mouth: int  # the frame of his mouth's ("mouth")
+    ear: int  # the frame of his ears' ("ear")
+
+    def pack(self) -> bytes:
+        return POS_BODY.pack(*self)
+
+    @classmethod
+    def unpack(cls, body: bytes) -> "Pos":
+        return cls(*POS_BODY.unpack(body))
 MAX_FRAME = 256
 
 # Level ids: the index in this list (the RomFS level folders). Append only: ids must not change.
@@ -130,14 +153,6 @@ def field_screen(x: float, z: float) -> Tuple[int, int]:
     col = min(15, max(0, int(x // 15)))
     row = min(16, max(1, int(z // 12) + 1))
     return col, row
-
-
-def room_index(level: str, x: float, z: float) -> int:
-    """The room byte of a position: in Field (row - 1) * 16 + column, elsewhere NO_ROOM."""
-    if level != "Field":
-        return NO_ROOM
-    col, row = field_screen(x, z)
-    return (row - 1) * 16 + col
 
 
 def frame(payload: bytes) -> bytes:
@@ -353,19 +368,18 @@ class Relay:
             if len(payload) != 1 + POS_BODY.size or not member.allow():
                 return
             body = payload[1:]
-            _, level, _, x, y, z, _, _, _, _, _ = POS_BODY.unpack(body)
-            if not all(map(math.isfinite, (x, y, z))):
+            pos = Pos.unpack(body)
+            if not all(map(math.isfinite, (pos.x, pos.y, pos.z))):
                 return
-            member.level = level  # ids past LEVELS (a newer client's) still compare
-            member.screen = field_screen(x, z)
-            member.x, member.z = x, z
+            member.level = pos.level  # ids past LEVELS (a newer client's) still compare
+            member.screen = field_screen(pos.x, pos.z)
+            member.x, member.z = pos.x, pos.z
             member.body = body
             member.last_pos = time.monotonic()
             self.update(member, True)
             if self.echo is not None:
-                fields = list(POS_BODY.unpack(body))
-                fields[3] += self.echo
-                member.send(bytes([FRAME]) + struct.pack(">H", ECHO_ID) + POS_BODY.pack(*fields), droppable=True)
+                echo = pos._replace(x=pos.x + self.echo).pack()
+                member.send(bytes([FRAME]) + struct.pack(">H", ECHO_ID) + echo, droppable=True)
         elif kind == NOWHERE and member.group is not None:
             member.body = None
             member.level = NO_LEVEL
