@@ -1,6 +1,7 @@
 # The Jukebox page (ap_jukebox.cpp, DESIGN.md "Jukebox page"): the pause menu's fourth page, Map, Items, System,
-# Jukebox, as a mode of System's slot. Run after boot_file1 with the client connected (no server needed). STATE's pane= is the
-# page the player sees (3 the Jukebox), navi= the header's state (2 WaitKey), jbox= the list's cursor and first row;
+# Jukebox, as a mode of System's slot, and its playback controls. Run after boot_file1 with the client connected (no
+# server needed). STATE's pane= is the page the player sees (3 the Jukebox), navi= the header's state (2 WaitKey),
+# jbox= the list's cursor and first row;
 # DBG jukebox counts the pages built and dropped and the text boxes whose glyphs are drawn.
 expect HELLO 30
 send /music off
@@ -58,6 +59,41 @@ free 10
 check music=BGM_DUNGEON_LV6_FACE\szonebgm=\S+\sbgm=BGM_DUNGEON_LV6_FACE:1\s
 send DBG jukebox
 expect JUKEBOX\smode=0.*page=0\slist=0 5
+# In the game, the d-pad's right and left choose the next track in the list and the one chosen before.
+tap 4000
+await 5 music=BGM_DUNGEON_LV4_ANGLER\s
+tap 1000
+await 5 music=BGM_DUNGEON_LV6_FACE\s
+# On the page, Y turns repeat one off and X shuffle on and off again. Without repeat one, a track that has played
+# through gives way to the next: Marin at the Beach (5 s, no loop) to BowWow Kidnapped Intro.
+tap 400 when free 3000
+await 10 pane=1\snavi=2
+tap 80
+await 10 pane=2\snavi=2
+tap 80
+await 10 pane=3\snavi=2
+tap 8
+tap 4
+send DBG jukebox
+expect JUKEBOX.*shuffle=1\srepeat=0 5
+tap 4
+tap 2
+await 10 paused=0
+send /music BGM_EVENT_MARINE_IN_BEACH
+await 5 music=BGM_EVENT_MARINE_IN_BEACH\s
+await 15 music=BGM_EVENT_RESCUE_BOWBOW_INTRO\s
+# Repeat one on again, as at the start.
+tap 400 when free 3000
+await 10 pane=1\snavi=2
+tap 80
+await 10 pane=2\snavi=2
+tap 80
+await 10 pane=3\snavi=2
+tap 8
+send DBG jukebox
+expect JUKEBOX.*shuffle=0\srepeat=1 5
+tap 2
+await 10 paused=0
 # The client's /music off reaches the game: the client took the game's choice as its own.
 send /music off
 await 10 music=-

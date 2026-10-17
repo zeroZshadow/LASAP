@@ -9,6 +9,7 @@
 // (event songs, instrument songs, fanfares, jingles, boss and buff music) plays as usual, and the chosen track
 // comes back where the zone's music would.
 #include "AP/ap.hpp"
+#include "AP/ap_tracks.hpp"
 #include "Game/framework.hpp"
 #include "offsets.hpp"
 #include "loggers.hpp"
@@ -22,9 +23,13 @@ namespace {
 
     // The BGM manager (game 1.0.0): a static of the game, made on its first use (guard bit 0 set then).
     // BgmManager_Play(f32 volume, manager*, StringView* name, bool, bool, bool force) returns the new instance, or
-    // null for an unknown name or a track that plays already. Instances: +0x10 the name (libc++ std::string), +0xf0
-    // kind (1: zone and event BGM, which the zone update fades out when the zone's track changes). The manager:
-    // +0x6280 the instances that play (begin, end), +0x9250 the zone's track (char[64], length +0x9290).
+    // null for an unknown name or a track that plays already. A new instance starts its stream from the beginning,
+    // intro included. Instances: +0x10 the name (libc++ std::string), +0xf0 kind (1: zone and event BGM, which the
+    // zone update fades out when the zone's track changes), +0x104 the frames it fades in over once it starts. The
+    // manager: +0x6268 the instances about to start, +0x6280 those that play (begin, end), +0x9250 the zone's track
+    // (char[64], length +0x9290). A zone change (the zone update) fades the other kind 1 instances out over 90 frames
+    // and the new track in over 150 (none right after a level load); PlayZoneBgm fades out the same but starts its
+    // track at full volume, so a change made here sets the fade in itself.
     constexpr uintptr_t kBgmManager = 0x1ca1d70, kBgmManagerGuard = 0x1cab240;
     constexpr uintptr_t kBgmPlay = 0x9fd60;
     // PlayZoneBgm(bool fadeOthers): plays the zone's track (+0x9250) and, when it starts, fades out the other kind 1
@@ -38,8 +43,8 @@ namespace {
     // Return addresses of the zone music's BgmManager_Play calls: the zone update, PlayZoneBgm (twice).
     constexpr uintptr_t kZoneCalls[] = {0x9f008, 0xa688c, 0xa6988};
     constexpr size_t kActive = 0x6280, kZoneTrack = 0x9250, kZoneTrackLen = 0x9290;
-    constexpr size_t kInstName = 0x10, kInstKind = 0xf0;
-    constexpr u32 kFadeFrames = 60;
+    constexpr size_t kInstName = 0x10, kInstKind = 0xf0, kInstFadeIn = 0x104;
+    constexpr u32 kFadeFrames = 90, kFadeInFrames = 150;  // the zone update's
 
     // The chosen track ("" none) and whether the game should switch to it (or back) on the next tick in a level.
     char g_Track[64] = {};
@@ -75,13 +80,19 @@ namespace {
     }
 
     // Makes `track` ("" none) the choice; false when it is the choice already or too long.
+    int TrackIndex(const std::string& id);
+    void Remember(int index);
+
     bool Set(const std::string& track) {
         if (track.size() >= sizeof(g_Track)) {
             AP::Log("music: track name too long");
             return false;
         }
         if (track == std::string(g_Track, g_TrackLen)) return false;
-        if (g_TrackLen > 0) g_Previous.assign(g_Track, g_TrackLen);
+        if (g_TrackLen > 0) {
+            g_Previous.assign(g_Track, g_TrackLen);
+            Remember(TrackIndex(g_Previous));
+        }
         memcpy(g_Track, track.c_str(), track.size() + 1);
         g_TrackLen = track.size();
         g_Pending = true;
@@ -89,12 +100,86 @@ namespace {
         return true;
     }
 
-#ifdef LASAP_TEST
     // A libc++ std::string in the game's memory.
     std::string GameString(const u8* s) {
         if ((s[0] & 1) == 0) return std::string(reinterpret_cast<const char*>(s + 1), s[0] >> 1);
         return std::string(*reinterpret_cast<const char* const*>(s + 0x10), *reinterpret_cast<const size_t*>(s + 8));
     }
+
+    u64 NowMs() {
+        u64 ticks;
+        asm volatile("mrs %0, cntpct_el0" : "=r"(ticks));
+        return ticks / 19200;
+    }
+
+    // Playback (the Jukebox page's controls, DESIGN.md "Jukebox page"). With repeat one (on at the start) the chosen
+    // track loops, as the game loops its music. With it off, once the chosen track has played through (its length in
+    // ap_tracks.hpp, counted while it plays, from the start again whenever the game starts it again) the next one
+    // follows: the next in the list, or with shuffle a random one not heard lately. The tracks chosen before go into
+    // a short history, which Skip(-1) walks back.
+    bool g_RepeatOne = true, g_Shuffle = false;
+    constexpr int kHistory = 16, kRecent = 8;
+    int g_History[kHistory] = {};    // indexes into AP::Tracks::TRACKS, oldest first
+    int g_HistoryCount = 0;
+    bool g_GoingBack = false;        // Skip(-1) runs: the track it leaves stays out of the history
+    const u8* g_Instance = nullptr;  // the chosen track's instance as last seen playing
+    u64 g_PlayedMs = 0, g_LastMs = 0;
+    u32 g_Random = 0;
+
+    int TrackIndex(const std::string& id) {
+        for (int i = 0; i < AP::Tracks::COUNT; i++) {
+            if (id == AP::Tracks::TRACKS[i].id) return i;
+        }
+        return -1;
+    }
+
+    void Remember(int index) {
+        if (index < 0 || g_GoingBack) return;
+        if (g_HistoryCount == kHistory) {
+            memmove(g_History, g_History + 1, (kHistory - 1) * sizeof(g_History[0]));
+            g_HistoryCount--;
+        }
+        g_History[g_HistoryCount++] = index;
+    }
+
+    u32 Random() {
+        if (g_Random == 0) g_Random = static_cast<u32>(NowMs()) | 1;
+        g_Random ^= g_Random << 13;
+        g_Random ^= g_Random >> 17;
+        g_Random ^= g_Random << 5;
+        return g_Random;
+    }
+
+    bool Recent(int index) {
+        for (int i = g_HistoryCount > kRecent ? g_HistoryCount - kRecent : 0; i < g_HistoryCount; i++) {
+            if (g_History[i] == index) return true;
+        }
+        return false;
+    }
+
+    // The track after `current` (-1: none): the next in the list, or with shuffle a random one.
+    int NextIndex(int current) {
+        if (!g_Shuffle) return (current + 1) % AP::Tracks::COUNT;
+        int pick = 0;
+        for (int tries = 0; tries < 32; tries++) {
+            pick = static_cast<int>(Random() % AP::Tracks::COUNT);
+            if (pick != current && !Recent(pick)) break;
+        }
+        return pick;
+    }
+
+    // The chosen track's instance among those that play, or null.
+    const u8* PlayingInstance(const u8* manager) {
+        if (g_TrackLen == 0) return nullptr;
+        u8* const* it = *reinterpret_cast<u8* const* const*>(manager + kActive);
+        u8* const* end = *reinterpret_cast<u8* const* const*>(manager + kActive + 8);
+        for (; it != end; it++) {
+            if (GameString(*it + kInstName) == g_Track) return *it;
+        }
+        return nullptr;
+    }
+
+#ifdef LASAP_TEST
 
     // DBG music log: the last BGM requests, oldest first.
     constexpr size_t kLogSize = 24;
@@ -156,18 +241,39 @@ namespace AP::Music {
     }
 
     void Tick() {
-        if (!g_Pending) return;
         Game::Framework* fmwk = Game::GetFramework();
         u8* manager = Manager();
         if (fmwk == nullptr || fmwk->mPlayer == nullptr || manager == nullptr) return;
+        // How long the chosen track has played: from its start, while it plays (also under the pause menu, which
+        // does not tick this); with repeat one off, the next track once it has played through.
+        // A track that does not loop is gone once it has played: it has played through when it goes within a second
+        // of its length.
+        u64 now = NowMs();
+        const u8* instance = PlayingInstance(manager);
+        int index = TrackIndex(Track());
+        u64 length = index >= 0 ? AP::Tracks::TRACKS[index].ms : 0;
+        bool ended = instance == nullptr && g_Instance != nullptr && g_PlayedMs + 1000 >= length;
+        if (instance != g_Instance) {
+            g_PlayedMs = 0;
+        } else if (instance != nullptr) {
+            g_PlayedMs += now - g_LastMs;
+        }
+        g_Instance = instance;
+        g_LastMs = now;
+        if (!g_RepeatOne && !g_Pending && index >= 0 && (ended || (instance != nullptr && g_PlayedMs >= length))) {
+            Skip(1);
+        }
+        if (!g_Pending) return;
         g_Pending = false;
         if (g_TrackLen > 0 && !KnownTrack(g_Track)) {
             AP::Log(std::string("music: unknown track ") + g_Track);
             g_Track[0] = 0;
             g_TrackLen = 0;
         }
-        // The zone's music is asked for again: the chosen track (or the zone's own) starts and the rest fades out.
-        GameFn<void* (*)(bool)>(kPlayZoneBgm)(true);
+        // The zone's music is asked for again: the chosen track (or the zone's own) starts from its beginning and
+        // fades in as on a zone change, and the rest fades out.
+        u8* started = GameFn<u8* (*)(bool)>(kPlayZoneBgm)(true);
+        if (started != nullptr) *reinterpret_cast<u32*>(started + kInstFadeIn) = kFadeInFrames;
         // PlayZoneBgm fades nothing when nothing new starts (the zone has no track, or a buff's music plays): the
         // track chosen before stops by name, unless it is what plays now.
         if (!g_Previous.empty() && g_Previous != std::string(g_Track, g_TrackLen) && g_Previous != ::ZoneTrack(manager)) {
@@ -176,6 +282,29 @@ namespace AP::Music {
         }
         g_Previous.clear();
     }
+
+    std::string Skip(int step) {
+        int current = TrackIndex(g_TrackLen > 0 ? Track() : ZoneTrack());
+        int next;
+        if (step > 0) {
+            next = NextIndex(current);
+        } else if (g_HistoryCount > 0) {
+            next = g_History[--g_HistoryCount];
+        } else {
+            next = current > 0 ? current - 1 : AP::Tracks::COUNT - 1;
+        }
+        g_GoingBack = step < 0;
+        Choose(AP::Tracks::TRACKS[next].id);
+        g_GoingBack = false;
+        std::string name = AP::Tracks::TRACKS[next].name;
+        AP::ShowMusicToast("\xe2\x99\xaa " + name);
+        return name;
+    }
+
+    bool RepeatOne() { return g_RepeatOne; }
+    bool Shuffle() { return g_Shuffle; }
+    void SetRepeatOne(bool on) { g_RepeatOne = on; }
+    void SetShuffle(bool on) { g_Shuffle = on; }
 
     std::string Track() { return std::string(g_Track, g_TrackLen); }
 

@@ -5,7 +5,8 @@
 // - "Now playing": Gm_MemoryCollect (the Memories count card) on the left, with a note (the font's U+266A) in its
 //   paper window and notes floating up out of it while music plays;
 // - the name and description of the track under the cursor: the Items page's info texts (Gm_Item N_Info_00);
-// - the guide "A Play / B Back": the Items page's guide with its X/Y caption swapped (ap_text.cpp).
+// - the guide "X Shuffle, Y Repeat one, A Play, B Back": the map's guide with its captions swapped (ap_text.cpp);
+// - the playback state under the card: Shuffle and Repeat one, on or off, and the d-pad's use in the game.
 // The module steers the moves that differ from the game's: R on System and L on the Jukebox change index 2 to
 // index 2 (System is removed and built again), L on the map lands on the Jukebox. Not in the Chamber Dungeon,
 // whose third page is the dungeon's own.
@@ -28,12 +29,12 @@ namespace {
     // guide for a page.
     constexpr uintptr_t kNaviWaitKey = 0xee8ca0, kNaviCloseOldUiUpdate = 0xeea4f0, kNaviCloseEnter = 0xeeac10,
                         kNaviSetTitles = 0xeedec0, kNaviSetGuide = 0xeed6f0, kNaviChangeState = 0xee7dc0;
-    constexpr size_t kNaviMachine = 0x80, kNaviState = 0x8d, kNaviCurrent = 0x23c, kNaviTarget = 0x23d,
-                     kNaviLR = 0x1341, kNaviDirection = 0x1338, kNaviSlots = 0x12f0, kNaviTitle = 0x2d0,
-                     kNaviBack = 0x2e8, kNaviNext = 0x300;
+    constexpr size_t kNaviMachine = 0x80, kNaviState = 0x8d, kNaviIds = 0x230, kNaviCurrent = 0x23c,
+                     kNaviTarget = 0x23d, kNaviLR = 0x1341, kNaviDirection = 0x1338, kNaviSlots = 0x12f0,
+                     kNaviTitle = 0x2d0, kNaviBack = 0x2e8, kNaviNext = 0x300, kNaviGuide = 0x318;
     constexpr u8 kStateSelected = 3, kStateCloseOldUi = 4, kStateClose = 5;
     constexpr u8 kLeft = 1, kRight = 2;
-    constexpr int kMap = 0, kItems = 1, kSystem = 2;
+    constexpr int kMap = 0, kSystem = 2;
     constexpr uintptr_t kLevelIndex = 0x1cc13c8;  // the dungeon index; 8 the Chamber Dungeon (third page id 0xb)
     constexpr u8 kChamberDungeon = 8;
 
@@ -80,7 +81,7 @@ namespace {
     // A_Collect_00 (x 10): the icon P_pict_00 (x -86, hidden here) and T_CollectNum_00 / T_CollectMaxNum_00. The text
     // moves up from y 54, leaving room for the notes that float up out of the window.
     constexpr const char* kCardLayout = "Gm_MemoryCollect.bflyt";
-    constexpr float kCardX = -300, kCardY = -14, kCardTextY = 167;
+    constexpr float kCardX = -300, kCardY = 36, kCardTextY = 150;
     constexpr float kIconX = kCardX - 105, kIconY = kCardY - 46;  // left of the count
     constexpr u8 kCardPaper = 200;  // W_window_00's alpha (48 in the file)
 
@@ -100,11 +101,27 @@ namespace {
     constexpr float kIconScale = 2.6f, kMarkScale = 1.2f, kMarkX = kListX - 172;
     constexpr int kFloatFrames = 96, kBobFrames = 50, kFadeStep = 32;
 
-    // The guide's caption for A: the button tag (0x0E, group 1, type 1, one parameter byte: 0x15, A) and the word.
-    const char kPlayCaption[] = "\x0e\x01\x00\x01\x00\x01\x00\x15Play";
+    // The playback state under the card: a second Gm_MemoryCollect with only its T_Collect_00 (centred, two lines),
+    // smaller: Shuffle and Repeat one, on or off, and the d-pad's use in the game. The text box gets room for
+    // kStatusChars UTF-16 units (TextBox::AllocateStringBuffer, virtual +0xe8: box, gfx device, length; the device
+    // *(the graphics object at 0x1cc8b30)[1], as the name tags).
+    constexpr size_t kTextAllocate = 0xe8 / 8, kTextCapacity = 0x110;
+    constexpr uintptr_t kGraphics = 0x1cc8b30;
+    constexpr u16 kStatusChars = 80;
+    constexpr float kStatusY = kCardY - 46 - 49 - 40, kStatusScale = 0.72f;
 
-    // Buttons (nn::hid): A, Up/Down on the d-pad and the left stick.
-    constexpr u64 kButtonA = 0x1, kButtonUp = 0x2000 | (1ull << 17), kButtonDown = 0x8000 | (1ull << 19);
+    // The guide (Navi +0x318): GuideSet(guide, slot, kind) after the game's clear; slot objects at Navi +0x3a8 + slot
+    // * 0x110 (virtual +0x48: an object whose +0x18 is the slot's pane), or +0xd38 for the slot +0x1224 while +0x122a
+    // is set; +0x1228 set redraws. The overworld map's guide (page id 0xf): X 0x13 Memories, Y 0x14 Hide markers, R
+    // 0x15 Zoom, A 0x12 Pin, B 0x11 Back. Button tags draw nothing in a text box built here; the guide's draw.
+    constexpr uintptr_t kGuideSet = 0xf571b0;
+    constexpr size_t kGuideSlots = 0x3a8, kGuideSlotSize = 0x110, kGuideSwapSlot = 0xd38, kGuideSwapIndex = 0x1224,
+                     kGuideSwapping = 0x122a, kGuideRedraw = 0x1228, kGuideSlotObject = 0x48 / 8;
+    constexpr u32 kOverworldMap = 0xf, kGuideA = 0x12, kGuideB = 0x11;
+
+    // Buttons (nn::hid): A, X, Y, Up/Down on the d-pad and the left stick; the d-pad's left and right alone.
+    constexpr u64 kButtonA = 0x1, kButtonX = 0x4, kButtonY = 0x8, kButtonUp = 0x2000 | (1ull << 17),
+                  kButtonDown = 0x8000 | (1ull << 19), kDpadLeft = 0x1000, kDpadRight = 0x4000;
     constexpr u64 kPadStaleMs = 50;  // the last poll's buttons count as held this long
     constexpr int kRepeatDelay = 20, kRepeatEvery = 5;  // frames before Up/Down repeat, and between repeats
 
@@ -159,7 +176,7 @@ namespace {
     };
     struct Page {
         u8* page = nullptr;         // the Gm_System object that shows the Jukebox
-        Layout list, card, info, icon, mark, floating[kFloating];
+        Layout list, card, info, icon, mark, floating[kFloating], status;
         Row rows[kRows];
         u8* cursor = nullptr;
         u8* handle = nullptr;
@@ -171,7 +188,8 @@ namespace {
     std::string g_Shown;            // the chosen track the page shows
     u32 g_Frame = 0;
     int g_Fade = 0;                 // 0..255, the alpha the page's layouts draw with
-    u64 g_PrevPad = 0;
+    u64 g_PrevPad = 0;              // the page's buttons last frame
+    u64 g_GamePad = 0;              // the buttons at the last tick, for the d-pad in the game
     int g_HeldFrames = 0;
 
     // The buttons of the last input poll that saw any.
@@ -305,6 +323,7 @@ namespace {
             Unqueue(text->box);
         }
         for (auto& note : g_Ui.floating) Drop(note);
+        Drop(g_Ui.status);
         Drop(g_Ui.mark);
         Drop(g_Ui.icon);
         Drop(g_Ui.info);
@@ -345,6 +364,10 @@ namespace {
         SetText(g_Ui.name, Entry(g_Cursor).name);
         SetText(g_Ui.about, Entry(g_Cursor).info);
         MoveTo(g_Ui.about.box, 0, kInfoY - (strchr(Entry(g_Cursor).info, '\n') != nullptr ? kInfoLower : 0));
+
+        SetText(g_Ui.status.note, std::string(AP::Music::Shuffle() ? "Shuffle: On" : "Shuffle: Off") +
+                                      (AP::Music::RepeatOne() ? "    Repeat one: On" : "    Repeat one: Off") +
+                                      "\nIn game: \xe2\x86\x90 \xe2\x86\x92 change track");
     }
 
     // Once a frame: the page fades in, and out while the header leaves it; the note bobs; notes float up while
@@ -354,7 +377,7 @@ namespace {
         u8 navi = g_Navi != nullptr ? Field<u8>(g_Navi, kNaviState) : 0;
         bool leaving = navi == kStateCloseOldUi || navi == kStateClose;
         g_Fade = std::clamp(g_Fade + (leaving ? -kFadeStep : kFadeStep), 0, 255);
-        for (Layout* layout : {&g_Ui.list, &g_Ui.card, &g_Ui.info, &g_Ui.icon, &g_Ui.mark}) {
+        for (Layout* layout : {&g_Ui.list, &g_Ui.card, &g_Ui.info, &g_Ui.icon, &g_Ui.mark, &g_Ui.status}) {
             SetAlpha(layout->root, g_Fade);
         }
 
@@ -387,6 +410,7 @@ namespace {
                   Build(g_Ui.list, kListLayout, page, pageRoot) && Build(g_Ui.icon, kNoteLayout, page, pageRoot) &&
                   Build(g_Ui.mark, kNoteLayout, page, pageRoot);
         for (auto& note : g_Ui.floating) ok = ok && Build(note, kNoteLayout, page, pageRoot);
+        ok = ok && Build(g_Ui.status, kCardLayout, page, pageRoot);
         if (!ok) {
             DropPage();
             return;
@@ -435,6 +459,23 @@ namespace {
         ScaleTo(g_Ui.icon.root, kIconScale);
         ScaleTo(g_Ui.mark.root, kMarkScale);
 
+        // the playback state, with room for its text (left empty if there is none)
+        u8* status = g_Ui.status.root;
+        SetVisible(FindPane(status, "W_window_00"), false);
+        SetVisible(FindPane(status, "A_Collect_00"), false);
+        MoveTo(FindPane(status, "N_Collect_00"), kCardX, kStatusY);
+        u8* statusText = FindPane(status, "T_Collect_00");
+        MoveTo(statusText, 0, 0);
+        ScaleTo(statusText, kStatusScale);
+        u8* graphics = *reinterpret_cast<u8**>(g_BaseAddress + kGraphics);
+        void* device = nullptr;
+        if (graphics != nullptr && Field<void**>(graphics, 8) != nullptr) device = *Field<void**>(graphics, 8);
+        if (statusText != nullptr && device != nullptr) {
+            reinterpret_cast<void (*)(void*, void*, u16)>(VTable(statusText)[kTextAllocate])(statusText, device,
+                                                                                            kStatusChars);
+            if (Field<u16>(statusText, kTextCapacity) > kStatusChars) Bind(g_Ui.status.note, statusText);
+        }
+
         // the info texts
         u8* info = g_Ui.info.root;
         for (const char* hidden : kInfoHidden) SetVisible(FindPane(info, hidden), false);
@@ -463,7 +504,7 @@ namespace {
         PlaySound("SE_SY_CURSOL_MOVE");
     }
 
-    // The page's buttons, once a frame while it takes them: Up/Down (repeating while held), A.
+    // The page's buttons, once a frame while it takes them: Up/Down (repeating while held), A, X, Y.
     void Input() {
         u64 pad = PadHeld(), pressed = pad & ~g_PrevPad;
         g_PrevPad = pad;
@@ -477,6 +518,12 @@ namespace {
         if (pressed & kButtonA) {
             AP::Music::Choose(g_Cursor == 0 ? "" : Entry(g_Cursor).id);
             AP::Music::Tick();  // Tick does not run while the menu is open: apply now
+            PlaySound("SE_SY_DECIDE");
+            Fill();
+        }
+        if (pressed & (kButtonX | kButtonY)) {
+            if (pressed & kButtonX) AP::Music::SetShuffle(!AP::Music::Shuffle());
+            if (pressed & kButtonY) AP::Music::SetRepeatOne(!AP::Music::RepeatOne());
             PlaySound("SE_SY_DECIDE");
             Fill();
         }
@@ -550,13 +597,27 @@ HOOK_DEFINE_TRAMPOLINE(NaviSetTitles) {
     }
 };
 
-// The Jukebox's guide is the Items page's (X/Y Set item, B Back) with the X/Y caption read as "A Play".
+// The Jukebox's guide is the overworld map's (X, Y, R, A, B) with A and B moved up over R and the last slot hidden,
+// its captions read as Shuffle, Repeat one and Play.
 HOOK_DEFINE_TRAMPOLINE(NaviSetGuide) {
     static void Callback(u8* navi, u32 index) {
         if (index != kSystem || !g_Jukebox || InChamberDungeon()) return Orig(navi, index);
+        u32 mapId = Field<u32>(navi, kNaviIds);
+        Field<u32>(navi, kNaviIds) = kOverworldMap;
         g_Guide = true;
-        Orig(navi, kItems);
+        Orig(navi, kMap);
+        auto set = GameFn<void (*)(void*, int, u32)>(kGuideSet);
+        set(navi + kNaviGuide, 2, kGuideA);
+        set(navi + kNaviGuide, 3, kGuideB);
         g_Guide = false;
+        Field<u32>(navi, kNaviIds) = mapId;
+        u8* slot = navi + kGuideSlots + 4 * kGuideSlotSize;
+        if (Field<u8>(navi, kGuideSwapping) != 0 && Field<u32>(navi, kGuideSwapIndex) == 4) {
+            slot = navi + kGuideSwapSlot;
+        }
+        u8* object = reinterpret_cast<u8* (*)(void*)>(VTable(slot)[kGuideSlotObject])(slot);
+        SetVisible(object != nullptr ? Field<u8*>(object, 0x18) : nullptr, false);
+        Field<u8>(navi, kGuideRedraw) = 1;
     }
 };
 
@@ -606,7 +667,21 @@ namespace AP::JukeboxPane {
         g_PadSeen = NowMs();
     }
 
-    std::string GuideCaption() { return g_Guide ? std::string(kPlayCaption, sizeof(kPlayCaption) - 1) : std::string(); }
+    void Tick(bool free) {
+        u64 pad = PadHeld(), pressed = pad & ~g_GamePad;
+        g_GamePad = pad;
+        if (!free) return;
+        if (pressed & kDpadRight) {
+            AP::Music::Skip(1);
+        } else if (pressed & kDpadLeft) {
+            AP::Music::Skip(-1);
+        }
+    }
+
+    std::string GuideCaption(int button) {
+        if (!g_Guide) return "";
+        return button == 0 ? "Shuffle" : button == 1 ? "Repeat one" : "Play";
+    }
 
 #ifdef LASAP_TEST
     // STATE's " pane=<0-3, - with no header> navi=<header state> jbox=<cursor>/<top>"; the header pointer is kept
@@ -646,6 +721,7 @@ namespace AP::JukeboxPane {
         }
         s += " texts=" + std::to_string(texts) + " textsdrawn=" + std::to_string(glyphs);
         s += " fade=" + std::to_string(g_Fade);
+        s += " shuffle=" + std::to_string(AP::Music::Shuffle()) + " repeat=" + std::to_string(AP::Music::RepeatOne());
         if (g_Ui.page != nullptr) s += " name=" + std::string(Entry(g_Cursor).name);
         for (char& c : s) c = c == '\n' ? '|' : c;
         return s;

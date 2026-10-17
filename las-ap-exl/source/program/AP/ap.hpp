@@ -105,6 +105,9 @@ namespace AP {
     void LoadLocationNames();
     // A short message in the autosave popup ("Now Saving"), which does not stop the game; '\n' starts a new line.
     void QueueToast(const std::string& text);
+    // The Jukebox's toast: a track's name. It takes the place of the one showing or waiting, so skipping through
+    // tracks shows the last one, not a queue.
+    void ShowMusicToast(const std::string& text);
     // Sets a text pane to a UTF-8 text through the game's message pipeline, as the game sets a pane to a message: the
     // holder's +0x10 is the pane, as in the game's text objects.
     void SetPaneText(void* holder, const std::string& text);
@@ -143,6 +146,16 @@ namespace AP::Music {
     // The chosen track, "" for none; the zone's own track, "" when not known.
     std::string Track();
     std::string ZoneTrack();
+    // Playback: repeat one (on at the start: the chosen track loops) and shuffle. With repeat one off, a track that
+    // has played through gives way to the next (Skip(1)).
+    bool RepeatOne();
+    bool Shuffle();
+    void SetRepeatOne(bool on);
+    void SetShuffle(bool on);
+    // Chooses the next track (step 1: the next in the list after the chosen one, or the zone's own, or with shuffle a
+    // random one) or the one before (step -1: the last one chosen, else the one before in the list), shows its name
+    // in a toast and returns it.
+    std::string Skip(int step);
 #ifdef LASAP_TEST
     // STATE's " music=<chosen track or -> zonebgm=<the zone's track> bgm=<playing tracks as name:kind, or ->"
     std::string StateField();
@@ -228,8 +241,11 @@ namespace AP::JukeboxPane {
     void InstallHooks();
     // Each input poll's buttons (nn::hid).
     void OnPad(u64 buttons);
-    // The Items page's X/Y caption while the Jukebox fills the guide with it ("A Play"), else "".
-    std::string GuideCaption();
+    // Once a tick: the d-pad's left and right choose the track before and after while the player is free.
+    void Tick(bool free);
+    // While the Jukebox fills the guide from the map's: the word for the map's caption of button 0 X (Memories),
+    // 1 Y (Hide markers) or 2 A (Pin), after the caption's button tag; else "".
+    std::string GuideCaption(int button);
 #ifdef LASAP_TEST
     // STATE's " pane=<0-3|-> navi=<header state> jbox=<cursor>/<top>"
     std::string StateField(bool paused);

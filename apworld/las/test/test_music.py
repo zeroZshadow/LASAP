@@ -10,8 +10,8 @@ from .. import music
 ROOT = Path(__file__).resolve().parents[3]
 PATCHER_MUSIC = ROOT / "patcher" / "RandomizerCore" / "Randomizers" / "music.py"
 TRACK_NAMES = ROOT / "las-ap-exl" / "source" / "program" / "AP" / "ap_tracks.hpp"
-ENTRY = re.compile(r'\{\s*"(BGM_\w+)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*\}')
-GAME_MUSIC = re.compile(r'GAME_MUSIC\s*=\s*\{\s*nullptr\s*,\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*\}')
+ENTRY = re.compile(r'\{\s*"(BGM_\w+)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*,\s*(\d+)\s*\}')
+GAME_MUSIC = re.compile(r'GAME_MUSIC\s*=\s*\{\s*nullptr\s*,\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*,\s*0\s*\}')
 
 
 def c_string(text: str) -> str:
@@ -30,7 +30,9 @@ class TestTracks(unittest.TestCase):
 
     def test_track_names(self) -> None:
         source = TRACK_NAMES.read_text(encoding="utf-8")
-        entries = [(i, c_string(n), c_string(t)) for i, n, t in ENTRY.findall(source)]
+        entries = [(i, c_string(n), c_string(t)) for i, n, t, _ in ENTRY.findall(source)]
+        # each track's play-through (scripts/track_lengths.py): at least a few seconds, at most ten minutes
+        self.assertTrue(all(3000 <= int(ms) <= 600000 for *_, ms in ENTRY.findall(source)))
         self.assertEqual(tuple(i for i, _, _ in entries), music.TRACKS)
         game_music = GAME_MUSIC.search(source)
         self.assertIsNotNone(game_music)

@@ -37,7 +37,7 @@ namespace {
     constexpr size_t kThrobberState = 0x8d;
     constexpr size_t kThrobberPane = 0x278;
     constexpr size_t kThrobberTimer = 0x290;
-    constexpr int kStateNone = 0, kStateInAuto = 4;
+    constexpr int kStateNone = 0, kStateInAuto = 4, kStateLoopAuto = 5;
     constexpr float kToastSeconds = 3.0f;
     constexpr const char* kSavingLabel = "SystemSaving";
     using ThrobberShowFn = void (*)(bool);
@@ -50,12 +50,15 @@ namespace {
     const std::string* g_PaneText = nullptr;  // SetPaneText: the getter hands out this for UI:SystemSaving
     char g_PaneBuf[128];
     std::deque<std::string> g_Toasts;
+    std::string g_MusicToast;       // the Jukebox's toast waiting, "" none
+    bool g_ToastMusic = false;      // the popup shows the Jukebox's toast
     std::string g_Toast;
     char g_ToastBuf[256];
 
-    enum class Kind { None, Found, Received, Saving, MapCaption, ItemCaption };
+    enum class Kind { None, Found, Received, Saving, MapCaption, MapPlace, MapPin };
     constexpr const char* kMapCaptionLabel = "MapCaptionMemory";  // the map's X button: memories
-    constexpr const char* kItemCaptionLabel = "ItemCaptionSet";   // the Items page's X/Y button: set item
+    constexpr const char* kMapPlaceLabel = "MapCaptionPlace";     // Y: hide markers
+    constexpr const char* kMapPinLabel = "MapCaptionPin";         // A: pin
     struct Slot { void* msbt; s32 index; Kind kind; };
     Slot g_Slots[16];
     int g_SlotCount = 0;
@@ -166,7 +169,8 @@ HOOK_DEFINE_TRAMPOLINE(MsbtFindLabel) {
         else if (LabelIs(label, len, AP::RECEIVED_LABEL)) Remember(msbt, out->index, Kind::Received);
         else if (LabelIs(label, len, kSavingLabel)) Remember(msbt, out->index, Kind::Saving);
         else if (LabelIs(label, len, kMapCaptionLabel)) Remember(msbt, out->index, Kind::MapCaption);
-        else if (LabelIs(label, len, kItemCaptionLabel)) Remember(msbt, out->index, Kind::ItemCaption);
+        else if (LabelIs(label, len, kMapPlaceLabel)) Remember(msbt, out->index, Kind::MapPlace);
+        else if (LabelIs(label, len, kMapPinLabel)) Remember(msbt, out->index, Kind::MapPin);
         else return;
         Logging.Log("[AP] text label " + std::string(label, len) + " index " + std::to_string(out->index));
     }
@@ -226,8 +230,13 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
                 out->length = Store(g_ToastBuf, sizeof(g_ToastBuf), g_Toast);
                 out->text = g_ToastBuf;
                 break;
-            case Kind::MapCaption: {
-                std::string text = AP::MapCaptionText();
+            case Kind::MapCaption:
+            case Kind::MapPlace:
+            case Kind::MapPin: {
+                // the map's X, Y and A captions; the Jukebox's guide, made from the map's, uses them too
+                int button = kind == Kind::MapCaption ? 0 : kind == Kind::MapPlace ? 1 : 2;
+                std::string text = AP::JukeboxPane::GuideCaption(button);
+                if (text.empty() && kind == Kind::MapCaption) text = AP::MapCaptionText();
                 if (text.empty()) return;
                 // The caption starts with a tag drawing the button (0x0E, group, type, parameter size, parameters).
                 s64 tags = 0;
@@ -236,14 +245,6 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
                 }
                 tags = std::min(tags, out->length);
                 out->length = Store(g_CaptionText, sizeof(g_CaptionText), std::string(out->text, tags) + text);
-                out->text = g_CaptionText;
-                break;
-            }
-            case Kind::ItemCaption: {
-                // the Jukebox's guide: the whole caption, button tag included
-                std::string text = AP::JukeboxPane::GuideCaption();
-                if (text.empty()) return;
-                out->length = Store(g_CaptionText, sizeof(g_CaptionText), text);
                 out->text = g_CaptionText;
                 break;
             }
@@ -316,16 +317,34 @@ namespace AP {
         if (g_Toasts.size() < 8) g_Toasts.push_back(text);
     }
 
+    void ShowMusicToast(const std::string& text) {
+        // showing, before it slides out: the new name in its place, for a whole toast's time
+        if (g_ToastShowing && g_ToastMusic && g_Throbber != nullptr &&
+            (g_Throbber[kThrobberState] == kStateInAuto || g_Throbber[kThrobberState] == kStateLoopAuto)) {
+            g_Toast = text;
+            SetThrobberText(true);
+            *reinterpret_cast<float*>(g_Throbber + kThrobberTimer) = kToastSeconds;
+            return;
+        }
+        g_MusicToast = text;
+    }
+
     void TickToasts(bool inLevel) {
-        if (g_ToastShowing || g_Toasts.empty() || !inLevel) return;
+        if (g_ToastShowing || (g_Toasts.empty() && g_MusicToast.empty()) || !inLevel) return;
         // ShowThrobber does nothing while the popup is busy (a real save); the toast then waits
         if (g_Throbber != nullptr && g_Throbber[kThrobberState] != kStateNone) return;
-        g_Toast = g_Toasts.front();
+        bool music = g_Toasts.empty();
+        g_Toast = music ? g_MusicToast : g_Toasts.front();
         g_ToastStarting = true;
         reinterpret_cast<ThrobberShowFn>(g_BaseAddress + offset_manager.Offset(kThrobberShow))(true);
         g_ToastStarting = false;
         if (g_ToastShowing) {
-            g_Toasts.pop_front();
+            g_ToastMusic = music;
+            if (music) {
+                g_MusicToast.clear();
+            } else {
+                g_Toasts.pop_front();
+            }
             Logging.Log("[AP] toast: " + g_Toast);
         }
     }

@@ -1122,6 +1122,7 @@ namespace AP {
         AP::TickToasts(PlayerReady());
         TickItemGet();
         TickWarpMenu();
+        JukeboxPane::Tick(PlayerFree());
         TickMap();
         Music::Tick();
 #ifdef LASAP_TEST
