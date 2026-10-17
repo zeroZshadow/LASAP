@@ -174,14 +174,16 @@ namespace {
             s32 noDelay = 1;
             nn::socket::SetSockOpt(g_Client, IPPROTO_TCP, kTcpNoDelay, &noDelay, sizeof(noDelay));
 
+            // HELLO goes first: what the game sends once it sees the connection comes after it
+            std::string hello = AP::HelloLine() + "\n";
             Lock();
             g_Inbound.clear();
             g_Outbound.clear();
+            g_Outbound.push_back(hello);
             Unlock();
             g_Connected = true;
             g_NewConnection = true;
             Logging.Log("[AP] client connected");
-            Queue(AP::HelloLine());
 
             ServeClient();
 

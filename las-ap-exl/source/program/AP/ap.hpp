@@ -141,10 +141,15 @@ namespace AP::Music {
     void Choose(const std::string& track);
     // Sends the client MUSIC <the chosen track> | MUSIC off; on each new connection.
     void Report();
-    // Once per tick: switches to the chosen track (or back) once a level is loaded.
-    void Tick();
+    // Once per tick: switches to the chosen track (or back) once a level is loaded; with repeat one off and the
+    // player free, moves on once the track has played through.
+    void Tick(bool free = false);
     // The chosen track, "" for none; the zone's own track, "" when not known.
     std::string Track();
+    // Whether `track` is the chosen track ("" for none), and whether any music is known to play (a chosen track or
+    // the zone's own), without copies, for the Jukebox page's every frame.
+    bool IsChosen(const char* track);
+    bool HasMusic();
     std::string ZoneTrack();
     // Playback: repeat one (on at the start: the chosen track loops) and shuffle. With repeat one off, a track that
     // has played through gives way to the next (Skip(1)).

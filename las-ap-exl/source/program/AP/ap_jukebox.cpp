@@ -56,6 +56,9 @@ namespace {
                      kFindPane = 0x60 / 8, kHolderPane = 0x10, kTextGlyphsReady = 0x190;
     constexpr size_t kUiGlyphQueues = 0xab40, kQueueStride = 0x18, kQueueSize = 0x10, kNodeCount = 0x18,
                      kNodeTextBox = 0x20;
+    // The UI manager's UIs: a list at +0x950, the UI at node +0x10, its id from virtual +0x60.
+    constexpr size_t kUiList = 0x950, kNodeUi = 0x10, kUiId = 0x60 / 8;
+    constexpr int kNaviUi = 5;
     constexpr int kPriority = 10;
     // Pane (nn::ui2d): translation +0x30, scale +0x48, flags +0x58 (visible 0x01, alpha passed to the children 0x02,
     // global matrix dirty 0x10), alpha +0x59, the alpha it draws with +0x5a.
@@ -114,7 +117,10 @@ namespace {
     // * 0x110 (virtual +0x48: an object whose +0x18 is the slot's pane), or +0xd38 for the slot +0x1224 while +0x122a
     // is set; +0x1228 set redraws. The overworld map's guide (page id 0xf): X 0x13 Memories, Y 0x14 Hide markers, R
     // 0x15 Zoom, A 0x12 Pin, B 0x11 Back. Button tags draw nothing in a text box built here; the guide's draw.
+    // GuideSet loads a slot's caption only when its kind differs from the one kept at guide +0xb40 + slot * 4.
     constexpr uintptr_t kGuideSet = 0xf571b0;
+    constexpr size_t kGuideKinds = 0xb40;
+    constexpr int kGuideSlotCount = 6;
     constexpr size_t kGuideSlots = 0x3a8, kGuideSlotSize = 0x110, kGuideSwapSlot = 0xd38, kGuideSwapIndex = 0x1224,
                      kGuideSwapping = 0x122a, kGuideRedraw = 0x1228, kGuideSlotObject = 0x48 / 8;
     constexpr u32 kOverworldMap = 0xf, kGuideA = 0x12, kGuideB = 0x11;
@@ -142,6 +148,16 @@ namespace {
 
     u8* UiManager() { return reinterpret_cast<u8*>(g_BaseAddress + kUiManager); }
 
+    // The UI of that id in the UI manager's list (UiManager_Find without the handle), or null.
+    u8* FindUi(int id) {
+        u8* end = UiManager() + kUiList;
+        for (u8* node = Field<u8*>(end, 8); node != end; node = Field<u8*>(node, 8)) {
+            u8* ui = Field<u8*>(node, kNodeUi);
+            if (ui != nullptr && reinterpret_cast<int (*)(void*)>(VTable(ui)[kUiId])(ui) == id) return ui;
+        }
+        return nullptr;
+    }
+
     u64 NowMs() {
         u64 ticks;
         asm volatile("mrs %0, cntpct_el0" : "=r"(ticks));
@@ -151,17 +167,18 @@ namespace {
     bool InChamberDungeon() { return *reinterpret_cast<u8*>(g_BaseAddress + kLevelIndex) == kChamberDungeon; }
 
     // The header and the mode
-    u8* g_Navi = nullptr;
     bool g_Jukebox = false;         // index 2 shows the Jukebox
     bool g_Pending = false;         // the value g_Jukebox takes once the old page is removed
     bool g_ChangeAhead = false;     // a page change runs: g_Pending applies when CloseOldUi ends
     bool g_Guide = false;           // Navi_SetGuide runs for the Jukebox: the X/Y caption reads "A Play"
+    bool g_GuideShown = false;      // the guide shows the Jukebox's captions
     int g_Changes = 0;              // changes through index 2 the module steered (2 to 2)
 
     // A text box and the text object AP::SetPaneText fills it through (+0x10 the text pane).
     struct Text {
         u8* box = nullptr;
         alignas(8) u8 holder[0x18] = {};
+        std::string value;          // the text it shows: set again only when it changes
     };
     struct Row {
         u8* part = nullptr;
@@ -242,7 +259,8 @@ namespace {
     }
 
     void SetText(Text& text, const std::string& value) {
-        if (text.box == nullptr) return;
+        if (text.box == nullptr || (value == text.value && !value.empty())) return;
+        text.value = value;
         AP::SetPaneText(text.holder, value);
         QueueGlyphs(text.box);
     }
@@ -374,7 +392,8 @@ namespace {
     // music plays.
     void Animate() {
         g_Frame++;
-        u8 navi = g_Navi != nullptr ? Field<u8>(g_Navi, kNaviState) : 0;
+        u8* header = FindUi(kNaviUi);
+        u8 navi = header != nullptr ? Field<u8>(header, kNaviState) : 0;
         bool leaving = navi == kStateCloseOldUi || navi == kStateClose;
         g_Fade = std::clamp(g_Fade + (leaving ? -kFadeStep : kFadeStep), 0, 255);
         for (Layout* layout : {&g_Ui.list, &g_Ui.card, &g_Ui.info, &g_Ui.icon, &g_Ui.mark, &g_Ui.status}) {
@@ -382,7 +401,7 @@ namespace {
         }
 
         MoveTo(g_Ui.icon.root, kIconX, kIconY + 6.0f * Triangle(static_cast<float>(g_Frame) / kBobFrames));
-        bool music = !AP::Music::Track().empty() || !AP::Music::ZoneTrack().empty();
+        bool music = AP::Music::HasMusic();
         for (int i = 0; i < kFloating; i++) {
             u8* note = g_Ui.floating[i].root;
             if (note == nullptr) continue;
@@ -412,7 +431,10 @@ namespace {
         for (auto& note : g_Ui.floating) ok = ok && Build(note, kNoteLayout, page, pageRoot);
         ok = ok && Build(g_Ui.status, kCardLayout, page, pageRoot);
         if (!ok) {
+            // the page stays System, whole: its choices are not left working unseen
             DropPage();
+            SetVisible(FindPane(pageRoot, kSystemContent), true);
+            g_Jukebox = false;
             return;
         }
 
@@ -529,6 +551,18 @@ namespace {
         }
     }
 
+    // What Navi_WaitKey asks before it turns the page: no dialog open (UIs 0x1f, 0x20, 0x26) and the page's +0xe0 set.
+    bool MayTurn(u8* navi) {
+        u8* page = Field<u8*>(navi, kNaviSlots + Field<u8>(navi, kNaviCurrent) * 0x10);
+        if (page == nullptr || Field<u8>(page, kPageCanClose) == 0) return false;
+        return FindUi(0x20) == nullptr && FindUi(0x1f) == nullptr && FindUi(0x26) == nullptr;
+    }
+
+    // The next GuideSet loads every caption again: the Jukebox's and the map's share kinds.
+    void ForgetGuideKinds(u8* navi) {
+        for (int slot = 0; slot < kGuideSlotCount; slot++) Field<u32>(navi + kNaviGuide, kGuideKinds + slot * 4) = ~0u;
+    }
+
     // A page change the header would not make: index 2 to index 2.
     void ChangeInPlace(u8* navi, bool jukebox, u8 direction) {
         int index = Field<u8>(navi, kNaviCurrent);
@@ -547,13 +581,12 @@ namespace {
 
 HOOK_DEFINE_TRAMPOLINE(NaviWaitKey) {
     static void Callback(u8* navi) {
-        g_Navi = navi;
         if (InChamberDungeon()) return Orig(navi);
         int index = Field<u8>(navi, kNaviCurrent);
         u8 lr = Field<u8>(navi, kNaviLR);
-        if (index == kSystem && lr == kRight && !g_Jukebox) return ChangeInPlace(navi, true, kRight);
-        if (index == kSystem && lr == kLeft && g_Jukebox) return ChangeInPlace(navi, false, kLeft);
-        Orig(navi);
+        bool inPlace = index == kSystem && ((lr == kRight && !g_Jukebox) || (lr == kLeft && g_Jukebox));
+        if (inPlace && MayTurn(navi)) return ChangeInPlace(navi, lr == kRight, lr);
+        Orig(navi);  // refuses a turn in place that MayTurn refused
         if (Field<u8>(navi, kNaviState) == kStateCloseOldUi && !g_ChangeAhead) {
             // the game's own change: the Jukebox comes after the map going left, and is left any other way
             g_Pending = index == kMap && lr == kLeft && Field<u8>(navi, kNaviTarget) == kSystem;
@@ -575,6 +608,8 @@ HOOK_DEFINE_TRAMPOLINE(NaviCloseOldUiUpdate) {
 HOOK_DEFINE_TRAMPOLINE(NaviCloseEnter) {
     static void Callback(u8* navi) {
         Orig(navi);
+        // the header's names queued without an owner go before the header does
+        for (size_t text : {kNaviTitle, kNaviBack, kNaviNext}) Unqueue(Field<u8*>(navi + text, kHolderPane));
         g_Jukebox = false;
         g_Pending = false;
         g_ChangeAhead = false;
@@ -601,7 +636,13 @@ HOOK_DEFINE_TRAMPOLINE(NaviSetTitles) {
 // its captions read as Shuffle, Repeat one and Play.
 HOOK_DEFINE_TRAMPOLINE(NaviSetGuide) {
     static void Callback(u8* navi, u32 index) {
-        if (index != kSystem || !g_Jukebox || InChamberDungeon()) return Orig(navi, index);
+        if (index != kSystem || !g_Jukebox || InChamberDungeon()) {
+            if (g_GuideShown) ForgetGuideKinds(navi);
+            g_GuideShown = false;
+            return Orig(navi, index);
+        }
+        ForgetGuideKinds(navi);
+        g_GuideShown = true;
         u32 mapId = Field<u32>(navi, kNaviIds);
         Field<u32>(navi, kNaviIds) = kOverworldMap;
         g_Guide = true;
@@ -634,7 +675,7 @@ HOOK_DEFINE_TRAMPOLINE(SystemUpdate) {
     static void Callback(u8* page) {
         if (page != g_Ui.page) return Orig(page);
         Animate();
-        if (AP::Music::Track() != g_Shown) Fill();  // the client chose a track
+        if (!AP::Music::IsChosen(g_Shown.c_str())) Fill();  // the client chose a track
         // Gm_System's own update runs while it opens (its In animation), never once it takes buttons
         if (Field<u8>(page, kSystemState) == 0 || Field<u8>(page, kSystemState) == 0xff) return Orig(page);
         Field<u8>(page, kPageCanClose) = 1;
@@ -684,14 +725,14 @@ namespace AP::JukeboxPane {
     }
 
 #ifdef LASAP_TEST
-    // STATE's " pane=<0-3, - with no header> navi=<header state> jbox=<cursor>/<top>"; the header pointer is kept
-    // after the menu closes, so pane= counts only while the game is paused.
+    // STATE's " pane=<0-3, - with no header> navi=<header state> jbox=<cursor>/<top>", while the game is paused.
     std::string StateField(bool paused) {
         std::string s = " pane=";
-        if (g_Navi == nullptr || !paused) return s + "- navi=- jbox=-";
-        int index = Field<u8>(g_Navi, kNaviCurrent);
+        u8* navi = paused ? FindUi(kNaviUi) : nullptr;
+        if (navi == nullptr) return s + "- navi=- jbox=-";
+        int index = Field<u8>(navi, kNaviCurrent);
         s += std::to_string(index == kSystem && g_Jukebox ? 3 : index);
-        s += " navi=" + std::to_string(Field<u8>(g_Navi, kNaviState));
+        s += " navi=" + std::to_string(Field<u8>(navi, kNaviState));
         s += " jbox=";
         s += g_Ui.page != nullptr ? std::to_string(g_Cursor) + "/" + std::to_string(g_Top) : std::string("-");
         return s;

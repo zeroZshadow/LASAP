@@ -1122,9 +1122,10 @@ namespace AP {
         AP::TickToasts(PlayerReady());
         TickItemGet();
         TickWarpMenu();
-        JukeboxPane::Tick(PlayerFree());
+        // the d-pad changes the music in free play, not where a minigame may steer with it
+        JukeboxPane::Tick(PlayerFree() && g_LastLevel != kCraneGameLevel && g_LastLevel != "FishingPond");
         TickMap();
-        Music::Tick();
+        Music::Tick(PlayerFree());
 #ifdef LASAP_TEST
         Test::Tick();
 #endif

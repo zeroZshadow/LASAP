@@ -16,6 +16,7 @@
 #include <cstring>
 #include <cstdio>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace {
@@ -46,10 +47,16 @@ namespace {
     constexpr size_t kInstName = 0x10, kInstKind = 0xf0, kInstFadeIn = 0x104;
     constexpr u32 kFadeFrames = 90, kFadeInFrames = 150;  // the zone update's
 
-    // The chosen track ("" none) and whether the game should switch to it (or back) on the next tick in a level.
+    // The chosen track ("" none), its index in AP::Tracks::TRACKS (-1: none, or a track not in the list), and whether
+    // the game should switch to it (or back) on the next tick in a level.
     char g_Track[64] = {};
     size_t g_TrackLen = 0;
+    int g_TrackIndex = -1;
     bool g_Pending = false;
+    // How long the chosen track has played (Tick, playback below).
+    const u8* g_Instance = nullptr;  // the chosen track's instance as last seen playing
+    u64 g_PlayedMs = 0, g_LastMs = 0;
+    bool g_Ended = false;            // the chosen track (one that does not loop) ended while the player was free
     // The track chosen before the last change, stopped once the change applies.
     std::string g_Previous;
 
@@ -91,25 +98,40 @@ namespace {
         if (track == std::string(g_Track, g_TrackLen)) return false;
         if (g_TrackLen > 0) {
             g_Previous.assign(g_Track, g_TrackLen);
-            Remember(TrackIndex(g_Previous));
+            Remember(g_TrackIndex);
         }
         memcpy(g_Track, track.c_str(), track.size() + 1);
         g_TrackLen = track.size();
+        g_TrackIndex = TrackIndex(track);
+        g_Instance = nullptr;
+        g_PlayedMs = 0;
+        g_Ended = false;
         g_Pending = true;
         AP::Log(track.empty() ? "music off" : "music " + track);
         return true;
     }
 
-    // A libc++ std::string in the game's memory.
-    std::string GameString(const u8* s) {
-        if ((s[0] & 1) == 0) return std::string(reinterpret_cast<const char*>(s + 1), s[0] >> 1);
-        return std::string(*reinterpret_cast<const char* const*>(s + 0x10), *reinterpret_cast<const size_t*>(s + 8));
+    // A libc++ std::string in the game's memory: its characters and length, without a copy.
+    std::string_view GameString(const u8* s) {
+        if ((s[0] & 1) == 0) return std::string_view(reinterpret_cast<const char*>(s + 1), s[0] >> 1);
+        return std::string_view(*reinterpret_cast<const char* const*>(s + 0x10), *reinterpret_cast<const size_t*>(s + 8));
     }
 
     u64 NowMs() {
         u64 ticks;
         asm volatile("mrs %0, cntpct_el0" : "=r"(ticks));
         return ticks / 19200;
+    }
+
+    // Zone or event music (kind 1) other than the chosen track plays: a boss's, an event's.
+    bool OtherMusic(const u8* manager) {
+        u8* const* it = *reinterpret_cast<u8* const* const*>(manager + kActive);
+        u8* const* end = *reinterpret_cast<u8* const* const*>(manager + kActive + 8);
+        for (; it != end; it++) {
+            if ((*it)[kInstKind] != 1) continue;
+            if (GameString(*it + kInstName) != std::string_view(g_Track, g_TrackLen)) return true;
+        }
+        return false;
     }
 
     // Playback (the Jukebox page's controls, DESIGN.md "Jukebox page"). With repeat one (on at the start) the chosen
@@ -122,8 +144,6 @@ namespace {
     int g_History[kHistory] = {};    // indexes into AP::Tracks::TRACKS, oldest first
     int g_HistoryCount = 0;
     bool g_GoingBack = false;        // Skip(-1) runs: the track it leaves stays out of the history
-    const u8* g_Instance = nullptr;  // the chosen track's instance as last seen playing
-    u64 g_PlayedMs = 0, g_LastMs = 0;
     u32 g_Random = 0;
 
     int TrackIndex(const std::string& id) {
@@ -174,7 +194,7 @@ namespace {
         u8* const* it = *reinterpret_cast<u8* const* const*>(manager + kActive);
         u8* const* end = *reinterpret_cast<u8* const* const*>(manager + kActive + 8);
         for (; it != end; it++) {
-            if (GameString(*it + kInstName) == g_Track) return *it;
+            if (GameString(*it + kInstName) == std::string_view(g_Track, g_TrackLen)) return *it;
         }
         return nullptr;
     }
@@ -228,8 +248,9 @@ namespace AP::Music {
     }
 
     void HandleLine(const std::vector<std::string>& a) {
-        // MUSIC <track> | MUSIC off
-        Set(a.size() >= 2 && a[1] != "off" ? a[1] : "");
+        // MUSIC <track> | MUSIC off; for a name refused as too long, the client learns what plays instead
+        std::string track = a.size() >= 2 && a[1] != "off" ? a[1] : "";
+        if (!Set(track) && track.size() >= sizeof(g_Track)) Report();
     }
 
     void Choose(const std::string& track) {
@@ -240,28 +261,37 @@ namespace AP::Music {
         AP::Send(std::string("MUSIC ") + (g_TrackLen > 0 ? g_Track : "off"));
     }
 
-    void Tick() {
+    void Tick(bool free) {
         Game::Framework* fmwk = Game::GetFramework();
         u8* manager = Manager();
-        if (fmwk == nullptr || fmwk->mPlayer == nullptr || manager == nullptr) return;
-        // How long the chosen track has played: from its start, while it plays (also under the pause menu, which
-        // does not tick this); with repeat one off, the next track once it has played through.
-        // A track that does not loop is gone once it has played: it has played through when it goes within a second
-        // of its length.
-        u64 now = NowMs();
-        const u8* instance = PlayingInstance(manager);
-        int index = TrackIndex(Track());
-        u64 length = index >= 0 ? AP::Tracks::TRACKS[index].ms : 0;
-        bool ended = instance == nullptr && g_Instance != nullptr && g_PlayedMs + 1000 >= length;
-        if (instance != g_Instance) {
-            g_PlayedMs = 0;
-        } else if (instance != nullptr) {
-            g_PlayedMs += now - g_LastMs;
+        if (fmwk == nullptr || fmwk->mPlayer == nullptr || manager == nullptr) {
+            g_Instance = nullptr;  // a level load starts the music again
+            return;
         }
-        g_Instance = instance;
-        g_LastMs = now;
-        if (!g_RepeatOne && !g_Pending && index >= 0 && (ended || (instance != nullptr && g_PlayedMs >= length))) {
-            Skip(1);
+        // How long the chosen track has played: from its start, while it plays (also under the pause menu, which
+        // does not tick this). With repeat one off, the next track once it has played through, only while the player
+        // is free: a change fades out the event songs too. A track that does not loop is gone once it has played: it
+        // has played through when it goes, with the player free, within a second of its length (an event that stops
+        // it does so with the player not free, and music that cuts it in plays on).
+        if (g_TrackIndex >= 0) {
+            u64 now = NowMs();
+            const u8* instance = PlayingInstance(manager);
+            u64 length = AP::Tracks::TRACKS[g_TrackIndex].ms;
+            if (instance == nullptr && g_Instance != nullptr && free && g_PlayedMs + 1000 >= length &&
+                !OtherMusic(manager)) {
+                g_Ended = true;
+            }
+            if (instance != g_Instance) {
+                g_PlayedMs = 0;
+            } else if (instance != nullptr) {
+                g_PlayedMs += now - g_LastMs;
+            }
+            if (instance != nullptr) g_Ended = false;
+            g_Instance = instance;
+            g_LastMs = now;
+            if (free && !g_RepeatOne && !g_Pending && (g_Ended || (instance != nullptr && g_PlayedMs >= length))) {
+                Skip(1);
+            }
         }
         if (!g_Pending) return;
         g_Pending = false;
@@ -269,6 +299,7 @@ namespace AP::Music {
             AP::Log(std::string("music: unknown track ") + g_Track);
             g_Track[0] = 0;
             g_TrackLen = 0;
+            g_TrackIndex = -1;
         }
         // The zone's music is asked for again: the chosen track (or the zone's own) starts from its beginning and
         // fades in as on a zone change, and the rest fades out.
@@ -288,10 +319,13 @@ namespace AP::Music {
         int next;
         if (step > 0) {
             next = NextIndex(current);
-        } else if (g_HistoryCount > 0) {
-            next = g_History[--g_HistoryCount];
         } else {
-            next = current > 0 ? current - 1 : AP::Tracks::COUNT - 1;
+            while (g_HistoryCount > 0 && g_History[g_HistoryCount - 1] == current) g_HistoryCount--;
+            if (g_HistoryCount > 0) {
+                next = g_History[--g_HistoryCount];
+            } else {
+                next = current > 0 ? current - 1 : AP::Tracks::COUNT - 1;
+            }
         }
         g_GoingBack = step < 0;
         Choose(AP::Tracks::TRACKS[next].id);
@@ -308,6 +342,13 @@ namespace AP::Music {
 
     std::string Track() { return std::string(g_Track, g_TrackLen); }
 
+    bool IsChosen(const char* track) { return strcmp(track, g_Track) == 0; }
+
+    bool HasMusic() {
+        const u8* manager = Manager();
+        return g_TrackLen > 0 || (manager != nullptr && *reinterpret_cast<const size_t*>(manager + kZoneTrackLen) > 0);
+    }
+
     std::string ZoneTrack() {
         const u8* manager = Manager();
         return manager != nullptr ? ::ZoneTrack(manager) : std::string();
@@ -323,7 +364,7 @@ namespace AP::Music {
         u8* const* end = *reinterpret_cast<u8* const* const*>(manager + kActive + 8);
         if (it == end) return s + "-";
         for (bool first = true; it != end; it++, first = false) {
-            s += (first ? "" : ",") + GameString(*it + kInstName) + ":" + std::to_string((*it)[kInstKind]);
+            s += (first ? "" : ",") + std::string(GameString(*it + kInstName)) + ":" + std::to_string((*it)[kInstKind]);
         }
         return s;
     }

@@ -151,6 +151,7 @@ TailorEffectClip_Update 0x09347c90 f spawns and moves its emitter set (EffectMan
 LayoutWrapper_Build 0x0935d100 f (wrapper 0x78 bytes, StringView* bflyt file name, priority, archive set 0 Game.arc / 1 StartUp.arc, bool): the layout at wrapper +0x18, null if not built
 LayoutWrapper_Dtor 0x0935d470 f removes the layout from the draw list
 LayoutWrapper_DeletingDtor 0x0935d760 f wrapper vtable +0x18
+LayoutWrapper_Detach 0x0935dac0 f called by the destructor: takes the root off the parent's pane (wrapper +0x50) and the layout back to the manager's lists
 DungeonMap_KeyWait 0x0937e0f0 f
 DungeonMap_MemoriesButton 0x0938b840 f bool(page*)
 OverworldMap_KeyWait 0x09399090 f
@@ -337,6 +338,8 @@ Navi_CloseEnter 0x093eec10 f enter of Close: page virtual +0xa8, saves the page'
 Navi_CloseUpdate 0x093ef760 f update of Close
 Navi_PaneReady 0x093f0cc0 f task run once the requested page exists: slot +0x12f0+index*0x10, LayoutWrapper_AttachTo under the anchor pane (+0x12b8+index*0x18), restores the page's state, Navi_SetGuide, Navi_SetTitles
 Navi_SetGuide 0x093f16f0 f (navi, index 0-4): the button guide (+0x318, L_Operation_00) for that page; 3 does nothing, 4 the map's Memories
+Guide_Set 0x0945b1b0 f (guide, slot, kind): loads the slot's icon and caption when the kind differs from the one kept at guide +0xb40+slot*4
+Guide_Clear 0x0945bae0 f hides the guide's slot panes; the kept kinds stay
 Navi_SetTitles 0x093f1ec0 f (navi, index 0-4): MessageText_SetLabel of +0x2d0 T_Navih1_00, +0x2e8 T_NaviBack_00, +0x300 T_NaviNext_00 with UI:SubScreenTitleMap/Item/System/Memory; 3 does nothing, 4 the map's Memories
 UiManager_Find 0x08d4ae20 f (out handle, UI manager, id): the UI in the manager's list (+0x950) whose virtual +0x60 returns id; handle +0x18 the UI, +0x20 its count; typed copies 0x7e2310, 0xe85cc0, 0xeebb00
 UiManager_FindHud 0x08ce6310 f UiManager_Find typed for the HUD (id 0): +0x61dc the page index the pause menu opens on, +0x3b0 the button guide
