@@ -194,7 +194,9 @@ class LASContext(CommonContext):
         self.ghosts = GhostLink(self.send_game, self.refresh_patch_tab)
         self.ghost_relay_arg: Optional[str] = None  # --ghost-relay replaces las_options.ghost_relay
         self.ghost_secret_arg: Optional[str] = None  # --ghost-secret replaces the patch file's (tests)
-        self.music: Optional[str] = None  # the BGM /music chose, None: the game's own; sent on each game connection
+        self.music: Optional[str] = None  # the BGM chosen by /music or in the game, None: the game's own
+        # The game's MUSIC report on connecting: "wait" for it, "skip" it (/music went out after HELLO and is newer)
+        self.music_report: Optional[str] = None
 
     async def get_username(self) -> None:
         # the slot comes from the patch file, as the server would otherwise ask for it
@@ -427,9 +429,11 @@ class LASContext(CommonContext):
             self.send_game("SYNC")
             self.update_ghosts()
             self.ghosts.on_game_connected()
-            self.send_game(f"MUSIC {self.music or 'off'}")
+            self.music_report = "wait"  # the game reports its track first (DESIGN.md, Music)
         elif cmd == "POS":
             self.ghosts.on_pos(parts)
+        elif cmd == "MUSIC" and len(parts) == 2:
+            self.on_game_music(None if parts[1] == "off" else parts[1])
         elif cmd == "RECV":
             self.game_recv = int(parts[1])
             self.send_next_item()
@@ -618,6 +622,21 @@ class LASContext(CommonContext):
         if track != self.music:
             self.music = track
             self.send_game(f"MUSIC {track or 'off'}")
+            if self.music_report == "wait":
+                self.music_report = "skip"
+
+    def on_game_music(self, track: Optional[str]) -> None:
+        """MUSIC <track> | MUSIC off from the game: its report on connecting, or a choice made in the game. The game
+        keeps its choice while it runs; the client sends its own only when the game reports none (DESIGN.md, Music)."""
+        report, self.music_report = self.music_report, None
+        if report == "skip":
+            return
+        if report == "wait" and track is None and self.music:
+            self.send_game(f"MUSIC {self.music}")
+            return
+        if track != self.music:
+            self.music = track
+            logger.info(f"Music: {track}." if track else "Music: the game's own.")
 
     def update_ghosts(self) -> None:
         """Hands the ghost link its settings, the multiworld's ghost secret (from the patch file) and the slot; it

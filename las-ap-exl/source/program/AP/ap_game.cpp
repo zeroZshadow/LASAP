@@ -1111,6 +1111,7 @@ namespace AP {
             Send("LOG level " + g_LastLevel);  // the client passes it on to trackers
             for (auto& hint : g_Hints) hint.reported = false;  // sent again once the save is loaded
             GhostNet::Reset();
+            Music::Report();  // the game's choice first; the client sends its own only when the game has none
         }
 
         TickConnection();

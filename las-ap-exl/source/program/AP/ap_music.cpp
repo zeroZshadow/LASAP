@@ -1,5 +1,6 @@
-// Jukebox (DESIGN.md, Music): a MUSIC line from the client picks a BGM that plays instead of the zone's music until
-// MUSIC off.
+// Jukebox (DESIGN.md, Music): a MUSIC line from the client, or the Jukebox page (Choose), picks a BGM that plays
+// instead of the zone's music until MUSIC off. The game tells the client its choice: on each connection and on each
+// choice made in the game.
 //
 // Zone music (each room's track from its level file) reaches BgmManager_Play from two places: the zone update, when
 // Link enters a zone whose track differs from the last one, and PlayZoneBgm (the event action PlayZoneBGM, which
@@ -73,6 +74,21 @@ namespace {
         return false;
     }
 
+    // Makes `track` ("" none) the choice; false when it is the choice already or too long.
+    bool Set(const std::string& track) {
+        if (track.size() >= sizeof(g_Track)) {
+            AP::Log("music: track name too long");
+            return false;
+        }
+        if (track == std::string(g_Track, g_TrackLen)) return false;
+        if (g_TrackLen > 0) g_Previous.assign(g_Track, g_TrackLen);
+        memcpy(g_Track, track.c_str(), track.size() + 1);
+        g_TrackLen = track.size();
+        g_Pending = true;
+        AP::Log(track.empty() ? "music off" : "music " + track);
+        return true;
+    }
+
 #ifdef LASAP_TEST
     // A libc++ std::string in the game's memory.
     std::string GameString(const u8* s) {
@@ -128,17 +144,15 @@ namespace AP::Music {
 
     void HandleLine(const std::vector<std::string>& a) {
         // MUSIC <track> | MUSIC off
-        std::string track = a.size() >= 2 && a[1] != "off" ? a[1] : "";
-        if (track.size() >= sizeof(g_Track)) {
-            AP::Log("music: track name too long");
-            return;
-        }
-        if (track == std::string(g_Track, g_TrackLen)) return;
-        if (g_TrackLen > 0) g_Previous.assign(g_Track, g_TrackLen);
-        memcpy(g_Track, track.c_str(), track.size() + 1);
-        g_TrackLen = track.size();
-        g_Pending = true;
-        AP::Log(track.empty() ? "music off" : "music " + track);
+        Set(a.size() >= 2 && a[1] != "off" ? a[1] : "");
+    }
+
+    void Choose(const std::string& track) {
+        if (Set(track == "off" ? "" : track)) Report();
+    }
+
+    void Report() {
+        AP::Send(std::string("MUSIC ") + (g_TrackLen > 0 ? g_Track : "off"));
     }
 
     void Tick() {

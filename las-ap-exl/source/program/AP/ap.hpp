@@ -130,8 +130,14 @@ namespace AP {
 // Jukebox (ap_music.cpp, DESIGN.md "Music"): a chosen BGM plays instead of the zone's music.
 namespace AP::Music {
     void InstallHooks();
-    // MUSIC <track> | MUSIC off, split on spaces
+    // MUSIC <track> | MUSIC off from the client, split on spaces
     void HandleLine(const std::vector<std::string>& a);
+    // A choice made in the game (the Jukebox page): a track, or "" or "off" for the game's own music. Applies as
+    // HandleLine and sends the client MUSIC <track> | MUSIC off. It only sets the change, which the next Tick applies;
+    // with the pause menu open the caller calls Tick to apply it at once.
+    void Choose(const std::string& track);
+    // Sends the client MUSIC <the chosen track> | MUSIC off; on each new connection.
+    void Report();
     // Once per tick: switches to the chosen track (or back) once a level is loaded.
     void Tick();
 #ifdef LASAP_TEST

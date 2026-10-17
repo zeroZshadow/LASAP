@@ -29,25 +29,67 @@ class TestTracks(unittest.TestCase):
 
 
 class TestMusicLines(unittest.TestCase):
-    def test_lines(self) -> None:
+    """The client's MUSIC lines to the game, and the game's MUSIC lines: its report on connecting and a choice made
+    in the game."""
+
+    def run_lines(self, steps) -> list:
         from ..client import LASContext
 
         async def run() -> list:
             ctx = LASContext(None, None, "127.0.0.1", 0)
             sent = []
+            ctx.send_game = sent.append
+            steps(ctx)
+            await asyncio.sleep(0)
+            return [line for line in sent if line.startswith("MUSIC")]
+        return asyncio.run(run())
 
-            def capture(line: str) -> None:
-                sent.append(line)
-            ctx.send_game = capture
+    def test_client_choice(self) -> None:
+        def steps(ctx) -> None:
             ctx.set_music("BGM_FAIRY")
             ctx.set_music("BGM_FAIRY")
-            ctx.handle_game_line("HELLO 2 abc")
             ctx.set_music(None)
-            ctx.handle_game_line("HELLO 2 abc")
             ctx.set_music("BGM_NOPE")
             ctx.handle_game_line("LOG music: unknown track BGM_NOPE")
             self.assertIsNone(ctx.music)
-            await asyncio.sleep(0)
-            return [line for line in sent if line.startswith("MUSIC")]
-        self.assertEqual(asyncio.run(run()), ["MUSIC BGM_FAIRY", "MUSIC BGM_FAIRY", "MUSIC off", "MUSIC off",
-                                              "MUSIC BGM_NOPE"])
+        self.assertEqual(self.run_lines(steps), ["MUSIC BGM_FAIRY", "MUSIC off", "MUSIC BGM_NOPE"])
+
+    def test_game_choice(self) -> None:
+        def steps(ctx) -> None:
+            ctx.handle_game_line("HELLO 2 abc")
+            ctx.handle_game_line("MUSIC off")
+            ctx.handle_game_line("MUSIC BGM_FAIRY")  # chosen in the game: not sent back
+            self.assertEqual(ctx.music, "BGM_FAIRY")
+            ctx.set_music(None)  # /music off
+            ctx.handle_game_line("MUSIC BGM_HOUSE")
+            ctx.handle_game_line("MUSIC off")
+            self.assertIsNone(ctx.music)
+            ctx.handle_game_line("MUSIC music=- zonebgm=BGM_MEVE bgm=-")  # DBG music's reply: not a choice
+            self.assertIsNone(ctx.music)
+        self.assertEqual(self.run_lines(steps), ["MUSIC off"])
+
+    def test_reconnect(self) -> None:
+        def steps(ctx) -> None:
+            # /music while the game was off: the game reports none, the client sends its choice.
+            ctx.set_music("BGM_FAIRY")
+            ctx.handle_game_line("HELLO 2 abc")
+            ctx.handle_game_line("MUSIC off")
+            self.assertEqual(ctx.music, "BGM_FAIRY")
+            # The game reports a track (chosen while the client was away): the client takes it and sends nothing.
+            ctx.handle_game_line("HELLO 2 abc")
+            ctx.handle_game_line("MUSIC BGM_HOUSE")
+            self.assertEqual(ctx.music, "BGM_HOUSE")
+            # Both have none.
+            ctx.set_music(None)
+            ctx.handle_game_line("HELLO 2 abc")
+            ctx.handle_game_line("MUSIC off")
+            # /music after HELLO, before the report: the client's choice is newer and the report is ignored.
+            ctx.handle_game_line("HELLO 2 abc")
+            ctx.set_music("BGM_TAL_TAL")
+            ctx.handle_game_line("MUSIC BGM_HOUSE")
+            self.assertEqual(ctx.music, "BGM_TAL_TAL")
+            # After the report, MUSIC off is a choice made in the game.
+            ctx.handle_game_line("MUSIC off")
+            self.assertIsNone(ctx.music)
+        self.assertEqual(self.run_lines(steps), ["MUSIC BGM_FAIRY", "MUSIC BGM_FAIRY", "MUSIC off",
+                                                 "MUSIC BGM_TAL_TAL"])

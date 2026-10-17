@@ -110,7 +110,7 @@ The sandbox is shared with every other session: take the lock (Emulator, "Sharin
   | `puppet draw on\|off` / `puppet dither on\|off` / `puppet shapes <hex>` / `puppet skip <hex>` | Finding the ghosts' cost: models hidden with actors, animation and lines running; drawn without the dither state; only those shapes of the look; the ghosts' draws dropped on those command buffers (`draws/frame`'s order) |
   | `watch <base> <hex off> <hex len>` / `watch off` | Traces changes of a memory range. Bases: `f` framework, `p` player, `i` inventory, `c` controller, `m<id>`/`o<id>` (or `m:<label>`/`o:<label>`) a UI machine or its owner, `g<hex>` a module offset, `x<hex>` an address |
 
-  A debug command's reply goes to the debug client that sent it. Lines for the AP client that a command causes (`CHECK`, `CHECKS`, `HINT`, `GOAL`, `DIED`, `DEATHDROPPED`, `RECV`, `LOG`) also go to the AP client, so the server sees the check a `give` or `collect` makes.
+  A debug command's reply goes to the debug client that sent it. Lines for the AP client that a command causes (`CHECK`, `CHECKS`, `HINT`, `GOAL`, `DIED`, `DEATHDROPPED`, `RECV`, `LOG`, a two-word `MUSIC`) also go to the AP client, so the server sees the check a `give` or `collect` makes.
 
   Button bits follow `nn::hid::NpadButton`: A `1`, B `2`, X `4`, L+R `c0`, Plus `400`, Minus `800`, D-pad left/up/right/down `1000`/`2000`/`4000`/`8000`. The stick range is ±32767. Buttons from `input` and `press` are added to the physical ones in the game's input poll.
 - **Inputs.** Press when the game's state takes the press ("Game state") rather than after a delay: a press the game drops leaves no trace, a press it takes changes a state within a few frames.
