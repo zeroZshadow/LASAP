@@ -11,6 +11,7 @@
 #include "Config/file_handler.hpp"
 #include <algorithm>
 #include <bit>
+#include <cmath>
 #include <deque>
 #include <cstdio>
 #include <cstdlib>
@@ -447,10 +448,161 @@ namespace {
         if (!StartItemEvent(id, message)) AP::Log("item event " + std::to_string(id) + " could not be requested");
     }
 
+    // NPC models as items (LASR's songs and tunics: Marin, Manbo, Mamu and the Color Dungeon's guards). The item-get
+    // makes its model in a task (kItemModelTask, component "ItemModel"), a node of its own under the item's node (2
+    // units above Link, tilted back 65 degrees towards the camera, its scale popping from 0 to 1, the shine). The
+    // game gives the component a pose per kind of item: the ocarina and the songs kItemModelPos, rolled by about 21
+    // degrees, scale 1.17; the tunics 0.15 higher, tilted forward 70 degrees, scale 0.8. Item models are small and
+    // centred on their origin; an NPC model stands on its feet there. For these models the component gets the
+    // ocarina's place, the fix's angle (from upright in the item's frame, facing the camera) and the scale that
+    // gives the model the ocarina's size, and the model's root bone moves by -center, putting its middle on the
+    // origin.
+    // `radius` and `center` (model units) are the model's bind-pose bounds (scripts/model_bounds.py): its box centre
+    // and the radius around it, all vertices in model space. `angle` turns the model about its centre (degrees in
+    // the item's frame: x pitch, y yaw, z roll, applied roll first).
+    struct HeldModelFix { const char* model; float radius; Game::Vec3 center; Game::Vec3 angle; };
+    HeldModelFix g_HeldModelFixes[] = {
+        {"Marin", 0.793f, {0.013f, 0.712f, -0.093f}, {20.0f, 0.0f, -20.0f}},
+        {"ManboTamegoro", 1.966f, {0.0f, 0.209f, 0.080f}, {20.0f, 70.0f, -20.0f}},
+        {"Mamu", 1.930f, {0.0f, 1.401f, -0.446f}, {20.0f, 0.0f, -20.0f}},
+        {"SkeletalGuardRed", 0.673f, {0.0f, 0.523f, 0.035f}, {20.0f, 0.0f, -20.0f}},
+        {"SkeletalGuardBlue", 0.673f, {0.0f, 0.523f, 0.035f}, {20.0f, 0.0f, -20.0f}},
+    };
+    // The ocarina's size in the item-get: its radius around its root (0.459) times the scale the game gives it
+    constexpr float kItemModelRadius = 0.459f * 1.17f;
+    constexpr Game::Vec3 kItemModelPos = {0.0f, 0.55f, 1.0f};  // the ocarina's place under the item's node
+    constexpr uintptr_t kItemModelTask = 0x8d41c0;      // (task*): +0x8 the item-get's holder (+0x18 the component)
+    constexpr uintptr_t kModelResourceGet = 0x1046190;  // (out, resource holder, const char* model name)
+    // (node): marks it and its children for a new world position and tells its listeners (the model); nothing while
+    // it is marked (needsCoordUpdate), so setting that flag alone leaves the model where it was
+    constexpr uintptr_t kNodeMarkDirty = 0xfb6aa0;
+    constexpr size_t kTaskHolder = 0x8, kHolderModel = 0x18;  // the component as a shared_ptr
+    // component +0x148 the model instance, +0x60 -> +0x10 its model object, +0x38 the skeleton, +0x18 its bones'
+    // local transforms (0x60 each, computed into the world ones each frame; bone 0 the root): +0x0 flags,
+    // +0x50 translation
+    constexpr size_t kModelInstance = 0x148, kInstanceObjects = 0x60, kObjectsModel = 0x10, kModelSkeleton = 0x38;
+    constexpr size_t kSkeletonLocal = 0x18, kLocalFlags = 0x0, kLocalTranslate = 0x50;
+    constexpr u32 kLocalTranslateZero = 0x08000000;
+    constexpr u64 kItemModelWindowMs = 3000;  // an item model task this soon after an item-get starts is its model
+
+    u64 g_ItemGetAt = 0;
+    bool g_InItemModelTask = false;
+    const HeldModelFix* g_ItemModelFix = nullptr;  // the fix for the model the running task gets
+    // The component being fixed, held weakly through its control block (libc++: +0x8 owners - 1, +0x10 weak owners
+    // - 1); whether its root bone moved.
+    u8* g_HeldModel = nullptr;
+    u8* g_HeldCtrl = nullptr;
+    const HeldModelFix* g_HeldFix = nullptr;
+    bool g_HeldRootMoved = false;
+
+    void DropHeldModel() {
+        if (g_HeldCtrl != nullptr) GameFn<ReleaseWeakFn>(kSharedWeakReleaseWeak)(g_HeldCtrl);
+        g_HeldCtrl = nullptr;
+        g_HeldModel = nullptr;
+        g_HeldFix = nullptr;
+    }
+
+    bool HeldModelAlive() {
+        return g_HeldCtrl != nullptr && __atomic_load_n(reinterpret_cast<long*>(g_HeldCtrl + 0x8), __ATOMIC_ACQUIRE) >= 0;
+    }
+
+    struct Quat { float x, y, z, w; };
+
+    Quat QuatMul(const Quat& a, const Quat& b) {
+        return {a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y, a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
+                a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w, a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z};
+    }
+
+    // Degrees about one axis (0 x, 1 y, 2 z)
+    Quat AxisQuat(int axis, float degrees) {
+        float half = degrees * 3.14159265f / 360.0f;
+        Quat q{0.0f, 0.0f, 0.0f, cosf(half)};
+        (axis == 0 ? q.x : axis == 1 ? q.y : q.z) = sinf(half);
+        return q;
+    }
+
+    // The held NPC model's component node in the ocarina's place, turned by the fix's angle, at the ocarina's size;
+    // the game writes its pose once the item pops up, and that write is replaced here.
+    void PlaceHeldModel() {
+        Game::Coords& c = reinterpret_cast<Game::RootComp*>(g_HeldModel)->coordsNew;
+        const HeldModelFix& fix = *g_HeldFix;
+        float scale = kItemModelRadius / fix.radius;
+        Quat q = QuatMul(AxisQuat(1, fix.angle.y), QuatMul(AxisQuat(0, fix.angle.x), AxisQuat(2, fix.angle.z)));
+        c.pos = kItemModelPos;
+        c.rotate = {q.x, q.y, q.z, q.w};
+        c.scale = {scale, scale, scale};
+    }
+
+    HOOK_DEFINE_TRAMPOLINE(ModelResourceGet) {
+        static void Callback(void* out, void* holder, const char* name) {
+            if (g_InItemModelTask && name != nullptr) {
+                g_ItemModelFix = nullptr;
+                for (const auto& fix : g_HeldModelFixes) {
+                    if (strcmp(name, fix.model) == 0) g_ItemModelFix = &fix;
+                }
+            }
+            Orig(out, holder, name);
+        }
+    };
+
+    HOOK_DEFINE_TRAMPOLINE(ItemModelTask) {
+        static void Callback(u8* task) {
+            g_InItemModelTask = true;
+            g_ItemModelFix = nullptr;
+            Orig(task);
+            g_InItemModelTask = false;
+            if (g_ItemModelFix == nullptr || NowMs() - g_ItemGetAt > kItemModelWindowMs) return;
+            u8* holder = *reinterpret_cast<u8**>(task + kTaskHolder);
+            if (holder == nullptr) return;
+            u8* model = *reinterpret_cast<u8**>(holder + kHolderModel);
+            u8* ctrl = *reinterpret_cast<u8**>(holder + kHolderModel + 8);
+            if (model == nullptr || ctrl == nullptr) return;
+            DropHeldModel();
+            __atomic_fetch_add(reinterpret_cast<long*>(ctrl + 0x10), 1, __ATOMIC_RELAXED);
+            g_HeldModel = model;
+            g_HeldCtrl = ctrl;
+            g_HeldFix = g_ItemModelFix;
+            g_HeldRootMoved = false;
+            PlaceHeldModel();
+        }
+    };
+
+    // Once the held NPC model's skeleton exists: its root bone moves to put the model's middle on the origin.
+    void MoveHeldRoot() {
+        auto ptr = [](const u8* base, size_t offset) { return base ? *reinterpret_cast<u8* const*>(base + offset) : nullptr; };
+        u8* skeleton = ptr(ptr(ptr(ptr(g_HeldModel, kModelInstance), kInstanceObjects), kObjectsModel), kModelSkeleton);
+        u8* root = ptr(skeleton, kSkeletonLocal);
+        if (root == nullptr) return;
+        *reinterpret_cast<u32*>(root + kLocalFlags) &= ~kLocalTranslateZero;
+        auto* t = reinterpret_cast<float*>(root + kLocalTranslate);
+        t[0] -= g_HeldFix->center.x;
+        t[1] -= g_HeldFix->center.y;
+        t[2] -= g_HeldFix->center.z;
+        g_HeldRootMoved = true;
+    }
+
+    HOOK_DEFINE_TRAMPOLINE(NodeMarkDirty) {
+        static void Callback(Game::RootComp* node) {
+            if (node != nullptr && node == reinterpret_cast<Game::RootComp*>(g_HeldModel)) {
+                if (HeldModelAlive()) PlaceHeldModel();
+                else DropHeldModel();
+            }
+            Orig(node);
+        }
+    };
+
+    // Each frame: the held model's root bone once it can move, and its weak reference goes once the model is gone.
+    void TickHeldModel() {
+        if (g_HeldModel == nullptr) return;
+        if (!HeldModelAlive()) DropHeldModel();
+        else if (!g_HeldRootMoved) MoveHeldRoot();
+    }
+
     // The item event's item-get shows the placeholder with RECEIVED_LABEL as message entry; the requested item
     // and its message take their place.
     HOOK_DEFINE_TRAMPOLINE(ItemGetSequence) {
         static void Callback(SharedPtr* out, void* player, int itemId, bool keepCarry, StrView* messageEntry) {
+            g_ItemGetAt = NowMs();
             size_t len = strlen(AP::RECEIVED_LABEL);
             if (g_ItemEventSwap && g_ItemEvent != ItemEvent::None && itemId == AP::PLACEHOLDER_ITEM_ID &&
                 messageEntry != nullptr && messageEntry->len == len &&
@@ -730,6 +882,15 @@ namespace {
             if (IsTrapKey(a[2])) QueueTrap(a[2], "", "");
             else if (id >= 0 && (a.size() < 6 || a[5] != "0")) QueueShow(Show{id, "", "", ""});
             AP::Send("OK grant");
+        } else if (cmd == "heldangle" && a.size() >= 6) {
+            // An NPC model's item-get angle until the game restarts: DBG heldangle <model> <pitch> <yaw> <roll>
+            for (auto& fix : g_HeldModelFixes) {
+                if (a[2] != fix.model) continue;
+                fix.angle = {(float)atof(a[3].c_str()), (float)atof(a[4].c_str()), (float)atof(a[5].c_str())};
+                AP::Send("OK heldangle");
+                return true;
+            }
+            AP::Send("ERR heldangle unknown model " + a[2]);
         } else if (cmd == "warp" && a.size() >= 6) {
             // DBG warp <level> <x> <y> <z>
             if (!PlayerReady()) return false;
@@ -967,6 +1128,9 @@ namespace AP {
         InstallTextHooks();
         Puppet::InstallHooks();
         ItemGetSequence::InstallAtOffset(offset_manager.Offset(kItemGetSequence));
+        ItemModelTask::InstallAtOffset(offset_manager.Offset(kItemModelTask));
+        ModelResourceGet::InstallAtOffset(offset_manager.Offset(kModelResourceGet));
+        NodeMarkDirty::InstallAtOffset(offset_manager.Offset(kNodeMarkDirty));
         LoadLocationNames();
         LoadMap();
         LoadIndices();
@@ -1108,6 +1272,7 @@ namespace AP {
         TickHintFlags();
         AP::TickToasts(PlayerReady());
         TickItemGet();
+        TickHeldModel();
         TickWarpMenu();
         TickMap();
 #ifdef LASAP_TEST

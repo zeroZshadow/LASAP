@@ -171,6 +171,11 @@ def _add_ap_flags(self) -> None:
 def _add_placeholder_row(self, sheet) -> None:
     """The placeholder and its model variants: rows with the placeholder's item id that differ in their model."""
     _original_make_item_changes(self, sheet)
+    # LASR empties the tunics' npcKey (vanilla's rows show the ocarina), so their item-get holds up nothing and shows
+    # no glow; they hold up the model LASR shows for them in the world.
+    for item in sheet["values"]:
+        if item["symbol"] in TUNIC_NPC_KEYS:
+            item["npcKey"] = TUNIC_NPC_KEYS[item["symbol"]]
     # Parsed up front: appending to the sheet invalidates references to its rows.
     rows = {str(item["symbol"]): parseStruct(item) for item in sheet["values"]}
     taken = {row["itemID"] for row in rows.values()} & {PLACEHOLDER_ITEM_ID, *VARIANT_ITEM_IDS}
@@ -340,6 +345,8 @@ SHOP_NAMES: dict = {}
 # Placeholder item keys that show another item's model: key -> (that item's key, its npc key in items.yml).
 VARIANTS: dict = {}
 VARIANT_USES: dict = {}  # key -> number of locations showing it
+# Items.gsheet tunic rows -> the npc key their item-get holds up (items.yml's npc-key; the green tunic has none)
+TUNIC_NPC_KEYS = {"ClothesRed": "NpcSkeletalGuardRed", "ClothesBlue": "NpcSkeletalGuardBlue"}
 # Indexed item key -> inventory bits for the starting items, lowest first (starting_bits)
 STARTING_BITS: dict = {}
 
