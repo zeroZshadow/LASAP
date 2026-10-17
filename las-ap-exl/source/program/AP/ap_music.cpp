@@ -13,10 +13,11 @@
 #include "Game/framework.hpp"
 #include "offsets.hpp"
 #include "loggers.hpp"
-#include <cstring>
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -104,7 +105,6 @@ namespace {
 
     // Makes `track` ("" none) the choice; false when it is the choice already or too long.
     int TrackIndex(const std::string& id);
-    void Remember(int index);
 
     bool Set(const std::string& track) {
         if (track.size() >= sizeof(g_Track)) {
@@ -114,7 +114,6 @@ namespace {
         if (track == std::string(g_Track, g_TrackLen)) return false;
         if (g_TrackLen > 0) {
             if (!g_Pending) g_Previous.assign(g_Track, g_TrackLen);  // what plays until the change applies
-            Remember(g_TrackIndex);
         }
         memcpy(g_Track, track.c_str(), track.size() + 1);
         g_TrackLen = track.size();
@@ -153,13 +152,11 @@ namespace {
     // Playback (the Jukebox page's controls, DESIGN.md "Jukebox page"). With repeat one (on at the start) the chosen
     // track loops, as the game loops its music. With it off, once the chosen track has played through (its length in
     // ap_tracks.hpp, counted while it plays, from the start again whenever the game starts it again) the next one
-    // follows: the next in the list, or with shuffle a random one not heard lately. The tracks chosen before go into
-    // a short history, which Skip(-1) walks back.
+    // follows. Next and previous step through one order, round: the list's, or with shuffle a random order of the
+    // list drawn when shuffle turns on, so every track plays once before any plays again and previous retraces next.
     bool g_RepeatOne = true, g_Shuffle = false;
-    constexpr int kHistory = 16, kRecent = 8;
-    int g_History[kHistory] = {};    // indexes into AP::Tracks::TRACKS, oldest first
-    int g_HistoryCount = 0;
-    bool g_GoingBack = false;        // Skip(-1) runs: the track it leaves stays out of the history
+    int g_Order[AP::Tracks::COUNT] = {};  // shuffle's order: indexes into AP::Tracks::TRACKS
+    int g_Place[AP::Tracks::COUNT] = {};  // each track's place in it
     u32 g_Random = 0;
 
     int TrackIndex(const std::string& id) {
@@ -167,15 +164,6 @@ namespace {
             if (id == AP::Tracks::TRACKS[i].id) return i;
         }
         return -1;
-    }
-
-    void Remember(int index) {
-        if (index < 0 || g_GoingBack) return;
-        if (g_HistoryCount == kHistory) {
-            memmove(g_History, g_History + 1, (kHistory - 1) * sizeof(g_History[0]));
-            g_HistoryCount--;
-        }
-        g_History[g_HistoryCount++] = index;
     }
 
     u32 Random() {
@@ -186,22 +174,19 @@ namespace {
         return g_Random;
     }
 
-    bool Recent(int index) {
-        for (int i = g_HistoryCount > kRecent ? g_HistoryCount - kRecent : 0; i < g_HistoryCount; i++) {
-            if (g_History[i] == index) return true;
-        }
-        return false;
+    // A new shuffle order (Fisher-Yates).
+    void DrawOrder() {
+        for (int i = 0; i < AP::Tracks::COUNT; i++) g_Order[i] = i;
+        for (int i = AP::Tracks::COUNT - 1; i > 0; i--) std::swap(g_Order[i], g_Order[Random() % (i + 1)]);
+        for (int i = 0; i < AP::Tracks::COUNT; i++) g_Place[g_Order[i]] = i;
     }
 
-    // The track after `current` (-1: none): the next in the list, or with shuffle a random one.
-    int NextIndex(int current) {
-        if (!g_Shuffle) return (current + 1) % AP::Tracks::COUNT;
-        int pick = 0;
-        for (int tries = 0; tries < 32; tries++) {
-            pick = static_cast<int>(Random() % AP::Tracks::COUNT);
-            if (pick != current && !Recent(pick)) break;
-        }
-        return pick;
+    // The track `step` places from `current` (-1: a track not in the list, before the first) in the order.
+    int StepFrom(int current, int step) {
+        constexpr int n = AP::Tracks::COUNT;
+        if (current < 0) return g_Shuffle ? g_Order[step > 0 ? 0 : n - 1] : step > 0 ? 0 : n - 1;
+        if (!g_Shuffle) return ((current + step) % n + n) % n;
+        return g_Order[((g_Place[current] + step) % n + n) % n];
     }
 
     // The chosen track's instance among those that play, or null.
@@ -423,21 +408,8 @@ namespace AP::Music {
     }
 
     std::string Skip(int step) {
-        int current = TrackIndex(g_TrackLen > 0 ? Track() : ZoneTrack());
-        int next;
-        if (step > 0) {
-            next = NextIndex(current);
-        } else {
-            while (g_HistoryCount > 0 && g_History[g_HistoryCount - 1] == current) g_HistoryCount--;
-            if (g_HistoryCount > 0) {
-                next = g_History[--g_HistoryCount];
-            } else {
-                next = current > 0 ? current - 1 : AP::Tracks::COUNT - 1;
-            }
-        }
-        g_GoingBack = step < 0;
+        int next = StepFrom(TrackIndex(g_TrackLen > 0 ? Track() : ZoneTrack()), step > 0 ? 1 : -1);
         Choose(AP::Tracks::TRACKS[next].id);
-        g_GoingBack = false;
         std::string name = AP::Tracks::TRACKS[next].name;
         AP::ShowMusicToast("\xe2\x99\xaa " + name);
         return name;
@@ -461,7 +433,10 @@ namespace AP::Music {
     bool RepeatOne() { return g_RepeatOne; }
     bool Shuffle() { return g_Shuffle; }
     void SetRepeatOne(bool on) { g_RepeatOne = on; }
-    void SetShuffle(bool on) { g_Shuffle = on; }
+    void SetShuffle(bool on) {
+        if (on && !g_Shuffle) DrawOrder();
+        g_Shuffle = on;
+    }
 
     std::string Track() { return std::string(g_Track, g_TrackLen); }
 

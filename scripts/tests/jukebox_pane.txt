@@ -68,10 +68,15 @@ free 10
 check music=BGM_SEASHELL_HOUSE\szonebgm=\S+\sbgm=BGM_SEASHELL_HOUSE:1\s
 send DBG jukebox
 expect JUKEBOX\smode=0.*page=0\slist=0 5
-# In the game, the d-pad's right and left choose the next track in the list and the one chosen before.
+# In the game, the d-pad's right and left choose the next and the previous track in the list, whichever was chosen
+# before: from Seashell Mansion (chosen on the page) left is Wind Fish's Egg.
 tap 4000
 await 5 music=BGM_TELEPHONE\s
 tap 1000
+await 5 music=BGM_SEASHELL_HOUSE\s
+tap 1000
+await 5 music=BGM_DUNGEON_HOLY_EGG\s
+tap 4000
 await 5 music=BGM_SEASHELL_HOUSE\s
 # Right and left again in quick succession: the last choice plays, alone, once the others have faded.
 tap 4000
@@ -79,19 +84,35 @@ tap 1000
 tap 4000
 tap 1000
 await 10 music=BGM_SEASHELL_HOUSE\szonebgm=\S+\sbgm=BGM_SEASHELL_HOUSE:1\sbgmvol=100\s
-# On the page, Y turns repeat one off and X shuffle on and off again. Without repeat one, a track that has played
-# through gives way to the next: Marin at the Beach (5 s, no loop) to BowWow Kidnapped Intro.
+# On the page, X turns shuffle on: right plays a track of the shuffled order, left goes back to the one before it.
 tap 400 when free 3000
 await 10 pane=1\snavi=2
 tap 80
 await 10 pane=2\snavi=2
 tap 80
 await 10 pane=3\snavi=2
-tap 8
 tap 4
 send DBG jukebox
-expect JUKEBOX.*shuffle=1\srepeat=0 5
+expect JUKEBOX.*shuffle=1\srepeat=1 5
+tap 2
+await 10 paused=0
+free 10
+tap 4000
+await 5 music=(?!BGM_SEASHELL_HOUSE\s)\S+\s
+tap 1000
+await 5 music=BGM_SEASHELL_HOUSE\s
+# X turns shuffle off, Y repeat one off. Without repeat one, a track that has played through gives way to the next:
+# Marin at the Beach (5 s, no loop) to BowWow Kidnapped Intro.
+tap 400 when free 3000
+await 10 pane=1\snavi=2
+tap 80
+await 10 pane=2\snavi=2
+tap 80
+await 10 pane=3\snavi=2
 tap 4
+tap 8
+send DBG jukebox
+expect JUKEBOX.*shuffle=0\srepeat=0 5
 tap 2
 await 10 paused=0
 send /music BGM_EVENT_MARINE_IN_BEACH

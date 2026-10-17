@@ -153,15 +153,14 @@ namespace AP::Music {
     std::string ZoneTrack();
     // The track the last change started plays at full volume, also under the pause menu, which turns music down.
     void Loud();
-    // Playback: repeat one (on at the start: the chosen track loops) and shuffle. With repeat one off, a track that
-    // has played through gives way to the next (Skip(1)).
+    // Playback: repeat one (on at the start: the chosen track loops) and shuffle (turning it on draws a new order).
+    // With repeat one off, a track that has played through gives way to the next (Skip(1)).
     bool RepeatOne();
     bool Shuffle();
     void SetRepeatOne(bool on);
     void SetShuffle(bool on);
-    // Chooses the next track (step 1: the next in the list after the chosen one, or the zone's own, or with shuffle a
-    // random one) or the one before (step -1: the last one chosen, else the one before in the list), shows its name
-    // in a toast and returns it.
+    // Chooses the next track (step 1) or the previous (step -1) from the chosen one, or the zone's own: in the list's
+    // order, or with shuffle in the order drawn when it turned on; shows its name in a toast and returns it.
     std::string Skip(int step);
 #ifdef LASAP_TEST
     // STATE's " music=<chosen track or -> zonebgm=<the zone's track> bgm=<playing tracks as name:kind, or ->
