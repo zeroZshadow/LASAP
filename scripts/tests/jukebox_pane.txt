@@ -3,7 +3,7 @@
 # pane= is the page the player sees (3 the Jukebox), navi= the header's state (2 WaitKey), jbox= the list's cursor and
 # first row; DBG jukebox counts the list layouts built and dropped.
 expect HELLO 30
-send /music off
+send /game MUSIC off
 await 10 music=-
 free 20
 tap 400 when free 3000
@@ -50,5 +50,5 @@ free 10
 check music=BGM_DUNGEON_LV6_FACE\szonebgm=\S+\sbgm=BGM_DUNGEON_LV6_FACE:1\s
 send DBG jukebox
 expect JUKEBOX\smode=0.*page=0\slist=0
-send /music off
+send /game MUSIC off
 await 10 music=-
