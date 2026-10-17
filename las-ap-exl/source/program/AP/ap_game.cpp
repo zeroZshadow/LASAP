@@ -922,6 +922,8 @@ namespace {
         } else if (cmd == "map") {
             if (a.size() >= 3) AP::SetMapMode(atoi(a[2].c_str()));
             AP::Send(AP::MapState());
+        } else if (cmd == "maplabel" && a.size() >= 3) {
+            AP::Send("MAPLABEL " + AP::MapLabelText(atoi(a[2].c_str())));
         } else if (cmd == "text") {
             AP::Send(a.size() >= 3 ? AP::SeenText(a[2]) : AP::TextState());
         } else if (cmd == "name") {
