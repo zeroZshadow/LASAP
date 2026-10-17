@@ -79,8 +79,8 @@ The fallback, if a game object of our own is ever needed (a page outside index 2
 
 - **The list:** row 0 is "Game music" (the override off), then every track in `music.TRACKS`.
 - **Names:** the game has no names for its BGM, so the module holds a table of id and display name in `ap_music.cpp`, written for players (e.g. `BGM_DUNGEON_LV1_TAIL` is "Tail Cave", `BGM_MEVE` "Mabe Village"). `test_music` parses that table and checks that it lists exactly `music.TRACKS`, as it already checks the patcher's `BGM_TRACKS`.
-- **Title:** `UI:SubScreenTitleJukebox` comes from the module's MSBT label hook (`ap_text.cpp`), with the text "Jukebox" in every language. It fits the title (12 characters), the L label (9) and the R label (8).
-- **Hook on `Navi_SetTitles`** (trampoline), run after the original. It writes the three labels when the Jukebox is involved: on the Jukebox (Jukebox, System, Map), on System (Next = Jukebox) and on the map (Back = Jukebox). It calls `MessageText_SetLabel` on the Navi's texts at `+0x2d0`, `+0x2e8` and `+0x300`.
+- **Title:** "Jukebox" goes into the header's texts with `AP::SetPaneText` (the toasts' way: the text getter hands out the string for `UI:SystemSaving`), the same word in every language. It fits the title (12 characters), the L label (9) and the R label (8).
+- **Hook on `Navi_SetTitles`** (trampoline), run after the original, on the Navi's texts at `+0x2d0`, `+0x2e8` and `+0x300`: on the Jukebox the title "Jukebox" with the game's own labels for System (L) and Map (R) through `MessageText_SetLabel`; on System "Jukebox" under R; on the map "Jukebox" under L.
 - **Button guide:** `Navi_SetGuide` keeps System's guide for index 2; with the flag set, a hook sets the Memories list's guide or no guide at all.
 
 ### Using the override
@@ -102,11 +102,11 @@ The fallback, if a game object of our own is ever needed (a page outside index 2
 
 ## Risks
 
-- **Biggest:** turning a Gm_System object into the jukebox depends on Gm_System's update being safe to stop after Open. It also depends on its fields (`+0xe0`, the machine at `+0xf0`) behaving as read, and on a 2-to-2 change (remove and rebuild id 10 in one go) working. `UiManager_Request` returns an existing request for the same id: if the old request is still queued, the new page could be the old, removed one. The first implementation step tests exactly this (see "Order of work").
-- `LayoutWrapper_AttachTo` with a standalone part layout (`Gm_MemoryList`) under a page is untested. A part layout may need its own root size or animation setup.
+- **Turning Gm_System into the Jukebox** relies on stopping Gm_System's update once its machine leaves Open, on its `+0xe0`, and on a 2-to-2 change rebuilding id 10. The spike passes all three in the sandbox (2026-10-17: 48 steered changes, 39 lists built and dropped, no crash); a full playthrough's worth of menu use is not tried yet.
+- The list's rows draw where they lie when the list is attached under the page. Built on its own and drawn in the HUD pass, its capture pane `C_MemList_00` draws the rows 96 units high (prototype C); the pane design avoids that path.
 - Glyphs: the list's text boxes are outside a scene layout, so missing glyphs draw nothing until queued (known from the name tags).
 - The map pages call `Navi_SetTitles` themselves (index 0 leaving Memories, 4 entering it). The hook acts on index 0 and 2 only, so Memories keeps its title, and leaving Memories gets Back = Jukebox like any map title.
-- The audible preview: `PlayZoneBgm` from the pause menu has not been tried. The sandbox is muted (SDL dummy audio), so only the BGM manager's state can be checked there; the sound needs a check on real audio by the user.
+- The audible preview: with the menu open, A applies the track at once (the pane calls `Music::Tick`), and the BGM manager switches to it (`bgm=` while `paused=1`). The sandbox is muted (SDL dummy audio), so the sound itself needs a check on real audio by the user.
 - **Event songs that replace the zone's music.** The override swaps only the zone music's calls, and two events play a zone-like track with PlayBGM and never call PlayZoneBGM after it:
   - the washed-up sword (`SinkingSword.bfevfl`): `StopAllBGM`, the item-get, then `BGM_FIELD_NORMAL_INTRO`;
   - the new game's wake-up (`PlayerStart.bfevfl`): `BGM_HOUSE_FIRST`.
@@ -116,38 +116,46 @@ The fallback, if a game object of our own is ever needed (a page outside index 2
 
 ## Open questions
 
-1. Should a choice apply at once (an audible preview in the menu) or when the menu closes?
+1. Should a choice apply at once (an audible preview in the menu, as the spike does) or when the menu closes?
 2. Should the choice persist past the client session (a host setting or a save flag), or stay per session as `/music` is?
 3. What should the track names be? The table needs names a player recognises; some tracks have no obvious place (`BGM_DANPEI`, `BGM_CHICKEN_HURT`).
 4. Should there be a Jukebox in the Chamber Dungeon, whose third page is id 0xb?
 5. Should X on the Jukebox do something (e.g. "Game music")?
 6. Should the chosen track also replace the event songs that stand in for the zone's music (the washed-up sword's `BGM_FIELD_NORMAL_INTRO`, the wake-up's `BGM_HOUSE_FIRST`)? `jukebox_sword` expects it to.
 
-## Order of work and size
+## Prototypes and choice
+
+Three designs were prototyped side by side in the sandbox (2026-10-17, test builds, file 1, client connected). Each opens a `Gm_MemoryList` track list, plays the picked track through `AP::Music` and survives repeated use with every layout freed:
+
+| Design | Branch | Reached by | Game hooks | Result | Full feature |
+|---|---|---|---|---|---|
+| A: fourth pane, a mode of System's slot | `claude/jukebox-pane-a9392c` | L/R, named in the header | 7 (Navi WaitKey, CloseOldUi, Close, SetTitles; Gm_System setup, update, destructor) | `jukebox_pane` passes; every move incl. Plus, Minus and B; 48 steered changes; preview while paused | 5–6 days |
+| B: sub-screen of System, as Memories of the map | `claude/jbx-subscreen` | System, then A on a "Jukebox" row | 4 (Gm_System setup, the ruby row's state enter and update, Navi_Update) | `jukebox_subscreen` passes; 21 opens and closes; System intact | 5–7 days |
+| C: overlay, Plus held 1 s | `claude/jukebox-overlay` | a held button while Link is free | none (input poll, layout calls) | `jukebox_overlay` and 40 cycles pass; closes on a hit unless it sets the pause flag | 6–7 days |
+
+**Choice: A, the fourth pane.** It is what the player expects (a page on L/R, named in the header next to Items, Map and System) and what was asked for, and its spike removed the risk that made it the costliest: the header's three-page arrays are never touched, and the System rebuild held up under repeated switching. B hides the Jukebox one press deep and borrows the ruby-text row, which exists only outside Japanese. C is a hidden gesture outside the menu, needs the pause flag to be usable near enemies, and its standalone list draws its rows offset. A needs no Japanese special case, and its page slides with the header like the others.
+
+What A takes from the others: B's and C's list polish (row marks and blank rows hidden, the row text widened, the list's cursor moved onto the row, the scroll handle placed, `W_Add_00/01` alpha for the cursor row), C's key repeat (20 frames, then every 5) and its measure of names (at most about 24 characters on one row).
+
+## Remaining work for A
 
 | Part | Work | Size |
 |---|---|---|
-| Spike | A test-build `DBG pane <0-3>` that drives the hooks; a 2-to-2 change that rebuilds System; check that the page is new (address) and the menu survives 20 switches | 1–2 days |
-| Navi hooks | WaitKey, CloseOldUi, Close, flag; L/R through all four pages | 2 days |
-| Header | `Navi_SetTitles` hook, the label via the MSBT hook, the guide | 1 day |
-| Page | Gm_System setup/update/destructor hooks: hide its content, build and attach `Gm_MemoryList` | 2–3 days |
-| List | Rows, scrolling, cursor, scroll bar, glyph queue, the track mark | 2–3 days |
-| Names | The name table, the `test_music` check, the user's review | 1 day |
-| Override | `Music::Choose`, the `MUSIC` line to the client, the client side and its test, preview or on-close | 1 day |
-| Test and docs | Scripted test, TESTING.md and DESIGN.md | 1–2 days |
+| Out of the test build | `ap_jukebox.cpp` in the release build; Chamber Dungeon left out; the button guide for the Jukebox | 1 day |
+| List | The polish above; the chosen track marked; the cursor on it when the pane opens | 1–1.5 days |
+| Names | The name table in `ap_music.cpp`, the `test_music` check, the user's review | 1 day |
+| Override | `Music::Choose` and the `MUSIC` line to the client, its world test; preview kept (open question 1) | 1 day |
+| Test and docs | `jukebox_pane` on the release flavour, TESTING.md, DESIGN.md | 1 day |
 
-In all: about two weeks. The spike settles the biggest risk before any UI work.
+## Other designs
 
-### Alternative: a sub-screen of System, as Memories is of the map
+### B: a sub-screen of System, as Memories is of the map
 
-The Jukebox could be a choice on System (its hidden fourth row, `L_SystemChoice_03`) that opens a sub-screen:
-- **What it is:** a UI of the module's own over System, with the header retitled to "Jukebox" the way the map retitles it to "Memories".
-- **What it saves:** it needs none of the Navi switching hooks and no 2-to-2 rebuild.
-- **What it costs:** the Jukebox is then not on L/R. That is the trade-off against the chosen design.
+Prototype B (`claude/jbx-subscreen`): System's hidden ruby-text row (shown only in Japanese) becomes "Jukebox"; A on it runs the game's own dialog flow (header input off, page Out, wait, page In) with the list drawn at priority 0x1a and the header retitled. Its note in the shared notes folder (`jbx-subscreen.md`) has the detail.
 
-### Fallback
+### C: an overlay opened by holding a button
 
-If the page turns out too risky (the spike fails or the menu crashes), the fallback is an overlay opened by holding a button, as the warp menu is opened by holding Minus. It is a `LayoutWrapper_Build` layout (the same `Gm_MemoryList`) drawn above the HUD, with the module's own input. It needs no Navi or page hooks and is about a week.
+Prototype C (`claude/jukebox-overlay`): Plus held 1 s while Link is free opens the list over the HUD; the module's input hook keeps the buttons from the game while it is open. It needs no pause-menu hooks; its note (`jbx-overlay.md`) has the detail, including the button survey and the pause-flag trial.
 
 ## Scripted test design
 
