@@ -1,8 +1,9 @@
 # The Jukebox page (ap_jukebox.cpp, DESIGN.md "Jukebox page"): the pause menu's fourth page, Map, Items, System,
 # Jukebox, as a mode of System's slot, and its playback controls. Run after boot_file1 with the client connected (no
 # server needed). STATE's pane= is the page the player sees (3 the Jukebox), navi= the header's state (2 WaitKey),
-# jbox= the list's cursor and first row;
-# DBG jukebox counts the pages built and dropped and the text boxes whose glyphs are drawn.
+# jbox= the list's cursor and first row, bgmvol= the playing tracks' volume targets (the pause menu turns music down
+# to 20); DBG jukebox counts the pages built and dropped and the text boxes whose glyphs are drawn, and shows the
+# guide's A caption.
 expect HELLO 30
 send /music off
 await 10 music=-
@@ -11,32 +12,40 @@ tap 400 when free 3000
 await 10 pane=1\snavi=2
 tap 80
 await 10 pane=2\snavi=2
-# R on System: System is removed and built again as the Jukebox, the cursor on Game music (nothing chosen).
+# R on System: System is removed and built again as the Jukebox, the Jukebox off, the cursor on the zone's own track
+# (Wind Fish's Egg, entry 16).
 tap 80
-await 10 pane=3\snavi=2\sjbox=0/0
+await 10 pane=3\snavi=2\sjbox=16/13
 send DBG jukebox
-expect JUKEBOX\smode=1.*rows=7\sdrawn=7\stexts=6\stextsdrawn=6.*name=Game\smusic 5
-# Down to the first track; A plays it while the menu is open, and the client learns the choice.
+expect JUKEBOX\smode=1.*rows=7\sdrawn=7\stexts=6\stextsdrawn=6.*guide=play\sname=Wind\sFish's\sEgg 5
+# Down to the next track; A plays it while the menu is open, at full volume, and the client learns the choice.
 tap 8000
-await 5 jbox=1/0
+await 5 jbox=17/13
 tap 1
-await 5 music=BGM_DUNGEON_LV6_FACE\szonebgm=\S+\sbgm=BGM_DUNGEON_LV6_FACE:1\s
+await 5 music=BGM_SEASHELL_HOUSE\szonebgm=\S+\sbgm=BGM_SEASHELL_HOUSE:1\sbgmvol=100\s
 check paused=1
-logged Music:\sBGM_DUNGEON_LV6_FACE\. 10 client
+logged Music:\sBGM_SEASHELL_HOUSE\. 10 client
 send DBG jukebox
-expect JUKEBOX.*name=Face\sShrine 5
+expect JUKEBOX.*guide=stop\sname=Seashell\sMansion 5
+# A on the chosen track turns the Jukebox off: the zone's own track again, at full volume; A again chooses it again.
+tap 1
+await 5 music=-\szonebgm=(\S+)\sbgm=\1:1\sbgmvol=100\s
+send DBG jukebox
+expect JUKEBOX.*guide=play 5
+tap 1
+await 5 music=BGM_SEASHELL_HOUSE\szonebgm=\S+\sbgm=BGM_SEASHELL_HOUSE:1\sbgmvol=100\s
 # Down held: the cursor repeats and the list scrolls; Up comes back one row at a time.
 tap 8000 10
-await 5 jbox=([7-9]|[1-6][0-9])/[1-9][0-9]*\s
+await 5 jbox=(19|[2-6][0-9])/(1[4-9]|[2-6][0-9])\s
 tap 2000
 tap 2000
-# L: System again in place; R twice through the map and back with L.
+# L: System again in place; R twice through the map and back with L, the cursor on the chosen track.
 tap 40
 await 10 pane=2\snavi=2
 send DBG jukebox
 expect JUKEBOX\smode=0 5
 tap 80
-await 10 pane=3\snavi=2\sjbox=1/0
+await 10 pane=3\snavi=2\sjbox=17/14
 tap 80
 await 10 pane=0\snavi=2
 tap 40
@@ -56,14 +65,20 @@ await 10 pane=3\snavi=2
 tap 2
 await 10 paused=0
 free 10
-check music=BGM_DUNGEON_LV6_FACE\szonebgm=\S+\sbgm=BGM_DUNGEON_LV6_FACE:1\s
+check music=BGM_SEASHELL_HOUSE\szonebgm=\S+\sbgm=BGM_SEASHELL_HOUSE:1\s
 send DBG jukebox
 expect JUKEBOX\smode=0.*page=0\slist=0 5
 # In the game, the d-pad's right and left choose the next track in the list and the one chosen before.
 tap 4000
-await 5 music=BGM_DUNGEON_LV4_ANGLER\s
+await 5 music=BGM_TELEPHONE\s
 tap 1000
-await 5 music=BGM_DUNGEON_LV6_FACE\s
+await 5 music=BGM_SEASHELL_HOUSE\s
+# Right and left again in quick succession: the last choice plays, alone, once the others have faded.
+tap 4000
+tap 1000
+tap 4000
+tap 1000
+await 10 music=BGM_SEASHELL_HOUSE\szonebgm=\S+\sbgm=BGM_SEASHELL_HOUSE:1\sbgmvol=100\s
 # On the page, Y turns repeat one off and X shuffle on and off again. Without repeat one, a track that has played
 # through gives way to the next: Marin at the Beach (5 s, no loop) to BowWow Kidnapped Intro.
 tap 400 when free 3000

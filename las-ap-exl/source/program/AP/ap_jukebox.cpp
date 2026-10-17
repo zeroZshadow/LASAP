@@ -5,7 +5,8 @@
 // - "Now playing": Gm_MemoryCollect (the Memories count card) on the left, with a note (the font's U+266A) in its
 //   paper window and notes floating up out of it while music plays;
 // - the name and description of the track under the cursor: the Items page's info texts (Gm_Item N_Info_00);
-// - the guide "X Shuffle, Y Repeat one, A Play, B Back": the map's guide with its captions swapped (ap_text.cpp);
+// - the guide "X Shuffle, Y Repeat one, A Play, B Back" (A Stop on the chosen track: the Jukebox off, the game's own
+//   music again): the map's guide with its captions swapped (ap_text.cpp);
 // - the playback state under the card: Shuffle and Repeat one, on or off, and the d-pad's use in the game.
 // The module steers the moves that differ from the game's: R on System and L on the Jukebox change index 2 to
 // index 2 (System is removed and built again), L on the map lands on the Jukebox. Not in the Chamber Dungeon,
@@ -131,7 +132,7 @@ namespace {
     constexpr u64 kPadStaleMs = 50;  // the last poll's buttons count as held this long
     constexpr int kRepeatDelay = 20, kRepeatEvery = 5;  // frames before Up/Down repeat, and between repeats
 
-    constexpr int kEntries = AP::Tracks::COUNT + 1;  // entry 0: the game's own music
+    constexpr int kEntries = AP::Tracks::COUNT;
 
     template<typename T>
     T GameFn(uintptr_t offset) { return reinterpret_cast<T>(g_BaseAddress + offset_manager.Offset(offset)); }
@@ -172,6 +173,8 @@ namespace {
     bool g_ChangeAhead = false;     // a page change runs: g_Pending applies when CloseOldUi ends
     bool g_Guide = false;           // Navi_SetGuide runs for the Jukebox: the X/Y caption reads "A Play"
     bool g_GuideShown = false;      // the guide shows the Jukebox's captions
+    bool g_GuideStop = false;       // its A caption reads Stop (the cursor was on the chosen track)
+    bool g_Loud = false;            // a track was chosen on the page: it plays at full volume while the menu is open
     int g_Changes = 0;              // changes through index 2 the module steered (2 to 2)
 
     // A text box and the text object AP::SetPaneText fills it through (+0x10 the text pane).
@@ -297,17 +300,18 @@ namespace {
         return 1.0f - (f < 0.5f ? 1.0f - 2.0f * f : 2.0f * f - 1.0f);
     }
 
-    const AP::Tracks::Track& Entry(int entry) {
-        return entry == 0 ? AP::Tracks::GAME_MUSIC : AP::Tracks::TRACKS[entry - 1];
-    }
+    const AP::Tracks::Track& Entry(int entry) { return AP::Tracks::TRACKS[entry]; }
 
-    // The entry of a track id, 0 for "" or a track not in the list.
+    // The entry of a track id, -1 for "" or a track not in the list.
     int EntryOf(const std::string& id) {
         for (int i = 0; i < AP::Tracks::COUNT; i++) {
-            if (id == AP::Tracks::TRACKS[i].id) return i + 1;
+            if (id == AP::Tracks::TRACKS[i].id) return i;
         }
-        return 0;
+        return -1;
     }
+
+    // The cursor is on the chosen track: A stops the Jukebox.
+    bool OnChosen() { return g_Ui.page != nullptr && AP::Music::IsChosen(Entry(g_Cursor).id); }
 
     // Builds a layout and hangs it under the page's root pane.
     bool Build(Layout& layout, const char* file, u8* page, u8* pageRoot) {
@@ -370,18 +374,17 @@ namespace {
         MoveTo(g_Ui.cursor, 0, kRowTop - kRowStep * (g_Cursor - g_Top));
         float scrolled = static_cast<float>(g_Top) / (kEntries - kRows);
         MoveTo(g_Ui.handle, 0, kHandleTop - kHandleTravel * scrolled);
-        bool marked = chosenEntry >= g_Top && chosenEntry < g_Top + kRows;
+        bool marked = chosenEntry >= 0 && chosenEntry >= g_Top && chosenEntry < g_Top + kRows;
         SetVisible(g_Ui.mark.root, marked);
         if (marked) MoveTo(g_Ui.mark.root, kMarkX, kListY + kRowTop - kRowStep * (chosenEntry - g_Top));
 
         bool silent = chosen.empty() && AP::Music::ZoneTrack().empty();
-        const char* playingName = playing > 0 ? Entry(playing).name : silent ? "Silence" : "Game music";
-        SetText(g_Ui.title, std::string("Now playing\n") + playingName);
-        SetText(g_Ui.number, playing > 0 ? std::to_string(playing) : "-");
+        const char* playingName = playing >= 0 ? Entry(playing).name : silent ? "Silence" : "The game's music";
+        SetText(g_Ui.title, std::string(chosen.empty() ? "Jukebox off\n" : "Now playing\n") + playingName);
+        SetText(g_Ui.number, playing >= 0 ? std::to_string(playing + 1) : "-");
         SetText(g_Ui.total, std::to_string(AP::Tracks::COUNT));
         SetText(g_Ui.name, Entry(g_Cursor).name);
         SetText(g_Ui.about, Entry(g_Cursor).info);
-        MoveTo(g_Ui.about.box, 0, kInfoY - (strchr(Entry(g_Cursor).info, '\n') != nullptr ? kInfoLower : 0));
 
         SetText(g_Ui.status.note, std::string(AP::Music::Shuffle() ? "Shuffle: On" : "Shuffle: Off") +
                                       (AP::Music::RepeatOne() ? "    Repeat one: On" : "    Repeat one: Off") +
@@ -401,6 +404,8 @@ namespace {
         }
 
         MoveTo(g_Ui.icon.root, kIconX, kIconY + 6.0f * Triangle(static_cast<float>(g_Frame) / kBobFrames));
+        // a two-line description lower, every frame: the layout's first update lays its alignment pane out again
+        MoveTo(g_Ui.about.box, 0, kInfoY - (strchr(Entry(g_Cursor).info, '\n') != nullptr ? kInfoLower : 0));
         bool music = AP::Music::HasMusic();
         for (int i = 0; i < kFloating; i++) {
             u8* note = g_Ui.floating[i].root;
@@ -505,8 +510,9 @@ namespace {
         Bind(g_Ui.name, FindPane(info, "T_Name_00"));
         Bind(g_Ui.about, FindPane(info, "T_Info_00"));
 
-        // the cursor on the chosen track, a few rows from the top
+        // the cursor on the chosen track (else the zone's own), a few rows from the top
         g_Cursor = EntryOf(AP::Music::Track());
+        if (g_Cursor < 0) g_Cursor = std::max(EntryOf(AP::Music::ZoneTrack()), 0);
         g_Top = std::clamp(g_Cursor - kRows / 2, 0, kEntries - kRows);
         g_Fade = 0;
         g_PrevPad = PadHeld();
@@ -538,8 +544,8 @@ namespace {
             MoveCursor(step);
         }
         if (pressed & kButtonA) {
-            AP::Music::Choose(g_Cursor == 0 ? "" : Entry(g_Cursor).id);
-            AP::Music::Tick();  // Tick does not run while the menu is open: apply now
+            AP::Music::Choose(OnChosen() ? "" : Entry(g_Cursor).id);  // A on the chosen track: the Jukebox off
+            g_Loud = true;
             PlaySound("SE_SY_DECIDE");
             Fill();
         }
@@ -613,6 +619,7 @@ HOOK_DEFINE_TRAMPOLINE(NaviCloseEnter) {
         g_Jukebox = false;
         g_Pending = false;
         g_ChangeAhead = false;
+        g_Loud = false;
     }
 };
 
@@ -643,6 +650,7 @@ HOOK_DEFINE_TRAMPOLINE(NaviSetGuide) {
         }
         ForgetGuideKinds(navi);
         g_GuideShown = true;
+        g_GuideStop = OnChosen();
         u32 mapId = Field<u32>(navi, kNaviIds);
         Field<u32>(navi, kNaviIds) = kOverworldMap;
         g_Guide = true;
@@ -675,7 +683,15 @@ HOOK_DEFINE_TRAMPOLINE(SystemUpdate) {
     static void Callback(u8* page) {
         if (page != g_Ui.page) return Orig(page);
         Animate();
+        // AP::Tick does not run while the menu is open: a choice applies here, and the track chosen on the page plays
+        // at full volume
+        AP::Music::Tick();
+        if (g_Loud) AP::Music::Loud();
         if (!AP::Music::IsChosen(g_Shown.c_str())) Fill();  // the client chose a track
+        u8* navi = FindUi(kNaviUi);
+        if (navi != nullptr && g_GuideShown && OnChosen() != g_GuideStop) {
+            GameFn<void (*)(void*, u32)>(kNaviSetGuide)(navi, kSystem);  // A reads Play or Stop
+        }
         // Gm_System's own update runs while it opens (its In animation), never once it takes buttons
         if (Field<u8>(page, kSystemState) == 0 || Field<u8>(page, kSystemState) == 0xff) return Orig(page);
         Field<u8>(page, kPageCanClose) = 1;
@@ -721,7 +737,7 @@ namespace AP::JukeboxPane {
 
     std::string GuideCaption(int button) {
         if (!g_Guide) return "";
-        return button == 0 ? "Shuffle" : button == 1 ? "Repeat one" : "Play";
+        return button == 0 ? "Shuffle" : button == 1 ? "Repeat one" : g_GuideStop ? "Stop" : "Play";
     }
 
 #ifdef LASAP_TEST
@@ -763,6 +779,7 @@ namespace AP::JukeboxPane {
         s += " texts=" + std::to_string(texts) + " textsdrawn=" + std::to_string(glyphs);
         s += " fade=" + std::to_string(g_Fade);
         s += " shuffle=" + std::to_string(AP::Music::Shuffle()) + " repeat=" + std::to_string(AP::Music::RepeatOne());
+        s += std::string(" guide=") + (g_GuideStop ? "stop" : "play");
         if (g_Ui.page != nullptr) s += " name=" + std::string(Entry(g_Cursor).name);
         for (char& c : s) c = c == '\n' ? '|' : c;
         return s;

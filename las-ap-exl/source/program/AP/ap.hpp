@@ -151,6 +151,8 @@ namespace AP::Music {
     bool IsChosen(const char* track);
     bool HasMusic();
     std::string ZoneTrack();
+    // The track the last change started plays at full volume, also under the pause menu, which turns music down.
+    void Loud();
     // Playback: repeat one (on at the start: the chosen track loops) and shuffle. With repeat one off, a track that
     // has played through gives way to the next (Skip(1)).
     bool RepeatOne();
@@ -162,10 +164,13 @@ namespace AP::Music {
     // in a toast and returns it.
     std::string Skip(int step);
 #ifdef LASAP_TEST
-    // STATE's " music=<chosen track or -> zonebgm=<the zone's track> bgm=<playing tracks as name:kind, or ->"
+    // STATE's " music=<chosen track or -> zonebgm=<the zone's track> bgm=<playing tracks as name:kind, or ->
+    // bgmvol=<their volume targets in percent>"
     std::string StateField();
     // DBG music log: the last BGM requests
     std::string LogText();
+    // DBG peek b|m: the BGM manager, or the first playing instance (null if none)
+    const u8* PeekBase(bool instance);
 #endif
 }
 

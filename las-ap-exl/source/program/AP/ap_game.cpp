@@ -792,12 +792,17 @@ namespace {
             }
             AP::Send("PLAYERNAME " + utf8);
         } else if (cmd == "peek" && a.size() >= 5) {
-            // DBG peek <p|f|i> <hex offset> <hex length>: bytes of the player, the framework or the inventory
+            // DBG peek <p|f|i|b|m|h> <hex offset> <hex length>: bytes of the player, the framework, the inventory, the BGM
+            // manager, its first playing instance or that instance's sound
             Game::Framework* fmwk = Game::GetFramework();
             const u8* base = nullptr;
             if (a[2] == "p") base = fmwk ? reinterpret_cast<const u8*>(fmwk->mPlayer) : nullptr;
             else if (a[2] == "f") base = reinterpret_cast<const u8*>(fmwk);
             else if (a[2] == "i") base = *reinterpret_cast<const u8**>(g_symbols["InventoryPtr"]);
+            else if (a[2] == "b" || a[2] == "m") base = AP::Music::PeekBase(a[2] == "m");
+            else if (a[2] == "h" && AP::Music::PeekBase(true) != nullptr) {
+                base = *reinterpret_cast<const u8* const*>(AP::Music::PeekBase(true) + 8);  // the sound
+            }
             if (base == nullptr) {
                 AP::Send("ERR peek: no object");
                 return true;

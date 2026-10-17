@@ -43,9 +43,20 @@ namespace {
     constexpr uintptr_t kBgmTableFind = 0x10e23d0, kBgmTable = 0x1caba28, kBgmTableGuard = 0x1cac378;
     // Return addresses of the zone music's BgmManager_Play calls: the zone update, PlayZoneBgm (twice).
     constexpr uintptr_t kZoneCalls[] = {0x9f008, 0xa688c, 0xa6988};
-    constexpr size_t kActive = 0x6280, kZoneTrack = 0x9250, kZoneTrackLen = 0x9290;
-    constexpr size_t kInstName = 0x10, kInstKind = 0xf0, kInstFadeIn = 0x104;
+    // The event action PlayBGM's call, and the event songs that stand in for the zone's music, which no PlayZoneBGM
+    // follows: the washed-up sword's (SinkingSword.bfevfl) and the new game's wake-up (PlayerStart.bfevfl).
+    constexpr uintptr_t kEventPlayCall = 0x805bc4;
+    constexpr const char* kZoneStandIns[] = {"BGM_FIELD_NORMAL_INTRO", "BGM_HOUSE_FIRST"};
+    // The manager's instances about to start (+0x6268, begin and end: a track whose stream is still being prepared,
+    // which no fade or stop reaches yet) and those that play (+0x6280).
+    constexpr size_t kStarting = 0x6268, kActive = 0x6280, kZoneTrack = 0x9250, kZoneTrackLen = 0x9290;
+    // Instance: name, kind, fade-in frames, the sound (+0x8). Sound: its volume's fade (+0x140 the volume, +0x144 the
+    // target, frames, frames gone), set by Sound_SetVolume(sound, frames, volume); the pause menu sets every BGM's
+    // target to 0.2, and 1 again as it closes.
+    constexpr size_t kInstName = 0x10, kInstKind = 0xf0, kInstFadeIn = 0x104, kInstSound = 0x8, kSoundTarget = 0x144;
+    constexpr uintptr_t kSoundSetVolume = 0x10ea8c0;
     constexpr u32 kFadeFrames = 90, kFadeInFrames = 150;  // the zone update's
+    constexpr int kLoudFrames = 8;  // as the pause menu sets the volume back
 
     // The chosen track ("" none), its index in AP::Tracks::TRACKS (-1: none, or a track not in the list), and whether
     // the game should switch to it (or back) on the next tick in a level.
@@ -57,6 +68,7 @@ namespace {
     const u8* g_Instance = nullptr;  // the chosen track's instance as last seen playing
     u64 g_PlayedMs = 0, g_LastMs = 0;
     bool g_Ended = false;            // the chosen track (one that does not loop) ended while the player was free
+    const u8* g_Started = nullptr;   // the instance the last change started (compared, read only while it plays)
     // The track chosen before the last change, stopped once the change applies.
     std::string g_Previous;
 
@@ -79,9 +91,13 @@ namespace {
                    reinterpret_cast<void*>(g_BaseAddress + kBgmTable), name) != -1;
     }
 
-    bool IsZoneCall(uintptr_t ret) {
+    bool IsZoneCall(uintptr_t ret, const StrView* name) {
         for (uintptr_t call : kZoneCalls) {
             if (ret == offset_manager.Offset(call)) return true;
+        }
+        if (ret != offset_manager.Offset(kEventPlayCall) || name == nullptr) return false;
+        for (const char* standIn : kZoneStandIns) {
+            if (std::string_view(name->data, name->len) == standIn) return true;
         }
         return false;
     }
@@ -97,7 +113,7 @@ namespace {
         }
         if (track == std::string(g_Track, g_TrackLen)) return false;
         if (g_TrackLen > 0) {
-            g_Previous.assign(g_Track, g_TrackLen);
+            if (!g_Pending) g_Previous.assign(g_Track, g_TrackLen);  // what plays until the change applies
             Remember(g_TrackIndex);
         }
         memcpy(g_Track, track.c_str(), track.size() + 1);
@@ -213,7 +229,7 @@ HOOK_DEFINE_TRAMPOLINE(BgmManagerPlay) {
     static void* Callback(float volume, void* manager, StrView* name, bool b2, bool b3, bool force) {
         uintptr_t ret = reinterpret_cast<uintptr_t>(__builtin_return_address(0)) - g_BaseAddress;
         StrView chosen{g_Track, g_TrackLen};
-        bool swap = g_TrackLen > 0 && IsZoneCall(ret);
+        bool swap = g_TrackLen > 0 && IsZoneCall(ret, name);
         void* instance = Orig(volume, manager, swap ? &chosen : name, b2, b3, force);
 #ifdef LASAP_TEST
         char entry[160];
@@ -294,6 +310,11 @@ namespace AP::Music {
             }
         }
         if (!g_Pending) return;
+        // A track still being prepared would start after the change and play on beside it: the change waits, and
+        // applies the latest choice.
+        if (*reinterpret_cast<u8* const*>(manager + kStarting) != *reinterpret_cast<u8* const*>(manager + kStarting + 8)) {
+            return;
+        }
         g_Pending = false;
         if (g_TrackLen > 0 && !KnownTrack(g_Track)) {
             AP::Log(std::string("music: unknown track ") + g_Track);
@@ -305,9 +326,12 @@ namespace AP::Music {
         // fades in as on a zone change, and the rest fades out.
         u8* started = GameFn<u8* (*)(bool)>(kPlayZoneBgm)(true);
         if (started != nullptr) *reinterpret_cast<u32*>(started + kInstFadeIn) = kFadeInFrames;
+        g_Started = started;
         // PlayZoneBgm fades nothing when nothing new starts (the zone has no track, or a buff's music plays): the
-        // track chosen before stops by name, unless it is what plays now.
-        if (!g_Previous.empty() && g_Previous != std::string(g_Track, g_TrackLen) && g_Previous != ::ZoneTrack(manager)) {
+        // track chosen before stops by name, unless it is what plays now (the chosen track, or the zone's own with none
+        // chosen).
+        bool keep = g_Previous == std::string(g_Track, g_TrackLen) || (g_TrackLen == 0 && g_Previous == ::ZoneTrack(manager));
+        if (!g_Previous.empty() && !keep) {
             StrView view{g_Previous.c_str(), g_Previous.size()};
             GameFn<void (*)(StrView*, u32)>(kBgmStop)(&view, kFadeFrames);
         }
@@ -335,6 +359,21 @@ namespace AP::Music {
         return name;
     }
 
+    void Loud() {
+        u8* manager = Manager();
+        if (manager == nullptr || g_Started == nullptr) return;
+        u8* const* it = *reinterpret_cast<u8* const* const*>(manager + kActive);
+        u8* const* end = *reinterpret_cast<u8* const* const*>(manager + kActive + 8);
+        for (; it != end; it++) {
+            if (*it != g_Started) continue;
+            u8* sound = *reinterpret_cast<u8* const*>(*it + kInstSound);
+            if (sound != nullptr && *reinterpret_cast<const float*>(sound + kSoundTarget) < 1.0f) {
+                GameFn<void (*)(void*, int, float)>(kSoundSetVolume)(sound, kLoudFrames, 1.0f);
+            }
+            return;
+        }
+    }
+
     bool RepeatOne() { return g_RepeatOne; }
     bool Shuffle() { return g_Shuffle; }
     void SetRepeatOne(bool on) { g_RepeatOne = on; }
@@ -358,15 +397,27 @@ namespace AP::Music {
     std::string StateField() {
         const u8* manager = Manager();
         std::string s = std::string(" music=") + (g_TrackLen > 0 ? g_Track : "-");
-        if (manager == nullptr) return s + " zonebgm=- bgm=-";
+        if (manager == nullptr) return s + " zonebgm=- bgm=- bgmvol=-";
         s += " zonebgm=" + ::ZoneTrack(manager) + " bgm=";
         u8* const* it = *reinterpret_cast<u8* const* const*>(manager + kActive);
         u8* const* end = *reinterpret_cast<u8* const* const*>(manager + kActive + 8);
-        if (it == end) return s + "-";
+        if (it == end) return s + "- bgmvol=-";
+        std::string volumes;
         for (bool first = true; it != end; it++, first = false) {
             s += (first ? "" : ",") + std::string(GameString(*it + kInstName)) + ":" + std::to_string((*it)[kInstKind]);
+            const u8* sound = *reinterpret_cast<u8* const*>(*it + kInstSound);
+            float target = sound != nullptr ? *reinterpret_cast<const float*>(sound + kSoundTarget) : 0.0f;
+            volumes += (first ? "" : ",") + std::to_string(static_cast<int>(target * 100.0f + 0.5f));
         }
-        return s;
+        return s + " bgmvol=" + volumes;
+    }
+
+    const u8* PeekBase(bool instance) {
+        const u8* manager = Manager();
+        if (manager == nullptr || !instance) return manager;
+        u8* const* it = *reinterpret_cast<u8* const* const*>(manager + kActive);
+        u8* const* end = *reinterpret_cast<u8* const* const*>(manager + kActive + 8);
+        return it != end ? *it : nullptr;
     }
 
     std::string LogText() {

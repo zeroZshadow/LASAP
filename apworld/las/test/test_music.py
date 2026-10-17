@@ -11,7 +11,6 @@ ROOT = Path(__file__).resolve().parents[3]
 PATCHER_MUSIC = ROOT / "patcher" / "RandomizerCore" / "Randomizers" / "music.py"
 TRACK_NAMES = ROOT / "las-ap-exl" / "source" / "program" / "AP" / "ap_tracks.hpp"
 ENTRY = re.compile(r'\{\s*"(BGM_\w+)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*,\s*(\d+)\s*\}')
-GAME_MUSIC = re.compile(r'GAME_MUSIC\s*=\s*\{\s*nullptr\s*,\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*,\s*0\s*\}')
 
 
 def c_string(text: str) -> str:
@@ -34,13 +33,10 @@ class TestTracks(unittest.TestCase):
         # each track's play-through (scripts/track_lengths.py): at least a few seconds, at most ten minutes
         self.assertTrue(all(3000 <= int(ms) <= 600000 for *_, ms in ENTRY.findall(source)))
         self.assertEqual(tuple(i for i, _, _ in entries), music.TRACKS)
-        game_music = GAME_MUSIC.search(source)
-        self.assertIsNotNone(game_music)
-        names = [n for _, n, _ in entries] + [c_string(game_music.group(1))]
+        names = [n for _, n, _ in entries]
         self.assertEqual(len(names), len(set(names)))
         for _, name, info in entries:
             self.check_text(name, info)
-        self.check_text(c_string(game_music.group(1)), c_string(game_music.group(2)))
 
     def test_tracks_match_patcher(self) -> None:
         tree = ast.parse(PATCHER_MUSIC.read_text(encoding="utf-8"))

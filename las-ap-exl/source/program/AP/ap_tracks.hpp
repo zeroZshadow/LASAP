@@ -12,9 +12,6 @@ namespace AP::Tracks {
         unsigned ms;       // one play-through (a short loop repeated to a minute), after which the Jukebox moves on
     };
 
-    // Row 0 of the list: the override off.
-    constexpr Track GAME_MUSIC = {nullptr, "Game music", "The music the game plays here.", 0};
-
     constexpr Track TRACKS[] = {
         {"BGM_DUNGEON_LV6_FACE", "Face Shrine", "The theme of Face Shrine, the sixth\ndungeon.", 197236},
         {"BGM_DUNGEON_LV4_ANGLER", "Angler's Tunnel", "The theme of Angler's Tunnel, the fourth\ndungeon.", 101778},
