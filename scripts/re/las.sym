@@ -16,6 +16,9 @@ AreaLevelOpen_CompanionEntry 0x0857a050 f entry name with the companion suffix t
 AreaLevelOpen_LevelName 0x0857a0c0 f (out, actor): LEB param 0; a bl target after a noreturn call
 AreaLevelOpen_Locator 0x0857a150 f (out, actor): LEB param 1
 BgmManager_StopByName 0x0859f7b0 f (StringView* name, u32 fade frames) on the static BgmManager
+BgmManager_StopAll 0x0859f550 f (u32 frames): every playing instance's fade-out +0x58 and Sound_Stop; the event action StopAllBGM and the level load (0 frames)
+BgmManager_FadeZone 0x085aa510 f the kind 1 instances fade out over 90 frames unless a buff's music plays; an event action
+Sound_Stop 0x095ed7f0 f (sound, u32 frames)
 BgmManager_SetVolume 0x0859f3a0 f (f32 volume, u32 frames): Sound_SetVolume on every playing kind 1 instance; the event action SetBGMVolume
 Sound_SetVolume 0x095ee8c0 f (sound, u32 frames, f32 volume): fades the volume, +0x140 volume, +0x144 target, +0x148 frames, +0x14c frames gone
 BgmZoneUpdate_PlayCall 0x085a3004 l the zone update's BgmManager_Play call with the zone's track (volume from zone +0x4c); when it returns an instance, the other kind 1 instances fade out

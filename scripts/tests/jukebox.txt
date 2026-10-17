@@ -4,6 +4,9 @@
 # (name:kind), music= the chosen track; DBG music's log lists the BGM requests with the track each was swapped for and
 # the return address of the call (+9f008: the zone update; +a6988: PlayZoneBgm, which a level's start calls).
 expect HELLO 30
+# The client sends its choice again on each connection: start from none.
+send /music off
+await 10 music=-
 # The debug warp starts no music, as the game's restart path; walking out through Tarin's door starts Mabe's.
 warp MarinTarinHouse 6.85 0 3.83
 hold 0 0 -32767 until level=Field 10
@@ -20,16 +23,19 @@ wait 2
 check music=BGM_FAIRY zonebgm=(?!BGM_MEVE\s)\S+ bgm=BGM_FAIRY:1\s
 send DBG music
 expect play\s(?!BGM_MEVE)\S+->BGM_FAIRY\s\+9f008\s000\s-\s*$
-# Through a door into Tarin's house and out again: each level asks for its track, the chosen one plays.
+# Through a door into Tarin's house and out again: the door's stops leave the chosen track playing, and each level
+# asks for its track and finds it playing (no new instance).
 goto 38.25 10.5 129.75
 hold 0 0 32767 until level=MarinTarinHouse 10
 loaded 20
 await 10 music=BGM_FAIRY zonebgm=BGM_HOUSE bgm=BGM_FAIRY:1\s
 send DBG music
-expect play\sBGM_HOUSE->BGM_FAIRY\s\S+\s000\snew\s*$
+expect play\sBGM_HOUSE->BGM_FAIRY\s\S+\s000\s-\s*$
 hold 0 0 -32767 until level=Field 10
 loaded 20
-await 10 music=BGM_FAIRY zonebgm=BGM_MEVE bgm=BGM_FAIRY:1\s
+await 10 music=BGM_FAIRY zonebgm=(BGM_MEVE|BGM_EVENT_RESCUE_BOWBOW) bgm=BGM_FAIRY:1\s
+send DBG music
+expect play\s\S+->BGM_FAIRY\s\S+\s000\s-\s*$
 # Off: the zone's own track comes back and the chosen one fades out.
 send /music off
 await 10 music=- zonebgm=(\S+) bgm=\1:1\s

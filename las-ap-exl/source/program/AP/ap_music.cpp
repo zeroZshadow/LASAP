@@ -216,13 +216,64 @@ namespace {
     }
 
 #ifdef LASAP_TEST
-
     // DBG music log: the last BGM requests, oldest first.
     constexpr size_t kLogSize = 24;
     std::string g_Log[kLogSize];
     size_t g_LogCount = 0;
     void Record(const std::string& entry) { g_Log[g_LogCount++ % kLogSize] = entry; }
 #endif
+
+    // Doors: a door's event stops all music (Audio.StopAllBGM) and fades the zone's out, and the level load stops what
+    // is left (BgmManager_StopAll with 0 frames); the new level then starts the chosen track again from its beginning.
+    // The module keeps the chosen track out of those stops and decides afterwards: a level load follows (another
+    // player, or none): it plays on, and the new level finds it playing; the game asks for the zone's music again
+    // (an event's PlayZoneBGM): it plays on; another track starts (an event's song, a fanfare): it stops then; the
+    // player is free again with none of these (an event that meant silence): it stops then.
+    // BgmManager_StopAll(u32 frames), the zone music's fade (void: the kind 1 instances over 90 frames),
+    // Sound_Stop(sound, u32 frames); an instance's fade-out frames at +0x58.
+    constexpr uintptr_t kBgmStopAll = 0x9b550, kBgmFadeZone = 0xa6510, kSoundStop = 0x10e97f0;
+    constexpr size_t kInstFadeOut = 0x58;
+    constexpr u32 kHeldFadeFrames = 30;
+    const u8* g_HoldSound = nullptr;    // the chosen track's sound while a stop of the game's runs
+    bool g_HoldSkipped = false;         // that stop reached it
+    bool g_Held = false;                // a stop left it playing: what follows decides
+    bool g_Carried = false;             // held into a level load: it plays on unless another track starts
+    const void* g_HeldPlayer = nullptr;
+
+    // Runs a stop of the game's with the chosen track left playing.
+    template<typename F>
+    void Holding(F stop) {
+        u8* manager = Manager();
+        u8* instance = manager != nullptr ? const_cast<u8*>(PlayingInstance(manager)) : nullptr;
+        u8* sound = instance != nullptr ? *reinterpret_cast<u8**>(instance + kInstSound) : nullptr;
+        if (sound == nullptr) return stop();
+        u32 fadeOut = *reinterpret_cast<u32*>(instance + kInstFadeOut);
+        g_HoldSound = sound;
+        g_HoldSkipped = false;
+        stop();
+        g_HoldSound = nullptr;
+#ifdef LASAP_TEST
+        Record(std::string("hold ") + (g_HoldSkipped ? "kept" : "missed"));
+#endif
+        if (!g_HoldSkipped) return;
+        *reinterpret_cast<u32*>(instance + kInstFadeOut) = fadeOut;
+        Game::Framework* fmwk = Game::GetFramework();
+        g_Held = true;
+        g_HeldPlayer = fmwk != nullptr ? fmwk->mPlayer : nullptr;
+    }
+
+    // The held track stops after all.
+    void StopHeld() {
+#ifdef LASAP_TEST
+        Record(std::string("held stop") + (g_Carried ? " carried" : ""));
+#endif
+        g_Held = g_Carried = false;
+        u8* manager = Manager();
+        const u8* instance = manager != nullptr ? PlayingInstance(manager) : nullptr;
+        u8* sound = instance != nullptr ? *reinterpret_cast<u8* const*>(instance + kInstSound) : nullptr;
+        if (sound != nullptr) GameFn<void (*)(void*, u32)>(kSoundStop)(sound, kHeldFadeFrames);
+    }
+
 }
 
 HOOK_DEFINE_TRAMPOLINE(BgmManagerPlay) {
@@ -231,6 +282,8 @@ HOOK_DEFINE_TRAMPOLINE(BgmManagerPlay) {
         StrView chosen{g_Track, g_TrackLen};
         bool swap = g_TrackLen > 0 && IsZoneCall(ret, name);
         void* instance = Orig(volume, manager, swap ? &chosen : name, b2, b3, force);
+        if ((g_Held || g_Carried) && !swap && instance != nullptr) StopHeld();  // an event's song, a fanfare
+        if (swap) g_Held = false;  // the zone's music again: it plays on
 #ifdef LASAP_TEST
         char entry[160];
         snprintf(entry, sizeof(entry), "play %.*s%s%s +%lx %d%d%d %s", (int)(name ? name->len : 0),
@@ -255,9 +308,30 @@ HOOK_DEFINE_TRAMPOLINE(BgmManagerStop) {
 };
 #endif
 
+HOOK_DEFINE_TRAMPOLINE(BgmStopAll) {
+    static void Callback(u32 frames) { Holding([frames] { Orig(frames); }); }
+};
+
+HOOK_DEFINE_TRAMPOLINE(BgmFadeZone) {
+    static void Callback() { Holding([] { Orig(); }); }
+};
+
+HOOK_DEFINE_TRAMPOLINE(SoundStop) {
+    static void Callback(u8* sound, u32 frames) {
+        if (sound != nullptr && sound == g_HoldSound) {
+            g_HoldSkipped = true;
+            return;
+        }
+        Orig(sound, frames);
+    }
+};
+
 namespace AP::Music {
     void InstallHooks() {
         BgmManagerPlay::InstallAtOffset(offset_manager.Offset(kBgmPlay));
+        BgmStopAll::InstallAtOffset(offset_manager.Offset(kBgmStopAll));
+        BgmFadeZone::InstallAtOffset(offset_manager.Offset(kBgmFadeZone));
+        SoundStop::InstallAtOffset(offset_manager.Offset(kSoundStop));
 #ifdef LASAP_TEST
         BgmManagerStop::InstallAtOffset(offset_manager.Offset(kBgmStop));
 #endif
@@ -281,9 +355,19 @@ namespace AP::Music {
         Game::Framework* fmwk = Game::GetFramework();
         u8* manager = Manager();
         if (fmwk == nullptr || fmwk->mPlayer == nullptr || manager == nullptr) {
-            g_Instance = nullptr;  // a level load starts the music again
+            if (g_Held) {
+                g_Held = false;  // held into a level load: it plays on
+                g_Carried = true;
+            }
+            if (!g_Carried) g_Instance = nullptr;  // a level load starts the music again
             return;
         }
+        if (g_Held && fmwk->mPlayer != g_HeldPlayer) {
+            g_Held = false;  // another level: it plays on
+        } else if (g_Held && free) {
+            StopHeld();  // an event that meant silence is over
+        }
+        g_Carried = false;
         // How long the chosen track has played: from its start, while it plays (also under the pause menu, which
         // does not tick this). With repeat one off, the next track once it has played through, only while the player
         // is free: a change fades out the event songs too. A track that does not loop is gone once it has played: it
