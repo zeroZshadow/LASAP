@@ -25,6 +25,9 @@ namespace AP::Test {
     void ApplyInput(nn::hid::NpadBaseState* state);
     // DBG commands of this file; false when the command is not one of them.
     bool Command(const std::vector<std::string>& a);
+    // Enemy randomizer (Hooks/Randomizer/enemies.hpp), from the thread loading a room: an enemy it looked at, its
+    // LEB actor id before and after, and its scale (0 when kept).
+    void OnEnemy(u16 vanilla, u16 now, float scale);
     // " frame=<n> msg=<message window state>" for the STATE line.
     std::string StateFields();
     void InstallHooks();

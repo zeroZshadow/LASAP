@@ -95,14 +95,65 @@ INSTRUMENTS_TOKEN = "instruments"
 COUNTED = {INSTRUMENTS_TOKEN: INSTRUMENTS}
 
 
-def goal_logic(instruments_required: int) -> Dict[str, Dict[str, Any]]:
+def goal_logic(instruments_required: int, logic: Dict[str, Dict[str, Any]] = LOGIC) -> Dict[str, Dict[str, Any]]:
     """The logic with the Wind Fish's egg opening at this many instruments."""
     if instruments_required >= len(INSTRUMENTS):
-        return LOGIC
-    parts = [part.strip() for part in LOGIC["egg"]["condition-basic"].split("&")]
+        return logic
+    parts = [part.strip() for part in logic["egg"]["condition-basic"].split("&")]
     assert set(INSTRUMENTS) <= set(parts), parts
     parts = [part for part in parts if part not in INSTRUMENTS] + [f"{INSTRUMENTS_TOKEN}:{instruments_required}"]
-    return {**LOGIC, "egg": {**LOGIC["egg"], "condition-basic": " & ".join(parts)}}
+    return {**logic, "egg": {**logic["egg"], "condition-basic": " & ".join(parts)}}
+
+
+# Dungeon entrance shuffle. The dungeons' region nodes are their insides, entered through their overworld door: the
+# region's conditions are the door's. The Face Shrine's region is either of its entrance rooms (D6-8D, D6-3A, which
+# its side entrance reaches); its door is the outside part of D6-8D's conditions.
+DUNGEONS = ("tail-cave", "bottle-grotto", "key-cavern", "angler-tunnel", "catfish-maw", "face-shrine", "eagle-tower",
+            "turtle-rock", "color-dungeon")
+FACE_SHRINE_ROOM = "D6-8D"
+_FACE_SHRINE_DOOR = "river & face-key & (hookshot | rooster)"
+_FACE_SHRINE_INSIDE = "D6-3A & ((ocarina & song-mambo) | bombs | shoot-arrows | boomerang | rod)"
+
+
+def _conditions(node: Dict[str, Any]) -> Dict[str, Any]:
+    return {k: v for k, v in node.items() if k.startswith("condition-")}
+
+
+def _door(logic: Dict[str, Dict[str, Any]], dungeon: str) -> Dict[str, Any]:
+    """The conditions of a dungeon's overworld door."""
+    if dungeon != "face-shrine":
+        return _conditions(logic[dungeon])
+    room = logic[FACE_SHRINE_ROOM]
+    assert room["condition-basic"] == f"({_FACE_SHRINE_DOOR}) | ({_FACE_SHRINE_INSIDE})", room
+    return {**_conditions(room), "condition-basic": _FACE_SHRINE_DOOR}
+
+
+def dungeon_logic(logic: Dict[str, Dict[str, Any]], entrances: Dict[str, str]) -> Dict[str, Dict[str, Any]]:
+    """The logic with dungeon doors leading elsewhere: entrances maps each dungeon's door to the dungeon it leads into
+    (the patch's dungeon_entrances), whose inside then needs that door. LASR's shuffler moves only condition-basic and
+    moves the Face Shrine's region, entrance rooms and all."""
+    if all(door == dungeon for door, dungeon in entrances.items()):
+        return logic
+    assert sorted(entrances) == sorted(DUNGEONS) and sorted(entrances.values()) == sorted(DUNGEONS), entrances
+    shuffled = dict(logic)
+    for door, dungeon in entrances.items():
+        conditions = _door(logic, door)
+        if dungeon == "face-shrine":
+            room = logic[FACE_SHRINE_ROOM]
+            basic = f"({conditions['condition-basic']}) | ({_FACE_SHRINE_INSIDE})"
+            shuffled[FACE_SHRINE_ROOM] = {**{k: v for k, v in room.items() if not k.startswith("condition-")},
+                                          **conditions, "condition-basic": basic}
+        else:
+            node = logic[dungeon]
+            shuffled[dungeon] = {**{k: v for k, v in node.items() if not k.startswith("condition-")}, **conditions}
+    return shuffled
+
+
+def shuffle_dungeons(random) -> Dict[str, str]:
+    """A random dungeon_entrances map, as LASR's shuffler makes it."""
+    targets = list(DUNGEONS)
+    random.shuffle(targets)
+    return dict(zip(DUNGEONS, targets))
 
 
 TRAPS = ("zap-trap", "drown-trap", "squish-trap", "deathball-trap", "quake-trap")

@@ -1,10 +1,10 @@
-"""Sets up the multiplayer ghosts' model and Npc row (patcher/ap_player_ghost.py) in the sandbox mod, as the patcher
+"""Sets up the multiplayer ghosts' model and rows (patcher/ap_player_ghost.py) in the sandbox mod, as the patcher
 does, or takes them out again; for a mod deployed from an older patcher output.
 
 install: writes romfs/region_common/actor/PlayerGhost.bfres from the asset patch (patcher/assets) and the RomFS
-dump's Playerlink.bfres, and adds the row APGhost to the deployed Npc.gsheet (from the dump's when the mod has none),
-keeping the sheet as Npc.gsheet.before-puppet.
-uninstall: removes the model and puts the kept Npc.gsheet back.
+dump's Playerlink.bfres, and adds the rows APGhost to the deployed Npc.gsheet and Facial.gsheet (from the dump's when
+the mod has none), keeping each sheet as <sheet>.before-puppet.
+uninstall: removes the model and puts the kept sheets back.
 
 Run with .venv-lasr:
   python scripts/ghost_puppet.py install|uninstall [--romfs D:/Games/Switch/LASRomFS] [--contents <mod contents>]
@@ -21,10 +21,8 @@ from RandomizerCore.Tools.oead_tools import readSheet, writeSheet  # noqa: E402
 CONTENTS = Path("D:/DEV/LASAP-sandbox/ryujinx/sdcard/atmosphere/contents/01006BB00C6F0000")
 
 
-def add_ghost_row(src: Path, dst: Path) -> None:
-    sheet = readSheet(str(src))
-    ap_player_ghost.add_row(sheet)
-    writeSheet(str(dst), sheet)
+# Each sheet and how its APGhost row is added
+SHEETS = {"Npc.gsheet": ap_player_ghost.add_row, "Facial.gsheet": ap_player_ghost.add_facial_row}
 
 
 def main() -> int:
@@ -34,26 +32,29 @@ def main() -> int:
     parser.add_argument("--contents", type=Path, default=CONTENTS)
     args = parser.parse_args()
     model_path = args.contents / "romfs" / "region_common" / "actor" / "PlayerGhost.bfres"
-    sheet_path = args.contents / "romfs" / "region_common" / "datasheets" / "Npc.gsheet"
-    kept = sheet_path.with_name("Npc.gsheet.before-puppet")
+    sheets = args.contents / "romfs" / "region_common" / "datasheets"
     if args.action == "install":
         model_path.parent.mkdir(parents=True, exist_ok=True)
         model_path.write_bytes(ap_assets.load(args.romfs, ap_assets.PLAYER_GHOST))
-        if not kept.exists():  # empty: the mod had no Npc.gsheet of its own
-            kept.parent.mkdir(parents=True, exist_ok=True)
-            kept.write_bytes(sheet_path.read_bytes() if sheet_path.exists() else b"")
-        source = kept if kept.stat().st_size else args.romfs / "region_common" / "datasheets" / "Npc.gsheet"
-        add_ghost_row(source, sheet_path)
-        print("installed", model_path.name, "and the APGhost row")
     else:
         model_path.unlink(missing_ok=True)
-        if kept.exists():
+    for name, add_row in SHEETS.items():
+        sheet_path = sheets / name
+        kept = sheet_path.with_name(name + ".before-puppet")
+        if args.action == "install":
+            if not kept.exists():  # empty: the mod had no sheet of its own
+                kept.parent.mkdir(parents=True, exist_ok=True)
+                kept.write_bytes(sheet_path.read_bytes() if sheet_path.exists() else b"")
+            sheet = readSheet(str(kept if kept.stat().st_size else args.romfs / "region_common" / "datasheets" / name))
+            add_row(sheet)
+            writeSheet(str(sheet_path), sheet)
+        elif kept.exists():
             if kept.stat().st_size:
                 sheet_path.write_bytes(kept.read_bytes())
             else:
                 sheet_path.unlink(missing_ok=True)
             kept.unlink()
-        print("uninstalled")
+    print(f"installed {model_path.name} and the APGhost rows" if args.action == "install" else "uninstalled")
     return 0
 
 

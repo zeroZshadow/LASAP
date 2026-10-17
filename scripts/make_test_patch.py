@@ -1,8 +1,11 @@
 """Writes a synthetic .aplas patch (every shuffleable location gives the AP placeholder) for patcher tests.
 
 python make_test_patch.py <out.aplas> [--seed-hash test0001] [--slot Tester] [--vanilla loc,loc,...] [--settings JSON]
+                          [--dungeons JSON]
 
 --settings replaces settings in the patch, e.g. '{"Instruments Required": 3, "Damage": "OHKO"}'.
+--dungeons leads dungeon doors into other dungeons and turns Shuffled Dungeons on, e.g.
+'{"tail-cave": "color-dungeon", "color-dungeon": "tail-cave"}' (door: the dungeon it leads into).
 """
 import argparse
 import json
@@ -46,6 +49,7 @@ def main() -> None:
     parser.add_argument("--slot", default="Tester")
     parser.add_argument("--vanilla", default="")
     parser.add_argument("--settings", default="{}")
+    parser.add_argument("--dungeons", default="{}")
     args = parser.parse_args()
 
     logic = yaml.safe_load(open(DATA / "logic.yml"))
@@ -68,11 +72,16 @@ def main() -> None:
             placements[loc] = "ap-item"
             location_ids[loc] = ids[loc]
 
+    dungeons = {d: d for d in DUNGEONS}
+    dungeons.update(json.loads(args.dungeons))
+    assert sorted(dungeons.values()) == sorted(DUNGEONS), dungeons
+    settings = {**SETTINGS, **json.loads(args.settings)}
+    if any(door != dungeon for door, dungeon in dungeons.items()):
+        settings["Shuffled Dungeons"] = True
     patch = {
         "format": 1, "seed_name": "test", "player": 1, "slot_name": args.slot, "seed_hash": args.seed_hash,
-        "settings": {**SETTINGS, **json.loads(args.settings)}, "starting_items": [], "placements": placements,
-        "location_ids": location_ids,
-        "dungeon_entrances": {d: d for d in DUNGEONS},
+        "settings": settings, "starting_items": [], "placements": placements, "location_ids": location_ids,
+        "dungeon_entrances": dungeons,
     }
     args.out.write_text(json.dumps(patch, indent=1))
     print(f"{args.out}: {len(location_ids)} AP locations, {len(placements) - len(location_ids)} vanilla")

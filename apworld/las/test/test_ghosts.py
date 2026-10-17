@@ -47,7 +47,7 @@ class FakeClient:
 
     def pos(self, level: int, x: float, z: float, y: float = 0.0) -> None:
         self.seq += 1
-        body = wire.POS_BODY.pack(self.seq, level, wire.NO_ROOM, x, y, z, 0, 0, 0, 0, wire.LOOK_DEFAULT)
+        body = wire.Pos(self.seq, level, x, y, z, 0, 0, 0, 0, 0, wire.SHAPES_DEFAULT, wire.TUNIC_GREEN, 0, 0, 0).pack()
         self.writer.write(wire.frame(bytes([wire.POS]) + body))
 
     def nowhere(self) -> None:
@@ -62,8 +62,8 @@ def frames(messages: List[bytes]) -> List[Tuple[int, float, float]]:
     out = []
     for m in messages:
         if m[0] == wire.FRAME:
-            body = wire.POS_BODY.unpack(m[3:])
-            out.append((struct.unpack_from(">H", m, 1)[0], body[3], body[5]))
+            pos = wire.Pos.unpack(m[3:])
+            out.append((struct.unpack_from(">H", m, 1)[0], pos.x, pos.z))
     return out
 
 
@@ -108,8 +108,6 @@ class TestRelay(unittest.TestCase):
         self.assertEqual(wire.field_screen(*field(0, 1)), (0, 1))
         self.assertEqual(wire.field_screen(38.25, 128.25), (2, 11))  # Mabe at Marin's door: Field_11C
         self.assertEqual(wire.field_screen(-3, 500), (0, 16))
-        self.assertEqual(wire.room_index("Field", *field(1, 2)), 17)
-        self.assertEqual(wire.room_index("Shop", 1, 1), wire.NO_ROOM)
 
     def test_groups_and_area(self) -> None:
         async def test(port: int, relay: wire.Relay) -> None:
@@ -319,8 +317,9 @@ class TestGhostLink(unittest.TestCase):
     def test_pos_lines_become_ghost_lines(self) -> None:
         from ..ghosts import GhostLink, pos_body
 
-        self.assertIsNone(pos_body("POS none".split(), 0))
-        self.assertIsNone(pos_body("POS NoSuchLevel 255 1 2 3 0 0 0".split(), 0))
+        self.assertIsNone(pos_body("POS none".split()))
+        self.assertIsNone(pos_body("POS NoSuchLevel 1 2 3 0 0 0 0 0 0 207864 0 0 0 0".split()))
+        self.assertIsNone(pos_body("POS Field 1 2 3 0 0 0 0 0 0 207864 0 0 0".split()))  # a field missing
 
         async def main() -> None:
             relay = wire.Relay()
@@ -344,31 +343,38 @@ class TestGhostLink(unittest.TestCase):
 
             await until(lambda: all("GHOSTS 1" in lines[n] for n in lines) and len(links["A"].players) == 1)
             # the game's time goes along, 16 bits of it
-            links["A"].on_pos("POS Field 170 38.250 10.500 128.250 90.0 0 0 1 70000".split())
-            links["B"].on_pos("POS Field 171 50.000 10.500 128.250 270.0 0 0 0 5".split())
+            links["A"].on_pos("POS Field 38.250 10.5 128.25 90.0 0 0 0 1 70000 207864 0 0 0 0".split())
+            links["B"].on_pos("POS Field 50.000 10.5 128.25 270.0 0 0 0 0 5 207864 0 0 0 0".split())
             await until(lambda: any(l.startswith("GHOST 0 ") for l in lines["B"]))
-            self.assertIn("GHOST 0 Field 38.250 10.500 128.250 90.0 0 0 1 4464 207864 A", lines["B"])
-            await until(lambda: "GHOST 0 Field 50.000 10.500 128.250 270.0 0 0 0 5 207864 B" in lines["A"])
+            self.assertIn("GHOST 0 Field 38.250 10.500 128.250 90.0 0 0 0 1 4464 207864 0 0 0 0 A", lines["B"])
+            await until(lambda: "GHOST 0 Field 50.000 10.500 128.250 270.0 0 0 0 0 5 207864 0 0 0 0 B" in lines["A"])
             # rate: a burst of positions goes out at most every MIN_INTERVAL, the last one included
             for i in range(10):
-                links["A"].on_pos(f"POS Field 170 {39 + i} 10.5 128.25 90 0 0 0 {100 + i}".split())
-            await until(lambda: "GHOST 0 Field 48.000 10.500 128.250 90.0 0 0 0 109 207864 A" in lines["B"])
+                links["A"].on_pos(f"POS Field {39 + i} 10.5 128.25 90 0 0 0 0 {100 + i} 207864 0 0 0 0".split())
+            await until(lambda: "GHOST 0 Field 48.000 10.500 128.250 90.0 0 0 0 0 109 207864 0 0 0 0 A" in lines["B"])
             self.assertLess(sum(l.startswith("GHOST 0 Field 4") for l in lines["B"]), 5)
             # what the player does is not held back by the rate: another animation, a turn, stopping
-            links["A"].on_pos("POS Field 170 48 10.5 128.25 90 0 0 0 110".split())
-            links["A"].on_pos("POS Field 170 48 10.5 128.25 90 7 0 0 111".split())
-            links["A"].on_pos("POS Field 170 48 10.5 128.25 90 7 40 0 112".split())
-            links["A"].on_pos("POS Field 170 48 10.5 128.25 135 7 50 0 113".split())
-            links["A"].on_pos("POS Field 170 48 10.5 128.25 135 7 60 4 114".split())
+            links["A"].on_pos("POS Field 48 10.5 128.25 90 0 0 0 0 110 207864 0 0 0 0".split())
+            links["A"].on_pos("POS Field 48 10.5 128.25 90 7 0 0 0 111 207864 0 0 0 0".split())
+            links["A"].on_pos("POS Field 48 10.5 128.25 90 7 40 0 0 112 207864 0 0 0 0".split())
+            links["A"].on_pos("POS Field 48 10.5 128.25 135 7 50 0 0 113 207864 0 0 0 0".split())
+            links["A"].on_pos("POS Field 48 10.5 128.25 135 7 60 0 4 114 207864 0 0 0 0".split())
             for time_ms in (111, 113, 114):
-                await until(lambda: any(l.startswith("GHOST 0 Field 48.000 ") and f" {time_ms} 207864 A" in l
+                await until(lambda: any(l.startswith("GHOST 0 Field 48.000 ") and f" {time_ms} 207864 0 0 0 0 A" in l
                                         for l in lines["B"]))
-            self.assertIn("GHOST 0 Field 48.000 10.500 128.250 135.0 7 60 4 114 207864 A", lines["B"])
-            # nor is a change of look (the red tunic)
-            links["A"].on_pos("POS Field 170 48 10.5 128.25 135 7 60 4 115 1256440".split())
-            await until(lambda: "GHOST 0 Field 48.000 10.500 128.250 135.0 7 60 4 115 1256440 A" in lines["B"])
+            self.assertIn("GHOST 0 Field 48.000 10.500 128.250 135.0 7 60 0 4 114 207864 0 0 0 0 A", lines["B"])
+            # nor is a change of tunic (red), face (eyes closed, then smiling and the ears down) or of the animation on
+            # the upper body (idle_carry)
+            links["A"].on_pos("POS Field 48 10.5 128.25 135 7 60 0 4 115 207864 1 0 0 0".split())
+            await until(lambda: "GHOST 0 Field 48.000 10.500 128.250 135.0 7 60 0 4 115 207864 1 0 0 0 A" in lines["B"])
+            links["A"].on_pos("POS Field 48 10.5 128.25 135 7 60 0 4 116 207864 1 1 0 0".split())
+            links["A"].on_pos("POS Field 48 10.5 128.25 135 7 60 0 4 117 207864 1 3 3 1".split())
+            links["A"].on_pos("POS Field 48 10.5 128.25 135 7 60 38 4 118 207864 1 3 3 1".split())
+            for line in ("135.0 7 60 0 4 116 207864 1 1 0 0", "135.0 7 60 0 4 117 207864 1 3 3 1",
+                         "135.0 7 60 38 4 118 207864 1 3 3 1"):
+                await until(lambda: f"GHOST 0 Field 48.000 10.500 128.250 {line} A" in lines["B"])
             # A goes inside: B's ghost of A turns off
-            links["A"].on_pos("POS Shop 255 1 0 1 0 0 0".split())
+            links["A"].on_pos("POS Shop 1 0 1 0 0 0 0 0 0 207864 0 0 0 0".split())
             await until(lambda: "GHOST 0 off" in lines["B"])
             # ghosts turned off: A's link leaves the group and tells the game
             links["A"].configure(False, address, "secret1", "A", "A")

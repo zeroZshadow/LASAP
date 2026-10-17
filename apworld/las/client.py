@@ -261,7 +261,8 @@ class LASContext(CommonContext):
             names = {offset: loc for loc, offset in LOCATION_OFFSETS.items()}
             self.logic_tracker = LogicTracker(
                 logic["preset"], logic["tokens"], logic["vanilla"],
-                [names[loc - LOCATION_BASE] for loc in sorted(self.server_locations)]) if logic else None
+                [names[loc - LOCATION_BASE] for loc in sorted(self.server_locations)],
+                args["slot_data"].get("dungeon_entrances")) if logic else None
             self.logic_starting = logic.get("starting", []) if logic else []
             self.in_logic = None
             self.send_logic()
@@ -436,6 +437,10 @@ class LASContext(CommonContext):
             self.music_report = "wait"  # the game reports its track first (DESIGN.md, Music)
         elif cmd == "POS":
             self.ghosts.on_pos(parts)
+        elif cmd == "GHOSTNAMES" and len(parts) == 2:
+            # the player turned the name tags on or off in the game (d-pad up)
+            self.set_ghost_names(parts[1] == "1")
+            logger.info(f"Ghost name tags are {'on' if self.ghost_names_on() else 'off'}.")
         elif cmd == "MUSIC" and len(parts) == 2:
             self.on_game_music(None if parts[1] == "off" else parts[1])
         elif cmd == "RECV":

@@ -18,9 +18,11 @@ class TestTracker(unittest.TestCase):
         world_type = AutoWorldRegister.world_types["Links Awakening Switch"]
         multiworld = setup_multiworld(world_type, STEPS, seed, options)
         world = multiworld.worlds[1]
-        logic = world.fill_slot_data()["logic"]
+        slot_data = world.fill_slot_data()
+        logic = slot_data["logic"]
         # The client knows the slot's locations from the server, and the rest from the slot data.
-        tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], world.shuffled)
+        tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], world.shuffled,
+                               slot_data["dungeon_entrances"])
         # locked locations' items count once received, like the pool's
         locked = [multiworld.get_location(LOCATION_NAMES[loc], 1) for loc in logic["locked"]]
         pool = [item for item in multiworld.itempool + world.get_pre_fill_items() if item.player == 1]

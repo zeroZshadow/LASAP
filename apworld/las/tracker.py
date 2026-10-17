@@ -8,12 +8,12 @@ it is received, not while the location could be reached, as the player may not k
 The slot data's "logic" entry carries what the rules depend on (LASWorld.fill_slot_data).
 """
 from collections import Counter
-from typing import Callable, Dict, Iterable, List, Mapping, Set, Tuple
+from typing import Callable, Dict, Iterable, List, Mapping, Optional, Set, Tuple
 
 from BaseClasses import ItemClassification
 
 from .items import ITEM_TABLE, LASR_TO_ITEM
-from .lasr import LOGIC
+from .lasr import LOGIC, dungeon_logic
 from .logic import LogicCompiler, make_rule
 
 PLAYER = 1
@@ -37,10 +37,12 @@ def is_progression(item_name: str) -> bool:
 
 
 class LogicTracker:
-    def __init__(self, preset: str, tokens: Mapping[str, bool], vanilla: Iterable[str], shuffled: Iterable[str]):
+    def __init__(self, preset: str, tokens: Mapping[str, bool], vanilla: Iterable[str], shuffled: Iterable[str],
+                 dungeon_entrances: Optional[Mapping[str, str]] = None):
         """`vanilla`: LASR locations that keep a progression item and are no AP locations; `shuffled`: the slot's
-        LASR locations."""
-        compiler = LogicCompiler(LOGIC, preset, tokens, LASR_TO_ITEM)
+        LASR locations; `dungeon_entrances`: the slot data's, None for none shuffled."""
+        logic = dungeon_logic(LOGIC, dict(dungeon_entrances)) if dungeon_entrances else LOGIC
+        compiler = LogicCompiler(logic, preset, tokens, LASR_TO_ITEM)
         vanilla, self.shuffled = list(vanilla), list(shuffled)
         needed = set(compiler.dependencies(self.shuffled + vanilla)) & compiler.region_nodes
         self.regions: Dict[str, _Region] = {name: _Region() for name in needed}

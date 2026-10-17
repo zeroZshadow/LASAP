@@ -16,35 +16,34 @@ SILENT_TIMEOUT = 30.0  # the relay answers pings; a link that hears nothing this
 RETRY_DELAYS = (2, 5, 10, 30, 60)
 
 
-def pos_body(parts: List[str], now_ms: int) -> Optional[bytes]:
-    """A POS line's fields (`POS <level> <room> <x> <y> <z> <yaw> <anim> <anim frame> [<flags> [<time> [<look>]]]`)
-    as a frame body, or None when Link is in no level the relay knows (`POS none`, a level missing from wire.LEVELS).
-    The time is the game's clock (ms) when it took the position; without it, now_ms."""
-    if len(parts) < 9 or parts[1] not in wire.LEVEL_IDS:
+def pos_body(parts: List[str]) -> Optional[bytes]:
+    """A POS line's fields (`POS <level> <x> <y> <z> <yaw> <anim> <anim frame> <upper anim> <flags> <time> <shapes>
+    <tunic> <eye> <mouth> <ear>`, wire.Pos) as a frame body, or None when Link is in no level the relay knows
+    (`POS none`, a level missing from wire.LEVELS) or the line is malformed."""
+    if len(parts) != 16 or parts[1] not in wire.LEVEL_IDS:
         return None
     try:
-        room = int(parts[2])
-        x, y, z, yaw = (float(p) for p in parts[3:7])
-        anim, anim_frame = int(parts[7]), int(parts[8])
-        flags = int(parts[9]) if len(parts) > 9 else 0
-        time_ms = int(parts[10]) if len(parts) > 10 else now_ms
-        look = int(parts[11]) if len(parts) > 11 else wire.LOOK_DEFAULT
+        x, y, z, yaw = (float(p) for p in parts[2:6])
+        anim, anim_frame, upper_anim, flags, time_ms, shapes, tunic, eye, mouth, ear = (int(p) for p in parts[6:16])
     except ValueError:
         return None
     if not all(map(math.isfinite, (x, y, z, yaw))):
         return None
-    return wire.POS_BODY.pack(time_ms & 0xFFFF, wire.LEVEL_IDS[parts[1]], room & 0xFF, x, y, z,
-                              round(yaw % 360 * 65536 / 360) & 0xFFFF, anim & 0xFFFF, anim_frame & 0xFFFF, flags & 0xFF,
-                              look & 0xFFFFFFFF)
+    return wire.Pos(time_ms & 0xFFFF, wire.LEVEL_IDS[parts[1]], x, y, z, round(yaw % 360 * 65536 / 360) & 0xFFFF,
+                    anim & 0xFFFF, anim_frame & 0xFFFF, upper_anim & 0xFFFF, flags & 0xFF, shapes & 0xFFFFFFFF,
+                    tunic & 0xFF, eye & 0xFF, mouth & 0xFF, ear & 0xFF).pack()
 
 
 def ghost_line(n: int, slot: str, body: bytes) -> Optional[str]:
-    time_ms, level, _, x, y, z, yaw, anim, anim_frame, flags, look = wire.POS_BODY.unpack(body)
-    if level >= len(wire.LEVELS):
+    """`GHOST <n> <level> <x> <y> <z> <yaw> <anim> <anim frame> <upper anim> <flags> <time> <shapes> <tunic> <eye>
+    <mouth> <ear> <slot name>` for a frame body."""
+    p = wire.Pos.unpack(body)
+    if p.level >= len(wire.LEVELS):
         return None
     name = " ".join(slot.replace("|", "/").split()) or "?"
-    return (f"GHOST {n} {wire.LEVELS[level]} {x:.3f} {y:.3f} {z:.3f} {yaw * 360 / 65536:.1f} {anim} {anim_frame} {flags} "
-            f"{time_ms} {look} {name}")
+    return (f"GHOST {n} {wire.LEVELS[p.level]} {p.x:.3f} {p.y:.3f} {p.z:.3f} {p.yaw * 360 / 65536:.1f} {p.anim} "
+            f"{p.anim_frame} {p.upper_anim} {p.flags} {p.time_ms} {p.shapes} {p.tunic} {p.eye} {p.mouth} {p.ear} "
+            f"{name}")
 
 
 class GhostLink:
@@ -69,7 +68,7 @@ class GhostLink:
         self.ghosts: List[Optional[int]] = [None] * GHOST_SLOTS  # the player id each ghost slot shows
         self.last_sent = 0.0
         self.pending: Optional[bytes] = None  # a POS body waiting for MIN_INTERVAL; b"" for NOWHERE
-        self.sent_action: Optional[Tuple[int, int, int]] = None  # (yaw, animation id, flags) of the last frame sent
+        self.sent_action: Optional[tuple] = None  # action() of the last frame sent
         self.flush_handle: Optional[asyncio.TimerHandle] = None
         self.sent_frames = 0
         self.received_frames = 0
@@ -125,19 +124,20 @@ class GhostLink:
 
     def on_pos(self, parts: List[str]) -> None:
         """A POS line from the game."""
-        body = pos_body(parts, int(asyncio.get_running_loop().time() * 1000))
+        body = pos_body(parts)
         self.queue(body if body is not None else b"")
 
     @staticmethod
-    def action(body: bytes) -> Tuple[int, int, int, int]:
-        """What the player does in a frame: facing, animation, flags (warped, hidden, still, an animation started),
-        look."""
-        fields = wire.POS_BODY.unpack(body)
-        return fields[6], fields[7], fields[9], fields[10]
+    def action(body: bytes) -> tuple:
+        """What the player does in a frame: facing, animations, flags (warped, hidden, still, an animation started),
+        shapes, tunic and face."""
+        p = wire.Pos.unpack(body)
+        return p.yaw, p.anim, p.upper_anim, p.flags, p.shapes, p.tunic, p.eye, p.mouth, p.ear
 
     def queue(self, body: bytes) -> None:
         """Sends a frame at most every MIN_INTERVAL, the last one included; a frame in which the player turns, plays
-        another animation, starts or stops or changes its look goes at once, so the receiver sees it at its time."""
+        another animation, starts or stops or changes its shapes, tunic or face goes at once, so the receiver sees it
+        at its time."""
         self.pending = body
         if not self.joined:
             return

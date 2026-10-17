@@ -29,6 +29,12 @@ not checks and are never needed. The Trendy Game's prizes are never shuffled; it
 quest, is a check. Saving Bow-Wow and reviving the rooster are checks too. Small keys, nightmare keys, maps, compasses, stone beaks and instruments can stay in their own
 dungeon or go anywhere.
 
+## Can dungeon entrances be shuffled?
+
+With the Shuffled Dungeons option, each dungeon's entrance leads into a random dungeon, the Color Dungeon included,
+and that dungeon's exit leads back out of the same entrance. The dungeon markers on the overworld map move with them,
+and the logic follows each door. The spoiler log lists where each entrance leads.
+
 ## What does the player start with?
 
 By default, a sword, a shield, the ocarina with Manbo's Mambo, and 100 rupees, as in the original randomizer. The
@@ -85,8 +91,9 @@ game.
 
 The group "Gameplay": the damage Link takes (none, normal or one hit kills), walking and swimming 20% faster (on by
 default), 360° movement, skipping the song cutscenes, text that shows a page at once, a hookshot that grabs any
-surface (the logic does not count on it), no Guardian Acorns or Pieces of Power, and easy fishing: the line never
-breaks and Ol' Baron bites more often (on by default). They are options rather than client settings so that a seed
+surface (the logic does not count on it), no Guardian Acorns or Pieces of Power, easy fishing: the line never
+breaks and Ol' Baron bites more often (on by default), and random enemies and enemy sizes, which change each time a
+room loads (enemies you must defeat to go on keep their kind). They are options rather than client settings so that a seed
 plays the same for everyone in it. How the game looks and sounds (blur, music, shuffled dialogue and lighting, the
 low-health beep) is set in the client.
 

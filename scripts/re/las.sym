@@ -98,6 +98,8 @@ NpcComponent_MakeEventChara 0x08e53220 f vtable +0x220
 NpcComponent_MakeDoAction 0x08e546a0 f vtable +0x228: only with doAction.type != 0
 NpcComponent_MakeTailorPlayer 0x08e54e60 f vtable +0x240: null without the row's graphics.drsb; TailorPlayer at component +0x158
 NpcComponent_MakeGroundAttr 0x08e55670 f vtable +0x250: only with a Collision, and groundCheck
+NpcComponent_MakeFacial 0x08e56380 f vtable +0x260: the FacialControl (component +0x198) from the row's graphics.facial row of Facial.gsheet; none without one
+NpcComponent_MakeMaterialAnimator 0x08e575f0 f vtable +0x270: the material animation component (+0x1b8), a slot per facial animation and one more
 NpcComponent_LoadDrsb 0x08e5a260 f vtable +0x2e8 (out handle via x8, component): tailor/{row graphics.drsb}; handle at component +0x208
 NpcComponent_BuildComponents 0x08e5bd80 f vtable +0x388: the sub-components through the Make* slots
 NpcAnimation_ResolveName 0x08e62f30 f (out, component, StringView* name)
@@ -234,6 +236,7 @@ SkeletalAnimation_SetAnimation 0x0955c9e0 f vtable +0x88, single layer
 LayeredAnimation_Ctor 0x0955d200 f (sac, owner, smcSp*, slot count)
 LayeredAnimation_SetAnimation 0x0955d8f0 f vtable +0x88: slot 0
 LayeredAnimation_SetSlot 0x0955ddd0 f (sac, slot, animSp*, f32 blend, f32 start)
+MaterialAnimator_SetSlot 0x09559760 f (component, slot < count, animSp*, f32 frame)
 SkeletalModel_IsShapeVisible 0x0955f7d0 f vtable +0xa8
 SkeletalModel_MakeLocator 0x09560070 f (out shared_ptr, model component, const char* bone, translate, rotate, scale)
 EffectManager_EntryResource 0x09586b70 f (mgr, resource sp*, resId): Common 0, Enemy 1, Npc 2, Object 3, Player 4, Bg 5
