@@ -169,7 +169,8 @@ if __name__ == "__main__":
     parser.add_argument("--relay", default=f"127.0.0.1:{wire.DEFAULT_PORT}")
     parser.add_argument("--secret", required=True, help="the multiworld's ghost secret (patch.json ghost_secret)")
     parser.add_argument("--crowd", action="append", required=True, help='"<count> <level> <x0>,<z0>,<x1>,<z1> <y>"')
-    parser.add_argument("--shapes", default=f"{wire.SHAPES_DEFAULT:x}", help="the shapes drawn (hex, ghost_relay.py's Pos)")
+    parser.add_argument("--shapes", default=f"{wire.SHAPES_DEFAULT:x}",
+                        help="the shapes drawn (hex, ghost_relay.py's Pos)")
     parser.add_argument("--names", default="", help="slot names of the first players, comma separated")
     parser.add_argument("--seconds", type=float, default=600)
     parser.add_argument("--report", type=float, default=10)

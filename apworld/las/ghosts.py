@@ -42,7 +42,8 @@ def ghost_line(n: int, slot: str, body: bytes) -> Optional[str]:
         return None
     name = " ".join(slot.replace("|", "/").split()) or "?"
     return (f"GHOST {n} {wire.LEVELS[p.level]} {p.x:.3f} {p.y:.3f} {p.z:.3f} {p.yaw * 360 / 65536:.1f} {p.anim} "
-            f"{p.anim_frame} {p.upper_anim} {p.flags} {p.time_ms} {p.shapes} {p.tunic} {p.eye} {p.mouth} {p.ear} {name}")
+            f"{p.anim_frame} {p.upper_anim} {p.flags} {p.time_ms} {p.shapes} {p.tunic} {p.eye} {p.mouth} {p.ear} "
+            f"{name}")
 
 
 class GhostLink:
@@ -135,7 +136,8 @@ class GhostLink:
 
     def queue(self, body: bytes) -> None:
         """Sends a frame at most every MIN_INTERVAL, the last one included; a frame in which the player turns, plays
-        another animation, starts or stops or changes its shapes, tunic or face goes at once, so the receiver sees it at its time."""
+        another animation, starts or stops or changes its shapes, tunic or face goes at once, so the receiver sees it
+        at its time."""
         self.pending = body
         if not self.joined:
             return

@@ -37,7 +37,7 @@ gdi32.SelectObject.argtypes = [wintypes.HDC, wintypes.HGDIOBJ]
 gdi32.GetDIBits.argtypes = [wintypes.HDC, wintypes.HBITMAP, wintypes.UINT, wintypes.UINT, ctypes.c_void_p,
                             ctypes.c_void_p, wintypes.UINT]
 EnumProc = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
-PW_RENDERFULLCONTENT = 2
+PW_CLIENTONLY, PW_RENDERFULLCONTENT = 1, 2
 
 
 class BITMAPINFOHEADER(ctypes.Structure):
@@ -99,7 +99,7 @@ def main() -> None:
     frames = []
     start = time.perf_counter()
     while time.perf_counter() - start < args.seconds:
-        user32.PrintWindow(hwnd, mdc, PW_RENDERFULLCONTENT | 1)
+        user32.PrintWindow(hwnd, mdc, PW_CLIENTONLY | PW_RENDERFULLCONTENT)
         buf = ctypes.create_string_buffer(w * h * 4)
         gdi32.GetDIBits(mdc, bmp, 0, h, buf, ctypes.byref(info), 0)
         frames.append((buf, time.perf_counter() - start))
@@ -107,8 +107,9 @@ def main() -> None:
         print(f"command at {(sent[0] - start) * 1000:.0f} ms")
     for n, (buf, t) in enumerate(frames):
         im = Image.frombuffer("RGBA", (w, h), buf, "raw", "BGRA", 0, 1).convert("RGB")
-        (im.crop(crop) if crop else im).save(os.path.join(args.out, f"{n:03d}_{t * 1000:05.0f}.png"))
+        (im.crop(crop) if crop else im).save(os.path.join(args.out, f"{n:04d}_{t * 1000:05.0f}.png"))
     print(f"{len(frames)} frames in {args.seconds} s -> {args.out}")
 
 
-main()
+if __name__ == "__main__":
+    main()

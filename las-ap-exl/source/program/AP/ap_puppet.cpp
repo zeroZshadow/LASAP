@@ -150,15 +150,14 @@ namespace {
     // The face: Link's eyes, mouth and ears are material animations held at a frame ("eye", "mouth", "ear"). The
     // APGhost row's facial row (Facial.gsheet, ap_player_ghost.py) names them, so the NPC's material animation
     // component has a slot for each (before the tunic's), at frame 0 with no blinking; the module finds each by its
-    // animation's name (slot +0x8, its resource at +0x18, the name at +0x8) and sets its frame.
+    // animation's name (slot +0x8, its resource at +0x18, the name at +0x8) and holds its frame (+0x24).
     // The instanced face (Instanced models) draws as the model draws without these animations, which is frame 0 of
     // each; a ghost with another face draws its own face shapes, the frames set on its slots.
-    constexpr size_t kMatAnimRes = 0x18, kResName = 0x8;
+    constexpr size_t kMatAnimRes = 0x18, kResName = 0x8, kSlotFrame = 0x24;
     constexpr const char* kFaceAnims[] = {"eye", "mouth", "ear"};
     constexpr int kFaceParts = 3;
     constexpr int kFaceFrames[kFaceParts] = {14, 14, 2};  // the FMAAs' frames
     constexpr u32 kFaceShapes = 0x380;               // the ear, eyes and mouth
-    constexpr int kFaceUnknown = -2;                 // a face slot not looked for yet (-1: the model has none)
     bool g_LayeredGhosts = true;  // DBG puppet layered on|off: new ghost models get the layered animation player
 
     // Replay: a puppet is fed frames (a ghost's lines, or Link's own path for DBG puppet), each stamped with the
@@ -263,8 +262,8 @@ namespace {
         int tunic = -1;                          // the tunic set, -1: none yet, kNoTunic: the model has none
         void* tunicAnim = nullptr;               // the animation on the tunic's slot when it was set
         int upper = -1;                          // the anim id on the upper body's layer, -1: not set on this model
-        int faceSlots[kFaceParts] = {kFaceUnknown, kFaceUnknown, kFaceUnknown};  // kFaceAnims' slots
-        int faceSet[kFaceParts] = {-1, -1, -1};  // the frames set on them
+        int faceSlots[kFaceParts] = {-1, -1, -1};  // kFaceAnims' slots, -1: not found (yet)
+        int faceSet[kFaceParts] = {-1, -1, -1};    // the frames set on them
         bool ownFace = false;                    // draws its own face shapes (another face than the instanced one)
         bool shown = false;
         u64 hiddenSince = 0;     // ms
@@ -418,7 +417,8 @@ namespace {
                 const u8* s = At<const u8*>(res, 8);
                 name = std::string_view(reinterpret_cast<const char*>(s + 2), *reinterpret_cast<const u16*>(s));
             }
-            if (std::any_of(std::begin(kShownMaterials), std::end(kShownMaterials), [&](const char* m) { return name == m; }))
+            auto named = [&](const char* m) { return name == m; };
+            if (std::any_of(std::begin(kShownMaterials), std::end(kShownMaterials), named))
                 p.shownMats[i / 32] |= 1u << (i % 32);
         }
         p.matWords = (count + 31) / 32;
@@ -445,7 +445,8 @@ namespace {
 #ifdef LASAP_TEST
         if (!kept) {
             p.visFixes++;
-            if (p.animLog.size() < 40) p.animLog.push_back(std::string(draw ? "vis" : "hide") + "@" + std::to_string(g_LastFrame));
+            if (p.animLog.size() < 40)
+                p.animLog.push_back(std::string(draw ? "vis" : "hide") + "@" + std::to_string(g_LastFrame));
         }
 #endif
         return kept;
@@ -603,8 +604,8 @@ namespace {
         }
         // none: the layer is only turned off
         if (played.ptr != nullptr) {
-            GameFn<void (*)(void*, int, SharedPtr*, float, float)>(kLayeredSetSlot)(sac, kUpperLayer, &played, g_AnimBlend,
-                                                                                    0);
+            GameFn<void (*)(void*, int, SharedPtr*, float, float)>(kLayeredSetSlot)(sac, kUpperLayer, &played,
+                                                                                    g_AnimBlend, 0);
             u8* layer = At<u8**>(sac, kSacLayers)[kUpperLayer];
             if (layer != nullptr) {
                 uintptr_t* vtable = *reinterpret_cast<uintptr_t**>(layer);
@@ -853,7 +854,7 @@ namespace {
         p.tunic = -1;
         p.tunicAnim = nullptr;
         p.upper = -1;
-        std::fill(std::begin(p.faceSlots), std::end(p.faceSlots), kFaceUnknown);
+        std::fill(std::begin(p.faceSlots), std::end(p.faceSlots), -1);
         std::fill(std::begin(p.faceSet), std::end(p.faceSet), -1);
         p.ownFace = false;
         p.matWords = -1;
@@ -924,12 +925,13 @@ namespace {
         return -1;
     }
 
-    // The sender's face on the face's slots; the puppet draws its own face shapes while it differs from the
-    // instanced face (all frames 0). A model without all three slots (an older mod's row) keeps the instanced face.
+    // The sender's face on the face's slots, written again whenever a slot's frame differs; the puppet draws its own
+    // face shapes while it differs from the instanced face (all frames 0). A model without all three slots (an older
+    // mod's row) keeps the instanced face; a slot not found is looked for again each frame.
     void SetFace(Puppet& p) {
         bool all = true;
         for (int k = 0; k < kFaceParts; k++) {
-            if (p.faceSlots[k] == kFaceUnknown) p.faceSlots[k] = MatSlotOf(p, kFaceAnims[k]);
+            if (p.faceSlots[k] < 0) p.faceSlots[k] = MatSlotOf(p, kFaceAnims[k]);
             all &= p.faceSlots[k] >= 0;
         }
         int frames[kFaceParts] = {p.look.eye, p.look.mouth, p.look.ear};
@@ -940,8 +942,9 @@ namespace {
         u8* mat = At<u8*>(AnimComp(p), kNpcMaterialAnim);
         u8** slots = At<u8**>(mat, kMatAnimSlots);
         for (int k = 0; k < kFaceParts; k++) {
-            if (frames[k] == p.faceSet[k] || p.faceSlots[k] >= At<s32>(mat, kMatAnimSlotCount)) continue;
+            if (p.faceSlots[k] >= At<s32>(mat, kMatAnimSlotCount)) continue;
             u8* slot = slots[p.faceSlots[k]];
+            if (frames[k] == p.faceSet[k] && At<float>(slot, kSlotFrame) == static_cast<float>(frames[k])) continue;
             uintptr_t* vtable = *reinterpret_cast<uintptr_t**>(slot);
             reinterpret_cast<void (*)(void*, float)>(vtable[kSlotSetRate])(slot, 0);
             reinterpret_cast<void (*)(void*, float)>(vtable[kSlotSetFrame])(slot, static_cast<float>(frames[k]));

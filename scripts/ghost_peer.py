@@ -6,10 +6,10 @@ python scripts/ghost_peer.py --relay 127.0.0.1:43390 --secret <ghost secret> [--
 Logs "PLAYER <id> <slot>", "FRAME <id> <level> <x> <y> <z> <yaw> ..." (the first of each player, then every 20th;
 every n-th with --every n) and "OFF <id> <reason>" lines. stdin takes "goto <level> <x> <y> <z>", "radius <r>" (0:
 stand still, facing +z), "shapes <hex>", "tunic <n>", "face <eye> <mouth> <ear>", "upper <anim id>" (what it sends,
-ghost_relay.py's Pos) and "nowhere" while it runs; "record <file>" writes the frames another player sends ("<wall
-clock ms> <frame body in hex>" per line; two peers' files sorted together make one, as a player goes from one area to
-another) until "record stop", and "play <file>" sends such frames as its own, on their timing and its clock, then
-stands at the last ("PLAYED <frames>").
+ghost_relay.py's Pos) and "nowhere" while it runs. "record <file> [<slot>]" writes the frames one other player sends
+(that slot's, or the first to send one; "<wall clock ms> <frame body in hex>" per line; two peers' files sorted
+together make one, as a player goes from one area to another) until "record stop"; "play <file>" sends such frames
+as its own, on their timing and its clock, then stands at the last ("PLAYED <frames>").
 """
 import argparse
 import asyncio
@@ -38,8 +38,8 @@ async def main(args) -> None:
              "shapes": wire.SHAPES_DEFAULT, "tunic": wire.TUNIC_GREEN, "face": (0, 0, 0), "upper": 0}
     names = {}
     counts = {}
-    recording: dict = {"file": None}
-    playing = {"frames": [], "start": 0.0, "first": 0, "next": 0}
+    recording: dict = {"file": None, "slot": None, "player": None}
+    playing = {"frames": [], "start": 0.0, "next": 0}
 
     async def receive() -> None:
         while True:
@@ -54,7 +54,9 @@ async def main(args) -> None:
             elif kind == wire.FRAME:
                 player_id = struct.unpack_from(">H", payload, 1)[0]
                 p = wire.Pos.unpack(payload[3:])
-                if recording["file"] is not None:
+                if recording["file"] is not None and recording["player"] is None and                         recording["slot"] in (None, names.get(player_id)):
+                    recording["player"] = player_id
+                if recording["file"] is not None and player_id == recording["player"]:
                     recording["file"].write(f"{time.time() * 1000:.0f} {payload[3:].hex()}\n")
                 counts[player_id] = counts.get(player_id, 0) + 1
                 if counts[player_id] % args.every == 1 % args.every:
@@ -101,9 +103,9 @@ async def main(args) -> None:
                 recording["file"].close()
                 recording["file"] = None
                 log("RECORDED")
-            elif len(parts) == 2 and parts[0] == "record":
-                recording["file"] = open(parts[1], "w")
-                log(f"RECORD {parts[1]}")
+            elif len(parts) in (2, 3) and parts[0] == "record":
+                recording.update(file=open(parts[1], "w"), slot=parts[2] if len(parts) == 3 else None, player=None)
+                log(f"RECORD {' '.join(parts[1:])}")
             elif len(parts) == 2 and parts[0] == "play":
                 with open(parts[1]) as f:
                     frames = [(int(ms), wire.Pos.unpack(bytes.fromhex(body))) for ms, body in
