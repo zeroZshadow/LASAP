@@ -177,6 +177,10 @@ namespace {
     // The trendy game: Link counts as free while the player steers the crane, which an item-get would cut off, so
     // displays wait until he leaves the shop.
     constexpr const char* kCraneGameLevel = "CraneGame";
+    // The goal: Link reaches the Wind Fish and the owl after the Nightmare (room Ending_12O). The Wind Fish's event
+    // sets ShadowClear only at its end, when the credits start.
+    constexpr const char* kGoalLevel = "Ending";
+    constexpr const char* kGoalFlag = "ShadowClear";
     constexpr int kItemEventTries = 3;
 
     int g_ItemEventTry = 0;
@@ -1056,7 +1060,7 @@ namespace {
             if (!PlayerReady()) return false;
             AP::Send("RECV " + std::to_string(GetRecvCount()));
             SendAllChecks();
-            if (EventFlags::CheckFlag("ShadowClear")) AP::Send("GOAL");
+            if (EventFlags::CheckFlag(kGoalFlag) || LevelSystem::GetCurrentLevel() == kGoalLevel) AP::Send("GOAL");
             ReportHints(true);
         } else if (a[0] == "DEATH") {
             // A death from another player. Without a save (intro, title, file menus) or with Link dead already it
@@ -1229,6 +1233,7 @@ namespace AP {
             g_LastLevel = level;
             g_LevelSince = NowMs();
             Send("LOG level " + level);  // test scripts wait on these
+            if (level == kGoalLevel) OnGoal();
         }
 
         // A level (re)loads while there is no player: the settle time starts once he stands in it. The game over

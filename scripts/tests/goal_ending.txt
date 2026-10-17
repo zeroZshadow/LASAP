@@ -1,0 +1,9 @@
+# The goal (DESIGN.md, Goal): Link entering the Ending level, the Wind Fish and the owl that the stairs after the
+# Nightmare lead to (room Ending_12O), reports the goal before the Wind Fish's event sets ShadowClear. Run after
+# newgame_file2 with the client connected to the server. The warp stands in for the stairs.
+send DBG flag ShadowClear
+expect FLAG.ShadowClear.0 5
+warp Ending 217.5 28.5 128.25
+logged completed\stheir\sgoal 30 server
+send DBG flag ShadowClear
+expect FLAG.ShadowClear.0 5

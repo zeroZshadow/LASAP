@@ -184,7 +184,7 @@ ASCII lines terminated by `\n`, fields separated by single spaces. The game acce
 | `CHECK <local_id>` | A location was collected |
 | `CHECKS <id> <id> ...` | Every collected location, sent on connect and on `SYNC` (possibly several lines) |
 | `HINT <slot> <location id>` | An in-game hint was read (its flag is set): once per hint and connection, and all read hints again on `SYNC` |
-| `GOAL` | Goal completed: the `ShadowClear` flag was set (also resent on `SYNC`) |
+| `GOAL` | Goal completed: Link entered the `Ending` level, or the `ShadowClear` flag is set (also resent on `SYNC`) |
 | `DIED` | DeathLink: Link died, and no Secret Medicine saved him (see DeathLink) |
 | `DEATHDROPPED` | DeathLink: a `DEATH` arrived with no save loaded and was dropped; the client logs it |
 | `LOG <text>` | Debug text; `LOG level <name>` on every level change and when a client connects |
@@ -233,7 +233,7 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 - The event shows `Scenario:APAmmoGhost`, then adds `Bomb` and `Arrow` with count 15 and index `AP::AMMO_REFILL_INDEX`, each behind a check of its flag. With that index the module's `AddItemID` hook adds only what is missing to reach the count.
 
 **Goal** (option `instruments_required`, settings key `Instruments Required`; `patcher/ap_goal.py`)
-- The goal is the Nightmare beaten (`ShadowClear`, reported as `GOAL`). The Wind Fish's egg opens with `instruments_required` of the eight instruments (0–8, default 8); starting instruments count. All eight stay progression items.
+- The goal is the Nightmare beaten, reported as `GOAL` when Link enters the `Ending` level: the Wind Fish and the owl in the clouds (room `Ending_12O`), where the stairs after the fight lead. The Wind Fish's event sets `ShadowClear` only at its end, when the credits start; the module reports that too. The Wind Fish's egg opens with `instruments_required` of the eight instruments (0–8, default 8); starting instruments count. All eight stay progression items.
 - **Logic.** LASR's `egg` region asks for all eight. With fewer, `lasr.goal_logic` replaces them by the count token `instruments:N`, which `LogicCompiler` resolves through `lasr.COUNTED`: it holds with N different instruments (`instruments:0` always holds).
 - **Patch.** The egg's song (`WindFishsEgg.bfevfl`, entry `orchestra`) asks `Inventory.HasAllInstruments` at four switches: the instruments' playing, the song's length, the fade, and whether the egg opens (`oepn`). Below eight, the patcher turns each into a chain of `Inventory.HasItem` checks, one per instrument (itemType 45–52, Full Moon Cello to Thunder Drum), that reaches the switch's case 1 once enough are held and its case 0 once they can no longer be. With eight, or without the settings key, the file stays as it is.
 - **Sign.** The sign at the foot of the egg's stairs (`Place:SBMountTamaranch`, used by no other event) gets two lines under its place name, "The Wind Fish's Egg opens / with N instruments.", in every language's text (in English). That makes a random value (Archipelago's `random`, `random-range-<min>-<max>`, ...) readable in the game.
