@@ -91,7 +91,7 @@ namespace {
     std::vector<std::vector<int>> g_Overworld;  // group -> local ids
     std::vector<DungeonGroup> g_Dungeon;
     std::vector<Chest> g_Chests;
-    std::map<int, std::string> g_Names;         // local id -> location name
+    std::vector<std::string> g_GroupNames;      // group -> its name
     int g_FlagsCalls = 0, g_IconCalls = 0, g_IconMatches = 0, g_ChestMatches = 0;  // for DBG map
 
     bool StartsWith(std::string_view s, const char* prefix) {
@@ -254,7 +254,7 @@ HOOK_DEFINE_TRAMPOLINE(DungeonIconUpdate) {
 namespace AP {
     void LoadMap() {
         // Written by the patcher (ap_map.py): "O <group> <local id>...", "D <group> <x> <z> <local id>...",
-        // "C <level> <x> <z> <local id>" (a dungeon chest) and "N <local id> <location name>" lines.
+        // "C <level> <x> <z> <local id>" (a dungeon chest) and "G <group> <name>" (an overworld group's name) lines.
         std::string text;
         if (R_FAILED(FileHandler::ReadFile(MAP_PATH, text))) {
             Logging.Log("[AP] no map tracker file");
@@ -267,12 +267,13 @@ namespace AP {
             std::stringstream ss(line);
             std::string kind;
             ss >> kind;
-            if (kind == "N") {
-                int id;
-                ss >> id;
+            if (kind == "G") {
+                size_t group;
+                if (!(ss >> group)) continue;
                 std::string name;
                 std::getline(ss, name);
-                g_Names[id] = name.empty() ? name : name.substr(1);
+                if (g_GroupNames.size() <= group) g_GroupNames.resize(group + 1);
+                g_GroupNames[group] = name.empty() ? name : name.substr(1);
                 continue;
             }
             if (kind == "C") {
@@ -327,37 +328,18 @@ namespace AP {
     }
 
     std::string MapLabelText(int group) {
-        // On one line (the hover box has one): the unchecked locations of the group, those in logic first, after
-        // "<in logic>/<unchecked> in logic: " when there are several; or the collected locations. As many as fit,
-        // then "...".
-        constexpr size_t kWidth = 36;
-        std::vector<int> ids;
-        bool collected = false;
-        if (group >= 0 && static_cast<size_t>(group) < g_Overworld.size()) {
-            for (int id : g_Overworld[group]) {
-                if (!IsLocationChecked(id)) ids.push_back(id);
-            }
-            collected = ids.empty();
-            if (collected) ids = g_Overworld[group];
+        // The group's name, after "<in logic>/<unchecked> " when it has several locations and some are unchecked.
+        if (group < 0 || static_cast<size_t>(group) >= g_Overworld.size()) return "";
+        std::string name = static_cast<size_t>(group) < g_GroupNames.size() ? g_GroupNames[group] : "";
+        const auto& ids = g_Overworld[group];
+        int unchecked = 0, reachable = 0;
+        for (int id : ids) {
+            if (IsLocationChecked(id)) continue;
+            unchecked++;
+            if (Reachable(id)) reachable++;
         }
-        auto reachable = std::stable_partition(ids.begin(), ids.end(), [](int id) {
-            return IsLocationChecked(id) || Reachable(id);
-        });
-        std::string head;
-        if (!collected && ids.size() > 1) {
-            head = std::to_string(reachable - ids.begin()) + "/" + std::to_string(ids.size()) + " in logic: ";
-        }
-        std::vector<std::string> names;
-        for (int id : ids) names.push_back(g_Names.count(id) ? g_Names[id] : std::to_string(id));
-        std::string text;
-        size_t shown = 0;
-        for (; shown < names.size(); shown++) {
-            std::string next = shown == 0 ? head + names[0] : text + ", " + names[shown];
-            if (shown > 0 && next.size() > kWidth) break;
-            text = next;
-        }
-        if (shown < names.size()) text += ", ...";
-        return text;
+        if (ids.size() < 2 || unchecked == 0) return name;
+        return std::to_string(reachable) + "/" + std::to_string(unchecked) + " " + name;
     }
 
     void TickMap() {

@@ -2,7 +2,7 @@
 `location_models`) with its local id; with "Texture + Size" chests, the chests holding a seashell and only those are
 the seashell chest. Every randomized heart piece and seashell actor has a unique index above
 the received range (DESIGN.md, item model). With the map tracker on, every AP location has one icon in ap_map.txt
-(but the trade quest's when it is off) and every icon its datasheet row. Below eight required instruments, the egg's event checks single instruments instead of
+(but the trade quest's when it is off) and every icon its datasheet row and a name. Below eight required instruments, the egg's event checks single instruments instead of
 all of them. With in-game hints, every hint source shows its own message, which fits the text box, and a server hint
 sets its flag, which ap_hints.txt names with the hinted location.
 
@@ -100,6 +100,13 @@ if patch["settings"].get("Map Tracker"):
     if missing:
         bad += 1
         print(f"MAP ROWS missing for groups {missing}")
+    # every overworld icon has a name, which fits the hover box after the count of an icon of several checks
+    names = {int(p[1]): " ".join(p[2:]) for p in lines if p[0] == "G"}
+    unnamed = [g for g, ids in overworld.items()
+               if not names.get(g) or (len(ids) > 1 and len(names[g]) > ap_map.NAME_WIDTH)]
+    if unnamed:
+        bad += 1
+        print(f"MAP NAMES missing or too long for groups {[(g, names.get(g)) for g in unnamed]}")
     print(f"map icons overworld={len(overworld)} dungeon={len(dungeon)} locations={len(iconed)} bad={bad}")
 # Inventory bits: every seashell, heart piece, golden leaf, heart container and bottle source once per kind and bit, with
 # its local id when shuffled.

@@ -13,6 +13,8 @@ has several doors or a prefix several actors, the one nearest the pin counts. A 
 a pin) takes the height of the overworld actor nearest to it, leaving out each room's static mesh (MapStatic), which
 sits at height 0.
 Dungeon checks get their room and level coordinates: the item actor or owl statue, else the room's upper left.
+Overworld checks also get the name of their spot, which names a map icon holding several checks: the pack's place of
+the check (its section's parent), or SPOT_NAMES.
 """
 import argparse
 import ast
@@ -50,6 +52,18 @@ DOOR_LEVELS = {
     **{f"{n}-seashell-reward": "SeashellHouse" for n in (5, 15, 30, 40, 50)},
     **{f"rapids-race-{n}": "RapidsRideTicket" for n in (45, 35, 30)},
     **{f"trendy-prize-{n}": "CraneGame" for n in (1, 2, 3, 4, 5, 6, "final")},
+}
+# Spot names other than the pack's place: one name for the checks of the pack's places that share a map icon, and
+# clearer names. LASR location -> spot name.
+SPOT_NAMES = {
+    **{loc: "Taltal Entrance" for loc in ("taltal-entrance-blocks", "taltal-entrance-chest", "taltal-crossing-cave")},
+    **{loc: "Tabahl Wasteland" for loc in ("wasteland-dig", "north-wasteland")},
+    **{loc: "Yarna Desert" for loc in ("desert-dig", "owl-statue-desert")},
+    **{loc: "Weathervane" for loc in ("marin", "rooster-statue")},
+    **{loc: "Goponga West" for loc in ("goponga-west-dig", "taltal-west-escape")},
+    **{loc: "Southwest Bay" for loc in ("southwest-bay-bush", "south-bay-sunken")},
+    **{loc: "Ukuku East Cave" for loc in ("ukuku-cave-east-chest", "ukuku-cave-east-loose")},
+    **{f"trendy-prize-{n}": "Trendy Game" for n in (1, 2, 3, 4, 5, 6, "final")},
 }
 # Checks at an NPC or statue outside: its actor's name prefix.
 ACTOR_PREFIXES = {
@@ -217,6 +231,16 @@ def pack_pins(pack: Path) -> dict:
     return pins
 
 
+def pack_places(pack: Path) -> dict:
+    """LASR overworld location -> its place in the pack: the last part of its overworld section's parent."""
+    places = {}
+    for lasr, codes in poptracker_map.location_codes(poptracker_map.pack_sections(pack)).items():
+        world = [code for code in codes if code.startswith("@World/")]
+        if world:
+            places[lasr] = world[0][1:].rpartition("/")[0].rpartition("/")[2]
+    return places
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("pack", nargs="?", default="D:/DEV/lasr_brooty", type=Path)
@@ -276,7 +300,9 @@ def main() -> None:
     print("overworld:", sources, "dungeon:", len(dungeon))
 
     names = {lasr: display_name(lasr) for lasr in IDS["locations"]}
-    OUT.write_text(json.dumps({"overworld": overworld, "dungeon": dungeon, "names": names}, indent=1,
+    places = pack_places(args.pack)
+    spots = {lasr: SPOT_NAMES.get(lasr) or places[lasr] for lasr in overworld}
+    OUT.write_text(json.dumps({"overworld": overworld, "dungeon": dungeon, "names": names, "spots": spots}, indent=1,
                               ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
     print(f"wrote {OUT}")
 

@@ -1,5 +1,5 @@
-"""The map tracker's overworld icons (DESIGN.md, Map tracker): dots in PopTracker's colours, green in logic, yellow
-partly in logic, red out of logic and grey with a tick once collected, in Game.arc.
+"""The map tracker's overworld icons (DESIGN.md, Map tracker): dots, green in logic, split diagonally into green and
+red partly in logic, red out of logic and grey with a tick once collected, in Game.arc.
 
 The map's marker (Gm_MapMarker) shows the frame of its SetMark animation given by the icon row's mType. That
 animation picks one of the marker textures per frame, and sets the marker's size per frame. This adds a texture per
@@ -19,7 +19,9 @@ TEMPLATE = "MarkerSecretSeashell_00^w"  # a marker texture; the new ones copy it
 GAME_FRAMES = 7  # the SetMark frames of the game's markers
 # In the order of the looks: in logic, partly in logic, out of logic, collected (ap_map.LOOKS)
 NAMES = ("MarkerApInLogic_00^w", "MarkerApPartial_00^w", "MarkerApOutOfLogic_00^w", "MarkerApCollected_00^w")
-COLORS = ((72, 184, 84), (236, 196, 52), (214, 72, 60), (150, 150, 150))
+# Partly in logic is split along the diagonal from bottom left to top right: in logic's colour above, out of
+# logic's below.
+COLORS = ((72, 184, 84), None, (214, 72, 60), (150, 150, 150))
 OUTLINE = (58, 44, 34)
 TICK = (250, 246, 232)
 COLLECTED_ALPHA = 0.6
@@ -53,7 +55,6 @@ def _dot_pixels(look: int) -> bytes:
     # a tick: two strokes through these points
     tick = [(0.30 * n, 0.52 * n), (0.44 * n, 0.66 * n), (0.70 * n, 0.36 * n)]
     tick_width = 0.065 * n
-    color = COLORS[look]
     out = bytearray()
     for y in range(n):
         for x in range(n):
@@ -65,7 +66,12 @@ def _dot_pixels(look: int) -> bytes:
                     d = math.hypot(px - center, py - center)
                     if d > outer_radius:
                         continue
-                    sample = OUTLINE if d > fill_radius else color
+                    if d > fill_radius:
+                        sample = OUTLINE
+                    elif look == 1:
+                        sample = COLORS[0] if px + py < n else COLORS[2]
+                    else:
+                        sample = COLORS[look]
                     if look == 3 and min(_segment_distance(px, py, *tick[i], *tick[i + 1])
                                          for i in range(2)) <= tick_width:
                         sample = TICK

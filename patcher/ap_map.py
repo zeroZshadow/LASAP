@@ -4,7 +4,7 @@ Overworld: four UiFieldMapIcons rows per spot holding checks (a group of nearby 
 partly in logic, out of logic and collected, with the marker frames of ap_map_icons.py (smaller for a single check).
 Each dungeon also gets a group with all of its checks, next to the game's marker of its entrance. The map shows a row's
 icon while the event flag in the row is set and names it with Place:<label>; flag and label are APMap<mark><group>,
-which the module answers from ap_map.txt (ap_map.cpp): the group's look shows, named by its unchecked locations.
+which the module answers from ap_map.txt (ap_map.cpp): the group's look shows, named by group_name().
 
 Dungeons: the map shows chests already (the module gives it the compass) and the module shows a chest open once its
 location is checked; every room with other checks gets a UiDungeonIcon row with a chest icon, which the module shows
@@ -14,6 +14,7 @@ Positions come from map_positions.json (scripts/map_positions.py).
 """
 import json
 import math
+import re
 from pathlib import Path
 
 import ap_map_icons
@@ -34,6 +35,7 @@ DUNGEON_MARKERS = {"D1": "Lv1Dungeon_map", "D2": "Lv2Dungeon_map", "D3": "Lv3Dun
                    "D5": "Lv5Dungeon_map", "D6": "Lv6Dungeon_map", "D7": "Lv7Dungeon_map", "D8": "Lv8Dungeon_map",
                    "D0": "ClothesDungeon_map"}
 ENTRANCE_OFFSET = 2.5  # x distance from the game's dungeon marker, so both show
+NAME_WIDTH = 30  # the name of an icon of several checks fits the hover box's line after its count ("22/22 ")
 
 
 def load_positions() -> dict:
@@ -84,6 +86,17 @@ def short_name(name: str) -> str:
     return name.split(" - ", 1)[-1]
 
 
+def group_name(positions: dict, locs: list) -> str:
+    """An overworld icon's name: its dungeon ("D1 Tail Cave"), its check's name, or the spot of its checks
+    (map_positions.json, the PopTracker pack's place)."""
+    dungeon = re.match(r"(D\d)-", locs[0])
+    if dungeon:
+        return f"{dungeon.group(1)} {positions['names'][locs[0]].split(' - ', 1)[0]}"
+    if len(locs) == 1:
+        return short_name(positions["names"][locs[0]])
+    return positions["spots"][locs[0]]
+
+
 def shown(location_ids: dict, settings: dict) -> dict:
     """The locations that get icons: the slot's AP locations, but not the trade quest's when it is off. Those stay
     checks holding their trade item, as the logic needs it, but the player turned the trade quest off, and PopTracker
@@ -100,15 +113,15 @@ def add(files, config_dir: Path, location_ids: dict, placeholder_key: str) -> No
     dungeon = dungeon_groups(positions, location_ids)
     _field_icons(files, overworld)
     _dungeon_icons(files, dungeon)
-    _text(files, overworld, positions["names"])
+    names = [group_name(positions, locs) for *_, locs in overworld]
+    _text(files, names)
     lines = [f"C {level} {x:.3f} {z:.3f} {local_id}"
              for level, x, z, local_id in _dungeon_chests(files, location_ids, placeholder_key)]
     for g, (*_, locs) in enumerate(overworld):
         lines.append(f"O {g} " + " ".join(str(location_ids[loc]) for loc in locs))
     for g, (_, x, z, locs) in enumerate(dungeon):
         lines.append(f"D {g} {x:.3f} {z:.3f} " + " ".join(str(location_ids[loc]) for loc in locs))
-    for *_, locs in overworld:
-        lines += [f"N {location_ids[loc]} {short_name(positions['names'][loc])}" for loc in locs]
+    lines += [f"G {g} {name}" for g, name in enumerate(names)]
     (config_dir / FILE_NAME).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
@@ -157,10 +170,10 @@ def _dungeon_chests(files, location_ids: dict, placeholder_key: str) -> list:
     return chests
 
 
-def _text(files, groups: list, names: dict) -> None:
-    """Place.msbt entries for the icons' names; the module replaces them with the unchecked locations."""
+def _text(files, names: list) -> None:
+    """Place.msbt entries for the icons' names; the module adds the group's count to them."""
     for relative_path, msbt in files.getAllTextFiles("Place.msbt"):
-        for g, (*_, locs) in enumerate(groups):
+        for g, name in enumerate(names):
             for mark in LOOKS:
-                msbt.addEntry(f"{FLAG_PREFIX}{mark}{g}", short_name(names[locs[0]]))
+                msbt.addEntry(f"{FLAG_PREFIX}{mark}{g}", name)
         files.writeTextFile(relative_path, "Place.msbt", msbt)
