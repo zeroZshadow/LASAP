@@ -87,7 +87,8 @@ The module patches and hooks the game's code at boot, after an emulator may alre
 
 ## Names
 
-- **AP display names** are human-readable, e.g. `Progressive Sword`, `Small Key (Tail Cave)`, `Tail Cave - West Hallway Chest`.
+- **AP display names** are human-readable, e.g. `Progressive Sword`, `Small Key (Tail Cave)`, `Tail Cave - Feather Chest`.
+- **Location names** (`apworld/las/data/location_names.json`) are `<region or dungeon> - <label>`, the label as the PopTracker pack names the check, so hints, the spoiler, the in-game map and the tracker agree: a dungeon check's room on the pack's dungeon map, an overworld check's section, or `<pin> (<section>)` where the section alone says little (`Mamasha (Trade Yoshi Doll)`). `scripts/poptracker_map.py` finds dungeon checks in the pack by that label.
 - **LASR names** (`sword`, `key-D1`, `D1-west-hallway`) are used in the patch file and in `ids.json`.
 - The world keeps the mapping between the two.
 
