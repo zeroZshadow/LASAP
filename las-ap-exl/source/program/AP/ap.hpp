@@ -109,6 +109,11 @@ namespace AP {
     void SetPaneText(void* holder, const std::string& text);
     // Shows the next toast once the popup is free; only in a level.
     void TickToasts(bool inLevel);
+    // No toast showing or waiting.
+    bool ToastsIdle();
+    // A received item's toast: "You got <item>", then "from <sender>" on a second line; names clipped as in the
+    // received text.
+    std::string ReceivedToast(const std::string& item, const std::string& sender);
 
     // Map tracker (ap_map.cpp)
     void LoadMap();
@@ -196,6 +201,19 @@ namespace AP::NameTag {
     void Style(float scale, int alpha, int backAlpha, float raise, float padX, float padY);
     // STATE's tags=: per slot "-" none, "h" hidden, "g" shown while the font draws the name's glyphs, "d" drawn.
     std::string State();
+}
+
+namespace AP::Popup {
+    // Shows the item's model above Link's head for a moment (ap_popup.cpp); false when it cannot be made.
+    bool Show(int itemId);
+    // A model is loading or showing.
+    bool Busy();
+    // The item model maker's task made this holder's model: the popup's, true.
+    bool IsHolder(const void* holder);
+    // The popup's model is an NPC model (HeldModelFix): that scale, and that model point (model units) on the spot.
+    void Fit(float scale, float cx, float cy, float cz);
+    // Once per tick.
+    void Tick();
 }
 
 namespace AP::Puppet {

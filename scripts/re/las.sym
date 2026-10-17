@@ -3,6 +3,7 @@ ActorParams_Dtor0 0x08520f70 f member destructor at params +0xd0
 ActorParams_Dtor1 0x08521190 f member destructor at params +0x50
 ActorParams_Dtor2 0x085213b0 f member destructor at params +0x10
 Entity_DestroyThunk 0x085226d0 f actor vtable +0xa8: calls Entity_Destroy
+Entity_SetEnabled 0x0852e560 f (x0: +8 the bool, x1: the entity as a shared_ptr*): sets or clears bit 0 of the flags (+0x40); when that changes (flags & 0x40000017) == 0x17 (active), calls the entity's virtual +0x50
 Resource_TakeFlowchart 0x085419f0 f (out, handle*)
 Resource_Wait 0x08541c20 f (handle*)
 AreaCraneGame_Setup 0x08553b40 f loads actor/AreaCraneGame.bfres, builds the featured prizes
@@ -27,6 +28,7 @@ CranePrize_AddPanelPiece 0x0864cb08 l tail of CranePrize_Add for type 0x14: AddI
 CranePrize_Has 0x0864cb10 f (u8 prizeType, count, index): CranePrize row index as kind; replaces Item_IsCollected (not used by item actors)
 LayeredAnimation_Make 0x08b7fa70 f (out, parent entity, StringView* name, smcSp*, int* slots): a layered SkeletalAnimationComponent
 CraneQuery_HasPrize 0x08ce7260 f event query HasPrize (prizeType, count): CranePrize_Has(type, count, -1)
+Delay_Make 0x08cf7c90 f (f32 seconds, out future): a task of that many seconds on Framework +0x60; a done future for seconds <= 0
 GameControl_RequestLevelJump 0x08d03160 f event action body (out, ctx): params level, locator, offsetX, offsetZ -> GameControl_SetLevelJump
 GameControl_RequestLevelJumpInCurrentLevel 0x08d032d0 f event action body: level = the save's level
 GameControl_RequestRestartWarp 0x08d03580 f event action body
@@ -53,7 +55,9 @@ ItemActor_CanAppear 0x08dc8510 f (actor): when vtable +0x3e0 holds, false while 
 Npc_TraitsValue 0x08dcb490 f (npc component): a float of the row's collision.traits row in NpcPhysicsTraits, default without
 Inventory_AddItemID 0x08dd48e0 f (itemId, count, index); hooked by the module. Case 114 sets the chamber stone bit
 Inventory_HasItem 0x08dd5a30 f (itemId, count, index): 114 tests chamber stone bit index; the item actors' collected check
+ItemModel_Make 0x08dd7670 f (out holder, owner sp*, StringView* name, root node sp*, u8 itemId): loads the item's model and posts ItemGet_ModelTask, which makes the component (disabled) into holder +0x18; the item-get and the NPCs that hold items use it
 ItemGet_ModelTask 0x08dd81c0 f (task*): the item-get's model: the item's Npc row, ModelResource_Get, the component ItemModel on its node
+ItemGet_PlayFanfare 0x08dd9700 f (u8 itemId): the Items.gsheet row's sound (+0x58): an SE ('@' first) or a BGM jingle
 Area_Ctor 0x08de2e00 f (area, lvb, entry, key): +0x20 min, +0x30 max, +0x64 zone index, +0x68 name, +0xc2 row, +0xc3 column
 Scene_ReleaseActors 0x08de72c0 f moves or removes the actors of a weak list (RemoveChild as the module does)
 LevelBvh_QueryPoint 0x08deb3b0 f (node, areas*, nodes*, const Vec4* pos, std::function*): recursive point query over the area BVH
@@ -114,7 +118,11 @@ Player_EventAnimation 0x0924a070 f event-driven animation by name
 PlayerAnimation_Make 0x0924eca0 f creates the controller (player +0x1568)
 PlayerBow_Init 0x09263dc0 f bow model holder at player +0x1bb8
 PlayerBottle_Init 0x09269ee0 f bottle model wrapper at player +0x1bb0
+ItemGet_BuildSteps 0x092743e0 f (out, Player*, info*): the item-get's steps: raise (item_get_st), Delay 1 s then the text joined with the fanfare's wait, Delay 0.083 s, lower (item_get_ed)
+ItemGet_TextStep 0x092781c0 f closure operator() (closure x0, out x8): Delay(closure +0xb0), then the text; joined with the future of the item's fanfare callback; the module patches the delay's load at +0x38
 Player_ItemGetSequence 0x0927d5d0 f (shared_ptr* out, Player*, int itemId, bool keepCarry, StringView* messageEntry)
+ItemGet_FanfareFuture 0x0927e820 f (out future, u8* itemId): plays the fanfare, then a task polled until ItemGet_FanfareDone
+ItemGet_FanfareDone 0x0927ef30 f (wait closure): true once the event manager has no event, the wait was cancelled, or the fanfare stopped; hooked by the module to be true
 PartsVisibility_AddShape 0x09290a80 f (parts, group, name)
 PartsVisibility_AddShapes 0x09290ec0 f (parts, group, vector of names)
 PartsVisibility_SetGroup 0x09291240 f (parts, group, bool)

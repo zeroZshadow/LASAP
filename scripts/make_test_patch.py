@@ -29,7 +29,7 @@ SETTINGS = {
     "Chest Animations": True, "Key Animations": True, "Item Get Animations": False, "Item Pool": "Standard",
     "Traps": "None", "Nice Bombs": True, "Nice Hookshot": False, "Nice Magic Rod": True, "Damage": "Normal",
     "Music": "Vanilla", "Randomize Sound Effects": False, "Randomize Text": False,
-    "Randomize Environments": False, "Disable Low Health Beep": False, "Easy Fishing": True, "No 30 FPS Drops": "On emulators", "360 Movement": False,
+    "Randomize Environments": False, "Disable Low Health Beep": False, "Easy Fishing": True, "No 30 FPS Drops": "On emulators", "Received Items": "Item-get", "360 Movement": False,
     "Blur Removal": False, "Instant Text": False, "Disable Guardian Acorn": False,
     "Disable Piece of Power": False, "Rupees": 100, "Containers": 0, "Pieces": 0,
     "Seashells Important": True, "Trade Important": True,

@@ -24,6 +24,7 @@ PLAYER_SETTINGS = (
     PlayerSetting("no_low_health_beep", "Disable Low Health Beep", "No low-health beep", False),
     PlayerSetting("no_30fps_drops", "No 30 FPS Drops", "No drops to 30 fps", "On emulators",
                   ("On emulators", "Always", "Never")),
+    PlayerSetting("received_items", "Received Items", "Received items", "Item-get", ("Item-get", "Popup")),
 )
 PLAYER_DEFAULTS = {s.lasr: s.default for s in PLAYER_SETTINGS}
 
@@ -122,12 +123,19 @@ class LASSettings(settings.Group):
         Always or Never.
         """
 
+    class ReceivedItems(str):
+        """
+        How an item from the server shows. Item-get (default): Link holds it up and its text shows, as when he finds
+        it. Popup: its model shows above Link's head and the popup at the bottom right names it; play goes on.
+        """
+
     blur_removal: Union[BlurRemoval, bool] = False
     music: Music = Music("Vanilla")
     randomize_text: Union[RandomizeText, bool] = False
     randomize_environments: Union[RandomizeEnvironments, bool] = False
     no_low_health_beep: Union[NoLowHealthBeep, bool] = False
     no_30fps_drops: No30FpsDrops = No30FpsDrops("On emulators")
+    received_items: ReceivedItems = ReceivedItems("Item-get")
 
     def player_settings(self) -> Dict[str, Any]:
         """The player settings under LASR's names, as the patcher takes them."""

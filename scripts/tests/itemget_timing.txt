@@ -1,0 +1,42 @@
+# The shorter item-get (TESTING.md, Item-get timing), with Received Items set to Item-get (the default): a received
+# item's text opens within 1.6 s of the item-get's start (the game waited 1.9 s), and once the text closes Link is
+# free within 1.2 s (the game held him until the item's fanfare ended, 2.5 s and more after a text closed with B).
+# Three items in a row then follow each other within 1 s. B is held while a page prints, from its state Reading. Run after boot_file1 (or newgame_file2), with Link free.
+guard hurt
+free 30
+send DBG grant Seashell 1 -1
+expect OK.grant 5
+await 5 event=22
+until msg:Opening 1.6
+until msg:Reading 1
+hold 2 0 0 until textready 3
+tap 2 when textready
+until msg:Closed 1
+await 1.2 event=0
+check showq=0
+send DBG grant Seashell 1 -1 1
+send DBG grant Seashell 1 -1 1
+send DBG grant Seashell 1 -1 1
+expect OK.grant 5
+await 5 event=22
+until msg:Opening 1.6
+until msg:Reading 1
+hold 2 0 0 until textready 3
+tap 2 when textready
+until msg:Closed 1
+await 1.2 event=0
+await 1 event=22
+until msg:Opening 1.6
+until msg:Reading 1
+hold 2 0 0 until textready 3
+tap 2 when textready
+until msg:Closed 1
+await 1.2 event=0
+await 1 event=22
+until msg:Opening 1.6
+until msg:Reading 1
+hold 2 0 0 until textready 3
+tap 2 when textready
+until msg:Closed 1
+await 1.2 event=0
+free 5

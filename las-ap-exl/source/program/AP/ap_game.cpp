@@ -174,6 +174,8 @@ namespace {
     constexpr size_t kShowQueueMax = 16;
     constexpr size_t kShowFillerMax = 3;          // with this many waiting, filler is no longer shown
     constexpr u64 kFreeSettleMs = 600;            // the player must be free this long before an item-get starts
+    constexpr u64 kNextItemGetMs = 200;           // or this long when the last item event just ended
+    constexpr u64 kPopupSettleMs = 200;           // and before a popup starts
     // The trendy game: Link counts as free while the player steers the crane, which an item-get would cut off, so
     // displays wait until he leaves the shop.
     constexpr const char* kCraneGameLevel = "CraneGame";
@@ -181,6 +183,7 @@ namespace {
 
     int g_ItemEventTry = 0;
     u64 g_FreeSince = 0;
+    u64 g_ItemEventEnded = 0;   // when the last item event ended, so a queued item-get follows it sooner
     bool g_WasFree = false;
     // A received item waiting to be shown; with a sender, it shows "You got <item> from <sender>!".
     // A trap (trap = its key) plays its effect instead; id is then -1.
@@ -408,6 +411,7 @@ namespace {
                 if (!free && since < kItemGetTimeoutMs) return true;
                 Logging.Log("[AP] item event " + std::to_string(g_ItemEventId) + " ended after " + std::to_string(since) + " ms");
                 g_ItemEventTry = 0;
+                g_ItemEventEnded = NowMs();
                 break;
         }
         g_ItemEvent = ItemEvent::None;
@@ -415,7 +419,21 @@ namespace {
         return false;
     }
 
-    // Shows queued items one at a time, each as an event, once the player is free and holds nothing.
+    // Received Items set to Popup: the item's model above Link's head and the toast, while play goes on. The next
+    // one waits until both are done. Traps still play their effect as an event.
+    void ShowPopup(const Show& show) {
+        std::string name = show.item;
+        if (name.empty()) {
+            auto it = itemsDict.find(show.id);
+            name = it != itemsDict.end() ? it->second : std::to_string(show.id);
+        }
+        AP::QueueToast(AP::ReceivedToast(name, show.sender));
+        if (!AP::Popup::Show(show.id)) AP::Log("popup " + std::to_string(show.id) + " could not be made");
+        g_ItemEventShown = show.id;
+    }
+
+    // Shows queued items one at a time, each as an event, once the player is free and holds nothing; with Received
+    // Items set to Popup, items as popups.
     void TickItemGet() {
         bool free = PlayerFree();
         if (free && !g_WasFree) g_FreeSince = NowMs();
@@ -425,12 +443,20 @@ namespace {
             g_WasFree = false;  // the settle time starts again after each item-get
             return;
         }
-        if (g_ShowQueue.empty() || !free || PlayerCarrying() || LinkDead() || NowMs() - g_FreeSince < kFreeSettleMs ||
-            g_LastLevel == kCraneGameLevel) {
+        bool popup = global_config.tweaks.received_popup && !g_ShowQueue.empty() && g_ShowQueue.front().trap.empty();
+        if (popup && (AP::Popup::Busy() || !AP::ToastsIdle())) return;
+        // An item-get right after the last item event's end follows it sooner than after other events
+        u64 settle = popup ? kPopupSettleMs : g_FreeSince - g_ItemEventEnded < 100 ? kNextItemGetMs : kFreeSettleMs;
+        if (g_ShowQueue.empty() || !free || PlayerCarrying() || LinkDead() || NowMs() - g_FreeSince < settle ||
+            (!popup && g_LastLevel == kCraneGameLevel)) {
             return;
         }
         g_Showing = g_ShowQueue.front();
         g_ShowQueue.pop_front();
+        if (popup) {
+            ShowPopup(g_Showing);
+            return;
+        }
         if (!g_Showing.trap.empty()) {
             // The notice names the trap and who sent it; a retry does not repeat it.
             if (g_ItemEventTry == 0) {
@@ -551,9 +577,16 @@ namespace {
             g_ItemModelFix = nullptr;
             Orig(task);
             g_InItemModelTask = false;
-            if (g_ItemModelFix == nullptr || NowMs() - g_ItemGetAt > kItemModelWindowMs) return;
             u8* holder = *reinterpret_cast<u8**>(task + kTaskHolder);
-            if (holder == nullptr) return;
+            if (AP::Popup::IsHolder(holder)) {
+                // The received-item popup's model: the same size and centre, its own pose
+                const HeldModelFix* fix = g_ItemModelFix;
+                if (fix != nullptr) {
+                    AP::Popup::Fit(kItemModelRadius / fix->radius, fix->center.x, fix->center.y, fix->center.z);
+                }
+                return;
+            }
+            if (g_ItemModelFix == nullptr || NowMs() - g_ItemGetAt > kItemModelWindowMs || holder == nullptr) return;
             u8* model = *reinterpret_cast<u8**>(holder + kHolderModel);
             u8* ctrl = *reinterpret_cast<u8**>(holder + kHolderModel + 8);
             if (model == nullptr || ctrl == nullptr) return;
@@ -618,6 +651,20 @@ namespace {
             }
             Orig(out, player, itemId, keepCarry, messageEntry);
         }
+    };
+
+    // A shorter item-get, for every item-get (TESTING.md, Item-get timing). The sequence (kItemGetSequence) runs as
+    // steps: Link raises the item (animation item_get_st), a delay of 1 s, the item's text; then a short delay and
+    // Link lowers the item (item_get_ed). Alongside the text runs the item's fanfare (its Items.gsheet sound, a BGM
+    // or an SE), and the text's step ends only once the text has closed and the fanfare has stopped, which held Link
+    // up to 2.5 s after a text closed with B. The fanfare still plays on; the item-get no longer waits for it, and
+    // the text opens 0.25 s after the raise.
+    constexpr uintptr_t kItemGetTextDelay = 0xd741f8;   // in the text's step: ldr s0, [x20, #0xa0], the delay
+    constexpr u32 kTextDelayQuarter = 0x1e2a1000;       // fmov s0, #0.25
+    constexpr uintptr_t kItemGetFanfareDone = 0xd7af30; // bool (wait closure): the fanfare has stopped
+
+    HOOK_DEFINE_TRAMPOLINE(ItemGetFanfareDone) {
+        static bool Callback(void*) { return true; }
     };
 
     bool IsTrapKey(const std::string& key) { return key.ends_with("Trap") || key == "$ENEMY"; }
@@ -852,6 +899,7 @@ namespace {
         }
         s += " showq=" + std::to_string(g_ShowQueue.size()) + (g_ItemEvent != ItemEvent::None ? "+1" : "");
         s += " shown=" + std::to_string(g_ItemEventShown);
+        s += std::string(" popup=") + (AP::Popup::Busy() ? "1" : "0");
         int ghosts = 0;
         for (int n = 0; n < AP::GhostNet::SLOTS; n++) ghosts += AP::GhostNet::Get(n).active;
         s += " ghosts=" + std::to_string(ghosts);
@@ -994,6 +1042,13 @@ namespace {
             g_Showing = Show{-1, "", "", ""};
             bool ok = id >= 0 && StartItemEvent(id, a.size() >= 4 ? a[3] : "");
             AP::Send(std::string(ok ? "OK" : "ERR") + " itemget " + std::to_string(id));
+        } else if (cmd == "popmodel" && a.size() >= 3) {
+            // DBG popmodel <item key or id>: the received-item popup's model alone, without the toast or the queue
+            if (!PlayerReady()) return false;
+            bool numeric = a[2].find_first_not_of("0123456789") == std::string::npos;
+            int id = numeric ? std::stoi(a[2]) : ItemIdFromKey(a[2]);
+            bool ok = id >= 0 && AP::Popup::Show(id);
+            AP::Send(std::string(ok ? "OK" : "ERR") + " popmodel " + std::to_string(id));
         } else if (cmd == "dumpmain") {
             // Writes the loaded, decrypted main module (text..data) to sd:/lasap/main.bin for reverse engineering.
             const auto& info = exl::util::GetMainModuleInfo();
@@ -1131,6 +1186,9 @@ namespace AP {
         ItemModelTask::InstallAtOffset(offset_manager.Offset(kItemModelTask));
         ModelResourceGet::InstallAtOffset(offset_manager.Offset(kModelResourceGet));
         NodeMarkDirty::InstallAtOffset(offset_manager.Offset(kNodeMarkDirty));
+        exl::patch::CodePatcher(offset_manager.Offset(kItemGetTextDelay))
+            .WriteInst(exl::armv8::InstBitSet(kTextDelayQuarter));
+        ItemGetFanfareDone::InstallAtOffset(offset_manager.Offset(kItemGetFanfareDone));
         LoadLocationNames();
         LoadMap();
         LoadIndices();
@@ -1273,6 +1331,7 @@ namespace AP {
         AP::TickToasts(PlayerReady());
         TickItemGet();
         TickHeldModel();
+        Popup::Tick();
         TickWarpMenu();
         TickMap();
 #ifdef LASAP_TEST

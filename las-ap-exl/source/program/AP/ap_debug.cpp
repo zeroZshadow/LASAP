@@ -319,7 +319,7 @@ namespace {
     Field g_Fields[] = {{"screen", ""}, {"level", ""}, {"event", ""}, {"paused", ""}, {"free", ""},
                         {"lock", ""}, {"pad", ""}, {"show", ""}, {"text", ""}, {"choice", ""}, {"client", ""},
                         {"server", ""}, {"file", ""}, {"face", ""}, {"carry", ""}, {"health", ""},
-                        {"entry", ""}};
+                        {"entry", ""}, {"anim", ""}};
     void SetField(int i, const std::string& value) {
         if (g_Fields[i].value == value) return;
         g_Fields[i].value = value;
@@ -926,6 +926,11 @@ namespace {
         }
     }
 
+    std::string LinkAnimName() {
+        const char* name = AP::GhostNet::AnimName(AP::GhostNet::LinkAnim().anim);
+        return name != nullptr ? name : "-";
+    }
+
     void Sample() {
         Game::Framework* fmwk = Game::GetFramework();
         SetField(0, AP::TestScreenName());
@@ -958,6 +963,7 @@ namespace {
         SetField(15, items != nullptr ? std::to_string(items->Health) : "-");
         int entry = NameCursor();
         SetField(16, entry < 0 ? "-" : std::to_string(entry));
+        SetField(17, LinkAnimName());
         SampleWatches();
     }
 
@@ -1330,11 +1336,6 @@ namespace AP::Test {
             return false;
         }
         return true;
-    }
-
-    std::string LinkAnimName() {
-        const char* name = AP::GhostNet::AnimName(AP::GhostNet::LinkAnim().anim);
-        return name != nullptr ? name : "-";
     }
 
     std::string StateFields() {

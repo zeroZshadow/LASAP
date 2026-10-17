@@ -1,0 +1,46 @@
+# Received Items set to Popup (a mod patched with it, or config.ini [tweaks] received_items = popup): a received item
+# shows its model above Link's head and the toast names it, while Link keeps walking; no event starts. Then a song,
+# whose model is Marin (an NPC model, sized and centred as in the item-get), and a trap, which still plays its effect
+# as an event, and a level load while a popup shows. Run after boot_file1 (or newgame_file2), with Link free on open
+# ground.
+# Screenshots: popup_item, popup_song.
+guard hurt
+free 30
+guard event=22
+send DBG grant Seashell 1 -1
+expect OK.grant 5
+await 3 popup=1
+await 3 shown=22(\s|$)
+# The toast names the item
+send DBG text SystemSaving
+expect said=You\sgot\sSeashell 5
+# Link walks while the model shows
+hold 0 0 20000 until anim=walk 3
+await 1 popup=1
+shot D:/DEV/LASAP-sandbox/popup_item.png
+await 5 popup=0
+check event=0\s.*showq=0(\s|$)
+send DBG grant Song_WindFish 1 -1
+expect OK.grant 5
+await 3 popup=1
+wait 0.6
+shot D:/DEV/LASAP-sandbox/popup_song.png
+await 5 popup=0
+guard off event=22
+guard off hurt
+# A level load during a popup takes the model with Link; the next popup shows in the new level
+send DBG grant Seashell 1 -1
+expect OK.grant 5
+await 3 popup=1
+warp Field 38.25 10.5 128.25
+check popup=0
+send DBG grant Seashell 1 -1
+expect OK.grant 5
+await 3 popup=1
+await 5 popup=0
+# A trap plays its effect as an event
+send DBG grant ZapTrap 1 -1
+expect OK.grant 5
+await 5 event=22
+check popup=0
+free 20

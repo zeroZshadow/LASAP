@@ -351,6 +351,15 @@ namespace AP {
         g_FoundFresh = false;
     }
 
+    std::string ReceivedToast(const std::string& item, const std::string& sender) {
+        std::string from = sender.empty() ? "" : "\nfrom " + Clip(sender, kPlayerNameMax);
+        return "You got " + Clip(item, kItemNameMax) + from;
+    }
+
+    bool ToastsIdle() {
+        return !g_ToastShowing && g_Toasts.empty();
+    }
+
     void SetReceivedText(const std::string& item, const std::string& sender) {
         g_RecvItem = item;
         g_RecvSender = sender;
