@@ -128,7 +128,7 @@ namespace {
 
     // Buttons (nn::hid): A, X, Y, Up/Down on the d-pad and the left stick; the d-pad's left and right alone.
     constexpr u64 kButtonA = 0x1, kButtonX = 0x4, kButtonY = 0x8, kButtonUp = 0x2000 | (1ull << 17),
-                  kButtonDown = 0x8000 | (1ull << 19), kDpadLeft = 0x1000, kDpadRight = 0x4000;
+                  kButtonDown = 0x8000 | (1ull << 19), kDpadLeft = 0x1000, kDpadUp = 0x2000, kDpadRight = 0x4000;
     constexpr u64 kPadStaleMs = 50;  // the last poll's buttons count as held this long
     constexpr int kRepeatDelay = 20, kRepeatEvery = 5;  // frames before Up/Down repeat, and between repeats
 
@@ -732,6 +732,8 @@ namespace AP::JukeboxPane {
             AP::Music::Skip(1);
         } else if (pressed & kDpadLeft) {
             AP::Music::Skip(-1);
+        } else if (pressed & kDpadUp) {
+            AP::GhostNet::ToggleNames();
         }
     }
 

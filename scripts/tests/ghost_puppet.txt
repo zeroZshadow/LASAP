@@ -15,6 +15,13 @@ expect \|\s0\sactor=\w+\sname=NpcGhost:\w+\spos=[\d.,]+\smodel=[0-9a-f]+
 # its name tag over its head, with the name's glyphs drawn
 send DBG puppet tags on
 await 5 tags=d---
+# d-pad up turns the name tags off and on again; the client keeps the setting
+tap 2000 when free
+await 5 tags=h---
+logged Ghost\sname\stags\sare\soff 5 client
+tap 2000 when free
+await 5 tags=d---
+logged Ghost\sname\stags\sare\son 5 client
 # the peer leaves the level: the puppet hides; it comes back: the same actor shows again
 peer nowhere
 await 5 puppets=0

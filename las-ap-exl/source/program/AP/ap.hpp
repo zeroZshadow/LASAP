@@ -105,8 +105,8 @@ namespace AP {
     void LoadLocationNames();
     // A short message in the autosave popup ("Now Saving"), which does not stop the game; '\n' starts a new line.
     void QueueToast(const std::string& text);
-    // The Jukebox's toast: a track's name. It takes the place of the one showing or waiting, so skipping through
-    // tracks shows the last one, not a queue.
+    // The d-pad's toast: a track's name, or the ghost names turned on or off. It takes the place of the one showing or
+    // waiting, so skipping through tracks shows the last one, not a queue.
     void ShowMusicToast(const std::string& text);
     // Sets a text pane to a UTF-8 text through the game's message pipeline, as the game sets a pane to a message: the
     // holder's +0x10 is the pane, as in the game's text objects.
@@ -244,6 +244,9 @@ namespace AP::GhostNet {
     void Reset();
     // Whether the client wants name tags over the ghosts (GHOSTNAMES).
     bool ShowNames();
+    // The d-pad's up in free play: name tags on or off while ghosts are on, with a toast; the client keeps the setting
+    // (GHOSTNAMES to the client).
+    void ToggleNames();
     // A GHOSTS, GHOSTNAMES or GHOST line from the client.
     void HandleLine(const std::string& line);
     const Ghost& Get(int n);

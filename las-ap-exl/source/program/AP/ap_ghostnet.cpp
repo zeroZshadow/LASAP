@@ -379,6 +379,13 @@ namespace AP::GhostNet {
         return g_Names;
     }
 
+    void ToggleNames() {
+        if (!g_Wanted) return;
+        g_Names = !g_Names;
+        AP::Send(std::string("GHOSTNAMES ") + (g_Names ? "1" : "0"));
+        AP::ShowMusicToast(g_Names ? "Ghost names on" : "Ghost names off");
+    }
+
     Anim LinkAnim() {
         return g_Anim;
     }
