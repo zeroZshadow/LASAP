@@ -78,7 +78,7 @@ The fallback, if a game object of our own is ever needed (a page outside index 2
 ### Track names
 
 - **The list:** row 0 is "Game music" (the override off), then every track in `music.TRACKS`.
-- **Names:** the game has no names for its BGM, so the module holds a table of id and display name in `ap_music.cpp`, written for players (e.g. `BGM_DUNGEON_LV1_TAIL` is "Tail Cave", `BGM_MEVE` "Mabe Village"). `test_music` parses that table and checks that it lists exactly `music.TRACKS`, as it already checks the patcher's `BGM_TRACKS`.
+- **Names:** the game has no names for its BGM, so `ap_tracks.hpp` holds a constexpr table of id, display name (at most 24 characters) and a one- or two-line description, written for players (e.g. `BGM_DUNGEON_LV1_TAIL` is "Tail Cave", `BGM_MEVE` "Mabe Village"), and the "Game music" row. `test_music` parses it and checks the ids are exactly `music.TRACKS` in order, the names unique and the lengths. Where a track plays comes from the zone BGM in the `.lvb` files, the event flows and the stream names in `Richard.bfsar`; tracks the executable picks (Marin's field variants, the Chamber Dungeon themes, the file-name tunes) are named from their labels and stream names.
 - **Title:** "Jukebox" goes into the header's texts with `AP::SetPaneText` (the toasts' way: the text getter hands out the string for `UI:SystemSaving`), the same word in every language. It fits the title (12 characters), the L label (9) and the R label (8).
 - **Hook on `Navi_SetTitles`** (trampoline), run after the original, on the Navi's texts at `+0x2d0`, `+0x2e8` and `+0x300`: on the Jukebox the title "Jukebox" with the game's own labels for System (L) and Map (R) through `MessageText_SetLabel`; on System "Jukebox" under R; on the map "Jukebox" under L.
 - **Button guide:** `Navi_SetGuide` keeps System's guide for index 2; with the flag set, a hook sets the Memories list's guide or no guide at all.
@@ -143,7 +143,7 @@ What A takes from the others: B's and C's list polish (row marks and blank rows 
 |---|---|---|
 | Out of the test build | `ap_jukebox.cpp` in the release build; Chamber Dungeon left out; the button guide for the Jukebox | 1 day |
 | List | The polish above; the chosen track marked; the cursor on it when the pane opens | 1–1.5 days |
-| Names | The name table in `ap_music.cpp`, the `test_music` check, the user's review | 1 day |
+| Names | `ap_jukebox.cpp` reads the names from `ap_tracks.hpp`; the user's review | 1 day |
 | Override | `Music::Choose` and the `MUSIC` line to the client, its world test; preview kept (open question 1) | 1 day |
 | Test and docs | `jukebox_pane` on the release flavour, TESTING.md, DESIGN.md | 1 day |
 

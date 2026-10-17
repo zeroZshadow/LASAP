@@ -1,15 +1,45 @@
 """The jukebox: /music's track names and the client's MUSIC lines."""
 import ast
 import asyncio
+import re
 import unittest
 from pathlib import Path
 
 from .. import music
 
-PATCHER_MUSIC = Path(__file__).resolve().parents[3] / "patcher" / "RandomizerCore" / "Randomizers" / "music.py"
+ROOT = Path(__file__).resolve().parents[3]
+PATCHER_MUSIC = ROOT / "patcher" / "RandomizerCore" / "Randomizers" / "music.py"
+TRACK_NAMES = ROOT / "las-ap-exl" / "source" / "program" / "AP" / "ap_tracks.hpp"
+ENTRY = re.compile(r'\{\s*"(BGM_\w+)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*\}')
+GAME_MUSIC = re.compile(r'GAME_MUSIC\s*=\s*\{\s*nullptr\s*,\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*\}')
+
+
+def c_string(text: str) -> str:
+    return text.replace("\\n", "\n").replace('\\"', '"').replace("\\\\", "\\")
 
 
 class TestTracks(unittest.TestCase):
+    def check_text(self, name: str, info: str) -> None:
+        self.assertTrue(name.isascii() and info.isascii(), name)
+        self.assertLessEqual(len(name), 24, name)
+        self.assertLessEqual(len(info.replace("\n", "")), 80, name)
+        lines = info.split("\n")
+        self.assertLessEqual(len(lines), 2, name)
+        if len(lines) > 1:
+            self.assertTrue(all(0 < len(line) <= 40 for line in lines), name)
+
+    def test_track_names(self) -> None:
+        source = TRACK_NAMES.read_text(encoding="utf-8")
+        entries = [(i, c_string(n), c_string(t)) for i, n, t in ENTRY.findall(source)]
+        self.assertEqual(tuple(i for i, _, _ in entries), music.TRACKS)
+        game_music = GAME_MUSIC.search(source)
+        self.assertIsNotNone(game_music)
+        names = [n for _, n, _ in entries] + [c_string(game_music.group(1))]
+        self.assertEqual(len(names), len(set(names)))
+        for _, name, info in entries:
+            self.check_text(name, info)
+        self.check_text(c_string(game_music.group(1)), c_string(game_music.group(2)))
+
     def test_tracks_match_patcher(self) -> None:
         tree = ast.parse(PATCHER_MUSIC.read_text(encoding="utf-8"))
         tracks = next(ast.literal_eval(node.value) for node in tree.body if isinstance(node, ast.Assign)
