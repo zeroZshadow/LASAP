@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace {
@@ -25,32 +26,37 @@ namespace {
     constexpr int kFlagWarped = 1, kFlagStill = 4, kFlagStarted = 8;
     // Link's animations (game 1.0.0): the player's animation controller (player +0x1568) plays rows of
     // PlayerAnimation.gsheet by key (the row index; its fileName names the FSKA in Link's model). Its slot entries
-    // (+0x78, 0x18 apart) hold the row playing (+0x10); slot 0 is the whole body. The frame is in the controller's
+    // (+0x78, 0x18 apart) hold the row playing (+0x10); slot 0 is the whole body, slot 1 his upper body (from the bone
+    // spine_a up: idle_carry while he holds something over his head, none otherwise). The frame is in the controller's
     // skeletal animation component (+0x8): layer i (+0x1d0 array, count +0x1c8) is slot i, its bound animation
     // (+0x8) -> +0 -> +0x8 the frame control (f32 frame at +0). The sheet: **(0x1cbaf70) (a shared_ptr), +0x70 -> data, rows at +0x20
     // (0x48 apart), count +0x28; a row: s32 key, +0x8 fileName, +0x1c policy (1 loops).
-    constexpr size_t kPlayerAnimCtrl = 0x1568, kCtrlSac = 0x8, kCtrlSlots = 0x78, kSlotRow = 0x10;
+    constexpr size_t kPlayerAnimCtrl = 0x1568, kCtrlSac = 0x8, kCtrlSlots = 0x78, kSlotRow = 0x10, kSlotSize = 0x18;
     constexpr size_t kSacLayerCount = 0x1c8, kSacLayers = 0x1d0, kLayerAnim = 0x8, kAnimFrameCtrl = 0x8;
     constexpr uintptr_t kPlayerAnimSheet = 0x1cbaf70;
     constexpr size_t kSheetData = 0x70, kDataRows = 0x20, kDataCount = 0x28, kRowSize = 0x48, kRowName = 0x8,
                      kRowPolicy = 0x1c;
     // Link's look: his model component (player +0x2a8) -> model instance (+0x148) -> one byte per shape (+0x378), 1
     // drawn (Player_ShowItem shows the items he holds this way); the shape count is the g3d model object's (instance
-    // +0x60 -> +0x10, +0x30). His tunic is the inventory's upgrade bits (+0x9c): 6 red, 7 blue, red first.
+    // +0x60 -> +0x10, +0x30). His tunic is the inventory's upgrade bits (+0x9c): 6 red, 7 blue, red first. His face:
+    // material animations on his material animation component (player +0x2c8; slots: pointers at +0xa0, count +0xb8)
+    // "eye", "mouth" and "ear", each held at the frame (slot +0x24) the game sets for his expression. A slot's
+    // animation (+0x8) names its FMAA (+0x18; the FMAA's +0x8 its name, a u16 length and the characters).
     constexpr size_t kPlayerModelComp = 0x2a8, kModelCompInstance = 0x148, kInstanceShapes = 0x378,
                      kInstanceModel = 0x60, kModelObject = 0x10, kModelShapeCount = 0x30;
     constexpr size_t kInventoryUpgrades = 0x9c;
     constexpr u8 kUpgradeRed = 0x40, kUpgradeBlue = 0x80;
+    constexpr size_t kPlayerMatAnim = 0x2c8, kMatAnimSlots = 0xa0, kMatAnimCount = 0xb8, kMatSlotAnim = 0x8,
+                     kMatSlotFrame = 0x24, kMatAnimRes = 0x18, kResName = 0x8;
 
     struct Sample {
         bool inLevel = false;
         std::string level;
-        int room = 255;
         float x = 0, y = 0, z = 0, yaw = 0;
-        int anim = 0, animFrame = 0;  // AP::GhostNet::Anim
+        int anim = 0, animFrame = 0, upperAnim = 0;  // AP::GhostNet::Anim
         u32 starts = 0;
         bool still = false;           // not moved since the previous frame
-        u32 look = AP::GhostNet::LOOK_DEFAULT;
+        AP::GhostNet::Look look;
     };
 
     bool g_Wanted = false;  // the client relays positions (GHOSTS 1)
@@ -64,7 +70,7 @@ namespace {
     float g_PrevX = 0, g_PrevY = 0, g_PrevZ = 0;
     AP::GhostNet::Anim g_Anim;
     const void* g_AnimRow = nullptr;
-    u32 g_Look = AP::GhostNet::LOOK_DEFAULT;
+    AP::GhostNet::Look g_Look;
 #ifdef LASAP_TEST
     // DBG ghostnet: Link's animation starts and the GHOST lines with a start, by frame
     std::vector<std::string> g_StartLog;
@@ -96,15 +102,6 @@ namespace {
             pos = end;
         }
         return out;
-    }
-
-    // The overworld room around a position, (row - 1) * 16 + column (Field_<row><col>, col A = 0), as the relay
-    // computes it; 255 outside Field.
-    int RoomIndex(const std::string& level, float x, float z) {
-        if (level != "Field") return 255;
-        int col = std::min(15, std::max(0, static_cast<int>(std::floor(x / 15))));
-        int row = std::min(15, std::max(0, static_cast<int>(std::floor(z / 12))));
-        return row * 16 + col;
     }
 
     template<typename T>
@@ -147,20 +144,49 @@ namespace {
         g_AnimRow = row;
         g_Anim.anim = anim;
         g_Anim.frame = std::min(static_cast<int>(frame * 10), 0xffff);
+        // the upper body's row: slot 1
+        const u8* ctrl = At<const u8*>(player, kPlayerAnimCtrl);
+        const u8* slots = At<const u8*>(ctrl, kCtrlSlots);
+        bool layered = slots != nullptr && At<const u8*>(ctrl, kCtrlSlots + 8) - slots >= static_cast<long>(2 * kSlotSize);
+        const u8* upper = layered ? At<const u8*>(slots + kSlotSize, kSlotRow) : nullptr;
+        g_Anim.upper = upper != nullptr ? At<s32>(upper, 0) + 1 : 0;
     }
 
-    u32 ReadLook(const void* player) {
+    // The frame of one of Link's material animations by name (0 when he has none of that name).
+    int MatFrame(const u8* slots, int count, std::string_view name) {
+        for (int i = 0; i < count; i++) {
+            const u8* slot = At<const u8*>(slots, i * 8);
+            const u8* res = At<const u8*>(At<const u8*>(slot, kMatSlotAnim), kMatAnimRes);
+            const u8* s = At<const u8*>(res, kResName);
+            if (s == nullptr || std::string_view(reinterpret_cast<const char*>(s + 2), *reinterpret_cast<const u16*>(s)) != name)
+                continue;
+            float frame = At<float>(slot, kMatSlotFrame);
+            return std::isfinite(frame) ? std::clamp(static_cast<int>(frame + 0.5f), 0, 0xff) : 0;
+        }
+        return 0;
+    }
+
+    AP::GhostNet::Look ReadLook(const void* player) {
+        AP::GhostNet::Look look;
         const u8* instance = At<const u8*>(At<const u8*>(player, kPlayerModelComp), kModelCompInstance);
         const u8* shapes = At<const u8*>(instance, kInstanceShapes);
         const u8* model = At<const u8*>(At<const u8*>(instance, kInstanceModel), kModelObject);
-        int count = std::min<int>(At<u16>(model, kModelShapeCount), AP::GhostNet::LOOK_SHAPES);
-        if (shapes == nullptr || count == 0) return AP::GhostNet::LOOK_DEFAULT;
-        u32 look = 0;
-        for (int i = 0; i < count; i++)
-            if (shapes[i] != 0) look |= 1u << i;
+        int count = std::min<int>(At<u16>(model, kModelShapeCount), AP::GhostNet::SHAPE_COUNT);
+        if (shapes != nullptr && count > 0) {
+            look.shapes = 0;
+            for (int i = 0; i < count; i++)
+                if (shapes[i] != 0) look.shapes |= 1u << i;
+        }
         u8 upgrades = At<u8>(*Game::Data::Inventory::Items, kInventoryUpgrades);
-        u32 tunic = (upgrades & kUpgradeRed) ? 1 : (upgrades & kUpgradeBlue) ? 2 : 0;
-        return look | tunic << AP::GhostNet::LOOK_TUNIC_SHIFT;
+        look.tunic = (upgrades & kUpgradeRed) ? AP::GhostNet::TUNIC_RED
+                     : (upgrades & kUpgradeBlue) ? AP::GhostNet::TUNIC_BLUE : AP::GhostNet::TUNIC_GREEN;
+        const u8* mat = At<const u8*>(player, kPlayerMatAnim);
+        const u8* slots = At<const u8*>(mat, kMatAnimSlots);
+        int slotCount = std::min(At<s32>(mat, kMatAnimCount), 16);
+        look.eye = MatFrame(slots, slotCount, "eye");
+        look.mouth = MatFrame(slots, slotCount, "mouth");
+        look.ear = MatFrame(slots, slotCount, "ear");
+        return look;
     }
 
     Sample Current() {
@@ -170,6 +196,9 @@ namespace {
         if (fmwk == nullptr || fmwk->mPlayer == nullptr || fmwk->mPlayer->playerCollision == nullptr) return s;
         const Game::Coords& c = fmwk->mPlayer->playerCollision->coordsNew;
         if (!std::isfinite(c.pos.x) || !std::isfinite(c.pos.y) || !std::isfinite(c.pos.z)) return s;
+        // leaving a level by its exit (the well's stairs), Link stands at the origin of the old level until the next
+        // one loads, about a second: in no level
+        if (c.pos.x == 0 && c.pos.y == 0 && c.pos.z == 0) return s;
         s.inLevel = true;
         s.level = LevelSystem::GetCurrentLevel();
         s.x = c.pos.x;
@@ -179,7 +208,6 @@ namespace {
         const Game::Vec4& q = c.rotate;
         s.yaw = std::atan2(2 * (q.x * q.z + q.t * q.y), 1 - 2 * (q.x * q.x + q.y * q.y)) * 180.0f / 3.14159265f;
         if (s.yaw < 0) s.yaw += 360;
-        s.room = RoomIndex(s.level, s.x, s.z);
         // AP::Tick runs once per input poll, which can be more than once a frame
         if (fmwk->mFrameCount != g_Frame) {
             g_Still = g_PrevValid && std::fabs(s.x - g_PrevX) < 0.001f && std::fabs(s.y - g_PrevY) < 0.001f &&
@@ -195,6 +223,7 @@ namespace {
         s.still = g_Still;
         s.anim = g_Anim.anim;
         s.animFrame = g_Anim.frame;
+        s.upperAnim = g_Anim.upper;
         s.starts = g_Anim.starts;
         s.look = g_Look;
         return s;
@@ -208,13 +237,14 @@ namespace {
     // What the player did, sent at once: another level, animation, facing or look, or starting or stopping.
     bool Acted(const Sample& a, const Sample& b) {
         if (a.inLevel != b.inLevel || a.level != b.level) return true;
-        return a.inLevel && (a.starts != b.starts || a.still != b.still || a.look != b.look || Turn(a, b) >= kTurnDeg);
+        return a.inLevel && (a.starts != b.starts || a.upperAnim != b.upperAnim || a.still != b.still ||
+                             a.look != b.look || Turn(a, b) >= kTurnDeg);
     }
 
     bool Changed(const Sample& a, const Sample& b) {
         if (a.inLevel != b.inLevel || a.level != b.level) return true;
         if (!a.inLevel) return false;
-        if (a.starts != b.starts || a.still != b.still || a.look != b.look) return true;
+        if (a.starts != b.starts || a.upperAnim != b.upperAnim || a.still != b.still || a.look != b.look) return true;
         return std::fabs(a.x - b.x) > 0.01f || std::fabs(a.y - b.y) > 0.01f || std::fabs(a.z - b.z) > 0.01f ||
                Turn(a, b) > 1.0f;
     }
@@ -227,11 +257,13 @@ namespace {
         }
         if (s.still) flags |= kFlagStill;
         if (g_SentAny && s.starts != g_Sent.starts) flags |= kFlagStarted;
-        char buf[160];
+        char buf[192];
         if (s.inLevel) {
-            // POS <level> <room> <x> <y> <z> <yaw> <anim> <anim frame> <flags> <time ms> <look>
-            snprintf(buf, sizeof(buf), "POS %s %d %.3f %.3f %.3f %.1f %d %d %d %u %u", s.level.c_str(), s.room, s.x,
-                     s.y, s.z, s.yaw, s.anim, s.animFrame, flags, static_cast<u32>(now), s.look);
+            // POS <level> <x> <y> <z> <yaw> <anim> <anim frame> <upper anim> <flags> <time ms> <shapes> <tunic> <eye>
+            // <mouth> <ear>
+            snprintf(buf, sizeof(buf), "POS %s %.3f %.3f %.3f %.1f %d %d %d %d %u %u %d %d %d %d", s.level.c_str(), s.x,
+                     s.y, s.z, s.yaw, s.anim, s.animFrame, s.upperAnim, flags, static_cast<u32>(now), s.look.shapes,
+                     s.look.tunic, s.look.eye, s.look.mouth, s.look.ear);
         } else {
             snprintf(buf, sizeof(buf), "POS none");
         }
@@ -274,7 +306,7 @@ namespace AP::GhostNet {
     }
 
     void Handle(const std::string& line) {
-        auto a = Split(line, 13);
+        auto a = Split(line, 18);
         if (a[0] == "GHOSTS" && a.size() >= 2) {
             // GHOSTS 1|0: whether the client relays positions; with 0 no ghost shows
             g_Wanted = a[1] == "1";
@@ -299,10 +331,11 @@ namespace AP::GhostNet {
             ghost.active = false;
             return;
         }
-        if (a.size() < 13) return;
-        // GHOST <n> <level> <x> <y> <z> <yaw> <anim> <anim frame> <flags> <time> <look> <slot name>; time is the
-        // sender's clock (ms, 16 bits): unwrapped against the slot's previous line, a new timeline after an off
-        u16 time = static_cast<u16>(strtoul(a[10].c_str(), nullptr, 10));
+        if (a.size() < 18) return;
+        // GHOST <n> <level> <x> <y> <z> <yaw> <anim> <anim frame> <upper anim> <flags> <time> <shapes> <tunic> <eye>
+        // <mouth> <ear> <slot name>; time is the sender's clock (ms, 16 bits): unwrapped against the slot's previous
+        // line, a new timeline after an off
+        u16 time = static_cast<u16>(strtoul(a[11].c_str(), nullptr, 10));
         if (ghost.active && ghost.frames > 0) {
             ghost.timeMs += static_cast<s16>(static_cast<u16>(time - static_cast<u16>(ghost.timeMs)));
         } else {
@@ -317,9 +350,14 @@ namespace AP::GhostNet {
         ghost.yaw = strtof(a[6].c_str(), nullptr);
         ghost.anim = atoi(a[7].c_str());
         ghost.animFrame = atoi(a[8].c_str());
-        ghost.flags = atoi(a[9].c_str());
-        ghost.look = static_cast<u32>(strtoul(a[11].c_str(), nullptr, 10));
-        ghost.name = a[12];
+        ghost.upperAnim = atoi(a[9].c_str());
+        ghost.flags = atoi(a[10].c_str());
+        ghost.look.shapes = static_cast<u32>(strtoul(a[12].c_str(), nullptr, 10));
+        ghost.look.tunic = atoi(a[13].c_str());
+        ghost.look.eye = atoi(a[14].c_str());
+        ghost.look.mouth = atoi(a[15].c_str());
+        ghost.look.ear = atoi(a[16].c_str());
+        ghost.name = a[17];
         ghost.receivedMs = NowMs();
 #ifdef LASAP_TEST
         if ((ghost.flags & 8) && g_StartLog.size() < 60) {
@@ -328,8 +366,8 @@ namespace AP::GhostNet {
         }
 #endif
         ghost.history[ghost.frames % HISTORY] = Frame{ghost.timeMs, ghost.receivedMs, ghost.x, ghost.y, ghost.z,
-                                                      ghost.yaw, ghost.anim, ghost.animFrame, ghost.flags,
-                                                      ghost.look};
+                                                      ghost.yaw, ghost.anim, ghost.animFrame, ghost.upperAnim,
+                                                      ghost.flags, ghost.look};
         ghost.frames++;
     }
 
@@ -345,7 +383,7 @@ namespace AP::GhostNet {
         return g_Anim;
     }
 
-    u32 LinkLook() {
+    Look LinkLook() {
         return g_Look;
     }
 
@@ -357,6 +395,13 @@ namespace AP::GhostNet {
         return At<const char*>(At<const u8*>(data, kDataRows) + (anim - 1) * kRowSize, kRowName);
     }
 
+    bool AnimLoops(int anim) {
+        const u8* holder = At<const u8*>(reinterpret_cast<const void*>(g_BaseAddress + kPlayerAnimSheet), 0);
+        const u8* data = At<const u8*>(At<const u8*>(holder, 0), kSheetData);
+        if (anim <= 0 || static_cast<u32>(anim) > At<u32>(data, kDataCount)) return false;
+        return At<s32>(At<const u8*>(data, kDataRows) + (anim - 1) * kRowSize, kRowPolicy) == 1;
+    }
+
     std::string State() {
         std::string s = "GHOSTNET wanted=" + std::to_string(g_Wanted) + " names=" + std::to_string(g_Names) + " pos=" + std::to_string(g_PosLines) +
                         " ghostlines=" + std::to_string(g_GhostLines) + " handle_us=" + std::to_string(g_HandleTicks * 10 / 192) +
@@ -364,11 +409,14 @@ namespace AP::GhostNet {
         for (int n = 0; n < SLOTS; n++) {
             const Ghost& g = g_Ghosts[n];
             if (!g.active) continue;
-            char buf[200];
+            char buf[256];
             const char* anim = AnimName(g.anim);
-            snprintf(buf, sizeof(buf), " | %d %s %s %.2f,%.2f,%.2f yaw=%.0f anim=%s flags=%d look=%x frames=%u", n,
-                     g.name.c_str(), g.level.c_str(), g.x, g.y, g.z, g.yaw, anim != nullptr ? anim : "-", g.flags,
-                     g.look, g.frames);
+            const char* upper = AnimName(g.upperAnim);
+            snprintf(buf, sizeof(buf),
+                     " | %d %s %s %.2f,%.2f,%.2f yaw=%.0f anim=%s upper=%s flags=%d shapes=%x tunic=%d face=%d,%d,%d"
+                     " frames=%u", n, g.name.c_str(), g.level.c_str(), g.x, g.y, g.z, g.yaw, anim != nullptr ? anim : "-",
+                     upper != nullptr ? upper : "-", g.flags, g.look.shapes, g.look.tunic, g.look.eye, g.look.mouth,
+                     g.look.ear, g.frames);
             s += buf;
         }
 #ifdef LASAP_TEST

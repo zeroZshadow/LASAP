@@ -40,6 +40,7 @@ namespace {
     constexpr uintptr_t kParamsDtor0 = 0x1cf70, kParamsDtor1 = 0x1d190, kParamsDtor2 = 0x1d3b0;
     constexpr size_t kParamsDtor0At = 0xd0, kParamsDtor1At = 0x50, kParamsDtor2At = 0x10;
     constexpr uintptr_t kReleaseWeak = 0x14311f0;       // std::__shared_weak_count::__release_weak
+    constexpr uintptr_t kGameNew = 0x1431170, kGameDelete = 0x1431110;  // the game's operator new and delete
     // libc++ control block: +8 shared owners - 1 (-1: the object is gone), +0x10 weak owners - 1
     constexpr size_t kCtrlOwners = 8, kCtrlWeakOwners = 0x10;
     constexpr size_t kActorRoom = 0xb0;
@@ -92,6 +93,25 @@ namespace {
     constexpr size_t kActorAnimComp = 0x2b0, kAnimCompPlayer = 0xe8, kAnimPlayerModel = 0x90;
     constexpr size_t kSetFrameSlot = 0xc0 / 8;
     int g_PlaySlot = -1;  // -1: not looked up; -2: not in the component's vtable
+    // The upper body, as Link has it: every NPC component class makes its animation player through the same
+    // NpcComponent_MakeAnimator (0x94b310, vtable +0x208: out, component, {name, length}*, the model component's
+    // shared_ptr*), a single-layer SkeletalAnimationComponent, each time the actor loads its model. For a ghost's
+    // component (its row, +0x88, APGhost's) the module makes Link's kind instead (Player_InitAnimator):
+    // LayeredAnimation_Make (0x67ba70: out, the component's entity +0x58, {name, length}*, model component sp*, int*
+    // layers) with two layers, layer 1 masked to the bones from spine_a up (0x1035390: layers +0x1b0, layer, bone
+    // name, true) and off (0x10355f0: layers +0x1b0, layer, on). Playing on layer 0 stays the NPC's (the layered
+    // player's set-animation is layer 0's); layer 1 takes the sender's upper-body animation as Link's controller
+    // hands it over (PlayerAnimation_SetSlot): LayeredAnimation_SetSlot (0x1059dd0: player, layer, animation sp*,
+    // blend, start frame) with the bound animation by name (NpcAnimation_Get 0x9670d0: out sp, NPC component,
+    // {name, length}*), then the layer's virtual +0x30 (loops) and +0x48 (0), and the layer turned on. Like the
+    // single-layer player (NpcAnimator_Make), the layered one is then started (the entity manager's start task) and
+    // made a child of the component's entity (0xfa9e40: entity, child), which binds it to the model.
+    constexpr uintptr_t kMakeAnimator = 0x94b310, kLayeredMake = 0x67ba70, kLayerBoneMask = 0x1035390,
+                        kLayerEnable = 0x10355f0, kLayeredSetSlot = 0x1059dd0, kNpcAnimGet = 0x9670d0,
+                        kSpineA = 0x16b6ecb, kLayeredVtable = 0x1c49ee8, kAddChild = 0xfa9e40;
+    constexpr size_t kNpcRow = 0x88, kNpcEntity = 0x58, kSacLayerSet = 0x1b0, kSacLayerCount = 0x1c8,
+                     kSacLayers = 0x1d0, kLayerSetLoop = 0x30 / 8, kLayerSetStart = 0x48 / 8;
+    constexpr int kUpperLayer = 1;
 
     // Model object: +0 the FMDL, +0x10 u32* material visibility bits, +0x30 u16 shape count, +0x32 u16 material
     // count, +0x40 shapes (0x70 apart; +0x18 pool offset of the shape's block), +0x48 materials (0x80 apart), +0x68
@@ -127,6 +147,19 @@ namespace {
     constexpr size_t kSlotSetFrame = 0x48 / 8, kSlotSetRate = 0x60 / 8;
     constexpr float kTunicFrames[] = {0, 1, 3};
     constexpr int kNoTunic = -2;
+    // The face: Link's eyes, mouth and ears are material animations held at a frame ("eye", "mouth", "ear"). The
+    // APGhost row's facial row (Facial.gsheet, ap_player_ghost.py) names them, so the NPC's material animation
+    // component has a slot for each (before the tunic's), at frame 0 with no blinking; the module finds each by its
+    // animation's name (slot +0x8, its resource at +0x18, the name at +0x8) and sets its frame.
+    // The instanced face (Instanced models) draws as the model draws without these animations, which is frame 0 of
+    // each; a ghost with another face draws its own face shapes, the frames set on its slots.
+    constexpr size_t kMatAnimRes = 0x18, kResName = 0x8;
+    constexpr const char* kFaceAnims[] = {"eye", "mouth", "ear"};
+    constexpr int kFaceParts = 3;
+    constexpr int kFaceFrames[kFaceParts] = {14, 14, 2};  // the FMAAs' frames
+    constexpr u32 kFaceShapes = 0x380;               // the ear, eyes and mouth
+    constexpr int kFaceUnknown = -2;                 // a face slot not looked for yet (-1: the model has none)
+    bool g_LayeredGhosts = true;  // DBG puppet layered on|off: new ghost models get the layered animation player
 
     // Replay: a puppet is fed frames (a ghost's lines, or Link's own path for DBG puppet), each stamped with the
     // sender's clock, and shows them on that timeline g_BufferMs behind: its position between the two frames around
@@ -137,7 +170,14 @@ namespace {
     // than kResetMs behind the newest starts a new timeline. When new lines move the replay's position (the sender
     // turned or stopped while the replay ran on past its newest line), the puppet does not jump: the difference is
     // added to where it shows and fades out with the time constant kCorrectMs (unless it is over kCorrectMax units).
+    // A ghost that arrives (a warped frame: another level, a respawn, a warp) stays hidden from that frame's time
+    // until a frame after it moved, started or changed the animation, or kArriveHoldMs pass on its clock: a player
+    // entering a level stands still through its own screen's fade-in first (falling into the well: on the floor, then
+    // fall_from_top drops the model from above while the position sinks). It shows again with that frame, whose
+    // animation then plays unblended.
     constexpr int kTrack = 32;
+    constexpr double kArriveHoldMs = 1000;
+    constexpr float kArriveMove = 0.05f;
     constexpr double kExtrapolateMs = 100, kOffsetRise = 0.02, kCorrectMs = 100;
     constexpr float kCorrectMax = 2;
     constexpr s64 kResetMs = 1000;
@@ -156,6 +196,8 @@ namespace {
         Game::Vec3 pos{};
         Game::Vec3 error{};    // added to the replay's position, fading out (kCorrectMs)
         u32 replayed = 0;      // count at the last frame
+        u32 arrival = 0;       // the frame (count) of the last warped frame + 1, 0: none waiting (ArrivalHeld)
+        bool arriving = false; // the replay holds the ghost hidden at its arrival
         double lastNow = 0;
         float moved[60] = {};  // speed in each of the last 60 frames (DBG puppet: smoothness)
         u32 shownFrames = 0;
@@ -188,7 +230,10 @@ namespace {
     constexpr u64 kStaleMs = 5000;
     constexpr int kFlagWarped = 1, kFlagHidden = 2, kFlagStill = 4;
     constexpr u32 kRespawnFrames = 60;  // after a failed spawn
-    constexpr float kTagHeight = 1.3f;  // the name tag's point above the ghost's feet
+    // The name tag's point: above the head bone of the ghost's model (where Link's head is drawn, so it follows a
+    // fall from above, a jump or a warp's lift), or above its feet while the model has no skeleton yet.
+    constexpr int kHeadBone = 28;
+    constexpr float kTagAboveHead = 0.68f, kTagHeight = 1.3f;  // kTagHeight: above the feet (the head standing + 0.68)
     bool g_NameTags = true;             // DBG puppet tags on|off
     bool g_DrawGhosts = true;           // DBG puppet draw off: models hidden, all else runs (finding the cost)
     bool g_Dither = true;               // DBG puppet dither off: drawn without the dither state
@@ -200,28 +245,42 @@ namespace {
 #endif
     constexpr u32 kNoRowFrames = 600;   // after a spawn without the APGhost row
     // An actor spawned in a level's first frames can stay inactive (entity flags without bit 2, (f & 0x40000017) !=
-    // 0x17): never updated or drawn. One inactive this long is made again; an active one stays active through
-    // pauses and level changes.
-    constexpr u32 kActiveMask = 0x40000017, kActive = 0x17;
+    // 0x17): never updated or drawn. One inactive this long that was never active is made again. A dungeon room's
+    // change clears bit 2 on every actor but Link's, for its scroll (~25 frames) and on a ghost's for good once Link
+    // has left its room and come back, so the module sets it again on a shown ghost's actor that was active (the
+    // entity's virtual +0x50 follows a change of its active state, as Entity_SetEnabled calls it): the ghost goes on
+    // moving through the scroll.
+    constexpr u32 kActiveMask = 0x40000017, kActive = 0x17, kActiveRoomBit = 4;
+    constexpr size_t kEntityActiveChanged = 0x50 / 8;
     constexpr u32 kInactiveFrames = 30;
     u32 g_Remade = 0;  // DBG puppet: actors made again
 
-    enum class Look { Unknown, Ghost, Hidden };
     struct Puppet {
         void* actor = nullptr;
         void* ctrl = nullptr;    // a weak reference to the actor
         u8* model = nullptr;     // once loaded
-        Look look = Look::Unknown;
-        u32 gear = AP::GhostNet::LOOK_DEFAULT;  // the look of the frame replayed
+        AP::GhostNet::Look look;                 // the look of the frame replayed
         int tunic = -1;                          // the tunic set, -1: none yet, kNoTunic: the model has none
         void* tunicAnim = nullptr;               // the animation on the tunic's slot when it was set
+        int upper = -1;                          // the anim id on the upper body's layer, -1: not set on this model
+        int faceSlots[kFaceParts] = {kFaceUnknown, kFaceUnknown, kFaceUnknown};  // kFaceAnims' slots
+        int faceSet[kFaceParts] = {-1, -1, -1};  // the frames set on them
+        bool ownFace = false;                    // draws its own face shapes (another face than the instanced one)
         bool shown = false;
         u64 hiddenSince = 0;     // ms
         u32 spawnAfter = 0;      // frame
         Track track;
         u32 framesSeen = 0;      // the ghost's lines fed so far
         u32 inactiveFrames = 0;  // shown with an inactive actor
+        bool wasActive = false;  // its actor has been active
         int detail = 2;          // 2: its whole look drawn, 1: only kCrowdShapes, 0: none (crowds, Rank)
+        u32 shownMats[4] = {};   // the model's material visibility words a ghost draws with (kShownMaterials)
+        int matWords = -1;       // their count, -1: not computed for this model
+        u32 readyFrames = 0;     // frames its body has drawn in a row (visibility kept, actor active)
+        bool ready = false;      // its body draws: its name tag and instanced shapes may show
+#ifdef LASAP_TEST
+        u32 visFixes = 0;        // frames whose visibility the module had to write again
+#endif
 #ifdef LASAP_TEST
         std::vector<std::string> animLog;  // its plays and model loads, for DBG puppet animlog
         u32 shownAt = 0;                   // frame it was last shown
@@ -263,6 +322,13 @@ namespace {
     float g_Fps = 60;
 
 #ifdef LASAP_TEST
+    // DBG puppet framelog: per frame of the module's tick, the pause flag (Framework +0x510), the ghost draws and the
+    // instanced models' draws recorded so far, the instanced records written and the ghosts ready
+    struct FrameRow { u32 frame; u8 paused; u32 draws, instDraws, records, ready; };
+    constexpr u32 kFrameLog = 120;
+    constexpr size_t kFrameworkPaused = 0x510;
+    FrameRow g_FrameLog[kFrameLog];
+    u32 g_FrameLogCount = 0;
     struct Sample { Game::Vec3 pos; Game::Vec4 rot; };
     // DBG puppet: Link's path g_Delay frames late, fed g_SteerHz times a second (0: written as it is)
     constexpr int kHistory = 1024;
@@ -309,8 +375,19 @@ namespace {
 
     void* AnimComp(const Puppet& p) { return Alive(p) ? At<void*>(p.actor, kActorAnimComp) : nullptr; }
 
+    // The animation player's model instance (+0x88) and model object (+0x90); a layered player (the ghosts', with
+    // Link's upper-body layer) keeps them with its layers, at +0x1b8 and +0x1c0.
+    constexpr size_t kLayeredInstance = 0x1b8, kLayeredModel = 0x1c0;
+    bool IsLayered(const void* player) { return At<uintptr_t>(player, 0) == g_BaseAddress + kLayeredVtable; }
+    u8* PlayerInstance(const void* player) {
+        return At<u8*>(player, IsLayered(player) ? kLayeredInstance : kAnimPlayerInstance);
+    }
+
     // The puppet's model once it is loaded: its animation player's model.
-    u8* ModelOf(const Puppet& p) { return At<u8*>(At<void*>(AnimComp(p), kAnimCompPlayer), kAnimPlayerModel); }
+    u8* ModelOf(const Puppet& p) {
+        void* player = At<void*>(AnimComp(p), kAnimCompPlayer);
+        return At<u8*>(player, IsLayered(player) ? kLayeredModel : kAnimPlayerModel);
+    }
 
     void ClearSpan(int n) {
         g_Spans[n].hi.store(0, std::memory_order_release);
@@ -330,29 +407,56 @@ namespace {
 #endif
     }
 
-    // Draws only the materials a ghost shows, or (hidden) none.
-    void SetLook(Puppet& p, Look look) {
-        if (p.model == nullptr || p.look == look) return;
-        u16 count = At<u16>(p.model, kModelMatCount);
-        u8* mats = At<u8*>(p.model, kModelMats);
-        u32* visible = At<u32*>(p.model, kModelMatVis);
+    // The model's visibility words a ghost draws with: the materials it shows (kShownMaterials).
+    void ComputeShownMats(Puppet& p) {
+        u16 count = std::min<u16>(At<u16>(p.model, kModelMatCount), 32 * 4);
+        const u8* mats = At<const u8*>(p.model, kModelMats);
+        std::fill(std::begin(p.shownMats), std::end(p.shownMats), 0);
         for (u16 i = 0; i < count; i++) {
             std::string_view name;
             if (const u8* res = At<const u8*>(mats + i * kMatStride, 0)) {
                 const u8* s = At<const u8*>(res, 8);
                 name = std::string_view(reinterpret_cast<const char*>(s + 2), *reinterpret_cast<const u16*>(s));
             }
-            bool shown = look == Look::Ghost && std::any_of(std::begin(kShownMaterials), std::end(kShownMaterials),
-                                                            [&](const char* m) { return name == m; });
-            if (shown) visible[i / 32] |= 1u << (i % 32);
-            else visible[i / 32] &= ~(1u << (i % 32));
+            if (std::any_of(std::begin(kShownMaterials), std::end(kShownMaterials), [&](const char* m) { return name == m; }))
+                p.shownMats[i / 32] |= 1u << (i % 32);
         }
-        p.look = look;
+        p.matWords = (count + 31) / 32;
+    }
+
+    // Draws only the materials a ghost shows, or (hidden) none; true when they already were. The game sets the
+    // visibility again at times (the model's setup some frames after it appears, the actor coming back after a
+    // dungeon room's scroll), so it is checked every frame.
+    bool WriteLook(Puppet& p, bool draw) {
+        if (p.model == nullptr) return false;
+        if (p.matWords < 0) ComputeShownMats(p);
+        u16 count = std::min<u16>(At<u16>(p.model, kModelMatCount), 32 * 4);
+        u32* visible = At<u32*>(p.model, kModelMatVis);
+        if (visible == nullptr) return false;
+        bool kept = true;
+        for (int w = 0; w < p.matWords; w++) {
+            u32 valid = count - 32 * w >= 32 ? ~0u : (1u << (count - 32 * w)) - 1;
+            u32 want = (draw ? p.shownMats[w] : 0) | (visible[w] & ~valid);
+            if (visible[w] != want) {
+                visible[w] = want;
+                kept = false;
+            }
+        }
+#ifdef LASAP_TEST
+        if (!kept) {
+            p.visFixes++;
+            if (p.animLog.size() < 40) p.animLog.push_back(std::string(draw ? "vis" : "hide") + "@" + std::to_string(g_LastFrame));
+        }
+#endif
+        return kept;
     }
 
     void Hide(Puppet& p, u64 now) {
         ClearSpan(IndexOf(p));
-        if (Alive(p)) SetLook(p, Look::Hidden);
+        if (Alive(p)) WriteLook(p, false);
+        p.readyFrames = 0;
+        p.ready = false;
+        p.wasActive = false;
         if (p.shown) p.hiddenSince = now;
         p.shown = false;
         p.track = Track{};
@@ -371,11 +475,13 @@ namespace {
 
     void Place(Puppet& p, const Game::Vec3& pos, const Game::Vec4* rot);
 
-    // Whether the Npc sheet has the APGhost row (the patcher adds it with the ghosts' model).
-    bool HasGhostRow() {
+    // The Npc sheet's APGhost row (the patcher adds it with the ghosts' model), or nullptr.
+    const void* GhostRow() {
         void* sheet = **reinterpret_cast<void***>(g_BaseAddress + kNpcSheets);
-        return sheet != nullptr && GameFn<void* (*)(void*, StringView*, u64)>(kFindRow)(sheet, &g_GhostRow, kNpcRowSize) != nullptr;
+        return sheet != nullptr ? GameFn<void* (*)(void*, StringView*, u64)>(kFindRow)(sheet, &g_GhostRow, kNpcRowSize) : nullptr;
     }
+
+    bool HasGhostRow() { return GhostRow() != nullptr; }
 
     // Creates actor <id> at pos as PopEnemy does, with the player as owner, and keeps a weak reference to it; a
     // puppet that has an actor shows it there again.
@@ -481,6 +587,40 @@ namespace {
         }
     }
 
+    // The sender's upper-body animation (anim id, 0 none) on layer 1 of the puppet's layered animation player, from
+    // its start; nothing on a model whose player is not layered.
+    void SetUpper(Puppet& p, int anim) {
+        if (anim == p.upper) return;
+        p.upper = anim;
+        void* comp = AnimComp(p);
+        u8* sac = At<u8*>(comp, kAnimCompPlayer);
+        if (sac == nullptr || !IsLayered(sac) || At<s32>(sac, kSacLayerCount) <= kUpperLayer) return;
+        SharedPtr played{};
+        const char* name = anim > 0 ? AP::GhostNet::AnimName(anim) : nullptr;
+        if (name != nullptr) {
+            NameView view{name, strlen(name)};
+            GameFn<void (*)(SharedPtr*, void*, NameView*)>(kNpcAnimGet)(&played, comp, &view);
+        }
+        // none: the layer is only turned off
+        if (played.ptr != nullptr) {
+            GameFn<void (*)(void*, int, SharedPtr*, float, float)>(kLayeredSetSlot)(sac, kUpperLayer, &played, g_AnimBlend,
+                                                                                    0);
+            u8* layer = At<u8**>(sac, kSacLayers)[kUpperLayer];
+            if (layer != nullptr) {
+                uintptr_t* vtable = *reinterpret_cast<uintptr_t**>(layer);
+                reinterpret_cast<void (*)(void*, bool)>(vtable[kLayerSetLoop])(layer, AP::GhostNet::AnimLoops(anim));
+                reinterpret_cast<void (*)(void*, float)>(vtable[kLayerSetStart])(layer, 0);
+            }
+        }
+        GameFn<void (*)(void*, int, bool)>(kLayerEnable)(sac + kSacLayerSet, kUpperLayer, played.ptr != nullptr);
+        ReleaseShared(played.ctrl);
+#ifdef LASAP_TEST
+        if (p.animLog.size() < 40)
+            p.animLog.push_back("upper:" + std::string(name != nullptr ? name : "-") + (played.ptr != nullptr ? "" : "?") +
+                                "@" + std::to_string(g_LastFrame));
+#endif
+    }
+
 #ifdef LASAP_TEST
     float YawOf(const Game::Vec4& q) { return 2 * std::atan2(q.y, q.t); }
 #endif
@@ -516,6 +656,7 @@ namespace {
         else tr.offset += (delay - tr.offset) * kOffsetRise;
         tr.frames[tr.count % kTrack] = f;
         tr.count++;
+        if (f.flags & kFlagWarped) tr.arrival = tr.count;
     }
 
     Game::Vec3 PosOf(const Frame& f) { return Game::Vec3{f.x, f.y, f.z}; }
@@ -575,6 +716,27 @@ namespace {
         return r;
     }
 
+    // Whether the replay at time t (frame r.a) holds the ghost hidden at its arrival (kArriveHoldMs).
+    bool ArrivalHeld(Track& tr, const Replayed& r, double t) {
+        if (tr.arrival == 0) return false;
+        u32 w = tr.arrival - 1;
+        u32 oldest = tr.count > kTrack ? tr.count - kTrack : 0;
+        if (w < oldest) {
+            tr.arrival = 0;
+            return false;
+        }
+        if (r.a < w) return false;
+        const Frame& fw = tr.frames[w % kTrack];
+        bool released = t - static_cast<double>(fw.timeMs) >= kArriveHoldMs;
+        for (u32 k = w + 1; k <= r.a && !released; k++) {
+            const Frame& f = tr.frames[k % kTrack];
+            released = (f.flags & kFlagStarted) != 0 || f.anim != fw.anim ||
+                       std::hypot(f.x - fw.x, f.y - fw.y, f.z - fw.z) > kArriveMove;
+        }
+        if (released) tr.arrival = 0;
+        return !released;
+    }
+
     // One frame of the replay; picks the animation from the speed.
     void ReplayFrame(Puppet& p, double now) {
         Track& tr = p.track;
@@ -592,6 +754,10 @@ namespace {
             else tr.error = Game::Vec3{};
         }
         tr.replayed = tr.count;
+        bool held = tr.arriving;
+        tr.arriving = ArrivalHeld(tr, r, t);
+        // shown again: the animation from its start, not blended from the pose it held hidden
+        float blend = held && !tr.arriving ? 0 : g_AnimBlend;
         double dt = now - tr.lastNow;
         float fade = tr.shownFrames > 0 && dt > 0 ? static_cast<float>(std::exp(-dt / kCorrectMs)) : 0;
         tr.error = Game::Vec3{tr.error.x * fade, tr.error.y * fade, tr.error.z * fade};
@@ -613,13 +779,14 @@ namespace {
         tr.pos = pos;
         Game::Vec4 q = QuatOf(fa.yaw * static_cast<float>(M_PI) / 180);
         Place(p, pos, &q);
-        p.gear = fa.look;
+        p.look = fa.look;
         // From the model's load on: the NPC plays its own idle as it loads.
         if (p.model == nullptr) return;
+        SetUpper(p, fa.upperAnim);
         if (fa.anim > 0) {
             bool started = (fa.flags & kFlagStarted) != 0 && tr.started != a;
             if (fa.anim != tr.anim || started) {
-                if (const char* name = AP::GhostNet::AnimName(fa.anim)) PlayAnim(p, name, g_AnimBlend, fa.animFrame / 10.0f);
+                if (const char* name = AP::GhostNet::AnimName(fa.anim)) PlayAnim(p, name, blend, fa.animFrame / 10.0f);
                 tr.anim = fa.anim;
                 tr.started = a;
                 tr.gait = -1;
@@ -629,7 +796,7 @@ namespace {
         int gait = tr.gait < 0 ? GaitAt(speed) : std::clamp(tr.gait, GaitAt(speed - kGaitMargin),
                                                              GaitAt(speed + kGaitMargin));
         if (gait != tr.gait) {
-            PlayAnim(p, kGaits[gait], kGaitBlend, 0);
+            PlayAnim(p, kGaits[gait], blend == 0 ? 0 : kGaitBlend, 0);
             tr.gait = gait;
             tr.anim = -1;
         }
@@ -683,23 +850,29 @@ namespace {
 #ifdef LASAP_TEST
         if (model != nullptr && p.animLog.size() < 40) p.animLog.push_back("model@" + std::to_string(g_LastFrame));
 #endif
-        p.look = Look::Unknown;
         p.tunic = -1;
         p.tunicAnim = nullptr;
+        p.upper = -1;
+        std::fill(std::begin(p.faceSlots), std::end(p.faceSlots), kFaceUnknown);
+        std::fill(std::begin(p.faceSet), std::end(p.faceSet), -1);
+        p.ownFace = false;
+        p.matWords = -1;
+        p.readyFrames = 0;
+        p.ready = false;
         p.track.gait = -1;
         p.track.anim = -1;
     }
 
     // The look's shapes on the puppet's model.
     void SetShapes(Puppet& p) {
-        u8* instance = At<u8*>(At<void*>(AnimComp(p), kAnimCompPlayer), kAnimPlayerInstance);
+        u8* instance = PlayerInstance(At<void*>(AnimComp(p), kAnimCompPlayer));
         if (At<u8*>(At<u8*>(instance, kInstanceModel), kModelObject) != p.model) return;
         u8* shapes = At<u8*>(instance, kInstanceShapes);
         if (shapes == nullptr) return;
-        int count = std::min<int>(At<u16>(p.model, kModelShapeCount), AP::GhostNet::LOOK_SHAPES);
+        int count = std::min<int>(At<u16>(p.model, kModelShapeCount), AP::GhostNet::SHAPE_COUNT);
         u32 mask = p.detail == 2 ? g_ShapeMask : g_ShapeMask & g_CrowdMask;
-        mask &= ~kInstancedShapes;
-        for (int i = 0; i < count; i++) shapes[i] = (p.gear & mask) >> i & 1;
+        mask &= ~(kInstancedShapes & ~(p.ownFace ? kFaceShapes : 0));
+        for (int i = 0; i < count; i++) shapes[i] = (p.look.shapes & mask) >> i & 1;
     }
 
     void* TunicSlot(const Puppet& p, int& index) {
@@ -717,7 +890,7 @@ namespace {
 
     // The look's tunic: "clothes" on its slot (again when something else took the slot), held at the tunic's frame.
     void SetTunic(Puppet& p) {
-        int tunic = std::min<int>((p.gear >> AP::GhostNet::LOOK_TUNIC_SHIFT) & 3, 2);
+        int tunic = std::clamp(p.look.tunic, AP::GhostNet::TUNIC_GREEN, AP::GhostNet::TUNIC_BLUE);
         int index;
         void* slot = TunicSlot(p, index);
         if (slot == nullptr || p.tunic == kNoTunic) return;
@@ -739,14 +912,62 @@ namespace {
         p.tunic = tunic;
     }
 
-    // Last each frame for each puppet with an actor: drawn as a ghost (dithered) or hidden. The model's setup sets
-    // the visibility bits some frames after it appears, so they are written again every half second.
-    void Update(Puppet& p, u32 frame) {
-        if (p.model == nullptr) return;
-        if (frame % 30 == 0) p.look = Look::Unknown;
-        bool draw = p.shown && g_DrawGhosts && p.detail > 0;
-        SetLook(p, draw ? Look::Ghost : Look::Hidden);
+    // The slot of the puppet's material animation component that holds the animation of that name, or -1.
+    int MatSlotOf(const Puppet& p, std::string_view name) {
+        const u8* mat = At<const u8*>(AnimComp(p), kNpcMaterialAnim);
+        const u8* const* slots = At<const u8* const*>(mat, kMatAnimSlots);
+        int count = At<s32>(mat, kMatAnimSlotCount);
+        for (int i = 0; slots != nullptr && i < count; i++) {
+            const u8* s = At<const u8*>(At<const u8*>(At<const u8*>(slots[i], kSlotAnim), kMatAnimRes), kResName);
+            if (s != nullptr && std::string_view(reinterpret_cast<const char*>(s + 2), At<u16>(s, 0)) == name) return i;
+        }
+        return -1;
+    }
+
+    // The sender's face on the face's slots; the puppet draws its own face shapes while it differs from the
+    // instanced face (all frames 0). A model without all three slots (an older mod's row) keeps the instanced face.
+    void SetFace(Puppet& p) {
+        bool all = true;
+        for (int k = 0; k < kFaceParts; k++) {
+            if (p.faceSlots[k] == kFaceUnknown) p.faceSlots[k] = MatSlotOf(p, kFaceAnims[k]);
+            all &= p.faceSlots[k] >= 0;
+        }
+        int frames[kFaceParts] = {p.look.eye, p.look.mouth, p.look.ear};
+        for (int k = 0; k < kFaceParts; k++)
+            if (frames[k] < 0 || frames[k] >= kFaceFrames[k]) frames[k] = 0;
+        p.ownFace = all && (frames[0] | frames[1] | frames[2]) != 0;
+        if (!all) return;
+        u8* mat = At<u8*>(AnimComp(p), kNpcMaterialAnim);
+        u8** slots = At<u8**>(mat, kMatAnimSlots);
+        for (int k = 0; k < kFaceParts; k++) {
+            if (frames[k] == p.faceSet[k] || p.faceSlots[k] >= At<s32>(mat, kMatAnimSlotCount)) continue;
+            u8* slot = slots[p.faceSlots[k]];
+            uintptr_t* vtable = *reinterpret_cast<uintptr_t**>(slot);
+            reinterpret_cast<void (*)(void*, float)>(vtable[kSlotSetRate])(slot, 0);
+            reinterpret_cast<void (*)(void*, float)>(vtable[kSlotSetFrame])(slot, static_cast<float>(frames[k]));
+            p.faceSet[k] = frames[k];
+        }
+    }
+
+    // Last each frame for each puppet with an actor: drawn as a ghost (dithered) or hidden. It is ready (its name tag
+    // and instanced shapes show) once its body has drawn kReadyFrames whole frames: the visibility kept and the actor
+    // active (an inactive actor is neither updated nor drawn: one spawned in a level's first frames), so a tag or a
+    // face never shows without the body; the instanced shapes take the bones the frame before posed, which in the
+    // first frame are those of the pose it held hidden (on the floor, before a fall from above).
+    constexpr int kReadyFrames = 2;
+    void Update(Puppet& p) {
+        if (p.model == nullptr) {
+            p.readyFrames = 0;
+            p.ready = false;
+            return;
+        }
+        bool active = (At<u32>(p.actor, kActorFlags) & kActiveMask) == kActive;
+        bool draw = p.shown && g_DrawGhosts && p.detail > 0 && !p.track.arriving;
+        bool kept = WriteLook(p, draw);
+        p.readyFrames = draw && kept && active ? p.readyFrames + 1 : 0;
+        p.ready = p.readyFrames >= kReadyFrames;
         if (!p.shown) return;
+        SetFace(p);
         SetShapes(p);
         SetTunic(p);
         if (draw) PublishSpan(IndexOf(p), p.model);
@@ -773,6 +994,8 @@ namespace {
     void* g_GhostPending = nullptr;
     std::pair<void*, u8*> g_Contexts[8] = {};
     u32 g_GhostDraws = 0;
+    u32 g_InstDraws = 0;           // of them the instanced models' (DBG puppet framelog)
+    bool g_PendingInst = false;    // the pending draw is an instanced model's
     u32 g_DrawsBy[8] = {};    // puppet draws per wrapper (g_Contexts' order), for DBG puppet
     u32 g_SkipMask = 0;       // DBG puppet skip: wrappers whose puppet draws are dropped (finding the cost)
     void* g_SkipPending = nullptr;
@@ -792,12 +1015,13 @@ namespace {
         NvnFn<void (*)(void*, const void*)>(kGotBindMs)(cmdBuf, g_GhostMs);
     }
 
-    bool IsPuppetBlock(u64 address) {
-        for (auto& s : g_Spans) {
-            u64 hi = s.hi.load(std::memory_order_acquire);
-            if (hi != 0 && address >= s.lo.load(std::memory_order_acquire) && address < hi) return true;
+    // The span (puppet, or kInstSpan + instanced group) whose blocks hold this address, or -1.
+    int PuppetBlock(u64 address) {
+        for (int n = 0; n < kPuppets + kInstSpans; n++) {
+            u64 hi = g_Spans[n].hi.load(std::memory_order_acquire);
+            if (hi != 0 && address >= g_Spans[n].lo.load(std::memory_order_acquire) && address < hi) return n;
         }
-        return false;
+        return -1;
     }
 
     u8* ContextOf(void* wrapper) {
@@ -825,6 +1049,7 @@ namespace {
     // After a puppet's draw on this wrapper: bind the raster state its context has cached.
     void EndGhostDraw(void* wrapper) {
         g_GhostDraws++;
+        if (g_PendingInst) g_InstDraws++;
         int i = WrapperIndex(wrapper);
         if (i >= 0) g_DrawsBy[i]++;
         g_GhostPending = nullptr;
@@ -848,8 +1073,7 @@ namespace {
     // so a shape bound to one bone shows at a ghost's bone with the ghost's bone world times the inverse of M's.
     // g3d: model object +0x38 the skeleton, its +0x20 the bones' world matrices (0x40 each: X, Y, Z axes, translation).
     constexpr uintptr_t kInstCtor = 0x104d540, kLockOwner = 0x21470, kSharedCtrlVtable = 0x1b9cf50,
-                        kStartTask = 0xfae2d0, kEntityManager = 0x1cc6d98, kAttachChild = 0xfaa8a0,
-                        kGameNew = 0x1431170, kGameDelete = 0x1431110;
+                        kStartTask = 0xfae2d0, kEntityManager = 0x1cc6d98, kAttachChild = 0xfaa8a0;
     constexpr size_t kInstSize = 0x310, kInstFlags = 0x40, kInstNoPush = 0x2f9, kInstVisible = 0x2fa, kInstM = 0x148,
                      kInstSelf = 0x8, kInstSelfCtrl = 0x10, kAnimSmc = 0x168, kSmcResource = 0x168, kMRecords = 0x398,
                      kFrameworkModels = 0x540, kModelSkeleton = 0x38, kSkeletonWorld = 0x20;
@@ -862,7 +1086,7 @@ namespace {
     // shield A, the mirror shield, the ocarina (bone 24, itemA_R), the face's ear, eyes and mouth (bone 28, head).
     struct InstGroup { u32 shapes; int bone; };
     constexpr InstGroup kInstGroups[] = {{0x30000, 12}, {0xc0000, 12}, {0x1, 12}, {0x4, 12}, {0x1000, 12},
-                                         {0x2000, 24}, {0xc000, 24}, {0x2, 24}, {0x380, 28}};
+                                         {0x2000, 24}, {0xc000, 24}, {0x2, 24}, {0x380, kHeadBone}};
     constexpr int kInstGroupCount = sizeof(kInstGroups) / sizeof(kInstGroups[0]);
     constexpr u32 InstShapes() {
         u32 shapes = 0;
@@ -1028,9 +1252,10 @@ namespace {
             u32 n = 0;
             for (int i = 0; i < kGhosts && n < static_cast<u32>(kInstCapacity); i++) {
                 const Puppet& p = g_Puppets[i];
-                if (!p.shown || p.model == nullptr || p.detail == 0 || !Alive(p)) continue;
-                u32 look = p.gear & (p.detail == 2 ? g_ShapeMask : g_ShapeMask & g_CrowdMask);
-                if (!(look & kInstGroups[g].shapes)) continue;
+                if (!p.ready || p.model == nullptr || p.detail == 0 || !Alive(p)) continue;
+                if (p.ownFace && kInstGroups[g].shapes == kFaceShapes) continue;
+                u32 shapes = p.look.shapes & (p.detail == 2 ? g_ShapeMask : g_ShapeMask & g_CrowdMask);
+                if (!(shapes & kInstGroups[g].shapes)) continue;
                 const float* bone = BoneWorld(p.model, kInstGroups[g].bone);
                 if (bone == nullptr) continue;
                 float axes[3][3], t[3];
@@ -1059,14 +1284,22 @@ namespace {
             if (frame < p.spawnAfter || !Spawn(p, kGhostActor, Game::Vec3{g.x, g.y, g.z}, frame, err)) return;
             p.framesSeen = g.timelineFrom;
         }
-        if ((At<u32>(p.actor, kActorFlags) & kActiveMask) != kActive) {
-            if (++p.inactiveFrames >= kInactiveFrames) {
+        u32 flags = At<u32>(p.actor, kActorFlags);
+        if ((flags & kActiveMask) != kActive) {
+            if (p.wasActive && !(flags & kActiveRoomBit)) {
+                flags |= kActiveRoomBit;
+                *reinterpret_cast<u32*>(static_cast<u8*>(p.actor) + kActorFlags) = flags;
+                if ((flags & kActiveMask) == kActive)
+                    reinterpret_cast<void (*)(void*)>((*reinterpret_cast<uintptr_t**>(p.actor))[kEntityActiveChanged])(p.actor);
+            }
+            if (!p.wasActive && ++p.inactiveFrames >= kInactiveFrames) {
                 g_Remade++;
                 Remove(p);  // spawned again next frame
                 return;
             }
         } else {
             p.inactiveFrames = 0;
+            p.wasActive = true;
         }
         if (p.framesSeen < g.timelineFrom) {
             // the sender's clock started over
@@ -1104,8 +1337,8 @@ namespace {
                     int flags = (still ? kFlagStill : 0) | (anim.starts != g_TestStarts ? kFlagStarted : 0);
                     g_TestStarts = anim.starts;
                     Push(p.track, Frame{static_cast<s64>(now), now, s.pos.x, s.pos.y, s.pos.z,
-                                        YawOf(s.rot) * 180 / static_cast<float>(M_PI), anim.anim, anim.frame, flags,
-                                        AP::GhostNet::LinkLook()});
+                                        YawOf(s.rot) * 180 / static_cast<float>(M_PI), anim.anim, anim.frame,
+                                        anim.upper, flags, AP::GhostNet::LinkLook()});
                     g_TestFedFrame = frame;
                 }
                 ReplayFrame(p, nowFine);
@@ -1163,7 +1396,12 @@ namespace {
             s += " anim=" + std::string(anim != nullptr ? anim : "-");
             int slot;
             TunicSlot(p, slot);
-            s += " gear=" + Hex(p.gear) + " tunic=" + std::to_string(p.tunic) + "@" + std::to_string(slot);
+            s += " shapes=" + Hex(p.look.shapes) + " tunic=" + std::to_string(p.tunic) + "@" + std::to_string(slot);
+            s += " ready=" + std::to_string(p.ready) + " visfix=" + std::to_string(p.visFixes) + " face=" +
+                 std::to_string(p.look.eye) + "," + std::to_string(p.look.mouth) + "," + std::to_string(p.look.ear) + "@" +
+                 std::to_string(p.faceSlots[0]) + "," + std::to_string(p.faceSlots[1]) + "," +
+                 std::to_string(p.faceSlots[2]) + (p.ownFace ? "own" : "") + " upper=" + std::to_string(p.upper) +
+                 (p.track.arriving ? " arriving" : "");
             if (p.track.shownFrames > 60) {
                 // speed over the last 60 frames: mean and standard deviation, units per second
                 float sum = 0, sq = 0;
@@ -1191,6 +1429,44 @@ HOOK_DEFINE_TRAMPOLINE(NpcComponentCtor) {
     }
 };
 
+// A ghost's NPC component (the APGhost row) gets a layered animation player with Link's upper-body layer. The
+// player comes back through x8 (a shared_ptr), so the hook returns a type that is not trivial.
+struct SharedOut {
+    void* ptr = nullptr;
+    void* ctrl = nullptr;
+    ~SharedOut() {}
+};
+
+HOOK_DEFINE_TRAMPOLINE(MakeAnimator) {
+    static SharedOut Callback(u8* comp, StringView* name, SharedPtr* model) {
+        const void* row = comp != nullptr ? At<const void*>(comp, kNpcRow) : nullptr;
+        if (g_LayeredGhosts && row != nullptr && model != nullptr && model->ptr != nullptr && row == GhostRow()) {
+            SharedOut out;
+            int layers = 2;
+            GameFn<void (*)(SharedOut*, void*, StringView*, SharedPtr*, int*)>(kLayeredMake)(
+                &out, At<void*>(comp, kNpcEntity), name, model, &layers);
+            if (out.ptr != nullptr) {
+                u8* set = static_cast<u8*>(out.ptr) + kSacLayerSet;
+                GameFn<void (*)(void*, int, const char*, bool)>(kLayerBoneMask)(
+                    set, kUpperLayer, reinterpret_cast<const char*>(g_BaseAddress + kSpineA), true);
+                GameFn<void (*)(void*, int, bool)>(kLayerEnable)(set, kUpperLayer, false);
+                // started and made the entity's child, as NpcAnimator_Make does with its player
+                void* entity = At<void*>(comp, kNpcEntity);
+                void* manager = *reinterpret_cast<void**>(g_BaseAddress + kEntityManager);
+                if (manager != nullptr) {
+                    SharedPtr sp{out.ptr, out.ctrl};
+                    if (sp.ctrl != nullptr) __atomic_fetch_add(CtrlCount(sp.ctrl, kCtrlOwners), 1, __ATOMIC_ACQ_REL);
+                    GameFn<void (*)(void*, SharedPtr*)>(kStartTask)(manager, &sp);
+                    ReleaseShared(sp.ctrl);
+                }
+                GameFn<bool (*)(void*, void*)>(kAddChild)(entity, out.ptr);
+                return out;
+            }
+        }
+        return Orig(comp, name, model);
+    }
+};
+
 #ifdef LASAP_TEST
 // The plays by name on the puppets' animation components (DBG puppet animlog).
 HOOK_DEFINE_TRAMPOLINE(PlayByName) {
@@ -1198,7 +1474,8 @@ HOOK_DEFINE_TRAMPOLINE(PlayByName) {
         if (mode == 0 && comp != nullptr) {
             for (auto& p : g_Puppets) {
                 if (comp == AnimComp(p) && p.animLog.size() < 40)
-                    p.animLog.push_back(std::string(name->ptr, name->len) + "@" + std::to_string(g_LastFrame));
+                    p.animLog.push_back(std::string(name->ptr, name->len) + (blend == 0 ? "/0" : "") + "@" +
+                                        std::to_string(g_LastFrame));
             }
         }
         Orig(comp, name, mode, blend, frame);
@@ -1209,7 +1486,9 @@ HOOK_DEFINE_TRAMPOLINE(PlayByName) {
 HOOK_DEFINE_TRAMPOLINE(BindUniformBuffer) {
     static void Callback(u8* wrapper, int stage, int slot, u64* bufferOffset, u64 size) {
         Orig(wrapper, stage, slot, bufferOffset, size);
-        if (bufferOffset == nullptr || !IsPuppetBlock(bufferOffset[0] + bufferOffset[1])) return;
+        int span = bufferOffset != nullptr ? PuppetBlock(bufferOffset[0] + bufferOffset[1]) : -1;
+        if (span < 0) return;
+        g_PendingInst = span >= kInstSpan;
         int i = WrapperIndex(wrapper);
         if (i >= 0 && (g_SkipMask >> i & 1)) {
             g_SkipPending = wrapper;
@@ -1262,6 +1541,7 @@ namespace AP::Puppet {
         PlayByName::InstallAtOffset(offset_manager.Offset(kPlayByName[0]));
 #endif
         NpcComponentCtor::InstallAtOffset(offset_manager.Offset(kNpcComponentCtor));
+        MakeAnimator::InstallAtOffset(offset_manager.Offset(kMakeAnimator));
         BindUniformBuffer::InstallAtOffset(offset_manager.Offset(kBindUniformBuffer));
         SetRasterState::InstallAtOffset(offset_manager.Offset(kSetRasterState));
         DrawElementsBaseVertex::InstallAtOffset(offset_manager.Offset(kDrawElementsBaseVertex));
@@ -1339,7 +1619,10 @@ namespace AP::Puppet {
         Game::Framework* fmwk = Game::GetFramework();
         if (player == nullptr || fmwk == nullptr) {
             // a level loads
-            for (int n = 0; n < kPuppets; n++) ClearSpan(n);
+            for (int n = 0; n < kPuppets; n++) {
+                ClearSpan(n);
+                g_Puppets[n].wasActive = false;
+            }
             g_SettleUntil = NowMs() + kSettleMs;
             AP::NameTag::DropAll();
             InstDropAll(false);
@@ -1349,7 +1632,12 @@ namespace AP::Puppet {
             return;
         }
         u32 frame = fmwk->mFrameCount;
-        if (frame == g_LastFrame) return;
+        if (frame == g_LastFrame) {
+            // the game paused (a menu opens): its frame count stays and the actors stand, but the instanced models'
+            // records are emptied each frame drawn, so they are written again
+            InstTick();
+            return;
+        }
         g_LastFrame = frame;
         for (auto& p : g_Puppets) {
             if (p.ctrl != nullptr && !Alive(p)) Forget(p);
@@ -1385,15 +1673,28 @@ namespace AP::Puppet {
 #endif
         Rank(player, frame, now);
         for (auto& p : g_Puppets) {
-            if (Alive(p)) Update(p, frame);
+            if (Alive(p)) Update(p);
         }
         InstTick();
-        // the name over the head of each ghost drawn whole (each tag's text costs draws too; the crowd limits count them)
+#ifdef LASAP_TEST
+        {
+            u32 records = 0, ready = 0;
+            for (auto& inst : g_Inst) records += inst.drawn;
+            for (int n = 0; n < kGhosts; n++) ready += g_Puppets[n].ready;
+            g_FrameLog[g_FrameLogCount++ % kFrameLog] =
+                FrameRow{frame, reinterpret_cast<u8*>(fmwk)[kFrameworkPaused], g_GhostDraws, g_InstDraws, records, ready};
+        }
+#endif
+        // the name over the head of each ghost drawn whole, once its body draws (each tag's text costs draws too; the
+        // crowd limits count them)
         for (int n = 0; n < kGhosts; n++) {
             const auto& p = g_Puppets[n];
-            if (g_NameTags && AP::GhostNet::ShowNames() && p.shown && p.detail == 2 && p.model != nullptr && Alive(p)) {
+            if (g_NameTags && AP::GhostNet::ShowNames() && p.ready && p.detail == 2 && Alive(p)) {
+                const float* head = BoneWorld(p.model, kHeadBone);
                 const Game::Vec3& at = p.track.pos;
-                AP::NameTag::Show(n, Game::Vec3{at.x, at.y + kTagHeight, at.z}, AP::GhostNet::Get(n).name);
+                Game::Vec3 tag = head != nullptr ? Game::Vec3{head[12], head[13] + kTagAboveHead, head[14]}
+                                                 : Game::Vec3{at.x, at.y + kTagHeight, at.z};
+                AP::NameTag::Show(n, tag, AP::GhostNet::Get(n).name);
             } else {
                 AP::NameTag::Hide(n);
             }
@@ -1407,9 +1708,13 @@ namespace AP::Puppet {
             shown += g_Spans[i].hi.load() != 0;
             actors += g_Puppets[i].ctrl != nullptr;
         }
-        // and ghost slot 0's look on its model: the shapes and tunic last set
+        // and ghost slot 0's look on its model: the shapes, tunic, face frames and upper-body animation last set
         const auto& p = g_Puppets[0];
-        std::string gear = p.model != nullptr && p.shown ? Hex(p.gear) + "/" + std::to_string(p.tunic) : "-";
+        std::string gear = p.model != nullptr && p.shown
+                               ? Hex(p.look.shapes) + "/" + std::to_string(p.tunic) + "/" + std::to_string(p.faceSet[0]) +
+                                     "," + std::to_string(p.faceSet[1]) + "," + std::to_string(p.faceSet[2]) + "/" +
+                                     std::to_string(p.upper)
+                               : "-";
         return std::to_string(shown) + "/" + std::to_string(actors) + " gear=" + gear + " " + AP::NameTag::State();
     }
 
@@ -1481,6 +1786,10 @@ namespace AP::Puppet {
         } else if (sub == "tags" && a.size() >= 4) {
             // DBG puppet tags on|off: the ghosts' name tags
             g_NameTags = a[3] == "on";
+        } else if (sub == "tags") {
+            // DBG puppet tags: the tags' text extents
+            AP::Send(AP::NameTag::Info());
+            return true;
         } else if (sub == "blend" && a.size() >= 4) {
             // DBG puppet blend <s>: the blend time of the sender's animations on the puppets
             g_AnimBlend = std::clamp(static_cast<float>(atof(a[3].c_str())), 0.0f, 2.0f);
@@ -1524,6 +1833,23 @@ namespace AP::Puppet {
                 AP::Send(buf);
             }
             AP::Send("TRACE end");
+            return true;
+        } else if (sub == "layered" && a.size() >= 4) {
+            // DBG puppet layered on|off: whether new ghost models get the layered animation player
+            g_LayeredGhosts = a[3] == "on";
+        } else if (sub == "framelog") {
+            // DBG puppet framelog: "FRAMELOG <frame> <paused> <ghost draws> <instanced draws> <records> <ready>" per
+            // logged frame (the draws since the frame before), oldest first
+            u32 from = g_FrameLogCount > kFrameLog ? g_FrameLogCount - kFrameLog : 0;
+            for (u32 i = from; i < g_FrameLogCount; i++) {
+                const FrameRow& r = g_FrameLog[i % kFrameLog];
+                const FrameRow& q = g_FrameLog[(i > from ? i - 1 : i) % kFrameLog];
+                char buf[96];
+                snprintf(buf, sizeof(buf), "FRAMELOG %u %u %u %u %u %u", r.frame, r.paused, r.draws - q.draws,
+                         r.instDraws - q.instDraws, r.records, r.ready);
+                AP::Send(buf);
+            }
+            AP::Send("FRAMELOG end");
             return true;
         } else if (sub == "drop") {
             // DBG puppet drop: removes DBG puppet's actor
