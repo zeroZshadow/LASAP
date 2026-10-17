@@ -24,10 +24,6 @@ CATEGORY_OPTIONS = {
 }
 MANSION_THRESHOLDS = {f"{n}-seashell-reward": n for n in (5, 15, 30, 40, 50)}
 
-DUNGEONS = ("tail-cave", "bottle-grotto", "key-cavern", "angler-tunnel", "catfish-maw", "face-shrine", "eagle-tower",
-            "turtle-rock", "color-dungeon")
-DUNGEON_ENTRANCES = {d: d for d in DUNGEONS}  # dungeon entrance shuffle is not supported
-
 _PRESETS = {0: "Basic", 1: "Advanced", 2: "Glitched", 3: "Hell"}
 _DUNGEON_ITEMS = {0: "Own Dungeon", 1: "Anywhere", 2: "Start With"}
 _INSTRUMENTS = {0: "Vanilla", 1: "Dungeon Rewards", 2: "Own Dungeon", 3: "Anywhere", 4: "Any Dungeon"}
@@ -162,15 +158,15 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Required Dungeons": 5,
         "Create Spoiler Log": False,
         "Unrandomizer Mode": False,
-        "Randomize Enemies": False,
-        "Randomize Enemy Sizes": False,
+        "Randomize Enemies": bool(o.randomize_enemies),
+        "Randomize Enemy Sizes": bool(o.randomize_enemy_sizes),
         "Chest Types": _CHEST_TYPES[o.chest_appearance.value],
         "Open Kanalet": bool(o.open_kanalet),
         "Open Mabe": bool(o.open_mabe),
         "Open Mamu": bool(o.open_mamu),
         "Completed Bridge": bool(o.completed_bridge),
         "Classic D2": bool(o.classic_d2),
-        "Shuffled Dungeons": False,
+        "Shuffled Dungeons": bool(o.shuffled_dungeons),
         "Consumable Drops": True,
         "Bad Pets": False,  # not supported
         "Fast Fishing": bool(o.fast_fishing),

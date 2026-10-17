@@ -32,12 +32,14 @@ OPTION_SETS = [
      "fast_stalfos": False, "stealing": "always"},
     {"chests": False, "free_gifts": False, "miscellaneous": False, "boss_drops": False, "instruments": "vanilla",
      "starting_instruments": 3, "seashell_mansion": 0, "dungeon_items": "start_with"},
+    {"shuffled_dungeons": True},
+    {"logic": "hell", "shuffled_dungeons": True, "owl_statues": "dungeons"},
 ]
 
 
 def lasr_reachable(world, lasr_items: Counter) -> set:
-    """Item locations LASR's evaluator reaches with the given items and the world's settings."""
-    logic_defs = copy.deepcopy(LOGIC)
+    """Item locations LASR's evaluator reaches with the given items and the world's settings and dungeon entrances."""
+    logic_defs = copy.deepcopy(world.compiler.logic)
     for loc in world.removed:
         del logic_defs[loc]
     placements = {k: None for k, v in logic_defs.items() if v["type"] in ("item", "follower")}

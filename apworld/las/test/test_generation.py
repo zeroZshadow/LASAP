@@ -19,7 +19,8 @@ class TestDefault(LASTestBase):
         call_all(self.multiworld, "post_fill")
         slot_data = self.world.fill_slot_data()
         self.assertEqual(set(slot_data), {"seed_hash", "goal", "instruments_required", "death_link", "location_count",
-                                          "settings", "logic", "options", "starting_instruments"})
+                                          "settings", "logic", "options", "starting_instruments",
+                                          "dungeon_entrances"})
         self.assertEqual(slot_data["instruments_required"], 8)
         self.assertEqual(self.world.patch_data()["settings"]["Instruments Required"], 8)
         from ..lasr_settings import TRACKER_SETTINGS

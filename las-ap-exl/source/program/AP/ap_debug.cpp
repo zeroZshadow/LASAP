@@ -1147,8 +1147,41 @@ namespace AP::Test {
         g_FrameInj |= inject;
     }
 
+    // DBG enemies: what the enemy randomizer did since the last DBG enemies reset
+    std::atomic<int> g_EnemiesSeen = 0, g_EnemiesChanged = 0, g_EnemiesSized = 0;
+    constexpr int kEnemyLog = 16;
+    std::atomic<u32> g_EnemyLog[kEnemyLog];  // vanilla id << 16 | new id
+    std::atomic<int> g_EnemyScale[kEnemyLog];  // scale x 100
+    std::atomic<int> g_EnemyNext = 0;
+
+    void OnEnemy(u16 vanilla, u16 now, float scale) {
+        g_EnemiesSeen++;
+        if (now != vanilla) g_EnemiesChanged++;
+        if (scale != 0.0f && scale != 1.0f) g_EnemiesSized++;
+        int i = g_EnemyNext++ % kEnemyLog;
+        g_EnemyLog[i] = (u32(vanilla) << 16) | now;
+        g_EnemyScale[i] = int(scale * 100.0f);
+    }
+
     bool Command(const std::vector<std::string>& a) {
         const std::string& cmd = a[1];
+        if (cmd == "enemies") {
+            // DBG enemies [reset]: enemies seen, changed and resized, and the last few as <vanilla id>><id>@<scale%>
+            if (a.size() >= 3 && a[2] == "reset") {
+                g_EnemiesSeen = g_EnemiesChanged = g_EnemiesSized = g_EnemyNext = 0;
+            }
+            std::string s = "OK enemies seen=" + std::to_string(g_EnemiesSeen.load()) +
+                            " changed=" + std::to_string(g_EnemiesChanged.load()) +
+                            " sized=" + std::to_string(g_EnemiesSized.load()) + " last=";
+            int next = g_EnemyNext.load();
+            for (int n = std::max(0, next - kEnemyLog); n < next; n++) {
+                u32 e = g_EnemyLog[n % kEnemyLog];
+                s += Hex(e >> 16) + ">" + Hex(e & 0xffff) + "@" + std::to_string(g_EnemyScale[n % kEnemyLog].load()) +
+                     (n + 1 < next ? "," : "");
+            }
+            AP::Send(s);
+            return true;
+        }
         if (cmd == "ghostnet") {
             // DBG ghostnet: the positions sent and the ghosts received (ap_ghostnet.cpp)
             AP::Send("OK " + AP::GhostNet::State());

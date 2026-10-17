@@ -4,6 +4,9 @@
 #include "Config/config.hpp"
 #include "Game/Data/inventory.hpp"
 #include "Hooks/Common/level.hpp"
+#ifdef LASAP_TEST
+#include "AP/ap_debug.hpp"
+#endif
 #include <string>
 #include <iterator>
 #include <vector>
@@ -172,6 +175,9 @@ namespace EnemyRandomizer {
         u16* actorID = reinterpret_cast<u16*>(actorDataOffset + 0xc);
         std::vector<u16> vec = getValidEnemies(*actorID);
         if (vec.size() > 1) {
+#ifdef LASAP_TEST
+            u16 vanilla_id = *actorID;
+#endif
             u64* hash = reinterpret_cast<u64*>(actorDataOffset);
             if (!isRequiredKill(*hash)) {
                 u16 new_enemy;
@@ -199,6 +205,10 @@ namespace EnemyRandomizer {
                 scale->z = scale_factor;
                 scale = nullptr;
             }
+#ifdef LASAP_TEST
+            AP::Test::OnEnemy(vanilla_id, *actorID, global_config.randomizer.enemy_sizes
+                              ? reinterpret_cast<Vector3*>(actorDataOffset + 0x2c)->x : 0.0f);
+#endif
             hash = nullptr;
         }
         actorID = nullptr;

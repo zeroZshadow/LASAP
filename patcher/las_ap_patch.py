@@ -59,6 +59,7 @@ import ap_ghost  # noqa: E402
 import ap_player_ghost  # noqa: E402
 import ap_hints  # noqa: E402
 import ap_goal  # noqa: E402
+import ap_entrances  # noqa: E402
 import ap_map  # noqa: E402
 import ap_model  # noqa: E402
 import ap_save_name  # noqa: E402
@@ -642,6 +643,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
     write_indices(proc.config_dir, logic, patch)
     write_vanilla(proc.config_dir, logic, item_defs, patch)
+    if patch["settings"].get("Shuffled Dungeons"):
+        ap_entrances.add(proc.file_manager, patch["dungeon_entrances"])
     if "rooster-statue" in patch["location_ids"]:
         add_rooster_flag(proc.file_manager)
     ap_player_ghost.add(proc.file_manager)  # from NpcGhost's row before the Ammo Ghost rewrites it

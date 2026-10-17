@@ -4,7 +4,8 @@ the seashell chest. Every randomized heart piece and seashell actor has a unique
 the received range (DESIGN.md, item model). With the map tracker on, every AP location has one icon in ap_map.txt
 (but the trade quest's when it is off) and every icon its datasheet row. Below eight required instruments, the egg's event checks single instruments instead of
 all of them. With in-game hints, every hint source shows its own message, which fits the text box, and a server hint
-sets its flag, which ap_hints.txt names with the hinted location.
+sets its flag, which ap_hints.txt names with the hinted location. With Shuffled Dungeons, each dungeon door leads into
+the dungeon the patch's map names, whose exit and Fairy Queen warps (for the Color Dungeon) lead back out of that door.
 
 python scripts/verify_patch.py <patch.aplas> <patcher output dir>
 """
@@ -188,6 +189,37 @@ if hints:
                 bad += 1
                 print(f"HINT {source}: {room} has {len(statues)} statues with {entry}")
     print(f"hints={len(hints)} server={len(want_lines)} bad={bad}")
+
+# Shuffled Dungeons: each door into the dungeon behind it, and that dungeon's exits out of the door.
+if patch["settings"].get("Shuffled Dungeons"):
+    import ap_entrances  # noqa: E402
+    from RandomizerCore.Randomizers.data import DUNGEON_ENTRANCES  # noqa: E402
+    romfs = Path(sys.argv[2]) / "atmosphere/contents/01006BB00C6F0000/romfs/region_common"
+
+    def zone_target(room: str, index: int) -> str:
+        path = romfs / "level" / room.split("_")[0] / f"{room}.leb"
+        return [a for a in Room(path.read_bytes()).actors if a.type == 0x190][index].parameters[1].decode()
+
+    doors = 0
+    for door, dungeon in patch["dungeon_entrances"].items():
+        _, _, field_room, field_suffix, index = DUNGEON_ENTRANCES[door]
+        inside = DUNGEON_ENTRANCES[dungeon][0] + DUNGEON_ENTRANCES[dungeon][1]
+        outside = field_room + field_suffix
+        found = (zone_target(field_room, index), zone_target(DUNGEON_ENTRANCES[dungeon][0], 0))
+        if found != (inside, outside):
+            bad += 1
+            print(f"DOOR {door} -> {dungeon}: door to {found[0]}, exit to {found[1]}, want {inside}, {outside}")
+        doors += 1
+    locator = ap_entrances.color_dungeon_exit(patch["dungeon_entrances"])
+    if locator is not None:
+        flow = evfl.EventFlow()
+        flow.read((romfs / "event" / ap_entrances.FAIRY_FLOW).read_bytes())
+        warps = {e.name: e.data.params.data["locator"] for e in flow.flowchart.events if e.name in ap_entrances.FAIRY_WARPS}
+        exits = [zone_target(ap_entrances.FAIRY_ROOM, 0)] + list(warps.values())
+        if len(warps) != len(ap_entrances.FAIRY_WARPS) or any(target != locator for target in exits):
+            bad += 1
+            print(f"FAIRY QUEEN exits {exits}, want {locator}")
+    print(f"dungeon doors={doors} bad={bad}")
 
 # Instruments Required: below eight, the egg's event checks single instruments instead of all of them.
 required = patch["settings"].get("Instruments Required", 8)

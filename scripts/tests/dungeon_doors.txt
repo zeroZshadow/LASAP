@@ -1,0 +1,28 @@
+# Shuffled Dungeons: Tail Cave's door leads into the Color Dungeon and the Color Dungeon's door into Tail Cave. Run
+# after boot_file1 on a mod from make_test_patch.py --dungeons '{"tail-cave": "color-dungeon", "color-dungeon":
+# "tail-cave"}'. Each dungeon's exit leads out of the door that leads into it. The flags open Tail Cave's door and
+# show the graveyard's stairs.
+send DBG setflag TailCaveShutterOpened 1
+expect FLAG.TailCaveShutterOpened.1 5
+send DBG setflag AppearStairsFld08H 1
+expect FLAG.AppearStairsFld08H.1 5
+# Tail Cave's door, north of Link, into the Color Dungeon's first room
+warp Field 54.75 9.0 160.5
+hold 0 0 32767 until level=Lv10ClothesDungeon 10
+loaded 20
+at 38.25 92.25 2
+shot D:/DEV/LASAP-sandbox/doors_color.png
+# its stairs, east of Link, out of Tail Cave's door
+hold 0 32767 0 until level=Field 10
+loaded 20
+at 54.75 159 2
+# the graveyard's stairs, north of Link, into Tail Cave's first room
+warp Field 116.25 13.5 89.25
+hold 0 0 32767 until level=Lv01TailCave 10
+loaded 20
+at 52.5 93.75 2
+shot D:/DEV/LASAP-sandbox/doors_tail.png
+# its exit, south of Link, onto the graveyard's stairs
+hold 0 0 -32767 until level=Field 10
+loaded 20
+at 116.25 86.25 2

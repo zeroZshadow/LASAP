@@ -18,8 +18,9 @@ from .host_settings import LASSettings
 
 from .ids import LOCATION_OFFSETS
 from .items import FILLER_ITEM, GAME, ITEM_GAME_INFO, ITEM_NAME_GROUPS, ITEM_TABLE, LASR_TO_ITEM, LASItem
-from .lasr import (CATEGORIES, COUNTED, DUNGEON_REWARD_LOCATIONS, INSTRUMENT_LOCATIONS,
-                   INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC, TRAPS, goal_logic, item_dungeon, location_dungeon)
+from .lasr import (CATEGORIES, COUNTED, DUNGEON_NAMES, DUNGEON_REWARD_LOCATIONS, DUNGEONS, INSTRUMENT_LOCATIONS,
+                   INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC, TRAPS, dungeon_logic, goal_logic, item_dungeon,
+                   location_dungeon, shuffle_dungeons)
 from .locations import LOCATION_NAME_GROUPS, LOCATION_NAME_TO_ID, LOCATION_NAMES, LASLocation
 from .logic import LogicCompiler, make_rule, referenced_regions
 from .models import model_for
@@ -92,6 +93,7 @@ class LASWorld(World):
     starting_items: List[str]  # LASR item names given at the start by options
     pre_fill_items: List[Item]
     restricted: Dict[str, Set[str]]  # AP item name -> LASR locations it must be placed in
+    dungeon_entrances: Dict[str, str]  # each dungeon's door -> the dungeon it leads into (lasr.dungeon_logic)
 
     ut_can_gen_without_yaml = True  # Universal Tracker regenerates the slot from its slot data
 
@@ -106,9 +108,15 @@ class LASWorld(World):
             for name, value in passthrough["options"].items():
                 setattr(self.options, name, LASOptions.type_hints[name].from_any(value))
         options = self.options
+        if passthrough:
+            self.dungeon_entrances = dict(passthrough.get("dungeon_entrances") or {d: d for d in DUNGEONS})
+        elif options.shuffled_dungeons:
+            self.dungeon_entrances = shuffle_dungeons(self.random)
+        else:
+            self.dungeon_entrances = {d: d for d in DUNGEONS}
         self.settings_tokens = lasr_settings.logic_tokens(options)
-        self.compiler = LogicCompiler(goal_logic(options.instruments_required.value), options.logic.current_key,
-                                      self.settings_tokens, LASR_TO_ITEM, COUNTED)
+        logic = goal_logic(options.instruments_required.value, dungeon_logic(LOGIC, self.dungeon_entrances))
+        self.compiler = LogicCompiler(logic, options.logic.current_key, self.settings_tokens, LASR_TO_ITEM, COUNTED)
 
         if passthrough:
             self.starting_instruments = list(passthrough["starting_instruments"])
@@ -401,6 +409,8 @@ class LASWorld(World):
             # what Universal Tracker regenerates the slot from (interpret_slot_data)
             "options": self.options.as_dict(*SLOT_DATA_OPTIONS),
             "starting_instruments": self.starting_instruments,
+            # each dungeon's door -> the dungeon it leads into, for trackers and Universal Tracker
+            "dungeon_entrances": self.dungeon_entrances,
             # what the slot's rules depend on, for the client's in-logic locations (tracker.py)
             "logic": {
                 "preset": self.options.logic.current_key,
@@ -431,7 +441,7 @@ class LASWorld(World):
             "location_names": self.placed_names(),
             "location_models": self.placed_models(),
             "location_chests": self.placed_chests(),
-            "dungeon_entrances": dict(lasr_settings.DUNGEON_ENTRANCES),
+            "dungeon_entrances": dict(self.dungeon_entrances),
             "hints": self.in_game_hints(),
             "ghost_secret": self.ghost_secret(),
             "ghost_relay": str(self.settings.ghost_relay or ""),
@@ -448,6 +458,11 @@ class LASWorld(World):
             return self._hints
 
     def write_spoiler(self, spoiler_handle: TextIO) -> None:
+        if any(door != dungeon for door, dungeon in self.dungeon_entrances.items()):
+            names = {d: DUNGEON_NAMES[(i + 1) % 9] for i, d in enumerate(DUNGEONS)}
+            spoiler_handle.write(f"\n\nDungeon entrances ({self.multiworld.player_name[self.player]}):\n\n")
+            for door, dungeon in self.dungeon_entrances.items():
+                spoiler_handle.write(f"{names[door]} entrance -> {names[dungeon]}\n")
         hints = self.in_game_hints()
         if hints:
             spoiler_handle.write(f"\n\nIn-game hints ({self.multiworld.player_name[self.player]}):\n\n")

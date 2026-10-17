@@ -203,6 +203,12 @@ class ClassicD2(Toggle):
     display_name = "Classic D2"
 
 
+class ShuffledDungeons(Toggle):
+    """Each dungeon's entrance leads into a random dungeon, the Color Dungeon included; its exit leads back out of that
+    entrance. The pause map's dungeon markers move with them, and the logic follows each door."""
+    display_name = "Shuffled Dungeons"
+
+
 class FreeBook(DefaultOnToggle):
     """The book revealing the Wind Fish's Egg path can be read without the Magnifying Lens."""
     display_name = "Free Book"
@@ -320,6 +326,19 @@ class DisablePieceOfPower(Toggle):
     display_name = "Disable Piece of Power"
 
 
+class RandomizeEnemies(Toggle):
+    """Enemies turn into random enemies of their kind (walking, flying, in trees, in water, in side-view water)
+    whenever their room loads, and trap chests let out a random enemy. Enemies that must be defeated to go on (to open
+    a door, drop a key, ...) stay as they are."""
+    display_name = "Randomize Enemies"
+
+
+class RandomizeEnemySizes(Toggle):
+    """Enemies grow or shrink to a random size between half and one and a half times their own whenever their room
+    loads."""
+    display_name = "Randomize Enemy Sizes"
+
+
 class EasyFishing(DefaultOnToggle):
     """At the fishing pond the line never breaks, and Ol' Baron bites more often."""
     display_name = "Easy Fishing"
@@ -360,6 +379,7 @@ class LASOptions(PerGameCommonOptions):
     open_mamu: OpenMamu
     completed_bridge: CompletedBridge
     classic_d2: ClassicD2
+    shuffled_dungeons: ShuffledDungeons
     free_book: FreeBook
     fast_fishing: FastFishing
     fast_stalfos: FastStalfos
@@ -380,6 +400,8 @@ class LASOptions(PerGameCommonOptions):
     disable_guardian_acorn: DisableGuardianAcorn
     disable_piece_of_power: DisablePieceOfPower
     easy_fishing: EasyFishing
+    randomize_enemies: RandomizeEnemies
+    randomize_enemy_sizes: RandomizeEnemySizes
     death_link: DeathLink
     start_inventory_from_pool: StartingGear
 
@@ -390,9 +412,10 @@ OPTION_GROUPS = [
     OptionGroup("Goal", [InstrumentsRequired]),
     OptionGroup("Dungeon Items", [Keys, DungeonItems, Instruments]),
     OptionGroup("Start", [StartingInstruments, StartingRupees]),
-    OptionGroup("World", [OpenMabe, OpenKanalet, OpenMamu, CompletedBridge, ClassicD2, FreeBook, FastFishing,
-                          FastStalfos, ShuffledBombs, ShuffledPowder, AmmoGhost, MapTracker, InGameHints, Stealing,
-                          ChestAppearance]),
+    OptionGroup("World", [OpenMabe, OpenKanalet, OpenMamu, CompletedBridge, ClassicD2, ShuffledDungeons, FreeBook,
+                          FastFishing, FastStalfos, ShuffledBombs, ShuffledPowder, AmmoGhost, MapTracker, InGameHints,
+                          Stealing, ChestAppearance]),
     OptionGroup("Gameplay", [Damage, MovementSpeed, Movement360, SkipSongCutscenes, InstantText, NiceHookshot,
-                             DisableGuardianAcorn, DisablePieceOfPower, EasyFishing]),
+                             DisableGuardianAcorn, DisablePieceOfPower, EasyFishing, RandomizeEnemies,
+                             RandomizeEnemySizes]),
 ]

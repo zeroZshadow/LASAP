@@ -1,0 +1,17 @@
+# Randomize Enemies and Randomize Enemy Sizes: enemies turn into others of their kind and change size as their room
+# loads. Run after boot_file1 on a mod patched with both settings on. DBG enemies counts what the randomizer did:
+# the Octoroks south of Mabe and the enemies of Tail Cave's first rooms.
+send DBG enemies reset
+expect OK.enemies.seen=0 5
+warp Field 41.25 9.0 147.75
+loaded 20
+send DBG enemies
+expect OK.enemies.seen=[1-9][0-9]*.changed=[1-9][0-9]*.sized=[1-9] 5
+shot D:/DEV/LASAP-sandbox/enemies_field.png
+send DBG enemies reset
+expect OK.enemies.seen=0 5
+warp Lv01TailCave 52.5 0 93.75
+loaded 20
+send DBG enemies
+expect OK.enemies.seen=[1-9][0-9]*.changed=[1-9][0-9]*.sized=[1-9] 5
+shot D:/DEV/LASAP-sandbox/enemies_dungeon.png
