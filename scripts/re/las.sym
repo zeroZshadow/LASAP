@@ -65,6 +65,7 @@ ItemActor_CanAppear 0x08dc8510 f (actor): when vtable +0x3e0 holds, false while 
 Npc_TraitsValue 0x08dcb490 f (npc component): a float of the row's collision.traits row in NpcPhysicsTraits, default without
 Inventory_AddItemID 0x08dd48e0 f (itemId, count, index); hooked by the module. Case 114 sets the chamber stone bit
 Inventory_HasItem 0x08dd5a30 f (itemId, count, index): 114 tests chamber stone bit index; the item actors' collected check
+ItemGet_ModelTask 0x08dd81c0 f (task*): the item-get's model: the item's Npc row, ModelResource_Get, the component ItemModel on its node
 Area_Ctor 0x08de2e00 f (area, lvb, entry, key): +0x20 min, +0x30 max, +0x64 zone index, +0x68 name, +0xc2 row, +0xc3 column
 Scene_ReleaseActors 0x08de72c0 f moves or removes the actors of a weak list (RemoveChild as the module does)
 LevelBvh_QueryPoint 0x08deb3b0 f (node, areas*, nodes*, const Vec4* pos, std::function*): recursive point query over the area BVH
@@ -177,6 +178,8 @@ MessageText_ShowLetters 0x09457b60 f (text*, int letters)
 WorldToLayout 0x0948cc40 f (const Vec4* world) -> s0/s1 layout coordinates (centre origin, x +-640, y +-360); no behind-camera check
 Swkbd_ShowName 0x0948db50 f (out string, name view): nn::swkbd UserName preset, 8 characters at most, 1 at least, invalid chars 0x12c (@ % \ outside the Mii nickname set)
 Swkbd_CheckName 0x0948e440 f the keyboard's text check: refuses spaces only (UI:NameEntry_NoName) and vulgar words (UI:NameEntry_VulgarCheck)
+Node_UpdateWorld 0x094ba310 f (node): world coords (+0xb0) from coordsNew (+0x80) and the parent's (+0x58), clears +0xe0; lazy
+Node_MarkDirty 0x094baaa0 f (node): unless +0xe0 is set, sets it, marks the children, calls the listener at +0xe8 (vtable +0x30)
 GameTextBox_Calculate 0x095e1f90 f draws the text only once each glyph is in the font's texture cache (+0x190 set then)
 GameTextBox_SetString 0x095e20b0 f calls the std::function at +0x160 (scene layouts: queues the text box's glyphs), then the base setter
 BgmTable_Find 0x095e63d0 f (BgmTable*, const char* name) -> track id, -1 for an unknown name

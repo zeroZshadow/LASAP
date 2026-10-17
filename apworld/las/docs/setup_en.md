@@ -33,8 +33,8 @@ Double-click `las.apworld`, or copy it into Archipelago's `custom_worlds` folder
    loaded. Once the client is connected to both the game and the server, a small popup at the bottom right says
    "Archipelago connected as <slot>". The game also says when it loses the client.
 
-The client remembers its settings. Opening the next seed's patch file installs it and starts the game without
-further questions. Play also reinstalls the mod after an update of the world. "Reinstall mod" installs the current
+The client remembers its settings. Opening the next seed's patch file shows it in the Patch tab; Play installs it
+and starts the game without further questions. Play also reinstalls the mod after an update of the world. "Reinstall mod" installs the current
 seed again without starting the game.
 
 "Open .aplas files with a double-click" at the bottom of the Patch tab sets Windows up to open `.aplas` files with

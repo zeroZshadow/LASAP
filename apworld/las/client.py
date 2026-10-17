@@ -113,6 +113,10 @@ class LASCommandProcessor(ClientCommandProcessor):
             self.ctx.set_patch_file(patch_file)
         asyncio.create_task(self.ctx.install_patch(force=True))
 
+    def _cmd_play(self) -> None:
+        """Install the mod when it is missing or out of date, then start the emulator with the game."""
+        asyncio.create_task(self.ctx.install_patch(start=True))
+
     def _cmd_start(self) -> None:
         """Start the emulator with the game."""
         asyncio.create_task(self.ctx.start_emulator())
@@ -792,8 +796,8 @@ class LASContext(CommonContext):
 
 
 async def prepare_patch(ctx: LASContext, patch: bool) -> None:
-    """Once the window shows the log: finds the emulator and its folders, then installs and starts the game when the
-    client was opened with a patch file."""
+    """Once the window shows the log: finds the emulator and its folders, and shows the Patch tab when the client was
+    opened with a patch file. Installing and starting wait for Play."""
     for _ in range(100):
         if not ctx.ui or hasattr(ctx.ui, "patch_tab"):
             break
@@ -802,8 +806,6 @@ async def prepare_patch(ctx: LASContext, patch: bool) -> None:
         ctx.show_patch_tab()
     ctx.detect_from_emulator()
     ctx.refresh_patch_tab()
-    if patch:
-        await ctx.install_patch(start=True)
 
 
 def launch(*launch_args: str) -> None:
@@ -820,8 +822,6 @@ def launch(*launch_args: str) -> None:
         ctx.run_cli()
         if ctx.ui:
             asyncio.create_task(prepare_patch(ctx, bool(args.patch)), name="patch")
-        elif args.patch:
-            asyncio.create_task(ctx.install_patch(start=True), name="patch")
         await ctx.exit_event.wait()
         game_task.cancel()
         ghost_task.cancel()
@@ -842,7 +842,7 @@ def launch(*launch_args: str) -> None:
     args = parser.parse_args(launch_args)
     args.patch = None
     if args.url and args.url.lower().endswith(LASContainer.patch_file_ending):
-        # Opened with a patch file: install its mod, then connect to the server and slot it names.
+        # Opened with a patch file: connect to the server and slot it names; Play installs its mod.
         args.patch, args.url = args.url, None
         container = LASContainer(args.patch)
         try:
@@ -850,7 +850,7 @@ def launch(*launch_args: str) -> None:
             args.connect = args.connect or container.server or None
             args.name = args.name or container.player_name or None
         except Exception:
-            pass  # install_patch reports it
+            pass  # check_setup reports it
     if args.url:
         from CommonClient import handle_url_arg
         args = handle_url_arg(args, parser=parser)
