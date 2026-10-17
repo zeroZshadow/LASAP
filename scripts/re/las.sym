@@ -16,9 +16,18 @@ AreaLevelOpen_EntryName 0x08579fb0 f (out, actor): LEB param 2
 AreaLevelOpen_CompanionEntry 0x0857a050 f entry name with the companion suffix through CompanionEventEntry
 AreaLevelOpen_LevelName 0x0857a0c0 f (out, actor): LEB param 0; a bl target after a noreturn call
 AreaLevelOpen_Locator 0x0857a150 f (out, actor): LEB param 1
+BgmManager_StopByName 0x0859f7b0 f (StringView* name, u32 fade frames) on the static BgmManager
+BgmManager_StopAll 0x0859f550 f (u32 frames): every playing instance's fade-out +0x58 and Sound_Stop; the event action StopAllBGM and the level load (0 frames)
+BgmManager_FadeZone 0x085aa510 f the kind 1 instances fade out over 90 frames unless a buff's music plays; an event action
+Sound_Stop 0x095ed7f0 f (sound, u32 frames)
+BgmManager_SetVolume 0x0859f3a0 f (f32 volume, u32 frames): Sound_SetVolume on every playing kind 1 instance; the event action SetBGMVolume
+Sound_SetVolume 0x095ee8c0 f (sound, u32 frames, f32 volume): fades the volume, +0x140 volume, +0x144 target, +0x148 frames, +0x14c frames gone
+BgmZoneUpdate_PlayCall 0x085a3004 l the zone update's BgmManager_Play call with the zone's track (volume from zone +0x4c); when it returns an instance, the other kind 1 instances fade out
+BgmManager_Play 0x085a3d60 f (f32 volume, BgmManager*, StringView* name, bool, bool, bool force) -> instance, null for an unknown name or a track already playing; instance +0x10 name (std::string), +0xf0 kind (1 zone and event BGM), +0xf8 id
 Sound_Play 0x085a97e0 f (StringView* name, nullptr, volume, pitch)
 Sound_PlayAtTracked 0x085a9a20 f (name, pos*, u64 extra, handle*, volume, pitch): 3D, extra unverified
 Sound_PlayAt 0x085a9c70 f (StringView* name, const Vec4* worldPos, SoundHandle* out|null, f32 volume, f32 pitch): 3D, request mode 2
+PlayZoneBgm 0x085aa790 f (bool fadeOthers) -> instance: BgmManager_Play of the zone's track (BgmManager +0x9250, volume +0x932c); fades nothing while a Guardian Acorn's or Piece of Power's music plays
 EventAction_PlayAnimation2 0x085f7bb0 f virtual +0x30 on the actor's root component
 EventAction_PlayAnimation 0x0861d0c0 f
 SkeletalModelComponent_Make 0x08646660 f (out, owner, StringView* name, rootSp*, resource, ...)
@@ -34,6 +43,9 @@ GameControl_RequestLevelJumpInCurrentLevel 0x08d032d0 f event action body: level
 GameControl_RequestRestartWarp 0x08d03580 f event action body
 GameControl_SaveForGameClear 0x08d03680 f event action body: save level Field, locator Field_01G
 GameControl_Retry 0x08d03710 f event action body: locator $RETRY
+EventAction_PlayBGM 0x08d09a30 f Audio.PlayBGM body (out, ctx): params label, volume; volume 0.2 while a buff's music plays
+EventAction_StopBGM 0x08d09e20 f Audio.StopBGM body (out, ctx): params label, duration (seconds, times 60 for frames) -> BgmManager_StopByName
+EventAction_PlayZoneBGM 0x08d0a4b0 f Audio.PlayZoneBGM body (out, ctx) -> PlayZoneBgm
 Event_Make 0x08d10290 f (out, flowchart*, StringView* entry)
 Event_Prepare 0x08d11b00 f (event*)
 PanelQuery_Stone4 0x08d157e0 f event query lambda: save +0x5093 >= 5 and chamber stone 4 owned
@@ -153,6 +165,7 @@ TailorEffectClip_Update 0x09347c90 f spawns and moves its emitter set (EffectMan
 LayoutWrapper_Build 0x0935d100 f (wrapper 0x78 bytes, StringView* bflyt file name, priority, archive set 0 Game.arc / 1 StartUp.arc, bool): the layout at wrapper +0x18, null if not built
 LayoutWrapper_Dtor 0x0935d470 f removes the layout from the draw list
 LayoutWrapper_DeletingDtor 0x0935d760 f wrapper vtable +0x18
+LayoutWrapper_Detach 0x0935dac0 f called by the destructor: takes the root off the parent's pane (wrapper +0x50) and the layout back to the manager's lists
 DungeonMap_KeyWait 0x0937e0f0 f
 DungeonMap_MemoriesButton 0x0938b840 f bool(page*)
 OverworldMap_KeyWait 0x09399090 f
@@ -177,6 +190,7 @@ Node_UpdateWorld 0x094ba310 f (node): world coords (+0xb0) from coordsNew (+0x80
 Node_MarkDirty 0x094baaa0 f (node): unless +0xe0 is set, sets it, marks the children, calls the listener at +0xe8 (vtable +0x30)
 GameTextBox_Calculate 0x095e1f90 f draws the text only once each glyph is in the font's texture cache (+0x190 set then)
 GameTextBox_SetString 0x095e20b0 f calls the std::function at +0x160 (scene layouts: queues the text box's glyphs), then the base setter
+BgmTable_Find 0x095e63d0 f (BgmTable*, const char* name) -> track id, -1 for an unknown name
 TextBox_RegisterGlyphs 0x09622cb0 f (text box, lock group): Font_RegisterGlyph for each character, returns how many were new
 Font_RegisterGlyph 0x096228c0 f (scalable font, char code, lock group): adds the glyph to the texture cache, drawn by the next cache update
 UiManager_LockGroup 0x093d47c0 f (UI manager, archive set) -> the font lock group of that set
@@ -295,6 +309,8 @@ got_nvnMultisampleStateSetAlphaToCoverageEnable 0x0a199200 l
 Framework_ptr 0x0a19b188 l Framework: +0x498 actor system, +0x4b8 player, +0x4d4 frame counter, +0x518 controller, +0x560 camera
 UiManager_ptr 0x0a19b1c0 l +0x88 archive slots, 0x10 apart
 HudPass_ptr 0x0a19b2c8 l
+BgmManager 0x0a1a5d70 l static (guard 0x0a1af240): +0x6280 the playing instances (begin, end), +0x9250 the zone's track (char[64], length +0x9290)
+BgmTable 0x0a1afa28 l static (guard 0x0a1b0378), made by BgmManager_Play
 CameraSystem_ptr 0x0a1b0b30 l shared_ptr; +0x600/+0x610 vectors passed to RoomManager_UpdateRooms, +0x700 flags (bit 3: room update requested)
 CranePrizeSheets_ptr 0x0a1b0f28 l 0x40 bytes of shared_ptrs: CranePrize +0x0, featured groups 1/2 at +0x20/+0x30
 EventManager_ptr 0x0a1b64d8 l
@@ -324,3 +340,35 @@ ui2d_TextBox_SetString16 0x09676620 f (text box, const char16_t*, u16 index): cu
 Graphics_ptr 0x0a1ccb30 l the graphics object (200 bytes): +8 points at the gfx device
 GraphicsSystem_Init 0x0951d4c0 f (system, config): swap chain, display layer, VsyncWatcher_Init at +0x8168
 VsyncWatcher_Init 0x095450d0 f (watcher, system): the display's vsync event and a thread that signals a light event and counts each vsync
+Navi_Setup 0x093ea230 f Gm_Navi owner (pause menu header) vtable +0x20: builds Gm_Navi and its states; page id table +0x230 (0xf overworld or 0xe dungeon map, 6 items, 10 system or 0xb in the Chamber Dungeon), target index +0x23d
+Navi_Update 0x093eaf80 f vtable +0x28: runs the machine at +0x80; with input on (+0x1342) an L or R press goes to +0x1341 (1 L, 2 R)
+Navi_Open 0x093eb830 f vtable +0x30: the page index to open from the HUD's +0x61dc into +0x23d and +0x23c, then state Open
+Navi_ChangeState 0x093ebdc0 f (machine at Navi +0x80, state): Open 1, WaitKey 2, Selected 3, CloseOldUi 4, Close 5; names at machine +0x178 + state*8
+Navi_OpenEnter 0x093ebfa0 f enter of Open: UiManager_Request of the target page's id, with Navi_PaneReady as its task
+Navi_OpenUpdate 0x093ec650 f update of Open: once the page's In animation ends (page virtual +0x98) input on, HUD guide frame by index, WaitKey
+Navi_WaitKey 0x093ecca0 f update of WaitKey: B (page +0xe0 set), Plus on items, Minus on the map go to Close; Plus/Minus elsewhere to index 1/0; +0x1341 steps +0x23d over 3 pages; a change clears the old page's +0x70, CloseOldUi, SE_SY_MENU_LR_MOVE
+Navi_SelectedUpdate 0x093edd00 f update of Selected: no page with the target id: Open; else UiManager_Remove of it
+Navi_CloseOldUiEnter 0x093edf10 f enter of CloseOldUi: header NextOut/BackOut by +0x1338, old page virtual +0xa8
+Navi_CloseOldUiUpdate 0x093ee4f0 f update of CloseOldUi: after the header animation saves the item cursor or map state, clears slot +0x12f0+index*0x10, UiManager_Remove of the old page, writes state Selected inline
+Navi_CloseEnter 0x093eec10 f enter of Close: page virtual +0xa8, saves the page's state, HUD guide frame 0
+Navi_CloseUpdate 0x093ef760 f update of Close
+Navi_PaneReady 0x093f0cc0 f task run once the requested page exists: slot +0x12f0+index*0x10, LayoutWrapper_AttachTo under the anchor pane (+0x12b8+index*0x18), restores the page's state, Navi_SetGuide, Navi_SetTitles
+Navi_SetGuide 0x093f16f0 f (navi, index 0-4): the button guide (+0x318, L_Operation_00) for that page; 3 does nothing, 4 the map's Memories
+Guide_Set 0x0945b1b0 f (guide, slot, kind): loads the slot's icon and caption when the kind differs from the one kept at guide +0xb40+slot*4
+Guide_Clear 0x0945bae0 f hides the guide's slot panes; the kept kinds stay
+Navi_SetTitles 0x093f1ec0 f (navi, index 0-4): MessageText_SetLabel of +0x2d0 T_Navih1_00, +0x2e8 T_NaviBack_00, +0x300 T_NaviNext_00 with UI:SubScreenTitleMap/Item/System/Memory; 3 does nothing, 4 the map's Memories
+UiManager_Find 0x08d4ae20 f (out handle, UI manager, id): the UI in the manager's list (+0x950) whose virtual +0x60 returns id; handle +0x18 the UI, +0x20 its count; typed copies 0x7e2310, 0xe85cc0, 0xeebb00
+UiManager_FindHud 0x08ce6310 f UiManager_Find typed for the HUD (id 0): +0x61dc the page index the pause menu opens on, +0x3b0 the button guide
+UiManager_FindPage 0x093efb00 f (out handle, id): UiManager_Find on the static UI manager, typed for pause-menu pages
+UiManager_Request 0x093ddb30 f (out, UI manager, id): the pending request for id (list +0x968) or a new one; UiManager_Update builds the UI
+UiManager_Remove 0x093de0e0 f (UI manager, id): queues id for removal (+0x998) and destroys that UI
+UiManager_Update 0x093d2158 f processes the requests: a missing UI is made by its factory slot (+0x130 + id*0x30, a libc++ std::function, call operator vtable +0x30), set up (virtual +0x20) and listed at +0x950
+LayoutWrapper_AttachTo 0x0935dd40 f (child wrapper, parent wrapper, parent pane): moves the child's layout under that pane of the parent's layout, out of the draw list
+GmSystem_Ctor 0x09486b00 f LayoutWrapper_Build(this, Gm_System.bflyt, 10, 0, 1) and the page fields
+GmSystem_Setup 0x09486f40 f vtable +0x20: states Open, KeyWait, Decide, WaitUiClose, ChangeRuby (machine +0xf0, state byte +0xfd), L_SystemChoice_00..03, L_SystemOp_00
+GmSystem_Update 0x09487650 f vtable +0x28: runs the machine at +0xf0
+LayoutWrapper_vtable 0x0a12b230 l base of every game UI: +0x20 setup, +0x28 update, +0x30 open, +0x60 UI id (-1)
+Page_vtable 0x0a12e950 l pause-menu page base: +0x68/+0x70 play In/Out (animations at +0x88/+0xa0), +0x98 In ended, +0xa8 close
+Navi_vtable 0x0a12ea18 l Gm_Navi owner, UI id 5
+GmItem_vtable 0x0a12c8e0 l Gm_Item page, UI id 6
+GmSystem_vtable 0x0a133e50 l Gm_System page, UI id 10

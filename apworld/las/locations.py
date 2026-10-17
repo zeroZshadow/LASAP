@@ -1,44 +1,25 @@
-import re
+import json
+import pkgutil
 from typing import Dict, Set
 
 from BaseClasses import Location
 
 from .ids import LOCATION_BASE, LOCATION_OFFSETS
 from .items import GAME
-from .lasr import CATEGORIES, DUNGEON_NAMES, ITEM_LOCATIONS, LOGIC, location_dungeon
+from .lasr import CATEGORIES, DUNGEON_NAMES, ITEM_LOCATIONS, location_dungeon
 
 
 class LASLocation(Location):
     game = GAME
 
 
-_REGION_NAMES = {
-    "marthas-bay": "Martha's Bay",
-    "taltal-heights": "Tal Tal Heights",
-    "taltal-mountains-east": "Tal Tal Mountains East",
-    "taltal-mountains-west": "Tal Tal Mountains West",
-}
-_WORDS = {"ol": "Ol'", "3ofakind": "3 of a Kind", "of": "of", "a": "a", "by": "by", "to": "to", "the": "the"}
-
-
-def _words(text: str) -> str:
-    words = []
-    for word in text.split("-"):
-        if word in _WORDS and (words or word in ("ol", "3ofakind")):
-            words.append(_WORDS[word])
-        elif re.fullmatch(r"\d+f|d\d", word, re.IGNORECASE):
-            words.append(word.upper())
-        else:
-            words.append(word[:1].upper() + word[1:])
-    return " ".join(words)
+# LASR name -> AP name: "<region or dungeon> - <label>", the label as the PopTracker pack names the check (its section,
+# or for a dungeon its room on the dungeon map; scripts/poptracker_map.py)
+_NAMES: Dict[str, str] = json.loads(pkgutil.get_data(__name__, "data/location_names.json").decode("utf-8"))
 
 
 def display_name(lasr_location: str) -> str:
-    dungeon = location_dungeon(lasr_location)
-    if dungeon >= 0:
-        return f"{DUNGEON_NAMES[dungeon]} - {_words(lasr_location[3:])}"
-    region = LOGIC[lasr_location]["spoiler-region"]
-    return f"{_REGION_NAMES.get(region, _words(region))} - {_words(lasr_location)}"
+    return _NAMES[lasr_location]
 
 
 LOCATION_NAMES: Dict[str, str] = {k: display_name(k) for k in ITEM_LOCATIONS}  # LASR name -> AP name

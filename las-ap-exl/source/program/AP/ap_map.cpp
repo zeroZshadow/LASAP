@@ -328,21 +328,23 @@ namespace AP {
 
     std::string MapLabelText(int group) {
         // On one line (the hover box has one): the unchecked locations of the group, those in logic first, after
-        // "<in logic>/<unchecked> in logic: " when only some are; or the collected locations. As many as fit, then
-        // "+<rest>".
+        // "<in logic>/<unchecked> in logic: " when there are several; or the collected locations. As many as fit,
+        // then "...".
         constexpr size_t kWidth = 36;
         std::vector<int> ids;
+        bool collected = false;
         if (group >= 0 && static_cast<size_t>(group) < g_Overworld.size()) {
             for (int id : g_Overworld[group]) {
                 if (!IsLocationChecked(id)) ids.push_back(id);
             }
-            if (ids.empty()) ids = g_Overworld[group];
+            collected = ids.empty();
+            if (collected) ids = g_Overworld[group];
         }
         auto reachable = std::stable_partition(ids.begin(), ids.end(), [](int id) {
             return IsLocationChecked(id) || Reachable(id);
         });
         std::string head;
-        if (reachable != ids.begin() && reachable != ids.end()) {
+        if (!collected && ids.size() > 1) {
             head = std::to_string(reachable - ids.begin()) + "/" + std::to_string(ids.size()) + " in logic: ";
         }
         std::vector<std::string> names;
@@ -354,7 +356,7 @@ namespace AP {
             if (shown > 0 && next.size() > kWidth) break;
             text = next;
         }
-        if (shown < names.size()) text += " +" + std::to_string(names.size() - shown);
+        if (shown < names.size()) text += ", ...";
         return text;
     }
 

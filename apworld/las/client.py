@@ -10,7 +10,7 @@ from NetUtils import ClientStatus, HintStatus
 
 from .container import LASContainer
 from .ids import LOCATION_BASE, LOCATION_OFFSETS
-from . import checklist, emulators
+from . import checklist, emulators, music
 from .ghosts import GhostLink
 from .host_settings import PLAYER_SETTINGS, player_value
 from .install import InstallError, patch_and_install
@@ -83,6 +83,26 @@ class LASCommandProcessor(ClientCommandProcessor):
             ctx.set_ghost_names(value.lower() == "on")
         logger.info(f"Ghost name tags are {'on' if ctx.ghost_names_on() else 'off'}.")
 
+    def _cmd_music(self, track: str = "") -> None:
+        """Play a BGM track instead of the zone's music until /music off: /music <track> (e.g. /music fairy or
+        /music BGM_FIELD_NORMAL). Without a track, shows the one playing and the tracks."""
+        ctx = self.ctx
+        if not track:
+            playing = ctx.music or "the game's own"
+            logger.info(f"Music: {playing}. Tracks: {', '.join(music.TRACKS)}.")
+            return
+        if track.lower() == "off":
+            ctx.set_music(None)
+            logger.info("Music: the game's own.")
+            return
+        chosen, matches = music.resolve(track)
+        if chosen is None:
+            logger.error(f"{track} could be {', '.join(matches)}." if matches else
+                         f"No track {track}. /music lists them.")
+            return
+        ctx.set_music(chosen)
+        logger.info(f"Music: {chosen}." + ("" if ctx.game_writer else " It plays once the game is connected."))
+
     def _cmd_resync(self) -> None:
         """Ask the game to resend its received-item count and collected locations."""
         self.ctx.send_game("SYNC")
@@ -92,6 +112,10 @@ class LASCommandProcessor(ClientCommandProcessor):
         if patch_file:
             self.ctx.set_patch_file(patch_file)
         asyncio.create_task(self.ctx.install_patch(force=True))
+
+    def _cmd_play(self) -> None:
+        """Install the mod when it is missing or out of date, then start the emulator with the game."""
+        asyncio.create_task(self.ctx.install_patch(start=True))
 
     def _cmd_start(self) -> None:
         """Start the emulator with the game."""
@@ -174,6 +198,9 @@ class LASContext(CommonContext):
         self.ghosts = GhostLink(self.send_game, self.refresh_patch_tab)
         self.ghost_relay_arg: Optional[str] = None  # --ghost-relay replaces las_options.ghost_relay
         self.ghost_secret_arg: Optional[str] = None  # --ghost-secret replaces the patch file's (tests)
+        self.music: Optional[str] = None  # the BGM chosen by /music or in the game, None: the game's own
+        # The game's MUSIC report on connecting: "wait" for it, "skip" it (/music went out after HELLO and is newer)
+        self.music_report: Optional[str] = None
 
     async def get_username(self) -> None:
         # the slot comes from the patch file, as the server would otherwise ask for it
@@ -406,8 +433,11 @@ class LASContext(CommonContext):
             self.send_game("SYNC")
             self.update_ghosts()
             self.ghosts.on_game_connected()
+            self.music_report = "wait"  # the game reports its track first (DESIGN.md, Music)
         elif cmd == "POS":
             self.ghosts.on_pos(parts)
+        elif cmd == "MUSIC" and len(parts) == 2:
+            self.on_game_music(None if parts[1] == "off" else parts[1])
         elif cmd == "RECV":
             self.game_recv = int(parts[1])
             self.send_next_item()
@@ -432,7 +462,11 @@ class LASContext(CommonContext):
             if len(parts) == 3 and parts[1] == "level":
                 self.game_level = parts[2]
                 asyncio.create_task(self.send_level())
-            logger.debug("game: " + line[4:])
+            if len(parts) >= 2 and parts[1] == "music:":  # the game refused the track
+                self.music = None
+                logger.warning("game: " + line[4:])
+            else:
+                logger.debug("game: " + line[4:])
         elif cmd == "ERR":
             logger.warning("game: " + line)
         else:
@@ -588,6 +622,26 @@ class LASContext(CommonContext):
         settings.get_settings().save()
         self.ghosts.set_names(on)
 
+    def set_music(self, track: Optional[str]) -> None:
+        if track != self.music:
+            self.music = track
+            self.send_game(f"MUSIC {track or 'off'}")
+            if self.music_report == "wait":
+                self.music_report = "skip"
+
+    def on_game_music(self, track: Optional[str]) -> None:
+        """MUSIC <track> | MUSIC off from the game: its report on connecting, or a choice made in the game. The game
+        keeps its choice while it runs; the client sends its own only when the game reports none (DESIGN.md, Music)."""
+        report, self.music_report = self.music_report, None
+        if report == "skip":
+            return
+        if report == "wait" and track is None and self.music:
+            self.send_game(f"MUSIC {self.music}")
+            return
+        if track != self.music:
+            self.music = track
+            logger.info(f"Music: {track}." if track else "Music: the game's own.")
+
     def update_ghosts(self) -> None:
         """Hands the ghost link its settings, the multiworld's ghost secret (from the patch file) and the slot; it
         reconnects when they change. The relay is the client's setting, else the one the patch file was made with."""
@@ -742,8 +796,8 @@ class LASContext(CommonContext):
 
 
 async def prepare_patch(ctx: LASContext, patch: bool) -> None:
-    """Once the window shows the log: finds the emulator and its folders, then installs and starts the game when the
-    client was opened with a patch file."""
+    """Once the window shows the log: finds the emulator and its folders, and shows the Patch tab when the client was
+    opened with a patch file. Installing and starting wait for Play."""
     for _ in range(100):
         if not ctx.ui or hasattr(ctx.ui, "patch_tab"):
             break
@@ -752,8 +806,6 @@ async def prepare_patch(ctx: LASContext, patch: bool) -> None:
         ctx.show_patch_tab()
     ctx.detect_from_emulator()
     ctx.refresh_patch_tab()
-    if patch:
-        await ctx.install_patch(start=True)
 
 
 def launch(*launch_args: str) -> None:
@@ -770,8 +822,6 @@ def launch(*launch_args: str) -> None:
         ctx.run_cli()
         if ctx.ui:
             asyncio.create_task(prepare_patch(ctx, bool(args.patch)), name="patch")
-        elif args.patch:
-            asyncio.create_task(ctx.install_patch(start=True), name="patch")
         await ctx.exit_event.wait()
         game_task.cancel()
         ghost_task.cancel()
@@ -792,7 +842,7 @@ def launch(*launch_args: str) -> None:
     args = parser.parse_args(launch_args)
     args.patch = None
     if args.url and args.url.lower().endswith(LASContainer.patch_file_ending):
-        # Opened with a patch file: install its mod, then connect to the server and slot it names.
+        # Opened with a patch file: connect to the server and slot it names; Play installs its mod.
         args.patch, args.url = args.url, None
         container = LASContainer(args.patch)
         try:
@@ -800,7 +850,7 @@ def launch(*launch_args: str) -> None:
             args.connect = args.connect or container.server or None
             args.name = args.name or container.player_name or None
         except Exception:
-            pass  # install_patch reports it
+            pass  # check_setup reports it
     if args.url:
         from CommonClient import handle_url_arg
         args = handle_url_arg(args, parser=parser)

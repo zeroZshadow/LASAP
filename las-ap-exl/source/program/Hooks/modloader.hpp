@@ -1,6 +1,5 @@
 #pragma once
 #include "Config/config.hpp"
-// #include "Hooks/Common/audio.hpp"
 #include "Hooks/Common/eventflags.hpp"
 #include "Hooks/Common/input.hpp"
 #include "Hooks/Common/inventory.hpp"
@@ -20,7 +19,6 @@
 
 namespace ModLoader {
     inline void InstallCommonHooks() {
-        // AudioSystem::InstallHooks();
         EventFlags::InstallHooks();
         InputSystem::InstallHooks();
         Inventory::InstallHooks();

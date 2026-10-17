@@ -250,7 +250,7 @@ class PatchPanel(ScrollView):
         if error:
             logger.error(error)
         else:
-            logger.info("Double-clicking a .aplas file now opens this client and installs its mod.")
+            logger.info("Double-clicking a .aplas file now opens it in this client.")
         self.refresh()
 
     def clear_progress(self) -> None:

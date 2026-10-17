@@ -179,6 +179,10 @@ namespace {
     // The trendy game: Link counts as free while the player steers the crane, which an item-get would cut off, so
     // displays wait until he leaves the shop.
     constexpr const char* kCraneGameLevel = "CraneGame";
+    // The goal: Link reaches the Wind Fish and the owl after the Nightmare (room Ending_12O). The Wind Fish's event
+    // sets ShadowClear only at its end, when the credits start.
+    constexpr const char* kGoalLevel = "Ending";
+    constexpr const char* kGoalFlag = "ShadowClear";
     constexpr int kItemEventTries = 3;
 
     int g_ItemEventTry = 0;
@@ -903,6 +907,8 @@ namespace {
         int ghosts = 0;
         for (int n = 0; n < AP::GhostNet::SLOTS; n++) ghosts += AP::GhostNet::Get(n).active;
         s += " ghosts=" + std::to_string(ghosts);
+        s += AP::Music::StateField();
+        s += AP::JukeboxPane::StateField(fmwk != nullptr && reinterpret_cast<u8*>(fmwk)[kFrameworkPaused] != 0);
         s += AP::Test::StateFields();
         return s;
     }
@@ -966,8 +972,16 @@ namespace {
         } else if (cmd == "map") {
             if (a.size() >= 3) AP::SetMapMode(atoi(a[2].c_str()));
             AP::Send(AP::MapState());
+        } else if (cmd == "maplabel" && a.size() >= 3) {
+            AP::Send("MAPLABEL " + AP::MapLabelText(atoi(a[2].c_str())));
         } else if (cmd == "text") {
             AP::Send(a.size() >= 3 ? AP::SeenText(a[2]) : AP::TextState());
+        } else if (cmd == "music") {
+            // DBG music: the jukebox's STATE fields and the last BGM requests
+            AP::Send("MUSIC" + AP::Music::StateField() + " " + AP::Music::LogText());
+        } else if (cmd == "jukebox") {
+            // DBG jukebox: the Jukebox page's state
+            AP::Send(AP::JukeboxPane::Info());
         } else if (cmd == "name") {
             // DBG name: the player's name as the game holds it for the save (UTF-16, up to 8 letters, at +0x8 of the
             // object at 0x1cc1360), set by a new file's name entry on OK
@@ -993,12 +1007,17 @@ namespace {
             }
             AP::Send("PLAYERNAME " + utf8);
         } else if (cmd == "peek" && a.size() >= 5) {
-            // DBG peek <p|f|i> <hex offset> <hex length>: bytes of the player, the framework or the inventory
+            // DBG peek <p|f|i|b|m|h> <hex offset> <hex length>: bytes of the player, the framework, the inventory, the BGM
+            // manager, its first playing instance or that instance's sound
             Game::Framework* fmwk = Game::GetFramework();
             const u8* base = nullptr;
             if (a[2] == "p") base = fmwk ? reinterpret_cast<const u8*>(fmwk->mPlayer) : nullptr;
             else if (a[2] == "f") base = reinterpret_cast<const u8*>(fmwk);
             else if (a[2] == "i") base = *reinterpret_cast<const u8**>(g_symbols["InventoryPtr"]);
+            else if (a[2] == "b" || a[2] == "m") base = AP::Music::PeekBase(a[2] == "m");
+            else if (a[2] == "h" && AP::Music::PeekBase(true) != nullptr) {
+                base = *reinterpret_cast<const u8* const*>(AP::Music::PeekBase(true) + 8);  // the sound
+            }
             if (base == nullptr) {
                 AP::Send("ERR peek: no object");
                 return true;
@@ -1111,7 +1130,7 @@ namespace {
             if (!PlayerReady()) return false;
             AP::Send("RECV " + std::to_string(GetRecvCount()));
             SendAllChecks();
-            if (EventFlags::CheckFlag("ShadowClear")) AP::Send("GOAL");
+            if (EventFlags::CheckFlag(kGoalFlag) || LevelSystem::GetCurrentLevel() == kGoalLevel) AP::Send("GOAL");
             ReportHints(true);
         } else if (a[0] == "DEATH") {
             // A death from another player. Without a save (intro, title, file menus) or with Link dead already it
@@ -1164,6 +1183,8 @@ namespace {
             QueueNotice(RestAfter(line, 1));
         } else if (a[0] == "GHOST" || a[0] == "GHOSTS" || a[0] == "GHOSTNAMES") {
             AP::GhostNet::HandleLine(line);
+        } else if (a[0] == "MUSIC") {
+            AP::Music::HandleLine(a);
         } else if (a[0] == "MSG") {
             Logging.Log("[AP] " + line.substr(4));
 #ifdef LASAP_TEST
@@ -1182,6 +1203,7 @@ namespace AP {
         if (!seed_hash.empty()) g_SeedHash = seed_hash;
         InstallTextHooks();
         Puppet::InstallHooks();
+        Music::InstallHooks();
         ItemGetSequence::InstallAtOffset(offset_manager.Offset(kItemGetSequence));
         ItemModelTask::InstallAtOffset(offset_manager.Offset(kItemModelTask));
         ModelResourceGet::InstallAtOffset(offset_manager.Offset(kModelResourceGet));
@@ -1194,6 +1216,7 @@ namespace AP {
         LoadIndices();
         LoadKept();
         LoadHints();
+        JukeboxPane::InstallHooks();
 #ifdef LASAP_TEST
         Test::InstallHooks();
 #endif
@@ -1287,6 +1310,7 @@ namespace AP {
             g_LastLevel = level;
             g_LevelSince = NowMs();
             Send("LOG level " + level);  // test scripts wait on these
+            if (level == kGoalLevel) OnGoal();
         }
 
         // A level (re)loads while there is no player: the settle time starts once he stands in it. The game over
@@ -1321,6 +1345,7 @@ namespace AP {
             Send("LOG level " + g_LastLevel);  // the client passes it on to trackers
             for (auto& hint : g_Hints) hint.reported = false;  // sent again once the save is loaded
             GhostNet::Reset();
+            Music::Report();  // the game's choice first; the client sends its own only when the game has none
         }
 
         TickConnection();
@@ -1333,7 +1358,10 @@ namespace AP {
         TickHeldModel();
         Popup::Tick();
         TickWarpMenu();
+        // the d-pad changes the music in free play, not where a minigame may steer with it
+        JukeboxPane::Tick(PlayerFree() && g_LastLevel != kCraneGameLevel && g_LastLevel != "FishingPond");
         TickMap();
+        Music::Tick(PlayerFree());
 #ifdef LASAP_TEST
         Test::Tick();
 #endif
@@ -1359,6 +1387,7 @@ namespace AP {
 #ifdef LASAP_TEST
         Test::ApplyInput(state);
 #endif
+        JukeboxPane::OnPad(state->mButtons._storage[0]);
         // The game does not see Minus while it is held (TickWarpMenu). Each controller style is polled, so only a
         // poll that sees Minus counts; its release is noticed when no poll has seen it for a moment.
         u64& buttons = state->mButtons._storage[0];
