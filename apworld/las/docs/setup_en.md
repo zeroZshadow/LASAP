@@ -69,10 +69,18 @@ The settings are saved in `host.yaml` under `las_options`.
 
 ## In-game hints
 
-Owl statues and the library's books tell where your items are (option In-Game Hints): each one names a location, in
-your world or another player's, that holds one of your progression items. Dungeon owl statues need that dungeon's
-stone beak. With the default setting `server`, a hint you read also shows in the server's hint list, as `!hint` would,
-without costing hint points. Hints read while the client is not connected reach the server once it is.
+Owl statues and the library's books give hints about your items (option In-Game Hints). Dungeon owl statues need that
+dungeon's stone beak. Hint Distribution sets which kinds they give:
+
+- `precise`: each names the location, in your world or another player's, of one of your progression items.
+- `balanced` (default): a mix. Some name what a long check holds (the trade quest's end, the 40 and 50 seashell rewards,
+  the rapids race's best time, Ol' Baron, Dampe's last challenge), some an area (an overworld region or a dungeon)
+  holding something you need to wake the Wind Fish, some an area holding nothing anyone needs, some the area holding
+  one of your items; the rest are precise.
+- `vague`: mostly areas, with few precise hints.
+
+With the default setting `server`, a hint you read that names a location also shows in the server's hint list, as
+`!hint` would, without costing hint points. Hints read while the client is not connected reach the server once it is.
 
 ## Ghosts
 

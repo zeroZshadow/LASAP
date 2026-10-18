@@ -27,7 +27,9 @@ class FreeGifts(DefaultOnToggle):
 
 class TradeQuest(Toggle):
     """Shuffle the rewards of the trading sequence. The Yoshi Doll that starts it stays in the Trendy Game, whose
-    prizes are checks that are never shuffled."""
+    prizes are checks that are never shuffled.
+    Off, the trade quest is optional: its rewards are in logic only after the goal and hold only your own items, none
+    you need. The trade items are shuffled either way."""
     display_name = "Trade Quest"
 
 
@@ -63,18 +65,21 @@ class BossDrops(DefaultOnToggle):
 
 
 class Dampe(Toggle):
-    """Shuffle the rewards of Dampe's chamber challenges."""
+    """Shuffle the rewards of Dampe's chamber challenges.
+    Off, they are optional: in logic only after the goal, holding only your own items, none you need."""
     display_name = "Dampe"
 
 
 class Rapids(Toggle):
     """Shuffle the Rapids Ride: the race's rewards and the items on its west, middle and east islands (a heart piece,
-    a chest and a seashell dig), and with owl statues on, its owl statue's gift."""
+    a chest and a seashell dig), and with owl statues on, its owl statue's gift.
+    Off, they are optional: in logic only after the goal, holding only your own items, none you need."""
     display_name = "Rapids"
 
 
 class Fishing(Toggle):
-    """Shuffle the rewards of the fishing pond."""
+    """Shuffle the rewards of the fishing pond.
+    Off, they are optional: in logic only after the goal, holding only your own items, none you need."""
     display_name = "Fishing"
 
 
@@ -94,7 +99,8 @@ class OwlStatues(Choice):
 
 
 class SeashellMansion(Choice):
-    """The Seashell Mansion rewards up to this seashell count are shuffled; the others stay vanilla."""
+    """The Seashell Mansion rewards up to this seashell count are shuffled. The others are optional: in logic only
+    after the goal, holding only your own items, none you need."""
     display_name = "Seashell Mansion"
     option_0 = 0
     option_5 = 5
@@ -248,14 +254,34 @@ class MapTracker(DefaultOnToggle):
 
 
 class InGameHints(Choice):
-    """Owl statues and library books tell where your progression items are, in your world or another's.
-    off: their original text. text: the hint text only. server: reading a hint also makes it a hint on the server,
-    as !hint does, without costing hint points. Dungeon owl statues need their dungeon's stone beak."""
+    """Owl statues and library books give hints about your items, in your world or another's; Hint Distribution sets
+    which kinds. off: their original text. text: the hint text only. server: reading a hint that names a location also
+    makes it a hint on the server, as !hint does, without costing hint points. Dungeon owl statues need their dungeon's
+    stone beak."""
     display_name = "In-Game Hints"
     option_off = 0
     option_text = 1
     option_server = 2
     default = 2
+
+
+class HintDistribution(Choice):
+    """Which kinds of hints the owl statues and library books give. An area is an overworld region or a dungeon.
+    - Long check: what the trade quest's end, the 40 and 50 seashell rewards, the rapids race's best time, Ol' Baron
+      or Dampe's last challenge holds, when it is shuffled, not optional, and holds a progression or useful item.
+    - Required: an area holds an item you need to wake the Wind Fish.
+    - Barren: an area holds no progression item, for anyone.
+    - Area: the area (or another player's world) that holds one of your items.
+    - Precise: the location of one of your items.
+    precise: only precise hints, progression items first, then useful ones.
+    balanced: up to 6 long checks, 8 required, 5 barren and 8 area hints; precise hints for the rest.
+    vague: up to 6 long checks, 12 required, 8 barren and 3 precise hints; area hints for the rest.
+    Once a kind runs out, others take its place."""
+    display_name = "Hint Distribution"
+    option_precise = 0
+    option_balanced = 1
+    option_vague = 2
+    default = 1
 
 
 class Stealing(Choice):
@@ -388,6 +414,7 @@ class LASOptions(PerGameCommonOptions):
     ammo_ghost: AmmoGhost
     map_tracker: MapTracker
     in_game_hints: InGameHints
+    hint_distribution: HintDistribution
     stealing: Stealing
     chest_appearance: ChestAppearance
     traps: Traps
@@ -414,7 +441,7 @@ OPTION_GROUPS = [
     OptionGroup("Start", [StartingInstruments, StartingRupees]),
     OptionGroup("World", [OpenMabe, OpenKanalet, OpenMamu, CompletedBridge, ClassicD2, ShuffledDungeons, FreeBook,
                           FastFishing, FastStalfos, ShuffledBombs, ShuffledPowder, AmmoGhost, MapTracker, InGameHints,
-                          Stealing, ChestAppearance]),
+                          HintDistribution, Stealing, ChestAppearance]),
     OptionGroup("Gameplay", [Damage, MovementSpeed, Movement360, SkipSongCutscenes, InstantText, NiceHookshot,
                              DisableGuardianAcorn, DisablePieceOfPower, EasyFishing, RandomizeEnemies,
                              RandomizeEnemySizes]),

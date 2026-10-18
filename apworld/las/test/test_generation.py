@@ -160,10 +160,10 @@ class TestVanillaHeavy(LASTestBase):
         from ..lasr import LOGIC
         from ..lasr_settings import MANSION_THRESHOLDS, fixed_locations, kept_locations
         locked, plain = set(self.world.locked), set(self.world.plain)
-        # the Mansion at 0: its rewards and the seashells never matter
-        self.assertLessEqual(set(MANSION_THRESHOLDS), plain)
-        self.assertIn("pond-island", plain)
-        self.assertEqual(self.world.create_item("Secret Seashell").classification, ItemClassification.filler)
+        # the Mansion at 0: its rewards are optional, and the seashells count for them
+        self.assertLessEqual(set(MANSION_THRESHOLDS), set(self.world.optional))
+        self.assertIn("pond-island", locked)  # a seashell
+        self.assertTrue(self.world.create_item("Secret Seashell").advancement)
         self.assertIn("mabe-well", plain)  # a heart piece
         self.assertTrue(any(LOGIC[loc]["content"] == "tail-key" for loc in locked))
         self.assertLessEqual({"moblin-cave", "rooster-statue", "trendy-prize-1"}, locked)
@@ -186,7 +186,7 @@ class TestVanillaHeavy(LASTestBase):
         # trackers and the patcher get the options as they are
         settings = patch["settings"]
         self.assertEqual((settings["Heart Pieces"], settings["Seashell Mansion"], settings["Seashells Important"]),
-                         (False, 0, False))
+                         (False, 0, True))
 
     def test_tracker_counts_a_locked_item_once_received(self) -> None:
         """A locked location's item counts for the map's logic once received, not while the location is reachable:
@@ -194,7 +194,8 @@ class TestVanillaHeavy(LASTestBase):
         from ..items import LASR_TO_ITEM
         from ..tracker import LogicTracker
         logic = self.world.fill_slot_data()["logic"]
-        tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], self.world.shuffled)
+        tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], self.world.shuffled,
+                               optional=logic["optional"])
         doll = LASR_TO_ITEM[LOGIC["trendy-prize-1"]["content"]]
         # every other item of the slot: the pool's, the starting ones and the other locked locations'
         items = [item.name for item in self.multiworld.precollected_items[self.player]]
