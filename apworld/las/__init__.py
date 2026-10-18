@@ -467,7 +467,7 @@ class LASWorld(World):
         if hints:
             spoiler_handle.write(f"\n\nIn-game hints ({self.multiworld.player_name[self.player]}):\n\n")
             for source, hint in hints.items():
-                spoiler_handle.write(f"{source_name(source)}: {hint['text']}\n")
+                spoiler_handle.write(f"{source_name(source)} ({hint['kind']}): {hint['text']}\n")
 
     def placed_names(self) -> Dict[str, List[str]]:
         """What each AP location holds: [item name, owner name], the owner empty for this player's items."""
