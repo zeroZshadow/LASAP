@@ -1,0 +1,79 @@
+# The check list of a map icon of several locations (DESIGN.md, Map tracker, Check list): run after newgame_file2
+# on a mod patched with Map Tracker on (make_test_patch.py). Link stands in front of Mabe's shop, where the map's
+# cursor starts on the shop's icon (three locations: Shop Slot3 1st, Shop Slot3 2nd, Shop Slot6, in logic in a new
+# game). Shop Slot6 is checked first (DBG collect). STATE's mlist=<group>/<cursor>/<first row> while the list is
+# there; DBG maplist's looks= has a letter per location (i in logic, o out of logic, c checked, s skipped) and
+# count= the header's "<in logic>/<unchecked>". Screenshots map_list_open and map_list_skipped.
+send DBG map
+expect map=1.*skipped=0 5
+warp Field 51.75 10.5 117
+send DBG collect 64
+tapuntil 800 paused=1 when free 5
+until map:KeyWait 10
+send DBG map
+expect hover=\d+/3/in$ 5
+# A opens the list over the map: its guide reads A Skip / unskip, B Back.
+tap 1 2 2 when map:KeyWait
+await 5 mlist=\d+/0/0\s
+send DBG maplist
+expect MAPLIST.*open=1.*looks=iic.*rows=7\sdrawn=7.*count=2/2\sname=Shop\sSlot3\s1st\s\|\stitle=Mabe\sShop$ 5
+send DBG text MapCaptionPin
+expect TEXT.MapCaptionPin.said=.*Skip\s/\sunskip 5
+shot D:/DEV/LASAP-sandbox/map_list_open.png
+# Nothing else reaches the map or the menu: X (out of logic), Plus (Items), L (Jukebox), R (zoom), the stick.
+tap 4
+tap 400
+tap 40
+tap 80
+tap 0 2 2 0 -32767
+wait 0.5
+check paused=1.*pane=0\snavi=2.*mlist=\d+/0/0\s
+send DBG map
+expect out=shown 5
+# Down, A: the second location skipped; the header counts one left.
+tap 8000
+await 5 mlist=\d+/1/0\s
+tap 1
+send DBG maplist
+expect MAPLIST.*looks=isc.*count=1/1\sname=Shop\sSlot3\s2nd 5
+shot D:/DEV/LASAP-sandbox/map_list_skipped.png
+# Up, A: both unchecked locations skipped, the icon shows collected.
+tap 2000
+await 5 mlist=\d+/0/0\s
+tap 1
+send DBG maplist
+expect MAPLIST.*looks=ssc.*count=0/0 5
+send DBG map
+expect looks=\d+,0,0,1\s.*skipped=2 5
+# A on the checked location changes nothing.
+tap 8000
+tap 8000
+await 5 mlist=\d+/2/0\s
+tap 1
+send DBG maplist
+expect MAPLIST.*looks=ssc 5
+# Both back: the icon in logic again.
+tap 2000
+await 5 mlist=\d+/1/0\s
+tap 1
+tap 2000
+await 5 mlist=\d+/0/0\s
+tap 1
+send DBG maplist
+expect MAPLIST.*looks=iic.*count=2/2 5
+send DBG map
+expect looks=\d+,0,0,0\s.*skipped=0 5
+# B closes the list, not the menu: the map takes buttons again with its own guide.
+tap 2
+await 5 mlist=-
+check paused=1.*pane=0\snavi=2
+send DBG text MapCaptionPin
+expect TEXT.MapCaptionPin.said=(?!.*Skip) 5
+tap 4 2 2 when map:KeyWait
+send DBG map
+expect out=hidden 5
+tap 4 2 2 when map:KeyWait
+send DBG map
+expect out=shown 5
+tapuntil 800 paused=0 when map:KeyWait 5
+free 10

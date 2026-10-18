@@ -2,6 +2,7 @@
 // and runs test-only debug commands. Tick() runs once per input poll on the game thread.
 #include "AP/ap.hpp"
 #include "AP/ap_debug.hpp"
+#include "AP/ap_list.hpp"
 #include "Hooks/Common/eventflags.hpp"
 #include "Hooks/Common/inventory.hpp"
 #include "Hooks/Common/level.hpp"
@@ -922,6 +923,7 @@ namespace {
         s += " ghosts=" + std::to_string(ghosts);
         s += AP::Music::StateField();
         s += AP::JukeboxPane::StateField(fmwk != nullptr && reinterpret_cast<u8*>(fmwk)[kFrameworkPaused] != 0);
+        s += AP::MapListField();
         s += AP::Test::StateFields();
         return s;
     }
@@ -985,6 +987,8 @@ namespace {
         } else if (cmd == "map") {
             if (a.size() >= 3) AP::SetMapMode(atoi(a[2].c_str()));
             AP::Send(AP::MapState());
+        } else if (cmd == "maplist") {
+            AP::Send(AP::MapListInfo(a));
         } else if (cmd == "maplabel") {
             AP::Send("MAPLABEL " + AP::MapLabelText(a.size() >= 3 ? atoi(a[2].c_str()) : AP::MapHoverGroup()));
         } else if (cmd == "text") {
@@ -1230,6 +1234,7 @@ namespace AP {
         LoadIndices();
         LoadKept();
         LoadHints();
+        ListUi::InstallHooks();
         JukeboxPane::InstallHooks();
 #ifdef LASAP_TEST
         Test::InstallHooks();
@@ -1422,7 +1427,8 @@ namespace AP {
 #ifdef LASAP_TEST
         Test::ApplyInput(state);
 #endif
-        JukeboxPane::OnPad(state->mButtons._storage[0]);
+        ListUi::OnPad(state->mButtons._storage[0]);
+        if (MapListTakesPad(state)) return;
         // The game does not see Minus while it is held (TickWarpMenu). Each controller style is polled, so only a
         // poll that sees Minus counts; its release is noticed when no poll has seen it for a moment.
         u64& buttons = state->mButtons._storage[0];

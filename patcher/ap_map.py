@@ -2,6 +2,7 @@
 
 Overworld: four UiFieldMapIcons rows per spot holding checks (a group of nearby locations), one per look: in logic,
 partly in logic, out of logic and collected, with the marker frames of ap_map_icons.py (smaller for a single check).
+The module lists a group's locations by their short names (its check list).
 Each dungeon also gets a group with all of its checks, next to the game's marker of its entrance. The map shows a row's
 icon while the event flag in the row is set and names it with Place:<label>; flag and label are APMap<mark><group>,
 which the module answers from ap_map.txt (ap_map.cpp): the group's look shows, named by group_name().
@@ -126,6 +127,7 @@ def add(files, config_dir: Path, location_ids: dict, placeholder_key: str, shuff
         lines.append(f"D {g} {x:.3f} {z:.3f} " + " ".join(str(location_ids[loc]) for loc in locs))
     lines += [f"G {g} {name}" for g, name in enumerate(names)]
     lines += [f"H {g} {flag} {HIDDEN_DUNGEON}" for g, flag in enumerate(hidden) if flag]
+    lines += [f"N {location_ids[loc]} {short_name(positions['names'][loc])}" for *_, locs in overworld for loc in locs]
     (config_dir / FILE_NAME).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 

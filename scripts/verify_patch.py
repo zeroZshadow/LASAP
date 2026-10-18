@@ -108,6 +108,12 @@ if patch["settings"].get("Map Tracker"):
     if unnamed:
         bad += 1
         print(f"MAP NAMES missing or too long for groups {[(g, names.get(g)) for g in unnamed]}")
+    # every location of an overworld icon has its name for the icon's check list
+    location_names = {int(p[1]) for p in lines if p[0] == "N" and len(p) > 2}
+    nameless = [i for ids in overworld.values() for i in ids if i not in location_names]
+    if nameless:
+        bad += 1
+        print(f"MAP LOCATION NAMES missing for {nameless}")
     print(f"map icons overworld={len(overworld)} dungeon={len(dungeon)} locations={len(iconed)} bad={bad}")
 # Inventory bits: every seashell, heart piece, golden leaf, heart container and bottle source once per kind and bit, with
 # its local id when shuffled.

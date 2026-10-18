@@ -7,6 +7,7 @@
 // placeholder before its item-get (see the patcher). The Seashell Mansion's presents add it after, so the module
 // reads the location from the present when it pops.
 #include "AP/ap.hpp"
+#include "AP/ap_list.hpp"
 #include "offsets.hpp"
 #include "loggers.hpp"
 #include "Config/file_handler.hpp"
@@ -236,7 +237,7 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
             case Kind::MapPin: {
                 // the map's X, Y and A captions; the Jukebox's guide, made from the map's, uses them too
                 int button = kind == Kind::MapCaption ? 0 : kind == Kind::MapPlace ? 1 : 2;
-                std::string text = AP::JukeboxPane::GuideCaption(button);
+                std::string text = AP::ListUi::GuideCaption(button);
                 if (text.empty() && kind == Kind::MapCaption) text = AP::MapCaptionText();
                 if (text.empty()) return;
                 // The caption starts with a tag drawing the button (0x0E, group, type, parameter size, parameters).

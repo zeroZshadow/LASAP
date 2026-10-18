@@ -140,7 +140,14 @@ namespace AP {
 #ifdef LASAP_TEST
     // The overworld icon group the map's cursor was on the last frame the overworld map took buttons, or -1.
     int MapHoverGroup();
+    // STATE's " mlist=<group>/<cursor>/<first row>[/closing]" while the map's check list is there, else " mlist=-";
+    // DBG maplist.
+    std::string MapListField();
+    std::string MapListInfo(const std::vector<std::string>& args);
 #endif
+    // Each input poll: while the map's check list is open the game sees no buttons and no sticks (true then); buttons
+    // held as it closes stay hidden from the game until released.
+    bool MapListTakesPad(nn::hid::NpadBaseState* state);
     // The text of the map's X button caption (UI:MapCaptionMemory), or "" for the game's own.
     std::string MapCaptionText();
     // 0 off, 1 on, 2 maps revealed without overworld icons (DBG map, for tests and screenshots)
@@ -304,13 +311,8 @@ namespace AP::Popup {
 // The Jukebox page (ap_jukebox.cpp, DESIGN.md "Jukebox page"): the pause menu's fourth page as a mode of System's slot.
 namespace AP::JukeboxPane {
     void InstallHooks();
-    // Each input poll's buttons (nn::hid).
-    void OnPad(u64 buttons);
     // Once a tick: the d-pad's left and right choose the track before and after while the player is free.
     void Tick(bool free);
-    // While the Jukebox fills the guide from the map's: the word for the map's caption of button 0 X (Memories),
-    // 1 Y (Hide markers) or 2 A (Pin), after the caption's button tag; else "".
-    std::string GuideCaption(int button);
 #ifdef LASAP_TEST
     // STATE's " pane=<0-3|-> navi=<header state> jbox=<cursor>/<top>"
     std::string StateField(bool paused);
