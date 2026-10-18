@@ -18,14 +18,20 @@ namespace {
     // This game's SDK asserts on the 640 KiB pool that Dread uses; give it room.
     constexpr size_t kSocketAllocatorSize = 128 * 1024;
     constexpr size_t kSocketPoolSize = 1024 * 1024;
-    // The loop sleeps 2 ms; drop a client that is silent for 10 s.
-    constexpr int kKeepAliveTicks = 5000;
+    // Drop a client that is silent for 10 s. Timed by the system counter: emulators sleep far longer than asked.
+    constexpr u64 kKeepAliveMs = 10'000;
     constexpr size_t kMaxLine = 4096;
 #ifdef LASAP_TEST
     constexpr s32 kAcceptPollMs = 2;    // the debug port is served from this loop too
 #else
     constexpr s32 kAcceptPollMs = 100;
 #endif
+
+    u64 NowMs() {
+        u64 ticks;
+        asm volatile("mrs %0, cntpct_el0" : "=r"(ticks));
+        return ticks / 19200;
+    }
 
     alignas(0x1000) u8 g_ThreadStack[0x8000];
     // Static so it does not depend on the game's heap being ready this early.
@@ -99,7 +105,7 @@ namespace {
     void ServeClient() {
         std::string partial;
         char buf[4096];
-        int keepAlive = kKeepAliveTicks;
+        u64 lastHeard = NowMs();
 
         while (true) {
             svcSleepThread(2'000'000);
@@ -107,7 +113,7 @@ namespace {
             // all that has arrived: the client's lines can outrun one read per wake (30 ghosts send ~300 lines/s)
             ssize_t n;
             while ((n = nn::socket::Recv(g_Client, buf, sizeof(buf), MSG_DONTWAIT)) > 0) {
-                keepAlive = kKeepAliveTicks;
+                lastHeard = NowMs();
                 partial.append(buf, n);
                 size_t pos;
                 while ((pos = partial.find('\n')) != std::string::npos) {
@@ -129,7 +135,7 @@ namespace {
             if (n == 0) return;
 
             if (!SendPending()) return;
-            if (--keepAlive <= 0) return;
+            if (NowMs() - lastHeard >= kKeepAliveMs) return;
 #ifdef LASAP_TEST
             AP::Test::NetPoll();
 #endif
