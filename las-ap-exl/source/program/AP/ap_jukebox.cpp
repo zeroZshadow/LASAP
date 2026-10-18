@@ -24,7 +24,9 @@ namespace {
     struct StrView { const char* data; s64 length; };
 
     // Navi, the pause menu header (vtable 0x1c2aa18): machine at +0x80, state byte +0x8d (Open 1, WaitKey 2,
-    // Selected 3, CloseOldUi 4, Close 5); current index u8 +0x23c, target +0x23d; L/R pressed +0x1341 (1 L, 2 R);
+    // Selected 3, CloseOldUi 4, Close 5); current index u8 +0x23c, target +0x23d (Navi_WaitKey sets the current
+    // index from the target on its first frame on a page); L/R pressed +0x1341 (1 L, 2 R; kept from a press while the
+    // next page opens until a page change takes it);
     // direction +0x1338 (1 R); page slots (shared pointers) +0x12f0 + index * 0x10; message texts +0x2d0 the current
     // page's title, +0x2e8 the page under L, +0x300 the page under R. Navi_SetGuide (navi, index) fills the button
     // guide for a page.
@@ -559,7 +561,7 @@ namespace {
 
     // What Navi_WaitKey asks before it turns the page: no dialog open (UIs 0x1f, 0x20, 0x26) and the page's +0xe0 set.
     bool MayTurn(u8* navi) {
-        u8* page = Field<u8*>(navi, kNaviSlots + Field<u8>(navi, kNaviCurrent) * 0x10);
+        u8* page = Field<u8*>(navi, kNaviSlots + Field<u8>(navi, kNaviTarget) * 0x10);
         if (page == nullptr || Field<u8>(page, kPageCanClose) == 0) return false;
         return FindUi(0x20) == nullptr && FindUi(0x1f) == nullptr && FindUi(0x26) == nullptr;
     }
@@ -571,12 +573,12 @@ namespace {
 
     // A page change the header would not make: index 2 to index 2.
     void ChangeInPlace(u8* navi, bool jukebox, u8 direction) {
-        int index = Field<u8>(navi, kNaviCurrent);
+        int index = Field<u8>(navi, kNaviTarget);
         u8* old = Field<u8*>(navi, kNaviSlots + index * 0x10);
         if (old != nullptr) Field<u8>(old, kPageActive) = 0;
         Field<u8>(navi, kNaviLR) = 0;
         Field<u8>(navi, kNaviDirection) = direction == kRight;
-        Field<u8>(navi, kNaviTarget) = index;
+        Field<u8>(navi, kNaviCurrent) = index;  // as Navi_WaitKey would have, on the page's first frame
         g_Pending = jukebox;
         g_ChangeAhead = true;
         g_Changes++;
@@ -588,7 +590,9 @@ namespace {
 HOOK_DEFINE_TRAMPOLINE(NaviWaitKey) {
     static void Callback(u8* navi) {
         if (InChamberDungeon()) return Orig(navi);
-        int index = Field<u8>(navi, kNaviCurrent);
+        // the page shown: the target, which the current index still trails on the page's first frame (an L or R
+        // pressed while the page opened turns it there)
+        int index = Field<u8>(navi, kNaviTarget);
         u8 lr = Field<u8>(navi, kNaviLR);
         bool inPlace = index == kSystem && ((lr == kRight && !g_Jukebox) || (lr == kLeft && g_Jukebox));
         if (inPlace && MayTurn(navi)) return ChangeInPlace(navi, lr == kRight, lr);
@@ -754,6 +758,11 @@ namespace AP::JukeboxPane {
         s += " jbox=";
         s += g_Ui.page != nullptr ? std::to_string(g_Cursor) + "/" + std::to_string(g_Top) : std::string("-");
         return s;
+    }
+
+    std::string NaviState() {
+        u8* navi = FindUi(kNaviUi);
+        return navi != nullptr ? std::to_string(Field<u8>(navi, kNaviState)) : "-";
     }
 
     // DBG jukebox
