@@ -74,7 +74,8 @@ revealed from the start, and a dot marks each spot with checks, a larger one whe
 the items you have reach all of its checks you have not done, half green and half red for some of them, red for
 none yet, grey with a tick once they are all done. A dot beside each dungeon's entrance does the same for the checks
 inside. Hover a dot to see its name; for a spot with several checks left, it starts with how many of them are in
-logic, as in "3/7 Fishing Hole" or "9/15 D1 Tail Cave". Only checks your options shuffle get a dot. X on the map hides or shows the red dots (it
+logic, as in "3/7 Fishing Hole" or "9/15 D1 Tail Cave". With Shuffled Dungeons a dungeon's dot sits at the door that leads
+into it and shows just "Unknown dungeon", without the count, until you have been inside. Only checks your options shuffle get a dot. X on the map hides or shows the red dots (it
 replaces Memories while the Map Tracker option is on). "Offline" next to X means the client is not connected to the
 server: the colours are then those of the last connection, or all green before the first one. In dungeons the map shows every room and the chests (open once checked, also when a server command checked
 them), and a chest icon in each room with other checks (key drops, owl statues, the boss) opens once they are done. The dungeon map, compass and stone beak are still items to

@@ -92,6 +92,8 @@ namespace {
     std::vector<DungeonGroup> g_Dungeon;
     std::vector<Chest> g_Chests;
     std::vector<std::string> g_GroupNames;      // group -> its name
+    // group -> the flag until which it has another name (a shuffled dungeon's: which dungeon is behind its door)
+    std::map<size_t, std::pair<std::string, std::string>> g_HiddenNames;
     int g_FlagsCalls = 0, g_IconCalls = 0, g_IconMatches = 0, g_ChestMatches = 0;  // for DBG map
 
     bool StartsWith(std::string_view s, const char* prefix) {
@@ -254,7 +256,8 @@ HOOK_DEFINE_TRAMPOLINE(DungeonIconUpdate) {
 namespace AP {
     void LoadMap() {
         // Written by the patcher (ap_map.py): "O <group> <local id>...", "D <group> <x> <z> <local id>...",
-        // "C <level> <x> <z> <local id>" (a dungeon chest) and "G <group> <name>" (an overworld group's name) lines.
+        // "C <level> <x> <z> <local id>" (a dungeon chest), "G <group> <name>" (an overworld group's name) and
+        // "H <group> <flag> <name>" (the group's name until the flag is set) lines.
         std::string text;
         if (R_FAILED(FileHandler::ReadFile(MAP_PATH, text))) {
             Logging.Log("[AP] no map tracker file");
@@ -274,6 +277,14 @@ namespace AP {
                 std::getline(ss, name);
                 if (g_GroupNames.size() <= group) g_GroupNames.resize(group + 1);
                 g_GroupNames[group] = name.empty() ? name : name.substr(1);
+                continue;
+            }
+            if (kind == "H") {
+                size_t group;
+                std::string flag, name;
+                if (!(ss >> group >> flag)) continue;
+                std::getline(ss, name);
+                g_HiddenNames[group] = {flag, name.empty() ? name : name.substr(1)};
                 continue;
             }
             if (kind == "C") {
@@ -328,8 +339,11 @@ namespace AP {
     }
 
     std::string MapLabelText(int group) {
-        // The group's name, after "<in logic>/<unchecked> " when it has several locations and some are unchecked.
+        // The group's name, after "<in logic>/<unchecked> " when it has several locations and some are unchecked; or
+        // its other name alone until its flag is set (the count would tell a dungeon by its number of locations).
         if (group < 0 || static_cast<size_t>(group) >= g_Overworld.size()) return "";
+        auto hidden = g_HiddenNames.find(group);
+        if (hidden != g_HiddenNames.end() && !EventFlags::CheckFlag(hidden->second.first)) return hidden->second.second;
         std::string name = static_cast<size_t>(group) < g_GroupNames.size() ? g_GroupNames[group] : "";
         const auto& ids = g_Overworld[group];
         int unchecked = 0, reachable = 0;

@@ -19,6 +19,7 @@ from pathlib import Path
 
 import ap_map_icons
 from RandomizerCore.Randomizers.chests import CHEST_ROOMS
+from RandomizerCore.Randomizers.data import DUNGEON_MAP_ICONS
 from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct
 
 HERE = Path(__file__).resolve().parent
@@ -35,6 +36,10 @@ DUNGEON_MARKERS = {"D1": "Lv1Dungeon_map", "D2": "Lv2Dungeon_map", "D3": "Lv3Dun
                    "D5": "Lv5Dungeon_map", "D6": "Lv6Dungeon_map", "D7": "Lv7Dungeon_map", "D8": "Lv8Dungeon_map",
                    "D0": "ClothesDungeon_map"}
 ENTRANCE_OFFSET = 2.5  # x distance from the game's dungeon marker, so both show
+# With shuffled dungeons a dungeon's icon has this name until the dungeon's marker flag is set, which the game sets
+# the first time it shows the dungeon's name on entering it (LocationName.gsheet)
+HIDDEN_DUNGEON = "Unknown dungeon"
+MARKER_FLAGS = dict(DUNGEON_MAP_ICONS.values())  # the game's dungeon marker label -> its show flag
 NAME_WIDTH = 30  # the name of an icon of several checks fits the hover box's line after its count ("22/22 ")
 
 
@@ -107,14 +112,22 @@ def shown(location_ids: dict, settings: dict) -> dict:
     return {loc: i for loc, i in location_ids.items() if loc not in TRADE_GIFT_LOCATIONS}
 
 
-def add(files, config_dir: Path, location_ids: dict, placeholder_key: str) -> None:
+def hidden_until(locs: list, shuffled_dungeons: bool):
+    """The flag until which an overworld icon's name is HIDDEN_DUNGEON: with shuffled dungeons, that of a dungeon's
+    icon, which would tell which dungeon its door leads into."""
+    dungeon = re.match(r"(D\d)-", locs[0])
+    return MARKER_FLAGS[DUNGEON_MARKERS[dungeon.group(1)]] if dungeon and shuffled_dungeons else None
+
+
+def add(files, config_dir: Path, location_ids: dict, placeholder_key: str, shuffled_dungeons: bool = False) -> None:
     positions = load_positions()
     overworld = overworld_groups(positions, location_ids) + entrance_groups(files, location_ids)
     dungeon = dungeon_groups(positions, location_ids)
     _field_icons(files, overworld)
     _dungeon_icons(files, dungeon)
     names = [group_name(positions, locs) for *_, locs in overworld]
-    _text(files, names)
+    hidden = [hidden_until(locs, shuffled_dungeons) for *_, locs in overworld]
+    _text(files, [HIDDEN_DUNGEON if flag else name for name, flag in zip(names, hidden)])
     lines = [f"C {level} {x:.3f} {z:.3f} {local_id}"
              for level, x, z, local_id in _dungeon_chests(files, location_ids, placeholder_key)]
     for g, (*_, locs) in enumerate(overworld):
@@ -122,6 +135,7 @@ def add(files, config_dir: Path, location_ids: dict, placeholder_key: str) -> No
     for g, (_, x, z, locs) in enumerate(dungeon):
         lines.append(f"D {g} {x:.3f} {z:.3f} " + " ".join(str(location_ids[loc]) for loc in locs))
     lines += [f"G {g} {name}" for g, name in enumerate(names)]
+    lines += [f"H {g} {flag} {HIDDEN_DUNGEON}" for g, flag in enumerate(hidden) if flag]
     (config_dir / FILE_NAME).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
