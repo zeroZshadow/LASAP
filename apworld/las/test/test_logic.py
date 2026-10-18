@@ -38,7 +38,8 @@ OPTION_SETS = [
 
 
 def lasr_reachable(world, lasr_items: Counter) -> set:
-    """Item locations LASR's evaluator reaches with the given items and the world's settings and dungeon entrances."""
+    """Item locations LASR's evaluator reaches with the given items and the world's settings and dungeon entrances;
+    the world's optional locations only once it reaches the goal."""
     logic_defs = copy.deepcopy(world.compiler.logic)
     for loc in world.removed:
         del logic_defs[loc]
@@ -48,7 +49,9 @@ def lasr_reachable(world, lasr_items: Counter) -> set:
     access = dict(lasr_items)
     access.update({token: 1 for token in world.settings_tokens})
     evaluator = LASREvaluator(world.options.logic.current_key, logic_defs, placements)
-    reached = evaluator.reachable(access)
+    reached = set(evaluator.reachable(access))
+    if "kill-nightmare" not in reached:
+        reached -= set(world.optional)
     return {loc for loc in logic_defs if logic_defs[loc]["type"] == "item" and loc in reached}
 
 

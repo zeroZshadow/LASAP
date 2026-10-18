@@ -22,11 +22,16 @@ with count toward it. The sign at the foot of the egg's stairs tells how many, s
 
 Chests, free gifts, golden leaves, heart pieces, seashells, the shop, boss drops and other item locations, each category
 with its own option. The trade quest, Dampé, the Rapids Ride (its race and the items on its islands), fishing, blue
-rupees, owl statues and the Seashell Mansion rewards can be added. A category left unshuffled keeps its items in their places. Where the logic may need such an
-item (a song, a key, an instrument, a trade item), the spot is still a check: it can be hinted, and the item arrives
-from the server when you pick it up. The rest (rupees, heart pieces, seashells while the Seashell Mansion is off) are
-not checks and are never needed. The Trendy Game's prizes are never shuffled; its Yoshi Doll, which starts the trade
-quest, is a check. Saving Bow-Wow and reviving the rooster are checks too. Small keys, nightmare keys, maps, compasses, stone beaks and instruments can stay in their own
+rupees, owl statues and the Seashell Mansion rewards can be added.
+
+An activity left out (the trade quest, Dampé, the Rapids Ride, fishing, the Seashell Mansion rewards above
+`seashell_mansion`) is optional: its rewards are checks holding random items of your own, but none you need, and they
+are in logic only after the goal. Do them for heart pieces, a second sword or whatever turns up, or skip them.
+
+Any other category left unshuffled keeps its items in their places. Where the logic may need such an item (a song, a
+key, an instrument, the shovel), the spot is still a check: it can be hinted, and the item arrives from the server when
+you pick it up. The rest (rupees, heart pieces) are not checks and are never needed. The Trendy Game's prizes are never
+shuffled; its Yoshi Doll, which starts the trade quest, is a check. Saving Bow-Wow and reviving the rooster are checks too. Small keys, nightmare keys, maps, compasses, stone beaks and instruments can stay in their own
 dungeon or go anywhere.
 
 ## Can dungeon entrances be shuffled?
@@ -72,7 +77,7 @@ like. Together with the warp menu below, this keeps you from getting stuck witho
 With the Map Tracker option (on by default), the map in the pause menu shows them. The whole overworld map is
 revealed from the start, and a dot marks each spot with checks, a larger one where there are several: green when
 the items you have reach all of its checks you have not done, half green and half red for some of them, red for
-none yet, grey with a tick once they are all done. A dot beside each dungeon's entrance does the same for the checks
+none yet, grey with a tick once they are all done. Optional checks count as reached only once the goal is. A dot beside each dungeon's entrance does the same for the checks
 inside. Hover a dot to see its name; for a spot with several checks left, it starts with how many of them are in
 logic, as in "3/7 Fishing Hole" or "9/15 D1 Tail Cave". With Shuffled Dungeons a dungeon's dot sits at the door that leads
 into it and shows just "Unknown dungeon", without the count, until you have been inside. Only checks your options shuffle get a dot. X on the map hides or shows the red dots (it

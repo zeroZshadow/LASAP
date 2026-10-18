@@ -102,16 +102,6 @@ def group_name(positions: dict, locs: list) -> str:
     return positions["spots"][locs[0]]
 
 
-def shown(location_ids: dict, settings: dict) -> dict:
-    """The locations that get icons: the slot's AP locations, but not the trade quest's when it is off. Those stay
-    checks holding their trade item, as the logic needs it, but the player turned the trade quest off, and PopTracker
-    hides them too."""
-    if settings.get("Trade Quest", True):
-        return location_ids
-    from RandomizerCore.randomizer_data import TRADE_GIFT_LOCATIONS
-    return {loc: i for loc, i in location_ids.items() if loc not in TRADE_GIFT_LOCATIONS}
-
-
 def hidden_until(locs: list, shuffled_dungeons: bool):
     """The flag until which an overworld icon's name is HIDDEN_DUNGEON: with shuffled dungeons, that of a dungeon's
     icon, which would tell which dungeon its door leads into."""

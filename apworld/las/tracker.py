@@ -4,7 +4,8 @@ The client evaluates the world's own rules (logic.py) without a MultiWorld. The 
 `state.prog_items` and regions through `can_reach`, so a small state and region stand-ins serve. Regions, and the
 items of vanilla locations (no AP locations), are added until nothing changes, as Archipelago's sweep does. A location
 is in logic only for the items the player has: the item of a locked location (a trade item, a companion) counts once
-it is received, not while the location could be reached, as the player may not know where it is.
+it is received, not while the location could be reached, as the player may not know where it is. An optional location
+(LASWorld.optional) is in logic only once the goal is.
 The slot data's "logic" entry carries what the rules depend on (LASWorld.fill_slot_data).
 """
 from collections import Counter
@@ -13,7 +14,7 @@ from typing import Callable, Dict, Iterable, List, Mapping, Optional, Set, Tuple
 from BaseClasses import ItemClassification
 
 from .items import ITEM_TABLE, LASR_TO_ITEM
-from .lasr import LOGIC, dungeon_logic
+from .lasr import COUNTED, LOGIC, dungeon_logic, goal_logic
 from .logic import LogicCompiler, make_rule
 
 PLAYER = 1
@@ -38,20 +39,29 @@ def is_progression(item_name: str) -> bool:
 
 class LogicTracker:
     def __init__(self, preset: str, tokens: Mapping[str, bool], vanilla: Iterable[str], shuffled: Iterable[str],
-                 dungeon_entrances: Optional[Mapping[str, str]] = None):
+                 dungeon_entrances: Optional[Mapping[str, str]] = None, optional: Iterable[str] = (),
+                 instruments_required: int = 8):
         """`vanilla`: LASR locations that keep a progression item and are no AP locations; `shuffled`: the slot's
-        LASR locations; `dungeon_entrances`: the slot data's, None for none shuffled."""
+        LASR locations; `dungeon_entrances`: the slot data's, None for none shuffled; `optional`: the shuffled
+        locations reached only after the goal, which opens with `instruments_required` instruments."""
         logic = dungeon_logic(LOGIC, dict(dungeon_entrances)) if dungeon_entrances else LOGIC
-        compiler = LogicCompiler(logic, preset, tokens, LASR_TO_ITEM)
-        vanilla, self.shuffled = list(vanilla), list(shuffled)
-        needed = set(compiler.dependencies(self.shuffled + vanilla)) & compiler.region_nodes
+        compiler = LogicCompiler(goal_logic(instruments_required, logic), preset, tokens, LASR_TO_ITEM, COUNTED)
+        vanilla, self.shuffled, optional = list(vanilla), list(shuffled), set(optional)
+        roots = self.shuffled + vanilla + (["kill-nightmare"] if optional else [])
+        needed = set(compiler.dependencies(roots)) & compiler.region_nodes
         self.regions: Dict[str, _Region] = {name: _Region() for name in needed}
 
         def rule(name: str):
             return make_rule(compiler.node_expr(name), PLAYER, self.regions)
 
         self.entrances = [(self.regions[name], rule(name)) for name in LOGIC if name in needed]
-        self.locations = [(loc, self.regions[LOGIC[loc]["region"]], rule(loc)) for loc in self.shuffled]
+        goal = make_rule(compiler.token("kill-nightmare", 1), PLAYER, self.regions)
+
+        def after_goal(reach: Callable) -> Callable:
+            return lambda state: goal(state) and reach(state)
+
+        self.locations = [(loc, self.regions[LOGIC[loc]["region"]], after_goal(rule(loc)) if loc in optional else
+                           rule(loc)) for loc in self.shuffled]
         # (location, region, rule, event item): what a reachable vanilla location adds
         self.events: List[Tuple[str, _Region, Callable, str]] = [
             (loc, self.regions[LOGIC[loc]["region"]], rule(loc), LASR_TO_ITEM[LOGIC[loc]["content"]])
