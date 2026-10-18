@@ -107,6 +107,8 @@ class TestClient(unittest.TestCase):
                 ctx.handle_game_line(line)
                 await asyncio.sleep(0)
                 seen.append(ctx.logic_tracker_instruments)
+            gets = [msg for msg in sent if msg["cmd"] == "Get"]
+            self.assertEqual(gets, [{"cmd": "Get", "keys": ["las_sign_0_1"]}])
             return [msg for msg in sent if msg["cmd"] == "Set" and msg["key"].startswith("las_sign")], seen
         return asyncio.run(run())
 
@@ -122,6 +124,21 @@ class TestClient(unittest.TestCase):
         self.assertEqual(len(sent), 1)
         sent, seen = self.run_lines(self.SLOT_DATA, ["HELLO 2 def", "SIGN"])
         self.assertEqual((sent, seen[-1]), ([], 8))  # the game runs another seed than the slot
+
+    def test_read_in_an_earlier_session(self) -> None:
+        """The key in data storage counts, as the game's save may have lost the read."""
+        from ..client import LASContext
+
+        async def run() -> list:
+            ctx = LASContext(None, None, "127.0.0.1", 0)
+            ctx.slot, ctx.team, ctx.slot_seed_hash, ctx.slot_data = 1, 0, "abc", self.SLOT_DATA
+            ctx.make_logic_tracker()
+            seen = []
+            for value in (None, True):
+                ctx.on_package("Retrieved", {"keys": {"las_sign_0_1": value}})
+                seen.append(ctx.logic_tracker_instruments)
+            return seen
+        self.assertEqual(asyncio.run(run()), [8, 3])
 
     def test_known_and_old_slot_data(self) -> None:
         old = {k: v for k, v in self.SLOT_DATA.items() if k != "instruments_known"}

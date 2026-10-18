@@ -167,6 +167,7 @@ def _add_ap_flags(self) -> None:
     for i in range(RECV_FLAG_BITS):
         self.addFlag(f"APRecv{i}")
     self.addFlag(ap_ghost.BOW_FLAG)
+    self.addFlag(ap_goal.SIGN_FLAG)
     for flag in ap_deathlink.FLAGS:
         self.addFlag(flag)
     for flag in ap_hints.FLAGS:

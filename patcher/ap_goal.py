@@ -6,7 +6,7 @@ the instruments play, which song plays, how the scene fades and whether the egg 
 its case 0 once that number can no longer be reached.
 
 The sign at the foot of the egg's stairs (`Place:SBMountTamaranch`, only used there) names the number, so a random
-number can be read in the game."""
+number can be read in the game. The module sets SIGN_FLAG in the save once the sign's text shows, for the trackers."""
 from typing import Dict, Optional
 
 from evfl.container import Container
@@ -24,6 +24,7 @@ INSTRUMENT_ITEM_TYPES = tuple(range(45, 53))
 SIGN_FILE = "Place.msbt"
 SIGN_KEY = "SBMountTamaranch"
 SIGN_WAIT = "[1:4]"  # the sign's text ends waiting for input
+SIGN_FLAG = "APSignRead"  # AP::SIGN_FLAG, added to GlobalFlags by las_ap_patch
 
 
 def set_instrument_count(files, count: int) -> None:

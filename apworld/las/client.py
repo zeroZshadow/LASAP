@@ -263,6 +263,8 @@ class LASContext(CommonContext):
             self.slot_data = args["slot_data"]
             self.make_logic_tracker()
             asyncio.create_task(self.send_sign_read())
+            # read in an earlier session: the game's save may have lost it (quit without saving)
+            asyncio.create_task(self.send_msgs([{"cmd": "Get", "keys": [self.sign_key]}]))
             self.send_logic()
             self.update_ghosts()
         elif cmd == "RoomUpdate":
@@ -271,6 +273,8 @@ class LASContext(CommonContext):
         elif cmd == "ReceivedItems":
             self.send_next_item()
             self.send_logic()
+        elif cmd == "Retrieved" and args.get("keys", {}).get(self.sign_key) is True:
+            self.on_sign_read(self.slot_seed_hash)
         elif cmd == "LocationInfo":
             for item in args["locations"]:
                 if item.location < LOCATION_BASE:
@@ -300,11 +304,28 @@ class LASContext(CommonContext):
         """Whether the player has read the sign at the egg's stairs in the slot's seed."""
         return self.sign_seed is not None and self.sign_seed == self.slot_seed_hash
 
+    @property
+    def sign_key(self) -> str:
+        return SIGN_KEY.format(team=self.team, player=self.slot)
+
+    def on_sign_read(self, seed_hash: Optional[str]) -> None:
+        """The player has read the sign at the egg's stairs in this seed: the game says so, or data storage does."""
+        if seed_hash is None:
+            return
+        if self.sign_seed != seed_hash:
+            logger.info("The sign at the foot of the egg's stairs has been read: trackers show the instruments "
+                        "the egg needs.")
+        self.sign_seed = seed_hash
+        required = self.slot_data.get("instruments_required", 8)
+        if self.slot_data and self.sign_read and self.logic_tracker_instruments != required:
+            self.make_logic_tracker()
+            self.send_logic()
+
     async def send_sign_read(self) -> None:
         """Puts the sign's read in the server's data storage, where trackers follow it (SIGN_KEY)."""
         if not self.sign_read or self.slot is None:
             return
-        await self.send_msgs([{"cmd": "Set", "key": SIGN_KEY.format(team=self.team, player=self.slot),
+        await self.send_msgs([{"cmd": "Set", "key": self.sign_key,
                                "default": False, "want_reply": False,
                                "operations": [{"operation": "replace", "value": True}]}])
 
@@ -486,15 +507,8 @@ class LASContext(CommonContext):
             asyncio.create_task(self.flush_checks())
         elif cmd == "SIGN":
             # the player read the sign naming the instruments the egg needs
-            if self.sign_seed != self.game_seed_hash:
-                logger.info("The sign at the foot of the egg's stairs has been read: trackers show the instruments "
-                            "the egg needs.")
-            self.sign_seed = self.game_seed_hash
+            self.on_sign_read(self.game_seed_hash)
             asyncio.create_task(self.send_sign_read())
-            required = self.slot_data.get("instruments_required", 8)
-            if self.slot_data and self.sign_read and self.logic_tracker_instruments != required:
-                self.make_logic_tracker()
-                self.send_logic()
         elif cmd == "DIED":
             if "DeathLink" in self.tags:
                 asyncio.create_task(self.send_death(f"{self.player_names.get(self.slot, 'Link')} fell on Koholint."))
