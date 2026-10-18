@@ -314,6 +314,7 @@ The test build reports the game's state so tests press when the game takes a pre
   - Client disconnected from the server, a check is collected in game: the server gets it after `/connect`.
   - Client process stopped, a check is collected and another player sends an item: a new client reports the check and delivers the item.
   - The game shows "Archipelago server disconnected" and "Archipelago client disconnected" in the autosave popup, and "Archipelago connected" again on reconnect.
+  - Client force-killed (2026-10-19, Ryubing, a socket client sending `PING` every 2 s): the module logs "[AP] client disconnected" 8–9 s after the kill, and a new client gets `HELLO` at once.
 - **Kanalet iron ball soldier.** With all five golden leaves held he still appears; without LASR's patch for him he does not, and his check is lost.
 - **Traps from another player.** The autosave popup shows "Squish Trap / from Finder".
 - **Warp menu.** Holding Minus opens it in Mabe and in Tail Cave; Continue leaves Link where he is, and a Minus tap still toggles the map (`warp_menu`, 5 runs in a row).
