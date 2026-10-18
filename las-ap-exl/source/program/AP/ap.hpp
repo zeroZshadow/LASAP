@@ -300,6 +300,8 @@ namespace AP::JukeboxPane {
 #ifdef LASAP_TEST
     // STATE's " pane=<0-3|-> navi=<header state> jbox=<cursor>/<top>"
     std::string StateField(bool paused);
+    // The header's state (1 Open, 2 WaitKey, ...), "-" with no header: the test condition navi=<state>
+    std::string NaviState();
     // DBG jukebox
     std::string Info();
 #endif
