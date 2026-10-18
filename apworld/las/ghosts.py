@@ -184,6 +184,7 @@ class GhostLink:
     def left(self) -> None:
         was_joined = self.joined
         self.joined = False
+        self.own_id = -1
         self.players.clear()
         for n, player_id in enumerate(self.ghosts):
             if player_id is not None:
@@ -211,7 +212,8 @@ class GhostLink:
             player_id = struct.unpack_from(">H", payload, 1)[0]
             slot, at = wire.read_name(payload, 3)
             player, _ = wire.read_name(payload, at)
-            self.players[player_id] = (slot, player)
+            if player_id != self.own_id:  # the relay sends none for this player; never show it as a ghost
+                self.players[player_id] = (slot, player)
             self.joined_status()
         elif kind == wire.WELCOME:
             self.own_id = struct.unpack_from(">H", payload, 2)[0]
@@ -225,10 +227,12 @@ class GhostLink:
     def joined_status(self) -> None:
         others = len(self.players)
         self.set_status(checklist.OK, f"Ghosts: connected to the relay, {others} other player"
-                                      f"{'' if others == 1 else 's'} of this multiworld online.")
+                                      f"{'' if others == 1 else 's'} online.")
 
     def show(self, player_id: int, body: bytes) -> None:
-        if player_id not in self.players or self.players[player_id][0] == self.slot:
+        """Shows a player's frame as a ghost. Another multiworld's player (a relay with --nogroups) may have this
+        player's slot name: the player id tells them apart."""
+        if player_id not in self.players or player_id == self.own_id:
             return
         if player_id in self.ghosts:
             n = self.ghosts.index(player_id)

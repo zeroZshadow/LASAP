@@ -1,11 +1,11 @@
 """Ghost relay: passes players' positions between the LAS clients of one run, for multiplayer ghosts (DESIGN.md,
 Ghosts). Also the wire protocol the client uses (ghosts.py). Standard library only, so the file runs on its own:
 
-    python3 ghost_relay.py [--host 0.0.0.0] [--port 43390] [--forward] [--password PASSWORD]
+    python3 ghost_relay.py [--host 0.0.0.0] [--port 43390] [--forward] [--password PASSWORD] [--nogroups]
 
 --forward has the router forward the port to this computer while the relay runs (NAT-PMP, else UPnP). --password (or
 the environment variable LAS_GHOST_RELAY_PASSWORD) lets in only clients that send it: players enter the relay as
-password@host:port.
+password@host:port. --nogroups puts the players of all multiworlds in one group.
 
 Plain TCP with TCP_NODELAY. Every message is a frame: a u16 length (big-endian), then the payload, whose first byte is
 the message type. A client joins a group, SHA-256("lasghost" | secret), computed by the client from its multiworld's
@@ -128,6 +128,7 @@ KEEP_MARGIN = 2.0  # a shown player stays unless another is this much nearer (un
 MAX_NAME = 64  # bytes of a name or password in a join
 PASSWORD_ENV = "LAS_GHOST_RELAY_PASSWORD"
 WRONG_PASSWORD_DELAY = 1.0  # seconds before a wrong password is refused, so guessing is slow
+ONE_GROUP = b"all"  # --nogroups: the group of every member (not 32 bytes, so no join's group)
 
 
 def group_id(secret: str) -> bytes:
@@ -199,7 +200,8 @@ class Member:
         self.writer = writer
         self.address = address
         self.id = -1
-        self.group: Optional[bytes] = None
+        self.world = b""  # the join's group: the member's multiworld
+        self.group: Optional[bytes] = None  # the group it is in: its world's, or ONE_GROUP
         self.slot = ""
         self.player = ""
         self.level = NO_LEVEL
@@ -263,9 +265,10 @@ class Member:
 
 
 class Relay:
-    def __init__(self, echo: Optional[float] = None, password: str = ""):
+    def __init__(self, echo: Optional[float] = None, password: str = "", nogroups: bool = False):
         self.echo = echo  # for tests: each member also sees itself as ECHO_ID, this far along x
         self.password = password  # "": anyone may join
+        self.nogroups = nogroups  # every member in ONE_GROUP, whatever its multiworld
         self.groups: Dict[bytes, List[Member]] = {}
         self.members: Dict[int, Member] = {}
         self.connections: Set[Member] = set()
@@ -296,7 +299,7 @@ class Relay:
             payload = await asyncio.wait_for(read_frame(reader), 10)
             if payload[0] != JOIN:
                 return self.refuse(member, "Join first.")
-            version, group, slot, player, password = parse_join(payload)
+            version, world, slot, player, password = parse_join(payload)
             if version != PROTOCOL_VERSION:
                 return self.refuse(member, f"The ghost relay speaks version {PROTOCOL_VERSION}, the client {version}. "
                                            f"Update the Link's Awakening world.")
@@ -304,10 +307,11 @@ class Relay:
                 await asyncio.sleep(WRONG_PASSWORD_DELAY)
                 return self.refuse(member, "Wrong relay password. Enter the relay as password@host:port."
                                    if password else "This relay needs a password: enter it as password@host:port.")
-            if len(self.groups.get(group, ())) >= MAX_GROUP and not any(
-                    m.slot == slot for m in self.groups.get(group, ())):
-                return self.refuse(member, "This group of players is full.")
-            self.join(member, group, slot, player)
+            members = self.groups.get(self.group_of(world), ())
+            if len(members) >= MAX_GROUP and not any(m.world == world and m.slot == slot for m in members):
+                return self.refuse(member, "The ghost relay is full." if self.nogroups else
+                                   "This group of players is full.")
+            self.join(member, world, slot, player)
             while True:
                 payload = await read_frame(reader)
                 member.last_heard = time.monotonic()
@@ -324,14 +328,22 @@ class Relay:
     def refuse(self, member: Member, text: str) -> None:
         member.send(bytes([ERROR]) + text.encode())
 
-    def join(self, member: Member, group: bytes, slot: str, player: str) -> None:
+    def group_of(self, world: bytes) -> bytes:
+        return ONE_GROUP if self.nogroups else world
+
+    def join(self, member: Member, world: bytes, slot: str, player: str) -> None:
+        """Puts a member into its group: the others there get a PLAYER for it, it one for each of them (never one for
+        itself)."""
+        group = self.group_of(world)
         members = self.groups.setdefault(group, [])
-        for old in [m for m in members if m.slot == slot]:
-            # the same slot again (a reconnect before the old connection timed out): the new connection wins
+        for old in [m for m in members if m.world == world and m.slot == slot]:
+            # the same slot of the same multiworld again (a reconnect before the old connection timed out): the new
+            # connection wins
             self.leave(old)
             old.close()
+        members = self.groups.setdefault(group, [])  # leave() drops a group it empties
         member.id = self.new_id()
-        member.group, member.slot, member.player = group, slot, player
+        member.world, member.group, member.slot, member.player = world, group, slot, player
         self.members[member.id] = member
         member.send(bytes([WELCOME, PROTOCOL_VERSION]) + struct.pack(">H", member.id))
         announce = bytes([PLAYER]) + struct.pack(">H", member.id) + name_bytes(slot) + name_bytes(player)
@@ -759,14 +771,16 @@ def is_public(address: str) -> bool:
 
 
 async def serve(host: str, port: int, echo: Optional[float] = None, forward: bool = False,
-                password: str = "") -> None:
-    relay = Relay(echo, password)
+                password: str = "", nogroups: bool = False) -> None:
+    relay = Relay(echo, password, nogroups)
     server = await asyncio.start_server(relay.handle, host, port)
     sweep = asyncio.create_task(relay.sweep())
     choosing = asyncio.create_task(relay.choosing())
     relay.log.info("listening on " + ", ".join(str(s.getsockname()) for s in server.sockets))
     if password:
         relay.log.info("players need the password: they enter the relay as password@host:port")
+    if nogroups:
+        relay.log.info(f"no groups: the players of all multiworlds see each other, at most {MAX_GROUP}")
     renew = None
     unmapper = None
     if forward:
@@ -821,13 +835,16 @@ def main() -> None:
     parser.add_argument("--password", default=os.environ.get(PASSWORD_ENV, ""),
                         help=f"Let in only players who enter the relay as password@host:port (default: the "
                              f"environment variable {PASSWORD_ENV}, else none).")
+    parser.add_argument("--nogroups", action="store_true",
+                        help=f"Put the players of all multiworlds in one group, so all of them see each other (at "
+                             f"most {MAX_GROUP}), not only those of the same multiworld.")
     args = parser.parse_args()
     if len(args.password.encode()) > MAX_NAME:
         parser.error(f"--password: at most {MAX_NAME} bytes")
     logging.basicConfig(level=logging.WARNING if args.quiet else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
     try:
-        asyncio.run(serve(args.host, args.port, args.echo, args.forward, args.password))
+        asyncio.run(serve(args.host, args.port, args.echo, args.forward, args.password, args.nogroups))
     except KeyboardInterrupt:
         pass
 

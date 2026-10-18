@@ -71,15 +71,20 @@ def offs(messages: List[bytes]) -> List[Tuple[int, int]]:
     return [struct.unpack_from(">HB", m, 1) for m in messages if m[0] == wire.OFF]
 
 
+def players(messages: List[bytes]) -> List[Tuple[int, str]]:
+    """(player id, slot name) of each PLAYER."""
+    return [(struct.unpack_from(">H", m, 1)[0], wire.read_name(m, 3)[0]) for m in messages if m[0] == wire.PLAYER]
+
+
 def field(col: int, row: int) -> Tuple[float, float]:
     """The middle of overworld screen Field_<row><col> (col A = 0), as TESTING.md places it."""
     return 15 * col + 7.5, 12 * (row - 1) + 6.75
 
 
 class TestRelay(unittest.TestCase):
-    def run_relay(self, test, echo: Optional[float] = None, password: str = "") -> None:
+    def run_relay(self, test, echo: Optional[float] = None, password: str = "", nogroups: bool = False) -> None:
         async def main() -> None:
-            relay = wire.Relay(echo, password)
+            relay = wire.Relay(echo, password, nogroups)
             server = await asyncio.start_server(relay.handle, "127.0.0.1", 0)
             port = server.sockets[0].getsockname()[1]
             try:
@@ -187,7 +192,62 @@ class TestRelay(unittest.TestCase):
             self.assertEqual(len(relay.groups[wire.group_id("secret1")]), 2)
             for client in (b, a2):
                 client.close()
+            # alone in its group: the new connection is in the group again, where the next player finds it
+            c, c2, d = FakeClient(port), FakeClient(port), FakeClient(port)
+            await c.join("secret3", "C")
+            await c2.join("secret3", "C")
+            await d.join("secret3", "D")
+            self.assertEqual(players(await d.collect()), [(c2.id, "C")])
+            for client in (c2, d):
+                client.close()
         self.run_relay(test)
+
+    def test_nogroups(self) -> None:
+        async def test(port: int, relay: wire.Relay) -> None:
+            # two multiworlds, each with a slot Link
+            a, b, c = FakeClient(port), FakeClient(port), FakeClient(port)
+            await a.join("secret1", "Link")
+            await b.join("secret2", "Link")
+            await c.join("secret2", "C")
+            got = {client: await client.collect() for client in (a, b, c)}
+            self.assertEqual(sorted(players(got[a])), [(b.id, "Link"), (c.id, "C")])
+            self.assertEqual(sorted(players(got[b])), [(a.id, "Link"), (c.id, "C")])
+            self.assertEqual(sorted(players(got[c])), [(a.id, "Link"), (b.id, "Link")])
+            self.assertEqual(list(relay.groups), [wire.ONE_GROUP])
+
+            # all in one level: each gets the frames of the others, never its own
+            for client in (a, b, c):
+                client.pos(SHOP, 1, 1)
+            for client in (a, b, c):
+                ids = [p for p, _, _ in frames(await client.collect())]
+                self.assertEqual(sorted(set(ids)), sorted({a.id, b.id, c.id} - {client.id}))
+
+            # the second multiworld's Link reconnects: it replaces its old connection, not the first one's Link
+            b2 = FakeClient(port)
+            await b2.join("secret2", "Link")
+            self.assertEqual(sorted(players(await b2.collect())), [(a.id, "Link"), (c.id, "C")])
+            got = await a.collect()
+            self.assertEqual(offs(got), [(b.id, wire.OFF_LEFT)])
+            self.assertEqual(players(got), [(b2.id, "Link")])
+            with self.assertRaises(asyncio.IncompleteReadError):
+                await b.next()
+            b2.pos(SHOP, 1, 1)
+            self.assertEqual(sorted({p for p, _, _ in frames(await b2.collect())}), sorted({a.id, c.id}))
+            self.assertEqual(frames(await a.collect()), [(b2.id, 1, 1)])
+            self.assertEqual(len(relay.groups[wire.ONE_GROUP]), 3)
+
+            # full: only a slot already in it gets in again
+            with mock.patch.object(wire, "MAX_GROUP", 3):
+                d = FakeClient(port)
+                reply = await d.join("secret3", "Link")
+                self.assertEqual((reply[0], reply[1:].decode()), (wire.ERROR, "The ghost relay is full."))
+                c2 = FakeClient(port)
+                self.assertEqual((await c2.join("secret2", "C"))[0], wire.WELCOME)
+            for client in (a, b2, c2):
+                client.close()
+            await asyncio.sleep(0.05)
+            self.assertEqual(relay.groups, {})
+        self.run_relay(test, nogroups=True)
 
     def test_refusals(self) -> None:
         async def test(port: int, relay: wire.Relay) -> None:
@@ -380,6 +440,53 @@ class TestGhostLink(unittest.TestCase):
             links["A"].configure(False, address, "secret1", "A", "A")
             await until(lambda: links["A"].status.text == "Ghosts are off." and not links["B"].players)
             self.assertEqual(lines["A"][-2:], ["GHOST 0 off", "GHOSTS 0"])
+            exit_event.set()
+            for link in links.values():
+                link.wake.set()
+            await asyncio.gather(*tasks)
+            server.close()
+        asyncio.run(main())
+
+    def test_same_slot_name_of_another_multiworld(self) -> None:
+        """On a relay with --nogroups another multiworld's player may have this one's slot name: it shows as a ghost,
+        and this player itself never does."""
+        from ..ghosts import GhostLink
+
+        async def main() -> None:
+            relay = wire.Relay(nogroups=True)
+            server = await asyncio.start_server(relay.handle, "127.0.0.1", 0)
+            address = f"127.0.0.1:{server.sockets[0].getsockname()[1]}"
+            lines = {"one": [], "two": []}
+            links = {name: GhostLink(lines[name].append) for name in lines}
+            exit_event = asyncio.Event()
+            tasks = []
+            for name, link in links.items():
+                link.on_game_connected()
+                link.configure(True, address, "secret-" + name, "Link", "Link")
+                tasks.append(asyncio.create_task(link.run(exit_event)))
+
+            async def until(test, seconds: float = 3) -> None:
+                for _ in range(int(seconds / 0.02)):
+                    if test():
+                        return
+                    await asyncio.sleep(0.02)
+                self.fail(f"timed out; lines: {lines}")
+
+            one, two = links["one"], links["two"]
+            await until(lambda: len(one.players) == 1 and len(two.players) == 1)
+            self.assertEqual((list(one.players), list(two.players)), ([two.own_id], [one.own_id]))
+            self.assertEqual(one.status.text, "Ghosts: connected to the relay, 1 other player online.")
+            one.on_pos("POS Shop 1 0 1 0 0 0 0 0 0 207864 0 0 0 0".split())
+            two.on_pos("POS Shop 2 0 2 0 0 0 0 0 0 207864 0 0 0 0".split())
+            await until(lambda: one.ghosts[0] is not None and two.ghosts[0] is not None)
+            self.assertIn("GHOST 0 Shop 2.000 0.000 2.000 0.0 0 0 0 0 0 207864 0 0 0 0 Link", lines["one"])
+            self.assertIn("GHOST 0 Shop 1.000 0.000 1.000 0.0 0 0 0 0 0 207864 0 0 0 0 Link", lines["two"])
+            # a frame of its own id (no relay sends one) is no ghost either
+            one.handle(bytes([wire.PLAYER]) + struct.pack(">H", one.own_id) + wire.name_bytes("Link") * 2)
+            one.handle(bytes([wire.FRAME]) + struct.pack(">H", one.own_id) +
+                       wire.Pos(0, SHOP, 5, 0, 5, 0, 0, 0, 0, 0, wire.SHAPES_DEFAULT, 0, 0, 0, 0).pack())
+            self.assertEqual((list(one.players), [g for g in one.ghosts if g is not None]), ([two.own_id],) * 2)
+            self.assertFalse(any(l.startswith("GHOST") and " 5.000 " in l for l in lines["one"]))
             exit_event.set()
             for link in links.values():
                 link.wake.set()

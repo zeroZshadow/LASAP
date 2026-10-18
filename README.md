@@ -78,6 +78,7 @@ python3 ghost_relay.py --port 43390
 - It listens on all addresses by default (`--host` to change), plain TCP; open the port in the firewall. `--quiet` logs errors only.
 - Players enter its address (host:port) as "Ghost relay" in the client's Patch tab; without one, ghosts are off.
 - `--password <password>` (or the environment variable `LAS_GHOST_RELAY_PASSWORD`) lets in only players who enter the relay as `password@host:port`; without it anyone may use the relay. For a service, put it in an `Environment=LAS_GHOST_RELAY_PASSWORD=...` line rather than on the command line.
+- `--nogroups` lets the players of all multiworlds on the relay see each other, not only those of the same multiworld (at most 64 players in all).
 - As a systemd service (`/etc/systemd/system/las-ghost-relay.service`):
   ```ini
   [Unit]
