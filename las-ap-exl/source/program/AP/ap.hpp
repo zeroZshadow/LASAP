@@ -25,6 +25,9 @@ namespace AP {
     // (System.msbt). Their text is replaced at runtime (ap_text.cpp).
     constexpr const char* FOUND_LABEL = "ArchipelagoItem";
     constexpr const char* RECEIVED_LABEL = "APReceived";
+    // Place.msbt label of the sign at the foot of the Wind Fish's Egg's stairs, which names the instruments the egg
+    // needs (patcher ap_goal.py). Showing it is reported as SIGN.
+    constexpr const char* SIGN_LABEL = "SBMountTamaranch";
     // Common.bfevfl entry the patcher adds: Link's item-get of the placeholder with RECEIVED_LABEL as its message
     // entry. Received items play as this event; the module swaps in the received item and its text.
     constexpr const char* ITEM_EVENT_ENTRY = "APItemGet";
@@ -77,6 +80,8 @@ namespace AP {
     // The game adds an item (Inventory::AddItemID): reports the check of a location that keeps this vanilla item.
     void OnItemAdded(int item_id, int index);
     void OnGoal();
+    // The game shows the sign's text (SIGN_LABEL): kept per seed, reported as SIGN.
+    void OnSignRead();
     // Checked in this game or, as the client reported, on the server.
     bool IsLocationChecked(int local_id);
     // In logic for the items received, as the client reported (INLOGIC); HasLogic once it has.

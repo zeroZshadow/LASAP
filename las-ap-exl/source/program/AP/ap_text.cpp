@@ -55,7 +55,7 @@ namespace {
     std::string g_Toast;
     char g_ToastBuf[256];
 
-    enum class Kind { None, Found, Received, Saving, MapCaption, MapPlace, MapPin };
+    enum class Kind { None, Found, Received, Saving, MapCaption, MapPlace, MapPin, Sign };
     constexpr const char* kMapCaptionLabel = "MapCaptionMemory";  // the map's X button: memories
     constexpr const char* kMapPlaceLabel = "MapCaptionPlace";     // Y: hide markers
     constexpr const char* kMapPinLabel = "MapCaptionPin";         // A: pin
@@ -171,6 +171,7 @@ HOOK_DEFINE_TRAMPOLINE(MsbtFindLabel) {
         else if (LabelIs(label, len, kMapCaptionLabel)) Remember(msbt, out->index, Kind::MapCaption);
         else if (LabelIs(label, len, kMapPlaceLabel)) Remember(msbt, out->index, Kind::MapPlace);
         else if (LabelIs(label, len, kMapPinLabel)) Remember(msbt, out->index, Kind::MapPin);
+        else if (LabelIs(label, len, AP::SIGN_LABEL)) Remember(msbt, out->index, Kind::Sign);
         else return;
         Logging.Log("[AP] text label " + std::string(label, len) + " index " + std::to_string(out->index));
     }
@@ -248,6 +249,9 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
                 out->text = g_CaptionText;
                 break;
             }
+            case Kind::Sign:
+                AP::OnSignRead();
+                break;
             case Kind::None:
                 break;
         }

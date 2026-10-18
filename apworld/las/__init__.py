@@ -25,6 +25,7 @@ from .locations import LOCATION_NAME_GROUPS, LOCATION_NAME_TO_ID, LOCATION_NAMES
 from .logic import LogicCompiler, make_rule, referenced_regions
 from .models import model_for
 from .options import OPTION_GROUPS, LASOptions
+from .tracker import SIGN_KEY, tracked_instruments
 from . import lasr_settings
 
 
@@ -87,6 +88,7 @@ class LASWorld(World):
     location_name_groups = LOCATION_NAME_GROUPS
 
     compiler: LogicCompiler
+    goal_instruments: int  # the instruments the egg's rule takes (compile_logic)
     shuffled: List[str]  # LASR item locations that are AP locations
     locked: List[str]  # AP locations the options leave unrandomized: they hold their default item, locked
     optional: List[str]  # AP locations of activities the options leave out: after the goal, the slot's own items
@@ -98,6 +100,8 @@ class LASWorld(World):
     dungeon_entrances: Dict[str, str]  # each dungeon's door -> the dungeon it leads into (lasr.dungeon_logic)
 
     ut_can_gen_without_yaml = True  # Universal Tracker regenerates the slot from its slot data
+    # Universal Tracker watches this data storage key and passes its value to reconnect_found_entrances
+    found_entrances_datastorage_key = SIGN_KEY
 
     @staticmethod
     def interpret_slot_data(slot_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -117,8 +121,11 @@ class LASWorld(World):
         else:
             self.dungeon_entrances = {d: d for d in DUNGEONS}
         self.settings_tokens = lasr_settings.logic_tokens(options)
-        logic = goal_logic(options.instruments_required.value, dungeon_logic(LOGIC, self.dungeon_entrances))
-        self.compiler = LogicCompiler(logic, options.logic.current_key, self.settings_tokens, LASR_TO_ITEM, COUNTED)
+        # Universal Tracker keeps a count left to chance hidden until the player reads the sign (tracked_instruments)
+        instruments = options.instruments_required.value
+        if passthrough:
+            instruments = tracked_instruments(instruments, passthrough.get("instruments_known", True), False)
+        self.compile_logic(instruments)
 
         if passthrough:
             self.starting_instruments = list(passthrough["starting_instruments"])
@@ -468,6 +475,20 @@ class LASWorld(World):
     def seed_hash(self) -> str:
         return hashlib.sha256(f"{self.multiworld.seed_name}:{self.player}".encode()).hexdigest()[:8]
 
+    def compile_logic(self, instruments_required: int) -> None:
+        logic = goal_logic(instruments_required, dungeon_logic(LOGIC, self.dungeon_entrances))
+        self.goal_instruments = instruments_required
+        self.compiler = LogicCompiler(logic, self.options.logic.current_key, self.settings_tokens, LASR_TO_ITEM,
+                                      COUNTED)
+
+    def reconnect_found_entrances(self, key: str, value: Any) -> None:
+        """Universal Tracker: the data storage key SIGN_KEY changed. Once the player has read the sign, the rules
+        take the slot's own count."""
+        required = self.options.instruments_required.value
+        if value and self.goal_instruments != required:
+            self.compile_logic(required)
+            self.set_rules()
+
     # One random secret per multiworld, in every LAS slot's patch file: the ghost relay groups that multiworld's LAS
     # players by it (DESIGN.md, Ghosts). Not in the slot data, which anyone who can log into a slot reads.
     _ghost_secrets: ClassVar["weakref.WeakKeyDictionary[Any, str]"] = weakref.WeakKeyDictionary()
@@ -483,6 +504,8 @@ class LASWorld(World):
             "seed_hash": self.seed_hash(),
             "goal": "wind_fish",
             "instruments_required": self.options.instruments_required.value,
+            # False for a count left to chance: trackers show it once the player read the sign (SIGN_KEY)
+            "instruments_known": self.options.instruments_required.known,
             "death_link": bool(self.options.death_link.value),
             "location_count": len(self.shuffled),
             "settings": {key: settings[key] for key in lasr_settings.TRACKER_SETTINGS},

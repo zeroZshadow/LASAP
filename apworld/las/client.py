@@ -15,7 +15,7 @@ from .ghosts import GhostLink
 from .host_settings import PLAYER_SETTINGS, player_value
 from .install import InstallError, patch_and_install
 from .items import GAME, ITEM_GAME_INFO
-from .tracker import LogicTracker
+from .tracker import SIGN_KEY, LogicTracker, tracked_instruments
 
 GAME_PORT = 43384
 PROTOCOL_VERSION = 2
@@ -195,6 +195,9 @@ class LASContext(CommonContext):
         self.logic_tracker: Optional[LogicTracker] = None  # the slot's rules, for the map tracker
         self.in_logic: Optional[Set[int]] = None  # local ids last sent to the game as in logic
         self.logic_starting: List[str] = []  # the slot's starting items, which the server does not send
+        self.slot_data: Dict[str, Any] = {}
+        self.logic_tracker_instruments = 8  # the instruments the map tracker's rules take for the egg
+        self.sign_seed: Optional[str] = None  # the seed whose game reported the sign at the egg's stairs read (SIGN)
         self.ghosts = GhostLink(self.send_game, self.refresh_patch_tab)
         self.ghost_relay_arg: Optional[str] = None  # --ghost-relay replaces las_options.ghost_relay
         self.ghost_secret_arg: Optional[str] = None  # --ghost-secret replaces the patch file's (tests)
@@ -257,15 +260,9 @@ class LASContext(CommonContext):
                 asyncio.create_task(self.update_death_link(True))
             asyncio.create_task(self.send_level())
             self.send_checked(self.checked_locations)
-            logic = args["slot_data"].get("logic")
-            names = {offset: loc for loc, offset in LOCATION_OFFSETS.items()}
-            self.logic_tracker = LogicTracker(
-                logic["preset"], logic["tokens"], logic["vanilla"],
-                [names[loc - LOCATION_BASE] for loc in sorted(self.server_locations)],
-                args["slot_data"].get("dungeon_entrances"), logic.get("optional", ()),
-                args["slot_data"].get("instruments_required", 8)) if logic else None
-            self.logic_starting = logic.get("starting", []) if logic else []
-            self.in_logic = None
+            self.slot_data = args["slot_data"]
+            self.make_logic_tracker()
+            asyncio.create_task(self.send_sign_read())
             self.send_logic()
             self.update_ghosts()
         elif cmd == "RoomUpdate":
@@ -282,6 +279,34 @@ class LASContext(CommonContext):
                 name = self.item_names.lookup_in_slot(item.item, item.player)
                 self.scouted_names[item.location - LOCATION_BASE] = f"{clean(name)}|{clean(owner)}"
             self.send_location_names()
+
+    def make_logic_tracker(self) -> None:
+        """The slot's rules for the map tracker. A count of instruments left to chance stays hidden until the player
+        has read the sign (tracked_instruments)."""
+        logic = self.slot_data.get("logic")
+        names = {offset: loc for loc, offset in LOCATION_OFFSETS.items()}
+        instruments = tracked_instruments(self.slot_data.get("instruments_required", 8),
+                                          self.slot_data.get("instruments_known", True), self.sign_read)
+        self.logic_tracker = LogicTracker(
+            logic["preset"], logic["tokens"], logic["vanilla"],
+            [names[loc - LOCATION_BASE] for loc in sorted(self.server_locations)],
+            self.slot_data.get("dungeon_entrances"), logic.get("optional", ()), instruments) if logic else None
+        self.logic_tracker_instruments = instruments
+        self.logic_starting = logic.get("starting", []) if logic else []
+        self.in_logic = None
+
+    @property
+    def sign_read(self) -> bool:
+        """Whether the player has read the sign at the egg's stairs in the slot's seed."""
+        return self.sign_seed is not None and self.sign_seed == self.slot_seed_hash
+
+    async def send_sign_read(self) -> None:
+        """Puts the sign's read in the server's data storage, where trackers follow it (SIGN_KEY)."""
+        if not self.sign_read or self.slot is None:
+            return
+        await self.send_msgs([{"cmd": "Set", "key": SIGN_KEY.format(team=self.team, player=self.slot),
+                               "default": False, "want_reply": False,
+                               "operations": [{"operation": "replace", "value": True}]}])
 
     def on_deathlink(self, data: Dict) -> None:
         super().on_deathlink(data)
@@ -459,6 +484,17 @@ class LASContext(CommonContext):
         elif cmd == "GOAL":
             self.goal_reached = True
             asyncio.create_task(self.flush_checks())
+        elif cmd == "SIGN":
+            # the player read the sign naming the instruments the egg needs
+            if self.sign_seed != self.game_seed_hash:
+                logger.info("The sign at the foot of the egg's stairs has been read: trackers show the instruments "
+                            "the egg needs.")
+            self.sign_seed = self.game_seed_hash
+            asyncio.create_task(self.send_sign_read())
+            required = self.slot_data.get("instruments_required", 8)
+            if self.slot_data and self.sign_read and self.logic_tracker_instruments != required:
+                self.make_logic_tracker()
+                self.send_logic()
         elif cmd == "DIED":
             if "DeathLink" in self.tags:
                 asyncio.create_task(self.send_death(f"{self.player_names.get(self.slot, 'Link')} fell on Koholint."))

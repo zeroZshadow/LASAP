@@ -16,7 +16,9 @@ needed in a different order than in the original game. The world needs the 2019 
 Wake the Wind Fish: play the Ballad of the Wind Fish at the egg on Mt. Tamaranch, then beat the Nightmare inside.
 The egg opens with `instruments_required` of the eight instruments (all eight by default); instruments you start
 with count toward it. The sign at the foot of the egg's stairs tells how many, so the number can be random
-(`random`, or `random-range-3-6` for a number from 3 to 6).
+(`random`, or `random-range-3-6` for a number from 3 to 6). A random number, or one picked by weight from several,
+stays hidden in the client's map tracker, PopTracker and Universal Tracker until you have read the sign; until then
+they count on all eight.
 
 ## What items and locations get shuffled?
 

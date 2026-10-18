@@ -1,0 +1,16 @@
+# Hidden instrument count (DESIGN.md, Goal, Hidden count): reading the sign below the Wind Fish's egg reports SIGN,
+# and the client puts it in data storage. Run after newgame_file2 with the client connected to the game and the
+# server, on a seed whose sign has not been read (reset_saves.sh clears sdcard/lasap). Entering the area does not
+# count as reading it.
+expect HELLO 30
+send DBG setflag FourteenClear 1
+expect FLAG.FourteenClear.1 5
+warp Field 96.75 20.25 24.75
+logcount sign\sat\sthe\sfoot.*read 0 client
+face up
+interact
+until textready 10
+logged sign\sat\sthe\sfoot.*read 10 client
+dismiss 10
+send DBG setflag FourteenClear 0
+expect FLAG.FourteenClear.0 5

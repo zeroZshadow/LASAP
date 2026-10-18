@@ -39,6 +39,8 @@ namespace {
 
     std::string g_SeedHash = "00000000";
     std::string g_ChecksPath;
+    // The sign at the egg's stairs was read in this seed: sd:/lasap/<seed>.sign exists. -1 not looked up yet.
+    int g_SignRead = -1;
     std::vector<u8> g_Checks(kChecksBytes, 0);
     bool g_ChecksLoaded = false;
     // Locations the server has as checked (CHECKED lines), for the map tracker.
@@ -748,6 +750,19 @@ namespace {
         nn::fs::CloseFile(h);
     }
 
+    std::string SignPath() {
+        return "sd:/lasap/" + g_SeedHash + ".sign";
+    }
+
+    bool SignRead() {
+        if (g_SignRead < 0) {
+            nn::fs::FileHandle h{};
+            g_SignRead = R_SUCCEEDED(nn::fs::OpenFile(&h, SignPath().c_str(), nn::fs::OpenMode_Read)) ? 1 : 0;
+            if (g_SignRead) nn::fs::CloseFile(h);
+        }
+        return g_SignRead == 1;
+    }
+
     // Saves a location collected here and reports it.
     void RecordCheck(int local_id) {
         if (!g_ChecksLoaded) LoadChecks();
@@ -1131,6 +1146,7 @@ namespace {
             AP::Send("RECV " + std::to_string(GetRecvCount()));
             SendAllChecks();
             if (EventFlags::CheckFlag(kGoalFlag) || LevelSystem::GetCurrentLevel() == kGoalLevel) AP::Send("GOAL");
+            if (SignRead()) AP::Send("SIGN");
             ReportHints(true);
         } else if (a[0] == "DEATH") {
             // A death from another player. Without a save (intro, title, file menus) or with Link dead already it
@@ -1247,6 +1263,15 @@ namespace AP {
     void OnGoal() {
         Logging.Log("[AP] goal reached");
         Send("GOAL");
+    }
+
+    void OnSignRead() {
+        if (SignRead()) return;
+        g_SignRead = 1;
+        nn::fs::CreateDirectory("sd:/lasap");
+        if (R_FAILED(nn::fs::CreateFile(SignPath().c_str(), 0))) AP::Log("cannot write " + SignPath());
+        Logging.Log("[AP] sign read");
+        Send("SIGN");
     }
 
     bool HasLogic() {
