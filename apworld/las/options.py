@@ -27,7 +27,9 @@ class FreeGifts(DefaultOnToggle):
 
 class TradeQuest(Toggle):
     """Shuffle the rewards of the trading sequence. The Yoshi Doll that starts it stays in the Trendy Game, whose
-    prizes are checks that are never shuffled."""
+    prizes are checks that are never shuffled.
+    Off, the trade quest is optional: its rewards are in logic only after the goal and hold only your own items, none
+    you need. The trade items are shuffled either way."""
     display_name = "Trade Quest"
 
 
@@ -63,18 +65,21 @@ class BossDrops(DefaultOnToggle):
 
 
 class Dampe(Toggle):
-    """Shuffle the rewards of Dampe's chamber challenges."""
+    """Shuffle the rewards of Dampe's chamber challenges.
+    Off, they are optional: in logic only after the goal, holding only your own items, none you need."""
     display_name = "Dampe"
 
 
 class Rapids(Toggle):
     """Shuffle the Rapids Ride: the race's rewards and the items on its west, middle and east islands (a heart piece,
-    a chest and a seashell dig), and with owl statues on, its owl statue's gift."""
+    a chest and a seashell dig), and with owl statues on, its owl statue's gift.
+    Off, they are optional: in logic only after the goal, holding only your own items, none you need."""
     display_name = "Rapids"
 
 
 class Fishing(Toggle):
-    """Shuffle the rewards of the fishing pond."""
+    """Shuffle the rewards of the fishing pond.
+    Off, they are optional: in logic only after the goal, holding only your own items, none you need."""
     display_name = "Fishing"
 
 
@@ -94,7 +99,8 @@ class OwlStatues(Choice):
 
 
 class SeashellMansion(Choice):
-    """The Seashell Mansion rewards up to this seashell count are shuffled; the others stay vanilla."""
+    """The Seashell Mansion rewards up to this seashell count are shuffled. The others are optional: in logic only
+    after the goal, holding only your own items, none you need."""
     display_name = "Seashell Mansion"
     option_0 = 0
     option_5 = 5
@@ -262,7 +268,7 @@ class InGameHints(Choice):
 class HintDistribution(Choice):
     """Which kinds of hints the owl statues and library books give. An area is an overworld region or a dungeon.
     - Long check: what the trade quest's end, the 40 and 50 seashell rewards, the rapids race's best time, Ol' Baron
-      or Dampe's last challenge holds, when it is shuffled and holds a progression or useful item.
+      or Dampe's last challenge holds, when it is shuffled, not optional, and holds a progression or useful item.
     - Required: an area holds an item you need to wake the Wind Fish.
     - Barren: an area holds no progression item, for anyone.
     - Area: the area (or another player's world) that holds one of your items.

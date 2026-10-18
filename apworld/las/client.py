@@ -262,7 +262,8 @@ class LASContext(CommonContext):
             self.logic_tracker = LogicTracker(
                 logic["preset"], logic["tokens"], logic["vanilla"],
                 [names[loc - LOCATION_BASE] for loc in sorted(self.server_locations)],
-                args["slot_data"].get("dungeon_entrances")) if logic else None
+                args["slot_data"].get("dungeon_entrances"), logic.get("optional", ()),
+                args["slot_data"].get("instruments_required", 8)) if logic else None
             self.logic_starting = logic.get("starting", []) if logic else []
             self.in_logic = None
             self.send_logic()

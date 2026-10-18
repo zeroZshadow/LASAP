@@ -42,6 +42,7 @@ class TestUniversalTracker(unittest.TestCase):
 
         self.assertEqual(again.fill_slot_data()["logic"]["tokens"], slot_data["logic"]["tokens"])
         self.assertEqual(again.starting_items, world.starting_items)
+        self.assertEqual(again.optional, world.optional)
         self.assertEqual({r.name for r in regen.get_regions(1)}, {r.name for r in original.get_regions(1)})
         self.assertEqual({e.name for e in regen.get_entrances(1)}, {e.name for e in original.get_entrances(1)})
 

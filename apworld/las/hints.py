@@ -9,7 +9,7 @@ The world picks them once the multiworld is filled (choose_hints). The kinds:
 - precise: the location holding one of this slot's progression items, then useful ones.
 - joke: for the sources left over.
 hint_distribution sets how many of each (DISTRIBUTIONS). An area is the part of a location's name before " - ": an
-overworld region or a dungeon. The patch carries each source's text and kind (`hints`); in server mode the hints that
+overworld region or a dungeon. No hint is about an optional location (LASWorld.optional), which only the goal opens. The patch carries each source's text and kind (`hints`); in server mode the hints that
 name one location (always, precise) also carry it, which the client hints on the server when the game reports the
 hint as read."""
 from typing import TYPE_CHECKING, Dict, Iterable, Iterator, List, NamedTuple, Optional, Set
@@ -101,15 +101,22 @@ def known_locations(world: "LASWorld") -> Set[str]:
     return set(world.locked) | (lasr_settings.kept_locations() & set(world.shuffled))
 
 
+def optional_names(world: "LASWorld") -> Set[str]:
+    return {LOCATION_NAMES[loc] for loc in world.optional}
+
+
 def candidates(world: "LASWorld") -> List[Location]:
     """Locations of the multiworld holding this slot's items that a hint can name, in a stable order."""
     multiworld = world.multiworld
     player = world.player
     known = known_locations(world)
+    optional = optional_names(world)
     found = []
     for location in multiworld.get_filled_locations():
         item = location.item
         if item.player != player or not isinstance(location.address, int) or item.code is None:
+            continue
+        if location.player == player and location.name in optional:
             continue
         if item.name in world.options.start_hints:
             continue
@@ -135,7 +142,7 @@ def always_locations(world: "LASWorld") -> List[Location]:
     known = known_locations(world)
     found = []
     for lasr_location in ALWAYS:
-        if lasr_location not in world.shuffled or lasr_location in known or \
+        if lasr_location not in world.shuffled or lasr_location in known or lasr_location in world.optional or \
                 LOCATION_NAMES[lasr_location] in world.options.start_location_hints:
             continue
         location = world.get_location(LOCATION_NAMES[lasr_location])
@@ -152,12 +159,13 @@ def always_locations(world: "LASWorld") -> List[Location]:
 
 def barren_areas(world: "LASWorld") -> List[str]:
     """This world's areas holding no progression item, anyone's, with at least BARREN_MIN locations whose item is not
-    known anyway, in a stable order."""
+    known anyway, in a stable order. Optional locations do not count: nobody needs what they hold."""
     known = known_locations(world)
+    optional = optional_names(world)
     progression: Set[str] = set()
     unknown: Dict[str, int] = {}
     for location in world.multiworld.get_locations(world.player):
-        if " - " not in location.name:  # the goal
+        if " - " not in location.name or location.name in optional:  # the goal, optional locations
             continue
         if location.item is not None and location.item.advancement:
             progression.add(area(location))

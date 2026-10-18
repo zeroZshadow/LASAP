@@ -22,7 +22,7 @@ class TestTracker(unittest.TestCase):
         logic = slot_data["logic"]
         # The client knows the slot's locations from the server, and the rest from the slot data.
         tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], world.shuffled,
-                               slot_data["dungeon_entrances"])
+                               slot_data["dungeon_entrances"], logic["optional"], slot_data["instruments_required"])
         # locked locations' items count once received, like the pool's
         locked = [multiworld.get_location(LOCATION_NAMES[loc], 1) for loc in logic["locked"]]
         pool = [item for item in multiworld.itempool + world.get_pre_fill_items() if item.player == 1]

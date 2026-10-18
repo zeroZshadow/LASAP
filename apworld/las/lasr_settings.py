@@ -22,6 +22,9 @@ CATEGORY_OPTIONS = {
     "fishing": "Fishing_Rewards",
     "blue_rupees": "Blue_Rupees",
 }
+# The categories of activities: left out, their locations are optional (optional_locations), not unrandomized.
+OPTIONAL_CATEGORIES = {attribute: CATEGORY_OPTIONS[attribute] for attribute in ("trade_quest", "dampe", "rapids",
+                                                                                "fishing")}
 MANSION_THRESHOLDS = {f"{n}-seashell-reward": n for n in (5, 15, 30, 40, 50)}
 
 _PRESETS = {0: "Basic", 1: "Advanced", 2: "Glitched", 3: "Hell"}
@@ -82,35 +85,35 @@ def kept_locations() -> Set[str]:
     return set(CATEGORIES["Trendy_Rewards"]) | set(COMPANIONS)
 
 
+def optional_locations(options: LASOptions) -> Set[str]:
+    """The locations of the activities the options leave out (OPTIONAL_CATEGORIES, the Seashell Mansion's rewards above
+    seashell_mansion, the Rapids Ride's owl statue): checks the logic reaches only after the goal, holding the slot's
+    own items, so no seed needs the activity."""
+    optional: Set[str] = set()
+    for attribute, category in OPTIONAL_CATEGORIES.items():
+        if not getattr(options, attribute).value:
+            optional |= set(CATEGORIES[category])
+    optional |= {loc for loc, n in MANSION_THRESHOLDS.items() if n > options.seashell_mansion.value}
+    if not options.rapids:
+        optional.add("owl-statue-rapids")  # LASR excludes it without the Rapids category
+    return optional - removed_locations(options)
+
+
 def unrandomized_locations(options: LASOptions) -> Set[str]:
     """Locations whose default item stays, as the options do not randomize them (instruments are decided by the
     world). The world makes them checks or leaves them out by default_item_matters."""
     unrandomized: Set[str] = set()
     for attribute, category in CATEGORY_OPTIONS.items():
-        if not getattr(options, attribute).value:
+        if attribute not in OPTIONAL_CATEGORIES and not getattr(options, attribute).value:
             unrandomized |= set(CATEGORIES[category])
-    unrandomized |= {loc for loc, n in MANSION_THRESHOLDS.items() if n > options.seashell_mansion.value}
-    if not options.rapids:
-        unrandomized.add("owl-statue-rapids")  # LASR excludes it without the Rapids category
     return (unrandomized | kept_locations()) - fixed_locations()
 
 
-def seashells_matter(options: LASOptions) -> bool:
-    """Seashells count only for the Seashell Mansion's randomized rewards."""
-    return options.seashell_mansion.value > 0
-
-
-def default_item_matters(loc: str, options: LASOptions) -> bool:
+def default_item_matters(loc: str) -> bool:
     """Whether an unrandomized location's default item can matter for finishing the seed. Such a location is a check
     holding its default item, locked; any other is no AP location and the logic leaves its item out, so the player
-    never needs it. The Mansion's unrandomized rewards never matter: of their items the logic asks only for the
-    level-2 sword, always with alternatives."""
-    if loc in MANSION_THRESHOLDS:
-        return False
-    content = LOGIC[loc]["content"]
-    if content == "seashell":
-        return seashells_matter(options)
-    return content in LOGIC_ITEMS
+    never needs it. Seashells always count: every Seashell Mansion reward is a check."""
+    return LOGIC[loc]["content"] in LOGIC_ITEMS
 
 
 # The settings trackers get in the slot data ("settings"): those that decide which checks exist and what reaches them.

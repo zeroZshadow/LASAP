@@ -114,12 +114,22 @@ class HintsBase(unittest.TestCase):
             self.assertTrue(location.item.advancement or location.item.useful, location)
 
     def test_barren(self) -> None:
+        optional = {LOCATION_NAMES[loc] for loc in self.world.optional}
         for hint in self.of_kind("barren"):
             name = self.parse(r"(.+) holds nothing anyone needs\.", hint["text"]).group(1)
-            locations = self.own(name)
+            locations = [loc for loc in self.own(name) if loc.name not in optional]
             self.assertGreaterEqual(len(locations), 2, name)
             for location in locations:
                 self.assertFalse(location.item.advancement, location)
+
+    def test_optional_not_hinted(self) -> None:
+        """Optional locations hold nothing anyone needs: no hint names them, and no always hint goes to a long check
+        that is optional."""
+        optional = {LOCATION_NAMES[loc] for loc in self.world.optional}
+        for location in self.hinted() + candidates(self.world):
+            self.assertFalse(location.player == 1 and location.name in optional, location)
+        if set(ALWAYS) <= set(self.world.optional):
+            self.assertEqual(self.of_kind("always"), [])
 
     def test_required(self) -> None:
         required = self.required()
