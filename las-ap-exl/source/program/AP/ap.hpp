@@ -86,6 +86,9 @@ namespace AP {
     void OnSignRead();
     // Checked in this game or, as the client reported, on the server.
     bool IsLocationChecked(int local_id);
+    // Marked as skipped on the map by the player (map tracker); saved per seed, never reported.
+    bool IsLocationSkipped(int local_id);
+    void SetLocationSkipped(int local_id, bool skipped);
     // In logic for the items received, as the client reported (INLOGIC); HasLogic once it has.
     bool HasLogic();
     bool IsInLogic(int local_id);
@@ -134,6 +137,10 @@ namespace AP {
     int MapLabelGroup(std::string_view label);
     std::string MapLabelText(int group);
     std::string MapState();
+#ifdef LASAP_TEST
+    // The overworld icon group the map's cursor was on the last frame the overworld map took buttons, or -1.
+    int MapHoverGroup();
+#endif
     // The text of the map's X button caption (UI:MapCaptionMemory), or "" for the game's own.
     std::string MapCaptionText();
     // 0 off, 1 on, 2 maps revealed without overworld icons (DBG map, for tests and screenshots)
@@ -307,6 +314,8 @@ namespace AP::JukeboxPane {
 #ifdef LASAP_TEST
     // STATE's " pane=<0-3|-> navi=<header state> jbox=<cursor>/<top>"
     std::string StateField(bool paused);
+    // The header's state (1 Open, 2 WaitKey, ...), "-" with no header: the test condition navi=<state>
+    std::string NaviState();
     // DBG jukebox
     std::string Info();
 #endif

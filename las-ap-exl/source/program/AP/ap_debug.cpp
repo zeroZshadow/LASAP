@@ -614,10 +614,12 @@ namespace {
     //                    file (the file menu's cursor, 0 = file 1), face (up, down, left, right: where Link faces),
     //                    carry (Link holds something over his head), health (quarter hearts)
     //   dead             Link is in a level with no health left
+    //   navi=<state>     the pause menu header's state (1 Open, 2 WaitKey, ...; - with the menu closed)
     //   <machine>:<state> a UI machine (its label or hook name) in that state
     bool HoldsOne(const std::string& c) {
         if (c.empty()) return true;
         if (c[0] == '!') return !HoldsOne(c.substr(1));
+        if (c.compare(0, 5, "navi=") == 0) return AP::JukeboxPane::NaviState() == c.substr(5);
         if (c == "free") return AP::TestPlayerFree() && !AP::TestItemDisplayPending() && !MessageOpen();
         if (c == "unlocked") return g_Fields[5].value == "0";
         if (c == "textready") return TextReady();

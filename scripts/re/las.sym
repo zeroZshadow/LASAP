@@ -171,6 +171,8 @@ LayoutWrapper_Detach 0x0935dac0 f called by the destructor: takes the root off t
 DungeonMap_KeyWait 0x0937e0f0 f
 DungeonMap_MemoriesButton 0x0938b840 f bool(page*)
 OverworldMap_KeyWait 0x09399090 f
+OverworldMap_PinButton 0x093a2220 f bool(): A pressed (the game's controller, unlocked)
+OverworldMap_OnPin 0x093a2ce0 f bool(page*): the cursor is on a placed pin (page +0x3b40, 16 bytes each)
 MapPopName_SetText 0x093a4960 f sizes the bubble: window width = text width / scale + 60
 Hud_Update 0x093ae800 f places Gm_HUDInteract next to Link with WorldToLayout
 NameEntry_Setup 0x093b2c70 f name entry owner (vtable 0x0a12c6a8) +0x20: builds the screen, puts UI:NameEntry_Default into the name (+0x598)

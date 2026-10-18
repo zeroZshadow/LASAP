@@ -61,6 +61,21 @@ tap 800
 await 10 pane=0\snavi=2
 tap 40
 await 10 pane=3\snavi=2
+# A second R or L pressed while the header brings in the next page (navi 3 Selected or 1 Open) turns that page once it
+# is open: R twice from Items lands on the Jukebox, L twice from the map on System. Both presses go to the module's
+# queue at once (a tap waits for its press to end, which takes the frames between), the first one frame long.
+tap 400
+await 10 pane=1\snavi=2
+send DBG press 80 1 0
+send DBG press 80 when !navi=2+!navi=4
+await 10 pane=3\snavi=2
+tap 80
+await 10 pane=0\snavi=2
+send DBG press 40 1 0
+send DBG press 40 when !navi=2+!navi=4
+await 10 pane=2\snavi=2
+tap 80
+await 10 pane=3\snavi=2
 # B closes the menu from the Jukebox; the page is dropped, the track keeps playing.
 tap 2
 await 10 paused=0

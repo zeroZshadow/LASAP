@@ -1,0 +1,28 @@
+# Skipping a check on the map: run after newgame_file2 on a mod patched with Map Tracker on. The map opens with its
+# cursor on Link, who stands by Marin's door next to the Tarin icon (one location, in logic in a new game). A marks it
+# skipped: the icon shows collected and its hover text starts with "Skipped: ". A again unmarks it. DBG map's
+# "skipped=<n> hover=<group>/<locations>/<look>" reads the skipped count and the hovered icon as shown; screenshots
+# map_skip_on and map_skip_off.
+send DBG map
+expect map=1.*skipped=0 5
+warp Field 38.25 10.5 128.25
+tapuntil 800 paused=1 when free 5
+until map:KeyWait 10
+send DBG map
+expect skipped=0.hover=\d+/1/in$ 5
+tap 1 2 2 when map:KeyWait
+send DBG map
+expect skipped=1.hover=\d+/1/collected$ 5
+send DBG maplabel
+expect MAPLABEL.Skipped:.Tarin$ 5
+check paused=1
+shot D:/DEV/LASAP-sandbox/map_skip_on.png
+tap 1 2 2 when map:KeyWait
+send DBG map
+expect skipped=0.hover=\d+/1/in$ 5
+send DBG maplabel
+expect MAPLABEL.Tarin$ 5
+check paused=1
+shot D:/DEV/LASAP-sandbox/map_skip_off.png
+tapuntil 800 paused=0 when map:KeyWait 5
+free 10
