@@ -14,10 +14,19 @@ from typing import Callable, Dict, Iterable, List, Mapping, Optional, Set, Tuple
 from BaseClasses import ItemClassification
 
 from .items import ITEM_TABLE, LASR_TO_ITEM
-from .lasr import COUNTED, LOGIC, dungeon_logic, goal_logic
+from .lasr import COUNTED, INSTRUMENTS, LOGIC, dungeon_logic, goal_logic
 from .logic import LogicCompiler, make_rule
 
 PLAYER = 1
+# Data storage key the client sets to true once the player has read the sign at the foot of the egg's stairs, which
+# names the instruments the egg needs (DESIGN.md, Goal). Formatted with the team and the slot.
+SIGN_KEY = "las_sign_{team}_{player}"
+
+
+def tracked_instruments(required: int, known: bool, sign_read: bool) -> int:
+    """The instruments the trackers' rules take for the egg. A count left to chance (slot data "instruments_known"
+    false) stays hidden until the player has read the sign: until then they take all eight."""
+    return required if known or sign_read else len(INSTRUMENTS)
 
 
 class _State:

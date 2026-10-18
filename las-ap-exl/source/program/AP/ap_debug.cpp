@@ -1045,7 +1045,8 @@ namespace {
 
     // Protocol lines the AP client acts on (las/client.py), as opposed to replies to debug commands.
     bool ForClient(const std::string& line) {
-        static const char* kVerbs[] = {"CHECK", "CHECKS", "HINT", "GOAL", "DIED", "DEATHDROPPED", "RECV", "LOG"};
+        static const char* kVerbs[] = {"CHECK", "CHECKS", "HINT", "GOAL", "SIGN", "DIED", "DEATHDROPPED", "RECV",
+                                     "LOG"};
         std::string verb = line.substr(0, line.find(' '));
         for (const char* v : kVerbs) {
             if (verb == v) return true;

@@ -136,9 +136,9 @@ An Archipelago player container (`container.py`, `APPlayerContainer`): a zip wit
 
 ## slot_data
 
-`{"seed_hash": str, "goal": str, "instruments_required": int, "death_link": bool, "location_count": int, "settings": {...}, "logic": {...}, "options": {...}, "starting_instruments": [...], "dungeon_entrances": {...}}`
+`{"seed_hash": str, "goal": str, "instruments_required": int, "instruments_known": bool, "death_link": bool, "location_count": int, "settings": {...}, "logic": {...}, "options": {...}, "starting_instruments": [...], "dungeon_entrances": {...}}`
 
-`goal` is always `wind_fish`: the Nightmare beaten after the egg opened with `instruments_required` instruments (Goal).
+`goal` is always `wind_fish`: the Nightmare beaten after the egg opened with `instruments_required` instruments (Goal). `instruments_known` is false for a count left to chance, which trackers keep hidden until the player has read the sign (Goal, **Hidden count**); slot data without it counts as known.
 
 `settings` holds the seed's LASR settings that decide which checks exist and what reaches them (`TRACKER_SETTINGS` in `lasr_settings.py`), under LASR's names and values (`"Preset": "Basic"`, `"Owl Gifts": "None"`, `"Seashell Mansion": 15`, ...), as the options set them. Trackers such as PopTracker packs read them on connect.
 
@@ -151,6 +151,8 @@ An Archipelago player container (`container.py`, `APPlayerContainer`): a zip wit
 ## Data storage
 
 The client keeps the level the game shows (`Field`, `Lv01TailCave`, ...) in `las_level_<team>_<slot>`, from the game's `LOG level` lines. Trackers watch it to show the current dungeon's map.
+
+The client sets `las_sign_<team>_<slot>` to `true` once the game reports the sign at the egg's stairs as read (`SIGN`, for the slot's seed); trackers show a hidden instrument count from then on (Goal, **Hidden count**).
 
 ## Game ↔ client protocol (TCP 43384, game listens)
 
@@ -169,7 +171,7 @@ ASCII lines terminated by `\n`, fields separated by single spaces. The game acce
 | `NAME <local id> <item name>\|<owner>` | What a location holds, from `LocationScouts`; `owner` is empty for this slot's items. Sent for every location on connect |
 | `NOTICE <text>` | A toast (see In-game text); `\|` starts a new line. The client sends "Archipelago connected as <slot>" (or a wrong-seed warning) once the game and the slot are both connected, and "Archipelago server disconnected" when the server goes away |
 | `SERVER 1` / `SERVER 0` | Whether the client is logged into the slot of the game's seed: sent when the game connects, when the slot connects and when the server goes away |
-| `SYNC` | Asks the game to send `RECV <count>` and `CHECKS ...` |
+| `SYNC` | Asks the game to send `RECV <count>` and `CHECKS ...`, and `GOAL`, `SIGN` and the read hints when they apply |
 | `CHECKED <id> <id> ...` | Locations the server has as checked, for the map tracker: all on connect (possibly several lines), then new ones from `RoomUpdate`. Kept in memory only |
 | `INLOGIC CLEAR` / `INLOGIC <id> <id> ...` | Locations in logic for the items received, for the map tracker: `CLEAR`, then all of them (possibly several lines), each time the set changes. Kept in memory only |
 | `DEATH [<player>]` | DeathLink: another player died; a toast names them (see DeathLink) |
@@ -191,6 +193,7 @@ ASCII lines terminated by `\n`, fields separated by single spaces. The game acce
 | `CHECKS <id> <id> ...` | Every collected location, sent on connect and on `SYNC` (possibly several lines) |
 | `HINT <slot> <location id>` | An in-game hint was read (its flag is set): once per hint and connection, and all read hints again on `SYNC` |
 | `GOAL` | Goal completed: Link entered the `Ending` level, or the `ShadowClear` flag is set (also resent on `SYNC`) |
+| `SIGN` | The player read the sign at the egg's stairs (Goal, **Hidden count**): once when it is read, and again on each `SYNC` after |
 | `DIED` | DeathLink: Link died, and no Secret Medicine saved him (see DeathLink) |
 | `DEATHDROPPED` | DeathLink: a `DEATH` arrived with no save loaded and was dropped; the client logs it |
 | `GHOSTNAMES 1` / `GHOSTNAMES 0` | The player turned the ghosts' name tags on or off in the game (d-pad up); the client keeps it as its `ghost_names` setting and sends it back |
@@ -247,6 +250,11 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 - **Logic.** LASR's `egg` region asks for all eight. With fewer, `lasr.goal_logic` replaces them by the count token `instruments:N`, which `LogicCompiler` resolves through `lasr.COUNTED`: it holds with N different instruments (`instruments:0` always holds).
 - **Patch.** The egg's song (`WindFishsEgg.bfevfl`, entry `orchestra`) asks `Inventory.HasAllInstruments` at four switches: the instruments' playing, the song's length, the fade, and whether the egg opens (`oepn`). Below eight, the patcher turns each into a chain of `Inventory.HasItem` checks, one per instrument (itemType 45–52, Full Moon Cello to Thunder Drum), that reaches the switch's case 1 once enough are held and its case 0 once they can no longer be. With eight, or without the settings key, the file stays as it is.
 - **Sign.** The sign at the foot of the egg's stairs (`Place:SBMountTamaranch`, used by no other event) gets two lines under its place name, "The Wind Fish's Egg opens / with N instruments.", in every language's text (in English). That makes a random value (Archipelago's `random`, `random-range-<min>-<max>`, ...) readable in the game.
+- **Hidden count.** A count left to chance stays hidden in the trackers until the player reads that sign; a number the player picked shows at once. `InstrumentsRequired` turns off `supports_weighting`, so Generate hands its `from_any` the YAML value as written; it weights a dict or list itself, as `Generate.get_choice` does, and sets `known` when the YAML leaves no choice: a plain value, or a dict or list with one possible value (weight above 0) that is not `random...`. The slot data carries it as `instruments_known`.
+  - The module notices the sign when the game fetches its text (the text getter on the message looked up as `SIGN_LABEL`), sets the save's event flag `APSignRead` (`SIGN_FLAG`, which the patcher adds to the global flags, `ap_goal.SIGN_FLAG`) and sends `SIGN`; it sends `SIGN` again on each `SYNC` while the flag is set. The flag lasts as long as the save file: a read the player quits without saving is gone from the save, and a new game reads the sign again.
+  - The client sets the data storage key `las_sign_<team>_<slot>` (`tracker.SIGN_KEY`) on `SIGN` from the game of the slot's seed, and asks for it on connecting (`Get`): a `true` there counts as read, as the save may have lost it. Until then, with `instruments_known` false, its map tracker's rules take all eight instruments (`tracker.tracked_instruments`).
+  - Universal Tracker regenerates the slot with all eight while the count is hidden. It watches `LASWorld.found_entrances_datastorage_key` (the sign key, a hook UT has for deferred entrances) and calls `reconnect_found_entrances` with its value; once it is true, the world compiles the rules with the real count and sets them again.
+  - The PopTracker pack shows "?" for Instruments Required (count 0 with the overlay `?`, as a consumable's nonzero count replaces the overlay) and its logic takes eight (`INSTRUMENTS_HIDDEN`) until the sign key is true.
 
 **Shuffled dungeons** (option `shuffled_dungeons`, settings key `Shuffled Dungeons`; `lasr.dungeon_logic`, `patcher/ap_entrances.py`)
 - Each of the nine dungeons' overworld doors leads into a random dungeon, the Color Dungeon included, as in LASR's shuffler (`lasr.shuffle_dungeons`). `dungeon_entrances` names each door by its dungeon's LASR region (`tail-cave`, ...) and maps it to the dungeon it leads into.

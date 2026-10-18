@@ -1144,6 +1144,7 @@ namespace {
             AP::Send("RECV " + std::to_string(GetRecvCount()));
             SendAllChecks();
             if (EventFlags::CheckFlag(kGoalFlag) || LevelSystem::GetCurrentLevel() == kGoalLevel) AP::Send("GOAL");
+            if (EventFlags::CheckFlag(AP::SIGN_FLAG)) AP::Send("SIGN");
             ReportHints(true);
         } else if (a[0] == "DEATH") {
             // A death from another player. Without a save (intro, title, file menus) or with Link dead already it
@@ -1260,6 +1261,13 @@ namespace AP {
     void OnGoal() {
         Logging.Log("[AP] goal reached");
         Send("GOAL");
+    }
+
+    void OnSignRead() {
+        if (EventFlags::CheckFlag(AP::SIGN_FLAG)) return;
+        EventFlags::SetFlag(AP::SIGN_FLAG, true);
+        Logging.Log("[AP] sign read");
+        Send("SIGN");
     }
 
     bool HasLogic() {
