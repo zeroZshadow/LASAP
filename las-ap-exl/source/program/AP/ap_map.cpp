@@ -9,8 +9,10 @@
 // are checked. Hovering an icon shows Place:<its flag>, whose text names the unchecked locations, or the collected
 // ones (ap_text.cpp). The map's X button, which opens the memories, instead hides or shows the out-of-logic icons
 // ("Toggle out of logic"): those icons are always made, and hidden after the map adds them while they are toggled
-// off; the toggle shows or hides the page's markers in place. The overworld's areas show once their UI_FieldMapTraverse_<area> flag is set
-// (UI_FieldMapOpen_<area> once the reveal has played); both read as set.
+// off; the toggle shows or hides the page's markers in place. A on an icon of one unchecked location marks it skipped
+// or not (saved per seed, ap_game.cpp): a skipped location counts as checked on the map. Such an icon is made in its
+// real look and collected, and the one not shown is hidden the same way. The overworld's areas show once their
+// UI_FieldMapTraverse_<area> flag is set (UI_FieldMapOpen_<area> once the reveal has played); both read as set.
 //
 // In dungeons the map draws the rooms Link visited and, with the compass, the chests (open or closed). Both come
 // from the dungeon's DungeonItems entry: its visited-room mask is filled while Link is in the dungeon (the rooms then
@@ -57,6 +59,10 @@ namespace {
     // the dungeon map's check bool(page*).
     constexpr uintptr_t kFieldMemoryButton = 0xe95278;
     constexpr uintptr_t kMemoryButton = 0xe87840;
+    // In the overworld map's KeyWait state, after it reads A (w0, page x19), which opens the pin menu. The page's
+    // hovered marker: s32 index into its markers, -1 none (set later in the same update, so the last frame's).
+    constexpr uintptr_t kFieldPinButton = 0xe950f4;
+    constexpr size_t kPageHovered = 0x8150;
     // In the map's icon setup, after a shown icon's marker joined the page's markers: x19 page, x26 marker.
     constexpr uintptr_t kMarkerAdded = 0xe917c8;
     constexpr size_t kPageMarkers = 0x710;          // std::vector<std::shared_ptr<marker>>: begin, end
@@ -87,6 +93,10 @@ namespace {
     bool g_Enabled = false;  // loaded and not switched off for a test (DBG map 0)
     bool g_IconsHidden = false;  // revealed maps without overworld icons, for screenshots (DBG map 2)
     bool g_OutHidden = false;    // out-of-logic icons toggled off with the X button
+#ifdef LASAP_TEST
+    int g_HoverGroup = -1;       // the hovered icon's group and look, the last frame the overworld map took buttons
+    int g_HoverLook = -1;
+#endif
     u8* g_MarkerPage = nullptr;  // the map page whose markers hold ours (the icon setup ran for it)
     std::vector<std::vector<int>> g_Overworld;  // group -> local ids
     std::vector<DungeonGroup> g_Dungeon;
@@ -107,15 +117,39 @@ namespace {
         return !AP::HasLogic() || AP::IsInLogic(id);
     }
 
+    // Checked, or marked skipped by the player: the map counts it as done.
+    bool Done(int id) {
+        return AP::IsLocationChecked(id) || AP::IsLocationSkipped(id);
+    }
+
     Look GroupLook(const std::vector<int>& ids) {
         size_t left = 0, reachable = 0;
         for (int id : ids) {
-            if (AP::IsLocationChecked(id)) continue;
+            if (Done(id)) continue;
             left++;
             if (Reachable(id)) reachable++;
         }
         if (left == 0) return Collected;
         return reachable == left ? InLogic : reachable > 0 ? Partial : OutOfLogic;
+    }
+
+    // A group A marks skipped or not: one location, not checked.
+    bool Skippable(const std::vector<int>& ids) {
+        return ids.size() == 1 && !AP::IsLocationChecked(ids[0]);
+    }
+
+    // Whether a group's icon in this look is made: the look shown, and for a skippable group also the other look A
+    // toggles to (its real look, or collected), so A can swap them on the open map.
+    bool LookMade(const std::vector<int>& ids, Look look) {
+        if (GroupLook(ids) == look) return true;
+        if (!Skippable(ids)) return false;
+        return look == Collected || look == (Reachable(ids[0]) ? InLogic : OutOfLogic);
+    }
+
+    // Whether a made icon shows: its look is the group's, and it is not an out-of-logic icon toggled off.
+    bool LookShown(int group, Look look) {
+        if (group < 0 || static_cast<size_t>(group) >= g_Overworld.size()) return false;
+        return GroupLook(g_Overworld[group]) == look && !(look == OutOfLogic && g_OutHidden);
     }
 
     // The group and look a flag or label names (MAP_FLAG_PREFIX[mark]<group>), or -1.
@@ -148,16 +182,24 @@ namespace {
         pane[kPaneFlags] = (pane[kPaneFlags] & ~1) | (visible ? 1 : 0);
     }
 
-    // Shows or hides the page's out-of-logic markers as toggled.
-    void ApplyOutHidden(u8* page) {
+    // Shows the page's markers of ours whose look shows (LookShown) and hides the others.
+    void ApplyLooks(u8* page) {
         auto** marker = *reinterpret_cast<u8***>(page + kPageMarkers);
         auto** end = *reinterpret_cast<u8***>(page + kPageMarkers + 8);
         for (; marker < end; marker += 2) {  // shared_ptr: object, control block
             Look look;
-            if (*marker != nullptr && MarkerIcon(*marker, look) >= 0 && look == OutOfLogic) {
-                SetMarkerVisible(*marker, !g_OutHidden);
-            }
+            int group = *marker != nullptr ? MarkerIcon(*marker, look) : -1;
+            if (group >= 0) SetMarkerVisible(*marker, LookShown(group, look));
         }
+    }
+
+    // The group and look of the page's hovered marker, or -1.
+    int HoveredIcon(u8* page, Look& look) {
+        s32 index = *reinterpret_cast<s32*>(page + kPageHovered);
+        auto** begin = *reinterpret_cast<u8***>(page + kPageMarkers);
+        auto** end = *reinterpret_cast<u8***>(page + kPageMarkers + 8);
+        if (index < 0 || index >= (end - begin) / 2 || begin[index * 2] == nullptr) return -1;
+        return MarkerIcon(begin[index * 2], look);
     }
 
     void PlaySound(const char* name) {
@@ -167,8 +209,22 @@ namespace {
 
     void ToggleOutOfLogic(u8* page) {
         g_OutHidden = !g_OutHidden;
-        if (page == g_MarkerPage) ApplyOutHidden(page);
+        if (page == g_MarkerPage) ApplyLooks(page);
         PlaySound(g_OutHidden ? "SE_SY_MAP_PIN_OFF" : "SE_SY_MAP_PIN_ON");
+    }
+
+    // A on the overworld map: marks the hovered icon's location skipped, or not. False (the game takes the press)
+    // unless the icon is one of a single unchecked location.
+    bool ToggleSkipped(u8* page) {
+        Look look;
+        int group = HoveredIcon(page, look);
+        if (group < 0 || static_cast<size_t>(group) >= g_Overworld.size()) return false;
+        const auto& ids = g_Overworld[group];
+        if (!Skippable(ids)) return false;
+        AP::SetLocationSkipped(ids[0], !AP::IsLocationSkipped(ids[0]));
+        if (page == g_MarkerPage) ApplyLooks(page);
+        PlaySound("SE_SY_DECIDE");
+        return true;
     }
 
     bool AnyUnchecked(const std::vector<int>& ids) {
@@ -198,7 +254,21 @@ HOOK_DEFINE_INLINE(MarkerAdded) {
         g_MarkerPage = reinterpret_cast<u8*>(ctx->X[19]);
         u8* marker = reinterpret_cast<u8*>(ctx->X[26]);
         Look look;
-        if (g_OutHidden && MarkerIcon(marker, look) >= 0 && look == OutOfLogic) SetMarkerVisible(marker, false);
+        int group = MarkerIcon(marker, look);
+        if (group >= 0 && !LookShown(group, look)) SetMarkerVisible(marker, false);
+    }
+};
+
+HOOK_DEFINE_INLINE(FieldPinButton) {
+    static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+        if (!g_Enabled || g_IconsHidden) return;
+        u8* page = reinterpret_cast<u8*>(ctx->X[19]);
+#ifdef LASAP_TEST
+        Look look;
+        g_HoverGroup = HoveredIcon(page, look);
+        g_HoverLook = g_HoverGroup >= 0 ? look : -1;
+#endif
+        if ((ctx->W[0] & 1) != 0 && ToggleSkipped(page)) ctx->W[0] = 0;  // no pin menu
     }
 };
 
@@ -312,6 +382,7 @@ namespace AP {
         MarkerAdded::InstallAtOffset(offset_manager.Offset(kMarkerAdded));
         MemoryButton::InstallAtOffset(offset_manager.Offset(kMemoryButton));
         FieldMemoryButton::InstallAtOffset(offset_manager.Offset(kFieldMemoryButton));
+        FieldPinButton::InstallAtOffset(offset_manager.Offset(kFieldPinButton));
         Logging.Log("[AP] map tracker: " + std::to_string(g_Overworld.size()) + " overworld and " +
                     std::to_string(g_Dungeon.size()) + " dungeon icons, " + std::to_string(g_Chests.size()) +
                     " chests");
@@ -323,7 +394,7 @@ namespace AP {
         int group = ParseIcon(name, look);
         if (group >= 0) {
             value = !g_IconsHidden && static_cast<size_t>(group) < g_Overworld.size() &&
-                    GroupLook(g_Overworld[group]) == look;
+                    LookMade(g_Overworld[group], look);
             return true;
         }
         if (StartsWith(name, kTraversePrefix) || StartsWith(name, kOpenPrefix)) {
@@ -339,16 +410,18 @@ namespace AP {
     }
 
     std::string MapLabelText(int group) {
-        // The group's name, after "<in logic>/<unchecked> " when it has several locations and some are unchecked; or
-        // its other name alone until its flag is set (the count would tell a dungeon by its number of locations).
+        // The group's name, after "<in logic>/<unchecked> " when it has several locations and some are unchecked
+        // (skipped ones count as checked), or after "Skipped: " when its one location is skipped; or its other name
+        // alone until its flag is set (the count would tell a dungeon by its number of locations).
         if (group < 0 || static_cast<size_t>(group) >= g_Overworld.size()) return "";
         auto hidden = g_HiddenNames.find(group);
         if (hidden != g_HiddenNames.end() && !EventFlags::CheckFlag(hidden->second.first)) return hidden->second.second;
         std::string name = static_cast<size_t>(group) < g_GroupNames.size() ? g_GroupNames[group] : "";
         const auto& ids = g_Overworld[group];
+        if (Skippable(ids) && IsLocationSkipped(ids[0])) return "Skipped: " + name;
         int unchecked = 0, reachable = 0;
         for (int id : ids) {
-            if (IsLocationChecked(id)) continue;
+            if (Done(id)) continue;
             unchecked++;
             if (Reachable(id)) reachable++;
         }
@@ -376,6 +449,31 @@ namespace AP {
         g_IconsHidden = mode == 2;
     }
 
+#ifdef LASAP_TEST
+    int MapHoverGroup() {
+        return g_HoverGroup;
+    }
+#endif
+
+    std::string SkipState() {
+#ifdef LASAP_TEST
+        // The skipped locations of overworld icons, and the hovered icon: its group, locations and look, or -1.
+        static const char* const kLookNames[kLooks] = {"in", "partly", "out", "collected"};
+        size_t skipped = 0;
+        for (const auto& ids : g_Overworld) {
+            for (int id : ids) skipped += IsLocationSkipped(id) ? 1 : 0;
+        }
+        std::string hover = "-1";
+        if (g_HoverGroup >= 0 && static_cast<size_t>(g_HoverGroup) < g_Overworld.size()) {
+            hover = std::to_string(g_HoverGroup) + "/" + std::to_string(g_Overworld[g_HoverGroup].size()) + "/" +
+                    kLookNames[g_HoverLook];
+        }
+        return " skipped=" + std::to_string(skipped) + " hover=" + hover;
+#else
+        return "";
+#endif
+    }
+
     std::string MapState() {
         size_t looks[kLooks] = {};
         for (const auto& ids : g_Overworld) looks[GroupLook(ids)]++;
@@ -387,6 +485,6 @@ namespace AP {
                " server=" + (IsServerConnected() ? "1" : "0") +
                " hooks=" + std::to_string(g_FlagsCalls) + "," + std::to_string(g_IconCalls) + "," +
                std::to_string(g_IconMatches) + "," + std::to_string(g_ChestMatches) + " out=" +
-               (g_OutHidden ? "hidden" : "shown");
+               (g_OutHidden ? "hidden" : "shown") + SkipState();
     }
 }

@@ -41,6 +41,9 @@ namespace {
     std::string g_ChecksPath;
     std::vector<u8> g_Checks(kChecksBytes, 0);
     bool g_ChecksLoaded = false;
+    // Locations the player marked as skipped on the map (map tracker), kept per seed next to the checks.
+    std::string g_SkippedPath;
+    std::vector<u8> g_Skipped(kChecksBytes, 0);
     // Locations the server has as checked (CHECKED lines), for the map tracker.
     std::vector<u8> g_ServerChecks(kChecksBytes, 0);
     // Locations in logic for the items received (INLOGIC lines), for the map tracker.
@@ -724,28 +727,38 @@ namespace {
         return pos == std::string::npos ? "" : line.substr(pos + 1);
     }
 
-    void LoadChecks() {
-        g_ChecksPath = "sd:/lasap/" + g_SeedHash + ".chk";
-        nn::fs::CreateDirectory("sd:/lasap");
+    void ReadBits(const std::string& path, std::vector<u8>& bits) {
         nn::fs::FileHandle h{};
-        if (R_SUCCEEDED(nn::fs::OpenFile(&h, g_ChecksPath.c_str(), nn::fs::OpenMode_Read))) {
-            nn::fs::ReadFile(h, 0, g_Checks.data(), kChecksBytes);
+        if (R_SUCCEEDED(nn::fs::OpenFile(&h, path.c_str(), nn::fs::OpenMode_Read))) {
+            nn::fs::ReadFile(h, 0, bits.data(), kChecksBytes);
             nn::fs::CloseFile(h);
         }
+    }
+
+    void WriteBits(const std::string& path, const std::vector<u8>& bits) {
+        nn::fs::FileHandle h{};
+        if (R_FAILED(nn::fs::OpenFile(&h, path.c_str(), nn::fs::OpenMode_Write))) {
+            nn::fs::CreateFile(path.c_str(), kChecksBytes);
+            if (R_FAILED(nn::fs::OpenFile(&h, path.c_str(), nn::fs::OpenMode_Write))) {
+                AP::Log("cannot write " + path);
+                return;
+            }
+        }
+        nn::fs::WriteFile(h, 0, bits.data(), kChecksBytes, nn::fs::WriteOption{nn::fs::WriteOptionFlag_Flush});
+        nn::fs::CloseFile(h);
+    }
+
+    void LoadChecks() {
+        g_ChecksPath = "sd:/lasap/" + g_SeedHash + ".chk";
+        g_SkippedPath = "sd:/lasap/" + g_SeedHash + ".skp";
+        nn::fs::CreateDirectory("sd:/lasap");
+        ReadBits(g_ChecksPath, g_Checks);
+        ReadBits(g_SkippedPath, g_Skipped);
         g_ChecksLoaded = true;
     }
 
     void SaveChecks() {
-        nn::fs::FileHandle h{};
-        if (R_FAILED(nn::fs::OpenFile(&h, g_ChecksPath.c_str(), nn::fs::OpenMode_Write))) {
-            nn::fs::CreateFile(g_ChecksPath.c_str(), kChecksBytes);
-            if (R_FAILED(nn::fs::OpenFile(&h, g_ChecksPath.c_str(), nn::fs::OpenMode_Write))) {
-                AP::Log("cannot write " + g_ChecksPath);
-                return;
-            }
-        }
-        nn::fs::WriteFile(h, 0, g_Checks.data(), kChecksBytes, nn::fs::WriteOption{nn::fs::WriteOptionFlag_Flush});
-        nn::fs::CloseFile(h);
+        WriteBits(g_ChecksPath, g_Checks);
     }
 
     // Saves a location collected here and reports it.
@@ -972,8 +985,8 @@ namespace {
         } else if (cmd == "map") {
             if (a.size() >= 3) AP::SetMapMode(atoi(a[2].c_str()));
             AP::Send(AP::MapState());
-        } else if (cmd == "maplabel" && a.size() >= 3) {
-            AP::Send("MAPLABEL " + AP::MapLabelText(atoi(a[2].c_str())));
+        } else if (cmd == "maplabel") {
+            AP::Send("MAPLABEL " + AP::MapLabelText(a.size() >= 3 ? atoi(a[2].c_str()) : AP::MapHoverGroup()));
         } else if (cmd == "text") {
             AP::Send(a.size() >= 3 ? AP::SeenText(a[2]) : AP::TextState());
         } else if (cmd == "music") {
@@ -1273,6 +1286,20 @@ namespace AP {
         if (local_id < 0 || local_id >= (int)(kChecksBytes * 8)) return false;
         if (!g_ChecksLoaded) LoadChecks();
         return ((g_Checks[local_id / 8] | g_ServerChecks[local_id / 8]) >> (local_id % 8)) & 1;
+    }
+
+    bool IsLocationSkipped(int local_id) {
+        if (local_id < 0 || local_id >= (int)(kChecksBytes * 8)) return false;
+        if (!g_ChecksLoaded) LoadChecks();
+        return (g_Skipped[local_id / 8] >> (local_id % 8)) & 1;
+    }
+
+    void SetLocationSkipped(int local_id, bool skipped) {
+        if (local_id < 0 || local_id >= (int)(kChecksBytes * 8)) return;
+        if (!g_ChecksLoaded) LoadChecks();
+        u8 bit = 1 << (local_id % 8);
+        g_Skipped[local_id / 8] = skipped ? g_Skipped[local_id / 8] | bit : g_Skipped[local_id / 8] & ~bit;
+        WriteBits(g_SkippedPath, g_Skipped);
     }
 
 }
