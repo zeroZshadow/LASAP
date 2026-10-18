@@ -7,6 +7,12 @@ TEST_MODULE="$(cd "$(dirname "$0")/.." && pwd)/patcher/exl-test/subsdk9"
 "${LASAP_PY:-/d/DEV/LASAP/.venv-lasr/Scripts/python.exe}" "$(dirname "$0")/emu.py" check
 SB=/d/DEV/LASAP-sandbox/ryujinx/sdcard
 OUT="$1"
+# A patch written before the patcher's last commit lacks that change (an old Common.bfevfl warps home into the house).
+PATCHED="$(stat -c %Y "$OUT/config/lasr-exl/config.ini")"
+CHANGED="$(git -C "$(dirname "$0")/.." log -1 --format=%ct -- patcher)"
+if [ -n "$CHANGED" ] && [ "$PATCHED" -lt "$CHANGED" ]; then
+    echo "WARNING: $OUT was patched before the patcher's last commit; patch its .aplas again (las_ap_patch.py) for a current mod" >&2
+fi
 rm -rf "$SB/atmosphere/contents/01006BB00C6F0000"
 mkdir -p "$SB/atmosphere/contents" "$SB/config/lasr-exl"
 rm -f "$SB/config/lasr-exl/ap_map.txt" "$SB/config/lasr-exl/ap_hints.txt"
