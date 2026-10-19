@@ -1,6 +1,7 @@
 # The Jukebox page (ap_jukebox.cpp, DESIGN.md "Jukebox page"): the pause menu's fourth page, Map, Items, System,
-# Jukebox, as a mode of System's slot, and its playback controls. Run after boot_file1 with the client connected (no
-# server needed). STATE's pane= is the page the player sees (3 the Jukebox), navi= the header's state (2 WaitKey),
+# Jukebox, as a mode of System's slot, and its playback controls. Run after boot_file1 with Link in the Wind Fish's
+# Egg (warp Lv09WindFishsEgg 37.5 0 94.5), whose track the cursor opens on, and the client connected (no server
+# needed). STATE's pane= is the page the player sees (3 the Jukebox), navi= the header's state (2 WaitKey),
 # jbox= the list's cursor and first row, bgmvol= the playing tracks' volume targets (the pause menu turns music down
 # to 20); DBG jukebox counts the pages built and dropped and the text boxes whose glyphs are drawn, and shows the
 # guide's A caption.
@@ -34,8 +35,9 @@ send DBG jukebox
 expect JUKEBOX.*guide=play 5
 tap 1
 await 5 music=BGM_SEASHELL_HOUSE\szonebgm=\S+\sbgm=BGM_SEASHELL_HOUSE:1\sbgmvol=100\s
-# Down held: the cursor repeats and the list scrolls; Up comes back one row at a time.
-tap 8000 10
+# Down held past the list's repeat delay (20 frames): the cursor repeats and the list scrolls; Up comes back one
+# row at a time.
+tap 8000 30
 await 5 jbox=(19|[2-6][0-9])/(1[4-9]|[2-6][0-9])\s
 tap 2000
 tap 2000
