@@ -27,8 +27,7 @@ from ..tracker import SIGN_KEY
 
 class TestKnown(unittest.TestCase):
     def test_known(self) -> None:
-        for value, number in ((3, 3), ("3", 3), (0, 0), ("high", 8), ("low", 0), ("default", 8), ([5], 5),
-                              ([5, "5"], 5), ({4: 50}, 4), ({4: 50, 8: 0, "random": 0}, 4), ({}, 8)):
+        for value, number in ((3, 3), ("3", 3), (0, 0), ("high", 8), ("low", 0), ("default", 8)):
             with self.subTest(value=value):
                 option = InstrumentsRequired.from_any(value)
                 self.assertEqual(option.value, number)
@@ -36,25 +35,23 @@ class TestKnown(unittest.TestCase):
 
     def test_hidden(self) -> None:
         for value, numbers in (("random", range(9)), ("random-low", range(9)), ("random-high", range(9)),
-                               ("random-range-2-6", range(2, 7)), ("random-range-low-2-6", range(2, 7)),
-                               ({4: 50, 8: 50}, (4, 8)), ({"random-range-3-5": 10}, range(3, 6)),
-                               ({3: 1, "random": 1}, range(9)), ([4, 8], (4, 8)), (["random"], range(9))):
+                               ("random-range-2-6", range(2, 7)), ("random-range-low-2-6", range(2, 7))):
             with self.subTest(value=value):
                 option = InstrumentsRequired.from_any(value)
                 self.assertIn(option.value, numbers)
                 self.assertFalse(option.known)
 
-    def test_weights_pick(self) -> None:
-        values = {InstrumentsRequired.from_any({2: 1, 6: 1}).value for _ in range(64)}
-        self.assertEqual(values, {2, 6})
-        with self.assertRaises(ValueError):
-            InstrumentsRequired.from_any({2: 0, 6: 0})
+    def test_options_creator_offers_random(self) -> None:
+        """The Options Creator shows its Random toggle only for options that support weighting."""
+        self.assertTrue(InstrumentsRequired.supports_weighting)
 
-    def test_generate_passes_the_yaml_value(self) -> None:
-        """Generate hands the raw YAML value to from_any (supports_weighting off), the default when there is none."""
+    def test_generate_weights_first(self) -> None:
+        """Generate weights the YAML value before from_any: a "random..." pick is hidden, a number picked by weight
+        is known."""
         for weights, known in (({}, True), ({"instruments_required": 5}, True),
-                               ({"instruments_required": {4: 50, 8: 50}}, False),
-                               ({"instruments_required": "random"}, False)):
+                               ({"instruments_required": {4: 50, 8: 50}}, True),
+                               ({"instruments_required": "random"}, False),
+                               ({"instruments_required": {"random-range-3-5": 10}}, False)):
             with self.subTest(weights=weights):
                 ret = argparse.Namespace(game=GAME, name="Tester")
                 handle_option(ret, weights, "instruments_required", InstrumentsRequired, PlandoOptions.bosses)
@@ -75,7 +72,7 @@ class TestKnown(unittest.TestCase):
 class TestSlotData(unittest.TestCase):
     def test_slot_data(self) -> None:
         world_type = AutoWorldRegister.world_types[GAME]
-        for value, known in ((3, True), ("random-range-2-6", False), ({4: 50, 8: 50}, False)):
+        for value, known in ((3, True), ("random-range-2-6", False)):
             with self.subTest(value=value):
                 world = setup_multiworld(world_type, STEPS, 70, {"instruments_required": value}).worlds[1]
                 slot_data = world.fill_slot_data()

@@ -159,42 +159,20 @@ class StartingInstruments(Range):
 class InstrumentsRequired(Range):
     """How many of the eight instruments open the Wind Fish's Egg. Starting instruments count toward it. The sign at
     the foot of the egg's stairs tells the number, so it can be left to chance: random, random-low, random-high or
-    random-range-<min>-<max>. A number left to chance, or picked from several by weight, stays hidden in the trackers
-    until you read the sign."""
+    random-range-<min>-<max>. A number left to chance stays hidden in the trackers until you read the sign."""
     display_name = "Instruments Required"
     range_start = 0
     range_end = 8
     default = 8
-    # from_any weights the YAML value itself, to know whether the player picked the number (known)
-    supports_weighting = False
     known = True
 
     @classmethod
     def from_any(cls, data: Any) -> "InstrumentsRequired":
-        """As Generate.get_choice and Range.from_any: a dict picks a key by weight, a list one entry, a "random..."
-        text a number in its range. The number is known when the YAML leaves no choice: a plain value, or a dict
-        or list with one possible value that is not random."""
-        if isinstance(data, cls):
-            return data
-        values = data
-        if isinstance(data, dict):
-            values = [key for key, weight in data.items() if int(weight) > 0]
-            if not data:
-                data = cls.default
-                values = [data]
-            elif not values:
-                raise ValueError(f"All values of {cls.__name__} are weighted as zero.")
-            else:
-                data = random.choices(list(data.keys()), weights=[int(weight) for weight in data.values()])[0]
-        elif isinstance(data, list):
-            if not data:
-                raise ValueError(f"{cls.__name__} has an empty list of values.")
-            data = random.choice(data)
-        if not isinstance(values, list):
-            values = [values]
+        """As Range.from_any. Generate weights the YAML value first, so a "random..." text is the one mark of a number
+        left to chance; a number picked by weight from several arrives as that number, and counts as known."""
         option = super().from_any(data)
-        option.known = len({str(value).lower() for value in values}) == 1 and \
-            not str(values[0]).lower().startswith("random")
+        if not isinstance(data, cls):
+            option.known = not (isinstance(data, str) and data.lower().startswith("random"))
         return option
 
 
