@@ -304,10 +304,20 @@ namespace {
 
     // ---- Per-frame sampling ----
 
+    // The framework's main loop (0x1b920) makes a pass a frame: its frame step (0x11cc0 on framework +0x1b0), then
+    // the frame counter (+0x4d4) counts up unless the game is paused (+0x510 or +0x511 set: the pause menu and other
+    // menus), while the frames are still drawn. Hooked at the start of each pass.
+    constexpr uintptr_t kMainLoopPass = 0x1b97c;
+    std::atomic<u32> g_Passes = 0;
+
+    struct MainLoopPass : public exl::hook::impl::InlineHook<MainLoopPass> {
+        static void Callback(exl::hook::nx64::InlineCtx*) { g_Passes++; }
+    };
+
     bool g_Trace = false;
-    u32 g_Frame = 0;
+    u32 g_Pass = 0;
     u64 g_FrameMs = 0;
-    u32 g_FrameNo = 0;         // frames counted here (the framework counter can stall)
+    u32 g_FrameNo = 0;         // frames counted here (the framework counter stalls while the game is paused)
     u64 g_FramePhys = 0, g_FrameInj = 0;
     u64 g_LastPhys = 0, g_LastInj = 0;
 
@@ -1111,12 +1121,12 @@ namespace AP::Test {
     }
 
     void ApplyInput(nn::hid::NpadBaseState* state) {
-        u32 counter = FrameCounter();
+        u32 pass = g_Passes.load();
         u64 now = NowMs();
-        // A frame starts when the framework's counter moves; while it stalls (before the framework exists, during
-        // some loads) every 16 ms count as one.
-        if (counter != g_Frame || (counter == 0 && now - g_FrameMs >= 16) || now - g_FrameMs >= 100) {
-            g_Frame = counter;
+        // A frame starts with each pass of the main loop; before the loop runs every 16 ms count as one, and while a
+        // pass lasts (some loads) every 100 ms.
+        if (pass != g_Pass || (pass == 0 && now - g_FrameMs >= 16) || now - g_FrameMs >= 100) {
+            g_Pass = pass;
             g_FrameMs = now;
             OnFrame();
         }
@@ -1338,8 +1348,8 @@ namespace AP::Test {
         } else if (cmd == "holds" && a.size() >= 3) {
             AP::Send(std::string("HOLDS ") + (Holds(a[2]) ? "1 " : "0 ") + a[2]);
         } else if (cmd == "frame") {
-            AP::Send("FRAME " + std::to_string(g_FrameNo) + " counter=" + std::to_string(g_Frame) + " ms=" +
-                     std::to_string(NowMs()));
+            AP::Send("FRAME " + std::to_string(g_FrameNo) + " counter=" + std::to_string(FrameCounter()) +
+                     " passes=" + std::to_string(g_Passes.load()) + " ms=" + std::to_string(NowMs()));
         } else if (cmd == "memq" && a.size() >= 3) {
             // DBG memq <hex address | +module offset>: the memory region there (start, size, type, permissions)
             uintptr_t addr = a[2][0] == '+' ? g_BaseAddress + strtoull(a[2].c_str() + 1, nullptr, 16)
@@ -1397,6 +1407,7 @@ namespace AP::Test {
         SmChange<8>::InstallAtOffset(offset_manager.Offset(kSmHooks[8].offset));
         SmChange<9>::InstallAtOffset(offset_manager.Offset(kSmHooks[9].offset));
         static_assert(kSmHookCount == 10);
+        MainLoopPass::InstallAtOffset(offset_manager.Offset(kMainLoopPass));
     }
 }
 #endif
