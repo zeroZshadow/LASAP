@@ -242,6 +242,19 @@ namespace {
         return true;
     }
 
+    // An icon's count, in its hover text and its check list's header: "<to do>/<unchecked>", its locations in logic
+    // neither checked nor skipped over those not checked (skipping one lowers the first, not the second). Empty when
+    // every location is checked.
+    std::string CountText(const std::vector<int>& ids) {
+        int unchecked = 0, todo = 0;
+        for (int id : ids) {
+            if (AP::IsLocationChecked(id)) continue;
+            unchecked++;
+            if (!Done(id) && Reachable(id)) todo++;
+        }
+        return unchecked == 0 ? "" : std::to_string(todo) + "/" + std::to_string(unchecked);
+    }
+
     bool AnyUnchecked(const std::vector<int>& ids) {
         for (int id : ids) {
             if (!AP::IsLocationChecked(id)) return true;
@@ -262,10 +275,10 @@ namespace {
 // - the dim: Gm_MapMarkList (the map's pin bar) with only its black P_pict_00, stretched over the map between the
 //   page's rules (the black of Cm_Dlg, the game's dialogs, would bring its masks, which capture the screen into a
 //   texture the pause menu's backdrop shares);
-// - the back: Gm_Memory (the Memories screen) with only W_window_01, the window the Memories list sits in, its
-//   height fitted to the rows;
+// - the back: Gm_MemoryCollect (the Memories' count) with only its paper window W_window_00, as on the Jukebox
+//   page, sized to the header and the rows;
 // - the list: Gm_MemoryList (ap_list.cpp), one row per location of the icon, its name without the area; the header
-//   above the rows names the icon (as its hover text) with "<in logic>/<unchecked>" on the right, in two
+//   above the rows names the icon (as its hover text) with its count (CountText) on the right, in two
 //   Gm_SystemOpUnit text boxes;
 // - per row the icon's dot of the location's look: a Gm_MapMarker at the frame of its SetMark animation the map's
 //   rows use (ap_map_icons.py), and for a skipped location "skipped" after its name (Gm_SystemOpUnit, italic).
@@ -295,13 +308,10 @@ namespace {
     constexpr float kDimY = -16, kDimWidth = 1280, kDimHeight = 525;  // the map's part of the page
     // The map's cursor and the name over the icon it is on (Gm_MapCursor), a UI of its own drawn over the pages.
     constexpr int kMapCursorUi = 0x1c;
-    // Gm_Memory: N_Memory_00 holds the Memories' contents, tabs, arrows and windows, hidden here but the window
-    // W_window_01 (the list's, scale 0.67).
-    constexpr const char* kBackLayout = "Gm_Memory.bflyt";
-    constexpr const char* kBackHidden[] = {"L_Content_00", "L_Content_01", "L_Content_02", "L_Content_03",
-                                           "L_PanelList_00", "P_NaviBack_00", "P_NaviNext_00", "S_scissor_00",
-                                           "P_pict_00", "P_pict_01", "A_Tab_00", "N_Message_00"};
-    constexpr float kWindowScale = 0.67f;
+    // Gm_MemoryCollect: in N_Collect_00 the text T_Collect_00, the paper window W_window_00 (rounded corners) and
+    // the count A_Collect_00, hidden here but the window.
+    constexpr const char* kBackLayout = "Gm_MemoryCollect.bflyt";
+    constexpr const char* kBackHidden[] = {"T_Collect_00", "A_Collect_00"};
     // The list's rows span x -197..195 from its middle; its scroll bar (x 214, 30 wide, its track 390 high at y -20)
     // is fitted to the rows, and the panel widens to hold it while the locations do not fit.
     constexpr float kRowLeft = -197, kRowRight = 195, kScrollY = L::kRowTop - L::kRowStep * 3, kScrollHeight = 390;
@@ -315,16 +325,20 @@ namespace {
     constexpr float kNameSqueeze = 0.6f;  // a long name is narrowed to fit its row, down to this
     // ui2d TextBox: the italic slant of its glyphs (a float; 0 upright)
     constexpr size_t kTextItalic = 0x118;
+    // ui2d TextBox: its text's colours, top and bottom (RGBA bytes, linear: drawn as sRGB, so 0x5c shows as 0xa2); a
+    // colour tag in the text does not reach a text box of a layout.
+    constexpr size_t kTextColors = 0xe8;
 
     // The panel (layout units): its middle, its margins beside the rows and above and below them, the header's
     // height; a row's dot and the right end of its name and "skipped", from the list's middle.
     constexpr float kPanelX = 0, kPanelY = -15, kPanelSide = 25, kPanelMargin = 18, kHeaderHeight = 52;
     constexpr float kHeaderScale = 1.1f, kDotX = -168, kDotScale = 1.4f, kNameRight = 180;
     constexpr float kTagScale = 0.72f, kTagSlant = 0.25f;
-    constexpr int kPanelAlpha = 200, kDimAlpha = 150;
+    constexpr int kPanelAlpha = 245, kDimAlpha = 150;
     constexpr int kDoneAlpha = 170;  // a checked or skipped location's name
 
-    const std::string kGray("\x0e\x00\x00\x03\x00\x04\x00\xb4\xb4\xb4\xff", 11);  // a colour tag
+    constexpr u8 kInk[] = {0x0f, 0x07, 0x02, 0xff};   // the header's: dark brown on the paper (shows as 46 30 1e)
+    constexpr u8 kGray[] = {0xb4, 0xb4, 0xb4, 0xff};  // "skipped": light grey (shows as d9)
 
     struct Panel {
         u8* page = nullptr;         // the overworld map page it hangs under
@@ -332,7 +346,7 @@ namespace {
         L::List list;
         L::Layout dim, back, title, count, dots[L::kRows], tags[L::kRows];
         u8* shade = nullptr;        // the dim's black pane
-        u8* window = nullptr;       // the back's window behind the list
+        u8* window = nullptr;       // the back's paper window behind the header and the list
         Anim marks[L::kRows];       // each dot's SetMark
         int fade = 0;               // 0..255, the alpha its layouts draw with
         bool closing = false;       // B closed it: it fades out, then goes
@@ -395,14 +409,8 @@ namespace {
     // The header's count, the rows' names, dots and tags.
     void FillList() {
         const auto& ids = ListIds();
-        int unchecked = 0, reachable = 0;
-        for (int id : ids) {
-            if (Done(id)) continue;
-            unchecked++;
-            if (Reachable(id)) reachable++;
-        }
         L::SetText(g_Panel.title.note, g_GroupNames[g_Panel.group]);
-        L::SetText(g_Panel.count.note, std::to_string(reachable) + "/" + std::to_string(unchecked));
+        L::SetText(g_Panel.count.note, CountText(ids));
         L::List& list = g_Panel.list;
         for (int r = 0; r < L::kRows; r++) {
             int entry = list.top + r;
@@ -440,8 +448,8 @@ namespace {
         float y = top - kPanelMargin - kHeaderHeight - L::kRowStep / 2 - L::kRowTop;
         L::MoveTo(list.layout.root, x, y);
         L::MoveTo(g_Panel.window, kPanelX, kPanelY);
-        L::Field<float>(g_Panel.window, L::kPaneWidth) = width / kWindowScale;
-        L::Field<float>(g_Panel.window, L::kPaneHeight) = height / kWindowScale;
+        L::Field<float>(g_Panel.window, L::kPaneWidth) = width;
+        L::Field<float>(g_Panel.window, L::kPaneHeight) = height;
         for (L::Layout* text : {&g_Panel.title, &g_Panel.count}) {
             float textLeft, textRight;
             if (!L::Span(text->note, textLeft, textRight)) continue;
@@ -470,6 +478,11 @@ namespace {
             L::ScaleTo(row.text.box, scale, 1.0f);
             L::MoveTo(tag.root, origin + nameRight * scale + kTagGap - tagLeft * kTagScale, rowY + kTagLower);
         }
+    }
+
+    void SetTextColor(u8* box, const u8 (&color)[4]) {
+        if (box == nullptr) return;
+        for (size_t at : {kTextColors, kTextColors + 4}) std::memcpy(box + at, color, 4);
     }
 
     bool BuildText(L::Layout& layout, u8* page, u8* root, u16 chars) {
@@ -506,9 +519,12 @@ namespace {
             L::Field<float>(g_Panel.shade, L::kPaneHeight) = kDimHeight;
         }
         for (const char* name : kBackHidden) L::SetVisible(L::FindPane(g_Panel.back.root, name), false);
-        g_Panel.window = L::FindPane(g_Panel.back.root, "W_window_01");
+        g_Panel.window = L::FindPane(g_Panel.back.root, "W_window_00");
         L::SetAlpha(g_Panel.window, kPanelAlpha);
-        for (L::Layout* text : {&g_Panel.title, &g_Panel.count}) L::ScaleTo(text->root, kHeaderScale);
+        for (L::Layout* text : {&g_Panel.title, &g_Panel.count}) {
+            L::ScaleTo(text->root, kHeaderScale);
+            SetTextColor(text->note.box, kInk);
+        }
         L::MoveTo(g_Panel.list.scroll, L::Field<float>(g_Panel.list.scroll, L::kPaneX), kScrollY);
         L::ScaleTo(g_Panel.list.scroll, 1, L::kRowStep * L::kRows / kScrollHeight);
         for (int r = 0; r < L::kRows; r++) {
@@ -521,7 +537,8 @@ namespace {
             L::Layout& tag = g_Panel.tags[r];
             L::ScaleTo(tag.root, kTagScale);
             if (tag.note.box != nullptr) L::Field<float>(tag.note.box, kTextItalic) = kTagSlant;
-            L::SetText(tag.note, kGray + "skipped");
+            SetTextColor(tag.note.box, kGray);
+            L::SetText(tag.note, "skipped");
         }
         L::SetEntries(g_Panel.list, static_cast<int>(g_Overworld[group].size()), 0);
         FillList();
@@ -794,8 +811,8 @@ namespace AP {
     }
 
     std::string MapLabelText(int group) {
-        // The group's name, after "<in logic>/<unchecked> " when it has several locations and some are unchecked
-        // (skipped ones count as checked), or after "Skipped: " when its one location is skipped; or its other name
+        // The group's name, after its count (CountText) when it has several locations and some are unchecked, or
+        // after "Skipped: " when its one location is skipped; or its other name
         // alone until its flag is set (the count would tell a dungeon by its number of locations).
         if (group < 0 || static_cast<size_t>(group) >= g_Overworld.size()) return "";
         auto hidden = g_HiddenNames.find(group);
@@ -803,14 +820,9 @@ namespace AP {
         std::string name = static_cast<size_t>(group) < g_GroupNames.size() ? g_GroupNames[group] : "";
         const auto& ids = g_Overworld[group];
         if (Skippable(ids) && IsLocationSkipped(ids[0])) return "Skipped: " + name;
-        int unchecked = 0, reachable = 0;
-        for (int id : ids) {
-            if (Done(id)) continue;
-            unchecked++;
-            if (Reachable(id)) reachable++;
-        }
-        if (ids.size() < 2 || unchecked == 0) return name;
-        return std::to_string(reachable) + "/" + std::to_string(unchecked) + " " + name;
+        std::string count = CountText(ids);
+        if (ids.size() < 2 || count.empty()) return name;
+        return count + " " + name;
     }
 
     void TickMap() {
