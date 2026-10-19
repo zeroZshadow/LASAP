@@ -1428,7 +1428,12 @@ namespace AP {
         Test::ApplyInput(state);
 #endif
         ListUi::OnPad(state->mButtons._storage[0]);
-        if (MapListTakesPad(state)) return;
+        if (MapListTakesPad(state)) {
+            // A Minus held as the list opened is let go: not a tap once released, nor the warp menu.
+            g_MinusHeld = false;
+            g_MinusTapUntil = 0;
+            return;
+        }
         // The game does not see Minus while it is held (TickWarpMenu). Each controller style is polled, so only a
         // poll that sees Minus counts; its release is noticed when no poll has seen it for a moment.
         u64& buttons = state->mButtons._storage[0];

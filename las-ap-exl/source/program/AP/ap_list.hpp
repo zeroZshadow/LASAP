@@ -92,10 +92,10 @@ namespace AP::ListUi {
     // Shows the rows that hold an entry, the cursor on its row, the scroll bar while the entries do not fit.
     void Place(List& list);
     // Once a frame: Up/Down move the cursor (held: again after 20 frames, then every 5) with a sound; returns the
-    // buttons pressed since last frame. `moved` is set when the cursor moved (the rows then show other entries).
+    // buttons pressed since last frame. It reads the buttons of the polls since its last call. `moved` is set when the cursor moved (the rows then show other entries).
     u64 Input(List& list, bool& moved);
 
-    // The pad: each input poll's buttons (nn::hid), and those of the last poll that saw any, while recent.
+    // The pad: each input poll's buttons (nn::hid), and those of the last poll that saw any, while recent (50 ms).
     void OnPad(u64 buttons);
     u64 PadHeld();
     // Buttons (nn::hid): A, B, X, Y; Up and Down on the d-pad or the left stick.

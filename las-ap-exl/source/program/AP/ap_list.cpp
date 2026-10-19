@@ -67,6 +67,15 @@ namespace {
     u8* UiManager() { return reinterpret_cast<u8*>(g_BaseAddress + kUiManager); }
 
     u64 g_PadHeld = 0, g_PadSeen = 0;
+    // The polls since a list last read the pad (once a frame): their buttons together, and how many (each controller
+    // style is polled, those not in use with no buttons); the buttons read last, kept while no poll came since. A
+    // button let go is gone the next frame, so a held Up or Down stops repeating as it is released.
+    u64 g_PadPolled = 0, g_PadPolls = 0, g_PadFrame = 0;
+    u64 TakePad() {
+        if (g_PadPolls != 0) g_PadFrame = g_PadPolled;
+        g_PadPolled = g_PadPolls = 0;
+        return g_PadFrame;
+    }
     std::vector<GuideSource> g_GuideSources;
     const Guide* g_Guide = nullptr;  // the guide Navi_SetGuide sets now
     bool g_GuideShown = false;       // the guide shows a source's guide
@@ -284,6 +293,7 @@ namespace AP::ListUi {
             for (const char* hidden : kRowHidden) SetVisible(FindPane(row.part, hidden), false);
         }
         list.prevPad = PadHeld();
+        TakePad();
         list.heldFrames = 0;
         return true;
     }
@@ -311,7 +321,7 @@ namespace AP::ListUi {
 
     u64 Input(List& list, bool& moved) {
         moved = false;
-        u64 pad = PadHeld(), pressed = pad & ~list.prevPad;
+        u64 pad = TakePad(), pressed = pad & ~list.prevPad;
         list.prevPad = pad;
         int step = (pad & kButtonDown) ? 1 : (pad & kButtonUp) ? -1 : 0;
         list.heldFrames = step != 0 ? list.heldFrames + 1 : 0;
@@ -331,6 +341,8 @@ namespace AP::ListUi {
     }
 
     void OnPad(u64 buttons) {
+        g_PadPolled |= buttons;
+        g_PadPolls++;
         if (buttons == 0) return;
         g_PadHeld = buttons;
         g_PadSeen = NowMs();

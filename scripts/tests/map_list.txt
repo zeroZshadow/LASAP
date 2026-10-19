@@ -82,5 +82,14 @@ expect out=hidden 5
 tap 4 2 2 when map:KeyWait
 send DBG map
 expect out=shown 5
+# Minus held as A opens the list: once B closes it, the menu stays open (Minus is not seen as a tap).
+tap 801 2 2 when map:KeyWait
+await 5 mlist=\d+/0/0\s
+tap 2
+await 5 mlist=-
+tap 4 2 2 when map:KeyWait
+send DBG map
+expect out=hidden 5
+tap 4 2 2 when map:KeyWait
 tapuntil 800 paused=0 when map:KeyWait 5
 free 10
