@@ -355,6 +355,14 @@ namespace {
     int g_ListsBuilt = 0, g_ListToggles = 0;
 #ifdef LASAP_TEST
     int g_ListAsked = -1;           // DBG maplist open <group>: the list the map's next frame opens
+    // The list's cost on the game thread, in system ticks (19.2 MHz): its last opening, and each frame's tick since
+    // (sum, most, frames).
+    u64 g_OpenTicks = 0, g_TickSum = 0, g_TickMost = 0, g_TickFrames = 0;
+    u64 Ticks() {
+        u64 ticks;
+        asm volatile("mrs %0, cntpct_el0" : "=r"(ticks));
+        return ticks;
+    }
 #endif
     u64 g_PadHidden = 0;            // buttons held when the list closed: hidden from the game until released
 
@@ -626,7 +634,16 @@ HOOK_DEFINE_INLINE(FieldPinButton) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         u8* page = reinterpret_cast<u8*>(ctx->X[19]);
         if (g_Panel.page != nullptr) {
+#ifdef LASAP_TEST
+            u64 start = Ticks();
             TickList(page);
+            u64 spent = Ticks() - start;
+            g_TickSum += spent;
+            g_TickMost = std::max(g_TickMost, spent);
+            g_TickFrames++;
+#else
+            TickList(page);
+#endif
             ctx->W[0] = 0;
             return;
         }
@@ -636,7 +653,10 @@ HOOK_DEFINE_INLINE(FieldPinButton) {
         g_HoverGroup = HoveredIcon(page, look);
         g_HoverLook = g_HoverGroup >= 0 ? look : -1;
         if (Listable(g_ListAsked)) {
+            u64 start = Ticks();
             OpenList(page, g_ListAsked);
+            g_OpenTicks = Ticks() - start;
+            g_TickSum = g_TickMost = g_TickFrames = 0;
             g_ListAsked = -1;
             ctx->W[0] = 0;
             return;
@@ -646,7 +666,14 @@ HOOK_DEFINE_INLINE(FieldPinButton) {
         Look hovered;
         int group = HoveredIcon(page, hovered);
         if (Listable(group)) {
+#ifdef LASAP_TEST
+            u64 start = Ticks();
             OpenList(page, group);
+            g_OpenTicks = Ticks() - start;
+            g_TickSum = g_TickMost = g_TickFrames = 0;
+#else
+            OpenList(page, group);
+#endif
             ctx->W[0] = 0;  // no pin menu
         } else if (ToggleSkipped(page)) {
             ctx->W[0] = 0;
@@ -873,6 +900,10 @@ namespace AP {
         if (a.size() >= 4 && a[2] == "open") g_ListAsked = std::atoi(a[3].c_str());
         std::string s = "MAPLIST built=" + std::to_string(g_ListsBuilt) + " toggles=" + std::to_string(g_ListToggles);
         s += " hidden=" + std::to_string(g_PadHidden);
+        // the last opening's time and each frame's since (mean/most), in microseconds
+        s += " open_us=" + std::to_string(g_OpenTicks * 10 / 192) + " tick_us=" +
+             std::to_string(g_TickSum * 10 / 192 / std::max<u64>(g_TickFrames, 1)) + "/" +
+             std::to_string(g_TickMost * 10 / 192) + " ticks=" + std::to_string(g_TickFrames);
         if (g_Panel.page == nullptr) return s + " open=0";
         const auto& ids = ListIds();
         static const char kRowLooks[] = "ipoc";
