@@ -85,9 +85,10 @@ def field(col: int, row: int) -> Tuple[float, float]:
 
 
 class TestRelay(unittest.TestCase):
-    def run_relay(self, test, echo: Optional[float] = None, password: str = "", nogroups: bool = False) -> None:
+    def run_relay(self, test, echo: Optional[float] = None, password: str = "", nogroups: bool = False,
+                  max_group: int = wire.MAX_GROUP) -> None:
         async def main() -> None:
-            relay = wire.Relay(echo, password, nogroups)
+            relay = wire.Relay(echo, password, nogroups, max_group=max_group)
             server = await asyncio.start_server(relay.handle, "127.0.0.1", 0)
             port = server.sockets[0].getsockname()[1]
             try:
@@ -240,12 +241,12 @@ class TestRelay(unittest.TestCase):
             self.assertEqual(len(relay.groups[wire.ONE_GROUP]), 3)
 
             # full: only a slot already in it gets in again
-            with mock.patch.object(wire, "MAX_GROUP", 3):
-                d = FakeClient(port)
-                reply = await d.join("secret3", "Link")
-                self.assertEqual((reply[0], reply[1:].decode()), (wire.ERROR, "The ghost relay is full."))
-                c2 = FakeClient(port)
-                self.assertEqual((await c2.join("secret2", "C"))[0], wire.WELCOME)
+            relay.max_group = 3
+            d = FakeClient(port)
+            reply = await d.join("secret3", "Link")
+            self.assertEqual((reply[0], reply[1:].decode()), (wire.ERROR, "The ghost relay is full."))
+            c2 = FakeClient(port)
+            self.assertEqual((await c2.join("secret2", "C"))[0], wire.WELCOME)
             for client in (a, b2, c2):
                 client.close()
             await asyncio.sleep(0.05)
@@ -310,6 +311,52 @@ class TestRelay(unittest.TestCase):
             self.assertIn(b"LAS ghost relay", answer)
             writer.close()
             b.close()
+        self.run_relay(test)
+
+    def test_max_group(self) -> None:
+        """--max-group caps each group; other groups and a slot already in the group still get in."""
+        async def test(port: int, relay: wire.Relay) -> None:
+            a, b = FakeClient(port), FakeClient(port)
+            self.assertEqual((await a.join("secret1", "A"))[0], wire.WELCOME)
+            self.assertEqual((await b.join("secret1", "B"))[0], wire.WELCOME)
+            c = FakeClient(port)
+            reply = await c.join("secret1", "C")
+            self.assertEqual((reply[0], reply[1:].decode()), (wire.ERROR, "This group of players is full."))
+            self.assertEqual((await FakeClient(port).join("secret2", "C"))[0], wire.WELCOME)
+            self.assertEqual((await FakeClient(port).join("secret1", "B"))[0], wire.WELCOME)  # a reconnect
+        self.run_relay(test, max_group=2)
+
+    def test_join_and_leave_are_logged(self) -> None:
+        """One line per join and leave: the slot (the player's name when it differs), the start of the group id, the
+        transport; on leaving how long and why."""
+        self.assertEqual([wire.duration(s) for s in (5, 59.9, 60, 3599, 3600, 4380)],
+                         ["5 s", "59 s", "1 min", "59 min", "1 h 0 min", "1 h 13 min"])
+
+        async def test(port: int, relay: wire.Relay) -> None:
+            group = wire.group_label(wire.group_id("secret1"))
+            with self.assertLogs("ghost_relay", "INFO") as logs:
+                a, b = FakeClient(port, websocket=True), FakeClient(port)
+                await a.join("secret1", "Link")
+                await b.join("secret1", "Marin")
+                again = FakeClient(port)
+                await again.join("secret1", "Marin")  # a reconnect: the old connection leaves
+                again.writer.write(struct.pack(">H", wire.MAX_FRAME + 1))
+                a.close()
+                while relay.members:
+                    await asyncio.sleep(0.02)
+                b.close()
+            lines = [line.split(":", 2)[2] for line in logs.output]
+            self.assertEqual(lines[:4], [
+                f"join: 'Link' ('Link (player)') in group {group} by WebSocket",
+                f"join: 'Marin' ('Marin (player)') in group {group} by TCP",
+                f"leave: 'Marin' ('Marin (player)') from group {group} after 0 s, replaced by a new connection",
+                f"join: 'Marin' ('Marin (player)') in group {group} by TCP",
+            ])
+            # the last two leave in either order
+            self.assertEqual(sorted(lines[4:]), [
+                f"leave: 'Link' ('Link (player)') from group {group} after 0 s, disconnected",
+                f"leave: 'Marin' ('Marin (player)') from group {group} after 0 s, sent a malformed frame",
+            ])
         self.run_relay(test)
 
     def test_websocket_from_a_proxy(self) -> None:
@@ -597,6 +644,39 @@ class TestGhostLink(unittest.TestCase):
             server.close()
         asyncio.run(main())
 
+    def test_default_relay_out_of_reach_is_a_note(self) -> None:
+        """A relay that cannot be reached is an error when the player or the patch file chose it, and only a note for
+        the default relay."""
+        import socket
+        from .. import checklist
+        from ..ghosts import GhostLink
+
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            closed = f"127.0.0.1:{probe.getsockname()[1]}"  # nothing listens there once the probe closes
+
+        async def main(default_relay: bool) -> checklist.Check:
+            link = GhostLink(lambda line: None)
+            exit_event = asyncio.Event()
+            task = asyncio.create_task(link.run(exit_event))
+            link.configure(True, closed, "secret1", "A", "A", default_relay)
+            for _ in range(150):
+                if "connecting" not in link.status.text and link.status.text:
+                    break
+                await asyncio.sleep(0.02)
+            exit_event.set()
+            link.wake.set()
+            await task
+            return link.status
+
+        status = asyncio.run(main(False))
+        self.assertEqual(status.level, checklist.ERROR)
+        self.assertIn("cannot reach the relay", status.text)
+        status = asyncio.run(main(True))
+        self.assertEqual((status.level, status.text),
+                         (checklist.INFO, f"Ghosts: the default relay {closed} is not available right now; trying "
+                                          f"again in the background."))
+
     def test_link_sends_the_relay_password(self) -> None:
         from .. import checklist
         from ..ghosts import GhostLink
@@ -682,6 +762,7 @@ class TestGhostSecret(unittest.TestCase):
         from .. import LASWorld
         from ..client import LASContext
         from ..container import LASContainer
+        from ..ghosts import DEFAULT_RELAY
 
         async def main() -> None:
             with tempfile.TemporaryDirectory() as folder:
@@ -689,10 +770,19 @@ class TestGhostSecret(unittest.TestCase):
                 LASContainer(path, {"ghost_secret": "abc123", "ghost_relay": "relay.example:43390"}, 1, "Link").write()
                 ctx = LASContext(None, None, "127.0.0.1", 0, path)
                 ctx.update_ghosts()
-                self.assertEqual(ctx.ghosts.address, "relay.example:43390")
+                self.assertEqual((ctx.ghosts.address, ctx.ghosts.default_relay), ("relay.example:43390", False))
                 LASWorld.settings.ghost_relay = "own.example:1"
                 ctx.update_ghosts()
                 self.assertEqual(ctx.ghosts.address, "own.example:1")
+                # neither the settings nor the patch file name one: the default relay
+                LASWorld.settings.ghost_relay = ""
+                LASContainer(path, {"ghost_secret": "abc123"}, 1, "Link").write()
+                ctx.update_ghosts()
+                self.assertEqual((ctx.ghosts.address, ctx.ghosts.default_relay), (DEFAULT_RELAY, True))
+                # --ghost-relay "" (tests) means none
+                ctx.ghost_relay_arg = ""
+                ctx.update_ghosts()
+                self.assertEqual((ctx.ghosts.address, ctx.ghosts.default_relay), ("", False))
         saved = LASWorld.settings.ghost_relay
         try:
             LASWorld.settings.ghost_relay = ""

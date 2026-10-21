@@ -89,9 +89,12 @@ the same house, cave or dungeon, or near you in the overworld. They show with th
 They can't touch you or anything else. Ghosts travel through a ghost relay, not the Archipelago server, and only
 players of the same generation see each other, unless the relay runs with `--nogroups`: then everyone on it does.
 
-- The person who generates sets the relay before generating: `ghost_relay` (`host:port`, `password@host:port` for
-  a relay with a password, or a `wss://` address for a relay behind a tunnel) under `las_options` in `host.yaml`. Every patch file then carries it, and the players have
-  nothing to set.
+- Ghosts are on by default and use the default relay, `wss://ghosts.zerozshadow.com`; nobody has to set anything. When
+  that relay can't be reached, the Patch tab says so and the client keeps trying in the background; the game plays as
+  usual.
+- For another relay, the person who generates sets it before generating: `ghost_relay` (`host:port`,
+  `password@host:port` for a relay with a password, or a `wss://` address for a relay behind a tunnel) under
+  `las_options` in `host.yaml`. Every patch file then carries it, and the players have nothing to set.
 - Otherwise each player enters it in the Patch tab's "Ghost relay", which also replaces the patch file's.
 - "Show ghosts" on the Patch tab, or `/ghosts off` in the client, turns them off. The Patch tab shows the relay status.
 

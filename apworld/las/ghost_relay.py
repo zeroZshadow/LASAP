@@ -121,7 +121,7 @@ LEVEL_IDS = {name: i for i, name in enumerate(LEVELS)}
 FIELD = LEVEL_IDS["Field"]
 
 # Limits of the public relay
-MAX_GROUP = 64
+MAX_GROUP = 64  # players per group, unless --max-group
 MAX_CLIENTS = 4000
 MAX_PER_ADDRESS = 16
 MAX_RATE = 40.0  # frames per second a client may send; more are dropped
@@ -135,6 +135,7 @@ KEEP_MARGIN = 2.0  # a shown player stays unless another is this much nearer (un
 MAX_NAME = 64  # bytes of a name or password in a join
 PASSWORD_ENV = "LAS_GHOST_RELAY_PASSWORD"
 TRUSTED_PROXY_ENV = "LAS_GHOST_RELAY_TRUSTED_PROXY"
+MAX_GROUP_ENV = "LAS_GHOST_RELAY_MAX_GROUP"
 WRONG_PASSWORD_DELAY = 1.0  # seconds before a wrong password is refused, so guessing is slow
 ONE_GROUP = b"all"  # --nogroups: the group of every member (not 32 bytes, so no join's group)
 
@@ -200,6 +201,21 @@ def field_screen(x: float, z: float) -> Tuple[int, int]:
     col = min(15, max(0, int(x // 15)))
     row = min(16, max(1, int(z // 12) + 1))
     return col, row
+
+
+def group_label(group: bytes) -> str:
+    """A group for the log: the start of its id (the hash of the multiworld's ghost secret, which the relay never
+    sees)."""
+    return group.hex()[:8]
+
+
+def duration(seconds: float) -> str:
+    minutes = int(seconds // 60)
+    if minutes < 1:
+        return f"{int(seconds)} s"
+    if minutes < 60:
+        return f"{minutes} min"
+    return f"{minutes // 60} h {minutes % 60} min"
 
 
 def frame(payload: bytes) -> bytes:
@@ -481,6 +497,12 @@ class Member:
         self.tokens = MAX_RATE
         self.token_time = time.monotonic()
         self.closed = False
+        self.joined_at = 0.0
+        self.leave_reason = "disconnected"  # for the leave line
+
+    def label(self) -> str:
+        """The slot, and the player's name when it differs, for the log."""
+        return repr(self.slot) + (f" ({self.player!r})" if self.player and self.player != self.slot else "")
 
     def send(self, payload: bytes, droppable: bool = False) -> None:
         if self.closed:
@@ -531,11 +553,12 @@ class Member:
 
 class Relay:
     def __init__(self, echo: Optional[float] = None, password: str = "", nogroups: bool = False,
-                 trusted_proxies: Sequence[Proxy] = ()):
+                 trusted_proxies: Sequence[Proxy] = (), max_group: int = MAX_GROUP):
         self.echo = echo  # for tests: each member also sees itself as ECHO_ID, this far along x
         self.password = password  # "": anyone may join
         self.nogroups = nogroups  # every member in ONE_GROUP, whatever its multiworld
         self.trusted_proxies = list(trusted_proxies)  # besides this computer (trusts)
+        self.max_group = max_group  # players per group; with nogroups on the relay
         self.groups: Dict[bytes, List[Member]] = {}
         self.members: Dict[int, Member] = {}
         self.connections: Set[Member] = set()
@@ -626,7 +649,7 @@ class Relay:
                 return self.refuse(member, "Wrong relay password. Enter the relay as password@host:port."
                                    if password else "This relay needs a password: enter it as password@host:port.")
             members = self.groups.get(self.group_of(world), ())
-            if len(members) >= MAX_GROUP and not any(m.world == world and m.slot == slot for m in members):
+            if len(members) >= self.max_group and not any(m.world == world and m.slot == slot for m in members):
                 return self.refuse(member, "The ghost relay is full." if self.nogroups else
                                    "This group of players is full.")
             self.join(member, world, slot, player)
@@ -635,9 +658,10 @@ class Relay:
                 member.last_heard = time.monotonic()
                 self.receive(member, payload)
                 await out.drain()
-        except (asyncio.IncompleteReadError, asyncio.TimeoutError, ConnectionError, OSError, ValueError, IndexError,
-                struct.error):
+        except (asyncio.IncompleteReadError, asyncio.TimeoutError, ConnectionError, OSError):
             pass
+        except (ValueError, IndexError, struct.error):
+            member.leave_reason = "sent a malformed frame"
         finally:
             self.leave(member)
             self.connections.discard(member)
@@ -657,6 +681,7 @@ class Relay:
         for old in [m for m in members if m.world == world and m.slot == slot]:
             # the same slot of the same multiworld again (a reconnect before the old connection timed out): the new
             # connection wins
+            old.leave_reason = "replaced by a new connection"
             self.leave(old)
             old.close()
         members = self.groups.setdefault(group, [])  # leave() drops a group it empties
@@ -672,9 +697,9 @@ class Relay:
         if self.echo is not None:
             member.send(bytes([PLAYER]) + struct.pack(">H", ECHO_ID) + name_bytes("Echo") + name_bytes("Echo"))
         members.append(member)
+        member.joined_at = time.monotonic()
         transport = "WebSocket" if isinstance(member.writer, WebSocketWriter) else "TCP"
-        self.log.info(f"join: player {member.id} ({transport}), {len(members)} in the group, {len(self.members)} on "
-                      f"the relay")
+        self.log.info(f"join: {member.label()} in group {group_label(world)} by {transport}")
 
     def leave(self, member: Member) -> None:
         if member.group is None:
@@ -690,7 +715,8 @@ class Relay:
             other.visible.discard(member)
             other.send(off)
         member.group = None
-        self.log.info(f"leave: player {member.id}, {len(self.members)} on the relay")
+        self.log.info(f"leave: {member.label()} from group {group_label(member.world)} after "
+                      f"{duration(time.monotonic() - member.joined_at)}, {member.leave_reason}")
 
     def receive(self, member: Member, payload: bytes) -> None:
         kind = payload[0]
@@ -780,6 +806,7 @@ class Relay:
             now = time.monotonic()
             for member in list(self.members.values()):
                 if now - member.last_heard > SILENT_DROP:
+                    member.leave_reason = f"silent for {SILENT_DROP:.0f} s"
                     member.close()
                 elif member.body is not None and now - member.last_pos > SILENT_OFF:
                     member.body = None
@@ -1091,8 +1118,9 @@ def is_public(address: str) -> bool:
 
 
 async def serve(host: str, port: int, echo: Optional[float] = None, forward: bool = False,
-                password: str = "", nogroups: bool = False, trusted_proxies: Sequence[Proxy] = ()) -> None:
-    relay = Relay(echo, password, nogroups, trusted_proxies)
+                password: str = "", nogroups: bool = False, trusted_proxies: Sequence[Proxy] = (),
+                max_group: int = MAX_GROUP) -> None:
+    relay = Relay(echo, password, nogroups, trusted_proxies, max_group)
     server = await asyncio.start_server(relay.handle, host, port)
     sweep = asyncio.create_task(relay.sweep())
     choosing = asyncio.create_task(relay.choosing())
@@ -1101,7 +1129,9 @@ async def serve(host: str, port: int, echo: Optional[float] = None, forward: boo
     if password:
         relay.log.info("players need the password: they enter the relay as password@host:port")
     if nogroups:
-        relay.log.info(f"no groups: the players of all multiworlds see each other, at most {MAX_GROUP}")
+        relay.log.info(f"no groups: the players of all multiworlds see each other, at most {max_group}")
+    elif max_group != MAX_GROUP:
+        relay.log.info(f"at most {max_group} players per group")
     if trusted_proxies:
         relay.log.info("trusted proxies: " + ", ".join(map(str, trusted_proxies)))
     renew = None
@@ -1145,6 +1175,16 @@ async def serve(host: str, port: int, echo: Optional[float] = None, forward: boo
             unmapper.unwatch_console()
 
 
+def player_cap(text: str) -> int:
+    try:
+        value = int(text)
+    except ValueError:
+        value = 0
+    if not 1 <= value <= MAX_CLIENTS:
+        raise argparse.ArgumentTypeError(f"{text!r}: a number of players from 1 to {MAX_CLIENTS}")
+    return value
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Ghost relay for Link's Awakening (Switch) Archipelago.")
     parser.add_argument("--host", default="0.0.0.0", help="Address to listen on (default: all).")
@@ -1159,8 +1199,12 @@ def main() -> None:
                         help=f"Let in only players who enter the relay as password@host:port (default: the "
                              f"environment variable {PASSWORD_ENV}, else none).")
     parser.add_argument("--nogroups", action="store_true",
-                        help=f"Put the players of all multiworlds in one group, so all of them see each other (at "
-                             f"most {MAX_GROUP}), not only those of the same multiworld.")
+                        help="Put the players of all multiworlds in one group, so all of them see each other (at "
+                             "most --max-group), not only those of the same multiworld.")
+    parser.add_argument("--max-group", type=player_cap, default=os.environ.get(MAX_GROUP_ENV, str(MAX_GROUP)),
+                        metavar="PLAYERS",
+                        help=f"Players a group may hold, or with --nogroups the relay (default: the environment "
+                             f"variable {MAX_GROUP_ENV}, else {MAX_GROUP}).")
     parser.add_argument("--trusted-proxy", action="append", default=[os.environ.get(TRUSTED_PROXY_ENV, "")],
                         metavar="PROXY",
                         help=f"A reverse proxy whose WebSocket connections name the player's address (CF-Connecting-IP, "
@@ -1175,7 +1219,7 @@ def main() -> None:
                         format="%(asctime)s %(levelname)s %(message)s")
     try:
         asyncio.run(serve(args.host, args.port, args.echo, args.forward, args.password, args.nogroups,
-                          parse_proxies(args.trusted_proxy)))
+                          parse_proxies(args.trusted_proxy), args.max_group))
     except KeyboardInterrupt:
         pass
 

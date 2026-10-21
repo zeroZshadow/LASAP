@@ -11,7 +11,7 @@ from NetUtils import ClientStatus, HintStatus
 from .container import LASContainer
 from .ids import LOCATION_BASE, LOCATION_OFFSETS
 from . import checklist, emulators, music
-from .ghosts import GhostLink
+from .ghosts import DEFAULT_RELAY, GhostLink
 from .host_settings import PLAYER_SETTINGS, player_value
 from .install import InstallError, patch_and_install
 from .items import GAME, ITEM_GAME_INFO
@@ -700,7 +700,8 @@ class LASContext(CommonContext):
 
     def update_ghosts(self) -> None:
         """Hands the ghost link its settings, the multiworld's ghost secret (from the patch file) and the slot; it
-        reconnects when they change. The relay is the client's setting, else the one the patch file was made with."""
+        reconnects when they change. The relay is the client's setting, else the one the patch file was made with,
+        else DEFAULT_RELAY."""
         from . import LASWorld
         options = LASWorld.settings
         slot = self.auth or self.patch_slot or ""
@@ -710,10 +711,13 @@ class LASContext(CommonContext):
         address = self.ghost_relay_arg
         if address is None:
             address = options.ghost_relay or str(patch.get("ghost_relay", ""))
+        default_relay = self.ghost_relay_arg is None and not address.strip()
+        if default_relay:
+            address = DEFAULT_RELAY
         secret = self.ghost_secret_arg
         if secret is None:
             secret = str(patch.get("ghost_secret", ""))
-        self.ghosts.configure(bool(options.ghosts), address, secret, slot, player)
+        self.ghosts.configure(bool(options.ghosts), address, secret, slot, player, default_relay)
         self.ghosts.set_names(bool(options.ghost_names))
 
     @property

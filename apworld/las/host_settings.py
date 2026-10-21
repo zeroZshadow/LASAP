@@ -87,8 +87,9 @@ class LASSettings(settings.Group):
 
     class GhostRelay(str):
         """The ghost relay: host:port, password@host:port for a relay with a password, or wss://host for a relay
-        behind a tunnel (password@wss://host with a password). Generating writes it into
-        each LAS patch file; the client uses it, or when it is empty the patch file's. With neither: no ghosts."""
+        behind a tunnel (password@wss://host with a password). Generating writes it into each LAS patch file; the
+        client uses it, or when it is empty the patch file's. With neither: the default relay,
+        wss://ghosts.zerozshadow.com."""
 
     emulator: Emulator = Emulator("")
     game_file: GameFile = GameFile("")

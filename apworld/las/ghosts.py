@@ -13,6 +13,7 @@ MIN_INTERVAL = 0.045  # at most ~20 frames a second go to the relay; what the pl
 PING_INTERVAL = 10.0
 SILENT_TIMEOUT = 30.0  # the relay answers pings; a link that hears nothing this long reconnects
 RETRY_DELAYS = (2, 5, 10, 30, 60)
+DEFAULT_RELAY = "wss://ghosts.zerozshadow.com"  # the relay when neither the client's settings nor the patch file name one
 
 
 def pos_body(parts: List[str]) -> Optional[bytes]:
@@ -54,6 +55,7 @@ class GhostLink:
         self.changed = changed  # the status changed (the Patch tab shows it)
         self.enabled = False
         self.address = ""
+        self.default_relay = False  # the address is DEFAULT_RELAY, not one the player or the patch file chose
         self.secret = ""
         self.slot = ""
         self.player = ""
@@ -75,11 +77,14 @@ class GhostLink:
 
     # settings and state
 
-    def configure(self, enabled: bool, address: str, secret: str, slot: str, player: str) -> None:
-        new = (enabled, address.strip(), secret, slot, player or slot)
-        if new == (self.enabled, self.address, self.secret, self.slot, self.player):
+    def configure(self, enabled: bool, address: str, secret: str, slot: str, player: str,
+                  default_relay: bool = False) -> None:
+        """default_relay: the address is DEFAULT_RELAY, so a relay that cannot be reached or refuses shows as a note,
+        not an error."""
+        new = (enabled, address.strip(), secret, slot, player or slot, default_relay)
+        if new == (self.enabled, self.address, self.secret, self.slot, self.player, self.default_relay):
             return
-        self.enabled, self.address, self.secret, self.slot, self.player = new
+        self.enabled, self.address, self.secret, self.slot, self.player, self.default_relay = new
         self.drop()
         self.wake.set()
 
@@ -264,14 +269,14 @@ class GhostLink:
                 await self.session()
                 failures = 0
             except RelayRefused as e:
-                self.set_status(checklist.ERROR, f"Ghosts: the relay refused: {e}")
+                self.set_status(*self.problem(f"Ghosts: the relay refused: {e}"))
                 failures = len(RETRY_DELAYS) - 1
             except (OSError, asyncio.TimeoutError, asyncio.IncompleteReadError, ValueError, IndexError,
                     struct.error) as e:
                 if not self.wake.is_set():
-                    self.set_status(checklist.ERROR, f"Ghosts: cannot reach the relay "
-                                                     f"{wire.shown_address(self.address)} "
-                                                     f"({e.__class__.__name__}{': ' + str(e) if str(e) else ''}).")
+                    self.set_status(*self.problem(f"Ghosts: cannot reach the relay "
+                                                  f"{wire.shown_address(self.address)} "
+                                                  f"({e.__class__.__name__}{': ' + str(e) if str(e) else ''})."))
             finally:
                 self.drop()
             if self.wake.is_set():
@@ -279,6 +284,14 @@ class GhostLink:
             delay = RETRY_DELAYS[min(failures, len(RETRY_DELAYS) - 1)]
             failures += 1
             await self.wait(self.wake, delay)
+
+    def problem(self, text: str) -> Tuple[str, str]:
+        """A status for a relay that cannot be reached or refuses: an error for a relay the player or the patch file
+        chose; for the default relay a note (it tries again in the background), as nobody asked for that one."""
+        if self.default_relay:
+            return checklist.INFO, (f"Ghosts: the default relay {wire.shown_address(self.address)} is not available "
+                                    f"right now; trying again in the background.")
+        return checklist.ERROR, text
 
     @staticmethod
     async def wait(event: asyncio.Event, seconds: Optional[float]) -> None:
