@@ -2,6 +2,7 @@
 import asyncio
 import ipaddress
 import struct
+import time
 import unittest
 from typing import List, Optional, Tuple
 from unittest import mock
@@ -21,6 +22,9 @@ class FakeClient:
         self.writer = None  # asyncio.StreamWriter or wire.WebSocketWriter
         self.id = -1
         self.seq = 0
+        self.sent: Optional[wire.Pos] = None  # the last position sent: the next one goes as its changes
+        self.positions = {}  # the last position of each player received
+        self.keys: List[bool] = []  # whether each FRAME received was a keyframe
 
     async def join(self, secret: str, slot: str, version: int = wire.PROTOCOL_VERSION,
                    password: Optional[str] = "") -> bytes:
@@ -38,7 +42,16 @@ class FakeClient:
         return first
 
     async def next(self, timeout: float = 2) -> bytes:
-        return await asyncio.wait_for(wire.read_frame(self.reader), timeout)
+        """The next message; a FRAME is applied to its player's position and comes back as a keyframe of it."""
+        message = await asyncio.wait_for(wire.read_frame(self.reader), timeout)
+        if message[0] == wire.FRAME:
+            player = struct.unpack_from(">H", message, 1)[0]
+            self.keys.append(wire.is_key(message[3:]))
+            pos = self.positions[player] = wire.decode_pos(message[3:], self.positions.get(player))
+            return message[:3] + wire.encode_pos(pos)
+        if message[0] == wire.OFF:
+            self.positions.pop(struct.unpack_from(">H", message, 1)[0], None)
+        return message
 
     async def collect(self, seconds: float = QUIET) -> List[bytes]:
         got = []
@@ -50,11 +63,14 @@ class FakeClient:
 
     def pos(self, level: int, x: float, z: float, y: float = 0.0) -> None:
         self.seq += 1
-        body = wire.Pos(self.seq, level, x, y, z, 0, 0, 0, 0, 0, wire.SHAPES_DEFAULT, wire.TUNIC_GREEN, 0, 0, 0).pack()
-        self.writer.write(wire.frame(bytes([wire.POS]) + body))
+        pos = wire.Pos(self.seq, level, x, y, z, 0, 0, 0, 0, 0, wire.SHAPES_DEFAULT, wire.TUNIC_GREEN, 0, 0,
+                       0).quantized()
+        self.writer.write(wire.frame(bytes([wire.POS]) + wire.encode_pos(pos, self.sent)))
+        self.sent = pos
 
     def nowhere(self) -> None:
         self.writer.write(wire.frame(bytes([wire.NOWHERE])))
+        self.sent = None
 
     def close(self) -> None:
         self.writer.close()
@@ -65,7 +81,7 @@ def frames(messages: List[bytes]) -> List[Tuple[int, float, float]]:
     out = []
     for m in messages:
         if m[0] == wire.FRAME:
-            pos = wire.Pos.unpack(m[3:])
+            pos = wire.decode_pos(m[3:], None)  # FakeClient.next turns each into a keyframe
             out.append((struct.unpack_from(">H", m, 1)[0], pos.x, pos.z))
     return out
 
@@ -82,6 +98,45 @@ def players(messages: List[bytes]) -> List[Tuple[int, str]]:
 def field(col: int, row: int) -> Tuple[float, float]:
     """The middle of overworld screen Field_<row><col> (col A = 0), as TESTING.md places it."""
     return 15 * col + 7.5, 12 * (row - 1) + 6.75
+
+
+class TestPositionWire(unittest.TestCase):
+    def test_keyframes_and_changes(self) -> None:
+        first = wire.Pos(100, FIELD, 38.25, 10.5, 128.25, 16384, 104, 30, 0, wire.FLAG_STILL, wire.SHAPES_DEFAULT,
+                         wire.TUNIC_RED, 0, 0, 0)
+        key = wire.encode_pos(first)
+        self.assertTrue(wire.is_key(key))
+        self.assertEqual(len(key), wire.KEY_BODY.size)
+        self.assertEqual(wire.decode_pos(key, None), first)
+        # running on: the time, x, z and the animation's frame changed
+        moved = first._replace(time_ms=150, x=38.5, z=128.0, anim_frame=45)
+        body = wire.encode_pos(moved, first)
+        self.assertFalse(wire.is_key(body))
+        self.assertEqual(len(body), 2 + 2 + 2 + 2 + 2)
+        self.assertEqual(wire.decode_pos(body, first), moved)
+        # nothing but the time: a keep-alive
+        self.assertEqual(len(wire.encode_pos(moved._replace(time_ms=650), moved)), 4)
+        # the face's three frames go together
+        smile = moved._replace(mouth=3)
+        self.assertEqual(wire.decode_pos(wire.encode_pos(smile, moved), moved), smile)
+        self.assertEqual(len(wire.encode_pos(smile, moved)), 4 + 3)
+        # another level, or a jump too far for a difference: a keyframe
+        self.assertTrue(wire.is_key(wire.encode_pos(moved._replace(level=SHOP), moved)))
+        self.assertTrue(wire.is_key(wire.encode_pos(moved._replace(x=moved.x + 200), moved)))
+        # many small steps add up to the same position as the sender's, on the grid
+        prev, sent = None, None
+        for i in range(500):
+            pos = first._replace(time_ms=i, x=38.25 + i * 0.0123, y=10.5 - i * 0.004, z=128.25 + i * 0.317).quantized()
+            prev = wire.decode_pos(wire.encode_pos(pos, sent), prev)
+            sent = pos
+        self.assertEqual(prev, sent)
+        # changes without a keyframe, unknown mask bits and a body of the wrong size are refused
+        with self.assertRaises(ValueError):
+            wire.decode_pos(body, None)
+        with self.assertRaises(ValueError):
+            wire.decode_pos(struct.pack(">HH", 1 << 15, 0), first)
+        with self.assertRaises(ValueError):
+            wire.decode_pos(body + b"\0", first)
 
 
 class TestRelay(unittest.TestCase):
@@ -457,14 +512,59 @@ class TestRelay(unittest.TestCase):
             b.pos(SHOP, 1, 1)
             await a.collect()
             await b.collect()
-            # frames sent within one batch reach the receiver in one write
+            # frames sent within one batch reach the receiver in one write, each as it came: the time and x changed
             for x in range(5):
                 a.pos(SHOP, x, 1)
             await asyncio.sleep(wire.BATCH * 3)
             data = await asyncio.wait_for(b.reader.read(4096), 2)
-            self.assertEqual(len(data), 5 * (2 + 3 + wire.POS_BODY.size))
+            self.assertEqual(len(data), 5 * (2 + 3 + 6))
             a.close()
             b.close()
+        self.run_relay(test)
+
+    def test_keyframes_when_out_of_step(self) -> None:
+        async def test(port: int, relay: wire.Relay) -> None:
+            viewer, sender = FakeClient(port), FakeClient(port)
+            await viewer.join("secret1", "V")
+            await sender.join("secret1", "S")
+            viewer.pos(SHOP, 0, 0)
+            sender.pos(SHOP, 1, 1)
+            await sender.collect()
+            # shown: a keyframe, then the sender's changes as they came
+            self.assertEqual(frames(await viewer.collect()), [(sender.id, 1, 1)])
+            sender.pos(SHOP, 2, 1)
+            sender.pos(SHOP, 3, 1)
+            self.assertEqual(frames(await viewer.collect()), [(sender.id, 2, 1), (sender.id, 3, 1)])
+            self.assertEqual(viewer.keys, [True, False, False])
+            # a frame dropped for a receiver too far behind: its next one is a keyframe
+            with mock.patch.object(wire, "MAX_BACKLOG", -1):
+                sender.pos(SHOP, 4, 1)
+                await asyncio.sleep(0.05)
+            self.assertEqual(await viewer.collect(), [])
+            sender.pos(SHOP, 5, 1)
+            self.assertEqual(frames(await viewer.collect()), [(sender.id, 5, 1)])
+            self.assertEqual(viewer.keys[-1], True)
+            sender.pos(SHOP, 6, 1)
+            self.assertEqual(frames(await viewer.collect()), [(sender.id, 6, 1)])
+            self.assertEqual(viewer.keys[-1], False)
+            # a frame over the sender's rate is not forwarded: its next one goes as a keyframe
+            member = relay.members[sender.id]
+            member.tokens, member.token_time = 0, float("inf")  # no tokens come back until reset
+            sender.pos(SHOP, 7, 1)
+            await asyncio.sleep(0.05)
+            self.assertEqual(await viewer.collect(), [])
+            member.tokens, member.token_time = wire.MAX_RATE, time.monotonic()
+            sender.pos(SHOP, 8, 1)
+            self.assertEqual(frames(await viewer.collect()), [(sender.id, 8, 1)])
+            self.assertEqual(viewer.keys[-1], True)
+            # out of the area and back: a keyframe again
+            sender.pos(wire.LEVEL_IDS["Library"], 1, 1)
+            self.assertEqual(offs(await viewer.collect()), [(sender.id, wire.OFF_AREA)])
+            sender.pos(SHOP, 9, 1)
+            self.assertEqual(frames(await viewer.collect()), [(sender.id, 9, 1)])
+            self.assertEqual(viewer.keys[-1], True)
+            viewer.close()
+            sender.close()
         self.run_relay(test)
 
     def test_nearest_are_shown(self) -> None:
@@ -524,11 +624,11 @@ class TestRelay(unittest.TestCase):
 
 class TestGhostLink(unittest.TestCase):
     def test_pos_lines_become_ghost_lines(self) -> None:
-        from ..ghosts import GhostLink, pos_body
+        from ..ghosts import GhostLink, line_pos
 
-        self.assertIsNone(pos_body("POS none".split()))
-        self.assertIsNone(pos_body("POS NoSuchLevel 1 2 3 0 0 0 0 0 0 207864 0 0 0 0".split()))
-        self.assertIsNone(pos_body("POS Field 1 2 3 0 0 0 0 0 0 207864 0 0 0".split()))  # a field missing
+        self.assertIsNone(line_pos("POS none".split()))
+        self.assertIsNone(line_pos("POS NoSuchLevel 1 2 3 0 0 0 0 0 0 207864 0 0 0 0".split()))
+        self.assertIsNone(line_pos("POS Field 1 2 3 0 0 0 0 0 0 207864 0 0 0".split()))  # a field missing
 
         async def main() -> None:
             relay = wire.Relay()
@@ -634,7 +734,7 @@ class TestGhostLink(unittest.TestCase):
             # a frame of its own id (no relay sends one) is no ghost either
             one.handle(bytes([wire.PLAYER]) + struct.pack(">H", one.own_id) + wire.name_bytes("Link") * 2)
             one.handle(bytes([wire.FRAME]) + struct.pack(">H", one.own_id) +
-                       wire.Pos(0, SHOP, 5, 0, 5, 0, 0, 0, 0, 0, wire.SHAPES_DEFAULT, 0, 0, 0, 0).pack())
+                       wire.encode_pos(wire.Pos(0, SHOP, 5, 0, 5, 0, 0, 0, 0, 0, wire.SHAPES_DEFAULT, 0, 0, 0, 0)))
             self.assertEqual((list(one.players), [g for g in one.ghosts if g is not None]), ([two.own_id],) * 2)
             self.assertFalse(any(l.startswith("GHOST") and " 5.000 " in l for l in lines["one"]))
             exit_event.set()

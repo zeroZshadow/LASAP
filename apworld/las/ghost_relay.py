@@ -35,20 +35,20 @@ import threading
 import time
 from typing import Dict, List, NamedTuple, Optional, Sequence, Set, Tuple, Union
 
-PROTOCOL_VERSION = 3
+PROTOCOL_VERSION = 4
 DEFAULT_PORT = 43390
 DEFAULT_RELAY = "wss://ghosts.zerozshadow.com"  # the client's ghost_relay setting's default
 
 # Client -> relay
 JOIN = 0x01  # u8 version, 32 bytes group, slot name, player name, relay password (each a u8 length and UTF-8; the
 # password may be missing: none)
-POS = 0x02  # POS_BODY
+POS = 0x02  # a position (encode_pos): a keyframe, or the changes since the client's previous POS
 NOWHERE = 0x03  # the player is in no level (title, file menu, level load, game not connected)
 PING = 0x04  # keep-alive; the relay answers PONG
 # Relay -> client
 WELCOME = 0x81  # u8 version, u16 the client's player id
 PLAYER = 0x82  # u16 player id, slot name, player name: a member of the group (sent for each member on joining)
-FRAME = 0x83  # u16 player id, POS_BODY
+FRAME = 0x83  # u16 player id, a position (encode_pos): a keyframe, or the changes since that player's previous FRAME
 OFF = 0x84  # u16 player id, u8 reason (OFF_AREA, OFF_LEFT): stop showing that player
 PONG = 0x85
 ERROR = 0x86  # UTF-8 text; the relay closes the connection
@@ -57,8 +57,6 @@ ECHO_ID = 0xFFFF  # --echo: the player a member's own frames come back as (new_i
 OFF_AREA = 0  # left the receiver's area, or is in no level
 OFF_LEFT = 1  # left the group
 
-# A position (Pos's fields, in order)
-POS_BODY = struct.Struct(">HHfffHHHHBIBBBB")
 FLAG_WARPED = 1  # the position jumped (level load, respawn, warp): snap instead of moving there
 FLAG_HIDDEN = 2  # Link is not drawn
 FLAG_STILL = 4  # Link did not move since the previous frame
@@ -71,7 +69,7 @@ NO_LEVEL = 0xFFFF
 
 
 class Pos(NamedTuple):
-    """A player's position as POS and FRAME carry it (POS_BODY)."""
+    """A player's position as POS and FRAME carry it (encode_pos)."""
     time_ms: int  # the sender's game clock when it took the position (ms, 16 bits)
     level: int  # level id (LEVELS)
     x: float
@@ -89,12 +87,84 @@ class Pos(NamedTuple):
     mouth: int  # the frame of his mouth's ("mouth")
     ear: int  # the frame of his ears' ("ear")
 
-    def pack(self) -> bytes:
-        return POS_BODY.pack(*self)
+    def quantized(self) -> "Pos":
+        """With x, y and z on the wire's grid (1/POS_SCALE), as the receiver gets them."""
+        return self._replace(x=round(self.x * POS_SCALE) / POS_SCALE, y=round(self.y * POS_SCALE) / POS_SCALE,
+                             z=round(self.z * POS_SCALE) / POS_SCALE)
 
-    @classmethod
-    def unpack(cls, body: bytes) -> "Pos":
-        return cls(*POS_BODY.unpack(body))
+
+# A position on the wire: a u16 mask (MASK_*), the sender's time (u16), then the fields the mask names, in Pos's order.
+# A keyframe (MASK_KEY) has all of them, x, y and z as s32 in 1/POS_SCALE units (KEY_BODY). Any other is applied to
+# the player's previous position (its sender's previous one): it has the fields that changed, x, y and z as s16
+# differences, the face's three frames together; the level changes only with a keyframe.
+POS_SCALE = 256
+KEY_BODY = struct.Struct(">HHHiiiHHHHBIBBBB")
+MASK_KEY, MASK_X, MASK_Y, MASK_Z, MASK_YAW, MASK_ANIM, MASK_ANIM_FRAME, MASK_UPPER, MASK_FLAGS, MASK_SHAPES, \
+    MASK_TUNIC, MASK_FACE = (1 << i for i in range(12))
+MASK_ALL = (1 << 12) - 1
+# A difference's fields: mask bit, struct format, Pos's indices
+DELTA_FIELDS = ((MASK_X, "h", (2,)), (MASK_Y, "h", (3,)), (MASK_Z, "h", (4,)), (MASK_YAW, "H", (5,)),
+                (MASK_ANIM, "H", (6,)), (MASK_ANIM_FRAME, "H", (7,)), (MASK_UPPER, "H", (8,)), (MASK_FLAGS, "B", (9,)),
+                (MASK_SHAPES, "I", (10,)), (MASK_TUNIC, "B", (11,)), (MASK_FACE, "BBB", (12, 13, 14)))
+POSITION_MASKS = (MASK_X, MASK_Y, MASK_Z)
+
+
+def grid(value: float) -> int:
+    return round(value * POS_SCALE)
+
+
+def encode_pos(pos: Pos, prev: Optional[Pos] = None) -> bytes:
+    """A position's body: the changes since prev (the position sent before it to the same receiver), or a keyframe
+    without one, in another level or after a jump too far for an s16 difference. pos is quantized (Pos.quantized)."""
+    if prev is not None and prev.level == pos.level:
+        steps = [grid(a) - grid(b) for a, b in zip(pos[2:5], prev[2:5])]
+        if all(-0x8000 <= step <= 0x7FFF for step in steps):
+            mask, fmt, values = 0, ">HH", []
+            for bit, f, fields in DELTA_FIELDS:
+                if bit in POSITION_MASKS:
+                    step = steps[fields[0] - 2]
+                    if step:
+                        mask, fmt = mask | bit, fmt + f
+                        values.append(step)
+                elif any(pos[i] != prev[i] for i in fields):
+                    mask, fmt = mask | bit, fmt + f
+                    values += [pos[i] for i in fields]
+            return struct.pack(fmt, mask, pos.time_ms, *values)
+    return KEY_BODY.pack(MASK_KEY, pos.time_ms, pos.level, grid(pos.x), grid(pos.y), grid(pos.z), *pos[5:])
+
+
+def decode_pos(body: bytes, prev: Optional[Pos]) -> Pos:
+    """The position a body gives, applied to the player's previous one (prev, None: none yet). A difference without a
+    previous position, unknown mask bits or a body of the wrong size raise ValueError (or struct.error)."""
+    mask, time_ms = struct.unpack_from(">HH", body)
+    if mask & ~MASK_ALL:
+        raise ValueError(f"position mask {mask:#x}")
+    if mask & MASK_KEY:
+        v = KEY_BODY.unpack(body)
+        return Pos(v[1], v[2], v[3] / POS_SCALE, v[4] / POS_SCALE, v[5] / POS_SCALE, *v[6:])
+    if prev is None:
+        raise ValueError("a position's changes without a keyframe")
+    values: list = list(prev)
+    values[0] = time_ms
+    at = 4
+    for bit, f, fields in DELTA_FIELDS:
+        if mask & bit:
+            got = struct.unpack_from(">" + f, body, at)
+            at += struct.calcsize(">" + f)
+            if bit in POSITION_MASKS:
+                values[fields[0]] = (grid(prev[fields[0]]) + got[0]) / POS_SCALE
+            else:
+                for i, value in zip(fields, got):
+                    values[i] = value
+    if at != len(body):
+        raise ValueError(f"position of {len(body)} bytes, {at} expected")
+    return Pos(*values)
+
+
+def is_key(body: bytes) -> bool:
+    return bool(struct.unpack_from(">H", body)[0] & MASK_KEY)
+
+
 MAX_FRAME = 256
 
 # Level ids: the index in this list (the RomFS level folders). Append only: ids must not change.
@@ -488,10 +558,13 @@ class Member:
         self.player = ""
         self.level = NO_LEVEL
         self.screen: Tuple[int, int] = (0, 0)
-        self.body: Optional[bytes] = None  # the last POS_BODY, while in a level
+        self.base: Optional[Pos] = None  # the position its POS frames give, which the next one changes; None after NOWHERE
+        self.pos: Optional[Pos] = None  # base while it is shown: in a level and not silent (sweep)
         self.last_pos = 0.0  # when the last POS or NOWHERE arrived
         self.last_heard = time.monotonic()
         self.visible: Set["Member"] = set()  # members whose frames this one gets (at most MAX_SHOWN)
+        # shown members whose position this one has as the relay has it: their next frame goes as it came (its changes)
+        self.synced: Set["Member"] = set()
         self.x = self.z = 0.0
         self.outbox: List[bytes] = []  # frames waiting for the next flush
         self.outbox_size = 0
@@ -505,16 +578,18 @@ class Member:
         """The slot, and the player's name when it differs, for the log."""
         return repr(self.slot) + (f" ({self.player!r})" if self.player and self.player != self.slot else "")
 
-    def send(self, payload: bytes, droppable: bool = False) -> None:
+    def send(self, payload: bytes, droppable: bool = False) -> bool:
+        """Queues a frame for the next flush; False when it was dropped (closed, or droppable and too much waits)."""
         if self.closed:
-            return
+            return False
         if droppable and self.writer.transport.get_write_buffer_size() + self.outbox_size > MAX_BACKLOG:
-            return
+            return False
         data = frame(payload)
         if not self.outbox:
             asyncio.get_running_loop().call_later(BATCH, self.flush)
         self.outbox.append(data)
         self.outbox_size += len(data)
+        return True
 
     def flush(self) -> None:
         if self.outbox and not self.closed and not self.writer.is_closing():
@@ -531,8 +606,12 @@ class Member:
     def distance(self, other: "Member") -> float:
         return math.hypot(self.x - other.x, self.z - other.z)
 
+    def unshow(self, other: "Member") -> None:
+        self.visible.discard(other)
+        self.synced.discard(other)
+
     def present(self) -> bool:
-        return self.body is not None and self.level != NO_LEVEL
+        return self.pos is not None and self.level != NO_LEVEL
 
     def sees(self, other: "Member") -> bool:
         """Whether two members are in each other's area: the same level and, in Field, within one screen."""
@@ -713,7 +792,7 @@ class Relay:
         self.members.pop(member.id, None)
         off = bytes([OFF]) + struct.pack(">HB", member.id, OFF_LEFT)
         for other in members:
-            other.visible.discard(member)
+            other.unshow(member)
             other.send(off)
         member.group = None
         self.log.info(f"leave: {member.label()} from group {group_label(member.world)} after "
@@ -724,61 +803,78 @@ class Relay:
         if kind == PING:
             member.send(bytes([PONG]))
         elif kind == POS and member.group is not None:
-            if len(payload) != 1 + POS_BODY.size or not member.allow():
-                return
             body = payload[1:]
-            pos = Pos.unpack(body)
-            if not all(map(math.isfinite, (pos.x, pos.y, pos.z))):
-                return
+            pos = decode_pos(body, member.base)  # a malformed one closes the connection (handle)
+            member.base = member.pos = pos
             member.level = pos.level  # ids past LEVELS (a newer client's) still compare
             member.screen = field_screen(pos.x, pos.z)
             member.x, member.z = pos.x, pos.z
-            member.body = body
             member.last_pos = time.monotonic()
-            self.update(member, True)
+            if not member.allow():
+                # over the rate: not forwarded, so those shown this member get a keyframe with its next frame
+                for other in self.groups.get(member.group, ()):
+                    other.synced.discard(member)
+                return
+            self.update(member, body)
             if self.echo is not None:
-                echo = pos._replace(x=pos.x + self.echo).pack()
+                echo = encode_pos(pos._replace(x=pos.x + self.echo).quantized())
                 member.send(bytes([FRAME]) + struct.pack(">H", ECHO_ID) + echo, droppable=True)
         elif kind == NOWHERE and member.group is not None:
-            member.body = None
+            member.base = member.pos = None
             member.level = NO_LEVEL
             member.last_pos = time.monotonic()
             if self.echo is not None:
                 member.send(bytes([OFF]) + struct.pack(">HB", ECHO_ID, OFF_AREA))
-            self.update(member, False)
+            self.update(member)
 
-    def update(self, member: Member, moved: bool) -> None:
-        """After a member's position changed: forwards it to the members in its area who are shown it, and fixes up
-        who sees whom. A member with MAX_SHOWN shown players gets a new one when choose() finds it among the
-        nearest."""
-        own = bytes([FRAME]) + struct.pack(">H", member.id) + member.body if member.body is not None else b""
+    def update(self, member: Member, body: Optional[bytes] = None) -> None:
+        """After a member's position changed (body: the POS frame's position, None when it left the level or went
+        silent): forwards it to the members in its area who are shown it, and fixes up who sees whom. A member with
+        MAX_SHOWN shown players gets a new one when choose() finds it among the nearest."""
         for other in self.groups.get(member.group or b"", ()):
             if other is member:
                 continue
             if member.sees(other):
-                if moved and (member in other.visible or len(other.visible) < MAX_SHOWN):
-                    other.send(own, droppable=True)
-                    other.visible.add(member)
-                if other not in member.visible and other.body is not None and len(member.visible) < MAX_SHOWN:
+                if body is not None and (member in other.visible or len(other.visible) < MAX_SHOWN):
+                    self.forward(other, member, body)
+                if other not in member.visible and other.pos is not None and len(member.visible) < MAX_SHOWN:
                     # entered the area of a member who stands still: show it now, not at its next keep-alive
                     self.show(member, other)
             else:
                 self.hide(member, other)
                 self.hide(other, member)
 
+    def forward(self, viewer: Member, shown: Member, body: bytes) -> None:
+        """Passes a shown member's frame on as it came when the viewer has its previous position (synced) or it is a
+        keyframe; else the viewer gets a keyframe."""
+        if shown not in viewer.synced and not is_key(body):
+            self.show(viewer, shown)
+            return
+        viewer.visible.add(shown)
+        if viewer.send(bytes([FRAME]) + struct.pack(">H", shown.id) + body, droppable=True):
+            viewer.synced.add(shown)
+        else:
+            viewer.synced.discard(shown)
+
     @staticmethod
     def show(viewer: Member, shown: Member) -> None:
-        viewer.send(bytes([FRAME]) + struct.pack(">H", shown.id) + shown.body, droppable=True)
+        """Sends the viewer a keyframe of the shown member's position."""
+        if shown.pos is None:
+            return
         viewer.visible.add(shown)
+        if viewer.send(bytes([FRAME]) + struct.pack(">H", shown.id) + encode_pos(shown.pos), droppable=True):
+            viewer.synced.add(shown)
+        else:
+            viewer.synced.discard(shown)
 
     def choose(self) -> None:
         """Each member is shown the MAX_SHOWN nearest players in its area; one shown stays unless another is
         KEEP_MARGIN nearer."""
         for members in self.groups.values():
             for viewer in members:
-                if viewer.body is None:
+                if viewer.pos is None:
                     continue
-                around = [m for m in members if m is not viewer and m.body is not None and viewer.sees(m)]
+                around = [m for m in members if m is not viewer and m.pos is not None and viewer.sees(m)]
                 if len(around) <= MAX_SHOWN and all(m in viewer.visible for m in around):
                     continue
                 around.sort(key=lambda m: viewer.distance(m) - (KEEP_MARGIN if m in viewer.visible else 0))
@@ -796,7 +892,7 @@ class Relay:
     @staticmethod
     def hide(viewer: Member, shown: Member) -> None:
         if shown in viewer.visible:
-            viewer.visible.discard(shown)
+            viewer.unshow(shown)
             viewer.send(bytes([OFF]) + struct.pack(">HB", shown.id, OFF_AREA))
 
     async def sweep(self) -> None:
@@ -809,10 +905,10 @@ class Relay:
                 if now - member.last_heard > SILENT_DROP:
                     member.leave_reason = f"silent for {SILENT_DROP:.0f} s"
                     member.close()
-                elif member.body is not None and now - member.last_pos > SILENT_OFF:
-                    member.body = None
+                elif member.pos is not None and now - member.last_pos > SILENT_OFF:
+                    member.pos = None  # its next frame still changes base
                     member.level = NO_LEVEL
-                    self.update(member, False)
+                    self.update(member)
 
 
 class ForwardError(Exception):

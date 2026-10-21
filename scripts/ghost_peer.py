@@ -7,9 +7,9 @@ Logs "PLAYER <id> <slot>", "FRAME <id> <level> <x> <y> <z> <yaw> ..." (the first
 every n-th with --every n) and "OFF <id> <reason>" lines. stdin takes "goto <level> <x> <y> <z>", "radius <r>" (0:
 stand still, facing +z), "shapes <hex>", "tunic <n>", "face <eye> <mouth> <ear>", "upper <anim id>" (what it sends,
 ghost_relay.py's Pos) and "nowhere" while it runs. "record <file> [<slot>]" writes the frames one other player sends
-(that slot's, or the first to send one; "<wall clock ms> <frame body in hex>" per line; two peers' files sorted
-together make one, as a player goes from one area to another) until "record stop"; "play <file>" sends such frames
-as its own, on their timing and its clock, then stands at the last ("PLAYED <frames>").
+(that slot's, or the first to send one; "<wall clock ms> <the position as a keyframe in hex>" per line; two peers'
+files sorted together make one, as a player goes from one area to another) until "record stop"; "play <file>" sends
+such frames as its own, on their timing and its clock, then stands at the last ("PLAYED <frames>").
 """
 import argparse
 import asyncio
@@ -37,6 +37,8 @@ async def main(args) -> None:
              "shapes": wire.SHAPES_DEFAULT, "tunic": wire.TUNIC_GREEN, "face": (0, 0, 0), "upper": 0}
     names = {}
     counts = {}
+    positions = {}  # the last position of each player received, from its frames' changes
+    sent = {"pos": None}  # the last position sent, which the next one's changes are against
     recording: dict = {"file": None, "slot": None, "player": None}
     playing = {"frames": [], "start": 0.0, "next": 0}
 
@@ -52,11 +54,11 @@ async def main(args) -> None:
                 log(f"PLAYER {player_id} {names[player_id]}")
             elif kind == wire.FRAME:
                 player_id = struct.unpack_from(">H", payload, 1)[0]
-                p = wire.Pos.unpack(payload[3:])
+                p = positions[player_id] = wire.decode_pos(payload[3:], positions.get(player_id))
                 if recording["file"] is not None and recording["player"] is None and                         recording["slot"] in (None, names.get(player_id)):
                     recording["player"] = player_id
                 if recording["file"] is not None and player_id == recording["player"]:
-                    recording["file"].write(f"{time.time() * 1000:.0f} {payload[3:].hex()}\n")
+                    recording["file"].write(f"{time.time() * 1000:.0f} {wire.encode_pos(p).hex()}\n")
                 counts[player_id] = counts.get(player_id, 0) + 1
                 if counts[player_id] % args.every == 1 % args.every:
                     name = wire.LEVELS[p.level] if p.level < len(wire.LEVELS) else p.level
@@ -66,6 +68,7 @@ async def main(args) -> None:
             elif kind == wire.OFF:
                 player_id, reason = struct.unpack_from(">HB", payload, 1)
                 counts.pop(player_id, None)
+                positions.pop(player_id, None)
                 log(f"OFF {player_id} {'left' if reason == wire.OFF_LEFT else 'area'}")
             elif kind == wire.ERROR:
                 log("ERROR " + payload[1:].decode("utf-8", "replace"))
@@ -107,12 +110,17 @@ async def main(args) -> None:
                 log(f"RECORD {' '.join(parts[1:])}")
             elif len(parts) == 2 and parts[0] == "play":
                 with open(parts[1]) as f:
-                    frames = [(int(ms), wire.Pos.unpack(bytes.fromhex(body))) for ms, body in
+                    frames = [(int(ms), wire.decode_pos(bytes.fromhex(body), None)) for ms, body in
                               (line.split() for line in f if line.strip())]
                 if frames:
                     frames = [(ms - frames[0][0], p) for ms, p in frames]
                     playing.update(frames=frames, start=time.monotonic(), next=0)
                     log(f"PLAY {parts[1]} {len(frames)}")
+
+    def send_pos(pos) -> None:
+        """A POS frame: the changes since the last position sent (a keyframe after none)."""
+        writer.write(wire.frame(bytes([wire.POS]) + wire.encode_pos(pos, sent["pos"])))
+        sent["pos"] = pos
 
     receiver = asyncio.create_task(receive())
     if not args.no_stdin:
@@ -126,7 +134,7 @@ async def main(args) -> None:
             base = int((playing["start"] - start) * 1000) - frames[0][1].time_ms  # this clock less the sender's
             while playing["next"] < len(frames) and frames[playing["next"]][0] <= (now - playing["start"]) * 1000:
                 p = frames[playing["next"]][1]
-                writer.write(wire.frame(bytes([wire.POS]) + p._replace(time_ms=(base + p.time_ms) & 0xFFFF).pack()))
+                send_pos(p._replace(time_ms=(base + p.time_ms) & 0xFFFF))
                 playing["next"] += 1
             if playing["next"] == len(frames):
                 last = frames[-1][1]
@@ -142,13 +150,13 @@ async def main(args) -> None:
             angle = t * 1.5  # along (cos, sin) in x, z: heading -angle (yaw 0 = +z, 90 = +x)
             radius = place["radius"]
             yaw = int((-angle * 180 / math.pi) % 360 * 65536 / 360) & 0xFFFF if radius else 0  # still: facing +z
-            body = wire.Pos(int(t * 1000) & 0xFFFF, wire.LEVEL_IDS[place["level"]], x + radius * math.cos(angle), y,
-                            z + radius * math.sin(angle), yaw,
-                            0, 0, place["upper"], 0 if radius else wire.FLAG_STILL, place["shapes"], place["tunic"],
-                            *place["face"]).pack()
-            writer.write(wire.frame(bytes([wire.POS]) + body))
+            send_pos(wire.Pos(int(t * 1000) & 0xFFFF, wire.LEVEL_IDS[place["level"]], x + radius * math.cos(angle), y,
+                              z + radius * math.sin(angle), yaw,
+                              0, 0, place["upper"], 0 if radius else wire.FLAG_STILL, place["shapes"], place["tunic"],
+                              *place["face"]).quantized())
         else:
             writer.write(wire.frame(bytes([wire.NOWHERE])))
+            sent["pos"] = None
         await writer.drain()
         await asyncio.sleep(0.05)
     writer.close()
