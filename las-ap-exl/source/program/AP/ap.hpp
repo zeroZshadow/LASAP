@@ -311,6 +311,7 @@ namespace AP::NameTag {
 }
 
 namespace AP::Popup {
+    void InstallHooks();
     // Shows the item's model above Link's head for a moment (ap_popup.cpp); false when it cannot be made.
     bool Show(int itemId);
     // A model is loading or showing.
@@ -318,6 +319,10 @@ namespace AP::Popup {
 #ifdef LASAP_TEST
     // DBG popsway: whether the model turns from side to side (off: it faces the camera)
     void Sway(bool on);
+    // DBG popframes: record the next `count` poses (time, frame counter, the parent's and the model's world
+    // rotation), and the recorded ones as POPFRAME lines
+    void RecordFrames(size_t count);
+    std::vector<std::string> RecordedFrames();
 #endif
     // The item model maker's task made this holder's model: the popup's, true.
     bool IsHolder(const void* holder);

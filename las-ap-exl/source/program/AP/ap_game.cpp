@@ -1090,6 +1090,15 @@ namespace {
             // DBG popsway <on|off>: whether the popup's model turns from side to side, until the game restarts
             AP::Popup::Sway(a[2] != "off");
             AP::Send("OK popsway");
+        } else if (cmd == "popframes" && a.size() >= 3) {
+            // DBG popframes <count>: record the popup's next poses; DBG popframes dump: send them
+            if (a[2] == "dump") {
+                for (const auto& line : AP::Popup::RecordedFrames()) AP::Send(line);
+                AP::Send("OK popframes");
+            } else {
+                AP::Popup::RecordFrames(static_cast<size_t>(atoi(a[2].c_str())));
+                AP::Send("OK popframes");
+            }
         } else if (cmd == "heldpose") {
             // DBG heldpose: the world rotations (quaternions) of Link's model, the held NPC model's parent node and
             // the model itself during an item-get, and the model's local rotation
@@ -1391,6 +1400,7 @@ namespace AP {
         ItemModelTask::InstallAtOffset(offset_manager.Offset(kItemModelTask));
         ModelResourceGet::InstallAtOffset(offset_manager.Offset(kModelResourceGet));
         NodeMarkDirty::InstallAtOffset(offset_manager.Offset(kNodeMarkDirty));
+        Popup::InstallHooks();
         exl::patch::CodePatcher(offset_manager.Offset(kItemGetTextDelay))
             .WriteInst(exl::armv8::InstBitSet(kTextDelayQuarter));
         ItemGetFanfareDone::InstallAtOffset(offset_manager.Offset(kItemGetFanfareDone));

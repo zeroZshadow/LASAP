@@ -10,6 +10,7 @@
 #include "offsets.hpp"
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <string>
 
@@ -27,6 +28,9 @@ namespace {
     // is not drawn.
     constexpr size_t kActorSelf = 0x8, kPlayerModel = 0x2a8;
     constexpr uintptr_t kNodeMarkDirty = 0xfb6aa0;     // (node): the node and its children take their new pose
+    // Node_UpdateWorld(node): the world coords (+0xb0) from coordsNew (+0x80) and the parent's (+0x58) world coords,
+    // the parent first while it is marked (+0xe0); lazy, when something reads a marked node
+    constexpr uintptr_t kNodeUpdateWorld = 0xfb6310;
     constexpr uintptr_t kEntityDestroy = 0xfabf70;     // (entity): its own destroy (vtable +0x58), not immediate
     constexpr uintptr_t kReleaseWeak = 0x14311f0;      // std::__shared_weak_count::__release_weak
     constexpr size_t kCtrlOwners = 8;
@@ -142,6 +146,10 @@ namespace {
     bool g_Fitted = false;         // an NPC model, turned by g_Angle
 #ifdef LASAP_TEST
     bool g_NoSway = false;         // DBG popsway off: the model faces the camera, for comparing angles
+    // DBG popframes: per Place, the time, the framework's frame counter, the parent's and the model's world rotation
+    struct PoseFrame { u64 ms; u32 frame; Game::Vec4 parent, model; };
+    std::vector<PoseFrame> g_PoseFrames;
+    size_t g_PoseFramesMax = 0;
 #endif
     Quat g_Angle{0.0f, 0.0f, 0.0f, 1.0f};
 
@@ -173,9 +181,38 @@ namespace {
         g_RootMoved = true;
     }
 
-    // The node's pose for the time shown: growing and rising, turning from side to side, shrinking away at the end.
-    // Its parent, Link's model, turns with him; the pose takes out the parent's world rotation and scale, so the model
-    // faces the camera whichever way he looks. An NPC model is turned from the camera by its fix's angle, as in the
+    // The pose in the world: rotation, height above Link's model and scale (Place)
+    Quat g_Pose{0.0f, 0.0f, 0.0f, 1.0f};
+    float g_PoseHeight = 0.0f, g_PoseScale = 0.0f;
+
+    // The node's local pose from the world pose. Its parent, Link's model, turns with him; the local pose takes out
+    // the parent's world rotation and scale, so the model keeps its world pose whichever way he looks.
+    void ApplyPose(Game::RootComp* node, const Game::RootComp* parent) {
+        const Game::Vec4& r = parent->coords.rotate;
+        float parentScale = parent->coords.scale.y > 0.0f ? parent->coords.scale.y : 1.0f;
+        Quat q = Mul(Quat{-r.x, -r.y, -r.z, r.t}, g_Pose);
+        float s = g_PoseScale / parentScale;
+        node->coordsNew.pos = {0.0f, g_PoseHeight / parentScale, 0.0f};
+        node->coordsNew.rotate = {q.x, q.y, q.z, q.w};
+        node->coordsNew.scale = {s, s, s};
+    }
+
+    // Link turns in one frame, after the module's tick has placed the model. So the world update of the model's node
+    // brings the parent up to date first and places the model again from it; placed from the parent's last world
+    // rotation, the model turned with Link for a frame each time he turned.
+    HOOK_DEFINE_TRAMPOLINE(NodeUpdateWorld) {
+        static void Callback(Game::RootComp* node) {
+            if (node != nullptr && node == reinterpret_cast<Game::RootComp*>(Model()) && node->otherComp != nullptr) {
+                Game::RootComp* parent = node->otherComp;
+                if (parent->needsCoordUpdate) Orig(parent);
+                ApplyPose(node, parent);
+            }
+            Orig(node);
+        }
+    };
+
+    // The pose for the time shown: growing and rising, turning from side to side, shrinking away at the end; facing
+    // the camera whichever way Link looks. An NPC model is turned from the camera by its fix's angle, as in the
     // item-get, and from side to side.
     void Place(u8* model, u64 shown) {
         auto* parent = *reinterpret_cast<Game::RootComp**>(g_Player + kPlayerModel);
@@ -183,25 +220,30 @@ namespace {
         float grow = shown < kGrowMs ? (float)shown / kGrowMs
                      : shown + kGrowMs > kShowMs ? (float)(kShowMs - std::min(shown, kShowMs)) / kGrowMs : 1.0f;
         float rise = shown < kGrowMs ? (float)shown / kGrowMs : 1.0f;
+#ifdef LASAP_TEST
         const Game::Vec4& r = parent->coords.rotate;
-        float parentScale = parent->coords.scale.y > 0.0f ? parent->coords.scale.y : 1.0f;
+#endif
         float sway = kSwayDeg * sinf(2.0f * 3.14159265f * (float)(shown % kSwayMs) / kSwayMs);
 #ifdef LASAP_TEST
         if (g_NoSway) sway = 0.0f;
+        if (g_PoseFrames.size() < g_PoseFramesMax) {
+            u32 frame = *reinterpret_cast<u32*>(reinterpret_cast<u8*>(Game::GetFramework()) + 0x4d4);
+            g_PoseFrames.push_back({NowMs(), frame, r, reinterpret_cast<Game::RootComp*>(model)->coords.rotate});
+        }
 #endif
-        Quat pose = g_Fitted ? Mul(CameraRotation(), Mul(Axis(1, sway), g_Angle))
-                             : Mul(Axis(0, kTilt), Axis(1, sway));
-        Quat q = Mul(Quat{-r.x, -r.y, -r.z, r.t}, pose);
-        Game::Coords& c = reinterpret_cast<Game::RootComp*>(model)->coordsNew;
-        float s = g_Scale * grow / parentScale;
-        c.pos = {0.0f, (kHeight - kRise * (1.0f - rise)) / parentScale, 0.0f};
-        c.rotate = {q.x, q.y, q.z, q.w};
-        c.scale = {s, s, s};
+        g_Pose = g_Fitted ? Mul(CameraRotation(), Mul(Axis(1, sway), g_Angle)) : Mul(Axis(0, kTilt), Axis(1, sway));
+        g_PoseHeight = kHeight - kRise * (1.0f - rise);
+        g_PoseScale = g_Scale * grow;
+        ApplyPose(reinterpret_cast<Game::RootComp*>(model), parent);
         GameFn<void (*)(void*)>(kNodeMarkDirty)(model);
     }
 }
 
 namespace AP::Popup {
+    void InstallHooks() {
+        NodeUpdateWorld::InstallAtOffset(offset_manager.Offset(kNodeUpdateWorld));
+    }
+
     bool Show(int itemId) {
         Drop(true);
         Game::Framework* fmwk = Game::GetFramework();
@@ -227,6 +269,22 @@ namespace AP::Popup {
 
 #ifdef LASAP_TEST
     void Sway(bool on) { g_NoSway = !on; }
+
+    void RecordFrames(size_t count) {
+        g_PoseFrames.clear();
+        g_PoseFramesMax = count;
+    }
+
+    std::vector<std::string> RecordedFrames() {
+        std::vector<std::string> lines;
+        for (const auto& f : g_PoseFrames) {
+            char buf[160];
+            snprintf(buf, sizeof(buf), "POPFRAME %lu %u %.4f,%.4f,%.4f,%.4f %.4f,%.4f,%.4f,%.4f", f.ms, f.frame,
+                     f.parent.x, f.parent.y, f.parent.z, f.parent.t, f.model.x, f.model.y, f.model.z, f.model.t);
+            lines.push_back(buf);
+        }
+        return lines;
+    }
 #endif
 
     bool IsHolder(const void* holder) { return holder != nullptr && holder == g_Holder.ptr; }

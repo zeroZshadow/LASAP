@@ -30,7 +30,7 @@ DIR = Path(os.environ.get("LASAP_E2E", "D:/DEV/LASAP-sandbox/e2e"))
 SLOT = os.environ.get("LASAP_SLOT", "Link")
 LOGS = {"client": DIR / "client.log", "server": DIR / "server.log", "peer": DIR / "peer.log"}
 DEBUG_PORT = int(os.environ.get("LASAP_GAME_PORT", "43385")) + 100
-REPLY = re.compile(r"^(OK|ERR|DONE|FAIL|HELD|HOLDS|CHOICE|STATE|FLAG|UI|FRAME|PEEK|RECV|MAP|TEXT|MUSIC|map=)")
+REPLY = re.compile(r"^(OK|ERR|DONE|FAIL|HELD|HOLDS|CHOICE|STATE|FLAG|UI|FRAME|POPFRAME|PEEK|RECV|MAP|TEXT|MUSIC|map=)")
 
 
 class Debug:
@@ -532,7 +532,7 @@ def main() -> None:
             if REPLY.match(line):
                 print(line)
                 if not line.startswith("OK await") and not line.startswith("OK press") and \
-                        not line.startswith("OK advance"):
+                        not line.startswith("OK advance") and not line.startswith("POPFRAME"):
                     break
     elif cmd == "cli":
         append(DIR / "cmds.txt", " ".join(args))
