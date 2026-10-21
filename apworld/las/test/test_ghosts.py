@@ -771,20 +771,19 @@ class TestGhostSecret(unittest.TestCase):
                 LASContainer(path, {"ghost_secret": "abc123", "ghost_relay": "relay.example:43390"}, 1, "Link").write()
                 ctx = LASContext(None, None, "127.0.0.1", 0, path)
                 ctx.update_ghosts()
+                # an empty setting: the patch file's relay
                 self.assertEqual((ctx.ghosts.address, ctx.ghosts.default_relay), ("relay.example:43390", False))
                 LASWorld.settings.ghost_relay = "own.example:1"
                 ctx.update_ghosts()
                 self.assertEqual(ctx.ghosts.address, "own.example:1")
-                # the setting's default value counts as unset: the patch file's relay wins over it
+                # the setting's default value is the default relay, and the setting wins over the patch file
                 self.assertEqual(LASSettings.ghost_relay, DEFAULT_RELAY)
                 LASWorld.settings.ghost_relay = DEFAULT_RELAY
                 ctx.update_ghosts()
-                self.assertEqual((ctx.ghosts.address, ctx.ghosts.default_relay), ("relay.example:43390", False))
-                # neither the settings nor the patch file name one: the default relay
-                LASContainer(path, {"ghost_secret": "abc123"}, 1, "Link").write()
-                ctx.update_ghosts()
                 self.assertEqual((ctx.ghosts.address, ctx.ghosts.default_relay), (DEFAULT_RELAY, True))
+                # neither the settings nor the patch file name one: the default relay
                 LASWorld.settings.ghost_relay = ""
+                LASContainer(path, {"ghost_secret": "abc123"}, 1, "Link").write()
                 ctx.update_ghosts()
                 self.assertEqual((ctx.ghosts.address, ctx.ghosts.default_relay), (DEFAULT_RELAY, True))
                 # --ghost-relay "" (tests) means none
@@ -795,6 +794,47 @@ class TestGhostSecret(unittest.TestCase):
         try:
             LASWorld.settings.ghost_relay = ""
             asyncio.run(main())
+        finally:
+            LASWorld.settings.ghost_relay = saved
+
+    def test_ghostrelay_command(self) -> None:
+        """/ghostrelay shows the relay in use and where it comes from, sets the setting, or restores the default; it
+        never shows the password."""
+        import os
+        import tempfile
+        from .. import LASWorld
+        from ..client import LASCommandProcessor, LASContext
+        from ..container import LASContainer
+        from ..ghosts import DEFAULT_RELAY
+
+        async def main() -> None:
+            with tempfile.TemporaryDirectory() as folder:
+                path = os.path.join(folder, "AP_1_P1_Link.aplas")
+                LASContainer(path, {"ghost_secret": "abc123", "ghost_relay": "relay.example:43390"}, 1, "Link").write()
+                ctx = LASContext(None, None, "127.0.0.1", 0, path)
+                ctx.update_ghosts()
+                command = LASCommandProcessor(ctx)
+                with self.assertLogs("Client", "INFO") as logs:
+                    command("/ghostrelay")
+                    command("/ghostrelay sesame@wss://own.example")
+                    self.assertEqual(LASWorld.settings.ghost_relay, "sesame@wss://own.example")
+                    command("/ghostrelay default")
+                    self.assertEqual(LASWorld.settings.ghost_relay, DEFAULT_RELAY)
+                    command("/ghostrelay ftp://own.example")
+                    self.assertEqual(LASWorld.settings.ghost_relay, DEFAULT_RELAY)
+                lines = [line.split(":", 2)[2] for line in logs.output]
+                self.assertEqual(lines, [
+                    "Ghost relay: relay.example:43390 (from the patch file).",
+                    "Ghost relay: wss://own.example.",
+                    f"Ghost relay: {DEFAULT_RELAY} (the default relay).",
+                    "Usage: /ghostrelay [host:port | password@host:port | wss://host | default]",
+                ])
+                self.assertFalse(any("sesame" in line for line in lines))
+        saved = LASWorld.settings.ghost_relay
+        try:
+            LASWorld.settings.ghost_relay = ""
+            with mock.patch("settings.get_settings"):  # set_option saves host.yaml
+                asyncio.run(main())
         finally:
             LASWorld.settings.ghost_relay = saved
 

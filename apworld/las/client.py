@@ -10,7 +10,7 @@ from NetUtils import ClientStatus, HintStatus
 
 from .container import LASContainer
 from .ids import LOCATION_BASE, LOCATION_OFFSETS
-from . import checklist, emulators, music
+from . import checklist, emulators, ghost_relay, music
 from .ghosts import DEFAULT_RELAY, GhostLink
 from .host_settings import PLAYER_SETTINGS, player_value
 from .install import InstallError, patch_and_install
@@ -82,6 +82,28 @@ class LASCommandProcessor(ClientCommandProcessor):
                 return
             ctx.set_ghost_names(value.lower() == "on")
         logger.info(f"Ghost name tags are {'on' if ctx.ghost_names_on() else 'off'}.")
+
+    def _cmd_ghostrelay(self, address: str = "") -> None:
+        """Show the ghost relay in use, or set the Ghost relay setting: /ghostrelay <address> (host:port,
+        password@host:port or wss://host), /ghostrelay default for the default relay."""
+        ctx = self.ctx
+        if address:
+            if address.lower() == "default":
+                address = DEFAULT_RELAY
+            else:
+                try:
+                    ghost_relay.parse_address(address)
+                except ValueError:
+                    logger.error("Usage: /ghostrelay [host:port | password@host:port | wss://host | default]")
+                    return
+            ctx.set_option("ghost_relay", address)
+        link = ctx.ghosts
+        if not link.address:
+            logger.info("Ghost relay: none.")
+            return
+        source = (" (the default relay)" if link.default_relay else
+                  " (from the patch file)" if not ctx.option("ghost_relay") and ctx.ghost_relay_arg is None else "")
+        logger.info(f"Ghost relay: {ghost_relay.shown_address(link.address)}{source}.")
 
     def _cmd_music(self, track: str = "") -> None:
         """Play a BGM track instead of the zone's music until /music off: /music <track> (e.g. /music fairy or
@@ -700,8 +722,8 @@ class LASContext(CommonContext):
 
     def update_ghosts(self) -> None:
         """Hands the ghost link its settings, the multiworld's ghost secret (from the patch file) and the slot; it
-        reconnects when they change. The relay is the client's setting unless it is DEFAULT_RELAY (its default) or
-        empty, else the one the patch file was made with, else DEFAULT_RELAY."""
+        reconnects when they change. The relay is the client's setting (DEFAULT_RELAY by default); when it is empty,
+        the one the patch file was made with, else DEFAULT_RELAY."""
         from . import LASWorld
         options = LASWorld.settings
         slot = self.auth or self.patch_slot or ""
@@ -710,9 +732,7 @@ class LASContext(CommonContext):
         patch = container.patch if container else {}
         address = self.ghost_relay_arg
         if address is None:
-            # the setting's default value counts as unset, so a relay the patch file names wins over it
-            own = str(options.ghost_relay or "").strip()
-            address = ((own if own != DEFAULT_RELAY else "") or str(patch.get("ghost_relay", "")).strip() or
+            address = (str(options.ghost_relay or "").strip() or str(patch.get("ghost_relay", "")).strip() or
                        DEFAULT_RELAY)
         default_relay = address.strip() == DEFAULT_RELAY
         secret = self.ghost_secret_arg
