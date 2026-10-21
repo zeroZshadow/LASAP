@@ -700,8 +700,8 @@ class LASContext(CommonContext):
 
     def update_ghosts(self) -> None:
         """Hands the ghost link its settings, the multiworld's ghost secret (from the patch file) and the slot; it
-        reconnects when they change. The relay is the client's setting, else the one the patch file was made with,
-        else DEFAULT_RELAY."""
+        reconnects when they change. The relay is the client's setting unless it is DEFAULT_RELAY (its default) or
+        empty, else the one the patch file was made with, else DEFAULT_RELAY."""
         from . import LASWorld
         options = LASWorld.settings
         slot = self.auth or self.patch_slot or ""
@@ -710,10 +710,11 @@ class LASContext(CommonContext):
         patch = container.patch if container else {}
         address = self.ghost_relay_arg
         if address is None:
-            address = options.ghost_relay or str(patch.get("ghost_relay", ""))
-        default_relay = self.ghost_relay_arg is None and not address.strip()
-        if default_relay:
-            address = DEFAULT_RELAY
+            # the setting's default value counts as unset, so a relay the patch file names wins over it
+            own = str(options.ghost_relay or "").strip()
+            address = ((own if own != DEFAULT_RELAY else "") or str(patch.get("ghost_relay", "")).strip() or
+                       DEFAULT_RELAY)
+        default_relay = address.strip() == DEFAULT_RELAY
         secret = self.ghost_secret_arg
         if secret is None:
             secret = str(patch.get("ghost_secret", ""))

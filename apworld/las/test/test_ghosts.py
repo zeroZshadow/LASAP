@@ -763,6 +763,7 @@ class TestGhostSecret(unittest.TestCase):
         from ..client import LASContext
         from ..container import LASContainer
         from ..ghosts import DEFAULT_RELAY
+        from ..host_settings import LASSettings
 
         async def main() -> None:
             with tempfile.TemporaryDirectory() as folder:
@@ -774,9 +775,16 @@ class TestGhostSecret(unittest.TestCase):
                 LASWorld.settings.ghost_relay = "own.example:1"
                 ctx.update_ghosts()
                 self.assertEqual(ctx.ghosts.address, "own.example:1")
+                # the setting's default value counts as unset: the patch file's relay wins over it
+                self.assertEqual(LASSettings.ghost_relay, DEFAULT_RELAY)
+                LASWorld.settings.ghost_relay = DEFAULT_RELAY
+                ctx.update_ghosts()
+                self.assertEqual((ctx.ghosts.address, ctx.ghosts.default_relay), ("relay.example:43390", False))
                 # neither the settings nor the patch file name one: the default relay
-                LASWorld.settings.ghost_relay = ""
                 LASContainer(path, {"ghost_secret": "abc123"}, 1, "Link").write()
+                ctx.update_ghosts()
+                self.assertEqual((ctx.ghosts.address, ctx.ghosts.default_relay), (DEFAULT_RELAY, True))
+                LASWorld.settings.ghost_relay = ""
                 ctx.update_ghosts()
                 self.assertEqual((ctx.ghosts.address, ctx.ghosts.default_relay), (DEFAULT_RELAY, True))
                 # --ghost-relay "" (tests) means none

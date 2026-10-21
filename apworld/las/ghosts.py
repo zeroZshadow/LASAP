@@ -13,7 +13,7 @@ MIN_INTERVAL = 0.045  # at most ~20 frames a second go to the relay; what the pl
 PING_INTERVAL = 10.0
 SILENT_TIMEOUT = 30.0  # the relay answers pings; a link that hears nothing this long reconnects
 RETRY_DELAYS = (2, 5, 10, 30, 60)
-DEFAULT_RELAY = "wss://ghosts.zerozshadow.com"  # the relay when neither the client's settings nor the patch file name one
+DEFAULT_RELAY = wire.DEFAULT_RELAY
 
 
 def pos_body(parts: List[str]) -> Optional[bytes]:

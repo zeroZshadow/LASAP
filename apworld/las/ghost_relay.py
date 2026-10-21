@@ -37,6 +37,7 @@ from typing import Dict, List, NamedTuple, Optional, Sequence, Set, Tuple, Union
 
 PROTOCOL_VERSION = 3
 DEFAULT_PORT = 43390
+DEFAULT_RELAY = "wss://ghosts.zerozshadow.com"  # the client's ghost_relay setting's default
 
 # Client -> relay
 JOIN = 0x01  # u8 version, 32 bytes group, slot name, player name, relay password (each a u8 length and UTF-8; the
