@@ -1,0 +1,31 @@
+# The jukebox through a 2D room: down Tail Cave's stairs in room 05G into the side-view room 02G, whose zone asks for
+# BGM_DUNGEON_2D_SIDEVIEW, and up its ladder back out. The stairs hold the chosen track (a stop of the game's), free
+# Link for a frame between the room change and the event's PlayZoneBGM, which the jukebox swaps: the track plays on
+# (no new instance). Run after boot_file1, with the client connected to the game (no server needed).
+expect HELLO 30
+# The client sends its choice again on each connection: start from none.
+send /music off
+await 10 music=-
+# North of the stairs, which statues close off from the south.
+warp Lv01TailCave 98.25 0 51.75
+send /music fairy
+logged Music:\sBGM_FAIRY 5 client
+await 10 music=BGM_FAIRY zonebgm=\S+ bgm=BGM_FAIRY:1\s
+# South onto the stairs: Link comes out at the top of 02G's ladder.
+hold 0 0 -32767 until !free 5
+until anim=s_ladder_wait 20
+await 10 music=BGM_FAIRY zonebgm=BGM_DUNGEON_2D_SIDEVIEW bgm=BGM_FAIRY:1\s
+wait 1
+check music=BGM_FAIRY zonebgm=BGM_DUNGEON_2D_SIDEVIEW bgm=BGM_FAIRY:1\s
+send DBG music
+expect play\sBGM_DUNGEON_2D_SIDEVIEW->BGM_FAIRY\s\S+\s000\s-\s*$
+# Up the ladder: back on 05G's stairs.
+hold 0 0 32767 until paused=1 10
+free 20
+await 10 music=BGM_FAIRY zonebgm=BGM_DUNGEON_LV1_TAIL bgm=BGM_FAIRY:1\s
+wait 1
+check music=BGM_FAIRY zonebgm=BGM_DUNGEON_LV1_TAIL bgm=BGM_FAIRY:1\s
+send DBG music
+expect play\sBGM_DUNGEON_LV1_TAIL->BGM_FAIRY\s\S+\s000\s-\s*$
+send /music off
+await 10 music=- zonebgm=(\S+) bgm=\1:1\s
