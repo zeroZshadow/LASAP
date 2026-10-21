@@ -188,6 +188,8 @@ class TestVanillaHeavy(LASTestBase):
         settings = patch["settings"]
         self.assertEqual((settings["Heart Pieces"], settings["Seashell Mansion"], settings["Seashells Important"]),
                          (False, 0, True))
+        # the trade quest is off: no seed needs the trade items, whose chests are small
+        self.assertEqual((settings["Trade Quest"], settings["Trade Important"]), (False, False))
 
     def test_tracker_counts_a_locked_item_once_received(self) -> None:
         """A locked location's item counts for the map's logic once received, not while the location is reachable:
