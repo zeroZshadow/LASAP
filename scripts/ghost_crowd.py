@@ -74,10 +74,9 @@ class Walker:
 
 
 async def run(walker: Walker, relay: str, source: str, secret: str, deadline: float) -> None:
-    password, host, port = wire.parse_address(relay)
     try:
-        reader, writer = await asyncio.open_connection(host, port, local_addr=(source, 0) if source else None)
-    except OSError as e:
+        password, reader, writer = await wire.connect(relay, local_addr=(source, 0) if source else None)
+    except (OSError, asyncio.TimeoutError, asyncio.IncompleteReadError, ValueError) as e:
         walker.error = repr(e)
         return
     writer.write(wire.frame(wire.join_message(wire.group_id(secret), walker.name, walker.name, password)))

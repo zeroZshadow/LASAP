@@ -2,9 +2,8 @@
 relay as frames; frames of the players around this one come back as GHOST lines for the game (DESIGN.md, Ghosts)."""
 import asyncio
 import math
-import socket
 import struct
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from . import checklist
 from . import ghost_relay as wire
@@ -61,7 +60,7 @@ class GhostLink:
         self.names = True  # name tags over the ghosts in the game
         self.game_connected = False
         self.status = checklist.Check(checklist.INFO, "")
-        self.writer: Optional[asyncio.StreamWriter] = None
+        self.writer: Optional[Union[asyncio.StreamWriter, wire.WebSocketWriter]] = None
         self.joined = False
         self.own_id = -1
         self.players: Dict[int, Tuple[str, str]] = {}  # the group's other members: id -> (slot, player name)
@@ -289,12 +288,8 @@ class GhostLink:
             pass
 
     async def session(self) -> None:
-        password, host, port = wire.parse_address(self.address)
         self.set_status(checklist.INFO, f"Ghosts: connecting to the relay {wire.shown_address(self.address)}...")
-        reader, writer = await asyncio.wait_for(asyncio.open_connection(host, port), 10)
-        sock = writer.get_extra_info("socket")
-        if sock is not None:
-            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        password, reader, writer = await wire.connect(self.address)
         self.writer = writer
         writer.write(wire.frame(wire.join_message(wire.group_id(self.secret), self.slot, self.player, password)))
         pinger = asyncio.create_task(self.ping(writer))
@@ -317,7 +312,7 @@ class GhostLink:
         finally:
             pinger.cancel()
 
-    async def ping(self, writer: asyncio.StreamWriter) -> None:
+    async def ping(self, writer: Union[asyncio.StreamWriter, wire.WebSocketWriter]) -> None:
         while True:
             await asyncio.sleep(PING_INTERVAL)
             writer.write(wire.frame(bytes([wire.PING])))

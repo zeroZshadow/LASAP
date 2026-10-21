@@ -1,5 +1,6 @@
 """The ghost relay (grouping, the area filter, off messages) with fake clients, and the client's link to it."""
 import asyncio
+import ipaddress
 import struct
 import unittest
 from typing import List, Optional, Tuple
@@ -13,17 +14,19 @@ QUIET = 0.15  # how long a test waits to be sure nothing arrives
 
 
 class FakeClient:
-    def __init__(self, port: int):
+    def __init__(self, port: int, websocket: bool = False):
         self.port = port
-        self.reader: Optional[asyncio.StreamReader] = None
-        self.writer: Optional[asyncio.StreamWriter] = None
+        self.websocket = websocket
+        self.reader = None  # asyncio.StreamReader or wire.WebSocketReader
+        self.writer = None  # asyncio.StreamWriter or wire.WebSocketWriter
         self.id = -1
         self.seq = 0
 
     async def join(self, secret: str, slot: str, version: int = wire.PROTOCOL_VERSION,
                    password: Optional[str] = "") -> bytes:
         """Joins; password None sends a join without the password field."""
-        self.reader, self.writer = await asyncio.open_connection("127.0.0.1", self.port)
+        _, self.reader, self.writer = await wire.connect(
+            f"{'ws://' if self.websocket else ''}127.0.0.1:{self.port}")
         message = bytearray(wire.join_message(wire.group_id(secret), slot, slot + " (player)", password or ""))
         if password is None:
             message = message[:-1]
@@ -270,11 +273,110 @@ class TestRelay(unittest.TestCase):
             self.assertEqual(relay.members, {})
         self.run_relay(test)
 
+    def test_websocket_beside_tcp(self) -> None:
+        """A WebSocket client and a plain TCP one on the same port see each other; the relay answers pings and a
+        close, and turns away an HTTP request that is no upgrade and an oversized WebSocket frame."""
+        async def test(port: int, relay: wire.Relay) -> None:
+            a, b = FakeClient(port, websocket=True), FakeClient(port)
+            self.assertEqual((await a.join("secret1", "A"))[0], wire.WELCOME)
+            self.assertIsInstance(a.reader, wire.WebSocketReader)
+            await b.join("secret1", "B")
+            self.assertEqual(players(await a.collect()), [(b.id, "B")])
+            a.pos(SHOP, 1, 2)
+            b.pos(SHOP, 3, 4)
+            self.assertEqual(frames(await a.collect()), [(b.id, 3, 4)])
+            self.assertEqual(frames(await b.collect()), [(a.id, 1, 2)])
+            # a WebSocket ping is answered with a pong of the same data
+            a.writer.send(wire.WS_PING, b"hi")
+            head = await asyncio.wait_for(a.reader.reader.readexactly(4), 2)
+            self.assertEqual(head, bytes([0x80 | wire.WS_PONG, 2]) + b"hi")
+            # a close leaves the group
+            a.close()
+            self.assertEqual(offs(await b.collect()), [(a.id, wire.OFF_LEFT)])
+            self.assertEqual(list(relay.members), [b.id])
+            # a frame bigger than MAX_WS_MESSAGE closes the connection
+            c = FakeClient(port, websocket=True)
+            await c.join("secret1", "C")
+            c.writer.writer.write(bytes([0x80 | wire.WS_BINARY, 0x80 | 127]) +
+                                  struct.pack(">Q", wire.MAX_WS_MESSAGE + 1) + bytes(4))
+            with self.assertRaises(asyncio.IncompleteReadError):
+                while True:
+                    await c.next()
+            # a browser gets a page, not a connection
+            reader, writer = await asyncio.open_connection("127.0.0.1", port)
+            writer.write(b"GET / HTTP/1.1\r\nHost: relay.example\r\n\r\n")
+            answer = await asyncio.wait_for(reader.read(), 2)
+            self.assertTrue(answer.startswith(b"HTTP/1.1 426 "))
+            self.assertIn(b"LAS ghost relay", answer)
+            writer.close()
+            b.close()
+        self.run_relay(test)
+
+    def test_websocket_from_a_proxy(self) -> None:
+        """A WebSocket from this computer (cloudflared) or a --trusted-proxy counts as the address in CF-Connecting-IP
+        or X-Forwarded-For, so MAX_PER_ADDRESS counts players, not the proxy."""
+        self.assertEqual(wire.proxied_address({"cf-connecting-ip": "203.0.113.5", "x-forwarded-for": "172.18.0.3"}),
+                         "203.0.113.5")
+        self.assertEqual(wire.proxied_address({"x-forwarded-for": "10.0.0.1, 203.0.113.6"}), "203.0.113.6")
+        self.assertEqual(wire.proxied_address({}), "")
+        self.assertEqual(wire.parse_proxies(["172.18.0.0/16, caddy", "", "10.0.0.7"]),
+                         [ipaddress.ip_network("172.18.0.0/16"), "caddy", ipaddress.ip_network("10.0.0.7/32")])
+
+        async def trusts() -> None:
+            relay = wire.Relay(trusted_proxies=wire.parse_proxies(["172.18.0.0/16", "caddy"]))
+            for address in ("127.0.0.1", "::1", "::ffff:127.0.0.1", "172.18.0.9"):
+                self.assertTrue(await relay.trusts(address), address)
+            # a host name is looked up for each connection; anyone else is not trusted
+            with mock.patch("socket.getaddrinfo", return_value=[(2, 1, 6, "", ("192.168.5.2", 0))]) as lookup:
+                self.assertTrue(await relay.trusts("192.168.5.2"))
+                self.assertFalse(await relay.trusts("198.51.100.9"))
+            self.assertEqual(lookup.call_args[0][0], "caddy")
+            self.assertFalse(await wire.Relay().trusts("172.18.0.9"))
+        asyncio.run(trusts())
+
+        async def open_from(port: int, player: str) -> Tuple[wire.WebSocketReader, wire.WebSocketWriter]:
+            reader, writer = await asyncio.open_connection("127.0.0.1", port)
+            writer.write(f"GET / HTTP/1.1\r\nHost: relay.example\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+                         f"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n"
+                         f"CF-Connecting-IP: {player}\r\n\r\n".encode())
+            line, headers = await wire.read_http_head(reader)
+            self.assertEqual(headers["sec-websocket-accept"], "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=")  # RFC 6455's example
+            ws_writer = wire.WebSocketWriter(writer, client=True)
+            return wire.WebSocketReader(reader, ws_writer), ws_writer
+
+        async def test(port: int, relay: wire.Relay) -> None:
+            joined, writers = [], []
+            for n, player in enumerate(("203.0.113.5", "203.0.113.5", "203.0.113.5", "203.0.113.6")):
+                reader, writer = await open_from(port, player)
+                writers.append(writer)
+                writer.write(wire.frame(wire.join_message(wire.group_id("secret1"), f"P{n}", f"P{n}")))
+                joined.append(((await asyncio.wait_for(wire.read_frame(reader), 2))[0], player))
+            self.assertEqual(joined, [(wire.WELCOME, "203.0.113.5")] * 2 + [(wire.ERROR, "203.0.113.5"),
+                                                                             (wire.WELCOME, "203.0.113.6")])
+            self.assertEqual(sorted(m.address for m in relay.members.values()),
+                             ["203.0.113.5", "203.0.113.5", "203.0.113.6"])
+            for writer in writers:
+                writer.close()
+        with mock.patch.object(wire, "MAX_PER_ADDRESS", 2):
+            self.run_relay(test)
+
     def test_password(self) -> None:
-        self.assertEqual(wire.parse_address("relay.example"), ("", "relay.example", wire.DEFAULT_PORT))
-        self.assertEqual(wire.parse_address(" pass@word@relay.example:1234 "), ("pass@word", "relay.example", 1234))
-        self.assertEqual(wire.parse_address("pw@[::1]:5"), ("pw", "::1", 5))
+        self.assertEqual(wire.parse_address("relay.example"), ("", "relay.example", wire.DEFAULT_PORT, "", ""))
+        self.assertEqual(wire.parse_address(" pass@word@relay.example:1234 "),
+                         ("pass@word", "relay.example", 1234, "", ""))
+        self.assertEqual(wire.parse_address("pw@[::1]:5"), ("pw", "::1", 5, "", ""))
         self.assertEqual(wire.shown_address("pw@relay.example:1234"), "relay.example:1234")
+        # WebSocket: the password before the scheme or in the URL; https:// is taken for wss://
+        self.assertEqual(wire.parse_address("wss://ghosts.example"), ("", "ghosts.example", 443, "wss", "/"))
+        self.assertEqual(wire.parse_address("pass@word@wss://ghosts.example/relay"),
+                         ("pass@word", "ghosts.example", 443, "wss", "/relay"))
+        self.assertEqual(wire.parse_address("wss://pw@ghosts.example:8443"), ("pw", "ghosts.example", 8443, "wss", "/"))
+        self.assertEqual(wire.parse_address(" HTTPS://ghosts.example "), ("", "ghosts.example", 443, "wss", "/"))
+        self.assertEqual(wire.parse_address("ws://127.0.0.1:43391"), ("", "127.0.0.1", 43391, "ws", "/"))
+        self.assertEqual(wire.shown_address("pw@wss://ghosts.example/relay"), "wss://ghosts.example/relay")
+        self.assertEqual(wire.shown_address("wss://pw@ghosts.example"), "wss://ghosts.example")
+        with self.assertRaises(ValueError):
+            wire.parse_address("ftp://ghosts.example")
 
         async def test(port: int, relay: wire.Relay) -> None:
             for password in (None, "", "wrong"):
@@ -391,7 +493,8 @@ class TestGhostLink(unittest.TestCase):
             tasks = []
             for name, link in links.items():
                 link.on_game_connected()
-                link.configure(True, address, "secret1", name, name)
+                # A by WebSocket, B by plain TCP
+                link.configure(True, ("ws://" if name == "A" else "") + address, "secret1", name, name)
                 tasks.append(asyncio.create_task(link.run(exit_event)))
 
             async def until(test, seconds: float = 3) -> None:

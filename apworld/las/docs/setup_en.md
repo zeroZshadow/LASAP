@@ -89,8 +89,8 @@ the same house, cave or dungeon, or near you in the overworld. They show with th
 They can't touch you or anything else. Ghosts travel through a ghost relay, not the Archipelago server, and only
 players of the same generation see each other, unless the relay runs with `--nogroups`: then everyone on it does.
 
-- The person who generates sets the relay before generating: `ghost_relay` (`host:port`, or `password@host:port` for
-  a relay with a password) under `las_options` in `host.yaml`. Every patch file then carries it, and the players have
+- The person who generates sets the relay before generating: `ghost_relay` (`host:port`, `password@host:port` for
+  a relay with a password, or a `wss://` address for a relay behind a tunnel) under `las_options` in `host.yaml`. Every patch file then carries it, and the players have
   nothing to set.
 - Otherwise each player enters it in the Patch tab's "Ghost relay", which also replaces the patch file's.
 - "Show ghosts" on the Patch tab, or `/ghosts off` in the client, turns them off. The Patch tab shows the relay status.
@@ -104,7 +104,8 @@ Python), with `--password <password>` for a password. Both take `--port` for ano
 With a password, players enter the relay as `password@host:port`.
 Every player must be able to reach the relay: when the router does not forward the port, forward TCP 43390 on the
 router by hand, run the relay on a server, or have all players join one VPN (for example Tailscale) and use its
-address.
+address. A relay behind a Cloudflare Tunnel needs no forwarded port: players enter the tunnel's address as
+`wss://<hostname>` (`password@wss://<hostname>` with a password).
 
 ## Troubleshooting
 

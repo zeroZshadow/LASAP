@@ -8,7 +8,11 @@ the environment variable LAS_GHOST_RELAY_PASSWORD) lets in only clients that sen
 password@host:port. --nogroups puts the players of all multiworlds in one group.
 
 Plain TCP with TCP_NODELAY. Every message is a frame: a u16 length (big-endian), then the payload, whose first byte is
-the message type. A client joins a group, SHA-256("lasghost" | secret), computed by the client from its multiworld's
+the message type. The same port also takes WebSocket connections (a client entering ws:// or wss://, for a relay behind
+a proxy such as a Cloudflare Tunnel): their binary messages carry the same byte stream of frames. The first byte tells
+them apart: a frame's length starts with 0 or 1 (no frame is longer than MAX_FRAME), an HTTP request with "G" (GET).
+A WebSocket from this computer or a --trusted-proxy (a reverse proxy's container) counts as the player's address in
+its CF-Connecting-IP or X-Forwarded-For header. A client joins a group, SHA-256("lasghost" | secret), computed by the client from its multiworld's
 ghost secret (in the patch file), so the relay never sees the secret. The relay forwards a player's position to the group's members in the same level, and in
 the overworld (Field) only to those within the 3x3 screens around the sender, each member getting the nearest
 MAX_SHOWN players of its area; it sends an "off" for a player who leaves a member's area or the group. A member's
@@ -16,17 +20,20 @@ frames go out together every BATCH seconds.
 """
 import argparse
 import asyncio
+import base64
 import hashlib
 import hmac
+import ipaddress
 import logging
 import math
 import os
 import socket
+import ssl
 import struct
 import sys
 import threading
 import time
-from typing import Dict, List, NamedTuple, Optional, Set, Tuple, Union
+from typing import Dict, List, NamedTuple, Optional, Sequence, Set, Tuple, Union
 
 PROTOCOL_VERSION = 3
 DEFAULT_PORT = 43390
@@ -127,6 +134,7 @@ CHOOSE_EVERY = 0.5  # how often the nearest are chosen again
 KEEP_MARGIN = 2.0  # a shown player stays unless another is this much nearer (units), so the choice does not flap
 MAX_NAME = 64  # bytes of a name or password in a join
 PASSWORD_ENV = "LAS_GHOST_RELAY_PASSWORD"
+TRUSTED_PROXY_ENV = "LAS_GHOST_RELAY_TRUSTED_PROXY"
 WRONG_PASSWORD_DELAY = 1.0  # seconds before a wrong password is refused, so guessing is slow
 ONE_GROUP = b"all"  # --nogroups: the group of every member (not 32 bytes, so no join's group)
 
@@ -135,18 +143,56 @@ def group_id(secret: str) -> bytes:
     return hashlib.sha256(b"lasghost|" + secret.encode()).digest()
 
 
-def parse_address(address: str) -> Tuple[str, str, int]:
-    """A relay address, [password@]host[:port], as (password, host, port). The password may hold @ too."""
-    password, _, rest = address.strip().rpartition("@")
-    host, _, port = rest.strip().rpartition(":")
+class RelayAddress(NamedTuple):
+    password: str
+    host: str
+    port: int
+    scheme: str = ""  # "": plain TCP; "ws" or "wss": WebSocket
+    path: str = ""  # the WebSocket request's path
+
+
+WEBSOCKET_SCHEMES = {"ws": "ws", "wss": "wss", "http": "ws", "https": "wss"}
+
+
+def split_password(address: str) -> Tuple[str, str]:
+    """A relay address as (password, the address without it). Plain TCP: [password@]host[:port], the password may hold
+    @ too. WebSocket: [password@]scheme://[password@]host[:port][/path]."""
+    address = address.strip()
+    at = address.find("://")
+    if at < 0:
+        password, _, rest = address.rpartition("@")
+        return password, rest.strip()
+    outer, _, scheme = address[:at].rpartition("@")
+    rest = address[at + 3:]
+    slash = rest.find("/")
+    authority, path = (rest, "") if slash < 0 else (rest[:slash], rest[slash:])
+    inner, _, host = authority.rpartition("@")
+    return inner or outer, f"{scheme.strip().lower()}://{host}{path}"
+
+
+def parse_address(address: str) -> RelayAddress:
+    """A relay address (split_password). ws:// and wss:// connect by WebSocket; http:// and https:// are taken for
+    them (the address a tunnel shows)."""
+    password, rest = split_password(address)
+    scheme = path = ""
+    default_port = DEFAULT_PORT
+    if "://" in rest:
+        given, _, rest = rest.partition("://")
+        if given not in WEBSOCKET_SCHEMES:
+            raise ValueError(f"unknown relay address scheme {given}://")
+        scheme = WEBSOCKET_SCHEMES[given]
+        default_port = 443 if scheme == "wss" else 80
+        rest, slash, path = rest.partition("/")
+        path = slash + path or "/"
+    host, _, port = rest.rpartition(":")
     if not host:
-        return password, rest.strip(), DEFAULT_PORT
-    return password, host.strip("[]"), int(port)
+        return RelayAddress(password, rest.strip("[]"), default_port, scheme, path)
+    return RelayAddress(password, host.strip("[]"), int(port), scheme, path)
 
 
 def shown_address(address: str) -> str:
     """A relay address without its password, for messages."""
-    return address.strip().rpartition("@")[2]
+    return split_password(address)[1]
 
 
 def field_screen(x: float, z: float) -> Tuple[int, int]:
@@ -186,16 +232,235 @@ def parse_join(payload: bytes) -> Tuple[int, bytes, str, str, str]:
     return version, group, slot, player, password
 
 
-async def read_frame(reader: asyncio.StreamReader) -> bytes:
-    """The next frame's payload; raises IncompleteReadError at the end and ValueError on a bad length."""
-    size = struct.unpack(">H", await reader.readexactly(2))[0]
+async def read_frame(reader: Union[asyncio.StreamReader, "WebSocketReader"], first: bytes = b"") -> bytes:
+    """The next frame's payload (first: its first byte, already read); raises IncompleteReadError at the end and
+    ValueError on a bad length."""
+    size = struct.unpack(">H", first + await reader.readexactly(2 - len(first)))[0]
     if size == 0 or size > MAX_FRAME:
         raise ValueError(f"frame of {size} bytes")
     return await reader.readexactly(size)
 
 
+def set_nodelay(writer: asyncio.StreamWriter) -> None:
+    sock = writer.get_extra_info("socket")
+    if sock is not None:
+        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+
+
+# WebSocket (RFC 6455), as much as the relay needs: binary messages carrying the frames' byte stream
+
+WEBSOCKET_GUID = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+WS_CONTINUATION, WS_TEXT, WS_BINARY, WS_CLOSE, WS_PING, WS_PONG = 0x0, 0x1, 0x2, 0x8, 0x9, 0xA
+MAX_WS_MESSAGE = 1 << 20  # bytes of one WebSocket frame; a longer one closes the connection
+MAX_HTTP_HEAD = 16 * 1024  # bytes of an upgrade request's or response's head
+USER_AGENT = "LASGhostRelay/1"  # some proxies refuse requests without one
+
+
+def websocket_accept(key: str) -> str:
+    return base64.b64encode(hashlib.sha1(key.encode() + WEBSOCKET_GUID).digest()).decode()
+
+
+def mask_bytes(data: bytes, mask: bytes) -> bytes:
+    if not data:
+        return data
+    key = (mask * (len(data) // 4 + 1))[:len(data)]
+    return (int.from_bytes(data, "big") ^ int.from_bytes(key, "big")).to_bytes(len(data), "big")
+
+
+async def read_http_head(reader: asyncio.StreamReader, first: bytes = b"") -> Tuple[str, Dict[str, str]]:
+    """An HTTP request's or response's first line and its headers (names in lower case)."""
+    head = first
+    while not head.endswith(b"\r\n\r\n"):
+        try:
+            head += await reader.readuntil(b"\n")
+        except asyncio.LimitOverrunError:
+            raise ValueError("HTTP line too long") from None
+        if len(head) > MAX_HTTP_HEAD:
+            raise ValueError("HTTP head too long")
+    lines = head.decode("latin-1").split("\r\n")
+    headers = {}
+    for line in lines[1:]:
+        name, colon, value = line.partition(":")
+        if colon:
+            headers[name.strip().lower()] = value.strip()
+    return lines[0], headers
+
+
+class WebSocketWriter:
+    """Writes to a WebSocket as asyncio.StreamWriter writes to TCP: each write() one binary message. A client masks
+    what it sends, a server does not."""
+
+    def __init__(self, writer: asyncio.StreamWriter, client: bool):
+        self.writer = writer
+        self.client = client
+        self.close_sent = False
+
+    @property
+    def transport(self) -> asyncio.WriteTransport:
+        return self.writer.transport
+
+    def get_extra_info(self, name: str, default=None):
+        return self.writer.get_extra_info(name, default)
+
+    def write(self, data: bytes) -> None:
+        self.send(WS_BINARY, data)
+
+    def send(self, opcode: int, data: bytes) -> None:
+        if self.close_sent or self.writer.is_closing():
+            return
+        mask_bit = 0x80 if self.client else 0
+        n = len(data)
+        if n < 126:
+            head = bytes([0x80 | opcode, mask_bit | n])
+        elif n < 0x10000:
+            head = bytes([0x80 | opcode, mask_bit | 126]) + struct.pack(">H", n)
+        else:
+            head = bytes([0x80 | opcode, mask_bit | 127]) + struct.pack(">Q", n)
+        if self.client:
+            mask = os.urandom(4)
+            head += mask
+            data = mask_bytes(data, mask)
+        self.writer.write(head + data)
+
+    def is_closing(self) -> bool:
+        return self.writer.is_closing()
+
+    def close(self) -> None:
+        """Sends a close (normal closure), then closes the connection."""
+        self.send(WS_CLOSE, struct.pack(">H", 1000))
+        self.close_sent = True
+        self.writer.close()
+
+    async def drain(self) -> None:
+        await self.writer.drain()
+
+    async def wait_closed(self) -> None:
+        await self.writer.wait_closed()
+
+
+class WebSocketReader:
+    """Reads a WebSocket's data messages as one byte stream, as asyncio.StreamReader reads TCP (readexactly); answers
+    pings. A close from the other side ends the stream (IncompleteReadError)."""
+
+    def __init__(self, reader: asyncio.StreamReader, writer: WebSocketWriter):
+        self.reader = reader
+        self.writer = writer
+        self.buffer = bytearray()
+
+    async def readexactly(self, n: int) -> bytes:
+        while len(self.buffer) < n:
+            await self.receive()
+        data = bytes(self.buffer[:n])
+        del self.buffer[:n]
+        return data
+
+    async def receive(self) -> None:
+        """Reads one WebSocket frame."""
+        head = await self.reader.readexactly(2)
+        opcode, size = head[0] & 0x0F, head[1] & 0x7F
+        if size == 126:
+            size = struct.unpack(">H", await self.reader.readexactly(2))[0]
+        elif size == 127:
+            size = struct.unpack(">Q", await self.reader.readexactly(8))[0]
+        if size > MAX_WS_MESSAGE:
+            raise ValueError(f"WebSocket frame of {size} bytes")
+        mask = await self.reader.readexactly(4) if head[1] & 0x80 else b""
+        data = await self.reader.readexactly(size)
+        if mask:
+            data = mask_bytes(data, mask)
+        if opcode in (WS_CONTINUATION, WS_TEXT, WS_BINARY):
+            self.buffer += data
+        elif opcode == WS_CLOSE:
+            raise asyncio.IncompleteReadError(bytes(self.buffer), None)
+        elif opcode == WS_PING:
+            self.writer.send(WS_PONG, data)
+
+
+async def accept_websocket(reader: asyncio.StreamReader, writer: asyncio.StreamWriter,
+                           first: bytes) -> Optional[Dict[str, str]]:
+    """The server's side of a WebSocket upgrade, its request's first byte already read: answers it and returns the
+    request's headers, or answers a request that is no upgrade (a browser) and returns None."""
+    line, headers = await read_http_head(reader, first)
+    key = headers.get("sec-websocket-key", "")
+    if not line.startswith("GET ") or headers.get("upgrade", "").lower() != "websocket" or not key:
+        text = b"LAS ghost relay. Players enter its address in the Link's Awakening client.\n"
+        writer.write(b"HTTP/1.1 426 Upgrade Required\r\nUpgrade: websocket\r\nConnection: close\r\n"
+                     b"Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s" % (len(text), text))
+        return None
+    writer.write(f"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+                 f"Sec-WebSocket-Accept: {websocket_accept(key)}\r\n\r\n".encode())
+    return headers
+
+
+def proxied_address(headers: Dict[str, str]) -> str:
+    """The player's address as a proxy names it: CF-Connecting-IP (Cloudflare's, passed on by proxies after it), else
+    the last X-Forwarded-For entry (the one the proxy added); "" none."""
+    return (headers.get("cf-connecting-ip") or headers.get("x-forwarded-for", "").rpartition(",")[2]).strip()
+
+
+Proxy = Union[ipaddress.IPv4Network, ipaddress.IPv6Network, str]
+
+
+def parse_proxies(values: List[str]) -> List[Proxy]:
+    """--trusted-proxy values (each may list several, comma separated): networks or addresses, else host names."""
+    proxies: List[Proxy] = []
+    for value in values:
+        for item in value.split(","):
+            item = item.strip()
+            if not item:
+                continue
+            try:
+                proxies.append(ipaddress.ip_network(item, strict=False))
+            except ValueError:
+                proxies.append(item)
+    return proxies
+
+
+def client_ssl_context() -> ssl.SSLContext:
+    try:
+        import certifi  # Archipelago has it; the system's certificates otherwise
+        return ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        return ssl.create_default_context()
+
+
+async def connect(address: str, timeout: float = 10, local_addr: Optional[Tuple[str, int]] = None) \
+        -> Tuple[str, Union[asyncio.StreamReader, WebSocketReader], Union[asyncio.StreamWriter, WebSocketWriter]]:
+    """Connects to a relay address (parse_address): plain TCP, or a WebSocket for ws:// and wss://. Returns the
+    password, a reader (readexactly, for read_frame) and a writer (write takes frames)."""
+    relay = parse_address(address)
+    secure = relay.scheme == "wss"
+    reader, writer = await asyncio.wait_for(asyncio.open_connection(
+        relay.host, relay.port, ssl=client_ssl_context() if secure else None, local_addr=local_addr), timeout)
+    set_nodelay(writer)
+    if not relay.scheme:
+        return relay.password, reader, writer
+    try:
+        host = f"[{relay.host}]" if ":" in relay.host else relay.host
+        if relay.port != (443 if secure else 80):
+            host += f":{relay.port}"
+        key = base64.b64encode(os.urandom(16)).decode()
+        writer.write(f"GET {relay.path} HTTP/1.1\r\nHost: {host}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+                     f"Sec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\nUser-Agent: {USER_AGENT}\r\n\r\n"
+                     .encode())
+        try:
+            line, headers = await asyncio.wait_for(read_http_head(reader), timeout)
+        except asyncio.IncompleteReadError:
+            raise ConnectionError("the relay closed the connection: it may not take WebSocket connections") from None
+        status = line.split(" ", 1)[1] if " " in line else line
+        if not status.startswith("101"):
+            raise ConnectionError(f"the relay answered {status}")
+        if headers.get("sec-websocket-accept") != websocket_accept(key):
+            raise ConnectionError("the relay's WebSocket answer does not match")
+    except BaseException:
+        writer.close()
+        raise
+    ws_writer = WebSocketWriter(writer, client=True)
+    return relay.password, WebSocketReader(reader, ws_writer), ws_writer
+
+
 class Member:
-    def __init__(self, relay: "Relay", writer: asyncio.StreamWriter, address: str):
+    def __init__(self, relay: "Relay", writer: Union[asyncio.StreamWriter, WebSocketWriter], address: str):
         self.relay = relay
         self.writer = writer
         self.address = address
@@ -265,10 +530,12 @@ class Member:
 
 
 class Relay:
-    def __init__(self, echo: Optional[float] = None, password: str = "", nogroups: bool = False):
+    def __init__(self, echo: Optional[float] = None, password: str = "", nogroups: bool = False,
+                 trusted_proxies: Sequence[Proxy] = ()):
         self.echo = echo  # for tests: each member also sees itself as ECHO_ID, this far along x
         self.password = password  # "": anyone may join
         self.nogroups = nogroups  # every member in ONE_GROUP, whatever its multiworld
+        self.trusted_proxies = list(trusted_proxies)  # besides this computer (trusts)
         self.groups: Dict[bytes, List[Member]] = {}
         self.members: Dict[int, Member] = {}
         self.connections: Set[Member] = set()
@@ -283,20 +550,71 @@ class Relay:
                 return candidate
         raise RuntimeError("no free player id")
 
+    async def open(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, address: str) \
+            -> Tuple[Union[asyncio.StreamReader, WebSocketReader, None], Union[asyncio.StreamWriter, WebSocketWriter],
+                     str, bytes]:
+        """Tells plain TCP from a WebSocket by the first byte. Returns the connection's reader and writer (reader None:
+        an HTTP request that was no upgrade, answered), the player's address and the first byte if it belongs to the
+        first frame."""
+        first = await reader.readexactly(1)
+        if first != b"G":
+            return reader, writer, address, first
+        headers = await accept_websocket(reader, writer, first)
+        if headers is None:
+            return None, writer, address, b""
+        if await self.trusts(address):
+            address = proxied_address(headers) or address
+        ws_writer = WebSocketWriter(writer, client=False)
+        return WebSocketReader(reader, ws_writer), ws_writer, address, b""
+
+    async def trusts(self, address: str) -> bool:
+        """Whether a WebSocket from this address comes through a proxy whose headers name the player (proxied_address):
+        this computer (cloudflared), or a --trusted-proxy (a network, or a host name such as a reverse proxy's
+        container, looked up each time, as its address may change). Anyone else could put any address there."""
+        try:
+            ip = ipaddress.ip_address(address)
+        except ValueError:
+            return False
+        mapped = getattr(ip, "ipv4_mapped", None)  # ::ffff:127.0.0.1
+        if mapped is not None:
+            ip = mapped
+        if ip.is_loopback:
+            return True
+        names = []
+        for proxy in self.trusted_proxies:
+            if isinstance(proxy, str):
+                names.append(proxy)
+            elif ip in proxy:
+                return True
+        for name in names:
+            try:
+                infos = await asyncio.get_running_loop().getaddrinfo(name, None)
+            except OSError:
+                continue
+            if any(ipaddress.ip_address(str(info[4][0]).split("%")[0]) == ip for info in infos):
+                return True
+        return False
+
     async def handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-        sock = writer.get_extra_info("socket")
-        if sock is not None:
-            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        set_nodelay(writer)
         peer = writer.get_extra_info("peername")
         address = peer[0] if peer else "?"
-        member = Member(self, writer, address)
+        try:
+            stream, out, address, first = await asyncio.wait_for(self.open(reader, writer, address), 10)
+        except (asyncio.IncompleteReadError, asyncio.TimeoutError, ConnectionError, OSError, ValueError):
+            writer.close()
+            return
+        if stream is None:
+            writer.close()
+            return
+        member = Member(self, out, address)
         try:
             if len(self.connections) >= MAX_CLIENTS:
                 return self.refuse(member, "The ghost relay is full.")
             if sum(1 for m in self.connections if m.address == address) >= MAX_PER_ADDRESS:
                 return self.refuse(member, "Too many connections from this address.")
             self.connections.add(member)
-            payload = await asyncio.wait_for(read_frame(reader), 10)
+            payload = await asyncio.wait_for(read_frame(stream, first), 10)
             if payload[0] != JOIN:
                 return self.refuse(member, "Join first.")
             version, world, slot, player, password = parse_join(payload)
@@ -313,10 +631,10 @@ class Relay:
                                    "This group of players is full.")
             self.join(member, world, slot, player)
             while True:
-                payload = await read_frame(reader)
+                payload = await read_frame(stream)
                 member.last_heard = time.monotonic()
                 self.receive(member, payload)
-                await writer.drain()
+                await out.drain()
         except (asyncio.IncompleteReadError, asyncio.TimeoutError, ConnectionError, OSError, ValueError, IndexError,
                 struct.error):
             pass
@@ -354,7 +672,9 @@ class Relay:
         if self.echo is not None:
             member.send(bytes([PLAYER]) + struct.pack(">H", ECHO_ID) + name_bytes("Echo") + name_bytes("Echo"))
         members.append(member)
-        self.log.info(f"join: player {member.id}, {len(members)} in the group, {len(self.members)} on the relay")
+        transport = "WebSocket" if isinstance(member.writer, WebSocketWriter) else "TCP"
+        self.log.info(f"join: player {member.id} ({transport}), {len(members)} in the group, {len(self.members)} on "
+                      f"the relay")
 
     def leave(self, member: Member) -> None:
         if member.group is None:
@@ -771,16 +1091,19 @@ def is_public(address: str) -> bool:
 
 
 async def serve(host: str, port: int, echo: Optional[float] = None, forward: bool = False,
-                password: str = "", nogroups: bool = False) -> None:
-    relay = Relay(echo, password, nogroups)
+                password: str = "", nogroups: bool = False, trusted_proxies: Sequence[Proxy] = ()) -> None:
+    relay = Relay(echo, password, nogroups, trusted_proxies)
     server = await asyncio.start_server(relay.handle, host, port)
     sweep = asyncio.create_task(relay.sweep())
     choosing = asyncio.create_task(relay.choosing())
-    relay.log.info("listening on " + ", ".join(str(s.getsockname()) for s in server.sockets))
+    relay.log.info("listening on " + ", ".join(str(s.getsockname()) for s in server.sockets) +
+                   " (plain TCP and WebSocket)")
     if password:
         relay.log.info("players need the password: they enter the relay as password@host:port")
     if nogroups:
         relay.log.info(f"no groups: the players of all multiworlds see each other, at most {MAX_GROUP}")
+    if trusted_proxies:
+        relay.log.info("trusted proxies: " + ", ".join(map(str, trusted_proxies)))
     renew = None
     unmapper = None
     if forward:
@@ -838,13 +1161,21 @@ def main() -> None:
     parser.add_argument("--nogroups", action="store_true",
                         help=f"Put the players of all multiworlds in one group, so all of them see each other (at "
                              f"most {MAX_GROUP}), not only those of the same multiworld.")
+    parser.add_argument("--trusted-proxy", action="append", default=[os.environ.get(TRUSTED_PROXY_ENV, "")],
+                        metavar="PROXY",
+                        help=f"A reverse proxy whose WebSocket connections name the player's address (CF-Connecting-IP, "
+                             f"else X-Forwarded-For), so the limit of {MAX_PER_ADDRESS} connections per address counts "
+                             f"players, not the proxy: an address, a network (172.18.0.0/16) or a host name (a "
+                             f"container's, looked up for each connection). Repeat it or separate with commas. This "
+                             f"computer is always trusted. Default: the environment variable {TRUSTED_PROXY_ENV}.")
     args = parser.parse_args()
     if len(args.password.encode()) > MAX_NAME:
         parser.error(f"--password: at most {MAX_NAME} bytes")
     logging.basicConfig(level=logging.WARNING if args.quiet else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
     try:
-        asyncio.run(serve(args.host, args.port, args.echo, args.forward, args.password, args.nogroups))
+        asyncio.run(serve(args.host, args.port, args.echo, args.forward, args.password, args.nogroups,
+                          parse_proxies(args.trusted_proxy)))
     except KeyboardInterrupt:
         pass
 

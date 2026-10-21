@@ -889,7 +889,8 @@ def launch(*launch_args: str) -> None:
     parser.add_argument("--game-host", default=None,
                         help="Address of the Switch or emulator running the game (default: las_options.game_host).")
     parser.add_argument("--game-port", type=int, default=GAME_PORT)
-    parser.add_argument("--ghost-relay", default=None, help="Ghost relay [password@]host:port (default: las_options.ghost_relay).")
+    parser.add_argument("--ghost-relay", default=None, help="Ghost relay [password@]host:port or [password@]wss://host "
+                                                              "(default: las_options.ghost_relay).")
     parser.add_argument("--ghost-secret", default=None,
                         help="The multiworld's ghost secret, for tests (default: the patch file's).")
     if not hasattr(parser.parse_args([]), "nogui"):

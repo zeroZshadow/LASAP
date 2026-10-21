@@ -86,7 +86,8 @@ class LASSettings(settings.Group):
         """Show each nearby ghost's slot name over its head."""
 
     class GhostRelay(str):
-        """The ghost relay, host:port, or password@host:port for a relay with a password. Generating writes it into
+        """The ghost relay: host:port, password@host:port for a relay with a password, or wss://host for a relay
+        behind a tunnel (password@wss://host with a password). Generating writes it into
         each LAS patch file; the client uses it, or when it is empty the patch file's. With neither: no ghosts."""
 
     emulator: Emulator = Emulator("")
