@@ -44,8 +44,8 @@ class TestDefault(LASTestBase):
             self.assertEqual(container.player_name, self.multiworld.player_name[self.player])
 
         self.assertEqual(set(patch), {"format", "seed_name", "player", "slot_name", "seed_hash", "settings",
-                                      "starting_items", "placements", "location_ids", "location_names",
-                                      "location_models", "location_chests", "dungeon_entrances", "hints",
+                                      "starting_items", "placements", "location_ids", "optional_locations",
+                                      "location_names", "location_models", "location_chests", "dungeon_entrances", "hints",
                                       "ghost_secret", "ghost_relay"})
         self.assertLessEqual(set(patch["location_models"]), set(patch["location_ids"]))
         self.assertEqual(patch["format"], 1)

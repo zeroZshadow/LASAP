@@ -1,7 +1,7 @@
 """Static checks on patcher output: every chest location holds the AP placeholder (the model variant of
 `location_models`) with its local id; with "Texture + Size" chests, the chests holding a seashell and only those are
 the seashell chest. Every randomized heart piece and seashell actor has a unique index above
-the received range (DESIGN.md, item model). With the map tracker on, every AP location has one icon in ap_map.txt
+the received range (DESIGN.md, item model). With the map tracker on, every AP location but the optional ones has one icon in ap_map.txt
 and every icon its datasheet row and a name. Below eight required instruments, the egg's event checks single instruments instead of
 all of them. With in-game hints, every hint source shows its own message, which fits the text box, and a server hint
 sets its flag, which ap_hints.txt names with the hinted location. With Shuffled Dungeons, each dungeon door leads into
@@ -78,7 +78,8 @@ if patch["settings"].get("Map Tracker"):
     dungeon = {int(p[1]): (float(p[2]), float(p[3]), [int(i) for i in p[4:]]) for p in lines if p[0] == "D"}
     iconed = [i for ids in overworld.values() for i in ids] + [i for *_, ids in dungeon.values() for i in ids]
     positions = ap_map.load_positions()
-    shown = patch["location_ids"]
+    optional = set(patch.get("optional_locations", ()))
+    shown = {loc: i for loc, i in patch["location_ids"].items() if loc not in optional}
     # overworld icons: overworld and dungeon checks (at the dungeon's entrance); dungeon icons: the dungeons' checks
     # that are not chests
     want = [int(i) for loc, i in shown.items() if loc in positions["overworld"]]
