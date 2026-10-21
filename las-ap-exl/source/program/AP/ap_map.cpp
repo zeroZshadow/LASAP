@@ -5,8 +5,8 @@
 // a row's icon while the event flag named in the row is set; those flags are answered here. The flag is
 // MAP_FLAG_PREFIX<group> for the in-logic look and MAP_FLAG_PREFIX<mark><group> for the others (MAP_LOOK_MARKS); the
 // group's look is set and the others are not. In logic: every unchecked location of the group is in logic, or what is
-// in logic is not known yet (the client sends it); partly in logic: some are; out of logic: none is; collected: all
-// are checked. Hovering an icon shows Place:<its flag>, whose text names the unchecked locations, or the collected
+// in logic is not known yet (the client sends it); partly in logic: some are; out of logic: none is, or the group's
+// name is hidden (a shuffled dungeon not entered yet); collected: all are checked. Hovering an icon shows Place:<its flag>, whose text names the unchecked locations, or the collected
 // ones (ap_text.cpp). The map's X button, which opens the memories, instead hides or shows the out-of-logic icons
 // ("Toggle out of logic"): those icons are always made, and hidden after the map adds them while they are toggled
 // off; the toggle shows or hides the page's markers in place. A on an icon of one unchecked location marks it skipped
@@ -126,12 +126,24 @@ namespace {
         return AP::IsLocationChecked(id) || AP::IsLocationSkipped(id);
     }
 
-    Look GroupLook(const std::vector<int>& ids) {
+    // A group whose other name shows: a shuffled dungeon's until its flag is set.
+    bool NameHidden(size_t group) {
+        auto hidden = g_HiddenNames.find(group);
+        return hidden != g_HiddenNames.end() && !EventFlags::CheckFlag(hidden->second.first);
+    }
+
+    // A location of the group in logic. None is while the group's name is hidden: its look would tell which dungeon
+    // its door leads into.
+    bool Reachable(size_t group, int id) {
+        return !NameHidden(group) && Reachable(id);
+    }
+
+    Look GroupLook(size_t group) {
         size_t left = 0, reachable = 0;
-        for (int id : ids) {
+        for (int id : g_Overworld[group]) {
             if (Done(id)) continue;
             left++;
-            if (Reachable(id)) reachable++;
+            if (Reachable(group, id)) reachable++;
         }
         if (left == 0) return Collected;
         return reachable == left ? InLogic : reachable > 0 ? Partial : OutOfLogic;
@@ -145,12 +157,12 @@ namespace {
     // Whether a group's icon in this look is made: the look shown, and every look skipping some of its unchecked
     // locations gives it (collected, in logic with one in logic, out of logic with one out of logic, partly with
     // both), so A can swap them on the open map.
-    bool LookMade(const std::vector<int>& ids, Look look) {
-        if (GroupLook(ids) == look) return true;
+    bool LookMade(size_t group, Look look) {
+        if (GroupLook(group) == look) return true;
         bool in = false, out = false;
-        for (int id : ids) {
+        for (int id : g_Overworld[group]) {
             if (AP::IsLocationChecked(id)) continue;
-            (Reachable(id) ? in : out) = true;
+            (Reachable(group, id) ? in : out) = true;
         }
         switch (look) {
             case Collected: return in || out;
@@ -164,7 +176,7 @@ namespace {
     // Whether a made icon shows: its look is the group's, and it is not an out-of-logic icon toggled off.
     bool LookShown(int group, Look look) {
         if (group < 0 || static_cast<size_t>(group) >= g_Overworld.size()) return false;
-        return GroupLook(g_Overworld[group]) == look && !(look == OutOfLogic && g_OutHidden);
+        return GroupLook(group) == look && !(look == OutOfLogic && g_OutHidden);
     }
 
     // The group and look a flag or label names (MAP_FLAG_PREFIX[mark]<group>), or -1.
@@ -608,8 +620,7 @@ namespace {
         if (group < 0 || static_cast<size_t>(group) >= g_Overworld.size() || g_Overworld[group].size() < 2) {
             return false;
         }
-        auto hidden = g_HiddenNames.find(group);
-        return hidden == g_HiddenNames.end() || EventFlags::CheckFlag(hidden->second.first);
+        return !NameHidden(group);
     }
 }
 
@@ -822,7 +833,7 @@ namespace AP {
         int group = ParseIcon(name, look);
         if (group >= 0) {
             value = !g_IconsHidden && static_cast<size_t>(group) < g_Overworld.size() &&
-                    LookMade(g_Overworld[group], look);
+                    LookMade(group, look);
             return true;
         }
         if (StartsWith(name, kTraversePrefix) || StartsWith(name, kOpenPrefix)) {
@@ -842,8 +853,7 @@ namespace AP {
         // after "Skipped: " when its one location is skipped; or its other name
         // alone until its flag is set (the count would tell a dungeon by its number of locations).
         if (group < 0 || static_cast<size_t>(group) >= g_Overworld.size()) return "";
-        auto hidden = g_HiddenNames.find(group);
-        if (hidden != g_HiddenNames.end() && !EventFlags::CheckFlag(hidden->second.first)) return hidden->second.second;
+        if (NameHidden(group)) return g_HiddenNames[group].second;
         std::string name = static_cast<size_t>(group) < g_GroupNames.size() ? g_GroupNames[group] : "";
         const auto& ids = g_Overworld[group];
         if (Skippable(ids) && IsLocationSkipped(ids[0])) return "Skipped: " + name;
@@ -945,7 +955,7 @@ namespace AP {
 
     std::string MapState() {
         size_t looks[kLooks] = {};
-        for (const auto& ids : g_Overworld) looks[GroupLook(ids)]++;
+        for (size_t group = 0; group < g_Overworld.size(); group++) looks[GroupLook(group)]++;
         size_t open = g_Overworld.size() - looks[Collected];
         return "map=" + std::string(g_Enabled ? "1" : "0") + " icons=" + std::to_string(open) + "/" +
                std::to_string(g_Overworld.size()) + " looks=" + std::to_string(looks[InLogic]) + "," +
