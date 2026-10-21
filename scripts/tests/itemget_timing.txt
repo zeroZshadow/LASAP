@@ -1,4 +1,4 @@
-# The shorter item-get (TESTING.md, Item-get timing), with Received Items set to Item-get (the default): a received
+# The shorter item-get (TESTING.md, Item-get timing), with Instant Pickups off (the default): a received
 # item's text opens within 1.6 s of the item-get's start (the game waited 1.9 s), and once the text closes Link is
 # free within 1.2 s (the game held him until the item's fanfare ended, 2.5 s and more after a text closed with B).
 # Three items in a row then follow each other within 1 s. B is held while a page prints, from its state Reading. Run after boot_file1 (or newgame_file2), with Link free.

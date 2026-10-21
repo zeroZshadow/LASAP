@@ -1,4 +1,4 @@
-# Received Items set to Popup (a mod patched with it, or config.ini [tweaks] received_items = popup): a received item
+# Instant Pickups (a mod patched with it, or config.ini [tweaks] instant_pickups = True): a received item
 # shows its model above Link's head and the toast names it, while Link keeps walking; no event starts. Then a song,
 # whose model is Marin (an NPC model, sized and centred as in the item-get), and a trap, which still plays its effect
 # as an event, and a level load while a popup shows. Run after boot_file1 (or newgame_file2), with Link free on open

@@ -1,5 +1,5 @@
 # Instant Pickups in a multiworld, with a 16-character player name (Archipelago's longest). A two-slot seed: Link
-# (LAS, patched with Instant Pickups and Received Items Popup) and a ChecksFinder slot named "Wandering Walrus", with
+# (LAS, patched with Instant Pickups) and a ChecksFinder slot named "Wandering Walrus", with
 # plando putting Wandering Walrus's Map Width in the beach chest and Link's Progressive Power Bracelet in Tile 1 (YAMLs
 # in scripts/tests/players_instant; generate with --plando "bosses, items"). The scripted session runs (server and client, LASAP_E2E), after boot_file1 on a save
 # where the beach chest is closed.

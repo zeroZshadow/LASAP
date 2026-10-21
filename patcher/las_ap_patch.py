@@ -148,15 +148,11 @@ PLAYER_SETTINGS = {
     "Randomize Environments": False,
     "Disable Low Health Beep": False,
     "No 30 FPS Drops": "On emulators",
-    "Received Items": "Item-get",
     "Instant Pickups": False,
 }
-PLAYER_CHOICES = {"Music": ("Vanilla", "Shuffled", "Removed"), "No 30 FPS Drops": ("On emulators", "Always", "Never"),
-                  "Received Items": ("Item-get", "Popup")}
+PLAYER_CHOICES = {"Music": ("Vanilla", "Shuffled", "Removed"), "No 30 FPS Drops": ("On emulators", "Always", "Never")}
 # No 30 FPS Drops as config.ini [tweaks] no_30fps_drops: the module finds out whether it runs on an emulator
 NO_30FPS_DROPS = {"On emulators": "emulator", "Always": "true", "Never": "false"}
-# Received Items as config.ini [tweaks] received_items: how the module shows an item from the server
-RECEIVED_ITEMS = {"Item-get": "itemget", "Popup": "popup"}
 # Walking and swimming speed with Movement Speed on: LASR's single speed (dashing stays at 1.0)
 MOVEMENT_SPEED = 1.2
 # ItemDrop.gsheet rows of the two buffs; the settings empty them, for drops that name them. The buffs after a run of
@@ -457,7 +453,6 @@ class APModsProcess(mod_generator.ModsProcess):
                  f"no_piece_of_power = {self.settings.get('Disable Piece of Power', False)}\n"
                  f"easy_fishing = {self.settings.get('Easy Fishing', False)}\n"
                  f"no_30fps_drops = {NO_30FPS_DROPS[self.settings.get('No 30 FPS Drops', 'On emulators')]}\n"
-                 f"received_items = {RECEIVED_ITEMS[self.settings.get('Received Items', 'Item-get')]}\n"
                  f"instant_pickups = {self.settings.get('Instant Pickups', False)}\n")
         path.write_text(text + f"\n[archipelago]\nseed_hash = {self.seed_hash}\n")
         # What each location holds, so the found text names it before the client connects (DESIGN.md)

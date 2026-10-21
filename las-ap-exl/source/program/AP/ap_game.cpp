@@ -475,9 +475,8 @@ namespace {
         return "You found " + ItemDisplayName(show.id);
     }
 
-    // Received Items set to Popup: the item's model above Link's head and the toast, while play goes on. The next
-    // one waits until both are done. Traps still play their effect as an event. A find (Instant Pickups) shows the
-    // same way, with its fanfare.
+    // Instant Pickups: the item's model above Link's head and the toast, while play goes on. The next one waits
+    // until both are done. Traps still play their effect as an event. A find also plays its fanfare.
     void ShowPopup(const Show& show) {
         if (show.found) {
             AP::QueueToast(FoundToast(show));
@@ -494,9 +493,9 @@ namespace {
         g_ItemEventShown = show.id;
     }
 
-    // Shows queued items one at a time, each as an event, once the player is free and holds nothing; with Received
-    // Items set to Popup, items as popups. Finds (Instant Pickups) come first and show as soon as the popup is free,
-    // also during the event that gave them.
+    // Shows queued items one at a time, each as an event, once the player is free and holds nothing; with Instant
+    // Pickups, as popups. Finds come first and show as soon as the popup is free, also during the event that gave
+    // them.
     void TickItemGet() {
         bool free = PlayerFree();
         if (free && !g_WasFree) g_FreeSince = NowMs();
@@ -516,7 +515,7 @@ namespace {
             ShowPopup(g_Showing);
             return;
         }
-        bool popup = global_config.tweaks.received_popup && !g_ShowQueue.empty() && g_ShowQueue.front().trap.empty();
+        bool popup = global_config.tweaks.instant_pickups && !g_ShowQueue.empty() && g_ShowQueue.front().trap.empty();
         if (popup && (AP::Popup::Busy() || !AP::ToastsIdle())) return;
         // An item-get right after the last item event's end follows it sooner than after other events
         u64 settle = popup ? kPopupSettleMs : g_FreeSince - g_ItemEventEnded < 100 ? kNextItemGetMs : kFreeSettleMs;

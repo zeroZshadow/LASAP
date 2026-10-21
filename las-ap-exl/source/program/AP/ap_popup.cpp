@@ -1,4 +1,4 @@
-// The received-item popup (DESIGN.md, Showing received items): with Received Items set to Popup, a received item
+// The item popup (DESIGN.md, Showing received items): with Instant Pickups, a received or found item
 // shows its 3D model above Link's head for a moment while the toast names it; play goes on. The model is made the
 // way NPCs that hold an item make theirs: the game's item model maker loads the item's model (its Items.gsheet
 // npcKey's Npc row, as the item-get's model task does) and makes a skeletal model component of the owner, a node

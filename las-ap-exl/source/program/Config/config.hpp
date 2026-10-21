@@ -54,8 +54,7 @@ struct PatchConfig {
         bool no_piece_of_power;
         bool easy_fishing;
         std::string no_30fps_drops = "emulator";  // emulator, true or false
-        bool received_popup = false;  // received_items: itemget (an item-get per item) or popup
-        bool instant_pickups = false; // items Link finds show as a popup instead of an item-get
+        bool instant_pickups = false; // items Link finds and items from the server show as a popup, not an item-get
     } tweaks;
 
     struct {
@@ -222,9 +221,6 @@ struct PatchConfig {
         }
         else if (key == "no_30fps_drops") {
             tweaks.no_30fps_drops = value;
-        }
-        else if (key == "received_items") {
-            tweaks.received_popup = value == "popup";
         }
         else if (key == "instant_pickups" && value == "true") {
             tweaks.instant_pickups = true;
