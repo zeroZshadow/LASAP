@@ -35,6 +35,9 @@ namespace AP {
     constexpr const char* ITEM_EVENT_ENTRY = "APItemGet";
     // Common.bfevfl entries the patcher adds for received traps: AP<trap key> plays LASR's effect of that trap.
     constexpr const char* TRAP_EVENT_PREFIX = "AP";
+    // An item-get whose message entry starts with this mark plays as the game's own also with Instant Pickups; the
+    // mark is dropped from the entry. The patcher marks the instruments' pedestals (patcher: NATIVE_ITEM_GET_MARK).
+    constexpr char NATIVE_ITEM_GET_MARK = '!';
     // DeathLink event flags (patcher): the module sets DEATHLINK_FLAG with a received death, so the game over flow
     // skips the Secret Medicine and clears it; the flow sets DIED_FLAG for any other death, which the module reports.
     constexpr const char* DEATHLINK_FLAG = "APDeathLink";
@@ -125,9 +128,16 @@ namespace AP {
     void TickToasts(bool inLevel);
     // No toast showing or waiting.
     bool ToastsIdle();
+    // A toast shows now (the popup has its text).
+    bool ToastShowing();
     // A received item's toast: "You got <item>", then "from <sender>" on a second line; names clipped as in the
     // received text.
     std::string ReceivedToast(const std::string& item, const std::string& sender);
+    // A found item's toast (Instant Pickups): "You found <item>", then "for <player>" for another player's item; the
+    // names as the found text has them. FoundToast() for the placeholder just found (or the mansion's present), "" for
+    // a location with no name.
+    std::string FoundToast(int local_id);
+    std::string FoundToast();
 
     // Map tracker (ap_map.cpp)
     void LoadMap();
@@ -179,6 +189,11 @@ namespace AP::Music {
     std::string ZoneTrack();
     // The track the last change started plays at full volume, also under the pause menu, which turns music down.
     void Loud();
+    // Instant Pickups: the item's fanfare, as its item-get starts it; one this started before and still plays fades
+    // out first, so two never play over each other.
+    void Fanfare(int itemId);
+    // The Guardian Acorn's and Piece of Power's music, as their item-get starts it.
+    void BuffMusic();
     // Playback: repeat one (on at the start: the chosen track loops) and shuffle (turning it on draws a new order).
     // With repeat one off, a track that has played through gives way to the next (Skip(1)).
     bool RepeatOne();
@@ -300,10 +315,15 @@ namespace AP::Popup {
     bool Show(int itemId);
     // A model is loading or showing.
     bool Busy();
+#ifdef LASAP_TEST
+    // DBG popsway: whether the model turns from side to side (off: it faces the camera)
+    void Sway(bool on);
+#endif
     // The item model maker's task made this holder's model: the popup's, true.
     bool IsHolder(const void* holder);
-    // The popup's model is an NPC model (HeldModelFix): that scale, and that model point (model units) on the spot.
-    void Fit(float scale, float cx, float cy, float cz);
+    // The popup's model is an NPC model (HeldModelFix): that scale, that model point (model units) on the spot, and
+    // that angle in the item-get's frame (degrees: x pitch, y yaw, z roll, applied roll first).
+    void Fit(float scale, const Game::Vec3& center, const Game::Vec3& angle);
     // Once per tick.
     void Tick();
 }

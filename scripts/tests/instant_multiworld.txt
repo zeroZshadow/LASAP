@@ -1,0 +1,56 @@
+# Instant Pickups in a multiworld, with a 16-character player name (Archipelago's longest). A two-slot seed: Link
+# (LAS, patched with Instant Pickups and Received Items Popup) and a ChecksFinder slot named "Wandering Walrus", with
+# plando putting Wandering Walrus's Map Width in the beach chest and Link's Progressive Power Bracelet in Tile 1 (YAMLs
+# in scripts/tests/players_instant; generate with --plando "bosses, items"). The scripted session runs (server and client, LASAP_E2E), after boot_file1 on a save
+# where the beach chest is closed.
+# 1. Link opens the beach chest: no item-get; the popup and the toast "You found Map Width" / "for Wandering Walrus",
+#    and the server has the item sent.
+# 2. While Link walks, the server checks Tile 1 for Wandering Walrus: Link's bracelet arrives as a popup and the toast
+#    "You got Progressive Power Bracelet" / "from Wandering Walrus" while he keeps walking (recv goes from 0 to 1).
+# Screenshots: instant_mw_found, instant_mw_received.
+expect HELLO 30
+guard hurt
+send DBG grant PowerBraceletLv1 1 -1 0
+expect OK.grant 5
+warp Field 86.25 6 173.25
+at 86.25 173.25
+face right
+interact
+until carry=1+free 3
+face left
+tap 1
+until carry=0 3
+goto 87.75 6 173.25
+at 87.75 173.25
+face up
+guard anim=item_get_st
+guard msg:Reading
+interact
+await 3 popup=1
+free 5
+await 5 toast=1
+send DBG text SystemSaving
+expect said=You\sfound\sMap\sWidth\sfor\sWandering\sWalrus 5
+shot D:/DEV/LASAP-sandbox/instant_mw_found.png
+logged Link\ssent\sMap\sWidth\sto\sWandering\sWalrus 10 server
+await 5 popup=0
+await 10 toast=0
+# 2. The bracelet from Wandering Walrus, received while Link walks west along the beach
+check \srecv=0\s
+srv /send_location "Wandering Walrus" Tile 1
+# show: a received item's display waits (the module's condition; popup and toast are STATE's)
+hold 0 -14000 0 until show=1 10
+send DBG input 0 4000 -14000 0
+expect OK.input 5
+await 3 popup=1
+check \sanim=walk
+await 3 toast=1
+check \sanim=walk
+send DBG text SystemSaving
+expect said=You\sgot\sProgressive\sPower\sBracelet\sfrom\sWandering\sWalrus 5
+shot D:/DEV/LASAP-sandbox/instant_mw_received.png
+check \srecv=1\s
+await 5 popup=0
+guard off msg:Reading
+guard off anim=item_get_st
+guard off hurt

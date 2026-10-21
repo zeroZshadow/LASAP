@@ -1,0 +1,12 @@
+name: Link
+game: Links Awakening Switch
+Links Awakening Switch:
+  logic: basic
+  traps: none
+  plando_items:
+    # Received from the other player (server /send_location): a long item name from a long player name
+    - items:
+        Progressive Power Bracelet: 1
+      locations:
+        - Tile 1
+      world: Wandering Walrus

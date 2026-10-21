@@ -52,6 +52,11 @@ namespace {
     constexpr float kHeight = 2.3f;    // above Link's feet; the item-get holds items 2 units up
     constexpr float kRise = 0.4f;      // it rises this far while it grows
     constexpr float kTilt = -30.0f;    // degrees about x: tipped towards the camera, as the item-get tips its item
+    // An NPC model is turned by its fix's angle from facing the camera, as in the item-get: the item-get's camera looks
+    // down 65 degrees (the play camera 45) and the item's node is tipped back as far. The camera at Framework +0x560:
+    // its view rows at +0x20 (the rotation's rows: +0x20, +0x30, +0x40), so its columns are the camera's axes.
+    constexpr size_t kFrameworkCamera = 0x560, kCameraView = 0x20;
+    constexpr float kItemGetTilt = -65.0f;  // without a camera
     constexpr float kSwayDeg = 35.0f;  // it turns from side to side, its front to the camera
     constexpr u64 kSwayMs = 1600;
 
@@ -92,6 +97,32 @@ namespace {
         return q;
     }
 
+    // The camera's world rotation
+    Quat CameraRotation() {
+        Game::Framework* fmwk = Game::GetFramework();
+        const u8* camera = fmwk != nullptr ? *reinterpret_cast<u8* const*>(reinterpret_cast<u8*>(fmwk) + kFrameworkCamera)
+                                           : nullptr;
+        if (camera == nullptr) return Axis(0, kItemGetTilt);
+        const float* v = reinterpret_cast<const float*>(camera + kCameraView);
+        auto m = [v](int row, int col) { return v[row * 4 + col]; };
+        float trace = m(0, 0) + m(1, 1) + m(2, 2);
+        Quat q;
+        if (trace > 0.0f) {
+            float s = sqrtf(trace + 1.0f) * 2.0f;
+            q = {(m(2, 1) - m(1, 2)) / s, (m(0, 2) - m(2, 0)) / s, (m(1, 0) - m(0, 1)) / s, 0.25f * s};
+        } else if (m(0, 0) > m(1, 1) && m(0, 0) > m(2, 2)) {
+            float s = sqrtf(1.0f + m(0, 0) - m(1, 1) - m(2, 2)) * 2.0f;
+            q = {0.25f * s, (m(0, 1) + m(1, 0)) / s, (m(0, 2) + m(2, 0)) / s, (m(2, 1) - m(1, 2)) / s};
+        } else if (m(1, 1) > m(2, 2)) {
+            float s = sqrtf(1.0f + m(1, 1) - m(0, 0) - m(2, 2)) * 2.0f;
+            q = {(m(0, 1) + m(1, 0)) / s, 0.25f * s, (m(1, 2) + m(2, 1)) / s, (m(0, 2) - m(2, 0)) / s};
+        } else {
+            float s = sqrtf(1.0f + m(2, 2) - m(0, 0) - m(1, 1)) * 2.0f;
+            q = {(m(0, 2) + m(2, 0)) / s, (m(1, 2) + m(2, 1)) / s, 0.25f * s, (m(1, 0) - m(0, 1)) / s};
+        }
+        return q;
+    }
+
     void Enable(u8* entity) {
         u32& flags = *reinterpret_cast<u32*>(entity + kEntityFlags);
         bool was = (flags & kActiveMask) == kActive;
@@ -108,6 +139,11 @@ namespace {
     float g_Scale = 1.0f;
     float g_Center[3] = {};        // model units: its middle, moved onto the node's origin (NPC models)
     bool g_RootMoved = true;
+    bool g_Fitted = false;         // an NPC model, turned by g_Angle
+#ifdef LASAP_TEST
+    bool g_NoSway = false;         // DBG popsway off: the model faces the camera, for comparing angles
+#endif
+    Quat g_Angle{0.0f, 0.0f, 0.0f, 1.0f};
 
     u8* Model() {
         return g_Holder.ptr != nullptr ? *reinterpret_cast<u8**>(reinterpret_cast<u8*>(g_Holder.ptr) + kHolderModel)
@@ -139,7 +175,8 @@ namespace {
 
     // The node's pose for the time shown: growing and rising, turning from side to side, shrinking away at the end.
     // Its parent, Link's model, turns with him; the pose takes out the parent's world rotation and scale, so the model
-    // faces the camera whichever way he looks.
+    // faces the camera whichever way he looks. An NPC model is turned from the camera by its fix's angle, as in the
+    // item-get, and from side to side.
     void Place(u8* model, u64 shown) {
         auto* parent = *reinterpret_cast<Game::RootComp**>(g_Player + kPlayerModel);
         if (parent == nullptr) return;
@@ -149,7 +186,12 @@ namespace {
         const Game::Vec4& r = parent->coords.rotate;
         float parentScale = parent->coords.scale.y > 0.0f ? parent->coords.scale.y : 1.0f;
         float sway = kSwayDeg * sinf(2.0f * 3.14159265f * (float)(shown % kSwayMs) / kSwayMs);
-        Quat q = Mul(Quat{-r.x, -r.y, -r.z, r.t}, Mul(Axis(0, kTilt), Axis(1, sway)));
+#ifdef LASAP_TEST
+        if (g_NoSway) sway = 0.0f;
+#endif
+        Quat pose = g_Fitted ? Mul(CameraRotation(), Mul(Axis(1, sway), g_Angle))
+                             : Mul(Axis(0, kTilt), Axis(1, sway));
+        Quat q = Mul(Quat{-r.x, -r.y, -r.z, r.t}, pose);
         Game::Coords& c = reinterpret_cast<Game::RootComp*>(model)->coordsNew;
         float s = g_Scale * grow / parentScale;
         c.pos = {0.0f, (kHeight - kRise * (1.0f - rise)) / parentScale, 0.0f};
@@ -171,6 +213,7 @@ namespace AP::Popup {
         StringView name{kName, sizeof(kName) - 1};
         g_Scale = 1.0f;
         g_RootMoved = true;
+        g_Fitted = false;
         GameFn<void (*)(SharedPtr*, SharedPtr*, StringView*, SharedPtr*, u8)>(kItemModelMake)(
             &g_Holder, &owner, &name, parent, static_cast<u8>(itemId));
         if (g_Holder.ptr == nullptr) return false;
@@ -182,14 +225,21 @@ namespace AP::Popup {
 
     bool Busy() { return g_Holder.ptr != nullptr; }
 
+#ifdef LASAP_TEST
+    void Sway(bool on) { g_NoSway = !on; }
+#endif
+
     bool IsHolder(const void* holder) { return holder != nullptr && holder == g_Holder.ptr; }
 
-    void Fit(float scale, float cx, float cy, float cz) {
+    void Fit(float scale, const Game::Vec3& center, const Game::Vec3& angle) {
         g_Scale = scale;
-        g_Center[0] = cx;
-        g_Center[1] = cy;
-        g_Center[2] = cz;
+        g_Center[0] = center.x;
+        g_Center[1] = center.y;
+        g_Center[2] = center.z;
         g_RootMoved = false;
+        // as the item-get's model fix turns it: yaw, pitch, roll applied roll first
+        g_Angle = Mul(Axis(1, angle.y), Mul(Axis(0, angle.x), Axis(2, angle.z)));
+        g_Fitted = true;
     }
 
     void Tick() {

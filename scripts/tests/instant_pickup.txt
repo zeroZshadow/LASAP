@@ -1,0 +1,32 @@
+# Instant Pickups (a mod patched with it, or config.ini [tweaks] instant_pickups = true): opens beach-chest as
+# beach_chest does. Link plays no item-get: the item's model shows above his head with its fanfare, the toast names
+# the find, and he is free again while the model shows. Run after boot_file1 on a save where the chest is closed.
+# Screenshots: instant_1 the popup after the chest.
+guard hurt
+send DBG grant PowerBraceletLv1 1 -1 0
+expect OK.grant 5
+warp Field 86.25 6 173.25
+at 86.25 173.25
+face right
+interact
+until carry=1+free 3
+face left
+tap 1
+until carry=0 3
+goto 87.75 6 173.25
+at 87.75 173.25
+face up
+# The location's item may be a trap.
+guard off hurt
+guard anim=item_get_st
+interact
+await 3 popup=1
+await 2 bgm=\S*FANFARE
+free 5
+check popup=1
+shot D:/DEV/LASAP-sandbox/instant_1.png
+await 5 toast=1
+send DBG text SystemSaving
+expect said=You\sfound 5
+await 5 popup=0
+guard off anim=item_get_st

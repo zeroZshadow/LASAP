@@ -1,0 +1,17 @@
+# Instant Pickups keeps the instruments' pedestals as the game's item-get (the patcher marks them): Tail Cave's
+# pedestal (Lv01TailCave_03G, 97.5 2.0 27.75) plays the item-get, then the whiteout warps Link out. Run after
+# newgame_file2 on a mod patched with Instant Pickups, where Tail Cave's pedestal is still there.
+# Screenshots: instant_instrument the item-get.
+warp Lv01TailCave 97.5 1.5 29.25
+at 97.5 29.25
+goto 97.5 1.5 28.5
+face up
+guard popup=1
+interact
+await 10 anim=item_get_st
+until textready 10
+shot D:/DEV/LASAP-sandbox/instant_instrument.png
+dismiss 20
+inlevel 30
+level Field
+guard off popup=1

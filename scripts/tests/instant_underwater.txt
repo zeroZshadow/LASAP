@@ -1,0 +1,27 @@
+# Instant Pickups underwater: the Kanalet moat's sunken heart piece (kanalet-moat-south, an item actor at 135.75 4.76
+# 87.75). Link swims above it (event 30, swim_wait) and dives with B; touching the item finds it. Its popup shows over
+# him in the water with no item-get, and he swims on. Run after boot_file1 (flippers owned, the location unchecked) on a
+# mod patched with Instant Pickups. warp waits for a free player, which a swimming one is not: DBG warp.
+# Screenshots: instant_underwater the popup.
+guard hurt
+send DBG warp Field 135.75 8 87.75
+expect OK.warp 5
+inlevel 20
+await 5 anim=swim_wait
+guard anim=item_get_st
+guard msg:Reading
+send DBG input 2 300
+expect OK.input 5
+await 3 popup=1
+await 5 toast=1
+send DBG text SystemSaving
+expect said=You\sfound 5
+shot D:/DEV/LASAP-sandbox/instant_underwater.png
+await 5 anim=swim_wait
+send DBG input 0 1000 -20000 0
+expect OK.input 5
+await 3 pos=13[0-4]\.
+await 5 popup=0
+guard off msg:Reading
+guard off anim=item_get_st
+guard off hurt

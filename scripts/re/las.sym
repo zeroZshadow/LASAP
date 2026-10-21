@@ -21,6 +21,7 @@ BgmManager_StopAll 0x0859f550 f (u32 frames): every playing instance's fade-out 
 BgmManager_FadeZone 0x085aa510 f the kind 1 instances fade out over 90 frames unless a buff's music plays; an event action
 Sound_Stop 0x095ed7f0 f (sound, u32 frames)
 BgmManager_SetVolume 0x0859f3a0 f (f32 volume, u32 frames): Sound_SetVolume on every playing kind 1 instance; the event action SetBGMVolume
+BgmManager_MuteZone 0x0859f420 f (u32 frames): fades the kind 1 instances out; the item-get calls it with 8 frames before its fanfare when the item's info +0xe is set
 Sound_SetVolume 0x095ee8c0 f (sound, u32 frames, f32 volume): fades the volume, +0x140 volume, +0x144 target, +0x148 frames, +0x14c frames gone
 BgmZoneUpdate_PlayCall 0x085a3004 l the zone update's BgmManager_Play call with the zone's track (volume from zone +0x4c); when it returns an instance, the other kind 1 instances fade out
 BgmManager_Play 0x085a3d60 f (f32 volume, BgmManager*, StringView* name, bool, bool, bool force) -> instance, null for an unknown name or a track already playing; instance +0x10 name (std::string), +0xf0 kind (1 zone and event BGM), +0xf8 id
@@ -28,6 +29,7 @@ Sound_Play 0x085a97e0 f (StringView* name, nullptr, volume, pitch)
 Sound_PlayAtTracked 0x085a9a20 f (name, pos*, u64 extra, handle*, volume, pitch): 3D, extra unverified
 Sound_PlayAt 0x085a9c70 f (StringView* name, const Vec4* worldPos, SoundHandle* out|null, f32 volume, f32 pitch): 3D, request mode 2
 PlayZoneBgm 0x085aa790 f (bool fadeOthers) -> instance: BgmManager_Play of the zone's track (BgmManager +0x9250, volume +0x932c); fades nothing while a Guardian Acorn's or Piece of Power's music plays
+BuffMusic_Play 0x085b3560 f (bool): BGM_NUTS_INTRO, kind 3; the item-get calls it with true for the Guardian Acorn (111) and the Piece of Power (112)
 EventAction_PlayAnimation2 0x085f7bb0 f virtual +0x30 on the actor's root component
 EventAction_PlayAnimation 0x0861d0c0 f
 SkeletalModelComponent_Make 0x08646660 f (out, owner, StringView* name, rootSp*, resource, ...)
@@ -70,6 +72,8 @@ Inventory_HasItem 0x08dd5a30 f (itemId, count, index): 114 tests chamber stone b
 ItemModel_Make 0x08dd7670 f (out holder, owner sp*, StringView* name, root node sp*, u8 itemId): loads the item's model and posts ItemGet_ModelTask, which makes the component (disabled) into holder +0x18; the item-get and the NPCs that hold items use it
 ItemGet_ModelTask 0x08dd81c0 f (task*): the item-get's model: the item's Npc row, ModelResource_Get, the component ItemModel on its node
 ItemGet_PlayFanfare 0x08dd9700 f (u8 itemId): the Items.gsheet row's sound (+0x58): an SE ('@' first) or a BGM jingle
+ItemGet_RowAutoSave 0x08dd9ad0 f (item id) -> bool: whether the item's Items.gsheet row asks for an autosave (ItemRow_AutoSave)
+ItemRow_AutoSave 0x08dd9bc0 f (row) -> bool: +0x80 enabled, +0x84 category, +0x88 the condition's parameter
 Area_Ctor 0x08de2e00 f (area, lvb, entry, key): +0x20 min, +0x30 max, +0x64 zone index, +0x68 name, +0xc2 row, +0xc3 column
 Scene_ReleaseActors 0x08de72c0 f moves or removes the actors of a weak list (RemoveChild as the module does)
 LevelBvh_QueryPoint 0x08deb3b0 f (node, areas*, nodes*, const Vec4* pos, std::function*): recursive point query over the area BVH
@@ -134,9 +138,11 @@ PlayerBow_Init 0x09263dc0 f bow model holder at player +0x1bb8
 PlayerBottle_Init 0x09269ee0 f bottle model wrapper at player +0x1bb0
 ItemGet_BuildSteps 0x092743e0 f (out, Player*, info*): the item-get's steps: raise (item_get_st), Delay 1 s then the text joined with the fanfare's wait, Delay 0.083 s, lower (item_get_ed)
 ItemGet_TextStep 0x092781c0 f closure operator() (closure x0, out x8): Delay(closure +0xb0), then the text; joined with the future of the item's fanfare callback; the module patches the delay's load at +0x38
+EventAction_ItemGetByKey 0x0927d3a0 f Link.GenericItemGetSequenceByKey body (out, ctx): params itemKey, keepCarry, messageEntry -> Player_ItemGetSequence; a null future for an unknown key
 Player_ItemGetSequence 0x0927d5d0 f (shared_ptr* out, Player*, int itemId, bool keepCarry, StringView* messageEntry)
 ItemGet_FanfareFuture 0x0927e820 f (out future, u8* itemId): plays the fanfare, then a task polled until ItemGet_FanfareDone
 ItemGet_FanfareDone 0x0927ef30 f (wait closure): true once the event manager has no event, the wait was cancelled, or the fanfare stopped; hooked by the module to be true
+EventAction_ItemGetByType 0x0927f670 f Link.GenericItemGetSequence body (out, ctx): param itemType -> Player_ItemGetSequence
 PartsVisibility_AddShape 0x09290a80 f (parts, group, name)
 PartsVisibility_AddShapes 0x09290ec0 f (parts, group, vector of names)
 PartsVisibility_SetGroup 0x09291240 f (parts, group, bool)
@@ -153,6 +159,7 @@ DungeonMap_SubscribeZone 0x092f6ea0 f (out ids): subscribes DungeonMap_MarkZoneV
 DungeonMap_MarkZoneVisited 0x092f7370 f (Zone*): sets the visited bit col + 8*row of every area of the zone in the dungeon's DungeonItems entry
 SetCurrentLevel 0x092fe450 f (StringView* level, StringView* locator, Vec3* pos): save +0x0 level, +0x40 locator, +0xdc position; dungeon index from the level name; hooked by the module
 EventFlags_Check 0x092fe920 f (flags, StringView* name)
+SaveManager_RequestAutoSave 0x0930f360 f (save manager, u8 kind, bool) -> false when a request waits already (+0x161); the item-get passes scene +0x90 and kind 3; the save runs once no event runs
 TailorPlayer_Create 0x09328a10 f (out, owner, StringView* name, drsb handle*): vtable 0x1c26068 object
 TailorPlayer_Init 0x0933f6c0 f vtable +0x20: core +0x58, ActorTailorDelegate +0x68, plays Other=ac_Keep
 TailorPlayer_Update 0x09340660 f vtable +0xc0: ground material from provider +0xc0 to delegate +0x70, Motion frame from the SAC, core update

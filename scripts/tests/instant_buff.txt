@@ -1,0 +1,22 @@
+# Instant Pickups and the buffs: the first Guardian Acorn in a new game, whose pickup plays an item-get with its text,
+# gives the buff at once: no text, its music (BGM_NUTS_INTRO) starts, no popup. Run after newgame_file2 on a mod
+# patched with Instant Pickups. The drop is forced as in buff_drops (KillCountNoDamage, inventory a5, one short of
+# 14), then Link walks onto it.
+guard msg:Reading
+send DBG grant SwordLv1 1 -1 0
+expect OK.grant 5
+warp Field 41.25 9.0 147.75
+face up
+send DBG poke a4 000d
+expect OK.poke 5
+send DBG input 2 1200
+wait 3
+send DBG peek i a4 2
+expect PEEK\si\sa4\s01(00|0e) 5
+# The acorn lies where the Octorok died, north of Link.
+send DBG input 0 1000 0 20000
+expect OK.input 5
+await 4 \sbgm=\S*BGM_NUTS_INTRO
+check popup=0
+check msg=Closed
+guard off msg:Reading

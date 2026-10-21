@@ -1,0 +1,33 @@
+# Instant Pickups in the shop: buying the item in the Mabe shop's third counter slot (the shovel's location). The
+# shopkeeper takes the item out of Link's hands as he pays, so the item-get that follows his thanks is a find: its
+# popup shows and Link plays no item-get. Run after newgame_file2 on a mod patched with Instant Pickups; the script
+# gives Link 999 rupees.
+# Screenshots: instant_shop the popup.
+guard hurt
+send DBG poke 80 e7030000
+expect OK.poke 5
+warp Field 51.75 10.5 117
+hold 0 0 32767 until level=Shop 5
+inlevel 20
+level Shop
+free 10
+goto 6.75 0 6
+at 6.75 6
+face up
+interact
+until carry=1+event=0 5
+# The shopkeeper stands at the register (10.5 7.5); A while carrying talks to him.
+goto 10.5 0 9
+face up
+guard anim=item_get_st
+tap 1
+until event=22 5
+advance 20
+choose 0
+until carry=0 5
+dismiss 20
+await 5 popup=1
+shot D:/DEV/LASAP-sandbox/instant_shop.png
+free 20
+await 5 popup=0
+guard off anim=item_get_st

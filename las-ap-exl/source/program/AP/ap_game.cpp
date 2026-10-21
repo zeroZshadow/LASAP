@@ -180,6 +180,9 @@ namespace {
     constexpr u64 kFreeSettleMs = 600;            // the player must be free this long before an item-get starts
     constexpr u64 kNextItemGetMs = 200;           // or this long when the last item event just ended
     constexpr u64 kPopupSettleMs = 200;           // and before a popup starts
+    // A find waits this long before it shows: the event that gave it adds the item after the item-get (LASR's order,
+    // the game's own), and a location that keeps its vanilla item is named once the item is added.
+    constexpr u64 kFoundSettleMs = 50;
     // The trendy game: Link counts as free while the player steers the crane, which an item-get would cut off, so
     // displays wait until he leaves the shop.
     constexpr const char* kCraneGameLevel = "CraneGame";
@@ -195,7 +198,12 @@ namespace {
     bool g_WasFree = false;
     // A received item waiting to be shown; with a sender, it shows "You got <item> from <sender>!".
     // A trap (trap = its key) plays its effect instead; id is then -1.
-    struct Show { int id; std::string item; std::string sender; std::string trap; };
+    // With Instant Pickups, an item Link found (found): it shows as a popup with that toast ("" to name it when it
+    // shows), queued at that time.
+    struct Show {
+        int id; std::string item; std::string sender; std::string trap;
+        bool found = false; std::string toast; u64 at = 0;
+    };
     std::deque<Show> g_ShowQueue;
     Show g_Showing{};  // what the current event shows; DBG itemget sets id -1 and no trap, which is not retried
     // A received item plays as the Common.bfevfl event AP::ITEM_EVENT_ENTRY, a trap as its own event: requested,
@@ -214,6 +222,9 @@ namespace {
     // any) when the location is collected, or, for a companion, sets this flag (item -1).
     struct KeptLocation { int item; int index; int local_id; std::string flag; };
     std::vector<KeptLocation> g_Kept;
+    // The last such location collected by adding its item, and when: names a find of that item (Instant Pickups).
+    int g_KeptAddedItem = -1, g_KeptAddedLocation = -1;
+    u64 g_KeptAddedAt = 0;
     constexpr u64 kKeptFlagPollMs = 500;
     u64 g_KeptFlagsPolled = 0;
     bool g_Granting = false;  // GrantItem adds a received item
@@ -363,6 +374,26 @@ namespace {
         return itemId == 4 || itemId == 11 || itemId == 60 || itemId >= 100;
     }
 
+    // Names of the game's items that Link can find outside AP locations (Instant Pickups' toast), as the world names
+    // them; any other shows its Items.gsheet key.
+    struct ItemName { int id; const char* name; };
+    constexpr ItemName kItemNames[] = {
+        {4, "Bombs"}, {11, "Magic Powder"}, {17, "Green Tunic"}, {18, "Red Tunic"}, {19, "Blue Tunic"},
+        {21, "Secret Medicine"}, {22, "Secret Seashell"}, {58, "Piece of Heart"}, {59, "Heart Container"},
+        {60, "Arrows"}, {61, "Apple"}, {62, "Green Apple"}, {100, "Heart"}, {101, "1 Rupee"}, {102, "5 Rupees"},
+        {104, "20 Rupees"}, {105, "50 Rupees"}, {106, "100 Rupees"}, {108, "300 Rupees"}, {110, "Fairy"},
+        {113, "Bottle"}, {114, "Chamber Stone"}, {120, "Ballad of the Wind Fish"}, {121, "Manbo's Mambo"},
+        {122, "Frog's Song of Soul"}, {126, "Fairy"},
+    };
+
+    std::string ItemDisplayName(int itemId) {
+        for (const auto& n : kItemNames) {
+            if (n.id == itemId) return n.name;
+        }
+        auto it = itemsDict.find(itemId);
+        return it != itemsDict.end() ? it->second : std::to_string(itemId);
+    }
+
     // A toast in the autosave popup; '|' starts a new line.
     void QueueNotice(std::string text) {
         for (auto& c : text) if (c == '|') c = '\n';
@@ -396,6 +427,12 @@ namespace {
         g_ShowQueue.push_back(show);
     }
 
+    // Instant Pickups: a find shows before the received items that wait, after the finds before it.
+    void QueueFound(const Show& show) {
+        auto it = std::find_if(g_ShowQueue.begin(), g_ShowQueue.end(), [](const Show& s) { return !s.found; });
+        g_ShowQueue.insert(it, show);
+    }
+
     // True while a received item's event is requested or running.
     bool ItemEventActive(bool free) {
         u64 since = NowMs() - g_ItemEventSince;
@@ -427,21 +464,39 @@ namespace {
         return false;
     }
 
-    // Received Items set to Popup: the item's model above Link's head and the toast, while play goes on. The next
-    // one waits until both are done. Traps still play their effect as an event.
-    void ShowPopup(const Show& show) {
-        std::string name = show.item;
-        if (name.empty()) {
-            auto it = itemsDict.find(show.id);
-            name = it != itemsDict.end() ? it->second : std::to_string(show.id);
+    // A find's toast: as queued, else the location that keeps this vanilla item if the find collected it, else the
+    // item's name.
+    std::string FoundToast(const Show& show) {
+        if (!show.toast.empty()) return show.toast;
+        if (g_KeptAddedItem == show.id && g_KeptAddedAt >= show.at) {
+            std::string toast = AP::FoundToast(g_KeptAddedLocation);
+            if (!toast.empty()) return toast;
         }
-        AP::QueueToast(AP::ReceivedToast(name, show.sender));
+        return "You found " + ItemDisplayName(show.id);
+    }
+
+    // Received Items set to Popup: the item's model above Link's head and the toast, while play goes on. The next
+    // one waits until both are done. Traps still play their effect as an event. A find (Instant Pickups) shows the
+    // same way, with its fanfare.
+    void ShowPopup(const Show& show) {
+        if (show.found) {
+            AP::QueueToast(FoundToast(show));
+            AP::Music::Fanfare(show.id);
+        } else {
+            std::string name = show.item;
+            if (name.empty()) {
+                auto it = itemsDict.find(show.id);
+                name = it != itemsDict.end() ? it->second : std::to_string(show.id);
+            }
+            AP::QueueToast(AP::ReceivedToast(name, show.sender));
+        }
         if (!AP::Popup::Show(show.id)) AP::Log("popup " + std::to_string(show.id) + " could not be made");
         g_ItemEventShown = show.id;
     }
 
     // Shows queued items one at a time, each as an event, once the player is free and holds nothing; with Received
-    // Items set to Popup, items as popups.
+    // Items set to Popup, items as popups. Finds (Instant Pickups) come first and show as soon as the popup is free,
+    // also during the event that gave them.
     void TickItemGet() {
         bool free = PlayerFree();
         if (free && !g_WasFree) g_FreeSince = NowMs();
@@ -449,6 +504,16 @@ namespace {
         g_WasFree = free;
         if (ItemEventActive(free)) {
             g_WasFree = false;  // the settle time starts again after each item-get
+            return;
+        }
+        if (!g_ShowQueue.empty() && g_ShowQueue.front().found) {
+            if (AP::Popup::Busy() || !AP::ToastsIdle() || !PlayerReady() ||
+                NowMs() - g_ShowQueue.front().at < kFoundSettleMs) {
+                return;
+            }
+            g_Showing = g_ShowQueue.front();
+            g_ShowQueue.pop_front();
+            ShowPopup(g_Showing);
             return;
         }
         bool popup = global_config.tweaks.received_popup && !g_ShowQueue.empty() && g_ShowQueue.front().trap.empty();
@@ -587,11 +652,9 @@ namespace {
             g_InItemModelTask = false;
             u8* holder = *reinterpret_cast<u8**>(task + kTaskHolder);
             if (AP::Popup::IsHolder(holder)) {
-                // The received-item popup's model: the same size and centre, its own pose
+                // The popup's model: the same size, centre and angle
                 const HeldModelFix* fix = g_ItemModelFix;
-                if (fix != nullptr) {
-                    AP::Popup::Fit(kItemModelRadius / fix->radius, fix->center.x, fix->center.y, fix->center.z);
-                }
+                if (fix != nullptr) AP::Popup::Fit(kItemModelRadius / fix->radius, fix->center, fix->angle);
                 return;
             }
             if (g_ItemModelFix == nullptr || NowMs() - g_ItemGetAt > kItemModelWindowMs || holder == nullptr) return;
@@ -639,15 +702,78 @@ namespace {
         else if (!g_HeldRootMoved) MoveHeldRoot();
     }
 
+    // Instant Pickups (DESIGN.md, Instant pickups). The item-get is the body of the event actions
+    // Link.GenericItemGetSequence(ByKey) (and of the Chamber Dungeon's panels): it returns a future the event waits
+    // for. Delay_Make(seconds, out) makes one; for 0 seconds it is the game's ready future, which Link's own actions
+    // return when they are done at once, so the event goes on in its next update. The item-get's other work is for
+    // its display (Link's animation and held model, the text, the zone's music faded out for the fanfare), apart from
+    // what the module does in its place: the fanfare, the buffs' music and the autosave. It also takes what Link
+    // holds over his head out of the game, so with something held the item-get stays (the shop takes its item before
+    // its item-get). The inventory and the item's getting flag are the event's AddItemByKey's.
+    constexpr uintptr_t kDelayMake = 0x7f3c90;
+    constexpr int kGuardianAcorn = 111, kPieceOfPower = 112;
+    // The autosave: when the Items.gsheet row's autoSave holds (enabled, its condition true now: ItemAutoSave(u8 item
+    // id)), the item-get asks the scene's save manager (scene +0x90) for one (RequestAutoSave(manager, kind 3,
+    // false)), which saves once no event runs. SceneHolder_Lock(out, *(Framework +0x4a8)) gives the scene.
+    constexpr uintptr_t kItemAutoSave = 0x8d5ad0, kSceneHolderLock = 0x11b70, kRequestAutoSave = 0xe0b360;
+    constexpr size_t kFrameworkSceneHolder = 0x4a8, kSceneSaveManager = 0x90;
+    constexpr u8 kAutoSaveKind = 3;
+
+    void RequestItemAutoSave(int itemId) {
+        Game::Framework* fmwk = Game::GetFramework();
+        if (fmwk == nullptr || !GameFn<bool (*)(u32)>(kItemAutoSave)(static_cast<u32>(itemId))) return;
+        void* holder = *reinterpret_cast<void**>(reinterpret_cast<u8*>(fmwk) + kFrameworkSceneHolder);
+        if (holder == nullptr) return;
+        SharedPtr scene{};
+        GameFn<void (*)(SharedPtr*, void*)>(kSceneHolderLock)(&scene, holder);
+        if (scene.ptr != nullptr) {
+            GameFn<bool (*)(void*, u8, bool)>(kRequestAutoSave)(reinterpret_cast<u8*>(scene.ptr) + kSceneSaveManager,
+                                                                kAutoSaveKind, false);
+        }
+        ReleaseShared(scene);
+    }
+
+    // An item Link found shows as a popup instead of an item-get; the buffs only start their music.
+    void InstantPickup(int itemId) {
+        Logging.Log("[AP] instant pickup " + std::to_string(itemId));
+        RequestItemAutoSave(itemId);
+        if (itemId == kGuardianAcorn || itemId == kPieceOfPower) {
+            AP::Music::BuffMusic();
+            return;
+        }
+        Show show{itemId, "", "", ""};
+        show.found = true;
+        // the placeholder's location is known now (its flows add it first); a vanilla item is added after
+        if (AP::IsPlaceholderItem(itemId)) {
+            show.toast = AP::FoundToast();
+            if (show.toast.empty()) show.toast = "You found an\nArchipelago item";
+        }
+        show.at = NowMs();
+        QueueFound(show);
+    }
+
     // The item event's item-get shows the placeholder with RECEIVED_LABEL as message entry; the requested item
-    // and its message take their place.
+    // and its message take their place. With Instant Pickups any other item-get is a find, unless its entry has the
+    // native mark or Link holds something.
     HOOK_DEFINE_TRAMPOLINE(ItemGetSequence) {
         static void Callback(SharedPtr* out, void* player, int itemId, bool keepCarry, StrView* messageEntry) {
             g_ItemGetAt = NowMs();
             size_t len = strlen(AP::RECEIVED_LABEL);
-            if (g_ItemEventSwap && g_ItemEvent != ItemEvent::None && itemId == AP::PLACEHOLDER_ITEM_ID &&
-                messageEntry != nullptr && messageEntry->len == len &&
-                memcmp(messageEntry->data, AP::RECEIVED_LABEL, len) == 0) {
+            bool received = messageEntry != nullptr && messageEntry->len == len &&
+                            memcmp(messageEntry->data, AP::RECEIVED_LABEL, len) == 0;
+            StrView entry = messageEntry != nullptr ? *messageEntry : StrView{"", 0};
+            bool native = entry.len > 0 && entry.data[0] == AP::NATIVE_ITEM_GET_MARK;
+            if (native) {
+                entry.data++;
+                entry.len--;
+            }
+            if (global_config.tweaks.instant_pickups && !received && !native && !keepCarry && !PlayerCarrying()) {
+                InstantPickup(itemId);
+                GameFn<void (*)(float, SharedPtr*)>(kDelayMake)(0.0f, out);
+                return;
+            }
+            if (native) messageEntry = &entry;
+            if (g_ItemEventSwap && g_ItemEvent != ItemEvent::None && itemId == AP::PLACEHOLDER_ITEM_ID && received) {
                 StrView message{g_ItemEventMessage.c_str(), g_ItemEventMessage.size()};
                 g_ItemEventSwap = false;
                 g_ItemEventShown = g_ItemEventId;
@@ -918,6 +1044,7 @@ namespace {
         s += " showq=" + std::to_string(g_ShowQueue.size()) + (g_ItemEvent != ItemEvent::None ? "+1" : "");
         s += " shown=" + std::to_string(g_ItemEventShown);
         s += std::string(" popup=") + (AP::Popup::Busy() ? "1" : "0");
+        s += std::string(" toast=") + (AP::ToastShowing() ? "1" : "0");
         int ghosts = 0;
         for (int n = 0; n < AP::GhostNet::SLOTS; n++) ghosts += AP::GhostNet::Get(n).active;
         s += " ghosts=" + std::to_string(ghosts);
@@ -960,6 +1087,38 @@ namespace {
                 return true;
             }
             AP::Send("ERR heldangle unknown model " + a[2]);
+        } else if (cmd == "popsway" && a.size() >= 3) {
+            // DBG popsway <on|off>: whether the popup's model turns from side to side, until the game restarts
+            AP::Popup::Sway(a[2] != "off");
+            AP::Send("OK popsway");
+        } else if (cmd == "heldpose") {
+            // DBG heldpose: the world rotations (quaternions) of Link's model, the held NPC model's parent node and
+            // the model itself during an item-get, and the model's local rotation
+            auto quat = [](const Game::Vec4& r) {
+                char buf[64];
+                snprintf(buf, sizeof(buf), "%.3f,%.3f,%.3f,%.3f", r.x, r.y, r.z, r.t);
+                return std::string(buf);
+            };
+            auto* player = reinterpret_cast<u8*>(Game::GetFramework()->mPlayer);
+            auto* link = player ? *reinterpret_cast<Game::RootComp**>(player + 0x2a8) : nullptr;
+            auto* held = reinterpret_cast<Game::RootComp*>(g_HeldModel);
+            std::string out = "HELDPOSE link=" + (link ? quat(link->coords.rotate) : std::string("-"));
+            if (held != nullptr && HeldModelAlive()) {
+                out += " parent=" + (held->otherComp ? quat(held->otherComp->coords.rotate) : std::string("-"));
+                out += " model=" + quat(held->coords.rotate) + " local=" + quat(held->coordsNew.rotate);
+            }
+            // the camera's view rotation (Framework +0x560, rows at +0x20)
+            auto* camera = *reinterpret_cast<u8**>(reinterpret_cast<u8*>(Game::GetFramework()) + 0x560);
+            if (camera != nullptr) {
+                const float* view = reinterpret_cast<const float*>(camera + 0x20);
+                out += " view=";
+                for (int i = 0; i < 12; i++) {
+                    char buf[16];
+                    snprintf(buf, sizeof(buf), i ? ",%.3f" : "%.3f", view[i]);
+                    out += buf;
+                }
+            }
+            AP::Send(out);
         } else if (cmd == "warp" && a.size() >= 6) {
             // DBG warp <level> <x> <y> <z>
             if (!PlayerReady()) return false;
@@ -1078,6 +1237,13 @@ namespace {
             g_Showing = Show{-1, "", "", ""};
             bool ok = id >= 0 && StartItemEvent(id, a.size() >= 4 ? a[3] : "");
             AP::Send(std::string(ok ? "OK" : "ERR") + " itemget " + std::to_string(id));
+        } else if (cmd == "pickup" && a.size() >= 3) {
+            // DBG pickup <item key or id>: what an item-get of it does with Instant Pickups, without the event
+            if (!PlayerReady()) return false;
+            bool numeric = a[2].find_first_not_of("0123456789") == std::string::npos;
+            int id = numeric ? std::stoi(a[2]) : ItemIdFromKey(a[2]);
+            if (id >= 0) InstantPickup(id);
+            AP::Send(std::string(id >= 0 ? "OK" : "ERR") + " pickup " + std::to_string(id));
         } else if (cmd == "popmodel" && a.size() >= 3) {
             // DBG popmodel <item key or id>: the received-item popup's model alone, without the toast or the queue
             if (!PlayerReady()) return false;
@@ -1259,7 +1425,11 @@ namespace AP {
     void OnItemAdded(int item_id, int index) {
         if (g_Granting) return;
         for (const auto& kept : g_Kept) {
-            if (kept.item == item_id && (kept.index < 0 || kept.index == index)) RecordCheck(kept.local_id);
+            if (kept.item != item_id || (kept.index >= 0 && kept.index != index)) continue;
+            RecordCheck(kept.local_id);
+            g_KeptAddedItem = item_id;
+            g_KeptAddedLocation = kept.local_id;
+            g_KeptAddedAt = NowMs();
         }
     }
 

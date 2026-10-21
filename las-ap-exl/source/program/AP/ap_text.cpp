@@ -390,9 +390,22 @@ namespace AP {
         return "You got " + Clip(item, kItemNameMax) + from;
     }
 
+    std::string FoundToast(int local_id) {
+        auto it = g_LocationNames.find(local_id);
+        if (it == g_LocationNames.end()) return "";
+        const auto& [item, player] = it->second;
+        return "You found " + Clip(item, kItemNameMax) + (player.empty() ? "" : "\nfor " + Clip(player, kPlayerNameMax));
+    }
+
+    std::string FoundToast() {
+        return FoundToast(g_FoundFresh ? g_FoundLocation : g_PresentLocation);
+    }
+
     bool ToastsIdle() {
         return !g_ToastShowing && g_Toasts.empty();
     }
+
+    bool ToastShowing() { return g_ToastShowing; }
 
     void SetReceivedText(const std::string& item, const std::string& sender) {
         g_RecvItem = item;

@@ -1,8 +1,10 @@
 """Writes a synthetic .aplas patch (every shuffleable location gives the AP placeholder) for patcher tests.
 
 python make_test_patch.py <out.aplas> [--seed-hash test0001] [--slot Tester] [--vanilla loc,loc,...] [--settings JSON]
-                          [--dungeons JSON]
+                          [--dungeons JSON] [--items loc=item,...]
 
+--items gives locations an item of this slot (logic.yml's content names, e.g. beach-chest=song-ballad); they are no
+AP locations.
 --settings replaces settings in the patch, e.g. '{"Instruments Required": 3, "Damage": "OHKO"}'.
 --dungeons leads dungeon doors into other dungeons and turns Shuffled Dungeons on, e.g.
 '{"tail-cave": "color-dungeon", "color-dungeon": "tail-cave"}' (door: the dungeon it leads into).
@@ -32,7 +34,7 @@ SETTINGS = {
     "Chest Animations": True, "Key Animations": True, "Item Get Animations": False, "Item Pool": "Standard",
     "Traps": "None", "Nice Bombs": True, "Nice Hookshot": False, "Nice Magic Rod": True, "Damage": "Normal",
     "Music": "Vanilla", "Randomize Sound Effects": False, "Randomize Text": False,
-    "Randomize Environments": False, "Disable Low Health Beep": False, "Easy Fishing": True, "No 30 FPS Drops": "On emulators", "Received Items": "Item-get", "360 Movement": False,
+    "Randomize Environments": False, "Disable Low Health Beep": False, "Easy Fishing": True, "No 30 FPS Drops": "On emulators", "Received Items": "Item-get", "Instant Pickups": False, "360 Movement": False,
     "Blur Removal": False, "Instant Text": False, "Disable Guardian Acorn": False,
     "Disable Piece of Power": False, "Rupees": 100, "Containers": 0, "Pieces": 0,
     "Seashells Important": True, "Trade Important": True,
@@ -50,7 +52,9 @@ def main() -> None:
     parser.add_argument("--vanilla", default="")
     parser.add_argument("--settings", default="{}")
     parser.add_argument("--dungeons", default="{}")
+    parser.add_argument("--items", default="")
     args = parser.parse_args()
+    items = dict(pair.split("=", 1) for pair in filter(None, args.items.split(",")))
 
     logic = yaml.safe_load(open(DATA / "logic.yml"))
     categories = yaml.safe_load(open(DATA / "locations.yml"))
@@ -66,11 +70,14 @@ def main() -> None:
     for loc, d in logic.items():
         if d.get("type") != "item":
             continue
-        if loc in vanilla:
+        if loc in items:
+            placements[loc] = items.pop(loc)
+        elif loc in vanilla:
             placements[loc] = d["content"]
         else:
             placements[loc] = "ap-item"
             location_ids[loc] = ids[loc]
+    assert not items, f"unknown locations: {sorted(items)}"
 
     dungeons = {d: d for d in DUNGEONS}
     dungeons.update(json.loads(args.dungeons))

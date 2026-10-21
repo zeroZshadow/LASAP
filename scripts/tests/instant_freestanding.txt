@@ -1,0 +1,24 @@
+# Instant Pickups with a free-standing item: the heart piece on the grass island among the holes (diamond-island,
+# Field_05E, an item actor at 66.75 13.5 54.75), as diamond_island. Link walks up into it from one cell south; its
+# popup shows with no item-get, and he is free again while it shows. Run after newgame_file2 (the sandbox's file 1 has
+# the location checked) on a mod patched with Instant Pickups.
+# Screenshots: instant_freestanding the popup.
+guard hurt
+warp Field 66.75 13.5 56.25
+at 66.75 56.25
+guard anim=item_get_st
+guard msg:Reading
+# The pickup's event takes him for a moment: the stick lets go there, or he walks on into the holes.
+hold 0 0 32767 until !free 5
+await 3 popup=1
+free 5
+check popup=1
+shot D:/DEV/LASAP-sandbox/instant_freestanding.png
+# The heart piece's autosave shows its own popup first; the toast follows it.
+await 5 toast=1
+send DBG text SystemSaving
+expect said=You\sfound 5
+await 5 popup=0
+guard off msg:Reading
+guard off anim=item_get_st
+guard off hurt

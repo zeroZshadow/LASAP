@@ -324,6 +324,9 @@ def run(script: Path, trace: str | None = None) -> None:
         elif op == "peer":
             # peer <command>: a console command for the peer (scripts/deathlink_peer.py, scripts/ghost_peer.py)
             append(DIR / "peer_cmds.txt", rest)
+        elif op == "srv":
+            # srv <server command>: a console command for the MultiServer, e.g. /send_location <player> <location>
+            append(DIR / "server_cmds.txt", rest)
         elif op == "mash":
             # mash <buttons hex> <count> [hold ms] [gap s]
             p = rest.split()

@@ -48,6 +48,7 @@ from RandomizerCore.Helpers.flag_manager import FlagManager  # noqa: E402
 from RandomizerCore.Helpers.item_get_manager import ItemGetManager  # noqa: E402
 from RandomizerCore.Randomizers import chests as lasr_chests  # noqa: E402
 from RandomizerCore.Randomizers.chests import ChestRandomizer  # noqa: E402
+from RandomizerCore.Randomizers.instruments import InstrumentRandomizer  # noqa: E402
 from RandomizerCore.Randomizers.keysanity import Keysanity  # noqa: E402
 from RandomizerCore.Randomizers.shop import TEXT_TO_CHANGE as SHOP_TEXT  # noqa: E402
 from RandomizerCore.Tools import event_tools  # noqa: E402
@@ -82,6 +83,9 @@ ITEM_EVENT_ENTRY = "APItemGet"
 # Received traps play LASR's trap effects as the Common.bfevfl events AP<trap key> (AP::TRAP_EVENT_PREFIX).
 TRAP_EVENT_PREFIX = "AP"
 TRAP_EVENT_KEYS = ("ZapTrap", "DrownTrap", "SquishTrap", "DeathballTrap", "QuakeTrap")
+# An item-get whose message entry starts with this plays as the game's own also with Instant Pickups; the module drops
+# the mark (AP::NATIVE_ITEM_GET_MARK). The instruments' pedestals have it: their whiteout and warp follow at once.
+NATIVE_ITEM_GET_MARK = "!"
 # Holding Minus opens this Common.bfevfl event (AP::WARP_MENU_ENTRY): a choice to warp home, to the start point outside
 # Tarin's door that leaving the house uses (Field_11C, ExitOut). B picks the bottom choice, so Continue is there.
 WARP_MENU_ENTRY = "APWarpMenu"
@@ -145,6 +149,7 @@ PLAYER_SETTINGS = {
     "Disable Low Health Beep": False,
     "No 30 FPS Drops": "On emulators",
     "Received Items": "Item-get",
+    "Instant Pickups": False,
 }
 PLAYER_CHOICES = {"Music": ("Vanilla", "Shuffled", "Removed"), "No 30 FPS Drops": ("On emulators", "Always", "Never"),
                   "Received Items": ("Item-get", "Popup")}
@@ -302,6 +307,36 @@ def _chest_placeholder_branch(self) -> None:
     files.writeFile("TreasureBox.bfevfl", flow)
 
 
+def _native_instrument_get(self, flowchart, room, room_data, destination=None):
+    """The instrument pedestal's item-gets (any item, progressive ones on both branches) keep the game's item-get."""
+    _original_change_instrument(self, flowchart, room, room_data, destination)
+    mark_native_item_gets(flowchart, room)
+
+
+def mark_native_item_gets(chart, entry) -> None:
+    """Marks every Link item-get reachable from an entry point (NATIVE_ITEM_GET_MARK)."""
+    todo = [event_tools.findEntryPoint(chart, entry).main_event.v]
+    seen = set()
+    while todo:
+        event = todo.pop()
+        if event is None or event.name in seen:
+            continue
+        seen.add(event.name)
+        data = event.data
+        if isinstance(data, evfl.event.ActionEvent) and data.actor.v.identifier.name == "Link" and \
+                data.actor_action.v.v in ("GenericItemGetSequenceByKey", "GenericItemGetSequence"):
+            entry_param = data.params.data.get("messageEntry", "")
+            if isinstance(entry_param, str) and not entry_param.startswith(NATIVE_ITEM_GET_MARK):
+                data.params.data["messageEntry"] = NATIVE_ITEM_GET_MARK + entry_param
+        if getattr(data, "nxt", None) is not None:
+            todo.append(data.nxt.v)
+        if isinstance(data, evfl.event.SwitchEvent):
+            todo.extend(case.v for case in data.cases.values())
+        if isinstance(data, evfl.event.ForkEvent):
+            todo.extend(fork.v for fork in data.forks)
+            todo.append(data.join.v)
+
+
 def _starting_index(self, item, index):
     """LASR adds starting items with index -1, which counts for none of the inventory bits that make up the count of
     indexed items (heart containers, heart pieces, seashells, golden leaves, bottles). They take the bits a received
@@ -362,6 +397,8 @@ FileManager.writeFile = _write_file
 _original_write_chest_event = ChestRandomizer.writeChestEvent
 ItemGetManager.getWithAnimation = _placeholder_get_first
 ChestRandomizer.writeChestEvent = _chest_placeholder_branch
+_original_change_instrument = InstrumentRandomizer.changeInstrument
+InstrumentRandomizer.changeInstrument = _native_instrument_get
 _original_add_custom_flags = FlagManager.addCustomFlags
 _original_make_item_changes = ItemsDatasheetFixes.makeItemChanges
 _original_add_text_events = Keysanity.addTextEvents
@@ -420,7 +457,8 @@ class APModsProcess(mod_generator.ModsProcess):
                  f"no_piece_of_power = {self.settings.get('Disable Piece of Power', False)}\n"
                  f"easy_fishing = {self.settings.get('Easy Fishing', False)}\n"
                  f"no_30fps_drops = {NO_30FPS_DROPS[self.settings.get('No 30 FPS Drops', 'On emulators')]}\n"
-                 f"received_items = {RECEIVED_ITEMS[self.settings.get('Received Items', 'Item-get')]}\n")
+                 f"received_items = {RECEIVED_ITEMS[self.settings.get('Received Items', 'Item-get')]}\n"
+                 f"instant_pickups = {self.settings.get('Instant Pickups', False)}\n")
         path.write_text(text + f"\n[archipelago]\nseed_hash = {self.seed_hash}\n")
         # What each location holds, so the found text names it before the client connects (DESIGN.md)
         with open(self.config_dir / "ap_names.txt", "w", encoding="utf-8", newline="\n") as f:

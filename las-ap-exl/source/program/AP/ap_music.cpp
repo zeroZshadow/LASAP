@@ -58,6 +58,18 @@ namespace {
     constexpr uintptr_t kSoundSetVolume = 0x10ea8c0;
     constexpr u32 kFadeFrames = 90, kFadeInFrames = 150;  // the zone update's
     constexpr int kLoudFrames = 8;  // as the pause menu sets the volume back
+    // Item fanfares (DESIGN.md, Instant pickups). ItemGet_PlayFanfare(u8 item id) plays the item's Items.gsheet jingle,
+    // a BGM of kind 2 whose stream starts about 0.45 s later. While a kind 2 instance plays, the BGM manager fades
+    // the kind 1 instances out (45 frames) and, once none plays, in again (150 frames). The item-get first fades kind
+    // 1 out itself over 8 frames (BgmManager_MuteZone: every kind 1 instance's volume to 0), so the zone's music
+    // stops before the jingle starts. Two different jingles play over each other; one asked for while it plays is not
+    // started again.
+    constexpr uintptr_t kPlayFanfare = 0x8d5700, kMuteZone = 0x9b420;
+    constexpr u32 kMuteZoneFrames = 8;       // the item-get's: 60 * 0.1333 s
+    constexpr u32 kFanfareOutFrames = 10;    // a fanfare that gives way to the next
+    // The Guardian Acorn's and Piece of Power's music (bool intro): stops BGM_NUTS and BGM_NUTS_INTRO, plays one of
+    // them (the intro for true) and fades kind 1 out; their item-get calls it with true.
+    constexpr uintptr_t kBuffMusic = 0xaf560;
 
     // The chosen track ("" none), its index in AP::Tracks::TRACKS (-1: none, or a track not in the list), and whether
     // the game should switch to it (or back) on the next tick in a level.
@@ -72,6 +84,9 @@ namespace {
     const u8* g_Started = nullptr;   // the instance the last change started (compared, read only while it plays)
     // The track chosen before the last change, stopped once the change applies.
     std::string g_Previous;
+    // The jingle the last Fanfare started (named while its ItemGet_PlayFanfare call runs), stopped by the next.
+    bool g_FanfareCall = false;
+    std::string g_Fanfare;
 
     template<typename T>
     T GameFn(uintptr_t offset) { return reinterpret_cast<T>(g_BaseAddress + offset_manager.Offset(offset)); }
@@ -268,6 +283,7 @@ HOOK_DEFINE_TRAMPOLINE(BgmManagerPlay) {
         bool swap = g_TrackLen > 0 && IsZoneCall(ret, name);
         void* instance = Orig(volume, manager, swap ? &chosen : name, b2, b3, force);
         if ((g_Held || g_Carried) && !swap && instance != nullptr) StopHeld();  // an event's song, a fanfare
+        if (g_FanfareCall && instance != nullptr && name != nullptr) g_Fanfare.assign(name->data, name->len);
         if (swap) g_Held = false;  // the zone's music again: it plays on
 #ifdef LASAP_TEST
         char entry[160];
@@ -428,6 +444,23 @@ namespace AP::Music {
             }
             return;
         }
+    }
+
+    void Fanfare(int itemId) {
+        if (!g_Fanfare.empty()) {
+            // stops nothing once it has ended
+            StrView name{g_Fanfare.data(), g_Fanfare.size()};
+            GameFn<void (*)(StrView*, u32)>(kBgmStop)(&name, kFanfareOutFrames);
+            g_Fanfare.clear();
+        }
+        GameFn<void (*)(u32)>(kMuteZone)(kMuteZoneFrames);
+        g_FanfareCall = true;
+        GameFn<void (*)(u32)>(kPlayFanfare)(static_cast<u32>(itemId));
+        g_FanfareCall = false;
+    }
+
+    void BuffMusic() {
+        GameFn<void (*)(bool)>(kBuffMusic)(true);
     }
 
     bool RepeatOne() { return g_RepeatOne; }
