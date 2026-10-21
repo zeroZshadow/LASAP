@@ -350,7 +350,7 @@ namespace {
         return reinterpret_cast<u8*>(fmwk->mPlayer)[kPlayerEventState] == 0;
     }
 
-    // An item-get takes what Link holds over his head out of the game, so items wait until he puts it down.
+    // An item-get takes what Link holds over his head out of the game, so item-gets wait until he puts it down.
     bool PlayerCarrying() {
         Game::Framework* fmwk = Game::GetFramework();
         if (fmwk == nullptr || fmwk->mPlayer == nullptr) return false;
@@ -519,8 +519,8 @@ namespace {
         if (popup && (AP::Popup::Busy() || !AP::ToastsIdle())) return;
         // An item-get right after the last item event's end follows it sooner than after other events
         u64 settle = popup ? kPopupSettleMs : g_FreeSince - g_ItemEventEnded < 100 ? kNextItemGetMs : kFreeSettleMs;
-        if (g_ShowQueue.empty() || !free || PlayerCarrying() || LinkDead() || NowMs() - g_FreeSince < settle ||
-            (!popup && g_LastLevel == kCraneGameLevel)) {
+        if (g_ShowQueue.empty() || !free || LinkDead() || NowMs() - g_FreeSince < settle ||
+            (!popup && (PlayerCarrying() || g_LastLevel == kCraneGameLevel))) {
             return;
         }
         g_Showing = g_ShowQueue.front();
@@ -707,8 +707,8 @@ namespace {
     // return when they are done at once, so the event goes on in its next update. The item-get's other work is for
     // its display (Link's animation and held model, the text, the zone's music faded out for the fanfare), apart from
     // what the module does in its place: the fanfare, the buffs' music and the autosave. It also takes what Link
-    // holds over his head out of the game, so with something held the item-get stays (the shop takes its item before
-    // its item-get). The inventory and the item's getting flag are the event's AddItemByKey's.
+    // holds over his head out of the game; without it he keeps holding it (the shop's flows take their goods from him
+    // before their item-get, RemoveGoods). The inventory and the item's getting flag are the event's AddItemByKey's.
     constexpr uintptr_t kDelayMake = 0x7f3c90;
     constexpr int kGuardianAcorn = 111, kPieceOfPower = 112;
     // The autosave: when the Items.gsheet row's autoSave holds (enabled, its condition true now: ItemAutoSave(u8 item
@@ -753,7 +753,7 @@ namespace {
 
     // The item event's item-get shows the placeholder with RECEIVED_LABEL as message entry; the requested item
     // and its message take their place. With Instant Pickups any other item-get is a find, unless its entry has the
-    // native mark or Link holds something.
+    // native mark.
     HOOK_DEFINE_TRAMPOLINE(ItemGetSequence) {
         static void Callback(SharedPtr* out, void* player, int itemId, bool keepCarry, StrView* messageEntry) {
             g_ItemGetAt = NowMs();
@@ -766,7 +766,7 @@ namespace {
                 entry.data++;
                 entry.len--;
             }
-            if (global_config.tweaks.instant_pickups && !received && !native && !keepCarry && !PlayerCarrying()) {
+            if (global_config.tweaks.instant_pickups && !received && !native) {
                 InstantPickup(itemId);
                 GameFn<void (*)(float, SharedPtr*)>(kDelayMake)(0.0f, out);
                 return;

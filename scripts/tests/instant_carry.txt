@@ -1,0 +1,58 @@
+# Instant Pickups while Link holds something over his head, in the Ghost House (GhostHouse_01A). He throws the pot
+# that holds ghost-house-pot (12 0 8.25) as ghost_house_pot does, so its item drops where it stood, lifts the pot at
+# 10.5 0 9.75 from its left, and walks, carrying it, up into the item. No item-get: the popup shows and he still holds
+# the pot (an item-get would take it out of the game). Then an item from the server shows as a popup while he carries
+# it, without waiting for his hands to be free. Run after boot_file1 or newgame_file2 (the location unchecked) on a mod
+# patched with Instant Pickups. Grants the Power Bracelet (sandbox saves only).
+# Screenshots: instant_carry the find's popup over the pot.
+guard hurt
+send DBG grant PowerBraceletLv1 1 -1 0
+expect OK.grant 5
+warp Field 99.75 7.5 186.75
+at 99.75 186.75
+hold 0 0 32767 until level=GhostHouse 5
+inlevel 15
+free 10
+goto 12 0 9.75
+at 12 9.75
+face up
+interact
+until carry=1+free 3
+tap 1
+until carry=0 3
+free 5
+# Another pot, lifted from its left
+goto 9 0 9.75
+at 9 9.75
+face right
+interact
+until carry=1+free 3
+goto 12 0 9.75
+at 12 9.75
+check \scarry=1\s
+# The location's item may be a trap.
+guard off hurt
+guard anim=item_get_st
+guard msg:Reading
+# The pickup's event takes him for a moment: the stick lets go there
+hold 0 0 32767 until !free 3
+await 3 popup=1
+check \scarry=1\s
+shot D:/DEV/LASAP-sandbox/instant_carry.png
+await 5 toast=1
+send DBG text SystemSaving
+expect said=You\sfound 5
+await 5 popup=0
+await 10 toast=0
+# An item from the server while he carries the pot
+send DBG grant Seashell 1 -1
+expect OK.grant 5
+await 3 popup=1
+check \scarry=1\s
+await 5 toast=1
+send DBG text SystemSaving
+expect said=You\sgot\sSeashell 5
+await 5 popup=0
+check \scarry=1\s
+guard off msg:Reading
+guard off anim=item_get_st

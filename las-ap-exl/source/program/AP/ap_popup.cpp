@@ -55,6 +55,11 @@ namespace {
     constexpr u64 kLoadMs = 3000;      // a model that has not loaded by then is given up
     constexpr float kHeight = 2.3f;    // above Link's feet; the item-get holds items 2 units up
     constexpr float kRise = 0.4f;      // it rises this far while it grows
+    // While Link holds something over his head (player +0x19b0), the model shows this much higher, above it; it moves
+    // between the two heights at kCarryRaisePerMs
+    constexpr size_t kPlayerCarried = 0x19b0;
+    constexpr float kCarryRaise = 1.5f;
+    constexpr float kCarryRaisePerMs = kCarryRaise / 150.0f;
     constexpr float kTilt = -30.0f;    // degrees about x: tipped towards the camera, as the item-get tips its item
     // An NPC model is turned by its fix's angle from facing the camera, as in the item-get: the item-get's camera looks
     // down 65 degrees (the play camera 45) and the item's node is tipped back as far. The camera at Framework +0x560:
@@ -184,6 +189,8 @@ namespace {
     // The pose in the world: rotation, height above Link's model and scale (Place)
     Quat g_Pose{0.0f, 0.0f, 0.0f, 1.0f};
     float g_PoseHeight = 0.0f, g_PoseScale = 0.0f;
+    float g_CarryRaise = 0.0f;     // up to kCarryRaise while Link holds something
+    u64 g_PlacedAt = 0;
 
     // The node's local pose from the world pose. Its parent, Link's model, turns with him; the local pose takes out
     // the parent's world rotation and scale, so the model keeps its world pose whichever way he looks.
@@ -232,7 +239,12 @@ namespace {
         }
 #endif
         g_Pose = g_Fitted ? Mul(CameraRotation(), Mul(Axis(1, sway), g_Angle)) : Mul(Axis(0, kTilt), Axis(1, sway));
-        g_PoseHeight = kHeight - kRise * (1.0f - rise);
+        bool carrying = *reinterpret_cast<void**>(g_Player + kPlayerCarried) != nullptr;
+        u64 now = NowMs();
+        float step = kCarryRaisePerMs * (float)(g_PlacedAt != 0 ? now - g_PlacedAt : 0);
+        g_PlacedAt = now;
+        g_CarryRaise = carrying ? std::min(kCarryRaise, g_CarryRaise + step) : std::max(0.0f, g_CarryRaise - step);
+        g_PoseHeight = kHeight - kRise * (1.0f - rise) + g_CarryRaise;
         g_PoseScale = g_Scale * grow;
         ApplyPose(reinterpret_cast<Game::RootComp*>(model), parent);
         GameFn<void (*)(void*)>(kNodeMarkDirty)(model);
@@ -256,6 +268,9 @@ namespace AP::Popup {
         g_Scale = 1.0f;
         g_RootMoved = true;
         g_Fitted = false;
+        g_PlacedAt = 0;
+        // a model that shows while Link holds something starts above it
+        g_CarryRaise = *reinterpret_cast<void**>(player + kPlayerCarried) != nullptr ? kCarryRaise : 0.0f;
         GameFn<void (*)(SharedPtr*, SharedPtr*, StringView*, SharedPtr*, u8)>(kItemModelMake)(
             &g_Holder, &owner, &name, parent, static_cast<u8>(itemId));
         if (g_Holder.ptr == nullptr) return false;
