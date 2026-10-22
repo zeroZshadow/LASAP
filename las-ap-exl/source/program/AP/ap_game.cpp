@@ -29,6 +29,12 @@ namespace {
     // game counts over all 64 bits.
     constexpr int kHeartPieceBits = 32;
     constexpr int kSeashellBits = 50;
+    // Heart containers: Inventory_AddItemID takes indices 0-8 (scripts/re/ITEMS.md).
+    constexpr int kHeartContainerBits = 9;
+    // Chamber stones: received ones take the stones the Items page counts (PanelStone's mItemMenuCount: 3, 4, 8,
+    // 10-13, 20-26), each a chamber panel Dampé makes at his next talk (scripts/re/ITEMS.md, Chamber stones).
+    constexpr u64 kChamberStoneBits = 0x7f03d18;
+    constexpr uintptr_t kPanelPieceBits = 0x1cc1208;  // {u8* bits, s32 bytes, s32 bits}: the chamber stones owned
     // Time to wait after a level change before granting items.
     constexpr u64 kSettleMs = 1500;
 
@@ -125,6 +131,21 @@ namespace {
             if (!((bits >> i) & 1)) return i;
         }
         return limit - 1;
+    }
+
+    // The lowest bit of allowed that is clear in bits, -1 for none.
+    int LowestClearBitOf(u64 bits, u64 allowed) {
+        u64 free = allowed & ~bits;
+        return free == 0 ? -1 : __builtin_ctzll(free);
+    }
+
+    // The chamber stones owned (PanelPieceBits), bit i for stone i.
+    u64 ChamberStoneBits() {
+        struct BitTable { const u8* bits; s32 bytes; s32 count; };
+        const auto* table = reinterpret_cast<const BitTable*>(g_BaseAddress + offset_manager.Offset(kPanelPieceBits));
+        u64 owned = 0;
+        for (int i = 0; table->bits != nullptr && i < table->bytes && i < 8; i++) owned |= u64(table->bits[i]) << (8 * i);
+        return owned;
     }
 
     // The bottle slots Link has (Bottle0..2) as bits 0..2: an added bottle fills the slot of its index.
@@ -833,8 +854,9 @@ namespace {
             case 22: index = LowestClearBit(items->Seashells | AP::VanillaBits('S'), kSeashellBits); break;
             case 23: index = LowestClearBit(items->GoldenLeaves | AP::VanillaBits('L'), 5); break;
             case 58: index = LowestClearBit(items->HeartPieces | AP::VanillaBits('H'), kHeartPieceBits); break;
-            case 59: index = LowestClearBit(items->HeartContainers | AP::VanillaBits('C'), 16); break;
+            case 59: index = LowestClearBit(items->HeartContainers | AP::VanillaBits('C'), kHeartContainerBits); break;
             case 113: index = LowestClearBit(BottleBits() | AP::VanillaBits('B'), 3); break; // the bottle slot
+            case 114: index = LowestClearBitOf(ChamberStoneBits() | AP::VanillaBits('P'), kChamberStoneBits); break;
             case 44: case 45: case 47: case 48: case 49: index = dungeon; break; // dungeon items
             default: break;
         }
@@ -1017,6 +1039,7 @@ namespace {
             s += " hp=" + HexU64(items->HeartPieces);
             s += " hc=" + std::to_string(items->HeartContainers);
             s += " leaves=" + std::to_string(items->GoldenLeaves);
+            s += " stones=" + HexU64(ChamberStoneBits());
             s += " sword=" + std::to_string(items->MainItems.SwordLv1) + "/" + std::to_string(items->UpgradeItems.SwordLv2);
             s += " shield=" + std::to_string(items->MainItems.Shield) + "/" + std::to_string(items->UpgradeItems.MirrorShield);
             s += " bracelet=" + std::to_string(items->MainItems.PowerBraceletLv1) + "/" + std::to_string(items->UpgradeItems.PowerBraceletLv2);

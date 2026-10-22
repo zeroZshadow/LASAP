@@ -116,8 +116,8 @@ if patch["settings"].get("Map Tracker"):
         bad += 1
         print(f"MAP LOCATION NAMES missing for {nameless}")
     print(f"map icons overworld={len(overworld)} dungeon dots={len(dots)} locations={len(iconed)} bad={bad}")
-# Inventory bits: every seashell, heart piece, golden leaf, heart container and bottle source once per kind and bit, with
-# its local id when shuffled.
+# Inventory bits: every seashell, heart piece, golden leaf, heart container, bottle and chamber stone source once per kind
+# and bit, with its local id when shuffled.
 entries = [line.split() for line in (Path(sys.argv[2]) / "config/lasr-exl" / INDICES_FILE).read_text().splitlines()]
 ids = {int(i) for i in patch["location_ids"].values()}
 counts = {}

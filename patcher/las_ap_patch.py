@@ -128,10 +128,15 @@ def variant_key(item_key: str) -> str:
 # Item kinds whose in-game index LASR takes from logic.yml for vanilla placements.
 INDEXED_ITEMS = ("seashell", "heart-piece", "heart-container", "bottle", "golden-leaf", "chamber-stone")
 # Items counted by inventory bits, as the module names them in ap_indices.txt (AP::INDICES_PATH): kind letter per item
-INDEX_KINDS = {"seashell": "S", "heart-piece": "H", "golden-leaf": "L", "heart-container": "C", "bottle": "B"}
-# Item key -> kind and the bits the module gives received ones (AP::GrantItem, kHeartPieceBits, kSeashellBits)
-INDEX_BITS = {"Seashell": ("S", 50), "HeartPiece": ("H", 32), "GoldenLeaf": ("L", 5), "HeartContainer": ("C", 16),
-              "Bottle": ("B", 3)}
+INDEX_KINDS = {"seashell": "S", "heart-piece": "H", "golden-leaf": "L", "heart-container": "C", "bottle": "B",
+               "chamber-stone": "P"}
+# The chamber stones the Items page counts (PanelStone's mItemMenuCount), the 14 found outside the Chamber Dungeon
+CHAMBER_STONE_BITS = (3, 4, 8, 10, 11, 12, 13, 20, 21, 22, 23, 24, 25, 26)
+# Item key -> kind and the bits the module gives received ones (AP::GrantItem: kHeartPieceBits, kSeashellBits,
+# kHeartContainerBits, kChamberStoneBits)
+INDEX_BITS = {"Seashell": ("S", range(50)), "HeartPiece": ("H", range(32)), "GoldenLeaf": ("L", range(5)),
+              "HeartContainer": ("C", range(9)), "Bottle": ("B", range(3)),
+              "PanelDungeonPiece": ("P", CHAMBER_STONE_BITS)}
 INDICES_FILE = "ap_indices.txt"
 VANILLA_FILE = "ap_vanilla.txt"
 # The companions' locations and the flag their joining sets
@@ -525,8 +530,8 @@ def build_placements(patch: dict, logic: dict) -> dict:
 
 
 def write_indices(config_dir: Path, logic: dict, patch: dict) -> None:
-    """One line per seashell, heart piece, golden leaf, heart container and bottle location: its kind, its vanilla
-    inventory bit and the local id of the location when it holds the placeholder, else -1. A location that keeps its
+    """One line per seashell, heart piece, golden leaf, heart container, bottle and chamber stone location: its kind, its
+    vanilla inventory bit and the local id of the location when it holds the placeholder, else -1. A location that keeps its
     vanilla item sets its bit when collected, so the module gives received items other bits; the Memories map marks
     bit i's vanilla place."""
     lines = []
@@ -546,7 +551,7 @@ def starting_bits(logic: dict, patch: dict) -> dict:
         kind = INDEX_KINDS.get(entry.get("content"))
         if kind and entry.get("type") == "item" and "index" in entry and patch["placements"].get(loc) != "ap-item":
             vanilla[kind].add(entry["index"])
-    return {key: [i for i in range(count) if i not in vanilla[kind]] for key, (kind, count) in INDEX_BITS.items()}
+    return {key: [i for i in bits if i not in vanilla[kind]] for key, (kind, bits) in INDEX_BITS.items()}
 
 
 def write_vanilla(config_dir: Path, logic: dict, item_defs: dict, patch: dict) -> None:
