@@ -1,14 +1,47 @@
+Framework_SetupPhases 0x0850d404 f adds the update (+0x2a8) and render (+0x3a0) phases
+Framework_AddUpdatePhase 0x085100e0 f (fw, id, priority, std::function*)
+Framework_AddRenderPhase 0x08510290 f (fw, id, priority, std::function*)
+Phase_EndOfUpdate 0x08515960 f update phase 0xc350: room manager +0x58, then the render phases or a flush
 SceneHolder_Lock 0x08515b70 f (shared_ptr* out, holder*): shared_ptr of holder +0x88/+0x90 when its type matches; the game passes *(Framework+0x4a8) and gets the scene (+0x618 room manager)
+Phase_ActorLateUpdate 0x08518210 f update phase 0xbb80: queue +0x1f8, nothing while Framework +0x510/+0x511
+Phase_ActorUpdate 0x08519b80 f update phase 0x7530: queue +0x100, nothing while Framework +0x510/+0x511
+Framework_FrameStep 0x0851be30 f the frame delta, then the update phases
+Gfx_FlushEntities 0x0851c930 f graphics callback: EntityManager_Flush
+Actor_Ctor 0x0851fdb0 f (actor, ActorArgs*): Entity_Ctor, the params into +0x98..+0x288, priority +0xac from ActorTable +0x49
 ActorParams_Dtor0 0x08520f70 f member destructor at params +0xd0
 ActorParams_Dtor1 0x08521190 f member destructor at params +0x50
 ActorParams_Dtor2 0x085213b0 f member destructor at params +0x10
-Entity_DestroyThunk 0x085226d0 f actor vtable +0xa8: calls Entity_Destroy
+Actor_Priority 0x08521a40 f actor vtable +0x00: u32 +0xac, the key of the actor's tasks
+Actor_Dtor 0x08521a50 f actor vtable +0x10
+Actor_DeletingDtor 0x08521d70 f actor vtable +0x18
+Actor_Setup 0x08521da0 f actor vtable +0x20 (base): MakeRoot (+0xa8), PlaceAtSpawn (+0x90)
+Actor_OnDestroyed 0x08521e40 f actor vtable +0x38: event handles, zone subscriptions, RemovedSet_Add when +0xa2 bit 2, the registry entry
+Actor_PlaceAtSpawn 0x08522580 f actor vtable +0x90: root coordinates from the spawn transform +0x260, +0xe8(0), +0xa6 = 1
+Entity_DestroyThunk 0x085226d0 f actor vtable +0xa0: Entity_Destroy (the room manager's +0x278 signal); Player's does nothing
+Actor_MakeRoot 0x085226f0 f actor vtable +0xa8 (out, actor): the Root component when +0x80 is empty
+Actor_SuspendUpdates 0x085227d0 f actor vtable +0xc0: clears flags bits 8-10, closures over the components
+Actor_ResumeUpdates 0x085228d0 f actor vtable +0xc8: sets flags bits 8-10
+Actor_SubscribeZones 0x08522980 f actor vtable +0xd0: room manager +0x278, scene +0x708 and +0x7b8 signals; suspends at once outside its zone
+Actor_UnsubscribeZones 0x08522df0 f actor vtable +0xd8
+Actor_OnRoomChanged 0x08523090 f actor vtable +0xe0 (actor, int* new, int* old): restores flags bit 2 from +0xa2 bit 1 on entering its zone
+Actor_ZoneSignal 0x085232e0 f scene +0x7b8 callback: suspends a zone-scoped actor (+0xa4 bit 0) of the zone left, saving bit 2 into +0xa2
+Actor_RegisterEvents 0x08526a30 f (actor): event manager callbacks, handles +0x294/+0x298
+ActorSwitch_On 0x08526df0 f (LEB record, slot): sets the switch's flag (types 0, 1, 3)
+ActorSwitch_Off 0x08526fd0 f (LEB record, slot)
+ActorSwitch_Set 0x085271b0 f (LEB record, slot, bool); LASR's SetActorSwitch
+ActorSwitch_IsOn 0x08527490 f (LEB record, slot): type 0 level flag, 1 global flag, 2 index != 0, 3 PanelDungeon +0x16a0 bit; null record or other type false
+ActorSwitch_IsOff 0x08527660 f (LEB record, slot): null record or other type true
+ActorName_Make 0x08527830 f (out {sp, name, length}, params*): the LEB name, else "{0:S22}:{1:X8}" of the table name and a counter
 Entity_SetEnabled 0x0852e560 f (x0: +8 the bool, x1: the entity as a shared_ptr*): sets or clears bit 0 of the flags (+0x40); when that changes (flags & 0x40000017) == 0x17 (active), calls the entity's virtual +0x50
+Room_AdoptActor 0x0852f8e0 f (room, actor sp*): Entity_AddChild to the root, actor +0xb4 = the room's zone
+ActorParams_Copy 0x08535100 f (dst, src): the 0x1c0-byte actor params
+TaskQueue_Add 0x085361e0 f (queue, key*, std::function*, u32 priority): one task per key, ascending priority
 Resource_TakeFlowchart 0x085419f0 f (out, handle*)
 Resource_Wait 0x08541c20 f (handle*)
 AreaCraneGame_Setup 0x08553b40 f loads actor/AreaCraneGame.bfres, builds the featured prizes
 CraneGame_BuildFeaturedPrizes 0x08557f30 f (this): CraneGame_NextFeaturedPrize for groups 0 and 1
 CraneGame_NextFeaturedPrize 0x08558ac0 f (out, group): first featured row not owned (CranePrize_Has with layout itemIndex) whose conditions hold
+Resource_TakeModel 0x0855bd50 f (out sp, handle*): Resource_Wait and the bfres type check
 AreaHoleLowerLevel_StartEvent 0x085767f0 f probably AreaHoleLowerLevel: Area.bfevfl event, default entry FallToLowerLevel, params levelName, locator, offsetX, offsetZ
 AreaLevelOpen_Factory 0x08576e90 f actor table factory for id 0x190
 AreaLevelOpen_StartEvent 0x08579ac0 f (out, actor): Area.bfevfl entry from LEB param 2 (default DefaultLevelOpen), params levelName/locator from LEB params 0/1
@@ -19,6 +52,65 @@ AreaLevelOpen_Locator 0x0857a150 f (out, actor): LEB param 1
 BgmManager_StopByName 0x0859f7b0 f (StringView* name, u32 fade frames) on the static BgmManager
 BgmManager_StopAll 0x0859f550 f (u32 frames): every playing instance's fade-out +0x58 and Sound_Stop; the event action StopAllBGM and the level load (0 frames)
 BgmManager_FadeZone 0x085aa510 f the kind 1 instances fade out over 90 frames unless a buff's music plays; an event action
+Resource_TakeTailor 0x085dfb60 f (out sp, handle*): Resource_Wait and the drsb type check
+TaskQueue_Remove 0x085e8670 f (queue, key*): deferred while the queue runs
+Task_Post 0x087db430 f (out, scheduler Framework +0x60, std::function*, x3)
+EnemyOctorok_Factory 0x08a520a0 f ActorTable id 2
+ActorTree_Freeze 0x08cd9910 f (obj, entity): clears flags bit 2 of every enabled actor of the tree not of type 0x1cab3f8, listed at obj +0x18
+ActorTree_Unfreeze 0x08cd9f60 f sets flags bit 2 again on the list
+EventAction_LoadZone 0x08d03c50 f GameControl.LoadZone(zoneID)
+Scene_UpdateZone 0x08d3a270 f per frame: Link's room (scene +0x800 zone, +0x804 room); room signal +0x6f8, zone signal +0x6a0, RoomManager_VisitZone
+RoomManager_StartLevelLoad 0x08d58bf0 f vtable +0x50
+RoomManager_UnloadRooms 0x08d58cd0 f vtable +0x58: the actors of rooms whose area left the load box, a few per call, then the room
+RoomManager_CreateRoom 0x08d58fd0 f vtable +0x60 (out, manager, area sp*, bool): Room_Ctor
+RoomManager_LevelJumpTeardown 0x08d5b660 f vtable +0x80: BGM fade, Link disabled, every room deleted, the level data released
+RoomManager_ProcessLevelJump 0x08d68a30 f state 4: no event running, Framework +0x510, every room in Prepare or Run, then vtable +0x80
+RoomManager_VisitZone 0x08d69e90 f (manager, room): the zone into the removal rings (slot cleared)
+RoomManager_SetZoneActive 0x08d6ad90 f (rooms, end, zone): flags bit 2 on the roots' children of rooms with +0x240 == zone
+SmallKey_UpdateAppear 0x08dd0280 f enables the actor while switch 0 is on
+Room_Ctor 0x08de2f30 f (room, LevelData*, area sp*, bool): states Prepare, LebLoad, AssetLoad, InitializeActor, Run
+Room_PrepareUpdate 0x08de3740 f
+Room_LebLoadEnter 0x08de3770 f Resource_Load of the area's LEB (area +0x68)
+Room_LebLoadUpdate 0x08de3900 f LebRoom, Room_OnLebActor per actor, the queue sorted by group
+Room_AssetLoadEnter 0x08de4ca0 f the loads of one group's entries, +0x24b per frame
+Room_AssetLoadUpdate 0x08de5610 f params from the LEB record and Actor_Create, owner the root or (ActorTable +0x4b) the actor system
+Room_InitializeActorUpdate 0x08de6870 f waits for the components at +0x228
+Room_RunEnter 0x08de6bf0 f Scene_ReleaseActors
+Room_RunUpdate 0x08de6d50 f every 4th frame: actors below y -100 get vtable +0x118
+RoomSM_ChangeState 0x08de6eb0 f (room +0x10, state)
+Room_Dtor 0x08de8610 f removes the root's children
+Room_OnLebActor 0x08de8da0 f Room vtable +0x20 (room, LEB sp*, record*): presence, registry adoption, removal memory; queues an entry
+Room_Reload 0x08de9e60 f a dungeon room whose area +0xc1 changed: keeps its actors, back to LebLoad
+Room_ReloadChild 0x08dea2a0 f keeps an actor; destroys keyless ones with +0xa4 bit 1
+RemovedSet_Add 0x08deaac0 f (set, zone, key): the zone's ring slot, else the hash set
+RemovedSet_Has 0x08deb1e0 f (set, zone, key)
+LebRoom_Ctor 0x08deeb00 f sections actor +0x78, rail +0x80, point +0x88, infomation id +0x90
+ActorCreate_ReadyTask 0x08dfb860 f waits for flags bit 4 and the component's +0x58, then Actor_RegisterEvents, vtable +0xd0
+ActorRegistry_FindByKey 0x08dfc200 f (out sp, u64 key): the live actor with that LEB key
+NpcPop_Check 0x08e4bc90 f (npc component): the first holding popCondition's value == component +0x90
+NpcGhost_UpdateTask 0x08ec25f0 f queue +0x100 task: NpcGhost_Update while (flags & 0x40000117) == 0x117
+NpcGhost_Update 0x08ec2630 f per frame
+TreasureBox_Init 0x0919e0d0 f switch 0 on: opened (+0x320)
+TreasureBox_Open 0x0919f4b0 f sets switch 0
+ObjTreasureBox_Factory 0x091a2820 f ActorTable id 0xf7
+Player_UpdateTask 0x09239580 f queue +0x100 task: Player_UpdateAnimation while (flags & 0x40000117) == 0x117
+Actor_OnActiveChanged 0x094abaf0 f actor vtable +0x50: +0x40/+0x48, bit 1 to the root and the components
+Actor_RemoveComponent 0x094ac510 f (actor, name, length, bool immediate) (guess)
+Actor_ForEachComponent 0x094ace50 f (actor, std::function<bool(sp*)>*)
+Actor_AttachComponent 0x094ae8a0 f (actor, component, parent node)
+Entity_Start 0x094af470 f (sp*): EntityManager_PostStart
+Entity_Detach 0x094af5b0 f component vtable +0x08: leaves the owner's map, or DestroyNow
+Component_DestroyNow 0x094af730 f component vtable +0x60
+Entity_Ctor 0x094af900 f (entity, {name, length, bool enabled}*): flags 5 | enabled
+EntityManager_Ctor 0x094b0070 f seven task queues at +0x8, +0x100, +0x1f8, +0x2f0, +0x3e8, +0x4e0, +0x5d8
+TaskQueue_Run 0x094b0ab0 f (queue): tasks by ascending priority
+EntityManager_PostStart 0x094b22d0 f (manager, sp*): +0x6d0 += 1, a start task into queue +0x8
+EntityManager_StartTask 0x094b2690 f Start (+0x28), bit 4, +0x50
+EntityManager_DestroyTask 0x094b2970 f the entity's +0x08
+Entity_RemoveChildrenIf 0x094b3bc0 f (entity, std::function pred, bool immediate)
+Entity_ForEachChild 0x094b3d20 f (entity, std::function<bool(sp*)>)
+Entity_SetParentActiveFn 0x094b7220 f functor: child flags bit 1 := its byte, +0x50 on a change
+Entity_FindChildInMap 0x094b7470 f (map, name, length) -> node: FNV-1a lookup in a child map (+0x10/+0x38/+0x60)
 Sound_Stop 0x095ed7f0 f (sound, u32 frames)
 BgmManager_SetVolume 0x0859f3a0 f (f32 volume, u32 frames): Sound_SetVolume on every playing kind 1 instance; the event action SetBGMVolume
 BgmManager_MuteZone 0x0859f420 f (u32 frames): fades the kind 1 instances out; the item-get calls it with 8 frames before its fanfare when the item's info +0xe is set
@@ -78,7 +170,7 @@ ItemGet_PlayFanfare 0x08dd9700 f (u8 itemId): the Items.gsheet row's sound (+0x5
 ItemGet_RowAutoSave 0x08dd9ad0 f (item id) -> bool: whether the item's Items.gsheet row asks for an autosave (ItemRow_AutoSave)
 ItemRow_AutoSave 0x08dd9bc0 f (row) -> bool: +0x80 enabled, +0x84 category, +0x88 the condition's parameter
 Area_Ctor 0x08de2e00 f (area, lvb, entry, key): +0x20 min, +0x30 max, +0x64 zone index, +0x68 name, +0xc2 row, +0xc3 column
-Scene_ReleaseActors 0x08de72c0 f moves or removes the actors of a weak list (RemoveChild as the module does)
+Scene_ReleaseActors 0x08de72c0 f Room method (room): the actor-system map actors of +0x1c8 into the room root; clears the list
 LevelBvh_QueryPoint 0x08deb3b0 f (node, areas*, nodes*, const Vec4* pos, std::function*): recursive point query over the area BVH
 LevelData_Parse 0x08dee780 f .lvb sections config, node, area, zone, tagPlayerStart, staticObject, condition
 Lvb_Open 0x08dee7a0 f (view, resource): section pointers +0x68 config, +0x70 node, +0x78 area, +0x80 zone, +0x88 tagPlayerStart, +0x90 staticObject, +0x98 condition
@@ -129,7 +221,7 @@ Player_Dtor 0x0922f030 f player vtable +0x10 (vtable +0x18 the deleting destruct
 Player_Setup 0x0922fc50 f player vtable +0x20: loads Playerlink.bfres and tailor/Player.drsb, TailorPlayer at +0x1e88
 Player_InitParts 0x09230c50 f registers the item shape groups at player +0x498
 Player_InitAnimator 0x09231a00 f makes the 2-slot layered animator, layer 1 masked to spine_a
-Player_UpdateAnimation 0x092395c0 f per frame: nextKey chains through PlayerAnimation_Play
+Player_UpdateAnimation 0x092395c0 f per frame: nextKey chains through PlayerAnimation_Play; the Player's whole per-frame update (Player_UpdateTask)
 Player_UpdateState 0x0923ce70 f the big state update; inlines Player_ShowItem
 Player_ShowItem 0x09242390 f (player, u8 item, bool): sword/shield level from inventory +0x9c bits 0/1
 Player_SetBuffGlow 0x09242a40 f (player, bool defence): material animation powerUp or defence on slot 5
@@ -290,15 +382,21 @@ AddItemIdTable 0x09bb6d60 l Inventory_AddItemID jump table, 0x7f s32 offsets
 str_drsb_Player 0x09be06c5 l "tailor/Player.drsb"
 str_NpcGhost 0x09befdf4 l "NpcGhost": the row key and the actor table's name
 NpcCollisionFilters 0x09c06080 l 7 u32 collision filters
+Actor_vtable 0x0a054f28 l the game Actor; base slots +0x00..+0x120
+ActorSerial 0x0a055050 l counter -> actor +0xa8
 AreaLevelOpen_vtable 0x0a058b48 l vtable of the AreaLevelOpen actor
+EnemyOctorok_vtable 0x0a09b418 l
+RoomManager_vtable 0x0a0c6b00 l +0x20 RoomManager_Update, +0x50 StartLevelLoad, +0x58 UnloadRooms, +0x60 CreateRoom, +0x68 LevelLoad_Finish, +0x80 LevelJumpTeardown
 NpcComponent_vtable2 0x0a0c9290 l vtable
 Area_vtable 0x0a0d00e0 l vtable
+Room_vtable 0x0a0d0100 l +0x20 Room_OnLebActor
 LevelData_vtable 0x0a0d04c0 l vtable
 LevelDataBase_vtable 0x0a0d0608 l abstract base of the LevelData classes
-ActorTable 0x0a0d0898 l 0x58 bytes per actor id; +0x50 name
+ActorTable 0x0a0d0898 l 0x275 entries of 0x58 (scripts/re/ACTORS.md): +0x0 factory, +0x8 resources, +0x48 load group, +0x49 priority, +0x4a count, +0x4b actor-system owned, +0x50 name
 NpcComponent_vtable 0x0a0e0570 l vtable
 NpcGhost_vtable 0x0a0e77c0 l vtable
 NpcGhostComponent_vtable 0x0a0e7ad8 l vtable
+ObjTreasureBox_vtable 0x0a116020 l
 PanelShadowLink_vtable 0x0a11a730 l vtable
 Player_vtable 0x0a11bb70 l vtable
 PlayerItemModel_vtable 0x0a11d638 l bow and bottle model holders
@@ -306,6 +404,9 @@ PlayerBottle_vtable 0x0a11d918 l vtable
 TailorPlayer_vtable 0x0a12a068 l vtable
 ActorTailorDelegate_vtable 0x0a12aa48 l vtable: ground material u16 at +0x70
 HudInteract_vtable 0x0a130eb0 l vtable
+ActorBase_vtable 0x0a135198 l engine actor base (guess)
+Component_vtable 0x0a135358 l component base
+Entity_vtable 0x0a1353e8 l root class; +0x08 and +0x78 pure
 AnimationLayer_vtable 0x0a14b2f8 l vtable
 AnimationLayers_vtable 0x0a14b438 l vtable
 MultiMaterialAnimation_vtable 0x0a14d9f0 l vtable
@@ -329,12 +430,14 @@ BgmTable 0x0a1afa28 l static (guard 0x0a1b0378), made by BgmManager_Play
 CameraSystem_ptr 0x0a1b0b30 l shared_ptr; +0x600/+0x610 vectors passed to RoomManager_UpdateRooms, +0x700 flags (bit 3: room update requested)
 CranePrizeSheets_ptr 0x0a1b0f28 l 0x40 bytes of shared_ptrs: CranePrize +0x0, featured groups 1/2 at +0x20/+0x30
 EventManager_ptr 0x0a1b64d8 l
+ActorRegistry_ptr 0x0a1b6d00 l unordered_map<u64 LEB key, shared_ptr<Actor>>*
 NpcSheets_ptr 0x0a1bc360 l -> {shared_ptr Npc.gsheet, shared_ptr NpcPhysicsTraits.gsheet}
 PanelSheets_ptr 0x0a1bde50 l 0xa0 bytes of shared_ptrs: MapPieceList +0x0 (rows 0x98, mPanelItem +0x18), MapPieceTheme +0x10, ShopPanelItem +0x40, PanelStone +0x90 (rows 8, mItemMenuCount +0x4)
 PlayerAnimationSheet_ptr 0x0a1bef70 l -> shared_ptr PlayerAnimation.gsheet
 GlobalSave 0x0a1bf200 l
 SaveCurrent 0x0a1c46e0 l static struct *Inventory_ptr points at: +0x0 level, +0x40 locator ($NONE = use +0xdc), +0xdc restart position
 EventFlags_ptr 0x0a1c5120 l
+LevelFlags 0x0a1c5140 l level flags (EventFlags +0x20, 256 bits), switch type 0
 DungeonItems_ptr 0x0a1c51b0 l
 PanelPieceSetBits 0x0a1c51e0 l {u8* bits, s32 bytes 2, s32 bits 13}: PanelDungeonPieceSet (item 115) owned
 PanelPieceBits 0x0a1c5208 l {u8* bits, s32 bytes 7, s32 bits 51}: chamber stones (item 114) owned; CranePrize kind 0x14
@@ -344,7 +447,7 @@ PanelNotifyBits 0x0a1c52a8 l {u8*, 1, 8}: bit 0 a new stone, 2 a further stone o
 SaveHeader_ptr 0x0a1c5360 l points at the static save header (0x0a1c45a0): +0x8 the player's name, UTF-16, 8 letters and a 0 (the save file's +0x20); SaveCurrent follows at +0x140
 Inventory_ptr 0x0a1c5368 l +0x9c bits: 0 SwordLv2, 1 MirrorShield, 6 ClothesRed, 7 ClothesBlue
 LevelIndex_ptr 0x0a1c53c8 l
-EntityManager_ptr 0x0a1cad98 l +0x6d8 u8 flushing
+EntityManager_ptr 0x0a1cad98 l seven task queues (+0x8 start, +0x100 update, +0x1f8 late update, +0x2f0, +0x3e8, +0x4e0 render, +0x5d8 destroy); +0x6d0 initialized count, +0x6d8 u8 flushing
 ResourceManager_ptr 0x0a1cadb8 l
 FrameDelta 0x0a1cae88 l time units per update (blend progress)
 EffectManager_ptr 0x0a1d2f58 l EffectManager (0x228 bytes): *mgr is the nn::vfx::System

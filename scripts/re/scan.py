@@ -10,6 +10,8 @@ Run with .venv-lasr (needs capstone):
   python scan.py ptr <off>              8-byte words in rodata/data that hold base + <off> (vtables, tables)
   python scan.py strs <off> [hexlen]    strings the code in [off, off+len) loads (default 0x600 bytes)
   python scan.py sms [<from> <to>]      UI state machine ChangeState functions and their state counts
+  python scan.py actors [regex]         the actor table (ACTORS.md): id, factory, load group, priority, actor-system
+                                        owned, name and resources, for names matching regex
 Environment: LASAP_DUMP (default D:/DEV/LASAP-sandbox/re/main.bin), LASAP_BASE (runtime base, default 0x8504000).
 """
 import os
@@ -21,6 +23,7 @@ from functools import lru_cache
 DUMP = os.environ.get("LASAP_DUMP", "D:/DEV/LASAP-sandbox/re/main.bin")
 BASE = int(os.environ.get("LASAP_BASE", "0x8504000"), 16)
 TEXT_END = 0x1434000
+ACTOR_TABLE, ACTOR_COUNT, ACTOR_ENTRY = 0x1bcc898, 0x275, 0x58
 
 data = open(DUMP, "rb").read()
 
@@ -149,6 +152,26 @@ def state_machines(lo: int, hi: int):
         yield f, states
 
 
+def cstring_at(addr: int):
+    """The NUL-terminated string at a runtime address, None outside the dump."""
+    off = addr - BASE
+    if addr == 0 or not 0 <= off < len(data):
+        return None
+    return data[off:data.find(b"\0", off)].decode(errors="replace")
+
+
+def actors(rx: str):
+    """Yields (id, factory offset, group, priority, actor-system owned, name, resources) per non-empty entry."""
+    for i in range(ACTOR_COUNT):
+        e = ACTOR_TABLE + i * ACTOR_ENTRY
+        factory = struct.unpack_from("<Q", data, e)[0]
+        name = cstring_at(struct.unpack_from("<Q", data, e + 0x50)[0])
+        if not factory or not name or not re.search(rx, name):
+            continue
+        resources = [cstring_at(struct.unpack_from("<Q", data, e + 8 + 8 * j)[0]) for j in range(data[e + 0x4a])]
+        yield i, factory - BASE, data[e + 0x48], data[e + 0x49], data[e + 0x4b], name, resources
+
+
 def main() -> None:
     cmd, args = sys.argv[1], sys.argv[2:]
     if cmd == "str":
@@ -181,6 +204,10 @@ def main() -> None:
         lo, hi = (int(args[0], 16), int(args[1], 16)) if len(args) > 1 else (0, TEXT_END)
         for f, n in state_machines(lo, hi):
             print(f"{f:8x} states={n if n is not None else '?'} callers={len(callers(f))}")
+    elif cmd == "actors":
+        for i, factory, group, priority, owned, name, resources in actors(args[0] if args else ""):
+            print(f"{i:#05x} {factory:8x} group={group:#04x} prio={priority:#04x}{' system' if owned else ''} {name} "
+                  + " ".join(resources))
     else:
         raise SystemExit(__doc__)
 
