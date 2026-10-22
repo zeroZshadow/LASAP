@@ -14,6 +14,7 @@
 #include <bit>
 #include <cmath>
 #include <deque>
+#include <malloc.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -991,6 +992,11 @@ namespace {
             AP::Send(AP::MapListInfo(a));
         } else if (cmd == "mapdot") {
             AP::Send(AP::MapDotInfo(a));
+        } else if (cmd == "heap") {
+            // DBG heap: the module's heap (exl::setting::HeapSize): bytes taken from it, of those in use and free
+            struct mallinfo mi = mallinfo();
+            AP::Send("OK heap arena=" + std::to_string(mi.arena) + " used=" + std::to_string(mi.uordblks) +
+                     " free=" + std::to_string(mi.fordblks) + " size=" + std::to_string(exl::setting::HeapSize));
         } else if (cmd == "maplabel") {
             AP::Send("MAPLABEL " + AP::MapLabelText(a.size() >= 3 ? atoi(a[2].c_str()) : AP::MapHoverGroup()));
         } else if (cmd == "text") {
