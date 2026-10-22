@@ -483,6 +483,17 @@ class LASContext(CommonContext):
         elif self.slot in by_player:
             await self.send_msgs([{"cmd": "LocationScouts", "locations": by_player[self.slot], "create_as_hint": 2}])
 
+    def on_game_line(self, raw: bytes) -> None:
+        """A line from the game; one the client cannot handle is logged and skipped, so it ends neither the game's
+        connection nor the loop that connects again."""
+        line = raw.decode(errors="replace").strip()
+        if not line or line == "PONG":
+            return
+        try:
+            self.handle_game_line(line)
+        except Exception:
+            logger.exception(f"Ignored a line from the game: {line[:200]}")
+
     def handle_game_line(self, line: str) -> None:
         parts = line.split()
         if not parts:
@@ -600,16 +611,16 @@ class LASContext(CommonContext):
             self.notice_sent = False
             ping = asyncio.create_task(self.ping_loop(writer))
             try:
-                line = first.decode(errors="replace").strip()
-                if line and line != "PONG":
-                    self.handle_game_line(line)
+                self.on_game_line(first)
                 while not self.exit_event.is_set():
-                    raw = await reader.readline()
+                    try:
+                        raw = await reader.readline()
+                    except ValueError:  # a line longer than the stream's limit, which the reader dropped
+                        logger.warning("Ignored a line from the game that is too long.")
+                        continue
                     if not raw:
                         break
-                    line = raw.decode(errors="replace").strip()
-                    if line and line != "PONG":
-                        self.handle_game_line(line)
+                    self.on_game_line(raw)
             except (ConnectionError, OSError):
                 pass
             finally:

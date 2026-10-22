@@ -162,6 +162,7 @@ The client sets `las_sign_<team>_<slot>` to `true` once the game reports the sig
 ASCII lines terminated by `\n`, fields separated by single spaces. The game accepts one client at a time. The client sends `PING` every 2 s, and the game drops a client that has been silent for 10 s.
 
 - The game never waits for the client: the network thread sends on a non-blocking socket, without the lock the game thread takes to queue a line. A client that takes nothing for 10 s while lines wait, or leaves more than 32 KiB waiting (`kMaxWaiting` in `ap_net.cpp`; the module's heap is small), is dropped; it connects again, and its `SYNC` brings the game's state back.
+- The client logs and skips a line from the game it cannot handle (a field it cannot read, a line longer than its reader's limit); the connection goes on (`LASContext.on_game_line`).
 
 - The game listens and the client connects, so a Switch needs no address of the PC. The network thread waits for a client with `Poll` in 100 ms steps rather than a blocking `Accept`, which would keep emulators from closing the game.
 - The client drops a connection that gets no `HELLO` within 5 s: the game serves another client (a second client window), which the Patch tab then says, and Play starts no emulator. The Patch tab shows the game and server connections.

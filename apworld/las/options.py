@@ -308,10 +308,11 @@ class Stealing(Choice):
 
 class Traps(NamedRange):
     """How many junk items (rupees and chamber stones, 50 rupees first) become traps.
-    none: 0. few: 3. many: 17. trapsanity: every junk item. A number above the junk in the pool also turns all of it
-    into traps. The 50 Rupees that take the place of Starting Gear stay rupees. Logic never needs rupee items: rupees
-    for Mamu, the shop and the games come from cutting grass and defeating enemies, so with many traps a higher
-    Starting Rupees saves grinding."""
+    none: 0, and the pool holds no trap at all: the original game's four Zol Traps become rupees too (with any other
+    value one of them stays). few: 3. many: 17. trapsanity: every junk item. A number above the junk in the pool also
+    turns all of it into traps. The 50 Rupees that take the place of Starting Gear stay rupees. Logic never needs rupee
+    items: rupees for Mamu, the shop and the games come from cutting grass and defeating enemies, so with many traps a
+    higher Starting Rupees saves grinding."""
     display_name = "Traps"
     range_start = 0
     range_end = 999

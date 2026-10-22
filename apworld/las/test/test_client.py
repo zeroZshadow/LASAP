@@ -117,6 +117,38 @@ class TestGameConnection(unittest.TestCase):
             asyncio.run(run())
 
 
+class TestBadGameLines(unittest.TestCase):
+    def test_bad_lines_are_skipped(self) -> None:
+        """Lines the client cannot handle (bad fields, a line past the reader's limit) are logged and skipped: the
+        connection goes on and later lines are handled."""
+        from ..client import LASContext, PROTOCOL_VERSION
+
+        async def run() -> tuple:
+            async def game(reader, writer):
+                writer.write(f"HELLO {PROTOCOL_VERSION} aaaa\n".encode())
+                writer.write(b"RECV x\nRECV\nCHECKS 5 y\nHINT a b\n" + b"x" * 100_000 + b"\nRECV 3\n")
+                await writer.drain()
+                await asyncio.sleep(5)
+
+            server = await asyncio.start_server(game, "127.0.0.1", 0)
+            ctx = LASContext(None, None, "127.0.0.1", server.sockets[0].getsockname()[1])
+            ctx.send_game = lambda line: None
+            loop = asyncio.create_task(ctx.game_loop())
+            for _ in range(100):
+                await asyncio.sleep(0.02)
+                if ctx.game_recv == 3:
+                    break
+            result = (ctx.game_recv, loop.done(), ctx.game_writer is not None)
+            ctx.exit_event.set()
+            loop.cancel()
+            server.close()
+            return result
+
+        with self.assertLogs("Client", level="WARNING") as logs:
+            self.assertEqual(asyncio.run(run()), (3, False, True))
+        self.assertTrue(any("Ignored a line from the game: RECV x" in line for line in logs.output), logs.output)
+
+
 class TestDetection(unittest.TestCase):
     def test_play_finds_a_dump_made_after_start(self) -> None:
         """A yuzu-based emulator's RomFS dump made while the client runs is found when Play checks the setup."""

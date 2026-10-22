@@ -236,11 +236,14 @@ class LASWorld(World):
             if pool[item] > 0:
                 pool[item] -= 1
                 pool["rupee-50"] += 1
+        # The original game's chests hold four Zol Traps. LASR trades three for 500 rupees when it adds traps; with no
+        # traps the fourth goes too, for 50 rupees. Zol Traps in chests the options leave unrandomized stay there.
+        trades = ("rupee-100", "rupee-100", "rupee-300") + (() if options.traps.value else ("rupee-50",))
+        for replacement in trades[:pool["zol-trap"]]:
+            pool["zol-trap"] -= 1
+            pool[replacement] += 1
         if options.traps.value:
-            # LASR trades three zol traps for 500 rupees, then replaces purple rupees with traps
-            for replacement in ("rupee-100", "rupee-100", "rupee-300")[:min(3, pool["zol-trap"])]:
-                pool["zol-trap"] -= 1
-                pool[replacement] += 1
+            # then purple rupees and other junk become traps
             count = options.traps.value
             for junk in JUNK:
                 taken = min(count, pool[junk])

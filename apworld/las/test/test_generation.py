@@ -304,6 +304,18 @@ class TestTrapsanity(LASTestBase):
         self.assertEqual(lasr_settings(self.world.options)["Traps"], "Trapsanity")
 
 
+class TestNoTraps(LASTestBase):
+    """Traps none: no trap in the pool, the original game's four Zol Traps neither; with traps one of them stays."""
+    options = {"traps": "none"}
+
+    def test_no_trap(self) -> None:
+        from ..lasr import TRAPS
+        pool = self.world.item_pool()
+        self.assertEqual(pool["zol-trap"], 0)
+        self.assertEqual(sum(pool[trap] for trap in TRAPS), 0)
+        self.assertFalse([item for item in self.multiworld.itempool if item.player == self.player and item.trap])
+
+
 class TestTrapCount(LASTestBase):
     options = {"traps": 25}
 
@@ -312,6 +324,7 @@ class TestTrapCount(LASTestBase):
         from ..lasr_settings import lasr_settings
         pool = self.world.item_pool()
         self.assertEqual(sum(pool[trap] for trap in TRAPS), 25)
+        self.assertEqual(pool["zol-trap"], 1)
         self.assertEqual(lasr_settings(self.world.options)["Traps"], "Many")
 
 
