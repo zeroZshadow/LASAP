@@ -1,6 +1,8 @@
 #!/bin/bash
 # Decompiles functions of the game's main module with Ghidra headless, named from las.sym:
-#   scripts/re/decomp.sh <out.c> <hex module offset>...
+#   scripts/re/decomp.sh <out.c> <hex module offset>[:<hex instruction word>]...
+# With :<word>, that instruction replaces the dump's at the offset first: a hooked function starts with the hook's
+# branch in the dump (its original first instruction, often sub sp, sp, #<frame>).
 # LASAP_RE (default D:/DEV/LASAP-sandbox/re) holds main.bin (DBG dumpmain); the Ghidra project is made there
 # (ghidra/) on first use, without auto-analysis. GHIDRA_HOME defaults to scoop's ghidra. The project is opened
 # read-only: names and functions apply for the run only.

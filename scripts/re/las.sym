@@ -67,8 +67,11 @@ SetGameState 0x08d7f780 f (state machine, u32 state, bool): 4 reloads from the s
 Title_ChangeState 0x08d831b0 f (machine*, state)
 ItemActor_CanAppear 0x08dc8510 f (actor): when vtable +0x3e0 holds, false while Inventory_HasItem(+0x2e8 item, 1, +0xbc index if +0xc0 == 3 else -1); the call at +0x8c45b8 is LASR's patch site
 Npc_TraitsValue 0x08dcb490 f (npc component): a float of the row's collision.traits row in NpcPhysicsTraits, default without
-Inventory_AddItemID 0x08dd48e0 f (itemId, count, index); hooked by the module. Case 114 sets the chamber stone bit
-Inventory_HasItem 0x08dd5a30 f (itemId, count, index): 114 tests chamber stone bit index; the item actors' collected check
+Inventory_AddItemID 0x08dd48e0 f (itemId, count, index); hooked by the module; per item id in re/ITEMS.md. Case 114 sets the chamber stone bit
+Inventory_RecordChapter 0x08dd5830 f (instrument): after an instrument's add, a record per instrument in the save header (count +0x28, 0x20 each from +0x40: instrument, flags, rupees) (guess)
+Item_CheckGettingFlag 0x08dd6940 f (item id): the event flag the item's Items.gsheet row names (+0x70); hooked by the module
+Item_SetGettingFlag 0x08dd6a70 f (item id): sets that flag; hooked by the module
+Inventory_HasItem 0x08dd5a30 f (itemId, count, index): 114 tests chamber stone bit index; the item actors' collected check; per item id in re/ITEMS.md
 ItemModel_Make 0x08dd7670 f (out holder, owner sp*, StringView* name, root node sp*, u8 itemId): loads the item's model and posts ItemGet_ModelTask, which makes the component (disabled) into holder +0x18; the item-get and the NPCs that hold items use it
 ItemGet_ModelTask 0x08dd81c0 f (task*): the item-get's model: the item's Npc row, ModelResource_Get, the component ItemModel on its node
 ItemGet_PlayFanfare 0x08dd9700 f (u8 itemId): the Items.gsheet row's sound (+0x58): an SE ('@' first) or a BGM jingle
@@ -327,7 +330,7 @@ CameraSystem_ptr 0x0a1b0b30 l shared_ptr; +0x600/+0x610 vectors passed to RoomMa
 CranePrizeSheets_ptr 0x0a1b0f28 l 0x40 bytes of shared_ptrs: CranePrize +0x0, featured groups 1/2 at +0x20/+0x30
 EventManager_ptr 0x0a1b64d8 l
 NpcSheets_ptr 0x0a1bc360 l -> {shared_ptr Npc.gsheet, shared_ptr NpcPhysicsTraits.gsheet}
-PanelSheets_ptr 0x0a1bde50 l 0xa0 bytes of shared_ptrs: MapPieceList +0x0, MapPieceTheme +0x10, ShopPanelItem +0x40
+PanelSheets_ptr 0x0a1bde50 l 0xa0 bytes of shared_ptrs: MapPieceList +0x0 (rows 0x98, mPanelItem +0x18), MapPieceTheme +0x10, ShopPanelItem +0x40, PanelStone +0x90 (rows 8, mItemMenuCount +0x4)
 PlayerAnimationSheet_ptr 0x0a1bef70 l -> shared_ptr PlayerAnimation.gsheet
 GlobalSave 0x0a1bf200 l
 SaveCurrent 0x0a1c46e0 l static struct *Inventory_ptr points at: +0x0 level, +0x40 locator ($NONE = use +0xdc), +0xdc restart position
@@ -335,9 +338,9 @@ EventFlags_ptr 0x0a1c5120 l
 DungeonItems_ptr 0x0a1c51b0 l
 PanelPieceSetBits 0x0a1c51e0 l {u8* bits, s32 bytes 2, s32 bits 13}: PanelDungeonPieceSet (item 115) owned
 PanelPieceBits 0x0a1c5208 l {u8* bits, s32 bytes 7, s32 bits 51}: chamber stones (item 114) owned; CranePrize kind 0x14
-PanelPieceSetBits2 0x0a1c5230 l {u8*, 2, 13}: second set table (seen/new, unverified)
-PanelPieceBits2 0x0a1c5258 l {u8*, 7, 51}: second stone table (seen/new, unverified)
-PanelNotifyBits 0x0a1c52a8 l {u8*, 1, 8}: bit 0 first stone, 2 later stone or set, 3 special stone (7,13,18,19,24,32)
+PanelPieceSetBits2 0x0a1c5230 l {u8*, 2, 13}: the sets Dampé has made into panels (PanelDungeon_ProcessStones)
+PanelPieceBits2 0x0a1c5258 l {u8*, 7, 51}: the stones Dampé has made into panels (PanelDungeon_ProcessStones)
+PanelNotifyBits 0x0a1c52a8 l {u8*, 1, 8}: bit 0 a new stone, 2 a further stone or a set, 3 a special stone (7,13,18,19,24,32); Dampé's ProcessDungeonAndPanelStone clears them
 SaveHeader_ptr 0x0a1c5360 l points at the static save header (0x0a1c45a0): +0x8 the player's name, UTF-16, 8 letters and a 0 (the save file's +0x20); SaveCurrent follows at +0x140
 Inventory_ptr 0x0a1c5368 l +0x9c bits: 0 SwordLv2, 1 MirrorShield, 6 ClothesRed, 7 ClothesBlue
 LevelIndex_ptr 0x0a1c53c8 l
@@ -637,6 +640,15 @@ HudSetItem_SetCount 0x094499c0 f (slot, count): the number on an item slot (gues
 ActorSwitch_Check 0x0948c6c0 f (u8 type, u16 index): whether a level actor's switch is set; the HUD's boss key (ObjBossDoor 0xee, PanelBossDoor 0x255) and the dungeon map (guess)
 Ui2d_UpdateAlignment 0x0967e090 f ui2d alignment pane relayout (guess)
 Inventory_MaxHealth 0x092fc260 f (Inventory_ptr*): max health in quarter hearts
+Inventory_AddArrows 0x092fc550 f (count): +0x9f, 0 to 30 (60 with Arrow_MaxUp), 0 without the Bow
+Inventory_AddBombs 0x092fc5b0 f (count): +0x9e, 0 to 30 (60 with Bomb_MaxUp), 0 without bombs
+Inventory_AddPowder 0x092fc610 f (count): +0xa0, 0 to 20 (40 with MagicPowder_MaxUp), 0 without powder
+PlayReport_ItemCommon 0x092f80e0 f (report, Framework +0x5d0): SaveId, TotalTimePlayed, Chapter, Warashibe; AddItemID adds ItemId and Index
+PlayReport_Submit 0x092f82d0 f (report) (guess)
+PanelDungeon_NewStone 0x091e9120 f bool: PanelNotifyBits bit 0; the query CheckNewPanelStone
+PanelDungeon_ProcessStones 0x091e93f0 f the action ProcessDungeonAndPanelStone: AddItemID(115, 1, d) for each dungeon d whose instrument is owned (set 9 with Lv10DungeonClear), the owned sets and stones into the second tables, clears PanelNotifyBits 0, 2, 3
+DanpeiAction_ProcessDungeonAndPanelStone 0x08e8d250 f std::function body (vtable 0x0a0e4150): PanelDungeon_ProcessStones
+DanpeiQuery_CheckNewPanelStone 0x08e8c1d0 f std::function body (vtable 0x0a0e3e80): PanelDungeon_NewStone
 Animator_FrameCount 0x09650840 f (animator): its frame count
 PanelDungeon_ItemLock 0x091e51e0 f (manager, kind): whether an item is greyed out in the Chamber Dungeon (guess)
 OverworldMap_MemoryCreated 0x093a1f20 f the Memories UI's creation callback: map +0x3d30, its list from map +0x3d40, the map's guide function
