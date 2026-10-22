@@ -989,6 +989,8 @@ namespace {
             AP::Send(AP::MapState());
         } else if (cmd == "maplist") {
             AP::Send(AP::MapListInfo(a));
+        } else if (cmd == "mapdot") {
+            AP::Send(AP::MapDotInfo(a));
         } else if (cmd == "maplabel") {
             AP::Send("MAPLABEL " + AP::MapLabelText(a.size() >= 3 ? atoi(a[2].c_str()) : AP::MapHoverGroup()));
         } else if (cmd == "text") {

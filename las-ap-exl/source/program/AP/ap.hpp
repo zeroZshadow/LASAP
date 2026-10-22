@@ -56,6 +56,8 @@ namespace AP {
     constexpr const char* MAP_PATH = "sd:/config/lasr-exl/ap_map.txt";
     // Event flag and Place.msbt label of an overworld icon: the prefix and the icon's group. Must match the patcher.
     constexpr const char* MAP_FLAG_PREFIX = "APMap";
+    // The Place.msbt entry the dungeon map's dots are named with (patcher ap_map.DOT_LABEL)
+    constexpr std::string_view MAP_DOT_LABEL = "APMapDot";
     // After the prefix, the icon's look other than in logic: partly in logic, out of logic, collected.
     constexpr const char* MAP_LOOK_MARKS = "PXC";
 
@@ -141,9 +143,10 @@ namespace AP {
     // The overworld icon group the map's cursor was on the last frame the overworld map took buttons, or -1.
     int MapHoverGroup();
     // STATE's " mlist=<group>/<cursor>/<first row>[/closing]" while the map's check list is there, else " mlist=-";
-    // DBG maplist.
+    // DBG maplist; DBG mapdot (the dungeon page's dots).
     std::string MapListField();
     std::string MapListInfo(const std::vector<std::string>& args);
+    std::string MapDotInfo(const std::vector<std::string>& args);
 #endif
     // Each input poll: while the map's check list is open the game sees no buttons and no sticks (true then); buttons
     // held as it closes stay hidden from the game until released.

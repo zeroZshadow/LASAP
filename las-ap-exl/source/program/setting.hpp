@@ -15,8 +15,8 @@ namespace exl::setting {
     /* How large the fake .bss heap will be. */
     constexpr size_t HeapSize = 0x50000;
 
-    /* How large the JIT area will be for hooks. */
-    constexpr size_t JitSize = 0x4000;
+    /* How large the JIT area will be for hooks: 200 bytes per trampoline hook installed (0x4000 held 81, too few). */
+    constexpr size_t JitSize = 0x8000;
 
     /* How large the area will be inline hook pool. */
     constexpr size_t InlinePoolSize = 0x4000;

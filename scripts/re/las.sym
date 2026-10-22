@@ -411,11 +411,11 @@ DungeonMap_MakeRoomIcons 0x09384950 f (page, room sp, dungeon, visited, map, com
 DungeonMap_ShowCellFloorCollapsed 0x09385d80 f DungeonMap_ShowCellFloor for Eagle's Tower once collapsed (flag 0x3bd)
 DungeonMap_ShowCellFloor 0x09386250 f (page, u8 cell, room sp, UiDungeonArea row): shows the cell (B_<cell>) and its room's icons (icon +0xc0 room id; icon vtable +0x78 set shown) when the row's mFloor is the shown floor (+0x2d23), the Link marker on Link's floor, the entrance marker on its floor and the pins whose code / 10 is the shown floor; run per room in the setup and on a floor change
 DungeonMap_LinkToMap 0x09386610 f bool(world pos, page, out vec2, dungeon): Link's map position, false outside the map
-DungeonMap_WorldToMap 0x093867b0 f (vec2 world xz, page, out vec2, room): layout position on the dungeon map
+DungeonMap_WorldToMap 0x093867b0 f (vec4 world x y z in v0, page, out vec2, room sp*): a room icon's translate under N_MapPin_00: N_MapPosition_00 + the room's cell + (world - the room box's middle) * 5.333 (z down)
 MapMarkUnit_Make 0x093868a0 f (out shared_ptr, const char* "Gm_MapMarkUnit.bflyt"): a pin layout
 DungeonMap_MakeActorIcon 0x093872c0 f (out shared_ptr, page, actor desc {u16 actor id, f32 x, y, z, switches}, room, visited, map, compass): the icon by actor id: ObjTreasureBox chest, doors (ObjLockDoor, ObjBossDoor, ObjClosedDoor, one-way, Panel doors), cracked walls, stairs (AreaUpstairs/Downstairs, Panel stairs), warp hole, panel joint; null for others; icon +0xc5 map, +0xc6 compass
 DungeonMapChest_Make 0x09387860 f (out shared_ptr): make_shared DungeonMapIcon of Dg_DgnTresure.bflyt
-DungeonMap_PositionIcon 0x09388b60 f (x, y, z, page, icon sp, room): places the icon at the actor's map position
+DungeonMap_PositionIcon 0x09388b60 f (x, y, z, page, out vec2, room sp*): DungeonMap_WorldToMap of the actor's position
 UiManager_FindNavi 0x09389520 f (out lock handle): UiManager_Find typed for Gm_Navi (id 5); handle +0x18 the UI, +0x20 its count, the UI manager's lock held while the handle lives
 UiManager_FindMemory 0x09389cc0 f (out handle, manager, id): typed find used for Gm_Memory (0x1a)
 DungeonMap_MoveCursor 0x0938a750 f (page, bool move): as OverworldMap_MoveCursor with the dungeon fields; idle, it eases toward the hovered pin only (+0x13c0)
@@ -755,3 +755,4 @@ WarpMap_UpdateHover 0x094a0370 f (page): first shown point within 48 (dist2 <= 2
 WarpMap_NearestInDirection 0x094a0970 f (page, dir 0 up 1 down 2 left 3 right) -> index: nearest shown point other than the hovered one in that half-plane, else the hovered one
 WarpPointMarker_vtable 0x0a133a70 l Gm_MapWarpPoint; row {sheet sp, count, row} at +0x110/+0x118/+0x120
 WarpPointSheet_ptr 0x0a1b64f8 l 0x218 bytes: WarpPoint.gsheet sp +0x0, rows by mIndex +0x10 + i*8 (64), pedestal count +0x210; rows 0x50: mKey +0x0, mIndex +0x10, mIsPedastal +0x14, mLocator +0x18, mNameLabel +0x28, mPosition +0x38, x/y/z +0x40
+DungeonMapIcon_SetShown 0x0943c0f0 f vtable +0x78 (icon, bool on the shown floor): root visible while that and the icon's shown flag (+0xc4) are set
