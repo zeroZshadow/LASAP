@@ -2,9 +2,8 @@
 relay as frames; frames of the players around this one come back as GHOST lines for the game (DESIGN.md, Ghosts)."""
 import asyncio
 import math
-import socket
 import struct
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from . import checklist
 from . import ghost_relay as wire
@@ -14,12 +13,13 @@ MIN_INTERVAL = 0.045  # at most ~20 frames a second go to the relay; what the pl
 PING_INTERVAL = 10.0
 SILENT_TIMEOUT = 30.0  # the relay answers pings; a link that hears nothing this long reconnects
 RETRY_DELAYS = (2, 5, 10, 30, 60)
+DEFAULT_RELAY = wire.DEFAULT_RELAY
 
 
-def pos_body(parts: List[str]) -> Optional[bytes]:
+def line_pos(parts: List[str]) -> Optional[wire.Pos]:
     """A POS line's fields (`POS <level> <x> <y> <z> <yaw> <anim> <anim frame> <upper anim> <flags> <time> <shapes>
-    <tunic> <eye> <mouth> <ear>`, wire.Pos) as a frame body, or None when Link is in no level the relay knows
-    (`POS none`, a level missing from wire.LEVELS) or the line is malformed."""
+    <tunic> <eye> <mouth> <ear>`, wire.Pos) as the position the wire carries, or None when Link is in no level the
+    relay knows (`POS none`, a level missing from wire.LEVELS) or the line is malformed."""
     if len(parts) != 16 or parts[1] not in wire.LEVEL_IDS:
         return None
     try:
@@ -31,13 +31,12 @@ def pos_body(parts: List[str]) -> Optional[bytes]:
         return None
     return wire.Pos(time_ms & 0xFFFF, wire.LEVEL_IDS[parts[1]], x, y, z, round(yaw % 360 * 65536 / 360) & 0xFFFF,
                     anim & 0xFFFF, anim_frame & 0xFFFF, upper_anim & 0xFFFF, flags & 0xFF, shapes & 0xFFFFFFFF,
-                    tunic & 0xFF, eye & 0xFF, mouth & 0xFF, ear & 0xFF).pack()
+                    tunic & 0xFF, eye & 0xFF, mouth & 0xFF, ear & 0xFF).quantized()
 
 
-def ghost_line(n: int, slot: str, body: bytes) -> Optional[str]:
+def ghost_line(n: int, slot: str, p: wire.Pos) -> Optional[str]:
     """`GHOST <n> <level> <x> <y> <z> <yaw> <anim> <anim frame> <upper anim> <flags> <time> <shapes> <tunic> <eye>
-    <mouth> <ear> <slot name>` for a frame body."""
-    p = wire.Pos.unpack(body)
+    <mouth> <ear> <slot name>` for a position."""
     if p.level >= len(wire.LEVELS):
         return None
     name = " ".join(slot.replace("|", "/").split()) or "?"
@@ -55,19 +54,23 @@ class GhostLink:
         self.changed = changed  # the status changed (the Patch tab shows it)
         self.enabled = False
         self.address = ""
+        self.default_relay = False  # the address is DEFAULT_RELAY, not one the player or the patch file chose
         self.secret = ""
         self.slot = ""
         self.player = ""
         self.names = True  # name tags over the ghosts in the game
         self.game_connected = False
         self.status = checklist.Check(checklist.INFO, "")
-        self.writer: Optional[asyncio.StreamWriter] = None
+        self.writer: Optional[Union[asyncio.StreamWriter, wire.WebSocketWriter]] = None
         self.joined = False
         self.own_id = -1
         self.players: Dict[int, Tuple[str, str]] = {}  # the group's other members: id -> (slot, player name)
         self.ghosts: List[Optional[int]] = [None] * GHOST_SLOTS  # the player id each ghost slot shows
+        self.positions: Dict[int, wire.Pos] = {}  # the last position of each player the relay sends frames of
         self.last_sent = 0.0
-        self.pending: Optional[bytes] = None  # a POS body waiting for MIN_INTERVAL; b"" for NOWHERE
+        self.pending: Optional[wire.Pos] = None  # a position waiting for MIN_INTERVAL; None with pending_set: NOWHERE
+        self.pending_set = False
+        self.sent: Optional[wire.Pos] = None  # the last position sent, which the next one's changes are against
         self.sent_action: Optional[tuple] = None  # action() of the last frame sent
         self.flush_handle: Optional[asyncio.TimerHandle] = None
         self.sent_frames = 0
@@ -76,11 +79,14 @@ class GhostLink:
 
     # settings and state
 
-    def configure(self, enabled: bool, address: str, secret: str, slot: str, player: str) -> None:
-        new = (enabled, address.strip(), secret, slot, player or slot)
-        if new == (self.enabled, self.address, self.secret, self.slot, self.player):
+    def configure(self, enabled: bool, address: str, secret: str, slot: str, player: str,
+                  default_relay: bool = False) -> None:
+        """default_relay: the address is DEFAULT_RELAY, so a relay that cannot be reached or refuses shows as a note,
+        not an error."""
+        new = (enabled, address.strip(), secret, slot, player or slot, default_relay)
+        if new == (self.enabled, self.address, self.secret, self.slot, self.player, self.default_relay):
             return
-        self.enabled, self.address, self.secret, self.slot, self.player = new
+        self.enabled, self.address, self.secret, self.slot, self.player, self.default_relay = new
         self.drop()
         self.wake.set()
 
@@ -120,28 +126,26 @@ class GhostLink:
 
     def on_game_lost(self) -> None:
         self.game_connected = False
-        self.queue(b"")
+        self.queue(None)
 
     def on_pos(self, parts: List[str]) -> None:
         """A POS line from the game."""
-        body = pos_body(parts)
-        self.queue(body if body is not None else b"")
+        self.queue(line_pos(parts))
 
     @staticmethod
-    def action(body: bytes) -> tuple:
+    def action(p: wire.Pos) -> tuple:
         """What the player does in a frame: facing, animations, flags (warped, hidden, still, an animation started),
         shapes, tunic and face."""
-        p = wire.Pos.unpack(body)
         return p.yaw, p.anim, p.upper_anim, p.flags, p.shapes, p.tunic, p.eye, p.mouth, p.ear
 
-    def queue(self, body: bytes) -> None:
-        """Sends a frame at most every MIN_INTERVAL, the last one included; a frame in which the player turns, plays
-        another animation, starts or stops or changes its shapes, tunic or face goes at once, so the receiver sees it
-        at its time."""
-        self.pending = body
+    def queue(self, pos: Optional[wire.Pos]) -> None:
+        """Sends a position (None: in no level) at most every MIN_INTERVAL, the last one included; a frame in which
+        the player turns, plays another animation, starts or stops or changes its shapes, tunic or face goes at once,
+        so the receiver sees it at its time."""
+        self.pending, self.pending_set = pos, True
         if not self.joined:
             return
-        if body and self.action(body) != self.sent_action:
+        if pos is not None and self.action(pos) != self.sent_action:
             if self.flush_handle is not None:
                 self.flush_handle.cancel()
             self.flush()
@@ -157,15 +161,17 @@ class GhostLink:
 
     def flush(self) -> None:
         self.flush_handle = None
-        if self.pending is None or self.writer is None or not self.joined:
+        if not self.pending_set or self.writer is None or not self.joined:
             return
-        body, self.pending = self.pending, None
-        if body:
-            self.sent_action = self.action(body)
-            self.write(bytes([wire.POS]) + body)
+        pos, self.pending, self.pending_set = self.pending, None, False
+        if pos is not None:
+            self.sent_action = self.action(pos)
+            self.write(bytes([wire.POS]) + wire.encode_pos(pos, self.sent))
+            self.sent = pos
             self.sent_frames += 1
         else:
             self.write(bytes([wire.NOWHERE]))
+            self.sent = None
         self.last_sent = asyncio.get_running_loop().time()
 
     def write(self, payload: bytes) -> None:
@@ -186,6 +192,8 @@ class GhostLink:
         self.joined = False
         self.own_id = -1
         self.players.clear()
+        self.positions.clear()
+        self.sent = None  # a new connection starts with a keyframe
         for n, player_id in enumerate(self.ghosts):
             if player_id is not None:
                 self.send_game(f"GHOST {n} off")
@@ -201,9 +209,12 @@ class GhostLink:
         if kind == wire.FRAME:
             player_id = struct.unpack_from(">H", payload, 1)[0]
             self.received_frames += 1
-            self.show(player_id, payload[3:])
+            pos = wire.decode_pos(payload[3:], self.positions.get(player_id))
+            self.positions[player_id] = pos
+            self.show(player_id, pos)
         elif kind == wire.OFF:
             player_id, reason = struct.unpack_from(">HB", payload, 1)
+            self.positions.pop(player_id, None)  # its next frame is a keyframe
             self.hide(player_id)
             if reason == wire.OFF_LEFT:
                 self.players.pop(player_id, None)
@@ -229,7 +240,7 @@ class GhostLink:
         self.set_status(checklist.OK, f"Ghosts: connected to the relay, {others} other player"
                                       f"{'' if others == 1 else 's'} online.")
 
-    def show(self, player_id: int, body: bytes) -> None:
+    def show(self, player_id: int, pos: wire.Pos) -> None:
         """Shows a player's frame as a ghost. Another multiworld's player (a relay with --nogroups) may have this
         player's slot name: the player id tells them apart."""
         if player_id not in self.players or player_id == self.own_id:
@@ -240,7 +251,7 @@ class GhostLink:
             n = self.ghosts.index(None)
         else:
             return  # every ghost slot is taken; it shows once one frees
-        line = ghost_line(n, self.players[player_id][0], body)
+        line = ghost_line(n, self.players[player_id][0], pos)
         if line is None:
             return
         self.ghosts[n] = player_id
@@ -265,14 +276,14 @@ class GhostLink:
                 await self.session()
                 failures = 0
             except RelayRefused as e:
-                self.set_status(checklist.ERROR, f"Ghosts: the relay refused: {e}")
+                self.set_status(*self.problem(f"Ghosts: the relay refused: {e}"))
                 failures = len(RETRY_DELAYS) - 1
             except (OSError, asyncio.TimeoutError, asyncio.IncompleteReadError, ValueError, IndexError,
                     struct.error) as e:
                 if not self.wake.is_set():
-                    self.set_status(checklist.ERROR, f"Ghosts: cannot reach the relay "
-                                                     f"{wire.shown_address(self.address)} "
-                                                     f"({e.__class__.__name__}{': ' + str(e) if str(e) else ''}).")
+                    self.set_status(*self.problem(f"Ghosts: cannot reach the relay "
+                                                  f"{wire.shown_address(self.address)} "
+                                                  f"({e.__class__.__name__}{': ' + str(e) if str(e) else ''})."))
             finally:
                 self.drop()
             if self.wake.is_set():
@@ -280,6 +291,14 @@ class GhostLink:
             delay = RETRY_DELAYS[min(failures, len(RETRY_DELAYS) - 1)]
             failures += 1
             await self.wait(self.wake, delay)
+
+    def problem(self, text: str) -> Tuple[str, str]:
+        """A status for a relay that cannot be reached or refuses: an error for a relay the player or the patch file
+        chose; for the default relay a note (it tries again in the background), as nobody asked for that one."""
+        if self.default_relay:
+            return checklist.INFO, (f"Ghosts: the default relay {wire.shown_address(self.address)} is not available "
+                                    f"right now; trying again in the background.")
+        return checklist.ERROR, text
 
     @staticmethod
     async def wait(event: asyncio.Event, seconds: Optional[float]) -> None:
@@ -289,12 +308,8 @@ class GhostLink:
             pass
 
     async def session(self) -> None:
-        password, host, port = wire.parse_address(self.address)
         self.set_status(checklist.INFO, f"Ghosts: connecting to the relay {wire.shown_address(self.address)}...")
-        reader, writer = await asyncio.wait_for(asyncio.open_connection(host, port), 10)
-        sock = writer.get_extra_info("socket")
-        if sock is not None:
-            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        password, reader, writer = await wire.connect(self.address)
         self.writer = writer
         writer.write(wire.frame(wire.join_message(wire.group_id(self.secret), self.slot, self.player, password)))
         pinger = asyncio.create_task(self.ping(writer))
@@ -311,13 +326,13 @@ class GhostLink:
                         raise asyncio.TimeoutError("the relay went silent")
                     return
                 self.handle(read.result())
-                if self.joined and self.pending is not None and self.flush_handle is None:
+                if self.joined and self.pending_set and self.flush_handle is None:
                     self.queue(self.pending)
                 await writer.drain()
         finally:
             pinger.cancel()
 
-    async def ping(self, writer: asyncio.StreamWriter) -> None:
+    async def ping(self, writer: Union[asyncio.StreamWriter, wire.WebSocketWriter]) -> None:
         while True:
             await asyncio.sleep(PING_INTERVAL)
             writer.write(wire.frame(bytes([wire.PING])))

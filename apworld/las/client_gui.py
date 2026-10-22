@@ -131,8 +131,8 @@ class PatchPanel(ScrollView):
 
         self.content.add_widget(text("[b]Ghosts[/b]"))
         self.content.add_widget(text("The other Link's Awakening players of your multiworld show as ghosts where you "
-                                     "are. Enter the ghost relay your group uses (host:port, or password@host:port "
-                                     "for a relay with a password); empty: no ghosts.",
+                                     "are. To use another ghost relay than the default one, enter it (host:port, "
+                                     "password@host:port for a relay with a password, or its wss:// address).",
                                      small=True))
         row = MDBoxLayout(orientation="horizontal", size_hint_y=None, height=ROW_HEIGHT, spacing=dp(6))
         self.ghosts_check = MDCheckbox(size_hint=(None, None), size=(dp(36), dp(36)), pos_hint={"center_y": 0.5})

@@ -27,6 +27,9 @@ spec.loader.exec_module(wire)
 MOVING_INTERVAL, STILL_INTERVAL = 0.05, 0.5  # as the game sends: every 50 ms while moving, 500 ms while still
 SPEED = (4.5, 6.5)
 PAUSE_CHANCE, PAUSE = 0.3, (0.5, 2.5)  # at a waypoint: the chance to stand still, and for how long
+# Animations as the game sends them: wait (PlayerAnimation key 103 + 1) standing, another id running, each frame
+# advancing at 30 a second through a 40-frame loop, and a start flag in the frame after a change
+WAIT_ANIM, RUN_ANIM, ANIM_FPS, ANIM_LOOP = 104, 105, 30, 40
 
 
 class Walker:
@@ -39,6 +42,9 @@ class Walker:
         self.still_until = 0.0
         self.shapes = shapes
         self.tunic = rng.choice((wire.TUNIC_GREEN, wire.TUNIC_RED, wire.TUNIC_BLUE))
+        self.anim, self.anim_since, self.started = WAIT_ANIM, 0.0, False
+        self.last_pos = None  # the last position sent, which the next one's changes are against
+        self.positions = {}  # the last position of each player received, from its frames' changes
         self.sent = self.received = 0
         self.sent_bytes = self.received_bytes = 0  # with each frame's 2-byte length
         self.players = set()
@@ -67,17 +73,26 @@ class Walker:
         self.yaw = math.degrees(math.atan2(dx, dz)) % 360  # yaw 0 = +z, 90 = +x
         return True
 
-    def body(self, t_ms: int, moving: bool) -> bytes:
-        return wire.Pos(t_ms & 0xFFFF, wire.LEVEL_IDS[self.level], self.x, self.y, self.z,
-                        int(self.yaw * 65536 / 360) & 0xFFFF, 0, 0, 0, 0 if moving else wire.FLAG_STILL, self.shapes,
-                        self.tunic, 0, 0, 0).pack()
+    def body(self, now: float, t_ms: int, moving: bool) -> bytes:
+        """The next POS frame's position: the changes since the last one sent."""
+        anim = RUN_ANIM if moving else WAIT_ANIM
+        if anim != self.anim:
+            self.anim, self.anim_since, self.started = anim, now, True
+        anim_frame = int((now - self.anim_since) * ANIM_FPS * 10) % (ANIM_LOOP * 10)
+        flags = (0 if moving else wire.FLAG_STILL) | (wire.FLAG_STARTED if self.started else 0)
+        self.started = False
+        pos = wire.Pos(t_ms & 0xFFFF, wire.LEVEL_IDS[self.level], self.x, self.y, self.z,
+                       int(self.yaw * 65536 / 360) & 0xFFFF, anim, anim_frame, 0, flags, self.shapes, self.tunic, 0, 0,
+                       0).quantized()
+        body = wire.encode_pos(pos, self.last_pos)
+        self.last_pos = pos
+        return body
 
 
 async def run(walker: Walker, relay: str, source: str, secret: str, deadline: float) -> None:
-    password, host, port = wire.parse_address(relay)
     try:
-        reader, writer = await asyncio.open_connection(host, port, local_addr=(source, 0) if source else None)
-    except OSError as e:
+        password, reader, writer = await wire.connect(relay, local_addr=(source, 0) if source else None)
+    except (OSError, asyncio.TimeoutError, asyncio.IncompleteReadError, ValueError) as e:
         walker.error = repr(e)
         return
     writer.write(wire.frame(wire.join_message(wire.group_id(secret), walker.name, walker.name, password)))
@@ -91,9 +106,17 @@ async def run(walker: Walker, relay: str, source: str, secret: str, deadline: fl
                 walker.welcomed = True
             elif kind == wire.FRAME:
                 walker.received += 1
-                walker.players.add(struct.unpack_from(">H", payload, 1)[0])
+                player = struct.unpack_from(">H", payload, 1)[0]
+                walker.players.add(player)
+                try:
+                    walker.positions[player] = wire.decode_pos(payload[3:], walker.positions.get(player))
+                except (ValueError, struct.error) as e:
+                    walker.error = f"frame of player {player}: {e}"
+                    return
             elif kind == wire.OFF:
-                walker.players.discard(struct.unpack_from(">H", payload, 1)[0])
+                player = struct.unpack_from(">H", payload, 1)[0]
+                walker.players.discard(player)
+                walker.positions.pop(player, None)
             elif kind == wire.ERROR:
                 walker.error = payload[1:].decode("utf-8", "replace")
 
@@ -108,7 +131,7 @@ async def run(walker: Walker, relay: str, source: str, secret: str, deadline: fl
             last = now
             if now >= next_send or moving != was_moving:  # starting or stopping goes out at once, as in the game
                 was_moving = moving
-                data = wire.frame(bytes([wire.POS]) + walker.body(int((now - start) * 1000), moving))
+                data = wire.frame(bytes([wire.POS]) + walker.body(now, int((now - start) * 1000), moving))
                 writer.write(data)
                 walker.sent += 1
                 walker.sent_bytes += len(data)

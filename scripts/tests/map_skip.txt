@@ -9,17 +9,17 @@ warp Field 38.25 10.5 128.25
 tapuntil 800 paused=1 when free 5
 until map:KeyWait 10
 send DBG map
-expect skipped=0.hover=\d+/1/in$ 5
+expect skipped=0.hover=\d+/1/in\s 5
 tap 1 2 2 when map:KeyWait
 send DBG map
-expect skipped=1.hover=\d+/1/collected$ 5
+expect skipped=1.hover=\d+/1/collected\s 5
 send DBG maplabel
 expect MAPLABEL.Skipped:.Tarin$ 5
 check paused=1
 shot D:/DEV/LASAP-sandbox/map_skip_on.png
 tap 1 2 2 when map:KeyWait
 send DBG map
-expect skipped=0.hover=\d+/1/in$ 5
+expect skipped=0.hover=\d+/1/in\s 5
 send DBG maplabel
 expect MAPLABEL.Tarin$ 5
 check paused=1

@@ -1,6 +1,8 @@
 """The ghost relay (grouping, the area filter, off messages) with fake clients, and the client's link to it."""
 import asyncio
+import ipaddress
 import struct
+import time
 import unittest
 from typing import List, Optional, Tuple
 from unittest import mock
@@ -13,17 +15,22 @@ QUIET = 0.15  # how long a test waits to be sure nothing arrives
 
 
 class FakeClient:
-    def __init__(self, port: int):
+    def __init__(self, port: int, websocket: bool = False):
         self.port = port
-        self.reader: Optional[asyncio.StreamReader] = None
-        self.writer: Optional[asyncio.StreamWriter] = None
+        self.websocket = websocket
+        self.reader = None  # asyncio.StreamReader or wire.WebSocketReader
+        self.writer = None  # asyncio.StreamWriter or wire.WebSocketWriter
         self.id = -1
         self.seq = 0
+        self.sent: Optional[wire.Pos] = None  # the last position sent: the next one goes as its changes
+        self.positions = {}  # the last position of each player received
+        self.keys: List[bool] = []  # whether each FRAME received was a keyframe
 
     async def join(self, secret: str, slot: str, version: int = wire.PROTOCOL_VERSION,
                    password: Optional[str] = "") -> bytes:
         """Joins; password None sends a join without the password field."""
-        self.reader, self.writer = await asyncio.open_connection("127.0.0.1", self.port)
+        _, self.reader, self.writer = await wire.connect(
+            f"{'ws://' if self.websocket else ''}127.0.0.1:{self.port}")
         message = bytearray(wire.join_message(wire.group_id(secret), slot, slot + " (player)", password or ""))
         if password is None:
             message = message[:-1]
@@ -35,7 +42,16 @@ class FakeClient:
         return first
 
     async def next(self, timeout: float = 2) -> bytes:
-        return await asyncio.wait_for(wire.read_frame(self.reader), timeout)
+        """The next message; a FRAME is applied to its player's position and comes back as a keyframe of it."""
+        message = await asyncio.wait_for(wire.read_frame(self.reader), timeout)
+        if message[0] == wire.FRAME:
+            player = struct.unpack_from(">H", message, 1)[0]
+            self.keys.append(wire.is_key(message[3:]))
+            pos = self.positions[player] = wire.decode_pos(message[3:], self.positions.get(player))
+            return message[:3] + wire.encode_pos(pos)
+        if message[0] == wire.OFF:
+            self.positions.pop(struct.unpack_from(">H", message, 1)[0], None)
+        return message
 
     async def collect(self, seconds: float = QUIET) -> List[bytes]:
         got = []
@@ -47,11 +63,14 @@ class FakeClient:
 
     def pos(self, level: int, x: float, z: float, y: float = 0.0) -> None:
         self.seq += 1
-        body = wire.Pos(self.seq, level, x, y, z, 0, 0, 0, 0, 0, wire.SHAPES_DEFAULT, wire.TUNIC_GREEN, 0, 0, 0).pack()
-        self.writer.write(wire.frame(bytes([wire.POS]) + body))
+        pos = wire.Pos(self.seq, level, x, y, z, 0, 0, 0, 0, 0, wire.SHAPES_DEFAULT, wire.TUNIC_GREEN, 0, 0,
+                       0).quantized()
+        self.writer.write(wire.frame(bytes([wire.POS]) + wire.encode_pos(pos, self.sent)))
+        self.sent = pos
 
     def nowhere(self) -> None:
         self.writer.write(wire.frame(bytes([wire.NOWHERE])))
+        self.sent = None
 
     def close(self) -> None:
         self.writer.close()
@@ -62,7 +81,7 @@ def frames(messages: List[bytes]) -> List[Tuple[int, float, float]]:
     out = []
     for m in messages:
         if m[0] == wire.FRAME:
-            pos = wire.Pos.unpack(m[3:])
+            pos = wire.decode_pos(m[3:], None)  # FakeClient.next turns each into a keyframe
             out.append((struct.unpack_from(">H", m, 1)[0], pos.x, pos.z))
     return out
 
@@ -81,10 +100,50 @@ def field(col: int, row: int) -> Tuple[float, float]:
     return 15 * col + 7.5, 12 * (row - 1) + 6.75
 
 
+class TestPositionWire(unittest.TestCase):
+    def test_keyframes_and_changes(self) -> None:
+        first = wire.Pos(100, FIELD, 38.25, 10.5, 128.25, 16384, 104, 30, 0, wire.FLAG_STILL, wire.SHAPES_DEFAULT,
+                         wire.TUNIC_RED, 0, 0, 0)
+        key = wire.encode_pos(first)
+        self.assertTrue(wire.is_key(key))
+        self.assertEqual(len(key), wire.KEY_BODY.size)
+        self.assertEqual(wire.decode_pos(key, None), first)
+        # running on: the time, x, z and the animation's frame changed
+        moved = first._replace(time_ms=150, x=38.5, z=128.0, anim_frame=45)
+        body = wire.encode_pos(moved, first)
+        self.assertFalse(wire.is_key(body))
+        self.assertEqual(len(body), 2 + 2 + 2 + 2 + 2)
+        self.assertEqual(wire.decode_pos(body, first), moved)
+        # nothing but the time: a keep-alive
+        self.assertEqual(len(wire.encode_pos(moved._replace(time_ms=650), moved)), 4)
+        # the face's three frames go together
+        smile = moved._replace(mouth=3)
+        self.assertEqual(wire.decode_pos(wire.encode_pos(smile, moved), moved), smile)
+        self.assertEqual(len(wire.encode_pos(smile, moved)), 4 + 3)
+        # another level, or a jump too far for a difference: a keyframe
+        self.assertTrue(wire.is_key(wire.encode_pos(moved._replace(level=SHOP), moved)))
+        self.assertTrue(wire.is_key(wire.encode_pos(moved._replace(x=moved.x + 200), moved)))
+        # many small steps add up to the same position as the sender's, on the grid
+        prev, sent = None, None
+        for i in range(500):
+            pos = first._replace(time_ms=i, x=38.25 + i * 0.0123, y=10.5 - i * 0.004, z=128.25 + i * 0.317).quantized()
+            prev = wire.decode_pos(wire.encode_pos(pos, sent), prev)
+            sent = pos
+        self.assertEqual(prev, sent)
+        # changes without a keyframe, unknown mask bits and a body of the wrong size are refused
+        with self.assertRaises(ValueError):
+            wire.decode_pos(body, None)
+        with self.assertRaises(ValueError):
+            wire.decode_pos(struct.pack(">HH", 1 << 15, 0), first)
+        with self.assertRaises(ValueError):
+            wire.decode_pos(body + b"\0", first)
+
+
 class TestRelay(unittest.TestCase):
-    def run_relay(self, test, echo: Optional[float] = None, password: str = "", nogroups: bool = False) -> None:
+    def run_relay(self, test, echo: Optional[float] = None, password: str = "", nogroups: bool = False,
+                  max_group: int = wire.MAX_GROUP) -> None:
         async def main() -> None:
-            relay = wire.Relay(echo, password, nogroups)
+            relay = wire.Relay(echo, password, nogroups, max_group=max_group)
             server = await asyncio.start_server(relay.handle, "127.0.0.1", 0)
             port = server.sockets[0].getsockname()[1]
             try:
@@ -237,12 +296,12 @@ class TestRelay(unittest.TestCase):
             self.assertEqual(len(relay.groups[wire.ONE_GROUP]), 3)
 
             # full: only a slot already in it gets in again
-            with mock.patch.object(wire, "MAX_GROUP", 3):
-                d = FakeClient(port)
-                reply = await d.join("secret3", "Link")
-                self.assertEqual((reply[0], reply[1:].decode()), (wire.ERROR, "The ghost relay is full."))
-                c2 = FakeClient(port)
-                self.assertEqual((await c2.join("secret2", "C"))[0], wire.WELCOME)
+            relay.max_group = 3
+            d = FakeClient(port)
+            reply = await d.join("secret3", "Link")
+            self.assertEqual((reply[0], reply[1:].decode()), (wire.ERROR, "The ghost relay is full."))
+            c2 = FakeClient(port)
+            self.assertEqual((await c2.join("secret2", "C"))[0], wire.WELCOME)
             for client in (a, b2, c2):
                 client.close()
             await asyncio.sleep(0.05)
@@ -270,11 +329,156 @@ class TestRelay(unittest.TestCase):
             self.assertEqual(relay.members, {})
         self.run_relay(test)
 
+    def test_websocket_beside_tcp(self) -> None:
+        """A WebSocket client and a plain TCP one on the same port see each other; the relay answers pings and a
+        close, and turns away an HTTP request that is no upgrade and an oversized WebSocket frame."""
+        async def test(port: int, relay: wire.Relay) -> None:
+            a, b = FakeClient(port, websocket=True), FakeClient(port)
+            self.assertEqual((await a.join("secret1", "A"))[0], wire.WELCOME)
+            self.assertIsInstance(a.reader, wire.WebSocketReader)
+            await b.join("secret1", "B")
+            self.assertEqual(players(await a.collect()), [(b.id, "B")])
+            a.pos(SHOP, 1, 2)
+            b.pos(SHOP, 3, 4)
+            self.assertEqual(frames(await a.collect()), [(b.id, 3, 4)])
+            self.assertEqual(frames(await b.collect()), [(a.id, 1, 2)])
+            # a WebSocket ping is answered with a pong of the same data
+            a.writer.send(wire.WS_PING, b"hi")
+            head = await asyncio.wait_for(a.reader.reader.readexactly(4), 2)
+            self.assertEqual(head, bytes([0x80 | wire.WS_PONG, 2]) + b"hi")
+            # a close leaves the group
+            a.close()
+            self.assertEqual(offs(await b.collect()), [(a.id, wire.OFF_LEFT)])
+            self.assertEqual(list(relay.members), [b.id])
+            # a frame bigger than MAX_WS_MESSAGE closes the connection
+            c = FakeClient(port, websocket=True)
+            await c.join("secret1", "C")
+            c.writer.writer.write(bytes([0x80 | wire.WS_BINARY, 0x80 | 127]) +
+                                  struct.pack(">Q", wire.MAX_WS_MESSAGE + 1) + bytes(4))
+            with self.assertRaises(asyncio.IncompleteReadError):
+                while True:
+                    await c.next()
+            # a browser gets a page, not a connection
+            reader, writer = await asyncio.open_connection("127.0.0.1", port)
+            writer.write(b"GET / HTTP/1.1\r\nHost: relay.example\r\n\r\n")
+            answer = await asyncio.wait_for(reader.read(), 2)
+            self.assertTrue(answer.startswith(b"HTTP/1.1 426 "))
+            self.assertIn(b"LAS ghost relay", answer)
+            writer.close()
+            b.close()
+        self.run_relay(test)
+
+    def test_max_group(self) -> None:
+        """--max-group caps each group; other groups and a slot already in the group still get in."""
+        async def test(port: int, relay: wire.Relay) -> None:
+            a, b = FakeClient(port), FakeClient(port)
+            self.assertEqual((await a.join("secret1", "A"))[0], wire.WELCOME)
+            self.assertEqual((await b.join("secret1", "B"))[0], wire.WELCOME)
+            c = FakeClient(port)
+            reply = await c.join("secret1", "C")
+            self.assertEqual((reply[0], reply[1:].decode()), (wire.ERROR, "This group of players is full."))
+            self.assertEqual((await FakeClient(port).join("secret2", "C"))[0], wire.WELCOME)
+            self.assertEqual((await FakeClient(port).join("secret1", "B"))[0], wire.WELCOME)  # a reconnect
+        self.run_relay(test, max_group=2)
+
+    def test_join_and_leave_are_logged(self) -> None:
+        """One line per join and leave: the slot (the player's name when it differs), the start of the group id, the
+        transport; on leaving how long and why."""
+        self.assertEqual([wire.duration(s) for s in (5, 59.9, 60, 3599, 3600, 4380)],
+                         ["5 s", "59 s", "1 min", "59 min", "1 h 0 min", "1 h 13 min"])
+
+        async def test(port: int, relay: wire.Relay) -> None:
+            group = wire.group_label(wire.group_id("secret1"))
+            with self.assertLogs("ghost_relay", "INFO") as logs:
+                a, b = FakeClient(port, websocket=True), FakeClient(port)
+                await a.join("secret1", "Link")
+                await b.join("secret1", "Marin")
+                again = FakeClient(port)
+                await again.join("secret1", "Marin")  # a reconnect: the old connection leaves
+                again.writer.write(struct.pack(">H", wire.MAX_FRAME + 1))
+                a.close()
+                while relay.members:
+                    await asyncio.sleep(0.02)
+                b.close()
+            lines = [line.split(":", 2)[2] for line in logs.output]
+            self.assertEqual(lines[:4], [
+                f"join: 'Link' ('Link (player)') in group {group} by WebSocket",
+                f"join: 'Marin' ('Marin (player)') in group {group} by TCP",
+                f"leave: 'Marin' ('Marin (player)') from group {group} after 0 s, replaced by a new connection",
+                f"join: 'Marin' ('Marin (player)') in group {group} by TCP",
+            ])
+            # the last two leave in either order
+            self.assertEqual(sorted(lines[4:]), [
+                f"leave: 'Link' ('Link (player)') from group {group} after 0 s, disconnected",
+                f"leave: 'Marin' ('Marin (player)') from group {group} after 0 s, sent a malformed frame",
+            ])
+        self.run_relay(test)
+
+    def test_websocket_from_a_proxy(self) -> None:
+        """A WebSocket from this computer (cloudflared) or a --trusted-proxy counts as the address in CF-Connecting-IP
+        or X-Forwarded-For, so MAX_PER_ADDRESS counts players, not the proxy."""
+        self.assertEqual(wire.proxied_address({"cf-connecting-ip": "203.0.113.5", "x-forwarded-for": "172.18.0.3"}),
+                         "203.0.113.5")
+        self.assertEqual(wire.proxied_address({"x-forwarded-for": "10.0.0.1, 203.0.113.6"}), "203.0.113.6")
+        self.assertEqual(wire.proxied_address({}), "")
+        self.assertEqual(wire.parse_proxies(["172.18.0.0/16, caddy", "", "10.0.0.7"]),
+                         [ipaddress.ip_network("172.18.0.0/16"), "caddy", ipaddress.ip_network("10.0.0.7/32")])
+
+        async def trusts() -> None:
+            relay = wire.Relay(trusted_proxies=wire.parse_proxies(["172.18.0.0/16", "caddy"]))
+            for address in ("127.0.0.1", "::1", "::ffff:127.0.0.1", "172.18.0.9"):
+                self.assertTrue(await relay.trusts(address), address)
+            # a host name is looked up for each connection; anyone else is not trusted
+            with mock.patch("socket.getaddrinfo", return_value=[(2, 1, 6, "", ("192.168.5.2", 0))]) as lookup:
+                self.assertTrue(await relay.trusts("192.168.5.2"))
+                self.assertFalse(await relay.trusts("198.51.100.9"))
+            self.assertEqual(lookup.call_args[0][0], "caddy")
+            self.assertFalse(await wire.Relay().trusts("172.18.0.9"))
+        asyncio.run(trusts())
+
+        async def open_from(port: int, player: str) -> Tuple[wire.WebSocketReader, wire.WebSocketWriter]:
+            reader, writer = await asyncio.open_connection("127.0.0.1", port)
+            writer.write(f"GET / HTTP/1.1\r\nHost: relay.example\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+                         f"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n"
+                         f"CF-Connecting-IP: {player}\r\n\r\n".encode())
+            line, headers = await wire.read_http_head(reader)
+            self.assertEqual(headers["sec-websocket-accept"], "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=")  # RFC 6455's example
+            ws_writer = wire.WebSocketWriter(writer, client=True)
+            return wire.WebSocketReader(reader, ws_writer), ws_writer
+
+        async def test(port: int, relay: wire.Relay) -> None:
+            joined, writers = [], []
+            for n, player in enumerate(("203.0.113.5", "203.0.113.5", "203.0.113.5", "203.0.113.6")):
+                reader, writer = await open_from(port, player)
+                writers.append(writer)
+                writer.write(wire.frame(wire.join_message(wire.group_id("secret1"), f"P{n}", f"P{n}")))
+                joined.append(((await asyncio.wait_for(wire.read_frame(reader), 2))[0], player))
+            self.assertEqual(joined, [(wire.WELCOME, "203.0.113.5")] * 2 + [(wire.ERROR, "203.0.113.5"),
+                                                                             (wire.WELCOME, "203.0.113.6")])
+            self.assertEqual(sorted(m.address for m in relay.members.values()),
+                             ["203.0.113.5", "203.0.113.5", "203.0.113.6"])
+            for writer in writers:
+                writer.close()
+        with mock.patch.object(wire, "MAX_PER_ADDRESS", 2):
+            self.run_relay(test)
+
     def test_password(self) -> None:
-        self.assertEqual(wire.parse_address("relay.example"), ("", "relay.example", wire.DEFAULT_PORT))
-        self.assertEqual(wire.parse_address(" pass@word@relay.example:1234 "), ("pass@word", "relay.example", 1234))
-        self.assertEqual(wire.parse_address("pw@[::1]:5"), ("pw", "::1", 5))
+        self.assertEqual(wire.parse_address("relay.example"), ("", "relay.example", wire.DEFAULT_PORT, "", ""))
+        self.assertEqual(wire.parse_address(" pass@word@relay.example:1234 "),
+                         ("pass@word", "relay.example", 1234, "", ""))
+        self.assertEqual(wire.parse_address("pw@[::1]:5"), ("pw", "::1", 5, "", ""))
         self.assertEqual(wire.shown_address("pw@relay.example:1234"), "relay.example:1234")
+        # WebSocket: the password before the scheme or in the URL; https:// is taken for wss://
+        self.assertEqual(wire.parse_address("wss://ghosts.example"), ("", "ghosts.example", 443, "wss", "/"))
+        self.assertEqual(wire.parse_address("pass@word@wss://ghosts.example/relay"),
+                         ("pass@word", "ghosts.example", 443, "wss", "/relay"))
+        self.assertEqual(wire.parse_address("wss://pw@ghosts.example:8443"), ("pw", "ghosts.example", 8443, "wss", "/"))
+        self.assertEqual(wire.parse_address(" HTTPS://ghosts.example "), ("", "ghosts.example", 443, "wss", "/"))
+        self.assertEqual(wire.parse_address("ws://127.0.0.1:43391"), ("", "127.0.0.1", 43391, "ws", "/"))
+        self.assertEqual(wire.shown_address("pw@wss://ghosts.example/relay"), "wss://ghosts.example/relay")
+        self.assertEqual(wire.shown_address("wss://pw@ghosts.example"), "wss://ghosts.example")
+        with self.assertRaises(ValueError):
+            wire.parse_address("ftp://ghosts.example")
 
         async def test(port: int, relay: wire.Relay) -> None:
             for password in (None, "", "wrong"):
@@ -308,14 +512,59 @@ class TestRelay(unittest.TestCase):
             b.pos(SHOP, 1, 1)
             await a.collect()
             await b.collect()
-            # frames sent within one batch reach the receiver in one write
+            # frames sent within one batch reach the receiver in one write, each as it came: the time and x changed
             for x in range(5):
                 a.pos(SHOP, x, 1)
             await asyncio.sleep(wire.BATCH * 3)
             data = await asyncio.wait_for(b.reader.read(4096), 2)
-            self.assertEqual(len(data), 5 * (2 + 3 + wire.POS_BODY.size))
+            self.assertEqual(len(data), 5 * (2 + 3 + 6))
             a.close()
             b.close()
+        self.run_relay(test)
+
+    def test_keyframes_when_out_of_step(self) -> None:
+        async def test(port: int, relay: wire.Relay) -> None:
+            viewer, sender = FakeClient(port), FakeClient(port)
+            await viewer.join("secret1", "V")
+            await sender.join("secret1", "S")
+            viewer.pos(SHOP, 0, 0)
+            sender.pos(SHOP, 1, 1)
+            await sender.collect()
+            # shown: a keyframe, then the sender's changes as they came
+            self.assertEqual(frames(await viewer.collect()), [(sender.id, 1, 1)])
+            sender.pos(SHOP, 2, 1)
+            sender.pos(SHOP, 3, 1)
+            self.assertEqual(frames(await viewer.collect()), [(sender.id, 2, 1), (sender.id, 3, 1)])
+            self.assertEqual(viewer.keys, [True, False, False])
+            # a frame dropped for a receiver too far behind: its next one is a keyframe
+            with mock.patch.object(wire, "MAX_BACKLOG", -1):
+                sender.pos(SHOP, 4, 1)
+                await asyncio.sleep(0.05)
+            self.assertEqual(await viewer.collect(), [])
+            sender.pos(SHOP, 5, 1)
+            self.assertEqual(frames(await viewer.collect()), [(sender.id, 5, 1)])
+            self.assertEqual(viewer.keys[-1], True)
+            sender.pos(SHOP, 6, 1)
+            self.assertEqual(frames(await viewer.collect()), [(sender.id, 6, 1)])
+            self.assertEqual(viewer.keys[-1], False)
+            # a frame over the sender's rate is not forwarded: its next one goes as a keyframe
+            member = relay.members[sender.id]
+            member.tokens, member.token_time = 0, float("inf")  # no tokens come back until reset
+            sender.pos(SHOP, 7, 1)
+            await asyncio.sleep(0.05)
+            self.assertEqual(await viewer.collect(), [])
+            member.tokens, member.token_time = wire.MAX_RATE, time.monotonic()
+            sender.pos(SHOP, 8, 1)
+            self.assertEqual(frames(await viewer.collect()), [(sender.id, 8, 1)])
+            self.assertEqual(viewer.keys[-1], True)
+            # out of the area and back: a keyframe again
+            sender.pos(wire.LEVEL_IDS["Library"], 1, 1)
+            self.assertEqual(offs(await viewer.collect()), [(sender.id, wire.OFF_AREA)])
+            sender.pos(SHOP, 9, 1)
+            self.assertEqual(frames(await viewer.collect()), [(sender.id, 9, 1)])
+            self.assertEqual(viewer.keys[-1], True)
+            viewer.close()
+            sender.close()
         self.run_relay(test)
 
     def test_nearest_are_shown(self) -> None:
@@ -375,11 +624,11 @@ class TestRelay(unittest.TestCase):
 
 class TestGhostLink(unittest.TestCase):
     def test_pos_lines_become_ghost_lines(self) -> None:
-        from ..ghosts import GhostLink, pos_body
+        from ..ghosts import GhostLink, line_pos
 
-        self.assertIsNone(pos_body("POS none".split()))
-        self.assertIsNone(pos_body("POS NoSuchLevel 1 2 3 0 0 0 0 0 0 207864 0 0 0 0".split()))
-        self.assertIsNone(pos_body("POS Field 1 2 3 0 0 0 0 0 0 207864 0 0 0".split()))  # a field missing
+        self.assertIsNone(line_pos("POS none".split()))
+        self.assertIsNone(line_pos("POS NoSuchLevel 1 2 3 0 0 0 0 0 0 207864 0 0 0 0".split()))
+        self.assertIsNone(line_pos("POS Field 1 2 3 0 0 0 0 0 0 207864 0 0 0".split()))  # a field missing
 
         async def main() -> None:
             relay = wire.Relay()
@@ -391,7 +640,8 @@ class TestGhostLink(unittest.TestCase):
             tasks = []
             for name, link in links.items():
                 link.on_game_connected()
-                link.configure(True, address, "secret1", name, name)
+                # A by WebSocket, B by plain TCP
+                link.configure(True, ("ws://" if name == "A" else "") + address, "secret1", name, name)
                 tasks.append(asyncio.create_task(link.run(exit_event)))
 
             async def until(test, seconds: float = 3) -> None:
@@ -484,7 +734,7 @@ class TestGhostLink(unittest.TestCase):
             # a frame of its own id (no relay sends one) is no ghost either
             one.handle(bytes([wire.PLAYER]) + struct.pack(">H", one.own_id) + wire.name_bytes("Link") * 2)
             one.handle(bytes([wire.FRAME]) + struct.pack(">H", one.own_id) +
-                       wire.Pos(0, SHOP, 5, 0, 5, 0, 0, 0, 0, 0, wire.SHAPES_DEFAULT, 0, 0, 0, 0).pack())
+                       wire.encode_pos(wire.Pos(0, SHOP, 5, 0, 5, 0, 0, 0, 0, 0, wire.SHAPES_DEFAULT, 0, 0, 0, 0)))
             self.assertEqual((list(one.players), [g for g in one.ghosts if g is not None]), ([two.own_id],) * 2)
             self.assertFalse(any(l.startswith("GHOST") and " 5.000 " in l for l in lines["one"]))
             exit_event.set()
@@ -493,6 +743,39 @@ class TestGhostLink(unittest.TestCase):
             await asyncio.gather(*tasks)
             server.close()
         asyncio.run(main())
+
+    def test_default_relay_out_of_reach_is_a_note(self) -> None:
+        """A relay that cannot be reached is an error when the player or the patch file chose it, and only a note for
+        the default relay."""
+        import socket
+        from .. import checklist
+        from ..ghosts import GhostLink
+
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            closed = f"127.0.0.1:{probe.getsockname()[1]}"  # nothing listens there once the probe closes
+
+        async def main(default_relay: bool) -> checklist.Check:
+            link = GhostLink(lambda line: None)
+            exit_event = asyncio.Event()
+            task = asyncio.create_task(link.run(exit_event))
+            link.configure(True, closed, "secret1", "A", "A", default_relay)
+            for _ in range(150):
+                if "connecting" not in link.status.text and link.status.text:
+                    break
+                await asyncio.sleep(0.02)
+            exit_event.set()
+            link.wake.set()
+            await task
+            return link.status
+
+        status = asyncio.run(main(False))
+        self.assertEqual(status.level, checklist.ERROR)
+        self.assertIn("cannot reach the relay", status.text)
+        status = asyncio.run(main(True))
+        self.assertEqual((status.level, status.text),
+                         (checklist.INFO, f"Ghosts: the default relay {closed} is not available right now; trying "
+                                          f"again in the background."))
 
     def test_link_sends_the_relay_password(self) -> None:
         from .. import checklist
@@ -579,6 +862,8 @@ class TestGhostSecret(unittest.TestCase):
         from .. import LASWorld
         from ..client import LASContext
         from ..container import LASContainer
+        from ..ghosts import DEFAULT_RELAY
+        from ..host_settings import LASSettings
 
         async def main() -> None:
             with tempfile.TemporaryDirectory() as folder:
@@ -586,14 +871,70 @@ class TestGhostSecret(unittest.TestCase):
                 LASContainer(path, {"ghost_secret": "abc123", "ghost_relay": "relay.example:43390"}, 1, "Link").write()
                 ctx = LASContext(None, None, "127.0.0.1", 0, path)
                 ctx.update_ghosts()
-                self.assertEqual(ctx.ghosts.address, "relay.example:43390")
+                # an empty setting: the patch file's relay
+                self.assertEqual((ctx.ghosts.address, ctx.ghosts.default_relay), ("relay.example:43390", False))
                 LASWorld.settings.ghost_relay = "own.example:1"
                 ctx.update_ghosts()
                 self.assertEqual(ctx.ghosts.address, "own.example:1")
+                # the setting's default value is the default relay, and the setting wins over the patch file
+                self.assertEqual(LASSettings.ghost_relay, DEFAULT_RELAY)
+                LASWorld.settings.ghost_relay = DEFAULT_RELAY
+                ctx.update_ghosts()
+                self.assertEqual((ctx.ghosts.address, ctx.ghosts.default_relay), (DEFAULT_RELAY, True))
+                # neither the settings nor the patch file name one: the default relay
+                LASWorld.settings.ghost_relay = ""
+                LASContainer(path, {"ghost_secret": "abc123"}, 1, "Link").write()
+                ctx.update_ghosts()
+                self.assertEqual((ctx.ghosts.address, ctx.ghosts.default_relay), (DEFAULT_RELAY, True))
+                # --ghost-relay "" (tests) means none
+                ctx.ghost_relay_arg = ""
+                ctx.update_ghosts()
+                self.assertEqual((ctx.ghosts.address, ctx.ghosts.default_relay), ("", False))
         saved = LASWorld.settings.ghost_relay
         try:
             LASWorld.settings.ghost_relay = ""
             asyncio.run(main())
+        finally:
+            LASWorld.settings.ghost_relay = saved
+
+    def test_ghostrelay_command(self) -> None:
+        """/ghostrelay shows the relay in use and where it comes from, sets the setting, or restores the default; it
+        never shows the password."""
+        import os
+        import tempfile
+        from .. import LASWorld
+        from ..client import LASCommandProcessor, LASContext
+        from ..container import LASContainer
+        from ..ghosts import DEFAULT_RELAY
+
+        async def main() -> None:
+            with tempfile.TemporaryDirectory() as folder:
+                path = os.path.join(folder, "AP_1_P1_Link.aplas")
+                LASContainer(path, {"ghost_secret": "abc123", "ghost_relay": "relay.example:43390"}, 1, "Link").write()
+                ctx = LASContext(None, None, "127.0.0.1", 0, path)
+                ctx.update_ghosts()
+                command = LASCommandProcessor(ctx)
+                with self.assertLogs("Client", "INFO") as logs:
+                    command("/ghostrelay")
+                    command("/ghostrelay sesame@wss://own.example")
+                    self.assertEqual(LASWorld.settings.ghost_relay, "sesame@wss://own.example")
+                    command("/ghostrelay default")
+                    self.assertEqual(LASWorld.settings.ghost_relay, DEFAULT_RELAY)
+                    command("/ghostrelay ftp://own.example")
+                    self.assertEqual(LASWorld.settings.ghost_relay, DEFAULT_RELAY)
+                lines = [line.split(":", 2)[2] for line in logs.output]
+                self.assertEqual(lines, [
+                    "Ghost relay: relay.example:43390 (from the patch file).",
+                    "Ghost relay: wss://own.example.",
+                    f"Ghost relay: {DEFAULT_RELAY} (the default relay).",
+                    "Usage: /ghostrelay [host:port | password@host:port | wss://host | default]",
+                ])
+                self.assertFalse(any("sesame" in line for line in lines))
+        saved = LASWorld.settings.ghost_relay
+        try:
+            LASWorld.settings.ghost_relay = ""
+            with mock.patch("settings.get_settings"):  # set_option saves host.yaml
+                asyncio.run(main())
         finally:
             LASWorld.settings.ghost_relay = saved
 

@@ -542,6 +542,7 @@ class LASWorld(World):
             "starting_items": starting,
             "placements": {loc: placements[loc] for loc in ITEM_LOCATIONS if loc in placements},
             "location_ids": {loc: LOCATION_OFFSETS[loc] for loc in self.shuffled},
+            "optional_locations": self.optional,
             "location_names": self.placed_names(),
             "location_models": self.placed_models(),
             "location_chests": self.placed_chests(),

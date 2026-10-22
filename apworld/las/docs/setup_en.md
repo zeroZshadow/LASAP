@@ -89,10 +89,14 @@ the same house, cave or dungeon, or near you in the overworld. They show with th
 They can't touch you or anything else. Ghosts travel through a ghost relay, not the Archipelago server, and only
 players of the same generation see each other, unless the relay runs with `--nogroups`: then everyone on it does.
 
-- The person who generates sets the relay before generating: `ghost_relay` (`host:port`, or `password@host:port` for
-  a relay with a password) under `las_options` in `host.yaml`. Every patch file then carries it, and the players have
-  nothing to set.
-- Otherwise each player enters it in the Patch tab's "Ghost relay", which also replaces the patch file's.
+- Ghosts are on by default and use the default relay, `wss://ghosts.zerozshadow.com`; nobody has to set anything. When
+  that relay can't be reached, the Patch tab says so and the client keeps trying in the background; the game plays as
+  usual.
+- For another relay, each player enters it in the Patch tab's "Ghost relay" (`host:port`, `password@host:port` for a
+  relay with a password, or a `wss://` address for a relay behind a tunnel), or with `/ghostrelay <address>` in the
+  client. `/ghostrelay` shows the relay in use; `/ghostrelay default` goes back to the default relay.
+- The person who generates can also set `ghost_relay` under `las_options` in `host.yaml` before generating: every patch
+  file then carries it, and it applies to players whose "Ghost relay" field is empty.
 - "Show ghosts" on the Patch tab, or `/ghosts off` in the client, turns them off. The Patch tab shows the relay status.
 
 To run a relay on Windows, double-click `LASGhostRelay.exe` (it comes with the release; it needs no Python). It
@@ -104,7 +108,8 @@ Python), with `--password <password>` for a password. Both take `--port` for ano
 With a password, players enter the relay as `password@host:port`.
 Every player must be able to reach the relay: when the router does not forward the port, forward TCP 43390 on the
 router by hand, run the relay on a server, or have all players join one VPN (for example Tailscale) and use its
-address.
+address. A relay behind a Cloudflare Tunnel needs no forwarded port: players enter the tunnel's address as
+`wss://<hostname>` (`password@wss://<hostname>` with a password).
 
 ## Troubleshooting
 

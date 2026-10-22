@@ -181,7 +181,7 @@ OverworldMap_KeyWait 0x09399090 f
 OverworldMap_PinButton 0x093a2220 f bool(): A pressed (the game's controller, unlocked)
 OverworldMap_OnPin 0x093a2ce0 f bool(page*): the cursor is on a placed pin (page +0x3b40, 16 bytes each)
 MapPopName_SetText 0x093a4960 f sizes the bubble: window width = text width / scale + 60
-Hud_Update 0x093ae800 f places Gm_HUDInteract next to Link with WorldToLayout
+Hud_Update 0x093ae800 f update of the HUD state InGame: hearts, keys, golden leaves, item slots, the interact prompt (Gm_HUDInteract next to Link with WorldToLayout)
 NameEntry_Setup 0x093b2c70 f name entry owner (vtable 0x0a12c6a8) +0x20: builds the screen, puts UI:NameEntry_Default into the name (+0x598)
 NameEntry_ChangeState 0x093b3540 f (machine at owner +0x80, state): 0 Open KeyWait InputName Decide Cancel Close
 NameEntry_KeyWait 0x093b38a0 f update of KeyWait: cursor u8 +0x590 (0 the name: InputName, 1 OK: the name as UTF-16, up to 8, to *SaveHeader_ptr +0x8, Decide)
@@ -384,3 +384,382 @@ Page_vtable 0x0a12e950 l pause-menu page base: +0x68/+0x70 play In/Out (animatio
 Navi_vtable 0x0a12ea18 l Gm_Navi owner, UI id 5
 GmItem_vtable 0x0a12c8e0 l Gm_Item page, UI id 6
 GmSystem_vtable 0x0a133e50 l Gm_System page, UI id 10
+Datasheet_Load 0x08d3e1e0 f (out shared_ptr, resource manager, StringView* path)
+UiDatasheets_Load 0x08d6bf34 f boot: loads the UI datasheets (Datasheet_Load each) and hands them to their holders
+String_Format 0x08df15c0 f (out fixed-size string, StringView* format, arg): "{0}" formatting; the map formats "Place:{0}" with an icon row's label
+MessageManager_Ctor 0x08e05310 f
+MessageManager_Find 0x08e07250 f (out MessageRef {msbt shared_ptr, count, s32 label index}, manager, StringView* "File:Label"): the label in the loaded <File>.msbt; index -1 when missing
+EventFlags_Set 0x092fe7b0 f (flags, StringView* name, bool)
+LayoutWrapper_IsType 0x0935d390 f vtable +0x0 (wrapper, type id*): the game's own RTTI, type ids are statics; LayoutWrapper's is 0x0a1b1f70
+LayoutWrapper_TypeId 0x0935d410 f vtable +0x8
+LayoutWrapper_GetLayoutShared 0x0935d7d0 f vtable +0x40 (out shared_ptr, wrapper): {+0x18 layout, +0x20 its count}
+LayoutWrapper_GetLayout 0x0935d800 f vtable +0x48: the layout (+0x18); its root pane at layout +0x18
+LayoutWrapper_GetRootPane 0x0935d810 f vtable +0x50
+LayoutWrapper_GetAnimation 0x0935d830 f vtable +0x58 (out {layout sp, animator}, wrapper, StringView* name): makes the layout's animator for <layout>_<name>.bflan (ui2d 0x0965cda0); animator frame float +0x20, vtable +0x20 enable(bool), +0xc0 play(speed)
+LayoutWrapper_UiId 0x0935dab0 f vtable +0x60: -1; each UI overrides it with its id
+LayoutWrapper_AttachBefore 0x0935e0a0 f (child wrapper, parent wrapper, parent pane, sibling pane): as LayoutWrapper_AttachTo, inserting the child's root before the sibling (ui2d 0x0966ac10)
+CraneGame_Setup 0x0935f920 f vtable +0x20
+CraneGame_Update 0x0935fea0 f vtable +0x28
+FileOperate_Setup 0x09362c50 f vtable +0x20
+FileOperate_Update 0x09364ab0 f vtable +0x28
+FileOperate_Open 0x09364b70 f vtable +0x30
+LayoutWrapper_FindTextBox 0x0936ce20 f (out {layout sp, count, text box}, wrapper, name, length): as LayoutWrapper_FindPane for a TextBox
+Dialog_Setup 0x09371e70 f vtable +0x20
+Dialog_Update 0x09372400 f vtable +0x28; also WarpSet's
+DungeonMap_Dtor 0x09377970 f vtable +0x10
+DungeonMap_Setup 0x093788a0 f vtable +0x20
+DungeonMap_Update 0x0937c0d0 f vtable +0x28: runs the machine; places the Dg_DgnPlayer UI (id 0x1b) at Link's map position (+0x2b70)
+DungeonMap_Open 0x0937c100 f vtable +0x30: state Open; requests Gm_MapCursor (0x1c), and Dg_DgnPlayer (0x1b) when Link is in a side-view zone (+0x2d20)
+DungeonMap_ChangeState 0x0937c2e0 f (machine at page +0xf0, state): Deactive, Open, KeyWait, PutMarkPin, StartEditMarkPin, EditMarkPin, EndEditMarkPin, PutMarkPinEmpty, StartEditMarkPinEmpty, EditMarkPinEmpty, EndEditMarkPinEmpty, ChangeFloor, MemoryStart, MemoryUpdate, MemoryEnd, Close
+DungeonMap_MachineUpdate 0x0937c4a0 f (machine at page +0xf0)
+UiManager_FindMapCursor 0x0937d560 f (out lock handle): typed for Gm_MapCursor (id 0x1c)
+LayoutWrapper_FindPane 0x09383e70 f (out {layout sp, count, pane}, wrapper, const char* name, length): the pane by name (recursive), null unless a ui2d Pane
+DungeonMap_MakeRoomIcons 0x09384950 f (page, room sp, dungeon, visited, map, compass): the room's boss icon (UiDungeonArea mIsBoss), its actors' icons and its UiDungeonIcon rows' icons (DungeonMap_MakeActorIcon), each attached under N_MapPin_00 before N_PinOffset_00 and kept in the vector page +0x1268
+DungeonMap_ShowCellFloorCollapsed 0x09385d80 f DungeonMap_ShowCellFloor for Eagle's Tower once collapsed (flag 0x3bd)
+DungeonMap_ShowCellFloor 0x09386250 f (page, u8 cell, room sp, UiDungeonArea row): shows the cell (B_<cell>) and its room's icons (icon +0xc0 room id; icon vtable +0x78 set shown) when the row's mFloor is the shown floor (+0x2d23), the Link marker on Link's floor, the entrance marker on its floor and the pins whose code / 10 is the shown floor; run per room in the setup and on a floor change
+DungeonMap_LinkToMap 0x09386610 f bool(world pos, page, out vec2, dungeon): Link's map position, false outside the map
+DungeonMap_WorldToMap 0x093867b0 f (vec4 world x y z in v0, page, out vec2, room sp*): a room icon's translate under N_MapPin_00: N_MapPosition_00 + the room's cell + (world - the room box's middle) * 5.333 (z down)
+MapMarkUnit_Make 0x093868a0 f (out shared_ptr, const char* "Gm_MapMarkUnit.bflyt"): a pin layout
+DungeonMap_MakeActorIcon 0x093872c0 f (out shared_ptr, page, actor desc {u16 actor id, f32 x, y, z, switches}, room, visited, map, compass): the icon by actor id: ObjTreasureBox chest, doors (ObjLockDoor, ObjBossDoor, ObjClosedDoor, one-way, Panel doors), cracked walls, stairs (AreaUpstairs/Downstairs, Panel stairs), warp hole, panel joint; null for others; icon +0xc5 map, +0xc6 compass
+DungeonMapChest_Make 0x09387860 f (out shared_ptr): make_shared DungeonMapIcon of Dg_DgnTresure.bflyt
+DungeonMap_PositionIcon 0x09388b60 f (x, y, z, page, out vec2, room sp*): DungeonMap_WorldToMap of the actor's position
+UiManager_FindNavi 0x09389520 f (out lock handle): UiManager_Find typed for Gm_Navi (id 5); handle +0x18 the UI, +0x20 its count, the UI manager's lock held while the handle lives
+UiManager_FindMemory 0x09389cc0 f (out handle, manager, id): typed find used for Gm_Memory (0x1a)
+DungeonMap_MoveCursor 0x0938a750 f (page, bool move): as OverworldMap_MoveCursor with the dungeon fields; idle, it eases toward the hovered pin only (+0x13c0)
+DungeonMap_PinButton 0x0938ac10 f bool(): A pressed (rising edge of bit 0 of the game's controller, unlocked), as OverworldMap_PinButton
+DungeonMap_NearPin 0x0938b1e0 f bool(page): the cursor is within the hover radius of a shown pin (20 slots at +0x1280)
+DungeonMap_ZoomButtons 0x0938b4a0 f bool(page, u8* previous out, u8* zoom): zoom level 0/1 from the controller's +0xb1 / +0xd1 flags; nothing while page +0x2cee
+DungeonMap_FloorButtons 0x0938b670 f bool(u8* previous out, u8* floor, u8 floors): steps the floor with the controller's +0x181 (down) / +0x171 (up) flags; true on a change
+DungeonMap_UpdateHover 0x0938ba20 f (page): DungeonMap_HoveredPin into +0x2ccc; on a change the old pin's Off, the new one's On (MapMarkUnit_HoverOn), +0x13c0 the hovered pin
+DungeonMap_UpdateDungeonInfo 0x0938bd60 f (page): +0x2d40 while Y is held (HidButtonTable DungeonInfo); on a change plays DgnMapOn/DgnMapOff (+0x740, virtual +0xc8 with speed 1 or -1); no pin hover while set
+DungeonMap_HoveredPin 0x0938c2f0 f s32(page): the nearest shown pin within the hover radius (MapCursor +0x300 x scale x page +0x2ce4), -1 none; -1 while +0x2d40
+Ending_Setup 0x0938ce00 f vtable +0x20
+Ending_Update 0x0938d6f0 f vtable +0x28
+EventUi_Setup 0x0938eb10 f vtable +0x20
+EventUi_Update 0x0938eba0 f vtable +0x28
+Fade_Setup 0x0938ef70 f vtable +0x20
+Fade_Update 0x0938f040 f vtable +0x28
+OverworldMap_Dtor 0x09392680 f vtable +0x10; its deleting destructor 0x093939a0 calls it
+OverworldMap_Setup 0x093939d0 f vtable +0x20
+OverworldMap_Update 0x09397800 f vtable +0x28: runs the machine; zoom transition, scrolling
+OverworldMap_Open 0x09397fd0 f vtable +0x30
+OverworldMap_ChangeState 0x093981d0 f (machine at page +0xf0, state): Deactive, Open, KeyWait, PutMarkPin, StartEditMarkPin, EditMarkPin, EndEditMarkPin, PutMarkPinEmpty, StartEditMarkPinEmpty, EditMarkPinEmpty, EndEditMarkPinEmpty, MemoryStart, MemoryUpdate, MemoryEnd, MemoryFromDungeon, Close, OpenMask
+OverworldMap_StartZoom 0x09398350 f (page, bool in) (guess)
+MapMarker_Make 0x093a0870 f (out shared_ptr): make_shared of a MapMarker (0x250 bytes, control block vtable 0x0a12c2a8), LayoutWrapper_Build of Gm_MapMarker.bflyt
+SharedPtrVector_PushBack 0x093a0a40 f vector<shared_ptr> push_back, slow path
+MapMarker_Dtor 0x093a1380 f
+OverworldMap_MoveCursor 0x093a27f0 f (page, bool move): stick moves the cursor (+0x81a8) with acceleration (+0x8198, 4.25 up to 9); idle, it eases toward the hovered pin (+0x3d20) or else the hovered icon marker (+0x8150 into +0x710), unless +0xd30 (Y held: LocationName view); clamps to B_PointerLimit (+0x6a0)
+MapCursor_Setup 0x093a3dc0 f vtable +0x20
+MapCursor_Update 0x093a4690 f vtable +0x28: runs the name bubble's machine at +0x80
+MapCursor_ChangeState 0x093a4750 f (machine at cursor +0x80, state): Deactive, On, Loop, Off, HideName
+MapCursor_Out 0x093a4ee0 f (cursor): hides the cursor while a pin is edited (guess)
+MapCursor_ShowName 0x093a4f50 f (cursor, MessageRef*): shows T_MarkerName_00 (+0x2a8) with the message's text, clears +0x2e0, then MapCursor_NameOn
+MapCursor_NameOn 0x093a5000 f (cursor): clears +0x2e1, state On, SE_SY_MAP_CURSOL_WIDE; MapCursor_ShowName ends with it. Setting +0x2e0 and +0x2e1 takes the name away
+GameOver_Setup 0x093a5640 f vtable +0x20
+GameOver_Update 0x093a5c10 f vtable +0x28
+GameOver_Open 0x093a5c20 f vtable +0x30
+CmHud_Setup 0x093aa990 f vtable +0x20
+CmHud_Update 0x093ab990 f vtable +0x28
+CmHud_Open 0x093ac4f0 f vtable +0x30
+NameEntry_Update 0x093b34a0 f vtable +0x28
+NameEntry_Open 0x093b3500 f vtable +0x30
+FileOperate20_Setup 0x093c09a0 f vtable +0x20
+FileOperate20_Update 0x093c1da0 f vtable +0x28
+FileOperate20_Open 0x093c1dd0 f vtable +0x30
+PinStore_GetPosition 0x093e2050 f (function, slot) -> vec2: calls the pin store's get-position function
+PinStore_SetPosition 0x093e20b0 f (function, slot, vec2*)
+PinStore_SetCode 0x093e2110 f (function, slot, u8 code)
+DgnPlayer_Setup 0x093e25b0 f vtable +0x20
+Memory_Setup 0x093e4320 f vtable +0x20
+Memory_Update 0x093e5280 f vtable +0x28
+Memory_Open 0x093e53b0 f vtable +0x30
+Page_SetupBase 0x093e8590 f the pause pages' common setup, first in the map, Items and Memories setups (guess)
+MessageWindow_Setup 0x093f3fc0 f vtable +0x20
+MessageWindow_Update 0x093f4bc0 f vtable +0x28
+PdDlg4_Setup 0x093fce00 f vtable +0x20
+PdDlg4_Update 0x093fdf60 f vtable +0x28
+PdDlg27_Setup 0x09405b00 f vtable +0x20
+PdDlg27_Update 0x09406350 f vtable +0x28
+PdPuzzle_Setup 0x0940d590 f vtable +0x20
+PdPuzzle_Update 0x0940ee60 f vtable +0x28
+PdPanel_Setup 0x09421910 f vtable +0x20
+PdPanel_Update 0x09424320 f vtable +0x28
+PdPanel_Open 0x09424440 f vtable +0x30
+PdPanelResult_Setup 0x09430120 f vtable +0x20
+PdPanelResult_Update 0x09431330 f vtable +0x28
+PdPage_Setup 0x094323c0 f vtable +0x20
+PdPage_Update 0x09432790 f vtable +0x28
+PdPage_Open 0x094327a0 f vtable +0x30
+PdDlg28_Setup 0x09435830 f vtable +0x20
+PdDlg28_Update 0x09436330 f vtable +0x28
+Part_Bind 0x094383a0 f (part, page, StringView* name): binds an L_ part pane of the page's layout to a part wrapper
+DungeonMap_FloorChoiceOff 0x09438c00 f (L_MapChoice part) (guess)
+DungeonMap_FloorChoiceOn 0x09438c80 f (L_MapChoice part): the shown floor's button (guess)
+DungeonMapIcon_Init 0x0943ae60 f (icon, actor desc, bool visited)
+DungeonMapIcon_Make 0x0943bfb0 f (icon, StringView* bflyt name): the icon wrapper (0xd0 bytes; open/closed animators +0xa0/+0xb8, +0xc4 shown, +0xc5 map, +0xc6 compass)
+MapMarker_DeletingDtor 0x0943e460 f vtable +0x18
+MapMarker_Setup 0x0943e490 f vtable +0x20: the state machine (+0x90: Deactive, On, Loop, Off) and the animations On +0x1d0, Loop +0x1e8, Off +0x200, SetMark +0x218 ({layout sp, animator} each; animator at +0x10)
+MapMarker_Update 0x0943e860 f vtable +0x28: runs the machine (+0x9d state, 0xff none: Deactive first)
+MapMarker_ChangeState 0x0943e8c0 f (machine at marker +0x90, u8 state): the 4-state machine's change; each machine size has its own copy
+MapMarker_SetupPart 0x0943ed80 f MapMarker_Setup for a marker made to hang in a page: first takes its layout out of the HUD pass
+FieldArea_Update 0x0943f810 f (L_FldArea part, {sheet sp, UiFieldMapMask row}*): shows the area when its conditions hold (Conditions_Check), plays the mask's open/closed animations by the row's flag (+0x28)
+MapMarkList_Open 0x0944b840 f (pin bar): opens (guess)
+MapMarkList_Close 0x0944b8f0 f (pin bar) (guess)
+MapMarkList_SetCount 0x0944b9a0 f (pin bar, free, capacity) (guess)
+MapMarkList_Select 0x0944bf60 f (pin bar, type) (guess)
+MapMarkUnit_Setup 0x0944c7c0 f (pin): animations and state; type code at pin +0x138, SetMark animator at pin +0x118 (frame max(code % 10 - 1, 0))
+MapMarkUnit_ShowNormal 0x0944cdc0 f (pin): its normal look (guess)
+MapMarkUnit_Place 0x0944cee0 f (x, y, 0, pin, code): a new pin's position and code (guess)
+MapMarkUnit_HoverOn 0x0944cf90 f (pin): plays its On animation (+0xa0)
+MapMarkUnit_HoverOff 0x0944cfe0 f (pin): plays its Off animation (+0xd0)
+MapMarkUnit_ShowRemove 0x0944d030 f (pin): the look of type 0, removing it (guess)
+Picture_Setup 0x0947e620 f vtable +0x20
+Picture_Update 0x0947f030 f vtable +0x28
+Picture_Open 0x0947f040 f vtable +0x30
+RaftGame_Setup 0x0947fd00 f vtable +0x20
+RaftGame_Update 0x09480a00 f vtable +0x28
+FileOperate1f_Setup 0x09482060 f vtable +0x20
+FileOperate1f_Update 0x09483590 f vtable +0x28
+FileOperate1f_Open 0x094835c0 f vtable +0x30
+Spicy_Setup 0x094865e0 f vtable +0x20
+Spicy_Update 0x094867c0 f vtable +0x28
+TheEnd_Setup 0x09488740 f vtable +0x20
+TheEnd_Update 0x094888d0 f vtable +0x28
+Throbber_Setup 0x09488e90 f vtable +0x20
+Throbber_Update 0x09489170 f vtable +0x28
+ThrobberSave_Setup 0x09489800 f vtable +0x20
+ThrobberSave_Update 0x09489c60 f vtable +0x28
+Title_Setup 0x0948ac40 f vtable +0x20
+Title_Update 0x0948bca0 f vtable +0x28
+WarpSet_Setup 0x09492ec0 f vtable +0x20
+WarpDecision_Setup 0x09493de0 f vtable +0x20
+WarpDecision_Update 0x09493e40 f vtable +0x28
+WarpDecision_Open 0x09493e50 f vtable +0x30
+WarpNavi_Setup 0x09495310 f vtable +0x20
+WarpNavi_Update 0x094958b0 f vtable +0x28
+WarpNavi_Open 0x094958e0 f vtable +0x30
+WarpMap_Setup 0x0949ab60 f vtable +0x20
+WarpMap_Update 0x0949c0a0 f vtable +0x28
+WarpMap_Open 0x0949c150 f vtable +0x30
+UiItemMenuSheet_Set 0x094a0d00 f (holder, sheet shared_ptr*): fills UiItemMenuSheet_ptr
+UiMapSheets_Set 0x094a0fb0 f (holder, 6 sheet shared_ptrs*): fills UiMapSheets_ptr
+Datasheet_FindRowShared 0x094a1260 f (out {sheet sp, count, row}, sheet, StringView* key): Datasheet_FindRow with 0x20-byte rows, keeping the sheet alive
+Datasheet_RowAt 0x094a1320 f (out {sheet sp, count, row}, sheet, index): row by position
+Datasheet_FindRowShared2 0x094a13e0 f (out {sheet sp, count, row}, sheet, StringView* key): Datasheet_FindRowShared for UiDungeonStair's rows
+UiMemorySheets_Set 0x094a16a0 f (holder, 3 sheet shared_ptrs*): fills UiMemorySheets_ptr
+Conditions_Check 0x094a1e10 f (conditions, type, StringView* arg, actor ctx) -> bool: 0 true, 1 event flag (arg "!" negates), 2 counter "name:value" compare, 3 companion (None/BowWow/Marin/Ghost/Rooster by Inventory +0x9d), 4-7 actor parameters
+Datasheet_RowById 0x094aa130 f (sheet, s32 id, row size) -> row: the row whose mId is id (hash map sheet +0xb0/+0xb8), rows at *(sheet+0x70)+0x20; throws for a sheet without an id column
+ui2d_Layout_CreateAnimator 0x0965cda0 f (layout, resource accessor, const char* animation name, bool): the animator LayoutWrapper_GetAnimation returns
+ui2d_Pane_AppendChild 0x0966abd0 f (pane, child)
+ui2d_Pane_InsertChild 0x0966ac10 f (pane, next sibling, child)
+ui2d_Pane_RemoveChild 0x0966ac40 f (pane, child)
+CraneGame_vtable 0x0a12b3b0 l UI id 0x14, Gm_CraneGame.bflyt
+FileOperate_vtable 0x0a12b4a0 l UI id 0xc, Cm_FileOperate.bflyt; file menu
+Dialog_vtable 0x0a12b8e8 l UI id 0x26, Cm_Dlg.bflyt; the game's dialogs
+DungeonMap_vtable 0x0a12bb18 l UI id 0xe, Dg_DgnMap.bflyt; dungeon map page
+Ending_vtable 0x0a12bf40 l UI id 0x1e, Ed_Ending.bflyt
+EventUi_vtable 0x0a12c0c0 l UI id 0x21, Gm_Event.bflyt
+Fade_vtable 0x0a12c138 l UI id 0x22, Ld_Fade.bflyt
+OverworldMap_vtable 0x0a12c1b0 l UI id 0xf, Gm_Map.bflyt; overworld map page
+MapCursor_vtable 0x0a12c370 l UI id 0x1c, Gm_MapCursor.bflyt; the map cursor and its name bubble, drawn over both map pages
+GameOver_vtable 0x0a12c418 l UI id 0x11, Gm_GameOver.bflyt
+CmHud_vtable 0x0a12c598 l UI id 0x0, Cm_HUD.bflyt; the HUD
+NameEntry_vtable 0x0a12c6a8 l UI id 0xd, Tl_Entry.bflyt; name entry
+FileOperate20_vtable 0x0a12c9d8 l UI id 0x20, Cm_FileOperate.bflyt
+DgnPlayer_vtable 0x0a12e798 l UI id 0x1b, Dg_DgnPlayer.bflyt
+Memory_vtable 0x0a12e810 l UI id 0x1a, Gm_Memory.bflyt; Memories, from the overworld map
+MessageWindow_vtable 0x0a12ebd0 l UI id 0x24, Cm_Message.bflyt; message window
+PdDlg4_vtable 0x0a12efa0 l UI id 0x4, Pd_Dlg.bflyt; Chamber Dungeon dialog
+PdDlg27_vtable 0x0a12f210 l UI id 0x27, Pd_Dlg.bflyt; Chamber Dungeon dialog
+PdPuzzle_vtable 0x0a12f390 l UI id 0x1, Pd_Puzzle.bflyt; Chamber Dungeon
+PdPanel_vtable 0x0a12f8c0 l UI id 0x2, Pd_Panel.bflyt; Chamber Dungeon
+PdPanelResult_vtable 0x0a12ffc0 l UI id 0x3, Pd_PanelResult.bflyt; Chamber Dungeon
+PdPage_vtable 0x0a130068 l UI id 0xb; the Chamber Dungeon's third pause page (retry, restart, retire, quit)
+PdDlg28_vtable 0x0a130280 l UI id 0x28, Pd_Dlg.bflyt; Chamber Dungeon dialog
+DungeonMapIcon_vtable 0x0a130b38 l the dungeon map's actor icons; +0x70 DungeonMapIcon_Update (icon, actor desc)
+MapMarker_vtable 0x0a130fa8 l Gm_MapMarker: +0x90 state machine, SetMark animator +0x228, UiFieldMapIcons sheet shared_ptr +0x230/+0x238, row +0x240, +0x248 set to leave On/Loop for Off (the map unhovers it)
+Picture_vtable 0x0a133ae8 l Gm_Picture.bflyt; UI id read from +0x838
+RaftGame_vtable 0x0a133bf8 l UI id 0x15, Gm_RaftGame.bflyt
+FileOperate1f_vtable 0x0a133ca0 l UI id 0x1f, Cm_FileOperate.bflyt
+Spicy_vtable 0x0a133dd8 l UI id 0x2b, Ld_Spicy.bflyt
+TheEnd_vtable 0x0a133f48 l UI id 0x23, Ed_TheEnd.bflyt
+Throbber_vtable 0x0a133ff0 l UI id 0x29, Ld_Throbber.bflyt
+ThrobberSave_vtable 0x0a134098 l UI id 0x2a, Ld_ThrobberSave.bflyt
+Title_vtable 0x0a134140 l UI id 0x1d, Tl_Title.bflyt; title screen
+WarpSet_vtable 0x0a134418 l UI id 0x25; a Cm_Dlg dialog with the SetWarp animation (+0x5d0): UI:WarpDungeonDecision / Cancel
+WarpDecision_vtable 0x0a1344d8 l UI id 0x9; the warp outside the field: a WarpMap object (Gm_Map.bflyt, map hidden) that asks through WarpSet
+WarpNavi_vtable 0x0a134680 l UI id 0x8, Gm_Navi.bflyt; the warp map's header (N_Map_00, WarpIn/WarpOut)
+WarpMap_vtable 0x0a134770 l UI id 0x7, Gm_Map.bflyt; the warp map (warp points, Manbo; FieldIn/DungeonIn, N_Warp_00, ZoomIn)
+MessageManager_ptr 0x0a1b6db8 l 0x58 bytes, made on first use; +0x10 the loaded message files (hash by file name at +0xa0, entries 0x20 bytes at +0x88)
+PinStore_ptr 0x0a1c7228 l the map pins' store (0x1f0 bytes): +0x10 the save section pointer's address (MapPinSection_ptr), +0x18 the dungeon index it is bound for, +0x1c/+0xbc the Chamber Dungeon's unsaved pins, six std::functions (objects at +0xd0 get position, +0x100 get code, +0x130 set position, +0x160 set code, +0x190 pins placed, +0x1c0 capacity; each called through its +0x20), shared by both maps
+UiItemMenuSheet_ptr 0x0a1c7960 l shared_ptr of UiItemMenuCursorMoveTable
+UiMapSheets_ptr 0x0a1c7a18 l 0x60 bytes, shared_ptrs of UiFieldMapIcons +0x0 (rows 0x50), UiFieldMapLocationName +0x10, UiFieldMapMask +0x20 (rows 0x50), UiDungeonArea +0x30 (rows 0x20, keyed by area name), UiDungeonIcon +0x40, UiDungeonStair +0x50
+UiMemorySheets_ptr 0x0a1c7ad0 l 0x30 bytes, shared_ptrs of UiMemory +0x0, UiMemoryHearts +0x10, UiMemoryShells +0x20
+MapPinStore_Bind 0x093dffd0 f (store): binds the store's functions for the dungeon index (LevelIndex_ptr): 0xff field, 0-7 and 9 a dungeon's saved set (9 uses set 8), else the store's own slots; called by LevelLoad_Finish
+MapPinStore_ChamberCode 0x093e1240 f code of a Chamber Dungeon pin: store +0xbc + slot
+MapPinStore_ChamberPosition 0x093e1440 f position of a Chamber Dungeon pin: store +0x1c + slot * 8
+MapPinStore_DungeonCode 0x093e1960 f code of a dungeon pin: section +0x6ae + set * 20 + slot
+MapPinStore_DungeonPosition 0x093e1a30 f position of a dungeon pin: section +0xf0 + (set * 20 + slot) * 8
+MapPinStore_FieldCode 0x093e1f80 f code of a field pin: section +0x690 + slot
+MapPinStore_FieldPosition 0x093e2030 f position of a field pin: section + slot * 8
+MapPinSection_ptr 0x0a1c5370 l the save section of the map pins: field positions +0x0 (30 vec2), dungeon positions +0xf0 (9 sets of 20 vec2), field codes +0x690 (30 u8), dungeon codes +0x6ae (9 sets of 20 u8), +0x763 u8 the seashell sensor on (the Items page toggles it)
+Interaction_Target 0x085ecd90 f (out sp): the current interaction target; its +0x1a0 the prompt kind (guess)
+CmHud_ChangeState 0x08cf7380 f (machine at HUD +0x80, state): None 0, Wait 1, Open 2, InGame 3, CraneIn 4, CraneOut 5, WaitEndCrane 6, FishingStart 7, FishingUpdate 8, FishingEnd 9, Close 10
+Player_CanInteract 0x09296480 f bool(player): the HUD shows the interact prompt only then (guess)
+CmHud_Ctor 0x093a75c0 f the HUD's constructor
+HudRupee_ChangeState 0x093ad780 f the rupee part's machine (part +0x90) (guess)
+CmHud_SetMedicine 0x093ad900 f (hud, bool): RevivalOn/RevivalOff on the 20 hearts at once (guess)
+CmHud_UpdateCaution 0x093ae2b0 f the low-health Caution animation and beep (HUD +0x6373) (guess)
+CmHud_OpenEnter 0x093ae430 f enter of the HUD state Open
+CmHud_OpenUpdate 0x093ae4a0 f update of the HUD state Open
+CmHud_WaitUpdate 0x093ae500 f update of the HUD state Wait
+CmHud_CraneOutEnter 0x093b0590 f
+CmHud_CraneOutUpdate 0x093b05a0 f
+CmHud_WaitEndCraneUpdate 0x093b0600 f
+CmHud_CraneInEnter 0x093b0610 f
+CmHud_CraneInUpdate 0x093b0620 f
+CmHud_CloseEnter 0x093b0680 f
+CmHud_CloseUpdate 0x093b0690 f
+CmHud_FishingStartUpdate 0x093b06a0 f
+CmHud_FishingUpdateUpdate 0x093b06e0 f
+CmHud_FishingEndUpdate 0x093b06f0 f
+CmHud_FindAlignment 0x093b0720 f (out {sp, count, pane}, hud, name, length): an A_ alignment pane (guess)
+CmHud_SubUpdate 0x093b0a00 f per-frame part of the HUD update, rupees and item slots (guess)
+UiManager_PreloadLabel 0x093df460 f (UI manager, StringView* label, 0): loads or queues a label's text; the HUD's Open calls it for the 8 interact labels (guess)
+HudHeart_ResetLife 0x09444880 f (heart): resets its Life animations (guess)
+HudHeart_ToEnd 0x09444d60 f (heart): its animations to their end (guess)
+HudHeart_SetFill 0x09444e90 f (heart, quarter, bool up): plays the fill animation one quarter up or down; the animation index at heart +0x2f8
+HudKey_In 0x094455f0 f a key or boss key part appears (In) (guess)
+HudBossKey_Used 0x09445650 f (guess)
+HudLocation_Update 0x09445a90 f the location banner part (L_Location_00, L_DgnLocation_00) (guess)
+HudRadar_ChangeState 0x094478b0 f the shell radar's and compass's machine (part +0x90)
+HudSetItem_SetCount 0x094499c0 f (slot, count): the number on an item slot (guess)
+ActorSwitch_Check 0x0948c6c0 f (u8 type, u16 index): whether a level actor's switch is set; the HUD's boss key (ObjBossDoor 0xee, PanelBossDoor 0x255) and the dungeon map (guess)
+Ui2d_UpdateAlignment 0x0967e090 f ui2d alignment pane relayout (guess)
+Inventory_MaxHealth 0x092fc260 f (Inventory_ptr*): max health in quarter hearts
+Animator_FrameCount 0x09650840 f (animator): its frame count
+PanelDungeon_ItemLock 0x091e51e0 f (manager, kind): whether an item is greyed out in the Chamber Dungeon (guess)
+OverworldMap_MemoryCreated 0x093a1f20 f the Memories UI's creation callback: map +0x3d30, its list from map +0x3d40, the map's guide function
+GmItem_Setup 0x093b92b0 f vtable +0x20
+GmItem_Update 0x093b9f40 f vtable +0x28
+GmItem_Open 0x093b9ff0 f vtable +0x30: MoveCursor, ShowItemInfo and Refresh for the saved cursor, then In
+GmItem_Close 0x093ba070 f vtable +0xa8: Out, state Out
+GmItem_ChangeState 0x093ba0b0 f (machine at +0xf0, state)
+GmItem_MoveCursor 0x093ba230 f (page, index 0-38): the cursor part onto that slot (0-11 list, 12 seashells, 13 sensor, 14 chamber stones, 15 mushroom, 16 figurine, 17-24 instruments, 25-29 keys, 30-35 equipment, 36 trade item, 37 medicine, 38 heart container)
+GmItem_ShowItemInfo 0x093ba590 f T_Name_00 UI:ItemName_<key>, T_Info_00 UI:ItemExplanation_<key>; cleared for unowned slots
+GmItem_Refresh 0x093bab30 f the list slots' icons, counts and Y/X badges from the inventory
+GmItem_MessageKey 0x093bae30 f (cursor) the message key of the slot's item (Sword1, Bottle, Fairy, WearRed, ...)
+GmItem_FirstFigurine 0x093bb7c0 f index of the first owned figurine whose <X>Figure flag is unset, 10 none
+GmItem_ChamberStoneCount 0x093bba80 f the chamber stones' count (PanelSheets rows of owned PanelPieceBits)
+GmItem_LoopUpdate 0x093bbcd0 f update of Loop: moves the cursor by UiItemMenuCursorMoveTable (row +4 up, +8 down, +0xc right, +0x10 left; 39 none); X/Y set items, the ocarina's song pop-up, A on the sensor
+GmItem_SetupInstruments 0x093bd0f0 f
+GmItem_SetupKeys 0x093bd570 f
+GmItem_SetupEquipment 0x093bd8c0 f
+String_FormatWide 0x093be500 f String_Format to UTF-16
+GmItem_SetupStones 0x093be5b0 f
+GmItem_SetupMedicine 0x093be7c0 f
+GmItem_SetupTrade 0x093be910 f
+GmItem_SetupSensor 0x093be9e0 f
+GmItem_SetupFigurine 0x093bea60 f
+GmItem_SetBracelet 0x093beae0 f
+GmItem_SetTunic 0x093bec10 f
+GmItem_SetShield 0x093bed30 f
+GmItem_SetSword 0x093bee60 f
+GmItem_SetButtonItem 0x093bef90 f (page, cursor, 0 Y / 1 X): writes Inventory +0xa2/+0xa3 (swapping when on the other button) and the HUD's button part; true when changed
+Memory_Close 0x093e57a0 f vtable +0xa8: state Close, saves the tab and list state into Navi
+Memory_ChangeState 0x093e5b00 f (machine at +0xf0, state)
+Memory_AttachContents 0x093e5c80 f the current, next and previous tab contents under N_Content_00 / N_NextContent_00 / N_BackContent_00 (guess)
+MessageWindow_Close 0x093f4f40 f (guess)
+MessageWindow_OpenTalker 0x093fb300 f opens the message window with a message and a talker (guess)
+ItemSlot_YBadge 0x09448710 f
+ItemSlot_XBadge 0x09448780 f
+ItemSlot_SetItem 0x094487f0 f (slot part, item): the icon frame (bottle contents, ocarina song)
+ItemSlot_SetEmpty 0x0944a080 f
+ItemSlot_SetOn 0x0944a0e0 f (part, bool)
+MemoryList_SetEntries 0x09452500 f (list, vector of UiMemory rows) (guess)
+MemoryPanels_Setup 0x09453010 f the Chamber Dungeon panels' tab: UI:MemoryPanelCount
+PopList_Ctor 0x0947afc0 f the ocarina's song pop-up (L_PopList_00)
+PopList_Open 0x0947b540 f shows the owned songs, cursor on EquippedSong (Inventory +0xa1)
+PopList_Move 0x0947b6b0 f left/right through the 3 songs, wrapping
+PopList_In 0x0947b930 f
+PopList_Out 0x0947ba10 f
+PopList_Decide 0x0947ba80 f writes Inventory +0xa1 = cursor + 1
+TextBox_SetString 0x095e2620 f (text box, u16*)
+GmItem_SlotItemTable 0x09c066a4 l u8[12]: list slot to MainItems bit (powder, feather, bombs, shovel / ocarina, hookshot, bow, rod / boomerang, 3 bottles)
+GmItem_CursorItemTable 0x09c066b0 l u8[39]: cursor index to item id (ownership through Inventory_HasItem)
+GmItem_EquipFrameTable 0x09c06810 l f32 per item id: the equipment icon frame
+GmItem_ChamberKindTable 0x09c06870 l per item id: the Chamber Dungeon lock kind
+PanelDungeon_ptr 0x0a1bdfb8 l the Chamber Dungeon manager (0x1920 bytes; +0x1720 its own inventory copy)
+WarpPoint_CountActivated 0x08532e40 f the number of WarpPoint rows whose Inventory +0xb8 bit is set
+WarpUI_Show 0x08cecec0 f event action WarpUI.Show: UiManager_Request(WarpUI_ChooseUi()), waits on it
+UiManager_FindWarpMap 0x08cedeb0 f (out lock handle, id): UiManager_Find typed for the WarpMap class (ids 7, 9)
+WarpUI_JumpToSelectedLocation 0x08cee4c0 f event action: field: GameControl_SetLevelJump(Field, row.mLocator); elsewhere locator OcarinaWarpPoint (Chamber Dungeon: the save's level)
+WarpUI_GetResult 0x08ceef30 f event query: 1 when the warp UI is done (+0x62fa) and its result index >= 0
+WarpPointSheet_Set 0x08d296f0 f (holder, sheet sp*): fills WarpPointSheet_ptr
+WarpPointSheet_RowByIndex 0x08d29970 f (out {sheet sp, count, row}, holder, mIndex)
+LinkAction_AddWarpPoint 0x0926db70 f event action Link.AddWarpPoint body: param key -> WarpPoint_Activate
+PlayReport_Warp 0x092f8960 f (Framework +0x5e0, index): ToWarpPointId play report (guess)
+WarpPoint_Activate 0x092fc670 f (StringView* key): Inventory +0xb8 |= 1 << row.mIndex
+Dialog_Ctor 0x09371690 f LayoutWrapper_Build of Cm_Dlg.bflyt; WarpSet's factory uses it
+MapCursor_HideNameBack 0x093a4d70 f (cursor): plays OnName (+0x248) backwards; the warp map's Out
+WarpUI_ChooseUi 0x093e2170 f -> 7 (WarpMap) in the field (LevelIndex -1 and the scene type checks), else 9 (WarpDecision)
+WarpPointMarker_Dtor 0x0947d570 f vtable +0x10
+WarpPointMarker_Setup 0x0947d760 f vtable +0x20: animations On +0x90, Loop +0xa8, Off +0xc0, Normal +0xd8, Disable +0xf0 (animator +0x10 each); Off at its end
+WarpPointMarker_Update 0x0947db70 f vtable +0x28: hovered (+0x109) On finished -> Loop
+WarpPointMarker_SetupPart 0x0947dc10 f WarpPointMarker_Setup for a marker that hangs in a page: first out of the HUD pass
+WarpPointMarker_HoverOn 0x0947e0d0 f plays On, +0x109 = 1
+WarpPointMarker_HoverOff 0x0947e150 f plays Off, +0x109 = 0
+WarpSet_Request 0x09493010 f (StringView* decision label, StringView* cancel label, std::function* callback): UiManager_Request(0x25) with the labels (guess at the argument roles)
+WarpMap_SetDone 0x09493fc0 f vtable +0xa8 (also WarpDecision's): +0x62fa = 1
+WarpDecision_Close 0x09493fd0 f vtable +0xb8: removes WarpSet (0x25) and itself; result = +0x62fc
+WarpDecision_OnChoice 0x094941d0 f the WarpSet callback (choice*): 0 -> 0, 1 -> -1 into +0x62fc and the result; done; Framework +0x510 = 0; removes UI 0x26
+WarpResult_Make 0x09494360 f (out shared_ptr): the warp map's result (0x80 bytes): promise at +0x8 (virtual +0x30 signals), s32 index +0x60 (-1 cancel)
+WarpMap_SetResult 0x094943d0 f (page, shared_ptr*): +0x62e8/+0x62f0
+WarpResult_Ctor 0x09494410 f
+WarpNavi_ChangeState 0x09495ce0 f (machine at WarpNavi +0x80, state): 1 Open, 2 WaitKey, 3 Close
+WarpNavi_PlayIn 0x09495d20 f In (+0x1d0) and WarpIn (+0x200)
+WarpNavi_UpdateMachine 0x09495f40 f
+WarpNavi_OpenEnter 0x09496010 f attaches WarpMap (UI 7) under N_Map_00, out of the HUD pass; guide and title
+WarpNavi_OpenUpdate 0x094963a0 f In done and WarpMap virtual +0x98: WaitKey
+WarpNavi_WaitKeyUpdate 0x094965f0 f looks up UIs 0x20, 0x1f, 0x26 only
+WarpNavi_CloseEnter 0x09496990 f restores the HUD (+0x61cc..), PlayOut, BGM 0x085aabb0(0), Framework +0x510 = 0
+WarpNavi_CloseUpdate 0x09496df0 f Out done and WarpMap virtual +0xb0: removes itself
+WarpNavi_PlayOut 0x094970b0 f Out (+0x1e8) and WarpOut (+0x218)
+WarpNavi_SetGuide 0x09497170 f L_Operation_00 (+0x238): Guide_Set(0, 0x11)
+WarpNavi_SetTitle 0x09497210 f T_Navih1_00 (+0x220) = UI:WarpFieldTitle
+WarpMap_Ctor 0x094974c0 f (map, ...): LayoutWrapper_Build of Gm_Map.bflyt; WarpDecision's factory uses it too
+WarpMap_Dtor 0x0949a6b0 f vtable +0x10; also WarpDecision's
+WarpMap_Leave 0x0949c2b0 f vtable +0x38: Framework +0x510 = 0
+WarpMap_PlayWarpIn 0x0949c350 f vtable +0x68: plays WarpIn (+0x360, animator +0x370)
+WarpMap_PlayWarpOut 0x0949c3b0 f vtable +0x70: plays WarpOut (+0x378, animator +0x388)
+WarpMap_WarpInDone 0x0949c410 f vtable +0x98
+WarpMap_WarpOutDone 0x0949c450 f vtable +0xa0
+WarpMap_Close 0x0949c490 f vtable +0xb8: removes WarpNavi (8) and itself; signals the result if not done
+WarpMap_FindWarpNavi 0x0949c7c0 f (out lock handle): UiManager_Find typed for WarpNavi (id 8)
+WarpMap_UpdateZoom 0x0949cac0 f (page): zoom phase +0x9a6, levels {1,2} +0x9c0, scale +0x990, step +0x9a0; scales and scrolls N_MapCore_00 to centre the cursor at zoom 2
+WarpMap_UpdateMachine 0x0949cbb0 f (machine at page +0xf0)
+WarpMap_ChangeState 0x0949cc00 f (machine at page +0xf0, state): FieldIn, DungeonIn, Move, Dialog, ZoomIn, ZoomOut, Out
+WarpMap_FieldInEnter 0x0949cf30 f WarpIn, UiManager_Request(8), L_MapChoice texts UI:WarpFieldDecision / UI:WarpFieldCancel
+WarpMap_FieldInUpdate 0x0949d1e0 f places the cursor once (+0x62f8), cursor In; after WarpIn: camera +0x301 = 0, Move
+WarpMap_DungeonInEnter 0x0949d540 f UI:WarpDungeonDecision / UI:WarpDungeonCancel texts, UiManager_Request(8)
+WarpMap_DungeonInUpdate 0x0949d7f0 f goes to Dialog
+WarpMap_MoveEnter 0x0949d800 f notifies +0xd0 (virtual +0x30) with 0x11 (guess: button guide)
+WarpMap_MoveUpdate 0x0949d840 f stick move, else D-pad jump; hover; B/0x3002 cancel (+0x62e0 = -1, Out); A on a hovered point ZoomIn
+WarpMap_MoveExit 0x0949dbb0 f notifies +0xd0 with 0x1c (guess)
+WarpMap_DialogEnter 0x0949dbf0 f shows L_MapChoice_00 (+0x5ff8), option 0
+WarpMap_DialogUpdate 0x0949dc40 f choice input; decided (+0x62dc) 0: Out with the index, 1: ZoomOut (field)
+WarpMap_ZoomInEnter 0x0949e1d0 f MapCursor_Out, zoom target 1, SE_SY_WARP_POINT_ZOOM_IN
+WarpMap_ZoomInUpdate 0x0949e470 f zoom done and the cursor's Out finished: Dialog
+WarpMap_ZoomOutEnter 0x0949e6b0 f zoom target 0, cursor In, SE_SY_WARP_POINT_ZOOM_OUT
+WarpMap_ZoomOutUpdate 0x0949e990 f zoom done: Move, +0xe0 = 1
+WarpMap_OutEnter 0x0949ebe0 f WarpOut, cursor out; result +0x60 = +0x62e0, signal; +0x62fa; WarpNavi state 3
+WarpMap_OutUpdate 0x0949f090 f after WarpOut: +0x70 = 0
+WarpPointMarker_Make 0x0949f100 f (out shared_ptr): make_shared (0x140), LayoutWrapper_Build of Gm_MapWarpPoint.bflyt
+WarpPointMarker_SetRow 0x0949f280 f (marker +0x110, {sheet sp, count}*, row): keeps the WarpPoint row
+WarpMap_MoveCursor 0x0949f650 f (page, bool move) -> stick moved: speed +0x9c8 4.25 to 9; idle, eases 0.3 toward the hovered point; clamps to B_PointerLimit_00; places the map cursor UI
+WarpMap_DpadSelect 0x0949fc80 f (page) -> changed: controller +0x171/+0x181/+0x191/+0x1a1 (up/down/right/left) jump the cursor onto the nearest point that way; hover and name
+WarpMap_UpdateHover 0x094a0370 f (page): first shown point within 48 (dist2 <= 2304) of the cursor into +0x62e0; HoverOn/Off; name Place:<mNameLabel> on the map cursor; none: cursor +0x2e0 = 0x101
+WarpMap_NearestInDirection 0x094a0970 f (page, dir 0 up 1 down 2 left 3 right) -> index: nearest shown point other than the hovered one in that half-plane, else the hovered one
+WarpPointMarker_vtable 0x0a133a70 l Gm_MapWarpPoint; row {sheet sp, count, row} at +0x110/+0x118/+0x120
+WarpPointSheet_ptr 0x0a1b64f8 l 0x218 bytes: WarpPoint.gsheet sp +0x0, rows by mIndex +0x10 + i*8 (64), pedestal count +0x210; rows 0x50: mKey +0x0, mIndex +0x10, mIsPedastal +0x14, mLocator +0x18, mNameLabel +0x28, mPosition +0x38, x/y/z +0x40
+DungeonMapIcon_SetShown 0x0943c0f0 f vtable +0x78 (icon, bool on the shown floor): root visible while that and the icon's shown flag (+0xc4) are set

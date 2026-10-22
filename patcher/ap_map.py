@@ -7,14 +7,14 @@ Each dungeon also gets a group with all of its checks, next to the game's marker
 icon while the event flag in the row is set and names it with Place:<label>; flag and label are APMap<mark><group>,
 which the module answers from ap_map.txt (ap_map.cpp): the group's look shows, named by group_name().
 
-Dungeons: the map shows chests already (the module gives it the compass) and the module shows a chest open once its
-location is checked; every room with other checks gets a UiDungeonIcon row with a chest icon, which the module shows
-open once the room's checks are done.
+Dungeons: the module puts a dot of the same looks on the dungeon map per spot holding checks (ap_map.txt M lines) and
+hides the game's chest icons of the slot's chests (C lines); it names the hovered dot with Place:APMapDot.
 
 Positions come from map_positions.json (scripts/map_positions.py).
 """
 import json
 import math
+import os
 import re
 from pathlib import Path
 
@@ -31,7 +31,10 @@ FLAG_PREFIX = "APMap"  # AP::MAP_FLAG_PREFIX in the module
 LOOKS = ("", "P", "X", "C")
 # Checks closer than this (world units; a screen is 15 x 12) share an icon.
 GROUP_DISTANCE = 3.0
-CHEST_ACTOR = 0xF7  # UiDungeonIcon mActorID that shows a chest icon
+# Dungeon checks closer than this in the same room share a dot (a chest and its room's owl statue sit together).
+DOT_DISTANCE = 1.0
+DOT_LABEL = "APMapDot"  # the Place.msbt entry the module names the hovered dungeon dot with (AP::MAP_DOT_LABEL)
+CHEST_ACTOR = 0xF7  # the chest's actor type in a room's .leb
 # The game's UiFieldMapIcons row marking each dungeon's entrance, by the dungeon's location prefix
 DUNGEON_MARKERS = {"D1": "Lv1Dungeon_map", "D2": "Lv2Dungeon_map", "D3": "Lv3Dungeon_map", "D4": "Lv4Dungeon_map",
                    "D5": "Lv5Dungeon_map", "D6": "Lv6Dungeon_map", "D7": "Lv7Dungeon_map", "D8": "Lv8Dungeon_map",
@@ -65,14 +68,21 @@ def overworld_groups(positions: dict, location_ids: dict) -> list:
     return groups
 
 
-def dungeon_groups(positions: dict, location_ids: dict) -> list:
-    """[(room, x, z, [lasr location, ...])]: the slot's dungeon checks that are not chests, one icon per room."""
-    rooms = {}
+def dungeon_dots(positions: dict, location_ids: dict) -> list:
+    """[(room, x, z, [lasr location, ...])]: the slot's dungeon checks, each joined to the first spot near it in its
+    room."""
+    dots = []
     for loc in sorted(location_ids, key=lambda loc: int(location_ids[loc])):
-        if loc in positions["dungeon"] and loc not in CHEST_ROOMS:
-            room, x, z = positions["dungeon"][loc]
-            rooms.setdefault(room, (room, x, z, []))[3].append(loc)
-    return list(rooms.values())
+        if loc not in positions["dungeon"]:
+            continue
+        room, x, z = positions["dungeon"][loc]
+        for dot in dots:
+            if dot[0] == room and math.dist((dot[1], dot[2]), (x, z)) < DOT_DISTANCE:
+                dot[3].append(loc)
+                break
+        else:
+            dots.append((room, x, z, [loc]))
+    return dots
 
 
 def entrance_groups(files, location_ids: dict) -> list:
@@ -103,6 +113,18 @@ def group_name(positions: dict, locs: list) -> str:
     return positions["spots"][locs[0]]
 
 
+def dot_name(positions: dict, locs: list) -> str:
+    """A dungeon dot's name: its check's name; for several, what their names start with ("Rupee Room" for Rupee Room 1
+    to 28), else the first name and how many more."""
+    names = [short_name(positions["names"][loc]) for loc in locs]
+    if len(names) == 1:
+        return names[0]
+    common = os.path.commonprefix(names).rstrip(" 0123456789")
+    if len(common) >= 4:
+        return common
+    return f"{names[0]} +{len(names) - 1}"
+
+
 def hidden_until(locs: list, shuffled_dungeons: bool):
     """The flag until which an overworld icon's name is HIDDEN_DUNGEON: with shuffled dungeons, that of a dungeon's
     icon, which would tell which dungeon its door leads into."""
@@ -113,9 +135,8 @@ def hidden_until(locs: list, shuffled_dungeons: bool):
 def add(files, config_dir: Path, location_ids: dict, placeholder_key: str, shuffled_dungeons: bool = False) -> None:
     positions = load_positions()
     overworld = overworld_groups(positions, location_ids) + entrance_groups(files, location_ids)
-    dungeon = dungeon_groups(positions, location_ids)
+    dots = dungeon_dots(positions, location_ids)
     _field_icons(files, overworld)
-    _dungeon_icons(files, dungeon)
     names = [group_name(positions, locs) for *_, locs in overworld]
     hidden = [hidden_until(locs, shuffled_dungeons) for *_, locs in overworld]
     _text(files, [HIDDEN_DUNGEON if flag else name for name, flag in zip(names, hidden)])
@@ -123,11 +144,13 @@ def add(files, config_dir: Path, location_ids: dict, placeholder_key: str, shuff
              for level, x, z, local_id in _dungeon_chests(files, location_ids, placeholder_key)]
     for g, (*_, locs) in enumerate(overworld):
         lines.append(f"O {g} " + " ".join(str(location_ids[loc]) for loc in locs))
-    for g, (_, x, z, locs) in enumerate(dungeon):
-        lines.append(f"D {g} {x:.3f} {z:.3f} " + " ".join(str(location_ids[loc]) for loc in locs))
+    for d, (room, x, z, locs) in enumerate(dots):
+        lines.append(f"M {d} {room} {x:.3f} {z:.3f} " + " ".join(str(location_ids[loc]) for loc in locs))
     lines += [f"G {g} {name}" for g, name in enumerate(names)]
+    lines += [f"MG {d} {dot_name(positions, locs)}" for d, (*_, locs) in enumerate(dots)]
     lines += [f"H {g} {flag} {HIDDEN_DUNGEON}" for g, flag in enumerate(hidden) if flag]
-    lines += [f"N {location_ids[loc]} {short_name(positions['names'][loc])}" for *_, locs in overworld for loc in locs]
+    lines += [f"N {location_ids[loc]} {short_name(positions['names'][loc])}"
+              for *_, locs in overworld + dots for loc in sorted(set(locs))]
     (config_dir / FILE_NAME).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
@@ -148,18 +171,6 @@ def _field_icons(files, groups: list) -> None:
     files.writeFile("UiFieldMapIcons.gsheet", sheet)
 
 
-def _dungeon_icons(files, groups: list) -> None:
-    sheet = files.readFile("UiDungeonIcon.gsheet")
-    rows = [parseStruct(row) for row in sheet["values"]]
-    next_id = max(row["mId"] for row in rows) + 1
-    for g, (room, x, z, _) in enumerate(groups):
-        row = dict(rows[0])
-        row.update({"mId": next_id + g, "mLeaName": room, "mActorID": CHEST_ACTOR, "posX": float(x),
-                    "posZ": float(z)})
-        sheet["values"].append(dictToStruct(row))
-    files.writeFile("UiDungeonIcon.gsheet", sheet)
-
-
 def _dungeon_chests(files, location_ids: dict, placeholder_key: str) -> list:
     """[(level, x, z, local id)]: the chests of the slot's dungeon locations, found by the placeholder (or a model
     variant of it) with the location's index."""
@@ -177,9 +188,11 @@ def _dungeon_chests(files, location_ids: dict, placeholder_key: str) -> list:
 
 
 def _text(files, names: list) -> None:
-    """Place.msbt entries for the icons' names; the module adds the group's count to them."""
+    """Place.msbt entries for the icons' names, the module adds the group's count to them; and the dungeon dots'
+    entry, whose text the module gives."""
     for relative_path, msbt in files.getAllTextFiles("Place.msbt"):
         for g, name in enumerate(names):
             for mark in LOOKS:
                 msbt.addEntry(f"{FLAG_PREFIX}{mark}{g}", name)
+        msbt.addEntry(DOT_LABEL, "")
         files.writeTextFile(relative_path, "Place.msbt", msbt)

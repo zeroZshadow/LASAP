@@ -691,7 +691,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap_save_name.set_default(proc.file_manager, patch.get("slot_name", ""))
     map_tracker = patch["settings"].get("Map Tracker", False)  # off for patches from before the option
     if map_tracker:
-        ap_map.add(proc.file_manager, proc.config_dir, patch["location_ids"], PLACEHOLDER_KEY,
+        # the activities the options leave out stay off the map, as in PopTracker
+        optional = set(patch.get("optional_locations", ()))
+        ap_map.add(proc.file_manager, proc.config_dir,
+                   {loc: i for loc, i in patch["location_ids"].items() if loc not in optional}, PLACEHOLDER_KEY,
                    patch["settings"].get("Shuffled Dungeons", False))
     try:
         for path in (ap_assets.MODEL, ap_assets.PLAYER_GHOST, ap_assets.UI) + ((ap_assets.GAME,) if map_tracker else ()):

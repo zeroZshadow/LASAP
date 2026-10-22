@@ -228,12 +228,16 @@ namespace {
     // The module keeps the chosen track out of those stops and decides afterwards: a level load follows (another
     // player, or none): it plays on, and the new level finds it playing; the game asks for the zone's music again
     // (an event's PlayZoneBGM): it plays on; another track starts (an event's song, a fanfare): it stops then; the
-    // player is free again with none of these (an event that meant silence): it stops then.
+    // player stays free with none of these (an event that meant silence): it stops then. Stairs into a room of the same
+    // level (a 2D room and back) hold it, free the player for a frame and then ask for the zone's music: the player
+    // counts as free again after kHeldFreeFrames frames in a row.
     // BgmManager_StopAll(u32 frames), the zone music's fade (void: the kind 1 instances over 90 frames),
     // Sound_Stop(sound, u32 frames); an instance's fade-out frames at +0x58.
     constexpr uintptr_t kBgmStopAll = 0x9b550, kBgmFadeZone = 0xa6510, kSoundStop = 0x10e97f0;
     constexpr size_t kInstFadeOut = 0x58;
     constexpr u32 kHeldFadeFrames = 30;
+    constexpr int kHeldFreeFrames = 10;
+    int g_FreeFrames = 0;               // ticks in a row with the player free
     const u8* g_HoldSound = nullptr;    // the chosen track's sound while a stop of the game's runs
     bool g_HoldSkipped = false;         // that stop reached it
     bool g_Held = false;                // a stop left it playing: what follows decides
@@ -361,11 +365,13 @@ namespace AP::Music {
                 g_Carried = true;
             }
             if (!g_Carried) g_Instance = nullptr;  // a level load starts the music again
+            g_FreeFrames = 0;
             return;
         }
+        g_FreeFrames = free ? g_FreeFrames + 1 : 0;
         if (g_Held && fmwk->mPlayer != g_HeldPlayer) {
             g_Held = false;  // another level: it plays on
-        } else if (g_Held && free) {
+        } else if (g_Held && g_FreeFrames >= kHeldFreeFrames) {
             StopHeld();  // an event that meant silence is over
         }
         g_Carried = false;

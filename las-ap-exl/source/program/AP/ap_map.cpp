@@ -5,8 +5,8 @@
 // a row's icon while the event flag named in the row is set; those flags are answered here. The flag is
 // MAP_FLAG_PREFIX<group> for the in-logic look and MAP_FLAG_PREFIX<mark><group> for the others (MAP_LOOK_MARKS); the
 // group's look is set and the others are not. In logic: every unchecked location of the group is in logic, or what is
-// in logic is not known yet (the client sends it); partly in logic: some are; out of logic: none is; collected: all
-// are checked. Hovering an icon shows Place:<its flag>, whose text names the unchecked locations, or the collected
+// in logic is not known yet (the client sends it); partly in logic: some are; out of logic: none is, or the group's
+// name is hidden (a shuffled dungeon not entered yet); collected: all are checked. Hovering an icon shows Place:<its flag>, whose text names the unchecked locations, or the collected
 // ones (ap_text.cpp). The map's X button, which opens the memories, instead hides or shows the out-of-logic icons
 // ("Toggle out of logic"): those icons are always made, and hidden after the map adds them while they are toggled
 // off; the toggle shows or hides the page's markers in place. A on an icon of one unchecked location marks it skipped
@@ -16,12 +16,14 @@
 // same way. The overworld's areas show once their UI_FieldMapTraverse_<area> flag is set (UI_FieldMapOpen_<area> once
 // the reveal has played); both read as set.
 //
-// In dungeons the map draws the rooms Link visited and, with the compass, the chests (open or closed). Both come
-// from the dungeon's DungeonItems entry: its visited-room mask is filled while Link is in the dungeon (the rooms then
-// count as visited in the save), and an inline hook makes the compass and map owned for the map screen only, so the
-// items keep their use. The icon update shows a chest open once its location is checked, also on the server. Dungeon
-// checks that are not chests get UiDungeonIcon rows (chest icons) from the patcher; the icon update shows them open
-// once all of the room's checks are done.
+// In dungeons the map draws the rooms Link visited and, with the compass, the room icons. Both come from the
+// dungeon's DungeonItems entry: its visited-room mask is filled while Link is in the dungeon (the rooms then count as
+// visited in the save), and an inline hook makes the compass and map owned for the map screen only, so the items keep
+// their use. The dungeon page has no icons of its own for checks, so the module adds a dot per spot holding checks
+// (ap_map.txt M lines): a map marker (Gm_MapMarker, the overworld's dots) hung beside the room icons, in the looks of
+// the overworld's icons, shown on its room's floor only. Its hover, the cursor easing onto it and its name on the
+// cursor follow the overworld page's icons; A on it does what A on an overworld icon does. The icon update hides the
+// game's chest icons of the slot's chests.
 #include "AP/ap.hpp"
 #include "AP/ap_list.hpp"
 #include "offsets.hpp"
@@ -30,6 +32,7 @@
 #include "Config/file_handler.hpp"
 #include "Hooks/Common/level.hpp"
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstring>
 #include <cstdlib>
@@ -47,15 +50,43 @@ namespace {
     constexpr uintptr_t kDungeonIndex = 0x1cc13c8;     // u8: the current dungeon, 0xff outside dungeons
     constexpr size_t kDungeonVisited = 8;
     constexpr uintptr_t kDungeonIconUpdate = 0xf38040;  // void(icon*, const actor*): visibility and open state
-    // The actor an icon stands for: position, and switches (kind u8, index u16) for "shown" and "open". Icons from
-    // UiDungeonIcon rows have the "shown" switch of kind 4 (always set).
-    constexpr size_t kActorPosX = 0x4, kActorPosZ = 0xc, kActorShownKind = 0x1e;
-    constexpr u8 kSwitchAlways = 4;
-    // The icon's two state panes (open, closed); their virtuals set visibility and play the state.
-    constexpr size_t kIconOpenPane = 0x14 * 8, kIconClosedPane = 0x17 * 8;
-    constexpr size_t kPaneSetVisible = 0x20, kPanePlay = 0xc0;
-    using PaneSetVisibleFn = void (*)(void*, bool);
-    using PanePlayFn = void (*)(void*, float);
+    // The actor an icon stands for: its position. The icon's shown flag: the floor's set-shown (icon virtual +0x78)
+    // shows it only while set.
+    constexpr size_t kActorPosX = 0x4, kActorPosZ = 0xc;
+    constexpr size_t kIconShown = 0xc4;
+
+    // The dungeon map page (UI 0xe, scripts/re/UI.md "Dungeon map"): its setup (vtable +0x20) and destructor; per room
+    // DungeonMap_ShowCellFloor (page, u8 cell, room sp*, UiDungeonArea row*) shows the room on the shown floor (row
+    // mFloor +0x10 == page +0x2d23); KeyWait runs MoveCursor (page, bool), PinButton () -> A pressed, then
+    // UpdateHover (page), the pins' hover.
+    constexpr uintptr_t kDungeonPageSetup = 0xe748a0, kDungeonPageDtor = 0xe73970, kShowCellFloor = 0xe82250;
+    constexpr uintptr_t kDungeonMoveCursor = 0xe86750, kDungeonPinButton = 0xe86c10, kDungeonUpdateHover = 0xe87a20;
+    // DungeonMap_PositionIcon (x, y, z, page, out vec2, room sp*): an icon's position under N_MapPin_00.
+    constexpr uintptr_t kPositionIcon = 0xe84b60;
+    constexpr size_t kAreaFloor = 0x10, kPageShownFloor = 0x2d23;
+    constexpr size_t kPageMapPosition = 0x788, kPageMapPin = 0x7a0, kPagePinOffset = 0x7b8;  // panes
+    constexpr size_t kPageHoveredPin = 0x13c0;  // the hovered pin, null none
+    constexpr size_t kPageCursor = 0x2d18;      // vec2, N_MapOrigin_00 units
+    constexpr size_t kPageCursorSpeed = 0x2d08; // 4.25 while the stick is idle
+    constexpr size_t kPageCursorScale = 0x2ce4; // the zoom's factor on the hover radius
+    constexpr size_t kPageInfo = 0x2d40;        // Y held: the dungeon's info, no hover
+    constexpr size_t kPageMachineState = 0xf0 + 0xd;
+    constexpr u8 kKeyWait = 2;
+    constexpr float kIdleSpeed = 4.25f, kEase = 0.3f, kHoverRadius = 0.2f;
+    // A room: its name (chars, then their count at +0xb8).
+    constexpr size_t kRoomName = 0x68, kRoomNameLength = 0xb8;
+    // Map markers (Gm_MapMarker): MapMarker_Make (out shared_ptr), MapMarker_SetupPart (marker), its machine at +0x90
+    // (MapMarker_ChangeState: 1 On, which goes on to Loop, 3 Off) run by its update (vtable +0x28), and its SetMark
+    // animator, whose frame picks the look (ap_map_icons.frame).
+    constexpr uintptr_t kMarkerMake = 0xe9c870, kMarkerSetupPart = 0xf3ad80, kMarkerChangeState = 0xf3a8c0;
+    constexpr size_t kMarkerMachine = 0x90, kMarkerUpdate = 0x28, kMarkerSetMark = 0x228;
+    constexpr u8 kMarkerOn = 1, kMarkerOff = 3;
+    constexpr size_t kWrapperRootPane = 0x50;  // LayoutWrapper virtual: the root pane
+    constexpr uintptr_t kAttachBefore = 0xe5a0a0;  // LayoutWrapper_AttachBefore (child, parent wrapper, pane, sibling)
+    // The map cursor (UI 0x1c): its size (+0x300, the hover radius), MapCursor_ShowName (cursor, message ref*); +0x2e0
+    // and +0x2e1 set take the name away. MessageManager_Find (out ref, manager, StrView* "File:Label").
+    constexpr size_t kCursorSize = 0x300, kCursorHideName = 0x2e0;
+    constexpr uintptr_t kCursorShowName = 0xea0f50, kMessageFind = 0x903250, kMessageManager = 0x1cb2db8;
 
     // Field map (game 1.0.0)
     // The X button, which opens the memories: in the overworld map's KeyWait state w21 = X pressed (x19 page), and
@@ -82,9 +113,21 @@ namespace {
     constexpr const char* kTraversePrefix = "UI_FieldMapTraverse_";
     constexpr const char* kOpenPrefix = "UI_FieldMapOpen_";
 
-    struct DungeonGroup {
+    // A dungeon dot (M line): its room ("Lv01TailCave_05F"), its world position and checks, and its name (MG line).
+    struct Dot {
+        std::string room;
         float x, z;
         std::vector<int> ids;
+        std::string name;
+    };
+    // A dot on the open dungeon page: its marker (a shared pointer's object and control block) and position under
+    // N_MapPosition_00, and whether its room is on the shown floor.
+    struct DotMarker {
+        size_t dot;
+        u8* marker = nullptr;
+        u8* control = nullptr;
+        float x = 0, y = 0;
+        bool onFloor = false;
     };
     struct Chest {
         std::string level;
@@ -102,13 +145,28 @@ namespace {
 #endif
     u8* g_MarkerPage = nullptr;  // the map page whose markers hold ours (the icon setup ran for it)
     std::vector<std::vector<int>> g_Overworld;  // group -> local ids
-    std::vector<DungeonGroup> g_Dungeon;
+    std::vector<Dot> g_Dots;
     std::vector<Chest> g_Chests;
+    // The open dungeon page, its rooms by name as its setup showed them (room, on the shown floor), its dots and the
+    // hovered one (index into g_DotMarkers, -1 none).
+    u8* g_DungeonPage = nullptr;
+    std::map<std::string, std::pair<u8*, bool>, std::less<>> g_Rooms;
+    std::vector<DotMarker> g_DotMarkers;
+    int g_DotHovered = -1;
+    int g_DotsMade = 0;  // for DBG map
+    void ApplyDots();
+    void RefreshOpenMap();
+    // A logic or checks update arrived (MapDataChanged): the open map refreshes once a frame passes without one, as an
+    // update comes in several lines.
+    bool g_MapDataChanged = false, g_MapDataChangedLately = false;
+#ifdef LASAP_TEST
+    std::string g_CursorText;  // the last name text handed to the map cursor (NoteMapText)
+#endif
     std::vector<std::string> g_GroupNames;      // group -> its name
     std::map<int, std::string> g_CheckNames;    // local id -> the location's name without its area
     // group -> the flag until which it has another name (a shuffled dungeon's: which dungeon is behind its door)
     std::map<size_t, std::pair<std::string, std::string>> g_HiddenNames;
-    int g_FlagsCalls = 0, g_IconCalls = 0, g_IconMatches = 0, g_ChestMatches = 0;  // for DBG map
+    int g_FlagsCalls = 0, g_IconCalls = 0, g_ChestMatches = 0;  // for DBG map
 
     bool StartsWith(std::string_view s, const char* prefix) {
         return s.substr(0, std::strlen(prefix)) == prefix;
@@ -126,15 +184,27 @@ namespace {
         return AP::IsLocationChecked(id) || AP::IsLocationSkipped(id);
     }
 
-    Look GroupLook(const std::vector<int>& ids) {
+    // A group whose other name shows: a shuffled dungeon's until its flag is set.
+    bool NameHidden(size_t group) {
+        auto hidden = g_HiddenNames.find(group);
+        return hidden != g_HiddenNames.end() && !EventFlags::CheckFlag(hidden->second.first);
+    }
+
+    // The look of an icon of these locations; none counts as in logic while its name is hidden, as its look would tell
+    // which dungeon its door leads into.
+    Look IdsLook(const std::vector<int>& ids, bool nameHidden) {
         size_t left = 0, reachable = 0;
         for (int id : ids) {
             if (Done(id)) continue;
             left++;
-            if (Reachable(id)) reachable++;
+            if (!nameHidden && Reachable(id)) reachable++;
         }
         if (left == 0) return Collected;
         return reachable == left ? InLogic : reachable > 0 ? Partial : OutOfLogic;
+    }
+
+    Look GroupLook(size_t group) {
+        return IdsLook(g_Overworld[group], NameHidden(group));
     }
 
     // A group A marks skipped or not: one location, not checked.
@@ -142,21 +212,19 @@ namespace {
         return ids.size() == 1 && !AP::IsLocationChecked(ids[0]);
     }
 
-    // Whether a group's icon in this look is made: the look shown, and every look skipping some of its unchecked
-    // locations gives it (collected, in logic with one in logic, out of logic with one out of logic, partly with
-    // both), so A can swap them on the open map.
-    bool LookMade(const std::vector<int>& ids, Look look) {
-        if (GroupLook(ids) == look) return true;
-        bool in = false, out = false;
-        for (int id : ids) {
-            if (AP::IsLocationChecked(id)) continue;
-            (Reachable(id) ? in : out) = true;
-        }
+    // Whether a group's icon in this look is made: the look shown, and every look skipping or a logic update can give
+    // it while the map is open (collected and out of logic with an unchecked location, in logic too unless its name is
+    // hidden, partly with two), so the open map swaps them.
+    bool LookMade(size_t group, Look look) {
+        if (GroupLook(group) == look) return true;
+        size_t unchecked = 0;
+        for (int id : g_Overworld[group]) unchecked += AP::IsLocationChecked(id) ? 0 : 1;
+        bool hidden = NameHidden(group);
         switch (look) {
-            case Collected: return in || out;
-            case InLogic: return in;
-            case OutOfLogic: return out;
-            case Partial: return in && out;
+            case Collected:
+            case OutOfLogic: return unchecked > 0;
+            case InLogic: return unchecked > 0 && !hidden;
+            case Partial: return unchecked > 1 && !hidden;
             default: return false;
         }
     }
@@ -164,7 +232,7 @@ namespace {
     // Whether a made icon shows: its look is the group's, and it is not an out-of-logic icon toggled off.
     bool LookShown(int group, Look look) {
         if (group < 0 || static_cast<size_t>(group) >= g_Overworld.size()) return false;
-        return GroupLook(g_Overworld[group]) == look && !(look == OutOfLogic && g_OutHidden);
+        return GroupLook(group) == look && !(look == OutOfLogic && g_OutHidden);
     }
 
     // The group and look a flag or label names (MAP_FLAG_PREFIX[mark]<group>), or -1.
@@ -225,6 +293,7 @@ namespace {
     void ToggleOutOfLogic(u8* page) {
         g_OutHidden = !g_OutHidden;
         if (page == g_MarkerPage) ApplyLooks(page);
+        if (page == g_DungeonPage) ApplyDots();
         PlaySound(g_OutHidden ? "SE_SY_MAP_PIN_OFF" : "SE_SY_MAP_PIN_ON");
     }
 
@@ -255,19 +324,18 @@ namespace {
         return unchecked == 0 ? "" : std::to_string(todo) + "/" + std::to_string(unchecked);
     }
 
-    bool AnyUnchecked(const std::vector<int>& ids) {
-        for (int id : ids) {
-            if (!AP::IsLocationChecked(id)) return true;
-        }
-        return false;
+    // An icon's hover text: its name after its count when it has several locations and some are unchecked, or after
+    // "Skipped: " when its one location is skipped.
+    std::string IconText(const std::vector<int>& ids, const std::string& name) {
+        if (Skippable(ids) && AP::IsLocationSkipped(ids[0])) return "Skipped: " + name;
+        std::string count = CountText(ids);
+        if (ids.size() < 2 || count.empty()) return name;
+        return count + " " + name;
     }
 
-    void SetPane(u8* icon, size_t offset, bool visible) {
-        void* pane = *reinterpret_cast<void**>(icon + offset);
-        void** vtable = *reinterpret_cast<void***>(pane);
-        reinterpret_cast<PaneSetVisibleFn>(vtable[kPaneSetVisible / 8])(pane, visible);
-        if (visible) reinterpret_cast<PanePlayFn>(vtable[kPanePlay / 8])(pane, 1.0f);
-    }
+    // The value MapLabelGroup gives the dungeon dots' label (MAP_DOT_LABEL).
+    constexpr int kDotGroup = 1 << 20;
+
 }
 
 // The check list of an icon of several locations (DESIGN.md, Map tracker, Check list): a panel in the middle of the
@@ -341,8 +409,10 @@ namespace {
     constexpr u8 kGray[] = {0xb4, 0xb4, 0xb4, 0xff};  // "skipped": light grey (shows as d9)
 
     struct Panel {
-        u8* page = nullptr;         // the overworld map page it hangs under
-        int group = -1;
+        u8* page = nullptr;         // the map page it hangs under
+        int group = -1;             // the overworld icon's group, -1 for a dungeon dot
+        std::vector<int> ids;       // its locations
+        std::string heading;        // the icon's name
         L::List list;
         L::Layout dim, back, title, count, dots[L::kRows], tags[L::kRows];
         u8* shade = nullptr;        // the dim's black pane
@@ -355,6 +425,7 @@ namespace {
     int g_ListsBuilt = 0, g_ListToggles = 0;
 #ifdef LASAP_TEST
     int g_ListAsked = -1;           // DBG maplist open <group>: the list the map's next frame opens
+    int g_DotListAsked = -1;        // DBG mapdot press <dot>: the dot the dungeon map's next frame takes A on
     // The list's cost on the game thread, in system ticks (19.2 MHz): its last opening, and each frame's tick since
     // (sum, most, frames).
     u64 g_OpenTicks = 0, g_TickSum = 0, g_TickMost = 0, g_TickFrames = 0;
@@ -392,7 +463,7 @@ namespace {
         return it != g_CheckNames.end() ? it->second : "Location " + std::to_string(id);
     }
 
-    const std::vector<int>& ListIds() { return g_Overworld[g_Panel.group]; }
+    const std::vector<int>& ListIds() { return g_Panel.ids; }
 
     // The map's cursor and its icon's name, hidden behind the list.
     void ShowMapCursor(bool shown) {
@@ -417,7 +488,7 @@ namespace {
     // The header's count, the rows' names, dots and tags.
     void FillList() {
         const auto& ids = ListIds();
-        L::SetText(g_Panel.title.note, g_GroupNames[g_Panel.group]);
+        L::SetText(g_Panel.title.note, g_Panel.heading);
         L::SetText(g_Panel.count.note, CountText(ids));
         L::List& list = g_Panel.list;
         for (int r = 0; r < L::kRows; r++) {
@@ -501,12 +572,14 @@ namespace {
     }
 
     // A on an icon of several locations: its check list over the map.
-    void OpenList(u8* page, int group) {
+    void OpenList(u8* page, const std::vector<int>& ids, const std::string& heading, int group) {
         DropList();
         u8* root = L::PageRoot(page);
         if (root == nullptr) return;
         g_Panel.page = page;
         g_Panel.group = group;
+        g_Panel.ids = ids;
+        g_Panel.heading = heading;
         bool ok = L::Build(g_Panel.dim, kDimLayout, page, root) && L::Build(g_Panel.back, kBackLayout, page, root) &&
                   L::BuildList(g_Panel.list, page, root, kPanelX, kPanelY) &&
                   BuildText(g_Panel.title, page, root, 40) && BuildText(g_Panel.count, page, root, 12);
@@ -548,13 +621,13 @@ namespace {
             SetTextColor(tag.note.box, kGray);
             L::SetText(tag.note, "skipped");
         }
-        L::SetEntries(g_Panel.list, static_cast<int>(g_Overworld[group].size()), 0);
+        L::SetEntries(g_Panel.list, static_cast<int>(ids.size()), 0);
         FillList();
         LayOut();
         L::RefreshGuide(0);
         PlaySound("SE_SY_MAP_OMOIDE_ON");
         g_ListsBuilt++;
-        Logging.Log("[AP] map: check list of group " + std::to_string(group));
+        Logging.Log("[AP] map: check list of " + heading);
     }
 
     void CloseList() {
@@ -574,8 +647,7 @@ namespace {
         }
         AP::SetLocationSkipped(id, !AP::IsLocationSkipped(id));
         g_ListToggles++;
-        if (g_Panel.page == g_MarkerPage) ApplyLooks(g_Panel.page);
-        FillList();
+        RefreshOpenMap();
         PlaySound("SE_SY_DECIDE");
     }
 
@@ -608,8 +680,235 @@ namespace {
         if (group < 0 || static_cast<size_t>(group) >= g_Overworld.size() || g_Overworld[group].size() < 2) {
             return false;
         }
-        auto hidden = g_HiddenNames.find(group);
-        return hidden == g_HiddenNames.end() || EventFlags::CheckFlag(hidden->second.first);
+        return !NameHidden(group);
+    }
+}
+
+// The dungeon page's dots (DESIGN.md, Map tracker, Dungeon dots). The page's setup shows each room on its floor
+// (ShowCellFloor), which also gives the rooms by name; after it, each dot of the dungeon gets a map marker placed as
+// the page places its room icons and hung after them under N_MapPin_00, so the pins draw over the dots. The floor
+// buttons show the rooms again, and the dots of each room follow it.
+namespace {
+    template<typename F>
+    F Game(uintptr_t offset) { return L::GameFn<F>(offset); }
+
+    const std::pair<u8*, bool>* FindRoom(const std::string& room) {
+        auto it = g_Rooms.find(room);
+        return it != g_Rooms.end() ? &it->second : nullptr;
+    }
+
+    // A room's name as the dots have it: its file's ("level/Lv01TailCave/Lv01TailCave_03G.leb") without the folder
+    // and the extension.
+    std::string RoomName(const u8* room) {
+        std::string_view path(reinterpret_cast<const char*>(room + kRoomName),
+                              std::min<u64>(L::Field<u64>(const_cast<u8*>(room), kRoomNameLength), 0x50));
+        size_t slash = path.rfind('/');
+        if (slash != std::string_view::npos) path.remove_prefix(slash + 1);
+        if (path.size() > 4 && path.substr(path.size() - 4) == ".leb") path.remove_suffix(4);
+        return std::string(path);
+    }
+
+    u8* MarkerRoot(u8* marker) {
+        return reinterpret_cast<u8* (*)(u8*)>(L::VTable(marker)[kWrapperRootPane / 8])(marker);
+    }
+
+    // A dot shows while its room is on the shown floor, unless its look is out of logic and those are toggled off.
+    bool DotShown(const DotMarker& dm) {
+        return dm.onFloor && !(g_OutHidden && IdsLook(g_Dots[dm.dot].ids, false) == OutOfLogic);
+    }
+
+    // Each dot's look (its SetMark frame, smaller for one check) and whether it shows.
+    void ApplyDots() {
+        for (auto& dm : g_DotMarkers) {
+            const Dot& dot = g_Dots[dm.dot];
+            u8* animator = L::Field<u8*>(dm.marker, kMarkerSetMark);
+            int look = IdsLook(dot.ids, false);
+            float frame = static_cast<float>(kGameMarkFrames + (dot.ids.size() == 1 ? kLooks : 0) + look);
+            if (animator != nullptr && frame < Game<u16 (*)(void*)>(kAnimFrameCount)(animator)) {
+                L::Field<float>(animator, kAnimFrame) = frame;
+            }
+            L::SetVisible(MarkerRoot(dm.marker), DotShown(dm));
+        }
+    }
+
+    void SetMarkerState(u8* marker, u8 state) {
+        Game<void (*)(u8*, u8)>(kMarkerChangeState)(marker + kMarkerMachine, state);
+    }
+
+    void ReleaseShared(u8* control) {
+        if (control == nullptr) return;
+        s64 owners = __atomic_fetch_sub(reinterpret_cast<s64*>(control + 8), 1, __ATOMIC_ACQ_REL);
+        if (owners == 0) {
+            reinterpret_cast<void (*)(void*)>(L::VTable(control)[0x10 / 8])(control);
+            Game<void (*)(void*)>(kReleaseWeak)(control);
+        }
+    }
+
+    void DropDots() {
+        for (auto& dm : g_DotMarkers) ReleaseShared(dm.control);
+        g_DotMarkers.clear();
+        g_DotHovered = -1;
+        g_DungeonPage = nullptr;
+    }
+
+    // After the dungeon page's setup: the dots of the current dungeon whose room the page has.
+    void MakeDots(u8* page) {
+        DropDots();
+        g_DungeonPage = page;
+        std::string level = LevelSystem::GetCurrentLevel() + "_";
+        u8* pinRoot = L::Field<u8*>(page, kPageMapPin);
+        u8* pinOffset = L::Field<u8*>(page, kPagePinOffset);
+        if (pinRoot == nullptr || pinOffset == nullptr) return;
+        size_t missing = 0;
+        for (size_t d = 0; d < g_Dots.size(); d++) {
+            const Dot& dot = g_Dots[d];
+            if (dot.room.compare(0, level.size(), level) != 0) continue;
+            const auto* room = FindRoom(dot.room);
+            if (room == nullptr) {
+                missing++;
+                continue;
+            }
+            struct { u8* object; u8* control; } made{}, roomPtr{room->first, nullptr};
+            Game<void (*)(void*)>(kMarkerMake)(&made);
+            if (made.object == nullptr) continue;
+            Game<void (*)(u8*)>(kMarkerSetupPart)(made.object);
+            Game<void (*)(u8*, u8*, u8*, u8*)>(kAttachBefore)(made.object, page, pinRoot, pinOffset);
+            float at[2] = {};
+            Game<void (*)(float, float, float, u8*, float*, void*)>(kPositionIcon)(dot.x, 0, dot.z, page, at, &roomPtr);
+            L::MoveTo(MarkerRoot(made.object), at[0], at[1]);
+            DotMarker dm{d, made.object, made.control};
+            // under N_MapPosition_00, which moves after the setup (DotAt)
+            dm.x = at[0] + L::Field<float>(pinRoot, L::kPaneX);
+            dm.y = at[1] + L::Field<float>(pinRoot, L::kPaneY);
+            dm.onFloor = room->second;
+            g_DotMarkers.push_back(dm);
+        }
+        g_DotsMade += static_cast<int>(g_DotMarkers.size());
+        ApplyDots();
+        Logging.Log("[AP] map: " + std::to_string(g_DotMarkers.size()) + " dungeon dots, " + std::to_string(missing) +
+                    " without their room");
+    }
+
+    // A room shown or hidden for the shown floor: its dots follow it (a hidden dot loses the hover on the next frame
+    // of KeyWait).
+    void ShowRoomDots(const std::string& name, bool onFloor) {
+        for (auto& dm : g_DotMarkers) {
+            if (g_Dots[dm.dot].room == name) dm.onFloor = onFloor;
+        }
+        ApplyDots();
+    }
+
+    // A dot's position in the cursor's units (N_MapOrigin_00's): N_MapPosition_00 moves after the page's setup (y 48
+    // in Tail Cave), as the pins' hover reads it each frame.
+    void DotAt(u8* page, const DotMarker& dm, float& x, float& y) {
+        u8* position = L::Field<u8*>(page, kPageMapPosition);
+        x = dm.x + (position != nullptr ? L::Field<float>(position, L::kPaneX) : 0);
+        y = dm.y + (position != nullptr ? L::Field<float>(position, L::kPaneY) : 0);
+    }
+
+    const std::vector<int>* HoveredDotIds() {
+        return g_DotHovered >= 0 ? &g_Dots[g_DotMarkers[g_DotHovered].dot].ids : nullptr;
+    }
+
+    // A name on the map cursor: Place:<label>, whose text MapLabelText gives.
+    void ShowCursorName(std::string_view placeLabel) {
+        u8* cursor = L::FindUi(kMapCursorUi);
+        if (cursor == nullptr) return;
+        std::string label = "Place:" + std::string(placeLabel);
+        StrView view{label.data(), static_cast<s64>(label.size())};
+        struct { void* msbt; u8* control; s32 index; } ref{};
+        u8* manager = *reinterpret_cast<u8**>(g_BaseAddress + kMessageManager);
+        if (manager == nullptr) return;
+        Game<void (*)(void*, u8*, const StrView*)>(kMessageFind)(&ref, manager, &view);
+        if (ref.index >= 0) Game<void (*)(u8*, void*)>(kCursorShowName)(cursor, &ref);
+        ReleaseShared(ref.control);
+    }
+
+    // The hovered dot's name on the map cursor.
+    void ShowDotName() {
+        ShowCursorName(AP::MAP_DOT_LABEL);
+    }
+
+    void HideCursorName() {
+        u8* cursor = L::FindUi(kMapCursorUi);
+        if (cursor != nullptr) L::Field<u16>(cursor, kCursorHideName) = 0x101;
+    }
+
+    // Once a frame of the dungeon page's KeyWait, after its pins' hover: the nearest shown dot within the pins'
+    // radius, unless a pin is hovered or Y shows the dungeon's info.
+    void UpdateDotHover(u8* page) {
+        for (auto& dm : g_DotMarkers) {
+            reinterpret_cast<void (*)(u8*)>(L::VTable(dm.marker)[kMarkerUpdate / 8])(dm.marker);
+        }
+        int hovered = -1;
+        u8* cursor = L::FindUi(kMapCursorUi);
+        bool free = L::Field<u8*>(page, kPageHoveredPin) == nullptr && L::Field<u8>(page, kPageInfo) == 0 &&
+                    !ListOpen() && cursor != nullptr;
+        if (free) {
+            float radius = L::Field<float>(cursor, kCursorSize) * kHoverRadius * L::Field<float>(page, kPageCursorScale);
+            float cx = L::Field<float>(page, kPageCursor), cy = L::Field<float>(page, kPageCursor + 4);
+            float best = radius * radius;
+            for (size_t i = 0; i < g_DotMarkers.size(); i++) {
+                const DotMarker& dm = g_DotMarkers[i];
+                if (!DotShown(dm)) continue;
+                float x, y;
+                DotAt(page, dm, x, y);
+                float dx = x - cx, dy = y - cy, d2 = dx * dx + dy * dy;
+                if (d2 <= best) {
+                    best = d2;
+                    hovered = static_cast<int>(i);
+                }
+            }
+        }
+        if (hovered == g_DotHovered) return;
+        if (g_DotHovered >= 0) SetMarkerState(g_DotMarkers[g_DotHovered].marker, kMarkerOff);
+        bool had = g_DotHovered >= 0;
+        g_DotHovered = hovered;
+        if (hovered >= 0) {
+            SetMarkerState(g_DotMarkers[hovered].marker, kMarkerOn);
+            ShowDotName();
+        } else if (had && L::Field<u8*>(page, kPageHoveredPin) == nullptr) {
+            HideCursorName();
+        }
+    }
+
+    // After the dungeon page moves its cursor: with the stick idle the cursor eases onto the hovered dot, as onto a
+    // hovered pin.
+    void EaseOntoDot(u8* page) {
+        if (g_DotHovered < 0 || L::Field<u8*>(page, kPageHoveredPin) != nullptr || L::Field<u8>(page, kPageInfo) != 0 ||
+            L::Field<float>(page, kPageCursorSpeed) != kIdleSpeed) {
+            return;
+        }
+        float x, y;
+        DotAt(page, g_DotMarkers[g_DotHovered], x, y);
+        float& cx = L::Field<float>(page, kPageCursor);
+        float& cy = L::Field<float>(page, kPageCursor + 4);
+        cx += (x - cx) * kEase;
+        cy += (y - cy) * kEase;
+    }
+
+    // The open map after a change of the logic, the checks or a skip mark: the overworld page's markers or the dungeon
+    // page's dots take their looks, the open check list its rows, and the name on the cursor, while it shows one of
+    // ours, its text.
+    void RefreshOpenMap() {
+        u8* cursor = L::FindUi(kMapCursorUi);
+        bool named = cursor != nullptr && L::Field<u16>(cursor, kCursorHideName) == 0;
+        if (g_MarkerPage != nullptr) {
+            ApplyLooks(g_MarkerPage);
+            s32 index = L::Field<s32>(g_MarkerPage, kPageHovered);
+            auto** begin = *reinterpret_cast<u8***>(g_MarkerPage + kPageMarkers);
+            Look look;
+            if (named && HoveredIcon(g_MarkerPage, look) >= 0) {
+                const u8* row = *reinterpret_cast<u8**>(begin[index * 2] + kMarkerRow);
+                auto* name = reinterpret_cast<const std::pair<const char*, size_t>*>(row + kRowFlagName);
+                ShowCursorName(std::string_view(name->first, name->second));
+            }
+        }
+        if (g_DungeonPage != nullptr) {
+            ApplyDots();
+            if (named && g_DotHovered >= 0) ShowDotName();
+        }
+        if (ListOpen()) FillList();
     }
 }
 
@@ -654,7 +953,7 @@ HOOK_DEFINE_INLINE(FieldPinButton) {
         g_HoverLook = g_HoverGroup >= 0 ? look : -1;
         if (Listable(g_ListAsked)) {
             u64 start = Ticks();
-            OpenList(page, g_ListAsked);
+            OpenList(page, g_Overworld[g_ListAsked], g_GroupNames[g_ListAsked], g_ListAsked);
             g_OpenTicks = Ticks() - start;
             g_TickSum = g_TickMost = g_TickFrames = 0;
             g_ListAsked = -1;
@@ -668,11 +967,11 @@ HOOK_DEFINE_INLINE(FieldPinButton) {
         if (Listable(group)) {
 #ifdef LASAP_TEST
             u64 start = Ticks();
-            OpenList(page, group);
+            OpenList(page, g_Overworld[group], g_GroupNames[group], group);
             g_OpenTicks = Ticks() - start;
             g_TickSum = g_TickMost = g_TickFrames = 0;
 #else
-            OpenList(page, group);
+            OpenList(page, g_Overworld[group], g_GroupNames[group], group);
 #endif
             ctx->W[0] = 0;  // no pin menu
         } else if (ToggleSkipped(page)) {
@@ -710,42 +1009,103 @@ HOOK_DEFINE_TRAMPOLINE(DungeonIconUpdate) {
     static void Callback(u8* icon, const u8* actor) {
         Orig(icon, actor);
         g_IconCalls++;
-        if (!g_Enabled) return;
+        if (!g_Enabled || g_Chests.empty()) return;
+        // A chest of the slot's: its dot stands for it, so its icon goes (shown flag clear, which the floor's
+        // set-shown keeps).
         float x = *reinterpret_cast<const float*>(actor + kActorPosX);
         float z = *reinterpret_cast<const float*>(actor + kActorPosZ);
-        if (actor[kActorShownKind] != kSwitchAlways) {
-            // A room actor's icon: a chest whose location is checked shows open, as when it is opened in the game.
-            if (g_Chests.empty()) return;
-            std::string level = LevelSystem::GetCurrentLevel();
-            for (const auto& chest : g_Chests) {
-                if (chest.level == level && std::fabs(chest.x - x) < 0.01f && std::fabs(chest.z - z) < 0.01f &&
-                    AP::IsLocationChecked(chest.id)) {
-                    g_ChestMatches++;
-                    SetPane(icon, kIconClosedPane, false);
-                    SetPane(icon, kIconOpenPane, true);
-                    return;
-                }
-            }
-            return;
-        }
-        for (const auto& group : g_Dungeon) {
-            if (std::fabs(group.x - x) < 0.01f && std::fabs(group.z - z) < 0.01f) {
-                g_IconMatches++;
-                bool open = !AnyUnchecked(group.ids);
-                SetPane(icon, open ? kIconClosedPane : kIconOpenPane, false);
-                SetPane(icon, open ? kIconOpenPane : kIconClosedPane, true);
+        std::string level = LevelSystem::GetCurrentLevel();
+        for (const auto& chest : g_Chests) {
+            if (chest.level == level && std::fabs(chest.x - x) < 0.01f && std::fabs(chest.z - z) < 0.01f) {
+                g_ChestMatches++;
+                icon[kIconShown] = 0;
+                L::SetVisible(MarkerRoot(icon), false);
                 return;
             }
         }
     }
 };
 
+HOOK_DEFINE_TRAMPOLINE(DungeonPageSetup) {
+    static void Callback(u8* page) {
+        g_Rooms.clear();
+        Orig(page);
+        if (g_Enabled) MakeDots(page);
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(DungeonPageDtor) {
+    static void Callback(u8* page) {
+        if (page == g_Panel.page) DropList();
+        if (page == g_DungeonPage) DropDots();
+        Orig(page);
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(ShowCellFloor) {
+    static void Callback(u8* page, u8 cell, u8** room, const u8* area) {
+        Orig(page, cell, room, area);
+        if (!g_Enabled || room == nullptr || *room == nullptr || area == nullptr) return;
+        std::string name = RoomName(*room);
+        bool onFloor = *reinterpret_cast<const u32*>(area + kAreaFloor) == page[kPageShownFloor];
+        g_Rooms[name] = {*room, onFloor};
+        if (page == g_DungeonPage) ShowRoomDots(name, onFloor);
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(DungeonMoveCursor) {
+    static void Callback(u8* page, bool move) {
+        Orig(page, move);
+        if (page == g_DungeonPage) EaseOntoDot(page);
+    }
+};
+
+HOOK_DEFINE_TRAMPOLINE(DungeonUpdateHover) {
+    static void Callback(u8* page) {
+        Orig(page);
+        if (page == g_DungeonPage) UpdateDotHover(page);
+    }
+};
+
+// A in the dungeon page's KeyWait. The page is not passed: it is the one with dots.
+HOOK_DEFINE_TRAMPOLINE(DungeonPinButton) {
+    static bool Callback() {
+        bool pressed = Orig();
+        u8* page = g_DungeonPage;
+        if (page == nullptr || page[kPageMachineState] != kKeyWait) return pressed;
+        if (g_Panel.page == page) {
+            TickList(page);
+            return false;
+        }
+#ifdef LASAP_TEST
+        if (g_DotListAsked >= 0 && static_cast<size_t>(g_DotListAsked) < g_DotMarkers.size()) {
+            g_DotHovered = g_DotListAsked;
+            pressed = true;
+        }
+        g_DotListAsked = -1;
+#endif
+        const std::vector<int>* ids = HoveredDotIds();
+        if (!pressed || ids == nullptr || L::Field<u8*>(page, kPageHoveredPin) != nullptr) return pressed;
+        if (ids->size() > 1) {
+            OpenList(page, *ids, g_Dots[g_DotMarkers[g_DotHovered].dot].name, -1);
+        } else if (Skippable(*ids)) {
+            AP::SetLocationSkipped((*ids)[0], !AP::IsLocationSkipped((*ids)[0]));
+            ApplyDots();
+            ShowDotName();
+            PlaySound("SE_SY_DECIDE");
+        } else {
+            PlaySound("SE_SY_BEEP");
+        }
+        return false;  // no pin
+    }
+};
+
 namespace AP {
     void LoadMap() {
-        // Written by the patcher (ap_map.py): "O <group> <local id>...", "D <group> <x> <z> <local id>...",
-        // "C <level> <x> <z> <local id>" (a dungeon chest), "G <group> <name>" (an overworld group's name),
-        // "H <group> <flag> <name>" (the group's name until the flag is set) and "N <local id> <name>" (an overworld
-        // group's location's name without its area) lines.
+        // Written by the patcher (ap_map.py): "O <group> <local id>...", "M <dot> <room> <x> <z> <local id>..." (a
+        // dungeon dot), "C <level> <x> <z> <local id>" (a dungeon chest), "G <group> <name>" (an overworld group's
+        // name), "MG <dot> <name>" (a dot's name), "H <group> <flag> <name>" (the group's name until the flag is set)
+        // and "N <local id> <name>" (a location's name without its area, for the check list) lines.
         std::string text;
         if (R_FAILED(FileHandler::ReadFile(MAP_PATH, text))) {
             Logging.Log("[AP] no map tracker file");
@@ -775,6 +1135,15 @@ namespace AP {
                 g_CheckNames[id] = name.empty() ? name : name.substr(1);
                 continue;
             }
+            if (kind == "MG") {
+                size_t dot;
+                std::string name;
+                if (!(ss >> dot)) continue;
+                std::getline(ss, name);
+                if (g_Dots.size() <= dot) g_Dots.resize(dot + 1);
+                g_Dots[dot].name = name.empty() ? name : name.substr(1);
+                continue;
+            }
             if (kind == "H") {
                 size_t group;
                 std::string flag, name;
@@ -795,11 +1164,11 @@ namespace AP {
                 for (int id; ss >> id;) ids.push_back(id);
                 if (g_Overworld.size() <= group) g_Overworld.resize(group + 1);
                 g_Overworld[group] = ids;
-            } else if (kind == "D") {
-                DungeonGroup dg{};
-                ss >> dg.x >> dg.z;
-                for (int id; ss >> id;) dg.ids.push_back(id);
-                g_Dungeon.push_back(dg);
+            } else if (kind == "M") {
+                if (g_Dots.size() <= group) g_Dots.resize(group + 1);
+                Dot& dot = g_Dots[group];
+                ss >> dot.room >> dot.x >> dot.z;
+                for (int id; ss >> id;) dot.ids.push_back(id);
             }
         }
         g_Loaded = g_Enabled = true;
@@ -810,10 +1179,15 @@ namespace AP {
         FieldMemoryButton::InstallAtOffset(offset_manager.Offset(kFieldMemoryButton));
         FieldPinButton::InstallAtOffset(offset_manager.Offset(kFieldPinButton));
         MapPageDtor::InstallAtOffset(offset_manager.Offset(kMapPageDtor));
+        DungeonPageSetup::InstallAtOffset(offset_manager.Offset(kDungeonPageSetup));
+        DungeonPageDtor::InstallAtOffset(offset_manager.Offset(kDungeonPageDtor));
+        ShowCellFloor::InstallAtOffset(offset_manager.Offset(kShowCellFloor));
+        DungeonMoveCursor::InstallAtOffset(offset_manager.Offset(kDungeonMoveCursor));
+        DungeonUpdateHover::InstallAtOffset(offset_manager.Offset(kDungeonUpdateHover));
+        DungeonPinButton::InstallAtOffset(offset_manager.Offset(kDungeonPinButton));
         AP::ListUi::AddGuideSource(ListGuide);
-        Logging.Log("[AP] map tracker: " + std::to_string(g_Overworld.size()) + " overworld and " +
-                    std::to_string(g_Dungeon.size()) + " dungeon icons, " + std::to_string(g_Chests.size()) +
-                    " chests");
+        Logging.Log("[AP] map tracker: " + std::to_string(g_Overworld.size()) + " overworld icons, " +
+                    std::to_string(g_Dots.size()) + " dungeon dots, " + std::to_string(g_Chests.size()) + " chests");
     }
 
     bool MapFlag(std::string_view name, bool& value) {
@@ -822,7 +1196,7 @@ namespace AP {
         int group = ParseIcon(name, look);
         if (group >= 0) {
             value = !g_IconsHidden && static_cast<size_t>(group) < g_Overworld.size() &&
-                    LookMade(g_Overworld[group], look);
+                    LookMade(group, look);
             return true;
         }
         if (StartsWith(name, kTraversePrefix) || StartsWith(name, kOpenPrefix)) {
@@ -833,27 +1207,38 @@ namespace AP {
     }
 
     int MapLabelGroup(std::string_view label) {
+        if (!g_Enabled) return -1;
+        if (label == MAP_DOT_LABEL) return kDotGroup;
         Look look;
-        return g_Enabled ? ParseIcon(label, look) : -1;
+        return ParseIcon(label, look);
     }
 
     std::string MapLabelText(int group) {
         // The group's name, after its count (CountText) when it has several locations and some are unchecked, or
         // after "Skipped: " when its one location is skipped; or its other name
-        // alone until its flag is set (the count would tell a dungeon by its number of locations).
+        // alone until its flag is set (the count would tell a dungeon by its number of locations). The dungeon dots'
+        // label names the hovered dot the same way.
+        if (group == kDotGroup) {
+            const std::vector<int>* ids = HoveredDotIds();
+            return ids != nullptr ? IconText(*ids, g_Dots[g_DotMarkers[g_DotHovered].dot].name) : "";
+        }
         if (group < 0 || static_cast<size_t>(group) >= g_Overworld.size()) return "";
-        auto hidden = g_HiddenNames.find(group);
-        if (hidden != g_HiddenNames.end() && !EventFlags::CheckFlag(hidden->second.first)) return hidden->second.second;
+        if (NameHidden(group)) return g_HiddenNames[group].second;
         std::string name = static_cast<size_t>(group) < g_GroupNames.size() ? g_GroupNames[group] : "";
-        const auto& ids = g_Overworld[group];
-        if (Skippable(ids) && IsLocationSkipped(ids[0])) return "Skipped: " + name;
-        std::string count = CountText(ids);
-        if (ids.size() < 2 || count.empty()) return name;
-        return count + " " + name;
+        return IconText(g_Overworld[group], name);
+    }
+
+    void MapDataChanged() {
+        g_MapDataChanged = g_MapDataChangedLately = true;
     }
 
     void TickMap() {
         if (!g_Enabled) return;
+        if (g_MapDataChanged && !g_MapDataChangedLately) {
+            g_MapDataChanged = false;
+            RefreshOpenMap();
+        }
+        g_MapDataChangedLately = false;
         u8 dungeon = *reinterpret_cast<u8*>(g_BaseAddress + kDungeonIndex);
         u8** entries = *reinterpret_cast<u8***>(g_BaseAddress + kDungeonItems);
         if (dungeon == 0xff || entries == nullptr || entries[dungeon] == nullptr) return;
@@ -878,6 +1263,12 @@ namespace AP {
         return true;
     }
 
+#ifdef LASAP_TEST
+    void NoteMapText(const std::string& text) {
+        g_CursorText = text;
+    }
+#endif
+
     void SetMapMode(int mode) {
         g_Enabled = g_Loaded && mode != 0;
         g_IconsHidden = mode == 2;
@@ -892,6 +1283,55 @@ namespace AP {
         if (g_Panel.page == nullptr) return " mlist=-";
         return " mlist=" + std::to_string(g_Panel.group) + "/" + std::to_string(g_Panel.list.at) + "/" +
                std::to_string(g_Panel.list.top) + (g_Panel.closing ? "/closing" : "");
+    }
+
+    std::string MapDotInfo(const std::vector<std::string>& a) {
+        // DBG mapdot [cursor <n> | near <n> | press <n>]: the open dungeon page's dots; cursor puts the page's cursor
+        // on dot n (near: 8 units right of it, inside the hover's radius) and runs the dots' hover, press takes A on
+        // dot n the next frame, as if hovered.
+        if (a.size() >= 4 && g_DungeonPage != nullptr) {
+            size_t n = static_cast<size_t>(std::atoi(a[3].c_str()));
+            if ((a[2] == "cursor" || a[2] == "near") && n < g_DotMarkers.size()) {
+                float& cx = L::Field<float>(g_DungeonPage, kPageCursor);
+                DotAt(g_DungeonPage, g_DotMarkers[n], cx, L::Field<float>(g_DungeonPage, kPageCursor + 4));
+                if (a[2] == "near") cx += 8;
+                UpdateDotHover(g_DungeonPage);
+            } else if (a[2] == "press") {
+                g_DotListAsked = static_cast<int>(n);
+            }
+        }
+        // Each dot's look as drawn: its SetMark frame, and its root pane's visibility.
+        static const char kLookLetters[] = "ipoc";
+        std::string looks;
+        size_t shown = 0;
+        for (const auto& dm : g_DotMarkers) {
+            u8* animator = L::Field<u8*>(dm.marker, kMarkerSetMark);
+            int look = animator == nullptr ? -1 :
+                static_cast<int>(L::Field<float>(animator, kAnimFrame)) - kGameMarkFrames -
+                    (g_Dots[dm.dot].ids.size() == 1 ? kLooks : 0);
+            bool on = (MarkerRoot(dm.marker)[L::kPaneFlags] & L::kPaneVisible) != 0;
+            shown += on;
+            char letter = look >= 0 && look < kLooks ? kLookLetters[look] : '?';
+            looks += on ? letter : static_cast<char>(std::toupper(letter));
+        }
+        std::string s = "MAPDOT made=" + std::to_string(g_DotsMade) + " page=" + (g_DungeonPage ? "1" : "0") +
+                        " dots=" + std::to_string(g_DotMarkers.size()) + " shown=" + std::to_string(shown) +
+                        " rooms=" + std::to_string(g_Rooms.size()) + " chests=" + std::to_string(g_ChestMatches);
+        if (g_DungeonPage != nullptr) {
+            s += " floor=" + std::to_string(g_DungeonPage[kPageShownFloor]) + " cursor=" +
+                 std::to_string(std::lround(L::Field<float>(g_DungeonPage, kPageCursor))) + "," +
+                 std::to_string(std::lround(L::Field<float>(g_DungeonPage, kPageCursor + 4)));
+        }
+        s += " hover=" + std::to_string(g_DotHovered);
+        if (g_DotHovered >= 0 && g_DungeonPage != nullptr) {
+            const DotMarker& dm = g_DotMarkers[g_DotHovered];
+            float x, y;
+            DotAt(g_DungeonPage, dm, x, y);
+            s += "/" + std::to_string(dm.dot) + "/" + std::to_string(g_Dots[dm.dot].ids.size()) + " at=" +
+                 std::to_string(std::lround(x)) + "," + std::to_string(std::lround(y));
+        }
+        s += " looks=" + (looks.empty() ? std::string("-") : looks);
+        return s + " | text=" + MapLabelText(kDotGroup);
     }
 
     std::string MapListInfo(const std::vector<std::string>& a) {
@@ -926,18 +1366,37 @@ namespace AP {
 
     std::string SkipState() {
 #ifdef LASAP_TEST
-        // The skipped locations of overworld icons, and the hovered icon: its group, locations and look, or -1.
+        // The skipped locations of overworld icons, and the hovered icon: its group, locations and look, or -1. On
+        // the open overworld page: its markers of ours, those shown by look, and the last name the cursor took.
         static const char* const kLookNames[kLooks] = {"in", "partly", "out", "collected"};
         size_t skipped = 0;
         for (const auto& ids : g_Overworld) {
             for (int id : ids) skipped += IsLocationSkipped(id) ? 1 : 0;
+        }
+        std::string drawn;
+        if (g_MarkerPage != nullptr) {
+            size_t made = 0, shown[kLooks] = {};
+            auto** marker = *reinterpret_cast<u8***>(g_MarkerPage + kPageMarkers);
+            auto** end = *reinterpret_cast<u8***>(g_MarkerPage + kPageMarkers + 8);
+            for (; marker < end; marker += 2) {
+                Look look;
+                if (*marker == nullptr || MarkerIcon(*marker, look) < 0) continue;
+                made++;
+                void** vtable = *reinterpret_cast<void***>(*marker);
+                u8* layout = reinterpret_cast<LayoutFn>(vtable[kMarkerLayout / 8])(*marker);
+                u8* pane = *reinterpret_cast<u8**>(layout + kLayoutPane);
+                if (pane[kPaneFlags] & 1) shown[look]++;
+            }
+            drawn = " made=" + std::to_string(made) + " drawn=" + std::to_string(shown[InLogic]) + "," +
+                    std::to_string(shown[Partial]) + "," + std::to_string(shown[OutOfLogic]) + "," +
+                    std::to_string(shown[Collected]);
         }
         std::string hover = "-1";
         if (g_HoverGroup >= 0 && static_cast<size_t>(g_HoverGroup) < g_Overworld.size()) {
             hover = std::to_string(g_HoverGroup) + "/" + std::to_string(g_Overworld[g_HoverGroup].size()) + "/" +
                     kLookNames[g_HoverLook];
         }
-        return " skipped=" + std::to_string(skipped) + " hover=" + hover;
+        return " skipped=" + std::to_string(skipped) + " hover=" + hover + drawn + " | name=" + g_CursorText;
 #else
         return "";
 #endif
@@ -945,7 +1404,7 @@ namespace AP {
 
     std::string MapState() {
         size_t looks[kLooks] = {};
-        for (const auto& ids : g_Overworld) looks[GroupLook(ids)]++;
+        for (size_t group = 0; group < g_Overworld.size(); group++) looks[GroupLook(group)]++;
         size_t open = g_Overworld.size() - looks[Collected];
         return "map=" + std::string(g_Enabled ? "1" : "0") + " icons=" + std::to_string(open) + "/" +
                std::to_string(g_Overworld.size()) + " looks=" + std::to_string(looks[InLogic]) + "," +
@@ -953,7 +1412,7 @@ namespace AP {
                std::to_string(looks[Collected]) + " logic=" + (HasLogic() ? "1" : "0") +
                " server=" + (IsServerConnected() ? "1" : "0") +
                " hooks=" + std::to_string(g_FlagsCalls) + "," + std::to_string(g_IconCalls) + "," +
-               std::to_string(g_IconMatches) + "," + std::to_string(g_ChestMatches) + " out=" +
+               std::to_string(g_DotsMade) + "," + std::to_string(g_ChestMatches) + " out=" +
                (g_OutHidden ? "hidden" : "shown") + SkipState();
     }
 }

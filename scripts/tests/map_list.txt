@@ -12,7 +12,7 @@ send DBG collect 64
 tapuntil 800 paused=1 when free 5
 until map:KeyWait 10
 send DBG map
-expect hover=\d+/3/in$ 5
+expect hover=\d+/3/in\s 5
 # A opens the list over the map: its guide reads A Skip / unskip, B Back.
 tap 1 2 2 when map:KeyWait
 await 5 mlist=\d+/0/0\s

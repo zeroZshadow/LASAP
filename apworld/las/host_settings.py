@@ -3,6 +3,8 @@ from typing import Any, Dict, NamedTuple, Optional, Tuple, Union
 
 import settings
 
+from .ghost_relay import DEFAULT_RELAY
+
 
 class PlayerSetting(NamedTuple):
     """A LASR setting that changes how the game looks or sounds, not how it plays (those are options, the same for
@@ -86,8 +88,9 @@ class LASSettings(settings.Group):
         """Show each nearby ghost's slot name over its head."""
 
     class GhostRelay(str):
-        """The ghost relay, host:port, or password@host:port for a relay with a password. Generating writes it into
-        each LAS patch file; the client uses it, or when it is empty the patch file's. With neither: no ghosts."""
+        """The ghost relay: host:port, password@host:port for a relay with a password, or wss://host for a relay
+        behind a tunnel (password@wss://host with a password). Generating writes it into each LAS patch file. The
+        client uses it; when it is empty, the patch file's, else the default relay."""
 
     emulator: Emulator = Emulator("")
     game_file: GameFile = GameFile("")
@@ -98,7 +101,7 @@ class LASSettings(settings.Group):
     game_host: GameHost = GameHost("127.0.0.1")
     ghosts: Union[Ghosts, bool] = True
     ghost_names: Union[GhostNames, bool] = True
-    ghost_relay: GhostRelay = GhostRelay("")
+    ghost_relay: GhostRelay = GhostRelay(DEFAULT_RELAY)
 
     # Player settings (PLAYER_SETTINGS): the Patch tab's look and sound settings, for every seed.
     class BlurRemoval(settings.Bool):

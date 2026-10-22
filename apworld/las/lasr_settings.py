@@ -214,7 +214,9 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
     }
     # set by LASR's main window before shuffling
     settings["Seashells Important"] = any(loc not in vanilla for loc in CATEGORIES["Mansion"])
-    settings["Trade Important"] = any(loc not in vanilla for loc in CATEGORIES["Trade_Gifts"])
+    # Off, the trade quest's rewards are optional AP locations, and no seed needs the trade items: LASR's chest code
+    # gives the chests holding them the small size.
+    settings["Trade Important"] = bool(o.trade_quest)
     return settings
 
 

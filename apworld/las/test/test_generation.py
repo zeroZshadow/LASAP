@@ -44,8 +44,8 @@ class TestDefault(LASTestBase):
             self.assertEqual(container.player_name, self.multiworld.player_name[self.player])
 
         self.assertEqual(set(patch), {"format", "seed_name", "player", "slot_name", "seed_hash", "settings",
-                                      "starting_items", "placements", "location_ids", "location_names",
-                                      "location_models", "location_chests", "dungeon_entrances", "hints",
+                                      "starting_items", "placements", "location_ids", "optional_locations",
+                                      "location_names", "location_models", "location_chests", "dungeon_entrances", "hints",
                                       "ghost_secret", "ghost_relay"})
         self.assertLessEqual(set(patch["location_models"]), set(patch["location_ids"]))
         self.assertEqual(patch["format"], 1)
@@ -188,6 +188,8 @@ class TestVanillaHeavy(LASTestBase):
         settings = patch["settings"]
         self.assertEqual((settings["Heart Pieces"], settings["Seashell Mansion"], settings["Seashells Important"]),
                          (False, 0, True))
+        # the trade quest is off: no seed needs the trade items, whose chests are small
+        self.assertEqual((settings["Trade Quest"], settings["Trade Important"]), (False, False))
 
     def test_tracker_counts_a_locked_item_once_received(self) -> None:
         """A locked location's item counts for the map's logic once received, not while the location is reachable:

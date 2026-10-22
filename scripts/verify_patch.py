@@ -1,7 +1,7 @@
 """Static checks on patcher output: every chest location holds the AP placeholder (the model variant of
 `location_models`) with its local id; with "Texture + Size" chests, the chests holding a seashell and only those are
 the seashell chest. Every randomized heart piece and seashell actor has a unique index above
-the received range (DESIGN.md, item model). With the map tracker on, every AP location has one icon in ap_map.txt
+the received range (DESIGN.md, item model). With the map tracker on, every AP location but the optional ones has one icon in ap_map.txt
 and every icon its datasheet row and a name. Below eight required instruments, the egg's event checks single instruments instead of
 all of them. With in-game hints, every hint source shows its own message, which fits the text box, and a server hint
 sets its flag, which ap_hints.txt names with the hinted location. With Shuffled Dungeons, each dungeon door leads into
@@ -75,15 +75,14 @@ if patch["settings"].get("Map Tracker"):
     out = Path(sys.argv[2])
     lines = [line.split() for line in (out / "config/lasr-exl" / ap_map.FILE_NAME).read_text(encoding="utf-8").splitlines()]
     overworld = {int(p[1]): [int(i) for i in p[2:]] for p in lines if p[0] == "O"}
-    dungeon = {int(p[1]): (float(p[2]), float(p[3]), [int(i) for i in p[4:]]) for p in lines if p[0] == "D"}
-    iconed = [i for ids in overworld.values() for i in ids] + [i for *_, ids in dungeon.values() for i in ids]
+    dots = {int(p[1]): (p[2], float(p[3]), float(p[4]), [int(i) for i in p[5:]]) for p in lines if p[0] == "M"}
+    iconed = [i for ids in overworld.values() for i in ids] + [i for *_, ids in dots.values() for i in ids]
     positions = ap_map.load_positions()
-    shown = patch["location_ids"]
-    # overworld icons: overworld and dungeon checks (at the dungeon's entrance); dungeon icons: the dungeons' checks
-    # that are not chests
+    optional = set(patch.get("optional_locations", ()))
+    shown = {loc: i for loc, i in patch["location_ids"].items() if loc not in optional}
+    # overworld icons: overworld and dungeon checks (at the dungeon's entrance); dungeon dots: the dungeons' checks
     want = [int(i) for loc, i in shown.items() if loc in positions["overworld"]]
-    want += [int(i) for loc, i in shown.items() if loc in positions["dungeon"]]
-    want += [int(i) for loc, i in shown.items() if loc in positions["dungeon"] and loc not in CHEST_ROOMS]
+    want += [int(i) for loc, i in shown.items() if loc in positions["dungeon"]] * 2
     if sorted(iconed) != sorted(want):
         bad += 1
         print(f"MAP ICONS cover {len(iconed)} locations, want {len(want)}")
@@ -95,9 +94,6 @@ if patch["settings"].get("Map Tracker"):
     sheets = out / "atmosphere/contents/01006BB00C6F0000/romfs/region_common/datasheets"
     flags = {str(row["mFirstShowFlagName"]) for row in readSheet(str(sheets / "UiFieldMapIcons.gsheet"))["values"]}
     missing = [g for g in overworld if any(f"{ap_map.FLAG_PREFIX}{mark}{g}" not in flags for mark in ap_map.LOOKS)]
-    rows = {(round(float(row["posX"]), 2), round(float(row["posZ"]), 2))
-            for row in readSheet(str(sheets / "UiDungeonIcon.gsheet"))["values"]}
-    missing += [g for g, (x, z, _) in dungeon.items() if (round(x, 2), round(z, 2)) not in rows]
     if missing:
         bad += 1
         print(f"MAP ROWS missing for groups {missing}")
@@ -108,13 +104,18 @@ if patch["settings"].get("Map Tracker"):
     if unnamed:
         bad += 1
         print(f"MAP NAMES missing or too long for groups {[(g, names.get(g)) for g in unnamed]}")
-    # every location of an overworld icon has its name for the icon's check list
+    # every dungeon dot has a name; every location of an overworld icon or dungeon dot has its name for the check list
+    dot_names = {int(p[1]) for p in lines if p[0] == "MG" and len(p) > 2}
+    if sorted(dot_names) != sorted(dots):
+        bad += 1
+        print(f"MAP DOT NAMES missing for dots {sorted(set(dots) - dot_names)}")
     location_names = {int(p[1]) for p in lines if p[0] == "N" and len(p) > 2}
     nameless = [i for ids in overworld.values() for i in ids if i not in location_names]
+    nameless += [i for *_, ids in dots.values() for i in ids if i not in location_names]
     if nameless:
         bad += 1
         print(f"MAP LOCATION NAMES missing for {nameless}")
-    print(f"map icons overworld={len(overworld)} dungeon={len(dungeon)} locations={len(iconed)} bad={bad}")
+    print(f"map icons overworld={len(overworld)} dungeon dots={len(dots)} locations={len(iconed)} bad={bad}")
 # Inventory bits: every seashell, heart piece, golden leaf, heart container and bottle source once per kind and bit, with
 # its local id when shuffled.
 entries = [line.split() for line in (Path(sys.argv[2]) / "config/lasr-exl" / INDICES_FILE).read_text().splitlines()]
