@@ -329,7 +329,7 @@ namespace {
     Field g_Fields[] = {{"screen", ""}, {"level", ""}, {"event", ""}, {"paused", ""}, {"free", ""},
                         {"lock", ""}, {"pad", ""}, {"show", ""}, {"text", ""}, {"choice", ""}, {"client", ""},
                         {"server", ""}, {"file", ""}, {"face", ""}, {"carry", ""}, {"health", ""},
-                        {"entry", ""}, {"anim", ""}};
+                        {"entry", ""}, {"anim", ""}, {"zone", ""}};
     void SetField(int i, const std::string& value) {
         if (g_Fields[i].value == value) return;
         g_Fields[i].value = value;
@@ -622,7 +622,8 @@ namespace {
     //   <field>=<value>  a traced field: screen, level, event, paused, free, lock, pad, show, text, choice,
     //                    client (the AP client is connected), server (the client is logged into the slot),
     //                    file (the file menu's cursor, 0 = file 1), face (up, down, left, right: where Link faces),
-    //                    carry (Link holds something over his head), health (quarter hearts)
+    //                    carry (Link holds something over his head), health (quarter hearts), zone (Link's
+    //                    zone, -1 none)
     //   dead             Link is in a level with no health left
     //   navi=<state>     the pause menu header's state (1 Open, 2 WaitKey, ...; - with the menu closed)
     //   <machine>:<state> a UI machine (its label or hook name) in that state
@@ -976,6 +977,8 @@ namespace {
         int entry = NameCursor();
         SetField(16, entry < 0 ? "-" : std::to_string(entry));
         SetField(17, LinkAnimName());
+        // Link's zone (actor +0xb0, the camera room he is in; ACTORS.md)
+        SetField(18, player ? std::to_string(*reinterpret_cast<s32*>(reinterpret_cast<u8*>(fmwk->mPlayer) + 0xb0)) : "-");
         SampleWatches();
     }
 

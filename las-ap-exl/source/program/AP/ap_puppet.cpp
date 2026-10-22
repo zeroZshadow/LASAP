@@ -30,7 +30,7 @@ namespace {
     constexpr uintptr_t kCreateActor = 0x8f5ea0;
     constexpr size_t kParamsSize = 0x1c0;
     constexpr size_t kParamId = 0x8;       // u16 actor id (the actor table's index, as in LEB files)
-    constexpr size_t kParamRoom = 0xc;     // u32 copied from the owner's +0xb0
+    constexpr size_t kParamRoom = 0xc;     // s32 the actor's zone (+0xb0); the hookshot copies its owner's
     constexpr size_t kParamPos = 0x180;    // Vec4
     constexpr size_t kParamRot = 0x190;    // quaternion; PopEnemy copies the identity from a global
     constexpr size_t kParamScale = 0x1a0;  // Vec4 of ones, from a global
@@ -43,7 +43,6 @@ namespace {
     constexpr uintptr_t kGameNew = 0x1431170, kGameDelete = 0x1431110;  // the game's operator new and delete
     // libc++ control block: +8 shared owners - 1 (-1: the object is gone), +0x10 weak owners - 1
     constexpr size_t kCtrlOwners = 8, kCtrlWeakOwners = 0x10;
-    constexpr size_t kActorRoom = 0xb0;
     constexpr size_t kFrameworkActorSystem = 0x498;  // shared_ptr
     constexpr size_t kActorRoot = 0x80;    // the root component (coordinates), as PopEnemy reads it
     // Ghosts are NpcGhost actors (0x179) with an Npc row of their own. Each NPC class passes its row's symbol, a
@@ -243,14 +242,9 @@ namespace {
     u32 g_InfoFrame = 0;
 #endif
     constexpr u32 kNoRowFrames = 600;   // after a spawn without the APGhost row
-    // An actor spawned in a level's first frames can stay inactive (entity flags without bit 2, (f & 0x40000017) !=
-    // 0x17): never updated or drawn. One inactive this long that was never active is made again. A dungeon room's
-    // change clears bit 2 on every actor but Link's, for its scroll (~25 frames) and on a ghost's for good once Link
-    // has left its room and come back, so the module sets it again on a shown ghost's actor that was active (the
-    // entity's virtual +0x50 follows a change of its active state, as Entity_SetEnabled calls it): the ghost goes on
-    // moving through the scroll.
-    constexpr u32 kActiveMask = 0x40000017, kActive = 0x17, kActiveRoomBit = 4;
-    constexpr size_t kEntityActiveChanged = 0x50 / 8;
+    // An inactive actor (entity flags (f & 0x40000017) != 0x17) is neither updated nor drawn. A shown puppet whose
+    // actor was never active this long is made again (a backstop: zone -1 keeps the zones from suspending it).
+    constexpr u32 kActiveMask = 0x40000017, kActive = 0x17;
     constexpr u32 kInactiveFrames = 30;
     u32 g_Remade = 0;  // DBG puppet: actors made again
 
@@ -500,10 +494,11 @@ namespace {
             err = "no player";
             return false;
         }
-        u8* owner = reinterpret_cast<u8*>(player);
         alignas(16) u8 params[kParamsSize] = {};
         *reinterpret_cast<u16*>(params + kParamId) = id;
-        *reinterpret_cast<u32*>(params + kParamRoom) = *reinterpret_cast<u32*>(owner + kActorRoom);
+        // Zone -1: NpcGhost is zone-scoped, and an actor of a zone Link has left is suspended until he enters it
+        // again (ACTORS.md, Activity); a ghost goes where its player goes, so it belongs to no zone.
+        *reinterpret_cast<s32*>(params + kParamRoom) = -1;
         float* f = reinterpret_cast<float*>(params + kParamPos);
         f[0] = pos.x;
         f[1] = pos.y;
@@ -1289,12 +1284,6 @@ namespace {
         }
         u32 flags = At<u32>(p.actor, kActorFlags);
         if ((flags & kActiveMask) != kActive) {
-            if (p.wasActive && !(flags & kActiveRoomBit)) {
-                flags |= kActiveRoomBit;
-                *reinterpret_cast<u32*>(static_cast<u8*>(p.actor) + kActorFlags) = flags;
-                if ((flags & kActiveMask) == kActive)
-                    reinterpret_cast<void (*)(void*)>((*reinterpret_cast<uintptr_t**>(p.actor))[kEntityActiveChanged])(p.actor);
-            }
             if (!p.wasActive && ++p.inactiveFrames >= kInactiveFrames) {
                 g_Remade++;
                 Remove(p);  // spawned again next frame
@@ -1394,6 +1383,7 @@ namespace {
             if (auto* root = At<Game::RootComp*>(p.actor, kActorRoot)) s += " pos=" + PosText(root->coordsNew.pos);
             s += " model=" + (p.model != nullptr ? Hex(reinterpret_cast<uintptr_t>(p.model)) : "-");
             s += " flags=" + Hex(At<u32>(p.actor, kActorFlags));
+            s += " zone=" + std::to_string(At<s32>(p.actor, 0xb0));
             const char* anim = p.track.anim > 0 ? AP::GhostNet::AnimName(p.track.anim)
                                                 : p.track.gait >= 0 ? kGaits[p.track.gait] : nullptr;
             s += " anim=" + std::string(anim != nullptr ? anim : "-");

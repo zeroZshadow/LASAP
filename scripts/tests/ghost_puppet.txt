@@ -90,3 +90,25 @@ await 3 anim=wait
 send DBG puppet animlog
 expect ANIMLOG.*\|\stest\s.*\srun\b
 send DBG puppet drop
+# a ghost is active in every room (entity flags (f & 0x40000017) == 0x17, zone -1): the peer goes from the entrance
+# room of Tail Cave (zone 328) into the room north of it and back, Link after it
+peer goto Lv01TailCave 52.5 0 89
+warp Lv01TailCave 52.5 0 92.25
+free 10
+until zone=328 1
+await 10 puppets=1
+send DBG puppet
+expect \|\s0\sactor=.*\sflags=([0-3][0-9a-f]{5}|[0-9a-f]{0,5})[13579bdf][7f]\szone=-1\s 2
+peer goto Lv01TailCave 52.5 0 78
+hold 0 0 32767 until !zone=328 3
+free 5
+await 5 puppets=1
+send DBG puppet
+expect \|\s0\sactor=.*\sflags=([0-3][0-9a-f]{5}|[0-9a-f]{0,5})[13579bdf][7f]\szone=-1\s 2
+peer goto Lv01TailCave 52.5 0 89
+hold 0 0 -32767 until zone=328 3
+free 5
+await 5 puppets=1
+send DBG puppet
+expect \|\s0\sactor=.*\sflags=([0-3][0-9a-f]{5}|[0-9a-f]{0,5})[13579bdf][7f]\szone=-1\s 2
+peer goto Field 46.5 10.5 137

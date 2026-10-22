@@ -178,7 +178,7 @@ Pause (a menu opening; a level jump sets `+0x510`): the two actor phases do noth
 **Activity.** Two flags stop actors:
 - Bit 1 by room: `UpdateRooms` (`0x85c83c`) sets a room root's `+0x140` from its activity (area `+0xc1`, guess: in view) and, on a change, bit 1 of each child (`Entity_ForEachChild` `0xfafd20`, functor `0xfb3220`). Actors of the actor system (Link, factory spawns from code) are not in a room and never get this.
 - Bit 2 by zone (a zone is one camera room). An actor subscribes in `+0xd0` (`0x1e980`) to the room manager's `+0x278`, the scene's `+0x708` (room changed → `+0xe0`) and `+0x7b8` (`0x1f2e0`). For a zone-scoped actor (`+0xa4` bit 0) of the zone Link left, `0x1f2e0` saves bit 2 into `+0xa2` bit 1, sets `+0xa2` bit 0 and clears bit 2. `Actor_OnRoomChanged` (`+0xe0`, `0x1f090`) restores bit 2 from `+0xa2` bit 1 when Link enters its zone. An actor made outside the current zone is suspended at once. Zone -1 (`+0xb0`) is never suspended.
-- Bit 2 by freeze: `ActorTree_Freeze` (`0x7d5910`, functor `0x7d5b30`) clears it on every enabled actor of a tree that is not of type `0x1cab3f8` (`IsA`; Player's own type id is `0x1cab518`, so guess: a base class of Link's) and lists them, `ActorTree_Unfreeze` (`0x7d5f60`) sets it again; about a hundred classes call the pair (guess: the dungeon scroll uses it, which matches its clearing every actor but Link's).
+- Bit 2 by freeze: `ActorTree_Freeze` (`0x7d5910`, functor `0x7d5b30`) clears it on every enabled actor of a tree that is not of type `0x1cab3f8` (`IsA`; Player's own type id is `0x1cab518`, so guess: a base class of Link's) and lists them, `ActorTree_Unfreeze` (`0x7d5f60`) sets it again; about a hundred classes call the pair. Actors of the actor system are not in those trees: a factory-spawned NpcGhost in zone -1 keeps bit 2 through a dungeon scroll (measured 2026-10-23).
 - Bit 2 by `GameControl.LoadZone(zoneID)` (`0x7ffc50` → `0x866d90`): set on every direct child of the rooms of that zone.
 
 **Dungeon rooms.** The scene's update (`0x836270`) follows Link's room (scene `+0x800` zone, `+0x804` room index); on a change it fires the room signal (`+0x6f8`, the actors' `+0x708` callback, with new and old) and, on a zone change, `+0x6a0` and `RoomManager_VisitZone` (`0x865e90`). In a dungeon (level data vtable `+0x48` == 3) `UpdateRooms` reloads a running room whose area `+0xc1` changed (`Room_Reload` `0x8e5e60`): its actors are kept (`+0x1e0`; keyless ones with `+0xa4` bit 1 are destroyed, `0x8e62a0`) and the room goes back to LebLoad, where `Room_OnLebActor` skips the actors still present. Actors of a dungeon room Link left are kept.
@@ -206,12 +206,12 @@ Usual meanings: switch 0 "appear when" or "opened" (ObjTreasureBox: on → opene
 ## For the module
 
 - **Spawning from code** (the ghost puppets, `DBG puppet spawn`): the table's resources load synchronously on the game thread unless loaded already; a non-zero params key makes the actor registry-unique and keeps it alive through the registry; the name has at most 31 characters; owner the actor system keeps it across rooms and levels, and its `+0xb4` stays -1, so no room adopts it.
-- **Ghosts inactive after leaving a dungeon room and coming back** (guess, not traced at run time): NpcGhost is zone-scoped (`+0xa4` bit 0, from its constructor's `0x805`) and the module gives it Link's zone (params `+0xc`). If the zone suspension (`0x1f2e0`) runs after the scroll's freeze cleared bit 2, it saves "inactive", and `Actor_OnRoomChanged` restores exactly that. A ghost with zone -1 is never suspended.
+- **Ghost zones** (measured 2026-10-23, Tail Cave's entrance room and the room north of it): NpcGhost is zone-scoped (`+0xa4` bit 0, from its constructor's `0x805`), and an actor's zone is its params `+0xc`. One in Link's zone is suspended when he leaves the room (flags `0x11b`, `+0xa2` 3: bit 2 saved as set) and active again when he comes back; one that follows him into the next room stays suspended beside him. One in zone -1 stays active (`0x11f`) in every room and through the scroll. The module spawns every puppet in zone -1. A spawn in a level's first frames gets zone -1 from Link's `+0xb0`, which is still -1 then.
 
 ## Open questions
 
 - Whether level flags (switch type 0) reset on a room or level change: no write to `LevelFlags` found.
-- What fires the scene's `+0x7b8` signal, and its order against the scroll's freeze.
+- What fires the scene's `+0x7b8` signal.
 - Who sets `+0xa4` bit 0 for other classes (the class constructors write `+0xa4`).
 - The type `0x1b511e0` of the component whose `+0x58` gates readiness, and who sets flags bit 4 for it.
 - Queue `+0x2f0` (bit 10) has no runner in 1.0.0.
