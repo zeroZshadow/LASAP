@@ -1,0 +1,45 @@
+# A client that stops reading does not stop the game (DESIGN.md, Protocol): the module sends without the lock the
+# game takes, and drops the connection once 32 KiB wait for the client (or it takes nothing for 10 s). Run in game
+# (after boot_file1 or newgame_file2) with no LAS client connected: `stall` connects a client that sends PING and
+# reads nothing, and each DBG flood sends it 20 KB of LOG lines; the socket takes a few hundred KB before it is full.
+# The game answers each DBG await from a frame.
+stall
+until client=1 10
+send DBG heap
+expect OK.heap 5
+send DBG flood 20 1000
+expect OK.flood 5
+send DBG flood 20 1000
+expect OK.flood 5
+send DBG flood 20 1000
+expect OK.flood 5
+send DBG flood 20 1000
+expect OK.flood 5
+send DBG flood 20 1000
+expect OK.flood 5
+send DBG flood 20 1000
+expect OK.flood 5
+send DBG flood 20 1000
+expect OK.flood 5
+send DBG flood 20 1000
+expect OK.flood 5
+send DBG flood 20 1000
+expect OK.flood 5
+send DBG flood 20 1000
+expect OK.flood 5
+send DBG flood 20 1000
+expect OK.flood 5
+send DBG flood 20 1000
+expect OK.flood 5
+send DBG flood 20 1000
+expect OK.flood 5
+send DBG flood 20 1000
+expect OK.flood 5
+send DBG flood 20 1000
+expect OK.flood 5
+send DBG flood 20 1000
+expect OK.flood 5
+until client=0 15
+check player=1
+send DBG heap
+expect OK.heap 5

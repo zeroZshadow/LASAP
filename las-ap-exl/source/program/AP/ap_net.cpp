@@ -2,13 +2,21 @@
 //
 // Ryujinx quirks this design works around:
 // - a blocking call on any socket blocks every socket, so one thread does all socket work
-// - errno is unreliable and fcntl non-blocking fails; Recv with MSG_DONTWAIT works
+// - errno is unreliable; Recv with MSG_DONTWAIT works
 // - a dead peer is only noticed through a keep-alive timeout
+// - Send ignores MSG_DONTWAIT, and a blocking Send to a client that stops reading waits until it reads again (Poll
+//   says the socket takes more while it takes less than the Send); fcntl makes a socket non-blocking only with F_SETFL
+//   and exactly 0x800 (newlib's O_NONBLOCK is another value)
+//
+// The client's socket is non-blocking, and this thread sends without the lock the game thread takes, so a client that
+// stops reading never holds the game up. What waits for it is bounded (kMaxWaiting): the module's heap is small, so
+// past that the connection is dropped; the client connects again, and its SYNC brings the game's state back.
 #include "AP/ap.hpp"
 #include "AP/ap_debug.hpp"
 #include "nn/socket.hpp"
 #include "nn/os.hpp"
 #include <netinet/in.h>
+#include <algorithm>
 #include <atomic>
 #include <cstdlib>
 #include <cstring>
@@ -21,6 +29,11 @@ namespace {
     // Drop a client that is silent for 10 s. Timed by the system counter: emulators sleep far longer than asked.
     constexpr u64 kKeepAliveMs = 10'000;
     constexpr size_t kMaxLine = 4096;
+    constexpr size_t kSendChunk = 4096;
+    // Bytes the client has not taken that may wait: far above what a reading client leaves (a few lines), far below
+    // the module's heap (exl::setting::HeapSize).
+    constexpr size_t kMaxWaiting = 32 * 1024;
+    constexpr s32 kFSetFl = 4, kNonBlock = 0x800;  // F_SETFL, O_NONBLOCK as the SDK and Ryujinx take them
 #ifdef LASAP_TEST
     constexpr s32 kAcceptPollMs = 2;    // the debug port is served from this loop too
 #else
@@ -47,14 +60,31 @@ namespace {
     s32 g_Server = -1;
     u16 g_Port = AP::PORT;
     s32 g_Client = -1;
+    // This thread's: what it took from g_Outbound and the socket has not taken yet, and since when the socket takes
+    // none of it (0 while it does).
+    std::string g_Unsent;
+    u64 g_StalledSince = 0;
+    // Under the lock: the bytes in g_Outbound and g_Unsent, and whether a line found kMaxWaiting reached.
+    size_t g_Waiting = 0;
+    bool g_Overflow = false;
 
     void Lock() { nn::os::LockMutex(&g_Lock); }
     void Unlock() { nn::os::UnlockMutex(&g_Lock); }
 
+    // Adds a line for the client unless kMaxWaiting would be passed. Under the lock.
+    void Enqueue(std::string line) {
+        if (g_Waiting + line.size() > kMaxWaiting) {
+            g_Overflow = true;
+            return;
+        }
+        g_Waiting += line.size();
+        g_Outbound.push_back(std::move(line));
+    }
+
     // Lines this thread sends itself (HELLO, PONG), past AP::Send.
     void Queue(const std::string& line) {
         Lock();
-        g_Outbound.push_back(line + "\n");
+        Enqueue(line + "\n");
         Unlock();
     }
 
@@ -80,26 +110,34 @@ namespace {
         return true;
     }
 
-    // Returns false when the connection should be dropped.
+    // Sends what the socket takes now. Returns false when the connection should be dropped: more waited than
+    // kMaxWaiting, or the socket took nothing for kKeepAliveMs while lines waited (a client that stops reading, or a
+    // send error, which errno cannot tell from a full socket).
     bool SendPending() {
         Lock();
-        bool ok = true;
-        while (!g_Outbound.empty()) {
-            const std::string& line = g_Outbound.front();
-            size_t sent = 0;
-            while (sent < line.size()) {
-                ssize_t n = nn::socket::Send(g_Client, line.data() + sent, line.size() - sent, 0);
-                if (n <= 0) {
-                    ok = false;
-                    break;
-                }
-                sent += n;
-            }
-            if (!ok) break;
-            g_Outbound.pop_front();
-        }
+        bool overflow = g_Overflow;
+        for (const auto& line : g_Outbound) g_Unsent += line;
+        g_Outbound.clear();
         Unlock();
-        return ok;
+        if (overflow) return false;
+        size_t sent = 0;
+        while (sent < g_Unsent.size()) {
+            ssize_t n = nn::socket::Send(g_Client, g_Unsent.data() + sent,
+                                         std::min(kSendChunk, g_Unsent.size() - sent), 0);
+            if (n <= 0) break;
+            sent += n;
+            g_StalledSince = 0;
+        }
+        g_Unsent.erase(0, sent);
+        Lock();
+        g_Waiting -= sent;
+        Unlock();
+        if (g_Unsent.empty()) {
+            g_StalledSince = 0;
+            return true;
+        }
+        if (g_StalledSince == 0) g_StalledSince = NowMs();
+        return NowMs() - g_StalledSince < kKeepAliveMs;
     }
 
     void ServeClient() {
@@ -179,13 +217,15 @@ namespace {
             constexpr s32 kTcpNoDelay = 1;
             s32 noDelay = 1;
             nn::socket::SetSockOpt(g_Client, IPPROTO_TCP, kTcpNoDelay, &noDelay, sizeof(noDelay));
+            nn::socket::Fcntl(g_Client, kFSetFl, kNonBlock);
 
             // HELLO goes first: what the game sends once it sees the connection comes after it
             std::string hello = AP::HelloLine() + "\n";
+            g_StalledSince = 0;
             Lock();
             g_Inbound.clear();
-            g_Outbound.clear();
-            g_Outbound.push_back(hello);
+            g_Overflow = false;
+            Enqueue(hello);
             Unlock();
             g_Connected = true;
             g_NewConnection = true;
@@ -196,6 +236,12 @@ namespace {
             g_Connected = false;
             nn::socket::Close(g_Client);
             g_Client = -1;
+            // what the client did not take goes, and its memory with it
+            std::string().swap(g_Unsent);
+            Lock();
+            std::deque<std::string>().swap(g_Outbound);
+            g_Waiting = 0;
+            Unlock();
             Logging.Log("[AP] client disconnected");
         }
     }
@@ -220,7 +266,7 @@ namespace AP {
 #endif
         if (!g_Connected.load()) return;
         Lock();
-        g_Outbound.push_back(line + "\n");
+        Enqueue(line + "\n");
         Unlock();
     }
 

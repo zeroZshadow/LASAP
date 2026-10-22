@@ -29,4 +29,5 @@ namespace nn::socket {
     s32 Accept(s32 socket, sockaddr* addrOut, u32* addrLenOut);
     s32 Shutdown(s32 desc, s32 how);
     s32 Poll(pollfd* fds, u64 count, s32 timeoutMs);
+    s32 Fcntl(s32 desc, s32 cmd, ...);
 };

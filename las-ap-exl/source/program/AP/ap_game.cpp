@@ -959,9 +959,37 @@ namespace {
         return (g_Checks[local_id / 8] >> (local_id % 8)) & 1;
     }
 
-    bool IsKept(int local_id) {
-        return local_id >= 0 && std::any_of(g_Kept.begin(), g_Kept.end(),
-                                            [&](const KeptLocation& kept) { return kept.local_id == local_id; });
+    const KeptLocation* FindKept(int local_id) {
+        if (local_id < 0) return nullptr;
+        for (const auto& kept : g_Kept) {
+            if (kept.local_id == local_id) return &kept;
+        }
+        return nullptr;
+    }
+
+    // Whether the save holds a kept location's item, as the Trendy Game decides whether to offer a prize: the bit of
+    // its index, or for the Yoshi Doll (no index) its getting flag, TradeYoshiDollGet.
+    bool SaveHasKept(const KeptLocation& kept) {
+        auto* items = *Game::Data::Inventory::Items;
+        u64 bit = kept.index >= 0 && kept.index < 64 ? u64(1) << kept.index : 0;
+        switch (kept.item) {
+            case 22: return items->Seashells & bit;
+            case 58: return items->HeartPieces & bit;
+            case 114: return ChamberStoneBits() & bit;
+            default: return EventFlags::CheckGettingFlag(kept.item);
+        }
+    }
+
+    // The server's item for a location that keeps its vanilla item. The game gave it when the location was collected
+    // in this save; a save without it (an older one, another file, a !collect) gets it now with the location's own
+    // index, which also takes the prize out of the Trendy Game. A companion joins only in the game. Returns the item
+    // to show, -1 for none.
+    int GrantKept(const KeptLocation& kept) {
+        if (!kept.flag.empty() || SaveHasKept(kept)) return -1;
+        g_Granting = true;
+        Inventory::AddItemID(kept.item, 1, kept.index);
+        g_Granting = false;
+        return kept.item;
     }
 
     // "<item key> <index> <local id>" and "F <flag> <local id>" lines (patcher las_ap_patch.write_vanilla)
@@ -1366,9 +1394,8 @@ namespace {
             if (n == have + 1) {
                 // ITEM <n> <key> <count> <dungeon> [<location> <item name>|<sender>]
                 int location = a.size() >= 6 ? atoi(a[5].c_str()) : -1;
-                // A location that keeps its vanilla item gave it already when it was collected here.
-                int id = IsKept(location) && CollectedHere(location)
-                             ? -1 : GrantItem(a[2], atoi(a[3].c_str()), atoi(a[4].c_str()));
+                const KeptLocation* kept = FindKept(location);
+                int id = kept ? GrantKept(*kept) : GrantItem(a[2], atoi(a[3].c_str()), atoi(a[4].c_str()));
                 std::string names = RestAfter(line, 6);
                 size_t bar = names.find('|');
                 std::string item = bar == std::string::npos ? names : names.substr(0, bar);

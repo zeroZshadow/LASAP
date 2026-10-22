@@ -1,10 +1,12 @@
 """Writes a synthetic .aplas patch (every shuffleable location gives the AP placeholder) for patcher tests.
 
 python make_test_patch.py <out.aplas> [--seed-hash test0001] [--slot Tester] [--vanilla loc,loc,...] [--settings JSON]
-                          [--dungeons JSON] [--items loc=item,...]
+                          [--dungeons JSON] [--items loc=item,...] [--kept loc,loc,...]
 
 --items gives locations an item of this slot (logic.yml's content names, e.g. beach-chest=song-ballad); they are no
 AP locations.
+--kept makes locations AP locations that keep their vanilla item, as the world makes the Trendy Game's prizes
+(DESIGN.md, Item model), e.g. trendy-prize-1,trendy-prize-3.
 --settings replaces settings in the patch, e.g. '{"Instruments Required": 3, "Damage": "OHKO"}'.
 --dungeons leads dungeon doors into other dungeons and turns Shuffled Dungeons on, e.g.
 '{"tail-cave": "color-dungeon", "color-dungeon": "tail-cave"}' (door: the dungeon it leads into).
@@ -53,6 +55,7 @@ def main() -> None:
     parser.add_argument("--settings", default="{}")
     parser.add_argument("--dungeons", default="{}")
     parser.add_argument("--items", default="")
+    parser.add_argument("--kept", default="")
     args = parser.parse_args()
     items = dict(pair.split("=", 1) for pair in filter(None, args.items.split(",")))
 
@@ -65,6 +68,7 @@ def main() -> None:
                 and k not in categories.get("Shop_Items", [])}
     vanilla |= {k for k, v in logic.items() if v.get("type") == "item" and "owl" in v.get("subtype", "")}
     vanilla |= set(filter(None, args.vanilla.split(",")))
+    kept = set(filter(None, args.kept.split(",")))
 
     placements, location_ids = {}, {}
     for loc, d in logic.items():
@@ -72,6 +76,9 @@ def main() -> None:
             continue
         if loc in items:
             placements[loc] = items.pop(loc)
+        elif loc in kept:
+            placements[loc] = d["content"]
+            location_ids[loc] = ids[loc]
         elif loc in vanilla:
             placements[loc] = d["content"]
         else:

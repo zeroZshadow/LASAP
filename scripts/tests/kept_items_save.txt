@@ -1,0 +1,34 @@
+# The server's item for a Trendy Game prize follows the save (DESIGN.md, Item model): a save without the prize (an
+# older one, another file, a !collect) gets it with the location's own index, and a save with it gets nothing more.
+# On a default seed Trendy Prize 3 (local id 134) is seashell 42 and Trendy Prize 1 (local id 132) the Yoshi Doll, as
+# `ap_vanilla.txt` lists them. Run after newgame_file2 with no LAS client connected: `game` sends the ITEM lines.
+guard hurt
+free 10
+check recv=0\s
+check shells=0\s
+# Not in the save: the seashell takes index 42, which the Trendy Game's prize has, and plays its item-get.
+game ITEM 1 Seashell 1 -1 134 Secret Seashell|
+await 10 recv=1\s
+check shells=40000000000\s
+await 5 shown=22(\s|$)
+until textready 10
+dismiss 20
+free 10
+# In the save now: the same location's item adds and shows nothing.
+game ITEM 2 Seashell 1 -1 134 Secret Seashell|
+await 10 recv=2\s
+check shells=40000000000\s
+check showq=0(\s|$)
+# The Yoshi Doll: its getting flag, which takes it out of the Trendy Game, then nothing for the second.
+game ITEM 3 YoshiDoll 1 -1 132 Yoshi Doll|
+await 10 recv=3\s
+send DBG flag TradeYoshiDollGet
+expect FLAG.TradeYoshiDollGet.1 5
+await 5 shown=29(\s|$)
+until textready 10
+dismiss 20
+free 10
+game ITEM 4 YoshiDoll 1 -1 132 Yoshi Doll|
+await 10 recv=4\s
+check showq=0(\s|$)
+free 5

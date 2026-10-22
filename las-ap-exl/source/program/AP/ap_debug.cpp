@@ -1347,6 +1347,12 @@ namespace AP::Test {
             AP::Send("OK await");
         } else if (cmd == "holds" && a.size() >= 3) {
             AP::Send(std::string("HOLDS ") + (Holds(a[2]) ? "1 " : "0 ") + a[2]);
+        } else if (cmd == "flood" && a.size() >= 4) {
+            // DBG flood <lines> <bytes>: LOG lines of that many bytes for the AP client, to fill the socket of a
+            // client that reads nothing (e2e op stall)
+            std::string line = "LOG flood " + std::string(strtoul(a[3].c_str(), nullptr, 10), 'x');
+            for (int i = atoi(a[2].c_str()); i > 0; i--) AP::Send(line);
+            AP::Send("OK flood");
         } else if (cmd == "frame") {
             AP::Send("FRAME " + std::to_string(g_FrameNo) + " counter=" + std::to_string(FrameCounter()) +
                      " passes=" + std::to_string(g_Passes.load()) + " ms=" + std::to_string(NowMs()));

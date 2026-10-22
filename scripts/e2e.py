@@ -29,7 +29,8 @@ from typing import TextIO
 DIR = Path(os.environ.get("LASAP_E2E", "D:/DEV/LASAP-sandbox/e2e"))
 SLOT = os.environ.get("LASAP_SLOT", "Link")
 LOGS = {"client": DIR / "client.log", "server": DIR / "server.log", "peer": DIR / "peer.log"}
-DEBUG_PORT = int(os.environ.get("LASAP_GAME_PORT", "43385")) + 100
+GAME_PORT = int(os.environ.get("LASAP_GAME_PORT", "43385"))
+DEBUG_PORT = GAME_PORT + 100
 REPLY = re.compile(r"^(OK|ERR|DONE|FAIL|HELD|HOLDS|CHOICE|STATE|FLAG|UI|FRAME|POPFRAME|PEEK|RECV|MAP|TEXT|MUSIC|map=)")
 
 
@@ -336,6 +337,16 @@ def run(script: Path, trace: str | None = None) -> None:
                     found = [l for l in f.read().decode("utf-8", "replace").splitlines() if re.search(parts[0], l)]
             if len(found) != int(parts[1]):
                 raise SystemExit(f"{log}.log has {len(found)} lines with /{parts[0]}/, not {parts[1]}: {found}")
+        elif op == "game":
+            # game <line>: a protocol line to the game on the debug port, as the AP client sends it (ITEM ...)
+            mark = game().send(rest)
+        elif op == "stall":
+            # stall: connects to the game port as an AP client that sends PING every 2 s and reads nothing, with a
+            # small receive buffer (run with no LAS client connected); it stays connected until the script ends
+            stalled = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            stalled.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4096)
+            stalled.connect(("127.0.0.1", GAME_PORT))
+            threading.Thread(target=ping_unread, args=(stalled,), daemon=True).start()
         elif op == "peer":
             # peer <command>: a console command for the peer (scripts/deathlink_peer.py, scripts/ghost_peer.py)
             append(DIR / "peer_cmds.txt", rest)
@@ -496,6 +507,16 @@ def run(script: Path, trace: str | None = None) -> None:
     if trace:
         game().request("DBG trace off", r"^OK trace")
     print(f"SCRIPT OK in {time.time() - began:.2f} s")
+
+
+def ping_unread(sock: socket.socket) -> None:
+    """Keeps a connection alive for the game's keep-alive without reading what the game sends (op stall)."""
+    while True:
+        try:
+            sock.sendall(b"PING\n")
+        except OSError:
+            return
+        time.sleep(2)
 
 
 def wait_free(seconds: float, since: float = 0) -> None:
