@@ -1191,6 +1191,7 @@ namespace {
                 int id = atoi(a[i].c_str());
                 if (id >= 0 && id < (int)(kChecksBytes * 8)) g_ServerChecks[id / 8] |= (1 << (id % 8));
             }
+            AP::MapDataChanged();
         } else if (a[0] == "INLOGIC") {
             // INLOGIC CLEAR, then INLOGIC <local id>...: the locations in logic for the items received
             if (a.size() >= 2 && a[1] == "CLEAR") {
@@ -1201,6 +1202,7 @@ namespace {
                 int id = atoi(a[i].c_str());
                 if (a[i] != "CLEAR" && id >= 0 && id < (int)(kChecksBytes * 8)) g_InLogic[id / 8] |= (1 << (id % 8));
             }
+            AP::MapDataChanged();
         } else if (a[0] == "SERVER" && a.size() >= 2) {
             // SERVER 1|0: whether the client is logged into the slot
             g_ServerConnected = a[1] == "1";

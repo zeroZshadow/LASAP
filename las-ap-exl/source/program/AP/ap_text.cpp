@@ -194,6 +194,9 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
         auto map = g_MapLabels.find({msbt, index});
         if (map != g_MapLabels.end()) {
             std::string text = AP::MapLabelText(map->second);
+#ifdef LASAP_TEST
+            AP::NoteMapText(text);
+#endif
             if (!text.empty()) {
                 out->length = Store(g_MapText, sizeof(g_MapText), text);
                 out->text = g_MapText;

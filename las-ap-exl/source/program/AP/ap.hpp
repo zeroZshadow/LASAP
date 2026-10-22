@@ -147,6 +147,8 @@ namespace AP {
     std::string MapListField();
     std::string MapListInfo(const std::vector<std::string>& args);
     std::string MapDotInfo(const std::vector<std::string>& args);
+    // The text handed to the map cursor for one of our labels (DBG map's name=).
+    void NoteMapText(const std::string& text);
 #endif
     // Each input poll: while the map's check list is open the game sees no buttons and no sticks (true then); buttons
     // held as it closes stay hidden from the game until released.
@@ -155,7 +157,10 @@ namespace AP {
     std::string MapCaptionText();
     // 0 off, 1 on, 2 maps revealed without overworld icons (DBG map, for tests and screenshots)
     void SetMapMode(int mode);
-    // Every room of the current dungeon counts as visited; once per tick.
+    // A logic (INLOGIC) or checks (CHECKED) update arrived: the open map refreshes (TickMap).
+    void MapDataChanged();
+    // Every room of the current dungeon counts as visited, and the open map refreshes once a frame passes after an
+    // update; once per tick.
     void TickMap();
 }
 

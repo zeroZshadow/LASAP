@@ -32,6 +32,7 @@
 #include "Config/file_handler.hpp"
 #include "Hooks/Common/level.hpp"
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstring>
 #include <cstdlib>
@@ -154,6 +155,13 @@ namespace {
     int g_DotHovered = -1;
     int g_DotsMade = 0;  // for DBG map
     void ApplyDots();
+    void RefreshOpenMap();
+    // A logic or checks update arrived (MapDataChanged): the open map refreshes once a frame passes without one, as an
+    // update comes in several lines.
+    bool g_MapDataChanged = false, g_MapDataChangedLately = false;
+#ifdef LASAP_TEST
+    std::string g_CursorText;  // the last name text handed to the map cursor (NoteMapText)
+#endif
     std::vector<std::string> g_GroupNames;      // group -> its name
     std::map<int, std::string> g_CheckNames;    // local id -> the location's name without its area
     // group -> the flag until which it has another name (a shuffled dungeon's: which dungeon is behind its door)
@@ -182,13 +190,8 @@ namespace {
         return hidden != g_HiddenNames.end() && !EventFlags::CheckFlag(hidden->second.first);
     }
 
-    // A location of the group in logic. None is while the group's name is hidden: its look would tell which dungeon
-    // its door leads into.
-    bool Reachable(size_t group, int id) {
-        return !NameHidden(group) && Reachable(id);
-    }
-
-    // The look of an icon of these locations; none counts as in logic while its name is hidden.
+    // The look of an icon of these locations; none counts as in logic while its name is hidden, as its look would tell
+    // which dungeon its door leads into.
     Look IdsLook(const std::vector<int>& ids, bool nameHidden) {
         size_t left = 0, reachable = 0;
         for (int id : ids) {
@@ -209,21 +212,19 @@ namespace {
         return ids.size() == 1 && !AP::IsLocationChecked(ids[0]);
     }
 
-    // Whether a group's icon in this look is made: the look shown, and every look skipping some of its unchecked
-    // locations gives it (collected, in logic with one in logic, out of logic with one out of logic, partly with
-    // both), so A can swap them on the open map.
+    // Whether a group's icon in this look is made: the look shown, and every look skipping or a logic update can give
+    // it while the map is open (collected and out of logic with an unchecked location, in logic too unless its name is
+    // hidden, partly with two), so the open map swaps them.
     bool LookMade(size_t group, Look look) {
         if (GroupLook(group) == look) return true;
-        bool in = false, out = false;
-        for (int id : g_Overworld[group]) {
-            if (AP::IsLocationChecked(id)) continue;
-            (Reachable(group, id) ? in : out) = true;
-        }
+        size_t unchecked = 0;
+        for (int id : g_Overworld[group]) unchecked += AP::IsLocationChecked(id) ? 0 : 1;
+        bool hidden = NameHidden(group);
         switch (look) {
-            case Collected: return in || out;
-            case InLogic: return in;
-            case OutOfLogic: return out;
-            case Partial: return in && out;
+            case Collected:
+            case OutOfLogic: return unchecked > 0;
+            case InLogic: return unchecked > 0 && !hidden;
+            case Partial: return unchecked > 1 && !hidden;
             default: return false;
         }
     }
@@ -646,9 +647,7 @@ namespace {
         }
         AP::SetLocationSkipped(id, !AP::IsLocationSkipped(id));
         g_ListToggles++;
-        if (g_Panel.page == g_MarkerPage) ApplyLooks(g_Panel.page);
-        if (g_Panel.page == g_DungeonPage) ApplyDots();
-        FillList();
+        RefreshOpenMap();
         PlaySound("SE_SY_DECIDE");
     }
 
@@ -811,11 +810,11 @@ namespace {
         return g_DotHovered >= 0 ? &g_Dots[g_DotMarkers[g_DotHovered].dot].ids : nullptr;
     }
 
-    // The hovered dot's name on the map cursor (Place:APMapDot, whose text MapLabelText gives).
-    void ShowDotName() {
+    // A name on the map cursor: Place:<label>, whose text MapLabelText gives.
+    void ShowCursorName(std::string_view placeLabel) {
         u8* cursor = L::FindUi(kMapCursorUi);
         if (cursor == nullptr) return;
-        std::string label = "Place:" + std::string(AP::MAP_DOT_LABEL);
+        std::string label = "Place:" + std::string(placeLabel);
         StrView view{label.data(), static_cast<s64>(label.size())};
         struct { void* msbt; u8* control; s32 index; } ref{};
         u8* manager = *reinterpret_cast<u8**>(g_BaseAddress + kMessageManager);
@@ -823,6 +822,11 @@ namespace {
         Game<void (*)(void*, u8*, const StrView*)>(kMessageFind)(&ref, manager, &view);
         if (ref.index >= 0) Game<void (*)(u8*, void*)>(kCursorShowName)(cursor, &ref);
         ReleaseShared(ref.control);
+    }
+
+    // The hovered dot's name on the map cursor.
+    void ShowDotName() {
+        ShowCursorName(AP::MAP_DOT_LABEL);
     }
 
     void HideCursorName() {
@@ -881,6 +885,30 @@ namespace {
         float& cy = L::Field<float>(page, kPageCursor + 4);
         cx += (x - cx) * kEase;
         cy += (y - cy) * kEase;
+    }
+
+    // The open map after a change of the logic, the checks or a skip mark: the overworld page's markers or the dungeon
+    // page's dots take their looks, the open check list its rows, and the name on the cursor, while it shows one of
+    // ours, its text.
+    void RefreshOpenMap() {
+        u8* cursor = L::FindUi(kMapCursorUi);
+        bool named = cursor != nullptr && L::Field<u16>(cursor, kCursorHideName) == 0;
+        if (g_MarkerPage != nullptr) {
+            ApplyLooks(g_MarkerPage);
+            s32 index = L::Field<s32>(g_MarkerPage, kPageHovered);
+            auto** begin = *reinterpret_cast<u8***>(g_MarkerPage + kPageMarkers);
+            Look look;
+            if (named && HoveredIcon(g_MarkerPage, look) >= 0) {
+                const u8* row = *reinterpret_cast<u8**>(begin[index * 2] + kMarkerRow);
+                auto* name = reinterpret_cast<const std::pair<const char*, size_t>*>(row + kRowFlagName);
+                ShowCursorName(std::string_view(name->first, name->second));
+            }
+        }
+        if (g_DungeonPage != nullptr) {
+            ApplyDots();
+            if (named && g_DotHovered >= 0) ShowDotName();
+        }
+        if (ListOpen()) FillList();
     }
 }
 
@@ -1200,8 +1228,17 @@ namespace AP {
         return IconText(g_Overworld[group], name);
     }
 
+    void MapDataChanged() {
+        g_MapDataChanged = g_MapDataChangedLately = true;
+    }
+
     void TickMap() {
         if (!g_Enabled) return;
+        if (g_MapDataChanged && !g_MapDataChangedLately) {
+            g_MapDataChanged = false;
+            RefreshOpenMap();
+        }
+        g_MapDataChangedLately = false;
         u8 dungeon = *reinterpret_cast<u8*>(g_BaseAddress + kDungeonIndex);
         u8** entries = *reinterpret_cast<u8***>(g_BaseAddress + kDungeonItems);
         if (dungeon == 0xff || entries == nullptr || entries[dungeon] == nullptr) return;
@@ -1225,6 +1262,12 @@ namespace AP {
         state->mAnalogStickR = {};
         return true;
     }
+
+#ifdef LASAP_TEST
+    void NoteMapText(const std::string& text) {
+        g_CursorText = text;
+    }
+#endif
 
     void SetMapMode(int mode) {
         g_Enabled = g_Loaded && mode != 0;
@@ -1257,14 +1300,19 @@ namespace AP {
                 g_DotListAsked = static_cast<int>(n);
             }
         }
+        // Each dot's look as drawn: its SetMark frame, and its root pane's visibility.
         static const char kLookLetters[] = "ipoc";
         std::string looks;
         size_t shown = 0;
         for (const auto& dm : g_DotMarkers) {
-            bool on = DotShown(dm);
+            u8* animator = L::Field<u8*>(dm.marker, kMarkerSetMark);
+            int look = animator == nullptr ? -1 :
+                static_cast<int>(L::Field<float>(animator, kAnimFrame)) - kGameMarkFrames -
+                    (g_Dots[dm.dot].ids.size() == 1 ? kLooks : 0);
+            bool on = (MarkerRoot(dm.marker)[L::kPaneFlags] & L::kPaneVisible) != 0;
             shown += on;
-            char look = kLookLetters[IdsLook(g_Dots[dm.dot].ids, false)];
-            looks += on ? look : static_cast<char>(look - 'a' + 'A');
+            char letter = look >= 0 && look < kLooks ? kLookLetters[look] : '?';
+            looks += on ? letter : static_cast<char>(std::toupper(letter));
         }
         std::string s = "MAPDOT made=" + std::to_string(g_DotsMade) + " page=" + (g_DungeonPage ? "1" : "0") +
                         " dots=" + std::to_string(g_DotMarkers.size()) + " shown=" + std::to_string(shown) +
@@ -1318,18 +1366,37 @@ namespace AP {
 
     std::string SkipState() {
 #ifdef LASAP_TEST
-        // The skipped locations of overworld icons, and the hovered icon: its group, locations and look, or -1.
+        // The skipped locations of overworld icons, and the hovered icon: its group, locations and look, or -1. On
+        // the open overworld page: its markers of ours, those shown by look, and the last name the cursor took.
         static const char* const kLookNames[kLooks] = {"in", "partly", "out", "collected"};
         size_t skipped = 0;
         for (const auto& ids : g_Overworld) {
             for (int id : ids) skipped += IsLocationSkipped(id) ? 1 : 0;
+        }
+        std::string drawn;
+        if (g_MarkerPage != nullptr) {
+            size_t made = 0, shown[kLooks] = {};
+            auto** marker = *reinterpret_cast<u8***>(g_MarkerPage + kPageMarkers);
+            auto** end = *reinterpret_cast<u8***>(g_MarkerPage + kPageMarkers + 8);
+            for (; marker < end; marker += 2) {
+                Look look;
+                if (*marker == nullptr || MarkerIcon(*marker, look) < 0) continue;
+                made++;
+                void** vtable = *reinterpret_cast<void***>(*marker);
+                u8* layout = reinterpret_cast<LayoutFn>(vtable[kMarkerLayout / 8])(*marker);
+                u8* pane = *reinterpret_cast<u8**>(layout + kLayoutPane);
+                if (pane[kPaneFlags] & 1) shown[look]++;
+            }
+            drawn = " made=" + std::to_string(made) + " drawn=" + std::to_string(shown[InLogic]) + "," +
+                    std::to_string(shown[Partial]) + "," + std::to_string(shown[OutOfLogic]) + "," +
+                    std::to_string(shown[Collected]);
         }
         std::string hover = "-1";
         if (g_HoverGroup >= 0 && static_cast<size_t>(g_HoverGroup) < g_Overworld.size()) {
             hover = std::to_string(g_HoverGroup) + "/" + std::to_string(g_Overworld[g_HoverGroup].size()) + "/" +
                     kLookNames[g_HoverLook];
         }
-        return " skipped=" + std::to_string(skipped) + " hover=" + hover;
+        return " skipped=" + std::to_string(skipped) + " hover=" + hover + drawn + " | name=" + g_CursorText;
 #else
         return "";
 #endif

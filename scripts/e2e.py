@@ -302,6 +302,21 @@ def run(script: Path, trace: str | None = None) -> None:
                 raise SystemExit(f"timeout waiting for /{parts[0]}/")
             mark = game().mark()
             print(reply)
+        elif op == "poll":
+            # poll <regex> <secs> <DBG line>: sends the DBG line until a reply matches, for state the module changes
+            # a frame or more after a send
+            pattern, secs, command = rest.split(" ", 2)
+            end = time.time() + float(secs)
+            while True:
+                start = game().send(command)
+                reply = game().wait(pattern, 0.2, start)
+                if reply is not None:
+                    break
+                if time.time() > end:
+                    replies = game().lines[start:]
+                    raise SystemExit(f"timeout polling /{pattern}/; last: {replies[-1] if replies else '-'}")
+            mark = game().mark()
+            print(reply)
         elif op == "logged":
             # logged <regex> [secs] [client|server] [count]: waits until `count` (default 1) lines logged since the
             # script started match
