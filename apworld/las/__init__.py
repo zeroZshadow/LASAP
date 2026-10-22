@@ -96,6 +96,7 @@ class LASWorld(World):
     plain: List[str]  # unrandomized locations whose default item never matters: no AP locations, left out of logic
     starting_items: List[str]  # LASR item names given at the start by options
     pre_fill_items: List[Item]
+    replaced: Dict[str, str] = {}  # location -> the item it holds instead of its own (_replaced_by_starting_gear)
     restricted: Dict[str, Set[str]]  # AP item name -> LASR locations it must be placed in
     dungeon_entrances: Dict[str, str]  # each dungeon's door -> the dungeon it leads into (lasr.dungeon_logic)
 
@@ -152,6 +153,31 @@ class LASWorld(World):
         self.optional = [loc for loc in self.shuffled if loc in optional]
         self.pre_fill_items = []
         self.restricted = {}
+        self.replaced = self._replaced_by_starting_gear()
+
+    def _replaced_by_starting_gear(self) -> Dict[str, str]:
+        """Unrandomized locations (locked checks, or no AP location) whose item is starting gear
+        (start_inventory_from_pool) that the pool would otherwise not hold: Archipelago takes starting gear out of the
+        item pool, so such a location holds 50 Rupees instead (as StartingGear says) and its item joins the pool.
+        The Trendy Game's prizes stay: the game gives them itself (kept_locations)."""
+        in_pool = Counter({k: v["quantity"] for k, v in ITEM_DEFS.items()})
+        for loc in self.vanilla + self.plain + self.locked:
+            in_pool[self.content(loc)] -= 1
+        for item in self.starting_items:
+            in_pool[item] -= 1
+        kept = lasr_settings.kept_locations()
+        replaced: Dict[str, str] = {}
+        for name, count in sorted(self.options.start_inventory_from_pool.value.items()):
+            if name not in ITEM_TABLE:
+                continue
+            lasr_item = ITEM_TABLE[name].lasr_name
+            missing = count - max(0, in_pool[lasr_item])
+            for loc in [loc for loc in self.locked + self.plain if self.content(loc) == lasr_item and loc not in kept]:
+                if missing <= 0:
+                    break
+                replaced[loc] = ITEM_TABLE[FILLER_ITEM].lasr_name
+                missing -= 1
+        return replaced
 
     # --- regions and locations ---
 
@@ -179,7 +205,7 @@ class LASWorld(World):
         menu.locations.append(LASLocation(self.player, GOAL_LOCATION, None, menu))
 
     def content(self, loc: str) -> str:
-        return LOGIC[loc]["content"]
+        return self.replaced.get(loc) or LOGIC[loc]["content"]
 
     def _is_progression(self, lasr_item: str) -> bool:
         return bool(self.classification(LASR_TO_ITEM[lasr_item]) & ItemClassification.progression)
@@ -241,10 +267,15 @@ class LASWorld(World):
             self.multiworld.push_precollected(self.create_item(LASR_TO_ITEM[item]))
 
         self.restricted = self._restricted_items()
+        # starting gear stays in the item pool, where Archipelago takes it out, also where the pre-fill would place it
+        starting_gear = Counter(self.options.start_inventory_from_pool.value)
         for lasr_item, count in sorted(self.item_pool().items(), key=lambda kv: list(ITEM_DEFS).index(kv[0])):
             for _ in range(count):
                 item = self.create_item(LASR_TO_ITEM[lasr_item])
-                if item.name in self.restricted:
+                if starting_gear[item.name] > 0:
+                    starting_gear[item.name] -= 1
+                    self.multiworld.itempool.append(item)
+                elif item.name in self.restricted:
                     self.pre_fill_items.append(item)
                 else:
                     self.multiworld.itempool.append(item)
@@ -413,12 +444,13 @@ class LASWorld(World):
         only if the slot still reaches every location but the optional ones that it reaches with all its items,
         without it and those taken before, so the rest of the seed never needs anything optional. Small keys stay in
         the pool, as the player spends them on any door, not on those the logic counts them for; so do the early
-        items (generate_basic)."""
+        items (generate_basic) and the starting gear, which Archipelago takes out of the pool afterwards."""
         multiworld = self.multiworld
         mine = [item for item in multiworld.itempool if item.player == self.player]
         spare = [item for item in mine if not ITEM_TABLE[item.name].lasr_name.startswith("key-")]
         self.random.shuffle(spare)
-        keep = Counter(multiworld.local_early_items[self.player]) + Counter(multiworld.early_items[self.player])
+        keep = Counter(multiworld.local_early_items[self.player]) + Counter(multiworld.early_items[self.player]) + \
+            Counter(self.options.start_inventory_from_pool.value)
         left = Counter(item.name for item in spare)
         optional = {LOCATION_NAMES[loc] for loc in self.optional}
         regular = [loc for loc in multiworld.get_locations(self.player) if loc.name not in optional]

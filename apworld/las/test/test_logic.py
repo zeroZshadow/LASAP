@@ -45,7 +45,7 @@ def lasr_reachable(world, lasr_items: Counter) -> set:
         del logic_defs[loc]
     placements = {k: None for k, v in logic_defs.items() if v["type"] in ("item", "follower")}
     for loc in world.vanilla + world.locked:
-        placements[loc] = LOGIC[loc]["content"]
+        placements[loc] = world.content(loc)
     access = dict(lasr_items)
     access.update({token: 1 for token in world.settings_tokens})
     evaluator = LASREvaluator(world.options.logic.current_key, logic_defs, placements)

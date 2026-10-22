@@ -177,13 +177,13 @@ class TestVanillaHeavy(LASTestBase):
             location = self.multiworld.get_location(LOCATION_NAMES[loc], self.player)
             self.assertEqual(location.address, self.world.location_name_to_id[LOCATION_NAMES[loc]])
             self.assertTrue(location.locked, loc)
-            self.assertEqual(location.item.name, LASR_TO_ITEM[LOGIC[loc]["content"]], loc)
+            self.assertEqual(location.item.name, LASR_TO_ITEM[self.world.content(loc)], loc)  # the starting gear's hold 50 Rupees
             self.assertEqual(location.item.player, self.player)
         self.assertFalse(fixed_locations() & set(self.world.shuffled))
         patch = self.world.patch_data()
         self.assertEqual({loc for loc in locked if patch["placements"][loc] != "ap-item"}, kept_locations() & locked)
         self.assertLessEqual(locked, set(patch["location_ids"]))
-        self.assertTrue(all(patch["placements"][loc] == LOGIC[loc]["content"] for loc in plain))
+        self.assertTrue(all(patch["placements"][loc] == self.world.content(loc) for loc in plain))
         # trackers and the patcher get the options as they are
         settings = patch["settings"]
         self.assertEqual((settings["Heart Pieces"], settings["Seashell Mansion"], settings["Seashells Important"]),
