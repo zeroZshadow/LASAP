@@ -308,6 +308,15 @@ def _chest_placeholder_branch(self) -> None:
     files.writeFile("TreasureBox.bfevfl", flow)
 
 
+def _no_keysanity_branch(self, flowchart, item, before, after):
+    """LASR's chests and Seashell Mansion presents send a dungeon item on to the dungeon its index names through a
+    FlowControl.CompareInt switch, which needs LASR's CompareInt rewrite (lasrOnlyFixes in the module, not applied):
+    without it the Chamber Dungeon's chests, whose keys have no index, would give them to another dungeon. Every
+    shuffled dungeon item is an Archipelago item, so these flows keep the game's own add, and the module's AddItemID
+    hook puts an item with an index into that dungeon and one without into the dungeon Link is in."""
+    return before
+
+
 def _native_instrument_get(self, flowchart, room, room_data, destination=None):
     """The instrument pedestal's item-gets (any item, progressive ones on both branches) keep the game's item-get."""
     _original_change_instrument(self, flowchart, room, room_data, destination)
@@ -406,6 +415,7 @@ _original_add_text_events = Keysanity.addTextEvents
 _original_create_text = Keysanity.createText
 _original_get_without_animation = ItemGetManager.getWithoutAnimation
 ItemGetManager.getWithoutAnimation = _starting_index
+ItemGetManager.getKeysanityItem = _no_keysanity_branch
 _original_item_drop_changes = ItemDropDatasheetFixes.makeDatasheetChanges
 ItemDropDatasheetFixes.makeDatasheetChanges = _drop_buffs
 _original_fishing_fixes = FishingDatasheetFixes.__init__
@@ -525,8 +535,14 @@ def build_placements(patch: dict, logic: dict) -> dict:
         elif item in INDEXED_ITEMS and "index" in logic.get(loc, {}):
             placements["indexes"][loc] = logic[loc]["index"]
         elif item.startswith(DUNGEON_ITEM_PREFIXES) and item[-1].isdigit():
-            placements["indexes"][loc] = int(item[-1])
+            placements["indexes"][loc] = dungeon_index(int(item[-1]))
     return placements
+
+
+def dungeon_index(number: int) -> int:
+    """The game's index of LASR's dungeon number (D1 0 to D8 7, the Color Dungeon D0 9), as LASR's shuffler gives
+    dungeon items; the module's AddItemID hook adds a dungeon item with an index to that dungeon."""
+    return 9 if number == 0 else number - 1
 
 
 def write_indices(config_dir: Path, logic: dict, patch: dict) -> None:

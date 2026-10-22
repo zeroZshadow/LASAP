@@ -114,9 +114,9 @@ void randoFixes() {
     p.WriteInst(inst::Movz(reg::W0, 0));
 }
 
-// LASR patch that Archipelago does not apply: the CompareInt rewrite. LASR's keysanity chest flows use it for dungeon
-// items LASR places itself. Every shuffled dungeon item is an Archipelago item here, so the flows never run, and the
-// rewrite would change the event action game-wide.
+// LASR patch that Archipelago does not apply: the CompareInt rewrite. LASR's keysanity chest and present flows use it
+// for dungeon items LASR places itself; every shuffled dungeon item is an Archipelago item here, so the patcher leaves
+// those flows out (las_ap_patch._no_keysanity_branch), and the rewrite would change the event action game-wide.
 void lasrOnlyFixes() {
     // Rewrite FlowControl::CompareInt event to check if the values are equal
     // To match FlowControl::CompareString, it returns 0 if they are equal, 1 if not
