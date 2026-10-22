@@ -3,6 +3,7 @@
 LAS Archipelago is built on the work of these projects and their developers.
 
 - **[LAS Randomizer](https://github.com/Owen-Splat/LAS-Randomizer)** by Owen-Splat. The patcher, the logic and the item and location data are LASR's, and the game module grew from Owen-Splat's fork of exlaunch.
+- **[LAS-Randomizer original](https://github.com/la-switch/LAS-Randomizer)** by Glan9. The original LAS Randomizer that Owen-Splat's version is built upon.
 - **[exlaunch](https://github.com/shadowninja108/exlaunch)** by shadowninja108. The framework the game module is built on.
 - **[Archipelago](https://github.com/ArchipelagoMW/Archipelago)** by the Archipelago team. The multiworld framework, server and client.
 - **[oead](https://github.com/zeldamods/oead)** by leoetlino. The patcher's datasheet code (`patcher/RandomizerCore/Tools/gsheet.py`) is a Python port of oead's.
