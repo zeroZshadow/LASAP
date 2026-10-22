@@ -157,6 +157,10 @@ LevelManager_LevelJump 0x08d68d50 f (mgr, StringView* level, StringView* locator
 LevelManager_WarpInLevel 0x08d694d0 f (mgr, StringView* locator, Vec2* offset, int): jump within the current level
 SetGameState 0x08d7f780 f (state machine, u32 state, bool): 4 reloads from the save, 1 quit, 5 ending; hooked by the module
 Title_ChangeState 0x08d831b0 f (machine*, state)
+ItemsSheet_FindRow 0x08d9dbc0 f (out {sheet shared_ptr, row*}, ItemsSheet_ptr holder, u8 itemId): the Items.gsheet row (0x98 bytes) whose itemID (+0x10) is itemId, all null when none; actorID +0x14
+Enemy_DropItems 0x08d9f960 f guess: an enemy's drop on defeat; called from 41 enemy classes (EnemyAlbatoss, EnemyAngler, ...); scans the Items sheet and spawns each drop through ItemActor_Create (itemIndex its entry's +0x10, or -1)
+ItemActor_Create 0x08da1050 f (shared_ptr* out, Actor* source, Vec4* pos, 12 bytes vec, s32 itemId, s32 itemIndex): ItemsSheet_FindRow, then Actor_Create of the row's actorID at pos in the source's zone (+0xb0), owner the source's parent (+0x48/+0x50), itemIndex at params +0x10, vec at params +0x20; out null when the item has no row. 0x08da10f0 (strh w25, [sp, #0x48]) stores the actor id into the params
+ItemActor_CreateShield 0x08da15d0 f (out, Actor* source): ItemActor_Create of item 2 (Shield) at the source's root coordinates (+0x80 -> +0xb0) plus a constant; called by EnemyLikeLike code (0x089ae3e0, which drops the out reference at once; guess: the eaten shield given back)
 ItemActor_CanAppear 0x08dc8510 f (actor): when vtable +0x3e0 holds, false while Inventory_HasItem(+0x2e8 item, 1, +0xbc index if +0xc0 == 3 else -1); the call at +0x8c45b8 is LASR's patch site
 Npc_TraitsValue 0x08dcb490 f (npc component): a float of the row's collision.traits row in NpcPhysicsTraits, default without
 Inventory_AddItemID 0x08dd48e0 f (itemId, count, index); hooked by the module; per item id in re/ITEMS.md. Case 114 sets the chamber stone bit
@@ -430,6 +434,7 @@ BgmTable 0x0a1afa28 l static (guard 0x0a1b0378), made by BgmManager_Play
 CameraSystem_ptr 0x0a1b0b30 l shared_ptr; +0x600/+0x610 vectors passed to RoomManager_UpdateRooms, +0x700 flags (bit 3: room update requested)
 CranePrizeSheets_ptr 0x0a1b0f28 l 0x40 bytes of shared_ptrs: CranePrize +0x0, featured groups 1/2 at +0x20/+0x30
 EventManager_ptr 0x0a1b64d8 l
+ItemsSheet_ptr 0x0a1b6990 l Items.gsheet holder, 0x20 bytes, made on first use, filled by UiDatasheets_Load: +0x0 -> the sheet (+0x60/+0x68 shared_ptr, +0x70 data: rows +0x20, count +0x28)
 ActorRegistry_ptr 0x0a1b6d00 l unordered_map<u64 LEB key, shared_ptr<Actor>>*
 NpcSheets_ptr 0x0a1bc360 l -> {shared_ptr Npc.gsheet, shared_ptr NpcPhysicsTraits.gsheet}
 PanelSheets_ptr 0x0a1bde50 l 0xa0 bytes of shared_ptrs: MapPieceList +0x0 (rows 0x98, mPanelItem +0x18), MapPieceTheme +0x10, ShopPanelItem +0x40, PanelStone +0x90 (rows 8, mItemMenuCount +0x4)
