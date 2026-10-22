@@ -456,7 +456,8 @@ class LASContext(CommonContext):
         self.last_item_sent = asyncio.get_event_loop().time()
 
     async def flush_checks(self) -> None:
-        if not self.server or not self.slot:
+        # only into the slot of the seed the game runs: checks that came before the slot was known wait for it
+        if not self.server or not self.slot or not self.slot_seed_hash or self.slot_seed_hash != self.game_seed_hash:
             return
         new = self.game_checked - self.locations_checked
         if new:
@@ -489,7 +490,10 @@ class LASContext(CommonContext):
         cmd = parts[0]
         if cmd == "HELLO":
             self.game_seed_hash = parts[2] if len(parts) > 2 else None
+            # the game sends its checks again (CHECKS) after HELLO, for the seed it runs now
             self.game_hints.clear()
+            self.game_checked.clear()
+            self.goal_reached = False
             if len(parts) < 2 or parts[1] != str(PROTOCOL_VERSION):
                 logger.error(f"Game protocol {parts[1:2]} does not match the client ({PROTOCOL_VERSION}).")
             logger.info(f"Connected to the game (seed hash {self.game_seed_hash}).")

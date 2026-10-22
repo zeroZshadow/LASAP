@@ -190,9 +190,9 @@ ASCII lines terminated by `\n`, fields separated by single spaces. The game acce
 |---|---|
 | `HELLO <proto=2> <seed_hash>` | Sent on connect |
 | `PONG` | Answer to `PING` |
-| `RECV <count>` | Number of items applied, stored in the save as a flag-bit counter |
+| `RECV <count>` | Number of items applied, stored in the save as a flag-bit counter: in answer to `ITEM` and `SYNC`, and once each time a save has loaded, so a save loaded from the title (an older one, another file) gets the items it lacks |
 | `CHECK <local_id>` | A location was collected |
-| `CHECKS <id> <id> ...` | Every collected location, sent on connect and on `SYNC` (possibly several lines) |
+| `CHECKS <id> <id> ...` | Every collected location, sent on connect and on `SYNC` (possibly several lines). The client keeps the checks and the goal of the game connection (a new `HELLO` drops them) and sends them only into a slot whose seed hash is the game's |
 | `HINT <slot> <location id>` | An in-game hint was read (its flag is set): once per hint and connection, and all read hints again on `SYNC` |
 | `GOAL` | Goal completed: Link entered the `Ending` level, or the `ShadowClear` flag is set (also resent on `SYNC`) |
 | `SIGN` | The player read the sign at the egg's stairs (Goal, **Hidden count**): once when it is read, and again on each `SYNC` after |
@@ -216,7 +216,7 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
   - The module shows `NOTICE` lines from the client and "Archipelago client disconnected" when the client goes away. While the client or the server (`SERVER`) is not connected, it shows "Archipelago client not connected" or "Archipelago server not connected" once the player has been 20 s in a level, then every 5 minutes; after a disconnect notice, the first reminder comes 5 minutes later.
   - It calls the game's show function for the popup (autosave mode) and hooks the popup's state changes: when its auto state starts, the module sets the popup's display time and puts the toast into its text pane (the message `UI:SystemSaving`, which the text hook hands out). When the popup is hidden again, the pane gets the game's own text back. A toast waits while the popup is busy, as during a real save; a save during a toast shows the toast's text.
   - The patcher widens the popup's text pane and its text buffer, and replaces the egg icon with the Archipelago logo, white on transparent like the egg (`ap_ui.py`, `StartUp.arc`). The loading screen's spinner shares that texture.
-- A received item from another player says "You got <item> from <player>!". Own items found here are not shown again; other own items and server items show the item's native text, except items whose native text names their vanilla source (the Boomerang, the capacity upgrades), which say "You got <item>!".
+- A received item from another player says "You got <item> from <player>!". Own items found in this save since it loaded are not shown again (the found text named them); other own items and server items show the item's native text, except items whose native text names their vanilla source (the Boomerang, the capacity upgrades), which say "You got <item>!".
 - In these texts an item name longer than 32 bytes and a player name longer than 16 end in "..." (UTF-8 kept whole). A shop's price tag (the buy dialog's first line) holds 46 characters: a longer item name ends in "…" and the owner stays.
 - The patcher adds the messages `Place:ArchipelagoItem` and `System:APReceived` (with the native item-text window style) and the Item event entry point `APReceived`. The module hooks the game's MSBT label lookup and text getter and hands out the text for these two messages (`ap_text.cpp`).
 - The module learns the location from the placeholder's `AddItemID`, so placeholder flows add the item before playing the item-get (LASR's item-get chains and a TreasureBox branch); other items keep LASR's order. That location names the found text until the player is free again.

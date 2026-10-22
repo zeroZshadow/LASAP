@@ -40,6 +40,41 @@ class TestHintLines(unittest.TestCase):
         self.assertEqual(sent, [{"cmd": "LocationScouts", "locations": [1279393846], "create_as_hint": 2}])
 
 
+class TestChecksBySeed(unittest.TestCase):
+    def test_checks_wait_for_the_slot_of_the_game_seed(self) -> None:
+        """Checks and the goal the game reports before the client knows the slot go only to the slot of the seed the
+        game runs; a new game connection forgets those of the last one."""
+        from ..client import LASContext, LOCATION_BASE, PROTOCOL_VERSION
+
+        async def run() -> list:
+            ctx = LASContext(None, None, "127.0.0.1", 0)
+            sent = []
+
+            async def send_msgs(msgs):
+                sent.extend(msgs)
+            ctx.send_msgs = send_msgs
+            ctx.server = object()
+            ctx.slot = 1
+            ctx.missing_locations = {LOCATION_BASE + 5, LOCATION_BASE + 6}
+            for line in (f"HELLO {PROTOCOL_VERSION} aaaa", "CHECKS 5 6", "GOAL"):
+                ctx.handle_game_line(line)
+                await asyncio.sleep(0)
+            ctx.slot_seed_hash = "bbbb"  # logged into the slot of another seed
+            await ctx.flush_checks()
+            sent.append("slot aaaa")
+            ctx.slot_seed_hash = "aaaa"
+            await ctx.flush_checks()
+            sent.append("game bbbb")
+            ctx.handle_game_line(f"HELLO {PROTOCOL_VERSION} bbbb")
+            ctx.slot_seed_hash = "bbbb"
+            await ctx.flush_checks()
+            return sent
+        sent = asyncio.run(run())
+        self.assertEqual([m if isinstance(m, str) else m["cmd"] for m in sent],
+                         ["slot aaaa", "LocationChecks", "StatusUpdate", "game bbbb"])
+        self.assertEqual(sorted(sent[1]["locations"]), [LOCATION_BASE + 5, LOCATION_BASE + 6])
+
+
 class TestGhostNamesFromGame(unittest.TestCase):
     def test_dpad_toggle_keeps_the_setting(self) -> None:
         """GHOSTNAMES from the game (the d-pad's up) sets the client's ghost_names, as /ghostnames does."""

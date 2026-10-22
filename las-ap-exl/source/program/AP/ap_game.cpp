@@ -18,6 +18,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <set>
 #include <sstream>
 #include <vector>
 
@@ -68,6 +69,11 @@ namespace {
     }
 
     std::string g_LastLevel;
+    // A save is loaded and its received count reported (AP::Tick): the client sends ITEM only after a RECV, so a save
+    // loaded from the title, an older one or another file, gets the items it lacks.
+    bool g_SaveRecvReported = false;
+    // The placeholders collected since the save loaded: their own items were named by the found text.
+    std::set<int> g_FoundSinceLoad;
     // DeathLink (DESIGN.md, DeathLink): when the last received death was applied, 0 when none is pending
     u64 g_DeathLinkAt = 0;
     u64 g_DiedPolled = 0;
@@ -1340,8 +1346,9 @@ namespace {
                 size_t bar = names.find('|');
                 std::string item = bar == std::string::npos ? names : names.substr(0, bar);
                 std::string sender = bar == std::string::npos ? "" : names.substr(bar + 1);
-                // An own item found here was named by the found text already.
-                bool namedWhenFound = sender.empty() && location >= 0 && AP::HasLocationName(location);
+                // An own item found in this save since it loaded was named by the found text already.
+                bool namedWhenFound = sender.empty() && g_FoundSinceLoad.count(location) != 0 &&
+                                      AP::HasLocationName(location);
                 if (IsTrapKey(a[2])) QueueTrap(a[2], item, sender);
                 else if (id >= 0 && !namedWhenFound) QueueShow(Show{id, item, sender, ""});
                 SetRecvCount(n);
@@ -1460,6 +1467,7 @@ namespace AP {
     }
 
     void OnPlaceholderCollected(int local_id) {
+        g_FoundSinceLoad.insert(local_id);
         SetFoundLocation(local_id);
         RecordCheck(local_id);
     }
@@ -1568,6 +1576,13 @@ namespace AP {
         // A level (re)loads while there is no player: the settle time starts once he stands in it. The game over
         // menu holds everything back until its Retry has reloaded the level.
         Game::Framework* fmwk = Game::GetFramework();
+        if (NoSaveLoaded(fmwk)) {
+            g_SaveRecvReported = false;
+            g_FoundSinceLoad.clear();
+        } else if (!g_SaveRecvReported && PlayerReady()) {
+            g_SaveRecvReported = true;
+            Send("RECV " + std::to_string(GetRecvCount()));
+        }
         if (fmwk == nullptr || fmwk->mPlayer == nullptr) {
             g_LevelSince = NowMs();
             g_GameOver = false;
