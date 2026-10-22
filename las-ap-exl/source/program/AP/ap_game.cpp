@@ -835,6 +835,25 @@ namespace {
         QueueShow(Show{-1, item.empty() ? key : item, sender, key});
     }
 
+    // Secret Medicines waiting (AP::MEDICINE_FLAG): the game holds one at a time (scripts/re/ITEMS.md).
+    constexpr int kSecretMedicine = 21;
+    constexpr u64 kMedicinePollMs = 500;
+    u64 g_MedicinePolled = 0;
+
+    int GetMedicineWaiting() {
+        int n = 0;
+        for (int i = 0; i < AP::MEDICINE_FLAG_BITS; i++) {
+            if (EventFlags::CheckFlag(AP::MEDICINE_FLAG + std::to_string(i))) n |= 1 << i;
+        }
+        return n;
+    }
+
+    void SetMedicineWaiting(int n) {
+        for (int i = 0; i < AP::MEDICINE_FLAG_BITS; i++) {
+            EventFlags::SetFlag(AP::MEDICINE_FLAG + std::to_string(i), (n >> i) & 1);
+        }
+    }
+
     // Grants one item the way an in-game pickup would, including LASR's progressive items.
     // Returns the item id granted, or -1 for traps (QueueTrap) and unknown keys.
     int GrantItem(const std::string& key, int count, int dungeon) {
@@ -865,6 +884,13 @@ namespace {
             case 114: index = LowestClearBitOf(ChamberStoneBits() | AP::VanillaBits('P'), kChamberStoneBits); break;
             case 44: case 45: case 47: case 48: case 49: index = dungeon; break; // dungeon items
             default: break;
+        }
+        // A Secret Medicine while Link holds one waits (TickMedicine); its item-get shows now.
+        if (id == kSecretMedicine && items->ExtraItems.Medicine) {
+            int waiting = GetMedicineWaiting();
+            if (waiting < (1 << AP::MEDICINE_FLAG_BITS) - 1) SetMedicineWaiting(waiting + 1);
+            AP::Log("Secret Medicine waits (" + std::to_string(GetMedicineWaiting()) + ")");
+            return id;
         }
         g_Granting = true;
         Inventory::AddItemID(id, count, index);
@@ -1046,6 +1072,7 @@ namespace {
             s += " hc=" + std::to_string(items->HeartContainers);
             s += " leaves=" + std::to_string(items->GoldenLeaves);
             s += " stones=" + HexU64(ChamberStoneBits());
+            s += " medicine=" + std::to_string(items->ExtraItems.Medicine) + "/" + std::to_string(GetMedicineWaiting());
             s += " sword=" + std::to_string(items->MainItems.SwordLv1) + "/" + std::to_string(items->UpgradeItems.SwordLv2);
             s += " shield=" + std::to_string(items->MainItems.Shield) + "/" + std::to_string(items->UpgradeItems.MirrorShield);
             s += " bracelet=" + std::to_string(items->MainItems.PowerBraceletLv1) + "/" + std::to_string(items->UpgradeItems.PowerBraceletLv2);
@@ -1550,6 +1577,22 @@ namespace {
         return false;
     }
 
+    // Gives a waiting Secret Medicine once Link, free and alive, has none (he used his, or it was never given).
+    void TickMedicine() {
+        auto* items = *Game::Data::Inventory::Items;
+        if (items == nullptr || items->ExtraItems.Medicine || NowMs() - g_MedicinePolled < kMedicinePollMs) return;
+        g_MedicinePolled = NowMs();
+        if (!PlayerReady() || !PlayerFree() || LinkDead()) return;
+        int waiting = GetMedicineWaiting();
+        if (waiting == 0) return;
+        SetMedicineWaiting(waiting - 1);
+        g_Granting = true;
+        Inventory::AddItemID(kSecretMedicine, 1, -1);
+        g_Granting = false;
+        AP::Log("Secret Medicine given (" + std::to_string(waiting - 1) + " waiting)");
+        QueueNotice("Secret Medicine|from your stock");
+    }
+
     // Minus held long enough: opens the warp menu when the player is free, holds nothing and no item display
     // waits to start. The game does not tick this while paused (the map), so the menu needs Minus still held.
     void TickWarpMenu() {
@@ -1625,6 +1668,7 @@ namespace AP {
         TickHeldModel();
         Popup::Tick();
         TickWarpMenu();
+        TickMedicine();
         // the d-pad changes the music in free play, not where a minigame may steer with it
         JukeboxPane::Tick(PlayerFree() && g_LastLevel != kCraneGameLevel && g_LastLevel != "FishingPond");
         TickMap();

@@ -208,6 +208,7 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 **Items with special handling in the module**
 - Progressive sword, shield and bracelet arrive as their Lv1 key; the module upgrades when LASR's `*FoundFlag` is set.
 - Seashells, heart pieces, heart containers, golden leaves and bottles take the lowest in-game index that is unused and that no vanilla source sets (Indexed items, above).
+- The Secret Medicine is a single inventory bit, and the pool has three. One received while Link holds one shows its item-get and waits in the save (`APMedicine0`..`APMedicine1`, a count up to 3); once Link is free with none (the medicine revived him), the module gives the next with the notice "Secret Medicine from your stock". A patch without the flags loses such a medicine.
 - Traps (`*Trap`, `$ENEMY`) wait like item displays (below). Unknown keys are logged and counted as applied.
 
 **In-game text**
@@ -353,6 +354,7 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 
 **Persistence**
 - **Received-item count:** event flags `APRecv0`..`APRecv15`, read as a 16-bit counter. The patcher adds them to `GlobalFlags.gsheet`.
+- **Waiting Secret Medicines:** event flags `APMedicine0`..`APMedicine1`, a 2-bit count, also added by the patcher.
 - **Collected locations:** a bitset file `sd:/lasap/<seed_hash>.chk`, written on each check, so checks made while disconnected are reported later.
 - **Skipped locations:** a bitset file `sd:/lasap/<seed_hash>.skp`, written on each mark or unmark on the map (Map tracker, Skipping a check).
 - **Read hints:** event flags `APHint<n>` (In-game hints).

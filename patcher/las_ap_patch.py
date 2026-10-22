@@ -73,6 +73,9 @@ PLACEHOLDER_ITEM_ID = 71  # must match AP::PLACEHOLDER_ITEM_ID in the exlaunch m
 # placeholder (AP::IsPlaceholderItem). Item ids are a byte; the item-get treats all of these like the placeholder.
 VARIANT_ITEM_IDS = [*range(PLACEHOLDER_ITEM_ID + 1, 100), 103, 107, 109, 118, 119, *range(132, 200), *range(203, 256)]
 RECV_FLAG_BITS = 16
+# Secret Medicines received while Link holds one wait in a count of these flags (AP::MEDICINE_FLAG)
+MEDICINE_FLAG = "APMedicine"
+MEDICINE_FLAG_BITS = 2
 PLACEHOLDER_TEXT = "You found an [COLOR_SKYBLUE]Archipelago item[COLOR_WHITE]!"
 # The exlaunch module replaces both texts at runtime with the item and player names (AP::FOUND_LABEL, AP::RECEIVED_LABEL).
 RECEIVED_KEY = "APReceived"
@@ -172,6 +175,8 @@ def _add_ap_flags(self) -> None:
     _original_add_custom_flags(self)
     for i in range(RECV_FLAG_BITS):
         self.addFlag(f"APRecv{i}")
+    for i in range(MEDICINE_FLAG_BITS):
+        self.addFlag(f"{MEDICINE_FLAG}{i}")
     self.addFlag(ap_ghost.BOW_FLAG)
     self.addFlag(ap_goal.SIGN_FLAG)
     for flag in ap_deathlink.FLAGS:

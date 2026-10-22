@@ -42,6 +42,10 @@ namespace AP {
     // skips the Secret Medicine and clears it; the flow sets DIED_FLAG for any other death, which the module reports.
     constexpr const char* DEATHLINK_FLAG = "APDeathLink";
     constexpr const char* DIED_FLAG = "APDied";
+    // Secret Medicines received while Link holds one (it is a single inventory bit): a count in the event flags
+    // MEDICINE_FLAG<i> (patcher: MEDICINE_FLAG, MEDICINE_FLAG_BITS), given one at a time once he has none.
+    constexpr const char* MEDICINE_FLAG = "APMedicine";
+    constexpr int MEDICINE_FLAG_BITS = 2;
     // Common.bfevfl entry the patcher adds for the warp menu: a choice between warping to Tarin's house and going on.
     constexpr const char* WARP_MENU_ENTRY = "APWarpMenu";
     // Index the ghost in Tarin's house adds bombs and arrows with (patcher ap_ghost.py): the count is what Link's

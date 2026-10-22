@@ -1,0 +1,31 @@
+# Received Secret Medicines while Link holds one wait in the save (DESIGN.md, Items with special handling in the
+# module); DBG grant adds them as received items without their display. Once Link has none the next comes with a
+# notice: after the medicine revives him (a quarter heart and an Octorok south of Mabe, as deathlink_medicine), then
+# with its bit cleared by DBG poke. Run after newgame_file2, on a mod patched with the APMedicine flags. The inventory
+# byte +0xac holds the Flippers (bit 0), the medicine (bit 1) and the keys; a new game has none of them.
+guard off dead
+free 10
+check medicine=0/0\s
+send DBG grant SecretMedicine 1 -1 0
+expect OK.grant 5
+check medicine=1/0\s
+send DBG grant SecretMedicine 1 -1 0
+expect OK.grant 5
+send DBG grant SecretMedicine 1 -1 0
+expect OK.grant 5
+check medicine=1/2\s
+free 30
+warp Field 41.25 9.0 147.75
+send DBG poke 84 0100
+hold 0 0 32767 until health=0 10
+await 20 health=[1-9]
+until free 20
+check paused=0
+await 5 medicine=1/1\s
+send DBG poke ac 00
+expect OK.poke 5
+await 5 medicine=1/0\s
+send DBG poke ac 00
+expect OK.poke 5
+wait 2
+check medicine=0/0\s
