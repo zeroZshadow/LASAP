@@ -26,6 +26,7 @@
 namespace {
     using namespace AP::ListUi;
     using namespace Game::Ui;
+    using AP::ListUi::Layout;
     using Game::Field;
 
     // Navi, the pause menu header (vtable 0x1c2aa18): machine at +0x80, state byte +0x8d (Open 1, WaitKey 2,
@@ -47,9 +48,6 @@ namespace {
     // closes the menu; +0x70 cleared by the header when it leaves the page.
     constexpr size_t kSystemState = 0xfd, kPageCanClose = 0xe0, kPageActive = 0x70;
     constexpr const char* kSystemContent = "N_SystemChoice_00";
-
-    // A text object's text pane at +0x10 (MessageText_SetLabel).
-    constexpr size_t kHolderPane = 0x10;
 
     // The track list (Gm_MemoryList), right of the middle.
     constexpr float kListX = 250, kListY = 40;
@@ -102,7 +100,7 @@ namespace {
     int g_Changes = 0;              // changes through index 2 the module steered (2 to 2)
 
     struct Page {
-        u8* page = nullptr;         // the Gm_System object that shows the Jukebox
+        LayoutWrapper* page = nullptr;  // the Gm_System object that shows the Jukebox
         List list;
         Layout card, info, icon, mark, floating[kFloating], status;
         Text title, number, slash, total, name, about;
@@ -114,15 +112,19 @@ namespace {
     int g_Fade = 0;                 // 0..255, the alpha the page's layouts draw with
     u64 g_GamePad = 0;              // the buttons at the last tick, for the d-pad in the game
 
-    void SetLabel(u8* text, const char* label) {
+    u8* Navi() { return reinterpret_cast<u8*>(FindUi(kNaviUi)); }
+
+    // The header's texts: the game's text objects.
+    TextHolder* NaviText(u8* navi, size_t text) { return reinterpret_cast<TextHolder*>(navi + text); }
+
+    void SetLabel(TextHolder* text, const char* label) {
         Game::StrView view{label};
         Game::MessageText_SetLabel(text, &view);
     }
 
-    // The header's texts: the game's text objects, their text pane at +0x10.
-    void SetHeaderText(u8* holder, const std::string& text) {
+    void SetHeaderText(TextHolder* holder, const std::string& text) {
         AP::SetPaneText(holder, text);
-        QueueGlyphs(Field<u8*>(holder, kHolderPane));
+        QueueGlyphs(holder->box);
     }
 
     // 0 at 0, 1 at half, 0 at 1, repeating
@@ -198,7 +200,7 @@ namespace {
     // music plays.
     void Animate() {
         g_Frame++;
-        u8* header = FindUi(kNaviUi);
+        u8* header = Navi();
         u8 navi = header != nullptr ? Field<u8>(header, kNaviState) : 0;
         bool leaving = navi == kStateCloseOldUi || navi == kStateClose;
         g_Fade = std::clamp(g_Fade + (leaving ? -kFadeStep : kFadeStep), 0, 255);
@@ -208,10 +210,11 @@ namespace {
 
         MoveTo(g_Ui.icon.root, kIconX, kIconY + 6.0f * Triangle(static_cast<float>(g_Frame) / kBobFrames));
         // a two-line description lower, every frame: the layout's first update lays its alignment pane out again
-        MoveTo(g_Ui.about.box, 0, kInfoY - (strchr(Entry(g_Ui.list.at).info, '\n') != nullptr ? kInfoLower : 0));
+        float lower = strchr(Entry(g_Ui.list.at).info, '\n') != nullptr ? kInfoLower : 0;
+        if (g_Ui.about.box != nullptr) MoveTo(&g_Ui.about.box->pane, 0, kInfoY - lower);
         bool music = AP::Music::HasMusic();
         for (int i = 0; i < kFloating; i++) {
-            u8* note = g_Ui.floating[i].root;
+            Pane* note = g_Ui.floating[i].root;
             if (note == nullptr) continue;
             SetVisible(note, music);
             float t = static_cast<float>((g_Frame + i * kFloatFrames / kFloating) % kFloatFrames) / kFloatFrames;
@@ -226,8 +229,8 @@ namespace {
     }
 
     // The Jukebox in the Gm_System page: System's choices hidden, the layouts hung under the page.
-    void BuildPage(u8* page) {
-        u8* pageRoot = RootOf(page);
+    void BuildPage(LayoutWrapper* page) {
+        Pane* pageRoot = RootOf(page);
         if (pageRoot == nullptr) return;
         SetVisible(FindPane(pageRoot, kSystemContent), false);
         g_Ui.page = page;
@@ -246,41 +249,43 @@ namespace {
         }
 
         // the card, its icon replaced by the note
-        u8* card = g_Ui.card.root;
+        Pane* card = g_Ui.card.root;
         MoveTo(FindPane(card, "N_Collect_00"), kCardX, kCardY);
         MoveTo(FindPane(card, "T_Collect_00"), 0, kCardTextY);
         SetVisible(FindPane(card, "P_pict_00"), false);
         SetAlpha(FindPane(card, "W_window_00"), kCardPaper);
-        Bind(g_Ui.title, FindPane(card, "T_Collect_00"));
-        Bind(g_Ui.number, FindPane(card, "T_CollectNum_00"));
-        Bind(g_Ui.slash, FindPane(card, "T_CollectSlash_00"));
-        Bind(g_Ui.total, FindPane(card, "T_CollectMaxNum_00"));
+        Bind(g_Ui.title, FindText(card, "T_Collect_00"));
+        Bind(g_Ui.number, FindText(card, "T_CollectNum_00"));
+        Bind(g_Ui.slash, FindText(card, "T_CollectSlash_00"));
+        Bind(g_Ui.total, FindText(card, "T_CollectMaxNum_00"));
         SetText(g_Ui.slash, "/");
 
         // the notes
         for (Layout* note : {&g_Ui.icon, &g_Ui.mark, &g_Ui.floating[0], &g_Ui.floating[1], &g_Ui.floating[2]}) {
-            Bind(note->note, FindPane(note->root, "T_Operation_00"));
+            Bind(note->note, FindText(note->root, "T_Operation_00"));
             SetText(note->note, kNote);
         }
         ScaleTo(g_Ui.icon.root, kIconScale);
         ScaleTo(g_Ui.mark.root, kMarkScale);
 
         // the playback state, with room for its text (left empty if there is none)
-        u8* status = g_Ui.status.root;
+        Pane* status = g_Ui.status.root;
         SetVisible(FindPane(status, "W_window_00"), false);
         SetVisible(FindPane(status, "A_Collect_00"), false);
         MoveTo(FindPane(status, "N_Collect_00"), kCardX, kStatusY);
-        u8* statusText = FindPane(status, "T_Collect_00");
-        MoveTo(statusText, 0, 0);
-        ScaleTo(statusText, kStatusScale);
+        TextBox* statusText = FindText(status, "T_Collect_00");
+        if (statusText != nullptr) {
+            MoveTo(&statusText->pane, 0, 0);
+            ScaleTo(&statusText->pane, kStatusScale);
+        }
         if (Allocate(statusText, kStatusChars)) Bind(g_Ui.status.note, statusText);
 
         // the info texts
-        u8* info = g_Ui.info.root;
+        Pane* info = g_Ui.info.root;
         for (const char* hidden : kInfoHidden) SetVisible(FindPane(info, hidden), false);
         SetAlpha(FindPane(info, "N_Item_00"), 255);
-        Bind(g_Ui.name, FindPane(info, "T_Name_00"));
-        Bind(g_Ui.about, FindPane(info, "T_Info_00"));
+        Bind(g_Ui.name, FindText(info, "T_Name_00"));
+        Bind(g_Ui.about, FindText(info, "T_Info_00"));
 
         // the cursor on the chosen track (else the zone's own), a few rows from the top
         int at = EntryOf(AP::Music::Track());
@@ -377,7 +382,7 @@ HOOK_DEFINE_TRAMPOLINE(NaviCloseEnter) {
     static void Callback(u8* navi) {
         Orig(navi);
         // the header's names queued without an owner go before the header does
-        for (size_t text : {kNaviTitle, kNaviBack, kNaviNext}) Unqueue(Field<u8*>(navi + text, kHolderPane));
+        for (size_t text : {kNaviTitle, kNaviBack, kNaviNext}) Unqueue(NaviText(navi, text)->box);
         g_Jukebox = false;
         g_Pending = false;
         g_ChangeAhead = false;
@@ -390,19 +395,19 @@ HOOK_DEFINE_TRAMPOLINE(NaviSetTitles) {
         Orig(navi, index);
         if (InChamberDungeon()) return;
         if (index == kSystem && g_Jukebox) {
-            SetHeaderText(navi + kNaviTitle, "Jukebox");
-            SetLabel(navi + kNaviBack, "UI:SubScreenTitleSystem");
-            SetLabel(navi + kNaviNext, "UI:SubScreenTitleMap");
+            SetHeaderText(NaviText(navi, kNaviTitle), "Jukebox");
+            SetLabel(NaviText(navi, kNaviBack), "UI:SubScreenTitleSystem");
+            SetLabel(NaviText(navi, kNaviNext), "UI:SubScreenTitleMap");
         } else if (index == kSystem) {
-            SetHeaderText(navi + kNaviNext, "Jukebox");
+            SetHeaderText(NaviText(navi, kNaviNext), "Jukebox");
         } else if (index == kMap) {
-            SetHeaderText(navi + kNaviBack, "Jukebox");
+            SetHeaderText(NaviText(navi, kNaviBack), "Jukebox");
         }
     }
 };
 
 HOOK_DEFINE_TRAMPOLINE(SystemSetup) {
-    static void Callback(u8* page) {
+    static void Callback(LayoutWrapper* page) {
         Orig(page);
         if (!g_Jukebox) return;
         DropPage();
@@ -411,7 +416,7 @@ HOOK_DEFINE_TRAMPOLINE(SystemSetup) {
 };
 
 HOOK_DEFINE_TRAMPOLINE(SystemUpdate) {
-    static void Callback(u8* page) {
+    static void Callback(LayoutWrapper* page) {
         if (page != g_Ui.page) return Orig(page);
         Animate();
         // AP::Tick does not run while the menu is open: a choice applies here, and the track chosen on the page plays
@@ -428,7 +433,7 @@ HOOK_DEFINE_TRAMPOLINE(SystemUpdate) {
 };
 
 HOOK_DEFINE_TRAMPOLINE(PageDtor) {
-    static void Callback(u8* page) {
+    static void Callback(LayoutWrapper* page) {
         if (page == g_Ui.page) DropPage();
         Orig(page);
     }
@@ -463,7 +468,7 @@ namespace AP::JukeboxPane {
     // STATE's " pane=<0-3, - with no header> navi=<header state> jbox=<cursor>/<top>", while the game is paused.
     std::string StateField(bool paused) {
         std::string s = " pane=";
-        u8* navi = paused ? FindUi(kNaviUi) : nullptr;
+        u8* navi = paused ? Navi() : nullptr;
         if (navi == nullptr) return s + "- navi=- jbox=-";
         int index = Field<u8>(navi, kNaviCurrent);
         s += std::to_string(index == kSystem && g_Jukebox ? 3 : index);
@@ -474,7 +479,7 @@ namespace AP::JukeboxPane {
     }
 
     std::string NaviState() {
-        u8* navi = FindUi(kNaviUi);
+        u8* navi = Navi();
         return navi != nullptr ? std::to_string(Field<u8>(navi, kNaviState)) : "-";
     }
 

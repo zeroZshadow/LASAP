@@ -7,13 +7,13 @@
 #include <string>
 
 namespace AP::ListUi {
-    // A text box and the text object AP::SetPaneText fills it through (+0x10 the text pane).
+    // A text box and the text object AP::SetPaneText fills it through.
     struct Text {
-        u8* box = nullptr;
-        alignas(8) u8 holder[0x18] = {};
+        Game::Ui::TextBox* box = nullptr;
+        Game::Ui::TextHolder holder{};
         std::string value;          // the text it shows: set again only when it changes
     };
-    void Bind(Text& text, u8* box);
+    void Bind(Text& text, Game::Ui::TextBox* box);
     void SetText(Text& text, const std::string& value);
     // Whether the font has drawn the text's glyphs; the text's left and right edge as laid out (in the text box,
     // unscaled), false until then.
@@ -22,29 +22,29 @@ namespace AP::ListUi {
 
     // A layout of Game.arc built at runtime and hung under a page's root pane, so it draws with the page.
     struct Layout {
-        u8* wrapper = nullptr;
-        u8* root = nullptr;
+        Game::Ui::LayoutWrapper* wrapper = nullptr;
+        Game::Ui::Pane* root = nullptr;
         Text note;                  // the text of a one-text layout (Gm_SystemOpUnit)
     };
     // Builds the layout transparent (SetAlpha on its root fades it in).
-    bool Build(Layout& layout, const char* file, u8* page, u8* pageRoot);
+    bool Build(Layout& layout, const char* file, Game::Ui::LayoutWrapper* page, Game::Ui::Pane* pageRoot);
     void Drop(Layout& layout);
 
     // Gm_MemoryList: 7 rows, y 119 down by 48; the list's own panel P_pict_00 (420 by 470) behind them.
     constexpr int kRows = 7;
     constexpr float kRowTop = 119, kRowStep = 48;
     struct Row {
-        u8* part = nullptr;         // the row's Gm_MemoryListItem
-        u8* add0 = nullptr;         // its highlight windows W_Add_00/01
-        u8* add1 = nullptr;
+        Game::Ui::Pane* part = nullptr;  // the row's Gm_MemoryListItem
+        Game::Ui::Pane* add0 = nullptr;  // its highlight windows W_Add_00/01
+        Game::Ui::Pane* add1 = nullptr;
         Text text;
     };
     struct List {
         Layout layout;
         Row rows[kRows];
-        u8* cursor = nullptr;
-        u8* scroll = nullptr;       // the scroll bar
-        u8* handle = nullptr;       // its handle
+        Game::Ui::Pane* cursor = nullptr;
+        Game::Ui::Pane* scroll = nullptr;  // the scroll bar
+        Game::Ui::Pane* handle = nullptr;  // its handle
         int count = 0;              // entries
         int at = 0;                 // the entry under the cursor
         int top = 0;                // the entry in the first row
@@ -52,7 +52,7 @@ namespace AP::ListUi {
         int heldFrames = 0;         // frames Up or Down has been held
     };
     // Builds the list at (x, y) on the page, without the Memories' marks and count, its rows empty.
-    bool BuildList(List& list, u8* page, u8* pageRoot, float x, float y);
+    bool BuildList(List& list, Game::Ui::LayoutWrapper* page, Game::Ui::Pane* pageRoot, float x, float y);
     void DropList(List& list);
     // The entries: the cursor on `at`, a few rows from the top when they scroll.
     void SetEntries(List& list, int count, int at);

@@ -3,7 +3,6 @@
 // a layout of its own and placed on the screen every frame. All on the game thread.
 #include "AP/ap.hpp"
 #include "Game/framework.hpp"
-#include "Game/mem.hpp"
 #include "Game/ui.hpp"
 #include <algorithm>
 #include <cmath>
@@ -13,13 +12,11 @@
 
 namespace {
     using namespace Game::Ui;
-    using Game::Field;
 
     // Priority 1: over the HUD (0), under the menus, the map, fades and the message window. The text's extent is
     // returned through x8. Its text is set through the game's message pipeline (AP::SetPaneText) and queued for its
     // glyphs here (Game/ui.hpp).
     constexpr int kPriority = 1;
-    constexpr size_t kHolderPane = 0x10;
     // Gm_HUDInteract: a group (alpha 0 in the file: an animation fades the prompt in, scale 2/3) holding a window, its
     // text and the button's picture, the window and the text placed from their left edge. The tag shows the group,
     // hides the picture, scales the root, centres the text on the root and stretches the window around it.
@@ -42,16 +39,16 @@ namespace {
     constexpr float kHalfWidth = 640, kHalfHeight = 360, kMargin = 120, kNear = 0.01f;
 
     struct Tag {
-        u8* wrapper = nullptr;
-        u8* layout = nullptr;
-        u8* root = nullptr;
-        u8* text = nullptr;
-        u8* window = nullptr;
+        LayoutWrapper* wrapper = nullptr;
+        Game::Ui::Layout* layout = nullptr;
+        Pane* root = nullptr;
+        TextBox* text = nullptr;
+        Pane* window = nullptr;
         std::string name;
         bool drawn = false;
         bool measured = false;  // laid out with the name's glyphs drawn
         float extent[4] = {};   // the text's extent it was laid out with (left, top, right, bottom)
-        alignas(8) u8 holder[0x18] = {};  // a text object for AP::SetPaneText: +0x10 the text pane
+        TextHolder holder{};    // the text object AP::SetPaneText fills the text through
     };
     Tag g_Tags[AP::GhostNet::SLOTS];
 
@@ -66,10 +63,10 @@ namespace {
         tag.wrapper = BuildLayout(kLayoutFile, kPriority);
         tag.layout = LayoutOf(tag.wrapper);
         tag.root = RootOf(tag.wrapper);
-        tag.text = FindPane(tag.root, kTextPane);
+        tag.text = FindText(tag.root, kTextPane);
         tag.window = FindPane(tag.root, kWindowPane);
-        u8* group = FindPane(tag.root, kGroupPane);
-        u8* picture = FindPane(tag.root, kPicturePane);
+        Pane* group = FindPane(tag.root, kGroupPane);
+        Pane* picture = FindPane(tag.root, kPicturePane);
         if (tag.text == nullptr || tag.window == nullptr || group == nullptr || picture == nullptr ||
             !Allocate(tag.text, kTextChars)) {
             Drop(tag);
@@ -80,13 +77,13 @@ namespace {
         ScaleTo(group, 1);
         ScaleTo(tag.window, 1);
         SetVisible(picture, false);
-        Field<float>(tag.text, kPaneWidth) = kTextWidth;
-        SetAlpha(tag.text, g_Alpha);
+        tag.text->pane.width = kTextWidth;
+        SetAlpha(&tag.text->pane, g_Alpha);
         SetAlpha(tag.window, g_BackAlpha);
         ScaleTo(tag.root, g_Scale);
-        Field<u8*>(tag.holder, kHolderPane) = tag.text;
-        Field<u8>(tag.layout, kLayoutCalculate) = 0;
-        Field<u8>(tag.layout, kLayoutDraw) = 0;
+        tag.holder.box = tag.text;
+        tag.layout->calculate = 0;
+        tag.layout->draw = 0;
         return true;
     }
 
@@ -104,7 +101,7 @@ namespace {
     }
 
     // Centred on the root: the text's middle at x 0, the window's bottom at g_Raise, the window around the text.
-    void Layout(Tag& tag) {
+    void LayOut(Tag& tag) {
         Rect extent = TextExtent(tag.text);
         tag.extent[0] = extent.left;
         tag.extent[1] = extent.top;
@@ -113,31 +110,31 @@ namespace {
         if (std::isfinite(extent.left + extent.right + extent.top + extent.bottom)) {
             float width = std::fabs(extent.right - extent.left), height = std::fabs(extent.top - extent.bottom);
             float middle = g_Raise + g_PadY + height / 2;
-            Field<float>(tag.text, kPaneX) = -(extent.left + extent.right) / 2;
-            Field<float>(tag.text, kPaneY) = middle - (extent.top + extent.bottom) / 2 + kTextLift * height;
-            Field<float>(tag.window, kPaneX) = -width / 2 - g_PadX;
-            Field<float>(tag.window, kPaneY) = middle;
-            Field<float>(tag.window, kPaneWidth) = width + 2 * g_PadX;
-            Field<float>(tag.window, kPaneHeight) = height + 2 * g_PadY;
+            tag.text->pane.x = -(extent.left + extent.right) / 2;
+            tag.text->pane.y = middle - (extent.top + extent.bottom) / 2 + kTextLift * height;
+            tag.window->x = -width / 2 - g_PadX;
+            tag.window->y = middle;
+            tag.window->width = width + 2 * g_PadX;
+            tag.window->height = height + 2 * g_PadY;
         }
-        Field<u8>(tag.text, kPaneFlags) |= kPaneDirty;
-        Field<u8>(tag.window, kPaneFlags) |= kPaneDirty;
+        tag.text->pane.flags |= kPaneDirty;
+        tag.window->flags |= kPaneDirty;
     }
 
     void SetName(Tag& tag, const std::string& name) {
-        AP::SetPaneText(tag.holder, Clip(name));
+        AP::SetPaneText(&tag.holder, Clip(name));
         tag.name = name;
         QueueGlyphs(tag.text);
         tag.measured = false;
-        Layout(tag);
+        LayOut(tag);
     }
 
     // A world position on the screen in layout coordinates, or false when it is behind the camera or off screen.
     bool Project(const Game::Vec3& at, float& x, float& y) {
-        const u8* camera = Game::GetCamera();
+        const Game::Camera* camera = Game::GetCamera();
         if (camera == nullptr) return false;
-        const float* view = &Field<float>(camera, Game::kCameraView);
-        const float* proj = &Field<float>(camera, Game::kCameraProjection);
+        const float* view = camera->view;
+        const float* proj = camera->projection;
         float v[4];
         for (int i = 0; i < 4; i++) v[i] = at.x * view[i] + at.y * view[4 + i] + at.z * view[8 + i] + view[12 + i];
         v[3] = at.x * view[3] + at.y * view[7] + at.z * view[11] + 1;
@@ -151,8 +148,8 @@ namespace {
 
     void SetDrawn(Tag& tag, bool drawn) {
         if (tag.layout == nullptr || tag.drawn == drawn) return;
-        Field<u8>(tag.layout, kLayoutCalculate) = drawn;
-        Field<u8>(tag.layout, kLayoutDraw) = drawn;
+        tag.layout->calculate = drawn;
+        tag.layout->draw = drawn;
         tag.drawn = drawn;
     }
 }
@@ -165,7 +162,7 @@ namespace AP::NameTag {
         if (name != tag.name) SetName(tag, name);
         // again once the font has drawn the name's glyphs: the extent can change with them
         if (!tag.measured && GlyphsDrawn(tag.text)) {
-            Layout(tag);
+            LayOut(tag);
             tag.measured = true;
         }
         float x, y;

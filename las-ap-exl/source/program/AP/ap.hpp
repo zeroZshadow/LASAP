@@ -6,6 +6,8 @@
 #include <string_view>
 #include <vector>
 
+namespace Game::Ui { struct TextHolder; }
+
 namespace AP {
     // Items.gsheet itemID of the placeholder that every randomized location gives.
     // Its AddItemID index is the location's local id.
@@ -125,9 +127,9 @@ namespace AP {
     // The d-pad's toast: a track's name, or the ghost names turned on or off. It takes the place of the one showing or
     // waiting, so skipping through tracks shows the last one, not a queue.
     void ShowMusicToast(const std::string& text);
-    // Sets a text pane to a UTF-8 text through the game's message pipeline, as the game sets a pane to a message: the
-    // holder's +0x10 is the pane, as in the game's text objects.
-    void SetPaneText(void* holder, const std::string& text);
+    // Sets a text box to a UTF-8 text through the game's message pipeline, as the game sets a text object to a
+    // message.
+    void SetPaneText(Game::Ui::TextHolder* holder, const std::string& text);
     // Shows the next toast once the popup is free; only in a level.
     void TickToasts(bool inLevel);
     // No toast showing or waiting.

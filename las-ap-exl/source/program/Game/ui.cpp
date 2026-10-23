@@ -1,26 +1,16 @@
 #include "Game/ui.hpp"
 #include "Game/mem.hpp"
-#include "Game/stl.hpp"
 #include "Game/sym.hpp"
 #include <algorithm>
 
 namespace Game::Ui {
     namespace {
         constexpr size_t kFindPane = 0x60;
-        // The UI manager's UIs: a list at +0x950, the UI at node +0x10, its id from virtual +0x60.
-        constexpr size_t kUiList = 0x950, kNodeUi = 0x10, kUiId = 0x60;
-        constexpr size_t kUiGameArchive = 0x88;
-        // The glyph queues: two std::lists at manager +0xab40 (+0x18 each: end node {last, first}, size), nodes
-        // {previous, next, owner, count, text box, set}.
-        constexpr size_t kUiGlyphQueues = 0xab40, kQueueStride = 0x18, kQueueSize = 0x10, kNodeCount = 0x18,
-                         kNodeTextBox = 0x20;
+        // Text box virtuals: AllocateStringBuffer (box, gfx device, length), the text's extent.
+        constexpr size_t kTextAllocate = 0xe8, kTextExtent = 0x120;
         constexpr int kArchiveSet = 0;  // Game.arc
-        // Text box: +0x190 set once the font has drawn its glyphs; virtual +0x120 the text's extent;
-        // AllocateStringBuffer (virtual +0xe8: box, gfx device, length), the capacity at +0x110 (with the terminator).
-        constexpr size_t kTextGlyphsReady = 0x190, kTextRect = 0x120, kTextAllocate = 0xe8, kTextCapacity = 0x110;
-        constexpr size_t kWrapperSize = 0x78, kWrapperLayout = 0x18, kLayoutRoot = 0x18, kWrapperDelete = 0x18;
 
-        u8* Manager() { return UiManager.Ptr(); }
+        Manager& TheManager() { return *Game::UiManager; }
 
         // The gfx device the UI manager builds layouts with: the graphics object's +8.
         void* GfxDevice() {
@@ -30,44 +20,46 @@ namespace Game::Ui {
         }
     }
 
-    void SetVisible(u8* pane, bool visible) {
+    void SetVisible(Pane* pane, bool visible) {
         if (pane == nullptr) return;
-        Field<u8>(pane, kPaneFlags) = (Field<u8>(pane, kPaneFlags) & ~kPaneVisible) | (visible ? kPaneVisible : 0);
+        pane->flags = (pane->flags & ~kPaneVisible) | (visible ? kPaneVisible : 0);
     }
 
-    void SetAlpha(u8* pane, int alpha) {
+    void SetAlpha(Pane* pane, int alpha) {
         if (pane == nullptr) return;
         u8 a = static_cast<u8>(std::clamp(alpha, 0, 255));
-        Field<u8>(pane, kPaneAlpha) = a;
-        Field<u8>(pane, kPaneGlobalAlpha) = a;
+        pane->alpha = a;
+        pane->globalAlpha = a;
     }
 
-    void MoveTo(u8* pane, float x, float y) {
+    void MoveTo(Pane* pane, float x, float y) {
         if (pane == nullptr) return;
-        Field<float>(pane, kPaneX) = x;
-        Field<float>(pane, kPaneY) = y;
-        Field<u8>(pane, kPaneFlags) |= kPaneDirty;
+        pane->x = x;
+        pane->y = y;
+        pane->flags |= kPaneDirty;
     }
 
-    void ScaleTo(u8* pane, float x, float y) {
+    void ScaleTo(Pane* pane, float x, float y) {
         if (pane == nullptr) return;
-        Field<float>(pane, kPaneScaleX) = x;
-        Field<float>(pane, kPaneScaleY) = y;
-        Field<u8>(pane, kPaneFlags) |= kPaneDirty;
+        pane->scaleX = x;
+        pane->scaleY = y;
+        pane->flags |= kPaneDirty;
     }
 
-    void ScaleTo(u8* pane, float scale) { ScaleTo(pane, scale, scale); }
+    void ScaleTo(Pane* pane, float scale) { ScaleTo(pane, scale, scale); }
 
-    u8* FindPane(u8* root, const char* name) {
+    Pane* FindPane(Pane* root, const char* name) {
         if (root == nullptr) return nullptr;
-        return CallVirtual<u8*(const char*, bool)>(root, kFindPane, name, true);
+        return CallVirtual<Pane*(const char*, bool)>(root, kFindPane, name, true);
     }
 
-    u8* FindUi(int id) {
-        u8* end = Manager() + kUiList;
-        for (u8* node = Field<u8*>(end, 8); node != end; node = Field<u8*>(node, 8)) {
-            u8* ui = Field<u8*>(node, kNodeUi);
-            if (ui != nullptr && CallVirtual<int()>(ui, kUiId) == id) return ui;
+    TextBox* FindText(Pane* root, const char* name) { return reinterpret_cast<TextBox*>(FindPane(root, name)); }
+
+    LayoutWrapper* FindUi(int id) {
+        ListNode* end = &TheManager().uis.end;
+        for (ListNode* node = end->next; node != end; node = node->next) {
+            auto* ui = Field<LayoutWrapper*>(node, sizeof(ListNode));
+            if (ui != nullptr && CallVirtual<int()>(ui, LayoutWrapperVirtual::kUiId) == id) return ui;
         }
         return nullptr;
     }
@@ -77,22 +69,21 @@ namespace Game::Ui {
         Sound_Play(&view, nullptr, 1.0f, 1.0f);
     }
 
-    void QueueGlyphs(u8* box) {
+    void QueueGlyphs(TextBox* box) {
         GlyphRequest request{nullptr, nullptr, box};
-        UiManager_QueueGlyphs(Manager(), &request, kArchiveSet);
+        UiManager_QueueGlyphs(&TheManager(), &request, kArchiveSet);
     }
 
-    void Unqueue(u8* box) {
+    void Unqueue(TextBox* box) {
         if (box == nullptr) return;
-        for (int i = 0; i < 2; i++) {
-            u8* end = Manager() + kUiGlyphQueues + i * kQueueStride;
-            for (u8* node = Field<u8*>(end, 8); node != end;) {
-                u8* next = Field<u8*>(node, 8);
-                if (Field<u8*>(node, kNodeTextBox) == box && Field<void*>(node, kNodeCount) == nullptr) {
-                    u8* previous = Field<u8*>(node, 0);
-                    Field<u8*>(previous, 8) = next;
-                    Field<u8*>(next, 0) = previous;
-                    Field<u64>(end, kQueueSize)--;
+        for (List& queue : TheManager().glyphQueues) {
+            for (ListNode* node = queue.end.next; node != &queue.end;) {
+                ListNode* next = node->next;
+                auto* glyphs = reinterpret_cast<GlyphNode*>(node);
+                if (glyphs->textBox == box && glyphs->count == nullptr) {
+                    node->previous->next = next;
+                    next->previous = node->previous;
+                    queue.size--;
                     operator_delete(node);
                 }
                 node = next;
@@ -100,35 +91,45 @@ namespace Game::Ui {
         }
     }
 
-    bool GlyphsDrawn(const u8* box) { return box != nullptr && Field<u8>(box, kTextGlyphsReady) != 0; }
+    bool GlyphsDrawn(const TextBox* box) { return box != nullptr && box->glyphsReady != 0; }
 
-    bool Allocate(u8* box, u16 chars) {
+    bool Allocate(TextBox* box, u16 chars) {
         if (box == nullptr) return false;
-        if (Field<u16>(box, kTextCapacity) > chars) return true;
+        if (box->capacity > chars) return true;
         void* device = GfxDevice();
         if (device == nullptr) return false;
         CallVirtual<void(void*, u16)>(box, kTextAllocate, device, chars);
-        return Field<u16>(box, kTextCapacity) > chars;
+        return box->capacity > chars;
     }
 
-    Rect TextExtent(u8* box) { return CallVirtual<Rect()>(box, kTextRect); }
+    Rect TextExtent(TextBox* box) { return CallVirtual<Rect()>(box, kTextExtent); }
 
-    bool GameArchiveLoaded() { return Field<void*>(Manager(), kUiGameArchive) != nullptr; }
+    bool GameArchiveLoaded() { return TheManager().gameArchive != nullptr; }
 
-    u8* BuildLayout(const char* file, int priority) {
-        u8* wrapper = static_cast<u8*>(operator_new(kWrapperSize));
+    LayoutWrapper* BuildLayout(const char* file, int priority) {
+        auto* wrapper = static_cast<LayoutWrapper*>(operator_new(sizeof(LayoutWrapper)));
         StrView view{file};
         LayoutWrapper_Build(wrapper, &view, priority, kArchiveSet, true);
         return wrapper;
     }
 
-    void Attach(u8* wrapper, u8* page, u8* pageRoot) { LayoutWrapper_AttachTo(wrapper, page, pageRoot); }
-
-    void Delete(u8* wrapper) {
-        if (wrapper != nullptr) CallVirtual<void()>(wrapper, kWrapperDelete);
+    void Attach(LayoutWrapper* wrapper, LayoutWrapper* page, Pane* pageRoot) {
+        LayoutWrapper_AttachTo(wrapper, page, pageRoot);
     }
 
-    u8* LayoutOf(u8* wrapper) { return At<u8*>(wrapper, kWrapperLayout); }
+    void Delete(LayoutWrapper* wrapper) {
+        if (wrapper != nullptr) CallVirtual<void()>(wrapper, LayoutWrapperVirtual::kDeletingDtor);
+    }
 
-    u8* RootOf(u8* wrapper) { return At<u8*>(LayoutOf(wrapper), kLayoutRoot); }
+    Layout* LayoutOf(LayoutWrapper* wrapper) { return wrapper != nullptr ? wrapper->layout : nullptr; }
+
+    Pane* RootOf(LayoutWrapper* wrapper) {
+        Layout* layout = LayoutOf(wrapper);
+        return layout != nullptr ? layout->root : nullptr;
+    }
+
+    Animation GetAnimation(LayoutWrapper* wrapper, const char* name) {
+        StrView view{name};
+        return CallVirtual<Animation(const StrView*)>(wrapper, LayoutWrapperVirtual::kAnimation, &view);
+    }
 }

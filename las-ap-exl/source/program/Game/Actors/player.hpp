@@ -1,27 +1,38 @@
 #pragma once
 #include "lib.hpp"
 #include "Game/actor.hpp"
+#include <cstddef>
 
 namespace Game::Actors {
-    class CharCtrlComp : public Game::RootComp  {
-        public:
-            unsigned char padding_180[0x180 - 0xe1];
-            Game::Vec3 vecA;
-            Game::Vec3 vel;
-            Game::Vec3 gravity;
-            Game::Vec3 vecC;
+    // Link's root component (PlayerCollision).
+    struct CharCtrlComp : RootComp {
+        u8 pad_e8[0x180 - sizeof(RootComp)];
+        Vec3 vecA;                 // 0x180
+        Vec3 vel;
+        Vec3 gravity;
+        Vec3 vecC;
     };
 
-    class Player {//} : public Game::Actor {
-        public:
-
-            unsigned char padding_2a8[0x2a8];// - 0x290];
-            Game::RootComp* skeletalModelComp; // 0x2a8
-            unsigned char padding_2d8[0x28];
-            Game::Actors::CharCtrlComp* playerCollision; // 0x2d8
-            unsigned char padding_4ed[0x20d];
-            uint8_t state; // 0x4ed
-            unsigned char padding_1b40[0x1652];
-            Game::Coords respawnCoords; // 0x1B40
+    // Link's actor (Framework::player); its first 0x2a8 bytes are the actor's.
+    struct Player {
+        u8 pad_0[0x2a8];
+        RootComp* modelComp;       // 0x2a8: Link's model component, a shared_ptr
+        void* modelCompCtrl;       // 0x2b0
+        u8 pad_2b8[0x10];
+        u8* materialAnim;          // 0x2c8: the material animation component (the tunic's colour on slot 4)
+        u8 pad_2d0[0x8];
+        CharCtrlComp* playerCollision;  // 0x2d8: his position
+        u8 pad_2e0[0x4ed - 0x2e0];
+        u8 state;                  // 0x4ed: 0 free (no talk, event or cutscene)
+        u8 pad_4ee[0x1568 - 0x4ee];
+        u8* animCtrl;              // 0x1568: the animation controller
+        u8 pad_1570[0x19b0 - 0x1570];
+        void* carried;             // 0x19b0: set while Link holds something over his head
+        u8 pad_19b8[0x1b40 - 0x19b8];
+        Coords respawnCoords;      // 0x1b40
     };
+    static_assert(offsetof(Player, modelComp) == 0x2a8 && offsetof(Player, materialAnim) == 0x2c8);
+    static_assert(offsetof(Player, playerCollision) == 0x2d8 && offsetof(Player, state) == 0x4ed);
+    static_assert(offsetof(Player, animCtrl) == 0x1568 && offsetof(Player, carried) == 0x19b0);
+    static_assert(offsetof(Player, respawnCoords) == 0x1b40);
 }

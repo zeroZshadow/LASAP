@@ -16,6 +16,7 @@
 namespace {
     using namespace AP::ListUi;
     using namespace Game::Ui;
+    using AP::ListUi::Layout;
     using Game::Field;
 
     constexpr int kPriority = 10;
@@ -59,6 +60,8 @@ namespace {
     const Guide* g_Guide = nullptr;  // the guide Navi_SetGuide sets now
     bool g_GuideShown = false;       // the guide shows a source's guide
 
+    u8* Navi() { return reinterpret_cast<u8*>(FindUi(kNaviUi)); }
+
     // The next GuideSet loads every caption again: the sources' guides and the map's share kinds.
     void ForgetGuideKinds(u8* navi) {
         for (int slot = 0; slot < kGuideKindSlots; slot++) Field<u32>(navi + kNaviGuide, kGuideKinds + slot * 4) = ~0u;
@@ -70,7 +73,7 @@ namespace {
             slot = navi + kGuideSwapSlot;
         }
         u8* object = Game::CallVirtual<u8*()>(slot, kGuideSlotObject);
-        SetVisible(object != nullptr ? Field<u8*>(object, 0x18) : nullptr, false);
+        SetVisible(object != nullptr ? Field<Pane*>(object, 0x18) : nullptr, false);
     }
 }
 
@@ -104,15 +107,15 @@ HOOK_DEFINE_TRAMPOLINE(NaviSetGuide) {
 };
 
 namespace AP::ListUi {
-    void Bind(Text& text, u8* box) {
+    void Bind(Text& text, TextBox* box) {
         text.box = box;
-        Field<u8*>(text.holder, 0x10) = box;
+        text.holder.box = box;
     }
 
     void SetText(Text& text, const std::string& value) {
         if (text.box == nullptr || (value == text.value && !value.empty())) return;
         text.value = value;
-        AP::SetPaneText(text.holder, value);
+        AP::SetPaneText(&text.holder, value);
         QueueGlyphs(text.box);
     }
 
@@ -127,7 +130,7 @@ namespace AP::ListUi {
         return true;
     }
 
-    bool Build(Layout& layout, const char* file, u8* page, u8* pageRoot) {
+    bool Build(Layout& layout, const char* file, LayoutWrapper* page, Pane* pageRoot) {
         layout.wrapper = BuildLayout(file, kPriority);
         layout.root = RootOf(layout.wrapper);
         if (layout.root == nullptr) {
@@ -135,7 +138,7 @@ namespace AP::ListUi {
             return false;
         }
         Attach(layout.wrapper, page, pageRoot);
-        Field<u8>(layout.root, kPaneFlags) |= kPaneInfluencedAlpha;
+        layout.root->flags |= kPaneInfluencedAlpha;
         SetAlpha(layout.root, 0);
         return true;
     }
@@ -146,14 +149,14 @@ namespace AP::ListUi {
         layout = Layout{};
     }
 
-    bool BuildList(List& list, u8* page, u8* pageRoot, float x, float y) {
+    bool BuildList(List& list, LayoutWrapper* page, Pane* pageRoot, float x, float y) {
         if (!Build(list.layout, kListLayout, page, pageRoot)) return false;
-        u8* root = list.layout.root;
+        Pane* root = list.layout.root;
         MoveTo(root, x, y);
         SetVisible(FindPane(root, "N_Panel_00"), false);
         for (const char* name : kBlankRows) {
-            u8* blank = FindPane(root, name);
-            if (blank != nullptr) Field<u8>(blank, kPaneFlags) |= kPaneInfluencedAlpha;
+            Pane* blank = FindPane(root, name);
+            if (blank != nullptr) blank->flags |= kPaneInfluencedAlpha;
             SetAlpha(blank, 0);
         }
         list.cursor = FindPane(root, "L_ListCursor_00");
@@ -166,7 +169,7 @@ namespace AP::ListUi {
             row.part = FindPane(root, name);
             row.add0 = FindPane(row.part, "W_Add_00");
             row.add1 = FindPane(row.part, "W_Add_01");
-            Bind(row.text, FindPane(row.part, "T_Item_00"));
+            Bind(row.text, FindText(row.part, "T_Item_00"));
             SetAlpha(FindPane(row.part, "A_Item_00"), 255);
             SetAlpha(row.add0, 0);
             SetAlpha(row.add1, 0);
@@ -233,7 +236,7 @@ namespace AP::ListUi {
     void AddGuideSource(GuideSource source) { g_GuideSources.push_back(source); }
 
     void RefreshGuide(u32 index) {
-        u8* navi = FindUi(kNaviUi);
+        u8* navi = Navi();
         if (navi != nullptr) Game::Navi_SetGuide(navi, index);
     }
 

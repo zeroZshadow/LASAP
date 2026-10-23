@@ -10,6 +10,7 @@
 // comes back where the zone's music would.
 #include "AP/ap.hpp"
 #include "AP/ap_tracks.hpp"
+#include "Game/audio.hpp"
 #include "Game/framework.hpp"
 #include "Game/sym.hpp"
 #include "Game/time.hpp"
@@ -23,16 +24,17 @@
 
 namespace {
     using Game::StrView;
+    using Game::Audio::BgmInstance;
+    using Game::Audio::BgmManager;
+    using Game::Audio::Sound;
 
-    // The BGM manager (game 1.0.0): a static of the game, made on its first use (guard bit 0 set then).
-    // BgmManager_Play(f32 volume, manager*, StringView* name, bool, bool, bool force) returns the new instance, or
-    // null for an unknown name or a track that plays already. A new instance starts its stream from the beginning,
-    // intro included. Instances: +0x10 the name (libc++ std::string), +0xf0 kind (1: zone and event BGM, which the
-    // zone update fades out when the zone's track changes), +0x104 the frames it fades in over once it starts. The
-    // manager: +0x6268 the instances about to start, +0x6280 those that play (begin, end), +0x9250 the zone's track
-    // (char[64], length +0x9290). A zone change (the zone update) fades the other kind 1 instances out over 90 frames
-    // and the new track in over 150 (none right after a level load); PlayZoneBgm fades out the same but starts its
-    // track at full volume, so a change made here sets the fade in itself.
+    // The BGM manager (game 1.0.0, Game/audio.hpp): a static of the game, made on its first use (guard bit 0 set
+    // then). BgmManager_Play(f32 volume, manager*, StringView* name, bool, bool, bool force) returns the new instance,
+    // or null for an unknown name or a track that plays already. A new instance starts its stream from the beginning,
+    // intro included. Kind 1 instances (zone and event BGM) are those the zone update fades out when the zone's track
+    // changes. A zone change (the zone update) fades the other kind 1 instances out over 90 frames and the new track
+    // in over 150 (none right after a level load); PlayZoneBgm fades out the same but starts its track at full
+    // volume, so a change made here sets the fade in itself.
     // PlayZoneBgm(bool fadeOthers): plays the zone's track (+0x9250) and, when it starts, fades out the other kind 1
     // instances; while a Guardian Acorn's or Piece of Power's music plays it starts the track without fading.
     // BgmTable_Find(table, const char* name): the track's id, -1 for an unknown name; the table is a static (guard
@@ -43,13 +45,7 @@ namespace {
     // follows: the washed-up sword's (SinkingSword.bfevfl) and the new game's wake-up (PlayerStart.bfevfl).
     constexpr uintptr_t kEventPlayCall = 0x805bc4;
     constexpr const char* kZoneStandIns[] = {"BGM_FIELD_NORMAL_INTRO", "BGM_HOUSE_FIRST"};
-    // The manager's instances about to start (+0x6268, begin and end: a track whose stream is still being prepared,
-    // which no fade or stop reaches yet) and those that play (+0x6280).
-    constexpr size_t kStarting = 0x6268, kActive = 0x6280, kZoneTrack = 0x9250, kZoneTrackLen = 0x9290;
-    // Instance: name, kind, fade-in frames, the sound (+0x8). Sound: its volume's fade (+0x140 the volume, +0x144 the
-    // target, frames, frames gone), set by Sound_SetVolume(sound, frames, volume); the pause menu sets every BGM's
-    // target to 0.2, and 1 again as it closes.
-    constexpr size_t kInstName = 0x10, kInstKind = 0xf0, kInstFadeIn = 0x104, kInstSound = 0x8, kSoundTarget = 0x144;
+    // The pause menu sets every BGM's volume target to 0.2, and 1 again as it closes.
     constexpr u32 kFadeFrames = 90, kFadeInFrames = 150;  // the zone update's
     constexpr int kLoudFrames = 8;  // as the pause menu sets the volume back
     // Item fanfares (DESIGN.md, Instant pickups). ItemGet_PlayFanfare(u8 item id) plays the item's Items.gsheet jingle,
@@ -70,24 +66,24 @@ namespace {
     int g_TrackIndex = -1;
     bool g_Pending = false;
     // How long the chosen track has played (Tick, playback below).
-    const u8* g_Instance = nullptr;  // the chosen track's instance as last seen playing
+    const BgmInstance* g_Instance = nullptr;  // the chosen track's instance as last seen playing
     u64 g_PlayedMs = 0, g_LastMs = 0;
     bool g_Ended = false;            // the chosen track (one that does not loop) ended while the player was free
-    const u8* g_Started = nullptr;   // the instance the last change started (compared, read only while it plays)
+    const BgmInstance* g_Started = nullptr;  // the instance the last change started (read only while it plays)
     // The track chosen before the last change, stopped once the change applies.
     std::string g_Previous;
     // The jingle the last Fanfare started (named while its ItemGet_PlayFanfare call runs), stopped by the next.
     bool g_FanfareCall = false;
     std::string g_Fanfare;
 
-    u8* Manager() {
+    BgmManager* Manager() {
         if ((*Game::BgmManager_guard & 1) == 0) return nullptr;
         return Game::BgmManager.Ptr();
     }
 
-    std::string ZoneTrack(const u8* manager) {
-        size_t len = *reinterpret_cast<const size_t*>(manager + kZoneTrackLen);
-        return std::string(reinterpret_cast<const char*>(manager + kZoneTrack), len < 64 ? len : 0);
+    std::string ZoneTrack(const BgmManager* manager) {
+        size_t len = manager->zoneTrackLength;
+        return std::string(manager->zoneTrack, len < sizeof(manager->zoneTrack) ? len : 0);
     }
 
     bool KnownTrack(const char* name) {
@@ -130,21 +126,13 @@ namespace {
         return true;
     }
 
-    // A libc++ std::string in the game's memory: its characters and length, without a copy.
-    std::string_view GameString(const u8* s) {
-        if ((s[0] & 1) == 0) return std::string_view(reinterpret_cast<const char*>(s + 1), s[0] >> 1);
-        return std::string_view(*reinterpret_cast<const char* const*>(s + 0x10), *reinterpret_cast<const size_t*>(s + 8));
-    }
-
     using Game::NowMs;
 
     // Zone or event music (kind 1) other than the chosen track plays: a boss's, an event's.
-    bool OtherMusic(const u8* manager) {
-        u8* const* it = *reinterpret_cast<u8* const* const*>(manager + kActive);
-        u8* const* end = *reinterpret_cast<u8* const* const*>(manager + kActive + 8);
-        for (; it != end; it++) {
-            if ((*it)[kInstKind] != 1) continue;
-            if (GameString(*it + kInstName) != std::string_view(g_Track, g_TrackLen)) return true;
+    bool OtherMusic(const BgmManager* manager) {
+        for (const BgmInstance* instance : manager->playing) {
+            if (instance->kind != Game::Audio::kZoneMusic) continue;
+            if (instance->name.View() != std::string_view(g_Track, g_TrackLen)) return true;
         }
         return false;
     }
@@ -190,12 +178,10 @@ namespace {
     }
 
     // The chosen track's instance among those that play, or null.
-    const u8* PlayingInstance(const u8* manager) {
+    BgmInstance* PlayingInstance(const BgmManager* manager) {
         if (g_TrackLen == 0) return nullptr;
-        u8* const* it = *reinterpret_cast<u8* const* const*>(manager + kActive);
-        u8* const* end = *reinterpret_cast<u8* const* const*>(manager + kActive + 8);
-        for (; it != end; it++) {
-            if (GameString(*it + kInstName) == std::string_view(g_Track, g_TrackLen)) return *it;
+        for (BgmInstance* instance : manager->playing) {
+            if (instance->name.View() == std::string_view(g_Track, g_TrackLen)) return instance;
         }
         return nullptr;
     }
@@ -217,12 +203,11 @@ namespace {
     // level (a 2D room and back) hold it, free the player for a frame and then ask for the zone's music: the player
     // counts as free again after kHeldFreeFrames frames in a row.
     // BgmManager_StopAll(u32 frames), the zone music's fade (void: the kind 1 instances over 90 frames),
-    // Sound_Stop(sound, u32 frames); an instance's fade-out frames at +0x58.
-    constexpr size_t kInstFadeOut = 0x58;
+    // Sound_Stop(sound, u32 frames); a stop sets the instance's fade-out frames.
     constexpr u32 kHeldFadeFrames = 30;
     constexpr int kHeldFreeFrames = 10;
     int g_FreeFrames = 0;               // ticks in a row with the player free
-    const u8* g_HoldSound = nullptr;    // the chosen track's sound while a stop of the game's runs
+    const Sound* g_HoldSound = nullptr; // the chosen track's sound while a stop of the game's runs
     bool g_HoldSkipped = false;         // that stop reached it
     bool g_Held = false;                // a stop left it playing: what follows decides
     bool g_Carried = false;             // held into a level load: it plays on unless another track starts
@@ -231,11 +216,11 @@ namespace {
     // Runs a stop of the game's with the chosen track left playing.
     template<typename F>
     void Holding(F stop) {
-        u8* manager = Manager();
-        u8* instance = manager != nullptr ? const_cast<u8*>(PlayingInstance(manager)) : nullptr;
-        u8* sound = instance != nullptr ? *reinterpret_cast<u8**>(instance + kInstSound) : nullptr;
+        BgmManager* manager = Manager();
+        BgmInstance* instance = manager != nullptr ? PlayingInstance(manager) : nullptr;
+        Sound* sound = instance != nullptr ? instance->sound : nullptr;
         if (sound == nullptr) return stop();
-        u32 fadeOut = *reinterpret_cast<u32*>(instance + kInstFadeOut);
+        u32 fadeOut = instance->fadeOutFrames;
         g_HoldSound = sound;
         g_HoldSkipped = false;
         stop();
@@ -244,10 +229,10 @@ namespace {
         Record(std::string("hold ") + (g_HoldSkipped ? "kept" : "missed"));
 #endif
         if (!g_HoldSkipped) return;
-        *reinterpret_cast<u32*>(instance + kInstFadeOut) = fadeOut;
+        instance->fadeOutFrames = fadeOut;
         Game::Framework* fmwk = Game::GetFramework();
         g_Held = true;
-        g_HeldPlayer = fmwk != nullptr ? fmwk->mPlayer : nullptr;
+        g_HeldPlayer = fmwk != nullptr ? fmwk->player : nullptr;
     }
 
     // The held track stops after all.
@@ -256,20 +241,20 @@ namespace {
         Record(std::string("held stop") + (g_Carried ? " carried" : ""));
 #endif
         g_Held = g_Carried = false;
-        u8* manager = Manager();
-        const u8* instance = manager != nullptr ? PlayingInstance(manager) : nullptr;
-        u8* sound = instance != nullptr ? *reinterpret_cast<u8* const*>(instance + kInstSound) : nullptr;
+        BgmManager* manager = Manager();
+        const BgmInstance* instance = manager != nullptr ? PlayingInstance(manager) : nullptr;
+        Sound* sound = instance != nullptr ? instance->sound : nullptr;
         if (sound != nullptr) Game::Sound_Stop(sound, kHeldFadeFrames);
     }
 
 }
 
 HOOK_DEFINE_TRAMPOLINE(BgmManagerPlay) {
-    static void* Callback(float volume, void* manager, StrView* name, bool b2, bool b3, bool force) {
+    static BgmInstance* Callback(float volume, BgmManager* manager, StrView* name, bool b2, bool b3, bool force) {
         uintptr_t ret = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
         StrView chosen{g_Track, g_TrackLen};
         bool swap = g_TrackLen > 0 && IsZoneCall(ret, name);
-        void* instance = Orig(volume, manager, swap ? &chosen : name, b2, b3, force);
+        BgmInstance* instance = Orig(volume, manager, swap ? &chosen : name, b2, b3, force);
         if ((g_Held || g_Carried) && !swap && instance != nullptr) StopHeld();  // an event's song, a fanfare
         if (g_FanfareCall && instance != nullptr && name != nullptr) g_Fanfare.assign(name->data, name->size);
         if (swap) g_Held = false;  // the zone's music again: it plays on
@@ -306,7 +291,7 @@ HOOK_DEFINE_TRAMPOLINE(BgmFadeZone) {
 };
 
 HOOK_DEFINE_TRAMPOLINE(SoundStop) {
-    static void Callback(u8* sound, u32 frames) {
+    static void Callback(Sound* sound, u32 frames) {
         if (sound != nullptr && sound == g_HoldSound) {
             g_HoldSkipped = true;
             return;
@@ -342,8 +327,8 @@ namespace AP::Music {
 
     void Tick(bool free) {
         Game::Framework* fmwk = Game::GetFramework();
-        u8* manager = Manager();
-        if (fmwk == nullptr || fmwk->mPlayer == nullptr || manager == nullptr) {
+        BgmManager* manager = Manager();
+        if (fmwk == nullptr || fmwk->player == nullptr || manager == nullptr) {
             if (g_Held) {
                 g_Held = false;  // held into a level load: it plays on
                 g_Carried = true;
@@ -353,7 +338,7 @@ namespace AP::Music {
             return;
         }
         g_FreeFrames = free ? g_FreeFrames + 1 : 0;
-        if (g_Held && fmwk->mPlayer != g_HeldPlayer) {
+        if (g_Held && fmwk->player != g_HeldPlayer) {
             g_Held = false;  // another level: it plays on
         } else if (g_Held && g_FreeFrames >= kHeldFreeFrames) {
             StopHeld();  // an event that meant silence is over
@@ -366,7 +351,7 @@ namespace AP::Music {
         // it does so with the player not free, and music that cuts it in plays on).
         if (g_TrackIndex >= 0) {
             u64 now = NowMs();
-            const u8* instance = PlayingInstance(manager);
+            const BgmInstance* instance = PlayingInstance(manager);
             u64 length = AP::Tracks::TRACKS[g_TrackIndex].ms;
             if (instance == nullptr && g_Instance != nullptr && free && g_PlayedMs + 1000 >= length &&
                 !OtherMusic(manager)) {
@@ -387,9 +372,7 @@ namespace AP::Music {
         if (!g_Pending) return;
         // A track still being prepared would start after the change and play on beside it: the change waits, and
         // applies the latest choice.
-        if (*reinterpret_cast<u8* const*>(manager + kStarting) != *reinterpret_cast<u8* const*>(manager + kStarting + 8)) {
-            return;
-        }
+        if (!manager->starting.empty()) return;
         g_Pending = false;
         if (g_TrackLen > 0 && !KnownTrack(g_Track)) {
             AP::Log(std::string("music: unknown track ") + g_Track);
@@ -399,8 +382,8 @@ namespace AP::Music {
         }
         // The zone's music is asked for again: the chosen track (or the zone's own) starts from its beginning and
         // fades in as on a zone change, and the rest fades out.
-        u8* started = Game::PlayZoneBgm(true);
-        if (started != nullptr) *reinterpret_cast<u32*>(started + kInstFadeIn) = kFadeInFrames;
+        BgmInstance* started = Game::PlayZoneBgm(true);
+        if (started != nullptr) started->fadeInFrames = kFadeInFrames;
         g_Started = started;
         // PlayZoneBgm fades nothing when nothing new starts (the zone has no track, or a buff's music plays): the
         // track chosen before stops by name, unless it is what plays now (the chosen track, or the zone's own with none
@@ -422,16 +405,12 @@ namespace AP::Music {
     }
 
     void Loud() {
-        u8* manager = Manager();
+        BgmManager* manager = Manager();
         if (manager == nullptr || g_Started == nullptr) return;
-        u8* const* it = *reinterpret_cast<u8* const* const*>(manager + kActive);
-        u8* const* end = *reinterpret_cast<u8* const* const*>(manager + kActive + 8);
-        for (; it != end; it++) {
-            if (*it != g_Started) continue;
-            u8* sound = *reinterpret_cast<u8* const*>(*it + kInstSound);
-            if (sound != nullptr && *reinterpret_cast<const float*>(sound + kSoundTarget) < 1.0f) {
-                Game::Sound_SetVolume(sound, kLoudFrames, 1.0f);
-            }
+        for (BgmInstance* instance : manager->playing) {
+            if (instance != g_Started) continue;
+            Sound* sound = instance->sound;
+            if (sound != nullptr && sound->target < 1.0f) Game::Sound_SetVolume(sound, kLoudFrames, 1.0f);
             return;
         }
     }
@@ -466,40 +445,37 @@ namespace AP::Music {
     bool IsChosen(const char* track) { return strcmp(track, g_Track) == 0; }
 
     bool HasMusic() {
-        const u8* manager = Manager();
-        return g_TrackLen > 0 || (manager != nullptr && *reinterpret_cast<const size_t*>(manager + kZoneTrackLen) > 0);
+        const BgmManager* manager = Manager();
+        return g_TrackLen > 0 || (manager != nullptr && manager->zoneTrackLength > 0);
     }
 
     std::string ZoneTrack() {
-        const u8* manager = Manager();
+        const BgmManager* manager = Manager();
         return manager != nullptr ? ::ZoneTrack(manager) : std::string();
     }
 
 #ifdef LASAP_TEST
     std::string StateField() {
-        const u8* manager = Manager();
+        const BgmManager* manager = Manager();
         std::string s = std::string(" music=") + (g_TrackLen > 0 ? g_Track : "-");
         if (manager == nullptr) return s + " zonebgm=- bgm=- bgmvol=-";
         s += " zonebgm=" + ::ZoneTrack(manager) + " bgm=";
-        u8* const* it = *reinterpret_cast<u8* const* const*>(manager + kActive);
-        u8* const* end = *reinterpret_cast<u8* const* const*>(manager + kActive + 8);
-        if (it == end) return s + "- bgmvol=-";
+        if (manager->playing.empty()) return s + "- bgmvol=-";
         std::string volumes;
-        for (bool first = true; it != end; it++, first = false) {
-            s += (first ? "" : ",") + std::string(GameString(*it + kInstName)) + ":" + std::to_string((*it)[kInstKind]);
-            const u8* sound = *reinterpret_cast<u8* const*>(*it + kInstSound);
-            float target = sound != nullptr ? *reinterpret_cast<const float*>(sound + kSoundTarget) : 0.0f;
+        bool first = true;
+        for (const BgmInstance* instance : manager->playing) {
+            s += (first ? "" : ",") + std::string(instance->name.View()) + ":" + std::to_string(instance->kind);
+            float target = instance->sound != nullptr ? instance->sound->target : 0.0f;
             volumes += (first ? "" : ",") + std::to_string(static_cast<int>(target * 100.0f + 0.5f));
+            first = false;
         }
         return s + " bgmvol=" + volumes;
     }
 
     const u8* PeekBase(bool instance) {
-        const u8* manager = Manager();
-        if (manager == nullptr || !instance) return manager;
-        u8* const* it = *reinterpret_cast<u8* const* const*>(manager + kActive);
-        u8* const* end = *reinterpret_cast<u8* const* const*>(manager + kActive + 8);
-        return it != end ? *it : nullptr;
+        const BgmManager* manager = Manager();
+        if (manager == nullptr || !instance) return reinterpret_cast<const u8*>(manager);
+        return manager->playing.empty() ? nullptr : reinterpret_cast<const u8*>(manager->playing[0]);
     }
 
     std::string LogText() {

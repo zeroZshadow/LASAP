@@ -10,6 +10,11 @@ namespace Game {
     struct Framework;
     struct RootComp;
     namespace Data::Inventory { struct InventoryItems; }
+    namespace Ui { struct Pane; struct TextBox; struct TextHolder; struct LayoutWrapper; struct Animator;
+                   struct StateMachine; struct Manager; }
+    namespace Map { struct OverworldMap; struct DungeonMap; struct MapMarker; struct MapCursor; struct DungeonMapIcon;
+                    struct MapActorDesc; struct UiDungeonAreaRow; struct DungeonItemsEntry; }
+    namespace Audio { struct Sound; struct BgmInstance; struct BgmManager; }
 
     // ---- Framework ----
     // The framework (Game/framework.hpp)
@@ -146,19 +151,18 @@ namespace Game {
     inline constexpr Func<void(void*)> shared_weak_count_release_weak{0x14311f0};
 
     // ---- UI ----
-    // The UI manager (a static object): +0x88 its Game.arc accessor, set once the game's UI is loaded; +0x950 the UIs;
-    // +0xab40 the glyph queues.
-    inline constexpr Global<u8> UiManager{0x1c971c0};
+    // The UI manager (a static object, Game/ui.hpp)
+    inline constexpr Global<Ui::Manager> UiManager{0x1c971c0};
     // The graphics object: +8 points at the gfx device.
     inline constexpr Global<u8*> Graphics_ptr{0x1cc8b30};
     // (wrapper, {name, length}*, priority, archive set (0 Game.arc), bool): builds the layout through the UI manager.
-    inline constexpr Func<void(void*, StrView*, int, int, bool)> LayoutWrapper_Build{0xe59100};
+    inline constexpr Func<void(Ui::LayoutWrapper*, StrView*, int, int, bool)> LayoutWrapper_Build{0xe59100};
     // (wrapper, page, the page's root pane): hangs the layout under that pane.
-    inline constexpr Func<void(void*, void*, void*)> LayoutWrapper_AttachTo{0xe59d40};
+    inline constexpr Func<void(Ui::LayoutWrapper*, Ui::LayoutWrapper*, Ui::Pane*)> LayoutWrapper_AttachTo{0xe59d40};
     // A text box queued for its glyphs: {owner, shared count, text box}.
-    struct GlyphRequest { void* owner; void* count; void* textBox; };
+    struct GlyphRequest { void* owner; void* count; Ui::TextBox* textBox; };
     // (manager, request*, archive set)
-    inline constexpr Func<bool(void*, GlyphRequest*, int)> UiManager_QueueGlyphs{0xeda8d0};
+    inline constexpr Func<bool(Ui::Manager*, GlyphRequest*, int)> UiManager_QueueGlyphs{0xeda8d0};
     // ({name, length}*, null, volume, pitch)
     inline constexpr Func<void(const StrView*, void*, float, float)> Sound_Play{0xa57e0};
     // (navi, page index): the pause menu header's button guide for that page
@@ -173,16 +177,16 @@ namespace Game {
     inline constexpr Func<void(u8*)> Navi_CloseEnter{0xeeac10};
     inline constexpr Func<void(u8*, u32)> Navi_SetTitles{0xeedec0};
     // The pause menu's System page (Gm_System): setup and update (page)
-    inline constexpr Func<void(u8*)> GmSystem_Setup{0xf82f40};
-    inline constexpr Func<void(u8*)> GmSystem_Update{0xf83650};
+    inline constexpr Func<void(Ui::LayoutWrapper*)> GmSystem_Setup{0xf82f40};
+    inline constexpr Func<void(Ui::LayoutWrapper*)> GmSystem_Update{0xf83650};
     // The destructor a pause menu page's deleting destructor calls, shared by the pages (page)
-    inline constexpr Func<void(u8*)> MenuPage_Dtor{0xec4330};
+    inline constexpr Func<void(Ui::LayoutWrapper*)> MenuPage_Dtor{0xec4330};
     // The message window's Reading state update (window): shows the page letter by letter
     inline constexpr Func<void(u8*)> MessageWindow_Reading{0xef1960};
     // (text, letters): shows that many letters at once
     inline constexpr Func<void(u8*, s32)> MessageText_ShowLetters{0xf53b60};
     // (text object, {"file:label", length}*): sets the text object's pane (+0x10) to that message
-    inline constexpr Func<void(void*, const StrView*)> MessageText_SetLabel{0xf8c8b0};
+    inline constexpr Func<void(Ui::TextHolder*, const StrView*)> MessageText_SetLabel{0xf8c8b0};
 
     // (out, {"File:Label", length}*) of the message manager, and how a message is referred to: {file, control block,
     // index}, index -1 none
@@ -199,18 +203,21 @@ namespace Game {
     inline constexpr Func<void(bool)> Throbber_Show{0xf895c0};
     inline constexpr Func<void(void*, s32)> Throbber_ChangeState{0xf85d20};
     // (animator): its animation's frame count
-    inline constexpr Func<u16(void*)> Animator_FrameCount{0x114c840};
+    inline constexpr Func<u16(Ui::Animator*)> Animator_FrameCount{0x114c840};
     // (child wrapper, parent wrapper, pane, sibling): hangs the child's layout under the pane, before the sibling
-    inline constexpr Func<void(u8*, u8*, u8*, u8*)> LayoutWrapper_AttachBefore{0xe5a0a0};
+    inline constexpr Func<void(Ui::LayoutWrapper*, Ui::LayoutWrapper*, Ui::Pane*, Ui::Pane*)>
+        LayoutWrapper_AttachBefore{0xe5a0a0};
 
     // ---- Music ----
-    // The BGM manager and the BGM table: statics of the game, made on first use (guard bit 0 set then)
-    inline constexpr Global<u8> BgmManager{0x1ca1d70};
+    // The BGM manager (Game/audio.hpp) and the BGM table: statics of the game, made on first use (guard bit 0 set
+    // then)
+    inline constexpr Global<Audio::BgmManager> BgmManager{0x1ca1d70};
     inline constexpr Global<volatile u8> BgmManager_guard{0x1cab240};
     inline constexpr Global<u8> BgmTable{0x1caba28};
     inline constexpr Global<volatile u8> BgmTable_guard{0x1cac378};
     // (volume, manager, name*, bool, bool, bool force): the new instance, or null
-    inline constexpr Func<void*(float, void*, StrView*, bool, bool, bool)> BgmManager_Play{0x9fd60};
+    inline constexpr Func<Audio::BgmInstance*(float, Audio::BgmManager*, StrView*, bool, bool, bool)>
+        BgmManager_Play{0x9fd60};
     // (name*, fade frames)
     inline constexpr Func<void(StrView*, u32)> BgmManager_StopByName{0x9b7b0};
     // (fade frames)
@@ -220,42 +227,43 @@ namespace Game {
     // (frames): every kind 1 instance's volume to 0
     inline constexpr Func<void(u32)> BgmManager_MuteZone{0x9b420};
     // (fade others): plays the zone's track; the new instance, or null
-    inline constexpr Func<u8*(bool)> PlayZoneBgm{0xa6790};
+    inline constexpr Func<Audio::BgmInstance*(bool)> PlayZoneBgm{0xa6790};
     // (table, name): the track's id, -1 for an unknown name
     inline constexpr Func<int(void*, const char*)> BgmTable_Find{0x10e23d0};
     // (sound, fade frames)
-    inline constexpr Func<void(u8*, u32)> Sound_Stop{0x10e97f0};
+    inline constexpr Func<void(Audio::Sound*, u32)> Sound_Stop{0x10e97f0};
     // (sound, frames, volume)
-    inline constexpr Func<void(void*, int, float)> Sound_SetVolume{0x10ea8c0};
+    inline constexpr Func<void(Audio::Sound*, int, float)> Sound_SetVolume{0x10ea8c0};
     // (item id): the item's Items.gsheet jingle
     inline constexpr Func<void(u32)> ItemGet_PlayFanfare{0x8d5700};
     // (intro): the Guardian Acorn's and Piece of Power's music
     inline constexpr Func<void(bool)> BuffMusic_Play{0xaf560};
 
     // ---- Maps ----
-    // The overworld map page's destructor (page)
-    inline constexpr Func<void(u8*)> OverworldMap_Dtor{0xe8e680};
-    // The dungeon map page (UI 0xe): its setup and destructor (page); per room ShowCellFloor (page, cell, room
+    // The map pages and their parts (Game/map.hpp). The overworld map page's destructor (page)
+    inline constexpr Func<void(Map::OverworldMap*)> OverworldMap_Dtor{0xe8e680};
+    // The dungeon map page (UI 0xe): its setup and destructor (page); per room ShowCellFloor (page, cell, Area
     // shared_ptr*, UiDungeonArea row*) shows the room on the shown floor; KeyWait runs MoveCursor (page, move),
     // PinButton () -> A pressed, then UpdateHover (page), the pins' hover; MemoriesButton (page) -> X pressed.
-    inline constexpr Func<void(u8*)> DungeonMap_Setup{0xe748a0};
-    inline constexpr Func<void(u8*)> DungeonMap_Dtor{0xe73970};
-    inline constexpr Func<void(u8*, u8, u8**, const u8*)> DungeonMap_ShowCellFloor{0xe82250};
-    inline constexpr Func<void(u8*, bool)> DungeonMap_MoveCursor{0xe86750};
+    inline constexpr Func<void(Map::DungeonMap*)> DungeonMap_Setup{0xe748a0};
+    inline constexpr Func<void(Map::DungeonMap*)> DungeonMap_Dtor{0xe73970};
+    inline constexpr Func<void(Map::DungeonMap*, u8, SharedPtr*, const Map::UiDungeonAreaRow*)>
+        DungeonMap_ShowCellFloor{0xe82250};
+    inline constexpr Func<void(Map::DungeonMap*, bool)> DungeonMap_MoveCursor{0xe86750};
     inline constexpr Func<bool()> DungeonMap_PinButton{0xe86c10};
-    inline constexpr Func<void(u8*)> DungeonMap_UpdateHover{0xe87a20};
-    inline constexpr Func<bool(u8*)> DungeonMap_MemoriesButton{0xe87840};
-    // (x, y, z, page, out vec2, room shared_ptr*): an icon's position under N_MapPin_00
-    inline constexpr Func<void(float, float, float, u8*, float*, SharedPtr*)> DungeonMap_PositionIcon{0xe84b60};
-    // (icon, const actor*): an icon's visibility and open state
-    inline constexpr Func<void(u8*, const u8*)> DungeonMapIcon_Update{0xf38040};
-    // Map markers (Gm_MapMarker): Make (out shared_ptr), SetupPart (marker), ChangeState (marker +0x90 machine,
-    // state)
+    inline constexpr Func<void(Map::DungeonMap*)> DungeonMap_UpdateHover{0xe87a20};
+    inline constexpr Func<bool(Map::DungeonMap*)> DungeonMap_MemoriesButton{0xe87840};
+    // (x, y, z, page, out vec2, Area shared_ptr*): an icon's position under N_MapPin_00
+    inline constexpr Func<void(float, float, float, Map::DungeonMap*, float*, SharedPtr*)>
+        DungeonMap_PositionIcon{0xe84b60};
+    // (icon, actor): an icon's visibility and open state
+    inline constexpr Func<void(Map::DungeonMapIcon*, const Map::MapActorDesc*)> DungeonMapIcon_Update{0xf38040};
+    // Map markers (Gm_MapMarker): Make (out shared_ptr), SetupPart (marker), ChangeState (the marker's machine, state)
     inline constexpr Func<void(SharedPtr*)> MapMarker_Make{0xe9c870};
-    inline constexpr Func<void(u8*)> MapMarker_SetupPart{0xf3ad80};
-    inline constexpr Func<void(u8*, u8)> MapMarker_ChangeState{0xf3a8c0};
+    inline constexpr Func<void(Map::MapMarker*)> MapMarker_SetupPart{0xf3ad80};
+    inline constexpr Func<void(Ui::StateMachine*, u8)> MapMarker_ChangeState{0xf3a8c0};
     // (cursor, message ref*): the map cursor's name
-    inline constexpr Func<void(u8*, MessageRef*)> MapCursor_ShowName{0xea0f50};
+    inline constexpr Func<void(Map::MapCursor*, MessageRef*)> MapCursor_ShowName{0xea0f50};
 
     // ---- Flags ----
     // The event flags; EventFlags_Check and _Set take the address of this pointer
@@ -272,6 +280,6 @@ namespace Game {
     inline constexpr Global<Data::Inventory::InventoryItems*> Inventory_ptr{0x1cc1368};
     // The current dungeon (8 the Chamber Dungeon, 0xff outside dungeons), which dungeon items count for
     inline constexpr Global<u8> LevelIndex{0x1cc13c8};
-    // Per dungeon a pointer to its entry: flags byte at +1 (bit 0 compass, bit 1 map), visited-room mask u64 at +8
-    inline constexpr Global<u8**> DungeonItems_ptr{0x1cc11b0};
+    // Per dungeon a pointer to its entry (Game/map.hpp)
+    inline constexpr Global<Map::DungeonItemsEntry**> DungeonItems_ptr{0x1cc11b0};
 }

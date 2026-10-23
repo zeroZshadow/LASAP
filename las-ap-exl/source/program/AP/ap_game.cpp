@@ -114,7 +114,7 @@ namespace {
 
     bool PlayerReady() {
         Game::Framework* fmwk = Game::GetFramework();
-        return fmwk != nullptr && fmwk->mPlayer != nullptr && !g_GameOver && NowMs() - g_LevelSince >= kSettleMs;
+        return fmwk != nullptr && fmwk->player != nullptr && !g_GameOver && NowMs() - g_LevelSince >= kSettleMs;
     }
 
     int GetRecvCount() {
@@ -167,31 +167,20 @@ namespace {
     // Native item-get (Link holds the item up and the item text shows). This is the body of the event action
     // Link.GenericItemGetSequenceByKey; it only displays, the inventory is changed separately.
     // It returns the running action as a libc++ shared_ptr (Player_ItemGetSequence).
-    // Offsets found by memory comparison (TESTING.md, "Reverse engineering").
-    constexpr size_t kPlayerEventState = 0x4ed;   // u8, 0 while the player is free (no talk, event or cutscene)
-    constexpr size_t kPlayerCarried = 0x19b0;     // pointer, set while Link holds something over his head
-    using Game::kFrameworkPaused;
-    using Game::kFrameworkScreen;
-
     // The intro, the title or the file menus show: no save is loaded.
     bool NoSaveLoaded(Game::Framework* fmwk) {
-        if (fmwk == nullptr) return true;
-        u8 screen = reinterpret_cast<const u8*>(fmwk)[kFrameworkScreen];
-        return screen == 0x02 || screen == 0x05;
+        return fmwk == nullptr || fmwk->screen == Game::kScreenTitle || fmwk->screen == Game::kScreenFileMenus;
     }
 #ifdef LASAP_TEST
-    constexpr size_t kFrameworkIntro = 0x6d0;     // pointer, set only while the intro plays
-
     // Which screen the game shows, for test scripts.
     std::string ScreenName(Game::Framework* fmwk) {
         if (fmwk == nullptr) return "none";
-        const u8* f = reinterpret_cast<const u8*>(fmwk);
-        switch (f[kFrameworkScreen]) {
-            case 0x02: return *reinterpret_cast<const u64*>(f + kFrameworkIntro) != 0 ? "intro" : "title";
-            case 0x05: return "menu";
-            case 0x0b: return "loading";
-            case 0x17: return "level";
-            default: return std::to_string(f[kFrameworkScreen]);
+        switch (fmwk->screen) {
+            case Game::kScreenTitle: return fmwk->intro != nullptr ? "intro" : "title";
+            case Game::kScreenFileMenus: return "menu";
+            case Game::kScreenLoading: return "loading";
+            case Game::kScreenLevel: return "level";
+            default: return std::to_string(fmwk->screen);
         }
     }
 #endif
@@ -340,15 +329,14 @@ namespace {
     bool PlayerFree() {
         Game::Framework* fmwk = Game::GetFramework();
         if (!PlayerReady()) return false;
-        if (reinterpret_cast<u8*>(fmwk)[kFrameworkPaused] != 0) return false;
-        return reinterpret_cast<u8*>(fmwk->mPlayer)[kPlayerEventState] == 0;
+        return fmwk->paused == 0 && fmwk->player->state == 0;
     }
 
     // An item-get takes what Link holds over his head out of the game, so item-gets wait until he puts it down.
     bool PlayerCarrying() {
         Game::Framework* fmwk = Game::GetFramework();
-        if (fmwk == nullptr || fmwk->mPlayer == nullptr) return false;
-        return *reinterpret_cast<void**>(reinterpret_cast<u8*>(fmwk->mPlayer) + kPlayerCarried) != nullptr;
+        if (fmwk == nullptr || fmwk->player == nullptr) return false;
+        return fmwk->player->carried != nullptr;
     }
 
     // Health is zero: Link is dying (until the Secret Medicine or a game over's Retry refills it).
@@ -667,14 +655,14 @@ namespace {
     constexpr int kGuardianAcorn = 111, kPieceOfPower = 112;
     // The autosave: when the Items.gsheet row's autoSave holds (enabled, its condition true now: ItemGet_RowAutoSave),
     // the item-get asks the scene's save manager (scene +0x90) for one (SaveManager_RequestAutoSave(manager, kind 3,
-    // false)), which saves once no event runs. SceneHolder_Lock(out, *(Framework +0x4a8)) gives the scene.
-    constexpr size_t kFrameworkSceneHolder = 0x4a8, kSceneSaveManager = 0x90;
+    // false)), which saves once no event runs. SceneHolder_Lock(out, the framework's game state) gives the scene.
+    constexpr size_t kSceneSaveManager = 0x90;
     constexpr u8 kAutoSaveKind = 3;
 
     void RequestItemAutoSave(int itemId) {
         Game::Framework* fmwk = Game::GetFramework();
         if (fmwk == nullptr || !Game::ItemGet_RowAutoSave(static_cast<u32>(itemId))) return;
-        void* holder = *reinterpret_cast<void**>(reinterpret_cast<u8*>(fmwk) + kFrameworkSceneHolder);
+        void* holder = fmwk->gameState;
         if (holder == nullptr) return;
         SharedPtr scene{};
         Game::SceneHolder_Lock(&scene, holder);
@@ -1014,7 +1002,7 @@ namespace {
         std::string s = "STATE level=" + LevelSystem::GetCurrentLevel();
         s += " screen=" + ScreenName(fmwk);
         s += " ms_in_level=" + std::to_string(NowMs() - g_LevelSince);
-        s += " player=" + std::string(fmwk && fmwk->mPlayer ? "1" : "0");
+        s += " player=" + std::string(fmwk && fmwk->player ? "1" : "0");
         if (items != nullptr) {
             s += " health=" + std::to_string(items->Health);
             s += " rupees=" + std::to_string(items->Rupees);
@@ -1036,16 +1024,16 @@ namespace {
             s += " bow=" + std::to_string(items->MainItems.Bow);
             s += " cello=" + std::to_string(items->ExtraItems.FullMoonCello);
         }
-        if (fmwk && fmwk->mPlayer && fmwk->mPlayer->playerCollision) {
-            auto& p = fmwk->mPlayer->playerCollision->coordsNew.pos;
+        if (fmwk && fmwk->player && fmwk->player->playerCollision) {
+            auto& p = fmwk->player->playerCollision->coordsNew.pos;
             char buf[96];
             snprintf(buf, sizeof(buf), " pos=%.2f,%.2f,%.2f", p.x, p.y, p.z);
             s += buf;
         }
         s += " recv=" + std::to_string(GetRecvCount());
-        if (fmwk && fmwk->mPlayer) {
-            s += " event=" + std::to_string(reinterpret_cast<u8*>(fmwk->mPlayer)[kPlayerEventState]);
-            s += " paused=" + std::to_string(reinterpret_cast<u8*>(fmwk)[kFrameworkPaused]);
+        if (fmwk && fmwk->player) {
+            s += " event=" + std::to_string(fmwk->player->state);
+            s += " paused=" + std::to_string(fmwk->paused);
             s += std::string(" carry=") + (PlayerCarrying() ? "1" : "0");
         }
         s += " showq=" + std::to_string(g_ShowQueue.size()) + (g_ItemEvent != ItemEvent::None ? "+1" : "");
@@ -1056,7 +1044,7 @@ namespace {
         for (int n = 0; n < AP::GhostNet::SLOTS; n++) ghosts += AP::GhostNet::Get(n).active;
         s += " ghosts=" + std::to_string(ghosts);
         s += AP::Music::StateField();
-        s += AP::JukeboxPane::StateField(fmwk != nullptr && reinterpret_cast<u8*>(fmwk)[kFrameworkPaused] != 0);
+        s += AP::JukeboxPane::StateField(fmwk != nullptr && fmwk->paused != 0);
         s += AP::MapListField();
         s += AP::Test::StateFields();
         return s;
@@ -1116,7 +1104,7 @@ namespace {
                 return std::string(buf);
             };
             Game::Actors::Player* player = Game::GetPlayer();
-            Game::RootComp* link = player != nullptr ? player->skeletalModelComp : nullptr;
+            Game::RootComp* link = player != nullptr ? player->modelComp : nullptr;
             auto* held = reinterpret_cast<Game::RootComp*>(g_HeldModel);
             std::string out = "HELDPOSE link=" + (link ? quat(link->coords.rotate) : std::string("-"));
             if (held != nullptr && HeldModelAlive()) {
@@ -1124,13 +1112,12 @@ namespace {
                 out += " model=" + quat(held->coords.rotate) + " local=" + quat(held->coordsNew.rotate);
             }
             // the camera's view rotation
-            const u8* camera = Game::GetCamera();
+            const Game::Camera* camera = Game::GetCamera();
             if (camera != nullptr) {
-                const float* view = &Game::Field<float>(camera, Game::kCameraView);
                 out += " view=";
                 for (int i = 0; i < 12; i++) {
                     char buf[16];
-                    snprintf(buf, sizeof(buf), i ? ",%.3f" : "%.3f", view[i]);
+                    snprintf(buf, sizeof(buf), i ? ",%.3f" : "%.3f", camera->view[i]);
                     out += buf;
                 }
             }
@@ -1144,7 +1131,7 @@ namespace {
             // Moves the player within the current level: DBG pos <x> <y> <z>
             if (!PlayerReady()) return false;
             // Setting the respawn point too means a fall into a room that is not loaded yet lands at the target.
-            auto* player = Game::GetFramework()->mPlayer;
+            auto* player = Game::GetFramework()->player;
             auto* col = player->playerCollision;
             Game::Vec3 target{(float)atof(a[2].c_str()), (float)atof(a[3].c_str()), (float)atof(a[4].c_str())};
             col->coordsNew.pos = target;
@@ -1210,7 +1197,7 @@ namespace {
             // manager, its first playing instance or that instance's sound
             Game::Framework* fmwk = Game::GetFramework();
             const u8* base = nullptr;
-            if (a[2] == "p") base = fmwk ? reinterpret_cast<const u8*>(fmwk->mPlayer) : nullptr;
+            if (a[2] == "p") base = fmwk ? reinterpret_cast<const u8*>(fmwk->player) : nullptr;
             else if (a[2] == "f") base = reinterpret_cast<const u8*>(fmwk);
             else if (a[2] == "i") base = reinterpret_cast<const u8*>(Game::Data::Inventory::Items());
             else if (a[2] == "b" || a[2] == "m") base = AP::Music::PeekBase(a[2] == "m");
@@ -1350,7 +1337,7 @@ namespace {
                 AP::Send("DEATHDROPPED");
                 return true;
             }
-            if (fmwk->mPlayer == nullptr || items == nullptr) return false;
+            if (fmwk->player == nullptr || items == nullptr) return false;
             if (items->Health <= 0) return true;
             if (!PlayerFree() || g_ItemEvent != ItemEvent::None) return false;
             // The game over flow skips the Secret Medicine and reports no death for it (patcher, APDeathLink).
@@ -1575,16 +1562,16 @@ namespace AP {
             g_SaveRecvReported = true;
             Send("RECV " + std::to_string(GetRecvCount()));
         }
-        if (fmwk == nullptr || fmwk->mPlayer == nullptr) {
+        if (fmwk == nullptr || fmwk->player == nullptr) {
             g_LevelSince = NowMs();
             g_GameOver = false;
-        } else if (LinkDead() && reinterpret_cast<u8*>(fmwk)[kFrameworkPaused] != 0) {
+        } else if (LinkDead() && fmwk->paused != 0) {
             g_GameOver = true;
         }
 
         // DeathLink: the game over flow sets APDied for a death that no Secret Medicine saved and no received death
         // caused (patcher).
-        if (fmwk != nullptr && fmwk->mPlayer != nullptr && NowMs() - g_DiedPolled >= kDiedPollMs) {
+        if (fmwk != nullptr && fmwk->player != nullptr && NowMs() - g_DiedPolled >= kDiedPollMs) {
             g_DiedPolled = NowMs();
             if (EventFlags::CheckFlag(AP::DIED_FLAG)) {
                 EventFlags::SetFlag(AP::DIED_FLAG, false);

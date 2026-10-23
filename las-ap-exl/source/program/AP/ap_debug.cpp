@@ -370,7 +370,7 @@ namespace {
     uintptr_t WatchBase(const std::string& base) {
         Game::Framework* fmwk = Game::GetFramework();
         if (base == "f") return reinterpret_cast<uintptr_t>(fmwk);
-        if (base == "p") return fmwk ? reinterpret_cast<uintptr_t>(fmwk->mPlayer) : 0;
+        if (base == "p") return fmwk ? reinterpret_cast<uintptr_t>(fmwk->player) : 0;
         if (base == "i") return reinterpret_cast<uintptr_t>(Game::Data::Inventory::Items());
         if (base == "c") return Controller();
         if (base[0] == 'x') return strtoull(base.c_str() + 1, nullptr, 16);
@@ -572,8 +572,8 @@ namespace {
     // Returns the yaw in degrees (0 = +z, the bottom of the screen; 90 = +x, right), or NAN without a player.
     float PlayerYaw() {
         Game::Framework* fmwk = Game::GetFramework();
-        if (fmwk == nullptr || fmwk->mPlayer == nullptr || fmwk->mPlayer->playerCollision == nullptr) return NAN;
-        return Game::YawDegrees(fmwk->mPlayer->playerCollision->coordsNew.rotate);
+        if (fmwk == nullptr || fmwk->player == nullptr || fmwk->player->playerCollision == nullptr) return NAN;
+        return Game::YawDegrees(fmwk->player->playerCollision->coordsNew.rotate);
     }
 
     // The nearest of the four screen directions to where Link faces.
@@ -941,9 +941,9 @@ namespace {
         Game::Framework* fmwk = Game::GetFramework();
         SetField(0, AP::TestScreenName());
         SetField(1, LevelSystem::GetCurrentLevel());
-        bool player = fmwk != nullptr && fmwk->mPlayer != nullptr;
-        SetField(2, player ? std::to_string(reinterpret_cast<u8*>(fmwk->mPlayer)[0x4ed]) : "-");
-        SetField(3, fmwk ? std::to_string(reinterpret_cast<u8*>(fmwk)[0x510]) : "-");
+        bool player = fmwk != nullptr && fmwk->player != nullptr;
+        SetField(2, player ? std::to_string(fmwk->player->state) : "-");
+        SetField(3, fmwk ? std::to_string(fmwk->paused) : "-");
         SetField(4, AP::TestPlayerFree() ? "1" : "0");
         u32 buttons = 0;
         bool locked = false;
@@ -971,7 +971,7 @@ namespace {
         SetField(16, entry < 0 ? "-" : std::to_string(entry));
         SetField(17, LinkAnimName());
         // Link's zone (actor +0xb0, the camera room he is in; ACTORS.md)
-        SetField(18, player ? std::to_string(*reinterpret_cast<s32*>(reinterpret_cast<u8*>(fmwk->mPlayer) + 0xb0)) : "-");
+        SetField(18, player ? std::to_string(*reinterpret_cast<s32*>(reinterpret_cast<u8*>(fmwk->player) + 0xb0)) : "-");
         SampleWatches();
     }
 
@@ -1043,7 +1043,7 @@ namespace {
 
     u32 FrameCounter() {
         Game::Framework* fmwk = Game::GetFramework();
-        return fmwk != nullptr ? fmwk->mFrameCount : 0;
+        return fmwk != nullptr ? fmwk->frameCount : 0;
     }
 
     struct Pending { int client; std::string line; };

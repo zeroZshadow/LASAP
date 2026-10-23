@@ -27,10 +27,9 @@ namespace {
     // task); the holder's +0x18 is then the component (a shared_ptr). Owner, name and root are copied; the name's
     // characters are not.
     constexpr size_t kHolderModel = 0x18;
-    // Player (an actor): +0x8 its weak self pointer (object, control block), +0x2a8 Link's model component as a
-    // shared_ptr. The model hangs under Link's model component: under his root component (PlayerCollision, +0x80) it
-    // is not drawn.
-    constexpr size_t kActorSelf = 0x8, kPlayerModel = 0x2a8;
+    // Player (an actor): +0x8 its weak self pointer (object, control block). The model hangs under Link's model
+    // component: under his root component (PlayerCollision, +0x80) it is not drawn.
+    constexpr size_t kActorSelf = 0x8;
     // Node_UpdateWorld(node): the world coords (+0xb0) from coordsNew (+0x80) and the parent's (+0x58) world coords,
     // the parent first while it is marked (+0xe0); lazy, when something reads a marked node
     // Entity +0x40 flags: bit 0 enabled, active while (flags & kActiveMask) == kActive; bit 30 destroy requested,
@@ -47,9 +46,8 @@ namespace {
     constexpr u64 kLoadMs = 3000;      // a model that has not loaded by then is given up
     constexpr float kHeight = 2.3f;    // above Link's feet; the item-get holds items 2 units up
     constexpr float kRise = 0.4f;      // it rises this far while it grows
-    // While Link holds something over his head (player +0x19b0), the model shows this much higher, above it; it moves
-    // between the two heights at kCarryRaisePerMs
-    constexpr size_t kPlayerCarried = 0x19b0;
+    // While Link holds something over his head, the model shows this much higher, above it; it moves between the two
+    // heights at kCarryRaisePerMs
     constexpr float kCarryRaise = 1.5f;
     constexpr float kCarryRaisePerMs = kCarryRaise / 150.0f;
     constexpr float kTilt = -30.0f;    // degrees about x: tipped towards the camera, as the item-get tips its item
@@ -61,9 +59,9 @@ namespace {
 
     // The camera's world rotation
     Quat CameraRotation() {
-        const u8* camera = Game::GetCamera();
+        const Game::Camera* camera = Game::GetCamera();
         if (camera == nullptr) return AxisQuat(0, kItemGetTilt);
-        const float* v = &Game::Field<float>(camera, Game::kCameraView);
+        const float* v = camera->view;
         return Game::QuatFromMatrix([v](int row, int col) { return v[row * 4 + col]; });
     }
 
@@ -76,7 +74,7 @@ namespace {
         }
     }
 
-    u8* g_Player = nullptr;        // the player the model was made for; another player (a level load) drops it
+    Game::Actors::Player* g_Player = nullptr;  // the player the model was made for; another player (a level load) drops it
     SharedPtr g_Holder{};
     u64 g_Since = 0;               // when the model was asked for
     u64 g_ShownAt = 0;             // when it first showed, 0 before
@@ -145,7 +143,7 @@ namespace {
     // the camera whichever way Link looks. An NPC model is turned from the camera by its fix's angle, as in the
     // item-get, and from side to side.
     void Place(u8* model, u64 shown) {
-        auto* parent = *reinterpret_cast<Game::RootComp**>(g_Player + kPlayerModel);
+        Game::RootComp* parent = g_Player->modelComp;
         if (parent == nullptr) return;
         float grow = shown < kGrowMs ? (float)shown / kGrowMs
                      : shown + kGrowMs > kShowMs ? (float)(kShowMs - std::min(shown, kShowMs)) / kGrowMs : 1.0f;
@@ -157,13 +155,13 @@ namespace {
 #ifdef LASAP_TEST
         if (g_NoSway) sway = 0.0f;
         if (g_PoseFrames.size() < g_PoseFramesMax) {
-            u32 frame = Game::GetFramework()->mFrameCount;
+            u32 frame = Game::GetFramework()->frameCount;
             g_PoseFrames.push_back({NowMs(), frame, r, reinterpret_cast<Game::RootComp*>(model)->coords.rotate});
         }
 #endif
         g_Pose = g_Fitted ? Mul(CameraRotation(), Mul(AxisQuat(1, sway), g_Angle))
                           : Mul(AxisQuat(0, kTilt), AxisQuat(1, sway));
-        bool carrying = *reinterpret_cast<void**>(g_Player + kPlayerCarried) != nullptr;
+        bool carrying = g_Player->carried != nullptr;
         u64 now = NowMs();
         float step = kCarryRaisePerMs * (float)(g_PlacedAt != 0 ? now - g_PlacedAt : 0);
         g_PlacedAt = now;
@@ -183,19 +181,19 @@ namespace AP::Popup {
     bool Show(int itemId) {
         Drop(true);
         Game::Framework* fmwk = Game::GetFramework();
-        if (fmwk == nullptr || fmwk->mPlayer == nullptr) return false;
-        u8* player = reinterpret_cast<u8*>(fmwk->mPlayer);
-        SharedPtr owner = *reinterpret_cast<SharedPtr*>(player + kActorSelf);
-        auto* parent = reinterpret_cast<SharedPtr*>(player + kPlayerModel);
-        if (owner.ptr == nullptr || parent->ptr == nullptr) return false;
+        if (fmwk == nullptr || fmwk->player == nullptr) return false;
+        Game::Actors::Player* player = fmwk->player;
+        SharedPtr owner = Game::Field<SharedPtr>(player, kActorSelf);
+        SharedPtr parent{player->modelComp, player->modelCompCtrl};
+        if (owner.ptr == nullptr || parent.ptr == nullptr) return false;
         Game::StrView name{kName, sizeof(kName) - 1};
         g_Scale = 1.0f;
         g_RootMoved = true;
         g_Fitted = false;
         g_PlacedAt = 0;
         // a model that shows while Link holds something starts above it
-        g_CarryRaise = *reinterpret_cast<void**>(player + kPlayerCarried) != nullptr ? kCarryRaise : 0.0f;
-        Game::ItemModel_Make(&g_Holder, &owner, &name, parent, static_cast<u8>(itemId));
+        g_CarryRaise = player->carried != nullptr ? kCarryRaise : 0.0f;
+        Game::ItemModel_Make(&g_Holder, &owner, &name, &parent, static_cast<u8>(itemId));
         if (g_Holder.ptr == nullptr) return false;
         g_Player = player;
         g_Since = NowMs();
@@ -238,7 +236,7 @@ namespace AP::Popup {
     void Tick() {
         if (g_Holder.ptr == nullptr) return;
         Game::Framework* fmwk = Game::GetFramework();
-        if (fmwk == nullptr || reinterpret_cast<u8*>(fmwk->mPlayer) != g_Player) {
+        if (fmwk == nullptr || fmwk->player != g_Player) {
             // A level load took Link and his children
             Drop(false);
             return;

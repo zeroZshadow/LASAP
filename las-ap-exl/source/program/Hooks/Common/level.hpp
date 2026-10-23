@@ -32,7 +32,7 @@ namespace LevelSystem {
 
     inline void LoadLevel(const char* level, Game::Vec3 pos) {
         Game::Framework* fmwk = Game::GetFramework();
-        SetGameState::Callback(fmwk->mGameState, 4, false);
+        SetGameState::Callback(fmwk->gameState, 4, false);
 
         // the save's current level (SaveCurrent, which Inventory_ptr points at): +0x0 level, +0x40 locator ($NONE: use
         // +0xdc), +0xdc restart position

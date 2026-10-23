@@ -26,6 +26,7 @@
 // game's chest icons of the slot's chests.
 #include "AP/ap.hpp"
 #include "AP/ap_list.hpp"
+#include "Game/map.hpp"
 #include "Game/mem.hpp"
 #include "Game/sym.hpp"
 #include "Game/time.hpp"
@@ -45,43 +46,18 @@
 #include <vector>
 
 namespace {
+    namespace Map = Game::Map;
+    namespace Ui = Game::Ui;
     using Game::Ui::PlaySound;
 
     // Dungeon map screen (game 1.0.0)
     constexpr uintptr_t kDungeonMapFlags = 0xe76204;    // w8 = DungeonItems flags byte (bit0 compass, bit1 map)
-    // DungeonItems (Game::DungeonItems_ptr): per dungeon a pointer to its entry (flags byte at +1, visited-room mask
-    // u64 at +8, bit col + 8·row)
-    constexpr size_t kDungeonVisited = 8;
-    // The actor an icon stands for: its position. The icon's shown flag: the floor's set-shown (icon virtual +0x78)
-    // shows it only while set.
-    constexpr size_t kActorPosX = 0x4, kActorPosZ = 0xc;
-    constexpr size_t kIconShown = 0xc4;
-
-    // The dungeon map page (UI 0xe, scripts/re/UI.md "Dungeon map"): its setup (vtable +0x20) and destructor; per room
-    // DungeonMap_ShowCellFloor (page, u8 cell, room sp*, UiDungeonArea row*) shows the room on the shown floor (row
-    // mFloor +0x10 == page +0x2d23); KeyWait runs MoveCursor (page, bool), PinButton () -> A pressed, then
-    // UpdateHover (page), the pins' hover. DungeonMap_PositionIcon: an icon's position under N_MapPin_00.
-    constexpr size_t kAreaFloor = 0x10, kPageShownFloor = 0x2d23;
-    constexpr size_t kPageMapPosition = 0x788, kPageMapPin = 0x7a0, kPagePinOffset = 0x7b8;  // panes
-    constexpr size_t kPageHoveredPin = 0x13c0;  // the hovered pin, null none
-    constexpr size_t kPageCursor = 0x2d18;      // vec2, N_MapOrigin_00 units
-    constexpr size_t kPageCursorSpeed = 0x2d08; // 4.25 while the stick is idle
-    constexpr size_t kPageCursorScale = 0x2ce4; // the zoom's factor on the hover radius
-    constexpr size_t kPageInfo = 0x2d40;        // Y held: the dungeon's info, no hover
-    constexpr size_t kPageMachineState = 0xf0 + 0xd;
-    constexpr u8 kKeyWait = 2;
+    // The dungeon map page (Game::Map::DungeonMap, scripts/re/UI.md "Dungeon map"): its setup and destructor;
+    // DungeonMap_ShowCellFloor shows a room on the shown floor (its UiDungeonArea row's floor == the page's
+    // shownFloor); KeyWait runs MoveCursor, PinButton () -> A pressed, then UpdateHover, the pins' hover.
+    // DungeonMap_PositionIcon: an icon's position under N_MapPin_00. A dot within kHoverRadius of the cursor's size
+    // is hovered; the cursor eases onto it while the stick is idle (the page's cursor speed kIdleSpeed).
     constexpr float kIdleSpeed = 4.25f, kEase = 0.3f, kHoverRadius = 0.2f;
-    // A room: its name (chars, then their count at +0xb8).
-    constexpr size_t kRoomName = 0x68, kRoomNameLength = 0xb8;
-    // Map markers (Gm_MapMarker): MapMarker_Make (out shared_ptr), MapMarker_SetupPart (marker), its machine at +0x90
-    // (MapMarker_ChangeState: 1 On, which goes on to Loop, 3 Off) run by its update (vtable +0x28), and its SetMark
-    // animator, whose frame picks the look (ap_map_icons.frame).
-    constexpr size_t kMarkerMachine = 0x90, kMarkerUpdate = 0x28, kMarkerSetMark = 0x228;
-    constexpr u8 kMarkerOn = 1, kMarkerOff = 3;
-    constexpr size_t kWrapperRootPane = 0x50;  // LayoutWrapper virtual: the root pane
-    // The map cursor (UI 0x1c): its size (+0x300, the hover radius), MapCursor_ShowName; +0x2e0 and +0x2e1 set take
-    // the name away.
-    constexpr size_t kCursorSize = 0x300, kCursorHideName = 0x2e0;
 
     // Field map (game 1.0.0)
     // The X button, which opens the memories: in the overworld map's KeyWait state w21 = X pressed (x19 page), and
@@ -89,16 +65,10 @@ namespace {
     constexpr uintptr_t kFieldMemoryButton = 0xe95278;
     constexpr uintptr_t kMemoryButton = 0xe87840;
     // In the overworld map's KeyWait state, after it reads A (w0, page x19), which opens the pin menu. The page's
-    // hovered marker: s32 index into its markers, -1 none (set later in the same update, so the last frame's).
+    // hovered marker is set later in the same update, so it is the last frame's.
     constexpr uintptr_t kFieldPinButton = 0xe950f4;
-    constexpr size_t kPageHovered = 0x8150;
     // In the map's icon setup, after a shown icon's marker joined the page's markers: x19 page, x26 marker.
     constexpr uintptr_t kMarkerAdded = 0xe917c8;
-    constexpr size_t kPageMarkers = 0x710;          // std::vector<std::shared_ptr<marker>>: begin, end
-    constexpr size_t kMarkerRow = 0x240;            // UiFieldMapIcons row; its show flag name view at +0x20
-    constexpr size_t kRowFlagName = 0x20;
-    constexpr size_t kMarkerLayout = 0x48;          // virtual: the marker's layout, root pane at +0x18
-    constexpr size_t kLayoutPane = 0x18;
 
     constexpr const char* kTraversePrefix = "UI_FieldMapTraverse_";
     constexpr const char* kOpenPrefix = "UI_FieldMapOpen_";
@@ -114,8 +84,8 @@ namespace {
     // N_MapPosition_00, and whether its room is on the shown floor.
     struct DotMarker {
         size_t dot;
-        u8* marker = nullptr;
-        u8* control = nullptr;
+        Map::MapMarker* marker = nullptr;
+        void* control = nullptr;
         float x = 0, y = 0;
         bool onFloor = false;
     };
@@ -133,14 +103,14 @@ namespace {
     int g_HoverGroup = -1;       // the hovered icon's group and look, the last frame the overworld map took buttons
     int g_HoverLook = -1;
 #endif
-    u8* g_MarkerPage = nullptr;  // the map page whose markers hold ours (the icon setup ran for it)
+    Map::OverworldMap* g_MarkerPage = nullptr;  // the map page whose markers hold ours (the icon setup ran for it)
     std::vector<std::vector<int>> g_Overworld;  // group -> local ids
     std::vector<Dot> g_Dots;
     std::vector<Chest> g_Chests;
     // The open dungeon page, its rooms by name as its setup showed them (room, on the shown floor), its dots and the
     // hovered one (index into g_DotMarkers, -1 none).
-    u8* g_DungeonPage = nullptr;
-    std::map<std::string, std::pair<u8*, bool>, std::less<>> g_Rooms;
+    Map::DungeonMap* g_DungeonPage = nullptr;
+    std::map<std::string, std::pair<Map::Area*, bool>, std::less<>> g_Rooms;
     std::vector<DotMarker> g_DotMarkers;
     int g_DotHovered = -1;
     int g_DotsMade = 0;  // for DBG map
@@ -239,51 +209,55 @@ namespace {
         return std::atoi(std::string(name).c_str());
     }
 
+    Map::MapMarker* MarkerOf(const Game::SharedPtr& marker) { return static_cast<Map::MapMarker*>(marker.ptr); }
+
     // The group and look of a map marker's row, or -1.
-    int MarkerIcon(u8* marker, Look& look) {
-        const u8* row = *reinterpret_cast<u8**>(marker + kMarkerRow);
-        if (row == nullptr) return -1;
-        auto* name = reinterpret_cast<const std::pair<const char*, size_t>*>(row + kRowFlagName);
-        if (name->first == nullptr) return -1;
-        return ParseIcon(std::string_view(name->first, name->second), look);
+    int MarkerIcon(const Map::MapMarker* marker, Look& look) {
+        const Map::UiFieldMapIconsRow* row = marker->row;
+        if (row == nullptr || row->showFlag.data == nullptr) return -1;
+        return ParseIcon(row->showFlag.View(), look);
     }
 
-    u8* MarkerPane(u8* marker) {
-        return Game::Field<u8*>(Game::CallVirtual<u8*()>(marker, kMarkerLayout), kLayoutPane);
+    Ui::Pane* MarkerPane(Map::MapMarker* marker) {
+        return Game::CallVirtual<Ui::Layout*()>(marker, Ui::LayoutWrapperVirtual::kLayout)->root;
     }
 
-    void SetMarkerVisible(u8* marker, bool visible) { Game::Ui::SetVisible(MarkerPane(marker), visible); }
+    void SetMarkerVisible(Map::MapMarker* marker, bool visible) { Ui::SetVisible(MarkerPane(marker), visible); }
 
     // Shows the page's markers of ours whose look shows (LookShown) and hides the others.
-    void ApplyLooks(u8* page) {
-        auto** marker = *reinterpret_cast<u8***>(page + kPageMarkers);
-        auto** end = *reinterpret_cast<u8***>(page + kPageMarkers + 8);
-        for (; marker < end; marker += 2) {  // shared_ptr: object, control block
+    void ApplyLooks(Map::OverworldMap* page) {
+        for (const Game::SharedPtr& sp : page->markers) {
+            Map::MapMarker* marker = MarkerOf(sp);
             Look look;
-            int group = *marker != nullptr ? MarkerIcon(*marker, look) : -1;
-            if (group >= 0) SetMarkerVisible(*marker, LookShown(group, look));
+            int group = marker != nullptr ? MarkerIcon(marker, look) : -1;
+            if (group >= 0) SetMarkerVisible(marker, LookShown(group, look));
         }
     }
 
-    // The group and look of the page's hovered marker, or -1.
-    int HoveredIcon(u8* page, Look& look) {
-        s32 index = *reinterpret_cast<s32*>(page + kPageHovered);
-        auto** begin = *reinterpret_cast<u8***>(page + kPageMarkers);
-        auto** end = *reinterpret_cast<u8***>(page + kPageMarkers + 8);
-        if (index < 0 || index >= (end - begin) / 2 || begin[index * 2] == nullptr) return -1;
-        return MarkerIcon(begin[index * 2], look);
+    // The page's hovered marker of ours, or null.
+    Map::MapMarker* HoveredMarker(const Map::OverworldMap* page) {
+        s32 index = page->hoveredMarker;
+        if (index < 0 || static_cast<size_t>(index) >= page->markers.size()) return nullptr;
+        return MarkerOf(page->markers[index]);
     }
 
-    void ToggleOutOfLogic(u8* page) {
+    // The group and look of the page's hovered marker, or -1.
+    int HoveredIcon(const Map::OverworldMap* page, Look& look) {
+        Map::MapMarker* marker = HoveredMarker(page);
+        return marker != nullptr ? MarkerIcon(marker, look) : -1;
+    }
+
+    // X on a map page (overworld or dungeon).
+    void ToggleOutOfLogic(const void* page) {
         g_OutHidden = !g_OutHidden;
-        if (page == g_MarkerPage) ApplyLooks(page);
+        if (page == g_MarkerPage) ApplyLooks(g_MarkerPage);
         if (page == g_DungeonPage) ApplyDots();
         PlaySound(g_OutHidden ? "SE_SY_MAP_PIN_OFF" : "SE_SY_MAP_PIN_ON");
     }
 
     // A on the overworld map: marks the hovered icon's location skipped, or not. False (the game takes the press)
     // unless the icon is one of a single unchecked location.
-    bool ToggleSkipped(u8* page) {
+    bool ToggleSkipped(Map::OverworldMap* page) {
         Look look;
         int group = HoveredIcon(page, look);
         if (group < 0 || static_cast<size_t>(group) >= g_Overworld.size()) return false;
@@ -338,27 +312,15 @@ namespace {
 // itself. B closes it; A marks the location under the cursor skipped or not, as A on an icon of one location does.
 namespace {
     namespace L = AP::ListUi;
-    namespace Ui = Game::Ui;
-    using Game::Field;
 
-    // A layout's animation by name: LayoutWrapper virtual +0x58 (wrapper, StringView* name), the result through x8: a
-    // shared pointer and the animator, whose frame is the float at +0x20 (the layout's update applies it;
-    // Animator_FrameCount its frame count). Gm_MapMarker's SetMark picks the marker's texture and size by frame: the
-    // game's markers, then the map tracker's looks at a group's size (ap_map_icons.frame).
-    constexpr size_t kGetAnimation = 0x58, kAnimFrame = 0x20;
+    // Gm_MapMarker's SetMark animation picks the marker's texture and size by frame: the game's markers, then the map
+    // tracker's looks at a group's size (ap_map_icons.frame).
     constexpr int kGameMarkFrames = 7;  // ap_map_icons.GAME_FRAMES
-    struct Anim {
-        void* object = nullptr;
-        u8* control = nullptr;
-        u8* animator = nullptr;
-    };
 
     // Gm_MapMarkList: in N_MarkPosition_00 the bar's black P_pict_00, its windows, pins, count and cursor.
     constexpr const char* kDimLayout = "Gm_MapMarkList.bflyt";
     constexpr const char* kDimHidden[] = {"W_window_01", "W_window_02", "P_pict_01", "A_PinNum_00", "A_alignment_00"};
     constexpr float kDimY = -16, kDimWidth = 1280, kDimHeight = 525;  // the map's part of the page
-    // The map's cursor and the name over the icon it is on (Gm_MapCursor), a UI of its own drawn over the pages.
-    constexpr int kMapCursorUi = 0x1c;
     // Gm_MemoryCollect: in N_Collect_00 the text T_Collect_00, the paper window W_window_00 (rounded corners) and
     // the count A_Collect_00, hidden here but the window.
     constexpr const char* kBackLayout = "Gm_MemoryCollect.bflyt";
@@ -374,11 +336,7 @@ namespace {
     constexpr float kNameWidth = 1000;  // a row's text box's width (338 in the file), so a long name does not wrap
     constexpr float kTagGap = 10, kTagLower = -3;  // "skipped" after a name: the space between, how much lower
     constexpr float kNameSqueeze = 0.6f;  // a long name is narrowed to fit its row, down to this
-    // ui2d TextBox: the italic slant of its glyphs (a float; 0 upright)
-    constexpr size_t kTextItalic = 0x118;
-    // ui2d TextBox: its text's colours, top and bottom (RGBA bytes, linear: drawn as sRGB, so 0x5c shows as 0xa2); a
-    // colour tag in the text does not reach a text box of a layout.
-    constexpr size_t kTextColors = 0xe8;
+    // A colour tag in the text does not reach a text box of a layout: its colours are set instead.
 
     // The panel (layout units): its middle, its margins beside the rows and above and below them, the header's
     // height; a row's dot and the right end of its name and "skipped", from the list's middle.
@@ -392,15 +350,15 @@ namespace {
     constexpr u8 kGray[] = {0xb4, 0xb4, 0xb4, 0xff};  // "skipped": light grey (shows as d9)
 
     struct Panel {
-        u8* page = nullptr;         // the map page it hangs under
+        Ui::LayoutWrapper* page = nullptr;  // the map page it hangs under
         int group = -1;             // the overworld icon's group, -1 for a dungeon dot
         std::vector<int> ids;       // its locations
         std::string heading;        // the icon's name
         L::List list;
         L::Layout dim, back, title, count, dots[L::kRows], tags[L::kRows];
-        u8* shade = nullptr;        // the dim's black pane
-        u8* window = nullptr;       // the back's paper window behind the header and the list
-        Anim marks[L::kRows];       // each dot's SetMark
+        Ui::Pane* shade = nullptr;  // the dim's black pane
+        Ui::Pane* window = nullptr; // the back's paper window behind the header and the list
+        Ui::Animation marks[L::kRows];  // each dot's SetMark
         int fade = 0;               // 0..255, the alpha its layouts draw with
         bool closing = false;       // B closed it: it fades out, then goes
     };
@@ -418,15 +376,7 @@ namespace {
 
     bool ListOpen() { return g_Panel.page != nullptr && !g_Panel.closing; }
 
-    void Release(Anim& anim) {
-        Game::ReleaseOwner(anim.control);
-        anim = Anim{};
-    }
-
-    Anim GetAnimation(u8* wrapper, const char* name) {
-        Game::StrView view{name};
-        return Game::CallVirtual<Anim(const Game::StrView*)>(wrapper, kGetAnimation, &view);
-    }
+    Map::MapCursor* FindCursor() { return reinterpret_cast<Map::MapCursor*>(Ui::FindUi(Map::kMapCursorUi)); }
 
     // The look a location's row shows: checked or skipped collected, else in or out of logic.
     Look RowLook(int id) { return Done(id) ? Collected : Reachable(id) ? InLogic : OutOfLogic; }
@@ -440,14 +390,13 @@ namespace {
 
     // The map's cursor and its icon's name, hidden behind the list.
     void ShowMapCursor(bool shown) {
-        u8* cursor = Ui::FindUi(kMapCursorUi);
-        Ui::SetVisible(Ui::RootOf(cursor), shown);
+        Ui::SetVisible(Ui::RootOf(Ui::FindUi(Map::kMapCursorUi)), shown);
     }
 
     void DropList() {
         if (g_Panel.page == nullptr) return;
         ShowMapCursor(true);
-        for (auto& mark : g_Panel.marks) Release(mark);
+        for (auto& mark : g_Panel.marks) Game::Release(mark.owner);
         for (auto& tag : g_Panel.tags) L::Drop(tag);
         for (auto& dot : g_Panel.dots) L::Drop(dot);
         L::Drop(g_Panel.count);
@@ -474,11 +423,9 @@ namespace {
             L::Row& row = list.rows[r];
             L::SetText(row.text, CheckName(id));
             Ui::SetAlpha(Ui::FindPane(row.part, "A_Item_00"), Done(id) ? kDoneAlpha : 255);
-            u8* animator = g_Panel.marks[r].animator;
+            Ui::Animator* animator = g_Panel.marks[r].animator;
             float frame = static_cast<float>(kGameMarkFrames + RowLook(id));
-            if (animator != nullptr && frame < Game::Animator_FrameCount(animator)) {
-                Field<float>(animator, kAnimFrame) = frame;
-            }
+            if (animator != nullptr && frame < Game::Animator_FrameCount(animator)) animator->frame = frame;
         }
         L::Place(list);
     }
@@ -500,8 +447,8 @@ namespace {
         float y = top - kPanelMargin - kHeaderHeight - L::kRowStep / 2 - L::kRowTop;
         Ui::MoveTo(list.layout.root, x, y);
         Ui::MoveTo(g_Panel.window, kPanelX, kPanelY);
-        Field<float>(g_Panel.window, Ui::kPaneWidth) = width;
-        Field<float>(g_Panel.window, Ui::kPaneHeight) = height;
+        g_Panel.window->width = width;
+        g_Panel.window->height = height;
         for (L::Layout* text : {&g_Panel.title, &g_Panel.count}) {
             float textLeft, textRight;
             if (!L::Span(text->note, textLeft, textRight)) continue;
@@ -515,7 +462,7 @@ namespace {
             Ui::SetAlpha(g_Panel.dots[r].root, g_Panel.fade);
             Ui::MoveTo(g_Panel.dots[r].root, x + kDotX, rowY);
             L::Row& row = list.rows[r];
-            u8* align = Ui::FindPane(row.part, "A_Item_00");
+            Ui::Pane* align = Ui::FindPane(row.part, "A_Item_00");
             L::Layout& tag = g_Panel.tags[r];
             bool tagged = list.top + r < list.count && AP::IsLocationSkipped(ListIds()[list.top + r]);
             float nameLeft, nameRight, tagLeft = 0, tagRight = 0;
@@ -523,31 +470,32 @@ namespace {
             Ui::SetAlpha(tag.root, tagged ? g_Panel.fade : 0);
             if (align == nullptr || !L::Span(row.text, nameLeft, nameRight)) continue;
             // the name on the page: the list, the alignment pane, the text box in it (scaled about its origin)
-            float origin = x + Field<float>(align, Ui::kPaneX) + Field<float>(row.text.box, Ui::kPaneX);
+            float origin = x + align->x + row.text.box->pane.x;
             float tagWidth = tagged ? (tagRight - tagLeft) * kTagScale + kTagGap : 0;
             float room = x + kNameRight - tagWidth - (origin + nameLeft);
             float scale = std::clamp(room / (nameRight - nameLeft), kNameSqueeze, 1.0f);
-            Ui::ScaleTo(row.text.box, scale, 1.0f);
+            Ui::ScaleTo(&row.text.box->pane, scale, 1.0f);
             Ui::MoveTo(tag.root, origin + nameRight * scale + kTagGap - tagLeft * kTagScale, rowY + kTagLower);
         }
     }
 
-    void SetTextColor(u8* box, const u8 (&color)[4]) {
+    void SetTextColor(Ui::TextBox* box, const u8 (&color)[4]) {
         if (box == nullptr) return;
-        for (size_t at : {kTextColors, kTextColors + 4}) std::memcpy(box + at, color, 4);
+        std::memcpy(box->colorTop, color, 4);
+        std::memcpy(box->colorBottom, color, 4);
     }
 
-    bool BuildText(L::Layout& layout, u8* page, u8* root, u16 chars) {
+    bool BuildText(L::Layout& layout, Ui::LayoutWrapper* page, Ui::Pane* root, u16 chars) {
         if (!L::Build(layout, kTextLayout, page, root)) return false;
-        u8* box = Ui::FindPane(layout.root, "T_Operation_00");
+        Ui::TextBox* box = Ui::FindText(layout.root, "T_Operation_00");
         if (box != nullptr && Ui::Allocate(box, chars)) L::Bind(layout.note, box);
         return true;
     }
 
     // A on an icon of several locations: its check list over the map.
-    void OpenList(u8* page, const std::vector<int>& ids, const std::string& heading, int group) {
+    void OpenList(Ui::LayoutWrapper* page, const std::vector<int>& ids, const std::string& heading, int group) {
         DropList();
-        u8* root = Ui::RootOf(page);
+        Ui::Pane* root = Ui::RootOf(page);
         if (root == nullptr) return;
         g_Panel.page = page;
         g_Panel.group = group;
@@ -569,8 +517,8 @@ namespace {
         Ui::MoveTo(g_Panel.shade, 0, kDimY);
         Ui::SetAlpha(g_Panel.shade, kDimAlpha);
         if (g_Panel.shade != nullptr) {
-            Field<float>(g_Panel.shade, Ui::kPaneWidth) = kDimWidth;
-            Field<float>(g_Panel.shade, Ui::kPaneHeight) = kDimHeight;
+            g_Panel.shade->width = kDimWidth;
+            g_Panel.shade->height = kDimHeight;
         }
         for (const char* name : kBackHidden) Ui::SetVisible(Ui::FindPane(g_Panel.back.root, name), false);
         g_Panel.window = Ui::FindPane(g_Panel.back.root, "W_window_00");
@@ -579,18 +527,18 @@ namespace {
             Ui::ScaleTo(text->root, kHeaderScale);
             SetTextColor(text->note.box, kInk);
         }
-        Ui::MoveTo(g_Panel.list.scroll, Field<float>(g_Panel.list.scroll, Ui::kPaneX), kScrollY);
+        Ui::MoveTo(g_Panel.list.scroll, g_Panel.list.scroll->x, kScrollY);
         Ui::ScaleTo(g_Panel.list.scroll, 1, L::kRowStep * L::kRows / kScrollHeight);
         for (int r = 0; r < L::kRows; r++) {
             L::Row& row = g_Panel.list.rows[r];
             // one line however long the name: it is shrunk to fit the row instead
             Ui::Allocate(row.text.box, kNameChars);
-            if (row.text.box != nullptr) Field<float>(row.text.box, Ui::kPaneWidth) = kNameWidth;
+            if (row.text.box != nullptr) row.text.box->pane.width = kNameWidth;
             Ui::ScaleTo(g_Panel.dots[r].root, kDotScale);
-            g_Panel.marks[r] = GetAnimation(g_Panel.dots[r].wrapper, "SetMark");
+            g_Panel.marks[r] = Ui::GetAnimation(g_Panel.dots[r].wrapper, "SetMark");
             L::Layout& tag = g_Panel.tags[r];
             Ui::ScaleTo(tag.root, kTagScale);
-            if (tag.note.box != nullptr) Field<float>(tag.note.box, kTextItalic) = kTagSlant;
+            if (tag.note.box != nullptr) tag.note.box->italicRatio = kTagSlant;
             SetTextColor(tag.note.box, kGray);
             L::SetText(tag.note, "skipped");
         }
@@ -625,7 +573,7 @@ namespace {
     }
 
     // Once a frame of the map's KeyWait while the list is there.
-    void TickList(u8* page) {
+    void TickList(Ui::LayoutWrapper* page) {
         if (page != g_Panel.page) return;
         LayOut();
         if (g_Panel.closing) {
@@ -662,24 +610,24 @@ namespace {
 // the page places its room icons and hung after them under N_MapPin_00, so the pins draw over the dots. The floor
 // buttons show the rooms again, and the dots of each room follow it.
 namespace {
-    const std::pair<u8*, bool>* FindRoom(const std::string& room) {
+    const std::pair<Map::Area*, bool>* FindRoom(const std::string& room) {
         auto it = g_Rooms.find(room);
         return it != g_Rooms.end() ? &it->second : nullptr;
     }
 
     // A room's name as the dots have it: its file's ("level/Lv01TailCave/Lv01TailCave_03G.leb") without the folder
     // and the extension.
-    std::string RoomName(const u8* room) {
-        std::string_view path(reinterpret_cast<const char*>(room + kRoomName),
-                              std::min<u64>(Field<u64>(room, kRoomNameLength), 0x50));
+    std::string RoomName(const Map::Area* room) {
+        std::string_view path(room->path, std::min<u64>(room->pathLength, sizeof(room->path)));
         size_t slash = path.rfind('/');
         if (slash != std::string_view::npos) path.remove_prefix(slash + 1);
         if (path.size() > 4 && path.substr(path.size() - 4) == ".leb") path.remove_suffix(4);
         return std::string(path);
     }
 
-    u8* MarkerRoot(u8* marker) {
-        return Game::CallVirtual<u8*()>(marker, kWrapperRootPane);
+    // A map marker's or room icon's root pane.
+    Ui::Pane* MarkerRoot(Ui::LayoutWrapper* wrapper) {
+        return Game::CallVirtual<Ui::Pane*()>(wrapper, Ui::LayoutWrapperVirtual::kRootPane);
     }
 
     // A dot shows while its room is on the shown floor, unless its look is out of logic and those are toggled off.
@@ -691,18 +639,16 @@ namespace {
     void ApplyDots() {
         for (auto& dm : g_DotMarkers) {
             const Dot& dot = g_Dots[dm.dot];
-            u8* animator = Field<u8*>(dm.marker, kMarkerSetMark);
+            Ui::Animator* animator = dm.marker->setMark;
             int look = IdsLook(dot.ids, false);
             float frame = static_cast<float>(kGameMarkFrames + (dot.ids.size() == 1 ? kLooks : 0) + look);
-            if (animator != nullptr && frame < Game::Animator_FrameCount(animator)) {
-                Field<float>(animator, kAnimFrame) = frame;
-            }
-            Ui::SetVisible(MarkerRoot(dm.marker), DotShown(dm));
+            if (animator != nullptr && frame < Game::Animator_FrameCount(animator)) animator->frame = frame;
+            Ui::SetVisible(MarkerRoot(&dm.marker->wrapper), DotShown(dm));
         }
     }
 
-    void SetMarkerState(u8* marker, u8 state) {
-        Game::MapMarker_ChangeState(marker + kMarkerMachine, state);
+    void SetMarkerState(Map::MapMarker* marker, u8 state) {
+        Game::MapMarker_ChangeState(&marker->machine, state);
     }
 
 
@@ -714,12 +660,12 @@ namespace {
     }
 
     // After the dungeon page's setup: the dots of the current dungeon whose room the page has.
-    void MakeDots(u8* page) {
+    void MakeDots(Map::DungeonMap* page) {
         DropDots();
         g_DungeonPage = page;
         std::string level = LevelSystem::GetCurrentLevel() + "_";
-        u8* pinRoot = Field<u8*>(page, kPageMapPin);
-        u8* pinOffset = Field<u8*>(page, kPagePinOffset);
+        Ui::Pane* pinRoot = page->mapPin;
+        Ui::Pane* pinOffset = page->pinOffset;
         if (pinRoot == nullptr || pinOffset == nullptr) return;
         size_t missing = 0;
         for (size_t d = 0; d < g_Dots.size(); d++) {
@@ -732,17 +678,17 @@ namespace {
             }
             Game::SharedPtr made{}, roomPtr{room->first, nullptr};
             Game::MapMarker_Make(&made);
-            u8* marker = static_cast<u8*>(made.ptr);
+            Map::MapMarker* marker = MarkerOf(made);
             if (marker == nullptr) continue;
             Game::MapMarker_SetupPart(marker);
-            Game::LayoutWrapper_AttachBefore(marker, page, pinRoot, pinOffset);
+            Game::LayoutWrapper_AttachBefore(&marker->wrapper, &page->wrapper, pinRoot, pinOffset);
             float at[2] = {};
             Game::DungeonMap_PositionIcon(dot.x, 0, dot.z, page, at, &roomPtr);
-            Ui::MoveTo(MarkerRoot(marker), at[0], at[1]);
-            DotMarker dm{d, marker, static_cast<u8*>(made.ctrl)};
+            Ui::MoveTo(MarkerRoot(&marker->wrapper), at[0], at[1]);
+            DotMarker dm{d, marker, made.ctrl};
             // under N_MapPosition_00, which moves after the setup (DotAt)
-            dm.x = at[0] + Field<float>(pinRoot, Ui::kPaneX);
-            dm.y = at[1] + Field<float>(pinRoot, Ui::kPaneY);
+            dm.x = at[0] + pinRoot->x;
+            dm.y = at[1] + pinRoot->y;
             dm.onFloor = room->second;
             g_DotMarkers.push_back(dm);
         }
@@ -763,10 +709,10 @@ namespace {
 
     // A dot's position in the cursor's units (N_MapOrigin_00's): N_MapPosition_00 moves after the page's setup (y 48
     // in Tail Cave), as the pins' hover reads it each frame.
-    void DotAt(u8* page, const DotMarker& dm, float& x, float& y) {
-        u8* position = Field<u8*>(page, kPageMapPosition);
-        x = dm.x + (position != nullptr ? Field<float>(position, Ui::kPaneX) : 0);
-        y = dm.y + (position != nullptr ? Field<float>(position, Ui::kPaneY) : 0);
+    void DotAt(const Map::DungeonMap* page, const DotMarker& dm, float& x, float& y) {
+        const Ui::Pane* position = page->mapPosition;
+        x = dm.x + (position != nullptr ? position->x : 0);
+        y = dm.y + (position != nullptr ? position->y : 0);
     }
 
     const std::vector<int>* HoveredDotIds() {
@@ -775,7 +721,7 @@ namespace {
 
     // A name on the map cursor: Place:<label>, whose text MapLabelText gives.
     void ShowCursorName(std::string_view placeLabel) {
-        u8* cursor = Ui::FindUi(kMapCursorUi);
+        Map::MapCursor* cursor = FindCursor();
         if (cursor == nullptr) return;
         std::string label = "Place:" + std::string(placeLabel);
         Game::StrView view{label};
@@ -793,23 +739,22 @@ namespace {
     }
 
     void HideCursorName() {
-        u8* cursor = Ui::FindUi(kMapCursorUi);
-        if (cursor != nullptr) Field<u16>(cursor, kCursorHideName) = 0x101;
+        Map::MapCursor* cursor = FindCursor();
+        if (cursor != nullptr) cursor->nameHidden = 0x101;
     }
 
     // Once a frame of the dungeon page's KeyWait, after its pins' hover: the nearest shown dot within the pins'
     // radius, unless a pin is hovered or Y shows the dungeon's info.
-    void UpdateDotHover(u8* page) {
+    void UpdateDotHover(Map::DungeonMap* page) {
         for (auto& dm : g_DotMarkers) {
-            Game::CallVirtual<void()>(dm.marker, kMarkerUpdate);
+            Game::CallVirtual<void()>(dm.marker, Map::MapMarkerVirtual::kUpdate);
         }
         int hovered = -1;
-        u8* cursor = Ui::FindUi(kMapCursorUi);
-        bool free = Field<u8*>(page, kPageHoveredPin) == nullptr && Field<u8>(page, kPageInfo) == 0 &&
-                    !ListOpen() && cursor != nullptr;
+        Map::MapCursor* cursor = FindCursor();
+        bool free = page->hoveredPin == nullptr && page->info == 0 && !ListOpen() && cursor != nullptr;
         if (free) {
-            float radius = Field<float>(cursor, kCursorSize) * kHoverRadius * Field<float>(page, kPageCursorScale);
-            float cx = Field<float>(page, kPageCursor), cy = Field<float>(page, kPageCursor + 4);
+            float radius = cursor->size * kHoverRadius * page->cursorScale;
+            float cx = page->cursorX, cy = page->cursorY;
             float best = radius * radius;
             for (size_t i = 0; i < g_DotMarkers.size(); i++) {
                 const DotMarker& dm = g_DotMarkers[i];
@@ -824,47 +769,40 @@ namespace {
             }
         }
         if (hovered == g_DotHovered) return;
-        if (g_DotHovered >= 0) SetMarkerState(g_DotMarkers[g_DotHovered].marker, kMarkerOff);
+        if (g_DotHovered >= 0) SetMarkerState(g_DotMarkers[g_DotHovered].marker, Map::kMarkerOff);
         bool had = g_DotHovered >= 0;
         g_DotHovered = hovered;
         if (hovered >= 0) {
-            SetMarkerState(g_DotMarkers[hovered].marker, kMarkerOn);
+            SetMarkerState(g_DotMarkers[hovered].marker, Map::kMarkerOn);
             ShowDotName();
-        } else if (had && Field<u8*>(page, kPageHoveredPin) == nullptr) {
+        } else if (had && page->hoveredPin == nullptr) {
             HideCursorName();
         }
     }
 
     // After the dungeon page moves its cursor: with the stick idle the cursor eases onto the hovered dot, as onto a
     // hovered pin.
-    void EaseOntoDot(u8* page) {
-        if (g_DotHovered < 0 || Field<u8*>(page, kPageHoveredPin) != nullptr || Field<u8>(page, kPageInfo) != 0 ||
-            Field<float>(page, kPageCursorSpeed) != kIdleSpeed) {
+    void EaseOntoDot(Map::DungeonMap* page) {
+        if (g_DotHovered < 0 || page->hoveredPin != nullptr || page->info != 0 || page->cursorSpeed != kIdleSpeed) {
             return;
         }
         float x, y;
         DotAt(page, g_DotMarkers[g_DotHovered], x, y);
-        float& cx = Field<float>(page, kPageCursor);
-        float& cy = Field<float>(page, kPageCursor + 4);
-        cx += (x - cx) * kEase;
-        cy += (y - cy) * kEase;
+        page->cursorX += (x - page->cursorX) * kEase;
+        page->cursorY += (y - page->cursorY) * kEase;
     }
 
     // The open map after a change of the logic, the checks or a skip mark: the overworld page's markers or the dungeon
     // page's dots take their looks, the open check list its rows, and the name on the cursor, while it shows one of
     // ours, its text.
     void RefreshOpenMap() {
-        u8* cursor = Ui::FindUi(kMapCursorUi);
-        bool named = cursor != nullptr && Field<u16>(cursor, kCursorHideName) == 0;
+        Map::MapCursor* cursor = FindCursor();
+        bool named = cursor != nullptr && cursor->nameHidden == 0;
         if (g_MarkerPage != nullptr) {
             ApplyLooks(g_MarkerPage);
-            s32 index = Field<s32>(g_MarkerPage, kPageHovered);
-            auto** begin = *reinterpret_cast<u8***>(g_MarkerPage + kPageMarkers);
             Look look;
             if (named && HoveredIcon(g_MarkerPage, look) >= 0) {
-                const u8* row = *reinterpret_cast<u8**>(begin[index * 2] + kMarkerRow);
-                auto* name = reinterpret_cast<const std::pair<const char*, size_t>*>(row + kRowFlagName);
-                ShowCursorName(std::string_view(name->first, name->second));
+                ShowCursorName(HoveredMarker(g_MarkerPage)->row->showFlag.View());
             }
         }
         if (g_DungeonPage != nullptr) {
@@ -884,8 +822,8 @@ HOOK_DEFINE_INLINE(DungeonMapFlags) {
 
 HOOK_DEFINE_INLINE(MarkerAdded) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        g_MarkerPage = reinterpret_cast<u8*>(ctx->X[19]);
-        u8* marker = reinterpret_cast<u8*>(ctx->X[26]);
+        g_MarkerPage = reinterpret_cast<Map::OverworldMap*>(ctx->X[19]);
+        auto* marker = reinterpret_cast<Map::MapMarker*>(ctx->X[26]);
         Look look;
         int group = MarkerIcon(marker, look);
         if (group >= 0 && !LookShown(group, look)) SetMarkerVisible(marker, false);
@@ -894,17 +832,17 @@ HOOK_DEFINE_INLINE(MarkerAdded) {
 
 HOOK_DEFINE_INLINE(FieldPinButton) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        u8* page = reinterpret_cast<u8*>(ctx->X[19]);
+        auto* page = reinterpret_cast<Map::OverworldMap*>(ctx->X[19]);
         if (g_Panel.page != nullptr) {
 #ifdef LASAP_TEST
             u64 start = Ticks();
-            TickList(page);
+            TickList(&page->wrapper);
             u64 spent = Ticks() - start;
             g_TickSum += spent;
             g_TickMost = std::max(g_TickMost, spent);
             g_TickFrames++;
 #else
-            TickList(page);
+            TickList(&page->wrapper);
 #endif
             ctx->W[0] = 0;
             return;
@@ -916,7 +854,7 @@ HOOK_DEFINE_INLINE(FieldPinButton) {
         g_HoverLook = g_HoverGroup >= 0 ? look : -1;
         if (Listable(g_ListAsked)) {
             u64 start = Ticks();
-            OpenList(page, g_Overworld[g_ListAsked], g_GroupNames[g_ListAsked], g_ListAsked);
+            OpenList(&page->wrapper, g_Overworld[g_ListAsked], g_GroupNames[g_ListAsked], g_ListAsked);
             g_OpenTicks = Ticks() - start;
             g_TickSum = g_TickMost = g_TickFrames = 0;
             g_ListAsked = -1;
@@ -930,11 +868,11 @@ HOOK_DEFINE_INLINE(FieldPinButton) {
         if (Listable(group)) {
 #ifdef LASAP_TEST
             u64 start = Ticks();
-            OpenList(page, g_Overworld[group], g_GroupNames[group], group);
+            OpenList(&page->wrapper, g_Overworld[group], g_GroupNames[group], group);
             g_OpenTicks = Ticks() - start;
             g_TickSum = g_TickMost = g_TickFrames = 0;
 #else
-            OpenList(page, g_Overworld[group], g_GroupNames[group], group);
+            OpenList(&page->wrapper, g_Overworld[group], g_GroupNames[group], group);
 #endif
             ctx->W[0] = 0;  // no pin menu
         } else if (ToggleSkipped(page)) {
@@ -944,8 +882,8 @@ HOOK_DEFINE_INLINE(FieldPinButton) {
 };
 
 HOOK_DEFINE_TRAMPOLINE(MapPageDtor) {
-    static void Callback(u8* page) {
-        if (page == g_Panel.page) DropList();
+    static void Callback(Map::OverworldMap* page) {
+        if (&page->wrapper == g_Panel.page) DropList();
         if (page == g_MarkerPage) g_MarkerPage = nullptr;
         Orig(page);
     }
@@ -954,13 +892,13 @@ HOOK_DEFINE_TRAMPOLINE(MapPageDtor) {
 HOOK_DEFINE_INLINE(FieldMemoryButton) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         if (ctx->W[21] == 0 || !g_Enabled) return;
-        ToggleOutOfLogic(reinterpret_cast<u8*>(ctx->X[19]));
+        ToggleOutOfLogic(reinterpret_cast<const void*>(ctx->X[19]));
         ctx->W[21] = 0;  // no memories
     }
 };
 
 HOOK_DEFINE_TRAMPOLINE(MemoryButton) {
-    static bool Callback(u8* page) {
+    static bool Callback(Map::DungeonMap* page) {
         bool pressed = Orig(page);
         if (!pressed || !g_Enabled) return pressed;
         ToggleOutOfLogic(page);
@@ -969,20 +907,18 @@ HOOK_DEFINE_TRAMPOLINE(MemoryButton) {
 };
 
 HOOK_DEFINE_TRAMPOLINE(DungeonIconUpdate) {
-    static void Callback(u8* icon, const u8* actor) {
+    static void Callback(Map::DungeonMapIcon* icon, const Map::MapActorDesc* actor) {
         Orig(icon, actor);
         g_IconCalls++;
         if (!g_Enabled || g_Chests.empty()) return;
         // A chest of the slot's: its dot stands for it, so its icon goes (shown flag clear, which the floor's
         // set-shown keeps).
-        float x = *reinterpret_cast<const float*>(actor + kActorPosX);
-        float z = *reinterpret_cast<const float*>(actor + kActorPosZ);
         std::string level = LevelSystem::GetCurrentLevel();
         for (const auto& chest : g_Chests) {
-            if (chest.level == level && std::fabs(chest.x - x) < 0.01f && std::fabs(chest.z - z) < 0.01f) {
+            if (chest.level == level && std::fabs(chest.x - actor->x) < 0.01f && std::fabs(chest.z - actor->z) < 0.01f) {
                 g_ChestMatches++;
-                icon[kIconShown] = 0;
-                Ui::SetVisible(MarkerRoot(icon), false);
+                icon->shown = 0;
+                Ui::SetVisible(MarkerRoot(&icon->wrapper), false);
                 return;
             }
         }
@@ -990,7 +926,7 @@ HOOK_DEFINE_TRAMPOLINE(DungeonIconUpdate) {
 };
 
 HOOK_DEFINE_TRAMPOLINE(DungeonPageSetup) {
-    static void Callback(u8* page) {
+    static void Callback(Map::DungeonMap* page) {
         g_Rooms.clear();
         Orig(page);
         if (g_Enabled) MakeDots(page);
@@ -998,33 +934,34 @@ HOOK_DEFINE_TRAMPOLINE(DungeonPageSetup) {
 };
 
 HOOK_DEFINE_TRAMPOLINE(DungeonPageDtor) {
-    static void Callback(u8* page) {
-        if (page == g_Panel.page) DropList();
+    static void Callback(Map::DungeonMap* page) {
+        if (&page->wrapper == g_Panel.page) DropList();
         if (page == g_DungeonPage) DropDots();
         Orig(page);
     }
 };
 
 HOOK_DEFINE_TRAMPOLINE(ShowCellFloor) {
-    static void Callback(u8* page, u8 cell, u8** room, const u8* area) {
+    static void Callback(Map::DungeonMap* page, u8 cell, Game::SharedPtr* room, const Map::UiDungeonAreaRow* area) {
         Orig(page, cell, room, area);
-        if (!g_Enabled || room == nullptr || *room == nullptr || area == nullptr) return;
-        std::string name = RoomName(*room);
-        bool onFloor = *reinterpret_cast<const u32*>(area + kAreaFloor) == page[kPageShownFloor];
-        g_Rooms[name] = {*room, onFloor};
+        if (!g_Enabled || room == nullptr || room->ptr == nullptr || area == nullptr) return;
+        auto* roomArea = static_cast<Map::Area*>(room->ptr);
+        std::string name = RoomName(roomArea);
+        bool onFloor = area->floor == page->shownFloor;
+        g_Rooms[name] = {roomArea, onFloor};
         if (page == g_DungeonPage) ShowRoomDots(name, onFloor);
     }
 };
 
 HOOK_DEFINE_TRAMPOLINE(DungeonMoveCursor) {
-    static void Callback(u8* page, bool move) {
+    static void Callback(Map::DungeonMap* page, bool move) {
         Orig(page, move);
         if (page == g_DungeonPage) EaseOntoDot(page);
     }
 };
 
 HOOK_DEFINE_TRAMPOLINE(DungeonUpdateHover) {
-    static void Callback(u8* page) {
+    static void Callback(Map::DungeonMap* page) {
         Orig(page);
         if (page == g_DungeonPage) UpdateDotHover(page);
     }
@@ -1034,10 +971,10 @@ HOOK_DEFINE_TRAMPOLINE(DungeonUpdateHover) {
 HOOK_DEFINE_TRAMPOLINE(DungeonPinButton) {
     static bool Callback() {
         bool pressed = Orig();
-        u8* page = g_DungeonPage;
-        if (page == nullptr || page[kPageMachineState] != kKeyWait) return pressed;
-        if (g_Panel.page == page) {
-            TickList(page);
+        Map::DungeonMap* page = g_DungeonPage;
+        if (page == nullptr || page->machine.state != Map::kKeyWait) return pressed;
+        if (g_Panel.page == &page->wrapper) {
+            TickList(&page->wrapper);
             return false;
         }
 #ifdef LASAP_TEST
@@ -1048,9 +985,9 @@ HOOK_DEFINE_TRAMPOLINE(DungeonPinButton) {
         g_DotListAsked = -1;
 #endif
         const std::vector<int>* ids = HoveredDotIds();
-        if (!pressed || ids == nullptr || Field<u8*>(page, kPageHoveredPin) != nullptr) return pressed;
+        if (!pressed || ids == nullptr || page->hoveredPin != nullptr) return pressed;
         if (ids->size() > 1) {
-            OpenList(page, *ids, g_Dots[g_DotMarkers[g_DotHovered].dot].name, -1);
+            OpenList(&page->wrapper, *ids, g_Dots[g_DotMarkers[g_DotHovered].dot].name, -1);
         } else if (Skippable(*ids)) {
             AP::SetLocationSkipped((*ids)[0], !AP::IsLocationSkipped((*ids)[0]));
             ApplyDots();
@@ -1203,9 +1140,9 @@ namespace AP {
         }
         g_MapDataChangedLately = false;
         u8 dungeon = *Game::LevelIndex;
-        u8** entries = *Game::DungeonItems_ptr;
+        Map::DungeonItemsEntry** entries = *Game::DungeonItems_ptr;
         if (dungeon == 0xff || entries == nullptr || entries[dungeon] == nullptr) return;
-        *reinterpret_cast<u64*>(entries[dungeon] + kDungeonVisited) = ~0ULL;
+        entries[dungeon]->visited = ~0ULL;
     }
 
     std::string MapCaptionText() {
@@ -1255,9 +1192,8 @@ namespace AP {
         if (a.size() >= 4 && g_DungeonPage != nullptr) {
             size_t n = static_cast<size_t>(std::atoi(a[3].c_str()));
             if ((a[2] == "cursor" || a[2] == "near") && n < g_DotMarkers.size()) {
-                float& cx = Field<float>(g_DungeonPage, kPageCursor);
-                DotAt(g_DungeonPage, g_DotMarkers[n], cx, Field<float>(g_DungeonPage, kPageCursor + 4));
-                if (a[2] == "near") cx += 8;
+                DotAt(g_DungeonPage, g_DotMarkers[n], g_DungeonPage->cursorX, g_DungeonPage->cursorY);
+                if (a[2] == "near") g_DungeonPage->cursorX += 8;
                 UpdateDotHover(g_DungeonPage);
             } else if (a[2] == "press") {
                 g_DotListAsked = static_cast<int>(n);
@@ -1268,11 +1204,10 @@ namespace AP {
         std::string looks;
         size_t shown = 0;
         for (const auto& dm : g_DotMarkers) {
-            u8* animator = Field<u8*>(dm.marker, kMarkerSetMark);
+            const Ui::Animator* animator = dm.marker->setMark;
             int look = animator == nullptr ? -1 :
-                static_cast<int>(Field<float>(animator, kAnimFrame)) - kGameMarkFrames -
-                    (g_Dots[dm.dot].ids.size() == 1 ? kLooks : 0);
-            bool on = (MarkerRoot(dm.marker)[Ui::kPaneFlags] & Ui::kPaneVisible) != 0;
+                static_cast<int>(animator->frame) - kGameMarkFrames - (g_Dots[dm.dot].ids.size() == 1 ? kLooks : 0);
+            bool on = (MarkerRoot(&dm.marker->wrapper)->flags & Ui::kPaneVisible) != 0;
             shown += on;
             char letter = look >= 0 && look < kLooks ? kLookLetters[look] : '?';
             looks += on ? letter : static_cast<char>(std::toupper(letter));
@@ -1281,9 +1216,9 @@ namespace AP {
                         " dots=" + std::to_string(g_DotMarkers.size()) + " shown=" + std::to_string(shown) +
                         " rooms=" + std::to_string(g_Rooms.size()) + " chests=" + std::to_string(g_ChestMatches);
         if (g_DungeonPage != nullptr) {
-            s += " floor=" + std::to_string(g_DungeonPage[kPageShownFloor]) + " cursor=" +
-                 std::to_string(std::lround(Field<float>(g_DungeonPage, kPageCursor))) + "," +
-                 std::to_string(std::lround(Field<float>(g_DungeonPage, kPageCursor + 4)));
+            s += " floor=" + std::to_string(g_DungeonPage->shownFloor) + " cursor=" +
+                 std::to_string(std::lround(g_DungeonPage->cursorX)) + "," +
+                 std::to_string(std::lround(g_DungeonPage->cursorY));
         }
         s += " hover=" + std::to_string(g_DotHovered);
         if (g_DotHovered >= 0 && g_DungeonPage != nullptr) {
@@ -1339,13 +1274,12 @@ namespace AP {
         std::string drawn;
         if (g_MarkerPage != nullptr) {
             size_t made = 0, shown[kLooks] = {};
-            auto** marker = *reinterpret_cast<u8***>(g_MarkerPage + kPageMarkers);
-            auto** end = *reinterpret_cast<u8***>(g_MarkerPage + kPageMarkers + 8);
-            for (; marker < end; marker += 2) {
+            for (const Game::SharedPtr& sp : g_MarkerPage->markers) {
+                Map::MapMarker* marker = MarkerOf(sp);
                 Look look;
-                if (*marker == nullptr || MarkerIcon(*marker, look) < 0) continue;
+                if (marker == nullptr || MarkerIcon(marker, look) < 0) continue;
                 made++;
-                if (Field<u8>(MarkerPane(*marker), Ui::kPaneFlags) & Ui::kPaneVisible) shown[look]++;
+                if (MarkerPane(marker)->flags & Ui::kPaneVisible) shown[look]++;
             }
             drawn = " made=" + std::to_string(made) + " drawn=" + std::to_string(shown[InLogic]) + "," +
                     std::to_string(shown[Partial]) + "," + std::to_string(shown[OutOfLogic]) + "," +

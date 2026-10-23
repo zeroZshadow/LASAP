@@ -260,7 +260,7 @@ namespace {
         static const char label[] = "UI:SystemSaving";
         Game::StrView view{label, sizeof(label) - 1};
         g_ToastText = toast;
-        Game::MessageText_SetLabel(g_Throbber + kThrobberPane, &view);
+        Game::MessageText_SetLabel(reinterpret_cast<Game::Ui::TextHolder*>(g_Throbber + kThrobberPane), &view);
         g_ToastText = false;
     }
 }
@@ -303,7 +303,7 @@ namespace AP {
         ThrobberSetState::InstallAtFuncPtr(Game::Throbber_ChangeState.Ptr());
     }
 
-    void SetPaneText(void* holder, const std::string& text) {
+    void SetPaneText(Game::Ui::TextHolder* holder, const std::string& text) {
         static const char label[] = "UI:SystemSaving";
         Game::StrView view{label, sizeof(label) - 1};
         g_PaneText = &text;

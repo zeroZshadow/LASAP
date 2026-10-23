@@ -40,7 +40,6 @@ namespace {
     // What PopEnemy releases afterwards: a weak_ptr's control block at +0x1b8, shared_ptr control blocks at +0x168
     // and +0x158, then three member destructors (ActorParams_Dtor0..2).
     constexpr size_t kParamsDtor0At = 0xd0, kParamsDtor1At = 0x50, kParamsDtor2At = 0x10;
-    constexpr size_t kFrameworkActorSystem = 0x498;  // shared_ptr
     constexpr size_t kActorRoot = 0x80;    // the root component (coordinates), as PopEnemy reads it
     // Ghosts are NpcGhost actors (0x179) with an Npc row of their own. Each NPC class passes its row's symbol, a
     // literal in its code (str_NpcGhost), to the NPC component constructor, which looks the row up
@@ -281,11 +280,10 @@ namespace {
     float g_Fps = 60;
 
 #ifdef LASAP_TEST
-    // DBG puppet framelog: per frame of the module's tick, the pause flag (Framework +0x510), the ghost draws and the
+    // DBG puppet framelog: per frame of the module's tick, the pause flag (Framework::paused), the ghost draws and the
     // instanced models' draws recorded so far, the instanced records written and the ghosts ready
     struct FrameRow { u32 frame; u8 paused; u32 draws, instDraws, records, ready; };
     constexpr u32 kFrameLog = 120;
-    constexpr size_t kFrameworkPaused = 0x510;
     FrameRow g_FrameLog[kFrameLog];
     u32 g_FrameLogCount = 0;
     struct Sample { Game::Vec3 pos; Game::Vec4 rot; };
@@ -414,7 +412,7 @@ namespace {
     void Remove(Puppet& p) {
         ClearSpan(IndexOf(p));
         if (Alive(p) && (At<u32>(p.actor, kActorFlags) & 0xc0000000) == 0) {
-            void* system = Game::Field<void*>(Game::GetFramework(), kFrameworkActorSystem);
+            void* system = Game::GetFramework()->actorSystem.ptr;
             Game::Entity_RemoveChild(system, static_cast<const char*>(p.actor) + kActorName,
                                      At<u64>(p.actor, kActorNameLength), false);
         }
@@ -466,14 +464,14 @@ namespace {
         std::memcpy(params + kParamRot, rot, 16);
         std::memcpy(params + kParamScale, scale, 16);
 
-        // The owner is the framework's actor system (a shared_ptr at Framework +0x498), as the player's hookshot
+        // The owner is the framework's actor system (a shared_ptr), as the player's hookshot
         // passes it.
         if (id == kGhostActor && !HasGhostRow()) {
             err = "no APGhost row (a mod patched before ghosts)";
             p.spawnAfter = frame + kNoRowFrames;
             return false;
         }
-        auto* system = &Game::Field<SharedPtr>(Game::GetFramework(), kFrameworkActorSystem);
+        SharedPtr* system = &Game::GetFramework()->actorSystem;
         SharedPtr out{};
         g_SpawningGhost = id == kGhostActor;
         Game::Actor_Create(&out, system, params);
@@ -1010,7 +1008,7 @@ namespace {
     // g3d: model object +0x38 the skeleton, its +0x20 the bones' world matrices (0x40 each: X, Y, Z axes, translation).
     constexpr size_t kInstSize = 0x310, kInstFlags = 0x40, kInstNoPush = 0x2f9, kInstVisible = 0x2fa, kInstM = 0x148,
                      kInstSelf = 0x8, kInstSelfCtrl = 0x10, kAnimSmc = 0x168, kSmcResource = 0x168, kMRecords = 0x398,
-                     kFrameworkModels = 0x540, kModelSkeleton = 0x38, kSkeletonWorld = 0x20;
+                     kModelSkeleton = 0x38, kSkeletonWorld = 0x20;
     constexpr u32 kInstMode = 0x4c41;  // cache keys (+ group) no game component uses: models of their own
     constexpr int kInstCapacity = 32;
     struct Record { float pos[4], rot[4], scale[3], pad; };
@@ -1112,14 +1110,14 @@ namespace {
     }
 
     bool InstMake(int g, void* host, u8* smc) {
-        u8* fmwk = reinterpret_cast<u8*>(Game::GetFramework());
+        Game::Framework* fmwk = Game::GetFramework();
         u8* comp = static_cast<u8*>(Game::operator_new(kInstSize));
         SharedPtr owner{};
         Game::SharedPtr_FromWeak(&owner, At<void*>(host, 8), At<void*>(host, 0x10));
         snprintf(g_InstName, sizeof(g_InstName), "APGhostInst%d", g_InstMade++);
         Game::ComponentName name{g_InstName, strlen(g_InstName), 1, owner.ptr, owner.ctrl};
         Game::InstancedModel_Ctor(comp, &name, smc + kSmcResource, kInstMode + g, kInstGroups[g].shapes,
-                                  fmwk + kFrameworkModels);
+                                  fmwk->models);
         Game::ReleaseOwner(owner.ctrl);
         void** ctrl = static_cast<void**>(Game::operator_new(0x20));
         ctrl[0] = const_cast<u8*>(Game::InstancedModelCtrl_vtable.Ptr());
@@ -1548,7 +1546,7 @@ namespace AP::Puppet {
 #endif
             return;
         }
-        u32 frame = fmwk->mFrameCount;
+        u32 frame = fmwk->frameCount;
         if (frame == g_LastFrame) {
             // the game paused (a menu opens): its frame count stays and the actors stand, but the instanced models'
             // records are emptied each frame drawn, so they are written again
@@ -1599,7 +1597,7 @@ namespace AP::Puppet {
             for (auto& inst : g_Inst) records += inst.drawn;
             for (int n = 0; n < kGhosts; n++) ready += g_Puppets[n].ready;
             g_FrameLog[g_FrameLogCount++ % kFrameLog] =
-                FrameRow{frame, reinterpret_cast<u8*>(fmwk)[kFrameworkPaused], g_GhostDraws, g_InstDraws, records, ready};
+                FrameRow{frame, fmwk->paused, g_GhostDraws, g_InstDraws, records, ready};
         }
 #endif
         // the name over the head of each ghost drawn whole, once its body draws (each tag's text costs draws too; the
