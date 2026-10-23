@@ -1,28 +1,28 @@
 // The DBG commands (test build, TESTING.md) on the game's state, and the STATE line.
 #ifdef LASAP_TEST
-#include "test/test_impl.hpp"
-#include "AP/ap.hpp"
-#include "AP/ap_bridge.hpp"
-#include "AP/ap_net.hpp"
-#include "AP/ap_popup.hpp"
-#include "AP/ap_text.hpp"
+#include "ap/ap.hpp"
+#include "ap/ap_bridge.hpp"
+#include "ap/ap_net.hpp"
+#include "ap/ap_popup.hpp"
+#include "ap/ap_text.hpp"
+#include "game/data/inventory.hpp"
+#include "game/framework.hpp"
+#include "game/hooks/eventflags.hpp"
+#include "game/hooks/inventory.hpp"
+#include "game/hooks/level.hpp"
+#include "game/sym.hpp"
+#include "game/time.hpp"
 #include "ghost/ghost_net.hpp"
 #include "map/map_tracker.hpp"
 #include "music/music.hpp"
 #include "music/music_jukebox.hpp"
-#include "Game/framework.hpp"
-#include "Game/sym.hpp"
-#include "Game/time.hpp"
-#include "Game/Data/inventory.hpp"
-#include "Hooks/Common/eventflags.hpp"
-#include "Hooks/Common/inventory.hpp"
-#include "Hooks/Common/level.hpp"
+#include "test/test_impl.hpp"
 #include "nn/fs.hpp"
-#include <malloc.h>
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <malloc.h>
 
 namespace AP::Test {
 namespace {

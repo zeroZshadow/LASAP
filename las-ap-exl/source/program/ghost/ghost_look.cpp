@@ -1,8 +1,8 @@
 // The puppets' look (DESIGN.md, Ghosts): the materials and shapes a ghost draws, its tunic and its face.
+#include "game/mem.hpp"
+#include "game/model.hpp"
+#include "game/sym.hpp"
 #include "ghost/ghost_puppets_impl.hpp"
-#include "Game/mem.hpp"
-#include "Game/model.hpp"
-#include "Game/sym.hpp"
 #include <algorithm>
 #include <string_view>
 

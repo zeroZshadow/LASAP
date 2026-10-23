@@ -1,5 +1,5 @@
 #pragma once
-// exlaunch's symbol tables (lib/reloc). The module names the game's code by offset instead (Game/sym.hpp), so they
+// exlaunch's symbol tables (lib/reloc). The module names the game's code by offset instead (game/sym.hpp), so they
 // are empty.
 #include "lib.hpp"
 

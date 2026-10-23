@@ -8,14 +8,14 @@
 // (ghost_dither.cpp), the instanced equipment and faces (ghost_instanced.cpp) and the crowds (ghost_crowd.cpp) have
 // files of their own.
 #include "ghost/ghost_puppets_impl.hpp"
+#include "ap/ap_net.hpp"
+#include "game/framework.hpp"
+#include "game/hooks/level.hpp"
+#include "game/math.hpp"
+#include "game/model.hpp"
+#include "game/sym.hpp"
+#include "game/time.hpp"
 #include "ghost/ghost_nametag.hpp"
-#include "AP/ap_net.hpp"
-#include "Game/framework.hpp"
-#include "Game/math.hpp"
-#include "Game/model.hpp"
-#include "Game/sym.hpp"
-#include "Game/time.hpp"
-#include "Hooks/Common/level.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstring>

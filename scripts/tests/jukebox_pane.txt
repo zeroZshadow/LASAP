@@ -1,4 +1,4 @@
-# The Jukebox page (ap_jukebox.cpp, DESIGN.md "Jukebox page"): the pause menu's fourth page, Map, Items, System,
+# The Jukebox page (music_jukebox.cpp, DESIGN.md "Jukebox page"): the pause menu's fourth page, Map, Items, System,
 # Jukebox, as a mode of System's slot, and its playback controls. Run after boot_file1 with Link in the Wind Fish's
 # Egg (warp Lv09WindFishsEgg 37.5 0 94.5), whose track the cursor opens on, and the client connected (no server
 # needed). STATE's pane= is the page the player sees (3 the Jukebox), navi= the header's state (2 WaitKey),

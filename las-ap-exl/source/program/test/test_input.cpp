@@ -1,10 +1,10 @@
 // Input for the tests (test build, TESTING.md): frame-exact presses, optionally waiting for a condition, text advance
 // that presses only while a message waits for a button, and the other ops; each frame's step.
 #ifdef LASAP_TEST
+#include "ap/ap_bridge.hpp"
+#include "ap/ap_net.hpp"
+#include "game/time.hpp"
 #include "test/test_impl.hpp"
-#include "AP/ap_bridge.hpp"
-#include "Game/time.hpp"
-#include "AP/ap_net.hpp"
 #include <algorithm>
 #include <cstdlib>
 #include <deque>

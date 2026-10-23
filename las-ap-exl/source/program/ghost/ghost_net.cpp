@@ -2,15 +2,15 @@
 // goes to the client as POS lines, which it relays to the other players; their positions come back as GHOST lines,
 // kept here per ghost slot for the puppets.
 #include "ghost/ghost_net.hpp"
-#include "AP/ap.hpp"
-#include "Game/framework.hpp"
-#include "Game/math.hpp"
-#include "Game/model.hpp"
-#include "Game/time.hpp"
-#include "Hooks/Common/level.hpp"
-#include "Game/Data/inventory.hpp"
-#include "AP/ap_net.hpp"
-#include "AP/ap_text.hpp"
+#include "ap/ap.hpp"
+#include "ap/ap_net.hpp"
+#include "ap/ap_text.hpp"
+#include "game/data/inventory.hpp"
+#include "game/framework.hpp"
+#include "game/hooks/level.hpp"
+#include "game/math.hpp"
+#include "game/model.hpp"
+#include "game/time.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>

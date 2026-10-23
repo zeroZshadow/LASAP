@@ -2,13 +2,13 @@
 // (ShowCellFloor), which also gives the rooms by name; after it, each dot of the dungeon gets a map marker placed as
 // the page places its room icons and hung after them under N_MapPin_00, so the pins draw over the dots. The floor
 // buttons show the rooms again, and the dots of each room follow it.
-#include "map/map_tracker_impl.hpp"
-#include "AP/ap.hpp"
-#include "AP/ap_patcher.hpp"
-#include "Game/mem.hpp"
-#include "Game/sym.hpp"
-#include "Hooks/Common/level.hpp"
+#include "ap/ap.hpp"
+#include "ap/ap_patcher.hpp"
+#include "game/hooks/level.hpp"
+#include "game/mem.hpp"
+#include "game/sym.hpp"
 #include "loggers.hpp"
+#include "map/map_tracker_impl.hpp"
 #include <algorithm>
 #include <cmath>
 
@@ -253,7 +253,7 @@ namespace {
         return g_DotHovered >= 0 ? &g_Dots[g_DotMarkers[g_DotHovered].dot].ids : nullptr;
     }
 
-    // A name on the map cursor: Place:<label>, whose text MapLabelText gives.
+    // A name on the map cursor: Place:<label>, whose text LabelText gives.
     void ShowCursorName(std::string_view placeLabel) {
         Map::MapCursor* cursor = FindCursor();
         if (cursor == nullptr) return;

@@ -2,10 +2,10 @@
 // action prompt (Gm_HUDInteract.bflyt of Game.arc: text in a dark rounded window, without its button picture) built as
 // a layout of its own and placed on the screen every frame. All on the game thread.
 #include "ghost/ghost_nametag.hpp"
-#include "AP/ap.hpp"
-#include "Game/framework.hpp"
-#include "Game/ui.hpp"
-#include "AP/ap_text.hpp"
+#include "ap/ap.hpp"
+#include "ap/ap_text.hpp"
+#include "game/framework.hpp"
+#include "game/ui.hpp"
 #include "ghost/ghost_net.hpp"
 #include <algorithm>
 #include <cmath>
@@ -18,7 +18,7 @@ namespace {
 
     // Priority 1: over the HUD (0), under the menus, the map, fades and the message window. The text's extent is
     // returned through x8. Its text is set through the game's message pipeline (AP::SetPaneText) and queued for its
-    // glyphs here (Game/ui.hpp).
+    // glyphs here (game/ui.hpp).
     constexpr int kPriority = 1;
     // Gm_HUDInteract: a group (alpha 0 in the file: an animation fades the prompt in, scale 2/3) holding a window, its
     // text and the button's picture, the window and the text placed from their left edge. The tag shows the group,

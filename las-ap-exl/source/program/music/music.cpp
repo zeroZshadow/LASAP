@@ -9,15 +9,15 @@
 // (event songs, instrument songs, fanfares, jingles, boss and buff music) plays as usual, and the chosen track
 // comes back where the zone's music would.
 #include "music/music.hpp"
-#include "AP/ap.hpp"
 #include "music/music_tracks.hpp"
-#include "Game/audio.hpp"
-#include "Game/framework.hpp"
-#include "Game/sym.hpp"
-#include "Game/time.hpp"
+#include "ap/ap.hpp"
+#include "ap/ap_net.hpp"
+#include "ap/ap_text.hpp"
+#include "game/audio.hpp"
+#include "game/framework.hpp"
+#include "game/sym.hpp"
+#include "game/time.hpp"
 #include "loggers.hpp"
-#include "AP/ap_net.hpp"
-#include "AP/ap_text.hpp"
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -31,7 +31,7 @@ namespace {
     using Game::Audio::BgmManager;
     using Game::Audio::Sound;
 
-    // The BGM manager (game 1.0.0, Game/audio.hpp): a static of the game, made on its first use (guard bit 0 set
+    // The BGM manager (game 1.0.0, game/audio.hpp): a static of the game, made on its first use (guard bit 0 set
     // then). BgmManager_Play(f32 volume, manager*, StringView* name, bool, bool, bool force) returns the new instance,
     // or null for an unknown name or a track that plays already. A new instance starts its stream from the beginning,
     // intro included. Kind 1 instances (zone and event BGM) are those the zone update fades out when the zone's track

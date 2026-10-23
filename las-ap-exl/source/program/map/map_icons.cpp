@@ -1,10 +1,10 @@
 // The map tracker's overworld icons (DESIGN.md, Map tracker): their looks, hover texts and buttons.
+#include "ap/ap.hpp"
+#include "ap/ap_patcher.hpp"
+#include "game/hooks/eventflags.hpp"
+#include "game/mem.hpp"
+#include "game/sym.hpp"
 #include "map/map_tracker_impl.hpp"
-#include "AP/ap.hpp"
-#include "AP/ap_patcher.hpp"
-#include "Game/mem.hpp"
-#include "Game/sym.hpp"
-#include "Hooks/Common/eventflags.hpp"
 #include <cstdlib>
 #include <cstring>
 

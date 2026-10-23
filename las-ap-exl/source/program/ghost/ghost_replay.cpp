@@ -11,8 +11,8 @@
 // started or changed the animation, or kArriveHoldMs pass on its clock: a player entering a level stands still through
 // its own screen's fade-in first (falling into the well: on the floor, then fall_from_top drops the model from above
 // while the position sinks). It shows again with that frame, whose animation then plays unblended.
+#include "game/math.hpp"
 #include "ghost/ghost_puppets_impl.hpp"
-#include "Game/math.hpp"
 #include <algorithm>
 #include <cmath>
 

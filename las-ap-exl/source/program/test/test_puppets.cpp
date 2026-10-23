@@ -1,14 +1,14 @@
 // DBG puppet (test build): a puppet of its own on Link's path, the puppets' state, and their logs.
 #ifdef LASAP_TEST
-#include "ghost/ghost_puppets_impl.hpp"
+#include "ap/ap_net.hpp"
+#include "game/framework.hpp"
+#include "game/math.hpp"
+#include "game/mem.hpp"
+#include "game/sym.hpp"
+#include "game/time.hpp"
 #include "ghost/ghost_nametag.hpp"
+#include "ghost/ghost_puppets_impl.hpp"
 #include "test/test_impl.hpp"
-#include "AP/ap_net.hpp"
-#include "Game/framework.hpp"
-#include "Game/math.hpp"
-#include "Game/mem.hpp"
-#include "Game/sym.hpp"
-#include "Game/time.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>

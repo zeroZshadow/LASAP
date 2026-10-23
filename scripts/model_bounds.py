@@ -1,4 +1,4 @@
-"""Bind-pose bounds of BFRES models, for sizing and centring NPC models shown as items (ap_game.cpp, g_HeldModelFixes).
+"""Bind-pose bounds of BFRES models, for sizing and centring NPC models shown as items (ap_held_model.cpp, g_HeldModelFixes).
 
 python model_bounds.py <file.bfres>[:<model>] ... [--ref <file.bfres>[:<model>]] [--shapes]
 

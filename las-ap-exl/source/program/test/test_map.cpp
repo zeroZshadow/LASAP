@@ -1,9 +1,9 @@
 // DBG map, maplist and mapdot (test build): the map tracker's state, its check list's and its dungeon dots'.
 #ifdef LASAP_TEST
+#include "ap/ap.hpp"
+#include "game/time.hpp"
 #include "map/map_tracker_impl.hpp"
 #include "test/test_impl.hpp"
-#include "AP/ap.hpp"
-#include "Game/time.hpp"
 #include <algorithm>
 #include <cctype>
 #include <cmath>

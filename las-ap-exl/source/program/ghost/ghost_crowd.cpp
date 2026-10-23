@@ -1,7 +1,7 @@
 // Crowds of ghosts (DESIGN.md, Ghosts): how many draw whole, in part or not at all, from the frame rate.
+#include "game/actors/player.hpp"
+#include "game/time.hpp"
 #include "ghost/ghost_puppets_impl.hpp"
-#include "Game/Actors/player.hpp"
-#include "Game/time.hpp"
 #include <algorithm>
 #include <cmath>
 

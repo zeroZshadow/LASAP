@@ -25,7 +25,7 @@ namespace AP::Test {
     void ApplyInput(nn::hid::NpadBaseState* state);
     // DBG <command> (test_commands.cpp), split on spaces. Returns false if the command must wait for the player.
     bool Command(const std::vector<std::string>& a);
-    // Enemy randomizer (Hooks/Randomizer/enemies.cpp), from the thread loading a room: an enemy it looked at, its
+    // Enemy randomizer (patches/enemies.cpp), from the thread loading a room: an enemy it looked at, its
     // LEB actor id before and after, and its scale (0 when kept).
     void OnEnemy(u16 vanilla, u16 now, float scale);
     void InstallHooks();

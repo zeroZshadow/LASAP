@@ -1,9 +1,9 @@
 // The ghosts' equipment and faces, instanced (DESIGN.md, Ghosts): the shapes bound to one bone each draw once for all
 // ghosts.
+#include "game/framework.hpp"
+#include "game/mem.hpp"
+#include "game/sym.hpp"
 #include "ghost/ghost_puppets_impl.hpp"
-#include "Game/framework.hpp"
-#include "Game/mem.hpp"
-#include "Game/sym.hpp"
 #include <cmath>
 #include <cstdio>
 #include <cstring>

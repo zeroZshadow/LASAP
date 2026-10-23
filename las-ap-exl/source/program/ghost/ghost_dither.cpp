@@ -1,7 +1,7 @@
 // The puppets' dither (DESIGN.md, Ghosts): their draws get alpha-to-coverage, on the render thread.
+#include "game/mem.hpp"
+#include "game/sym.hpp"
 #include "ghost/ghost_puppets_impl.hpp"
-#include "Game/mem.hpp"
-#include "Game/sym.hpp"
 #include <algorithm>
 
 namespace AP::Puppets {

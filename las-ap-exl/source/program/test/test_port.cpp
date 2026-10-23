@@ -1,15 +1,15 @@
 // The debug port (test build, TESTING.md): DBG commands and any protocol line from the test scripts, replied to on the
 // same connection within milliseconds; everything the module sends the AP client is mirrored there as "AP <line>".
 #ifdef LASAP_TEST
-#include "test/test_impl.hpp"
-#include "AP/ap.hpp"
-#include "AP/ap_bridge.hpp"
-#include "Game/time.hpp"
+#include "ap/ap.hpp"
+#include "ap/ap_bridge.hpp"
+#include "game/time.hpp"
 #include "loggers.hpp"
+#include "test/test_impl.hpp"
 #include "nn/os.hpp"
 #include "nn/socket.hpp"
-#include <netinet/in.h>
 #include <deque>
+#include <netinet/in.h>
 
 namespace AP::Test {
 namespace {

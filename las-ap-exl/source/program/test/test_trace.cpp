@@ -6,19 +6,19 @@
 //   calls; each keeps its state names in a table, so the trace names their states.
 // - Conditions on that state, which the ops (test_input.cpp) wait for.
 #ifdef LASAP_TEST
-#include "test/test_impl.hpp"
-#include "AP/ap.hpp"
-#include "AP/ap_bridge.hpp"
-#include "AP/ap_net.hpp"
+#include "ap/ap.hpp"
+#include "ap/ap_bridge.hpp"
+#include "ap/ap_net.hpp"
+#include "game/addr.hpp"
+#include "game/data/inventory.hpp"
+#include "game/framework.hpp"
+#include "game/hooks/level.hpp"
+#include "game/math.hpp"
+#include "game/sym.hpp"
+#include "game/time.hpp"
 #include "ghost/ghost_net.hpp"
 #include "music/music_jukebox.hpp"
-#include "Game/addr.hpp"
-#include "Game/framework.hpp"
-#include "Game/math.hpp"
-#include "Game/sym.hpp"
-#include "Game/time.hpp"
-#include "Game/Data/inventory.hpp"
-#include "Hooks/Common/level.hpp"
+#include "test/test_impl.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>

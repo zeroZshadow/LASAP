@@ -46,10 +46,10 @@ Investigated 2026-10-12. Reference repos are cloned in `reference/`. They were r
 
 From `reference/LAS-exlaunch/source/program`:
 
-- **`Hooks/Common/inventory.cpp`, the `Inventory_AddItemID(ID, count, index)` hook.** Every item grant flows through this hook. It already special-cases dungeon items: it uses `index` as the dungeon by temporarily overriding the inventory level byte. It also handles extra flags for instruments, ammo capacity and similar.
+- **`game/hooks/inventory.cpp`, the `Inventory_AddItemID(ID, count, index)` hook.** Every item grant flows through this hook. It already special-cases dungeon items: it uses `index` as the dungeon by temporarily overriding the inventory level byte. It also handles extra flags for instruments, ammo capacity and similar.
   - This is both the place to **detect** a check (placeholder item → report the location) and the function to **grant** received items.
   - Trade items (IDs 29–42 apart from the lens) are deliberately not added to the inventory; LASR tracks them with flags. Receiving trade items remotely needs its own path.
-- **`Hooks/Common/eventflags.hpp`.** Callable `EventFlags::SetFlag/CheckFlag(name)` and `Set/CheckGettingFlag(itemID)`.
+- **`game/hooks/eventflags.hpp`.** Callable `EventFlags::SetFlag/CheckFlag(name)` and `Set/CheckGettingFlag(itemID)`.
 - **Game versions (`version.hpp`, `Game::Offset`).** Base and update builds are told apart by a byte read; the update's offsets are shifted inside a known range. Both code versions (1.0.0, 1.0.1) are covered. 1.1.0 (Switch 2) reportedly changes only `main.npdm` and is unverified.
 - **NPDM permissions.** The NPDM shipped with LASR already grants `bsd:u`, `nifm:u`, `sfdnsres` and `ssl`, so sockets are allowed without permission changes.
 - **Source vs. shipped binary.** The public repo's `main.cpp` currently installs only the common hooks; the randomizer hooks are commented out while practice-mod work is in progress. The binary shipped in `DEV-BUILD-LASR/exl/subsdk9` contains the randomizer hooks (from its strings). Building from source matches the shipped binary only after re-enabling the randomizer hooks.

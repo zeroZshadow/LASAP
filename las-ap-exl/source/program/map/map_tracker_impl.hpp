@@ -2,10 +2,10 @@
 // The map tracker's parts, shared by the map_*.cpp files and by the test build's DBG map, maplist and mapdot
 // (test_map.cpp). See map_tracker.cpp for the whole.
 #include "map/map_tracker.hpp"
-#include "AP/ap_list.hpp"
-#include "Game/map.hpp"
-#include "Game/stl.hpp"
-#include "Game/ui.hpp"
+#include "ap/ap_list.hpp"
+#include "game/map.hpp"
+#include "game/stl.hpp"
+#include "game/ui.hpp"
 #include <map>
 #include <string>
 #include <string_view>

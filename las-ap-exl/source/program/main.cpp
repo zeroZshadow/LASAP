@@ -1,10 +1,10 @@
+#include "ap/ap.hpp"
+#include "config/config.hpp"
+#include "config/file_handler.hpp"
+#include "hooks.hpp"
+#include "patches/patches.hpp"
 #include "lib.hpp"
-#include "patches.hpp"
 #include "nn/err.hpp"
-#include "Config/config.hpp"
-#include "Config/file_handler.hpp"
-#include "Hooks/hooks.hpp"
-#include "AP/ap.hpp"
 #include <string>
 
 namespace {

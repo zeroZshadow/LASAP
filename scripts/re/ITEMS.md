@@ -1,6 +1,6 @@
 # Items and inventory (game 1.0.0)
 
-What adding and owning an item does in the main module, and the Chamber Dungeon's stones and panels, from static analysis. Offsets are module offsets; `las.sym` names them at their runtime addresses (module offset + 0x8504000). Item ids are `Items.gsheet`'s `itemID`, as the module's `itemsDict` (`Hooks/Common/inventory.hpp`) lists them.
+What adding and owning an item does in the main module, and the Chamber Dungeon's stones and panels, from static analysis. Offsets are module offsets; `las.sym` names them at their runtime addresses (module offset + 0x8504000). Item ids are `Items.gsheet`'s `itemID`, as the module's `kItemNames` (`game/hooks/inventory.hpp`) lists them.
 
 ## Adding and owning
 
@@ -8,7 +8,7 @@ What adding and owning an item does in the main module, and the Chamber Dungeon'
 
 After every add, also those that change nothing, AddItemID sets the item's bit in the obtained bits (inventory `+0x124`, a bit per item id), and for the Boomerang (7), Seashell (22), Piece of Heart (58), Bottle (113) and Chamber Stone (114) it sends a play report (`PlayReport_ItemCommon`: SaveId, TotalTimePlayed, Chapter, Warashibe, then ItemId and Index). The getting flags (`Item_CheckGettingFlag`, `Item_SetGettingFlag`, both hooked) are something else: the event flag the item's `Items.gsheet` row names (row `+0x70`).
 
-Inventory fields by name are in the module's `Game/Data/inventory.hpp`. Not named there: `+0xb0` the play time (save header `+0x20`, TotalTimePlayed) when the Sleepy Toadstool was picked, `+0xc0` a fairy per bottle slot, `+0x124` the obtained bits.
+Inventory fields by name are in the module's `game/data/inventory.hpp`. Not named there: `+0xb0` the play time (save header `+0x20`, TotalTimePlayed) when the Sleepy Toadstool was picked, `+0xc0` a fairy per bottle slot, `+0x124` the obtained bits.
 
 | Id | Item | AddItemID | HasItem |
 |---|---|---|---|

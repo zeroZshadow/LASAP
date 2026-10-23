@@ -5,7 +5,7 @@ partly in logic, out of logic and collected, with the marker frames of ap_map_ic
 The module lists a group's locations by their short names (its check list).
 Each dungeon also gets a group with all of its checks, next to the game's marker of its entrance. The map shows a row's
 icon while the event flag in the row is set and names it with Place:<label>; flag and label are APMap<mark><group>,
-which the module answers from ap_map.txt (ap_map.cpp): the group's look shows, named by group_name().
+which the module answers from ap_map.txt (map_tracker.cpp): the group's look shows, named by group_name().
 
 Dungeons: the module puts a dot of the same looks on the dungeon map per spot holding checks (ap_map.txt M lines) and
 hides the game's chest icons of the slot's chests (C lines); it names the hovered dot with Place:APMapDot.

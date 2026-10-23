@@ -12,16 +12,16 @@
 // index 2 (System is removed and built again), L on the map lands on the Jukebox. Not in the Chamber Dungeon,
 // whose third page is the dungeon's own.
 #include "music/music_jukebox.hpp"
-#include "AP/ap.hpp"
-#include "AP/ap_list.hpp"
-#include "music/music_tracks.hpp"
-#include "Game/mem.hpp"
-#include "Game/sym.hpp"
-#include "Game/ui.hpp"
-#include "loggers.hpp"
-#include "AP/ap_text.hpp"
-#include "ghost/ghost_net.hpp"
 #include "music/music.hpp"
+#include "ap/ap.hpp"
+#include "ap/ap_list.hpp"
+#include "ap/ap_text.hpp"
+#include "game/mem.hpp"
+#include "game/sym.hpp"
+#include "game/ui.hpp"
+#include "ghost/ghost_net.hpp"
+#include "loggers.hpp"
+#include "music/music_tracks.hpp"
 #include <algorithm>
 #include <cstdio>
 #include <cstring>

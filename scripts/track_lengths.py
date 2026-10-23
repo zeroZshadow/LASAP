@@ -1,4 +1,4 @@
-"""Writes how long each Jukebox track plays through into las-ap-exl/source/program/AP/ap_tracks.hpp.
+"""Writes how long each Jukebox track plays through into las-ap-exl/source/program/music/music_tracks.hpp.
 
 A BGM label leads through the sound archive (region_common/audio/Richard.bfsar: its string tree, sound infos and
 file infos) to its stream file (region_common/audio/stream/*.bfstm), whose stream info holds the sample rate, the
@@ -16,7 +16,7 @@ from pathlib import Path
 
 DEFAULT_ROMFS = "D:/Games/Switch/LASRomFS"
 MIN_SECONDS = 60
-HEADER = Path(__file__).resolve().parent.parent / "las-ap-exl" / "source" / "program" / "AP" / "ap_tracks.hpp"
+HEADER = Path(__file__).resolve().parent.parent / "las-ap-exl" / "source" / "program" / "music" / "music_tracks.hpp"
 # {"BGM_...", "name", "info"} or {"BGM_...", "name", "info", ms}
 ENTRY = re.compile(r'(\{\s*"(BGM_\w+)"\s*,\s*"(?:[^"\\]|\\.)*"\s*,\s*"(?:[^"\\]|\\.)*")(?:\s*,\s*\d+)?(\s*\})')
 

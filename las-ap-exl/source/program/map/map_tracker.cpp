@@ -10,7 +10,7 @@
 // ones (ap_text.cpp). The map's X button, which opens the memories, instead hides or shows the out-of-logic icons
 // ("Toggle out of logic"): those icons are always made, and hidden after the map adds them while they are toggled
 // off; the toggle shows or hides the page's markers in place. A on an icon of one unchecked location marks it skipped
-// or not (saved per seed, ap_game.cpp): a skipped location counts as checked on the map. A on an icon of several
+// or not (saved per seed, ap_checks.cpp): a skipped location counts as checked on the map. A on an icon of several
 // locations opens its check list: a panel in the middle of the map (ap_list.cpp's Gm_MemoryList) listing them, where
 // A marks one skipped or not. An icon is made in every look skipping can give it, and those not shown are hidden the
 // same way. The overworld's areas show once their UI_FieldMapTraverse_<area> flag is set (UI_FieldMapOpen_<area> once
@@ -28,10 +28,10 @@
 // This file reads the patcher's map file and answers the game's flags and labels; the overworld icons
 // (map_icons.cpp), the check list (map_checklist.cpp) and the dungeon dots (map_dots.cpp) have files of their own.
 #include "map/map_tracker_impl.hpp"
-#include "AP/ap.hpp"
-#include "AP/ap_patcher.hpp"
-#include "Config/file_handler.hpp"
-#include "Game/sym.hpp"
+#include "ap/ap.hpp"
+#include "ap/ap_patcher.hpp"
+#include "config/file_handler.hpp"
+#include "game/sym.hpp"
 #include "loggers.hpp"
 #include <sstream>
 

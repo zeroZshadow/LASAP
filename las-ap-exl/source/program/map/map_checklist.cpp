@@ -12,11 +12,11 @@
 //   rows use (ap_map_icons.py), and for a skipped location "skipped" after its name (Gm_SystemOpUnit, italic).
 // While it is open the map and the header see no buttons and no sticks (MapListTakesPad); the list reads the pad
 // itself. B closes it; A marks the location under the cursor skipped or not, as A on an icon of one location does.
-#include "map/map_tracker_impl.hpp"
-#include "AP/ap.hpp"
-#include "Game/sym.hpp"
-#include "Game/time.hpp"
+#include "ap/ap.hpp"
+#include "game/sym.hpp"
+#include "game/time.hpp"
 #include "loggers.hpp"
+#include "map/map_tracker_impl.hpp"
 #include <algorithm>
 #include <cstring>
 

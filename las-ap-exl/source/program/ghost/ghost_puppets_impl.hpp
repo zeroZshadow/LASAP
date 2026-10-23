@@ -2,9 +2,9 @@
 // The puppets' parts, shared by the ghost_*.cpp files that make them and by the test build's DBG puppet
 // (test_puppets.cpp). See ghost_puppets.cpp for the whole.
 #include "ghost/ghost_puppets.hpp"
+#include "game/actor.hpp"
+#include "game/stl.hpp"
 #include "ghost/ghost_net.hpp"
-#include "Game/actor.hpp"
-#include "Game/stl.hpp"
 #include "lib.hpp"
 #include <atomic>
 #include <string>
