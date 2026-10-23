@@ -14,6 +14,9 @@ the lock before it deploys, resets saves or starts the emulator, runs those with
 owner name, and unlocks when its test run is over. `start`, `stop`, deploy_mod.sh and reset_saves.sh refuse while
 another owner holds the lock.
 
+LASAP_INSTANCE=<n> (n >= 1) works on suite instance n instead (scripts/suite.py): a copy of the sandbox's data folder
+in suite/<n>, with its own emu.pid and game port (instance_port). Instance 0 is the sandbox itself.
+
 The emulator's windows open without taking focus and stay behind other windows (`tuck`), so the sandbox can run
 while the user works or plays. They stay open: a minimized window may stop presenting frames.
 """
@@ -27,12 +30,25 @@ import time
 
 RYU = r"D:\Games\Ryujinx\Ryujinx.exe"
 SANDBOX = r"D:\DEV\LASAP-sandbox"
-DATA = os.path.join(SANDBOX, "ryujinx")
 GAME = r"D:\Games\Switch\The Legend of Zelda Links Awakening [01006BB00C6F0000][v0].nsp"
 LOGS = r"D:\Games\Ryujinx\Logs"
-PIDFILE = os.path.join(SANDBOX, "emu.pid")
 LOCKFILE = os.path.join(SANDBOX, "sandbox.lock")
-HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def instance_home(n: int) -> str:
+    """The folder of suite instance n: its data folder (ryujinx), emu.pid and e2e folder. 0 is the sandbox."""
+    return SANDBOX if n == 0 else os.path.join(SANDBOX, "suite", str(n))
+
+
+def instance_port(n: int) -> int:
+    """The game port of instance n; its debug port is 100 above it and its ghost relay's 6 above it."""
+    return 43385 + 10 * n
+
+
+INSTANCE = int(os.environ.get("LASAP_INSTANCE", "0"))
+HOME = instance_home(INSTANCE)
+DATA = os.path.join(HOME, "ryujinx")
+PIDFILE = os.path.join(HOME, "emu.pid")
 TUCK_SECONDS = 90  # how long after the start new emulator windows are sent behind the others
 SW_SHOWNOACTIVATE = 4
 
@@ -105,7 +121,7 @@ def start() -> None:
         # a person plays: the data folder's Config.json input (its controller) instead of the keyboard as player 1
         i = args.index("--input-id-1")
         del args[i:i + 2]
-    out = open(os.path.join(SANDBOX, "emu_stdout.txt"), "w")
+    out = open(os.path.join(HOME, "emu_stdout.txt"), "w")
     # --audio-volume 0 does not mute; SDL's dummy driver keeps the sandbox silent. --disable-ptc keeps translations
     # of one run from the next; LASAP_PTC=1 keeps the translation cache on, as players have it.
     env = dict(os.environ, SDL_AUDIO_DRIVER="dummy", SDL_AUDIODRIVER="dummy")
@@ -175,9 +191,65 @@ def stop(quiet: bool = False) -> None:
 
 
 def shot(out: str) -> None:
-    pid = open(PIDFILE).read().strip()
-    subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
-                    os.path.join(HERE, "capwin.ps1"), "-ProcId", pid, "-Out", out])
+    """Captures the emulator's game window (PrintWindow: it works while the window is covered) into a PNG."""
+    import struct
+    import zlib
+    from ctypes import wintypes
+    user32, gdi32 = ctypes.windll.user32, ctypes.windll.gdi32
+    for fn in (user32.GetDC, gdi32.CreateCompatibleDC, gdi32.CreateCompatibleBitmap, gdi32.SelectObject):
+        fn.restype = wintypes.HANDLE
+    user32.GetDC.argtypes = [wintypes.HWND]
+    gdi32.CreateCompatibleDC.argtypes = [wintypes.HANDLE]
+    gdi32.CreateCompatibleBitmap.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_int]
+    gdi32.SelectObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+    gdi32.DeleteObject.argtypes = gdi32.DeleteDC.argtypes = [wintypes.HANDLE]
+    gdi32.GetDIBits.argtypes = [wintypes.HANDLE, wintypes.HANDLE, wintypes.UINT, wintypes.UINT, ctypes.c_void_p,
+                                ctypes.c_void_p, wintypes.UINT]
+    user32.PrintWindow.argtypes = [wintypes.HWND, wintypes.HANDLE, wintypes.UINT]
+    user32.ReleaseDC.argtypes = [wintypes.HWND, wintypes.HANDLE]
+    pid = int(open(PIDFILE).read().strip())
+    found = []
+    proc = wintypes.DWORD()
+
+    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    def each(hwnd, _):
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(proc))
+        if proc.value == pid and user32.IsWindowVisible(hwnd):
+            found.append(hwnd)
+        return True
+    user32.EnumWindows(each, 0)
+    for hwnd in found:
+        rect = wintypes.RECT()
+        user32.GetClientRect(hwnd, ctypes.byref(rect))
+        w, h = rect.right - rect.left, rect.bottom - rect.top
+        if w < 100:
+            continue
+        screen = user32.GetDC(None)
+        dc = gdi32.CreateCompatibleDC(screen)
+        bmp = gdi32.CreateCompatibleBitmap(screen, w, h)
+        old = gdi32.SelectObject(dc, bmp)
+        ok = user32.PrintWindow(hwnd, dc, 3)  # PW_CLIENTONLY | PW_RENDERFULLCONTENT
+        gdi32.SelectObject(dc, old)
+        # BITMAPINFOHEADER of a top-down 32-bit DIB
+        info = struct.pack("<IiiHHIIiiII", 40, w, -h, 1, 32, 0, 0, 0, 0, 0, 0)
+        bgra = ctypes.create_string_buffer(w * h * 4)
+        gdi32.GetDIBits(dc, bmp, 0, h, bgra, info, 0)
+        gdi32.DeleteObject(bmp)
+        gdi32.DeleteDC(dc)
+        user32.ReleaseDC(None, screen)
+        rgb = bytearray(w * h * 3)
+        rgb[0::3], rgb[1::3], rgb[2::3] = bgra.raw[2::4], bgra.raw[1::4], bgra.raw[0::4]
+        stride = w * 3
+        raw = b"".join(b"\x00" + rgb[y * stride:(y + 1) * stride] for y in range(h))
+
+        def chunk(kind: bytes, data: bytes) -> bytes:
+            return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+        with open(out, "wb") as f:
+            f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) +
+                    chunk(b"IDAT", zlib.compress(raw, 1)) + chunk(b"IEND", b""))
+        print(f"captured {w}x{h} ok={ok} -> {out}")
+        return
+    print("no emulator window to capture")
 
 
 def log(pattern: str = "") -> None:
