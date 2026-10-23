@@ -107,14 +107,6 @@ HOOK_DEFINE_TRAMPOLINE(Inventory__AddItemID) {
             return;
         }
         AP::OnItemAdded(ID, index);
-        // if (global_config.debug_mode.enabled) {
-        //     std::string itemName = itemsDict.at(ID);
-        //     std::string indexStr = "";
-        //     if (ID == 22 || ID == 23 || ID == 58 || ID == 59 || ID == 114 || ID == 115 || ID == 116) {
-        //         indexStr = "[" + std::to_string(index) + "]";
-        //     }
-        //     Logging.Log("Player has obtained '" + itemName + indexStr + "'");
-        // }
 
         if (!global_config.randomizer.enabled) {
             Orig(ID, count, index);

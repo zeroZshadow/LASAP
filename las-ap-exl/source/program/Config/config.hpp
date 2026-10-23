@@ -10,10 +10,6 @@ struct PatchConfig {
     bool initialized = false;
 
     struct {
-        bool enabled;
-    } debug_mode;
-
-    struct {
         bool full_360;
         float walk_speed = 1.0f;
         float dash_speed = 1.0f;
@@ -111,10 +107,7 @@ struct PatchConfig {
             value.erase(std::remove_if(value.begin(), value.end(), ::isspace), value.end());
 
             // set config properties based on section and key:value
-            if (current_section == "debug_mode") {
-                parseDebugMode(key, value);
-            }
-            else if (current_section == "movement") {
+            if (current_section == "movement") {
                 parseMovement(key, value);
             }
             else if (current_section == "nice_items") {
@@ -146,12 +139,6 @@ struct PatchConfig {
         }
 
         initialized = true;
-    }
-
-    void parseDebugMode(std::string key, std::string value) {
-        if (key == "enabled" && value == "true") {
-            debug_mode.enabled = true;
-        }
     }
 
     void parseMovement(std::string key, std::string value) {

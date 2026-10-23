@@ -118,9 +118,9 @@ namespace {
         return false;
     }
 
-    // Makes `track` ("" none) the choice; false when it is the choice already or too long.
     int TrackIndex(const std::string& id);
 
+    // Makes `track` ("" none) the choice; false when it is the choice already or too long.
     bool Set(const std::string& track) {
         if (track.size() >= sizeof(g_Track)) {
             AP::Log("music: track name too long");

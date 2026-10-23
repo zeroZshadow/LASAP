@@ -1,18 +1,10 @@
 #pragma once
 #include "lib.hpp"
 #include "symbols.hpp"
-#include <bit>
 #include <cstdint>
 
 namespace Game::Data::Inventory {
     typedef bool Field;
-
-    // struct CompanionBits {
-    //     Field BowWow : 1;
-    //     Field Marin : 1;
-    //     Field Ghost : 1;
-    //     Field Rooster : 1;
-    // };
 
     struct SongBits {
         Field Ballad : 1;
@@ -111,73 +103,4 @@ namespace Game::Data::Inventory {
 
     inline InventoryItems** Items = reinterpret_cast<InventoryItems**>(g_symbols["InventoryPtr"]);
     inline uint8_t* Level = reinterpret_cast<uint8_t*>(g_symbols["LevelIndexPtr"]);
-
-    inline void SetMaxHearts(uint8_t maxHearts) {
-        (*Items)->HeartContainers = 0;
-        (*Items)->HeartPieces = 0;
-
-        uint8_t new_hearts = maxHearts - 3;
-        uint8_t added_containers = 0;
-        uint8_t added_pieces = 0;
-
-        while (new_hearts > 0 && added_containers < 9) {
-            (*Items)->HeartContainers |= (*Items)->HeartContainers + 1;
-            new_hearts--;
-            added_containers++;
-        }
-
-        while (new_hearts > 0) {
-            (*Items)->HeartPieces |= (*Items)->HeartPieces + 1;
-            added_pieces++;
-            if (added_pieces == 4) {
-                added_pieces = 0;
-                new_hearts--;
-            }
-        }
-
-        (*Items)->Health = (maxHearts * 4);
-    }
-
-    inline void ResetItems() {
-       SetMaxHearts(3);
-       (*Items)->ExtraItems = {};
-       (*Items)->MainItems = {};
-       (*Items)->UpgradeItems = {};
-       (*Items)->Songs = {};
-       (*Items)->EquipX = 0xff;
-       (*Items)->EquipY = 0xff;
-       (*Items)->Companion = 0;
-    }
-
-    inline void RefillConsumables() {
-        uint8_t count = 0;
-
-        if ((*Items)->MainItems.MagicPowder) {
-            count = 20;
-            if ((*Items)->UpgradeItems.MagicPowder_MaxUp) {
-                count = 40;
-            }
-            (*Items)->PowderCount = count;
-        }
-        if ((*Items)->MainItems.Bomb) {
-            count = 30;
-            if ((*Items)->UpgradeItems.Bomb_MaxUp) {
-                count = 60;
-            }
-            (*Items)->BombCount = count;
-        }
-        if ((*Items)->MainItems.Bow) {
-            count = 30;
-            if ((*Items)->UpgradeItems.Arrow_MaxUp) {
-                count = 60;
-            }
-            (*Items)->ArrowCount = count;
-        }
-    }
-
-    inline void RefillHealth() {
-        int numContainers = std::popcount((*Items)->HeartContainers);
-        int numPieces = std::popcount((*Items)->HeartPieces);
-        (*Items)->Health = 12 + (numContainers * 4) + ((numPieces / 4) * 4);
-    }
 }

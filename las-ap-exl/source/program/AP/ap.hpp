@@ -79,8 +79,6 @@ namespace AP {
     void Send(const std::string& line);
     // Pops one received line into out. Returns false when the queue is empty.
     bool PopLine(std::string& out);
-    // Puts a line back at the front so it is retried on a later frame.
-    void PushFront(const std::string& line);
     // True once after each new client connection.
     bool TakeNewConnection();
 

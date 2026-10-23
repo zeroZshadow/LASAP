@@ -4,19 +4,15 @@
 #include "Config/config.hpp"
 #include "Game/actor.hpp"
 #include "Game/framework.hpp"
-#include "Game/gamestate.hpp"
 #include "Hooks/Common/eventflags.hpp"
 #include <string>
 #include <cstring>
 
-inline std::string prevLevel = "";
 inline std::string currentLevel = "";
 
 HOOK_DEFINE_TRAMPOLINE(SetCurrentLevel) {
     static void Callback(long arg1, long arg2, long arg3, long arg4, long arg5) {
-        // EXL_ASSERT(global_config.initialized);
         Orig(arg1, arg2, arg3, arg4, arg5);
-        prevLevel = currentLevel;
         std::string* levelNamePtr = reinterpret_cast<std::string*>(arg1);
         currentLevel = *levelNamePtr;
     }

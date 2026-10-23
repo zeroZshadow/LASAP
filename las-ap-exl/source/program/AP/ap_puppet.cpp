@@ -273,8 +273,6 @@ namespace {
         bool ready = false;      // its body draws: its name tag and instanced shapes may show
 #ifdef LASAP_TEST
         u32 visFixes = 0;        // frames whose visibility the module had to write again
-#endif
-#ifdef LASAP_TEST
         std::vector<std::string> animLog;  // its plays and model loads, for DBG puppet animlog
         u32 shownAt = 0;                   // frame it was last shown
 #endif
@@ -1354,10 +1352,8 @@ namespace {
                         " dithered=" + std::to_string(g_GhostDraws) + " remade=" + std::to_string(g_Remade) + " fps=" + std::to_string(static_cast<int>(g_Fps + 0.5f)) +
                         " lod=" + std::to_string(g_FullLimit) + "/" + std::to_string(g_DrawnLimit) + (g_Adapt ? "" : "fixed") +
                         " changes=" + std::to_string(g_DetailChanges);
-#ifdef LASAP_TEST
         s += " inst=";
         for (int g = 0; g < kInstGroupCount; g++) s += (g ? "," : "") + std::to_string(g_Inst[g].drawn);
-#endif
         u64 sum = 0, most = 0;
         for (u64 t : g_TickTicks) {
             sum += t;
@@ -1541,7 +1537,6 @@ namespace AP::Puppet {
         DrawElementsInstanced::InstallAtOffset(offset_manager.Offset(kDrawElementsInstanced));
     }
 
-    // Once per input poll (after GhostNet's); moves the puppets once per frame.
     // Once a second: the frame rate, and the crowd limits after it.
     void Adapt(u32 frame, u64 now, int shown) {
         // a window spanning a level load (no ticks then) starts again
@@ -1600,6 +1595,7 @@ namespace AP::Puppet {
 
     void TickPuppets();
 
+    // Once per input poll (after GhostNet's); moves the puppets once per frame.
     void Tick() {
         u64 t0 = Ticks();
         u32 before = g_LastFrame;

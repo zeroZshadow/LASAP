@@ -85,11 +85,9 @@ std::vector<u16> getValidEnemies(u16 id) {
 
     if (std::find(std::begin(land_ids), std::end(land_ids), id) != std::end(land_ids)) {
         vec.insert(vec.end(), std::begin(land_ids), std::end(land_ids));
-        // vec.insert(vec.end(), std::begin(air_ids), std::end(air_ids));
     }
     else if (id == 0x4b || id == 0x4c || id == 0x4e || id == 0x4f) { // EnemyStretchyGhost and EnemyKarakoro color variants
         vec.insert(vec.end(), std::begin(land_ids), std::end(land_ids));
-        // vec.insert(vec.end(), std::begin(air_ids), std::end(air_ids));
     }
     else if (std::find(std::begin(air_ids), std::end(air_ids), id) != std::end(air_ids)) {
         vec.insert(vec.end(), std::begin(air_ids), std::end(air_ids));
@@ -105,7 +103,6 @@ std::vector<u16> getValidEnemies(u16 id) {
 
     else if (std::find(std::begin(water_ids), std::end(water_ids), id) != std::end(water_ids)) {
         vec.insert(vec.end(), std::begin(water_ids), std::end(water_ids));
-        // vec.insert(vec.end(), std::begin(water_shallow_ids), std::end(water_shallow_ids));
     }
 
     else if (std::find(std::begin(water_2d_ids), std::end(water_2d_ids), id) != std::end(water_2d_ids)) {

@@ -57,8 +57,6 @@ HOOK_DEFINE_TRAMPOLINE(GetNpadStates_Handheld) {
 };
 
 namespace InputSystem {
-    void MainLoop(nn::hid::NpadFullKeyState pad) {}
-
     void InstallHooks() {
         using namespace nn::hid;
         GetNpadState_FullKey::InstallAtFuncPtr(static_cast<void (*)(NpadFullKeyState*, const u32&)>(&GetNpadState));

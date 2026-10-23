@@ -1,11 +1,12 @@
 #pragma once
 #include "lib.hpp"
 #include "symbols.hpp"
-#include "Game/actorsystem.hpp"
-#include "Game/gamestate.hpp"
 #include "Game/Actors/player.hpp"
 
 namespace Game {
+    class ActorSystem;
+    class GameState;
+
     struct Framework {
         unsigned char padding_498[0x498];
         ActorSystem* mActorSystem; // 0x498

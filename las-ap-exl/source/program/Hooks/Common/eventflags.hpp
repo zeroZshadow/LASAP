@@ -1,6 +1,5 @@
 #pragma once
 #include "../lib.hpp"
-// #include "Config/config.hpp"
 #include "offsets.hpp"
 #include "symbols.hpp"
 #include "AP/ap.hpp"
@@ -35,16 +34,6 @@ HOOK_DEFINE_TRAMPOLINE(EventFlags__SetFlag) {
         if (arg3 && *reinterpret_cast<std::string*>(strAddr) == "ShadowClear") {
             AP::OnGoal();
         }
-        // EXL_ASSERT(global_config.initialized);
-        // bool flagState = !!arg3;
-        // if (EventFlags__CheckFlag::Callback(arg1, strAddr) != flagState) {
-        //     Orig(arg1, strAddr, arg3);
-            // if (global_config.debug_mode.enabled) {
-            //     std::string* strPtr = reinterpret_cast<std::string*>(strAddr);
-            //     std::string stateStr = flagState ? "true" : "false";
-            //     Logging.Log("Set flag '" + *strPtr + "' to " + stateStr);
-            // }
-        // }
     }
 };
 

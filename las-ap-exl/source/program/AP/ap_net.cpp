@@ -281,12 +281,6 @@ namespace AP {
         return has;
     }
 
-    void PushFront(const std::string& line) {
-        Lock();
-        g_Inbound.push_front(line);
-        Unlock();
-    }
-
     bool TakeNewConnection() {
         return g_NewConnection.exchange(false);
     }

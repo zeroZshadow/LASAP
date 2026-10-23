@@ -315,7 +315,7 @@ def _chest_placeholder_branch(self) -> None:
 
 def _no_keysanity_branch(self, flowchart, item, before, after):
     """LASR's chests and Seashell Mansion presents send a dungeon item on to the dungeon its index names through a
-    FlowControl.CompareInt switch, which needs LASR's CompareInt rewrite (lasrOnlyFixes in the module, not applied):
+    FlowControl.CompareInt switch, which needs LASR's CompareInt rewrite (the module leaves it out):
     without it the Chamber Dungeon's chests, whose keys have no index, would give them to another dungeon. Every
     shuffled dungeon item is an Archipelago item, so these flows keep the game's own add, and the module's AddItemID
     hook puts an item with an index into that dungeon and one without into the dungeon Link is in."""

@@ -495,7 +495,6 @@ namespace {
         return false;
     }
 
-    // Any message window that is not closed.
     // A message that holds Link. One in EventWaiting takes no button and leaves him free (the shop shows one
     // beside play after an item-get).
     bool MessageOpen() {

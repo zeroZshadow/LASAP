@@ -10,7 +10,7 @@ How the pieces fit and the contracts between them. FEASIBILITY.md covers the bac
 | `patcher/` | Builds the romfs/exefs mod from an AP patch file; derived from LASR (MIT) | Python: pure Python plus `bsdiff4` for patching (`requirements.txt`); oead, quicktex and Pillow only to build the assets (`requirements-assets.txt`) |
 | `las-ap-exl/` | exlaunch module (subsdk9) derived from Owen-Splat/exlaunch (GPL-2.0) | C++, Docker `devkitpro/devkita64` |
 
-The module runs LASR's hooks and its code patches (`patches.hpp`), except LASR's `CompareInt` event rewrite (`lasrOnlyFixes`), which only LASR's own keysanity chest and present flows use. The patcher leaves those flows out (`_no_keysanity_branch`): chests and presents keep the game's own add, so a dungeon item with an index goes to that dungeon (the module's `AddItemID` hook; the patcher gives vanilla-placed ones the game's dungeon index, `dungeon_index`) and one without, as the Chamber Dungeon's keys, to the dungeon Link is in.
+The module runs LASR's hooks and its code patches (`patches.hpp`), except LASR's `CompareInt` event rewrite, which only LASR's own keysanity chest and present flows use. The patcher leaves those flows out (`_no_keysanity_branch`): chests and presents keep the game's own add, so a dungeon item with an index goes to that dungeon (the module's `AddItemID` hook; the patcher gives vanilla-placed ones the game's dungeon index, `dungeon_index`) and one without, as the Chamber Dungeon's keys, to the dungeon Link is in.
 
 Flow:
 1. AP generates a multiworld. The world writes `AP_<seed>_P<n>_<slot>.aplas` (the patch file).

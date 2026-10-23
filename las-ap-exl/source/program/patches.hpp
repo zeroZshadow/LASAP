@@ -114,18 +114,6 @@ void randoFixes() {
     p.WriteInst(inst::Movz(reg::W0, 0));
 }
 
-// LASR patch that Archipelago does not apply: the CompareInt rewrite. LASR's keysanity chest and present flows use it
-// for dungeon items LASR places itself; every shuffled dungeon item is an Archipelago item here, so the patcher leaves
-// those flows out (las_ap_patch._no_keysanity_branch), and the rewrite would change the event action game-wide.
-void lasrOnlyFixes() {
-    // Rewrite FlowControl::CompareInt event to check if the values are equal
-    // To match FlowControl::CompareString, it returns 0 if they are equal, 1 if not
-    // This allows us to check the index of items through the EventFlow system
-    // The main purpose of this will be for Keysanity to know which dungeon text to display
-    patch::CodePatcher p(offset_manager.Offset(0x8049d8));
-    p.WriteInst(inst::Movz(reg::W8, 1));
-}
-
 void underwaterItems() {
     // force the "under_water" render property to true
     // this makes all item models properly show under water
