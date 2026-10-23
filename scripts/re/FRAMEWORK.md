@@ -14,7 +14,7 @@ The framework the game runs in (its lifecycle, the scheduler and the frame's pha
 |---|---|
 | `field_50`, `field_54`, `field_58` | 1, 14 and 5 at construction (guess: the queues' sizes) |
 | `actorSystem` | the entity container the factories' spawns from code hang in (ACTORS.md, Creation): 0x148 bytes, no vtable: `+0x0` weak self, `+0x10`/`+0x38`/`+0x60` child maps, `+0x88` a `std::function` listener, `+0xc0` and `+0x118` mutexes, `+0x140` active (1). The shutdown empties it (`Entity_RemoveChildrenIf`) |
-| `gameState` | the game state machine: a 0xe0-byte StateMachine task (vtable `0x1bc4300`, base constructor `0x82ee90`) registered with the scheduler. Its `+0x88`/`+0x90` shared pointer is the current state, the scene (`SceneHolder_Lock` `0x11b70` checks its type with virtual `+0x28`); its byte `+0x80` ends the main loop |
+| `gameState` | the game state machine: a 0xe0-byte StateMachine task (vtable `0x1bc4300`, base constructor `0x82ae90`; `GameState` in `game/framework.hpp`) registered with the scheduler. Its `+0x88`/`+0x90` shared pointer is the current state, the scene (`SceneHolder_Lock` `0x11b70` checks its type with virtual `+0x28`); its byte `+0x80` ends the main loop |
 | `player` | Link (PLAYER.md); about 500 places load the pair `+0x4b8`/`+0x4c0` |
 | `resourceListener` | an interface (vtable `0x1c31138`) registered with the resource manager |
 | `renderCallbackId` | the graphics callback the graphics init registers (graphics `+0x83c0` counts them); `Framework_TeardownGraphics` (`0x1b1d0`) unregisters it |
@@ -36,10 +36,15 @@ The framework the game runs in (its lifecycle, the scheduler and the frame's pha
 | `systemEvents` | 0x118 bytes (constructor `0xfa01a0`; init `0xfa1e60` sets four nn::oe notification modes); its `+0x18` takes a callback (`0x18af0`) that resizes the graphics on an operation mode change |
 | `present` | initialized by `0x107cb90`: `+0x0` active (1), `+0x1` the maximum present interval (0xff at construction, 1 in levels, clamped with graphics `+0x812c`), `+0x10`/`+0x28`/`+0x58` vectors, `+0x40` a weak pointer (likely) |
 
-**How the module reads the framework.** Two of its probes read the framework's memory in ways the game does not:
+**Scenes.** The game state machine's current state (`GameState::scene`) is an object of one class per kind of screen, told apart by its vtable (`SceneOf`, `Scene` in `game/framework.hpp`; `DBG uis` prints it):
 
-- The module's screen (`ScreenOf`, `kScreen*` in `game/framework.hpp`) is the bucket count of the scheduler's live-task hash set: `Scheduler::tasks` at Framework `+0x60` `+0x48`, its bucket count (a u64) at Framework `+0xb0`. libc++ grows a bucket count through the primes 2, 5, 11, 23 as the set grows, and the intro and title, the file menus, a level load and a level reach those four. It counts live tasks, not screens, so it tells the screens apart only as a heuristic.
-- The module's intro probe (`kIntroProbe`, Framework `+0x6d0`) lies 0x10 bytes past the end of the 0x6c0-byte framework, in the heap block after it. The pointer seen there while the intro plays belongs to whatever the heap put in that block.
+| Vtable | Scene |
+|---|---|
+| `0x1bc49c0` | the intro and the title screen |
+| `0x1bc2740` | the file menus (file select, name entry) |
+| `0x1bc2f90` | a level, from the start of its load (the type `SceneHolder_Lock` takes) |
+
+The intro and the title share their scene: the intro plays while the title screen's UI (UI 0x1d, `Title`) is not there yet or its machine waits in Deactive (UI.md, State machines). The module counts a save as loaded outside the title and file-menu scenes (`NoSaveLoaded`), and names the level scene `loading` until Link exists. Measured from a fresh boot to a level (2026-10-23, `screens`).
 
 ## Scheduler and phases
 

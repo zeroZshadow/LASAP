@@ -8,7 +8,7 @@
 
 namespace Game {
     struct Framework;
-    class GameState;
+    struct GameState;
     struct Node; struct InstancedModelComponent; struct Actor; struct ActorParams; struct LebActorRecord;
     struct Vec3;
     namespace Data { struct SaveHeader; }

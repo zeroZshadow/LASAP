@@ -87,6 +87,7 @@ A machine is 0x58 + N × 0x38 bytes, rounded up to 16. `ChangeState` runs the ol
 | Owner | N | Machine at | ChangeState |
 |---|---|---|---|
 | Navi (UI 5) | 6 | `+0x80` | `Navi_ChangeState` `0xee7dc0` |
+| Title (UI 0x1d) | 6 | `+0x80` | `Title_ChangeState` `0x87f1b0`: Deactive (`Title_Setup`; the intro plays), LogoIn, BtnIn, WaitLR, GameStart, End |
 | ThrobberSave (UI 0x2a) | 6 | `+0x80` | `ThrobberSave_ChangeState` `0xf85d20` |
 | Throbber (UI 0x29) | 4 | `+0x80` | `Throbber_ChangeState` `0xf85230` |
 | GmSystem (UI 10) | 6 | `+0xf0` | |

@@ -13,7 +13,7 @@
 #include "game/framework.hpp"
 #include "game/hooks/eventflags.hpp"
 #include "game/hooks/level.hpp"
-#include "game/mem.hpp"
+#include "game/menu.hpp"
 #include "game/sym.hpp"
 #include "game/time.hpp"
 #include "ghost/ghost_net.hpp"
@@ -85,8 +85,8 @@ namespace {
 
     // The intro, the title or the file menus show: no save is loaded.
     bool NoSaveLoaded(Game::Framework* fmwk) {
-        return fmwk == nullptr || Game::ScreenOf(fmwk) == Game::kScreenTitle ||
-               Game::ScreenOf(fmwk) == Game::kScreenFileMenus;
+        Game::Scene scene = Game::SceneOf(fmwk);
+        return fmwk == nullptr || scene == Game::Scene::Title || scene == Game::Scene::FileMenus;
     }
 
     bool PlayerReady() {
@@ -177,13 +177,18 @@ namespace {
 #ifdef LASAP_TEST
     std::string ScreenName(Game::Framework* fmwk) {
         if (fmwk == nullptr) return "none";
-        u64 screen = Game::ScreenOf(fmwk);
-        switch (screen) {
-            case Game::kScreenTitle: return Game::At<void*>(fmwk, Game::kIntroProbe) != nullptr ? "intro" : "title";
-            case Game::kScreenFileMenus: return "menu";
-            case Game::kScreenLoading: return "loading";
-            case Game::kScreenLevel: return "level";
-            default: return std::to_string(screen);
+        // The intro plays while the title screen's UI is not there yet or waits in Deactive.
+        auto* title = reinterpret_cast<Game::Ui::Title*>(Game::Ui::FindUi(Game::Ui::kTitleUi));
+        switch (Game::SceneOf(fmwk)) {
+            case Game::Scene::Title:
+                return title == nullptr || title->machine.state == Game::Ui::kTitleDeactive ||
+                               title->machine.state == 0xff
+                           ? "intro"
+                           : "title";
+            case Game::Scene::FileMenus: return "menu";
+            case Game::Scene::Level: return fmwk->player != nullptr ? "level" : "loading";
+            case Game::Scene::Other: return "other";
+            default: return "none";
         }
     }
 #endif

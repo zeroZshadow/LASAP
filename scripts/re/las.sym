@@ -1206,3 +1206,8 @@ ui2d_GroupArrayAnimator_vtable 0x0a188a18 l the animators LayoutWrapper_GetAnima
 ui2d_Pane_vtable 0x0a188e20 l RTTI nn::ui2d::Pane, 0xd8 bytes
 ZeroVec_ptr 0x0a197de0 l pointer to a zero Vec4
 FacialSheet_ptr 0x0a1c7c40 l -> {shared_ptr Facial.gsheet}
+Player_MakeFacialComp 0x0924e9f0 f (out shared_ptr, player, StringView* name, owner*): makes the FacialComp component, starts it and attaches it to the player; Player_InitAnimations stores it at +0x368
+GameState_vtable 0x0a0c8300 l the game state machine (Framework +0x4a8, 0xe0 bytes): +0x80 ends the main loop, +0x88 the scene (shared_ptr)
+TitleScene_vtable 0x0a0c89c0 l the scene of the intro and the title screen
+FileMenusScene_vtable 0x0a0c6740 l the scene of the file menus (file select, name entry)
+LevelScene_vtable 0x0a0c6f90 l the scene of a level, from the start of its load (SceneHolder_Lock's type)

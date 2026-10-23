@@ -12,6 +12,7 @@
 #include "game/hooks/level.hpp"
 #include "game/sym.hpp"
 #include "game/time.hpp"
+#include "game/ui.hpp"
 #include "ghost/ghost_net.hpp"
 #include "map/map_tracker.hpp"
 #include "music/music.hpp"
@@ -225,6 +226,25 @@ namespace {
                 }
             }
             AP::Send("PLAYERNAME " + utf8);
+        } else if (cmd == "uis") {
+            // DBG uis: the UI manager's UIs (id, `a` while active, vtable) and the game state machine's scene's vtable
+            std::string s = "UIS";
+            Game::Ui::Manager& manager = *Game::UiManager;
+            int n = 0;
+            for (Game::ListNode* node = manager.uis.end.next; node != nullptr && node != &manager.uis.end && n < 48;
+                 node = node->next, n++) {
+                auto* ui = *reinterpret_cast<Game::Ui::LayoutWrapper**>(node + 1);
+                if (ui == nullptr) continue;
+                int id = Game::CallVirtual<int()>(ui, Game::Ui::LayoutWrapperVirtual::kUiId);
+                uintptr_t vtable = reinterpret_cast<uintptr_t>(ui->vtable) - Game::Base();
+                s += " " + Hex(id) + (ui->active ? "a" : "") + "@" + Hex(vtable);
+            }
+            Game::Framework* fmwk = Game::GetFramework();
+            const Game::GameState* state = fmwk != nullptr ? fmwk->gameState : nullptr;
+            const uintptr_t* scene = state != nullptr ? static_cast<const uintptr_t*>(state->scene) : nullptr;
+            s += " | scene=" + (scene != nullptr ? Hex(*scene - Game::Base()) : std::string("-"));
+            s += " nosave=" + std::to_string(NoSaveLoaded(fmwk));
+            AP::Send(s);
         } else if (cmd == "peek" && a.size() >= 5) {
             // DBG peek <p|f|i|b|m|h> <hex offset> <hex length>: bytes of the player, the framework, the inventory, the BGM
             // manager, its first playing instance or that instance's sound

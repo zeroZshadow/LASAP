@@ -56,8 +56,9 @@ namespace Game::Ui {
     TextBox* FindText(Pane* root, const char* name) { return reinterpret_cast<TextBox*>(FindPane(root, name)); }
 
     LayoutWrapper* FindUi(int id) {
+        // the manager is built on the first layout: its list is zero until then
         ListNode* end = &TheManager().uis.end;
-        for (ListNode* node = end->next; node != end; node = node->next) {
+        for (ListNode* node = end->next; node != nullptr && node != end; node = node->next) {
             auto* ui = Field<LayoutWrapper*>(node, sizeof(ListNode));
             if (ui != nullptr && CallVirtual<int()>(ui, LayoutWrapperVirtual::kUiId) == id) return ui;
         }

@@ -1,5 +1,5 @@
 #pragma once
-// The pause menu's header (Navi), its guide and pages, the autosave popup and the message window
+// The pause menu's header (Navi), its guide and pages, the autosave popup, the message window and the title screen
 // (scripts/re/UI.md).
 #include "game/state_machine.hpp"
 #include "game/stl.hpp"
@@ -299,4 +299,15 @@ namespace Game::Ui {
     static_assert(offsetof(MessageWindow, choiceCount) == 0x1cc4 && offsetof(MessageWindow, choiceCursor) == 0x1cc8);
     static_assert(offsetof(MessageWindow, keyWait) == 0x1cf0 && offsetof(MessageWindow, modelessPos) == 0x1d00);
     static_assert(offsetof(MessageWindow, skipping) == 0x1d1a && sizeof(MessageWindow) == 0x1d20);
+
+    // The title screen (UI kTitleUi, Tl_Title.bflyt, Title_vtable): Title_Setup puts its machine in Deactive, where
+    // it waits while the intro plays.
+    struct Title {
+        LayoutWrapper wrapper;
+        u8 pad_78[0x8];
+        StateMachine<6> machine;   // 0x80: Title_ChangeState; Deactive, LogoIn, BtnIn, WaitLR, GameStart, End
+    };
+    static_assert(offsetof(Title, machine) == 0x80);
+    constexpr int kTitleUi = 0x1d;
+    constexpr u8 kTitleDeactive = 0;
 }

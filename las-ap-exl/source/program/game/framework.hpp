@@ -2,13 +2,25 @@
 // The framework (Framework_ptr), its scheduler and the camera (scripts/re/FRAMEWORK.md).
 #include "game/actor.hpp"
 #include "game/actors/player.hpp"
+#include "game/addr.hpp"
 #include "game/stl.hpp"
 #include "game/sym.hpp"
 #include "lib.hpp"
 #include <cstddef>
 
 namespace Game {
-    class GameState;
+    // The game state machine (GameStateFactory_Create, vtable 0x1bc4300; 0xe0 bytes; Framework::gameState): a
+    // scheduler task whose current state is the scene. SetGameState changes it.
+    struct GameState {
+        u8 pad_0[0x80];
+        u8 endMainLoop;            // 0x80
+        u8 pad_81[0x7];
+        void* scene;               // 0x88: a shared_ptr; SceneHolder_Lock takes it when it is a level scene
+        void* sceneCtrl;           // 0x90
+        u8 pad_98[0x48];
+    };
+    static_assert(offsetof(GameState, endMainLoop) == 0x80 && offsetof(GameState, scene) == 0x88);
+    static_assert(sizeof(GameState) == 0xe0);
 
     // The camera: the renderer's view with id 1 (View_Ctor, vtable 0x1c46db0; 0x350 bytes). View rows (the rotation's
     // rows 0-2, so its columns are the camera's axes; the translation row 3) and projection rows, copied each frame
@@ -156,16 +168,22 @@ namespace Game {
     static_assert(offsetof(Framework, renderer) == 0x540 && offsetof(Framework, camera) == 0x560);
     static_assert(offsetof(Framework, playReports) == 0x5c0 && offsetof(Framework, systemEvents) == 0x638);
     static_assert(sizeof(Framework) == 0x6c0);
-    // The screen as the module tells it: the bucket count of the scheduler's live tasks (Scheduler::tasks), which
-    // libc++ grows through the primes 2, 5, 11, 23 as the tasks grow: the intro and title, the file menus, a level
-    // load, a level.
-    constexpr u64 kScreenTitle = 2, kScreenFileMenus = 5, kScreenLoading = 11, kScreenLevel = 23;
-    inline u64 ScreenOf(const Framework* fmwk) { return fmwk->scheduler.tasks.bucketCount; }
-    // The intro as the module tells it: a pointer 0x10 bytes past the framework's end, in the heap block after it,
-    // set only while the intro plays.
-    constexpr size_t kIntroProbe = 0x6d0;
-
     inline Framework* GetFramework() { return *Framework_ptr; }
+
+    // The scene the game state machine runs, by its class (vtable): the intro and title, the file menus (file select,
+    // name entry), a level (from its load on), another (the ending), or none between scenes.
+    enum class Scene { None, Title, FileMenus, Level, Other };
+    constexpr uintptr_t kTitleSceneVtable = 0x1bc49c0, kFileMenusSceneVtable = 0x1bc2740,
+                        kLevelSceneVtable = 0x1bc2f90;
+    inline Scene SceneOf(const Framework* fmwk) {
+        const GameState* state = fmwk != nullptr ? fmwk->gameState : nullptr;
+        const uintptr_t* scene = state != nullptr ? static_cast<const uintptr_t*>(state->scene) : nullptr;
+        if (scene == nullptr) return Scene::None;
+        if (*scene == Addr(kTitleSceneVtable)) return Scene::Title;
+        if (*scene == Addr(kFileMenusSceneVtable)) return Scene::FileMenus;
+        if (*scene == Addr(kLevelSceneVtable)) return Scene::Level;
+        return Scene::Other;
+    }
 
     inline Actors::Player* GetPlayer() {
         Framework* fmwk = GetFramework();

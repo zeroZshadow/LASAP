@@ -1,0 +1,22 @@
+# From a fresh boot (right after `emu.py start`; no client needed): the screen from the intro through the title and
+# the file menu to a level, a death dropped on the intro, the title and the file menu (no save is loaded there), then
+# file 1 loads with Link alive.
+connect 90
+screen intro 5
+game DEATH Tester
+expect DEATHDROPPED 5
+tapuntil 1 screen=title when title:Deactive 30
+screen title 5
+game DEATH Tester
+expect DEATHDROPPED 5
+tapuntil c0 title:GameStart when title:WaitLR+unlocked 20
+select 0
+screen menu 5
+game DEATH Tester
+expect DEATHDROPPED 5
+tapuntil 1 files:DataSelectConfirm when files:DataSelectKeyWait
+tapuntil 1 files:GameStart when files:DataSelectConfirm
+screen loading|level 10
+screen level 30
+loaded 60
+check health=[1-9]
