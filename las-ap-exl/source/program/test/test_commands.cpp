@@ -137,6 +137,15 @@ namespace {
             // DBG popsway <on|off>: whether the popup's model turns from side to side, until the game restarts
             AP::Popup::Sway(a[2] != "off");
             AP::Send("OK popsway");
+        } else if (cmd == "popdraw" && a.size() >= 3) {
+            // DBG popdraw stats: the popup's opaque items held per pass id since the last call;
+            // DBG popdraw <on|off>: whether the model draws in front of the world, until the game restarts
+            if (a[2] == "stats") {
+                AP::Send("OK popdraw" + AP::Popup::DrawStats());
+            } else {
+                AP::Popup::SetOnTop(a[2] != "off");
+                AP::Send("OK popdraw");
+            }
         } else if (cmd == "popframes" && a.size() >= 3) {
             // DBG popframes <count>: record the popup's next poses; DBG popframes dump: send them
             if (a[2] == "dump") {

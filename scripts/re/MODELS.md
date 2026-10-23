@@ -105,6 +105,28 @@ The instanced subclass (`InstancedModelInstance_vtable` `0x1c34eb8`, 0x3c0 bytes
 `0x1c47870`: buffer index, shape, ShapeObj, ModelObj, the instance, the three binders, the pass flags, `+0x5c` the
 depth bias, `+0x6c` the cull mode) and queues it by the pass mask of its render layer's filter. `ShapeDrawItem_Execute`
 (`0x10399d0`) draws through binder `[1]` for passes 1, 10, 16, 18, 20 and 41, `[2]` for 11 and 13, `[0]` for the rest.
+The item's `+0x10` is its sort key: bits 0-15 its view depth (render layers 0 and 1 front to back, 2 and 3 back to
+front: `0xffff` minus it), bits 54-55 the render layer.
+
+## Draw tree
+
+The view's draw root is a tree of pass nodes (vtables from `0x1c45d58`; `+0x8` u8 pass id, `+0x9` enabled, `+0x40`
+the children, `+0x58` the items). `DrawPass_Push` (`0xffc010`, virtual `+0x30`, `(node, item)`) adds the item to every
+node whose pass bit is in the item's pass mask (`+0x8`), down the children. Drawing (virtual `+0x38`, `(node,
+context)`): a group node (`DrawGroup_Draw`, `0xffc230`) sets the context's pass id (`+0x188`) from each enabled child
+and draws it; a leaf pass binds its blend, depth-stencil and raster states (the leaf `0xffea20` the graphics holder's
+`+0x5990`, `+0x5a10`, `+0x5a70`) and calls each item's `Execute`. The context caches what it bound
+(`GfxContext_SetBlendState` `0xff93b0`, `GfxContext_SetDepthStencilState` `0xff93f0`, `GfxContext_SetRasterState`
+`0xff9430`: `+0x90`, `+0x98`, `+0xa0`) and binds through its command buffer wrapper (`+0x8`; `CmdBuf_BindBlendState`
+`0x113eb70`, `CmdBuf_BindDepthStencilState` `0x113ec20`, `CmdBuf_BindRasterState` `0x113ea70`); only the raster
+state is rebuilt per item (`ModelInstance_SetRasterState`). A model drawn in the main view goes through passes 11, 12,
+18 and 19 (render layers 0 and 1) and 13, 14, 20 and 21 (2 and 3), on two contexts side by side (11 to 14 and 18 to
+21), each in that order.
+
+nn::gfx `DepthStencilStateInfo` (`DepthStencilStateInfo_SetDefault` `0x113dfd0`, `DepthStencilState_Initialize`
+`0x1146600 (state, device, info)`): `+0x0` the depth comparison function (nn::gfx `ComparisonFunction`: 1 less, 3 less
+or equal, 6 greater or equal, 7 always; default 1), `+0x4` flags (bit 0 depth test, 1 depth write, 2 stencil test;
+default none), `+0x8` and `+0x18` the front and back stencil. The game's depth is not reversed (near is less).
 
 **ShapeBinder** (`ShapeBinder_Ctor` `0x102ebb0`, `ShapeBinder_vtable` `0x1c47250`, 0xa0 bytes; `ShapeBinder_Dtor`
 `0x102ef70`): a shape's shader and uniform binder. Virtuals: `+0x20` `ShapeBinder_Draw` (`0x102f0e0`: fills the

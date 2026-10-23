@@ -18,6 +18,10 @@ namespace AP::Popup {
     void Sway(bool on);
     // DBG heldpose: the scale the model shows at once grown in; 0 without one
     float Scale();
+    // DBG popdraw: whether the model draws in front of the world
+    void SetOnTop(bool on);
+    // DBG popdraw stats: the opaque items held per pass id since the last call (" <pass>:<count>")
+    std::string DrawStats();
     // DBG popframes: record the next `count` poses (time, frame counter, the parent's and the model's world
     // rotation), and the recorded ones as POPFRAME lines
     void RecordFrames(size_t count);
@@ -30,4 +34,7 @@ namespace AP::Popup {
     void Fit(float scale, const Game::Vec3& center, const Game::Vec3& angle);
     // Once per tick.
     void Tick();
+    // ap_popup_draw.cpp: the model instance drawn in front of the world (null: none)
+    void InstallDrawHooks();
+    void DrawOnTop(const void* instance);
 }

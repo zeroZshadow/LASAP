@@ -88,6 +88,7 @@ namespace {
     // Destroys the component (unless a level load took it with Link) and lets the holder go.
     void Drop(bool destroy) {
         Game::Node* model = Model();
+        AP::Popup::DrawOnTop(nullptr);
         if (destroy && model != nullptr && !model->entity.Gone()) {
             Game::Entity_Destroy(model);
         }
@@ -165,6 +166,7 @@ namespace {
 namespace AP::Popup {
     void InstallHooks() {
         NodeUpdateWorld::InstallAtFuncPtr(Game::Node_UpdateWorld.Ptr());
+        InstallDrawHooks();
     }
 
     bool Show(int itemId) {
@@ -252,5 +254,6 @@ namespace AP::Popup {
         }
         Place(model, shown);
         Enable(model->entity);
+        DrawOnTop(reinterpret_cast<Game::SkeletalModelComponent*>(model)->instance);
     }
 }

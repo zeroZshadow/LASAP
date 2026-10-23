@@ -613,6 +613,11 @@ Locator_Update 0x094d83a0 f (locator), per frame
 InstancedModelInstance_Draw 0x094e8020 f the instanced model instance's Draw (vtable 0x0a138eb8 +0x90): draws shape i when its byte (M +0x378) is 1 and its material and bone bits are set
 ShaderSelector_SetOption 0x094f7dd0 f (selector, option, value)
 GfxContext_SetRasterState 0x094fd430 f (context, state): cached at context +0xa0
+GfxContext_SetBlendState 0x094fd3b0 f (context, state): cached at context +0x90
+GfxContext_SetDepthStencilState 0x094fd3f0 f (context, state): cached at context +0x98
+DrawPass_Push 0x09500010 f pass node vtable +0x30 (node, draw item): into each node whose pass bit is in the item's mask (+0x8), down the children
+DrawGroup_Draw 0x09500230 f pass node vtable +0x38 (node, context): sets context +0x188 from each enabled child (+0x8, enabled +0x9) and draws it
+DrawPass_DrawItems 0x09502a20 f a leaf pass's vtable +0x38 (node, context): binds the graphics holder's states +0x5990/+0x5a10/+0x5a70, then each item's Execute
 Animation_Bind 0x09537c00 f (out, animation, model)
 AnimationLayers_SetAnimation 0x095392a0 f (layers, layer, animSp*)
 AnimationLayers_SetBoneMask 0x09539390 f (layers, layer, const char* bone, bool children)
@@ -663,6 +668,8 @@ DepthStencilStateInfo_SetDefault 0x09641fd0 f
 CmdBuf_DrawElementsBaseVertex 0x09642950 f (wrapper, ...)
 CmdBuf_DrawElementsInstanced 0x096429d0 f (wrapper, ...)
 CmdBuf_BindRasterState 0x09642a70 f (wrapper, state)
+CmdBuf_BindBlendState 0x09642b70 f (wrapper, state): its blend states, channel mask (+0xc), colour state (+0x8), blend constant
+CmdBuf_BindDepthStencilState 0x09642c20 f (wrapper, state)
 CmdBuf_BindUniformBuffer 0x09643d70 f (wrapper, stage, slot, {GPU address, offset}*, size)
 MemoryPool_Initialize 0x096444f0 f nn::gfx MemoryPool (0x120): +0x0 -> +0x10 NVNmemoryPool, +0x8 CPU memory, +0x110 state
 MemoryPool_Finalize 0x09644580 f

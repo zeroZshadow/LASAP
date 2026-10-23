@@ -93,6 +93,18 @@ namespace Game {
     inline constexpr Func<void(u8*, int, int, u64*, u64)> CmdBuf_BindUniformBuffer{0x113fd70};
     // (context, state): the context's cached raster-state setter
     inline constexpr Func<void(u8*, void*)> GfxContext_SetRasterState{0xff9430};
+    // (context, DepthStencilState*): the context's cached depth-stencil setter (cache at +0x98)
+    inline constexpr Func<void(u8*, void*)> GfxContext_SetDepthStencilState{0xff93f0};
+    // (DepthStencilState*, device, DepthStencilStateInfo*)
+    inline constexpr Func<void(void*, void*, const void*)> DepthStencilState_Initialize{0x1146600};
+    // (DepthStencilStateInfo*): depth less, no test or write, stencil masks 0xff
+    inline constexpr Func<void(void*)> DepthStencilStateInfo_SetDefault{0x113dfd0};
+    // (group node, context): sets the context's pass id (+0x188) from each enabled child (+0x8, enabled +0x9) and
+    // draws it (virtual +0x38); the draw tree's inner nodes
+    inline constexpr Func<void(u8*, u8*)> DrawGroup_Draw{0xffc230};
+    // (draw item, context): draws a model shape in the context's pass (ShapeDrawItem_vtable +0x10); a leaf pass node
+    // binds its states and calls it for each of its sorted items
+    inline constexpr Func<u64(u8*, u8*)> ShapeDrawItem_Execute{0x10399d0};
     // (wrapper, state)
     inline constexpr Func<void(void*, void*)> CmdBuf_BindRasterState{0x113ea70};
     inline constexpr Func<void(void*, u64, u64, u64, u64, u64, u64)> CmdBuf_DrawElementsBaseVertex{0x113e950};
