@@ -4,6 +4,7 @@
 #include "Config/config.hpp"
 #include "Game/actor.hpp"
 #include "Game/framework.hpp"
+#include "Game/Data/inventory.hpp"
 #include "Hooks/Common/eventflags.hpp"
 #include <string>
 #include <cstring>
@@ -33,20 +34,22 @@ namespace LevelSystem {
         Game::Framework* fmwk = Game::GetFramework();
         SetGameState::Callback(fmwk->mGameState, 4, false);
 
-        uintptr_t* addr = reinterpret_cast<uintptr_t*>(g_symbols["InventoryPtr"]);
-        char* charPtr = reinterpret_cast<char*>(*addr);
+        // the save's current level (SaveCurrent, which Inventory_ptr points at): +0x0 level, +0x40 locator ($NONE: use
+        // +0xdc), +0xdc restart position
+        uintptr_t save = reinterpret_cast<uintptr_t>(Game::Data::Inventory::Items());
+        char* charPtr = reinterpret_cast<char*>(save);
         std::string myString(charPtr);
         size_t len = std::strlen(level);
         std::memcpy(charPtr, level, len);
         charPtr[len] = '\0';
 
-        char* setupPtr = reinterpret_cast<char*>(*addr + 0x40);
+        char* setupPtr = reinterpret_cast<char*>(save + 0x40);
         const char* setup = "$NONE";
         size_t locLen = std::strlen(setup);
         std::memcpy(setupPtr, setup, locLen);
         setupPtr[locLen] = '\0';
 
-        Game::Vec3* loadPos3 = reinterpret_cast<Game::Vec3*>(*addr + 0xdc);
+        Game::Vec3* loadPos3 = reinterpret_cast<Game::Vec3*>(save + 0xdc);
         *loadPos3 = pos;
 
         // Since this is commonly used by the practice mod manager

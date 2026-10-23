@@ -115,7 +115,7 @@ HOOK_DEFINE_TRAMPOLINE(Inventory__AddItemID) {
 
         // The ghost in Tarin's house: tops bombs (4) or arrows (60) up to count
         if ((ID == 4 || ID == 60) && index == AP::AMMO_REFILL_INDEX) {
-            auto* items = *Game::Data::Inventory::Items;
+            auto* items = Game::Data::Inventory::Items();
             int have = ID == 4 ? items->BombCount : items->ArrowCount;
             if (have < count) Orig(ID, count - have, -1);
             return;
@@ -126,11 +126,11 @@ HOOK_DEFINE_TRAMPOLINE(Inventory__AddItemID) {
             EventFlags::SetGettingFlag(ID);
         }
 
-        uint8_t actualLevel = *Game::Data::Inventory::Level; // for dungeon items
+        uint8_t actualLevel = *Game::LevelIndex; // for dungeon items
 
         switch (ID) {
             case 4: // Bomb
-                if ((*Game::Data::Inventory::Items)->MainItems.Bomb) {
+                if (Game::Data::Inventory::Items()->MainItems.Bomb) {
                     // add 3 bombs instead of 1 if the player already has some
                     if (count == 1) {
                         count = 3;
@@ -146,7 +146,7 @@ HOOK_DEFINE_TRAMPOLINE(Inventory__AddItemID) {
                 Orig(60, 60, -1);
                 break;
             case 11: // MagicPowder
-                if ((*Game::Data::Inventory::Items)->MainItems.MagicPowder) {
+                if (Game::Data::Inventory::Items()->MainItems.MagicPowder) {
                     // add 3 powder instead of 1 if the player already has some
                     if (count == 1) {
                         count = 3;
@@ -169,9 +169,9 @@ HOOK_DEFINE_TRAMPOLINE(Inventory__AddItemID) {
                     // index is normally ignored for dungeon items, game uses a level byte to determine where to add the items in memory
                     // so we assign an index to the dungeon items and actually make use of it
                     // set the level byte to the index and call the orig func, then set the level byte back
-                    *Game::Data::Inventory::Level = index;
+                    *Game::LevelIndex = index;
                     Orig(ID, count, index);
-                    *Game::Data::Inventory::Level = actualLevel;
+                    *Game::LevelIndex = actualLevel;
                 }
                 break;
             case 50: // FullMoonCello - additional flags

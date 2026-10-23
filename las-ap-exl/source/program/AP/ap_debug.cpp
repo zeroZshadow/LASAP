@@ -12,6 +12,8 @@
 #include "AP/ap.hpp"
 #include "AP/ap_debug.hpp"
 #include "Game/framework.hpp"
+#include "Game/math.hpp"
+#include "Game/time.hpp"
 #include "Game/Data/inventory.hpp"
 #include "Hooks/Common/level.hpp"
 #include "nn/socket.hpp"
@@ -26,11 +28,7 @@
 #include <deque>
 
 namespace {
-    u64 NowMs() {
-        u64 ticks;
-        asm volatile("mrs %0, cntpct_el0" : "=r"(ticks));
-        return ticks / 19200;
-    }
+    using Game::NowMs;
 
     std::string Hex(u64 v) {
         char buf[24];
@@ -38,7 +36,6 @@ namespace {
         return buf;
     }
 
-    uintptr_t ModuleStart() { return exl::util::GetMainModuleInfo().m_Total.m_Start; }
 
     // ---- Debug port (net thread) ----
 
@@ -336,12 +333,11 @@ namespace {
         Trace(std::string(g_Fields[i].key) + "=" + value);
     }
 
-    // The game's controller (0x1c97188 manager, +0x518): input lock at +0x234 and its buttons (getter at the pad's
-    // vtable +0x10), as the title reads them for L+R.
-    constexpr uintptr_t kControllerManager = 0x1c97188;
+    // The game's controller (Framework +0x518): input lock at +0x234 and its buttons (getter at the pad's vtable
+    // +0x10), as the title reads them for L+R.
     uintptr_t Controller() {
         uintptr_t mgr = 0, holder = 0, ctl = 0;
-        if (!Read(ModuleStart() + offset_manager.Offset(kControllerManager), mgr) || !Read(mgr + 0x518, holder) ||
+        if (!Read(reinterpret_cast<uintptr_t>(Game::Framework_ptr.Ptr()), mgr) || !Read(mgr + 0x518, holder) ||
             !Read(holder, ctl)) {
             return 0;
         }
@@ -375,10 +371,10 @@ namespace {
         Game::Framework* fmwk = Game::GetFramework();
         if (base == "f") return reinterpret_cast<uintptr_t>(fmwk);
         if (base == "p") return fmwk ? reinterpret_cast<uintptr_t>(fmwk->mPlayer) : 0;
-        if (base == "i") return *reinterpret_cast<uintptr_t*>(g_symbols["InventoryPtr"]);
+        if (base == "i") return reinterpret_cast<uintptr_t>(Game::Data::Inventory::Items());
         if (base == "c") return Controller();
         if (base[0] == 'x') return strtoull(base.c_str() + 1, nullptr, 16);
-        if (base[0] == 'g') return ModuleStart() + strtoull(base.c_str() + 1, nullptr, 16);
+        if (base[0] == 'g') return Game::Base() + strtoull(base.c_str() + 1, nullptr, 16);
         if (base[0] == 'm' || base[0] == 'o') {
             Machine* m = nullptr;
             if (base.size() > 2 && base[1] == ':') {
@@ -454,7 +450,7 @@ namespace {
                 m.names = names;
                 m.check = names + first * 8;
                 m.name0 = name0;
-                m.vt = Read(sm + 0x40, owner) && Read(owner, vt) && InModule(vt) ? vt - ModuleStart() : 0;
+                m.vt = Read(sm + 0x40, owner) && Read(owner, vt) && InModule(vt) ? vt - Game::Base() : 0;
                 m.id = g_NextMachineId++;
                 m.state = -2;
                 m.label = kSmHooks[hook].name;
@@ -577,9 +573,7 @@ namespace {
     float PlayerYaw() {
         Game::Framework* fmwk = Game::GetFramework();
         if (fmwk == nullptr || fmwk->mPlayer == nullptr || fmwk->mPlayer->playerCollision == nullptr) return NAN;
-        const Game::Vec4& q = fmwk->mPlayer->playerCollision->coordsNew.rotate;
-        float fx = 2 * (q.x * q.z + q.t * q.y), fz = 1 - 2 * (q.x * q.x + q.y * q.y);
-        return std::atan2(fx, fz) * 180.0f / 3.14159265f;
+        return Game::YawDegrees(fmwk->mPlayer->playerCollision->coordsNew.rotate);
     }
 
     // The nearest of the four screen directions to where Link faces.
@@ -971,7 +965,7 @@ namespace {
         SetField(12, file < 0 ? "-" : std::to_string(file));
         SetField(13, FaceField());
         SetField(14, AP::TestPlayerCarrying() ? "1" : "0");
-        auto* items = Game::Data::Inventory::Items != nullptr ? *Game::Data::Inventory::Items : nullptr;
+        auto* items = Game::Data::Inventory::Items();
         SetField(15, items != nullptr ? std::to_string(items->Health) : "-");
         int entry = NameCursor();
         SetField(16, entry < 0 ? "-" : std::to_string(entry));
@@ -1360,7 +1354,7 @@ namespace AP::Test {
                      " passes=" + std::to_string(g_Passes.load()) + " ms=" + std::to_string(NowMs()));
         } else if (cmd == "memq" && a.size() >= 3) {
             // DBG memq <hex address | +module offset>: the memory region there (start, size, type, permissions)
-            uintptr_t addr = a[2][0] == '+' ? g_BaseAddress + strtoull(a[2].c_str() + 1, nullptr, 16)
+            uintptr_t addr = a[2][0] == '+' ? Game::Base() + strtoull(a[2].c_str() + 1, nullptr, 16)
                                             : strtoull(a[2].c_str(), nullptr, 16);
             MemoryInfo mi{};
             u32 pi = 0;
@@ -1404,18 +1398,18 @@ namespace AP::Test {
     }
 
     void InstallHooks() {
-        SmChange<0>::InstallAtOffset(offset_manager.Offset(kSmHooks[0].offset));
-        SmChange<1>::InstallAtOffset(offset_manager.Offset(kSmHooks[1].offset));
-        SmChange<2>::InstallAtOffset(offset_manager.Offset(kSmHooks[2].offset));
-        SmChange<3>::InstallAtOffset(offset_manager.Offset(kSmHooks[3].offset));
-        SmChange<4>::InstallAtOffset(offset_manager.Offset(kSmHooks[4].offset));
-        SmChange<5>::InstallAtOffset(offset_manager.Offset(kSmHooks[5].offset));
-        SmUpdate<6>::InstallAtOffset(offset_manager.Offset(kSmHooks[6].offset));
-        SmUpdate<7>::InstallAtOffset(offset_manager.Offset(kSmHooks[7].offset));
-        SmChange<8>::InstallAtOffset(offset_manager.Offset(kSmHooks[8].offset));
-        SmChange<9>::InstallAtOffset(offset_manager.Offset(kSmHooks[9].offset));
+        SmChange<0>::InstallAtPtr(Game::Addr(kSmHooks[0].offset));
+        SmChange<1>::InstallAtPtr(Game::Addr(kSmHooks[1].offset));
+        SmChange<2>::InstallAtPtr(Game::Addr(kSmHooks[2].offset));
+        SmChange<3>::InstallAtPtr(Game::Addr(kSmHooks[3].offset));
+        SmChange<4>::InstallAtPtr(Game::Addr(kSmHooks[4].offset));
+        SmChange<5>::InstallAtPtr(Game::Addr(kSmHooks[5].offset));
+        SmUpdate<6>::InstallAtPtr(Game::Addr(kSmHooks[6].offset));
+        SmUpdate<7>::InstallAtPtr(Game::Addr(kSmHooks[7].offset));
+        SmChange<8>::InstallAtPtr(Game::Addr(kSmHooks[8].offset));
+        SmChange<9>::InstallAtPtr(Game::Addr(kSmHooks[9].offset));
         static_assert(kSmHookCount == 10);
-        MainLoopPass::InstallAtOffset(offset_manager.Offset(kMainLoopPass));
+        MainLoopPass::InstallAtPtr(Game::Addr(kMainLoopPass));
     }
 }
 #endif

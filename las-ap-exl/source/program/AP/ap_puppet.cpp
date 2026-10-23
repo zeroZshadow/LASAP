@@ -9,9 +9,11 @@
 #include "AP/ap_debug.hpp"
 #endif
 #include "Game/framework.hpp"
+#include "Game/math.hpp"
+#include "Game/model.hpp"
+#include "Game/sym.hpp"
+#include "Game/time.hpp"
 #include "Hooks/Common/level.hpp"
-#include "offsets.hpp"
-#include "symbols.hpp"
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -23,74 +25,44 @@
 #include <vector>
 
 namespace {
-    struct SharedPtr { void* ptr; void* ctrl; };
+    using Game::At;
+    using Game::SharedPtr;
+    using Game::StrView;
 
-    // Actor factory (game 1.0.0): void(SharedPtr* out, SharedPtr* owner, Params*). The player's hookshot calls it with
-    // the actor system as owner and these params, zeroed but for:
-    constexpr uintptr_t kCreateActor = 0x8f5ea0;
+    // Actor factory (Actor_Create, game 1.0.0). The player's hookshot calls it with the actor system as owner and
+    // these params, zeroed but for:
     constexpr size_t kParamsSize = 0x1c0;
     constexpr size_t kParamId = 0x8;       // u16 actor id (the actor table's index, as in LEB files)
     constexpr size_t kParamRoom = 0xc;     // s32 the actor's zone (+0xb0); the hookshot copies its owner's
     constexpr size_t kParamPos = 0x180;    // Vec4
     constexpr size_t kParamRot = 0x190;    // quaternion; PopEnemy copies the identity from a global
     constexpr size_t kParamScale = 0x1a0;  // Vec4 of ones, from a global
-    constexpr uintptr_t kIdentityRot = 0x1c93de8, kOneScale = 0x1c93df0;  // globals: pointers to 16 bytes
     // What PopEnemy releases afterwards: a weak_ptr's control block at +0x1b8, shared_ptr control blocks at +0x168
-    // and +0x158, then three member destructors.
-    constexpr uintptr_t kParamsDtor0 = 0x1cf70, kParamsDtor1 = 0x1d190, kParamsDtor2 = 0x1d3b0;
+    // and +0x158, then three member destructors (ActorParams_Dtor0..2).
     constexpr size_t kParamsDtor0At = 0xd0, kParamsDtor1At = 0x50, kParamsDtor2At = 0x10;
-    constexpr uintptr_t kReleaseWeak = 0x14311f0;       // std::__shared_weak_count::__release_weak
-    constexpr uintptr_t kGameNew = 0x1431170, kGameDelete = 0x1431110;  // the game's operator new and delete
-    // libc++ control block: +8 shared owners - 1 (-1: the object is gone), +0x10 weak owners - 1
-    constexpr size_t kCtrlOwners = 8, kCtrlWeakOwners = 0x10;
     constexpr size_t kFrameworkActorSystem = 0x498;  // shared_ptr
     constexpr size_t kActorRoot = 0x80;    // the root component (coordinates), as PopEnemy reads it
     // Ghosts are NpcGhost actors (0x179) with an Npc row of their own. Each NPC class passes its row's symbol, a
-    // literal in its code ("NpcGhost" at 0x16ebdf4), to the NPC component constructor (0x943e90: component, args,
-    // {name, length}*, ?), which looks the row up (0xfa6370: sheet, {name, length}*, row size 0x220; null when
-    // missing) in the Npc sheet (*(*0x1cb8360)). All of it runs inside the factory call, so while the module's own
-    // spawn runs the key is APGhost, if the sheet has that row (ghost_puppet.py adds it; a missing row crashes).
+    // literal in its code (str_NpcGhost), to the NPC component constructor, which looks the row up
+    // (Datasheet_FindRow, row size 0x220; null when missing) in the Npc sheet (**NpcSheets_ptr). All of it runs
+    // inside the factory call, so while the module's own spawn runs the key is APGhost, if the sheet has that row
+    // (ghost_puppet.py adds it; a missing row crashes).
     constexpr u16 kGhostActor = 0x179;
-    constexpr uintptr_t kNpcComponentCtor = 0x943e90, kFindRow = 0xfa6370, kNpcSheets = 0x1cb8360;
-    constexpr uintptr_t kNpcGhostKey = 0x16ebdf4;
     constexpr size_t kNpcRowSize = 0x220;
-    struct StringView { const char* ptr; u64 len; };
-    StringView g_GhostRow{"APGhost", 7};
+    StrView g_GhostRow{"APGhost", 7};
     bool g_SpawningGhost = false;
-    // Removal as the game does it (0x8e3440): RemoveChild (0xfb00c0: parent, name, length, immediate) from the actor
-    // system, keyed by the actor's name (+0x18, length +0x38); not immediate, the entity manager destroys it at its
+    // Removal as the game does it (0x8e3440): Entity_RemoveChild from the actor system, keyed by the actor's name (+0x18, length +0x38); not immediate, the entity manager destroys it at its
     // next flush. Actor +0x40 flags: bit 30 destroy requested, bit 31 destroyed.
     constexpr uintptr_t kRemoveChild = 0xfb00c0;
     constexpr size_t kActorName = 0x18, kActorNameLength = 0x38, kActorFlags = 0x40;
     constexpr u64 kHiddenRemoveMs = 10000;  // a ghost hidden this long loses its actor
-    using CreateFn = void (*)(SharedPtr*, SharedPtr*, u8*);
-    using DtorFn = void (*)(u8*);
-    using ReleaseWeakFn = void (*)(void*);
-
-    template<typename T>
-    T GameFn(uintptr_t offset) { return reinterpret_cast<T>(g_BaseAddress + offset_manager.Offset(offset)); }
-
-    long* CtrlCount(void* ctrl, size_t at) { return reinterpret_cast<long*>(reinterpret_cast<u8*>(ctrl) + at); }
-
-    void ReleaseShared(void* ctrl) {
-        if (ctrl == nullptr) return;
-        if (__atomic_fetch_sub(CtrlCount(ctrl, kCtrlOwners), 1, __ATOMIC_ACQ_REL) == 0) {
-            auto** vtable = *reinterpret_cast<void (***)(void*)>(ctrl);
-            vtable[2](ctrl);  // __on_zero_shared
-            GameFn<ReleaseWeakFn>(kReleaseWeak)(ctrl);
-        }
-    }
-
-    // Animations by name: the NPC's animation component (actor +0x2b0) has a virtual play (0x949260, overridden by
-    // 0x9df590): (component, {name, length}*, mode, blend seconds, frame). Mode 0 looks the name up in its animation
+    // Animations by name: the NPC's animation component (actor +0x2b0) has a virtual play (NpcAnimation_PlayByName,
+    // overridden by NpcAnimation_PlayByName2): (component, {name, length}*, mode, blend seconds, frame). Mode 0 looks the name up in its animation
     // set (+0x1e8, cache +0x218) and hands it to its animation player (+0xe8) at frame 0 and rate 0 (the player's
     // virtual +0xc0 frame, +0xd8 rate); mode 2 sets the rate 1. The slot is found in the component's vtable at its
     // first use. The animation player's +0x90 is the model object it animates.
-    using NameView = StringView;
-    using PlayByNameFn = void (*)(void* comp, NameView* name, u8 mode, float blend, float frame);
-    constexpr uintptr_t kPlayByName[] = {0x949260, 0x9df590};
     constexpr size_t kActorAnimComp = 0x2b0, kAnimCompPlayer = 0xe8, kAnimPlayerModel = 0x90;
-    constexpr size_t kSetFrameSlot = 0xc0 / 8;
+    constexpr size_t kSetFrame = 0xc0;
     int g_PlaySlot = -1;  // -1: not looked up; -2: not in the component's vtable
     // The upper body, as Link has it: every NPC component class makes its animation player through the same
     // NpcComponent_MakeAnimator (0x94b310, vtable +0x208: out, component, {name, length}*, the model component's
@@ -105,11 +77,8 @@ namespace {
     // {name, length}*), then the layer's virtual +0x30 (loops) and +0x48 (0), and the layer turned on. Like the
     // single-layer player (NpcAnimator_Make), the layered one is then started (the entity manager's start task) and
     // made a child of the component's entity (0xfa9e40: entity, child), which binds it to the model.
-    constexpr uintptr_t kMakeAnimator = 0x94b310, kLayeredMake = 0x67ba70, kLayerBoneMask = 0x1035390,
-                        kLayerEnable = 0x10355f0, kLayeredSetSlot = 0x1059dd0, kNpcAnimGet = 0x9670d0,
-                        kSpineA = 0x16b6ecb, kLayeredVtable = 0x1c49ee8, kAddChild = 0xfa9e40;
     constexpr size_t kNpcRow = 0x88, kNpcEntity = 0x58, kSacLayerSet = 0x1b0, kSacLayerCount = 0x1c8,
-                     kSacLayers = 0x1d0, kLayerSetLoop = 0x30 / 8, kLayerSetStart = 0x48 / 8;
+                     kSacLayers = 0x1d0, kLayerSetLoop = 0x30, kLayerSetStart = 0x48;
     constexpr int kUpperLayer = 1;
 
     // Model object: +0 the FMDL, +0x10 u32* material visibility bits, +0x30 u16 shape count, +0x32 u16 material
@@ -139,11 +108,10 @@ namespace {
     // +0x8 its animation); the slot is the facial ones' count (NPC component +0x198 -> +0xf0: +0x38, one more each
     // for +0x18 and +0x28 set) unless +0x198 is missing or its +0x43 bit 6 is set, then 0. Slot virtuals +0x48 set
     // frame, +0x60 set rate.
-    constexpr uintptr_t kPlayMaterialAnim = 0x9c1b30;
     constexpr size_t kNpcFacial = 0x198, kFacialFlags = 0x43, kFacialSet = 0xf0, kFacialCount = 0x38,
                      kFacialExtraA = 0x18, kFacialExtraB = 0x28;
     constexpr size_t kNpcMaterialAnim = 0x1b8, kMatAnimSlots = 0xa0, kMatAnimSlotCount = 0xb8, kSlotAnim = 0x8;
-    constexpr size_t kSlotSetFrame = 0x48 / 8, kSlotSetRate = 0x60 / 8;
+    constexpr size_t kSlotSetFrame = 0x48, kSlotSetRate = 0x60;
     constexpr float kTunicFrames[] = {0, 1, 3};
     constexpr int kNoTunic = -2;
     // The face: Link's eyes, mouth and ears are material animations held at a frame ("eye", "mouth", "ear"). The
@@ -332,18 +300,11 @@ namespace {
     std::string g_AnimPending;  // from DBG puppet anim, played on the game thread
 #endif
 
-    u64 Ticks() {
-        u64 ticks;
-        asm volatile("mrs %0, cntpct_el0" : "=r"(ticks));
-        return ticks;
-    }
-    u64 NowMs() { return Ticks() / 19200; }
-    double NowMsFine() { return static_cast<double>(Ticks()) / 19200; }
+    using Game::Ticks;
+    using Game::NowMs;
+    using Game::NowMsFine;
 
-    Game::Actors::Player* Player() {
-        Game::Framework* fmwk = Game::GetFramework();
-        return fmwk != nullptr ? fmwk->mPlayer : nullptr;
-    }
+    using Game::GetPlayer;
 
 #ifdef LASAP_TEST
     std::string Hex(u64 v) {
@@ -355,21 +316,16 @@ namespace {
 
     int IndexOf(const Puppet& p) { return static_cast<int>(&p - g_Puppets); }
 
-    template<typename T>
-    T At(const void* base, size_t offset) {
-        return base != nullptr ? *reinterpret_cast<const T*>(reinterpret_cast<const u8*>(base) + offset) : T{};
-    }
-
-    bool Alive(const Puppet& p) {
-        return p.ctrl != nullptr && __atomic_load_n(CtrlCount(p.ctrl, kCtrlOwners), __ATOMIC_ACQUIRE) >= 0;
-    }
+    bool Alive(const Puppet& p) { return Game::Alive(p.ctrl); }
 
     void* AnimComp(const Puppet& p) { return Alive(p) ? At<void*>(p.actor, kActorAnimComp) : nullptr; }
 
     // The animation player's model instance (+0x88) and model object (+0x90); a layered player (the ghosts', with
     // Link's upper-body layer) keeps them with its layers, at +0x1b8 and +0x1c0.
     constexpr size_t kLayeredInstance = 0x1b8, kLayeredModel = 0x1c0;
-    bool IsLayered(const void* player) { return At<uintptr_t>(player, 0) == g_BaseAddress + kLayeredVtable; }
+    bool IsLayered(const void* player) {
+        return At<const u8*>(player, 0) == Game::LayeredAnimation_vtable.Ptr();
+    }
     u8* PlayerInstance(const void* player) {
         return At<u8*>(player, IsLayered(player) ? kLayeredInstance : kAnimPlayerInstance);
     }
@@ -388,7 +344,7 @@ namespace {
     // Lets the actor go, once the game has destroyed it.
     void Forget(Puppet& p) {
         ClearSpan(IndexOf(p));
-        if (p.ctrl != nullptr) GameFn<ReleaseWeakFn>(kReleaseWeak)(p.ctrl);
+        Game::ReleaseWeakOwner(p.ctrl);
 #ifdef LASAP_TEST
         std::vector<std::string> log = std::move(p.animLog);
         p = Puppet{};
@@ -406,8 +362,7 @@ namespace {
         for (u16 i = 0; i < count; i++) {
             std::string_view name;
             if (const u8* res = At<const u8*>(mats + i * kMatStride, 0)) {
-                const u8* s = At<const u8*>(res, 8);
-                name = std::string_view(reinterpret_cast<const char*>(s + 2), *reinterpret_cast<const u16*>(s));
+                name = Game::ResName(At<const u8*>(res, 8));
             }
             auto named = [&](const char* m) { return name == m; };
             if (std::any_of(std::begin(kShownMaterials), std::end(kShownMaterials), named))
@@ -459,9 +414,9 @@ namespace {
     void Remove(Puppet& p) {
         ClearSpan(IndexOf(p));
         if (Alive(p) && (At<u32>(p.actor, kActorFlags) & 0xc0000000) == 0) {
-            void* system = *reinterpret_cast<void**>(reinterpret_cast<u8*>(Game::GetFramework()) + kFrameworkActorSystem);
-            GameFn<bool (*)(void*, const char*, u64, bool)>(kRemoveChild)(
-                system, reinterpret_cast<const char*>(p.actor) + kActorName, At<u64>(p.actor, kActorNameLength), false);
+            void* system = Game::Field<void*>(Game::GetFramework(), kFrameworkActorSystem);
+            Game::Entity_RemoveChild(system, static_cast<const char*>(p.actor) + kActorName,
+                                     At<u64>(p.actor, kActorNameLength), false);
         }
         Forget(p);
     }
@@ -470,8 +425,8 @@ namespace {
 
     // The Npc sheet's APGhost row (the patcher adds it with the ghosts' model), or nullptr.
     const void* GhostRow() {
-        void* sheet = **reinterpret_cast<void***>(g_BaseAddress + kNpcSheets);
-        return sheet != nullptr ? GameFn<void* (*)(void*, StringView*, u64)>(kFindRow)(sheet, &g_GhostRow, kNpcRowSize) : nullptr;
+        void* sheet = **Game::NpcSheets_ptr;
+        return sheet != nullptr ? Game::Datasheet_FindRow(sheet, &g_GhostRow, kNpcRowSize) : nullptr;
     }
 
     bool HasGhostRow() { return GhostRow() != nullptr; }
@@ -487,7 +442,7 @@ namespace {
 #endif
             return true;
         }
-        auto* player = Player();
+        auto* player = GetPlayer();
         if (player == nullptr) {
             err = "no player";
             return false;
@@ -502,8 +457,8 @@ namespace {
         f[1] = pos.y;
         f[2] = pos.z;
         f[3] = 0;
-        void* rot = *reinterpret_cast<void**>(g_BaseAddress + kIdentityRot);
-        void* scale = *reinterpret_cast<void**>(g_BaseAddress + kOneScale);
+        void* rot = *Game::IdentityQuat_ptr;
+        void* scale = *Game::OneScale_ptr;
         if (rot == nullptr || scale == nullptr) {
             err = "no identity globals";
             return false;
@@ -518,19 +473,18 @@ namespace {
             p.spawnAfter = frame + kNoRowFrames;
             return false;
         }
-        auto* system = reinterpret_cast<SharedPtr*>(reinterpret_cast<u8*>(Game::GetFramework()) + kFrameworkActorSystem);
+        auto* system = &Game::Field<SharedPtr>(Game::GetFramework(), kFrameworkActorSystem);
         SharedPtr out{};
         g_SpawningGhost = id == kGhostActor;
-        GameFn<CreateFn>(kCreateActor)(&out, system, params);
+        Game::Actor_Create(&out, system, params);
         g_SpawningGhost = false;
 
-        void* weak = *reinterpret_cast<void**>(params + 0x1b8);
-        if (weak != nullptr) GameFn<ReleaseWeakFn>(kReleaseWeak)(weak);
-        ReleaseShared(*reinterpret_cast<void**>(params + 0x168));
-        ReleaseShared(*reinterpret_cast<void**>(params + 0x158));
-        GameFn<DtorFn>(kParamsDtor0)(params + kParamsDtor0At);
-        GameFn<DtorFn>(kParamsDtor1)(params + kParamsDtor1At);
-        GameFn<DtorFn>(kParamsDtor2)(params + kParamsDtor2At);
+        Game::ReleaseWeakOwner(Game::Field<void*>(params, 0x1b8));
+        Game::ReleaseOwner(Game::Field<void*>(params, 0x168));
+        Game::ReleaseOwner(Game::Field<void*>(params, 0x158));
+        Game::ActorParams_Dtor0(params + kParamsDtor0At);
+        Game::ActorParams_Dtor1(params + kParamsDtor1At);
+        Game::ActorParams_Dtor2(params + kParamsDtor2At);
 
         if (out.ptr == nullptr || out.ctrl == nullptr) {
             err = "factory returned nothing";
@@ -538,8 +492,8 @@ namespace {
             return false;
         }
         Forget(p);
-        __atomic_fetch_add(CtrlCount(out.ctrl, kCtrlWeakOwners), 1, __ATOMIC_ACQ_REL);
-        ReleaseShared(out.ctrl);
+        Game::AddWeakOwner(out.ctrl);
+        Game::ReleaseOwner(out.ctrl);
         p.actor = out.ptr;
         p.ctrl = out.ctrl;
 #ifdef LASAP_TEST
@@ -562,23 +516,22 @@ namespace {
     void PlayAnim(Puppet& p, const char* name, float blend, float frame) {
         void* comp = AnimComp(p);
         if (comp == nullptr) return;
-        uintptr_t* vtable = *reinterpret_cast<uintptr_t**>(comp);
+        uintptr_t* vtable = Game::VTable(comp);
         if (g_PlaySlot == -1) {
             g_PlaySlot = -2;
+            const uintptr_t plays[] = {reinterpret_cast<uintptr_t>(Game::NpcAnimation_PlayByName.Ptr()),
+                                       reinterpret_cast<uintptr_t>(Game::NpcAnimation_PlayByName2.Ptr())};
             for (int i = 0; i < 0x40 && g_PlaySlot < 0; i++)
-                for (uintptr_t f : kPlayByName)
-                    if (vtable[i] == g_BaseAddress + f) g_PlaySlot = i;
+                for (uintptr_t f : plays)
+                    if (vtable[i] == f) g_PlaySlot = i;
         }
         if (g_PlaySlot < 0) return;
-        NameView view{name, strlen(name)};
-        auto play = reinterpret_cast<PlayByNameFn>(vtable[g_PlaySlot]);
-        play(comp, &view, 0, blend, 0);
-        play(comp, &view, 2, blend, 0);
+        StrView view{name};
+        using Play = Game::Virtual<void(StrView*, u8, float, float)>;
+        Play::Call(comp, g_PlaySlot * 8, &view, 0, blend, 0);
+        Play::Call(comp, g_PlaySlot * 8, &view, 2, blend, 0);
         void* player = At<void*>(comp, kAnimCompPlayer);
-        if (frame > 0 && player != nullptr) {
-            auto setFrame = reinterpret_cast<void (*)(void*, float)>((*reinterpret_cast<uintptr_t**>(player))[kSetFrameSlot]);
-            setFrame(player, frame);
-        }
+        if (frame > 0 && player != nullptr) Game::CallVirtual<void(float)>(player, kSetFrame, frame);
     }
 
     // The sender's upper-body animation (anim id, 0 none) on layer 1 of the puppet's layered animation player, from
@@ -592,22 +545,20 @@ namespace {
         SharedPtr played{};
         const char* name = anim > 0 ? AP::GhostNet::AnimName(anim) : nullptr;
         if (name != nullptr) {
-            NameView view{name, strlen(name)};
-            GameFn<void (*)(SharedPtr*, void*, NameView*)>(kNpcAnimGet)(&played, comp, &view);
+            StrView view{name};
+            Game::NpcAnimation_Get(&played, comp, &view);
         }
         // none: the layer is only turned off
         if (played.ptr != nullptr) {
-            GameFn<void (*)(void*, int, SharedPtr*, float, float)>(kLayeredSetSlot)(sac, kUpperLayer, &played,
-                                                                                    g_AnimBlend, 0);
+            Game::LayeredAnimation_SetSlot(sac, kUpperLayer, &played, g_AnimBlend, 0);
             u8* layer = At<u8**>(sac, kSacLayers)[kUpperLayer];
             if (layer != nullptr) {
-                uintptr_t* vtable = *reinterpret_cast<uintptr_t**>(layer);
-                reinterpret_cast<void (*)(void*, bool)>(vtable[kLayerSetLoop])(layer, AP::GhostNet::AnimLoops(anim));
-                reinterpret_cast<void (*)(void*, float)>(vtable[kLayerSetStart])(layer, 0);
+                Game::CallVirtual<void(bool)>(layer, kLayerSetLoop, AP::GhostNet::AnimLoops(anim));
+                Game::CallVirtual<void(float)>(layer, kLayerSetStart, 0);
             }
         }
-        GameFn<void (*)(void*, int, bool)>(kLayerEnable)(sac + kSacLayerSet, kUpperLayer, played.ptr != nullptr);
-        ReleaseShared(played.ctrl);
+        Game::AnimationLayers_SetEnabled(sac + kSacLayerSet, kUpperLayer, played.ptr != nullptr);
+        Game::ReleaseOwner(played.ctrl);
 #ifdef LASAP_TEST
         if (p.animLog.size() < 40)
             p.animLog.push_back("upper:" + std::string(name != nullptr ? name : "-") + (played.ptr != nullptr ? "" : "?") +
@@ -771,7 +722,7 @@ namespace {
         if (IndexOf(p) == g_TraceSlot) g_TraceNext = TraceRow{now, t, fa.timeMs, a, tr.count, mode, pos.x, pos.z, 0, 0, 0};
 #endif
         tr.pos = pos;
-        Game::Vec4 q = QuatOf(fa.yaw * static_cast<float>(M_PI) / 180);
+        Game::Vec4 q = QuatOf(fa.yaw * Game::kPi / 180);
         Place(p, pos, &q);
         p.look = fa.look;
         // From the model's load on: the NPC plays its own idle as it loads.
@@ -799,8 +750,7 @@ namespace {
     bool IsLinkModel(const u8* model) {
         const u8* res = At<const u8*>(model, 0);
         if (res == nullptr || std::memcmp(res, "FMDL", 4) != 0) return false;
-        const u8* s = At<const u8*>(res, 8);
-        return std::string_view(reinterpret_cast<const char*>(s + 2), *reinterpret_cast<const u16*>(s)) == "link";
+        return Game::ResName(At<const u8*>(res, 8)) == "link";
     }
 
     // The model's blocks (its materials' parameter blocks and its shapes' blocks, one span in its pool) as GPU
@@ -891,18 +841,17 @@ namespace {
         void* playing = At<void*>(slot, kSlotAnim);
         if (p.tunicAnim == nullptr || playing != p.tunicAnim) {
             SharedPtr out{};
-            StringView name{"clothes", 7};
-            GameFn<void (*)(SharedPtr*, void*, StringView*, bool)>(kPlayMaterialAnim)(&out, AnimComp(p), &name, true);
-            ReleaseShared(out.ctrl);
+            StrView name{"clothes", 7};
+            Game::NpcComponent_PlayMaterialAnimation(&out, AnimComp(p), &name, true);
+            Game::ReleaseOwner(out.ctrl);
             p.tunicAnim = At<void*>(slot, kSlotAnim);
             // not put there (the model has no "clothes"): no tunic for this model
             p.tunic = p.tunicAnim == nullptr || p.tunicAnim == playing ? kNoTunic : -1;
             if (p.tunic == kNoTunic) return;
         }
         if (tunic == p.tunic) return;
-        uintptr_t* vtable = *reinterpret_cast<uintptr_t**>(slot);
-        reinterpret_cast<void (*)(void*, float)>(vtable[kSlotSetRate])(slot, 0);
-        reinterpret_cast<void (*)(void*, float)>(vtable[kSlotSetFrame])(slot, kTunicFrames[tunic]);
+        Game::CallVirtual<void(float)>(slot, kSlotSetRate, 0);
+        Game::CallVirtual<void(float)>(slot, kSlotSetFrame, kTunicFrames[tunic]);
         p.tunic = tunic;
     }
 
@@ -913,7 +862,7 @@ namespace {
         int count = At<s32>(mat, kMatAnimSlotCount);
         for (int i = 0; slots != nullptr && i < count; i++) {
             const u8* s = At<const u8*>(At<const u8*>(At<const u8*>(slots[i], kSlotAnim), kMatAnimRes), kResName);
-            if (s != nullptr && std::string_view(reinterpret_cast<const char*>(s + 2), At<u16>(s, 0)) == name) return i;
+            if (s != nullptr && Game::ResName(s) == name) return i;
         }
         return -1;
     }
@@ -938,9 +887,8 @@ namespace {
             if (p.faceSlots[k] >= At<s32>(mat, kMatAnimSlotCount)) continue;
             u8* slot = slots[p.faceSlots[k]];
             if (frames[k] == p.faceSet[k] && At<float>(slot, kSlotFrame) == static_cast<float>(frames[k])) continue;
-            uintptr_t* vtable = *reinterpret_cast<uintptr_t**>(slot);
-            reinterpret_cast<void (*)(void*, float)>(vtable[kSlotSetRate])(slot, 0);
-            reinterpret_cast<void (*)(void*, float)>(vtable[kSlotSetFrame])(slot, static_cast<float>(frames[k]));
+            Game::CallVirtual<void(float)>(slot, kSlotSetRate, 0);
+            Game::CallVirtual<void(float)>(slot, kSlotSetFrame, static_cast<float>(frames[k]));
             p.faceSet[k] = frames[k];
         }
     }
@@ -972,17 +920,12 @@ namespace {
 
     // Screen-space dither on the puppets only: the model file's shown albedos carry a constant alpha (render pass
     // 1), and their draws get an NVN multisample state with alpha-to-coverage. The renderer binds a material's
-    // parameter block through the command buffer wrapper's bind-uniform-buffer (0x113fd70: wrapper, stage, slot, {GPU
-    // address, offset}*, size); an address inside a puppet's blocks marks its draw. The context's cached raster-state
-    // setter (0xff9430: context, state; cache at +0xa0, which other code reads, the wrapper at +8) would bind the
-    // material's own state over it, so it binds ours again until the draw (0x113e950 / 0x113e9d0); after the draw the
-    // cached state is bound again (0x113ea70: wrapper, state), as the context believes it is.
-    constexpr uintptr_t kBindUniformBuffer = 0x113fd70, kSetRasterState = 0xff9430;
-    constexpr uintptr_t kDrawElementsBaseVertex = 0x113e950, kDrawElementsInstanced = 0x113e9d0;
-    constexpr uintptr_t kBindRasterState = 0x113ea70;
+    // parameter block through the command buffer wrapper's bind-uniform-buffer (CmdBuf_BindUniformBuffer); an address
+    // inside a puppet's blocks marks its draw. The context's cached raster-state setter (GfxContext_SetRasterState;
+    // cache at +0xa0, which other code reads, the wrapper at +8) would bind the material's own state over it, so it
+    // binds ours again until the draw (CmdBuf_DrawElements*); after the draw the cached state is bound again
+    // (CmdBuf_BindRasterState), as the context believes it is.
     constexpr size_t kWrapperCmdBuf = 0xb8, kContextWrapper = 8, kContextRasterCache = 0xa0;
-    // GOT slots of the game's NVN function pointers (each holds the address of a global with the pointer)
-    constexpr uintptr_t kGotMsSetDefaults = 0x1c951e8, kGotMsSetA2C = 0x1c95200, kGotBindMs = 0x1c947c0;
     alignas(16) u8 g_GhostMs[64];
     bool g_GhostMsReady = false;
     // The renderer records several command buffers (one wrapper each, a context each): the wrapper whose next
@@ -996,19 +939,17 @@ namespace {
     u32 g_SkipMask = 0;       // DBG puppet skip: wrappers whose puppet draws are dropped (finding the cost)
     void* g_SkipPending = nullptr;
 
+    // An NVN function through the game's GOT slot.
     template<typename T>
-    T NvnFn(uintptr_t got) {
-        void** global = *reinterpret_cast<void***>(g_BaseAddress + got);
-        return reinterpret_cast<T>(*global);
-    }
+    T NvnFn(Game::Global<void**> got) { return reinterpret_cast<T>(**got); }
 
     void BindGhostMs(void* cmdBuf) {
         if (!g_GhostMsReady) {
-            NvnFn<void (*)(void*)>(kGotMsSetDefaults)(g_GhostMs);
-            NvnFn<void (*)(void*, bool)>(kGotMsSetA2C)(g_GhostMs, true);
+            NvnFn<void (*)(void*)>(Game::got_nvnMultisampleStateSetDefaults)(g_GhostMs);
+            NvnFn<void (*)(void*, bool)>(Game::got_nvnMultisampleStateSetAlphaToCoverageEnable)(g_GhostMs, true);
             g_GhostMsReady = true;
         }
-        NvnFn<void (*)(void*, const void*)>(kGotBindMs)(cmdBuf, g_GhostMs);
+        NvnFn<void (*)(void*, const void*)>(Game::got_nvnCommandBufferBindMultisampleState)(cmdBuf, g_GhostMs);
     }
 
     // The span (puppet, or kInstSpan + instanced group) whose blocks hold this address, or -1.
@@ -1052,30 +993,26 @@ namespace {
         u8* context = ContextOf(wrapper);
         if (context == nullptr) return;
         void* state = *reinterpret_cast<void**>(context + kContextRasterCache);
-        if (state != nullptr) GameFn<void (*)(void*, void*)>(kBindRasterState)(wrapper, state);
+        if (state != nullptr) Game::CmdBuf_BindRasterState(wrapper, state);
     }
 
     // Equipment and faces, instanced (DESIGN.md, Ghosts): the shapes bound to one bone each draw once for all ghosts.
     // Per group of them one InstancedModel component (the game's for lawn grass and floor tiles) on Link, with one
-    // instance per drawn ghost whose look has the group's shapes written each frame; the puppets draw none of them. Made as FieldTip makes its own (0xb846e0): the component (0x310 bytes,
-    // constructor 0x104d540: component, {name, length, enabled, owner, owner's control block}*, the model resource
-    // {resource, control block, model} as a model component holds it at +0x168, a cache key, the shapes' mask, the
-    // model list at Framework +0x540), a control block of its own (vtable 0x1b9cf50) as its shared-from-this, the
-    // entity manager's closures (virtual +0x78) and its model instance M (virtual +0x20, in the model list at once),
-    // the entity manager's start task (0xfae2d0: manager *0x1cc6d98, shared_ptr*) and the actor's child map (0xfaa8a0:
-    // actor, component, root). +0x2f9 set and +0x2fa clear keep the game from adding instances. M's instances: a
+    // instance per drawn ghost whose look has the group's shapes written each frame; the puppets draw none of them.
+    // Made as FieldTip makes its own (0xb846e0): the component (0x310 bytes, InstancedModel_Ctor with the model
+    // resource {resource, control block, model} as a model component holds it at +0x168), a control block of its own
+    // (InstancedModelCtrl_vtable) as its shared-from-this, the entity manager's closures (virtual +0x78) and its model
+    // instance M (virtual +0x20, in the model list at once), the entity manager's start task
+    // (EntityManager_PostStart) and the actor's child map (Actor_AttachComponent). +0x2f9 set and +0x2fa clear keep the game from adding instances. M's instances: a
     // vector of 0x30-byte records at M +0x398 (begin, end, capacity: {position, rotation quaternion, scale}), turned
     // into a storage buffer at each draw (0xfe4020, up to 512). M is drawn in its bind pose with an identity world,
     // so a shape bound to one bone shows at a ghost's bone with the ghost's bone world times the inverse of M's.
     // g3d: model object +0x38 the skeleton, its +0x20 the bones' world matrices (0x40 each: X, Y, Z axes, translation).
-    constexpr uintptr_t kInstCtor = 0x104d540, kLockOwner = 0x21470, kSharedCtrlVtable = 0x1b9cf50,
-                        kStartTask = 0xfae2d0, kEntityManager = 0x1cc6d98, kAttachChild = 0xfaa8a0;
     constexpr size_t kInstSize = 0x310, kInstFlags = 0x40, kInstNoPush = 0x2f9, kInstVisible = 0x2fa, kInstM = 0x148,
                      kInstSelf = 0x8, kInstSelfCtrl = 0x10, kAnimSmc = 0x168, kSmcResource = 0x168, kMRecords = 0x398,
                      kFrameworkModels = 0x540, kModelSkeleton = 0x38, kSkeletonWorld = 0x20;
     constexpr u32 kInstMode = 0x4c41;  // cache keys (+ group) no game component uses: models of their own
     constexpr int kInstCapacity = 32;
-    struct NameArg { const char* ptr; u64 len; u8 enabled; void* owner; void* ownerCtrl; };
     struct Record { float pos[4], rot[4], scale[3], pad; };
     // The shapes bound to one bone each (vertex skin count 1), as the look shows them together (a group's model draws
     // all its shapes for each instance): sword A, sword B, the Magic Rod, the shovel, the hookshot (bone 12, itemA_L),
@@ -1176,16 +1113,16 @@ namespace {
 
     bool InstMake(int g, void* host, u8* smc) {
         u8* fmwk = reinterpret_cast<u8*>(Game::GetFramework());
-        u8* comp = GameFn<u8* (*)(size_t)>(kGameNew)(kInstSize);
+        u8* comp = static_cast<u8*>(Game::operator_new(kInstSize));
         SharedPtr owner{};
-        GameFn<void (*)(SharedPtr*, void*, void*)>(kLockOwner)(&owner, At<void*>(host, 8), At<void*>(host, 0x10));
+        Game::SharedPtr_FromWeak(&owner, At<void*>(host, 8), At<void*>(host, 0x10));
         snprintf(g_InstName, sizeof(g_InstName), "APGhostInst%d", g_InstMade++);
-        NameArg name{g_InstName, strlen(g_InstName), 1, owner.ptr, owner.ctrl};
-        GameFn<void (*)(u8*, NameArg*, void*, u32, u32, void*)>(kInstCtor)(
-            comp, &name, smc + kSmcResource, kInstMode + g, kInstGroups[g].shapes, fmwk + kFrameworkModels);
-        ReleaseShared(owner.ctrl);
-        void** ctrl = GameFn<void** (*)(size_t)>(kGameNew)(0x20);
-        ctrl[0] = reinterpret_cast<void*>(g_BaseAddress + offset_manager.Offset(kSharedCtrlVtable));
+        Game::ComponentName name{g_InstName, strlen(g_InstName), 1, owner.ptr, owner.ctrl};
+        Game::InstancedModel_Ctor(comp, &name, smc + kSmcResource, kInstMode + g, kInstGroups[g].shapes,
+                                  fmwk + kFrameworkModels);
+        Game::ReleaseOwner(owner.ctrl);
+        void** ctrl = static_cast<void**>(Game::operator_new(0x20));
+        ctrl[0] = const_cast<u8*>(Game::InstancedModelCtrl_vtable.Ptr());
         ctrl[1] = nullptr;                      // one owner: the module
         ctrl[2] = reinterpret_cast<void*>(1);   // and the component's own weak reference
         ctrl[3] = comp;
@@ -1196,36 +1133,35 @@ namespace {
         comp[kInstVisible] = 0;
         comp[kInstNoPush] = 1;
         u32& flags = *reinterpret_cast<u32*>(comp + kInstFlags);
-        uintptr_t* vtable = *reinterpret_cast<uintptr_t**>(comp);
         if (!(flags & 0x40000008)) {
-            reinterpret_cast<void (*)(u8*)>(vtable[0x78 / 8])(comp);
-            reinterpret_cast<void (*)(u8*)>(vtable[0x20 / 8])(comp);
+            Game::CallVirtual<void()>(comp, 0x78);
+            Game::CallVirtual<void()>(comp, 0x20);
             flags |= 8;
         }
         SharedPtr sp{comp, ctrl};
-        __atomic_fetch_add(CtrlCount(ctrl, kCtrlOwners), 1, __ATOMIC_ACQ_REL);
-        GameFn<void (*)(void*, SharedPtr*)>(kStartTask)(*reinterpret_cast<void**>(g_BaseAddress + kEntityManager), &sp);
-        ReleaseShared(ctrl);
-        bool attached = GameFn<bool (*)(void*, u8*, void*)>(kAttachChild)(host, comp, At<void*>(host, kActorRoot));
+        Game::AddOwner(ctrl);
+        Game::EntityManager_PostStart(*Game::EntityManager_ptr, &sp);
+        Game::ReleaseOwner(ctrl);
+        bool attached = Game::Actor_AttachComponent(host, comp, At<void*>(host, kActorRoot));
         u8* m = attached ? At<u8*>(comp, kInstM) : nullptr;
         if (m != nullptr) {
             // room for the records before the render thread first draws them
             u8** vec = reinterpret_cast<u8**>(m + kMRecords);
             u8* old = vec[0];
-            vec[0] = GameFn<u8* (*)(size_t)>(kGameNew)(kInstCapacity * sizeof(Record));
+            vec[0] = static_cast<u8*>(Game::operator_new(kInstCapacity * sizeof(Record)));
             vec[1] = vec[0];
             vec[2] = vec[0] + kInstCapacity * sizeof(Record);
-            if (old != nullptr) GameFn<void (*)(void*)>(kGameDelete)(old);
+            if (old != nullptr) Game::operator_delete(old);
             g_Inst[g] = Inst{comp, host, 0};
         }
-        ReleaseShared(ctrl);  // the module's reference: the host's child map holds its own
+        Game::ReleaseOwner(ctrl);  // the module's reference: the host's child map holds its own
         return m != nullptr;
     }
 
     // Each frame: each group's component on Link (made once a ghost's model gives the resource), with one record per
     // drawn ghost whose look has the group's shapes.
     void InstTick() {
-        auto* host = Player();
+        auto* host = GetPlayer();
         for (int g = 0; g < kInstGroupCount; g++)
             if (g_Inst[g].comp != nullptr && g_Inst[g].host != host) InstDrop(g, false);  // Link was made again
         if (host == nullptr) return;
@@ -1327,7 +1263,7 @@ namespace {
                     int flags = (still ? kFlagStill : 0) | (anim.starts != g_TestStarts ? kFlagStarted : 0);
                     g_TestStarts = anim.starts;
                     Push(p.track, Frame{static_cast<s64>(now), now, s.pos.x, s.pos.y, s.pos.z,
-                                        YawOf(s.rot) * 180 / static_cast<float>(M_PI), anim.anim, anim.frame,
+                                        YawOf(s.rot) * 180 / Game::kPi, anim.anim, anim.frame,
                                         anim.upper, flags, AP::GhostNet::LinkLook()});
                     g_TestFedFrame = frame;
                 }
@@ -1410,8 +1346,8 @@ namespace {
 
 // While the module spawns a ghost: NpcGhost's component looks up the APGhost row, if the sheet has it.
 HOOK_DEFINE_TRAMPOLINE(NpcComponentCtor) {
-    static void* Callback(void* self, void* args, StringView* rowKey, void* x3) {
-        if (g_SpawningGhost && rowKey != nullptr && rowKey->ptr == reinterpret_cast<const char*>(g_BaseAddress + kNpcGhostKey)) {
+    static void* Callback(void* self, void* args, StrView* rowKey, void* x3) {
+        if (g_SpawningGhost && rowKey != nullptr && rowKey->data == Game::str_NpcGhost.Ptr()) {
             if (HasGhostRow()) rowKey = &g_GhostRow;
         }
         return Orig(self, args, rowKey, x3);
@@ -1420,35 +1356,27 @@ HOOK_DEFINE_TRAMPOLINE(NpcComponentCtor) {
 
 // A ghost's NPC component (the APGhost row) gets a layered animation player with Link's upper-body layer. The
 // player comes back through x8 (a shared_ptr), so the hook returns a type that is not trivial.
-struct SharedOut {
-    void* ptr = nullptr;
-    void* ctrl = nullptr;
-    ~SharedOut() {}
-};
-
 HOOK_DEFINE_TRAMPOLINE(MakeAnimator) {
-    static SharedOut Callback(u8* comp, StringView* name, SharedPtr* model) {
+    static Game::SharedPtrOut Callback(u8* comp, StrView* name, SharedPtr* model) {
         const void* row = comp != nullptr ? At<const void*>(comp, kNpcRow) : nullptr;
         if (g_LayeredGhosts && row != nullptr && model != nullptr && model->ptr != nullptr && row == GhostRow()) {
-            SharedOut out;
+            Game::SharedPtrOut out;
             int layers = 2;
-            GameFn<void (*)(SharedOut*, void*, StringView*, SharedPtr*, int*)>(kLayeredMake)(
-                &out, At<void*>(comp, kNpcEntity), name, model, &layers);
+            Game::LayeredAnimation_Make(&out, At<void*>(comp, kNpcEntity), name, model, &layers);
             if (out.ptr != nullptr) {
                 u8* set = static_cast<u8*>(out.ptr) + kSacLayerSet;
-                GameFn<void (*)(void*, int, const char*, bool)>(kLayerBoneMask)(
-                    set, kUpperLayer, reinterpret_cast<const char*>(g_BaseAddress + kSpineA), true);
-                GameFn<void (*)(void*, int, bool)>(kLayerEnable)(set, kUpperLayer, false);
+                Game::AnimationLayers_SetBoneMask(set, kUpperLayer, Game::str_spine_a.Ptr(), true);
+                Game::AnimationLayers_SetEnabled(set, kUpperLayer, false);
                 // started and made the entity's child, as NpcAnimator_Make does with its player
                 void* entity = At<void*>(comp, kNpcEntity);
-                void* manager = *reinterpret_cast<void**>(g_BaseAddress + kEntityManager);
+                void* manager = *Game::EntityManager_ptr;
                 if (manager != nullptr) {
                     SharedPtr sp{out.ptr, out.ctrl};
-                    if (sp.ctrl != nullptr) __atomic_fetch_add(CtrlCount(sp.ctrl, kCtrlOwners), 1, __ATOMIC_ACQ_REL);
-                    GameFn<void (*)(void*, SharedPtr*)>(kStartTask)(manager, &sp);
-                    ReleaseShared(sp.ctrl);
+                    if (sp.ctrl != nullptr) Game::AddOwner(sp.ctrl);
+                    Game::EntityManager_PostStart(manager, &sp);
+                    Game::ReleaseOwner(sp.ctrl);
                 }
-                GameFn<bool (*)(void*, void*)>(kAddChild)(entity, out.ptr);
+                Game::Entity_AttachChild(entity, out.ptr);
                 return out;
             }
         }
@@ -1459,11 +1387,11 @@ HOOK_DEFINE_TRAMPOLINE(MakeAnimator) {
 #ifdef LASAP_TEST
 // The plays by name on the puppets' animation components (DBG puppet animlog).
 HOOK_DEFINE_TRAMPOLINE(PlayByName) {
-    static void Callback(void* comp, NameView* name, u8 mode, float blend, float frame) {
+    static void Callback(void* comp, StrView* name, u8 mode, float blend, float frame) {
         if (mode == 0 && comp != nullptr) {
             for (auto& p : g_Puppets) {
                 if (comp == AnimComp(p) && p.animLog.size() < 40)
-                    p.animLog.push_back(std::string(name->ptr, name->len) + (blend == 0 ? "/0" : "") + "@" +
+                    p.animLog.push_back(std::string(name->View()) + (blend == 0 ? "/0" : "") + "@" +
                                         std::to_string(g_LastFrame));
             }
         }
@@ -1527,14 +1455,14 @@ HOOK_DEFINE_TRAMPOLINE(DrawElementsInstanced) {
 namespace AP::Puppet {
     void InstallHooks() {
 #ifdef LASAP_TEST
-        PlayByName::InstallAtOffset(offset_manager.Offset(kPlayByName[0]));
+        PlayByName::InstallAtFuncPtr(Game::NpcAnimation_PlayByName.Ptr());
 #endif
-        NpcComponentCtor::InstallAtOffset(offset_manager.Offset(kNpcComponentCtor));
-        MakeAnimator::InstallAtOffset(offset_manager.Offset(kMakeAnimator));
-        BindUniformBuffer::InstallAtOffset(offset_manager.Offset(kBindUniformBuffer));
-        SetRasterState::InstallAtOffset(offset_manager.Offset(kSetRasterState));
-        DrawElementsBaseVertex::InstallAtOffset(offset_manager.Offset(kDrawElementsBaseVertex));
-        DrawElementsInstanced::InstallAtOffset(offset_manager.Offset(kDrawElementsInstanced));
+        NpcComponentCtor::InstallAtFuncPtr(Game::NpcComponent_Ctor.Ptr());
+        MakeAnimator::InstallAtFuncPtr(Game::NpcComponent_MakeAnimator.Ptr());
+        BindUniformBuffer::InstallAtFuncPtr(Game::CmdBuf_BindUniformBuffer.Ptr());
+        SetRasterState::InstallAtFuncPtr(Game::GfxContext_SetRasterState.Ptr());
+        DrawElementsBaseVertex::InstallAtFuncPtr(Game::CmdBuf_DrawElementsBaseVertex.Ptr());
+        DrawElementsInstanced::InstallAtFuncPtr(Game::CmdBuf_DrawElementsInstanced.Ptr());
     }
 
     // Once a second: the frame rate, and the crowd limits after it.
@@ -1604,7 +1532,7 @@ namespace AP::Puppet {
     }
 
     void TickPuppets() {
-        auto* player = Player();
+        auto* player = GetPlayer();
         Game::Framework* fmwk = Game::GetFramework();
         if (player == nullptr || fmwk == nullptr) {
             // a level loads
@@ -1711,7 +1639,7 @@ namespace AP::Puppet {
         if (a[1] != "puppet") return false;
         const std::string sub = a.size() >= 3 ? a[2] : "";
         auto& p = g_Puppets[kTest];
-        auto* player = Player();
+        auto* player = GetPlayer();
         if (sub == "spawn" && a.size() >= 4) {
             // DBG puppet spawn <actor id hex> [dx dz]: beside Link
             if (player == nullptr || player->playerCollision == nullptr) {
@@ -1804,7 +1732,7 @@ namespace AP::Puppet {
             // DBG puppet vsyncwait on|off: whether each frame ends by waiting for the next vsync (the graphics system,
             // *(0x1cc8b30)[1], +0x8169: its vsync watcher runs; the frame's end then clears and waits for its event).
             // Only with a watcher (+0x81b0 its thread): No 30 FPS Drops starts none, and nothing would signal the event.
-            u8* graphics = *reinterpret_cast<u8**>(g_BaseAddress + 0x1cc8b30);
+            u8* graphics = *Game::Graphics_ptr;
             u8* system = graphics != nullptr ? *reinterpret_cast<u8**>(graphics + 8) : nullptr;
             if (system != nullptr && *reinterpret_cast<void**>(system + 0x81b0) != nullptr) system[0x8169] = a[3] == "on";
         } else if (sub == "trace" && a.size() >= 4) {

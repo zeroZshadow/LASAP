@@ -25,6 +25,7 @@ Actor_SubscribeZones 0x08522980 f actor vtable +0xd0: room manager +0x278, scene
 Actor_UnsubscribeZones 0x08522df0 f actor vtable +0xd8
 Actor_OnRoomChanged 0x08523090 f actor vtable +0xe0 (actor, int* new, int* old): restores flags bit 2 from +0xa2 bit 1 on entering its zone
 Actor_ZoneSignal 0x085232e0 f scene +0x7b8 callback: suspends a zone-scoped actor (+0xa4 bit 0) of the zone left, saving bit 2 into +0xa2
+SharedPtr_FromWeak 0x08525470 f (out shared_ptr, object, control block): an entity's self pointer (+0x8) as a shared_ptr
 Actor_RegisterEvents 0x08526a30 f (actor): event manager callbacks, handles +0x294/+0x298
 ActorSwitch_On 0x08526df0 f (LEB record, slot): sets the switch's flag (types 0, 1, 3)
 ActorSwitch_Off 0x08526fd0 f (LEB record, slot)
@@ -94,9 +95,13 @@ TreasureBox_Init 0x0919e0d0 f switch 0 on: opened (+0x320)
 TreasureBox_Open 0x0919f4b0 f sets switch 0
 ObjTreasureBox_Factory 0x091a2820 f ActorTable id 0xf7
 Player_UpdateTask 0x09239580 f queue +0x100 task: Player_UpdateAnimation while (flags & 0x40000117) == 0x117
+MenuPage_Dtor 0x093c8330 f the destructor a pause menu page's deleting destructor calls, shared by the pages
+Throbber_ChangeState 0x09489d20 f (state machine, state): the autosave popup's machine (+0x80)
+Throbber_Show 0x0948d5c0 f (bool auto): the autosave popup None/Out -> InAuto (0.5 s) or In
 Actor_OnActiveChanged 0x094abaf0 f actor vtable +0x50: +0x40/+0x48, bit 1 to the root and the components
 Actor_RemoveComponent 0x094ac510 f (actor, name, length, bool immediate) (guess)
 Actor_ForEachComponent 0x094ace50 f (actor, std::function<bool(sp*)>*)
+Entity_AttachChild 0x094ade40 f (entity, child entity): makes it the entity's child; binds an animation player to the model
 Actor_AttachComponent 0x094ae8a0 f (actor, component, parent node)
 Entity_Start 0x094af470 f (sp*): EntityManager_PostStart
 Entity_Detach 0x094af5b0 f component vtable +0x08: leaves the owner's map, or DestroyNow
@@ -111,6 +116,7 @@ Entity_RemoveChildrenIf 0x094b3bc0 f (entity, std::function pred, bool immediate
 Entity_ForEachChild 0x094b3d20 f (entity, std::function<bool(sp*)>)
 Entity_SetParentActiveFn 0x094b7220 f functor: child flags bit 1 := its byte, +0x50 on a change
 Entity_FindChildInMap 0x094b7470 f (map, name, length) -> node: FNV-1a lookup in a child map (+0x10/+0x38/+0x60)
+InstancedModel_Ctor 0x09551540 f (component, {name, length, enabled, owner, owner ctrl}*, model resource, cache key, shapes mask, model list): 0x310 bytes
 Sound_Stop 0x095ed7f0 f (sound, u32 frames)
 BgmManager_SetVolume 0x0859f3a0 f (f32 volume, u32 frames): Sound_SetVolume on every playing kind 1 instance; the event action SetBGMVolume
 BgmManager_MuteZone 0x0859f420 f (u32 frames): fades the kind 1 instances out; the item-get calls it with 8 frames before its fanfare when the item's info +0xe is set
@@ -378,11 +384,13 @@ vfx_Handle_GetEmitterSet 0x0968ccb0 f (handle*) -> EmitterSet* or null; leaf
 vfx_System_CreateEmitterSetID 0x096a96d0 f nn::vfx System::CreateEmitterSetID
 vfx_System_KillEmitterSet 0x096a9930 f
 vfx_System_SearchEmitterSetID 0x096aa630 f (system, const char* name, resId) -> id or -1; leaf
+operator_delete 0x09935110 f
 operator_new 0x09935170 f import stub
 shared_weak_count_release_weak 0x099351f0 f libc++ std::__shared_weak_count::__release_weak
 PlayerAnimation_DefaultBlend 0x09bb3c44 l f32 0.0667
 CranePrizeAddTable 0x09bb4cf8 l CranePrize_Add jump table, 21 s32 offsets
 AddItemIdTable 0x09bb6d60 l Inventory_AddItemID jump table, 0x7f s32 offsets
+str_spine_a 0x09bbaecb l "spine_a": Link's upper-body bone
 str_drsb_Player 0x09be06c5 l "tailor/Player.drsb"
 str_NpcGhost 0x09befdf4 l "NpcGhost": the row key and the actor table's name
 NpcCollisionFilters 0x09c06080 l 7 u32 collision filters
@@ -390,6 +398,7 @@ Actor_vtable 0x0a054f28 l the game Actor; base slots +0x00..+0x120
 ActorSerial 0x0a055050 l counter -> actor +0xa8
 AreaLevelOpen_vtable 0x0a058b48 l vtable of the AreaLevelOpen actor
 EnemyOctorok_vtable 0x0a09b418 l
+InstancedModelCtrl_vtable 0x0a0a0f50 l control block of FieldTip's InstancedModel (shared-from-this)
 RoomManager_vtable 0x0a0c6b00 l +0x20 RoomManager_Update, +0x50 StartLevelLoad, +0x58 UnloadRooms, +0x60 CreateRoom, +0x68 LevelLoad_Finish, +0x80 LevelJumpTeardown
 NpcComponent_vtable2 0x0a0c9290 l vtable
 Area_vtable 0x0a0d00e0 l vtable
@@ -427,10 +436,12 @@ got_nvnCommandBufferBindMultisampleState 0x0a1987c0 l
 got_nvnMultisampleStateSetDefaults 0x0a1991e8 l
 got_nvnMultisampleStateSetAlphaToCoverageEnable 0x0a199200 l
 Framework_ptr 0x0a19b188 l Framework: +0x498 actor system, +0x4b8 player, +0x4d4 frame counter, +0x518 controller, +0x560 camera
-UiManager_ptr 0x0a19b1c0 l +0x88 archive slots, 0x10 apart
+UiManager 0x0a19b1c0 l static: +0x88 archive slots, 0x10 apart
 HudPass_ptr 0x0a19b2c8 l
 BgmManager 0x0a1a5d70 l static (guard 0x0a1af240): +0x6280 the playing instances (begin, end), +0x9250 the zone's track (char[64], length +0x9290)
+BgmManager_guard 0x0a1af240 l BgmManager's static guard (bit 0 once made)
 BgmTable 0x0a1afa28 l static (guard 0x0a1b0378), made by BgmManager_Play
+BgmTable_guard 0x0a1b0378 l BgmTable's static guard (bit 0 once made)
 CameraSystem_ptr 0x0a1b0b30 l shared_ptr; +0x600/+0x610 vectors passed to RoomManager_UpdateRooms, +0x700 flags (bit 3: room update requested)
 CranePrizeSheets_ptr 0x0a1b0f28 l 0x40 bytes of shared_ptrs: CranePrize +0x0, featured groups 1/2 at +0x20/+0x30
 EventManager_ptr 0x0a1b64d8 l
@@ -451,7 +462,7 @@ PanelPieceBits2 0x0a1c5258 l {u8*, 7, 51}: the stones Dampé has made into panel
 PanelNotifyBits 0x0a1c52a8 l {u8*, 1, 8}: bit 0 a new stone, 2 a further stone or a set, 3 a special stone (7,13,18,19,24,32); Dampé's ProcessDungeonAndPanelStone clears them
 SaveHeader_ptr 0x0a1c5360 l points at the static save header (0x0a1c45a0): +0x8 the player's name, UTF-16, 8 letters and a 0 (the save file's +0x20); SaveCurrent follows at +0x140
 Inventory_ptr 0x0a1c5368 l +0x9c bits: 0 SwordLv2, 1 MirrorShield, 6 ClothesRed, 7 ClothesBlue
-LevelIndex_ptr 0x0a1c53c8 l
+LevelIndex 0x0a1c53c8 l u8: the current dungeon, 0xff outside dungeons
 EntityManager_ptr 0x0a1cad98 l seven task queues (+0x8 start, +0x100 update, +0x1f8 late update, +0x2f0, +0x3e8, +0x4e0 render, +0x5d8 destroy); +0x6d0 initialized count, +0x6d8 u8 flushing
 ResourceManager_ptr 0x0a1cadb8 l
 FrameDelta 0x0a1cae88 l time units per update (blend progress)

@@ -10,7 +10,7 @@
 // take the bits of shuffled sources, so those marks would name places unrelated to them: the module marks source i
 // once it is done instead: a vanilla source by its bit, a shuffled one by its location's check.
 #include "AP/ap.hpp"
-#include "offsets.hpp"
+#include "Game/addr.hpp"
 #include "loggers.hpp"
 #include "Config/file_handler.hpp"
 #include <map>
@@ -68,8 +68,8 @@ namespace AP {
             if (local_id < 0) g_Kinds[kind].vanilla |= 1ULL << index;
             else g_Kinds[kind].shuffled[index] = local_id;
         }
-        HeartMarkerTest::InstallAtOffset(offset_manager.Offset(kHeartMarkerTest));
-        ShellMarkerTest::InstallAtOffset(offset_manager.Offset(kShellMarkerTest));
+        HeartMarkerTest::InstallAtPtr(Game::Addr(kHeartMarkerTest));
+        ShellMarkerTest::InstallAtPtr(Game::Addr(kShellMarkerTest));
     }
 
     u64 VanillaBits(char kind) {

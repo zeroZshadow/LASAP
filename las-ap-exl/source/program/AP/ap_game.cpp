@@ -7,6 +7,10 @@
 #include "Hooks/Common/inventory.hpp"
 #include "Hooks/Common/level.hpp"
 #include "Game/framework.hpp"
+#include "Game/math.hpp"
+#include "Game/model.hpp"
+#include "Game/sym.hpp"
+#include "Game/time.hpp"
 #include "Game/Data/inventory.hpp"
 #include "nn/fs.hpp"
 #include "Config/file_handler.hpp"
@@ -35,16 +39,12 @@ namespace {
     // Chamber stones: received ones take the stones the Items page counts (PanelStone's mItemMenuCount: 3, 4, 8,
     // 10-13, 20-26), each a chamber panel Dampé makes at his next talk (scripts/re/ITEMS.md, Chamber stones).
     constexpr u64 kChamberStoneBits = 0x7f03d18;
-    constexpr uintptr_t kPanelPieceBits = 0x1cc1208;  // {u8* bits, s32 bytes, s32 bits}: the chamber stones owned
     // Time to wait after a level change before granting items.
     constexpr u64 kSettleMs = 1500;
 
-    // The game polls input several times per frame, so timing uses the system counter (19.2 MHz).
-    u64 NowMs() {
-        u64 ticks;
-        asm volatile("mrs %0, cntpct_el0" : "=r"(ticks));
-        return ticks / 19200;
-    }
+    using Game::NowMs;
+    using Game::SharedPtr;
+    using Game::StrView;
 
     std::string g_SeedHash = "00000000";
     std::string g_ChecksPath;
@@ -147,8 +147,7 @@ namespace {
 
     // The chamber stones owned (PanelPieceBits), bit i for stone i.
     u64 ChamberStoneBits() {
-        struct BitTable { const u8* bits; s32 bytes; s32 count; };
-        const auto* table = reinterpret_cast<const BitTable*>(g_BaseAddress + offset_manager.Offset(kPanelPieceBits));
+        const Game::BitTable* table = Game::PanelPieceBits.Ptr();
         u64 owned = 0;
         for (int i = 0; table->bits != nullptr && i < table->bytes && i < 8; i++) owned |= u64(table->bits[i]) << (8 * i);
         return owned;
@@ -156,28 +155,23 @@ namespace {
 
     // The bottle slots Link has (Bottle0..2) as bits 0..2: an added bottle fills the slot of its index.
     u64 BottleBits() {
-        const auto& main = (*Game::Data::Inventory::Items)->MainItems;
+        const auto& main = Game::Data::Inventory::Items()->MainItems;
         return main.Bottle0 | main.Bottle1 << 1 | main.Bottle2 << 2;
     }
 
     void Damage(int quarterHearts) {
-        auto* items = *Game::Data::Inventory::Items;
+        auto* items = Game::Data::Inventory::Items();
         items->Health = items->Health > quarterHearts ? items->Health - quarterHearts : 1;
     }
 
     // Native item-get (Link holds the item up and the item text shows). This is the body of the event action
     // Link.GenericItemGetSequenceByKey; it only displays, the inventory is changed separately.
-    // It returns the running action as a libc++ shared_ptr.
-    struct StrView { const char* data; size_t len; };
-    struct SharedPtr { void* ptr; void* ctrl; };
-    using ReleaseWeakFn = void (*)(void* ctrl);
-    constexpr uintptr_t kItemGetSequence = 0xd795d0;
-    constexpr uintptr_t kSharedWeakReleaseWeak = 0x14311f0;
+    // It returns the running action as a libc++ shared_ptr (Player_ItemGetSequence).
     // Offsets found by memory comparison (TESTING.md, "Reverse engineering").
     constexpr size_t kPlayerEventState = 0x4ed;   // u8, 0 while the player is free (no talk, event or cutscene)
     constexpr size_t kPlayerCarried = 0x19b0;     // pointer, set while Link holds something over his head
-    constexpr size_t kFrameworkPaused = 0x510;    // u8, 1 while the pause menu is open
-    constexpr size_t kFrameworkScreen = 0xb0;     // u8: 2 intro and title, 5 file menus, 0x0b level load, 0x17 level
+    using Game::kFrameworkPaused;
+    using Game::kFrameworkScreen;
 
     // The intro, the title or the file menus show: no save is loaded.
     bool NoSaveLoaded(Game::Framework* fmwk) {
@@ -273,60 +267,32 @@ namespace {
     bool g_WasConnected = false;
     bool g_ServerConnected = false;  // the client is logged into the slot (SERVER lines)
 
-    void ReleaseShared(SharedPtr& sp) {
-        if (sp.ctrl != nullptr) {
-            auto* owners = reinterpret_cast<long*>(reinterpret_cast<u8*>(sp.ctrl) + 8);
-            if (__atomic_fetch_sub(owners, 1, __ATOMIC_ACQ_REL) == 0) {
-                auto** vtable = *reinterpret_cast<void (***)(void*)>(sp.ctrl);
-                vtable[2](sp.ctrl);  // __on_zero_shared
-                reinterpret_cast<ReleaseWeakFn>(g_BaseAddress + offset_manager.Offset(kSharedWeakReleaseWeak))(sp.ctrl);
-            }
-        }
-        sp = SharedPtr{};
-    }
-
     // Starting an event of Common.bfevfl, as the game does for its game over:
     // load the flowchart resource, make an event for the entry, prepare it and hand it to the event manager.
-    constexpr uintptr_t kResourceManager = 0x1cc6db8;   // global: resource manager pointer
-    constexpr uintptr_t kEventManager = 0x1cb24d8;      // global: event manager pointer
-    constexpr uintptr_t kLoadResource = 0xfbbd80;       // (out handle, manager, StringView* path)
-    constexpr uintptr_t kWaitResource = 0x3dc20;        // (resource)
-    constexpr uintptr_t kResourceFlowchart = 0x3d9f0;   // (out flowchart, handle*)
-    constexpr uintptr_t kCreateEvent = 0x80c290;        // (out event, flowchart*, StringView* entry)
-    constexpr uintptr_t kPrepareEvent = 0x80db00;       // (event)
-    constexpr uintptr_t kRequestEvent = 0x81f2e0;       // (out, event manager, event*)
-
-    template<typename T>
-    T GameFn(uintptr_t offset) { return reinterpret_cast<T>(g_BaseAddress + offset_manager.Offset(offset)); }
-
-    void* GameGlobal(uintptr_t offset) {
-        return *reinterpret_cast<void**>(g_BaseAddress + offset_manager.Offset(offset));
-    }
-
     bool RequestCommonEvent(const char* entry) {
-        void* resources = GameGlobal(kResourceManager);
-        void* events = GameGlobal(kEventManager);
+        void* resources = *Game::ResourceManager_ptr;
+        void* events = *Game::EventManager_ptr;
         if (resources == nullptr || events == nullptr) return false;
         static const char kPath[] = "event/Common.bfevfl";
         StrView path{kPath, sizeof(kPath) - 1};
-        StrView name{entry, strlen(entry)};
+        StrView name{entry};
         SharedPtr handle{}, flowchart{}, event{}, request{};
-        GameFn<void (*)(SharedPtr*, void*, StrView*)>(kLoadResource)(&handle, resources, &path);
-        if (handle.ptr != nullptr) GameFn<void (*)(void*)>(kWaitResource)(handle.ptr);
-        GameFn<void (*)(SharedPtr*, SharedPtr*)>(kResourceFlowchart)(&flowchart, &handle);
+        Game::Resource_Load(&handle, resources, &path);
+        if (handle.ptr != nullptr) Game::Resource_Wait(handle.ptr);
+        Game::Resource_TakeFlowchart(&flowchart, &handle);
         bool ok = false;
         if (flowchart.ptr != nullptr) {
-            GameFn<void (*)(SharedPtr*, SharedPtr*, StrView*)>(kCreateEvent)(&event, &flowchart, &name);
+            Game::Event_Make(&event, &flowchart, &name);
             if (event.ptr != nullptr) {
-                GameFn<void (*)(void*)>(kPrepareEvent)(event.ptr);
-                GameFn<void (*)(SharedPtr*, void*, SharedPtr*)>(kRequestEvent)(&request, events, &event);
+                Game::Event_Prepare(event.ptr);
+                Game::EventManager_Request(&request, events, &event);
                 ok = true;
             }
         }
-        ReleaseShared(request);
-        ReleaseShared(event);
-        ReleaseShared(flowchart);
-        ReleaseShared(handle);
+        Game::Release(request);
+        Game::Release(event);
+        Game::Release(flowchart);
+        Game::Release(handle);
         return ok;
     }
 
@@ -354,7 +320,7 @@ namespace {
     // Plays a trap's effect as its event. In the normal damage mode a trap leaves at least a quarter heart.
     bool StartTrapEvent(const std::string& key) {
         int damage = TrapEventDamage(key);
-        auto* items = *Game::Data::Inventory::Items;
+        auto* items = Game::Data::Inventory::Items();
         if (damage < 0) {
             Damage(4);
             return true;
@@ -387,7 +353,7 @@ namespace {
 
     // Health is zero: Link is dying (until the Secret Medicine or a game over's Retry refills it).
     bool LinkDead() {
-        auto* items = *Game::Data::Inventory::Items;
+        auto* items = Game::Data::Inventory::Items();
         return items != nullptr && items->Health <= 0;
     }
 
@@ -597,18 +563,10 @@ namespace {
     // The ocarina's size in the item-get: its radius around its root (0.459) times the scale the game gives it
     constexpr float kItemModelRadius = 0.459f * 1.17f;
     constexpr Game::Vec3 kItemModelPos = {0.0f, 0.55f, 1.0f};  // the ocarina's place under the item's node
-    constexpr uintptr_t kItemModelTask = 0x8d41c0;      // (task*): +0x8 the item-get's holder (+0x18 the component)
-    constexpr uintptr_t kModelResourceGet = 0x1046190;  // (out, resource holder, const char* model name)
-    // (node): marks it and its children for a new world position and tells its listeners (the model); nothing while
-    // it is marked (needsCoordUpdate), so setting that flag alone leaves the model where it was
-    constexpr uintptr_t kNodeMarkDirty = 0xfb6aa0;
-    constexpr size_t kTaskHolder = 0x8, kHolderModel = 0x18;  // the component as a shared_ptr
-    // component +0x148 the model instance, +0x60 -> +0x10 its model object, +0x38 the skeleton, +0x18 its bones'
-    // local transforms (0x60 each, computed into the world ones each frame; bone 0 the root): +0x0 flags,
-    // +0x50 translation
-    constexpr size_t kModelInstance = 0x148, kInstanceObjects = 0x60, kObjectsModel = 0x10, kModelSkeleton = 0x38;
-    constexpr size_t kSkeletonLocal = 0x18, kLocalFlags = 0x0, kLocalTranslate = 0x50;
-    constexpr u32 kLocalTranslateZero = 0x08000000;
+    // The item-get's model task (ItemGet_ModelTask): +0x8 the item-get's holder, +0x18 the component as a shared_ptr.
+    // Node_MarkDirty does nothing while the node is marked (needsCoordUpdate), so setting that flag alone leaves the
+    // model where it was.
+    constexpr size_t kTaskHolder = 0x8, kHolderModel = 0x18;
     constexpr u64 kItemModelWindowMs = 3000;  // an item model task this soon after an item-get starts is its model
 
     u64 g_ItemGetAt = 0;
@@ -622,30 +580,13 @@ namespace {
     bool g_HeldRootMoved = false;
 
     void DropHeldModel() {
-        if (g_HeldCtrl != nullptr) GameFn<ReleaseWeakFn>(kSharedWeakReleaseWeak)(g_HeldCtrl);
+        Game::ReleaseWeakOwner(g_HeldCtrl);
         g_HeldCtrl = nullptr;
         g_HeldModel = nullptr;
         g_HeldFix = nullptr;
     }
 
-    bool HeldModelAlive() {
-        return g_HeldCtrl != nullptr && __atomic_load_n(reinterpret_cast<long*>(g_HeldCtrl + 0x8), __ATOMIC_ACQUIRE) >= 0;
-    }
-
-    struct Quat { float x, y, z, w; };
-
-    Quat QuatMul(const Quat& a, const Quat& b) {
-        return {a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y, a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
-                a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w, a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z};
-    }
-
-    // Degrees about one axis (0 x, 1 y, 2 z)
-    Quat AxisQuat(int axis, float degrees) {
-        float half = degrees * 3.14159265f / 360.0f;
-        Quat q{0.0f, 0.0f, 0.0f, cosf(half)};
-        (axis == 0 ? q.x : axis == 1 ? q.y : q.z) = sinf(half);
-        return q;
-    }
+    bool HeldModelAlive() { return Game::Alive(g_HeldCtrl); }
 
     // The held NPC model's component node in the ocarina's place, turned by the fix's angle, at the ocarina's size;
     // the game writes its pose once the item pops up, and that write is replaced here.
@@ -653,7 +594,7 @@ namespace {
         Game::Coords& c = reinterpret_cast<Game::RootComp*>(g_HeldModel)->coordsNew;
         const HeldModelFix& fix = *g_HeldFix;
         float scale = kItemModelRadius / fix.radius;
-        Quat q = QuatMul(AxisQuat(1, fix.angle.y), QuatMul(AxisQuat(0, fix.angle.x), AxisQuat(2, fix.angle.z)));
+        Game::Quat q = Game::EulerQuat(fix.angle);
         c.pos = kItemModelPos;
         c.rotate = {q.x, q.y, q.z, q.w};
         c.scale = {scale, scale, scale};
@@ -689,7 +630,7 @@ namespace {
             u8* ctrl = *reinterpret_cast<u8**>(holder + kHolderModel + 8);
             if (model == nullptr || ctrl == nullptr) return;
             DropHeldModel();
-            __atomic_fetch_add(reinterpret_cast<long*>(ctrl + 0x10), 1, __ATOMIC_RELAXED);
+            Game::AddWeakOwner(ctrl);
             g_HeldModel = model;
             g_HeldCtrl = ctrl;
             g_HeldFix = g_ItemModelFix;
@@ -697,20 +638,6 @@ namespace {
             PlaceHeldModel();
         }
     };
-
-    // Once the held NPC model's skeleton exists: its root bone moves to put the model's middle on the origin.
-    void MoveHeldRoot() {
-        auto ptr = [](const u8* base, size_t offset) { return base ? *reinterpret_cast<u8* const*>(base + offset) : nullptr; };
-        u8* skeleton = ptr(ptr(ptr(ptr(g_HeldModel, kModelInstance), kInstanceObjects), kObjectsModel), kModelSkeleton);
-        u8* root = ptr(skeleton, kSkeletonLocal);
-        if (root == nullptr) return;
-        *reinterpret_cast<u32*>(root + kLocalFlags) &= ~kLocalTranslateZero;
-        auto* t = reinterpret_cast<float*>(root + kLocalTranslate);
-        t[0] -= g_HeldFix->center.x;
-        t[1] -= g_HeldFix->center.y;
-        t[2] -= g_HeldFix->center.z;
-        g_HeldRootMoved = true;
-    }
 
     HOOK_DEFINE_TRAMPOLINE(NodeMarkDirty) {
         static void Callback(Game::RootComp* node) {
@@ -726,7 +653,7 @@ namespace {
     void TickHeldModel() {
         if (g_HeldModel == nullptr) return;
         if (!HeldModelAlive()) DropHeldModel();
-        else if (!g_HeldRootMoved) MoveHeldRoot();
+        else if (!g_HeldRootMoved) g_HeldRootMoved = Game::MoveRootBone(g_HeldModel, g_HeldFix->center);
     }
 
     // Instant Pickups (DESIGN.md, Instant pickups). The item-get is the body of the event actions
@@ -737,27 +664,24 @@ namespace {
     // what the module does in its place: the fanfare, the buffs' music and the autosave. It also takes what Link
     // holds over his head out of the game; without it he keeps holding it (the shop's flows take their goods from him
     // before their item-get, RemoveGoods). The inventory and the item's getting flag are the event's AddItemByKey's.
-    constexpr uintptr_t kDelayMake = 0x7f3c90;
     constexpr int kGuardianAcorn = 111, kPieceOfPower = 112;
-    // The autosave: when the Items.gsheet row's autoSave holds (enabled, its condition true now: ItemAutoSave(u8 item
-    // id)), the item-get asks the scene's save manager (scene +0x90) for one (RequestAutoSave(manager, kind 3,
+    // The autosave: when the Items.gsheet row's autoSave holds (enabled, its condition true now: ItemGet_RowAutoSave),
+    // the item-get asks the scene's save manager (scene +0x90) for one (SaveManager_RequestAutoSave(manager, kind 3,
     // false)), which saves once no event runs. SceneHolder_Lock(out, *(Framework +0x4a8)) gives the scene.
-    constexpr uintptr_t kItemAutoSave = 0x8d5ad0, kSceneHolderLock = 0x11b70, kRequestAutoSave = 0xe0b360;
     constexpr size_t kFrameworkSceneHolder = 0x4a8, kSceneSaveManager = 0x90;
     constexpr u8 kAutoSaveKind = 3;
 
     void RequestItemAutoSave(int itemId) {
         Game::Framework* fmwk = Game::GetFramework();
-        if (fmwk == nullptr || !GameFn<bool (*)(u32)>(kItemAutoSave)(static_cast<u32>(itemId))) return;
+        if (fmwk == nullptr || !Game::ItemGet_RowAutoSave(static_cast<u32>(itemId))) return;
         void* holder = *reinterpret_cast<void**>(reinterpret_cast<u8*>(fmwk) + kFrameworkSceneHolder);
         if (holder == nullptr) return;
         SharedPtr scene{};
-        GameFn<void (*)(SharedPtr*, void*)>(kSceneHolderLock)(&scene, holder);
+        Game::SceneHolder_Lock(&scene, holder);
         if (scene.ptr != nullptr) {
-            GameFn<bool (*)(void*, u8, bool)>(kRequestAutoSave)(reinterpret_cast<u8*>(scene.ptr) + kSceneSaveManager,
-                                                                kAutoSaveKind, false);
+            Game::SaveManager_RequestAutoSave(static_cast<u8*>(scene.ptr) + kSceneSaveManager, kAutoSaveKind, false);
         }
-        ReleaseShared(scene);
+        Game::Release(scene);
     }
 
     // An item Link found shows as a popup instead of an item-get; the buffs only start their music.
@@ -786,17 +710,17 @@ namespace {
         static void Callback(SharedPtr* out, void* player, int itemId, bool keepCarry, StrView* messageEntry) {
             g_ItemGetAt = NowMs();
             size_t len = strlen(AP::RECEIVED_LABEL);
-            bool received = messageEntry != nullptr && messageEntry->len == len &&
+            bool received = messageEntry != nullptr && messageEntry->size == len &&
                             memcmp(messageEntry->data, AP::RECEIVED_LABEL, len) == 0;
             StrView entry = messageEntry != nullptr ? *messageEntry : StrView{"", 0};
-            bool native = entry.len > 0 && entry.data[0] == AP::NATIVE_ITEM_GET_MARK;
+            bool native = entry.size > 0 && entry.data[0] == AP::NATIVE_ITEM_GET_MARK;
             if (native) {
                 entry.data++;
-                entry.len--;
+                entry.size--;
             }
             if (global_config.tweaks.instant_pickups && !received && !native) {
                 InstantPickup(itemId);
-                GameFn<void (*)(float, SharedPtr*)>(kDelayMake)(0.0f, out);
+                Game::Delay_Make(0.0f, out);
                 return;
             }
             if (native) messageEntry = &entry;
@@ -814,7 +738,7 @@ namespace {
         }
     };
 
-    // A shorter item-get, for every item-get (TESTING.md, Item-get timing). The sequence (kItemGetSequence) runs as
+    // A shorter item-get, for every item-get (TESTING.md, Item-get timing). The sequence (the item-get) runs as
     // steps: Link raises the item (animation item_get_st), a delay of 1 s, the item's text; then a short delay and
     // Link lowers the item (item_get_ed). Alongside the text runs the item's fanfare (its Items.gsheet sound, a BGM
     // or an SE), and the text's step ends only once the text has closed and the fanfare has stopped, which held Link
@@ -822,7 +746,6 @@ namespace {
     // the text opens 0.25 s after the raise.
     constexpr uintptr_t kItemGetTextDelay = 0xd741f8;   // in the text's step: ldr s0, [x20, #0xa0], the delay
     constexpr u32 kTextDelayQuarter = 0x1e2a1000;       // fmov s0, #0.25
-    constexpr uintptr_t kItemGetFanfareDone = 0xd7af30; // bool (wait closure): the fanfare has stopped
 
     HOOK_DEFINE_TRAMPOLINE(ItemGetFanfareDone) {
         static bool Callback(void*) { return true; }
@@ -857,7 +780,7 @@ namespace {
     // Grants one item the way an in-game pickup would, including LASR's progressive items.
     // Returns the item id granted, or -1 for traps (QueueTrap) and unknown keys.
     int GrantItem(const std::string& key, int count, int dungeon) {
-        auto* items = *Game::Data::Inventory::Items;
+        auto* items = Game::Data::Inventory::Items();
         std::string k = key;
         if (IsTrapKey(k)) return -1;
         // LASR's "$EXT:" keys only name a chest text (Master Stalfos' Note); "None" is an item the client has no key for.
@@ -970,7 +893,7 @@ namespace {
     // Whether the save holds a kept location's item, as the Trendy Game decides whether to offer a prize: the bit of
     // its index, or for the Yoshi Doll (no index) its getting flag, TradeYoshiDollGet.
     bool SaveHasKept(const KeptLocation& kept) {
-        auto* items = *Game::Data::Inventory::Items;
+        auto* items = Game::Data::Inventory::Items();
         u64 bit = kept.index >= 0 && kept.index < 64 ? u64(1) << kept.index : 0;
         switch (kept.item) {
             case 22: return items->Seashells & bit;
@@ -1087,7 +1010,7 @@ namespace {
 
     std::string StateLine() {
         Game::Framework* fmwk = Game::GetFramework();
-        auto* items = *Game::Data::Inventory::Items;
+        auto* items = Game::Data::Inventory::Items();
         std::string s = "STATE level=" + LevelSystem::GetCurrentLevel();
         s += " screen=" + ScreenName(fmwk);
         s += " ms_in_level=" + std::to_string(NowMs() - g_LevelSince);
@@ -1192,18 +1115,18 @@ namespace {
                 snprintf(buf, sizeof(buf), "%.3f,%.3f,%.3f,%.3f", r.x, r.y, r.z, r.t);
                 return std::string(buf);
             };
-            auto* player = reinterpret_cast<u8*>(Game::GetFramework()->mPlayer);
-            auto* link = player ? *reinterpret_cast<Game::RootComp**>(player + 0x2a8) : nullptr;
+            Game::Actors::Player* player = Game::GetPlayer();
+            Game::RootComp* link = player != nullptr ? player->skeletalModelComp : nullptr;
             auto* held = reinterpret_cast<Game::RootComp*>(g_HeldModel);
             std::string out = "HELDPOSE link=" + (link ? quat(link->coords.rotate) : std::string("-"));
             if (held != nullptr && HeldModelAlive()) {
                 out += " parent=" + (held->otherComp ? quat(held->otherComp->coords.rotate) : std::string("-"));
                 out += " model=" + quat(held->coords.rotate) + " local=" + quat(held->coordsNew.rotate);
             }
-            // the camera's view rotation (Framework +0x560, rows at +0x20)
-            auto* camera = *reinterpret_cast<u8**>(reinterpret_cast<u8*>(Game::GetFramework()) + 0x560);
+            // the camera's view rotation
+            const u8* camera = Game::GetCamera();
             if (camera != nullptr) {
-                const float* view = reinterpret_cast<const float*>(camera + 0x20);
+                const float* view = &Game::Field<float>(camera, Game::kCameraView);
                 out += " view=";
                 for (int i = 0; i < 12; i++) {
                     char buf[16];
@@ -1260,8 +1183,8 @@ namespace {
             AP::Send(AP::JukeboxPane::Info());
         } else if (cmd == "name") {
             // DBG name: the player's name as the game holds it for the save (UTF-16, up to 8 letters, at +0x8 of the
-            // object at 0x1cc1360), set by a new file's name entry on OK
-            const u8* info = *reinterpret_cast<const u8**>(g_BaseAddress + 0x1cc1360);
+            // save header), set by a new file's name entry on OK
+            const u8* info = *Game::SaveHeader_ptr;
             if (info == nullptr) {
                 AP::Send("ERR name: no object");
                 return true;
@@ -1289,7 +1212,7 @@ namespace {
             const u8* base = nullptr;
             if (a[2] == "p") base = fmwk ? reinterpret_cast<const u8*>(fmwk->mPlayer) : nullptr;
             else if (a[2] == "f") base = reinterpret_cast<const u8*>(fmwk);
-            else if (a[2] == "i") base = *reinterpret_cast<const u8**>(g_symbols["InventoryPtr"]);
+            else if (a[2] == "i") base = reinterpret_cast<const u8*>(Game::Data::Inventory::Items());
             else if (a[2] == "b" || a[2] == "m") base = AP::Music::PeekBase(a[2] == "m");
             else if (a[2] == "h" && AP::Music::PeekBase(true) != nullptr) {
                 base = *reinterpret_cast<const u8* const*>(AP::Music::PeekBase(true) + 8);  // the sound
@@ -1312,7 +1235,7 @@ namespace {
             AP::Send(line);
         } else if (cmd == "poke" && a.size() >= 4) {
             // DBG poke <hex offset> <hex bytes>: writes bytes into the inventory
-            u8* base = *reinterpret_cast<u8**>(g_symbols["InventoryPtr"]);
+            u8* base = reinterpret_cast<u8*>(Game::Data::Inventory::Items());
             size_t off = strtoull(a[2].c_str(), nullptr, 16);
             const std::string& hex = a[3];
             if (base == nullptr || hex.size() % 2 != 0 || off + hex.size() / 2 > sizeof(Game::Data::Inventory::InventoryItems)) {
@@ -1371,7 +1294,7 @@ namespace {
                      " data=" + HexU64(info.m_Data.m_Start - start));
         } else if (cmd == "savepopup") {
             // Shows the game's own autosave popup, to check that toasts give its text back
-            reinterpret_cast<void (*)(bool)>(g_BaseAddress + offset_manager.Offset(0xf895c0))(true);
+            Game::Throbber_Show(true);
             AP::Send("OK savepopup");
         } else if (cmd == "collect" && a.size() >= 3) {
             // Simulates picking up a placeholder: DBG collect <local_id>
@@ -1421,7 +1344,7 @@ namespace {
             // is dropped; otherwise it waits until Link is free (no event, message or pause menu) and no item display
             // is starting or showing.
             Game::Framework* fmwk = Game::GetFramework();
-            auto* items = *Game::Data::Inventory::Items;
+            auto* items = Game::Data::Inventory::Items();
             if (NoSaveLoaded(fmwk)) {
                 Logging.Log("[AP] DeathLink dropped: no save loaded");
                 AP::Send("DEATHDROPPED");
@@ -1490,14 +1413,13 @@ namespace AP {
         InstallTextHooks();
         Puppet::InstallHooks();
         Music::InstallHooks();
-        ItemGetSequence::InstallAtOffset(offset_manager.Offset(kItemGetSequence));
-        ItemModelTask::InstallAtOffset(offset_manager.Offset(kItemModelTask));
-        ModelResourceGet::InstallAtOffset(offset_manager.Offset(kModelResourceGet));
-        NodeMarkDirty::InstallAtOffset(offset_manager.Offset(kNodeMarkDirty));
+        ItemGetSequence::InstallAtFuncPtr(Game::Player_ItemGetSequence.Ptr());
+        ItemModelTask::InstallAtFuncPtr(Game::ItemGet_ModelTask.Ptr());
+        ModelResourceGet::InstallAtFuncPtr(Game::ModelResource_Get.Ptr());
+        NodeMarkDirty::InstallAtFuncPtr(Game::Node_MarkDirty.Ptr());
         Popup::InstallHooks();
-        exl::patch::CodePatcher(offset_manager.Offset(kItemGetTextDelay))
-            .WriteInst(exl::armv8::InstBitSet(kTextDelayQuarter));
-        ItemGetFanfareDone::InstallAtOffset(offset_manager.Offset(kItemGetFanfareDone));
+        exl::patch::CodePatcher(Game::Offset(kItemGetTextDelay)).WriteInst(exl::armv8::InstBitSet(kTextDelayQuarter));
+        ItemGetFanfareDone::InstallAtFuncPtr(Game::ItemGet_FanfareDone.Ptr());
         LoadLocationNames();
         LoadMap();
         LoadIndices();
@@ -1606,7 +1528,7 @@ namespace {
 
     // Gives a waiting Secret Medicine once Link, free and alive, has none (he used his, or it was never given).
     void TickMedicine() {
-        auto* items = *Game::Data::Inventory::Items;
+        auto* items = Game::Data::Inventory::Items();
         if (items == nullptr || items->ExtraItems.Medicine || NowMs() - g_MedicinePolled < kMedicinePollMs) return;
         g_MedicinePolled = NowMs();
         if (!PlayerReady() || !PlayerFree() || LinkDead()) return;
@@ -1668,7 +1590,7 @@ namespace AP {
                 EventFlags::SetFlag(AP::DIED_FLAG, false);
                 Send("DIED");
             }
-            auto* items = *Game::Data::Inventory::Items;
+            auto* items = Game::Data::Inventory::Items();
             if (g_DeathLinkAt != 0 && NowMs() - g_DeathLinkAt > kDeathLinkClearMs && items != nullptr &&
                 items->Health > 0) {
                 g_DeathLinkAt = 0;

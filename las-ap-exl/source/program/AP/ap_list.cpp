@@ -3,6 +3,9 @@
 // and scroll bar, the pad, and the button guide made from the overworld map's.
 #include "AP/ap.hpp"
 #include "AP/ap_list.hpp"
+#include "Game/mem.hpp"
+#include "Game/sym.hpp"
+#include "Game/time.hpp"
 #include "loggers.hpp"
 #include <algorithm>
 #include <cmath>
@@ -12,31 +15,10 @@
 
 namespace {
     using namespace AP::ListUi;
+    using namespace Game::Ui;
+    using Game::Field;
 
-    struct StrView { const char* data; s64 length; };
-
-    // LayoutWrapper_Build and LayoutWrapper_AttachTo; UiManager_QueueGlyphs; the sound player (name, null, volume,
-    // pitch).
-    constexpr uintptr_t kOperatorNew = 0x1431170, kOperatorDelete = 0x1431110, kWrapperCtor = 0xe59100,
-                        kWrapperAttach = 0xe59d40, kUiManager = 0x1c971c0, kQueueGlyphs = 0xeda8d0,
-                        kPlaySound = 0xa57e0;
-    constexpr size_t kWrapperSize = 0x78, kWrapperLayout = 0x18, kLayoutRoot = 0x18, kWrapperDelete = 0x18 / 8,
-                     kFindPane = 0x60 / 8;
-    constexpr size_t kUiGlyphQueues = 0xab40, kQueueStride = 0x18, kQueueSize = 0x10, kNodeCount = 0x18,
-                     kNodeTextBox = 0x20;
-    // The UI manager's UIs: a list at +0x950, the UI at node +0x10, its id from virtual +0x60.
-    constexpr size_t kUiList = 0x950, kNodeUi = 0x10, kUiId = 0x60 / 8;
     constexpr int kPriority = 10;
-    // Text box: +0x190 set once the font has drawn its glyphs; virtual +0x120 the text's extent (left, top, right,
-    // bottom); AllocateStringBuffer (virtual +0xe8: box, gfx device, length; the device *(the graphics object at
-    // 0x1cc8b30)[1]), the capacity at +0x110.
-    constexpr size_t kTextGlyphsReady = 0x190, kTextRect = 0x120 / 8, kTextAllocate = 0xe8 / 8, kTextCapacity = 0x110;
-    constexpr uintptr_t kGraphics = 0x1cc8b30;
-    struct Rect {
-        float left, top, right, bottom;
-        Rect() {}
-        ~Rect() {}  // not trivial: returned through x8, as the game's function does
-    };
 
     // Gm_MemoryList: rows L_Item_00..06 (Gm_MemoryListItem: T_Item_00 in the alignment pane A_Item_00, alpha 0 in
     // the file, beside the Memories' marks L_Way_00, B_bounding_01 and L_MemoryMark_00, hidden here; the highlight
@@ -52,19 +34,16 @@ namespace {
     constexpr int kRepeatDelay = 20, kRepeatEvery = 5;  // frames before Up/Down repeat, and between repeats
 
     // Navi, the pause menu header: page ids u32 +0x230; the guide at +0x318. Navi_SetGuide
-    // (navi, index) clears the guide, then GuideSet(guide, slot, kind) per slot; slot objects at Navi +0x3a8 + slot
+    // (navi, index) clears the guide, then Guide_Set(guide, slot, kind) per slot; slot objects at Navi +0x3a8 + slot
     // * 0x110 (virtual +0x48: an object whose +0x18 is the slot's pane), or +0xd38 for the slot +0x1224 while
-    // +0x122a is set; +0x1228 set redraws. GuideSet loads a slot's caption only when its kind differs from the one
+    // +0x122a is set; +0x1228 set redraws. Guide_Set loads a slot's caption only when its kind differs from the one
     // kept at guide +0xb40 + slot * 4. The overworld map's page id 0xf, its guide X, Y, R, A, B.
-    constexpr uintptr_t kNaviSetGuide = 0xeed6f0, kGuideSet = 0xf571b0;
     constexpr size_t kNaviIds = 0x230, kNaviGuide = 0x318, kGuideKinds = 0xb40;
     constexpr int kGuideSlotCount = 5, kGuideKindSlots = 6;
     constexpr size_t kGuideSlots = 0x3a8, kGuideSlotSize = 0x110, kGuideSwapSlot = 0xd38, kGuideSwapIndex = 0x1224,
-                     kGuideSwapping = 0x122a, kGuideRedraw = 0x1228, kGuideSlotObject = 0x48 / 8;
+                     kGuideSwapping = 0x122a, kGuideRedraw = 0x1228, kGuideSlotObject = 0x48;
     constexpr u32 kOverworldMap = 0xf;
     constexpr u32 kMapGuide[kGuideSlotCount] = {kGuideX, kGuideY, kGuideR, kGuideA, kGuideB};
-
-    u8* UiManager() { return reinterpret_cast<u8*>(g_BaseAddress + kUiManager); }
 
     u64 g_PadHeld = 0, g_PadSeen = 0;
     // The polls since a list last read the pad (once a frame): their buttons together, and how many (each controller
@@ -90,7 +69,7 @@ namespace {
         if (Field<u8>(navi, kGuideSwapping) != 0 && Field<u32>(navi, kGuideSwapIndex) == static_cast<u32>(index)) {
             slot = navi + kGuideSwapSlot;
         }
-        u8* object = reinterpret_cast<u8* (*)(void*)>(VTable(slot)[kGuideSlotObject])(slot);
+        u8* object = Game::CallVirtual<u8*()>(slot, kGuideSlotObject);
         SetVisible(object != nullptr ? Field<u8*>(object, 0x18) : nullptr, false);
     }
 }
@@ -114,9 +93,8 @@ HOOK_DEFINE_TRAMPOLINE(NaviSetGuide) {
         Field<u32>(navi, kNaviIds) = kOverworldMap;
         g_Guide = guide;
         Orig(navi, 0);
-        auto set = GameFn<void (*)(void*, int, u32)>(kGuideSet);
         for (int slot = 0; slot < guide->count && slot < kGuideSlotCount; slot++) {
-            if (guide->kinds[slot] != kMapGuide[slot]) set(navi + kNaviGuide, slot, guide->kinds[slot]);
+            if (guide->kinds[slot] != kMapGuide[slot]) Game::Guide_Set(navi + kNaviGuide, slot, guide->kinds[slot]);
         }
         g_Guide = nullptr;
         Field<u32>(navi, kNaviIds) = mapId;
@@ -126,83 +104,6 @@ HOOK_DEFINE_TRAMPOLINE(NaviSetGuide) {
 };
 
 namespace AP::ListUi {
-    u8* FindPane(u8* root, const char* name) {
-        if (root == nullptr) return nullptr;
-        return reinterpret_cast<u8* (*)(void*, const char*, bool)>(VTable(root)[kFindPane])(root, name, true);
-    }
-
-    u8* FindUi(int id) {
-        u8* end = UiManager() + kUiList;
-        for (u8* node = Field<u8*>(end, 8); node != end; node = Field<u8*>(node, 8)) {
-            u8* ui = Field<u8*>(node, kNodeUi);
-            if (ui != nullptr && reinterpret_cast<int (*)(void*)>(VTable(ui)[kUiId])(ui) == id) return ui;
-        }
-        return nullptr;
-    }
-
-    u64 NowMs() {
-        u64 ticks;
-        asm volatile("mrs %0, cntpct_el0" : "=r"(ticks));
-        return ticks / 19200;
-    }
-
-    void PlaySound(const char* name) {
-        StrView view{name, static_cast<s64>(strlen(name))};
-        GameFn<void (*)(const StrView*, void*, float, float)>(kPlaySound)(&view, nullptr, 1.0f, 1.0f);
-    }
-
-    void QueueGlyphs(u8* textBox) {
-        struct { void* owner; void* count; void* textBox; } request{nullptr, nullptr, textBox};
-        GameFn<bool (*)(void*, void*, int)>(kQueueGlyphs)(UiManager(), &request, 0);
-    }
-
-    // Takes a text box out of the UI manager's glyph queues (nodes without an owner: ours).
-    void Unqueue(u8* textBox) {
-        if (textBox == nullptr) return;
-        for (int i = 0; i < 2; i++) {
-            u8* end = UiManager() + kUiGlyphQueues + i * kQueueStride;
-            for (u8* node = Field<u8*>(end, 8); node != end;) {
-                u8* next = Field<u8*>(node, 8);
-                if (Field<u8*>(node, kNodeTextBox) == textBox && Field<void*>(node, kNodeCount) == nullptr) {
-                    u8* previous = Field<u8*>(node, 0);
-                    Field<u8*>(previous, 8) = next;
-                    Field<u8*>(next, 0) = previous;
-                    Field<u64>(end, kQueueSize)--;
-                    GameFn<void (*)(void*)>(kOperatorDelete)(node);
-                }
-                node = next;
-            }
-        }
-    }
-
-    void SetVisible(u8* pane, bool visible) {
-        if (pane == nullptr) return;
-        Field<u8>(pane, kPaneFlags) = (Field<u8>(pane, kPaneFlags) & ~kPaneVisible) | (visible ? kPaneVisible : 0);
-    }
-
-    void SetAlpha(u8* pane, int alpha) {
-        if (pane == nullptr) return;
-        u8 a = static_cast<u8>(std::clamp(alpha, 0, 255));
-        Field<u8>(pane, kPaneAlpha) = a;
-        Field<u8>(pane, kPaneGlobalAlpha) = a;
-    }
-
-    void MoveTo(u8* pane, float x, float y) {
-        if (pane == nullptr) return;
-        Field<float>(pane, kPaneX) = x;
-        Field<float>(pane, kPaneY) = y;
-        Field<u8>(pane, kPaneFlags) |= kPaneDirty;
-    }
-
-    void ScaleTo(u8* pane, float x, float y) {
-        if (pane == nullptr) return;
-        Field<float>(pane, kPaneScaleX) = x;
-        Field<float>(pane, kPaneScaleY) = y;
-        Field<u8>(pane, kPaneFlags) |= kPaneDirty;
-    }
-
-    void ScaleTo(u8* pane, float scale) { ScaleTo(pane, scale, scale); }
-
     void Bind(Text& text, u8* box) {
         text.box = box;
         Field<u8*>(text.holder, 0x10) = box;
@@ -215,44 +116,25 @@ namespace AP::ListUi {
         QueueGlyphs(text.box);
     }
 
-    bool Allocate(u8* box, u16 chars) {
-        if (box == nullptr) return false;
-        if (Field<u16>(box, kTextCapacity) > chars) return true;
-        u8* graphics = *reinterpret_cast<u8**>(g_BaseAddress + kGraphics);
-        void* device = nullptr;
-        if (graphics != nullptr && Field<void**>(graphics, 8) != nullptr) device = *Field<void**>(graphics, 8);
-        if (device == nullptr) return false;
-        reinterpret_cast<void (*)(void*, void*, u16)>(VTable(box)[kTextAllocate])(box, device, chars);
-        return Field<u16>(box, kTextCapacity) > chars;
-    }
-
-    bool Drawn(const Text& text) { return text.box != nullptr && Field<u8>(text.box, kTextGlyphsReady) != 0; }
+    bool Drawn(const Text& text) { return GlyphsDrawn(text.box); }
 
     bool Span(const Text& text, float& left, float& right) {
         if (!Drawn(text) || text.value.empty()) return false;
-        Rect extent = reinterpret_cast<Rect (*)(void*)>(VTable(text.box)[kTextRect])(text.box);
+        Rect extent = TextExtent(text.box);
         if (!std::isfinite(extent.left + extent.right) || extent.right <= extent.left) return false;
         left = extent.left;
         right = extent.right;
         return true;
     }
 
-    u8* PageRoot(u8* page) {
-        u8* pageLayout = page != nullptr ? Field<u8*>(page, kWrapperLayout) : nullptr;
-        return pageLayout != nullptr ? Field<u8*>(pageLayout, kLayoutRoot) : nullptr;
-    }
-
     bool Build(Layout& layout, const char* file, u8* page, u8* pageRoot) {
-        layout.wrapper = GameFn<u8* (*)(size_t)>(kOperatorNew)(kWrapperSize);
-        StrView view{file, static_cast<s64>(strlen(file))};
-        GameFn<void (*)(void*, StrView*, int, int, bool)>(kWrapperCtor)(layout.wrapper, &view, kPriority, 0, true);
-        u8* lyt = Field<u8*>(layout.wrapper, kWrapperLayout);
-        layout.root = lyt != nullptr ? Field<u8*>(lyt, kLayoutRoot) : nullptr;
+        layout.wrapper = BuildLayout(file, kPriority);
+        layout.root = RootOf(layout.wrapper);
         if (layout.root == nullptr) {
             Logging.Log(std::string("[AP] list: layout not built: ") + file);
             return false;
         }
-        GameFn<void (*)(void*, void*, void*)>(kWrapperAttach)(layout.wrapper, page, pageRoot);
+        Attach(layout.wrapper, page, pageRoot);
         Field<u8>(layout.root, kPaneFlags) |= kPaneInfluencedAlpha;
         SetAlpha(layout.root, 0);
         return true;
@@ -260,9 +142,7 @@ namespace AP::ListUi {
 
     void Drop(Layout& layout) {
         Unqueue(layout.note.box);
-        if (layout.wrapper != nullptr) {
-            reinterpret_cast<void (*)(void*)>(VTable(layout.wrapper)[kWrapperDelete])(layout.wrapper);
-        }
+        Delete(layout.wrapper);
         layout = Layout{};
     }
 
@@ -345,16 +225,16 @@ namespace AP::ListUi {
         g_PadPolls++;
         if (buttons == 0) return;
         g_PadHeld = buttons;
-        g_PadSeen = NowMs();
+        g_PadSeen = Game::NowMs();
     }
 
-    u64 PadHeld() { return NowMs() - g_PadSeen < kPadStaleMs ? g_PadHeld : 0; }
+    u64 PadHeld() { return Game::NowMs() - g_PadSeen < kPadStaleMs ? g_PadHeld : 0; }
 
     void AddGuideSource(GuideSource source) { g_GuideSources.push_back(source); }
 
     void RefreshGuide(u32 index) {
         u8* navi = FindUi(kNaviUi);
-        if (navi != nullptr) GameFn<void (*)(void*, u32)>(kNaviSetGuide)(navi, index);
+        if (navi != nullptr) Game::Navi_SetGuide(navi, index);
     }
 
     std::string GuideCaption(int button) {
@@ -363,6 +243,6 @@ namespace AP::ListUi {
     }
 
     void InstallHooks() {
-        NaviSetGuide::InstallAtOffset(offset_manager.Offset(kNaviSetGuide));
+        NaviSetGuide::InstallAtFuncPtr(Game::Navi_SetGuide.Ptr());
     }
 }

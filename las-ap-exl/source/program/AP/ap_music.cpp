@@ -11,7 +11,8 @@
 #include "AP/ap.hpp"
 #include "AP/ap_tracks.hpp"
 #include "Game/framework.hpp"
-#include "offsets.hpp"
+#include "Game/sym.hpp"
+#include "Game/time.hpp"
 #include "loggers.hpp"
 #include <cstdio>
 #include <cstring>
@@ -21,7 +22,7 @@
 #include <vector>
 
 namespace {
-    struct StrView { const char* data; size_t len; };
+    using Game::StrView;
 
     // The BGM manager (game 1.0.0): a static of the game, made on its first use (guard bit 0 set then).
     // BgmManager_Play(f32 volume, manager*, StringView* name, bool, bool, bool force) returns the new instance, or
@@ -32,16 +33,10 @@ namespace {
     // (char[64], length +0x9290). A zone change (the zone update) fades the other kind 1 instances out over 90 frames
     // and the new track in over 150 (none right after a level load); PlayZoneBgm fades out the same but starts its
     // track at full volume, so a change made here sets the fade in itself.
-    constexpr uintptr_t kBgmManager = 0x1ca1d70, kBgmManagerGuard = 0x1cab240;
-    constexpr uintptr_t kBgmPlay = 0x9fd60;
     // PlayZoneBgm(bool fadeOthers): plays the zone's track (+0x9250) and, when it starts, fades out the other kind 1
     // instances; while a Guardian Acorn's or Piece of Power's music plays it starts the track without fading.
-    constexpr uintptr_t kPlayZoneBgm = 0xa6790;
-    // BgmManager_StopByName(StringView* name, u32 fade frames)
-    constexpr uintptr_t kBgmStop = 0x9b7b0;
     // BgmTable_Find(table, const char* name): the track's id, -1 for an unknown name; the table is a static (guard
     // bit 0) that BgmManager_Play makes.
-    constexpr uintptr_t kBgmTableFind = 0x10e23d0, kBgmTable = 0x1caba28, kBgmTableGuard = 0x1cac378;
     // Return addresses of the zone music's BgmManager_Play calls: the zone update, PlayZoneBgm (twice).
     constexpr uintptr_t kZoneCalls[] = {0x9f008, 0xa688c, 0xa6988};
     // The event action PlayBGM's call, and the event songs that stand in for the zone's music, which no PlayZoneBGM
@@ -55,7 +50,6 @@ namespace {
     // target, frames, frames gone), set by Sound_SetVolume(sound, frames, volume); the pause menu sets every BGM's
     // target to 0.2, and 1 again as it closes.
     constexpr size_t kInstName = 0x10, kInstKind = 0xf0, kInstFadeIn = 0x104, kInstSound = 0x8, kSoundTarget = 0x144;
-    constexpr uintptr_t kSoundSetVolume = 0x10ea8c0;
     constexpr u32 kFadeFrames = 90, kFadeInFrames = 150;  // the zone update's
     constexpr int kLoudFrames = 8;  // as the pause menu sets the volume back
     // Item fanfares (DESIGN.md, Instant pickups). ItemGet_PlayFanfare(u8 item id) plays the item's Items.gsheet jingle,
@@ -64,12 +58,10 @@ namespace {
     // 1 out itself over 8 frames (BgmManager_MuteZone: every kind 1 instance's volume to 0), so the zone's music
     // stops before the jingle starts. Two different jingles play over each other; one asked for while it plays is not
     // started again.
-    constexpr uintptr_t kPlayFanfare = 0x8d5700, kMuteZone = 0x9b420;
     constexpr u32 kMuteZoneFrames = 8;       // the item-get's: 60 * 0.1333 s
     constexpr u32 kFanfareOutFrames = 10;    // a fanfare that gives way to the next
     // The Guardian Acorn's and Piece of Power's music (bool intro): stops BGM_NUTS and BGM_NUTS_INTRO, plays one of
-    // them (the intro for true) and fades kind 1 out; their item-get calls it with true.
-    constexpr uintptr_t kBuffMusic = 0xaf560;
+    // them (the intro for true) and fades kind 1 out; their item-get calls it with true (BuffMusic_Play).
 
     // The chosen track ("" none), its index in AP::Tracks::TRACKS (-1: none, or a track not in the list), and whether
     // the game should switch to it (or back) on the next tick in a level.
@@ -88,12 +80,9 @@ namespace {
     bool g_FanfareCall = false;
     std::string g_Fanfare;
 
-    template<typename T>
-    T GameFn(uintptr_t offset) { return reinterpret_cast<T>(g_BaseAddress + offset_manager.Offset(offset)); }
-
     u8* Manager() {
-        if ((*reinterpret_cast<volatile u8*>(g_BaseAddress + kBgmManagerGuard) & 1) == 0) return nullptr;
-        return reinterpret_cast<u8*>(g_BaseAddress + kBgmManager);
+        if ((*Game::BgmManager_guard & 1) == 0) return nullptr;
+        return Game::BgmManager.Ptr();
     }
 
     std::string ZoneTrack(const u8* manager) {
@@ -102,18 +91,18 @@ namespace {
     }
 
     bool KnownTrack(const char* name) {
-        if ((*reinterpret_cast<volatile u8*>(g_BaseAddress + kBgmTableGuard) & 1) == 0) return true;  // not known yet
-        return GameFn<int (*)(void*, const char*)>(kBgmTableFind)(
-                   reinterpret_cast<void*>(g_BaseAddress + kBgmTable), name) != -1;
+        if ((*Game::BgmTable_guard & 1) == 0) return true;  // not known yet
+        return Game::BgmTable_Find(Game::BgmTable.Ptr(), name) != -1;
     }
 
+    // `ret` the call's return address.
     bool IsZoneCall(uintptr_t ret, const StrView* name) {
         for (uintptr_t call : kZoneCalls) {
-            if (ret == offset_manager.Offset(call)) return true;
+            if (ret == Game::Addr(call)) return true;
         }
-        if (ret != offset_manager.Offset(kEventPlayCall) || name == nullptr) return false;
+        if (ret != Game::Addr(kEventPlayCall) || name == nullptr) return false;
         for (const char* standIn : kZoneStandIns) {
-            if (std::string_view(name->data, name->len) == standIn) return true;
+            if (name->View() == standIn) return true;
         }
         return false;
     }
@@ -147,11 +136,7 @@ namespace {
         return std::string_view(*reinterpret_cast<const char* const*>(s + 0x10), *reinterpret_cast<const size_t*>(s + 8));
     }
 
-    u64 NowMs() {
-        u64 ticks;
-        asm volatile("mrs %0, cntpct_el0" : "=r"(ticks));
-        return ticks / 19200;
-    }
+    using Game::NowMs;
 
     // Zone or event music (kind 1) other than the chosen track plays: a boss's, an event's.
     bool OtherMusic(const u8* manager) {
@@ -233,7 +218,6 @@ namespace {
     // counts as free again after kHeldFreeFrames frames in a row.
     // BgmManager_StopAll(u32 frames), the zone music's fade (void: the kind 1 instances over 90 frames),
     // Sound_Stop(sound, u32 frames); an instance's fade-out frames at +0x58.
-    constexpr uintptr_t kBgmStopAll = 0x9b550, kBgmFadeZone = 0xa6510, kSoundStop = 0x10e97f0;
     constexpr size_t kInstFadeOut = 0x58;
     constexpr u32 kHeldFadeFrames = 30;
     constexpr int kHeldFreeFrames = 10;
@@ -275,24 +259,24 @@ namespace {
         u8* manager = Manager();
         const u8* instance = manager != nullptr ? PlayingInstance(manager) : nullptr;
         u8* sound = instance != nullptr ? *reinterpret_cast<u8* const*>(instance + kInstSound) : nullptr;
-        if (sound != nullptr) GameFn<void (*)(void*, u32)>(kSoundStop)(sound, kHeldFadeFrames);
+        if (sound != nullptr) Game::Sound_Stop(sound, kHeldFadeFrames);
     }
 
 }
 
 HOOK_DEFINE_TRAMPOLINE(BgmManagerPlay) {
     static void* Callback(float volume, void* manager, StrView* name, bool b2, bool b3, bool force) {
-        uintptr_t ret = reinterpret_cast<uintptr_t>(__builtin_return_address(0)) - g_BaseAddress;
+        uintptr_t ret = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
         StrView chosen{g_Track, g_TrackLen};
         bool swap = g_TrackLen > 0 && IsZoneCall(ret, name);
         void* instance = Orig(volume, manager, swap ? &chosen : name, b2, b3, force);
         if ((g_Held || g_Carried) && !swap && instance != nullptr) StopHeld();  // an event's song, a fanfare
-        if (g_FanfareCall && instance != nullptr && name != nullptr) g_Fanfare.assign(name->data, name->len);
+        if (g_FanfareCall && instance != nullptr && name != nullptr) g_Fanfare.assign(name->data, name->size);
         if (swap) g_Held = false;  // the zone's music again: it plays on
 #ifdef LASAP_TEST
         char entry[160];
-        snprintf(entry, sizeof(entry), "play %.*s%s%s +%lx %d%d%d %s", (int)(name ? name->len : 0),
-                 name ? name->data : "", swap ? "->" : "", swap ? g_Track : "", ret, b2, b3, force,
+        snprintf(entry, sizeof(entry), "play %.*s%s%s +%lx %d%d%d %s", (int)(name ? name->size : 0),
+                 name ? name->data : "", swap ? "->" : "", swap ? g_Track : "", ret - Game::Base(), b2, b3, force,
                  instance != nullptr ? "new" : "-");
         Record(entry);
 #endif
@@ -303,9 +287,9 @@ HOOK_DEFINE_TRAMPOLINE(BgmManagerPlay) {
 #ifdef LASAP_TEST
 HOOK_DEFINE_TRAMPOLINE(BgmManagerStop) {
     static void Callback(StrView* name, u32 frames) {
-        uintptr_t ret = reinterpret_cast<uintptr_t>(__builtin_return_address(0)) - g_BaseAddress;
+        uintptr_t ret = reinterpret_cast<uintptr_t>(__builtin_return_address(0)) - Game::Base();
         char entry[120];
-        snprintf(entry, sizeof(entry), "stop %.*s +%lx %u", (int)(name ? name->len : 0), name ? name->data : "", ret,
+        snprintf(entry, sizeof(entry), "stop %.*s +%lx %u", (int)(name ? name->size : 0), name ? name->data : "", ret,
                  frames);
         Record(entry);
         Orig(name, frames);
@@ -333,12 +317,12 @@ HOOK_DEFINE_TRAMPOLINE(SoundStop) {
 
 namespace AP::Music {
     void InstallHooks() {
-        BgmManagerPlay::InstallAtOffset(offset_manager.Offset(kBgmPlay));
-        BgmStopAll::InstallAtOffset(offset_manager.Offset(kBgmStopAll));
-        BgmFadeZone::InstallAtOffset(offset_manager.Offset(kBgmFadeZone));
-        SoundStop::InstallAtOffset(offset_manager.Offset(kSoundStop));
+        BgmManagerPlay::InstallAtFuncPtr(Game::BgmManager_Play.Ptr());
+        BgmStopAll::InstallAtFuncPtr(Game::BgmManager_StopAll.Ptr());
+        BgmFadeZone::InstallAtFuncPtr(Game::BgmManager_FadeZone.Ptr());
+        SoundStop::InstallAtFuncPtr(Game::Sound_Stop.Ptr());
 #ifdef LASAP_TEST
-        BgmManagerStop::InstallAtOffset(offset_manager.Offset(kBgmStop));
+        BgmManagerStop::InstallAtFuncPtr(Game::BgmManager_StopByName.Ptr());
 #endif
     }
 
@@ -415,7 +399,7 @@ namespace AP::Music {
         }
         // The zone's music is asked for again: the chosen track (or the zone's own) starts from its beginning and
         // fades in as on a zone change, and the rest fades out.
-        u8* started = GameFn<u8* (*)(bool)>(kPlayZoneBgm)(true);
+        u8* started = Game::PlayZoneBgm(true);
         if (started != nullptr) *reinterpret_cast<u32*>(started + kInstFadeIn) = kFadeInFrames;
         g_Started = started;
         // PlayZoneBgm fades nothing when nothing new starts (the zone has no track, or a buff's music plays): the
@@ -424,7 +408,7 @@ namespace AP::Music {
         bool keep = g_Previous == std::string(g_Track, g_TrackLen) || (g_TrackLen == 0 && g_Previous == ::ZoneTrack(manager));
         if (!g_Previous.empty() && !keep) {
             StrView view{g_Previous.c_str(), g_Previous.size()};
-            GameFn<void (*)(StrView*, u32)>(kBgmStop)(&view, kFadeFrames);
+            Game::BgmManager_StopByName(&view, kFadeFrames);
         }
         g_Previous.clear();
     }
@@ -446,7 +430,7 @@ namespace AP::Music {
             if (*it != g_Started) continue;
             u8* sound = *reinterpret_cast<u8* const*>(*it + kInstSound);
             if (sound != nullptr && *reinterpret_cast<const float*>(sound + kSoundTarget) < 1.0f) {
-                GameFn<void (*)(void*, int, float)>(kSoundSetVolume)(sound, kLoudFrames, 1.0f);
+                Game::Sound_SetVolume(sound, kLoudFrames, 1.0f);
             }
             return;
         }
@@ -456,17 +440,17 @@ namespace AP::Music {
         if (!g_Fanfare.empty()) {
             // stops nothing once it has ended
             StrView name{g_Fanfare.data(), g_Fanfare.size()};
-            GameFn<void (*)(StrView*, u32)>(kBgmStop)(&name, kFanfareOutFrames);
+            Game::BgmManager_StopByName(&name, kFanfareOutFrames);
             g_Fanfare.clear();
         }
-        GameFn<void (*)(u32)>(kMuteZone)(kMuteZoneFrames);
+        Game::BgmManager_MuteZone(kMuteZoneFrames);
         g_FanfareCall = true;
-        GameFn<void (*)(u32)>(kPlayFanfare)(static_cast<u32>(itemId));
+        Game::ItemGet_PlayFanfare(static_cast<u32>(itemId));
         g_FanfareCall = false;
     }
 
     void BuffMusic() {
-        GameFn<void (*)(bool)>(kBuffMusic)(true);
+        Game::BuffMusic_Play(true);
     }
 
     bool RepeatOne() { return g_RepeatOne; }

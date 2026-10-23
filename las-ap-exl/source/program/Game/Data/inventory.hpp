@@ -1,6 +1,6 @@
 #pragma once
 #include "lib.hpp"
-#include "symbols.hpp"
+#include "Game/sym.hpp"
 #include <cstdint>
 
 namespace Game::Data::Inventory {
@@ -101,6 +101,5 @@ namespace Game::Data::Inventory {
         uint8_t RareFishSign; // 0x122
     };
 
-    inline InventoryItems** Items = reinterpret_cast<InventoryItems**>(g_symbols["InventoryPtr"]);
-    inline uint8_t* Level = reinterpret_cast<uint8_t*>(g_symbols["LevelIndexPtr"]);
+    inline InventoryItems* Items() { return *Inventory_ptr; }
 }

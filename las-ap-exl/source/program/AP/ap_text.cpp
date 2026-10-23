@@ -8,7 +8,7 @@
 // reads the location from the present when it pops.
 #include "AP/ap.hpp"
 #include "AP/ap_list.hpp"
-#include "offsets.hpp"
+#include "Game/sym.hpp"
 #include "loggers.hpp"
 #include "Config/file_handler.hpp"
 #include <cstdlib>
@@ -18,22 +18,15 @@
 #include <string>
 
 namespace {
-    // MSBT label lookup: out = {msbt, refcount, message index}.
-    struct MsbtHandle { void* msbt; void* ctrl; s32 index; };
-    // MSBT text getter: out = {owner, refcount, text, length in bytes without the terminator}.
-    struct MsbtText { void* owner; void* ctrl; const char* text; s64 length; };
-    constexpr uintptr_t kMsbtFindLabel = 0x10aaf40;
-    constexpr uintptr_t kMsbtGetText = 0x10aa5a0;
+    using Game::MessageRef;
+    using Game::MsbtText;
     // ShellMansionMaster.PopBox, at the call that creates the present: x3 = item key view, w4 = item index.
     constexpr uintptr_t kMansionPopBoxCreate = 0xa35994;
-    struct StrView { const char* data; s64 length; };
 
     // Toasts reuse the autosave popup (Ld_ThrobberSave, "Now Saving"). Its UI object runs a state machine at
     // +0x80 (state byte at +0x8d: 0 None, 1 In, 2 Loop, 3 Out, 4 InAuto, 5 LoopAuto); LoopAuto counts the float
-    // at +0x290 down and slides out at zero. The text pane holder at +0x278 shows the message UI:SystemSaving.
-    constexpr uintptr_t kThrobberShow = 0xf895c0;         // void(bool auto): None/Out -> InAuto (0.5 s) or In
-    constexpr uintptr_t kThrobberSetState = 0xf85d20;     // void(state machine*, int state)
-    constexpr uintptr_t kPaneSetMessage = 0xf8c8b0;       // void(pane holder*, const StrView* "file:label")
+    // at +0x290 down and slides out at zero (Throbber_Show, Throbber_ChangeState). The text pane holder at +0x278
+    // shows the message UI:SystemSaving.
     constexpr size_t kThrobberMachine = 0x80;
     constexpr size_t kThrobberState = 0x8d;
     constexpr size_t kThrobberPane = 0x278;
@@ -41,8 +34,6 @@ namespace {
     constexpr int kStateNone = 0, kStateInAuto = 4, kStateLoopAuto = 5;
     constexpr float kToastSeconds = 3.0f;
     constexpr const char* kSavingLabel = "SystemSaving";
-    using ThrobberShowFn = void (*)(bool);
-    using PaneSetMessageFn = void (*)(void*, const StrView*);
 
     u8* g_Throbber = nullptr;       // the popup's UI object, seen by the state hook
     bool g_ToastStarting = false;   // our ShowThrobber call is running
@@ -153,7 +144,7 @@ namespace {
 }
 
 HOOK_DEFINE_TRAMPOLINE(MsbtFindLabel) {
-    static void Callback(MsbtHandle* out, void* msbt, const char* label, size_t len) {
+    static void Callback(MessageRef* out, void* msbt, const char* label, size_t len) {
         Orig(out, msbt, label, len);
         g_FindCalls++;
 #ifdef LASAP_TEST
@@ -267,10 +258,9 @@ namespace {
     void SetThrobberText(bool toast) {
         if (g_Throbber == nullptr) return;
         static const char label[] = "UI:SystemSaving";
-        StrView view{label, sizeof(label) - 1};
+        Game::StrView view{label, sizeof(label) - 1};
         g_ToastText = toast;
-        reinterpret_cast<PaneSetMessageFn>(g_BaseAddress + offset_manager.Offset(kPaneSetMessage))(
-            g_Throbber + kThrobberPane, &view);
+        Game::MessageText_SetLabel(g_Throbber + kThrobberPane, &view);
         g_ToastText = false;
     }
 }
@@ -293,11 +283,11 @@ HOOK_DEFINE_TRAMPOLINE(ThrobberSetState) {
 
 HOOK_DEFINE_INLINE(MansionPopBox) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-        auto* key = reinterpret_cast<const StrView*>(ctx->X[3]);
+        auto* key = reinterpret_cast<const Game::StrView*>(ctx->X[3]);
         int index = static_cast<int>(ctx->X[4]);
         size_t len = std::strlen(AP::PLACEHOLDER_KEY);
         // The placeholder's key, or a model variant of it (ArchipelagoItem_<item key>).
-        if (key != nullptr && key->data != nullptr && static_cast<size_t>(key->length) >= len &&
+        if (key != nullptr && key->data != nullptr && key->size >= len &&
             std::memcmp(key->data, AP::PLACEHOLDER_KEY, len) == 0) {
             g_PresentLocation = index;
             Logging.Log("[AP] present holds location " + std::to_string(index));
@@ -307,17 +297,17 @@ HOOK_DEFINE_INLINE(MansionPopBox) {
 
 namespace AP {
     void InstallTextHooks() {
-        MsbtFindLabel::InstallAtOffset(offset_manager.Offset(kMsbtFindLabel));
-        MsbtGetText::InstallAtOffset(offset_manager.Offset(kMsbtGetText));
-        MansionPopBox::InstallAtOffset(offset_manager.Offset(kMansionPopBoxCreate));
-        ThrobberSetState::InstallAtOffset(offset_manager.Offset(kThrobberSetState));
+        MsbtFindLabel::InstallAtFuncPtr(Game::Msbt_FindLabel.Ptr());
+        MsbtGetText::InstallAtFuncPtr(Game::Msbt_GetText.Ptr());
+        MansionPopBox::InstallAtPtr(Game::Addr(kMansionPopBoxCreate));
+        ThrobberSetState::InstallAtFuncPtr(Game::Throbber_ChangeState.Ptr());
     }
 
     void SetPaneText(void* holder, const std::string& text) {
         static const char label[] = "UI:SystemSaving";
-        StrView view{label, sizeof(label) - 1};
+        Game::StrView view{label, sizeof(label) - 1};
         g_PaneText = &text;
-        reinterpret_cast<PaneSetMessageFn>(g_BaseAddress + offset_manager.Offset(kPaneSetMessage))(holder, &view);
+        Game::MessageText_SetLabel(holder, &view);
         g_PaneText = nullptr;
     }
 
@@ -344,7 +334,7 @@ namespace AP {
         bool music = g_Toasts.empty();
         g_Toast = music ? g_MusicToast : g_Toasts.front();
         g_ToastStarting = true;
-        reinterpret_cast<ThrobberShowFn>(g_BaseAddress + offset_manager.Offset(kThrobberShow))(true);
+        Game::Throbber_Show(true);
         g_ToastStarting = false;
         if (g_ToastShowing) {
             g_ToastMusic = music;

@@ -3,6 +3,9 @@
 // kept here per ghost slot for the puppets.
 #include "AP/ap.hpp"
 #include "Game/framework.hpp"
+#include "Game/math.hpp"
+#include "Game/model.hpp"
+#include "Game/time.hpp"
 #include "Hooks/Common/level.hpp"
 #include "Game/Data/inventory.hpp"
 #include <algorithm>
@@ -29,11 +32,10 @@ namespace {
     // (+0x78, 0x18 apart) hold the row playing (+0x10); slot 0 is the whole body, slot 1 his upper body (from the bone
     // spine_a up: idle_carry while he holds something over his head, none otherwise). The frame is in the controller's
     // skeletal animation component (+0x8): layer i (+0x1d0 array, count +0x1c8) is slot i, its bound animation
-    // (+0x8) -> +0 -> +0x8 the frame control (f32 frame at +0). The sheet: **(0x1cbaf70) (a shared_ptr), +0x70 -> data, rows at +0x20
-    // (0x48 apart), count +0x28; a row: s32 key, +0x8 fileName, +0x1c policy (1 loops).
+    // (+0x8) -> +0 -> +0x8 the frame control (f32 frame at +0). The sheet: **PlayerAnimationSheet_ptr (a shared_ptr),
+    // +0x70 -> data, rows at +0x20 (0x48 apart), count +0x28; a row: s32 key, +0x8 fileName, +0x1c policy (1 loops).
     constexpr size_t kPlayerAnimCtrl = 0x1568, kCtrlSac = 0x8, kCtrlSlots = 0x78, kSlotRow = 0x10, kSlotSize = 0x18;
     constexpr size_t kSacLayerCount = 0x1c8, kSacLayers = 0x1d0, kLayerAnim = 0x8, kAnimFrameCtrl = 0x8;
-    constexpr uintptr_t kPlayerAnimSheet = 0x1cbaf70;
     constexpr size_t kSheetData = 0x70, kDataRows = 0x20, kDataCount = 0x28, kRowSize = 0x48, kRowName = 0x8,
                      kRowPolicy = 0x1c;
     // Link's look: his model component (player +0x2a8) -> model instance (+0x148) -> one byte per shape (+0x378), 1
@@ -84,11 +86,8 @@ namespace {
     AP::GhostNet::Ghost g_Ghosts[AP::GhostNet::SLOTS];
     u32 g_GhostLines = 0;
 
-    u64 NowMs() {
-        u64 ticks;
-        asm volatile("mrs %0, cntpct_el0" : "=r"(ticks));
-        return ticks / 19200;
-    }
+    using Game::At;
+    using Game::NowMs;
 
     std::vector<std::string> Split(const std::string& line, size_t max) {
         std::vector<std::string> out;
@@ -102,11 +101,6 @@ namespace {
             pos = end;
         }
         return out;
-    }
-
-    template<typename T>
-    T At(const void* base, size_t offset) {
-        return base != nullptr ? *reinterpret_cast<const T*>(reinterpret_cast<const u8*>(base) + offset) : T{};
     }
 
     // The row playing on slot 0 of Link's animation controller and its frame, or nullptr.
@@ -158,8 +152,7 @@ namespace {
             const u8* slot = At<const u8*>(slots, i * 8);
             const u8* res = At<const u8*>(At<const u8*>(slot, kMatSlotAnim), kMatAnimRes);
             const u8* s = At<const u8*>(res, kResName);
-            if (s == nullptr || std::string_view(reinterpret_cast<const char*>(s + 2), *reinterpret_cast<const u16*>(s)) != name)
-                continue;
+            if (s == nullptr || Game::ResName(s) != name) continue;
             float frame = At<float>(slot, kMatSlotFrame);
             return std::isfinite(frame) ? std::clamp(static_cast<int>(frame + 0.5f), 0, 0xff) : 0;
         }
@@ -177,7 +170,7 @@ namespace {
             for (int i = 0; i < count; i++)
                 if (shapes[i] != 0) look.shapes |= 1u << i;
         }
-        u8 upgrades = At<u8>(*Game::Data::Inventory::Items, kInventoryUpgrades);
+        u8 upgrades = At<u8>(Game::Data::Inventory::Items(), kInventoryUpgrades);
         look.tunic = (upgrades & kUpgradeRed) ? AP::GhostNet::TUNIC_RED
                      : (upgrades & kUpgradeBlue) ? AP::GhostNet::TUNIC_BLUE : AP::GhostNet::TUNIC_GREEN;
         const u8* mat = At<const u8*>(player, kPlayerMatAnim);
@@ -205,8 +198,7 @@ namespace {
         s.y = c.pos.y;
         s.z = c.pos.z;
         // Link turns about the vertical axis: yaw in degrees, 0 = +z (the bottom of the screen), 90 = +x
-        const Game::Vec4& q = c.rotate;
-        s.yaw = std::atan2(2 * (q.x * q.z + q.t * q.y), 1 - 2 * (q.x * q.x + q.y * q.y)) * 180.0f / 3.14159265f;
+        s.yaw = Game::YawDegrees(c.rotate);
         if (s.yaw < 0) s.yaw += 360;
         // AP::Tick runs once per input poll, which can be more than once a frame
         if (fmwk->mFrameCount != g_Frame) {
@@ -298,11 +290,9 @@ namespace AP::GhostNet {
     void Handle(const std::string& line);
 
     void HandleLine(const std::string& line) {
-        u64 t0, t1;
-        asm volatile("mrs %0, cntpct_el0" : "=r"(t0));
+        u64 t0 = Game::Ticks();
         Handle(line);
-        asm volatile("mrs %0, cntpct_el0" : "=r"(t1));
-        g_HandleTicks += t1 - t0;
+        g_HandleTicks += Game::Ticks() - t0;
     }
 
     void Handle(const std::string& line) {
@@ -395,7 +385,7 @@ namespace AP::GhostNet {
     }
 
     const char* AnimName(int anim) {
-        const u8* holder = At<const u8*>(reinterpret_cast<const void*>(g_BaseAddress + kPlayerAnimSheet), 0);
+        const u8* holder = *Game::PlayerAnimationSheet_ptr;
         const u8* sheet = At<const u8*>(holder, 0);
         const u8* data = At<const u8*>(sheet, kSheetData);
         if (anim <= 0 || static_cast<u32>(anim) > At<u32>(data, kDataCount)) return nullptr;
@@ -403,7 +393,7 @@ namespace AP::GhostNet {
     }
 
     bool AnimLoops(int anim) {
-        const u8* holder = At<const u8*>(reinterpret_cast<const void*>(g_BaseAddress + kPlayerAnimSheet), 0);
+        const u8* holder = *Game::PlayerAnimationSheet_ptr;
         const u8* data = At<const u8*>(At<const u8*>(holder, 0), kSheetData);
         if (anim <= 0 || static_cast<u32>(anim) > At<u32>(data, kDataCount)) return false;
         return At<s32>(At<const u8*>(data, kDataRows) + (anim - 1) * kRowSize, kRowPolicy) == 1;
@@ -411,7 +401,7 @@ namespace AP::GhostNet {
 
     std::string State() {
         std::string s = "GHOSTNET wanted=" + std::to_string(g_Wanted) + " names=" + std::to_string(g_Names) + " pos=" + std::to_string(g_PosLines) +
-                        " ghostlines=" + std::to_string(g_GhostLines) + " handle_us=" + std::to_string(g_HandleTicks * 10 / 192) +
+                        " ghostlines=" + std::to_string(g_GhostLines) + " handle_us=" + std::to_string(Game::TicksToUs(g_HandleTicks)) +
                         " last=" + g_LastPos;
         for (int n = 0; n < SLOTS; n++) {
             const Ghost& g = g_Ghosts[n];

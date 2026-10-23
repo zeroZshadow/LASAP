@@ -13,6 +13,7 @@
 // past that the connection is dropped; the client connects again, and its SYNC brings the game's state back.
 #include "AP/ap.hpp"
 #include "AP/ap_debug.hpp"
+#include "Game/time.hpp"
 #include "nn/socket.hpp"
 #include "nn/os.hpp"
 #include <netinet/in.h>
@@ -40,11 +41,7 @@ namespace {
     constexpr s32 kAcceptPollMs = 100;
 #endif
 
-    u64 NowMs() {
-        u64 ticks;
-        asm volatile("mrs %0, cntpct_el0" : "=r"(ticks));
-        return ticks / 19200;
-    }
+    using Game::NowMs;
 
     alignas(0x1000) u8 g_ThreadStack[0x8000];
     // Static so it does not depend on the game's heap being ready this early.

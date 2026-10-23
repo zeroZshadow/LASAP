@@ -1,6 +1,5 @@
 #pragma once
 #include "lib.hpp"
-#include "symbols.hpp"
 
 struct OffsetManager {
     bool initialized = false;
@@ -9,7 +8,7 @@ struct OffsetManager {
     void SetVersion() {
         // some function was extended so we read a null/padding byte
         // it will be 0 for base version, and 8 for update
-        u8* version_byte = reinterpret_cast<u8*>(g_BaseAddress + 0xdfaf44);
+        u8* version_byte = reinterpret_cast<u8*>(exl::util::modules::GetTargetOffset(0xdfaf44));
         if (*version_byte == 8) {
             is_update = true;
         }

@@ -3,39 +3,10 @@
 // scroll bar, hung under a pause menu page, and the button guide made from the overworld map's. The Jukebox page
 // (ap_jukebox.cpp) and the map's check list (ap_map.cpp) use them.
 #include "lib.hpp"
-#include "offsets.hpp"
+#include "Game/ui.hpp"
 #include <string>
 
 namespace AP::ListUi {
-    template<typename T>
-    T GameFn(uintptr_t offset) { return reinterpret_cast<T>(g_BaseAddress + offset_manager.Offset(offset)); }
-
-    template<typename T>
-    T& Field(void* base, size_t offset) { return *reinterpret_cast<T*>(static_cast<u8*>(base) + offset); }
-
-    inline uintptr_t* VTable(const void* object) { return *reinterpret_cast<uintptr_t* const*>(object); }
-
-    // A pane of a layout by name, or null (also for a null root).
-    u8* FindPane(u8* root, const char* name);
-    // The UI of that id in the UI manager's list (Navi 5, overworld map 0xf), or null.
-    u8* FindUi(int id);
-    constexpr int kNaviUi = 5;
-    u64 NowMs();
-    void PlaySound(const char* name);
-    // Queues a text box with the UI manager so the font draws its glyphs; Unqueue takes it out again.
-    void QueueGlyphs(u8* textBox);
-    void Unqueue(u8* textBox);
-
-    // nn::ui2d pane fields
-    constexpr size_t kPaneX = 0x30, kPaneY = 0x34, kPaneScaleX = 0x48, kPaneScaleY = 0x4c, kPaneWidth = 0x50,
-                     kPaneHeight = 0x54, kPaneFlags = 0x58, kPaneAlpha = 0x59, kPaneGlobalAlpha = 0x5a;
-    constexpr u8 kPaneVisible = 0x01, kPaneInfluencedAlpha = 0x02, kPaneDirty = 0x10;
-    void SetVisible(u8* pane, bool visible);
-    void SetAlpha(u8* pane, int alpha);
-    void MoveTo(u8* pane, float x, float y);
-    void ScaleTo(u8* pane, float scale);
-    void ScaleTo(u8* pane, float x, float y);
-
     // A text box and the text object AP::SetPaneText fills it through (+0x10 the text pane).
     struct Text {
         u8* box = nullptr;
@@ -44,8 +15,6 @@ namespace AP::ListUi {
     };
     void Bind(Text& text, u8* box);
     void SetText(Text& text, const std::string& value);
-    // Room for that many UTF-16 units in a text box (ui2d's AllocateStringBuffer); false if it has less.
-    bool Allocate(u8* box, u16 chars);
     // Whether the font has drawn the text's glyphs; the text's left and right edge as laid out (in the text box,
     // unscaled), false until then.
     bool Drawn(const Text& text);
@@ -57,8 +26,6 @@ namespace AP::ListUi {
         u8* root = nullptr;
         Text note;                  // the text of a one-text layout (Gm_SystemOpUnit)
     };
-    // The page's root pane (its layout's), or null.
-    u8* PageRoot(u8* page);
     // Builds the layout transparent (SetAlpha on its root fades it in).
     bool Build(Layout& layout, const char* file, u8* page, u8* pageRoot);
     void Drop(Layout& layout);

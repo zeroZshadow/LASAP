@@ -14,7 +14,9 @@
 #include "AP/ap.hpp"
 #include "AP/ap_list.hpp"
 #include "AP/ap_tracks.hpp"
-#include "offsets.hpp"
+#include "Game/mem.hpp"
+#include "Game/sym.hpp"
+#include "Game/ui.hpp"
 #include "loggers.hpp"
 #include <algorithm>
 #include <cstdio>
@@ -23,8 +25,8 @@
 
 namespace {
     using namespace AP::ListUi;
-
-    struct StrView { const char* data; s64 length; };
+    using namespace Game::Ui;
+    using Game::Field;
 
     // Navi, the pause menu header (vtable 0x1c2aa18): machine at +0x80, state byte +0x8d (Open 1, WaitKey 2,
     // Selected 3, CloseOldUi 4, Close 5); current index u8 +0x23c, target +0x23d (Navi_WaitKey sets the current
@@ -32,26 +34,21 @@ namespace {
     // next page opens until a page change takes it);
     // direction +0x1338 (1 R); page slots (shared pointers) +0x12f0 + index * 0x10; message texts +0x2d0 the current
     // page's title, +0x2e8 the page under L, +0x300 the page under R.
-    constexpr uintptr_t kNaviWaitKey = 0xee8ca0, kNaviCloseOldUiUpdate = 0xeea4f0, kNaviCloseEnter = 0xeeac10,
-                        kNaviSetTitles = 0xeedec0, kNaviChangeState = 0xee7dc0;
     constexpr size_t kNaviMachine = 0x80, kNaviState = 0x8d, kNaviCurrent = 0x23c, kNaviTarget = 0x23d,
                      kNaviLR = 0x1341, kNaviDirection = 0x1338, kNaviSlots = 0x12f0, kNaviTitle = 0x2d0,
                      kNaviBack = 0x2e8, kNaviNext = 0x300;
     constexpr u8 kStateSelected = 3, kStateCloseOldUi = 4, kStateClose = 5;
     constexpr u8 kLeft = 1, kRight = 2;
     constexpr int kMap = 0, kSystem = 2;
-    constexpr uintptr_t kLevelIndex = 0x1cc13c8;  // the dungeon index; 8 the Chamber Dungeon (third page id 0xb)
-    constexpr u8 kChamberDungeon = 8;
+    constexpr u8 kChamberDungeon = 8;  // the level index (Game::LevelIndex) of the Chamber Dungeon (third page id 0xb)
 
     // Gm_System (vtable 0x1c2fe50): setup (vtable +0x20), update (+0x28; its machine at +0xf0, state byte +0xfd),
-    // the destructor its deleting destructor calls (shared with other pages). A page's +0xe0 set: B closes the menu;
-    // +0x70 cleared by the header when it leaves the page.
-    constexpr uintptr_t kSystemSetup = 0xf82f40, kSystemUpdate = 0xf83650, kPageDtor = 0xec4330;
+    // the destructor its deleting destructor calls (MenuPage_Dtor, shared with other pages). A page's +0xe0 set: B
+    // closes the menu; +0x70 cleared by the header when it leaves the page.
     constexpr size_t kSystemState = 0xfd, kPageCanClose = 0xe0, kPageActive = 0x70;
     constexpr const char* kSystemContent = "N_SystemChoice_00";
 
-    // MessageText_SetLabel (text, "file:label"); a text object's text pane at +0x10.
-    constexpr uintptr_t kSetLabel = 0xf8c8b0;
+    // A text object's text pane at +0x10 (MessageText_SetLabel).
     constexpr size_t kHolderPane = 0x10;
 
     // The track list (Gm_MemoryList), right of the middle.
@@ -93,7 +90,7 @@ namespace {
 
     constexpr int kEntries = AP::Tracks::COUNT;
 
-    bool InChamberDungeon() { return *reinterpret_cast<u8*>(g_BaseAddress + kLevelIndex) == kChamberDungeon; }
+    bool InChamberDungeon() { return *Game::LevelIndex == kChamberDungeon; }
 
     // The header and the mode
     bool g_Jukebox = false;         // index 2 shows the Jukebox
@@ -118,8 +115,8 @@ namespace {
     u64 g_GamePad = 0;              // the buttons at the last tick, for the d-pad in the game
 
     void SetLabel(u8* text, const char* label) {
-        StrView view{label, static_cast<s64>(strlen(label))};
-        GameFn<void (*)(void*, const StrView*)>(kSetLabel)(text, &view);
+        Game::StrView view{label};
+        Game::MessageText_SetLabel(text, &view);
     }
 
     // The header's texts: the game's text objects, their text pane at +0x10.
@@ -230,7 +227,7 @@ namespace {
 
     // The Jukebox in the Gm_System page: System's choices hidden, the layouts hung under the page.
     void BuildPage(u8* page) {
-        u8* pageRoot = PageRoot(page);
+        u8* pageRoot = RootOf(page);
         if (pageRoot == nullptr) return;
         SetVisible(FindPane(pageRoot, kSystemContent), false);
         g_Ui.page = page;
@@ -332,7 +329,7 @@ namespace {
         g_Pending = jukebox;
         g_ChangeAhead = true;
         g_Changes++;
-        GameFn<void (*)(void*, int)>(kNaviChangeState)(navi + kNaviMachine, kStateCloseOldUi);
+        Game::Navi_ChangeState(navi + kNaviMachine, kStateCloseOldUi);
         PlaySound("SE_SY_MENU_LR_MOVE");
     }
 
@@ -439,13 +436,13 @@ HOOK_DEFINE_TRAMPOLINE(PageDtor) {
 
 namespace AP::JukeboxPane {
     void InstallHooks() {
-        NaviWaitKey::InstallAtOffset(offset_manager.Offset(kNaviWaitKey));
-        NaviCloseOldUiUpdate::InstallAtOffset(offset_manager.Offset(kNaviCloseOldUiUpdate));
-        NaviCloseEnter::InstallAtOffset(offset_manager.Offset(kNaviCloseEnter));
-        NaviSetTitles::InstallAtOffset(offset_manager.Offset(kNaviSetTitles));
-        SystemSetup::InstallAtOffset(offset_manager.Offset(kSystemSetup));
-        SystemUpdate::InstallAtOffset(offset_manager.Offset(kSystemUpdate));
-        PageDtor::InstallAtOffset(offset_manager.Offset(kPageDtor));
+        NaviWaitKey::InstallAtFuncPtr(Game::Navi_WaitKey.Ptr());
+        NaviCloseOldUiUpdate::InstallAtFuncPtr(Game::Navi_CloseOldUiUpdate.Ptr());
+        NaviCloseEnter::InstallAtFuncPtr(Game::Navi_CloseEnter.Ptr());
+        NaviSetTitles::InstallAtFuncPtr(Game::Navi_SetTitles.Ptr());
+        SystemSetup::InstallAtFuncPtr(Game::GmSystem_Setup.Ptr());
+        SystemUpdate::InstallAtFuncPtr(Game::GmSystem_Update.Ptr());
+        PageDtor::InstallAtFuncPtr(Game::MenuPage_Dtor.Ptr());
         AddGuideSource(JukeboxGuide);
     }
 

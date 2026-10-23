@@ -1,7 +1,7 @@
 #pragma once
 #include "../lib.hpp"
 #include "offsets.hpp"
-#include "symbols.hpp"
+#include "Game/sym.hpp"
 #include "AP/ap.hpp"
 #include <string>
 
@@ -47,12 +47,12 @@ namespace EventFlags {
     }
 
     inline bool CheckFlag(std::string flagName) {
-        return EventFlags__CheckFlag::Callback(g_symbols["EventFlagsPtr"], (long)&flagName);
+        return EventFlags__CheckFlag::Callback(reinterpret_cast<long>(Game::EventFlags_ptr.Ptr()), (long)&flagName);
     }
 
     inline void SetFlag(std::string flagName, bool flagState) {
         if (CheckFlag(flagName) != flagState) {
-            EventFlags__SetFlag::Callback(g_symbols["EventFlagsPtr"], (long)&flagName, (long)flagState);
+            EventFlags__SetFlag::Callback(reinterpret_cast<long>(Game::EventFlags_ptr.Ptr()), (long)&flagName, (long)flagState);
         }
     }
 

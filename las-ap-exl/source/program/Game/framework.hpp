@@ -1,7 +1,8 @@
 #pragma once
 #include "lib.hpp"
-#include "symbols.hpp"
 #include "Game/Actors/player.hpp"
+#include "Game/mem.hpp"
+#include "Game/sym.hpp"
 
 namespace Game {
     class ActorSystem;
@@ -18,8 +19,20 @@ namespace Game {
         uint32_t mFrameCount; // 0x4d4
     };
 
-    inline Framework* GetFramework() {
-        Framework** fwPtr = reinterpret_cast<Framework**>(g_symbols["FrameworkPtr"]);
-        return *fwPtr;
+    // Framework fields read by offset: the screen (u8: 2 intro and title, 5 file menus, 0x0b level load, 0x17
+    // level), paused (u8, 1 while the pause menu is open), the camera.
+    constexpr size_t kFrameworkScreen = 0xb0, kFrameworkPaused = 0x510, kFrameworkCamera = 0x560;
+    // The camera: view rows at +0x20..+0x50 (the last the translation; the rotation's rows +0x20, +0x30, +0x40, so
+    // its columns are the camera's axes), projection rows at +0xa0..+0xd0.
+    constexpr size_t kCameraView = 0x20, kCameraProjection = 0xa0;
+
+    inline Framework* GetFramework() { return *Framework_ptr; }
+
+    inline Actors::Player* GetPlayer() {
+        Framework* fmwk = GetFramework();
+        return fmwk != nullptr ? fmwk->mPlayer : nullptr;
     }
+
+    // The camera, or null.
+    inline const u8* GetCamera() { return At<const u8*>(GetFramework(), kFrameworkCamera); }
 }
