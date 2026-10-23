@@ -35,9 +35,9 @@ namespace {
     // then). BgmManager_Play(f32 volume, manager*, StringView* name, bool, bool, bool force) returns the new instance,
     // or null for an unknown name or a track that plays already. A new instance starts its stream from the beginning,
     // intro included. Kind 1 instances (zone and event BGM) are those the zone update fades out when the zone's track
-    // changes. A zone change (the zone update) fades the other kind 1 instances out over 90 frames and the new track
-    // in over 150 (none right after a level load); PlayZoneBgm fades out the same but starts its track at full
-    // volume, so a change made here sets the fade in itself.
+    // changes. A zone change (the zone update) fades the other kind 1 instances out over 90 frames and starts the new
+    // track 150 frames later (at once right after a level load); PlayZoneBgm fades out the same, and a change made
+    // here starts its track 30 frames (0.5 s) later.
     // PlayZoneBgm(bool fadeOthers): plays the zone's track (+0x9250) and, when it starts, fades out the other kind 1
     // instances; while a Guardian Acorn's or Piece of Power's music plays it starts the track without fading.
     // BgmTable_Find(table, const char* name): the track's id, -1 for an unknown name; the table is a static (guard
@@ -49,7 +49,8 @@ namespace {
     constexpr uintptr_t kEventPlayCall = 0x805bc4;
     constexpr const char* kZoneStandIns[] = {"BGM_FIELD_NORMAL_INTRO", "BGM_HOUSE_FIRST"};
     // The pause menu sets every BGM's volume target to 0.2, and 1 again as it closes.
-    constexpr u32 kFadeFrames = 90, kStartDelayFrames = 150;  // the zone update's
+    constexpr u32 kFadeFrames = 90;  // the zone update's
+    constexpr u32 kStartDelayFrames = 30;
     constexpr int kLoudFrames = 8;  // as the pause menu sets the volume back
     // Item fanfares (DESIGN.md, Instant pickups). ItemGet_PlayFanfare(u8 item id) plays the item's Items.gsheet jingle,
     // a BGM of kind 2 whose stream starts about 0.45 s later. While a kind 2 instance plays, the BGM manager fades
@@ -383,7 +384,7 @@ namespace AP::Music {
             g_TrackIndex = -1;
         }
         // The zone's music is asked for again: the chosen track (or the zone's own) starts from its beginning after
-        // the zone change's delay, and the rest fades out.
+        // kStartDelayFrames, and the rest fades out.
         BgmInstance* started = Game::PlayZoneBgm(true);
         if (started != nullptr) started->startDelay = kStartDelayFrames;
         g_Started = started;
