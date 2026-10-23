@@ -26,8 +26,8 @@ namespace {
         // the open overworld page: its markers of ours, those shown by look, and the last name the cursor took.
         static const char* const kLookNames[kLooks] = {"in", "partly", "out", "collected"};
         size_t skipped = 0;
-        for (const auto& ids : g_Overworld) {
-            for (int id : ids) skipped += IsLocationSkipped(id) ? 1 : 0;
+        for (const Group& group : Groups()) {
+            for (int id : IdsOf(group.ids)) skipped += IsLocationSkipped(id) ? 1 : 0;
         }
         std::string drawn;
         if (g_MarkerPage != nullptr) {
@@ -44,8 +44,8 @@ namespace {
                     std::to_string(shown[Collected]);
         }
         std::string hover = "-1";
-        if (g_HoverGroup >= 0 && static_cast<size_t>(g_HoverGroup) < g_Overworld.size()) {
-            hover = std::to_string(g_HoverGroup) + "/" + std::to_string(g_Overworld[g_HoverGroup].size()) + "/" +
+        if (g_HoverGroup >= 0 && static_cast<size_t>(g_HoverGroup) < Groups().size()) {
+            hover = std::to_string(g_HoverGroup) + "/" + std::to_string(GroupIds(g_HoverGroup).size()) + "/" +
                     kLookNames[g_HoverLook];
         }
         return " skipped=" + std::to_string(skipped) + " hover=" + hover + drawn + " | name=" + g_CursorText;
@@ -57,7 +57,7 @@ namespace {
         g_HoverGroup = HoveredIcon(page, look);
         g_HoverLook = g_HoverGroup >= 0 ? look : -1;
         if (!Listable(g_ListAsked)) return false;
-        OpenList(&page->page.wrapper, g_Overworld[g_ListAsked], g_GroupNames[g_ListAsked], g_ListAsked);
+        OpenList(&page->page.wrapper, GroupIds(g_ListAsked), GroupName(g_ListAsked), g_ListAsked);
         g_ListAsked = -1;
         return true;
     }
@@ -82,10 +82,11 @@ namespace {
 
     std::string State() {
         size_t looks[kLooks] = {};
-        for (size_t group = 0; group < g_Overworld.size(); group++) looks[GroupLook(group)]++;
-        size_t open = g_Overworld.size() - looks[Collected];
+        size_t groups = Groups().size();
+        for (size_t group = 0; group < groups; group++) looks[GroupLook(group)]++;
+        size_t open = groups - looks[Collected];
         return "map=" + std::string(g_Enabled ? "1" : "0") + " icons=" + std::to_string(open) + "/" +
-               std::to_string(g_Overworld.size()) + " looks=" + std::to_string(looks[InLogic]) + "," +
+               std::to_string(groups) + " looks=" + std::to_string(looks[InLogic]) + "," +
                std::to_string(looks[Partial]) + "," + std::to_string(looks[OutOfLogic]) + "," +
                std::to_string(looks[Collected]) + " logic=" + (HasLogic() ? "1" : "0") +
                " server=" + (IsServerConnected() ? "1" : "0") +
@@ -125,7 +126,7 @@ namespace {
         for (const auto& dm : g_DotMarkers) {
             const Ui::Animator* animator = dm.marker->setMark.animator;
             int look = animator == nullptr ? -1 :
-                static_cast<int>(animator->frame) - kGameMarkFrames - (g_Dots[dm.dot].ids.size() == 1 ? kLooks : 0);
+                static_cast<int>(animator->frame) - kGameMarkFrames - (DotIds(dm.dot).size() == 1 ? kLooks : 0);
             bool on = (MarkerRoot(&dm.marker->part.wrapper)->flags & Ui::kPaneVisible) != 0;
             shown += on;
             char letter = look >= 0 && look < kLooks ? kLookLetters[look] : '?';
@@ -144,7 +145,7 @@ namespace {
             const DotMarker& dm = g_DotMarkers[g_DotHovered];
             float x, y;
             DotAt(g_DungeonPage, dm, x, y);
-            s += "/" + std::to_string(dm.dot) + "/" + std::to_string(g_Dots[dm.dot].ids.size()) + " at=" +
+            s += "/" + std::to_string(dm.dot) + "/" + std::to_string(DotIds(dm.dot).size()) + " at=" +
                  std::to_string(std::lround(x)) + "," + std::to_string(std::lround(y));
         }
         s += " looks=" + (looks.empty() ? std::string("-") : looks);
@@ -162,7 +163,7 @@ namespace {
              std::to_string(g_TickSum * 10 / 192 / std::max<u64>(g_TickFrames, 1)) + "/" +
              std::to_string(g_TickMost * 10 / 192) + " ticks=" + std::to_string(g_TickFrames);
         if (g_Panel.page == nullptr) return s + " open=0";
-        const auto& ids = g_Panel.ids;
+        Ids ids = g_Panel.ids;
         static const char kRowLooks[] = "ipoc";
         std::string looks;
         for (int id : ids) looks += IsLocationSkipped(id) ? 's' : kRowLooks[RowLook(id)];

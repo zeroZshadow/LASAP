@@ -7,6 +7,7 @@
 #include "game/stl.hpp"
 #include "game/ui.hpp"
 #include <map>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -19,28 +20,43 @@ namespace AP::MapTracker {
 
     // ---- What the patcher's map file gives (map_tracker.cpp) ----
 
+    // Read once at boot and never changed, the map file's data is in static storage: its texts in one character
+    // buffer (each terminated) and its local ids in one flat array, which the groups, dots, chests and check names
+    // refer to by offset and length (Ref).
+    using Ids = std::span<const int>;
+    struct Ref {
+        u16 at = 0, size = 0;
+    };
+    // An overworld group (O line): its locations, its name (G line), and the flag until which it has another name (H
+    // line; a shuffled dungeon's: which dungeon is behind its door), none when the flag's size is 0.
+    struct Group {
+        Ref ids, name, hiddenFlag, hiddenName;
+    };
     // A dungeon dot (M line): its room ("Lv01TailCave_05F"), its world position and checks, and its name (MG line).
     struct Dot {
-        std::string room;
-        float x, z;
-        std::vector<int> ids;
-        std::string name;
+        Ref room;
+        float x = 0, z = 0;
+        Ref ids, name;
     };
+    // A dungeon chest of the slot's (C line): its level ("Lv01TailCave"), its world position and its location.
     struct Chest {
-        std::string level;
-        float x, z;
-        int id;
+        Ref level;
+        float x = 0, z = 0;
+        int id = 0;
     };
     extern bool g_Loaded;
     extern bool g_Enabled;      // loaded and not switched off for a test (DBG map 0)
     extern bool g_IconsHidden;  // revealed maps without overworld icons, for screenshots (DBG map 2)
-    extern std::vector<std::vector<int>> g_Overworld;  // group -> local ids
-    extern std::vector<Dot> g_Dots;
-    extern std::vector<Chest> g_Chests;
-    extern std::vector<std::string> g_GroupNames;      // group -> its name
-    extern std::map<int, std::string> g_CheckNames;    // local id -> the location's name without its area
-    // group -> the flag until which it has another name (a shuffled dungeon's: which dungeon is behind its door)
-    extern std::map<size_t, std::pair<std::string, std::string>> g_HiddenNames;
+    Ids IdsOf(Ref ref);
+    std::string_view TextOf(Ref ref);
+    std::span<const Group> Groups();
+    std::span<const Dot> Dots();
+    std::span<const Chest> Chests();
+    Ids GroupIds(size_t group);
+    std::string_view GroupName(size_t group);
+    Ids DotIds(size_t dot);
+    // A location's name without its area (N line); false when the file has none.
+    bool FindCheckName(int id, std::string_view& name);
     // How often the hooks ran (DBG map): the dungeon map's flags, the dungeon icons' update, chests matched
     extern int g_FlagsCalls, g_IconCalls, g_ChestMatches;
 
@@ -60,10 +76,10 @@ namespace AP::MapTracker {
     // A group whose other name shows: a shuffled dungeon's until its flag is set.
     bool NameHidden(size_t group);
     // The look of an icon of these locations.
-    Look IdsLook(const std::vector<int>& ids, bool nameHidden);
+    Look IdsLook(Ids ids, bool nameHidden);
     Look GroupLook(size_t group);
     // A group A marks skipped or not: one location, not checked.
-    bool Skippable(const std::vector<int>& ids);
+    bool Skippable(Ids ids);
     // Whether a group's icon in this look is made.
     bool LookMade(size_t group, Look look);
     // The group and look a flag or label names (MAP_FLAG_PREFIX[mark]<group>), or -1.
@@ -80,8 +96,8 @@ namespace AP::MapTracker {
     // X on a map page (overworld or dungeon).
     void ToggleOutOfLogic(const void* page);
     // An icon's count, "<to do>/<unchecked>", and its hover text.
-    std::string CountText(const std::vector<int>& ids);
-    std::string IconText(const std::vector<int>& ids, const std::string& name);
+    std::string CountText(Ids ids);
+    std::string IconText(Ids ids, std::string_view name);
     void InstallIconHooks();
 
     // ---- The check list (map_checklist.cpp) ----
@@ -92,7 +108,7 @@ namespace AP::MapTracker {
     struct Panel {
         Ui::LayoutWrapper* page = nullptr;  // the map page it hangs under
         int group = -1;             // the overworld icon's group, -1 for a dungeon dot
-        std::vector<int> ids;       // its locations
+        Ids ids;                    // its locations
         std::string heading;        // the icon's name
         L::List list;
         L::Layout dim, back, title, count, dots[L::kRows], tags[L::kRows];
@@ -115,7 +131,7 @@ namespace AP::MapTracker {
     // The header's count, the rows' names, dots and tags.
     void FillList();
     // A on an icon of several locations: its check list over the map.
-    void OpenList(Ui::LayoutWrapper* page, const std::vector<int>& ids, const std::string& heading, int group);
+    void OpenList(Ui::LayoutWrapper* page, Ids ids, std::string_view heading, int group);
     // Once a frame of the map's KeyWait while the list is there.
     void TickList(Ui::LayoutWrapper* page);
     // The map's guide while the list is open.
@@ -148,7 +164,8 @@ namespace AP::MapTracker {
     void ApplyDots();
     // A dot's position in the cursor's units.
     void DotAt(const Map::DungeonMap* page, const DotMarker& dm, float& x, float& y);
-    const std::vector<int>* HoveredDotIds();
+    // The hovered dot, or null.
+    const Dot* HoveredDot();
     // A name on the map cursor: Place:<label>, whose text LabelText gives.
     void ShowCursorName(std::string_view placeLabel);
     // The hovered dot's name on the map cursor.

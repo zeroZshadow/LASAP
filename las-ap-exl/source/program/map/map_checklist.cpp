@@ -61,7 +61,7 @@ namespace {
     constexpr u8 kInk[] = {0x0f, 0x07, 0x02, 0xff};   // the header's: dark brown on the paper (shows as 46 30 1e)
     constexpr u8 kGray[] = {0xb4, 0xb4, 0xb4, 0xff};  // "skipped": light grey (shows as d9)
 
-    const std::vector<int>& ListIds() { return g_Panel.ids; }
+    Ids ListIds() { return g_Panel.ids; }
 
     // The map's cursor and its icon's name, hidden behind the list.
     void ShowMapCursor(bool shown) {
@@ -130,7 +130,7 @@ namespace {
         return true;
     }
 
-    void BuildList(Ui::LayoutWrapper* page, const std::vector<int>& ids, const std::string& heading, int group) {
+    void BuildList(Ui::LayoutWrapper* page, Ids ids, std::string_view heading, int group) {
         DropList();
         Ui::Pane* root = Ui::RootOf(page);
         if (root == nullptr) return;
@@ -185,7 +185,7 @@ namespace {
         L::RefreshGuide(0);
         PlaySound("SE_SY_MAP_OMOIDE_ON");
         g_ListsBuilt++;
-        Logging.Log("[AP] map: check list of %s", heading.c_str());
+        Logging.Log("[AP] map: check list of %s", g_Panel.heading.c_str());
     }
 
     void CloseList() {
@@ -234,8 +234,8 @@ namespace {
     Look RowLook(int id) { return Done(id) ? Collected : Reachable(id) ? InLogic : OutOfLogic; }
 
     std::string CheckName(int id) {
-        auto it = g_CheckNames.find(id);
-        return it != g_CheckNames.end() ? it->second : "Location " + std::to_string(id);
+        std::string_view name;
+        return FindCheckName(id, name) ? std::string(name) : "Location " + std::to_string(id);
     }
 
     void DropList() {
@@ -254,7 +254,7 @@ namespace {
 
     // The header's count, the rows' names, dots and tags.
     void FillList() {
-        const auto& ids = ListIds();
+        Ids ids = ListIds();
         L::SetText(g_Panel.title.note, g_Panel.heading);
         L::SetText(g_Panel.count.note, CountText(ids));
         L::List& list = g_Panel.list;
@@ -275,7 +275,7 @@ namespace {
         L::Place(list);
     }
 
-    void OpenList(Ui::LayoutWrapper* page, const std::vector<int>& ids, const std::string& heading, int group) {
+    void OpenList(Ui::LayoutWrapper* page, Ids ids, std::string_view heading, int group) {
 #ifdef LASAP_TEST
         u64 start = Game::Ticks();
         BuildList(page, ids, heading, group);
@@ -304,7 +304,7 @@ namespace {
 
     // Whether A opens the group's check list: it has several locations and its name is not hidden.
     bool Listable(int group) {
-        if (group < 0 || static_cast<size_t>(group) >= g_Overworld.size() || g_Overworld[group].size() < 2) {
+        if (group < 0 || static_cast<size_t>(group) >= Groups().size() || GroupIds(group).size() < 2) {
             return false;
         }
         return !NameHidden(group);

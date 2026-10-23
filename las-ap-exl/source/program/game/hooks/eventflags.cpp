@@ -27,7 +27,7 @@ namespace EventFlags {
 
     void SetGettingFlag(int itemId) { Game::Item_SetGettingFlag(itemId); }
 
-    bool CheckFlag(const std::string& name) {
+    bool CheckFlag(std::string_view name) {
         Game::StrView view{name};
         return EventFlags_Check::Callback(Game::EventFlags_ptr.Ptr(), &view);
     }

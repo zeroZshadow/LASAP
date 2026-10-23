@@ -25,29 +25,44 @@
 // cursor follow the overworld page's icons; A on it does what A on an overworld icon does. The icon update hides the
 // game's chest icons of the slot's chests.
 //
-// This file reads the patcher's map file and answers the game's flags and labels; the overworld icons
-// (map_icons.cpp), the check list (map_checklist.cpp) and the dungeon dots (map_dots.cpp) have files of their own.
+// This file reads the patcher's map file into static storage and answers the game's flags and labels; the overworld
+// icons (map_icons.cpp), the check list (map_checklist.cpp) and the dungeon dots (map_dots.cpp) have files of their own.
 #include "map/map_tracker_impl.hpp"
 #include "ap/ap.hpp"
 #include "ap/ap_patcher.hpp"
 #include "config/file_handler.hpp"
 #include "game/sym.hpp"
 #include "loggers.hpp"
+#include <algorithm>
+#include <cstring>
 #include <sstream>
 
 namespace AP::MapTracker {
     bool g_Loaded = false;
     bool g_Enabled = false;
     bool g_IconsHidden = false;
-    std::vector<std::vector<int>> g_Overworld;
-    std::vector<Dot> g_Dots;
-    std::vector<Chest> g_Chests;
-    std::vector<std::string> g_GroupNames;
-    std::map<int, std::string> g_CheckNames;
-    std::map<size_t, std::pair<std::string, std::string>> g_HiddenNames;
     int g_FlagsCalls = 0, g_IconCalls = 0, g_ChestMatches = 0;
 
 namespace {
+    // The map file's storage, sized with room to spare for the largest file the patcher writes (every location of the
+    // game in the slot). A line that does not fit is left out, and Load logs how many were.
+    constexpr size_t kMaxGroups = 160, kMaxDots = 192, kMaxChests = 192, kMaxChecks = 448;
+    constexpr size_t kMaxIds = 768, kMaxText = 20 * 1024;
+    // A location's name (N line); kept in local id order.
+    struct LocationName {
+        int id = 0;
+        Ref name;
+    };
+    Group g_Groups[kMaxGroups];
+    Dot g_Dots[kMaxDots];
+    Chest g_Chests[kMaxChests];
+    LocationName g_LocationNames[kMaxChecks];
+    int g_Ids[kMaxIds];
+    char g_Text[kMaxText];
+    size_t g_GroupCount = 0, g_DotCount = 0, g_ChestCount = 0, g_CheckCount = 0, g_IdCount = 0, g_TextSize = 0;
+    size_t g_LeftOut = 0;  // lines that did not fit
+    Ref g_LastText;        // the text added last, which the same text again shares (a dungeon's chests, a room's dots)
+
     constexpr const char* kTraversePrefix = "UI_FieldMapTraverse_";
     constexpr const char* kOpenPrefix = "UI_FieldMapOpen_";
     // A logic or checks update arrived (MapDataChanged): the open map refreshes once a frame passes without one, as an
@@ -75,6 +90,123 @@ namespace {
         if (ListOpen()) FillList();
     }
 
+namespace {
+    // Adds a text to the texts; false when it does not fit.
+    bool AddText(std::string_view text, Ref& ref) {
+        if (g_TextSize > 0 && TextOf(g_LastText) == text) {
+            ref = g_LastText;
+            return true;
+        }
+        if (g_TextSize + text.size() + 1 > kMaxText) return false;
+        std::memcpy(g_Text + g_TextSize, text.data(), text.size());
+        g_Text[g_TextSize + text.size()] = '\0';
+        ref = g_LastText = {static_cast<u16>(g_TextSize), static_cast<u16>(text.size())};
+        g_TextSize += text.size() + 1;
+        return true;
+    }
+
+    // The rest of a line after the space that ends its last field: a name.
+    std::string RestOf(std::stringstream& ss) {
+        std::string rest;
+        std::getline(ss, rest);
+        return rest.empty() ? rest : rest.substr(1);
+    }
+
+    // Adds the line's remaining ids to the ids; false (none added) when they do not fit.
+    bool AddIds(std::stringstream& ss, Ref& ref) {
+        size_t start = g_IdCount;
+        for (int id; ss >> id;) {
+            if (g_IdCount == kMaxIds) {
+                g_IdCount = start;
+                return false;
+            }
+            g_Ids[g_IdCount++] = id;
+        }
+        ref = {static_cast<u16>(start), static_cast<u16>(g_IdCount - start)};
+        return true;
+    }
+
+    // The first location name at or after the id.
+    LocationName* FindCheck(int id) {
+        return std::lower_bound(g_LocationNames, g_LocationNames + g_CheckCount, id,
+                                [](const LocationName& check, int i) { return check.id < i; });
+    }
+
+    // Adds a location's name in local id order. A location in two icons (its dungeon's at the entrance and its dot)
+    // keeps the first.
+    bool AddCheckName(int id, std::string_view name) {
+        LocationName* end = g_LocationNames + g_CheckCount;
+        LocationName* at = FindCheck(id);
+        if (at != end && at->id == id) return true;
+        Ref ref;
+        if (g_CheckCount == kMaxChecks || !AddText(name, ref)) return false;
+        std::move_backward(at, end, end + 1);
+        *at = {id, ref};
+        g_CheckCount++;
+        return true;
+    }
+
+    // One line of the map file; false when it does not fit.
+    bool ReadLine(const std::string& line) {
+        std::stringstream ss(line);
+        std::string kind;
+        ss >> kind;
+        if (kind == "C") {
+            std::string level;
+            Chest chest;
+            if (!(ss >> level >> chest.x >> chest.z >> chest.id)) return true;
+            if (g_ChestCount == kMaxChests || !AddText(level, chest.level)) return false;
+            g_Chests[g_ChestCount++] = chest;
+            return true;
+        }
+        if (kind == "N") {
+            int id;
+            return !(ss >> id) || AddCheckName(id, RestOf(ss));
+        }
+        size_t index;
+        if (!(ss >> index)) return true;
+        if (kind == "O" || kind == "G" || kind == "H") {
+            if (index >= kMaxGroups) return false;
+            Group& group = g_Groups[index];
+            if (kind == "O") {
+                if (!AddIds(ss, group.ids)) return false;
+                g_GroupCount = std::max(g_GroupCount, index + 1);
+                return true;
+            }
+            if (kind == "G") return AddText(RestOf(ss), group.name);
+            std::string flag;
+            if (!(ss >> flag)) return true;
+            return AddText(flag, group.hiddenFlag) && AddText(RestOf(ss), group.hiddenName);
+        }
+        if (kind == "M" || kind == "MG") {
+            if (index >= kMaxDots) return false;
+            Dot& dot = g_Dots[index];
+            g_DotCount = std::max(g_DotCount, index + 1);
+            if (kind == "MG") return AddText(RestOf(ss), dot.name);
+            std::string room;
+            ss >> room >> dot.x >> dot.z;
+            return AddText(room, dot.room) && AddIds(ss, dot.ids);
+        }
+        return true;
+    }
+}
+
+    Ids IdsOf(Ref ref) { return {g_Ids + ref.at, ref.size}; }
+    std::string_view TextOf(Ref ref) { return {g_Text + ref.at, ref.size}; }
+    std::span<const Group> Groups() { return {g_Groups, g_GroupCount}; }
+    std::span<const Dot> Dots() { return {g_Dots, g_DotCount}; }
+    std::span<const Chest> Chests() { return {g_Chests, g_ChestCount}; }
+    Ids GroupIds(size_t group) { return IdsOf(g_Groups[group].ids); }
+    std::string_view GroupName(size_t group) { return TextOf(g_Groups[group].name); }
+    Ids DotIds(size_t dot) { return IdsOf(g_Dots[dot].ids); }
+
+    bool FindCheckName(int id, std::string_view& name) {
+        const LocationName* at = FindCheck(id);
+        if (at == g_LocationNames + g_CheckCount || at->id != id) return false;
+        name = TextOf(at->name);
+        return true;
+    }
+
     void Load() {
         // Written by the patcher (ap_map.py): "O <group> <local id>...", "M <dot> <room> <x> <z> <local id>..." (a
         // dungeon dot), "C <level> <x> <z> <local id>" (a dungeon chest), "G <group> <name>" (an overworld group's
@@ -89,68 +221,19 @@ namespace {
         std::string line;
         while (std::getline(lines, line)) {
             if (!line.empty() && line.back() == '\r') line.pop_back();
-            std::stringstream ss(line);
-            std::string kind;
-            ss >> kind;
-            if (kind == "G") {
-                size_t group;
-                if (!(ss >> group)) continue;
-                std::string name;
-                std::getline(ss, name);
-                if (g_GroupNames.size() <= group) g_GroupNames.resize(group + 1);
-                g_GroupNames[group] = name.empty() ? name : name.substr(1);
-                continue;
-            }
-            if (kind == "N") {
-                int id;
-                std::string name;
-                if (!(ss >> id)) continue;
-                std::getline(ss, name);
-                g_CheckNames[id] = name.empty() ? name : name.substr(1);
-                continue;
-            }
-            if (kind == "MG") {
-                size_t dot;
-                std::string name;
-                if (!(ss >> dot)) continue;
-                std::getline(ss, name);
-                if (g_Dots.size() <= dot) g_Dots.resize(dot + 1);
-                g_Dots[dot].name = name.empty() ? name : name.substr(1);
-                continue;
-            }
-            if (kind == "H") {
-                size_t group;
-                std::string flag, name;
-                if (!(ss >> group >> flag)) continue;
-                std::getline(ss, name);
-                g_HiddenNames[group] = {flag, name.empty() ? name : name.substr(1)};
-                continue;
-            }
-            if (kind == "C") {
-                Chest chest{};
-                if (ss >> chest.level >> chest.x >> chest.z >> chest.id) g_Chests.push_back(chest);
-                continue;
-            }
-            size_t group;
-            if (!(ss >> group)) continue;
-            std::vector<int> ids;
-            if (kind == "O") {
-                for (int id; ss >> id;) ids.push_back(id);
-                if (g_Overworld.size() <= group) g_Overworld.resize(group + 1);
-                g_Overworld[group] = ids;
-            } else if (kind == "M") {
-                if (g_Dots.size() <= group) g_Dots.resize(group + 1);
-                Dot& dot = g_Dots[group];
-                ss >> dot.room >> dot.x >> dot.z;
-                for (int id; ss >> id;) dot.ids.push_back(id);
-            }
+            if (!ReadLine(line)) g_LeftOut++;
         }
         g_Loaded = g_Enabled = true;
         InstallIconHooks();
         InstallDotHooks();
         AP::ListUi::AddGuideSource(ListGuide);
-        Logging.Log("[AP] map tracker: %zu overworld icons, %zu dungeon dots, %zu chests", g_Overworld.size(),
-                    g_Dots.size(), g_Chests.size());
+        Logging.Log("[AP] map tracker: %zu overworld icons, %zu dungeon dots, %zu chests, %zu location names; ids "
+                    "%zu/%zu, text %zu/%zu bytes", g_GroupCount, g_DotCount, g_ChestCount, g_CheckCount, g_IdCount,
+                    kMaxIds, g_TextSize, kMaxText);
+        if (g_LeftOut > 0) {
+            Logging.Log("[AP] map tracker: %s is bigger than the module's storage for it, %zu lines left out",
+                        AP::MAP_PATH, g_LeftOut);
+        }
     }
 
     bool Flag(std::string_view name, bool& value) {
@@ -158,7 +241,7 @@ namespace {
         Look look;
         int group = ParseIcon(name, look);
         if (group >= 0) {
-            value = !g_IconsHidden && static_cast<size_t>(group) < g_Overworld.size() &&
+            value = !g_IconsHidden && static_cast<size_t>(group) < g_GroupCount &&
                     LookMade(group, look);
             return true;
         }
@@ -181,13 +264,12 @@ namespace {
         // after "Skipped: " when its one location is skipped; or its other name alone until its flag is set (the count
         // would tell a dungeon by its number of locations). The dungeon dots' label names the hovered dot the same way.
         if (group == kDotGroup) {
-            const std::vector<int>* ids = HoveredDotIds();
-            return ids != nullptr ? IconText(*ids, g_Dots[g_DotMarkers[g_DotHovered].dot].name) : "";
+            const Dot* dot = HoveredDot();
+            return dot != nullptr ? IconText(IdsOf(dot->ids), TextOf(dot->name)) : "";
         }
-        if (group < 0 || static_cast<size_t>(group) >= g_Overworld.size()) return "";
-        if (NameHidden(group)) return g_HiddenNames[group].second;
-        std::string name = static_cast<size_t>(group) < g_GroupNames.size() ? g_GroupNames[group] : "";
-        return IconText(g_Overworld[group], name);
+        if (group < 0 || static_cast<size_t>(group) >= g_GroupCount) return "";
+        if (NameHidden(group)) return std::string(TextOf(g_Groups[group].hiddenName));
+        return IconText(GroupIds(group), GroupName(group));
     }
 
     void DataChanged() {

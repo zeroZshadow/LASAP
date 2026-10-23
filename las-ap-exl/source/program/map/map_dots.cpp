@@ -31,7 +31,7 @@ namespace {
     // is hovered; the cursor eases onto it while the stick is idle (the page's cursor speed kIdleSpeed).
     constexpr float kIdleSpeed = 4.25f, kEase = 0.3f, kHoverRadius = 0.2f;
 
-    const std::pair<Map::Area*, bool>* FindRoom(const std::string& room) {
+    const std::pair<Map::Area*, bool>* FindRoom(std::string_view room) {
         auto it = g_Rooms.find(room);
         return it != g_Rooms.end() ? &it->second : nullptr;
     }
@@ -48,7 +48,7 @@ namespace {
 
     // A dot shows while its room is on the shown floor, unless its look is out of logic and those are toggled off.
     bool DotShown(const DotMarker& dm) {
-        return dm.onFloor && !(g_OutHidden && IdsLook(g_Dots[dm.dot].ids, false) == OutOfLogic);
+        return dm.onFloor && !(g_OutHidden && IdsLook(DotIds(dm.dot), false) == OutOfLogic);
     }
 
     void SetMarkerState(Map::MapMarker* marker, u8 state) {
@@ -71,10 +71,11 @@ namespace {
         Ui::Pane* pinOffset = page->pinOffset.pane;
         if (pinRoot == nullptr || pinOffset == nullptr) return;
         size_t missing = 0;
-        for (size_t d = 0; d < g_Dots.size(); d++) {
-            const Dot& dot = g_Dots[d];
-            if (dot.room.compare(0, level.size(), level) != 0) continue;
-            const auto* room = FindRoom(dot.room);
+        for (size_t d = 0; d < Dots().size(); d++) {
+            const Dot& dot = Dots()[d];
+            std::string_view dotRoom = TextOf(dot.room);
+            if (dotRoom.compare(0, level.size(), level) != 0) continue;
+            const auto* room = FindRoom(dotRoom);
             if (room == nullptr) {
                 missing++;
                 continue;
@@ -104,7 +105,7 @@ namespace {
     // of KeyWait).
     void ShowRoomDots(const std::string& name, bool onFloor) {
         for (auto& dm : g_DotMarkers) {
-            if (g_Dots[dm.dot].room == name) dm.onFloor = onFloor;
+            if (TextOf(Dots()[dm.dot].room) == name) dm.onFloor = onFloor;
         }
         ApplyDots();
     }
@@ -137,12 +138,12 @@ namespace {
         static void Callback(Map::DungeonMapIcon* icon, const Map::MapActorDesc* actor) {
             Orig(icon, actor);
             g_IconCalls++;
-            if (!g_Enabled || g_Chests.empty()) return;
+            if (!g_Enabled || Chests().empty()) return;
             // A chest of the slot's: its dot stands for it, so its icon goes (shown flag clear, which the floor's
             // set-shown keeps).
             std::string level = LevelSystem::GetCurrentLevel();
-            for (const auto& chest : g_Chests) {
-                if (chest.level == level && std::fabs(chest.x - actor->x) < 0.01f && std::fabs(chest.z - actor->z) < 0.01f) {
+            for (const Chest& chest : Chests()) {
+                if (TextOf(chest.level) == level && std::fabs(chest.x - actor->x) < 0.01f && std::fabs(chest.z - actor->z) < 0.01f) {
                     g_ChestMatches++;
                     icon->shown = 0;
                     Ui::SetVisible(MarkerRoot(&icon->part.wrapper), false);
@@ -207,12 +208,13 @@ namespace {
     #ifdef LASAP_TEST
             if (TestDotPressed()) pressed = true;
     #endif
-            const std::vector<int>* ids = HoveredDotIds();
-            if (!pressed || ids == nullptr || page->hoveredPin != nullptr) return pressed;
-            if (ids->size() > 1) {
-                OpenList(&page->page.wrapper, *ids, g_Dots[g_DotMarkers[g_DotHovered].dot].name, -1);
-            } else if (Skippable(*ids)) {
-                AP::SetLocationSkipped((*ids)[0], !AP::IsLocationSkipped((*ids)[0]));
+            const Dot* dot = HoveredDot();
+            if (!pressed || dot == nullptr || page->hoveredPin != nullptr) return pressed;
+            Ids ids = IdsOf(dot->ids);
+            if (ids.size() > 1) {
+                OpenList(&page->page.wrapper, ids, TextOf(dot->name), -1);
+            } else if (Skippable(ids)) {
+                AP::SetLocationSkipped(ids[0], !AP::IsLocationSkipped(ids[0]));
                 ApplyDots();
                 ShowDotName();
                 PlaySound("SE_SY_DECIDE");
@@ -232,10 +234,10 @@ namespace {
     // Each dot's look (its SetMark frame, smaller for one check) and whether it shows.
     void ApplyDots() {
         for (auto& dm : g_DotMarkers) {
-            const Dot& dot = g_Dots[dm.dot];
+            Ids ids = DotIds(dm.dot);
             Ui::Animator* animator = dm.marker->setMark.animator;
-            int look = IdsLook(dot.ids, false);
-            float frame = static_cast<float>(kGameMarkFrames + (dot.ids.size() == 1 ? kLooks : 0) + look);
+            int look = IdsLook(ids, false);
+            float frame = static_cast<float>(kGameMarkFrames + (ids.size() == 1 ? kLooks : 0) + look);
             if (animator != nullptr && frame < Game::Animator_FrameCount(animator)) animator->frame = frame;
             Ui::SetVisible(MarkerRoot(&dm.marker->part.wrapper), DotShown(dm));
         }
@@ -249,8 +251,8 @@ namespace {
         y = dm.y + (position != nullptr ? position->y : 0);
     }
 
-    const std::vector<int>* HoveredDotIds() {
-        return g_DotHovered >= 0 ? &g_Dots[g_DotMarkers[g_DotHovered].dot].ids : nullptr;
+    const Dot* HoveredDot() {
+        return g_DotHovered >= 0 ? &Dots()[g_DotMarkers[g_DotHovered].dot] : nullptr;
     }
 
     // A name on the map cursor: Place:<label>, whose text LabelText gives.

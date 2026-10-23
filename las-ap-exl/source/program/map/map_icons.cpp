@@ -27,7 +27,7 @@ namespace {
 
     // Whether a made icon shows: its look is the group's, and it is not an out-of-logic icon toggled off.
     bool LookShown(int group, Look look) {
-        if (group < 0 || static_cast<size_t>(group) >= g_Overworld.size()) return false;
+        if (group < 0 || static_cast<size_t>(group) >= Groups().size()) return false;
         return GroupLook(group) == look && !(look == OutOfLogic && g_OutHidden);
     }
 
@@ -38,8 +38,8 @@ namespace {
     bool ToggleSkipped(Map::OverworldMap* page) {
         Look look;
         int group = HoveredIcon(page, look);
-        if (group < 0 || static_cast<size_t>(group) >= g_Overworld.size()) return false;
-        const auto& ids = g_Overworld[group];
+        if (group < 0 || static_cast<size_t>(group) >= Groups().size()) return false;
+        Ids ids = GroupIds(group);
         if (!Skippable(ids)) return false;
         AP::SetLocationSkipped(ids[0], !AP::IsLocationSkipped(ids[0]));
         if (page == g_MarkerPage) ApplyLooks(page);
@@ -76,7 +76,7 @@ namespace {
             Look hovered;
             int group = HoveredIcon(page, hovered);
             if (Listable(group)) {
-                OpenList(&page->page.wrapper, g_Overworld[group], g_GroupNames[group], group);
+                OpenList(&page->page.wrapper, GroupIds(group), GroupName(group), group);
                 ctx->W[0] = 0;  // no pin menu
             } else if (ToggleSkipped(page)) {
                 ctx->W[0] = 0;
@@ -125,13 +125,13 @@ namespace {
 
     // A group whose other name shows: a shuffled dungeon's until its flag is set.
     bool NameHidden(size_t group) {
-        auto hidden = g_HiddenNames.find(group);
-        return hidden != g_HiddenNames.end() && !EventFlags::CheckFlag(hidden->second.first);
+        Ref flag = Groups()[group].hiddenFlag;
+        return flag.size > 0 && !EventFlags::CheckFlag(TextOf(flag));
     }
 
     // The look of an icon of these locations; none counts as in logic while its name is hidden, as its look would tell
     // which dungeon its door leads into.
-    Look IdsLook(const std::vector<int>& ids, bool nameHidden) {
+    Look IdsLook(Ids ids, bool nameHidden) {
         size_t left = 0, reachable = 0;
         for (int id : ids) {
             if (Done(id)) continue;
@@ -143,11 +143,11 @@ namespace {
     }
 
     Look GroupLook(size_t group) {
-        return IdsLook(g_Overworld[group], NameHidden(group));
+        return IdsLook(GroupIds(group), NameHidden(group));
     }
 
     // A group A marks skipped or not: one location, not checked.
-    bool Skippable(const std::vector<int>& ids) {
+    bool Skippable(Ids ids) {
         return ids.size() == 1 && !AP::IsLocationChecked(ids[0]);
     }
 
@@ -157,7 +157,7 @@ namespace {
     bool LookMade(size_t group, Look look) {
         if (GroupLook(group) == look) return true;
         size_t unchecked = 0;
-        for (int id : g_Overworld[group]) unchecked += AP::IsLocationChecked(id) ? 0 : 1;
+        for (int id : GroupIds(group)) unchecked += AP::IsLocationChecked(id) ? 0 : 1;
         bool hidden = NameHidden(group);
         switch (look) {
             case Collected:
@@ -229,7 +229,7 @@ namespace {
     // An icon's count, in its hover text and its check list's header: "<to do>/<unchecked>", its locations in logic
     // neither checked nor skipped over those not checked (skipping one lowers the first, not the second). Empty when
     // every location is checked.
-    std::string CountText(const std::vector<int>& ids) {
+    std::string CountText(Ids ids) {
         int unchecked = 0, todo = 0;
         for (int id : ids) {
             if (AP::IsLocationChecked(id)) continue;
@@ -241,11 +241,11 @@ namespace {
 
     // An icon's hover text: its name after its count when it has several locations and some are unchecked, or after
     // "Skipped: " when its one location is skipped.
-    std::string IconText(const std::vector<int>& ids, const std::string& name) {
-        if (Skippable(ids) && AP::IsLocationSkipped(ids[0])) return "Skipped: " + name;
+    std::string IconText(Ids ids, std::string_view name) {
+        if (Skippable(ids) && AP::IsLocationSkipped(ids[0])) return std::string("Skipped: ").append(name);
         std::string count = CountText(ids);
-        if (ids.size() < 2 || count.empty()) return name;
-        return count + " " + name;
+        if (ids.size() < 2 || count.empty()) return std::string(name);
+        return count.append(" ").append(name);
     }
 
     void InstallIconHooks() {
