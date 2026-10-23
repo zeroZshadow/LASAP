@@ -116,6 +116,12 @@ namespace Game {
     inline constexpr Func<void(u8*)> ItemGet_ModelTask{0x8d41c0};
     // (out, resource holder, model name)
     inline constexpr Func<void(void*, void*, const char*)> ModelResource_Get{0x1046190};
+    // An item's pose under the item-get's item node: position, rotation (degrees about x, y, z) and scale
+    struct ItemPose { float pos[3]; float rotate[3]; float scale[3]; };
+    // (item id, side view): the pose the item-get holds the item up in, by item id (the heart piece's scale 1.7, the
+    // ocarina's 1.17); ids without one (63-99, 101-107, 109, 118, 119, 127-255) get a default: scale 1, tipped 20
+    // degrees
+    inline constexpr Func<const ItemPose*(u8, bool)> ItemPose_ItemGet{0x8d2f50};
     // (out future, player, item id, keep carry, message entry*): the item-get, the body of the event actions
     // Link.GenericItemGetSequence(ByKey)
     inline constexpr Func<void(SharedPtr*, void*, int, bool, StrView*)> Player_ItemGetSequence{0xd795d0};

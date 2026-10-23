@@ -4,8 +4,10 @@
 # sandbox has installed and the given config.ini options changed; each script leaves the game as the next one
 # expects. `client` starts the LAS client fed from cmds.txt; `ghost` also starts a ghost relay and
 # scripts/ghost_peer.py (--secret test), and joins the client to it. config.ini options are read at boot, so a group
-# per setting. The mod: a make_test_patch.py patch with Map Tracker on and --kept trendy-prize-1,trendy-prize-3.
-file1: screens itemget_timing warp_menu itemget_models
+# per setting. The mod: a make_test_patch.py patch with Map Tracker on, --kept trendy-prize-1,trendy-prize-3 and
+# --models woods-north-cave-loose=heart-piece,ukuku-cave-west-loose=sword,ukuku-cave-east-loose=magnifying-lens,
+# graveyard-cave=seashell.
+file1: screens itemget_timing warp_menu itemget_models itemget_pose
 file1_items: boot_file1 ghost_house_pot beach_chest
 newgame_maps: newgame_file2 map_tracker map_skip map_dots map_list kept_items_save keysanity
 enemies randomizer.enemies=True randomizer.enemy_sizes=True: boot_file1 enemy_rando

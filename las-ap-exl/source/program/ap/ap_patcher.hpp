@@ -54,6 +54,9 @@ namespace AP {
     constexpr const char* INDICES_PATH = "sd:/config/lasr-exl/ap_indices.txt";
     // AP locations that keep their vanilla item (the Trendy Game's prizes): "<item key> <index> <local id>" lines.
     constexpr const char* VANILLA_PATH = "sd:/config/lasr-exl/ap_vanilla.txt";
+    // Item ids that show another item's model (the placeholder's variants, LASR's Dampe rewards): "<item id> <the
+    // item's id>" lines; the item-get holds them up in that item's pose (ap_item_pose.cpp).
+    constexpr const char* POSES_PATH = "sd:/config/lasr-exl/ap_poses.txt";
     // In-game hints that become server hints when read: "<n> <flag> <slot> <location id>" lines (patcher ap_hints.py).
     constexpr const char* HINTS_PATH = "sd:/config/lasr-exl/ap_hints.txt";
     // The map tracker's icons, written by the patcher when the option is on (map_tracker.cpp).

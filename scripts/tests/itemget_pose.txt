@@ -1,0 +1,34 @@
+# The item-get holds the placeholder's model variants up in their item's pose (DESIGN.md, Showing received items):
+# a heart piece found at an AP location at the heart piece's size, not the default pose of ids the game has none
+# for. Needs the suite's mod (suite.txt), whose --models give the variants ids 72 (HeartPiece), 73 (MagnifyingLens),
+# 74 (Seashell) and 75 (SwordLv1). Each check reads the held model's scale (DBG heldpose item=) once the item's text
+# waits for a button; the popup (DBG popmodel) shows at the item-get's scale (popup=).
+free 30
+send DBG itemget 58 HeartPiece
+until textready 10
+send DBG heldpose
+expect HELDPOSE.*\sitem=1\.700\s
+dismiss 15
+send DBG itemget 72 HeartPiece
+until textready 10
+send DBG heldpose
+expect HELDPOSE.*\sitem=1\.700\s
+dismiss 15
+send DBG itemget 75 SwordLv1
+until textready 10
+send DBG heldpose
+expect HELDPOSE.*\sitem=1\.600\s
+dismiss 15
+send DBG itemget 74 Seashell
+until textready 10
+send DBG heldpose
+expect HELDPOSE.*\sitem=0\.900\s
+dismiss 15
+# The placeholder itself keeps the default pose its model is sized for
+send DBG itemget 71 ArchipelagoItem
+until textready 10
+send DBG heldpose
+expect HELDPOSE.*\sitem=1\.000\s
+dismiss 15
+send DBG popmodel 72
+poll HELDPOSE.*\spopup=1\.700\s 5 DBG heldpose

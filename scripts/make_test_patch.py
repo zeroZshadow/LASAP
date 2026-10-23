@@ -1,12 +1,14 @@
 """Writes a synthetic .aplas patch (every shuffleable location gives the AP placeholder) for patcher tests.
 
 python make_test_patch.py <out.aplas> [--seed-hash test0001] [--slot Tester] [--vanilla loc,loc,...] [--settings JSON]
-                          [--dungeons JSON] [--items loc=item,...] [--kept loc,loc,...]
+                          [--dungeons JSON] [--items loc=item,...] [--kept loc,loc,...] [--models loc=item,...]
 
 --items gives locations an item of this slot (logic.yml's content names, e.g. beach-chest=song-ballad); they are no
 AP locations.
 --kept makes locations AP locations that keep their vanilla item, as the world makes the Trendy Game's prizes
 (DESIGN.md, Item model), e.g. trendy-prize-1,trendy-prize-3.
+--models gives AP locations the model of an item (items.yml's names), as the world does for items of this or another
+game it knows, e.g. woods-north-cave-loose=heart-piece; the patcher makes them placeholder variants.
 --settings replaces settings in the patch, e.g. '{"Instruments Required": 3, "Damage": "OHKO"}'.
 --dungeons leads dungeon doors into other dungeons and turns Shuffled Dungeons on, e.g.
 '{"tail-cave": "color-dungeon", "color-dungeon": "tail-cave"}' (door: the dungeon it leads into).
@@ -56,8 +58,10 @@ def main() -> None:
     parser.add_argument("--dungeons", default="{}")
     parser.add_argument("--items", default="")
     parser.add_argument("--kept", default="")
+    parser.add_argument("--models", default="")
     args = parser.parse_args()
     items = dict(pair.split("=", 1) for pair in filter(None, args.items.split(",")))
+    models = dict(pair.split("=", 1) for pair in filter(None, args.models.split(",")))
 
     logic = yaml.safe_load(open(DATA / "logic.yml"))
     categories = yaml.safe_load(open(DATA / "locations.yml"))
@@ -85,6 +89,7 @@ def main() -> None:
             placements[loc] = "ap-item"
             location_ids[loc] = ids[loc]
     assert not items, f"unknown locations: {sorted(items)}"
+    assert all(loc in location_ids for loc in models), f"not AP locations: {sorted(set(models) - set(location_ids))}"
 
     dungeons = {d: d for d in DUNGEONS}
     dungeons.update(json.loads(args.dungeons))
@@ -95,7 +100,7 @@ def main() -> None:
     patch = {
         "format": 1, "seed_name": "test", "player": 1, "slot_name": args.slot, "seed_hash": args.seed_hash,
         "settings": settings, "starting_items": [], "placements": placements, "location_ids": location_ids,
-        "dungeon_entrances": dungeons,
+        "dungeon_entrances": dungeons, "location_models": models,
     }
     args.out.write_text(json.dumps(patch, indent=1))
     print(f"{args.out}: {len(location_ids)} AP locations, {len(placements) - len(location_ids)} vanilla")

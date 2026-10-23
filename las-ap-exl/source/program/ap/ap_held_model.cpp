@@ -48,6 +48,11 @@ namespace {
     u8* g_HeldCtrl = nullptr;
     const HeldModelFix* g_HeldFix = nullptr;
     bool g_HeldRootMoved = false;
+#ifdef LASAP_TEST
+    // DBG heldpose: the last item-get's model component, any item's, held weakly as g_HeldModel is
+    Game::Node* g_ItemModel = nullptr;
+    u8* g_ItemCtrl = nullptr;
+#endif
 
     void DropHeldModel() {
         Game::ReleaseWeakOwner(g_HeldCtrl);
@@ -95,6 +100,18 @@ namespace {
                 if (fix != nullptr) AP::Popup::Fit(kItemModelRadius / fix->radius, fix->center, fix->angle);
                 return;
             }
+#ifdef LASAP_TEST
+            if (holder != nullptr && NowMs() - g_ItemGetAt <= kItemModelWindowMs) {
+                auto* itemModel = Game::Field<Game::Node*>(holder, kHolderModel);
+                u8* itemCtrl = Game::Field<u8*>(holder, kHolderModel + 8);
+                if (itemModel != nullptr && itemCtrl != nullptr) {
+                    Game::ReleaseWeakOwner(g_ItemCtrl);
+                    Game::AddWeakOwner(itemCtrl);
+                    g_ItemModel = itemModel;
+                    g_ItemCtrl = itemCtrl;
+                }
+            }
+#endif
             if (g_ItemModelFix == nullptr || NowMs() - g_ItemGetAt > kItemModelWindowMs || holder == nullptr) return;
             auto* model = Game::Field<Game::Node*>(holder, kHolderModel);
             u8* ctrl = Game::Field<u8*>(holder, kHolderModel + 8);
@@ -148,6 +165,10 @@ namespace {
 
     Game::Node* HeldModel() {
         return g_HeldModel != nullptr && HeldModelAlive() ? g_HeldModel : nullptr;
+    }
+
+    Game::Node* ItemGetModel() {
+        return g_ItemModel != nullptr && Game::Alive(g_ItemCtrl) ? g_ItemModel : nullptr;
     }
 #endif
 }

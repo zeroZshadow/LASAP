@@ -102,6 +102,10 @@ namespace AP::Bridge {
     bool TestItemEvent(int itemId, const std::string& messageEntry);
 #endif
 
+    // ---- The pose of items held up in item-gets (ap_item_pose.cpp) ----
+
+    void InstallItemPoseHooks();
+
     // ---- NPC models held up in item-gets (ap_held_model.cpp) ----
 
     void InstallHeldModelHooks();
@@ -112,6 +116,8 @@ namespace AP::Bridge {
     bool SetHeldAngle(const std::string& model, const Game::Vec3& angle);
     // DBG heldpose: the NPC model held up now, or null.
     Game::Node* HeldModel();
+    // DBG heldpose: the last item-get's model while it exists, any item's, or null.
+    Game::Node* ItemGetModel();
 #endif
 
     // ---- Checks and hints (ap_checks.cpp) ----

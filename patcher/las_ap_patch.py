@@ -142,6 +142,12 @@ INDEX_BITS = {"Seashell": ("S", range(50)), "HeartPiece": ("H", range(32)), "Gol
               "PanelDungeonPiece": ("P", CHAMBER_STONE_BITS)}
 INDICES_FILE = "ap_indices.txt"
 VANILLA_FILE = "ap_vanilla.txt"
+# The item-get holds an item up in a pose the game picks by item id (AP::POSES_PATH); ids it has no pose for, the
+# variants' and LASR's Dampe rewards', get a default one. Each line: an item id and the id whose pose it takes.
+POSES_FILE = "ap_poses.txt"
+# LASR's Items.gsheet rows of Dampe's rewards (Fixes/Datasheets/items.py) -> their location
+DAMPE_ROWS = {"Dampe1": "dampe-page-1", "DampeHeart": "dampe-heart-challenge", "Dampe2": "dampe-page-2",
+              "DampeBottle": "dampe-bottle-challenge", "DampeFinal": "dampe-final"}
 # The companions' locations and the flag their joining sets
 COMPANION_FLAGS = {"moblin-cave": "BowWowJoin", "rooster-statue": "RoosterFoundFlag"}
 ROOSTER_EVENT_FILE = "RoosterBones.bfevfl"
@@ -199,12 +205,20 @@ def _add_placeholder_row(self, sheet) -> None:
     if taken:
         raise ValueError(f"Items.gsheet already uses the placeholder's item ids {sorted(taken)}")
     variants = [(PLACEHOLDER_KEY, PLACEHOLDER_DEF["npc-key"], PLACEHOLDER_ITEM_ID)]
+    pose_ids = {key: row["itemID"] for key, row in rows.items()}  # item key -> the id whose pose it shows
     # The most used models get ids first; variants past the free ids keep the placeholder's id, and so its model in
     # the item-get.
     used = sorted(VARIANTS.items(), key=lambda v: (-VARIANT_USES[v[0]], v[0]))
     for i, (key, (item_key, npc_key)) in enumerate(used):
         item_id = VARIANT_ITEM_IDS[i] if i < len(VARIANT_ITEM_IDS) else PLACEHOLDER_ITEM_ID
         variants.append((key, rows.get(item_key, {}).get("npcKey") or npc_key, item_id))
+        if item_id != PLACEHOLDER_ITEM_ID and item_key in rows:
+            pose_ids[key] = rows[item_key]["itemID"]
+            POSE_IDS[item_id] = rows[item_key]["itemID"]
+    for symbol, loc in DAMPE_ROWS.items():
+        placed = self.parent.item_defs.get(self.parent.placements.get(loc, ""), {}).get("item-key")
+        if symbol in rows and placed in pose_ids:
+            POSE_IDS[rows[symbol]["itemID"]] = pose_ids[placed]
     for key, npc_key, item_id in variants:
         row = copy.deepcopy(rows["SmallKey"])
         row["symbol"] = key
@@ -401,6 +415,7 @@ SHOP_NAMES: dict = {}
 # Placeholder item keys that show another item's model: key -> (that item's key, its npc key in items.yml).
 VARIANTS: dict = {}
 VARIANT_USES: dict = {}  # key -> number of locations showing it
+POSE_IDS: dict = {}  # item id -> the item id whose item-get pose it takes (POSES_FILE)
 # Items.gsheet tunic rows -> the npc key their item-get holds up (items.yml's npc-key; the green tunic has none)
 TUNIC_NPC_KEYS = {"ClothesRed": "NpcSkeletalGuardRed", "ClothesBlue": "NpcSkeletalGuardBlue"}
 # Indexed item key -> inventory bits for the starting items, lowest first (starting_bits)
@@ -589,6 +604,12 @@ def write_vanilla(config_dir: Path, logic: dict, item_defs: dict, patch: dict) -
     (config_dir / VANILLA_FILE).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
+def write_poses(config_dir: Path) -> None:
+    """One line per item id that shows another item's model: the id and that item's id, whose item-get pose it takes."""
+    lines = [f"{item_id} {pose_id}" for item_id, pose_id in sorted(POSE_IDS.items())]
+    (config_dir / POSES_FILE).write_text("".join(line + "\n" for line in lines), encoding="utf-8", newline="\n")
+
+
 def add_rooster_flag(files) -> None:
     """Reviving the rooster (RoosterBones.bfevfl, FlyingCucco's Join) sets no flag; it sets RoosterFoundFlag (added by
     LASR's flag manager) right after."""
@@ -703,6 +724,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
     write_indices(proc.config_dir, logic, patch)
     write_vanilla(proc.config_dir, logic, item_defs, patch)
+    write_poses(proc.config_dir)
     if patch["settings"].get("Shuffled Dungeons"):
         ap_entrances.add(proc.file_manager, patch["dungeon_entrances"])
     if "rooster-statue" in patch["location_ids"]:

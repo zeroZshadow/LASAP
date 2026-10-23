@@ -162,6 +162,18 @@ namespace {
                 out += " parent=" + (held->parent ? quat(held->parent->coords.rotate) : std::string("-"));
                 out += " model=" + quat(held->coords.rotate) + " local=" + quat(held->coordsNew.rotate);
             }
+            // any item-get model's local pose (the game's pose by item id) and the popup's scale
+            Game::Node* item = ItemGetModel();
+            if (item != nullptr) {
+                const Game::Coords& c = item->coordsNew;
+                char buf[160];
+                snprintf(buf, sizeof(buf), " item=%.3f at=%.3f,%.3f,%.3f rot=%s", c.scale.y, c.pos.x, c.pos.y, c.pos.z,
+                         quat(c.rotate).c_str());
+                out += buf;
+            }
+            char popup[32];
+            snprintf(popup, sizeof(popup), " popup=%.3f", AP::Popup::Scale());
+            out += popup;
             // the camera's view rotation
             const Game::Camera* camera = Game::GetCamera();
             if (camera != nullptr) {

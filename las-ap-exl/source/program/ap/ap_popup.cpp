@@ -176,7 +176,10 @@ namespace AP::Popup {
         SharedPtr parent{player->modelComp, player->modelCompCtrl};
         if (owner.ptr == nullptr || parent.ptr == nullptr) return false;
         Game::StrView name{kName, sizeof(kName) - 1};
-        g_Scale = 1.0f;
+        // The item-get's size (its pose by item id, the variants' that of their item); an NPC model's fix sets its
+        // own (Fit)
+        const Game::ItemPose* pose = Game::ItemPose_ItemGet(static_cast<u8>(itemId), false);
+        g_Scale = pose != nullptr ? pose->scale[0] : 1.0f;
         g_RootMoved = true;
         g_Fitted = false;
         g_PlacedAt = 0;
@@ -194,6 +197,8 @@ namespace AP::Popup {
 
 #ifdef LASAP_TEST
     void Sway(bool on) { g_NoSway = !on; }
+
+    float Scale() { return g_Holder.ptr != nullptr ? g_Scale : 0.0f; }
 
     void RecordFrames(size_t count) {
         g_PoseFrames.clear();

@@ -51,6 +51,22 @@ What this means for received items:
 - Secret Medicine is a single bit: a second one while Link holds one is lost. LASR's pool has three.
 - Heart containers take 9 indices: the 8 bosses and the Chamber Dungeon's reward for 12 clears (`MapPieceClearReward` index 8).
 
+## Item-get poses
+
+The item-get holds its item's model up in a pose picked by item id, not from a datasheet: `ItemPose_Pair` (`0x8d2b80`) switches on the id (0–126; any other id and the ids without a case take a default) to a pair of 9-float poses (position, rotation in degrees about x, y, z, scale), a held pose and the item-get pose, with the side view's pair 0x48 further. `ItemPose_ItemGet` (`0x8d2f50`) returns the item-get pose alone. The item-get's item node (`ItemGetHolder_Make`, item id `+0x1c1`) reads it through its vtable `+0xa8` and the game writes it to the model component's node once the item pops up. The Npc row (`npcKey`) gives the model only.
+
+| Item-get pose | Items |
+|---|---|
+| scale 1.7, tipped 20° | 58 HeartPiece, 59 HeartContainer |
+| scale 1.6 | 0, 1 swords; 114, 115, 117 chamber stones |
+| scale 1.5 | shields, Shovel, Letter, FishingHook, Fairy, the five nightmare-door keys, Compass, Dungeon Map, NightmareKey, the instruments |
+| scale 1.17, rolled about 21° | 16 Ocarina, 120–122 songs |
+| scale 0.9 | 22 Seashell |
+| scale 0.8, tipped forward 70° | 17–19 tunics |
+| the default: scale 1, tipped 20° | 41, 46, 63–99, 101–107, 109, 118, 119, 127–255 (the rupees but 300, the placeholder and its variants, LASR's Dampe and shop rows) |
+
+The other items lie between 0.94 and 1.4, each with its own angle. `ItemPose_Pair`'s held pose is also read by the item actors (with their own item id) and by one more holder (`+0x168`, `0x091c68b0`), not traced.
+
 ## Chamber stones
 
 **Tables** (each `{u8* bits, s32 bytes, s32 bits}`): `PanelPieceBits` the stones owned (51 bits), `PanelPieceSetBits` the panel sets owned (13), and copies `PanelPieceBits2`, `PanelPieceSetBits2`: those Dampé has made into panels. `PanelNotifyBits` tells Dampé there is something new: AddItemID sets bit 0 for a new stone, bit 2 for a further stone or a set, bit 3 for a special stone (7, 13, 18, 19, 24, 32, the `SpecialAddition` panels).

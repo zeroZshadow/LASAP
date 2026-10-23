@@ -16,6 +16,8 @@ namespace AP::Popup {
 #ifdef LASAP_TEST
     // DBG popsway: whether the model turns from side to side (off: it faces the camera)
     void Sway(bool on);
+    // DBG heldpose: the scale the model shows at once grown in; 0 without one
+    float Scale();
     // DBG popframes: record the next `count` poses (time, frame counter, the parent's and the model's world
     // rotation), and the recorded ones as POPFRAME lines
     void RecordFrames(size_t count);
