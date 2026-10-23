@@ -16,7 +16,7 @@
 #include "ap/ap.hpp"
 #include "ap/ap_list.hpp"
 #include "ap/ap_text.hpp"
-#include "game/mem.hpp"
+#include "game/menu.hpp"
 #include "game/sym.hpp"
 #include "game/ui.hpp"
 #include "ghost/ghost_net.hpp"
@@ -31,26 +31,14 @@ namespace {
     using namespace AP::ListUi;
     using namespace Game::Ui;
     using AP::ListUi::Layout;
-    using Game::Field;
 
-    // Navi, the pause menu header (vtable 0x1c2aa18): machine at +0x80, state byte +0x8d (Open 1, WaitKey 2,
-    // Selected 3, CloseOldUi 4, Close 5); current index u8 +0x23c, target +0x23d (Navi_WaitKey sets the current
-    // index from the target on its first frame on a page); L/R pressed +0x1341 (1 L, 2 R; kept from a press while the
-    // next page opens until a page change takes it);
-    // direction +0x1338 (1 R); page slots (shared pointers) +0x12f0 + index * 0x10; message texts +0x2d0 the current
-    // page's title, +0x2e8 the page under L, +0x300 the page under R.
-    constexpr size_t kNaviMachine = 0x80, kNaviState = 0x8d, kNaviCurrent = 0x23c, kNaviTarget = 0x23d,
-                     kNaviLR = 0x1341, kNaviDirection = 0x1338, kNaviSlots = 0x12f0, kNaviTitle = 0x2d0,
-                     kNaviBack = 0x2e8, kNaviNext = 0x300;
-    constexpr u8 kStateSelected = 3, kStateCloseOldUi = 4, kStateClose = 5;
+    // Navi, the pause menu header (Game::Ui::Navi): its L/R (lr) and pages by index.
     constexpr u8 kLeft = 1, kRight = 2;
     constexpr int kMap = 0, kSystem = 2;
     constexpr u8 kChamberDungeon = 8;  // the level index (Game::LevelIndex) of the Chamber Dungeon (third page id 0xb)
 
-    // Gm_System (vtable 0x1c2fe50): setup (vtable +0x20), update (+0x28; its machine at +0xf0, state byte +0xfd),
-    // the destructor its deleting destructor calls (MenuPage_Dtor, shared with other pages). A page's +0xe0 set: B
-    // closes the menu; +0x70 cleared by the header when it leaves the page.
-    constexpr size_t kSystemState = 0xfd, kPageCanClose = 0xe0, kPageActive = 0x70;
+    // Gm_System (vtable 0x1c2fe50, a MenuPage): setup (vtable +0x20), update (+0x28), the destructor its deleting
+    // destructor calls (MenuPage_Dtor, shared with other pages).
     constexpr const char* kSystemContent = "N_SystemChoice_00";
 
     // The track list (Gm_MemoryList), right of the middle.
@@ -104,7 +92,7 @@ namespace {
     int g_Changes = 0;              // changes through index 2 the module steered (2 to 2)
 
     struct Page {
-        LayoutWrapper* page = nullptr;  // the Gm_System object that shows the Jukebox
+        MenuPage* page = nullptr;       // the Gm_System object that shows the Jukebox
         List list;
         Layout card, info, icon, mark, floating[kFloating], status;
         Text title, number, slash, total, name, about;
@@ -116,10 +104,7 @@ namespace {
     int g_Fade = 0;                 // 0..255, the alpha the page's layouts draw with
     u64 g_GamePad = 0;              // the buttons at the last tick, for the d-pad in the game
 
-    u8* Navi() { return reinterpret_cast<u8*>(FindUi(kNaviUi)); }
-
-    // The header's texts: the game's text objects.
-    TextHolder* NaviText(u8* navi, size_t text) { return reinterpret_cast<TextHolder*>(navi + text); }
+    Navi* FindNavi() { return reinterpret_cast<Navi*>(FindUi(kNaviUi)); }
 
     void SetLabel(TextHolder* text, const char* label) {
         Game::StrView view{label};
@@ -204,9 +189,9 @@ namespace {
     // music plays.
     void Animate() {
         g_Frame++;
-        u8* header = Navi();
-        u8 navi = header != nullptr ? Field<u8>(header, kNaviState) : 0;
-        bool leaving = navi == kStateCloseOldUi || navi == kStateClose;
+        Navi* header = FindNavi();
+        u8 navi = header != nullptr ? header->machine.state : 0;
+        bool leaving = navi == kNaviCloseOldUi || navi == kNaviClose;
         g_Fade = std::clamp(g_Fade + (leaving ? -kFadeStep : kFadeStep), 0, 255);
         for (Layout* layout : {&g_Ui.list.layout, &g_Ui.card, &g_Ui.info, &g_Ui.icon, &g_Ui.mark, &g_Ui.status}) {
             SetAlpha(layout->root, g_Fade);
@@ -233,17 +218,18 @@ namespace {
     }
 
     // The Jukebox in the Gm_System page: System's choices hidden, the layouts hung under the page.
-    void BuildPage(LayoutWrapper* page) {
-        Pane* pageRoot = RootOf(page);
+    void BuildPage(MenuPage* page) {
+        LayoutWrapper* wrapper = &page->wrapper;
+        Pane* pageRoot = RootOf(wrapper);
         if (pageRoot == nullptr) return;
         SetVisible(FindPane(pageRoot, kSystemContent), false);
         g_Ui.page = page;
         g_Built++;
-        bool ok = Build(g_Ui.info, kInfoLayout, page, pageRoot) && Build(g_Ui.card, kCardLayout, page, pageRoot) &&
-                  BuildList(g_Ui.list, page, pageRoot, kListX, kListY) &&
-                  Build(g_Ui.icon, kNoteLayout, page, pageRoot) && Build(g_Ui.mark, kNoteLayout, page, pageRoot);
-        for (auto& note : g_Ui.floating) ok = ok && Build(note, kNoteLayout, page, pageRoot);
-        ok = ok && Build(g_Ui.status, kCardLayout, page, pageRoot);
+        bool ok = Build(g_Ui.info, kInfoLayout, wrapper, pageRoot) && Build(g_Ui.card, kCardLayout, wrapper, pageRoot) &&
+                  BuildList(g_Ui.list, wrapper, pageRoot, kListX, kListY) &&
+                  Build(g_Ui.icon, kNoteLayout, wrapper, pageRoot) && Build(g_Ui.mark, kNoteLayout, wrapper, pageRoot);
+        for (auto& note : g_Ui.floating) ok = ok && Build(note, kNoteLayout, wrapper, pageRoot);
+        ok = ok && Build(g_Ui.status, kCardLayout, wrapper, pageRoot);
         if (!ok) {
             // the page stays System, whole: its choices are not left working unseen
             DropPage();
@@ -321,24 +307,24 @@ namespace {
     }
 
     // What Navi_WaitKey asks before it turns the page: no dialog open (UIs 0x1f, 0x20, 0x26) and the page's +0xe0 set.
-    bool MayTurn(u8* navi) {
-        u8* page = Field<u8*>(navi, kNaviSlots + Field<u8>(navi, kNaviTarget) * 0x10);
-        if (page == nullptr || Field<u8>(page, kPageCanClose) == 0) return false;
+    bool MayTurn(Navi* navi) {
+        auto* page = static_cast<MenuPage*>(navi->pages[navi->target].ptr);
+        if (page == nullptr || page->canClose == 0) return false;
         return FindUi(0x20) == nullptr && FindUi(0x1f) == nullptr && FindUi(0x26) == nullptr;
     }
 
     // A page change the header would not make: index 2 to index 2.
-    void ChangeInPlace(u8* navi, bool jukebox, u8 direction) {
-        int index = Field<u8>(navi, kNaviTarget);
-        u8* old = Field<u8*>(navi, kNaviSlots + index * 0x10);
-        if (old != nullptr) Field<u8>(old, kPageActive) = 0;
-        Field<u8>(navi, kNaviLR) = 0;
-        Field<u8>(navi, kNaviDirection) = direction == kRight;
-        Field<u8>(navi, kNaviCurrent) = index;  // as Navi_WaitKey would have, on the page's first frame
+    void ChangeInPlace(Navi* navi, bool jukebox, u8 direction) {
+        int index = navi->target;
+        auto* old = static_cast<MenuPage*>(navi->pages[index].ptr);
+        if (old != nullptr) old->wrapper.pageActive = 0;
+        navi->lr = 0;
+        navi->direction = direction == kRight;
+        navi->current = index;  // as Navi_WaitKey would have, on the page's first frame
         g_Pending = jukebox;
         g_ChangeAhead = true;
         g_Changes++;
-        Game::Navi_ChangeState(navi + kNaviMachine, kStateCloseOldUi);
+        Game::Navi_ChangeState(&navi->machine, kNaviCloseOldUi);
         PlaySound("SE_SY_MENU_LR_MOVE");
     }
 
@@ -355,27 +341,27 @@ namespace {
 }
 
 HOOK_DEFINE_TRAMPOLINE(NaviWaitKey) {
-    static void Callback(u8* navi) {
+    static void Callback(Navi* navi) {
         if (InChamberDungeon()) return Orig(navi);
         // the page shown: the target, which the current index still trails on the page's first frame (an L or R
         // pressed while the page opened turns it there)
-        int index = Field<u8>(navi, kNaviTarget);
-        u8 lr = Field<u8>(navi, kNaviLR);
+        int index = navi->target;
+        u8 lr = navi->lr;
         bool inPlace = index == kSystem && ((lr == kRight && !g_Jukebox) || (lr == kLeft && g_Jukebox));
         if (inPlace && MayTurn(navi)) return ChangeInPlace(navi, lr == kRight, lr);
         Orig(navi);  // refuses a turn in place that MayTurn refused
-        if (Field<u8>(navi, kNaviState) == kStateCloseOldUi && !g_ChangeAhead) {
+        if (navi->machine.state == kNaviCloseOldUi && !g_ChangeAhead) {
             // the game's own change: the Jukebox comes after the map going left, and is left any other way
-            g_Pending = index == kMap && lr == kLeft && Field<u8>(navi, kNaviTarget) == kSystem;
+            g_Pending = index == kMap && lr == kLeft && navi->target == kSystem;
             g_ChangeAhead = true;
         }
     }
 };
 
 HOOK_DEFINE_TRAMPOLINE(NaviCloseOldUiUpdate) {
-    static void Callback(u8* navi) {
+    static void Callback(Navi* navi) {
         Orig(navi);
-        if (g_ChangeAhead && Field<u8>(navi, kNaviState) == kStateSelected) {
+        if (g_ChangeAhead && navi->machine.state == kNaviSelected) {
             g_Jukebox = g_Pending;
             g_ChangeAhead = false;
         }
@@ -383,10 +369,10 @@ HOOK_DEFINE_TRAMPOLINE(NaviCloseOldUiUpdate) {
 };
 
 HOOK_DEFINE_TRAMPOLINE(NaviCloseEnter) {
-    static void Callback(u8* navi) {
+    static void Callback(Navi* navi) {
         Orig(navi);
         // the header's names queued without an owner go before the header does
-        for (size_t text : {kNaviTitle, kNaviBack, kNaviNext}) Unqueue(NaviText(navi, text)->box);
+        for (TextHolder* text : {&navi->title, &navi->back, &navi->next}) Unqueue(text->box);
         g_Jukebox = false;
         g_Pending = false;
         g_ChangeAhead = false;
@@ -395,23 +381,23 @@ HOOK_DEFINE_TRAMPOLINE(NaviCloseEnter) {
 };
 
 HOOK_DEFINE_TRAMPOLINE(NaviSetTitles) {
-    static void Callback(u8* navi, u32 index) {
+    static void Callback(Navi* navi, u32 index) {
         Orig(navi, index);
         if (InChamberDungeon()) return;
         if (index == kSystem && g_Jukebox) {
-            SetHeaderText(NaviText(navi, kNaviTitle), "Jukebox");
-            SetLabel(NaviText(navi, kNaviBack), "UI:SubScreenTitleSystem");
-            SetLabel(NaviText(navi, kNaviNext), "UI:SubScreenTitleMap");
+            SetHeaderText(&navi->title, "Jukebox");
+            SetLabel(&navi->back, "UI:SubScreenTitleSystem");
+            SetLabel(&navi->next, "UI:SubScreenTitleMap");
         } else if (index == kSystem) {
-            SetHeaderText(NaviText(navi, kNaviNext), "Jukebox");
+            SetHeaderText(&navi->next, "Jukebox");
         } else if (index == kMap) {
-            SetHeaderText(NaviText(navi, kNaviBack), "Jukebox");
+            SetHeaderText(&navi->back, "Jukebox");
         }
     }
 };
 
 HOOK_DEFINE_TRAMPOLINE(SystemSetup) {
-    static void Callback(LayoutWrapper* page) {
+    static void Callback(MenuPage* page) {
         Orig(page);
         if (!g_Jukebox) return;
         DropPage();
@@ -420,7 +406,7 @@ HOOK_DEFINE_TRAMPOLINE(SystemSetup) {
 };
 
 HOOK_DEFINE_TRAMPOLINE(SystemUpdate) {
-    static void Callback(LayoutWrapper* page) {
+    static void Callback(MenuPage* page) {
         if (page != g_Ui.page) return Orig(page);
         Animate();
         // AP::Tick does not run while the menu is open: a choice applies here, and the track chosen on the page plays
@@ -430,14 +416,14 @@ HOOK_DEFINE_TRAMPOLINE(SystemUpdate) {
         if (!AP::Music::IsChosen(g_Shown.c_str())) Fill();  // the client chose a track
         if (g_GuideShown && OnChosen() != g_GuideStop) RefreshGuide(kSystem);  // A reads Play or Stop
         // Gm_System's own update runs while it opens (its In animation), never once it takes buttons
-        if (Field<u8>(page, kSystemState) == 0 || Field<u8>(page, kSystemState) == 0xff) return Orig(page);
-        Field<u8>(page, kPageCanClose) = 1;
+        if (page->machine.state == 0 || page->machine.state == 0xff) return Orig(page);
+        page->canClose = 1;
         Input();
     }
 };
 
 HOOK_DEFINE_TRAMPOLINE(PageDtor) {
-    static void Callback(LayoutWrapper* page) {
+    static void Callback(MenuPage* page) {
         if (page == g_Ui.page) DropPage();
         Orig(page);
     }
@@ -472,19 +458,19 @@ namespace AP::JukeboxPane {
     // STATE's " pane=<0-3, - with no header> navi=<header state> jbox=<cursor>/<top>", while the game is paused.
     std::string StateField(bool paused) {
         std::string s = " pane=";
-        u8* navi = paused ? Navi() : nullptr;
+        Navi* navi = paused ? FindNavi() : nullptr;
         if (navi == nullptr) return s + "- navi=- jbox=-";
-        int index = Field<u8>(navi, kNaviCurrent);
+        int index = navi->current;
         s += std::to_string(index == kSystem && g_Jukebox ? 3 : index);
-        s += " navi=" + std::to_string(Field<u8>(navi, kNaviState));
+        s += " navi=" + std::to_string(navi->machine.state);
         s += " jbox=";
         s += g_Ui.page != nullptr ? std::to_string(g_Ui.list.at) + "/" + std::to_string(g_Ui.list.top) : std::string("-");
         return s;
     }
 
     std::string NaviState() {
-        u8* navi = Navi();
-        return navi != nullptr ? std::to_string(Field<u8>(navi, kNaviState)) : "-";
+        Navi* navi = FindNavi();
+        return navi != nullptr ? std::to_string(navi->machine.state) : "-";
     }
 
     // DBG jukebox
@@ -496,7 +482,7 @@ namespace AP::JukeboxPane {
         snprintf(buf, sizeof(buf), " page=%lx list=%lx", reinterpret_cast<uintptr_t>(g_Ui.page),
                  reinterpret_cast<uintptr_t>(g_Ui.list.layout.wrapper));
         s += buf;
-        if (g_Ui.page != nullptr) s += " sysstate=" + std::to_string(Field<u8>(g_Ui.page, kSystemState));
+        if (g_Ui.page != nullptr) s += " sysstate=" + std::to_string(g_Ui.page->machine.state);
         int texts = 0, glyphs = 0;
         auto count = [&](const Text& text) {
             if (text.box == nullptr) return;

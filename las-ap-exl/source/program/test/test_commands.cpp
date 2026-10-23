@@ -138,11 +138,11 @@ namespace {
                 return std::string(buf);
             };
             Game::Actors::Player* player = Game::GetPlayer();
-            Game::RootComp* link = player != nullptr ? player->modelComp : nullptr;
-            Game::RootComp* held = HeldModel();
+            Game::Node* link = player != nullptr && player->modelComp != nullptr ? &player->modelComp->node : nullptr;
+            Game::Node* held = HeldModel();
             std::string out = "HELDPOSE link=" + (link ? quat(link->coords.rotate) : std::string("-"));
             if (held != nullptr) {
-                out += " parent=" + (held->otherComp ? quat(held->otherComp->coords.rotate) : std::string("-"));
+                out += " parent=" + (held->parent ? quat(held->parent->coords.rotate) : std::string("-"));
                 out += " model=" + quat(held->coords.rotate) + " local=" + quat(held->coordsNew.rotate);
             }
             // the camera's view rotation
@@ -204,12 +204,12 @@ namespace {
         } else if (cmd == "name") {
             // DBG name: the player's name as the game holds it for the save (UTF-16, up to 8 letters, at +0x8 of the
             // save header), set by a new file's name entry on OK
-            const u8* info = *Game::SaveHeader_ptr;
+            const Game::Data::SaveHeader* info = *Game::SaveHeader_ptr;
             if (info == nullptr) {
                 AP::Send("ERR name: no object");
                 return true;
             }
-            const char16_t* name = reinterpret_cast<const char16_t*>(info + 0x8);
+            const char16_t* name = info->name;
             std::string utf8;
             for (int i = 0; i < 8 && name[i] != 0; i++) {
                 char16_t c = name[i];

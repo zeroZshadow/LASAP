@@ -1,5 +1,5 @@
+#include "game/actor.hpp"
 #include "game/addr.hpp"
-#include "game/mem.hpp"
 #include "game/sym.hpp"
 #include "hooks.hpp"
 #include <algorithm>
@@ -8,10 +8,8 @@
 // Seashells in the shuffle: the trees, pots and AreaShellDropper (the seashells a bomb uncovers) that drop one set
 // their actor switch instead, whose flag the patcher's item uses.
 namespace {
-    using Game::Field;
+    using Game::Actor;
 
-    // An actor: its LEB hash (+0x98) and its switch holder (+0x250)
-    constexpr size_t kActorHash = 0x98, kActorSwitches = 0x250;
     // The trees and the pot that drop a seashell, by LEB hash
     constexpr u64 kShellTrees[] = {7061688197741586161ULL, 8430773688343466954ULL, 5188616263732613924ULL};
     constexpr u64 kShellPot = 7638146751023334438ULL;
@@ -22,12 +20,10 @@ namespace {
     constexpr uintptr_t kDropperDrop = 0x856fc, kDropperCheckShell = 0x84a44, kDropperDelete = 0x85510;
     constexpr uintptr_t kTreeBonkDrop = 0xcb1f30, kPotDrop = 0xb2ae50;
 
-    void SetSwitch(u64 actor) {
-        Game::ActorSwitch_Set(Field<void*>(reinterpret_cast<void*>(actor), kActorSwitches), 0, true);
-    }
+    void SetSwitch(Actor* actor) { Game::ActorSwitch_Set(actor->record, 0, true); }
 
     HOOK_DEFINE_INLINE(AreaShellDropper_Drop) {
-        static void Callback(exl::hook::nx64::InlineCtx* ctx) { SetSwitch(ctx->X[19]); }
+        static void Callback(exl::hook::nx64::InlineCtx* ctx) { SetSwitch(reinterpret_cast<Actor*>(ctx->X[19])); }
     };
 
     HOOK_DEFINE_INLINE(AreaShellDropper_CheckShell) {
@@ -39,9 +35,8 @@ namespace {
     };
 
     HOOK_DEFINE_TRAMPOLINE(ObjTree_BonkDrop) {
-        static void Callback(long actor, long arg2, long arg3, long arg4, long arg5) {
-            u64 hash = Field<u64>(reinterpret_cast<void*>(actor), kActorHash);
-            if (std::find(std::begin(kShellTrees), std::end(kShellTrees), hash) != std::end(kShellTrees)) {
+        static void Callback(Actor* actor, long arg2, long arg3, long arg4, long arg5) {
+            if (std::find(std::begin(kShellTrees), std::end(kShellTrees), actor->lebKey) != std::end(kShellTrees)) {
                 SetSwitch(actor);
             } else {
                 Orig(actor, arg2, arg3, arg4, arg5);
@@ -50,8 +45,8 @@ namespace {
     };
 
     HOOK_DEFINE_TRAMPOLINE(ObjPot_Drop) {
-        static u64 Callback(u64 actor, char arg2) {
-            if (Field<u64>(reinterpret_cast<void*>(actor), kActorHash) == kShellPot) {
+        static Actor* Callback(Actor* actor, char arg2) {
+            if (actor->lebKey == kShellPot) {
                 SetSwitch(actor);
                 return actor;
             }

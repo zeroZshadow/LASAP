@@ -9,11 +9,14 @@
 namespace Game {
     struct Framework;
     class GameState;
-    struct RootComp;
+    struct Node; struct InstancedModelComponent; struct Actor; struct ActorParams; struct LebActorRecord;
     struct Vec3;
+    namespace Data { struct SaveHeader; }
     namespace Data::Inventory { struct InventoryItems; }
+    namespace Actors { struct NpcComponent; }
     namespace Ui { struct Pane; struct TextBox; struct TextHolder; struct LayoutWrapper; struct Animator;
-                   struct StateMachine; struct Manager; }
+                   struct StateMachine; struct Manager; struct Navi; struct NaviGuide; struct MenuPage;
+                   struct MessageWindow; struct MessageText; }
     namespace Map { struct OverworldMap; struct DungeonMap; struct MapMarker; struct MapCursor; struct DungeonMapIcon;
                     struct MapActorDesc; struct UiDungeonAreaRow; struct DungeonItemsEntry; }
     namespace Audio { struct Sound; struct BgmInstance; struct BgmManager; }
@@ -24,16 +27,16 @@ namespace Game {
 
     // ---- Actors and entities ----
     // (out actor, owner, params): the actor factory, as the player's hookshot calls it with the actor system as owner
-    inline constexpr Func<void(SharedPtr*, SharedPtr*, u8*)> Actor_Create{0x8f5ea0};
-    // Member destructors at actor params +0xd0, +0x50 and +0x10
-    inline constexpr Func<void(u8*)> ActorParams_Dtor0{0x1cf70};
-    inline constexpr Func<void(u8*)> ActorParams_Dtor1{0x1d190};
-    inline constexpr Func<void(u8*)> ActorParams_Dtor2{0x1d3b0};
+    inline constexpr Func<void(SharedPtr*, SharedPtr*, ActorParams*)> Actor_Create{0x8f5ea0};
+    // Member destructors of actor params: drsb, bfres, lebParams
+    inline constexpr Func<void(void*)> ActorParams_Dtor0{0x1cf70};
+    inline constexpr Func<void(void*)> ActorParams_Dtor1{0x1d190};
+    inline constexpr Func<void(void*)> ActorParams_Dtor2{0x1d3b0};
     // Pointers to an identity quaternion and to a Vec4 of ones
     inline constexpr Global<void*> IdentityQuat_ptr{0x1c93de8};
     inline constexpr Global<void*> OneScale_ptr{0x1c93df0};
     // (actor, component, root): makes the component the actor's child
-    inline constexpr Func<bool(void*, u8*, void*)> Actor_AttachComponent{0xfaa8a0};
+    inline constexpr Func<bool(Actor*, void*, Node*)> Actor_AttachComponent{0xfaa8a0};
     // (parent, name, length, immediate): removes a child by name
     inline constexpr Func<bool(void*, const char*, u64, bool)> Entity_RemoveChild{0xfb00c0};
     // (entity, child)
@@ -48,7 +51,8 @@ namespace Game {
     // A component's name as its constructor takes it: {name, length, enabled, owner, owner's control block}
     struct ComponentName { const char* data; u64 size; u8 enabled; void* owner; void* ownerCtrl; };
     // (component, name*, model resource, cache key, shapes' mask, the model list at Framework +0x540)
-    inline constexpr Func<void(u8*, ComponentName*, void*, u32, u32, void*)> InstancedModel_Ctor{0x104d540};
+    inline constexpr Func<void(InstancedModelComponent*, ComponentName*, void*, u32, u32, void*)>
+        InstancedModel_Ctor{0x104d540};
     // The vtable of a control block of the component's own (FieldTip's)
     inline constexpr Global<const u8> InstancedModelCtrl_vtable{0x1b9cf50};
 
@@ -67,7 +71,7 @@ namespace Game {
     // (out shared_ptr, NPC component, name*): the animation bound by name
     inline constexpr Func<void(SharedPtr*, void*, StrView*)> NpcAnimation_Get{0x9670d0};
     // (component, name*, the model component's shared_ptr*) -> the animation player; vtable +0x208
-    inline constexpr Func<SharedPtrOut(u8*, StrView*, SharedPtr*)> NpcComponent_MakeAnimator{0x94b310};
+    inline constexpr Func<SharedPtrOut(Actors::NpcComponent*, StrView*, SharedPtr*)> NpcComponent_MakeAnimator{0x94b310};
     // (out shared_ptr, NPC component, name*, at once)
     inline constexpr Func<void(SharedPtr*, void*, StrView*, bool)> NpcComponent_PlayMaterialAnimation{0x9c1b30};
     // Link's kind of animation player: (out, entity, name*, model component shared_ptr*, int* layers)
@@ -97,11 +101,11 @@ namespace Game {
     inline constexpr Global<void**> got_nvnMultisampleStateSetAlphaToCoverageEnable{0x1c95200};
     inline constexpr Global<void**> got_nvnCommandBufferBindMultisampleState{0x1c947c0};
     // (node): marks the node and its children for a new world position and tells its listeners (the model); nothing
-    // while it is marked (+0xe0), so setting that flag alone leaves the model where it was
-    inline constexpr Func<void(RootComp*)> Node_MarkDirty{0xfb6aa0};
-    // (node): the world coords (+0xb0) from coordsNew (+0x80) and the parent's (+0x58) world coords, the parent first
-    // while it is marked; lazy, when something reads a marked node
-    inline constexpr Func<void(RootComp*)> Node_UpdateWorld{0xfb6310};
+    // while it is marked (needsCoordUpdate), so setting that flag alone leaves the model where it was
+    inline constexpr Func<void(Node*)> Node_MarkDirty{0xfb6aa0};
+    // (node): the world coords from coordsNew and the parent's world coords, the parent first while it is marked;
+    // lazy, when something reads a marked node
+    inline constexpr Func<void(Node*)> Node_UpdateWorld{0xfb6310};
 
     // ---- Items ----
     // (out holder, owner entity, name*, root node, item id): loads the item's model and makes its component in a
@@ -146,8 +150,8 @@ namespace Game {
     inline constexpr Func<void(SharedPtr*, void*)> SceneHolder_Lock{0x11b70};
     // (save manager, kind, bool): false when a request waits already
     inline constexpr Func<bool(void*, u8, bool)> SaveManager_RequestAutoSave{0xe0b360};
-    // The save header: +0x8 the player's name, UTF-16, 8 letters and a 0
-    inline constexpr Global<const u8*> SaveHeader_ptr{0x1cc1360};
+    // The save header (game/data/inventory.hpp)
+    inline constexpr Global<const Data::SaveHeader*> SaveHeader_ptr{0x1cc1360};
 
     // ---- Memory ----
     inline constexpr Func<void*(size_t)> operator_new{0x1431170};
@@ -171,25 +175,25 @@ namespace Game {
     // ({name, length}*, null, volume, pitch)
     inline constexpr Func<void(const StrView*, void*, float, float)> Sound_Play{0xa57e0};
     // (navi, page index): the pause menu header's button guide for that page
-    inline constexpr Func<void(u8*, u32)> Navi_SetGuide{0xeed6f0};
+    inline constexpr Func<void(Ui::Navi*, u32)> Navi_SetGuide{0xeed6f0};
     // (guide, slot, kind)
-    inline constexpr Func<void(void*, int, u32)> Guide_Set{0xf571b0};
+    inline constexpr Func<void(Ui::NaviGuide*, int, u32)> Guide_Set{0xf571b0};
     // Navi, the pause menu header: its state machine's ChangeState (machine, state); the updates and enters of its
     // states (navi); its page titles (navi, index).
-    inline constexpr Func<void(void*, int)> Navi_ChangeState{0xee7dc0};
-    inline constexpr Func<void(u8*)> Navi_WaitKey{0xee8ca0};
-    inline constexpr Func<void(u8*)> Navi_CloseOldUiUpdate{0xeea4f0};
-    inline constexpr Func<void(u8*)> Navi_CloseEnter{0xeeac10};
-    inline constexpr Func<void(u8*, u32)> Navi_SetTitles{0xeedec0};
+    inline constexpr Func<void(Ui::StateMachine*, int)> Navi_ChangeState{0xee7dc0};
+    inline constexpr Func<void(Ui::Navi*)> Navi_WaitKey{0xee8ca0};
+    inline constexpr Func<void(Ui::Navi*)> Navi_CloseOldUiUpdate{0xeea4f0};
+    inline constexpr Func<void(Ui::Navi*)> Navi_CloseEnter{0xeeac10};
+    inline constexpr Func<void(Ui::Navi*, u32)> Navi_SetTitles{0xeedec0};
     // The pause menu's System page (Gm_System): setup and update (page)
-    inline constexpr Func<void(Ui::LayoutWrapper*)> GmSystem_Setup{0xf82f40};
-    inline constexpr Func<void(Ui::LayoutWrapper*)> GmSystem_Update{0xf83650};
+    inline constexpr Func<void(Ui::MenuPage*)> GmSystem_Setup{0xf82f40};
+    inline constexpr Func<void(Ui::MenuPage*)> GmSystem_Update{0xf83650};
     // The destructor a pause menu page's deleting destructor calls, shared by the pages (page)
-    inline constexpr Func<void(Ui::LayoutWrapper*)> MenuPage_Dtor{0xec4330};
+    inline constexpr Func<void(Ui::MenuPage*)> MenuPage_Dtor{0xec4330};
     // The message window's Reading state update (window): shows the page letter by letter
-    inline constexpr Func<void(u8*)> MessageWindow_Reading{0xef1960};
+    inline constexpr Func<void(Ui::MessageWindow*)> MessageWindow_Reading{0xef1960};
     // (text, letters): shows that many letters at once
-    inline constexpr Func<void(u8*, s32)> MessageText_ShowLetters{0xf53b60};
+    inline constexpr Func<void(Ui::MessageText*, s32)> MessageText_ShowLetters{0xf53b60};
     // (text object, {"file:label", length}*): sets the text object's pane (+0x10) to that message
     inline constexpr Func<void(Ui::TextHolder*, const StrView*)> MessageText_SetLabel{0xf8c8b0};
 
@@ -206,7 +210,7 @@ namespace Game {
     // The autosave popup (Ld_ThrobberSave, "Now Saving"): Show (auto) None/Out -> InAuto (0.5 s) or In; its state
     // machine's ChangeState (machine, state).
     inline constexpr Func<void(bool)> Throbber_Show{0xf895c0};
-    inline constexpr Func<void(void*, s32)> Throbber_ChangeState{0xf85d20};
+    inline constexpr Func<void(Ui::StateMachine*, s32)> Throbber_ChangeState{0xf85d20};
     // (animator): its animation's frame count
     inline constexpr Func<u16(Ui::Animator*)> Animator_FrameCount{0x114c840};
     // (child wrapper, parent wrapper, pane, sibling): hangs the child's layout under the pane, before the sibling
@@ -279,7 +283,7 @@ namespace Game {
     inline constexpr Func<int(int)> Item_CheckGettingFlag{0x8d2940};
     inline constexpr Func<void(int)> Item_SetGettingFlag{0x8d2a70};
     // (LEB record, slot, on): sets the actor switch's flag
-    inline constexpr Func<void(void*, int, bool)> ActorSwitch_Set{0x231b0};
+    inline constexpr Func<void(const LebActorRecord*, int, bool)> ActorSwitch_Set{0x231b0};
 
     // ---- Player ----
     // -> shared_ptr PlayerAnimation.gsheet

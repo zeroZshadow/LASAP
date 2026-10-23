@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace Game { struct Framework; struct RootComp; struct Vec3; }
+namespace Game { struct Framework; struct Node; struct Vec3; }
 
 namespace AP::Bridge {
     // ---- The player and the connection (ap_game.cpp) ----
@@ -111,7 +111,7 @@ namespace AP::Bridge {
     // DBG heldangle: an NPC model's item-get angle until the game restarts; false for a model without a fix.
     bool SetHeldAngle(const std::string& model, const Game::Vec3& angle);
     // DBG heldpose: the NPC model held up now, or null.
-    Game::RootComp* HeldModel();
+    Game::Node* HeldModel();
 #endif
 
     // ---- Checks and hints (ap_checks.cpp) ----

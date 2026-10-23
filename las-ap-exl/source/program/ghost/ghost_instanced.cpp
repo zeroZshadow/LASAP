@@ -21,21 +21,17 @@ namespace {
     // Equipment and faces, instanced (DESIGN.md, Ghosts): the shapes bound to one bone each draw once for all ghosts.
     // Per group of them one InstancedModel component (the game's for lawn grass and floor tiles) on Link, with one
     // instance per drawn ghost whose look has the group's shapes written each frame; the puppets draw none of them.
-    // Made as FieldTip makes its own (0xb846e0): the component (0x310 bytes, InstancedModel_Ctor with the model
-    // resource {resource, control block, model} as a model component holds it at +0x168), a control block of its own
-    // (InstancedModelCtrl_vtable) as its shared-from-this, the entity manager's closures (virtual +0x78) and its model
-    // instance M (virtual +0x20, in the model list at once), the entity manager's start task
-    // (EntityManager_PostStart) and the actor's child map (Actor_AttachComponent). +0x2f9 set and +0x2fa clear keep the game from adding instances. M's instances: a
-    // vector of 0x30-byte records at M +0x398 (begin, end, capacity: {position, rotation quaternion, scale}), turned
-    // into a storage buffer at each draw (0xfe4020, up to 512). M is drawn in its bind pose with an identity world,
-    // so a shape bound to one bone shows at a ghost's bone with the ghost's bone world times the inverse of M's.
-    // g3d: model object +0x38 the skeleton, its +0x20 the bones' world matrices (0x40 each: X, Y, Z axes, translation).
-    constexpr size_t kInstSize = 0x310, kInstFlags = 0x40, kInstNoPush = 0x2f9, kInstVisible = 0x2fa, kInstM = 0x148,
-                     kInstSelf = 0x8, kInstSelfCtrl = 0x10, kAnimSmc = 0x168, kSmcResource = 0x168, kMRecords = 0x398,
-                     kModelSkeleton = 0x38, kSkeletonWorld = 0x20;
+    // Made as FieldTip makes its own (0xb846e0): the component (InstancedModel_Ctor with the model resource as a
+    // skeletal model component holds it), a control block of its own (InstancedModelCtrl_vtable) as its
+    // shared-from-this, the entity manager's closures (kRegister) and its model instance M (kSetup, in the model list
+    // at once), the entity manager's start task (EntityManager_PostStart) and the actor's child map
+    // (Actor_AttachComponent). noPush set and push clear keep the game from adding instances. M's instances: its
+    // records, turned into a storage buffer at each draw (0xfe4020, up to 512). M is drawn in its bind pose with an
+    // identity world, so a shape bound to one bone shows at a ghost's bone with the ghost's bone world times the
+    // inverse of M's.
     constexpr u32 kInstMode = 0x4c41;  // cache keys (+ group) no game component uses: models of their own
     constexpr int kInstCapacity = 32;
-    struct Record { float pos[4], rot[4], scale[3], pad; };
+    using Record = Game::InstanceRecord;
     // The shapes bound to one bone each (vertex skin count 1), as the look shows them together (a group's model draws
     // all its shapes for each instance): sword A, sword B, the Magic Rod, the shovel, the hookshot (bone 12, itemA_L),
     // shield A, the mirror shield, the ocarina (bone 24, itemA_R), the face's ear, eyes and mouth (bone 28, head).
@@ -104,58 +100,53 @@ namespace {
         out = Record{{t[0], t[1], t[2], 1}, {q[0], q[1], q[2], q[3]}, {sx, sy, sz}, 0};
     }
 
-    u8* InstModel(const Inst& inst) { return inst.comp != nullptr ? At<u8*>(inst.comp, kInstM) : nullptr; }
+    Game::ModelInstance* InstModel(const Inst& inst) { return inst.comp != nullptr ? inst.comp->instance : nullptr; }
 
     // Stops drawing a group's instances (host alive: the component stays on it, empty) and forgets the component.
     void InstDrop(int g, bool hostAlive) {
         Inst& inst = g_Inst[g];
         if (inst.comp == nullptr) return;
-        if (u8* m = hostAlive ? InstModel(inst) : nullptr)
-            *reinterpret_cast<u8**>(m + kMRecords + 8) = *reinterpret_cast<u8**>(m + kMRecords);
+        if (Game::ModelInstance* m = hostAlive ? InstModel(inst) : nullptr) m->records.last = m->records.first;
         ClearSpan(kInstSpan + g);
         inst = Inst{};
     }
 
-    bool InstMake(int g, void* host, u8* smc) {
+    bool InstMake(int g, Game::Actors::Player* host, Game::SkeletalModelComponent* smc) {
         Game::Framework* fmwk = Game::GetFramework();
-        u8* comp = static_cast<u8*>(Game::operator_new(kInstSize));
+        auto* comp = static_cast<Game::InstancedModelComponent*>(Game::operator_new(sizeof(Game::InstancedModelComponent)));
+        Game::Entity* entity = &comp->entity;
         SharedPtr owner{};
-        Game::SharedPtr_FromWeak(&owner, At<void*>(host, 8), At<void*>(host, 0x10));
+        Game::SharedPtr_FromWeak(&owner, host->actor.entity.self.ptr, host->actor.entity.self.ctrl);
         snprintf(g_InstName, sizeof(g_InstName), "APGhostInst%d", g_InstMade++);
         Game::ComponentName name{g_InstName, strlen(g_InstName), 1, owner.ptr, owner.ctrl};
-        Game::InstancedModel_Ctor(comp, &name, smc + kSmcResource, kInstMode + g, kInstGroups[g].shapes,
-                                  fmwk->models);
+        Game::InstancedModel_Ctor(comp, &name, smc->modelResource, kInstMode + g, kInstGroups[g].shapes, fmwk->models);
         Game::ReleaseOwner(owner.ctrl);
         void** ctrl = static_cast<void**>(Game::operator_new(0x20));
         ctrl[0] = const_cast<u8*>(Game::InstancedModelCtrl_vtable.Ptr());
         ctrl[1] = nullptr;                      // one owner: the module
         ctrl[2] = reinterpret_cast<void*>(1);   // and the component's own weak reference
         ctrl[3] = comp;
-        if (At<void*>(comp, kInstSelfCtrl) == nullptr) {
-            *reinterpret_cast<void**>(comp + kInstSelf) = comp;
-            *reinterpret_cast<void**>(comp + kInstSelfCtrl) = ctrl;
-        }
-        comp[kInstVisible] = 0;
-        comp[kInstNoPush] = 1;
-        u32& flags = *reinterpret_cast<u32*>(comp + kInstFlags);
-        if (!(flags & 0x40000008)) {
-            Game::CallVirtual<void()>(comp, 0x78);
-            Game::CallVirtual<void()>(comp, 0x20);
-            flags |= 8;
+        if (entity->self.ctrl == nullptr) entity->self = {comp, ctrl};
+        comp->push = 0;
+        comp->noPush = 1;
+        if (!(entity->flags & (Game::EntityFlags::kDestroyRequested | Game::EntityFlags::kInitialized))) {
+            Game::CallVirtual<void()>(comp, Game::EntityVirtual::kRegister);
+            Game::CallVirtual<void()>(comp, Game::EntityVirtual::kSetup);
+            entity->flags |= Game::EntityFlags::kInitialized;
         }
         SharedPtr sp{comp, ctrl};
         Game::AddOwner(ctrl);
         Game::EntityManager_PostStart(*Game::EntityManager_ptr, &sp);
         Game::ReleaseOwner(ctrl);
-        bool attached = Game::Actor_AttachComponent(host, comp, At<void*>(host, kActorRoot));
-        u8* m = attached ? At<u8*>(comp, kInstM) : nullptr;
+        bool attached = Game::Actor_AttachComponent(&host->actor, comp, host->actor.root);
+        Game::ModelInstance* m = attached ? comp->instance : nullptr;
         if (m != nullptr) {
             // room for the records before the render thread first draws them
-            u8** vec = reinterpret_cast<u8**>(m + kMRecords);
-            u8* old = vec[0];
-            vec[0] = static_cast<u8*>(Game::operator_new(kInstCapacity * sizeof(Record)));
-            vec[1] = vec[0];
-            vec[2] = vec[0] + kInstCapacity * sizeof(Record);
+            Game::Vector<Record>& records = m->records;
+            Record* old = records.first;
+            records.first = static_cast<Record*>(Game::operator_new(kInstCapacity * sizeof(Record)));
+            records.last = records.first;
+            records.capacityEnd = records.first + kInstCapacity;
             if (old != nullptr) Game::operator_delete(old);
             g_Inst[g] = Inst{comp, host, 0};
         }
@@ -164,10 +155,9 @@ namespace {
     }
 }
 
-    const float* BoneWorld(const u8* modelObject, int bone) {
-        const u8* skeleton = At<const u8*>(modelObject, kModelSkeleton);
-        const float* world = At<const float*>(skeleton, kSkeletonWorld);
-        return world != nullptr ? world + bone * 16 : nullptr;
+    const float* BoneWorld(const Game::ModelObj* model, int bone) {
+        const Game::Skeleton* skeleton = model != nullptr ? model->skeleton : nullptr;
+        return skeleton != nullptr && skeleton->world != nullptr ? skeleton->world[bone] : nullptr;
     }
 
     void InstDropAll(bool hostAlive) {
@@ -181,22 +171,22 @@ namespace {
         for (int g = 0; g < kInstGroupCount; g++)
             if (g_Inst[g].comp != nullptr && g_Inst[g].host != host) InstDrop(g, false);  // Link was made again
         if (host == nullptr) return;
-        u8* smc = nullptr;
+        Game::SkeletalModelComponent* smc = nullptr;
         for (int i = 0; i < kGhosts && smc == nullptr; i++)
             if (g_Puppets[i].model != nullptr && Alive(g_Puppets[i]))
-                smc = At<u8*>(At<void*>(AnimComp(g_Puppets[i]), kAnimCompPlayer), kAnimSmc);
+                smc = AnimatorModelComp(AnimatorOf(g_Puppets[i]));
         for (int g = 0; g < kInstGroupCount; g++) {
             Inst& inst = g_Inst[g];
             if (inst.comp == nullptr && (smc == nullptr || !InstMake(g, host, smc))) continue;
-            u8* m = InstModel(inst);
-            const u8* mObject = At<const u8*>(At<const u8*>(m, kInstanceModel), kModelObject);
+            Game::ModelInstance* m = InstModel(inst);
+            const Game::ModelObj* mObject = m != nullptr ? m->Model() : nullptr;
             const float* mBone = mObject != nullptr ? BoneWorld(mObject, kInstGroups[g].bone) : nullptr;
             // M's first calculation comes with its first draw: until then its bone is not set
             if (mBone == nullptr || std::fabs(mBone[0]) + std::fabs(mBone[1]) + std::fabs(mBone[2]) < 1e-6f) continue;
             PublishSpan(kInstSpan + g, mObject);
-            u8** vec = reinterpret_cast<u8**>(m + kMRecords);
-            if (vec[2] - vec[0] < static_cast<long>(kInstCapacity * sizeof(Record))) continue;
-            Record* out = reinterpret_cast<Record*>(vec[0]);
+            Game::Vector<Record>& records = m->records;
+            if (records.capacityEnd - records.first < kInstCapacity) continue;
+            Record* out = records.first;
             u32 n = 0;
             for (int i = 0; i < kGhosts && n < static_cast<u32>(kInstCapacity); i++) {
                 const Puppet& p = g_Puppets[i];
@@ -210,7 +200,7 @@ namespace {
                 Compose(bone, mBone, axes, t);
                 ToRecord(axes, t, out[n++]);
             }
-            vec[1] = vec[0] + n * sizeof(Record);
+            records.last = records.first + n;
             inst.drawn = n;
         }
     }

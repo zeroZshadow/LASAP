@@ -1,22 +1,14 @@
 #include "config/config.hpp"
-#include "game/mem.hpp"
+#include "game/menu.hpp"
 #include "game/sym.hpp"
 #include "hooks.hpp"
 #include "patches/patches.hpp"
 
 // Settings LASR lists but never implemented (config.ini [tweaks])
 namespace {
-    using Game::Field;
     using Patches::Patch;
     namespace inst = exl::armv8::inst;
 
-    // The message window (talk, item-get and telop text) shows a page letter by letter in its state "Reading".
-    // B during it skips to the page's end; InstantPage does the same on the state's first update
-    // (MessageWindow_Reading).
-    constexpr size_t kWindowText = 0xe18;            // text*
-    constexpr size_t kWindowPageLetters = 0x1b6a;    // u16, letters in the current page
-    constexpr size_t kWindowSkipping = 0x1d1a;       // u8, set by B: show pages whole, skip the text's pauses
-    constexpr size_t kTextShown = 0x288;             // s32, letters shown
 
     // The low-health warning: the two calls that play SE_SY_HP_ALLEART (the first five beeps, then quieter ones)
     constexpr Patch kNoLowHealthBeep[] = {{0xeabeb0, inst::Nop()}, {0xeabf44, inst::Nop()}};
@@ -42,12 +34,15 @@ namespace {
         return R_FAILED(svcGetInfo(&version, InfoType_MesosphereMeta, INVALID_HANDLE, 0));
     }
 
+    // The message window (talk, item-get and telop text) shows a page letter by letter in its state "Reading".
+    // B during it skips to the page's end; InstantPage does the same on the state's first update
+    // (MessageWindow_Reading).
     HOOK_DEFINE_TRAMPOLINE(InstantPage) {
-        static void Callback(u8* window) {
-            u8* text = Field<u8*>(window, kWindowText);
-            s32 letters = Field<u16>(window, kWindowPageLetters);
-            if (text != nullptr && Field<s32>(text, kTextShown) < letters) {
-                window[kWindowSkipping] = 1;
+        static void Callback(Game::Ui::MessageWindow* window) {
+            Game::Ui::MessageText* text = window->text;
+            s32 letters = window->pageLetters;
+            if (text != nullptr && text->lettersShown < letters) {
+                window->skipping = 1;
                 Game::MessageText_ShowLetters(text, letters);
             }
             Orig(window);

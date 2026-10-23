@@ -28,18 +28,10 @@ namespace {
     // task); the holder's +0x18 is then the component (a shared_ptr). Owner, name and root are copied; the name's
     // characters are not.
     constexpr size_t kHolderModel = 0x18;
-    // Player (an actor): +0x8 its weak self pointer (object, control block). The model hangs under Link's model
-    // component: under his root component (PlayerCollision, +0x80) it is not drawn.
-    constexpr size_t kActorSelf = 0x8;
-    // Node_UpdateWorld(node): the world coords (+0xb0) from coordsNew (+0x80) and the parent's (+0x58) world coords,
-    // the parent first while it is marked (+0xe0); lazy, when something reads a marked node
-    // Entity +0x40 flags: bit 0 enabled, active while (flags & kActiveMask) == kActive; bit 30 destroy requested,
-    // bit 31 destroyed. The game enables an entity by setting bit 0 and, when that makes it active, calling its
-    // virtual +0x50. The item model maker leaves the component disabled; the item-get enables it once the item
-    // pops up.
-    constexpr size_t kEntityFlags = 0x40, kEntityActiveChanged = 0x50;
-    constexpr u32 kEnabled = 1, kActiveMask = 0x40000017, kActive = 0x17;
-    constexpr u32 kEntityGone = 0xc0000000;
+    // The model is owned by Link (his actor's self pointer) and hangs under his model component: under his root
+    // component (PlayerCollision) it is not drawn. The game enables an entity by setting kEnabled and, when that makes
+    // it active, calling its kOnActiveChanged. The item model maker leaves the component disabled; the item-get
+    // enables it once the item pops up.
     // One popup shows at a time, and each is destroyed before the next is made.
     constexpr const char kName[] = "APItemPopup";
     constexpr u64 kShowMs = 2800;      // how long the model shows (the toast shows 3 s)
@@ -66,13 +58,10 @@ namespace {
         return Game::QuatFromMatrix([v](int row, int col) { return v[row * 4 + col]; });
     }
 
-    void Enable(u8* entity) {
-        u32& flags = *reinterpret_cast<u32*>(entity + kEntityFlags);
-        bool was = (flags & kActiveMask) == kActive;
-        flags |= kEnabled;
-        if (!was && (flags & kActiveMask) == kActive) {
-            Game::CallVirtual<void()>(entity, kEntityActiveChanged);
-        }
+    void Enable(Game::Entity& entity) {
+        bool was = entity.Active();
+        entity.flags |= Game::EntityFlags::kEnabled;
+        if (!was && entity.Active()) Game::CallVirtual<void()>(&entity, Game::EntityVirtual::kOnActiveChanged);
     }
 
     Game::Actors::Player* g_Player = nullptr;  // the player the model was made for; another player (a level load) drops it
@@ -92,15 +81,14 @@ namespace {
 #endif
     Quat g_Angle{0.0f, 0.0f, 0.0f, 1.0f};
 
-    u8* Model() {
-        return g_Holder.ptr != nullptr ? *reinterpret_cast<u8**>(reinterpret_cast<u8*>(g_Holder.ptr) + kHolderModel)
-                                       : nullptr;
+    Game::Node* Model() {
+        return g_Holder.ptr != nullptr ? Game::Field<Game::Node*>(g_Holder.ptr, kHolderModel) : nullptr;
     }
 
     // Destroys the component (unless a level load took it with Link) and lets the holder go.
     void Drop(bool destroy) {
-        u8* model = Model();
-        if (destroy && model != nullptr && (*reinterpret_cast<u32*>(model + kEntityFlags) & kEntityGone) == 0) {
+        Game::Node* model = Model();
+        if (destroy && model != nullptr && !model->entity.Gone()) {
             Game::Entity_Destroy(model);
         }
         Game::Release(g_Holder);
@@ -116,7 +104,7 @@ namespace {
 
     // The node's local pose from the world pose. Its parent, Link's model, turns with him; the local pose takes out
     // the parent's world rotation and scale, so the model keeps its world pose whichever way he looks.
-    void ApplyPose(Game::RootComp* node, const Game::RootComp* parent) {
+    void ApplyPose(Game::Node* node, const Game::Node* parent) {
         const Game::Vec4& r = parent->coords.rotate;
         float parentScale = parent->coords.scale.y > 0.0f ? parent->coords.scale.y : 1.0f;
         Quat q = Mul(Quat{-r.x, -r.y, -r.z, r.t}, g_Pose);
@@ -130,9 +118,9 @@ namespace {
     // brings the parent up to date first and places the model again from it; placed from the parent's last world
     // rotation, the model turned with Link for a frame each time he turned.
     HOOK_DEFINE_TRAMPOLINE(NodeUpdateWorld) {
-        static void Callback(Game::RootComp* node) {
-            if (node != nullptr && node == reinterpret_cast<Game::RootComp*>(Model()) && node->otherComp != nullptr) {
-                Game::RootComp* parent = node->otherComp;
+        static void Callback(Game::Node* node) {
+            if (node != nullptr && node == Model() && node->parent != nullptr) {
+                Game::Node* parent = node->parent;
                 if (parent->needsCoordUpdate) Orig(parent);
                 ApplyPose(node, parent);
             }
@@ -143,9 +131,9 @@ namespace {
     // The pose for the time shown: growing and rising, turning from side to side, shrinking away at the end; facing
     // the camera whichever way Link looks. An NPC model is turned from the camera by its fix's angle, as in the
     // item-get, and from side to side.
-    void Place(u8* model, u64 shown) {
-        Game::RootComp* parent = g_Player->modelComp;
-        if (parent == nullptr) return;
+    void Place(Game::Node* model, u64 shown) {
+        if (g_Player->modelComp == nullptr) return;
+        Game::Node* parent = &g_Player->modelComp->node;
         float grow = shown < kGrowMs ? (float)shown / kGrowMs
                      : shown + kGrowMs > kShowMs ? (float)(kShowMs - std::min(shown, kShowMs)) / kGrowMs : 1.0f;
         float rise = shown < kGrowMs ? (float)shown / kGrowMs : 1.0f;
@@ -157,7 +145,7 @@ namespace {
         if (g_NoSway) sway = 0.0f;
         if (g_PoseFrames.size() < g_PoseFramesMax) {
             u32 frame = Game::GetFramework()->frameCount;
-            g_PoseFrames.push_back({NowMs(), frame, r, reinterpret_cast<Game::RootComp*>(model)->coords.rotate});
+            g_PoseFrames.push_back({NowMs(), frame, r, model->coords.rotate});
         }
 #endif
         g_Pose = g_Fitted ? Mul(CameraRotation(), Mul(AxisQuat(1, sway), g_Angle))
@@ -169,8 +157,8 @@ namespace {
         g_CarryRaise = carrying ? std::min(kCarryRaise, g_CarryRaise + step) : std::max(0.0f, g_CarryRaise - step);
         g_PoseHeight = kHeight - kRise * (1.0f - rise) + g_CarryRaise;
         g_PoseScale = g_Scale * grow;
-        ApplyPose(reinterpret_cast<Game::RootComp*>(model), parent);
-        Game::Node_MarkDirty(reinterpret_cast<Game::RootComp*>(model));
+        ApplyPose(model, parent);
+        Game::Node_MarkDirty(model);
     }
 }
 
@@ -184,7 +172,7 @@ namespace AP::Popup {
         Game::Framework* fmwk = Game::GetFramework();
         if (fmwk == nullptr || fmwk->player == nullptr) return false;
         Game::Actors::Player* player = fmwk->player;
-        SharedPtr owner = Game::Field<SharedPtr>(player, kActorSelf);
+        SharedPtr owner{player->actor.entity.self.ptr, player->actor.entity.self.ctrl};
         SharedPtr parent{player->modelComp, player->modelCompCtrl};
         if (owner.ptr == nullptr || parent.ptr == nullptr) return false;
         Game::StrView name{kName, sizeof(kName) - 1};
@@ -243,7 +231,7 @@ namespace AP::Popup {
             return;
         }
         u64 now = NowMs();
-        u8* model = Model();
+        Game::Node* model = Model();
         if (model == nullptr) {
             if (now - g_Since > kLoadMs) Drop(false);
             return;
@@ -254,8 +242,10 @@ namespace AP::Popup {
             Drop(true);
             return;
         }
-        if (!g_RootMoved) g_RootMoved = Game::MoveRootBone(model, g_Center);
+        if (!g_RootMoved) {
+            g_RootMoved = Game::MoveRootBone(reinterpret_cast<Game::SkeletalModelComponent*>(model), g_Center);
+        }
         Place(model, shown);
-        Enable(model);
+        Enable(model->entity);
     }
 }

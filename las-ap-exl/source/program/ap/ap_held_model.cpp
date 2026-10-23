@@ -44,7 +44,7 @@ namespace {
     const HeldModelFix* g_ItemModelFix = nullptr;  // the fix for the model the running task gets
     // The component being fixed, held weakly through its control block (libc++: +0x8 owners - 1, +0x10 weak owners
     // - 1); whether its root bone moved.
-    u8* g_HeldModel = nullptr;
+    Game::Node* g_HeldModel = nullptr;
     u8* g_HeldCtrl = nullptr;
     const HeldModelFix* g_HeldFix = nullptr;
     bool g_HeldRootMoved = false;
@@ -61,7 +61,7 @@ namespace {
     // The held NPC model's component node in the ocarina's place, turned by the fix's angle, at the ocarina's size;
     // the game writes its pose once the item pops up, and that write is replaced here.
     void PlaceHeldModel() {
-        Game::Coords& c = reinterpret_cast<Game::RootComp*>(g_HeldModel)->coordsNew;
+        Game::Coords& c = g_HeldModel->coordsNew;
         const HeldModelFix& fix = *g_HeldFix;
         float scale = kItemModelRadius / fix.radius;
         Game::Quat q = Game::EulerQuat(fix.angle);
@@ -96,8 +96,8 @@ namespace {
                 return;
             }
             if (g_ItemModelFix == nullptr || NowMs() - g_ItemGetAt > kItemModelWindowMs || holder == nullptr) return;
-            u8* model = *reinterpret_cast<u8**>(holder + kHolderModel);
-            u8* ctrl = *reinterpret_cast<u8**>(holder + kHolderModel + 8);
+            auto* model = Game::Field<Game::Node*>(holder, kHolderModel);
+            u8* ctrl = Game::Field<u8*>(holder, kHolderModel + 8);
             if (model == nullptr || ctrl == nullptr) return;
             DropHeldModel();
             Game::AddWeakOwner(ctrl);
@@ -110,8 +110,8 @@ namespace {
     };
 
     HOOK_DEFINE_TRAMPOLINE(NodeMarkDirty) {
-        static void Callback(Game::RootComp* node) {
-            if (node != nullptr && node == reinterpret_cast<Game::RootComp*>(g_HeldModel)) {
+        static void Callback(Game::Node* node) {
+            if (node != nullptr && node == g_HeldModel) {
                 if (HeldModelAlive()) PlaceHeldModel();
                 else DropHeldModel();
             }
@@ -124,7 +124,10 @@ namespace {
     void TickHeldModel() {
         if (g_HeldModel == nullptr) return;
         if (!HeldModelAlive()) DropHeldModel();
-        else if (!g_HeldRootMoved) g_HeldRootMoved = Game::MoveRootBone(g_HeldModel, g_HeldFix->center);
+        else if (!g_HeldRootMoved) {
+            auto* component = reinterpret_cast<Game::SkeletalModelComponent*>(g_HeldModel);
+            g_HeldRootMoved = Game::MoveRootBone(component, g_HeldFix->center);
+        }
     }
 
     void InstallHeldModelHooks() {
@@ -143,8 +146,8 @@ namespace {
         return false;
     }
 
-    Game::RootComp* HeldModel() {
-        return g_HeldModel != nullptr && HeldModelAlive() ? reinterpret_cast<Game::RootComp*>(g_HeldModel) : nullptr;
+    Game::Node* HeldModel() {
+        return g_HeldModel != nullptr && HeldModelAlive() ? g_HeldModel : nullptr;
     }
 #endif
 }

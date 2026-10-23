@@ -67,9 +67,12 @@ namespace Game::Ui {
         const uintptr_t* vtable;   // LayoutWrapperVirtual
         u8 pad_8[0x10];
         Layout* layout;            // 0x18
-        u8 pad_20[0x58];
+        u8 pad_20[0x50];
+        u8 pageActive;             // 0x70: a pause menu page's (MenuPage): cleared by the header when it leaves it
+        u8 pad_71[0x7];
     };
-    static_assert(offsetof(LayoutWrapper, layout) == 0x18 && sizeof(LayoutWrapper) == 0x78);
+    static_assert(offsetof(LayoutWrapper, layout) == 0x18 && offsetof(LayoutWrapper, pageActive) == 0x70);
+    static_assert(sizeof(LayoutWrapper) == 0x78);
     // Its virtuals: the deleting destructor; its layout and root pane (also for parts without a layout of their
     // own); an animation by name (StrView*, the result through x8); the UI's id.
     namespace LayoutWrapperVirtual {

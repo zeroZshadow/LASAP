@@ -5,6 +5,7 @@
 #include "ap/ap_list.hpp"
 #include "ap/ap_text.hpp"
 #include "game/mem.hpp"
+#include "game/menu.hpp"
 #include "game/sym.hpp"
 #include "game/time.hpp"
 #include "loggers.hpp"
@@ -12,6 +13,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <type_traits>
 #include <vector>
 
 namespace {
@@ -35,16 +37,8 @@ namespace {
     constexpr u64 kPadStaleMs = 50;  // the last poll's buttons count as held this long
     constexpr int kRepeatDelay = 20, kRepeatEvery = 5;  // frames before Up/Down repeat, and between repeats
 
-    // Navi, the pause menu header: page ids u32 +0x230; the guide at +0x318. Navi_SetGuide
-    // (navi, index) clears the guide, then Guide_Set(guide, slot, kind) per slot; slot objects at Navi +0x3a8 + slot
-    // * 0x110 (virtual +0x48: an object whose +0x18 is the slot's pane), or +0xd38 for the slot +0x1224 while
-    // +0x122a is set; +0x1228 set redraws. Guide_Set loads a slot's caption only when its kind differs from the one
-    // kept at guide +0xb40 + slot * 4. The overworld map's page id 0xf, its guide X, Y, R, A, B.
-    constexpr size_t kNaviIds = 0x230, kNaviGuide = 0x318, kGuideKinds = 0xb40;
-    constexpr int kGuideSlotCount = 5, kGuideKindSlots = 6;
-    constexpr size_t kGuideSlots = 0x3a8, kGuideSlotSize = 0x110, kGuideSwapSlot = 0xd38, kGuideSwapIndex = 0x1224,
-                     kGuideSwapping = 0x122a, kGuideRedraw = 0x1228, kGuideSlotObject = 0x48;
-    constexpr u32 kOverworldMap = 0xf;
+    // The pause menu header's guide (Game::Ui::NaviGuide), and the overworld map's: X, Y, R, A, B.
+    constexpr int kGuideSlotCount = std::extent_v<decltype(NaviGuide::slots)>;
     constexpr u32 kMapGuide[kGuideSlotCount] = {kGuideX, kGuideY, kGuideR, kGuideA, kGuideB};
 
     u64 g_PadHeld = 0, g_PadSeen = 0;
@@ -61,19 +55,17 @@ namespace {
     const Guide* g_Guide = nullptr;  // the guide Navi_SetGuide sets now
     bool g_GuideShown = false;       // the guide shows a source's guide
 
-    u8* Navi() { return reinterpret_cast<u8*>(FindUi(kNaviUi)); }
+    Navi* FindNavi() { return reinterpret_cast<Navi*>(FindUi(kNaviUi)); }
 
     // The next GuideSet loads every caption again: the sources' guides and the map's share kinds.
-    void ForgetGuideKinds(u8* navi) {
-        for (int slot = 0; slot < kGuideKindSlots; slot++) Field<u32>(navi + kNaviGuide, kGuideKinds + slot * 4) = ~0u;
+    void ForgetGuideKinds(Navi* navi) {
+        for (u32& kind : navi->guide.kinds) kind = ~0u;
     }
 
-    void HideGuideSlot(u8* navi, int index) {
-        u8* slot = navi + kGuideSlots + index * kGuideSlotSize;
-        if (Field<u8>(navi, kGuideSwapping) != 0 && Field<u32>(navi, kGuideSwapIndex) == static_cast<u32>(index)) {
-            slot = navi + kGuideSwapSlot;
-        }
-        u8* object = Game::CallVirtual<u8*()>(slot, kGuideSlotObject);
+    void HideGuideSlot(Navi* navi, int index) {
+        GuideSlot* slot = &navi->guide.slots[index];
+        if (navi->guideSwapping != 0 && navi->guideSwapIndex == static_cast<u32>(index)) slot = &navi->guide.swapSlot;
+        u8* object = Game::CallVirtual<u8*()>(slot, GuideSlotVirtual::kObject);
         SetVisible(object != nullptr ? Field<Pane*>(object, 0x18) : nullptr, false);
     }
 }
@@ -81,7 +73,7 @@ namespace {
 // A source's guide is the overworld map's with its slots set to the source's kinds and the rest hidden, its captions
 // read as the source's during the call (ap_text.cpp).
 HOOK_DEFINE_TRAMPOLINE(NaviSetGuide) {
-    static void Callback(u8* navi, u32 index) {
+    static void Callback(Navi* navi, u32 index) {
         const Guide* guide = nullptr;
         for (GuideSource source : g_GuideSources) {
             if ((guide = source(index)) != nullptr) break;
@@ -93,17 +85,17 @@ HOOK_DEFINE_TRAMPOLINE(NaviSetGuide) {
         }
         ForgetGuideKinds(navi);
         g_GuideShown = true;
-        u32 mapId = Field<u32>(navi, kNaviIds);
-        Field<u32>(navi, kNaviIds) = kOverworldMap;
+        u32 mapId = navi->pageIds[0];
+        navi->pageIds[0] = kOverworldMapPage;
         g_Guide = guide;
         Orig(navi, 0);
         for (int slot = 0; slot < guide->count && slot < kGuideSlotCount; slot++) {
-            if (guide->kinds[slot] != kMapGuide[slot]) Game::Guide_Set(navi + kNaviGuide, slot, guide->kinds[slot]);
+            if (guide->kinds[slot] != kMapGuide[slot]) Game::Guide_Set(&navi->guide, slot, guide->kinds[slot]);
         }
         g_Guide = nullptr;
-        Field<u32>(navi, kNaviIds) = mapId;
+        navi->pageIds[0] = mapId;
         for (int slot = guide->count; slot < kGuideSlotCount; slot++) HideGuideSlot(navi, slot);
-        Field<u8>(navi, kGuideRedraw) = 1;
+        navi->guideRedraw = 1;
     }
 };
 
@@ -237,7 +229,7 @@ namespace AP::ListUi {
     void AddGuideSource(GuideSource source) { g_GuideSources.push_back(source); }
 
     void RefreshGuide(u32 index) {
-        u8* navi = Navi();
+        Navi* navi = FindNavi();
         if (navi != nullptr) Game::Navi_SetGuide(navi, index);
     }
 

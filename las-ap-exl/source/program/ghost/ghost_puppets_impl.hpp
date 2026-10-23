@@ -3,6 +3,8 @@
 // (test_puppets.cpp). See ghost_puppets.cpp for the whole.
 #include "ghost/ghost_puppets.hpp"
 #include "game/actor.hpp"
+#include "game/actors/npc.hpp"
+#include "game/model.hpp"
 #include "game/stl.hpp"
 #include "ghost/ghost_net.hpp"
 #include "lib.hpp"
@@ -16,29 +18,8 @@ namespace Game::Actors { struct Player; }
 namespace AP::Puppets {
     // ---- Actors (ghost_puppets.cpp) ----
 
-    // The actor's root component (coordinates), as PopEnemy reads it; its name (+0x18, length +0x38) and its +0x40
-    // flags: bit 30 destroy requested, bit 31 destroyed.
-    constexpr size_t kActorRoot = 0x80;
-    constexpr size_t kActorName = 0x18, kActorNameLength = 0x38, kActorFlags = 0x40;
-    // An inactive actor (entity flags (f & 0x40000017) != 0x17) is neither updated nor drawn.
-    constexpr u32 kActiveMask = 0x40000017, kActive = 0x17;
-    // Animations by name: the NPC's animation component (actor +0x2b0) hands them to its animation player (+0xe8),
-    // whose +0x90 is the model object it animates (ghost_puppets.cpp, PlayAnim).
-    constexpr size_t kActorAnimComp = 0x2b0, kAnimCompPlayer = 0xe8, kAnimPlayerModel = 0x90;
-
-    // Model object: +0 the FMDL, +0x10 u32* material visibility bits, +0x30 u16 shape count, +0x32 u16 material
-    // count, +0x40 shapes (0x70 apart; +0x18 pool offset of the shape's block), +0x48 materials (0x80 apart), +0x68
-    // the memory pool object (+0x50 its GPU address). Material: +0 FMAT, +0x20 u32 block copies, +0x38 pool offset
-    // of its shader parameter block, +0x60 block size; the copies are the size rounded up to 0x100 apart.
-    constexpr size_t kModelMatVis = 0x10, kModelShapeCount = 0x30, kModelMatCount = 0x32, kModelShapes = 0x40,
-                     kModelMats = 0x48, kModelPool = 0x68;
-    constexpr size_t kShapeStride = 0x70, kShapeBlock = 0x18;
-    constexpr size_t kMatStride = 0x80, kMatCopies = 0x20, kMatBlock = 0x38, kMatBlockSize = 0x60;
-    constexpr size_t kPoolGpu = 0x50;
-    // The look's shapes: the animation player's model instance (+0x88) has one byte per shape (+0x378), 1 drawn; a
-    // shape draws only with its byte, its material's visibility bit and its bone's all set. Nothing but the model's
-    // creation and the shape setters writes them.
-    constexpr size_t kAnimPlayerInstance = 0x88, kInstanceShapes = 0x378, kInstanceModel = 0x60, kModelObject = 0x10;
+    // The look's shapes: the animator's model instance's shapeVisible. Nothing but the model's creation and the
+    // shape setters writes them.
     // The face: Link's eyes, mouth and ears (ghost_look.cpp, SetFace).
     constexpr int kFaceParts = 3;
     constexpr u32 kFaceShapes = 0x380;  // the ear, eyes and mouth
@@ -82,9 +63,9 @@ namespace AP::Puppets {
 #endif
 
     struct Puppet {
-        void* actor = nullptr;
+        Game::Actor* actor = nullptr;  // an inactive actor (Entity::Active) is neither updated nor drawn
         void* ctrl = nullptr;    // a weak reference to the actor
-        u8* model = nullptr;     // once loaded
+        Game::ModelObj* model = nullptr;  // once loaded
         AP::GhostNet::Look look;                 // the look of the frame replayed
         int tunic = -1;                          // the tunic set, -1: none yet, kNoTunic: the model has none
         void* tunicAnim = nullptr;               // the animation on the tunic's slot when it was set
@@ -121,9 +102,14 @@ namespace AP::Puppets {
 
     int IndexOf(const Puppet& p);
     bool Alive(const Puppet& p);
-    void* AnimComp(const Puppet& p);
-    bool IsLayered(const void* player);
-    u8* PlayerInstance(const void* player);
+    // The puppet's NPC component (NpcGhost's), null without a live actor. Its animator plays animations by name
+    // (ghost_puppets.cpp, PlayAnim): the NPC's SkeletalAnimation, or the LayeredAnimation the module gives ghosts.
+    Game::Actors::NpcComponent* NpcOf(const Puppet& p);
+    void* AnimatorOf(const Puppet& p);
+    bool IsLayered(const void* animator);
+    Game::ModelInstance* AnimatorInstance(const void* animator);
+    Game::ModelObj* AnimatorModel(const void* animator);
+    Game::SkeletalModelComponent* AnimatorModelComp(const void* animator);
     // Creates actor <id> at pos as PopEnemy does and keeps a weak reference to it; a puppet that has an actor shows it
     // there again.
     bool Spawn(Puppet& p, u16 id, const Game::Vec3& pos, u32 frame, std::string& err);
@@ -149,7 +135,7 @@ namespace AP::Puppets {
     // Draws only the materials a ghost shows, or (hidden) none; true when they already were.
     bool WriteLook(Puppet& p, bool draw);
     void SetShapes(Puppet& p);
-    void* TunicSlot(const Puppet& p, int& index);
+    Game::MatAnimSlot* TunicSlot(const Puppet& p, int& index);
     void SetTunic(Puppet& p);
     void SetFace(Puppet& p);
 
@@ -170,7 +156,7 @@ namespace AP::Puppets {
     extern u32 g_SkipMask;
     void ClearSpan(int n);
     // The model's blocks (its materials' and shapes') as GPU addresses, for the render thread.
-    void PublishSpan(int n, const u8* model);
+    void PublishSpan(int n, const Game::ModelObj* model);
     void InstallDitherHooks();
 
     // ---- Instanced equipment and faces (ghost_instanced.cpp) ----
@@ -180,13 +166,13 @@ namespace AP::Puppets {
     // The head bone, where the face and the name tag go.
     constexpr int kHeadBone = 28;
     struct Inst {
-        u8* comp = nullptr;
+        Game::InstancedModelComponent* comp = nullptr;
         void* host = nullptr;
         u32 drawn = 0;  // records written last frame
     };
     constexpr int kInstGroupCount = kInstSpans;
     extern Inst g_Inst[kInstGroupCount];
-    const float* BoneWorld(const u8* modelObject, int bone);
+    const float* BoneWorld(const Game::ModelObj* model, int bone);
     void InstDropAll(bool hostAlive);
     // Each frame: the instanced models' records, one per drawn ghost.
     void InstTick();

@@ -5,6 +5,8 @@
 #include "ap/ap.hpp"
 #include "ap/ap_net.hpp"
 #include "ap/ap_text.hpp"
+#include "game/actors/player.hpp"
+#include "game/animation.hpp"
 #include "game/data/inventory.hpp"
 #include "game/framework.hpp"
 #include "game/hooks/level.hpp"
@@ -30,30 +32,16 @@ namespace {
     // A jump this far between two sent positions is a warp (respawn, warp, door within a level): the ghost snaps.
     constexpr float kWarpDistance = 4.0f;
     constexpr int kFlagWarped = 1, kFlagStill = 4, kFlagStarted = 8;
-    // Link's animations (game 1.0.0): the player's animation controller (Player::animCtrl) plays rows of
-    // PlayerAnimation.gsheet by key (the row index; its fileName names the FSKA in Link's model). Its slot entries
-    // (+0x78, 0x18 apart) hold the row playing (+0x10); slot 0 is the whole body, slot 1 his upper body (from the bone
-    // spine_a up: idle_carry while he holds something over his head, none otherwise). The frame is in the controller's
-    // skeletal animation component (+0x8): layer i (+0x1d0 array, count +0x1c8) is slot i, its bound animation
-    // (+0x8) -> +0 -> +0x8 the frame control (f32 frame at +0). The sheet: **PlayerAnimationSheet_ptr (a shared_ptr),
-    // +0x70 -> data, rows at +0x20 (0x48 apart), count +0x28; a row: s32 key, +0x8 fileName, +0x1c policy (1 loops).
-    constexpr size_t kCtrlSac = 0x8, kCtrlSlots = 0x78, kSlotRow = 0x10, kSlotSize = 0x18;
-    constexpr size_t kSacLayerCount = 0x1c8, kSacLayers = 0x1d0, kLayerAnim = 0x8, kAnimFrameCtrl = 0x8;
-    constexpr size_t kSheetData = 0x70, kDataRows = 0x20, kDataCount = 0x28, kRowSize = 0x48, kRowName = 0x8,
-                     kRowPolicy = 0x1c;
-    // Link's look: his model component (Player::modelComp) -> model instance (+0x148) -> one byte per shape (+0x378), 1
-    // drawn (Player_ShowItem shows the items he holds this way); the shape count is the g3d model object's (instance
-    // +0x60 -> +0x10, +0x30). His tunic is the inventory's upgrade bits (+0x9c): 6 red, 7 blue, red first. His face:
-    // material animations on his material animation component (Player::materialAnim; slots: pointers at +0xa0, count
-    // +0xb8)
-    // "eye", "mouth" and "ear", each held at the frame (slot +0x24) the game sets for his expression. A slot's
-    // animation (+0x8) names its FMAA (+0x18; the FMAA's +0x8 its name, a u16 length and the characters).
-    constexpr size_t kModelCompInstance = 0x148, kInstanceShapes = 0x378,
-                     kInstanceModel = 0x60, kModelObject = 0x10, kModelShapeCount = 0x30;
-    constexpr size_t kInventoryUpgrades = 0x9c;
-    constexpr u8 kUpgradeRed = 0x40, kUpgradeBlue = 0x80;
-    constexpr size_t kMatAnimSlots = 0xa0, kMatAnimCount = 0xb8, kMatSlotAnim = 0x8,
-                     kMatSlotFrame = 0x24, kMatAnimRes = 0x18, kResName = 0x8;
+    // Link's animations (game 1.0.0): his animation controller plays rows of PlayerAnimation.gsheet by key (the row
+    // index). Its slot 0 is the whole body, slot 1 his upper body (idle_carry while he holds something over his head,
+    // none otherwise). The frame is in the controller's layered animation: layer i is slot i, its bound animation the
+    // frame control (f32 frame at +0).
+    using Game::Actors::PlayerAnimRow;
+    constexpr size_t kAnimFrameCtrl = 0x8;
+    // Link's look: his model component's instance's shapeVisible (Player_ShowItem shows the items he holds this way),
+    // as many as the model object's shapes. His tunic is the inventory's upgrade bits, red first. His face: the
+    // material animations "eye", "mouth" and "ear" on his material animation component, each held at the frame the
+    // game sets for his expression.
 
     struct Sample {
         bool inLevel = false;
@@ -75,7 +63,7 @@ namespace {
     bool g_PrevValid = false, g_Still = false;
     float g_PrevX = 0, g_PrevY = 0, g_PrevZ = 0;
     AP::GhostNet::Anim g_Anim;
-    const void* g_AnimRow = nullptr;
+    const PlayerAnimRow* g_AnimRow = nullptr;
     AP::GhostNet::Look g_Look;
 #ifdef LASAP_TEST
     // DBG ghostnet: Link's animation starts and the GHOST lines with a start, by frame
@@ -107,17 +95,25 @@ namespace {
         return out;
     }
 
+    // PlayerAnimation.gsheet's row of an anim id (key + 1), or nullptr. The sheet: **PlayerAnimationSheet_ptr (a
+    // shared_ptr).
+    const PlayerAnimRow* AnimRow(int anim) {
+        const auto* sheet = At<const Game::Actors::PlayerAnimSheet*>(*Game::PlayerAnimationSheet_ptr, 0);
+        const Game::Actors::PlayerAnimTable* data = sheet != nullptr ? sheet->data : nullptr;
+        if (data == nullptr || anim <= 0 || static_cast<u32>(anim) > data->count) return nullptr;
+        return &data->rows[anim - 1];
+    }
+
     // The row playing on slot 0 of Link's animation controller and its frame, or nullptr.
-    const u8* LinkAnimRow(const Game::Actors::Player* player, float& frame) {
-        const u8* ctrl = player->animCtrl;
-        const u8* slots = At<const u8*>(ctrl, kCtrlSlots);
-        if (slots == nullptr || slots == At<const u8*>(ctrl, kCtrlSlots + 8)) return nullptr;
-        const u8* row = At<const u8*>(slots, kSlotRow);
-        const u8* sac = At<const u8*>(ctrl, kCtrlSac);
+    const PlayerAnimRow* LinkAnimRow(const Game::Actors::Player* player, float& frame) {
+        const Game::Actors::PlayerAnimController* ctrl = player->animCtrl;
+        if (ctrl == nullptr || ctrl->slots.first == nullptr || ctrl->slots.empty()) return nullptr;
+        const PlayerAnimRow* row = ctrl->slots[0].row;
+        const Game::LayeredAnimation* animation = ctrl->animation;
         const u8* fc = nullptr;
-        if (At<s32>(sac, kSacLayerCount) > 0) {
-            const u8* layer = At<const u8*>(At<const u8*>(sac, kSacLayers), 0);
-            fc = At<const u8*>(At<const u8*>(At<const u8*>(layer, kLayerAnim), 0), kAnimFrameCtrl);
+        if (animation != nullptr && animation->layerCount > 0) {
+            const Game::AnimationLayer* layer = animation->layers != nullptr ? animation->layers[0] : nullptr;
+            fc = At<const u8*>(At<const u8*>(layer != nullptr ? layer->bound : nullptr, 0), kAnimFrameCtrl);
         }
         frame = At<float>(fc, 0);
         if (!std::isfinite(frame) || frame < 0) frame = 0;
@@ -128,14 +124,14 @@ namespace {
     // unless it loops).
     void ReadAnim(const Game::Actors::Player* player) {
         float frame = 0;
-        const u8* row = LinkAnimRow(player, frame);
-        int anim = row != nullptr ? At<s32>(row, 0) + 1 : 0;
+        const PlayerAnimRow* row = LinkAnimRow(player, frame);
+        int anim = row != nullptr ? row->key + 1 : 0;
         float prevFrame = g_Anim.frame / 10.0f;
         if (anim != g_Anim.anim || row != g_AnimRow ||
-            (anim != 0 && frame + 0.5f < prevFrame && At<s32>(row, kRowPolicy) != 1)) {
+            (anim != 0 && frame + 0.5f < prevFrame && row->policy != Game::Actors::kPlayerAnimLoops)) {
             if (anim != 0) g_Anim.starts++;
 #ifdef LASAP_TEST
-            const char* name = anim != 0 ? At<const char*>(row, kRowName) : nullptr;
+            const char* name = anim != 0 ? row->fileName : nullptr;
             if (name != nullptr && g_StartLog.size() < 60) g_StartLog.push_back(std::string(name) + "@" + std::to_string(FrameNow()));
 #endif
         }
@@ -143,21 +139,20 @@ namespace {
         g_Anim.anim = anim;
         g_Anim.frame = std::min(static_cast<int>(frame * 10), 0xffff);
         // the upper body's row: slot 1
-        const u8* ctrl = player->animCtrl;
-        const u8* slots = At<const u8*>(ctrl, kCtrlSlots);
-        bool layered = slots != nullptr && At<const u8*>(ctrl, kCtrlSlots + 8) - slots >= static_cast<long>(2 * kSlotSize);
-        const u8* upper = layered ? At<const u8*>(slots + kSlotSize, kSlotRow) : nullptr;
-        g_Anim.upper = upper != nullptr ? At<s32>(upper, 0) + 1 : 0;
+        const Game::Actors::PlayerAnimController* ctrl = player->animCtrl;
+        bool layered = ctrl != nullptr && ctrl->slots.first != nullptr && ctrl->slots.size() >= 2;
+        const PlayerAnimRow* upper = layered ? ctrl->slots[1].row : nullptr;
+        g_Anim.upper = upper != nullptr ? upper->key + 1 : 0;
     }
 
     // The frame of one of Link's material animations by name (0 when he has none of that name).
-    int MatFrame(const u8* slots, int count, std::string_view name) {
-        for (int i = 0; i < count; i++) {
-            const u8* slot = At<const u8*>(slots, i * 8);
-            const u8* res = At<const u8*>(At<const u8*>(slot, kMatSlotAnim), kMatAnimRes);
-            const u8* s = At<const u8*>(res, kResName);
-            if (s == nullptr || Game::ResName(s) != name) continue;
-            float frame = At<float>(slot, kMatSlotFrame);
+    int MatFrame(const Game::MaterialAnimComponent* mat, std::string_view name) {
+        int count = std::min(mat != nullptr ? mat->slotCount : 0, 16);
+        for (int i = 0; i < count && mat->slots != nullptr; i++) {
+            const Game::MatAnimSlot* slot = mat->slots[i];
+            const Game::MaterialAnim* anim = slot != nullptr ? slot->anim : nullptr;
+            if (anim == nullptr || anim->res == nullptr || Game::ResNameOf(anim->res) != name) continue;
+            float frame = slot->frame;
             return std::isfinite(frame) ? std::clamp(static_cast<int>(frame + 0.5f), 0, 0xff) : 0;
         }
         return 0;
@@ -165,24 +160,22 @@ namespace {
 
     AP::GhostNet::Look ReadLook(const Game::Actors::Player* player) {
         AP::GhostNet::Look look;
-        const u8* instance = At<const u8*>(player->modelComp, kModelCompInstance);
-        const u8* shapes = At<const u8*>(instance, kInstanceShapes);
-        const u8* model = At<const u8*>(At<const u8*>(instance, kInstanceModel), kModelObject);
-        int count = std::min<int>(At<u16>(model, kModelShapeCount), AP::GhostNet::SHAPE_COUNT);
+        const Game::ModelInstance* instance = player->modelComp != nullptr ? player->modelComp->instance : nullptr;
+        const u8* shapes = instance != nullptr ? instance->shapeVisible : nullptr;
+        const Game::ModelObj* model = instance != nullptr ? instance->Model() : nullptr;
+        int count = model != nullptr ? std::min<int>(model->shapeCount, AP::GhostNet::SHAPE_COUNT) : 0;
         if (shapes != nullptr && count > 0) {
             look.shapes = 0;
             for (int i = 0; i < count; i++)
                 if (shapes[i] != 0) look.shapes |= 1u << i;
         }
-        u8 upgrades = At<u8>(Game::Data::Inventory::Items(), kInventoryUpgrades);
-        look.tunic = (upgrades & kUpgradeRed) ? AP::GhostNet::TUNIC_RED
-                     : (upgrades & kUpgradeBlue) ? AP::GhostNet::TUNIC_BLUE : AP::GhostNet::TUNIC_GREEN;
-        const u8* mat = player->materialAnim;
-        const u8* slots = At<const u8*>(mat, kMatAnimSlots);
-        int slotCount = std::min(At<s32>(mat, kMatAnimCount), 16);
-        look.eye = MatFrame(slots, slotCount, "eye");
-        look.mouth = MatFrame(slots, slotCount, "mouth");
-        look.ear = MatFrame(slots, slotCount, "ear");
+        const Game::Data::Inventory::InventoryItems* items = Game::Data::Inventory::Items();
+        look.tunic = items != nullptr && items->UpgradeItems.ClothesRed    ? AP::GhostNet::TUNIC_RED
+                     : items != nullptr && items->UpgradeItems.ClothesBlue ? AP::GhostNet::TUNIC_BLUE
+                                                                           : AP::GhostNet::TUNIC_GREEN;
+        look.eye = MatFrame(player->materialAnim, "eye");
+        look.mouth = MatFrame(player->materialAnim, "mouth");
+        look.ear = MatFrame(player->materialAnim, "ear");
         return look;
     }
 
@@ -389,18 +382,13 @@ namespace AP::GhostNet {
     }
 
     const char* AnimName(int anim) {
-        const u8* holder = *Game::PlayerAnimationSheet_ptr;
-        const u8* sheet = At<const u8*>(holder, 0);
-        const u8* data = At<const u8*>(sheet, kSheetData);
-        if (anim <= 0 || static_cast<u32>(anim) > At<u32>(data, kDataCount)) return nullptr;
-        return At<const char*>(At<const u8*>(data, kDataRows) + (anim - 1) * kRowSize, kRowName);
+        const PlayerAnimRow* row = AnimRow(anim);
+        return row != nullptr ? row->fileName : nullptr;
     }
 
     bool AnimLoops(int anim) {
-        const u8* holder = *Game::PlayerAnimationSheet_ptr;
-        const u8* data = At<const u8*>(At<const u8*>(holder, 0), kSheetData);
-        if (anim <= 0 || static_cast<u32>(anim) > At<u32>(data, kDataCount)) return false;
-        return At<s32>(At<const u8*>(data, kDataRows) + (anim - 1) * kRowSize, kRowPolicy) == 1;
+        const PlayerAnimRow* row = AnimRow(anim);
+        return row != nullptr && row->policy == Game::Actors::kPlayerAnimLoops;
     }
 
 #ifdef LASAP_TEST

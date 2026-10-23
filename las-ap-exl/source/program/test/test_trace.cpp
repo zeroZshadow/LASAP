@@ -14,6 +14,7 @@
 #include "game/framework.hpp"
 #include "game/hooks/level.hpp"
 #include "game/math.hpp"
+#include "game/menu.hpp"
 #include "game/sym.hpp"
 #include "game/time.hpp"
 #include "ghost/ghost_net.hpp"
@@ -324,10 +325,13 @@ namespace {
         return false;
     }
 
-    // The open message window's owner (the machine is at owner +0x1260): after KeyWaiting or PreSelecting starts, a
-    // s16 frame count at +0x1cf4 runs up to the limit at +0x1cf6 (6 for a page, 10 before a choice); a button
-    // counts only once it is there. The choice cursor is the u8 at +0x1cc8 (0 = the first option, Down adds one).
-    constexpr size_t kMsgMachine = 0x1260, kMsgWaitCount = 0x1cf4, kMsgWaitLimit = 0x1cf6, kMsgChoice = 0x1cc8;
+    // The open message window (Game::Ui::MessageWindow), its owner found from its machine and read with Read: a
+    // button counts once waitCount is at waitLimit.
+    using Game::Ui::MessageWindow;
+    constexpr size_t kMsgMachine = offsetof(MessageWindow, machine);
+    constexpr size_t kMsgWaitCount = offsetof(MessageWindow, waitCount);
+    constexpr size_t kMsgWaitLimit = offsetof(MessageWindow, waitLimit);
+    constexpr size_t kMsgChoice = offsetof(MessageWindow, choiceCursor);
 
     Machine* OpenMessage() {
         Machine* found = nullptr;
@@ -556,8 +560,9 @@ namespace {
     }
 
     // A choice takes buttons once its layout's animation has run: the Selecting update (0xef2300) returns while the
-    // float at +0x3c of the object at owner + (s32 at +0x1cc4) * 0x18 + 0x58 is not 0.
-    constexpr size_t kMsgChoiceLayout = 0x1cc4, kMsgLayouts = 0x58, kLayoutAnim = 0x3c;
+    // float kChoiceLayoutAnim of choiceLayouts[choiceLayout]'s object is not 0.
+    constexpr size_t kMsgChoiceLayout = offsetof(MessageWindow, choiceLayout),
+                     kMsgLayouts = offsetof(MessageWindow, choiceLayouts), kLayoutAnim = Game::Ui::kChoiceLayoutAnim;
     bool ChoiceReady() {
         Machine* m = OpenMessage();
         if (m == nullptr || StateName(*m, m->state) != "Selecting") return false;

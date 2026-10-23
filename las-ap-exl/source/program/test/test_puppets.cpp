@@ -130,14 +130,14 @@ namespace {
         for (auto& p : g_Puppets) {
             if (!Alive(p)) continue;
             int n = IndexOf(p);
-            const char* name = reinterpret_cast<const char*>(p.actor) + kActorName;
+            const char* name = p.actor->entity.name;
             s += " | " + (n == kTest ? std::string("test") : std::to_string(n)) + " actor=" +
                  Hex(reinterpret_cast<uintptr_t>(p.actor)) + (p.shown ? "" : " hidden") + " name=" +
                  std::string(name, strnlen(name, 0x20));
-            if (auto* root = At<Game::RootComp*>(p.actor, kActorRoot)) s += " pos=" + PosText(root->coordsNew.pos);
+            if (Game::Node* root = p.actor->root) s += " pos=" + PosText(root->coordsNew.pos);
             s += " model=" + (p.model != nullptr ? Hex(reinterpret_cast<uintptr_t>(p.model)) : "-");
-            s += " flags=" + Hex(At<u32>(p.actor, kActorFlags));
-            s += " zone=" + std::to_string(At<s32>(p.actor, 0xb0));
+            s += " flags=" + Hex(p.actor->entity.flags);
+            s += " zone=" + std::to_string(p.actor->zone);
             const char* anim = p.track.anim > 0 ? AP::GhostNet::AnimName(p.track.anim)
                                                 : p.track.gait >= 0 ? kGaits[p.track.gait] : nullptr;
             s += " anim=" + std::string(anim != nullptr ? anim : "-");
@@ -169,7 +169,7 @@ namespace {
         static void Callback(void* comp, StrView* name, u8 mode, float blend, float frame) {
             if (mode == 0 && comp != nullptr) {
                 for (auto& p : g_Puppets) {
-                    if (comp == AnimComp(p) && p.animLog.size() < 40)
+                    if (comp == NpcOf(p) && p.animLog.size() < 40)
                         p.animLog.push_back(std::string(name->View()) + (blend == 0 ? "/0" : "") + "@" +
                                             std::to_string(g_LastFrame));
                 }

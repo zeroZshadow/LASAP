@@ -1,4 +1,5 @@
 #include "config/config.hpp"
+#include "game/actor.hpp"
 #include "game/addr.hpp"
 #include "game/hooks/level.hpp"
 #include "hooks.hpp"
@@ -164,12 +165,6 @@ namespace {
         return id;
     }
 
-    struct Vector3 {
-        float x;
-        float y;
-        float z;
-    };
-
     // although pretty much anything can work, these are ones that look the best
     // we can easily add more later if we want
     uint16_t chest_ids[] = {0xc, 0x10, 0x12, 0x19, 0x1b, 0x1c, 0x1d, 0x25, 0x34, 0x3c};
@@ -180,47 +175,37 @@ namespace {
         }
     };
 
-    void RandomizeEnemy(u64 actorDataOffset) {
-        u16* actorID = reinterpret_cast<u16*>(actorDataOffset + 0xc);
-        std::vector<u16> vec = getValidEnemies(*actorID);
+    void RandomizeEnemy(Game::LebActorRecord* record) {
+        std::vector<u16> vec = getValidEnemies(record->actorId);
         if (vec.size() > 1) {
 #ifdef LASAP_TEST
-            u16 vanilla_id = *actorID;
+            u16 vanilla_id = record->actorId;
 #endif
-            u64* hash = reinterpret_cast<u64*>(actorDataOffset);
-            if (!isRequiredKill(*hash)) {
+            if (!isRequiredKill(record->key)) {
                 u16 new_enemy;
                 do {
                     new_enemy = vec[exl::util::GetRandomU64() % vec.size()];
                 }
-                while (!isEnemyValid(*actorID, new_enemy));
+                while (!isEnemyValid(record->actorId, new_enemy));
                 if (lastTen.size() >= 10) {
                     lastTen.pop_front();
                 }
                 lastTen.push_back((int)new_enemy);
                 new_enemy = randomizeEnemyVariants(new_enemy);
-                *actorID = new_enemy;
+                record->actorId = new_enemy;
                 // some enemies are rotated, we do not want them to randomize into an enemy that is rotation locked
                 // while they still work, I just dont like how it looks
-                f32* rotY = reinterpret_cast<f32*>(actorDataOffset + 0x24);
-                *rotY = 0.0f;
-                rotY = nullptr;
+                record->rotDegrees.y = 0.0f;
             }
             if (global_config.randomizer.enemy_sizes) {
-                Vector3* scale = reinterpret_cast<Vector3*>(actorDataOffset + 0x2c);
                 float scale_factor = exl::util::GetRandomF32(0.5f, 1.5f);
-                scale->x = scale_factor;
-                scale->y = scale_factor;
-                scale->z = scale_factor;
-                scale = nullptr;
+                record->scale = {scale_factor, scale_factor, scale_factor};
             }
 #ifdef LASAP_TEST
-            AP::Test::OnEnemy(vanilla_id, *actorID, global_config.randomizer.enemy_sizes
-                              ? reinterpret_cast<Vector3*>(actorDataOffset + 0x2c)->x : 0.0f);
+            AP::Test::OnEnemy(vanilla_id, record->actorId,
+                              global_config.randomizer.enemy_sizes ? record->scale.x : 0.0f);
 #endif
-            hash = nullptr;
         }
-        actorID = nullptr;
     }
 
     // Each actor a level loads, its LEB record in x26
@@ -230,7 +215,7 @@ namespace {
 
     HOOK_DEFINE_INLINE(ActorLoad) {
         static void Callback(exl::hook::nx64::InlineCtx* ctx) {
-            RandomizeEnemy(ctx->X[26]);
+            RandomizeEnemy(reinterpret_cast<Game::LebActorRecord*>(ctx->X[26]));
         }
     };
 }

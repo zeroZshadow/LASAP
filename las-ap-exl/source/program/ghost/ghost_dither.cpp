@@ -149,23 +149,18 @@ namespace {
 
     // The model's blocks (its materials' parameter blocks and its shapes' blocks, one span in its pool) as GPU
     // addresses, for the render thread.
-    void PublishSpan(int n, const u8* model) {
-        u64 gpu = At<u64>(At<const u8*>(model, kModelPool), kPoolGpu);
+    void PublishSpan(int n, const Game::ModelObj* model) {
+        u64 gpu = model->pool != nullptr ? model->pool->gpu : 0;
         u64 lo = ~0ull, hi = 0;
-        u16 count = At<u16>(model, kModelMatCount);
-        const u8* mats = At<const u8*>(model, kModelMats);
-        for (u16 i = 0; i < count; i++) {
-            const u8* mat = mats + i * kMatStride;
-            u64 at = At<u64>(mat, kMatBlock);
-            u32 copies = std::min(At<u32>(mat, kMatCopies), 4u);
-            u64 size = (At<u64>(mat, kMatBlockSize) + 0xff) & ~0xffull;
-            lo = std::min(lo, at);
-            hi = std::max(hi, at + copies * size);
+        for (u16 i = 0; model->materials != nullptr && i < model->materialCount; i++) {
+            const Game::MaterialObj& mat = model->materials[i];
+            u32 copies = std::min(mat.blockCopies, 4u);
+            u64 size = (mat.blockSize + 0xff) & ~0xffull;
+            lo = std::min(lo, mat.blockOffset);
+            hi = std::max(hi, mat.blockOffset + copies * size);
         }
-        u16 shapes = At<u16>(model, kModelShapeCount);
-        const u8* shape = At<const u8*>(model, kModelShapes);
-        for (u16 i = 0; i < shapes; i++) {
-            u64 at = At<u64>(shape + i * kShapeStride, kShapeBlock);
+        for (u16 i = 0; model->shapes != nullptr && i < model->shapeCount; i++) {
+            u64 at = model->shapes[i].blockOffset;
             lo = std::min(lo, at);
             hi = std::max(hi, at + 0x1000);
         }

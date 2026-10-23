@@ -26,6 +26,12 @@ namespace Game {
         void* ctrl = nullptr;
     };
 
+    // libc++ std::weak_ptr: the same pair, holding a weak reference.
+    struct WeakPtr {
+        void* ptr = nullptr;
+        void* ctrl = nullptr;
+    };
+
     // A shared_ptr a function returns: not trivial, so it comes back through x8, as the game's functions return it.
     struct SharedPtrOut {
         void* ptr = nullptr;

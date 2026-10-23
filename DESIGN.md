@@ -61,7 +61,7 @@ The module patches and hooks the game's code at boot, after an emulator may alre
 
 | Folder | What it holds |
 |---|---|
-| `game/` | How the module reaches the game: addresses and typed symbols named as in `las.sym` (`addr.hpp`, `sym.hpp`), field access (`mem.hpp`), read-only views of the game's libc++ types (`stl.hpp`), and the game's objects as types (framework, player, inventory, UI, map pages, audio). `game/hooks/` holds the hooks on the game's own systems that several features use: event flags, the current level, `AddItemID`, input and play reports. |
+| `game/` | How the module reaches the game: addresses and typed symbols named as in `las.sym` (`addr.hpp`, `sym.hpp`), field access (`mem.hpp`), read-only views of the game's libc++ types (`stl.hpp`), and the game's objects as types (entities and actors, models and animations, NPCs, the framework, the player, saved data, UI and menus, map pages, audio). `game/hooks/` holds the hooks on the game's own systems that several features use: event flags, the current level, `AddItemID`, input and play reports. |
 | `config/` | `config.ini`, parsed once at boot into `PatchConfig`, its choices as enums. |
 | `patches/` | LASR's randomizer at runtime: the code patches (`patches.hpp`, tables of offset and instruction) and the hooks for enemies, fishing, seashells and `CompareInt`. |
 | `mods/` | The optional changes `config.ini` turns on: controls, fixes, tweaks. |

@@ -40,48 +40,38 @@ namespace {
     using Game::Ticks;
 
     // Actor factory (Actor_Create, game 1.0.0). The player's hookshot calls it with the actor system as owner and
-    // these params, zeroed but for:
-    constexpr size_t kParamsSize = 0x1c0;
-    constexpr size_t kParamId = 0x8;       // u16 actor id (the actor table's index, as in LEB files)
-    constexpr size_t kParamRoom = 0xc;     // s32 the actor's zone (+0xb0); the hookshot copies its owner's
-    constexpr size_t kParamPos = 0x180;    // Vec4
-    constexpr size_t kParamRot = 0x190;    // quaternion; PopEnemy copies the identity from a global
-    constexpr size_t kParamScale = 0x1a0;  // Vec4 of ones, from a global
-    // What PopEnemy releases afterwards: a weak_ptr's control block at +0x1b8, shared_ptr control blocks at +0x168
-    // and +0x158, then three member destructors (ActorParams_Dtor0..2).
-    constexpr size_t kParamsDtor0At = 0xd0, kParamsDtor1At = 0x50, kParamsDtor2At = 0x10;
+    // params zeroed but for the actor id, the zone (the hookshot copies its owner's), the position, the rotation and
+    // the scale (PopEnemy copies an identity quaternion and a Vec4 of ones from globals). PopEnemy then releases the
+    // params' weak and shared pointers and calls three member destructors (ActorParams_Dtor0..2).
     // Ghosts are NpcGhost actors (0x179) with an Npc row of their own. Each NPC class passes its row's symbol, a
     // literal in its code (str_NpcGhost), to the NPC component constructor, which looks the row up
     // (Datasheet_FindRow, row size 0x220; null when missing) in the Npc sheet (**NpcSheets_ptr). All of it runs
     // inside the factory call, so while the module's own spawn runs the key is APGhost, if the sheet has that row
     // (ghost_puppet.py adds it; a missing row crashes).
     constexpr u16 kGhostActor = 0x179;
-    constexpr size_t kNpcRowSize = 0x220;
+    using Game::Actors::kNpcRowSize;
     StrView g_GhostRow{"APGhost", 7};
     bool g_SpawningGhost = false;
     constexpr u64 kHiddenRemoveMs = 10000;  // a ghost hidden this long loses its actor
-    // Animations by name: the NPC's animation component (kActorAnimComp) has a virtual play (NpcAnimation_PlayByName,
-    // overridden by NpcAnimation_PlayByName2): (component, {name, length}*, mode, blend seconds, frame). Mode 0 looks
-    // the name up in its animation set (+0x1e8, cache +0x218) and hands it to its animation player (kAnimCompPlayer) at
-    // frame 0 and rate 0 (the player's virtual +0xc0 frame, +0xd8 rate); mode 2 sets the rate 1. The slot is found in
-    // the component's vtable at its first use.
-    constexpr size_t kSetFrame = 0xc0;
+    // Animations by name: the NPC component has a virtual play (NpcAnimation_PlayByName, overridden by
+    // NpcAnimation_PlayByName2): (component, {name, length}*, mode, blend seconds, frame). Mode 0 looks the name up in
+    // its animation set (+0x1e8, cache +0x218) and hands it to its animator at frame 0 and rate 0 (the animator's
+    // virtual +0xc0 frame, +0xd8 rate); mode 2 sets the rate 1. The slot is found in the component's vtable at its
+    // first use.
     int g_PlaySlot = -1;  // -1: not looked up; -2: not in the component's vtable
     // The upper body, as Link has it: every NPC component class makes its animation player through the same
     // NpcComponent_MakeAnimator (0x94b310, vtable +0x208: out, component, {name, length}*, the model component's
     // shared_ptr*), a single-layer SkeletalAnimationComponent, each time the actor loads its model. For a ghost's
-    // component (its row, +0x88, APGhost's) the module makes Link's kind instead (Player_InitAnimator):
-    // LayeredAnimation_Make (0x67ba70: out, the component's entity +0x58, {name, length}*, model component sp*, int*
-    // layers) with two layers, layer 1 masked to the bones from spine_a up (0x1035390: layers +0x1b0, layer, bone
-    // name, true) and off (0x10355f0: layers +0x1b0, layer, on). Playing on layer 0 stays the NPC's (the layered
+    // component (its row, APGhost's) the module makes Link's kind instead (Player_InitAnimator):
+    // LayeredAnimation_Make (0x67ba70: out, the component's owner, {name, length}*, model component sp*, int*
+    // layers) with two layers, layer 1 masked to the bones from spine_a up (0x1035390: layerSet, layer, bone name,
+    // true) and off (0x10355f0: layerSet, layer, on). Playing on layer 0 stays the NPC's (the layered
     // player's set-animation is layer 0's); layer 1 takes the sender's upper-body animation as Link's controller
     // hands it over (PlayerAnimation_SetSlot): LayeredAnimation_SetSlot (0x1059dd0: player, layer, animation sp*,
     // blend, start frame) with the bound animation by name (NpcAnimation_Get 0x9670d0: out sp, NPC component,
     // {name, length}*), then the layer's virtual +0x30 (loops) and +0x48 (0), and the layer turned on. Like the
     // single-layer player (NpcAnimator_Make), the layered one is then started (the entity manager's start task) and
-    // made a child of the component's entity (0xfa9e40: entity, child), which binds it to the model.
-    constexpr size_t kNpcRow = 0x88, kNpcEntity = 0x58, kSacLayerSet = 0x1b0, kSacLayerCount = 0x1c8,
-                     kSacLayers = 0x1d0, kLayerSetLoop = 0x30, kLayerSetStart = 0x48;
+    // made a child of the component's owner (0xfa9e40: entity, child), which binds it to the model.
     constexpr int kUpperLayer = 1;
 
     // A ghost whose last line is older than this is not shown (the relay and the client send offs; this covers a
@@ -96,15 +86,8 @@ namespace {
     // suspending it).
     constexpr u32 kInactiveFrames = 30;
 
-    // The animation player's model instance (+0x88) and model object (+0x90); a layered player (the ghosts', with
-    // Link's upper-body layer) keeps them with its layers, at +0x1b8 and +0x1c0.
-    constexpr size_t kLayeredInstance = 0x1b8, kLayeredModel = 0x1c0;
-
-    // The puppet's model once it is loaded: its animation player's model.
-    u8* ModelOf(const Puppet& p) {
-        void* player = At<void*>(AnimComp(p), kAnimCompPlayer);
-        return At<u8*>(player, IsLayered(player) ? kLayeredModel : kAnimPlayerModel);
-    }
+    // The puppet's model once it is loaded: its animator's model.
+    Game::ModelObj* ModelOf(const Puppet& p) { return AnimatorModel(AnimatorOf(p)); }
 
     // Lets the actor go, once the game has destroyed it.
     void Forget(Puppet& p) {
@@ -138,16 +121,16 @@ namespace {
 
     bool HasGhostRow() { return GhostRow() != nullptr; }
 
-    bool IsLinkModel(const u8* model) {
-        const u8* res = At<const u8*>(model, 0);
+    bool IsLinkModel(const Game::ModelObj* model) {
+        const u8* res = model != nullptr ? model->res : nullptr;
         if (res == nullptr || std::memcmp(res, "FMDL", 4) != 0) return false;
-        return Game::ResName(At<const u8*>(res, 8)) == "link";
+        return Game::ResNameOf(res) == "link";
     }
 
     // First each frame for each puppet with an actor: its model. The actor loads its model again in each level, as a
     // new model object with its own animation player.
     void RefreshModel(Puppet& p) {
-        u8* model = ModelOf(p);
+        Game::ModelObj* model = ModelOf(p);
         if (model != nullptr && !IsLinkModel(model)) model = nullptr;
         if (model == p.model) return;
         ClearSpan(IndexOf(p));
@@ -180,7 +163,7 @@ namespace {
             p.ready = false;
             return;
         }
-        bool active = (At<u32>(p.actor, kActorFlags) & kActiveMask) == kActive;
+        bool active = p.actor->entity.Active();
         bool draw = p.shown && g_DrawGhosts && p.detail > 0 && !p.track.arriving;
         bool kept = WriteLook(p, draw);
         p.readyFrames = draw && kept && active ? p.readyFrames + 1 : 0;
@@ -210,8 +193,7 @@ namespace {
             if (frame < p.spawnAfter || !Spawn(p, kGhostActor, Game::Vec3{g.x, g.y, g.z}, frame, err)) return;
             p.framesSeen = g.timelineFrom;
         }
-        u32 flags = At<u32>(p.actor, kActorFlags);
-        if ((flags & kActiveMask) != kActive) {
+        if (!p.actor->entity.Active()) {
             if (!p.wasActive && ++p.inactiveFrames >= kInactiveFrames) {
                 g_Remade++;
                 Remove(p);  // spawned again next frame
@@ -238,22 +220,41 @@ namespace {
 
     bool Alive(const Puppet& p) { return Game::Alive(p.ctrl); }
 
-    void* AnimComp(const Puppet& p) { return Alive(p) ? At<void*>(p.actor, kActorAnimComp) : nullptr; }
-
-    bool IsLayered(const void* player) {
-        return At<const u8*>(player, 0) == Game::LayeredAnimation_vtable.Ptr();
+    Game::Actors::NpcComponent* NpcOf(const Puppet& p) {
+        return Alive(p) ? reinterpret_cast<Game::Actors::NpcActor*>(p.actor)->npc : nullptr;
     }
-    u8* PlayerInstance(const void* player) {
-        return At<u8*>(player, IsLayered(player) ? kLayeredInstance : kAnimPlayerInstance);
+
+    void* AnimatorOf(const Puppet& p) {
+        Game::Actors::NpcComponent* npc = NpcOf(p);
+        return npc != nullptr ? npc->animator : nullptr;
+    }
+
+    bool IsLayered(const void* animator) {
+        return At<const u8*>(animator, 0) == Game::LayeredAnimation_vtable.Ptr();
+    }
+    // A layered animator keeps its model instance and object with its layers.
+    Game::ModelInstance* AnimatorInstance(const void* animator) {
+        if (animator == nullptr) return nullptr;
+        return IsLayered(animator) ? static_cast<const Game::LayeredAnimation*>(animator)->instance
+                                   : static_cast<const Game::SkeletalAnimation*>(animator)->instance;
+    }
+    Game::ModelObj* AnimatorModel(const void* animator) {
+        if (animator == nullptr) return nullptr;
+        return IsLayered(animator) ? static_cast<const Game::LayeredAnimation*>(animator)->model
+                                   : static_cast<const Game::SkeletalAnimation*>(animator)->model;
+    }
+    Game::SkeletalModelComponent* AnimatorModelComp(const void* animator) {
+        if (animator == nullptr) return nullptr;
+        return IsLayered(animator) ? static_cast<const Game::LayeredAnimation*>(animator)->modelComp
+                                   : static_cast<const Game::SkeletalAnimation*>(animator)->modelComp;
     }
 
     // Removal as the game does it (0x8e3440): Entity_RemoveChild from the actor system, keyed by the actor's name.
     void Remove(Puppet& p) {
         ClearSpan(IndexOf(p));
-        if (Alive(p) && (At<u32>(p.actor, kActorFlags) & 0xc0000000) == 0) {
+        if (Alive(p) && !p.actor->entity.Gone()) {
             void* system = Game::GetFramework()->actorSystem.ptr;
-            Game::Entity_RemoveChild(system, static_cast<const char*>(p.actor) + kActorName,
-                                     At<u64>(p.actor, kActorNameLength), false);
+            Game::Entity_RemoveChild(system, p.actor->entity.name, p.actor->entity.nameLength, false);
         }
         Forget(p);
     }
@@ -274,24 +275,20 @@ namespace {
             err = "no player";
             return false;
         }
-        alignas(16) u8 params[kParamsSize] = {};
-        *reinterpret_cast<u16*>(params + kParamId) = id;
+        Game::ActorParams params{};
+        params.actorId = id;
         // Zone -1: NpcGhost is zone-scoped, and an actor of a zone Link has left is suspended until he enters it
         // again (ACTORS.md, Activity); a ghost goes where its player goes, so it belongs to no zone.
-        *reinterpret_cast<s32*>(params + kParamRoom) = -1;
-        float* f = reinterpret_cast<float*>(params + kParamPos);
-        f[0] = pos.x;
-        f[1] = pos.y;
-        f[2] = pos.z;
-        f[3] = 0;
+        params.zone = -1;
+        params.pos = {pos.x, pos.y, pos.z, 0};
         void* rot = *Game::IdentityQuat_ptr;
         void* scale = *Game::OneScale_ptr;
         if (rot == nullptr || scale == nullptr) {
             err = "no identity globals";
             return false;
         }
-        std::memcpy(params + kParamRot, rot, 16);
-        std::memcpy(params + kParamScale, scale, 16);
+        std::memcpy(&params.rot, rot, sizeof(params.rot));
+        std::memcpy(&params.scale, scale, sizeof(params.scale));
 
         // The owner is the framework's actor system (a shared_ptr), as the player's hookshot
         // passes it.
@@ -303,15 +300,15 @@ namespace {
         SharedPtr* system = &Game::GetFramework()->actorSystem;
         SharedPtr out{};
         g_SpawningGhost = id == kGhostActor;
-        Game::Actor_Create(&out, system, params);
+        Game::Actor_Create(&out, system, &params);
         g_SpawningGhost = false;
 
-        Game::ReleaseWeakOwner(Game::Field<void*>(params, 0x1b8));
-        Game::ReleaseOwner(Game::Field<void*>(params, 0x168));
-        Game::ReleaseOwner(Game::Field<void*>(params, 0x158));
-        Game::ActorParams_Dtor0(params + kParamsDtor0At);
-        Game::ActorParams_Dtor1(params + kParamsDtor1At);
-        Game::ActorParams_Dtor2(params + kParamsDtor2At);
+        Game::ReleaseWeakOwner(params.unread.ctrl);
+        Game::ReleaseOwner(params.lebRoom.ctrl);
+        Game::ReleaseOwner(params.flowchart.ctrl);
+        Game::ActorParams_Dtor0(params.drsb);
+        Game::ActorParams_Dtor1(params.bfres);
+        Game::ActorParams_Dtor2(params.lebParams);
 
         if (out.ptr == nullptr || out.ctrl == nullptr) {
             err = "factory returned nothing";
@@ -321,7 +318,7 @@ namespace {
         Forget(p);
         Game::AddWeakOwner(out.ctrl);
         Game::ReleaseOwner(out.ctrl);
-        p.actor = out.ptr;
+        p.actor = static_cast<Game::Actor*>(out.ptr);
         p.ctrl = out.ctrl;
 #ifdef LASAP_TEST
         p.animLog.clear();
@@ -339,9 +336,9 @@ namespace {
         return true;
     }
 
-    // Plays an animation of the puppet's model by name from a frame (the animation player's virtual +0xc0).
+    // Plays an animation of the puppet's model by name from a frame (the animator's kSetFrame).
     void PlayAnim(Puppet& p, const char* name, float blend, float frame) {
-        void* comp = AnimComp(p);
+        Game::Actors::NpcComponent* comp = NpcOf(p);
         if (comp == nullptr) return;
         uintptr_t* vtable = Game::VTable(comp);
         if (g_PlaySlot == -1) {
@@ -357,8 +354,8 @@ namespace {
         using Play = Game::Virtual<void(StrView*, u8, float, float)>;
         Play::Call(comp, g_PlaySlot * 8, &view, 0, blend, 0);
         Play::Call(comp, g_PlaySlot * 8, &view, 2, blend, 0);
-        void* player = At<void*>(comp, kAnimCompPlayer);
-        if (frame > 0 && player != nullptr) Game::CallVirtual<void(float)>(player, kSetFrame, frame);
+        if (frame > 0 && comp->animator != nullptr)
+            Game::CallVirtual<void(float)>(comp->animator, Game::SkeletalAnimationVirtual::kSetFrame, frame);
     }
 
     // The sender's upper-body animation (anim id, 0 none) on layer 1 of the puppet's layered animation player, from
@@ -366,9 +363,11 @@ namespace {
     void SetUpper(Puppet& p, int anim) {
         if (anim == p.upper) return;
         p.upper = anim;
-        void* comp = AnimComp(p);
-        u8* sac = At<u8*>(comp, kAnimCompPlayer);
-        if (sac == nullptr || !IsLayered(sac) || At<s32>(sac, kSacLayerCount) <= kUpperLayer) return;
+        Game::Actors::NpcComponent* comp = NpcOf(p);
+        void* animator = comp != nullptr ? comp->animator : nullptr;
+        if (animator == nullptr || !IsLayered(animator)) return;
+        auto* sac = static_cast<Game::LayeredAnimation*>(animator);
+        if (sac->layerCount <= kUpperLayer) return;
         SharedPtr played{};
         const char* name = anim > 0 ? AP::GhostNet::AnimName(anim) : nullptr;
         if (name != nullptr) {
@@ -378,13 +377,14 @@ namespace {
         // none: the layer is only turned off
         if (played.ptr != nullptr) {
             Game::LayeredAnimation_SetSlot(sac, kUpperLayer, &played, g_AnimBlend, 0);
-            u8* layer = At<u8**>(sac, kSacLayers)[kUpperLayer];
+            Game::AnimationLayer* layer = sac->layers[kUpperLayer];
             if (layer != nullptr) {
-                Game::CallVirtual<void(bool)>(layer, kLayerSetLoop, AP::GhostNet::AnimLoops(anim));
-                Game::CallVirtual<void(float)>(layer, kLayerSetStart, 0);
+                namespace Layer = Game::AnimationLayerVirtual;
+                Game::CallVirtual<void(bool)>(layer, Layer::kSetLoop, AP::GhostNet::AnimLoops(anim));
+                Game::CallVirtual<void(float)>(layer, Layer::kSetStart, 0);
             }
         }
-        Game::AnimationLayers_SetEnabled(sac + kSacLayerSet, kUpperLayer, played.ptr != nullptr);
+        Game::AnimationLayers_SetEnabled(sac->layerSet, kUpperLayer, played.ptr != nullptr);
         Game::ReleaseOwner(played.ctrl);
 #ifdef LASAP_TEST
         if (p.animLog.size() < 40)
@@ -396,7 +396,7 @@ namespace {
     Game::Vec4 QuatOf(float yaw) { return Game::Vec4{0, std::sin(yaw / 2), 0, std::cos(yaw / 2)}; }
 
     void Place(Puppet& p, const Game::Vec3& pos, const Game::Vec4* rot) {
-        auto* root = Alive(p) ? At<Game::RootComp*>(p.actor, kActorRoot) : nullptr;
+        Game::Node* root = Alive(p) ? p.actor->root : nullptr;
         if (root == nullptr) return;
         root->coordsNew.pos = pos;
         root->coords.pos = pos;
@@ -421,18 +421,18 @@ namespace {
     // A ghost's NPC component (the APGhost row) gets a layered animation player with Link's upper-body layer. The
     // player comes back through x8 (a shared_ptr), so the hook returns a type that is not trivial.
     HOOK_DEFINE_TRAMPOLINE(MakeAnimator) {
-        static Game::SharedPtrOut Callback(u8* comp, StrView* name, SharedPtr* model) {
-            const void* row = comp != nullptr ? At<const void*>(comp, kNpcRow) : nullptr;
+        static Game::SharedPtrOut Callback(Game::Actors::NpcComponent* comp, StrView* name, SharedPtr* model) {
+            const void* row = comp != nullptr ? comp->row : nullptr;
             if (g_LayeredGhosts && row != nullptr && model != nullptr && model->ptr != nullptr && row == GhostRow()) {
                 Game::SharedPtrOut out;
                 int layers = 2;
-                Game::LayeredAnimation_Make(&out, At<void*>(comp, kNpcEntity), name, model, &layers);
+                Game::LayeredAnimation_Make(&out, comp->owner, name, model, &layers);
                 if (out.ptr != nullptr) {
-                    u8* set = static_cast<u8*>(out.ptr) + kSacLayerSet;
+                    u8* set = static_cast<Game::LayeredAnimation*>(out.ptr)->layerSet;
                     Game::AnimationLayers_SetBoneMask(set, kUpperLayer, Game::str_spine_a.Ptr(), true);
                     Game::AnimationLayers_SetEnabled(set, kUpperLayer, false);
                     // started and made the entity's child, as NpcAnimator_Make does with its player
-                    void* entity = At<void*>(comp, kNpcEntity);
+                    Game::Entity* entity = comp->owner;
                     void* manager = *Game::EntityManager_ptr;
                     if (manager != nullptr) {
                         SharedPtr sp{out.ptr, out.ctrl};

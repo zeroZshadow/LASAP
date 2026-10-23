@@ -11,6 +11,7 @@
 #include "ap/ap_list.hpp"
 #include "ap/ap_patcher.hpp"
 #include "config/file_handler.hpp"
+#include "game/menu.hpp"
 #include "game/sym.hpp"
 #include "loggers.hpp"
 #include "map/map_tracker.hpp"
@@ -26,19 +27,16 @@ namespace {
     // ShellMansionMaster.PopBox, at the call that creates the present: x3 = item key view, w4 = item index.
     constexpr uintptr_t kMansionPopBoxCreate = 0xa35994;
 
-    // Toasts reuse the autosave popup (Ld_ThrobberSave, "Now Saving"). Its UI object runs a state machine at
-    // +0x80 (state byte at +0x8d: 0 None, 1 In, 2 Loop, 3 Out, 4 InAuto, 5 LoopAuto); LoopAuto counts the float
-    // at +0x290 down and slides out at zero (Throbber_Show, Throbber_ChangeState). The text pane holder at +0x278
-    // shows the message UI:SystemSaving.
-    constexpr size_t kThrobberMachine = 0x80;
-    constexpr size_t kThrobberState = 0x8d;
-    constexpr size_t kThrobberPane = 0x278;
-    constexpr size_t kThrobberTimer = 0x290;
-    constexpr int kStateNone = 0, kStateInAuto = 4, kStateLoopAuto = 5;
+    // Toasts reuse the autosave popup (Game::Ui::Throbber, "Now Saving"): shown in auto mode, its LoopAuto state
+    // counts the timer down and slides out at zero; its text shows the message UI:SystemSaving.
+    using Game::Ui::Throbber;
+    using Game::Ui::kThrobberNone;
+    using Game::Ui::kThrobberInAuto;
+    using Game::Ui::kThrobberLoopAuto;
     constexpr float kToastSeconds = 3.0f;
     constexpr const char* kSavingLabel = "SystemSaving";
 
-    u8* g_Throbber = nullptr;       // the popup's UI object, seen by the state hook
+    Game::Ui::Throbber* g_Throbber = nullptr;  // the popup's UI object, seen by the state hook
     bool g_ToastStarting = false;   // our ShowThrobber call is running
     bool g_ToastShowing = false;    // the popup shows our text
     bool g_ToastText = false;       // the text getter hands out the toast for UI:SystemSaving
@@ -263,21 +261,21 @@ namespace {
         static const char label[] = "UI:SystemSaving";
         Game::StrView view{label, sizeof(label) - 1};
         g_ToastText = toast;
-        Game::MessageText_SetLabel(reinterpret_cast<Game::Ui::TextHolder*>(g_Throbber + kThrobberPane), &view);
+        Game::MessageText_SetLabel(&g_Throbber->text, &view);
         g_ToastText = false;
     }
 }
 
 HOOK_DEFINE_TRAMPOLINE(ThrobberSetState) {
-    static void Callback(void* machine, s32 state) {
+    static void Callback(Game::Ui::StateMachine* machine, s32 state) {
         Orig(machine, state);
-        g_Throbber = reinterpret_cast<u8*>(machine) - kThrobberMachine;
-        if (g_ToastStarting && state == kStateInAuto) {
+        g_Throbber = reinterpret_cast<Throbber*>(reinterpret_cast<u8*>(machine) - offsetof(Throbber, machine));
+        if (g_ToastStarting && state == kThrobberInAuto) {
             // our ShowThrobber call: show the toast's text for its time
-            *reinterpret_cast<float*>(g_Throbber + kThrobberTimer) = kToastSeconds;
+            g_Throbber->timer = kToastSeconds;
             SetThrobberText(true);
             g_ToastShowing = true;
-        } else if (g_ToastShowing && state == kStateNone) {
+        } else if (g_ToastShowing && state == kThrobberNone) {
             SetThrobberText(false);
             g_ToastShowing = false;
         }
@@ -321,10 +319,10 @@ namespace AP {
     void ShowMusicToast(const std::string& text) {
         // showing, before it slides out: the new name in its place, for a whole toast's time
         if (g_ToastShowing && g_ToastMusic && g_Throbber != nullptr &&
-            (g_Throbber[kThrobberState] == kStateInAuto || g_Throbber[kThrobberState] == kStateLoopAuto)) {
+            (g_Throbber->machine.state == kThrobberInAuto || g_Throbber->machine.state == kThrobberLoopAuto)) {
             g_Toast = text;
             SetThrobberText(true);
-            *reinterpret_cast<float*>(g_Throbber + kThrobberTimer) = kToastSeconds;
+            g_Throbber->timer = kToastSeconds;
             return;
         }
         g_MusicToast = text;
@@ -333,7 +331,7 @@ namespace AP {
     void TickToasts(bool inLevel) {
         if (g_ToastShowing || (g_Toasts.empty() && g_MusicToast.empty()) || !inLevel) return;
         // ShowThrobber does nothing while the popup is busy (a real save); the toast then waits
-        if (g_Throbber != nullptr && g_Throbber[kThrobberState] != kStateNone) return;
+        if (g_Throbber != nullptr && g_Throbber->machine.state != kThrobberNone) return;
         bool music = g_Toasts.empty();
         g_Toast = music ? g_MusicToast : g_Toasts.front();
         g_ToastStarting = true;
