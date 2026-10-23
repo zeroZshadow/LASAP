@@ -1,0 +1,24 @@
+# The map tracker with Shuffled Dungeons: run after newgame_file2 on a mod from make_test_patch.py --dungeons
+# '{"tail-cave": "color-dungeon", "color-dungeon": "tail-cave"}', where the dungeons' icons are groups 112 to 120 (D1 to
+# D8, then D0). Each dungeon's icon is named "Unknown dungeon" without a count and shows out of logic until the game
+# sets its marker flag on entering the dungeon; the other icons show in logic (no logic sent).
+send DBG maplabel 112
+expect MAPLABEL.Unknown.dungeon$ 5
+send DBG maplabel 120
+expect MAPLABEL.Unknown.dungeon$ 5
+send DBG map
+expect looks=112,0,9,0 5
+# Tail Cave's door, north of Link, leads into the Color Dungeon, whose name shows and sets its marker flag.
+send DBG setflag TailCaveShutterOpened 1
+expect FLAG.TailCaveShutterOpened.1 5
+warp Field 54.75 9.0 160.5
+hold 0 0 32767 until level=Lv10ClothesDungeon 10
+loaded 20
+poll FLAG.UI_FieldMapIcon_Lv10Dungeon.1 20 DBG flag UI_FieldMapIcon_Lv10Dungeon
+# The Color Dungeon's icon has its name and count; Tail Cave's, whose door Link went through, stays unknown.
+send DBG maplabel 120
+expect MAPLABEL.\d+/\d+.D0.Color.Dungeon$ 5
+send DBG maplabel 112
+expect MAPLABEL.Unknown.dungeon$ 5
+send DBG map
+expect looks=113,0,8,0 5
