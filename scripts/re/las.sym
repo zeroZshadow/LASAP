@@ -145,6 +145,8 @@ GameControl_SaveForGameClear 0x08d03680 f event action body: save level Field, l
 GameControl_Retry 0x08d03710 f event action body: locator $RETRY
 EventAction_PlayBGM 0x08d09a30 f Audio.PlayBGM body (out, ctx): params label, volume; volume 0.2 while a buff's music plays
 EventAction_StopBGM 0x08d09e20 f Audio.StopBGM body (out, ctx): params label, duration (seconds, times 60 for frames) -> BgmManager_StopByName
+EventFlow_ParseInt 0x095a3790 f (args, StringView* name) -> int: an event action's int argument by name
+FlowControl_CompareInt 0x08d08960 f (action): the event action CompareInt, which no flow of the game uses; the module replaces it to return its value1
 EventAction_PlayZoneBGM 0x08d0a4b0 f Audio.PlayZoneBGM body (out, ctx) -> PlayZoneBgm
 Event_Make 0x08d10290 f (out, flowchart*, StringView* entry)
 Event_Prepare 0x08d11b00 f (event*)

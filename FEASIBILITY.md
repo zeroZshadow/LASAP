@@ -46,7 +46,7 @@ Investigated 2026-10-12. Reference repos are cloned in `reference/`. They were r
 
 From `reference/LAS-exlaunch/source/program`:
 
-- **`Hooks/Common/inventory.hpp`, `Inventory__AddItemID(ID, count, index)`.** Every item grant flows through this hook. It already special-cases dungeon items: it uses `index` as the dungeon by temporarily overriding the inventory level byte. It also handles extra flags for instruments, ammo capacity and similar.
+- **`Hooks/Common/inventory.cpp`, the `Inventory_AddItemID(ID, count, index)` hook.** Every item grant flows through this hook. It already special-cases dungeon items: it uses `index` as the dungeon by temporarily overriding the inventory level byte. It also handles extra flags for instruments, ammo capacity and similar.
   - This is both the place to **detect** a check (placeholder item → report the location) and the function to **grant** received items.
   - Trade items (IDs 29–42 apart from the lens) are deliberately not added to the inventory; LASR tracks them with flags. Receiving trade items remotely needs its own path.
 - **`Hooks/Common/eventflags.hpp`.** Callable `EventFlags::SetFlag/CheckFlag(name)` and `Set/CheckGettingFlag(itemID)`.

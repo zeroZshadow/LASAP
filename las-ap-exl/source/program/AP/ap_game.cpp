@@ -3,6 +3,7 @@
 #include "AP/ap.hpp"
 #include "AP/ap_debug.hpp"
 #include "AP/ap_list.hpp"
+#include "Config/config.hpp"
 #include "Hooks/Common/eventflags.hpp"
 #include "Hooks/Common/inventory.hpp"
 #include "Hooks/Common/level.hpp"
@@ -106,7 +107,7 @@ namespace {
     }
 
     int ItemIdFromKey(const std::string& key) {
-        for (const auto& [id, name] : itemsDict) {
+        for (const auto& [id, name] : Inventory::kItemNames) {
             if (name == key) return id;
         }
         return -1;
@@ -314,7 +315,7 @@ namespace {
             Damage(4);
             return true;
         }
-        if (global_config.damage.mode == "normal" && items->Health <= damage) items->Health = damage + 1;
+        if (global_config.damage.mode == DamageMode::Normal && items->Health <= damage) items->Health = damage + 1;
         std::string entry = std::string(AP::TRAP_EVENT_PREFIX) + key;
         g_ItemEventId = -1;
         g_ItemEventSwap = false;
@@ -372,8 +373,8 @@ namespace {
         for (const auto& n : kItemNames) {
             if (n.id == itemId) return n.name;
         }
-        auto it = itemsDict.find(itemId);
-        return it != itemsDict.end() ? it->second : std::to_string(itemId);
+        auto it = Inventory::kItemNames.find(itemId);
+        return it != Inventory::kItemNames.end() ? it->second : std::to_string(itemId);
     }
 
     // A toast in the autosave popup; '|' starts a new line.
@@ -466,8 +467,8 @@ namespace {
         } else {
             std::string name = show.item;
             if (name.empty()) {
-                auto it = itemsDict.find(show.id);
-                name = it != itemsDict.end() ? it->second : std::to_string(show.id);
+                auto it = Inventory::kItemNames.find(show.id);
+                name = it != Inventory::kItemNames.end() ? it->second : std::to_string(show.id);
             }
             AP::QueueToast(AP::ReceivedToast(name, show.sender));
         }

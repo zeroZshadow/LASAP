@@ -3,11 +3,32 @@
 #include "nn/err.hpp"
 #include "Config/config.hpp"
 #include "Config/file_handler.hpp"
-#include "Hooks/modloader.hpp"
+#include "Hooks/hooks.hpp"
 #include "AP/ap.hpp"
 #include <string>
 
-PatchConfig global_config;
+namespace {
+    // The module's patches and hooks, in the order they install; AP::Init adds the Archipelago bridge's.
+    void Install() {
+        const PatchConfig& config = global_config;
+        Patches::Run();
+        EventFlags::Install();
+        Input::Install();
+        Inventory::Install();
+        LevelSystem::Install();
+        PlayReport::Install();
+        if (config.randomizer.enabled) {
+            Fishing::Install();
+            Seashells::Install();
+            EventPatcher::Install();
+        }
+        if (config.randomizer.enemies || config.randomizer.enemy_sizes) Enemies::Install();
+        Controls::Install();
+        Fixes::Install();
+        Tweaks::Install();
+        AP::Init(config.archipelago.seed_hash, config.archipelago.port);
+    }
+}
 
 HOOK_DEFINE_TRAMPOLINE(nnMain) {
     static void Callback() {
@@ -23,11 +44,7 @@ HOOK_DEFINE_TRAMPOLINE(nnMain) {
             EXL_ABORT("Failed to read config.");
         }
         global_config.parse(config_str);
-        Patches::Run();
-        ModLoader::InstallCommonHooks();
-        ModLoader::InstallRandomizerHooks();
-        ModLoader::InstallMods();
-        AP::Init(global_config.archipelago.seed_hash, global_config.archipelago.port);
+        Install();
         Orig();
     }
 };

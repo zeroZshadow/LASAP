@@ -33,6 +33,7 @@
 #include "Game/ui.hpp"
 #include "loggers.hpp"
 #include "Config/file_handler.hpp"
+#include "Hooks/Common/eventflags.hpp"
 #include "Hooks/Common/level.hpp"
 #include <algorithm>
 #include <cctype>

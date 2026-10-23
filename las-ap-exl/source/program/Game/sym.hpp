@@ -10,6 +10,7 @@ namespace Game {
     struct Framework;
     class GameState;
     struct RootComp;
+    struct Vec3;
     namespace Data::Inventory { struct InventoryItems; }
     namespace Ui { struct Pane; struct TextBox; struct TextHolder; struct LayoutWrapper; struct Animator;
                    struct StateMachine; struct Manager; }
@@ -122,6 +123,9 @@ namespace Game {
     inline constexpr Global<BitTable> PanelPieceBits{0x1cc1208};
 
     // ---- Events and resources ----
+    // (args, name): an event action's int argument by name; the event action CompareInt (action)
+    inline constexpr Func<int(void*, StrView*)> EventFlow_ParseInt{0x109f790};
+    inline constexpr Func<int(long*)> FlowControl_CompareInt{0x804960};
     inline constexpr Global<void*> ResourceManager_ptr{0x1cc6db8};
     inline constexpr Global<void*> EventManager_ptr{0x1cb24d8};
     // (out handle, manager, path*)
@@ -284,6 +288,8 @@ namespace Game {
     // ---- Inventory and levels ----
     // (item id, count, index): adds an item; per item id in scripts/re/ITEMS.md
     inline constexpr Func<void(int, int, int)> Inventory_AddItemID{0x8d08e0};
+    // (level, locator, position): the level the game loads; the save takes them
+    inline constexpr Func<void(StrView*, StrView*, Vec3*)> SetCurrentLevel{0xdfa450};
     // (the framework's game state, state, bool): 4 reloads from the save, 1 quit, 5 ending
     inline constexpr Func<void(GameState*, u32, bool)> SetGameState{0x87b780};
     // The inventory (Game/Data/inventory.hpp)

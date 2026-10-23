@@ -1,6 +1,6 @@
-#include "nn/hid.h"
-#include "Hooks/Common/input.hpp"
+#include "Hooks/hooks.hpp"
 #include "AP/ap.hpp"
+#include "nn/hid.h"
 #include <atomic>
 
 // The game reads controllers through different nn::hid entry points depending on the screen,
@@ -14,50 +14,50 @@ namespace {
         }
         AP::Tick();
     }
+
+    HOOK_DEFINE_TRAMPOLINE(GetNpadState_FullKey) {
+        static void Callback(nn::hid::NpadFullKeyState* state, const u32& port) {
+            Orig(state, port);
+            AP::ApplyInjectedInput(reinterpret_cast<nn::hid::NpadBaseState*>(state));
+            OnPoll(0);
+        }
+    };
+
+    HOOK_DEFINE_TRAMPOLINE(GetNpadState_Handheld) {
+        static void Callback(nn::hid::NpadHandheldState* state, const u32& port) {
+            Orig(state, port);
+            AP::ApplyInjectedInput(reinterpret_cast<nn::hid::NpadBaseState*>(state));
+            OnPoll(1);
+        }
+    };
+
+    HOOK_DEFINE_TRAMPOLINE(GetNpadState_JoyDual) {
+        static void Callback(nn::hid::NpadJoyDualState* state, const u32& port) {
+            Orig(state, port);
+            AP::ApplyInjectedInput(reinterpret_cast<nn::hid::NpadBaseState*>(state));
+            OnPoll(2);
+        }
+    };
+
+    HOOK_DEFINE_TRAMPOLINE(GetNpadStates_FullKey) {
+        static void Callback(nn::hid::NpadFullKeyState* states, s32 count, const u32& port) {
+            Orig(states, count, port);
+            if (count > 0) AP::ApplyInjectedInput(reinterpret_cast<nn::hid::NpadBaseState*>(states));
+            OnPoll(3);
+        }
+    };
+
+    HOOK_DEFINE_TRAMPOLINE(GetNpadStates_Handheld) {
+        static void Callback(nn::hid::NpadHandheldState* states, s32 count, const u32& port) {
+            Orig(states, count, port);
+            if (count > 0) AP::ApplyInjectedInput(reinterpret_cast<nn::hid::NpadBaseState*>(states));
+            OnPoll(4);
+        }
+    };
 }
 
-HOOK_DEFINE_TRAMPOLINE(GetNpadState_FullKey) {
-    static void Callback(nn::hid::NpadFullKeyState* state, const u32& port) {
-        Orig(state, port);
-        AP::ApplyInjectedInput(reinterpret_cast<nn::hid::NpadBaseState*>(state));
-        OnPoll(0);
-    }
-};
-
-HOOK_DEFINE_TRAMPOLINE(GetNpadState_Handheld) {
-    static void Callback(nn::hid::NpadHandheldState* state, const u32& port) {
-        Orig(state, port);
-        AP::ApplyInjectedInput(reinterpret_cast<nn::hid::NpadBaseState*>(state));
-        OnPoll(1);
-    }
-};
-
-HOOK_DEFINE_TRAMPOLINE(GetNpadState_JoyDual) {
-    static void Callback(nn::hid::NpadJoyDualState* state, const u32& port) {
-        Orig(state, port);
-        AP::ApplyInjectedInput(reinterpret_cast<nn::hid::NpadBaseState*>(state));
-        OnPoll(2);
-    }
-};
-
-HOOK_DEFINE_TRAMPOLINE(GetNpadStates_FullKey) {
-    static void Callback(nn::hid::NpadFullKeyState* states, s32 count, const u32& port) {
-        Orig(states, count, port);
-        if (count > 0) AP::ApplyInjectedInput(reinterpret_cast<nn::hid::NpadBaseState*>(states));
-        OnPoll(3);
-    }
-};
-
-HOOK_DEFINE_TRAMPOLINE(GetNpadStates_Handheld) {
-    static void Callback(nn::hid::NpadHandheldState* states, s32 count, const u32& port) {
-        Orig(states, count, port);
-        if (count > 0) AP::ApplyInjectedInput(reinterpret_cast<nn::hid::NpadBaseState*>(states));
-        OnPoll(4);
-    }
-};
-
-namespace InputSystem {
-    void InstallHooks() {
+namespace Input {
+    void Install() {
         using namespace nn::hid;
         GetNpadState_FullKey::InstallAtFuncPtr(static_cast<void (*)(NpadFullKeyState*, const u32&)>(&GetNpadState));
         GetNpadState_Handheld::InstallAtFuncPtr(static_cast<void (*)(NpadHandheldState*, const u32&)>(&GetNpadState));

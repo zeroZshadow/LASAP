@@ -100,14 +100,14 @@ namespace Patches {
         if (global_config.nice_items.bombs) Apply(kNiceBombs);
         if (global_config.nice_items.hookshot) Apply(kNiceHookshot);
         if (global_config.nice_items.rod) Apply(kNiceRod);
-        if (global_config.damage.mode != "normal") {
-            Apply(DamagePatches(global_config.damage.mode == "none" ? 0 : kOhkoDamage));
+        if (global_config.damage.mode != DamageMode::Normal) {
+            Apply(DamagePatches(global_config.damage.mode == DamageMode::None ? 0 : kOhkoDamage));
         }
         if (global_config.randomizer.enabled) {
             Apply(kRandoFixes);
             if (global_config.randomizer.free_book) Apply(kFreeBook);
-            if (global_config.randomizer.stealing == "always") Apply(kStealAlways);
-            if (global_config.randomizer.stealing == "never") Apply(kStealNever);
+            if (global_config.randomizer.stealing == Stealing::Always) Apply(kStealAlways);
+            if (global_config.randomizer.stealing == Stealing::Never) Apply(kStealNever);
         }
     }
 }
