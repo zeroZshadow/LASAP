@@ -13,6 +13,7 @@
 #include "Game/addr.hpp"
 #include "loggers.hpp"
 #include "Config/file_handler.hpp"
+#include "AP/ap_patcher.hpp"
 #include <map>
 #include <sstream>
 #include <string>

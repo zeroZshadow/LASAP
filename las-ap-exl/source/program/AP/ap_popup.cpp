@@ -4,6 +4,7 @@
 // npcKey's Npc row, as the item-get's model task does) and makes a skeletal model component of the owner, a node
 // under the root given: here owned by Link and hanging under his model component. The module enables it, poses its
 // node each frame and destroys it again.
+#include "AP/ap_popup.hpp"
 #include "AP/ap.hpp"
 #include "Game/actor.hpp"
 #include "Game/framework.hpp"

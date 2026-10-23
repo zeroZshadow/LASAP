@@ -6,11 +6,14 @@
 // The found text names the location of the last placeholder added while the player was busy. Most flows add the
 // placeholder before its item-get (see the patcher). The Seashell Mansion's presents add it after, so the module
 // reads the location from the present when it pops.
+#include "AP/ap_text.hpp"
 #include "AP/ap.hpp"
 #include "AP/ap_list.hpp"
 #include "Game/sym.hpp"
 #include "loggers.hpp"
 #include "Config/file_handler.hpp"
+#include "AP/ap_patcher.hpp"
+#include "map/map_tracker.hpp"
 #include <cstdlib>
 #include <cstring>
 #include <deque>
@@ -150,7 +153,7 @@ HOOK_DEFINE_TRAMPOLINE(MsbtFindLabel) {
 #ifdef LASAP_TEST
         SeeLabel(msbt, out->index, label, len);
 #endif
-        int group = AP::MapLabelGroup(std::string_view(label, len));
+        int group = AP::MapTracker::LabelGroup(std::string_view(label, len));
         if (group >= 0) {
             if (out->index >= 0) g_MapLabels[{msbt, out->index}] = group;
             return;
@@ -184,9 +187,9 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
         if (out->text == nullptr) return;
         auto map = g_MapLabels.find({msbt, index});
         if (map != g_MapLabels.end()) {
-            std::string text = AP::MapLabelText(map->second);
+            std::string text = AP::MapTracker::LabelText(map->second);
 #ifdef LASAP_TEST
-            AP::NoteMapText(text);
+            AP::MapTracker::NoteText(text);
 #endif
             if (!text.empty()) {
                 out->length = Store(g_MapText, sizeof(g_MapText), text);
@@ -232,7 +235,7 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
                 // the map's X, Y and A captions; the Jukebox's guide, made from the map's, uses them too
                 int button = kind == Kind::MapCaption ? 0 : kind == Kind::MapPlace ? 1 : 2;
                 std::string text = AP::ListUi::GuideCaption(button);
-                if (text.empty() && kind == Kind::MapCaption) text = AP::MapCaptionText();
+                if (text.empty() && kind == Kind::MapCaption) text = AP::MapTracker::CaptionText();
                 if (text.empty()) return;
                 // The caption starts with a tag drawing the button (0x0E, group, type, parameter size, parameters).
                 s64 tags = 0;
@@ -351,13 +354,13 @@ namespace AP {
         g_LocationNames[local_id] = {item, player};
     }
 
+#ifdef LASAP_TEST
     std::string TextState() {
         return "TEXT names=" + std::to_string(g_LocationNames.size()) + " slots=" + std::to_string(g_SlotCount) +
                " found=" + std::to_string(g_FoundLocation) + " finds=" + std::to_string(g_FindCalls) +
                " gets=" + std::to_string(g_GetCalls) + " present=" + std::to_string(g_PresentLocation);
     }
 
-#ifdef LASAP_TEST
     std::string SeenText(const std::string& label) {
         auto it = g_SeenTexts.find(label);
         return it == g_SeenTexts.end() ? "TEXT " + label + " unseen" : "TEXT " + label + " said=" + it->second;

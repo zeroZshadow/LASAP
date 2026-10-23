@@ -5,6 +5,7 @@
 #include "Config/config.hpp"
 #include "Game/Data/inventory.hpp"
 #include "Game/sym.hpp"
+#include "AP/ap_patcher.hpp"
 
 namespace {
     // The purpose of this is to have our own code run for specific items

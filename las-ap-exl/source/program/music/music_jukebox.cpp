@@ -11,13 +11,17 @@
 // The module steers the moves that differ from the game's: R on System and L on the Jukebox change index 2 to
 // index 2 (System is removed and built again), L on the map lands on the Jukebox. Not in the Chamber Dungeon,
 // whose third page is the dungeon's own.
+#include "music/music_jukebox.hpp"
 #include "AP/ap.hpp"
 #include "AP/ap_list.hpp"
-#include "AP/ap_tracks.hpp"
+#include "music/music_tracks.hpp"
 #include "Game/mem.hpp"
 #include "Game/sym.hpp"
 #include "Game/ui.hpp"
 #include "loggers.hpp"
+#include "AP/ap_text.hpp"
+#include "ghost/ghost_net.hpp"
+#include "music/music.hpp"
 #include <algorithm>
 #include <cstdio>
 #include <cstring>

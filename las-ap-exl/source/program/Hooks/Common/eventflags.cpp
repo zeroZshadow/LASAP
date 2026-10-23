@@ -1,13 +1,14 @@
 #include "Hooks/Common/eventflags.hpp"
 #include "Hooks/hooks.hpp"
 #include "AP/ap.hpp"
+#include "map/map_tracker.hpp"
 #include "Game/sym.hpp"
 
 namespace {
     HOOK_DEFINE_TRAMPOLINE(EventFlags_Check) {
         static bool Callback(void** flags, Game::StrView* name) {
             bool value;
-            if (AP::MapFlag(name->View(), value)) return value;
+            if (AP::MapTracker::Flag(name->View(), value)) return value;
             return Orig(flags, name);
         }
     };

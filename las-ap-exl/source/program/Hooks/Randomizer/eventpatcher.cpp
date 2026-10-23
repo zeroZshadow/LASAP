@@ -11,7 +11,6 @@ namespace {
             long args = *action + kActionArgs;
             Game::StrView name{"value1"};
             int value = Game::EventFlow_ParseInt(&args, &name);
-            Logging.Log("%d", value);
             return value;
         }
     };

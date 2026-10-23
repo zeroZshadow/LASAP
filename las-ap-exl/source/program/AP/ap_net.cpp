@@ -11,9 +11,11 @@
 // The client's socket is non-blocking, and this thread sends without the lock the game thread takes, so a client that
 // stops reading never holds the game up. What waits for it is bounded (kMaxWaiting): the module's heap is small, so
 // past that the connection is dropped; the client connects again, and its SYNC brings the game's state back.
+#include "AP/ap_net.hpp"
 #include "AP/ap.hpp"
-#include "AP/ap_debug.hpp"
+#include "test/test.hpp"
 #include "Game/time.hpp"
+#include "AP/ap_patcher.hpp"
 #include "nn/socket.hpp"
 #include "nn/os.hpp"
 #include <netinet/in.h>

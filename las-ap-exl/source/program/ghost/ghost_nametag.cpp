@@ -1,9 +1,12 @@
 // Multiplayer ghosts' name tags (DESIGN.md, Ghosts): each shown ghost's slot name above its head, small, in the game's
 // action prompt (Gm_HUDInteract.bflyt of Game.arc: text in a dark rounded window, without its button picture) built as
 // a layout of its own and placed on the screen every frame. All on the game thread.
+#include "ghost/ghost_nametag.hpp"
 #include "AP/ap.hpp"
 #include "Game/framework.hpp"
 #include "Game/ui.hpp"
+#include "AP/ap_text.hpp"
+#include "ghost/ghost_net.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -206,7 +209,6 @@ namespace AP::NameTag {
         }
         return s;
     }
-#endif
 
     std::string State() {
         std::string s = "tags=";
@@ -214,4 +216,5 @@ namespace AP::NameTag {
             s += tag.wrapper == nullptr ? '-' : !tag.drawn ? 'h' : GlyphsDrawn(tag.text) ? 'd' : 'g';
         return s;
     }
+#endif
 }

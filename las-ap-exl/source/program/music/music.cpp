@@ -8,13 +8,16 @@
 // then keeps it playing through room and level changes as it keeps one zone track playing. Every other request
 // (event songs, instrument songs, fanfares, jingles, boss and buff music) plays as usual, and the chosen track
 // comes back where the zone's music would.
+#include "music/music.hpp"
 #include "AP/ap.hpp"
-#include "AP/ap_tracks.hpp"
+#include "music/music_tracks.hpp"
 #include "Game/audio.hpp"
 #include "Game/framework.hpp"
 #include "Game/sym.hpp"
 #include "Game/time.hpp"
 #include "loggers.hpp"
+#include "AP/ap_net.hpp"
+#include "AP/ap_text.hpp"
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -139,7 +142,7 @@ namespace {
 
     // Playback (the Jukebox page's controls, DESIGN.md "Jukebox page"). With repeat one (on at the start) the chosen
     // track loops, as the game loops its music. With it off, once the chosen track has played through (its length in
-    // ap_tracks.hpp, counted while it plays, from the start again whenever the game starts it again) the next one
+    // music_tracks.hpp, counted while it plays, from the start again whenever the game starts it again) the next one
     // follows. Next and previous step through one order, round: the list's, or with shuffle a random order of the
     // list drawn when shuffle turns on, so every track plays once before any plays again and previous retraces next.
     bool g_RepeatOne = true, g_Shuffle = false;

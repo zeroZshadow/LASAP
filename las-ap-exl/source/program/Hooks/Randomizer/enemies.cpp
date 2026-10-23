@@ -3,7 +3,7 @@
 #include "Config/config.hpp"
 #include "Game/addr.hpp"
 #ifdef LASAP_TEST
-#include "AP/ap_debug.hpp"
+#include "test/test.hpp"
 #endif
 #include <algorithm>
 #include <deque>

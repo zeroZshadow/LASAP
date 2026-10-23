@@ -1,6 +1,7 @@
 // Multiplayer ghosts, the network half (DESIGN.md, Ghosts): while the client asks for it (GHOSTS 1), Link's position
 // goes to the client as POS lines, which it relays to the other players; their positions come back as GHOST lines,
 // kept here per ghost slot for the puppets.
+#include "ghost/ghost_net.hpp"
 #include "AP/ap.hpp"
 #include "Game/framework.hpp"
 #include "Game/math.hpp"
@@ -8,6 +9,8 @@
 #include "Game/time.hpp"
 #include "Hooks/Common/level.hpp"
 #include "Game/Data/inventory.hpp"
+#include "AP/ap_net.hpp"
+#include "AP/ap_text.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -400,6 +403,7 @@ namespace AP::GhostNet {
         return At<s32>(At<const u8*>(data, kDataRows) + (anim - 1) * kRowSize, kRowPolicy) == 1;
     }
 
+#ifdef LASAP_TEST
     std::string State() {
         std::string s = "GHOSTNET wanted=" + std::to_string(g_Wanted) + " names=" + std::to_string(g_Names) + " pos=" + std::to_string(g_PosLines) +
                         " ghostlines=" + std::to_string(g_GhostLines) + " handle_us=" + std::to_string(Game::TicksToUs(g_HandleTicks)) +
@@ -417,13 +421,12 @@ namespace AP::GhostNet {
                      g.look.ear, g.frames);
             s += buf;
         }
-#ifdef LASAP_TEST
         if (!g_StartLog.empty()) {
             s += " | starts";
             for (auto& e : g_StartLog) s += " " + e;
             g_StartLog.clear();
         }
-#endif
         return s;
     }
+#endif
 }

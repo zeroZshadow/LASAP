@@ -7,6 +7,7 @@
 #include "Game/sym.hpp"
 #include "Game/time.hpp"
 #include "loggers.hpp"
+#include "AP/ap_text.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
