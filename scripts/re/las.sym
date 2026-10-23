@@ -32,6 +32,8 @@ Actor_OnRoomChanged 0x08523090 f actor vtable +0xe0 (actor, int* new, int* old):
 Actor_ZoneSignal 0x085232e0 f scene +0x7b8 callback: suspends a zone-scoped actor (+0xa4 bit 0) of the zone left, saving bit 2 into +0xa2
 SharedPtr_FromWeak 0x08525470 f (out shared_ptr, object, control block): an entity's self pointer (+0x8) as a shared_ptr
 Actor_RegisterEvents 0x08526a30 f (actor): event manager callbacks, handles +0x294/+0x298
+Actor_EventEndSignal 0x08526d20 f event manager +0x140 callback: actor vtable +0xb8 unless entity +0x43 bit 6
+Actor_EventStartSignal 0x08526dd0 f event manager +0xe8 callback: actor vtable +0xb0 unless entity +0x43 bit 6
 ActorSwitch_On 0x08526df0 f (LEB record, slot): sets the switch's flag (types 0, 1, 3)
 ActorSwitch_Off 0x08526fd0 f (LEB record, slot)
 ActorSwitch_Set 0x085271b0 f (LEB record, slot, bool); LASR's SetActorSwitch
@@ -414,11 +416,13 @@ GameControl_SaveForGameClear 0x08d03680 f event action body: save level Field, l
 GameControl_Retry 0x08d03710 f event action body: locator $RETRY
 EventAction_PlayBGM 0x08d09a30 f Audio.PlayBGM body (out, ctx): params label, volume; volume 0.2 while a buff's music plays
 EventAction_StopBGM 0x08d09e20 f Audio.StopBGM body (out, ctx): params label, duration (seconds, times 60 for frames) -> BgmManager_StopByName
+EventFlow_Make 0x095964f0 f (out flow, flowchart sp*, StringView* entry): the event's flow (0x1c8 bytes, event +0x10); +0x128 the flowchart (EVENTS.md)
 EventFlow_ParseInt 0x095a3790 f (args, StringView* name) -> int: an event action's int argument by name
 FlowControl_CompareInt 0x08d08960 f (action): the event action CompareInt, which no flow of the game uses; the module replaces it to return its value1
 EventAction_PlayZoneBGM 0x08d0a4b0 f Audio.PlayZoneBGM body (out, ctx) -> PlayZoneBgm
 Event_Make 0x08d10290 f (out, flowchart*, StringView* entry)
 Event_Prepare 0x08d11b00 f (event*)
+Event_HasChara 0x08d1eac0 f (event, EventChara sp*): the chara is one of the event's actors (map +0x78/+0x80)
 PanelQuery_Stone4 0x08d157e0 f event query lambda: save +0x5093 >= 5 and chamber stone 4 owned
 GameControl_FindAction 0x08d180e0 l leaf after udf, no prologue: GameControl action name -> std::function vtable
 GameControl_SetLevelJump 0x08d1f950 f (gc, StringView* level, StringView* locator, Vec2* offset): +0xa8/+0xe8 level, +0xf0/+0x130 locator, +0x140 offset
@@ -1317,8 +1321,12 @@ PlayerSM_StateCount 0x0922ef90 f sm vtable +0x10: 64
 PlayerSM_StateName 0x0922efa0 f sm vtable +0x18: names at sm +0xc58
 Player_Cleanup 0x09235df0 f vtable +0x38: clears the signal sets, updates the locators, drops +0x308 (guess)
 Player_DropCarried 0x09236720 f vtable +0x48: clears the carried weak_ptr (+0x19b0), flag bit 2, NoLift, ClearUpper
-Player_OnEventStart 0x09236a60 f vtable +0xb0: +0x1ef0 event kind, flag bit 0, DamageColComp off (likely)
-Player_OnEventEnd 0x09236d30 f vtable +0xb8: destroys +0x308, DamageColComp on (likely)
+Player_OnEventStart 0x09236a60 f vtable +0xb0 (EVENTS.md): Link in the event (Event_HasChara): +0x1ef0 event kind, flag bit 0 (kInEvent), DamageColComp off; else Actor_SuspendUpdates; hooked by the module
+Player_OnEventEnd 0x09236d30 f vtable +0xb8: destroys +0x308; undoes the start (flag bit 0, DamageColComp on, or Actor_ResumeUpdates); hooked by the module
+PlayerHook_InEvent 0x09248940 f state hook 0 (into 22)'s condition: flags bit 0 and the state neither 22 nor 16
+PlayerState_DemoEvent_Update 0x092afee0 f vtable +0x18: Player_Move with a zero vector
+PlayerState_DemoEvent_Enter 0x092b0500 f vtable +0x28 (state, player, previous state): idle animation, knockback velocity zeroed
+PlayerState_DemoEvent_Exit 0x092b08e0 f vtable +0x30 (state, player, next state)
 Player_Respawn 0x092377a0 f (player, Coords*, bool): puts Link at the coords; the update calls it with +0x1b40 after 1.5 s airborne
 PlayerSM_ChangeState 0x09238660 f (sm = player+0x4e0, u8 state): exit, set +0xd (prev +0xe), enter, onChange(state, name)
 Player_OnDamage 0x09250690 f damage lambda: inventory +0x84 health, +0x1e80 flash time; holds LASR's 0xd4c754 patch site

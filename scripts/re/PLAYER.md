@@ -16,8 +16,8 @@ Link's actor, his state machine, his character controller and his animation cont
 | `+0x68` / `+0x70` | IsA / TypeId (`0xd32730` / `0xd328c0`) |
 | `+0x78` | Register (`0xd32920`) |
 | `+0xa0` | `0xd32a50`: does nothing (ACTORS.md, Classes) |
-| `+0xb0` | `Player_OnEventStart` (`0xd32a60`): `eventKind` from the running event's actor `+0x180` (1 → 2, 2 → 1, 3 → 4, 4 → 5, 5 → 6), `kInEvent`, `damageFlashTime` 0, the DamageColComp off (its virtual `+0xa8`), the EventChara told (`0x81aac0`) |
-| `+0xb8` | `Player_OnEventEnd` (`0xd32d30`): destroys `eventEntity`, clears `eventKind` and `kInEvent`, the DamageColComp on |
+| `+0xb0` | `Player_OnEventStart` (`0xd32a60`, EVENTS.md): when Link's EventChara is in the running event (`Event_HasChara` `0x81aac0`), `eventKind` from the event's `+0x180` (1 → 2, 2 → 1, 3 → 4, 4 → 5, 5 → 6), `kInEvent`, `damageFlashTime` 0, the DamageColComp off (its virtual `+0xa8`); else `Actor_SuspendUpdates` |
+| `+0xb8` | `Player_OnEventEnd` (`0xd32d30`): destroys `eventEntity`, clears `eventKind`; then clears `kInEvent` and turns the DamageColComp on, or `Actor_ResumeUpdates` |
 | `+0xe0` | `Player_OnRoomChanged` (`0xd32f60`, ACTORS.md, Classes): `sideView` from the room data `+0xb9` == 1, the TailorPlayer's `SideView` / `TopView` |
 | `+0x110` | `0xd33470`: in state 22 plays animation key 0x34 or 0x16b by `sideView` |
 | `+0x118` | the fall (`0xd336c0`) |
@@ -257,7 +257,7 @@ a Move, `+0x28a` cleared at each Move).
 
 ## Open questions
 
-- What the conditions of `stateHooks` and `actionTransitions` test.
+- What the conditions of `stateHooks` and `actionTransitions` test; the hook into state 22 tests `kInEvent` (EVENTS.md).
 - What `eventEntity` holds.
 - Signals 0, 1 and 4: no emitter found.
 - Who inserts into `lowerLevelHoles` and `slowAreas` (likely the area actors).

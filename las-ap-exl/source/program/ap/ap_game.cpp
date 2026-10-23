@@ -203,6 +203,7 @@ namespace AP {
         Puppets::InstallHooks();
         Music::InstallHooks();
         InstallItemGetHooks();
+        InstallPickupEventHooks();
         InstallItemPoseHooks();
         InstallHeldModelHooks();
         Popup::InstallHooks();

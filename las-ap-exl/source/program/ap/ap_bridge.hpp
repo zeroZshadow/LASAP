@@ -95,6 +95,7 @@ namespace AP::Bridge {
     // Shows queued items one at a time, once the player is free and holds nothing.
     void TickItemGet();
     void InstallItemGetHooks();
+    void InstallPickupEventHooks();
 #ifdef LASAP_TEST
     // STATE's " showq=<queued>[+1] shown=<item>"
     std::string ItemGetState();

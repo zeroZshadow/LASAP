@@ -137,6 +137,10 @@ namespace Game {
     // (out future, player, item id, keep carry, message entry*): the item-get, the body of the event actions
     // Link.GenericItemGetSequence(ByKey)
     inline constexpr Func<void(SharedPtr*, void*, int, bool, StrView*)> Player_ItemGetSequence{0xd795d0};
+    // (player): Link's actor slots +0xb0 and +0xb8, which the event manager's start and end signals call
+    // (re/EVENTS.md)
+    inline constexpr Func<void(void*)> Player_OnEventStart{0xd32a60};
+    inline constexpr Func<void(void*)> Player_OnEventEnd{0xd32d30};
     // (wait closure): the item-get's fanfare has stopped
     inline constexpr Func<bool(void*)> ItemGet_FanfareDone{0xd7af30};
     // (item id): the item's Items.gsheet row asks for an autosave

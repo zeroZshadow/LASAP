@@ -8,7 +8,7 @@ warp Field 66.75 13.5 56.25
 at 66.75 56.25
 guard anim=item_get_st
 guard msg:Reading
-# The pickup's event takes him for a moment: the stick lets go there, or he walks on into the holes.
+# The stick lets go once the find is queued, or he walks on into the holes.
 hold 0 0 32767 until !free 5
 await 3 popup=1
 free 5
