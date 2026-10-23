@@ -27,16 +27,16 @@ namespace {
     // ShellMansionMaster.PopBox, at the call that creates the present: x3 = item key view, w4 = item index.
     constexpr uintptr_t kMansionPopBoxCreate = 0xa35994;
 
-    // Toasts reuse the autosave popup (Game::Ui::Throbber, "Now Saving"): shown in auto mode, its LoopAuto state
+    // Toasts reuse the autosave popup (Game::Ui::ThrobberSave, "Now Saving"): shown in auto mode, its LoopAuto state
     // counts the timer down and slides out at zero; its text shows the message UI:SystemSaving.
-    using Game::Ui::Throbber;
+    using Game::Ui::ThrobberSave;
     using Game::Ui::kThrobberNone;
     using Game::Ui::kThrobberInAuto;
     using Game::Ui::kThrobberLoopAuto;
     constexpr float kToastSeconds = 3.0f;
     constexpr const char* kSavingLabel = "SystemSaving";
 
-    Game::Ui::Throbber* g_Throbber = nullptr;  // the popup's UI object, seen by the state hook
+    Game::Ui::ThrobberSave* g_Throbber = nullptr;  // the popup's UI object, seen by the state hook
     bool g_ToastStarting = false;   // our ShowThrobber call is running
     bool g_ToastShowing = false;    // the popup shows our text
     bool g_ToastText = false;       // the text getter hands out the toast for UI:SystemSaving
@@ -267,9 +267,9 @@ namespace {
 }
 
 HOOK_DEFINE_TRAMPOLINE(ThrobberSetState) {
-    static void Callback(Game::Ui::StateMachine* machine, s32 state) {
+    static void Callback(Game::StateMachine<6>* machine, s32 state) {
         Orig(machine, state);
-        g_Throbber = reinterpret_cast<Throbber*>(reinterpret_cast<u8*>(machine) - offsetof(Throbber, machine));
+        g_Throbber = reinterpret_cast<ThrobberSave*>(reinterpret_cast<u8*>(machine) - offsetof(ThrobberSave, machine));
         if (g_ToastStarting && state == kThrobberInAuto) {
             // our ShowThrobber call: show the toast's text for its time
             g_Throbber->timer = kToastSeconds;
@@ -301,7 +301,7 @@ namespace AP {
         MsbtFindLabel::InstallAtFuncPtr(Game::Msbt_FindLabel.Ptr());
         MsbtGetText::InstallAtFuncPtr(Game::Msbt_GetText.Ptr());
         MansionPopBox::InstallAtPtr(Game::Addr(kMansionPopBoxCreate));
-        ThrobberSetState::InstallAtFuncPtr(Game::Throbber_ChangeState.Ptr());
+        ThrobberSetState::InstallAtFuncPtr(Game::ThrobberSave_ChangeState.Ptr());
     }
 
     void SetPaneText(Game::Ui::TextHolder* holder, const std::string& text) {
@@ -335,7 +335,7 @@ namespace AP {
         bool music = g_Toasts.empty();
         g_Toast = music ? g_MusicToast : g_Toasts.front();
         g_ToastStarting = true;
-        Game::Throbber_Show(true);
+        Game::ThrobberSave_Show(true);
         g_ToastStarting = false;
         if (g_ToastShowing) {
             g_ToastMusic = music;

@@ -65,14 +65,14 @@ namespace {
             s += " cello=" + std::to_string(items->ExtraItems.FullMoonCello);
         }
         if (fmwk && fmwk->player && fmwk->player->playerCollision) {
-            auto& p = fmwk->player->playerCollision->coordsNew.pos;
+            auto& p = fmwk->player->playerCollision->base.node.coordsNew.pos;
             char buf[96];
             snprintf(buf, sizeof(buf), " pos=%.2f,%.2f,%.2f", p.x, p.y, p.z);
             s += buf;
         }
         s += " recv=" + std::to_string(GetRecvCount());
         if (fmwk && fmwk->player) {
-            s += " event=" + std::to_string(fmwk->player->state);
+            s += " event=" + std::to_string(fmwk->player->machine.state);
             s += " paused=" + std::to_string(fmwk->paused);
             s += std::string(" carry=") + (PlayerCarrying() ? "1" : "0");
         }
@@ -168,9 +168,9 @@ namespace {
             auto* player = Game::GetFramework()->player;
             auto* col = player->playerCollision;
             Game::Vec3 target{(float)atof(a[2].c_str()), (float)atof(a[3].c_str()), (float)atof(a[4].c_str())};
-            col->coordsNew.pos = target;
-            col->coords.pos = target;
-            col->needsCoordUpdate = true;
+            col->base.node.coordsNew.pos = target;
+            col->base.node.coords.pos = target;
+            col->base.node.needsCoordUpdate = true;
             player->respawnCoords.pos = target;
             AP::Send("OK pos");
         } else if (cmd == "setrecv" && a.size() >= 3) {
@@ -312,7 +312,7 @@ namespace {
                      " rodata=" + Hex(info.m_Rodata.m_Start - start) + " data=" + Hex(info.m_Data.m_Start - start));
         } else if (cmd == "savepopup") {
             // Shows the game's own autosave popup, to check that toasts give its text back
-            Game::Throbber_Show(true);
+            Game::ThrobberSave_Show(true);
             AP::Send("OK savepopup");
         } else if (cmd == "collect" && a.size() >= 3) {
             // Simulates picking up a placeholder: DBG collect <local_id>

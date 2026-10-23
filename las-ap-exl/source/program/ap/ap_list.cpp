@@ -37,8 +37,9 @@ namespace {
     constexpr u64 kPadStaleMs = 50;  // the last poll's buttons count as held this long
     constexpr int kRepeatDelay = 20, kRepeatEvery = 5;  // frames before Up/Down repeat, and between repeats
 
-    // The pause menu header's guide (Game::Ui::NaviGuide), and the overworld map's: X, Y, R, A, B.
-    constexpr int kGuideSlotCount = std::extent_v<decltype(NaviGuide::slots)>;
+    // The pause menu header's guide (Game::Ui::NaviGuide): the overworld map's uses its first five slots, X, Y, R, A,
+    // B.
+    constexpr int kGuideSlotCount = 5;
     constexpr u32 kMapGuide[kGuideSlotCount] = {kGuideX, kGuideY, kGuideR, kGuideA, kGuideB};
 
     u64 g_PadHeld = 0, g_PadSeen = 0;
@@ -63,10 +64,11 @@ namespace {
     }
 
     void HideGuideSlot(Navi* navi, int index) {
-        GuideSlot* slot = &navi->guide.slots[index];
-        if (navi->guideSwapping != 0 && navi->guideSwapIndex == static_cast<u32>(index)) slot = &navi->guide.swapSlot;
-        u8* object = Game::CallVirtual<u8*()>(slot, GuideSlotVirtual::kObject);
-        SetVisible(object != nullptr ? Field<Pane*>(object, 0x18) : nullptr, false);
+        NaviGuide& guide = navi->guide;
+        GuideSlot* slot = &guide.slots[index];
+        if (guide.attention != 0 && guide.attentionIndex == static_cast<u32>(index)) slot = &guide.attentionSlot;
+        Game::Ui::Layout* layout = Game::CallVirtual<Game::Ui::Layout*()>(slot, LayoutWrapperVirtual::kLayout);
+        SetVisible(layout != nullptr ? layout->root : nullptr, false);
     }
 }
 
@@ -95,7 +97,7 @@ HOOK_DEFINE_TRAMPOLINE(NaviSetGuide) {
         g_Guide = nullptr;
         navi->pageIds[0] = mapId;
         for (int slot = guide->count; slot < kGuideSlotCount; slot++) HideGuideSlot(navi, slot);
-        navi->guideRedraw = 1;
+        navi->guide.relayout = 1;
     }
 };
 

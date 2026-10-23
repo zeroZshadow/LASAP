@@ -329,8 +329,8 @@ namespace {
     // button counts once waitCount is at waitLimit.
     using Game::Ui::MessageWindow;
     constexpr size_t kMsgMachine = offsetof(MessageWindow, machine);
-    constexpr size_t kMsgWaitCount = offsetof(MessageWindow, waitCount);
-    constexpr size_t kMsgWaitLimit = offsetof(MessageWindow, waitLimit);
+    constexpr size_t kMsgWaitCount = offsetof(MessageWindow, keyWait) + offsetof(Game::Ui::WaitCounter, count);
+    constexpr size_t kMsgWaitLimit = offsetof(MessageWindow, keyWait) + offsetof(Game::Ui::WaitCounter, limit);
     constexpr size_t kMsgChoice = offsetof(MessageWindow, choiceCursor);
 
     Machine* OpenMessage() {
@@ -380,7 +380,7 @@ namespace {
     float PlayerYaw() {
         Game::Framework* fmwk = Game::GetFramework();
         if (fmwk == nullptr || fmwk->player == nullptr || fmwk->player->playerCollision == nullptr) return NAN;
-        return Game::YawDegrees(fmwk->player->playerCollision->coordsNew.rotate);
+        return Game::YawDegrees(fmwk->player->playerCollision->base.node.coordsNew.rotate);
     }
 
     // The nearest of the four screen directions to where Link faces.
@@ -487,7 +487,7 @@ namespace {
         SetField(0, Bridge::ScreenName(fmwk));
         SetField(1, LevelSystem::GetCurrentLevel());
         bool player = fmwk != nullptr && fmwk->player != nullptr;
-        SetField(2, player ? std::to_string(fmwk->player->state) : "-");
+        SetField(2, player ? std::to_string(fmwk->player->machine.state) : "-");
         SetField(3, fmwk ? std::to_string(fmwk->paused) : "-");
         SetField(4, Bridge::PlayerFree() ? "1" : "0");
         u32 buttons = 0;
@@ -559,18 +559,20 @@ namespace {
                Read(owner + kMsgWaitLimit, limit) && count >= limit;
     }
 
-    // A choice takes buttons once its layout's animation has run: the Selecting update (0xef2300) returns while the
-    // float kChoiceLayoutAnim of choiceLayouts[choiceLayout]'s object is not 0.
-    constexpr size_t kMsgChoiceLayout = offsetof(MessageWindow, choiceLayout),
-                     kMsgLayouts = offsetof(MessageWindow, choiceLayouts), kLayoutAnim = Game::Ui::kChoiceLayoutAnim;
+    // A choice takes buttons once its animation has run: the Selecting update (0xef2300) returns while the animator
+    // of inOutChoice[choiceCount - 2] plays (its speed is not 0).
+    constexpr size_t kMsgChoiceCount = offsetof(MessageWindow, choiceCount),
+                     kMsgInOutChoice = offsetof(MessageWindow, inOutChoice) + offsetof(Game::Ui::Animation, animator),
+                     kAnimatorSpeed = offsetof(Game::Ui::Animator, speed);
     bool ChoiceReady() {
         Machine* m = OpenMessage();
         if (m == nullptr || StateName(*m, m->state) != "Selecting") return false;
-        uintptr_t owner = MessageOwner(m), layout = 0;
-        s32 index = 0;
-        float anim = 1;
-        return Read(owner + kMsgChoiceLayout, index) && index >= 0 && index < 16 &&
-               Read(owner + kMsgLayouts + index * 0x18, layout) && Read(layout + kLayoutAnim, anim) && anim == 0;
+        uintptr_t owner = MessageOwner(m), animator = 0;
+        s32 count = 0;
+        float speed = 1;
+        return Read(owner + kMsgChoiceCount, count) && count >= 2 && count <= 4 &&
+               Read(owner + kMsgInOutChoice + (count - 2) * sizeof(Game::Ui::Animation), animator) &&
+               Read(animator + kAnimatorSpeed, speed) && speed == 0;
     }
 
     int ChoiceCursor() {

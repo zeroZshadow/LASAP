@@ -235,18 +235,17 @@ namespace {
     // A layered animator keeps its model instance and object with its layers.
     Game::ModelInstance* AnimatorInstance(const void* animator) {
         if (animator == nullptr) return nullptr;
-        return IsLayered(animator) ? static_cast<const Game::LayeredAnimation*>(animator)->instance
-                                   : static_cast<const Game::SkeletalAnimation*>(animator)->instance;
+        return IsLayered(animator) ? static_cast<const Game::LayeredAnimation*>(animator)->layers.instance
+                                   : static_cast<const Game::SkeletalAnimation*>(animator)->layer.instance;
     }
     Game::ModelObj* AnimatorModel(const void* animator) {
         if (animator == nullptr) return nullptr;
-        return IsLayered(animator) ? static_cast<const Game::LayeredAnimation*>(animator)->model
-                                   : static_cast<const Game::SkeletalAnimation*>(animator)->model;
+        return IsLayered(animator) ? static_cast<const Game::LayeredAnimation*>(animator)->layers.model
+                                   : static_cast<const Game::SkeletalAnimation*>(animator)->layer.model;
     }
     Game::SkeletalModelComponent* AnimatorModelComp(const void* animator) {
         if (animator == nullptr) return nullptr;
-        return IsLayered(animator) ? static_cast<const Game::LayeredAnimation*>(animator)->modelComp
-                                   : static_cast<const Game::SkeletalAnimation*>(animator)->modelComp;
+        return static_cast<const Game::SkeletalAnimation*>(animator)->modelComp;  // the layered one's base
     }
 
     // Removal as the game does it (0x8e3440): Entity_RemoveChild from the actor system, keyed by the actor's name.
@@ -367,7 +366,7 @@ namespace {
         void* animator = comp != nullptr ? comp->animator : nullptr;
         if (animator == nullptr || !IsLayered(animator)) return;
         auto* sac = static_cast<Game::LayeredAnimation*>(animator);
-        if (sac->layerCount <= kUpperLayer) return;
+        if (sac->layers.count <= kUpperLayer) return;
         SharedPtr played{};
         const char* name = anim > 0 ? AP::GhostNet::AnimName(anim) : nullptr;
         if (name != nullptr) {
@@ -377,14 +376,14 @@ namespace {
         // none: the layer is only turned off
         if (played.ptr != nullptr) {
             Game::LayeredAnimation_SetSlot(sac, kUpperLayer, &played, g_AnimBlend, 0);
-            Game::AnimationLayer* layer = sac->layers[kUpperLayer];
+            Game::AnimationLayer* layer = sac->layers.layers[kUpperLayer];
             if (layer != nullptr) {
                 namespace Layer = Game::AnimationLayerVirtual;
                 Game::CallVirtual<void(bool)>(layer, Layer::kSetLoop, AP::GhostNet::AnimLoops(anim));
                 Game::CallVirtual<void(float)>(layer, Layer::kSetStart, 0);
             }
         }
-        Game::AnimationLayers_SetEnabled(sac->layerSet, kUpperLayer, played.ptr != nullptr);
+        Game::AnimationLayers_SetEnabled(&sac->layers, kUpperLayer, played.ptr != nullptr);
         Game::ReleaseOwner(played.ctrl);
 #ifdef LASAP_TEST
         if (p.animLog.size() < 40)
@@ -428,11 +427,11 @@ namespace {
                 int layers = 2;
                 Game::LayeredAnimation_Make(&out, comp->owner, name, model, &layers);
                 if (out.ptr != nullptr) {
-                    u8* set = static_cast<Game::LayeredAnimation*>(out.ptr)->layerSet;
+                    Game::AnimationLayers* set = &static_cast<Game::LayeredAnimation*>(out.ptr)->layers;
                     Game::AnimationLayers_SetBoneMask(set, kUpperLayer, Game::str_spine_a.Ptr(), true);
                     Game::AnimationLayers_SetEnabled(set, kUpperLayer, false);
                     // started and made the entity's child, as NpcAnimator_Make does with its player
-                    Game::Entity* entity = comp->owner;
+                    Game::Entity* entity = comp->owner != nullptr ? &comp->owner->entity : nullptr;
                     void* manager = *Game::EntityManager_ptr;
                     if (manager != nullptr) {
                         SharedPtr sp{out.ptr, out.ctrl};

@@ -14,8 +14,9 @@ namespace Game {
     namespace Data { struct SaveHeader; }
     namespace Data::Inventory { struct InventoryItems; }
     namespace Actors { struct NpcComponent; }
+    template<int N> struct StateMachine;
     namespace Ui { struct Pane; struct TextBox; struct TextHolder; struct LayoutWrapper; struct Animator;
-                   struct StateMachine; struct Manager; struct Navi; struct NaviGuide; struct MenuPage;
+                   struct Manager; struct Navi; struct NaviGuide; struct MenuPage; struct GmSystem;
                    struct MessageWindow; struct MessageText; }
     namespace Map { struct OverworldMap; struct DungeonMap; struct MapMarker; struct MapCursor; struct DungeonMapIcon;
                     struct MapActorDesc; struct UiDungeonAreaRow; struct DungeonItemsEntry; }
@@ -180,16 +181,16 @@ namespace Game {
     inline constexpr Func<void(Ui::NaviGuide*, int, u32)> Guide_Set{0xf571b0};
     // Navi, the pause menu header: its state machine's ChangeState (machine, state); the updates and enters of its
     // states (navi); its page titles (navi, index).
-    inline constexpr Func<void(Ui::StateMachine*, int)> Navi_ChangeState{0xee7dc0};
+    inline constexpr Func<void(StateMachine<6>*, int)> Navi_ChangeState{0xee7dc0};
     inline constexpr Func<void(Ui::Navi*)> Navi_WaitKey{0xee8ca0};
     inline constexpr Func<void(Ui::Navi*)> Navi_CloseOldUiUpdate{0xeea4f0};
     inline constexpr Func<void(Ui::Navi*)> Navi_CloseEnter{0xeeac10};
     inline constexpr Func<void(Ui::Navi*, u32)> Navi_SetTitles{0xeedec0};
     // The pause menu's System page (Gm_System): setup and update (page)
-    inline constexpr Func<void(Ui::MenuPage*)> GmSystem_Setup{0xf82f40};
-    inline constexpr Func<void(Ui::MenuPage*)> GmSystem_Update{0xf83650};
-    // The destructor a pause menu page's deleting destructor calls, shared by the pages (page)
-    inline constexpr Func<void(Ui::MenuPage*)> MenuPage_Dtor{0xec4330};
+    inline constexpr Func<void(Ui::GmSystem*)> GmSystem_Setup{0xf82f40};
+    inline constexpr Func<void(Ui::GmSystem*)> GmSystem_Update{0xf83650};
+    // Gm_System's destructor, which PdPage's calls too (page)
+    inline constexpr Func<void(Ui::GmSystem*)> GmSystem_Dtor{0xec4330};
     // The message window's Reading state update (window): shows the page letter by letter
     inline constexpr Func<void(Ui::MessageWindow*)> MessageWindow_Reading{0xef1960};
     // (text, letters): shows that many letters at once
@@ -209,8 +210,8 @@ namespace Game {
     inline constexpr Func<void(MsbtText*, void*, s32)> Msbt_GetText{0x10aa5a0};
     // The autosave popup (Ld_ThrobberSave, "Now Saving"): Show (auto) None/Out -> InAuto (0.5 s) or In; its state
     // machine's ChangeState (machine, state).
-    inline constexpr Func<void(bool)> Throbber_Show{0xf895c0};
-    inline constexpr Func<void(Ui::StateMachine*, s32)> Throbber_ChangeState{0xf85d20};
+    inline constexpr Func<void(bool)> ThrobberSave_Show{0xf895c0};
+    inline constexpr Func<void(StateMachine<6>*, s32)> ThrobberSave_ChangeState{0xf85d20};
     // (animator): its animation's frame count
     inline constexpr Func<u16(Ui::Animator*)> Animator_FrameCount{0x114c840};
     // (child wrapper, parent wrapper, pane, sibling): hangs the child's layout under the pane, before the sibling
@@ -270,7 +271,7 @@ namespace Game {
     // Map markers (Gm_MapMarker): Make (out shared_ptr), SetupPart (marker), ChangeState (the marker's machine, state)
     inline constexpr Func<void(SharedPtr*)> MapMarker_Make{0xe9c870};
     inline constexpr Func<void(Map::MapMarker*)> MapMarker_SetupPart{0xf3ad80};
-    inline constexpr Func<void(Ui::StateMachine*, u8)> MapMarker_ChangeState{0xf3a8c0};
+    inline constexpr Func<void(StateMachine<4>*, u8)> MapMarker_ChangeState{0xf3a8c0};
     // (cursor, message ref*): the map cursor's name
     inline constexpr Func<void(Map::MapCursor*, MessageRef*)> MapCursor_ShowName{0xea0f50};
 

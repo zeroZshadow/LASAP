@@ -25,7 +25,7 @@ namespace {
     // skeletal model component holds it), a control block of its own (InstancedModelCtrl_vtable) as its
     // shared-from-this, the entity manager's closures (kRegister) and its model instance M (kSetup, in the model list
     // at once), the entity manager's start task (EntityManager_PostStart) and the actor's child map
-    // (Actor_AttachComponent). noPush set and push clear keep the game from adding instances. M's instances: its
+    // (Actor_AttachComponent). Hidden (visible clear), it gets no records from the game. M's instances: its
     // records, turned into a storage buffer at each draw (0xfe4020, up to 512). M is drawn in its bind pose with an
     // identity world, so a shape bound to one bone shows at a ghost's bone with the ghost's bone world times the
     // inverse of M's.
@@ -114,12 +114,12 @@ namespace {
     bool InstMake(int g, Game::Actors::Player* host, Game::SkeletalModelComponent* smc) {
         Game::Framework* fmwk = Game::GetFramework();
         auto* comp = static_cast<Game::InstancedModelComponent*>(Game::operator_new(sizeof(Game::InstancedModelComponent)));
-        Game::Entity* entity = &comp->entity;
+        Game::Entity* entity = &comp->node.entity;
         SharedPtr owner{};
         Game::SharedPtr_FromWeak(&owner, host->actor.entity.self.ptr, host->actor.entity.self.ctrl);
         snprintf(g_InstName, sizeof(g_InstName), "APGhostInst%d", g_InstMade++);
         Game::ComponentName name{g_InstName, strlen(g_InstName), 1, owner.ptr, owner.ctrl};
-        Game::InstancedModel_Ctor(comp, &name, smc->modelResource, kInstMode + g, kInstGroups[g].shapes, fmwk->models);
+        Game::InstancedModel_Ctor(comp, &name, smc->modelResource, kInstMode + g, kInstGroups[g].shapes, &fmwk->renderer);
         Game::ReleaseOwner(owner.ctrl);
         void** ctrl = static_cast<void**>(Game::operator_new(0x20));
         ctrl[0] = const_cast<u8*>(Game::InstancedModelCtrl_vtable.Ptr());
@@ -127,8 +127,8 @@ namespace {
         ctrl[2] = reinterpret_cast<void*>(1);   // and the component's own weak reference
         ctrl[3] = comp;
         if (entity->self.ctrl == nullptr) entity->self = {comp, ctrl};
-        comp->push = 0;
-        comp->noPush = 1;
+        comp->visible = 0;  // the game pushes no records; the module writes them
+        comp->added = 1;    // as after a push, until the game's per-frame reset
         if (!(entity->flags & (Game::EntityFlags::kDestroyRequested | Game::EntityFlags::kInitialized))) {
             Game::CallVirtual<void()>(comp, Game::EntityVirtual::kRegister);
             Game::CallVirtual<void()>(comp, Game::EntityVirtual::kSetup);

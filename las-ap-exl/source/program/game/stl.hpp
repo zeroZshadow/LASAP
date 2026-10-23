@@ -19,6 +19,16 @@ namespace Game {
         constexpr std::string_view View() const { return {data, size}; }
     };
 
+    // The game's fixed-capacity string: the characters (terminated) and the length.
+    template<size_t N>
+    struct FixedString {
+        char data[N];
+        u64 length;
+
+        std::string_view View() const { return {data, length < N ? length : 0}; }
+    };
+    static_assert(offsetof(FixedString<0x40>, length) == 0x40 && sizeof(FixedString<0x40>) == 0x48);
+
     // libc++ std::shared_ptr: the object and its control block (+0x8 shared owners - 1, -1 once the object is gone;
     // +0x10 weak owners - 1; vtable +0x10 __on_zero_shared).
     struct SharedPtr {
@@ -76,6 +86,23 @@ namespace Game {
         }
     };
     static_assert(sizeof(String) == 0x18);
+
+    // libc++ std::unordered_map: the buckets, their count, the first node, the size and the max load factor (1.0).
+    struct UnorderedMap {
+        void** buckets;
+        u64 bucketCount;           // 0x8: a prime, grown 2, 5, 11, 23, ...
+        void* first;               // 0x10
+        u64 size;                  // 0x18
+        float maxLoad;             // 0x20
+    };
+    static_assert(offsetof(UnorderedMap, size) == 0x18 && sizeof(UnorderedMap) == 0x28);
+
+    // libc++ std::function: a small-object buffer and the callable (null when empty).
+    struct alignas(16) Function {
+        u8 buffer[0x20];
+        void* f;                   // 0x20
+    };
+    static_assert(offsetof(Function, f) == 0x20 && sizeof(Function) == 0x30);
 
     void AddOwner(void* ctrl);
     void AddWeakOwner(void* ctrl);

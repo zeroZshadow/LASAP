@@ -37,8 +37,8 @@ namespace {
     constexpr int kMap = 0, kSystem = 2;
     constexpr u8 kChamberDungeon = 8;  // the level index (Game::LevelIndex) of the Chamber Dungeon (third page id 0xb)
 
-    // Gm_System (vtable 0x1c2fe50, a MenuPage): setup (vtable +0x20), update (+0x28), the destructor its deleting
-    // destructor calls (MenuPage_Dtor, shared with other pages).
+    // Gm_System (Game::Ui::GmSystem): setup (vtable +0x20), update (+0x28), the destructor its deleting destructor
+    // calls (GmSystem_Dtor).
     constexpr const char* kSystemContent = "N_SystemChoice_00";
 
     // The track list (Gm_MemoryList), right of the middle.
@@ -92,7 +92,7 @@ namespace {
     int g_Changes = 0;              // changes through index 2 the module steered (2 to 2)
 
     struct Page {
-        MenuPage* page = nullptr;       // the Gm_System object that shows the Jukebox
+        GmSystem* page = nullptr;       // the Gm_System object that shows the Jukebox
         List list;
         Layout card, info, icon, mark, floating[kFloating], status;
         Text title, number, slash, total, name, about;
@@ -218,8 +218,8 @@ namespace {
     }
 
     // The Jukebox in the Gm_System page: System's choices hidden, the layouts hung under the page.
-    void BuildPage(MenuPage* page) {
-        LayoutWrapper* wrapper = &page->wrapper;
+    void BuildPage(GmSystem* page) {
+        LayoutWrapper* wrapper = &page->page.wrapper;
         Pane* pageRoot = RootOf(wrapper);
         if (pageRoot == nullptr) return;
         SetVisible(FindPane(pageRoot, kSystemContent), false);
@@ -317,7 +317,7 @@ namespace {
     void ChangeInPlace(Navi* navi, bool jukebox, u8 direction) {
         int index = navi->target;
         auto* old = static_cast<MenuPage*>(navi->pages[index].ptr);
-        if (old != nullptr) old->wrapper.pageActive = 0;
+        if (old != nullptr) old->wrapper.active = 0;
         navi->lr = 0;
         navi->direction = direction == kRight;
         navi->current = index;  // as Navi_WaitKey would have, on the page's first frame
@@ -397,7 +397,7 @@ HOOK_DEFINE_TRAMPOLINE(NaviSetTitles) {
 };
 
 HOOK_DEFINE_TRAMPOLINE(SystemSetup) {
-    static void Callback(MenuPage* page) {
+    static void Callback(GmSystem* page) {
         Orig(page);
         if (!g_Jukebox) return;
         DropPage();
@@ -406,7 +406,7 @@ HOOK_DEFINE_TRAMPOLINE(SystemSetup) {
 };
 
 HOOK_DEFINE_TRAMPOLINE(SystemUpdate) {
-    static void Callback(MenuPage* page) {
+    static void Callback(GmSystem* page) {
         if (page != g_Ui.page) return Orig(page);
         Animate();
         // AP::Tick does not run while the menu is open: a choice applies here, and the track chosen on the page plays
@@ -417,13 +417,13 @@ HOOK_DEFINE_TRAMPOLINE(SystemUpdate) {
         if (g_GuideShown && OnChosen() != g_GuideStop) RefreshGuide(kSystem);  // A reads Play or Stop
         // Gm_System's own update runs while it opens (its In animation), never once it takes buttons
         if (page->machine.state == 0 || page->machine.state == 0xff) return Orig(page);
-        page->canClose = 1;
+        page->page.canClose = 1;
         Input();
     }
 };
 
 HOOK_DEFINE_TRAMPOLINE(PageDtor) {
-    static void Callback(MenuPage* page) {
+    static void Callback(GmSystem* page) {
         if (page == g_Ui.page) DropPage();
         Orig(page);
     }
@@ -437,7 +437,7 @@ namespace AP::JukeboxPane {
         NaviSetTitles::InstallAtFuncPtr(Game::Navi_SetTitles.Ptr());
         SystemSetup::InstallAtFuncPtr(Game::GmSystem_Setup.Ptr());
         SystemUpdate::InstallAtFuncPtr(Game::GmSystem_Update.Ptr());
-        PageDtor::InstallAtFuncPtr(Game::MenuPage_Dtor.Ptr());
+        PageDtor::InstallAtFuncPtr(Game::GmSystem_Dtor.Ptr());
         AddGuideSource(JukeboxGuide);
     }
 

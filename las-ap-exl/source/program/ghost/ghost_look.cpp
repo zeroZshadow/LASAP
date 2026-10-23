@@ -24,8 +24,8 @@ namespace {
                                            "linkSwordB_MI_sowrdBball"};
     // The look's tunic: the material animation "clothes" swaps MI_body's albedo (frames 0 green, 1 red, 3 blue).
     // NpcComponent_PlayMaterialAnimation (0x9c1b30: out shared_ptr, NPC component, {name, length}*, at once) puts it
-    // on a slot of the NPC's material animation component; the slot is the facial set's count (one more for each
-    // extra set) unless the NPC has no facial control or it has kFacialNoSlots, then 0.
+    // on a slot of the NPC's material animation component; the slot is the facial row's slot count unless the NPC
+    // has no facial control or its destroy is requested, then 0 (NpcComponent_MakeMaterialAnimator counts the same).
     using Game::MatAnimSlot;
     namespace Slot = Game::MatAnimSlotVirtual;
     constexpr float kTunicFrames[] = {0, 1, 3};
@@ -58,7 +58,7 @@ namespace {
         Game::Actors::NpcComponent* npc = NpcOf(p);
         const Game::MaterialAnimComponent* mat = npc != nullptr ? npc->materialAnim : nullptr;
         if (mat == nullptr) return -1;
-        for (int i = 0; mat->slots != nullptr && i < mat->slotCount; i++) {
+        for (int i = 0; mat->slots.first != nullptr && i < mat->slotCount; i++) {
             const Game::MaterialAnim* anim = mat->slots[i] != nullptr ? mat->slots[i]->anim : nullptr;
             if (anim != nullptr && anim->res != nullptr && Game::ResNameOf(anim->res) == name) return i;
         }
@@ -98,7 +98,7 @@ namespace {
     void SetShapes(Puppet& p) {
         Game::ModelInstance* instance = AnimatorInstance(AnimatorOf(p));
         if (instance == nullptr || instance->Model() != p.model || p.model == nullptr) return;
-        u8* shapes = instance->shapeVisible;
+        u8* shapes = instance->shapeVisible.first;
         if (shapes == nullptr) return;
         int count = std::min<int>(p.model->shapeCount, AP::GhostNet::SHAPE_COUNT);
         u32 mask = p.detail == 2 ? g_ShapeMask : g_ShapeMask & g_CrowdMask;
@@ -111,9 +111,9 @@ namespace {
         Game::MaterialAnimComponent* mat = npc != nullptr ? npc->materialAnim : nullptr;
         const Game::Actors::FacialControl* facial = npc != nullptr ? npc->facial : nullptr;
         index = 0;
-        if (facial != nullptr && !(facial->flags & Game::Actors::kFacialNoSlots)) {
-            const Game::Actors::FacialSet* set = facial->set;
-            index = set != nullptr ? set->count + (set->extraA != 0) + (set->extraB != 0) : 0;
+        if (facial != nullptr && !(facial->entity.flags & Game::EntityFlags::kDestroyRequested)) {
+            const Game::Actors::FacialRow* row = facial->row;
+            index = row != nullptr ? row->SlotCount() : 0;
         }
         if (mat == nullptr || index < 0 || index >= mat->slotCount) return nullptr;
         return mat->slots[index];
@@ -162,7 +162,7 @@ namespace {
         for (int k = 0; k < kFaceParts; k++) {
             if (p.faceSlots[k] >= mat->slotCount) continue;
             MatAnimSlot* slot = mat->slots[p.faceSlots[k]];
-            float frame = slot != nullptr ? slot->frame : 0;
+            float frame = slot != nullptr ? slot->lastFrame : 0;
             if (frames[k] == p.faceSet[k] && frame == static_cast<float>(frames[k])) continue;
             Game::CallVirtual<void(float)>(slot, Slot::kSetRate, 0);
             Game::CallVirtual<void(float)>(slot, Slot::kSetFrame, static_cast<float>(frames[k]));

@@ -85,8 +85,7 @@ namespace {
     }
 
     std::string ZoneTrack(const BgmManager* manager) {
-        size_t len = manager->zoneTrackLength;
-        return std::string(manager->zoneTrack, len < sizeof(manager->zoneTrack) ? len : 0);
+        return std::string(manager->zoneTrack.View());
     }
 
     bool KnownTrack(const char* name) {
@@ -133,7 +132,7 @@ namespace {
 
     // Zone or event music (kind 1) other than the chosen track plays: a boss's, an event's.
     bool OtherMusic(const BgmManager* manager) {
-        for (const BgmInstance* instance : manager->playing) {
+        for (const BgmInstance* instance : manager->bgm.playing) {
             if (instance->kind != Game::Audio::kZoneMusic) continue;
             if (instance->name.View() != std::string_view(g_Track, g_TrackLen)) return true;
         }
@@ -183,7 +182,7 @@ namespace {
     // The chosen track's instance among those that play, or null.
     BgmInstance* PlayingInstance(const BgmManager* manager) {
         if (g_TrackLen == 0) return nullptr;
-        for (BgmInstance* instance : manager->playing) {
+        for (BgmInstance* instance : manager->bgm.playing) {
             if (instance->name.View() == std::string_view(g_Track, g_TrackLen)) return instance;
         }
         return nullptr;
@@ -375,7 +374,7 @@ namespace AP::Music {
         if (!g_Pending) return;
         // A track still being prepared would start after the change and play on beside it: the change waits, and
         // applies the latest choice.
-        if (!manager->starting.empty()) return;
+        if (!manager->bgm.starting.empty()) return;
         g_Pending = false;
         if (g_TrackLen > 0 && !KnownTrack(g_Track)) {
             AP::Log(std::string("music: unknown track ") + g_Track);
@@ -410,7 +409,7 @@ namespace AP::Music {
     void Loud() {
         BgmManager* manager = Manager();
         if (manager == nullptr || g_Started == nullptr) return;
-        for (BgmInstance* instance : manager->playing) {
+        for (BgmInstance* instance : manager->bgm.playing) {
             if (instance != g_Started) continue;
             Sound* sound = instance->sound;
             if (sound != nullptr && sound->target < 1.0f) Game::Sound_SetVolume(sound, kLoudFrames, 1.0f);
@@ -449,7 +448,7 @@ namespace AP::Music {
 
     bool HasMusic() {
         const BgmManager* manager = Manager();
-        return g_TrackLen > 0 || (manager != nullptr && manager->zoneTrackLength > 0);
+        return g_TrackLen > 0 || (manager != nullptr && manager->zoneTrack.length > 0);
     }
 
     std::string ZoneTrack() {
@@ -463,10 +462,10 @@ namespace AP::Music {
         std::string s = std::string(" music=") + (g_TrackLen > 0 ? g_Track : "-");
         if (manager == nullptr) return s + " zonebgm=- bgm=- bgmvol=-";
         s += " zonebgm=" + ::ZoneTrack(manager) + " bgm=";
-        if (manager->playing.empty()) return s + "- bgmvol=-";
+        if (manager->bgm.playing.empty()) return s + "- bgmvol=-";
         std::string volumes;
         bool first = true;
-        for (const BgmInstance* instance : manager->playing) {
+        for (const BgmInstance* instance : manager->bgm.playing) {
             s += (first ? "" : ",") + std::string(instance->name.View()) + ":" + std::to_string(instance->kind);
             float target = instance->sound != nullptr ? instance->sound->target : 0.0f;
             volumes += (first ? "" : ",") + std::to_string(static_cast<int>(target * 100.0f + 0.5f));
@@ -478,7 +477,7 @@ namespace AP::Music {
     const u8* PeekBase(bool instance) {
         const BgmManager* manager = Manager();
         if (manager == nullptr || !instance) return reinterpret_cast<const u8*>(manager);
-        return manager->playing.empty() ? nullptr : reinterpret_cast<const u8*>(manager->playing[0]);
+        return manager->bgm.playing.empty() ? nullptr : reinterpret_cast<const u8*>(manager->bgm.playing[0]);
     }
 
     std::string LogText() {

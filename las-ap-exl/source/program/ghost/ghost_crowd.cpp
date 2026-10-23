@@ -73,7 +73,7 @@ namespace {
             if (g_Puppets[n].shown && g_Puppets[n].model != nullptr) order[count++] = n;
         }
         if (player->playerCollision != nullptr) {
-            const Game::Vec3 at = player->playerCollision->coordsNew.pos;
+            const Game::Vec3 at = player->playerCollision->base.node.coordsNew.pos;
             float key[kGhosts];
             for (int i = 0; i < count; i++) {
                 const auto& p = g_Puppets[order[i]];

@@ -1,6 +1,6 @@
 # Actors (game 1.0.0)
 
-How the game's actors are made, run, stopped and removed, and what decides whether a room's actor appears, from static analysis of the main module. Offsets are module offsets (what `InstallAtOffset` and `scan.py` take); `las.sym` names them at their runtime addresses (module offset + 0x8504000). Object offsets are bytes from the object's start. "Guess" marks what the code suggests but was not followed to the end. TESTING.md, Reverse engineering, has the item-get models, NPC components, skeletons and animation; this file does not repeat them.
+How the game's actors are made, run, stopped and removed, and what decides whether a room's actor appears, from static analysis of the main module. Offsets are module offsets (what `InstallAtOffset` and `scan.py` take); `las.sym` names them at their runtime addresses (module offset + 0x8504000). Object offsets are bytes from the object's start. "Guess" marks what the code suggests but was not followed to the end. Field names are those of `game/actor.hpp` and `game/actors/npc.hpp`. TESTING.md, Reverse engineering, has the item-get models, NPC components, skeletons and animation; this file does not repeat them. MODELS.md has the model and animation components, PLAYER.md Link's actor, FRAMEWORK.md the framework and its phases.
 
 ## Actor table
 
@@ -57,7 +57,7 @@ Vtables start at the object's `+0x0` (no RTTI before them); `+0x68 IsA(type*)` a
 
 ## Actor fields
 
-`Entity_Ctor` (`0xfab900`, `(entity, {name, length, bool enabled}*)`) and `Actor_Ctor` (`0x1bdb0`, `(actor, ActorArgs*)`; the factories build `ActorArgs {+0x0 name, +0x8 length, +0x10 u8 1, +0x18/+0x20 owner sp, +0x30 params copy}`).
+`Entity_Ctor` (`0xfab900`, `(entity, {name, length, bool enabled}*)`) and `Actor_Ctor` (`0x1bdb0`, `(actor, ActorArgs*)`; the factories build `ActorArgs {+0x0 name, +0x8 length, +0x10 u8 1, +0x18/+0x20 owner sp, +0x30 params copy}`). `Entity_Ctor` leaves the parent (`+0x48`) to the subclass constructors (the engine actor base, Component), which set it from the arguments' owner. `Actor_Ctor` writes through `+0x2a0`, and the Actor is 0x2a8 bytes: NpcGhost's second base and Player's first field start at `+0x2a8`. Destructor `Actor_Dtor` (`0x1da50`).
 
 | Offset | |
 |---|---|
@@ -65,7 +65,7 @@ Vtables start at the object's `+0x0` (no RTTI before them); `+0x68 IsA(type*)` a
 | `+0x18`, `+0x38` | name (`char[0x20]`, NUL-terminated; 0x20 characters or more throw, and the factories return null for a name of 0 or more than 31), its length |
 | `+0x40` | flags (below); start as 5 \| enabled |
 | `+0x48`/`+0x50` | parent (weak) |
-| `+0x58`..`+0x78` | components: a map by FNV-1a of the name (node `{next, hash, name, length, sp}`) |
+| `+0x58`..`+0x78` | components: a libc++ `unordered_map` by FNV-1a of the name (node 0x30 bytes `{next, hash, name, length, sp}`, the name pointing at the component's own; `Actor_AttachComponent` `0xfaa8a0`) |
 | `+0x80`/`+0x88` | root component (shared_ptr) |
 | `+0x90` | component iteration depth |
 | `+0x98` | LEB key (params `+0x0`) |
@@ -78,17 +78,27 @@ Vtables start at the object's `+0x0` (no RTTI before them); `+0x68 IsA(type*)` a
 | `+0xb0` u32 | zone (params `+0xc`: the LEB actor's room id; -1 none) |
 | `+0xb4` | zone of the room that owns it (-1 none; `Room_AdoptActor` writes it); `+0xb8` the zone its removal is recorded under |
 | `+0xbc`..`+0xfc` | the 8 LEB parameters `{u32 value, u32 type}`: 2 float, 3 int, 4 LEB string offset (`LebRoom` virtual `+0x50`), 5 pooled string |
-| `+0x100` | links (LEB `x`, record `+0x87`): each resolves an actor index through the LEB and the registry |
-| `+0x118` | rail links (LEB `z`) |
+| `+0x100` | links (LEB `x`, record `+0x87`): owned 0x38-byte objects (`ActorLink_vtable` `0x1b51088`): `+0x8` the target actor (weak, the registry's actor of the key of `LebRoom` virtual `+0x28` of the link's index), `+0x18` the link's 2 parameters, `+0x28` the `LebRoom` (shared) |
+| `+0x118` | rail links (LEB `z`): owned 0x30-byte objects (`ActorRailLink_vtable` `0x1b51068`): `+0x8` the record's 0x18-byte entry, `+0x20` the `LebRoom` (shared) |
 | `+0x130`, `+0x1b0`, `+0x230` | the bfres, drsb and flowchart resources |
 | `+0x240`/`+0x248` | the room's LEB (`LebRoom`) |
 | `+0x250` | its LEB record; the actor reads its switches there |
 | `+0x260`, `+0x270`, `+0x280` | spawn position (record `+0x14` plus the area's offset), rotation (quaternion from the Euler degrees at record `+0x20`), scale (record `+0x2c`) |
-| `+0x290`, `+0x29c`, `+0x2a0` | zone signal subscriptions |
+| `+0x290`..`+0x2a0` | signal handles: `+0x290` the room manager's `+0x278` signal, `+0x29c` the scene's `+0x708` (room changed), `+0x2a0` the scene's `+0x7b8` (`Actor_SubscribeZones` `0x1e980`, `Actor_UnsubscribeZones` `0x1edf0`); `+0x294`, `+0x298` the event manager's `+0xe8` and `+0x140` signals (`Actor_RegisterEvents` `0x22a30`) |
 
 **Params** (0x1c0 bytes; `ActorParams_Copy` `0x31100`): `+0x0` u64 LEB key, `+0x8` u16 actor id, `+0xc` u32 zone, `+0x10` 8 LEB parameters, `+0x50`/`+0xd0` 8 bfres / drsb resources, `+0x150` flowchart, `+0x160`/`+0x168` `LebRoom` sp, `+0x170` LEB record, `+0x180` position, `+0x190` rotation, `+0x1a0` scale, `+0x1b0`/`+0x1b8` a weak pointer the constructor does not read. Destructors `0x1cf70` (`+0xd0`), `0x1d190` (`+0x50`), `0x1d3b0` (`+0x10`, releases type-5 strings).
 
-**LEB actor record** (field names as LASR's `Tools/leb.py`): `+0x0` u64 key, `+0x8` name offset, `+0xc` type, `+0x10` u32 room (zone) id, `+0x14` position, `+0x20` rotation, `+0x2c` scale, `+0x38` 8 parameters, `+0x78` u8 switch types [4], `+0x7c` u16 switch indices [4], `+0x84` `e`, `+0x85` `k`, `+0x87` `x`, `+0x88` `y` (linked actor count), `+0x89` `z`, `+0x90` the lists.
+**LEB actor record** (`LebActorRecord`; the one-letter names as LASR's `Tools/leb.py`): `+0x0` u64 key, `+0x8` name offset, `+0xc` the actor id, `+0x10` u32 room (zone) id, `+0x14` position, `+0x20` rotation, `+0x2c` scale, `+0x38` 8 parameters, `+0x78` u8 switch types [4], `+0x7c` u16 switch indices [4], `+0x84` `e`, `+0x85` `k`, `+0x86` `b` (no reader found), `+0x87` `x`, `+0x88` `y`, `+0x89` `z`; 0x90 bytes, then three lists in this order: `x` links of 0x14 bytes (`{2 parameters, u32 actor index}`), `z` rail links of 0x18 bytes (`{2 parameters, u32 rail, u32 point}`) and `y` u32 actor indices (`Actor_Ctor` reads the first two, `Room_OnLebActor` `0x8e53b8` the third). `LebRoom` (`LebRoom_vtable` `0x1bcc2f8`, 0x98 bytes, `LebRoom_Ctor` `0x8eab00`) virtuals: `+0x18` room id, `+0x20` actor count, `+0x28` record i (`LebRoom_ActorAt` `0x8eb0e0`), `+0x30`/`+0x38` rails, `+0x40`/`+0x48` points, `+0x50` a string by offset (`LebRoom_String` `0x8eb1c0`).
+
+## Nodes
+
+A **Node** (`Node_Ctor` `0xfb55a0 (node, ComponentArgs*)`, `Node_vtable` `0x1c31a68`, `Node_Dtor` `0xa9270`) is a component that is a scene-graph node: an actor's root, a model component, a character controller. `Actor_MakeNode` (`0x20d10`) allocates 0x150 bytes; the data ends at `+0x148` (MODELS.md, Skeletal model component). `Actor_AttachComponent` (`0xfaa8a0 (actor, component, parent node)`) attaches one: under the parent node (a weak `parent`, the child appended to the parent's `children`, shared pointers), or as the actor's root with a null parent. `Actor_GetOrMakeRoot` (`0xb6dc0`) returns the root or makes it.
+
+- The constructor sets `coordsNew` and `coords` to a zero position (`ZeroVec_ptr`), the identity rotation and unit scale, and builds `transformChanged`.
+- `Node_MarkDirty` (`0xfb6aa0`) and `Node_UpdateWorld` (`0xfb6310`) as TESTING.md, Reverse engineering, describes them. A node with an `attachment` (a bone attachment: `+0x10` locator, `+0x30` position, `+0x40` rotation, `+0x50` scale, `+0x60` dirty) and no parent has the world local × the attachment's; `Node_MarkDirty` skips children with one.
+- Its vtable has the Entity slots only; `+0x50` `Node_OnActiveChanged` (`0xfb58c0`) sets bit 1 of each child node from its own active state, raising the actor's `componentIterDepth` around the walk.
+
+A **signal** (0x58 bytes: two vtables, `0x1b59008` / `0x1b59098` and others, a self pointer, a `std::map` of slots, u32 1, u32, an nn::os mutex of 0x20) is what `transformChanged`, NPC components' `readySignal` and Player's `signals` are. Virtual `+0x20` connects a `std::function` and returns a u32 handle (the `*Sub` fields keep such handles); `+0x30` emits (`0xa9970`: each slot with a bool).
 
 ## Creation
 
@@ -135,7 +145,7 @@ Active: `(flags & 0x40000017) == 0x17` (enabled, parent active, in its zone, sta
 
 A class's `Register` sets the queue's bit and posts its task with `Priority()` (NpcGhost `0x9be370`: `flags |= 0x100`, `TaskQueue_Add(manager + 0x100, &self, task, Priority())`); the update task calls the class's update only while `(flags & 0x40000117) == 0x117` (NpcGhost task `0x9be5f0` → `NpcGhost_Update` `0x9be630`; Player `0xd35580` → `0xd355c0`). Update and draw are not vtable slots. ObjTreasureBox's `Register` posts nothing.
 
-`Framework_FrameStep` (`0x17e30`) runs the update phases (Framework `+0x2a8`, added by `Framework_SetupPhases` `0x9404` with `Framework_AddUpdatePhase` `0xc0e0`; render phases `+0x3a0`, `Framework_AddRenderPhase` `0xc290`) in ascending priority:
+`Framework_FrameStep` (`0x17e30`) runs the update phases (Framework `+0x2a8`, added by `Framework_Init` `0x9410` with `Framework_AddUpdatePhase` `0xc0e0`; render phases `+0x3a0`, `Framework_AddRenderPhase` `0xc290`; FRAMEWORK.md, Scheduler and phases, lists them all) in ascending priority:
 
 | Priority | Lambda | |
 |---|---|---|
@@ -203,6 +213,44 @@ Usual meanings: switch 0 "appear when" or "opened" (ObjTreasureBox: on → opene
 
 **Appearing.** Each class checks its switches in its own setup or state code and destroys itself, disables itself (bit 0) or picks a state (about 200 callers of `ActorSwitch_IsOn`). NPCs and items: `NpcPop_Check` (`0x947c90`): the first of the Npc row's `popConditions` (`+0x160`, 0x20 each) that holds (`Conditions_Check`) gives a value, true when it is the component's `+0x90` (the actor's variant). `ItemActor_CanAppear` (`0x8c4510`) adds the inventory check (TESTING.md).
 
+## NPCs
+
+**NpcActor** (NpcGhost; `NpcGhost_Ctor` `0x9bcb50 (out, ActorArgs*)`: make_shared of 0x2f0 bytes, the actor 0x2d0 bytes at `+0x20`, `classBits |= 0x805`; `NpcGhost_Dtor` `0x9bccb0`; `NpcGhost_vtable` `0x1be37c0`). `vtable2` is a second base (`NpcGhost_vtable2` `0x1be3948`, offset to top −0x2a8 at `0x1be3938`). `npc` is set by NpcGhost's setup (`0x9bcda0`), which connects to the component's `readySignal`; `param0Max` is set there too. `NpcGhost_OnEventStart` (`0x9bd4c0`, virtual `+0xb0`) sets `inEvent` and reads the component's `eventChara`, `NpcGhost_OnEventEnd` (`0x9bd680`, `+0xb8`) clears it, and `NpcGhost_Update` (`0x9be630`) skips while it is set. The update counts `timer` down by the frame time while `timerOff` is clear; at 0 it calls `0x9bee20` and starts again at 40. Only NpcGhost's layout is checked; other NPC classes may keep their component elsewhere.
+
+**NpcComponent** (`NpcComponent_Ctor` `0x943e90 (component, ComponentArgs*, StringView* row key, parent node sp*)`, `NpcComponent_vtable` `0x1bdc570`, `NpcComponent_Dtor` `0x944b50`; 0x2e0 bytes, the size `NpcGhost_MakeNpcComponent` (`0x9c0870`) and the plain maker (`0x943b40`) allocate). NpcGhost's component class (vtable `0x1be3ad8`) adds no fields.
+
+- `owner` is a strong pointer to the owning actor, null unless it is of the type at `0x1cab3e8` (its virtual `+0x68` IsA).
+- `parentNode` is the constructor's fourth argument, the actor's root (NpcGhost: `Actor_GetOrMakeRoot` with `"root"`), on which the model is made.
+- `row` is the Npc.gsheet row (TESTING.md, Npc row); `NpcComponent_Setup` (`0x945510`, virtual `+0x20`) destroys a component without one. The setup reads `variant` (`NpcComponent_Variant` `0x94ace0`, `+0x1d0`: the owner's int LEB parameter the row's `+0x140` names, counted from 1), which `NpcPop_Check` compares (Persistence, Appearing), and `lebString` (`NpcComponent_ReadLebString` `0x94ad40`, `+0x1d8`: the string LEB parameter the row's `+0x144` names, type 4 or 5), checks `NpcPop_Check`, starts the resource loads and makes `readySignal` (make_shared of 0x78 bytes, the signal at its `+0x18`).
+- `NpcComponent_OnResourcesLoaded` (`0x968db0`) takes `flowchart`, `modelResource` (the bfres) and `tailorResource` (the drsb), runs `NpcComponent_BuildComponents` (`0x957d80`) and emits `readySignal`.
+- `animationCache`: `NpcAnimation_Get` (`0x9670d0`) binds the animations of `modelResource` (the animation set) and keeps them by name.
+- `eventSubA` and `eventSubB` are handles on the event manager's `+0xe8` and `+0x140` signals; `task` is a `Task_Post` task (`0x947f38`); `event_280` an event of the flowchart (`0x80c290 (out, flowchart, name)`, virtual `+0x178`; likely); `flow_268` virtual `+0x2c0`'s result; `field_278` defaults to `0x1702058`; `vector_290` holds 0x20-byte `{u64, sp, u64}` elements; `triggersHandled` is set when the build handles the row's event triggers (likely); `flag_2a9` is set when virtual `+0x2f8` is null and `+0x88` false; `object_2b0` has vtable `0x1b51a70`.
+
+`NpcComponent_BuildComponents` makes each component through a virtual of its own:
+
+| Field | Virtual | Maker | Made |
+|---|---|---|---|
+| `model` | `+0x200` | | always |
+| `animator` | `+0x208` | `NpcComponent_MakeAnimator` `0x94b310` | a SkeletalAnimation, or a LayeredAnimation (the ghosts'; MODELS.md) |
+| `collision` | `+0x210` | `0x94b350` | with the row's `collision.shape` not 0 |
+| `damageCollision` | `+0x218` | | with `damageCollision.enable` |
+| `eventChara` | `+0x220` | | |
+| `doAction` | `+0x228` | | with `doAction.type` not 0 |
+| `comp230` | `+0x230` | `0x950910` (through `0x5d4760`) | uses the row's `+0x204` |
+| `comp238` | `+0x238` | `0x950c30` | with the row's float `+0x170` not 0 |
+| `tailorPlayer` | `+0x240` | | with `graphics.drsb` set |
+| `comp248` | `+0x248` | `0x951310` | with the row's `+0x98` |
+| `groundAttr` | `+0x250` | | with a collision |
+| `comp258` | `+0x258` | `0x9519f0`: a 0x190-byte Node | with the row's `+0x98` |
+| `facial` | `+0x260` | `NpcComponent_MakeFacial` `0x952380` | with `graphics.facial` naming a Facial.gsheet row |
+| `comp268` | `+0x268` | `0x952cc0`: a 0x130-byte component (constructor `0xc8e00`) | |
+| `materialAnim` | `+0x270` | `NpcComponent_MakeMaterialAnimator` `0x9535f0` | |
+| `railTrailer` | `+0x278` | `0x954310` (`"RailTrailer"`) | with the row's `+0x210` (likely) |
+
+**FacialControl** (`FacialControl_Ctor` `0x11cdf0 (component, ComponentArgs*, StringView* row key, std::function*, u32 priority)`, `FacialControl_vtable` `0x1b5e008`; 0x150 bytes, which `NpcComponent_MakeFacial` allocates): `priority` 100 from the maker; `onChangeA` is the constructor's function, `onChangeB` the maker's (`0x120150`); `sheet` keeps Facial.gsheet (`FacialSheet_ptr` `0x1cc3c40`) alive; `row` is `Datasheet_FindRow(sheet, key, 0x50)`. `NpcComponent_MakeMaterialAnimator` counts no facial slots while `facial` is null or its entity's flags have `kDestroyRequested`.
+
+**FacialRow** (a Facial.gsheet row, 0x50 bytes, the row size `FacialControl_Ctor` asks for; the names `mKey`, `mMaterialAnimNames` `{mEye, mMouth, mOthers}`, `mExpressions` as `patcher/ap_player_ghost.py` writes them; the layout is read from the material animator, likely): the material animation component gets `SlotCount()` slots, one per `others` animation and one for each of `eye` and `mouth` that is set, and one more after them, the slot `NpcComponent_PlayMaterialAnimation` uses.
+
 ## For the module
 
 - **Spawning from code** (the ghost puppets, `DBG puppet spawn`): the table's resources load synchronously on the game thread unless loaded already; a non-zero params key makes the actor registry-unique and keeps it alive through the registry; the name has at most 31 characters; owner the actor system keeps it across rooms and levels, and its `+0xb4` stays -1, so no room adopts it.
@@ -216,3 +264,7 @@ Usual meanings: switch 0 "appear when" or "opened" (ObjTreasureBox: on → opene
 - The type `0x1b511e0` of the component whose `+0x58` gates readiness, and who sets flags bit 4 for it.
 - Queue `+0x2f0` (bit 10) has no runner in 1.0.0.
 - The level load from state 6 to state 1, and level data vtable `+0x48` (level kind; 3 dungeon) and `+0x50`.
+- LEB record `b` (`+0x86`): no reader found.
+- NpcGhost's second base (vtable `0x1be3948`): which interface.
+- The classes NpcComponent's virtuals `+0x230`, `+0x238`, `+0x248`, `+0x258` and `+0x268` make; its `map_240`, `flow_268`, `field_278`, `vector_290` and `field_2ac`..`field_2d4`; the owner type (`0x1cab3e8`) its constructor checks.
+- FacialControl `+0xc0`..`+0xe0` and `map_f8`..`field_140`; the type of FacialRow's `expressions`.

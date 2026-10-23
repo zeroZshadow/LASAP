@@ -60,7 +60,7 @@ namespace {
     // ours, its text.
     void RefreshOpenMap() {
         Map::MapCursor* cursor = FindCursor();
-        bool named = cursor != nullptr && cursor->nameHidden == 0;
+        bool named = cursor != nullptr && cursor->nameHidden == 0 && cursor->nameHideRequest == 0;
         if (g_MarkerPage != nullptr) {
             ApplyLooks(g_MarkerPage);
             Look look;

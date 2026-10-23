@@ -57,7 +57,7 @@ namespace {
         g_HoverGroup = HoveredIcon(page, look);
         g_HoverLook = g_HoverGroup >= 0 ? look : -1;
         if (!Listable(g_ListAsked)) return false;
-        OpenList(&page->wrapper, g_Overworld[g_ListAsked], g_GroupNames[g_ListAsked], g_ListAsked);
+        OpenList(&page->page.wrapper, g_Overworld[g_ListAsked], g_GroupNames[g_ListAsked], g_ListAsked);
         g_ListAsked = -1;
         return true;
     }
@@ -123,10 +123,10 @@ namespace {
         std::string looks;
         size_t shown = 0;
         for (const auto& dm : g_DotMarkers) {
-            const Ui::Animator* animator = dm.marker->setMark;
+            const Ui::Animator* animator = dm.marker->setMark.animator;
             int look = animator == nullptr ? -1 :
                 static_cast<int>(animator->frame) - kGameMarkFrames - (g_Dots[dm.dot].ids.size() == 1 ? kLooks : 0);
-            bool on = (MarkerRoot(&dm.marker->wrapper)->flags & Ui::kPaneVisible) != 0;
+            bool on = (MarkerRoot(&dm.marker->part.wrapper)->flags & Ui::kPaneVisible) != 0;
             shown += on;
             char letter = look >= 0 && look < kLooks ? kLookLetters[look] : '?';
             looks += on ? letter : static_cast<char>(std::toupper(letter));

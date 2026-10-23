@@ -13,6 +13,7 @@
 #include "game/framework.hpp"
 #include "game/hooks/eventflags.hpp"
 #include "game/hooks/level.hpp"
+#include "game/mem.hpp"
 #include "game/sym.hpp"
 #include "game/time.hpp"
 #include "ghost/ghost_net.hpp"
@@ -84,7 +85,8 @@ namespace {
 
     // The intro, the title or the file menus show: no save is loaded.
     bool NoSaveLoaded(Game::Framework* fmwk) {
-        return fmwk == nullptr || fmwk->screen == Game::kScreenTitle || fmwk->screen == Game::kScreenFileMenus;
+        return fmwk == nullptr || Game::ScreenOf(fmwk) == Game::kScreenTitle ||
+               Game::ScreenOf(fmwk) == Game::kScreenFileMenus;
     }
 
     bool PlayerReady() {
@@ -96,7 +98,7 @@ namespace {
     bool PlayerFree() {
         Game::Framework* fmwk = Game::GetFramework();
         if (!PlayerReady()) return false;
-        return fmwk->paused == 0 && fmwk->player->state == 0;
+        return fmwk->paused == 0 && fmwk->player->machine.state == 0;
     }
 
     // An item-get takes what Link holds over his head out of the game, so item-gets wait until he puts it down.
@@ -175,12 +177,13 @@ namespace {
 #ifdef LASAP_TEST
     std::string ScreenName(Game::Framework* fmwk) {
         if (fmwk == nullptr) return "none";
-        switch (fmwk->screen) {
-            case Game::kScreenTitle: return fmwk->intro != nullptr ? "intro" : "title";
+        u64 screen = Game::ScreenOf(fmwk);
+        switch (screen) {
+            case Game::kScreenTitle: return Game::At<void*>(fmwk, Game::kIntroProbe) != nullptr ? "intro" : "title";
             case Game::kScreenFileMenus: return "menu";
             case Game::kScreenLoading: return "loading";
             case Game::kScreenLevel: return "level";
-            default: return std::to_string(fmwk->screen);
+            default: return std::to_string(screen);
         }
     }
 #endif

@@ -6,12 +6,31 @@
 #include <cstdint>
 
 namespace Game::Data {
-    // The save's header (SaveHeader_ptr).
-    struct SaveHeader {
-        u8 pad_0[0x8];
-        char16_t name[9];          // 0x8: the player's name, 8 letters and a 0
+    // A chapter of the save's record (SaveHeader::chapters; Inventory_RecordChapter).
+    struct ChapterRecord {
+        u8 instrument;             // 0 to 7
+        u8 pad_1;
+        u16 bits;                  // 0x2
+        s32 rupees;                // 0x4
+        u8 pad_8[0x18];
     };
-    static_assert(offsetof(SaveHeader, name) == 0x8);
+    static_assert(offsetof(ChapterRecord, rupees) == 0x4 && sizeof(ChapterRecord) == 0x20);
+
+    // The save's header (SaveHeader_ptr, GlobalSave +0x53a0; 0x140 bytes).
+    struct SaveHeader {
+        u32 knockCount;            // bit 0 TestEnemyKnockCountOddEven
+        u16 deathCount;            // 0x4
+        u8 pad_6[0x2];
+        char16_t name[9];          // 0x8: the player's name, 8 letters and a 0
+        u8 pad_1a[0x6];
+        u64 totalTimePlayed;       // 0x20: microseconds, outside events
+        u8 chapterCount;           // 0x28
+        u8 pad_29[0x17];
+        ChapterRecord chapters[8]; // 0x40
+    };
+    static_assert(offsetof(SaveHeader, deathCount) == 0x4 && offsetof(SaveHeader, name) == 0x8);
+    static_assert(offsetof(SaveHeader, totalTimePlayed) == 0x20 && offsetof(SaveHeader, chapters) == 0x40);
+    static_assert(sizeof(SaveHeader) == 0x140);
 }
 
 namespace Game::Data::Inventory {
@@ -74,13 +93,13 @@ namespace Game::Data::Inventory {
         Field ClothesBlue : 1;
     };
 
-    // The save's current data (SaveCurrent; ITEMS.md).
+    // The save's current data (SaveCurrent, GlobalSave +0x54e0; 0x160 bytes; ITEMS.md).
     struct InventoryItems {
         char LevelName[0x40];
         char Locator[0x40]; // 0x40: "$NONE": the level starts at RestartPos
         int Rupees; // 0x80
         short Health; // 0x84
-        char unk2[0x2];
+        uint16_t GridPuzzle; // 0x86: seven 2-bit directions, picked at a new game
         uint64_t Seashells; // 0x88
         uint64_t HeartPieces; // 0x90
         uint16_t HeartContainers; // 0x98
@@ -96,40 +115,53 @@ namespace Game::Data::Inventory {
         uint8_t EquipX; // 0xa3
         uint8_t KillCount; // 0xa4
         uint8_t KillCountNoDamage; // 0xa5
-        uint16_t unk3; // 0xa6
+        uint16_t TilePuzzle; // 0xa6: five 3-bit tiles, picked at a new game
         MainItemBits MainItems; // 0xa8
-        uint16_t unk4;
+        uint16_t field_aa; // 0xaa
         ExtraItemBits ExtraItems; // 0xac
-        char unk5;
-        uint64_t SleepyMushroomTime; // 0xb0
-        char unk7[0x8];
+        uint8_t field_af; // 0xaf
+        uint64_t SleepyMushroomTime; // 0xb0: SaveHeader::totalTimePlayed when picked
+        uint64_t WarpPoints; // 0xb8: a bit per WarpPoint row
         uint8_t BottledFairies; // 0xc0
-        char unk8; // 0xc1
+        uint8_t FishingLure; // 0xc1: 0 to 2
         uint8_t GoldenLeaves; // 0xc2
-        char unk9[0x19];
+        uint8_t KeptItemKind; // 0xc3: 1 to 5, an item held back
+        Game::Vec3 FieldPosition; // 0xc4: Link's, on leaving the overworld
+        Game::Vec3 IndoorPosition; // 0xd0: on leaving another level
         Game::Vec3 RestartPos; // 0xdc
         uint32_t Figurines; // 0xe8
-        char unk10[0x34];
+        uint32_t ZoneId; // 0xec: the zone entered last
+        uint64_t RapidsBestTime; // 0xf0: milliseconds, 0 none
+        float FishSize[8]; // 0xf8: the largest per kind
+        uint8_t FishCaught[8]; // 0x118: per kind
         bool HeroMode; // 0x120
-        char unk11;
+        uint8_t RestartDirection; // 0x121: bits 0-2
         uint8_t RareFishSign; // 0x122
-        char unk12;
+        uint8_t HintIndex; // 0x123
         uint8_t Obtained[16]; // 0x124: a bit per item id
+        uint8_t pad_134[0xc];
+        uint64_t QueryTime; // 0x140: microseconds, an event query's limit
+        uint8_t pad_148[0x18];
     };
     static_assert(sizeof(SongBits) == 1 && sizeof(UpgradeItemBits) == 1);
     static_assert(sizeof(MainItemBits) == 2 && sizeof(ExtraItemBits) == 3);
     static_assert(offsetof(InventoryItems, Locator) == 0x40 && offsetof(InventoryItems, Rupees) == 0x80);
-    static_assert(offsetof(InventoryItems, Health) == 0x84 && offsetof(InventoryItems, Seashells) == 0x88);
-    static_assert(offsetof(InventoryItems, HeartPieces) == 0x90 && offsetof(InventoryItems, HeartContainers) == 0x98);
-    static_assert(offsetof(InventoryItems, TradeItem) == 0x9a && offsetof(InventoryItems, Songs) == 0x9b);
-    static_assert(offsetof(InventoryItems, UpgradeItems) == 0x9c && offsetof(InventoryItems, BombCount) == 0x9e);
-    static_assert(offsetof(InventoryItems, EquipY) == 0xa2 && offsetof(InventoryItems, EquipX) == 0xa3);
-    static_assert(offsetof(InventoryItems, KillCount) == 0xa4 && offsetof(InventoryItems, MainItems) == 0xa8);
+    static_assert(offsetof(InventoryItems, Health) == 0x84 && offsetof(InventoryItems, GridPuzzle) == 0x86);
+    static_assert(offsetof(InventoryItems, Seashells) == 0x88 && offsetof(InventoryItems, HeartPieces) == 0x90);
+    static_assert(offsetof(InventoryItems, HeartContainers) == 0x98 && offsetof(InventoryItems, TradeItem) == 0x9a);
+    static_assert(offsetof(InventoryItems, Songs) == 0x9b && offsetof(InventoryItems, UpgradeItems) == 0x9c);
+    static_assert(offsetof(InventoryItems, BombCount) == 0x9e && offsetof(InventoryItems, EquipY) == 0xa2);
+    static_assert(offsetof(InventoryItems, EquipX) == 0xa3 && offsetof(InventoryItems, KillCount) == 0xa4);
+    static_assert(offsetof(InventoryItems, TilePuzzle) == 0xa6 && offsetof(InventoryItems, MainItems) == 0xa8);
     static_assert(offsetof(InventoryItems, ExtraItems) == 0xac && offsetof(InventoryItems, SleepyMushroomTime) == 0xb0);
-    static_assert(offsetof(InventoryItems, BottledFairies) == 0xc0 && offsetof(InventoryItems, GoldenLeaves) == 0xc2);
-    static_assert(offsetof(InventoryItems, RestartPos) == 0xdc && offsetof(InventoryItems, Figurines) == 0xe8);
-    static_assert(offsetof(InventoryItems, HeroMode) == 0x120 && offsetof(InventoryItems, RareFishSign) == 0x122);
-    static_assert(offsetof(InventoryItems, Obtained) == 0x124);
+    static_assert(offsetof(InventoryItems, WarpPoints) == 0xb8 && offsetof(InventoryItems, BottledFairies) == 0xc0);
+    static_assert(offsetof(InventoryItems, GoldenLeaves) == 0xc2 && offsetof(InventoryItems, FieldPosition) == 0xc4);
+    static_assert(offsetof(InventoryItems, IndoorPosition) == 0xd0 && offsetof(InventoryItems, RestartPos) == 0xdc);
+    static_assert(offsetof(InventoryItems, Figurines) == 0xe8 && offsetof(InventoryItems, ZoneId) == 0xec);
+    static_assert(offsetof(InventoryItems, RapidsBestTime) == 0xf0 && offsetof(InventoryItems, FishSize) == 0xf8);
+    static_assert(offsetof(InventoryItems, FishCaught) == 0x118 && offsetof(InventoryItems, HeroMode) == 0x120);
+    static_assert(offsetof(InventoryItems, RareFishSign) == 0x122 && offsetof(InventoryItems, Obtained) == 0x124);
+    static_assert(offsetof(InventoryItems, QueryTime) == 0x140 && sizeof(InventoryItems) == 0x160);
 
     inline InventoryItems* Items() { return *Inventory_ptr; }
 }

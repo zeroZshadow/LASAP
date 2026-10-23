@@ -67,8 +67,8 @@ namespace {
         DropDots();
         g_DungeonPage = page;
         std::string level = LevelSystem::GetCurrentLevel() + "_";
-        Ui::Pane* pinRoot = page->mapPin;
-        Ui::Pane* pinOffset = page->pinOffset;
+        Ui::Pane* pinRoot = page->mapPin.pane;
+        Ui::Pane* pinOffset = page->pinOffset.pane;
         if (pinRoot == nullptr || pinOffset == nullptr) return;
         size_t missing = 0;
         for (size_t d = 0; d < g_Dots.size(); d++) {
@@ -84,10 +84,10 @@ namespace {
             Map::MapMarker* marker = MarkerOf(made);
             if (marker == nullptr) continue;
             Game::MapMarker_SetupPart(marker);
-            Game::LayoutWrapper_AttachBefore(&marker->wrapper, &page->wrapper, pinRoot, pinOffset);
+            Game::LayoutWrapper_AttachBefore(&marker->part.wrapper, &page->page.wrapper, pinRoot, pinOffset);
             float at[2] = {};
             Game::DungeonMap_PositionIcon(dot.x, 0, dot.z, page, at, &roomPtr);
-            Ui::MoveTo(MarkerRoot(&marker->wrapper), at[0], at[1]);
+            Ui::MoveTo(MarkerRoot(&marker->part.wrapper), at[0], at[1]);
             DotMarker dm{d, marker, made.ctrl};
             // under N_MapPosition_00, which moves after the setup (DotAt)
             dm.x = at[0] + pinRoot->x;
@@ -111,7 +111,7 @@ namespace {
 
     void HideCursorName() {
         Map::MapCursor* cursor = FindCursor();
-        if (cursor != nullptr) cursor->nameHidden = 0x101;
+        if (cursor != nullptr) cursor->nameHidden = cursor->nameHideRequest = 1;
     }
 
     // After the dungeon page moves its cursor: with the stick idle the cursor eases onto the hovered dot, as onto a
@@ -145,7 +145,7 @@ namespace {
                 if (chest.level == level && std::fabs(chest.x - actor->x) < 0.01f && std::fabs(chest.z - actor->z) < 0.01f) {
                     g_ChestMatches++;
                     icon->shown = 0;
-                    Ui::SetVisible(MarkerRoot(&icon->wrapper), false);
+                    Ui::SetVisible(MarkerRoot(&icon->part.wrapper), false);
                     return;
                 }
             }
@@ -162,7 +162,7 @@ namespace {
 
     HOOK_DEFINE_TRAMPOLINE(DungeonPageDtor) {
         static void Callback(Map::DungeonMap* page) {
-            if (&page->wrapper == g_Panel.page) DropList();
+            if (&page->page.wrapper == g_Panel.page) DropList();
             if (page == g_DungeonPage) DropDots();
             Orig(page);
         }
@@ -200,8 +200,8 @@ namespace {
             bool pressed = Orig();
             Map::DungeonMap* page = g_DungeonPage;
             if (page == nullptr || page->machine.state != Map::kKeyWait) return pressed;
-            if (g_Panel.page == &page->wrapper) {
-                TickList(&page->wrapper);
+            if (g_Panel.page == &page->page.wrapper) {
+                TickList(&page->page.wrapper);
                 return false;
             }
     #ifdef LASAP_TEST
@@ -210,7 +210,7 @@ namespace {
             const std::vector<int>* ids = HoveredDotIds();
             if (!pressed || ids == nullptr || page->hoveredPin != nullptr) return pressed;
             if (ids->size() > 1) {
-                OpenList(&page->wrapper, *ids, g_Dots[g_DotMarkers[g_DotHovered].dot].name, -1);
+                OpenList(&page->page.wrapper, *ids, g_Dots[g_DotMarkers[g_DotHovered].dot].name, -1);
             } else if (Skippable(*ids)) {
                 AP::SetLocationSkipped((*ids)[0], !AP::IsLocationSkipped((*ids)[0]));
                 ApplyDots();
@@ -233,18 +233,18 @@ namespace {
     void ApplyDots() {
         for (auto& dm : g_DotMarkers) {
             const Dot& dot = g_Dots[dm.dot];
-            Ui::Animator* animator = dm.marker->setMark;
+            Ui::Animator* animator = dm.marker->setMark.animator;
             int look = IdsLook(dot.ids, false);
             float frame = static_cast<float>(kGameMarkFrames + (dot.ids.size() == 1 ? kLooks : 0) + look);
             if (animator != nullptr && frame < Game::Animator_FrameCount(animator)) animator->frame = frame;
-            Ui::SetVisible(MarkerRoot(&dm.marker->wrapper), DotShown(dm));
+            Ui::SetVisible(MarkerRoot(&dm.marker->part.wrapper), DotShown(dm));
         }
     }
 
     // A dot's position in the cursor's units (N_MapOrigin_00's): N_MapPosition_00 moves after the page's setup (y 48
     // in Tail Cave), as the pins' hover reads it each frame.
     void DotAt(const Map::DungeonMap* page, const DotMarker& dm, float& x, float& y) {
-        const Ui::Pane* position = page->mapPosition;
+        const Ui::Pane* position = page->mapPosition.pane;
         x = dm.x + (position != nullptr ? position->x : 0);
         y = dm.y + (position != nullptr ? position->y : 0);
     }
@@ -282,7 +282,7 @@ namespace {
         Map::MapCursor* cursor = FindCursor();
         bool free = page->hoveredPin == nullptr && page->info == 0 && !ListOpen() && cursor != nullptr;
         if (free) {
-            float radius = cursor->size * kHoverRadius * page->cursorScale;
+            float radius = cursor->width * kHoverRadius * page->cursorScale;
             float cx = page->cursorX, cy = page->cursorY;
             float best = radius * radius;
             for (size_t i = 0; i < g_DotMarkers.size(); i++) {

@@ -189,7 +189,7 @@ namespace {
 
     void TestFrameStart(Game::Actors::Player* player) {
         if (player->playerCollision != nullptr) {
-            auto& c = player->playerCollision->coordsNew;
+            auto& c = player->playerCollision->base.node.coordsNew;
             g_History[g_HistoryFrame % kHistory] = Sample{c.pos, c.rotate};
             g_HistoryFrame++;
             g_HistoryValid = true;
@@ -247,7 +247,7 @@ namespace {
                 AP::Send("ERR puppet: no player");
                 return true;
             }
-            Game::Vec3 pos = player->playerCollision->coordsNew.pos;
+            Game::Vec3 pos = player->playerCollision->base.node.coordsNew.pos;
             if (a.size() >= 6) {
                 pos.x += atof(a[4].c_str());
                 pos.z += atof(a[5].c_str());

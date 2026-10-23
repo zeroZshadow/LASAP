@@ -61,7 +61,7 @@ namespace {
         static void Callback(exl::hook::nx64::InlineCtx* ctx) {
             auto* page = reinterpret_cast<Map::OverworldMap*>(ctx->X[19]);
             if (g_Panel.page != nullptr) {
-                TickList(&page->wrapper);
+                TickList(&page->page.wrapper);
                 ctx->W[0] = 0;
                 return;
             }
@@ -76,7 +76,7 @@ namespace {
             Look hovered;
             int group = HoveredIcon(page, hovered);
             if (Listable(group)) {
-                OpenList(&page->wrapper, g_Overworld[group], g_GroupNames[group], group);
+                OpenList(&page->page.wrapper, g_Overworld[group], g_GroupNames[group], group);
                 ctx->W[0] = 0;  // no pin menu
             } else if (ToggleSkipped(page)) {
                 ctx->W[0] = 0;
@@ -86,7 +86,7 @@ namespace {
 
     HOOK_DEFINE_TRAMPOLINE(MapPageDtor) {
         static void Callback(Map::OverworldMap* page) {
-            if (&page->wrapper == g_Panel.page) DropList();
+            if (&page->page.wrapper == g_Panel.page) DropList();
             if (page == g_MarkerPage) g_MarkerPage = nullptr;
             Orig(page);
         }

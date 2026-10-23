@@ -104,7 +104,7 @@ namespace Game::Ui {
 
     Rect TextExtent(TextBox* box) { return CallVirtual<Rect()>(box, kTextExtent); }
 
-    bool GameArchiveLoaded() { return TheManager().gameArchive != nullptr; }
+    bool GameArchiveLoaded() { return TheManager().archives[0].ptr != nullptr; }
 
     LayoutWrapper* BuildLayout(const char* file, int priority) {
         auto* wrapper = static_cast<LayoutWrapper*>(operator_new(sizeof(LayoutWrapper)));

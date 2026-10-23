@@ -111,9 +111,11 @@ namespace {
         const PlayerAnimRow* row = ctrl->slots[0].row;
         const Game::LayeredAnimation* animation = ctrl->animation;
         const u8* fc = nullptr;
-        if (animation != nullptr && animation->layerCount > 0) {
-            const Game::AnimationLayer* layer = animation->layers != nullptr ? animation->layers[0] : nullptr;
-            fc = At<const u8*>(At<const u8*>(layer != nullptr ? layer->bound : nullptr, 0), kAnimFrameCtrl);
+        if (animation != nullptr && animation->layers.count > 0) {
+            const Game::AnimationLayer* layer =
+                animation->layers.layers.first != nullptr ? animation->layers.layers[0] : nullptr;
+            const Game::BoundAnimation* bound = layer != nullptr ? layer->animation : nullptr;
+            fc = At<const u8*>(bound != nullptr ? bound->obj : nullptr, kAnimFrameCtrl);
         }
         frame = At<float>(fc, 0);
         if (!std::isfinite(frame) || frame < 0) frame = 0;
@@ -131,7 +133,7 @@ namespace {
             (anim != 0 && frame + 0.5f < prevFrame && row->policy != Game::Actors::kPlayerAnimLoops)) {
             if (anim != 0) g_Anim.starts++;
 #ifdef LASAP_TEST
-            const char* name = anim != 0 ? row->fileName : nullptr;
+            const char* name = anim != 0 ? row->fileName.data : nullptr;
             if (name != nullptr && g_StartLog.size() < 60) g_StartLog.push_back(std::string(name) + "@" + std::to_string(FrameNow()));
 #endif
         }
@@ -148,11 +150,11 @@ namespace {
     // The frame of one of Link's material animations by name (0 when he has none of that name).
     int MatFrame(const Game::MaterialAnimComponent* mat, std::string_view name) {
         int count = std::min(mat != nullptr ? mat->slotCount : 0, 16);
-        for (int i = 0; i < count && mat->slots != nullptr; i++) {
+        for (int i = 0; i < count && mat->slots.first != nullptr; i++) {
             const Game::MatAnimSlot* slot = mat->slots[i];
             const Game::MaterialAnim* anim = slot != nullptr ? slot->anim : nullptr;
             if (anim == nullptr || anim->res == nullptr || Game::ResNameOf(anim->res) != name) continue;
-            float frame = slot->frame;
+            float frame = slot->lastFrame;
             return std::isfinite(frame) ? std::clamp(static_cast<int>(frame + 0.5f), 0, 0xff) : 0;
         }
         return 0;
@@ -161,7 +163,7 @@ namespace {
     AP::GhostNet::Look ReadLook(const Game::Actors::Player* player) {
         AP::GhostNet::Look look;
         const Game::ModelInstance* instance = player->modelComp != nullptr ? player->modelComp->instance : nullptr;
-        const u8* shapes = instance != nullptr ? instance->shapeVisible : nullptr;
+        const u8* shapes = instance != nullptr ? instance->shapeVisible.first : nullptr;
         const Game::ModelObj* model = instance != nullptr ? instance->Model() : nullptr;
         int count = model != nullptr ? std::min<int>(model->shapeCount, AP::GhostNet::SHAPE_COUNT) : 0;
         if (shapes != nullptr && count > 0) {
@@ -184,7 +186,7 @@ namespace {
         Game::Framework* fmwk = Game::GetFramework();
         // no player while a level loads
         if (fmwk == nullptr || fmwk->player == nullptr || fmwk->player->playerCollision == nullptr) return s;
-        const Game::Coords& c = fmwk->player->playerCollision->coordsNew;
+        const Game::Coords& c = fmwk->player->playerCollision->base.node.coordsNew;
         if (!std::isfinite(c.pos.x) || !std::isfinite(c.pos.y) || !std::isfinite(c.pos.z)) return s;
         // leaving a level by its exit (the well's stairs), Link stands at the origin of the old level until the next
         // one loads, about a second: in no level
@@ -383,7 +385,7 @@ namespace AP::GhostNet {
 
     const char* AnimName(int anim) {
         const PlayerAnimRow* row = AnimRow(anim);
-        return row != nullptr ? row->fileName : nullptr;
+        return row != nullptr ? row->fileName.data : nullptr;
     }
 
     bool AnimLoops(int anim) {
