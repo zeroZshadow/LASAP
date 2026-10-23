@@ -10,7 +10,7 @@ namespace Game::Data {
     struct ChapterRecord {
         u8 instrument;             // 0 to 7
         u8 pad_1;
-        u16 bits;                  // 0x2
+        u16 bits;                  // 0x2: a bitset: 0 Shovel, 1 Bow, 2 heart piece 24, 3 + i Chamber Dungeon set i
         s32 rupees;                // 0x4
         u8 pad_8[0x18];
     };
@@ -18,8 +18,8 @@ namespace Game::Data {
 
     // The save's header (SaveHeader_ptr, GlobalSave +0x53a0; 0x140 bytes).
     struct SaveHeader {
-        u32 knockCount;            // bit 0 TestEnemyKnockCountOddEven
-        u16 deathCount;            // 0x4
+        u32 knockCount;            // enemies defeated; bit 0 TestEnemyKnockCountOddEven
+        u16 deathCount;            // 0x4: AddDeadCounter, up to 0xffff
         u8 pad_6[0x2];
         char16_t name[9];          // 0x8: the player's name, 8 letters and a 0
         u8 pad_1a[0x6];
@@ -117,9 +117,9 @@ namespace Game::Data::Inventory {
         uint8_t KillCountNoDamage; // 0xa5
         uint16_t TilePuzzle; // 0xa6: five 3-bit tiles, picked at a new game
         MainItemBits MainItems; // 0xa8
-        uint16_t field_aa; // 0xaa
+        uint8_t pad_aa[2]; // 0xaa: MainItems' word's unused high half
         ExtraItemBits ExtraItems; // 0xac
-        uint8_t field_af; // 0xaf
+        uint8_t pad_af; // 0xaf: ExtraItems' word's unused top byte
         uint64_t SleepyMushroomTime; // 0xb0: SaveHeader::totalTimePlayed when picked
         uint64_t WarpPoints; // 0xb8: a bit per WarpPoint row
         uint8_t BottledFairies; // 0xc0
@@ -139,8 +139,9 @@ namespace Game::Data::Inventory {
         uint8_t RareFishSign; // 0x122
         uint8_t HintIndex; // 0x123
         uint8_t Obtained[16]; // 0x124: a bit per item id
-        uint8_t pad_134[0xc];
-        uint64_t QueryTime; // 0x140: microseconds, an event query's limit
+        uint8_t pad_134[0x4];
+        uint64_t LevelEnterTime; // 0x138: SaveHeader::totalTimePlayed when the level was entered (SetCurrentLevel)
+        uint64_t PreviousLevelTime; // 0x140: microseconds spent in the level before this one
         uint8_t pad_148[0x18];
     };
     static_assert(sizeof(SongBits) == 1 && sizeof(UpgradeItemBits) == 1);
@@ -161,7 +162,8 @@ namespace Game::Data::Inventory {
     static_assert(offsetof(InventoryItems, RapidsBestTime) == 0xf0 && offsetof(InventoryItems, FishSize) == 0xf8);
     static_assert(offsetof(InventoryItems, FishCaught) == 0x118 && offsetof(InventoryItems, HeroMode) == 0x120);
     static_assert(offsetof(InventoryItems, RareFishSign) == 0x122 && offsetof(InventoryItems, Obtained) == 0x124);
-    static_assert(offsetof(InventoryItems, QueryTime) == 0x140 && sizeof(InventoryItems) == 0x160);
+    static_assert(offsetof(InventoryItems, LevelEnterTime) == 0x138);
+    static_assert(offsetof(InventoryItems, PreviousLevelTime) == 0x140 && sizeof(InventoryItems) == 0x160);
 
     inline InventoryItems* Items() { return *Inventory_ptr; }
 }

@@ -1,6 +1,6 @@
 #pragma once
 // The game's standard library types as its functions take them and its objects hold them: string views, libc++
-// shared pointers, vectors, lists and strings.
+// shared pointers, vectors, lists, maps, deques and strings, and the game's thread pool.
 #include "lib.hpp"
 #include <cstddef>
 #include <cstring>
@@ -42,6 +42,14 @@ namespace Game {
         void* ctrl = nullptr;
     };
 
+    // A string copied into a shared buffer of its own (SharedString_Make): the buffer and its characters (terminated).
+    struct SharedString {
+        SharedPtr holder;
+        const char* data;          // 0x10: holder's
+        u64 length;                // 0x18
+    };
+    static_assert(offsetof(SharedString, data) == 0x10 && sizeof(SharedString) == 0x20);
+
     // A shared_ptr a function returns: not trivial, so it comes back through x8, as the game's functions return it.
     struct SharedPtrOut {
         void* ptr = nullptr;
@@ -74,6 +82,40 @@ namespace Game {
         u64 size;
     };
     static_assert(offsetof(List, size) == 0x10 && sizeof(List) == 0x18);
+
+    // libc++ std::map (a red-black tree): a node {left, right, parent, bool black, key, value}; the map is the first
+    // node, its end node (whose left is the root) and the size.
+    struct OrderedMap {
+        void* first;
+        void* root;                // 0x8: the end node's left
+        u64 size;                  // 0x10
+    };
+    static_assert(offsetof(OrderedMap, size) == 0x10 && sizeof(OrderedMap) == 0x18);
+
+    // libc++ std::deque: the block map (a split buffer: first, begin, end, capacity end), the first element's index
+    // and the size.
+    struct Deque {
+        void** mapFirst;
+        void** mapBegin;           // 0x8
+        void** mapEnd;             // 0x10
+        void** mapCapacityEnd;     // 0x18
+        u64 start;                 // 0x20
+        u64 size;                  // 0x28
+    };
+    static_assert(offsetof(Deque, start) == 0x20 && sizeof(Deque) == 0x30);
+
+    // The game's thread pool (ThreadPool_Ctor, ThreadPool_Worker; 0x78 bytes): its threads run the jobs (Function)
+    // queued in its deque.
+    struct ThreadPool {
+        Vector<u8> threads;        // 0x18 bytes each
+        Deque jobs;                // 0x18
+        u8 mutex[0x20];            // 0x48
+        u8 wake[0x8];              // 0x68: a condition variable
+        u8 stop;                   // 0x70: the threads return once the deque is empty
+        u8 pad_71[0x7];
+    };
+    static_assert(offsetof(ThreadPool, jobs) == 0x18 && offsetof(ThreadPool, stop) == 0x70);
+    static_assert(sizeof(ThreadPool) == 0x78);
 
     // libc++ std::string: short (byte 0 bit 0 clear: the length in byte 0's other bits, the characters at +1) or long
     // ({capacity | 1, length, characters*}).

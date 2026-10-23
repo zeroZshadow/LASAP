@@ -16,9 +16,37 @@ namespace Game {
     };
     static_assert(offsetof(BoundAnimation, res) == 0x18 && sizeof(BoundAnimation) == 0x20);
 
+    // nn::g3d SkeletalAnimBlender (0x20): blends the bone transforms of several animations by weight.
+    struct SkeletalAnimBlender {
+        void* results;             // 0x50 per bone: the blended transform, flags, weight sum
+        u16 maxBoneCount;          // 0x8
+        u16 boneCount;             // 0xa
+        u32 flags;                 // 0xc: bits 0-1 the mode, bit 3 blending
+        void* buffer;              // 0x10
+        void* callback;            // 0x18: called per blended bone
+    };
+    static_assert(offsetof(SkeletalAnimBlender, flags) == 0xc && sizeof(SkeletalAnimBlender) == 0x20);
+
+    // A layer's root motion (RootMotion_vtable 0x1c473e0, RootMotion_Calc; 0x90 bytes): while enabled, the root
+    // bone's motion is taken out of the animation into delta.
+    struct RootMotion {
+        const uintptr_t* vtable;
+        SharedPtr animation;       // 0x8: the layer's current one
+        u8 pad_18[0x8];
+        Coords delta;              // 0x20: the root's motion since the last calc; identity when an animation is set
+        float lastFrame;           // 0x50
+        u8 lastRoot[0x30];         // 0x54: the root bone's last sampled transform
+        u8 hasLast;                // 0x84
+        u8 pad_85[0x3];
+        float sampleOffset;        // 0x88: the root is sampled at frame + rate * this
+        u8 enabled;                // 0x8c: AnimationLayer_SetRootMotion
+        u8 pad_8d[0x3];
+    };
+    static_assert(offsetof(RootMotion, delta) == 0x20 && offsetof(RootMotion, hasLast) == 0x84);
+    static_assert(offsetof(RootMotion, enabled) == 0x8c && sizeof(RootMotion) == 0x90);
+
     // An animation layer (vtable 0x1c472f8; 0x100 bytes, the masked kind 0x150): the animation it plays on a model
-    // instance, blended from the previous one. The masked kind (the layered animation's) adds +0xfc enabled and a
-    // bone mask vector at +0x100.
+    // instance, blended from the previous one. The masked kind (MaskedAnimationLayer) places its own fields from +0xfc.
     struct AnimationLayer {
         const uintptr_t* vtable;
         BoundAnimation* animation; // 0x8: a shared_ptr
@@ -26,18 +54,10 @@ namespace Game {
         SharedPtr previous;        // 0x18: the blend's source
         ModelInstance* instance;   // 0x28
         ModelObj* model;           // 0x30
-        u8 blender[0x20];          // 0x38: nn::g3d SkeletalAnimBlender
+        SkeletalAnimBlender blender;  // 0x38
         float blendFrames;         // 0x58
         float blendElapsed;        // 0x5c
-        u8 heldAnimation[0x18];    // 0x60: holds the current animation
-        u8 pad_78[0x8];
-        Coords offset;             // 0x80: identity when an animation is set
-        u8 pad_b0[0x34];
-        u8 field_e4;               // 0xe4
-        u8 pad_e5[0x3];
-        float weight;              // 0xe8
-        u8 field_ec;               // 0xec
-        u8 pad_ed[0x3];
+        RootMotion rootMotion;     // 0x60
         u8 paused;                 // 0xf0
         u8 updated;                // 0xf1
         u8 started;                // 0xf2
@@ -47,12 +67,26 @@ namespace Game {
         u8 pad_fc[0x4];
     };
     static_assert(offsetof(AnimationLayer, animation) == 0x8 && offsetof(AnimationLayer, instance) == 0x28);
-    static_assert(offsetof(AnimationLayer, model) == 0x30 && offsetof(AnimationLayer, offset) == 0x80);
-    static_assert(offsetof(AnimationLayer, weight) == 0xe8 && offsetof(AnimationLayer, paused) == 0xf0);
+    static_assert(offsetof(AnimationLayer, model) == 0x30 && offsetof(AnimationLayer, blender) == 0x38);
+    static_assert(offsetof(AnimationLayer, rootMotion) == 0x60 && offsetof(AnimationLayer, paused) == 0xf0);
     static_assert(offsetof(AnimationLayer, loopCount) == 0xf8 && sizeof(AnimationLayer) == 0x100);
     namespace AnimationLayerVirtual {
         constexpr size_t kSetLoop = 0x30, kSetStart = 0x48, kGetFrame = 0x50, kSetRate = 0x60;
     }
+
+    // A masked layer (0x150 bytes; AnimationLayers::layers): an AnimationLayer whose blend covers only its masked
+    // bones (AnimationLayers_SetBoneMask, AnimationLayers_SetEnabled).
+    struct MaskedAnimationLayer {
+        u8 base[0xfc];             // the AnimationLayer, up to its tail padding
+        u8 enabled;                // 0xfc
+        u8 additive;               // 0xfd: the masked bones stay on the lower layers too; no writer found
+        u8 pad_fe[0x2];
+        Vector<u16> boneMask;      // 0x100: per bone, byte 0 the mask, byte 1 the effective one
+        u8 blendScratch[0x30];     // 0x118: a masked bone's transform for the blender
+        u8 pad_148[0x8];
+    };
+    static_assert(offsetof(MaskedAnimationLayer, enabled) == 0xfc && offsetof(MaskedAnimationLayer, boneMask) == 0x100);
+    static_assert(offsetof(MaskedAnimationLayer, blendScratch) == 0x118 && sizeof(MaskedAnimationLayer) == 0x150);
 
     // SkeletalAnimationComponent (NpcAnimator_Make, vtable 0x1c49d70; 0x1b0 bytes): an NPC's animation player, one
     // layer; its instance and model are the layer's.
@@ -60,7 +94,7 @@ namespace Game {
         Entity entity;
         u8 pad_58[0x8];
         AnimationLayer layer;      // 0x60
-        u8 field_160;              // 0x160
+        u8 field_160;              // 0x160: zeroed by the constructors, not read
         u8 pad_161[0x3];
         u32 order;                 // 0x164: 0x400
         SkeletalModelComponent* modelComp;  // 0x168: a weak_ptr, locked each update
@@ -84,7 +118,7 @@ namespace Game {
         s32 count;                 // 0x18
         u8 pad_1c[0x4];
         Vector<AnimationLayer*> layers;  // 0x20: owned, masked
-        u8 blender[0x20];          // 0x38: nn::g3d SkeletalAnimBlender
+        SkeletalAnimBlender blender;  // 0x38
         u8 paused;                 // 0x58
         u8 pad_59[0x7];
     };

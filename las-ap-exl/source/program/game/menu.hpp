@@ -17,7 +17,7 @@ namespace Game::Ui {
         Animation attentionLoop;   // 0xd8: played once attentionInOut ends
         TextHolder caption;        // 0xf0: T_Operation_00
         u8 enabled;                // 0x108: Normal, else Disable
-        u8 field_109;              // 0x109
+        u8 attentionIn;            // 0x109: attentionInOut played forward (GuideSlot_AttentionIn)
         u8 pad_10a[0x6];
     };
     static_assert(offsetof(GuideSlot, normal) == 0x90 && offsetof(GuideSlot, caption) == 0xf0);
@@ -90,12 +90,14 @@ namespace Game::Ui {
         u8 pad_1322[0x6];
         float mapCursor[2];        // 0x1328: the last map page's cursor
         u8 mapCursorSaved;         // 0x1330
-        u8 mapFlag;                // 0x1331: a flag both map pages share
+        u8 pinType;                // 0x1331: the pin type selected in the map pages' pin bar
         u8 pad_1332[0x2];
         u32 itemCursor;            // 0x1334: the Items page's cursor
         u8 direction;              // 0x1338: 1 R
         s8 levelIndex;             // 0x1339: LevelIndex at the setup
-        u8 pad_133a[0x7];
+        u8 memoryTab;              // 0x133a: the Memories UI's tab, kept while the menu is open
+        u8 memoryListPos[3];       // 0x133b: its first tab's list position
+        u8 panelListPos[3];        // 0x133e: its Chamber Dungeon panels list position
         u8 lr;                     // 0x1341: 1 L, 2 R; kept from a press while the next page opens until a page change
                                    // takes it
         u8 inputOn;                // 0x1342: L and R are read only while set
@@ -108,7 +110,8 @@ namespace Game::Ui {
     static_assert(offsetof(Navi, guide) == 0x318 && offsetof(Navi, hudPane) == 0x1230);
     static_assert(offsetof(Navi, anchors) == 0x12a8 && offsetof(Navi, pages) == 0x12f0);
     static_assert(offsetof(Navi, overworldZoom) == 0x1320 && offsetof(Navi, mapCursor) == 0x1328);
-    static_assert(offsetof(Navi, itemCursor) == 0x1334 && offsetof(Navi, direction) == 0x1338);
+    static_assert(offsetof(Navi, pinType) == 0x1331 && offsetof(Navi, itemCursor) == 0x1334);
+    static_assert(offsetof(Navi, direction) == 0x1338 && offsetof(Navi, memoryTab) == 0x133a);
     static_assert(offsetof(Navi, lr) == 0x1341 && offsetof(Navi, inputOn) == 0x1342 && sizeof(Navi) == 0x1350);
     constexpr u8 kNaviOpen = 1, kNaviWaitKey = 2, kNaviSelected = 3, kNaviCloseOldUi = 4, kNaviClose = 5;
     constexpr u32 kOverworldMapPage = 0xf;
@@ -120,30 +123,62 @@ namespace Game::Ui {
         Animation in;              // 0x78
         Animation out;             // 0x90
         u8 pad_a8[0x8];
-        Function callback;         // 0xb0
+        Function setGuide;         // 0xb0: (const u32& slot, const u32& kind): the Navi guide's slot, kind 0x1c hides
+                                   // it (Navi_GuideCallback)
         u8 canClose;               // 0xe0: set, B closes the menu and L/R turn the page
         u8 pad_e1[0xf];
     };
-    static_assert(offsetof(MenuPage, in) == 0x78 && offsetof(MenuPage, callback) == 0xb0);
+    static_assert(offsetof(MenuPage, in) == 0x78 && offsetof(MenuPage, setGuide) == 0xb0);
     static_assert(offsetof(MenuPage, canClose) == 0xe0 && sizeof(MenuPage) == 0xf0);
+
+    // A choice of the System page (L_SystemChoice_NN, SystemChoice_vtable 0x1c2c440; 0x168 bytes).
+    struct SystemChoice {
+        Part part;
+        Animation on;              // 0x90: the hovered choice's
+        Animation off;             // 0xa8
+        Animation loop;            // 0xc0
+        Animation decide;          // 0xd8
+        Animation normal;          // 0xf0
+        Animation disable;         // 0x108
+        Animation set;             // 0x120: frame 1 on RubyOn
+        Animation toggleOnOff;     // 0x138: RubyOn's
+        TextHolder text;           // 0x150: T_List_00
+    };
+    static_assert(offsetof(SystemChoice, decide) == 0xd8 && offsetof(SystemChoice, text) == 0x150);
+    static_assert(sizeof(SystemChoice) == 0x168);
+
+    // A line of the System page's controls list (L_Op_NN, SystemOpEntry_vtable 0x1c2f9f8; 0xa8 bytes).
+    struct SystemOpEntry {
+        Part part;
+        TextHolder text;           // 0x90: T_Operation_00, a UI:SystemOperating* label
+    };
+    static_assert(sizeof(SystemOpEntry) == 0xa8);
+
+    // The System page's controls list (L_SystemOp_00, SystemOp_vtable 0x1c2f980; 0x678 bytes): Item, Map, Guard,
+    // ItemX, ItemY, Dash, Action, Attack, Move.
+    struct SystemOp {
+        Part part;
+        SystemOpEntry entries[9];  // 0x90
+    };
+    static_assert(offsetof(SystemOp, entries) == 0x90 && sizeof(SystemOp) == 0x678);
 
     // The System page (UI 10, Gm_System.bflyt, vtable 0x1c2fe50, GmSystem_Dtor; 0xd70 bytes): Save, Load and (in
     // Japanese) ruby text.
     struct GmSystem {
         MenuPage page;
         StateMachine<6> machine;   // 0xf0: None, Open, KeyWait, Decide, WaitUiClose, ChangeRuby
-        u32 field_2a0[2];          // 0x2a0
-        u8 choices[3][0x168];      // 0x2a8: L_SystemChoice_NN, text box at +0x160
-        u8 field_6e0;              // 0x6e0
-        u8 field_6e1;              // 0x6e1
+        u32 choiceUis[2];          // 0x2a0: the UI each choice opens: 0x1f save, 0x20 load (Cm_FileOperate)
+        SystemChoice choices[3];   // 0x2a8: Save, Load, RubyOn
+        u8 previousCursor;         // 0x6e0
+        u8 cursor;                 // 0x6e1: the hovered choice
         u8 pad_6e2[0x6];
         u64 choiceCount;           // 0x6e8: 3 in Japanese, else 2
         u8 rubyOn;                 // 0x6f0
         u8 pad_6f1[0x7];
-        u8 systemOp[0x90];         // 0x6f8: L_SystemOp_00
-        u8 field_788[0xd70 - 0x788];  // 0x788
+        SystemOp systemOp;         // 0x6f8
     };
-    static_assert(offsetof(GmSystem, machine) == 0xf0 && offsetof(GmSystem, choices) == 0x2a8);
+    static_assert(offsetof(GmSystem, machine) == 0xf0 && offsetof(GmSystem, choiceUis) == 0x2a0);
+    static_assert(offsetof(GmSystem, choices) == 0x2a8 && offsetof(GmSystem, cursor) == 0x6e1);
     static_assert(offsetof(GmSystem, choiceCount) == 0x6e8 && offsetof(GmSystem, systemOp) == 0x6f8);
     static_assert(sizeof(GmSystem) == 0xd70);
 
@@ -166,31 +201,48 @@ namespace Game::Ui {
     constexpr u8 kThrobberNone = 0, kThrobberIn = 1, kThrobberLoop = 2, kThrobberOut = 3, kThrobberInAuto = 4,
                  kThrobberLoopAuto = 5;
 
+    // The message window's next-page icon (L_MesFeed_00, MessageFeed_vtable 0x1c2e058; 0xf8 bytes).
+    struct MessageFeed {
+        Part part;
+        Animation in;              // 0x90: Loop plays once it ends
+        Animation out;             // 0xa8
+        Animation loop;            // 0xc0
+        Animation decide;          // 0xd8
+        u8 shown;                  // 0xf0: In played by KeyWaiting, cleared by Out
+        u8 pad_f1[0x7];
+    };
+    static_assert(offsetof(MessageFeed, decide) == 0xd8 && offsetof(MessageFeed, shown) == 0xf0);
+    static_assert(sizeof(MessageFeed) == 0xf8);
+
     // A part of the message window that shows text (MessageText_vtable; 0x298 bytes): talk, item get, system, telop
     // and modeless messages. MessageText_ShowLetters reveals the page's letters.
     struct MessageText {
         Part part;
         Animation in;              // 0x90: Opening waits for its end
         Animation out;             // 0xa8
-        Animation letters;         // 0xc0: its frame is the letters shown
-        Animation anims_d8[3];     // 0xd8
-        TextHolder text;           // 0x120
-        PaneHandle arrowPane;      // 0x138: the pane the balloon's follower moves
-        u8 field_150[0x18];        // 0x150
+        Animation letters;         // 0xc0: Typing; its frame is the letters shown
+        TextHolder mainText;       // 0xd8: T_Mes_00
+        TextHolder altText;        // 0xf0: T_Mes_01, for some window kinds (MessageText_SelectText)
+        TextHolder stalfosText;    // 0x108: T_MesStalfos_00 (MessageText_SelectStalfosText)
+        TextHolder text;           // 0x120: the one of the three in use
+        PaneHandle mesPosPane;     // 0x138: N_MesPos_00, the pane the balloon's follower moves
+        PaneHandle normalPane;     // 0x150: N_Normal_00
         Vector<Animation> kindAnims;  // 0x168: by window kind (ItemGet, KeyItemGet, ...)
-        u8 nextIcon[0xf8];         // 0x180: the next-page icon part (In, Out, Loop, Decide)
+        MessageFeed feed;          // 0x180: L_MesFeed_00
         u16 letterFrames;          // 0x278: the letters animation's frames per page
         u8 pad_27a[0x2];
-        float field_27c;           // 0x27c: frames per letter factor
+        float framesPerLetter;     // 0x27c: Typing's frames / letterFrames
         float speed;               // 0x280: letterFrames per letter
-        float field_284;           // 0x284: 1, 2 to show the page at once
+        float revealRate;          // 0x284: 1, 2 once B hurries the page (MessageText_Hurry)
         s32 lettersShown;          // 0x288
         s32 lettersTarget;         // 0x28c
         s32 lettersFade;           // 0x290
-        u8 nextIconOn;             // 0x294
+        u8 hasFeed;                // 0x294: the layout has L_MesFeed_00
         u8 pad_295[0x3];
     };
-    static_assert(offsetof(MessageText, letters) == 0xc0 && offsetof(MessageText, text) == 0x120);
+    static_assert(offsetof(MessageText, letters) == 0xc0 && offsetof(MessageText, mainText) == 0xd8);
+    static_assert(offsetof(MessageText, text) == 0x120 && offsetof(MessageText, normalPane) == 0x150);
+    static_assert(offsetof(MessageText, feed) == 0x180 && offsetof(MessageText, revealRate) == 0x284);
     static_assert(offsetof(MessageText, kindAnims) == 0x168 && offsetof(MessageText, letterFrames) == 0x278);
     static_assert(offsetof(MessageText, lettersShown) == 0x288 && sizeof(MessageText) == 0x298);
 
@@ -253,19 +305,19 @@ namespace Game::Ui {
         u8 pad_1624[0x4];
         MessageString<0x180> pageText;  // 0x1628
         MessageString<0x40> choiceText[4];  // 0x1930
-        u32 field_1b50;            // 0x1b50
+        u32 pageLineBreaks;        // 0x1b50: the current page's; not read
         u8 result;                 // 0x1b54: the chosen option + 1, 0xff none
         u8 pad_1b55[0x3];
         SharedPtr handle;          // 0x1b58: the opener's request handle
-        u8 kind;                   // 0x1b68
-        u8 field_1b69;             // 0x1b69
+        u8 kind;                   // 0x1b68: MessageWindow_KindNames' index, 0x14 none (MessageWindow_SetKind)
+        u8 pad_1b69;
         u16 pageLetters;           // 0x1b6a: letters in the current page
         u8 pad_1b6c[0x4];
         List pendingTags;          // 0x1b70: the page's control tags not yet reached
         float timer;               // 0x1b88: TimerWaiting
         u32 waitButtons[3];        // 0x1b8c: ButtonWaiting's
         TagProcessor tagProcessor; // 0x1b98
-        u8 field_1cb0[0x14];       // 0x1cb0: by kind
+        u8 kindOfStyle[0x14];      // 0x1cb0: the window kind per message project style (MessageWindow_MapStyles)
         s32 choiceCount;           // 0x1cc4: 2 to 4
         s32 choiceCursor;          // 0x1cc8: 0 the first option, Down adds one
         s32 choiceDefault;         // 0x1ccc
@@ -281,7 +333,7 @@ namespace Game::Ui {
         WaitCounter fadeWait;      // 0x1cf8: TextFadeOut
         float modelessPos[3];      // 0x1d00
         float modelessHalfSize[2]; // 0x1d0c
-        u32 field_1d14;            // 0x1d14
+        s32 pageColor;             // 0x1d14: the colour the next page starts in, from a colour tag
         u8 decided;                // 0x1d18: A taken in Selecting
         u8 eventDone;              // 0x1d19
         u8 skipping;               // 0x1d1a: set by B: show pages whole, skip the text's pauses
@@ -296,7 +348,8 @@ namespace Game::Ui {
     static_assert(offsetof(MessageWindow, pageText) == 0x1628 && offsetof(MessageWindow, choiceText) == 0x1930);
     static_assert(offsetof(MessageWindow, result) == 0x1b54 && offsetof(MessageWindow, pageLetters) == 0x1b6a);
     static_assert(offsetof(MessageWindow, pendingTags) == 0x1b70 && offsetof(MessageWindow, tagProcessor) == 0x1b98);
-    static_assert(offsetof(MessageWindow, choiceCount) == 0x1cc4 && offsetof(MessageWindow, choiceCursor) == 0x1cc8);
+    static_assert(offsetof(MessageWindow, kindOfStyle) == 0x1cb0 && offsetof(MessageWindow, choiceCount) == 0x1cc4);
+    static_assert(offsetof(MessageWindow, choiceCursor) == 0x1cc8 && offsetof(MessageWindow, pageColor) == 0x1d14);
     static_assert(offsetof(MessageWindow, keyWait) == 0x1cf0 && offsetof(MessageWindow, modelessPos) == 0x1d00);
     static_assert(offsetof(MessageWindow, skipping) == 0x1d1a && sizeof(MessageWindow) == 0x1d20);
 

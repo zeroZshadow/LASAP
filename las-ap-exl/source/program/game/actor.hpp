@@ -58,6 +58,20 @@ namespace Game {
     static_assert(offsetof(Entity, nameLength) == 0x38 && offsetof(Entity, flags) == 0x40);
     static_assert(offsetof(Entity, parent) == 0x48 && sizeof(Entity) == 0x58);
 
+    // A signal: its slots by handle, called by Emit under the mutex. One layout for every argument type: a bool
+    // (SignalBool_vtable 0x1b59008, SignalBool_Connect, ...), none (Signal_vtable 0x1b59608, Signal_Connect, ...).
+    struct Signal {
+        const uintptr_t* vtable;
+        const uintptr_t* connectorVtable;  // 0x8: a second base (0x1b59098) whose slots forward to owner
+        Signal* owner;             // 0x10: the signal itself
+        OrderedMap slots;          // 0x18: std::map<u32 handle, std::function<void(bool)>>
+        u32 nextHandle;            // 0x30: Connect's next handle, from 1; 0 closed
+        u32 oneShot;               // 0x34: 1: Emit drops every slot and closes the signal after calling them
+        u8 mutex[0x20];            // 0x38: nn::os mutex
+    };
+    static_assert(offsetof(Signal, slots) == 0x18 && offsetof(Signal, nextHandle) == 0x30);
+    static_assert(offsetof(Signal, mutex) == 0x38 && sizeof(Signal) == 0x58);
+
     // A component that is a scene-graph node (Node_vtable 0x1c31a68, Node_Ctor; 0x148 bytes, allocated 0x150): an
     // actor's root, a model component, the item-get's model. Node_UpdateWorld makes coords from coordsNew and the
     // parent's coords; Node_MarkDirty sets needsCoordUpdate and emits transformChanged.
@@ -70,7 +84,7 @@ namespace Game {
         Coords coords;             // 0xb0: world
         bool needsCoordUpdate;     // 0xe0
         u8 pad_e1[0x7];
-        u8 transformChanged[0x58]; // 0xe8: a signal (the skeletal model subscribes)
+        Signal transformChanged;   // 0xe8: the skeletal model subscribes
         void* attachment;          // 0x140: an owned bone attachment; without a parent the world is local times its
     };
     static_assert(offsetof(Node, parent) == 0x58 && offsetof(Node, children) == 0x68);

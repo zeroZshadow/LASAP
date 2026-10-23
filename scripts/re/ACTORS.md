@@ -86,7 +86,11 @@ Vtables start at the object's `+0x0` (no RTTI before them); `+0x68 IsA(type*)` a
 | `+0x260`, `+0x270`, `+0x280` | spawn position (record `+0x14` plus the area's offset), rotation (quaternion from the Euler degrees at record `+0x20`), scale (record `+0x2c`) |
 | `+0x290`..`+0x2a0` | signal handles: `+0x290` the room manager's `+0x278` signal, `+0x29c` the scene's `+0x708` (room changed), `+0x2a0` the scene's `+0x7b8` (`Actor_SubscribeZones` `0x1e980`, `Actor_UnsubscribeZones` `0x1edf0`); `+0x294`, `+0x298` the event manager's `+0xe8` and `+0x140` signals (`Actor_RegisterEvents` `0x22a30`) |
 
-**Params** (0x1c0 bytes; `ActorParams_Copy` `0x31100`): `+0x0` u64 LEB key, `+0x8` u16 actor id, `+0xc` u32 zone, `+0x10` 8 LEB parameters, `+0x50`/`+0xd0` 8 bfres / drsb resources, `+0x150` flowchart, `+0x160`/`+0x168` `LebRoom` sp, `+0x170` LEB record, `+0x180` position, `+0x190` rotation, `+0x1a0` scale, `+0x1b0`/`+0x1b8` a weak pointer the constructor does not read. Destructors `0x1cf70` (`+0xd0`), `0x1d190` (`+0x50`), `0x1d3b0` (`+0x10`, releases type-5 strings).
+**Params** (0x1c0 bytes; `ActorParams_Copy` `0x31100`): `+0x0` u64 LEB key, `+0x8` u16 actor id, `+0xc` u32 zone,
+`+0x10` 8 LEB parameters, `+0x50`/`+0xd0` 8 bfres / drsb resources, `+0x150` flowchart, `+0x160`/`+0x168` `LebRoom` sp,
+`+0x170` LEB record, `+0x180` position, `+0x190` rotation, `+0x1a0` scale, `+0x1b0`/`+0x1b8` a weak pointer the room's
+params builder zeroes and nothing reads. Destructors `0x1cf70` (`+0xd0`), `0x1d190` (`+0x50`), `0x1d3b0` (`+0x10`,
+releases type-5 strings).
 
 **LEB actor record** (`LebActorRecord`; the one-letter names as LASR's `Tools/leb.py`): `+0x0` u64 key, `+0x8` name offset, `+0xc` the actor id, `+0x10` u32 room (zone) id, `+0x14` position, `+0x20` rotation, `+0x2c` scale, `+0x38` 8 parameters, `+0x78` u8 switch types [4], `+0x7c` u16 switch indices [4], `+0x84` `e`, `+0x85` `k`, `+0x86` `b` (no reader found), `+0x87` `x`, `+0x88` `y`, `+0x89` `z`; 0x90 bytes, then three lists in this order: `x` links of 0x14 bytes (`{2 parameters, u32 actor index}`), `z` rail links of 0x18 bytes (`{2 parameters, u32 rail, u32 point}`) and `y` u32 actor indices (`Actor_Ctor` reads the first two, `Room_OnLebActor` `0x8e53b8` the third). `LebRoom` (`LebRoom_vtable` `0x1bcc2f8`, 0x98 bytes, `LebRoom_Ctor` `0x8eab00`) virtuals: `+0x18` room id, `+0x20` actor count, `+0x28` record i (`LebRoom_ActorAt` `0x8eb0e0`), `+0x30`/`+0x38` rails, `+0x40`/`+0x48` points, `+0x50` a string by offset (`LebRoom_String` `0x8eb1c0`).
 
@@ -98,7 +102,22 @@ A **Node** (`Node_Ctor` `0xfb55a0 (node, ComponentArgs*)`, `Node_vtable` `0x1c31
 - `Node_MarkDirty` (`0xfb6aa0`) and `Node_UpdateWorld` (`0xfb6310`) as TESTING.md, Reverse engineering, describes them. A node with an `attachment` (a bone attachment: `+0x10` locator, `+0x30` position, `+0x40` rotation, `+0x50` scale, `+0x60` dirty) and no parent has the world local × the attachment's; `Node_MarkDirty` skips children with one.
 - Its vtable has the Entity slots only; `+0x50` `Node_OnActiveChanged` (`0xfb58c0`) sets bit 1 of each child node from its own active state, raising the actor's `componentIterDepth` around the walk.
 
-A **signal** (0x58 bytes: two vtables, `0x1b59008` / `0x1b59098` and others, a self pointer, a `std::map` of slots, u32 1, u32, an nn::os mutex of 0x20) is what `transformChanged`, NPC components' `readySignal` and Player's `signals` are. Virtual `+0x20` connects a `std::function` and returns a u32 handle (the `*Sub` fields keep such handles); `+0x30` emits (`0xa9970`: each slot with a bool).
+A **signal** (`Signal`, 0x58 bytes) has one layout for every argument type. `transformChanged` and NPC components'
+`readySignal` (a make_shared of 0x78 bytes, the signal at its `+0x18`) take a bool (`SignalBool_vtable` `0x1b59008`);
+the tasks' and some of Player's take none (`Signal_vtable` `0x1b59608`, FRAMEWORK.md). The bool signal's virtuals:
+`+0x10` `SignalBool_Clear` (`0xa95e0`), `+0x18` `SignalBool_IsOpen` (`0xa9630`), `+0x20` `SignalBool_Connect`
+(`0xa9650`: a `std::function`, returns a u32 handle, 0 when closed; the `*Sub` fields keep such handles), `+0x28`
+`SignalBool_Disconnect` (`0xa97f0`), `+0x30` `SignalBool_Emit` (`0xa9970`: copies the slots under the lock, calls each
+with a bool).
+
+| Offset | |
+|---|---|
+| `+0x8` | `connectorVtable`: a second base (`0x1b59098`) whose slots forward to `owner` |
+| `+0x10` | `owner`: the signal itself |
+| `+0x18` | `slots`: libc++ `std::map<u32 handle, std::function<void(bool)>>` (node 0x60: key `+0x20`, function `+0x30`) |
+| `+0x30` | `nextHandle`: Connect returns it and counts up from 1; 0 is closed (Clear sets it) |
+| `+0x34` | `oneShot`: 1: Emit drops every slot and closes the signal after calling them |
+| `+0x38` | `mutex`: an nn::os mutex (0x20 bytes) |
 
 ## Creation
 
@@ -183,15 +202,31 @@ Pause (a menu opening; a level jump sets `+0x510`): the two actor phases do noth
 
 **`Room_OnLebActor`** (`0x8e4da0`, Room vtable `+0x20`) decides whether a LEB actor is made, by presence and the removal memory, not by switches: a map actor already alive (`+0x1c8`), a key in the registry (the live actor is adopted instead: `Room_AdoptActor` `0x2b8e0` moves it into the root, sets `+0xb4` and its spawn position), a name already in the root, and, for a room whose zone is in the removal ring (`+0x249`), the removal memory (Persistence). A record with links (`y` > 0) and group above `0xc4` is queued in group `0xc6` (no `x` links) or `0xc7`.
 
-**Field streaming.** `RoomManager_Update` (`0x8529b0`) in state 1 calls `RoomManager_UpdateRooms` (`0x85c280`): every area's `+0xc0` cleared, the areas in the camera's load box marked (at most 0x37), a Room made for the area at Link's position when there is none (`RoomManager_CreateRoom` `0x854fd0`, vtable `+0x60`), `+0x230` Link's zone. One room below Run advances per frame. A room whose area left the box is unloaded by vtable `+0x58` (`RoomManager_UnloadRooms` `0x854cd0`, from the last update phase): its actors destroyed a few per call, then the room deleted (`Room_Dtor` `0x8e4610`). Room actors are destroyed, not kept; they come back with the room, unless the removal memory holds them.
+**Field streaming.** `RoomManager_Update` (`0x8529b0`) in state 1 calls `RoomManager_UpdateRooms` (`0x85c280`): every
+area's `active` cleared, the areas in the camera's load box
+marked (at most 0x37), a Room made for the area at Link's position when there is none (`RoomManager_CreateRoom`
+`0x854fd0`, vtable `+0x60`), `+0x230` Link's zone. One room below Run advances per frame. A room whose area left the box
+is unloaded by vtable `+0x58` (`RoomManager_UnloadRooms` `0x854cd0`, from the last update phase): its actors destroyed a
+few per call, then the room deleted (`Room_Dtor` `0x8e4610`). Room actors are destroyed, not kept; they come back with
+the room, unless the removal memory holds them.
 
 **Activity.** Two flags stop actors:
-- Bit 1 by room: `UpdateRooms` (`0x85c83c`) sets a room root's `+0x140` from its activity (area `+0xc1`, guess: in view) and, on a change, bit 1 of each child (`Entity_ForEachChild` `0xfafd20`, functor `0xfb3220`). Actors of the actor system (Link, factory spawns from code) are not in a room and never get this.
+- Bit 1 by room: `UpdateRooms` (`0x85c83c`) sets a room root's `+0x140` while the camera window around Link (its
+  extents by Link's area's `viewKind`, a table at `0x1701ed4`) overlaps the area's `viewMin`..`viewMax`, a tracked
+  node lies inside that box, or the area's `showForced` is set (each update copies it to Room `+0x24d` and clears
+  it); on a change it sets bit 1 of each child (`Entity_ForEachChild` `0xfafd20`, functor `0xfb3220`). Actors of the
+  actor system (Link, factory spawns from code) are not in a room and never get this.
 - Bit 2 by zone (a zone is one camera room). An actor subscribes in `+0xd0` (`0x1e980`) to the room manager's `+0x278`, the scene's `+0x708` (room changed → `+0xe0`) and `+0x7b8` (`0x1f2e0`). For a zone-scoped actor (`+0xa4` bit 0) of the zone Link left, `0x1f2e0` saves bit 2 into `+0xa2` bit 1, sets `+0xa2` bit 0 and clears bit 2. `Actor_OnRoomChanged` (`+0xe0`, `0x1f090`) restores bit 2 from `+0xa2` bit 1 when Link enters its zone. An actor made outside the current zone is suspended at once. Zone -1 (`+0xb0`) is never suspended.
 - Bit 2 by freeze: `ActorTree_Freeze` (`0x7d5910`, functor `0x7d5b30`) clears it on every enabled actor of a tree that is not of type `0x1cab3f8` (`IsA`; Player's own type id is `0x1cab518`, so guess: a base class of Link's) and lists them, `ActorTree_Unfreeze` (`0x7d5f60`) sets it again; about a hundred classes call the pair. Actors of the actor system are not in those trees: a factory-spawned NpcGhost in zone -1 keeps bit 2 through a dungeon scroll (measured 2026-10-23).
 - Bit 2 by `GameControl.LoadZone(zoneID)` (`0x7ffc50` → `0x866d90`): set on every direct child of the rooms of that zone.
 
-**Dungeon rooms.** The scene's update (`0x836270`) follows Link's room (scene `+0x800` zone, `+0x804` room index); on a change it fires the room signal (`+0x6f8`, the actors' `+0x708` callback, with new and old) and, on a zone change, `+0x6a0` and `RoomManager_VisitZone` (`0x865e90`). In a dungeon (level data vtable `+0x48` == 3) `UpdateRooms` reloads a running room whose area `+0xc1` changed (`Room_Reload` `0x8e5e60`): its actors are kept (`+0x1e0`; keyless ones with `+0xa4` bit 1 are destroyed, `0x8e62a0`) and the room goes back to LebLoad, where `Room_OnLebActor` skips the actors still present. Actors of a dungeon room Link left are kept.
+**Dungeon rooms.** The scene's update (`0x836270`) follows Link's room (scene `+0x800` zone, `+0x804` room index); on a
+change it fires the room signal (`+0x6f8`, the actors' `+0x708` callback, with new and old) and, on a zone change,
+`+0x6a0` and `RoomManager_VisitZone` (`0x865e90`). In a dungeon (level data vtable `+0x48` == 3) `UpdateRooms` reloads a
+running room whose area's `showForced` differs from the room's copy (Room `+0x24d`) while
+the area's `active` is set (`Room_Reload` `0x8e5e60`): its actors are kept (`+0x1e0`; keyless ones with `+0xa4` bit 1
+are destroyed, `0x8e62a0`) and the room goes back to LebLoad, where `Room_OnLebActor` skips the actors still present.
+Actors of a dungeon room Link left are kept.
 
 **Level jump.** `LevelManager_LevelJump` (`0x864d50`, state 1 only) saves Link's position, stores the destination, aborts every room (`+0x24a`), resets the event and message managers, state 4. State 4 (`0x864a30`) waits for no running event, sets Framework `+0x510`, waits until every room is in Prepare or Run, then vtable `+0x80` (`RoomManager_LevelJumpTeardown` `0x857660`): the BGM fades (90 frames), Link is disabled, every room is deleted (its actors with it), the level data is released (and the removal memory with it). Only the actor system's children survive (Link, the hookshot, actors spawned from code with that owner); they load their models again in the next level. The next level's rooms come up from the one at Link's position, one per frame, each group by group.
 
@@ -211,20 +246,81 @@ Usual meanings: switch 0 "appear when" or "opened" (ObjTreasureBox: on → opene
 
 **Removal memory** (defeated enemies and other actors without switches; LevelData `+0x8`, `LevelData_Ctor` `0x8ed720`): a hash set of keys (for the level) and a ring of 5 slots `{s32 zone, vector<u64> keys}` (current slot LevelData `+0xd8`). An actor that sets `+0xa2` bit 2 (enemies when they die, e.g. `0x2461fc`) has its key added in `OnDestroyed` (`RemovedSet_Add` `0x8e6ac0`: the slot of its zone `+0xb8`, else the hash set). `RoomManager_VisitZone` gives the zone Link enters a slot when it has none (the oldest, cleared). `Room_OnLebActor` for a room whose zone is in the ring (`RemovedSet_Has` `0x8e71e0`): without links, made when `e` is 0, else unless removed; with links, the highest `k` among linked actors not removed decides: 1 made, 2 made unless removed itself, 0 as without links. Defeated enemies stay away while their zone is among the last 5 visited, and come back after 5 other zones or a level change. A second set at LevelData `+0xe0` (current slot `+0x1b0`) is used by the drop code (`0x89c2f4`; guess: one drop per zone visit).
 
-**Appearing.** Each class checks its switches in its own setup or state code and destroys itself, disables itself (bit 0) or picks a state (about 200 callers of `ActorSwitch_IsOn`). NPCs and items: `NpcPop_Check` (`0x947c90`): the first of the Npc row's `popConditions` (`+0x160`, 0x20 each) that holds (`Conditions_Check`) gives a value, true when it is the component's `+0x90` (the actor's variant). `ItemActor_CanAppear` (`0x8c4510`) adds the inventory check (TESTING.md).
+**Appearing.** Each class checks its switches in its own setup or state code and destroys itself, disables itself (bit
+0) or picks a state (about 200 callers of `ActorSwitch_IsOn`). NPCs and items: `NpcComponent_CheckLayout` (`0x947c90`,
+NpcComponent virtual `+0x80`): the first of the Npc row's
+`layoutConditions` (`+0x160`, 0x20 each, `layoutID` at `+0x18`) that holds (`Conditions_Check`) gives its
+`layoutID`, true when it equals the component's `layoutId`. `NpcComponent_CheckPop` (`0x947d70`, virtual `+0x88`):
+every entry of the row's `popConditions` (`+0x148`, 0x18 each; `depopEnable` at `+0x158`) holds. `ItemActor_CanAppear`
+(`0x8c4510`) adds the inventory check (TESTING.md).
 
 ## NPCs
 
-**NpcActor** (NpcGhost; `NpcGhost_Ctor` `0x9bcb50 (out, ActorArgs*)`: make_shared of 0x2f0 bytes, the actor 0x2d0 bytes at `+0x20`, `classBits |= 0x805`; `NpcGhost_Dtor` `0x9bccb0`; `NpcGhost_vtable` `0x1be37c0`). `vtable2` is a second base (`NpcGhost_vtable2` `0x1be3948`, offset to top −0x2a8 at `0x1be3938`). `npc` is set by NpcGhost's setup (`0x9bcda0`), which connects to the component's `readySignal`; `param0Max` is set there too. `NpcGhost_OnEventStart` (`0x9bd4c0`, virtual `+0xb0`) sets `inEvent` and reads the component's `eventChara`, `NpcGhost_OnEventEnd` (`0x9bd680`, `+0xb8`) clears it, and `NpcGhost_Update` (`0x9be630`) skips while it is set. The update counts `timer` down by the frame time while `timerOff` is clear; at 0 it calls `0x9bee20` and starts again at 40. Only NpcGhost's layout is checked; other NPC classes may keep their component elsewhere.
+**NpcActor** (NpcGhost; `NpcGhost_Ctor` `0x9bcb50 (out, ActorArgs*)`: make_shared of 0x2f0 bytes, the actor 0x2d0 bytes
+at `+0x20`, `classBits |= 0x805`; `NpcGhost_Dtor` `0x9bccb0`; `NpcGhost_vtable` `0x1be37c0`). `npc` is set by NpcGhost's
+setup (`0x9bcda0`), which connects to the component's
+`readySignal`; `param0Max` is set there too. `NpcGhost_OnEventStart` (`0x9bd4c0`, virtual `+0xb0`) sets `inEvent`
+and reads the component's `eventChara`, `NpcGhost_OnEventEnd` (`0x9bd680`, `+0xb8`) clears it, and `NpcGhost_Update`
+(`0x9be630`) skips while it is set. The update counts `timer` down by the frame time while `scenarioRequested` is
+clear; at 0 it calls `NpcGhost_ScenarioTimer` (`0x9bee20`) and starts again at 40. That callback starts the event
+`Scenario:Lv5GhostGoGrave` (and sets the event flag `TakeGhostGrave`) or `Scenario:Lv5GhostGoHouse1` and sets
+`scenarioRequested`; the event's callbacks (`0x9bfb48`, `0x9bfd5c`) clear it. Only NpcGhost's layout is checked;
+other NPC classes may keep their component elsewhere.
+
+**Companion interface.** `companionVtable` (`+0x2a8`, `NpcGhost_vtable2` `0x1be3948`, offset to top −0x2a8 at
+`0x1be3938`) is a second base: the interface of the companions Link takes along. Four classes have it at `+0x2a8`;
+its slot `+0x20` returns the companion kind that `Conditions_Check` type 3 names: NpcBowWow 1 (`0x1bdb6e8`),
+NpcMarin 2 (`0x1be6ba0`), NpcGhost 3, NpcFlyingCucco 4 (`0x1be1440`, "Rooster"). NpcGhost's slots (thunks that
+subtract 0x2a8):
+
+| Slot | | |
+|---|---|---|
+| `+0x10`, `+0x18` | `0x9bd6a0`, `0x9bd6e0` | the actor as a shared_ptr (from the weak self pointer) |
+| `+0x20` | `0x9bdff0` | the companion kind |
+| `+0x28`, `+0x30` | `0x9be000`, `0x9be030` | the NPC component (`npc`) as a shared_ptr |
+| `+0x38` | `NpcGhost_FollowLink` `0x9bdd20` | while `following`: the root to Link's world position |
+| `+0x40` | `NpcGhost_StartFollowing` `0x9bd780` | into the actor system (Framework `+0x498`), event actor name `companion`, `timer` 40, class bit 0 cleared (no zone suspension), `following` set |
+| `+0x48` | `NpcGhost_StopFollowing` `0x9bda40` | `timer` 0, class bit 0 set, into the current room's root (destroyed when none), `following` cleared |
+| `+0x50`, `+0x58` | `0x9be090`, `0x9be0a0` | `following`, `param0Max` |
 
 **NpcComponent** (`NpcComponent_Ctor` `0x943e90 (component, ComponentArgs*, StringView* row key, parent node sp*)`, `NpcComponent_vtable` `0x1bdc570`, `NpcComponent_Dtor` `0x944b50`; 0x2e0 bytes, the size `NpcGhost_MakeNpcComponent` (`0x9c0870`) and the plain maker (`0x943b40`) allocate). NpcGhost's component class (vtable `0x1be3ad8`) adds no fields.
 
 - `owner` is a strong pointer to the owning actor, null unless it is of the type at `0x1cab3e8` (its virtual `+0x68` IsA).
 - `parentNode` is the constructor's fourth argument, the actor's root (NpcGhost: `Actor_GetOrMakeRoot` with `"root"`), on which the model is made.
-- `row` is the Npc.gsheet row (TESTING.md, Npc row); `NpcComponent_Setup` (`0x945510`, virtual `+0x20`) destroys a component without one. The setup reads `variant` (`NpcComponent_Variant` `0x94ace0`, `+0x1d0`: the owner's int LEB parameter the row's `+0x140` names, counted from 1), which `NpcPop_Check` compares (Persistence, Appearing), and `lebString` (`NpcComponent_ReadLebString` `0x94ad40`, `+0x1d8`: the string LEB parameter the row's `+0x144` names, type 4 or 5), checks `NpcPop_Check`, starts the resource loads and makes `readySignal` (make_shared of 0x78 bytes, the signal at its `+0x18`).
+- `row` is the Npc.gsheet row (TESTING.md, Npc row); `NpcComponent_Setup` (`0x945510`, virtual `+0x20`) destroys a
+  component without one. The setup reads `layoutId` (`NpcComponent_LayoutId` `0x94ace0`, virtual `+0x1d0`: the owner's
+  int LEB parameter the row's `actorArgs.layoutID` (`+0x140`) names, counted from 1), which `NpcComponent_CheckLayout`
+  compares (Persistence, Appearing), and `identifier` (`NpcComponent_Identifier` `0x94ad40`, `+0x1d8`: the string LEB
+  parameter the row's `actorArgs.identifier` (`+0x144`) names, type 4 or 5), checks `NpcComponent_CheckLayout`, starts
+  the resource loads and makes `readySignal`.
 - `NpcComponent_OnResourcesLoaded` (`0x968db0`) takes `flowchart`, `modelResource` (the bfres) and `tailorResource` (the drsb), runs `NpcComponent_BuildComponents` (`0x957d80`) and emits `readySignal`.
 - `animationCache`: `NpcAnimation_Get` (`0x9670d0`) binds the animations of `modelResource` (the animation set) and keeps them by name.
-- `eventSubA` and `eventSubB` are handles on the event manager's `+0xe8` and `+0x140` signals; `task` is a `Task_Post` task (`0x947f38`); `event_280` an event of the flowchart (`0x80c290 (out, flowchart, name)`, virtual `+0x178`; likely); `flow_268` virtual `+0x2c0`'s result; `field_278` defaults to `0x1702058`; `vector_290` holds 0x20-byte `{u64, sp, u64}` elements; `triggersHandled` is set when the build handles the row's event triggers (likely); `flag_2a9` is set when virtual `+0x2f8` is null and `+0x88` false; `object_2b0` has vtable `0x1b51a70`.
+- `eventSubA` and `eventSubB` are handles on the event manager's `+0xe8` and `+0x140` signals; `task` is a
+  `Task_Post` task (`0x947f38`); `event_280` an event of the flowchart (`0x80c290 (out, flowchart, name)`, virtual
+  `+0x178`; likely).
+- Animation settings: `NpcComponent_AnimSetting` (`0x955640`, virtual `+0x2c0`) finds the row's
+  `graphics.animSettings` entry by animation name (`NpcAnimSetting` 0x20 bytes: name, `blendTime` frames, `lipsync`,
+  `cull`) and caches it in `animSettingCache` (key a `SharedString`, value an `AnimSettingRef` `{sheet sp, entry*}`).
+  `NpcComponent_PlayAnimation` (`0x948a70`, virtual `+0xc8 (out, blend, component, StringView* name, bool force)`)
+  keeps the playing animation's entry in `animSetting` (`animSettingSheet` keeps the sheet alive; default the static
+  entry at `0x1702058`, blend time 0) and blends by its `blendTime` when the blend argument is negative; virtual
+  `+0x160` (`0x94a050`) tests its `lipsync`.
+- Event triggers: `NpcComponent_ConnectTriggers` (`0x959370`) connects each row `eventTriggers` entry of condition
+  10-13 through `NpcComponent_ConnectTrigger` (`0x9595d0`, `(component, link index 0-3)`): the linked area actor
+  (AreaEventBox, AreaEventSphere, AreaEventBoxWithoutJump: its signal at `+0x2b8`; AreaLevelOpen: a function at
+  `+0x2f0`) goes into `triggerLinks` (`NpcTriggerLink`, 0x20 bytes: link index, area sp, handle), then the linked
+  areas' enabled bits are cleared. A component built before it started sets `triggersPending`, and
+  `NpcComponent_Start` (`0x946a30`, virtual `+0x28`) connects them then; a started one connects at once.
+  `NpcComponent_OnDestroyed` (`0x946ae0`, `+0x38`) disconnects them and clears both caches.
+- `popRejected`: `NpcComponent_OnDestroyRequested` (`0x946a60`, `+0x30`) and the resources' callbacks emit
+  `readySignal` without a build when `NpcComponent_CheckPop` fails; `0x96872c` then hides the NPC (likely).
+- `collisionMaterial`: the collision shape's material word (`NpcComponent_CollisionMaterial` `0x949e30`, virtual
+  `+0x130`): bits 0-5 the row's `collision.material` (`+0x1c4`), bits 14-17 1 when `attribute` (`+0x218`) bit 2,
+  bit 19 when its bit 1 is clear.
+- `groundCache` (`GroundQueryCache`, 0x30 bytes, vtable `0x1b51a70`: `+0x10` the last position, `+0x20` the
+  attribute, `+0x24` valid): `NpcComponent_GroundAttribute` (`0x957750`, virtual `+0x348`) returns `groundAttr`'s
+  attribute when it lives, else `GroundQuery_Cached` (`0x307a0`) from the root's world position straight down, which
+  reuses the cached attribute while the position stays within an epsilon and casts a ray otherwise.
 
 `NpcComponent_BuildComponents` makes each component through a virtual of its own:
 
@@ -236,20 +332,45 @@ Usual meanings: switch 0 "appear when" or "opened" (ObjTreasureBox: on → opene
 | `damageCollision` | `+0x218` | | with `damageCollision.enable` |
 | `eventChara` | `+0x220` | | |
 | `doAction` | `+0x228` | | with `doAction.type` not 0 |
-| `comp230` | `+0x230` | `0x950910` (through `0x5d4760`) | uses the row's `+0x204` |
-| `comp238` | `+0x238` | `0x950c30` | with the row's float `+0x170` not 0 |
+| `ocarinaReaction` | `+0x230` | `0x950910`: OcarinaReaction, a 0x1b0-byte Node (`0x5d4760`) | with `ocarina.enable` (`+0x200`), `ocarina.distance` (`+0x204`) |
+| `lookAtTarget` | `+0x238` | `0x950c30`: LookAtTarget, a 0x150-byte Node (`0x95fa80`) | with `lookAtOffsetY` (`+0x170`) not 0 |
 | `tailorPlayer` | `+0x240` | | with `graphics.drsb` set |
-| `comp248` | `+0x248` | `0x951310` | with the row's `+0x98` |
+| `waterEvent` | `+0x248` | `0x951310`: WaterEvent, 0x160 bytes (`0x35dfc0`) | with `graphics.waterChannel.enable` (`+0x98`), `offsetY` (`+0x9c`) |
 | `groundAttr` | `+0x250` | | with a collision |
-| `comp258` | `+0x258` | `0x9519f0`: a 0x190-byte Node | with the row's `+0x98` |
+| `tailorWaterSurface` | `+0x258` | `0x9519f0`: TailorWaterSurface, a 0x190-byte Node | with `waterChannel.enable`, `limitDepth` (`+0xa0`) |
 | `facial` | `+0x260` | `NpcComponent_MakeFacial` `0x952380` | with `graphics.facial` naming a Facial.gsheet row |
-| `comp268` | `+0x268` | `0x952cc0`: a 0x130-byte component (constructor `0xc8e00`) | |
+| `aimControl` | `+0x268` | `0x952cc0`: AimControl, 0x130 bytes (`0xc8e00`) | with `graphics.interestIK` (`+0xb8`) set |
 | `materialAnim` | `+0x270` | `NpcComponent_MakeMaterialAnimator` `0x9535f0` | |
-| `railTrailer` | `+0x278` | `0x954310` (`"RailTrailer"`) | with the row's `+0x210` (likely) |
+| `shellBeacon` | `+0x278` | `0x954310`: ShellBeaconComponent, a 0x150-byte Node (`0x87140`) | with `shellSensor` (`+0x208`) entries |
 
-**FacialControl** (`FacialControl_Ctor` `0x11cdf0 (component, ComponentArgs*, StringView* row key, std::function*, u32 priority)`, `FacialControl_vtable` `0x1b5e008`; 0x150 bytes, which `NpcComponent_MakeFacial` allocates): `priority` 100 from the maker; `onChangeA` is the constructor's function, `onChangeB` the maker's (`0x120150`); `sheet` keeps Facial.gsheet (`FacialSheet_ptr` `0x1cc3c40`) alive; `row` is `Datasheet_FindRow(sheet, key, 0x50)`. `NpcComponent_MakeMaterialAnimator` counts no facial slots while `facial` is null or its entity's flags have `kDestroyRequested`.
+TailorWaterSurface holds copies of `tailorPlayer` (its `+0x148`) and `waterEvent` (`+0x158`). Virtual `+0x288`
+(`0x954520`) is the `RailTrailer` maker.
 
-**FacialRow** (a Facial.gsheet row, 0x50 bytes, the row size `FacialControl_Ctor` asks for; the names `mKey`, `mMaterialAnimNames` `{mEye, mMouth, mOthers}`, `mExpressions` as `patcher/ap_player_ghost.py` writes them; the layout is read from the material animator, likely): the material animation component gets `SlotCount()` slots, one per `others` animation and one for each of `eye` and `mouth` that is set, and one more after them, the slot `NpcComponent_PlayMaterialAnimation` uses.
+**FacialControl** (`FacialControl_Ctor` `0x11cdf0 (component, ComponentArgs*, StringView* row key, std::function*, u32
+priority)`, `FacialControl_vtable` `0x1b5e008`; 0x150 bytes, which `NpcComponent_MakeFacial` allocates): `priority` 100
+from the maker; `onChangeA` is the constructor's function, `onChangeB` the maker's (`0x120150`); `sheet` keeps
+Facial.gsheet (`FacialSheet_ptr` `0x1cc3c40`) alive; `row` is `Datasheet_FindRow(sheet, key, 0x50)`.
+`NpcComponent_MakeMaterialAnimator` counts no facial slots while
+`facial` is null or its entity's flags have `kDestroyRequested`.
+
+- `FacialControl_Setup` (`0x11d4c0`, virtual `+0x20`) builds `expressionsByLabel` (the expressions' indices by
+  `label`, FNV-1a; only expressions whose `otherFrames` count equals `others`' count), pushes one 0 into `frames` per
+  material animation slot (eye if set, mouth if set, then each other), makes `eyeBlink` (EyeBlinkControl, 0xc0 bytes,
+  virtual `+0x98` `0x11ec10`) when virtual `+0x88` (`0x11eb50`: `eye` set and an expression with
+  `eyeBlinkSettings`) holds, and `lipSync` (LipSync, 0x100 bytes, `+0xa0` `0x11f510`) when `+0x90` (`0x11ebb0`:
+  `mouth` set and an expression with `lipSyncSettings`) holds.
+- `FacialControl_SetExpression` (`0x120a30`, `(facial, index)`) sets `expression`, ignoring an index out of range.
+- `FacialControl_Update` (`0x11e4d0`, virtual `+0x80`) advances each of `frames` modulo the expression's lengths
+  (`eyeLength`, `mouthLength`, `otherLengths`); nothing while `frozen`.
+
+**FacialRow** (a Facial.gsheet row, 0x50 bytes, the row size `FacialControl_Ctor` asks for; the schema's names `mKey`,
+`mMaterialAnimNames` `{mEye, mMouth, mOthers}` at `+0x10`/`+0x20`/`+0x30`, `mExpressions` at `+0x40`): the material
+animation component gets `SlotCount()` slots, one per `others` animation and one for each of `eye` and `mouth` that
+is set, and one more after them, the slot `NpcComponent_PlayMaterialAnimation` uses. `expressions` are
+`FacialExpression` (0x60 bytes: `label`, `eyeFrame`, `mouthFrame`, `otherFrames` `+0x18`, `eyeLength` `+0x28`,
+`mouthLength`, `otherLengths` `+0x30`, `eyeBlinkFrame` `+0x40`, `eyeBlinkSettings` `+0x48`, `lipSyncCloseFrame`
+`+0x50`, `lipSyncOpenFrame`, `lipSyncSettings` `+0x58`); a settings pointer (null for none) is a `FacialSettings`
+(0x20 bytes: key, then the open and the close random range as `{min, range}`).
 
 ## For the module
 
@@ -264,7 +385,8 @@ Usual meanings: switch 0 "appear when" or "opened" (ObjTreasureBox: on → opene
 - The type `0x1b511e0` of the component whose `+0x58` gates readiness, and who sets flags bit 4 for it.
 - Queue `+0x2f0` (bit 10) has no runner in 1.0.0.
 - The level load from state 6 to state 1, and level data vtable `+0x48` (level kind; 3 dungeon) and `+0x50`.
-- LEB record `b` (`+0x86`): no reader found.
-- NpcGhost's second base (vtable `0x1be3948`): which interface.
-- The classes NpcComponent's virtuals `+0x230`, `+0x238`, `+0x248`, `+0x258` and `+0x268` make; its `map_240`, `flow_268`, `field_278`, `vector_290` and `field_2ac`..`field_2d4`; the owner type (`0x1cab3e8`) its constructor checks.
-- FacialControl `+0xc0`..`+0xe0` and `map_f8`..`field_140`; the type of FacialRow's `expressions`.
+- LEB record `b` (`+0x86`): no reader found (actor, room and LEB code searched).
+- The companion slots `+0x10` / `+0x18`: which two shared_ptr views of the actor they return.
+- NpcComponent: the owner type (`0x1cab3e8`) its constructor checks; the row's `eventTriggers` conditions 0xe-0x11
+  (virtual `+0x320`) and the names of conditions 10-13.
+- FacialControl `frozen`: no writer found besides the constructor.

@@ -60,7 +60,7 @@ namespace Game::Map {
         Ui::Animation out;                  // 0x280
         Ui::TextHolder nameText;            // 0x298: T_MarkerName_00
         Ui::PaneHandle window;              // 0x2b0: W_window_00
-        Ui::PaneHandle field_2c8;           // 0x2c8
+        Ui::PaneHandle field_2c8;           // 0x2c8: never set
         u8 nameHidden;                      // 0x2e0: no name shown; set with nameHideRequest, the name goes away
         u8 nameHideRequest;                 // 0x2e1
         u8 pad_2e2[0x6];
@@ -122,20 +122,21 @@ namespace Game::Map {
         Vec4 offset;                        // 0x10: the Chamber Dungeon's grid offset
         Vec4 min;                           // 0x20: the area's box
         Vec4 max;                           // 0x30
-        Vec4 field_40;                      // 0x40
-        Vec4 field_50;                      // 0x50
+        Vec4 viewMin;                       // 0x40: the box whose overlap with the camera window shows the
+        Vec4 viewMax;                       // 0x50: room's actors (RoomManager_UpdateRooms)
         u32 id;                             // 0x60
         u32 zoneIndex;                      // 0x64
         char path[0x50];                    // 0x68: "level/Lv01TailCave/Lv01TailCave_03G.leb"
         u64 pathLength;                     // 0xb8
-        u8 field_c0;                        // 0xc0
-        u8 field_c1;                        // 0xc1: Room_Reload reacts to its change
+        u8 active;                          // 0xc0: the room manager keeps the room; it reloads only while set
+        u8 showForced;                      // 0xc1: the actors shown regardless of the view box; Room_Reload reacts
+                                            // to its change
         u8 row;                             // 0xc2
         u8 column;                          // 0xc3
-        u8 field_c4;                        // 0xc4
+        u8 viewKind;                        // 0xc4: the camera window's size, 0 to 2
         u8 pad_c5[0xb];
     };
-    static_assert(offsetof(Area, offset) == 0x10 && offsetof(Area, id) == 0x60);
+    static_assert(offsetof(Area, offset) == 0x10 && offsetof(Area, viewMin) == 0x40 && offsetof(Area, id) == 0x60);
     static_assert(offsetof(Area, path) == 0x68 && offsetof(Area, pathLength) == 0xb8);
     static_assert(offsetof(Area, row) == 0xc2 && sizeof(Area) == 0xd0);
 
@@ -160,13 +161,137 @@ namespace Game::Map {
     static_assert(offsetof(DungeonItemsEntry, flags) == 0x1 && offsetof(DungeonItemsEntry, visited) == 0x8);
     static_assert(sizeof(DungeonItemsEntry) == 0x20);
 
+    // A gsheet row and the shared_ptr keeping its sheet alive.
+    struct SheetRowRef {
+        SharedPtr sheet;
+        const void* row;                    // 0x10
+    };
+    static_assert(sizeof(SheetRowRef) == 0x18);
+
+    // A floor choice of the dungeon map (L_MapChoice_NN, MapChoice_vtable 0x1c2c5c0; 0x168 bytes).
+    struct MapChoice {
+        Ui::Part part;
+        Ui::Animation on;                   // 0x90
+        Ui::Animation off;                  // 0xa8
+        Ui::Animation loop;                 // 0xc0
+        Ui::Animation decide;               // 0xd8
+        Ui::Animation normal;               // 0xf0
+        Ui::Animation disable;              // 0x108
+        Ui::TextHolder text;                // 0x120: T_List_00
+        Ui::PaneHandle playerPane;          // 0x138: N_Player_00, Link's floor
+        Ui::PaneHandle bossPane;            // 0x150: N_Boss_00, the boss's floor
+    };
+    static_assert(offsetof(MapChoice, text) == 0x120 && offsetof(MapChoice, bossPane) == 0x150);
+    static_assert(sizeof(MapChoice) == 0x168);
+
+    // The dungeon map's timer (L_TimeCount_00, TimeCount_vtable 0x1c2cdc0; 0x150 bytes).
+    struct TimeCount {
+        Ui::Part part;
+        Ui::Animation in;                   // 0x90
+        Ui::Animation out;                  // 0xa8
+        Ui::Animation setTime;              // 0xc0
+        Ui::TextHolder time[3];             // 0xd8: T_Time_00..02
+        Ui::TextHolder minuteSign;          // 0x120: T_Sign_00
+        Ui::TextHolder secondSign;          // 0x138: T_Sign_01
+    };
+    static_assert(offsetof(TimeCount, time) == 0xd8 && sizeof(TimeCount) == 0x150);
+
+    // Link's marker on a map (L_MapPlayer_00, MapPlayer_vtable 0x1c2cd48; 0xd8 bytes).
+    struct MapPlayer {
+        Ui::Part part;
+        Ui::Animation on;                   // 0x90
+        Ui::Animation indoor;               // 0xa8
+        Ui::Animation sideview;             // 0xc0
+    };
+    static_assert(sizeof(MapPlayer) == 0xd8);
+
+    // A pin (Gm_MapMarkUnit, MapMarkUnit_Make, vtable 0x1c2da60; 0x140 bytes): placed on a map, or a type of the pin
+    // bar.
+    struct MapMarkUnit {
+        Ui::Part part;
+        Ui::Animation on;                   // 0x90: hovered
+        Ui::Animation loop;                 // 0xa8
+        Ui::Animation off;                  // 0xc0
+        Ui::Animation normal;               // 0xd8
+        Ui::Animation disable;              // 0xf0
+        Ui::Animation setMark;              // 0x108: frame code % 10 - 1
+        Ui::Animation put;                  // 0x120: a placed pin's
+        u8 code;                            // 0x138: type code % 10, the dungeon map's floor code / 10
+        u8 pad_139[0x7];
+    };
+    static_assert(offsetof(MapMarkUnit, put) == 0x120 && offsetof(MapMarkUnit, code) == 0x138);
+    static_assert(sizeof(MapMarkUnit) == 0x140);
+
+    // The pin bar's cursor (L_MarkCursor_00, MarkCursor_vtable 0x1c2c530; 0x100 bytes).
+    struct MarkCursor {
+        Ui::Part part;
+        Ui::Animation on;                   // 0x90: Loop plays once it ends
+        Ui::Animation loop;                 // 0xa8
+        Ui::Animation off;                  // 0xc0
+        u8 field_d8;                        // 0xd8: zeroed when made, not read
+        u8 pad_d9[0x7];
+        Ui::PaneHandle cursorPane;          // 0xe0: W_Cursor_00
+        u8 pad_f8[0x8];
+    };
+    static_assert(offsetof(MarkCursor, cursorPane) == 0xe0 && sizeof(MarkCursor) == 0x100);
+
+    // The maps' pin bar (L_MapMarkList_00, MapMarkList_vtable 0x1c2d9e8; 0xe98 bytes): the pin types and the pin count.
+    struct MapMarkList {
+        Ui::Part part;
+        Ui::Animation in;                   // 0x90
+        Ui::Animation loop;                 // 0xa8
+        Ui::Animation out;                  // 0xc0
+        Ui::Animation normal;               // 0xd8
+        Ui::Animation disable;              // 0xf0
+        Ui::Animation setPositionX;         // 0x108
+        Ui::Animation setPositionY;         // 0x120
+        Ui::TextHolder pinCount;            // 0x138: T_PinNum_00
+        Ui::TextHolder pinCapacity;         // 0x150: T_PinNum_01
+        Ui::TextHolder pinSlash;            // 0x168: T_PinSlash_00
+        MapMarkUnit marks[9];               // 0x180: [1..8] L_MapMark_01..08; [0] not bound
+        Ui::PaneHandle markPanes[9];        // 0xcc0: L_MapMark_00..08
+        MarkCursor cursor;                  // 0xd98
+    };
+    static_assert(offsetof(MapMarkList, marks) == 0x180 && offsetof(MapMarkList, markPanes) == 0xcc0);
+    static_assert(offsetof(MapMarkList, cursor) == 0xd98 && sizeof(MapMarkList) == 0xe98);
+
+    // An overworld field area's part (L_FldArea_<a>, FieldAreaPart_vtable 0x1c2d050; 0x158 bytes): On once traversed.
+    struct FieldAreaPart {
+        Ui::Part part;
+        Ui::Animation on;                   // 0x90
+        Ui::Animation off;                  // 0xa8
+        Ui::Animation plainOnOff;           // 0xc0
+        Ui::Animation active;               // 0xd8
+        Ui::Animation deactive;             // 0xf0: played when the row's conditions hold
+        Ui::Animation zoomIn;               // 0x108
+        Ui::Animation zoomOut;              // 0x120
+        SharedPtr maskSheet;                // 0x138: UiFieldMapMask
+        const void* maskRow;                // 0x148: once set, the update does nothing
+        u8 setUp;                           // 0x150: not read
+        u8 traversed;                       // 0x151: the row's UI_FieldMapTraverse flag
+        u8 pad_152[0x6];
+    };
+    static_assert(offsetof(FieldAreaPart, maskSheet) == 0x138 && offsetof(FieldAreaPart, traversed) == 0x151);
+    static_assert(sizeof(FieldAreaPart) == 0x158);
+
+    // A Memory's marker on the overworld map (L_Memory_<i>, MemoryMarker_vtable 0x1c2ddd0; 0x230 bytes).
+    struct MemoryMarker {
+        Ui::Part part;
+        StateMachine<4> machine;            // 0x90: MemoryMarker_ChangeState: Deactive, On, Wait, Off
+        Ui::Animation on;                   // 0x1d0
+        Ui::Animation loop;                 // 0x1e8
+        Ui::Animation off;                  // 0x200
+        Ui::Animation setMark;              // 0x218
+    };
+    static_assert(offsetof(MemoryMarker, on) == 0x1d0 && sizeof(MemoryMarker) == 0x230);
+
     // The dungeon map page (UI 0xe, Dg_DgnMap, DungeonMap_Ctor; 0x2e60 bytes). Its panes N_MapPosition_00 (moved after
     // the setup), N_MapPin_00 (the room icons and pins) and N_PinOffset_00; the cursor in N_MapOrigin_00's units.
     struct DungeonMap {
         Ui::MenuPage page;
         StateMachine<16> machine;           // 0xf0: 2 KeyWait
         UnorderedMap cellOfArea;            // 0x4d0: Area::id to row * 8 + column
-        SharedPtr memories;                 // 0x4f8
+        SharedPtr memories;                 // 0x4f8: the Memories UI (DungeonMap_MemoryCreated)
         Ui::Animation floors[17];           // 0x508: Dgn_00..16, by UiDungeonAreaRow::animFloorIndex
         Ui::Animation dgn14;                // 0x6a0
         Ui::Animation dgnMapOn;             // 0x6b8
@@ -194,23 +319,24 @@ namespace Game::Map {
         void* hoveredPin;                   // 0x13c0: a shared_ptr, null none
         void* hoveredPinCtrl;               // 0x13c8
         Ui::Part dungeonItems[3];           // 0x13d0: the map, the compass, the stone beak
-        u8 floorChoices[4][0x168];          // 0x1580: L_MapChoice_00..03
+        MapChoice floorChoices[4];          // 0x1580: L_MapChoice_00..03
         SharedPtr bossIcon;                 // 0x1b20
-        u8 pinBar[0xe98];                   // 0x1b30: L_MapMarkList_00
+        MapMarkList pinBar;                 // 0x1b30
         DungeonMapIcon entrance;            // 0x29c8: L_MapStart_00
-        u8 linkMarker[0xd8];                // 0x2a98: L_MapPlayer_00
+        MapPlayer linkMarker;               // 0x2a98
         float linkMapPos[2];                // 0x2b70
-        u8 timeCount[0x150];                // 0x2b78: L_TimeCount_00
+        TimeCount timeCount;                // 0x2b78
         u8 dungeonIndex;                    // 0x2cc8: LevelIndex
         u8 pad_2cc9[0x3];
         s32 hoveredPinIndex;                // 0x2ccc: -1 none
         s32 previousPinIndex;               // 0x2cd0
         u8 lastPinType;                     // 0x2cd4
-        u8 mapFlag;                         // 0x2cd5: Navi::mapFlag
-        u8 field_2cd6[0x2];                 // 0x2cd6
+        u8 pinType;                         // 0x2cd5: Navi::pinType
+        u8 previousPinType;                 // 0x2cd6
+        u8 pad_2cd7;
         float zoomScale;                    // 0x2cd8
-        float zoomTarget;                   // 0x2cdc
-        float field_2ce0;                   // 0x2ce0
+        float zoomFrom;                     // 0x2cdc: the level the zoom started from (likely)
+        float zoomProgress;                 // 0x2ce0: 0 to 1; scroll and cursorScale follow it
         float cursorScale;                  // 0x2ce4: the zoom's factor on the cursor's speed and the hover radius
         float zoomStep;                     // 0x2ce8
         u8 zoomIndex;                       // 0x2cec: into zoomLevels
@@ -237,9 +363,10 @@ namespace Game::Map {
         u8 entranceFloor;                   // 0x2d32
         u8 pad_2d33[0xd];
         u8 info;                            // 0x2d40: Y held: the dungeon's info, no hover
-        u8 field_2d41;                      // 0x2d41
+        u8 cursorRestored;                  // 0x2d41: from Navi::mapCursor, else put on Link's marker
         u8 extraIconMade;                   // 0x2d42
-        u8 field_2d43[0x2];                 // 0x2d43
+        u8 cursorShown;                     // 0x2d43: the cursor's In played
+        u8 sideViewMarkerShown;             // 0x2d44: the side-view Link marker placed
         u8 pad_2d45[0x3];
         Ui::TagProcessor tagProcessor;      // 0x2d48: panelDungeonName's
     };
@@ -250,9 +377,11 @@ namespace Game::Map {
     static_assert(offsetof(DungeonMap, hoveredPin) == 0x13c0 && offsetof(DungeonMap, floorChoices) == 0x1580);
     static_assert(offsetof(DungeonMap, pinBar) == 0x1b30 && offsetof(DungeonMap, entrance) == 0x29c8);
     static_assert(offsetof(DungeonMap, timeCount) == 0x2b78 && offsetof(DungeonMap, hoveredPinIndex) == 0x2ccc);
+    static_assert(offsetof(DungeonMap, pinType) == 0x2cd5 && offsetof(DungeonMap, zoomProgress) == 0x2ce0);
     static_assert(offsetof(DungeonMap, cursorScale) == 0x2ce4 && offsetof(DungeonMap, cursorSpeed) == 0x2d08);
     static_assert(offsetof(DungeonMap, cursorX) == 0x2d18 && offsetof(DungeonMap, shownFloor) == 0x2d23);
-    static_assert(offsetof(DungeonMap, info) == 0x2d40 && offsetof(DungeonMap, tagProcessor) == 0x2d48);
+    static_assert(offsetof(DungeonMap, info) == 0x2d40 && offsetof(DungeonMap, sideViewMarkerShown) == 0x2d44);
+    static_assert(offsetof(DungeonMap, tagProcessor) == 0x2d48);
     static_assert(sizeof(DungeonMap) == 0x2e60);
     constexpr u8 kKeyWait = 2;
 
@@ -260,9 +389,9 @@ namespace Game::Map {
     struct OverworldMap {
         Ui::MenuPage page;
         StateMachine<17> machine;           // 0xf0: Deactive..Close, OpenMask
-        UnorderedMap map_500;               // 0x500
+        UnorderedMap map_500;               // 0x500: only made and destroyed
         Ui::Animation mapNameIn;            // 0x528
-        Ui::Animation field_540;            // 0x540
+        Ui::Animation field_540;            // 0x540: never set
         Ui::Animation mapSymbol;            // 0x558
         Ui::Animation fldMaskOpen;          // 0x570
         Ui::Animation memoryIn;             // 0x588
@@ -287,28 +416,28 @@ namespace Game::Map {
         Ui::TextHolder placeNames[64];      // 0x730: T_MapName_<i>
         u8 placeNamesShown;                 // 0xd30: Y held
         u8 pad_d31[0x7];
-        u64 field_d38;                      // 0xd38
-        u8 fieldAreas[32][0x158];           // 0xd40: L_FldArea_<a>
+        u64 maskRowCount;                   // 0xd38: UiFieldMapMask rows
+        FieldAreaPart fieldAreas[32];       // 0xd40: L_FldArea_<a>
         Ui::PaneHandle fieldAreaMasks[32];  // 0x3840: L_FldAreaMask_<a>
         SharedPtr pins[30];                 // 0x3b40: MapMarkUnit
         SharedPtr hoveredPin;               // 0x3d20
         SharedPtr memories;                 // 0x3d30: the Memories UI
-        Vector<u8> memoryList;              // 0x3d40
+        Vector<SheetRowRef> memoryList;     // 0x3d40: the UiMemory rows shown
         u8 pad_3d58[0x8];
-        u8 memoryParts[24][0x230];          // 0x3d60: L_Memory_<i>
-        u8 linkMarker[0xd8];                // 0x71e0: L_MapPlayer_00
-        u8 pinBar[0xe98];                   // 0x72b8: L_MapMarkList_00
+        MemoryMarker memoryParts[24];       // 0x3d60: L_Memory_<i>
+        MapPlayer linkMarker;               // 0x71e0
+        MapMarkList pinBar;                 // 0x72b8
         s32 hoveredMarker;                  // 0x8150: index into markers, -1 none
         s32 previousMarker;                 // 0x8154
         s32 hoveredPinIndex;                // 0x8158
         s32 previousPinIndex;               // 0x815c
         u8 lastPinType;                     // 0x8160
-        u8 mapFlag;                         // 0x8161: Navi::mapFlag
-        u8 field_8162;                      // 0x8162
+        u8 pinType;                         // 0x8161: Navi::pinType
+        u8 previousPinType;                 // 0x8162
         u8 pad_8163;
         float zoomScale;                    // 0x8164
         float zoomTarget;                   // 0x8168
-        float zoomDone;                     // 0x816c: 1 once a zoom ends
+        float zoomProgress;                 // 0x816c: 0 to 1, 1 once a zoom ends
         float cursorScale;                  // 0x8170
         float zoomStep;                     // 0x8174
         u8 zoomIndex;                       // 0x8178
@@ -327,8 +456,9 @@ namespace Game::Map {
         u8 fromIndex;                       // 0x81b9
         u8 pad_81ba[0x2];
         u32 memoryToClose;                  // 0x81bc
-        u16 field_81c0;                     // 0x81c0
-        u8 field_81c2;                      // 0x81c2
+        u8 maskOpening;                     // 0x81c0: a field area's mask opens: Open goes on to OpenMask
+        u8 cursorShown;                     // 0x81c1: the cursor's In played
+        u8 field_81c2;                      // 0x81c2: only zeroed
         u8 pad_81c3[0xd];
     };
     static_assert(offsetof(OverworldMap, machine) == 0xf0 && offsetof(OverworldMap, map_500) == 0x500);
@@ -338,8 +468,9 @@ namespace Game::Map {
     static_assert(offsetof(OverworldMap, fieldAreas) == 0xd40 && offsetof(OverworldMap, fieldAreaMasks) == 0x3840);
     static_assert(offsetof(OverworldMap, pins) == 0x3b40 && offsetof(OverworldMap, memories) == 0x3d30);
     static_assert(offsetof(OverworldMap, memoryParts) == 0x3d60 && offsetof(OverworldMap, pinBar) == 0x72b8);
-    static_assert(offsetof(OverworldMap, hoveredMarker) == 0x8150 && offsetof(OverworldMap, mapFlag) == 0x8161);
+    static_assert(offsetof(OverworldMap, hoveredMarker) == 0x8150 && offsetof(OverworldMap, pinType) == 0x8161);
     static_assert(offsetof(OverworldMap, cursorScale) == 0x8170 && offsetof(OverworldMap, zoomIndex) == 0x8178);
     static_assert(offsetof(OverworldMap, cursorSpeed) == 0x8198 && offsetof(OverworldMap, cursor) == 0x81a8);
-    static_assert(offsetof(OverworldMap, memoryToClose) == 0x81bc && sizeof(OverworldMap) == 0x81d0);
+    static_assert(offsetof(OverworldMap, memoryToClose) == 0x81bc && offsetof(OverworldMap, cursorShown) == 0x81c1);
+    static_assert(offsetof(OverworldMap, linkMarker) == 0x71e0 && sizeof(OverworldMap) == 0x81d0);
 }

@@ -1,11 +1,17 @@
+PhaseQueue_Dtor 0x0850bab0 f
+ThreadPool_Dtor 0x0850bb80 f
+ThreadPool_Ctor 0x0850c700 f (pool 0x78, u64 threads, std::function* thread factory): PhaseQueue +0x78, UiManager +0x28b8
+ThreadPool_Worker 0x0850cbd0 f the threads' loop: waits on +0x68, runs the jobs of the deque +0x18 until +0x70
 Framework_AddUpdatePhase 0x085100e0 f (fw, id, priority, std::function*)
 Framework_AddRenderPhase 0x08510290 f (fw, id, priority, std::function*)
 Phase_EndOfUpdate 0x08515960 f update phase 0xc350: room manager +0x58, then the render phases or a flush
 SceneHolder_Lock 0x08515b70 f (shared_ptr* out, holder*): shared_ptr of holder +0x88/+0x90 when its type matches; the game passes *(Framework+0x4a8) and gets the scene (+0x618 room manager)
+PhaseQueue_ApplyPending 0x08517050 f after Run: the deque +0x48 (0 add, 1 remove, 2 clear, 3 set priority)
 Phase_ActorLateUpdate 0x08518210 f update phase 0xbb80: queue +0x1f8, nothing while Framework +0x510/+0x511
 Phase_ActorUpdate 0x08519b80 f update phase 0x7530: queue +0x100, nothing while Framework +0x510/+0x511
 Framework_FrameStep 0x0851be30 f the frame delta, then the update phases
 Gfx_FlushEntities 0x0851c930 f graphics callback: EntityManager_Flush
+View_GetId 0x0851d5f0 f vtable +0x78: +0x18
 Actor_Ctor 0x0851fdb0 f (actor, ActorArgs*): Entity_Ctor, the params into +0x98..+0x2a0, priority +0xac from ActorTable +0x49
 ActorParams_Dtor0 0x08520f70 f member destructor at params +0xd0
 ActorParams_Dtor1 0x08521190 f member destructor at params +0x50
@@ -32,8 +38,10 @@ ActorSwitch_Set 0x085271b0 f (LEB record, slot, bool); LASR's SetActorSwitch
 ActorSwitch_IsOn 0x08527490 f (LEB record, slot): type 0 level flag, 1 global flag, 2 index != 0, 3 PanelDungeon +0x16a0 bit; null record or other type false
 ActorSwitch_IsOff 0x08527660 f (LEB record, slot): null record or other type true
 ActorName_Make 0x08527830 f (out {sp, name, length}, params*): the LEB name, else "{0:S22}:{1:X8}" of the table name and a counter
+SharedString_Make 0x08527df0 f (out {sp, const char*, u64}, const char* data, u64 length): a terminated copy in a shared buffer
 Entity_SetEnabled 0x0852e560 f (x0: +8 the bool, x1: the entity as a shared_ptr*): sets or clears bit 0 of the flags (+0x40); when that changes (flags & 0x40000017) == 0x17 (active), calls the entity's virtual +0x50
 Room_AdoptActor 0x0852f8e0 f (room, actor sp*): Entity_AddChild to the root, actor +0xb4 = the room's zone
+GroundQuery_Cached 0x085347a0 f (u32* out, GroundQueryCache*, const Vec4* pos, const Vec4* dir, filter*): the cached attribute when pos is unchanged, else a raycast
 ActorParams_Copy 0x08535100 f (dst, src): the 0x1c0-byte actor params
 TaskQueue_Add 0x085361e0 f (queue, key*, std::function*, u32 priority): one task per key, ascending priority
 Resource_TakeFlowchart 0x085419f0 f (out, handle*)
@@ -49,17 +57,94 @@ AreaLevelOpen_EntryName 0x08579fb0 f (out, actor): LEB param 2
 AreaLevelOpen_CompanionEntry 0x0857a050 f entry name with the companion suffix through CompanionEventEntry
 AreaLevelOpen_LevelName 0x0857a0c0 f (out, actor): LEB param 0; a bl target after a noreturn call
 AreaLevelOpen_Locator 0x0857a150 f (out, actor): LEB param 1
+ShellBeaconComponent_Make 0x0858b140 f 0x150-byte Node subclass
+EnvSe_Ctor 0x0859b840 f environment SE player (BgmManager +0x62b0, 0x2900 bytes)
+EnvSe_Dtor 0x0859c5b0 f
+EnvSe_StopAll 0x0859c620 f stops the insect and lamp SEs, empties the lists, clears the wind phases
+EnvSe_InitLines 0x0859ca20 f the 12 SE_AMB_LINE_BG line sources from the rows at 0x0a05cc38
+EnvSe_AddLamp 0x0859ce20 f (StringView* name, Vec4* pos, s32 id, s32 zone): a torch/lamp SE emitter (64 max)
+EnvSe_RemoveLamp 0x0859d020 f (s32 id): stops its SE, frees the emitter
+BgmInstance_Start 0x0859d130 f starts the stream (StartInfo start offset +0x128 when set), volume by kind and ducking
+BgmInstance_Prepare 0x0859d800 f prepares the stream (BgmManager_Play with prepareNow)
+BgmInstance_SetPosition 0x0859d8e0 f (instance, Vec4*): kind 4, radius 3, fade range 9, onUpdate[0] = BgmInstance_UpdatePositional
+BgmInstance_UpdatePositional 0x0859db70 f functor: volume by listener distance (+0x110, +0x120, +0x124); kind 1 gets 1 - that
+BgmPlayer_Dtor 0x0859e4e0 f
+BgmPlayer_Init 0x0859e7e0 f resets the 8 instances into free
+BgmPlayer_DropStarting 0x0859f600 f stops prepared starting instances and returns them to free
 BgmManager_StopByName 0x0859f7b0 f (StringView* name, u32 fade frames) on the static BgmManager
 BgmManager_StopAll 0x0859f550 f (u32 frames): every playing instance's fade-out +0x58 and Sound_Stop; the event action StopAllBGM and the level load (0 frames)
+AudioEffects_Dtor 0x085a05f0 f removes the reverb and delay effects, waiting until removable
+AudioEffects_SetDelay 0x085a09e0 f (effects, u8 kind 5|6)
+AudioEffects_RemoveDelay 0x085a0a60 f (effects, u8 next)
+AudioEffects_SetReverb 0x085a0b00 f (effects, u8 kind 1..4)
+AudioEffects_ApplyReverb 0x085a0ca0 f kinds 1-2 on effect 0x0a1b0798, 3-4 on 0x0a1b0830 (aux bus 0)
+AudioEffects_ApplyDelay 0x085a1070 f kinds 5-6 on effect 0x0a1b08d8 (aux bus 1)
+BgmManager_Shutdown 0x085a12c0 f while initialized: loader, envSe, effects, BGM, SEs, heaps; clears +0x9418..+0x941b
+BgmManager_Init 0x085a1840 f audio heaps, AudioSystem setup, SoundLoader/SePlayer/BgmPlayer/EnvSe init, outputs, loads GROUP_COMMON; sets initialized
+BgmManager_ConnectSignals 0x085a1ba0 f scene +0x760 zone signal (-> +0x9338, lambda 0x085a2460), event manager +0xe8/+0x140 (-> +0x9330/+0x9334)
+BgmManager_OnEventEnd 0x085a1f30 f event manager +0x140 signal: unpauses SEs, clears +0x941a
+BgmManager_OnEventStart 0x085a21c0 f event manager +0xe8 signal: pauses playing SEs; eventQuiet (+0x941a) unless the flow is ZeldaScroll
+BgmManager_OnZoneChanged 0x085a2460 f (functor, zone*, otherZone*, f32* blend): env SE/group (+0x9298/+0x92e0), zone BGM (+0x9250, start delay 150 or 0), zone effect +0x9328
+BgmManager_PlayEnvSe 0x085a3980 f (f32 volume, BgmManager*, StringView* label, bool): when envGroup's slot is loaded, plays label (kind 4) and label_EX (kind 5)
+BgmManager_SceneEnd 0x085a4d80 f disconnects +0x9330/+0x9334/+0x9338, stops SEs and BGM (StopAll 0), drops the starting list, clears +0x9419
+BgmManager_Update 0x085a4f90 f per frame (update phase, via 0x14114): listener from the camera fields, delay choice, SE start queue and playing list, BGM starting/playing lists (start delay, ducking), env SEs
+Sound_PlayAmbient 0x085a9ec0 f (f32 volume, StringView* name): starts a kind 3 SE or keeps it alive (+0x144 = 4)
+BgmManager_SetEnvSound 0x085aa180 f (StringView* label, StringView* group): saves the env SE (+0x9388/+0x93d0), plays or loads the new one
 BgmManager_FadeZone 0x085aa510 f the kind 1 instances fade out over 90 frames unless the hold track (+0x9340) or BGM_EVENT_RESCUE_BOWBOW plays
+BgmManager_RestoreEnvSound 0x085ab0a0 f zone BGM back (unless the hold track or BGM_EVENT_RESCUE_BOWBOW plays), restores the saved env SE
+SoundLoader_Ctor 0x085ab380 f BgmManager +0x8bb0 (0x570 bytes): 4 sound-heap slots, requests +0x3e8, task +0x400, StateMachine<2> +0x4a0
+SoundLoader_Dtor 0x085ab760 f
+SoundLoader_Shutdown 0x085ab830 f waits for +0x499, clears the 4 heaps and the requests
+SoundLoader_Init 0x085ab8a0 f the slot heaps (0xa000000, 3 x 0xc00000), the machine
+SoundLoader_Request 0x085aca80 f (f32 volume, loader, StringView* group, u8 slotMode 0|2, StringView* playLabel, bool noPlay): queues a group load
+SignalBool_Clear 0x085ad5e0 f vtable +0x10: drops every slot, nextHandle 0 (closed)
+SignalBool_IsOpen 0x085ad630 f vtable +0x18: nextHandle (+0x30) != 0
+SignalBool_Connect 0x085ad650 f vtable +0x20 (signal, std::function*) -> u32 handle (0 when closed)
+SignalBool_Disconnect 0x085ad7f0 f vtable +0x28 (signal, u32 handle) -> bool
+SignalBool_Emit 0x085ad970 f vtable +0x30 (signal, bool): each slot; oneShot (+0x34) clears and closes after
+SeInstance_Setup 0x085aeb80 f (instance, SePlayRequest*): name, position, kind, volume, pitch, ids, flags, 3D actor
+SeInstance_Release 0x085b02c0 f drops the actors and functions, serial -1, kind 0
+SePlayer_Ctor 0x085b0440 f 64 SeInstance (0x160) at +0x10, vectors +0x5810 free, +0x5828 playing, +0x5840 queued
+SeInstance_Dtor 0x085b0620 f vtable 0x0a05d260 +0x0
+SePlayer_Dtor 0x085b0720 f
+SePlayer_Admit 0x085b0e60 f (player, SeInstance*) -> bool: the SE flags' cooldowns, restart limits, distance culling, counts, volume caps
+SePlayer_StopByName 0x085b18f0 f (player, StringView* name, u32 frames): every playing SE with that id
+SePlayer_FindPlaying 0x085b2020 f (player, StringView* name) -> SeInstance* in playing with that sound id
+SePlayer_IsQueued 0x085b2110 f (player, StringView* name) -> bool
+Signal_Clear 0x085b4ca0 f vtable +0x10: closes the signal (+0x30 = 0), drops the slots
+Signal_IsOpen 0x085b4cf0 f vtable +0x18: +0x30 != 0
+Signal_Connect 0x085b4d10 f vtable +0x20 (signal, std::function*) -> u32 id, 0 when closed
+Signal_Disconnect 0x085b4db0 f vtable +0x28 (signal, u32 id) -> bool
+Signal_Emit 0x085b4f30 f vtable +0x30: calls every slot; a one-shot signal (+0x34 == 1) closes and drops them
+AudioCamera_Register 0x085bc120 f an entity's Register: flags |= 0x100, TaskQueue_Add of AudioCamera_Update
+AudioCamera_Update 0x085bc4f0 f task: the camera entity's eye (+0x600), target position and FOV into BgmManager +0x0/+0x10/+0x30
+AimControl_Ctor 0x085cce00 f (component, ComponentArgs*, row*, name, u32 priority): 0x130 bytes
 Resource_TakeTailor 0x085dfb60 f (out sp, handle*): Resource_Wait and the drsb type check
 TaskQueue_Remove 0x085e8670 f (queue, key*): deferred while the queue runs
+FacialControl_Setup 0x086214c0 f vtable +0x20: expressionsByLabel (+0xf8), frames (+0x128), EyeBlinkControl (+0xc0), LipSync (+0xd0), expression 0
+FacialControl_OnDestroyed 0x08621e80 f vtable +0x38
+FacialControl_Update 0x086224d0 f vtable +0x80: nothing while +0x140; advances the frames (+0x128) of expression +0x120
+FacialControl_HasEyeBlink 0x08622b50 f vtable +0x88: mEye set and an expression with mEyeBlinkSettings
+FacialControl_HasLipSync 0x08622bb0 f vtable +0x90: mMouth set and an expression with mLipSyncSettings
+FacialControl_MakeEyeBlink 0x08622c10 f vtable +0x98: "EyeBlinkControl" (0xc0 bytes)
+FacialControl_MakeLipSync 0x08623510 f vtable +0xa0: "LipSync" (0x100 bytes)
+FacialControl_SetExpression 0x08624a30 f (facial, s32 index): +0x120 when 0 <= index < expressions.count
 Task_Post 0x087db430 f (out, scheduler Framework +0x60, std::function*, x3)
+WaterEvent_Make 0x08861fc0 f 0x160-byte component
 EnemyOctorok_Factory 0x08a520a0 f ActorTable id 2
+OcarinaReaction_Make 0x08ad8760 f (out, actor, StringView* name, sp<Node>* parent, float* distance): 0x1b0-byte Node subclass
 ActorTree_Freeze 0x08cd9910 f (obj, entity): clears flags bit 2 of every enabled actor of the tree not of type 0x1cab3f8, listed at obj +0x18
 ActorTree_Unfreeze 0x08cd9f60 f sets flags bit 2 again on the list
 EventAction_LoadZone 0x08d03c50 f GameControl.LoadZone(zoneID)
+EventQuery_CompareCurrentLevelTime 0x08d04bd0 f (ctx) -> (totalTimePlayed - Inventory +0x138) / 1e6 >= time
+Task_Ctor 0x08d2ee90 f (task, VTT, SharedPtr* parent): base of the GameState and the scenes: weakThis +0x8, parent +0x18, onFinished signal +0x28, finished +0x80
+Task_OnFinishedIface 0x08d2f120 f task vtable +0x10: this + 0x30 (the signal's connect interface)
+Task_IsFinished 0x08d2f130 f task vtable +0x18: +0x80
+Task_Order 0x08d2fa00 f task vtable +0x38: 0 (Scheduler_Add's order)
+LevelScene_Ctor 0x08d39fa0 f (scene, SharedPtr* parent): save manager +0x90, room manager +0x618, sheets +0x628, signals +0x6a0/+0x6f8/+0x750/+0x7a8, zone/room +0x800
 Scene_UpdateZone 0x08d3a270 f per frame: Link's room (scene +0x800 zone, +0x804 room); room signal +0x6f8, zone signal +0x6a0, RoomManager_VisitZone
+LevelScene_Dtor 0x08d48ea0 f
+PlayTask_Ctor 0x08d56550 f the level's "Play" task (0x410 bytes, vtable 0x0a0c7850)
 RoomManager_StartLevelLoad 0x08d58bf0 f vtable +0x50
 RoomManager_UnloadRooms 0x08d58cd0 f vtable +0x58: the actors of rooms whose area left the load box, a few per call, then the room
 RoomManager_CreateRoom 0x08d58fd0 f vtable +0x60 (out, manager, area sp*, bool): Room_Ctor
@@ -67,6 +152,22 @@ RoomManager_LevelJumpTeardown 0x08d5b660 f vtable +0x80: BGM fade, Link disabled
 RoomManager_ProcessLevelJump 0x08d68a30 f state 4: no event running, Framework +0x510, every room in Prepare or Run, then vtable +0x80
 RoomManager_VisitZone 0x08d69e90 f (manager, room): the zone into the removal rings (slot cleared)
 RoomManager_SetZoneActive 0x08d6ad90 f (rooms, end, zone): flags bit 2 on the roots' children of rooms with +0x240 == zone
+GameState_Update 0x08d6b0f0 f vtable +0x20: drops the +0xc0 entries whose first object's +0x78 is 0
+GameState_IsType 0x08d6b140 f vtable +0x28
+GameState_Start 0x08d6b2a0 f vtable +0x48: present setup, GlobalSave_Reset, FadePreset sheets (+0xa0), the startup chain, then GameState_StartTitle
+GameState_Finish 0x08d6b4d0 f vtable +0x50: resets systems, drops +0xa0/+0xb0/+0xc0, finishes the task (ends the main loop)
+GameState_StartTitle 0x08d6d820 f +0x84 = 1, TitleScene into +0x88, NextScene on its finish
+WeakPtr_LockOrThrow 0x08d6dcf0 f (out sp, ptr, ctrl): the scene factories' parent (the GameState)
+TitleScene_Make 0x08d6de50 f (out sp, counter*, scheduler, parent sp): 0x88 bytes
+GameState_NextScene 0x08d6e120 f (game state): after a scene finishes: +0xd8 reset, then by +0x98: 1 title, 2 file menus, 3/4 level, 5 ending, else Finish
+GameState_StartFileMenus 0x08d6e200 f +0x84 = 2
+GameState_StartLevel 0x08d6e6d0 f +0x84 = 4
+GameState_StartEnding 0x08d6eba0 f +0x84 = 5
+EndingScene_Make 0x08d6f030 f 0x88 bytes
+LevelScene_Make 0x08d6f4e0 f 0x820 bytes
+FileMenusScene_Make 0x08d6f970 f 0x88 bytes
+GameState_Dtor 0x08d7f4a0 f
+TitleScene_Update 0x08d7fde0 f vtable +0x20: steps by +0x81
 SmallKey_UpdateAppear 0x08dd0280 f enables the actor while switch 0 is on
 Room_Ctor 0x08de2f30 f (room, LevelData*, area sp*, bool): states Prepare, LebLoad, AssetLoad, InitializeActor, Run
 Room_PrepareUpdate 0x08de3740 f
@@ -87,16 +188,148 @@ RemovedSet_Has 0x08deb1e0 f (set, zone, key)
 LebRoom_Ctor 0x08deeb00 f sections actor +0x78, rail +0x80, point +0x88, infomation id +0x90
 ActorCreate_ReadyTask 0x08dfb860 f waits for flags bit 4 and the component's +0x58, then Actor_RegisterEvents, vtable +0xd0
 ActorRegistry_FindByKey 0x08dfc200 f (out sp, u64 key): the live actor with that LEB key
-NpcPop_Check 0x08e4bc90 f (npc component): the first holding popCondition's value == component +0x90
+TagProcessor_ApplyColor 0x08e08860 f vtable +0x30: colour from field +0x110 (-1 keep, 0 default +0x8, n the message colour table) (guess name)
+NpcComponent_Start 0x08e4aa30 f vtable +0x28: connects the event-trigger areas when +0x2a8 (triggersPending), clears it
+NpcComponent_OnDestroyRequested 0x08e4aa60 f vtable +0x30: emits readySignal if not yet; +0x2a9 when the pop conditions fail
+NpcComponent_OnDestroyed 0x08e4aae0 f vtable +0x38: event handles, task, trigger links (+0x290), both caches, components
+NpcComponent_CheckLayout 0x08e4bc90 f vtable +0x80 (npc component): the first holding row layoutConditions entry (+0x160, 0x20 each) gives its layoutID (+0x18), true when it equals +0x90
+NpcComponent_CheckPop 0x08e4bd70 f vtable +0x88: every row popConditions entry (+0x148, 0x18 each) holds (Conditions_Check)
+NpcComponent_PlayAnimation 0x08e4ca70 f vtable +0xc8 (out sp x8, blend s0, component, StringView* name, bool force): animSetting +0x268/+0x278, NpcAnimation_Get, blend = blendTime when negative
+NpcComponent_MakeOcarinaReaction 0x08e54910 f vtable +0x230: "OcarinaReaction" with row ocarina.enable (+0x200), distance (+0x204)
+NpcComponent_MakeLookAtTarget 0x08e54c30 f vtable +0x238: "LookAtTarget" when row lookAtOffsetY (+0x170) != 0
+NpcComponent_MakeWaterEvent 0x08e55310 f vtable +0x248: "WaterEvent" with row graphics.waterChannel.enable (+0x98), offsetY (+0x9c)
+NpcComponent_MakeTailorWaterSurface 0x08e559f0 f vtable +0x258: "TailorWaterSurface" (0x190-byte Node) with waterChannel.enable, limitDepth (+0xa0)
+NpcComponent_MakeAimControl 0x08e56cc0 f vtable +0x268: "AimControl" (0x130 bytes) when row graphics.interestIK (+0xb8) is set
+NpcComponent_MakeShellBeacon 0x08e58310 f vtable +0x278: "ShellBeaconComponent" when row shellSensor (+0x208) has entries
+NpcComponent_AnimSetting 0x08e59640 f vtable +0x2c0 (out {sp, NpcAnimSetting*}, component, StringView* name): the row's graphics.animSettings entry by name, cached in +0x240; default 0x1702058
+NpcComponent_GroundAttribute 0x08e5b750 f vtable +0x348 (u32* out x8, component): groundAttr's, else GroundQuery_Cached downwards with the cache at +0x2b0
+NpcComponent_ConnectTriggers 0x08e5d370 f (component): eventTriggers of condition 10-13 through ConnectTrigger, then the linked areas' enabled bit cleared
+NpcComponent_ConnectTrigger 0x08e5d5d0 f (component, u64 link index): subscribes to the linked area actor (0x155/0x191/0x192 signal +0x2b8, 0x190 function +0x2f0), appends to +0x290
+LookAtTarget_Make 0x08e63a80 f (out, actor, StringView* name, sp<Node>* parent): 0x150-byte Node subclass
+NpcGhost_StartFollowing 0x08ec1780 f companion +0x40: into the actor system, name "companion", timer 40, classBits bit 0 cleared, +0x2c0 = 1
+NpcGhost_StopFollowing 0x08ec1a40 f companion +0x48: into the current room's root, classBits bit 0 set, +0x2c0 = 0
+NpcGhost_FollowLink 0x08ec1d20 f companion +0x38: while following, the root to Link's world position
 NpcGhost_UpdateTask 0x08ec25f0 f queue +0x100 task: NpcGhost_Update while (flags & 0x40000117) == 0x117
 NpcGhost_Update 0x08ec2630 f per frame
+NpcGhost_ScenarioTimer 0x08ec2e20 f the 40-frame timer's callback: +0x2c3 = 1, event Scenario:Lv5GhostGoGrave (TakeGhostGrave) or Scenario:Lv5GhostGoHouse1
 TreasureBox_Init 0x0919e0d0 f switch 0 on: opened (+0x320)
 TreasureBox_Open 0x0919f4b0 f sets switch 0
 ObjTreasureBox_Factory 0x091a2820 f ActorTable id 0xf7
+Player_AttackCols_Dtor 0x0921c120 f
+PlayerLookAt_Update 0x09221340 f (lookAt, player)
+Player_AttackCols_Ctor 0x092232f0 f (cols, WeakPtr self, SharedPtr* animCtrl): the attack collision set at player +0x3a8 (0x2b0)
+Player_AttackCols_Update 0x09225980 f per frame: switches the attack collision components (+0x1c0..+0x248)
+PlayerKnockback_Set 0x09227340 f (knockback, kind, player, u8*, hit*)
+PlayerKnockback_Scale 0x09228800 f (knockback, kind, player, ?, hit data)
+Player_SetHit 0x092289c0 f (hit +0x17b0, kind, WeakPtr* attacker, hit data*)
+Player_InitClingers 0x092292e0 f (clingers +0x18d0, SharedPtr* model): six head locators
+PlayerLookAt_Ctor 0x0922baf0 f head look-at at player +0x19d0
+PlayerActionTransitions_Dtor 0x0922c480 f
+Player_OnRoomChanged 0x09236f60 f vtable +0xe0: actor zone, sideView +0x1b39 from the room +0xb9, tailor SideView/TopView
+Player_ClearContacts 0x092383e0 f empties +0x1600 and +0x1618
 Player_UpdateTask 0x09239580 f queue +0x100 task: Player_UpdateAnimation while (flags & 0x40000117) == 0x117
+Player_ControlMode 0x092421d0 f 0 normal, 1 A/throw only, 3/5 no input, 4 no dash; +0x1ea9 with flags bit 4
+Player_ClearClingers 0x09242c60 f fires onClingerReleased (+0x1e28) for each
+Player_RegisterActionChecks 0x092431d0 f the 21 action checks of the input (+0x1590)
+Player_InitAttackCollisions 0x09244720 f makes the SwordAttackColComp ... BottleColComp set at +0x3a8
+Player_OnBodyTouch 0x092527d0 f lambda on the body's +0xd8 signal: bodyTouches (+0x1618), touchedActors (+0x1850)
+Player_OnBodyContact 0x09253fb0 f lambda on the body's +0x80 signal: bodyContacts (+0x1600)
+Player_FreeMagicRodBall 0x092555e0 f first free slot of +0x430
+Player_MagicRodBall 0x09255790 f (player, slot): PlayerMagicRodBall (0x1b5)
+Player_SpawnArrow 0x092561f0 f (player, index 0/1): PlayerArrow (0x183) into +0x400 + index*0x10
+Player_Reset 0x092572d0 f drops carried, companion actor, clingers; respawnKind 3; destroys arrows, rod balls, sword beam
+Player_DestroyCompanionActor 0x092578e0 f
+Player_ReleaseHolder 0x09257b00 f
+Player_SpawnCompanion 0x09257c20 f (out, player): when Inventory.Companion != 0, stores at +0x1b98
+Player_SetCompanion 0x09257d40 f (player, SharedPtr*): Inventory.Companion from its virtual +0x20
+Player_ReleaseCompanion 0x09257ed0 f Companion 0, the object's virtual +0x48
+Player_UpdateGround 0x09258180 f ray cast down: onGround, ground normal/attribute/actor, respawnCoords
+Player_SetModelFlag 0x09258df0 f (player, bool) +0x1b3b: model virtual +0xf0 on Link, bow, bottle
+Player_SpawnSwordBeam 0x09259000 f PlayerSwordBeam (0x1fc) into +0x458
+Player_MoveTo 0x092595b0 f (future out, player, params 0x39): copies to +0x1810, state 16
+Player_BlowAway 0x092599c0 f (future out, player, params 0x13): copies to +0x1870, state 23
+Player_SetOcarinaArea 0x09259b00 f (player, StringView* name, WeakPtr*): +0x1ef8, +0x1f20 (guess: AreaOcarina)
+Player_ShowItemGroupBit 0x0925a7c0 f (player, group): Player_ShowItem by +0x1b90 bit unless flags bit 1
+Player_Move 0x0925b260 f knockback, kind-6 pull, playerCollision Move; moveDelta +0x17a0, moveResult +0x1790
+Player_SetHolder 0x0925c8f0 f (player, WeakPtr*): +0x19c0, flags bit 8
+Player_AimShield 0x0925d1f0 f shieldAngle +0x1ad0, shieldArmMatrix +0x1f40
+EventAction_AddDeadCounter 0x09272650 f lambda (module vtable 0x1c19df8, slot +0x30): SaveHeader +0x4 += 1 up to 0xffff
+StateTransition_Check 0x09291480 f vtable +0x20: all conditions true
+StateTransition_AddCondition 0x092915d0 f vector<function> push_back
+SelectTransition_Check 0x09291840 f vtable +0x20: state = select(arg) when all conditions hold
+PlayerActionTransitions_Ctor 0x09296b50 f the 0x1c0 transitions at player +0x1580
+Part_GetLayoutShared 0x0935ee10 f vtable +0x40 of Part and its derived UIs: the own layout, else wrapper +0x28's
+MapChoice_Dtor 0x09375c00 f vtable +0x10
+TimeCount_Dtor 0x09375cb0 f vtable +0x10
+MapPlayer_Dtor 0x09375f00 f vtable +0x10
+MapMarkList_Dtor 0x093760a0 f vtable +0x10
+MarkCursor_Dtor 0x09377330 f vtable +0x10
+MapMarkUnit_Dtor 0x09377470 f vtable +0x10
+DungeonMap_UpdateZoom 0x0937cd70 f zoomProgress (+0x2ce0), scroll and cursorScale lerps
+DungeonMap_OpenUpdate 0x0937da20 f cursor In once (+0x2d43), the side-view marker once (+0x2d44), cursor on Link unless restored (+0x2d41); In ended: KeyWait
+Function_Swap 0x0938a0e0 f (std::function*, std::function*): libc++ swap
+DungeonMap_MemoryCreated 0x0938a470 f (page, UI sp): the Memories UI into +0x4f8, the page's setGuide copied into it
+FieldAreaPart_Dtor 0x09392330 f vtable +0x10
+OverworldMap_OpenUpdate 0x09398a20 f cursor In once (+0x81c1); In ended: OpenMask (+0x81c0 set) or KeyWait
+OverworldMap_PinTypeButtons 0x093a25a0 f bool(u8* previous out, u8* type): steps the pin type 0..8
+MessageFeed_Dtor 0x093c7570 f vtable +0x10
 GmSystem_Dtor 0x093c8330 f Gm_System's destructor; PdPage's destructor calls it
+SystemOpEntries_Dtor 0x093c83e0 f (SystemOp +0x90): destroys the 9 L_Op entries
+UiManager_InitFonts 0x093cf470 f texture cache +0x9e8, font +0x9b0, registers the common characters
+UiManager_UnregisterCallback 0x093d04f0 f +0x2930
+UiManager_ResetGlyphs 0x093d50d0 f (manager, bool clear): applies +0x28b0, requeues every UI's text
+UiManager_LoadGameArchives 0x093d9450 f (out sp, manager): the ui/Game.arc group into +0x50; its lambda fills archives 0, 2, 4, 6, 7
+UiManager_LoadFont 0x093de2a0 f (out {sp, font*}, manager, StringView* path)
+Navi_GuideCallback 0x093f23c0 f MenuPage::setGuide's target (lambda capturing the Navi): (slot*, kind*): Guide_Set, kind 0x1c hides the slot
+MessageWindow_KeyWaitingEnter 0x093f5b90 f feed In, feed shown (+0xf0); wait counter {1/6, 0, 6}
+MessageWindow_SetKind 0x093f7590 f (window, u8 kind): +0x1b68, shows the kind's part, selects its text box
+MessageWindow_MapStyles 0x093f8020 f fills kindOfStyle (+0x1cb0) from the kind names (0x0a12ec68) and the message project's styles
+MessageWindow_CollectTag 0x093f9b30 f page tag visitor: queues a pending tag (+0x1b70); tag 1 colour (+0x1d14), 0xe fadeIn, 0x10 follow
+ListChoice_Setup 0x094385d0 f a choice part's On, Off, Loop, Decide, Normal, Disable, T_List_00 (+0x120)
+SystemChoice_Setup 0x094394b0 f vtable +0x20: On, Off, Loop, Decide, Normal, Disable, Set, ToggleOnOff, T_List_00 (+0x150)
+MarkCursor_Setup 0x0943a210 f vtable +0x20: On, Loop, Off, W_Cursor_00 (+0xe0)
+MarkCursor_Update 0x0943a560 f vtable +0x28: On ended -> Loop
+MapChoice_Setup 0x0943a740 f vtable +0x20: ListChoice_Setup, N_Player_00 (+0x138), N_Boss_00 (+0x150)
+MapPlayer_Setup 0x0943c950 f vtable +0x20
+TimeCount_Setup 0x0943ccb0 f vtable +0x20: In, Out, SetTime, T_Time_00..02, T_Sign_00/01
+FieldAreaPart_Setup 0x0943f240 f vtable +0x20: On, Off, PlainOnOff, Active, Deactive, ZoomIn, ZoomOut
+MapMarkList_Setup 0x0944aef0 f vtable +0x20: animations, L_MarkCursor_00, L_MapMark_01..08, T_PinNum_00/01, T_PinSlash_00
+MapMarkUnit_SetupInList 0x0944c340 f vtable +0x20 (the bar's units): On, Loop, Off, Normal, Disable, SetMark
+MemoryMarker_Dtor 0x094550a0 f vtable +0x10
+MemoryMarker_Setup 0x09455240 f vtable +0x20: states Deactive, On, Wait, Off
+MemoryMarker_Update 0x09455640 f vtable +0x28
+MemoryMarker_ChangeState 0x094556f0 f (machine at +0x90, state)
+MessageText_Setup 0x09456d10 f vtable +0x20 of the message parts: In, Out, Typing, T_Mes_00/01, T_MesStalfos_00, L_MesFeed_00, N_MesPos_00, N_Normal_00
+MessageText_PlayOut 0x094576f0 f vtable +0x70 (part, count): Out; the feed's Out while shown
+MessageText_Hurry 0x09457c80 f revealRate (+0x284) 2.0
+MessageText_SelectText 0x09458060 f (part, bool second): text (+0x120) = T_Mes_01 when second and present, else T_Mes_00
+MessageText_SelectStalfosText 0x09458190 f (part): text = T_MesStalfos_00
+MessageFeed_Setup 0x094588c0 f vtable +0x20: In, Out, Loop, Decide
+MessageFeed_Update 0x09458c50 f vtable +0x28: In ended -> Loop
+Guide_StartAttention 0x0945bfb0 f (guide): the attention slot over slot +0xf0c, GuideSlot_AttentionIn
+Guide_StopAttention 0x0945c150 f (guide): GuideSlot_AttentionOut, attentionEnding (+0xf13)
+GuideSlot_AttentionIn 0x0945c6d0 f attentionInOut forward, slot +0x109 set
+GuideSlot_AttentionOut 0x0945c740 f attentionInOut backward, slot +0x109 cleared
+SystemOp_Dtor 0x0947ce30 f vtable +0x10
+SystemOp_Setup 0x0947cea0 f vtable +0x20: binds L_Op_00..08, their labels UI:SystemOperating*, the Set frame by the inventory
+SystemOpEntry_Dtor 0x0947d3c0 f vtable +0x10
+SystemOpEntry_Setup 0x0947d4a0 f vtable +0x20
+GmSystem_OpenEnter 0x094878d0 f rubyOn from the pins' section +0x762, cursor choice's Loop
+GmSystem_OpenUpdate 0x09487990 f once In ends: KeyWait
+GmSystem_KeyWait 0x094879e0 f moves the cursor (+0x6e1, previous +0x6e0); A: Decide or ChangeRuby (cursor 2)
+GmSystem_DecideEnter 0x09487c40 f
+GmSystem_Decide 0x09487c60 f once Decide ends: UiManager_Request(choiceUis[cursor]) (+0x2a0: 0x1f save, 0x20 load), WaitUiClose
+GmSystem_WaitUiCloseEnter 0x09487da0 f
+GmSystem_WaitUiClose 0x09487db0 f once the requested UI is gone: page In, Open
+GmSystem_ChangeRubyEnter 0x09487f60 f toggles rubyOn (+0x6f0) and the pins' section +0x762
+GmSystem_ChangeRuby 0x09487fd0 f once ToggleOnOff ends: KeyWait
+GmSystem_SetNaviActive 0x094881b0 f (bool): the Navi UI's active flag (+0x70); clearing also clears Navi lr (+0x1341) (guess name)
+GmSystem_MoveCursor 0x09488380 f bool(page): Up/Down move the cursor
 ThrobberSave_ChangeState 0x09489d20 f (machine, state): the autosave popup's machine (+0x80)
 ThrobberSave_Show 0x0948d5c0 f (bool auto): the autosave popup None/Out -> InAuto (timer 0.5) or In
+SoundHandle_Dtor 0x094a60f0 f base of BgmInstance and SeInstance: clears the sound's handle back-links, frees the name
+Datasheet_KeyField 0x094a9f10 f (out {sheet sp, field index}, sheet): the sheet's key field descriptor
+Datasheet_Create 0x094aa4f0 f (out sp, load info*): make_shared of 0x110 (0x128 with the control block), checks the gsht header
 Actor_OnActiveChanged 0x094abaf0 f actor vtable +0x50: +0x40/+0x48, bit 1 to the root and the components
 Actor_RemoveComponent 0x094ac510 f (actor, name, length, bool immediate) (guess)
 Actor_ForEachComponent 0x094ace50 f (actor, std::function<bool(sp*)>*)
@@ -115,16 +348,53 @@ Entity_RemoveChildrenIf 0x094b3bc0 f (entity, std::function pred, bool immediate
 Entity_ForEachChild 0x094b3d20 f (entity, std::function<bool(sp*)>)
 Entity_SetParentActiveFn 0x094b7220 f functor: child flags bit 1 := its byte, +0x50 on a change
 Entity_FindChildInMap 0x094b7470 f (map, name, length) -> node: FNV-1a lookup in a child map (+0x10/+0x38/+0x60)
+Resource_Ctor 0x094bce40 f (resource, VTT, info*): base of every resource (0x60)
+Scheduler_Dtor 0x094d3eb0 f
+Scheduler_Remove 0x094d5690 f (scheduler, task): emits +0xf0
+Scheduler_Clear 0x094d5cf0 f
+Scheduler_Update 0x094d5fb0 f update phase 1: each task in order: drop if finished, else vtable +0x20; pending changes applied at depth 0
+UniformBlock_Upload 0x094e9960 f vtable +0x28 (block, bufferIndex): copies the words into the buffer's GPU memory
+UniformBlock_Init 0x094e9a70 f (block, count, bufferCount): count*16 words of -1, the GPU buffers, name "LightIndexList"
+Graphics_UnregisterCallback 0x095251f0 f (graphics, id): Framework +0x4d0, UiManager +0x2930
+View_Resize 0x0952aad0 f vtable +0x88 (view, width, height): +0x338/+0x340, +0x330 = 3
+View_GetViewport 0x0952ab20 f vtable +0x80: +0x280
+ShapeBinder_Ctor 0x09532bb0 f per-buffer 0x800-byte uniform buffers into +0x48 (Graphics +0x6e50 buffers)
+ShapeBinder_Dtor 0x09532f70 f
+ShapeBinder_Draw 0x095330e0 f vtable +0x20 (binder, cmd, item): fills the buffer's block once per buffer index (+0x40 mask), then +0x30, +0x38
+ShapeBinder_BindShader 0x095331f0 f vtable +0x28: program, shape/skeleton/material blocks, the uniform blocks of +0x20 by name
+ShapeBinder_BindTextures 0x095335c0 f vtable +0x30: samplers (+0x60/+0x68 table), _envSpec0 (+0x80), _envLocalSpec0 (+0x84)
+ShapeBinder_DrawMesh 0x09533b70 f vtable +0x38: the mesh draw; counts draws (ctx +0x1f4) and triangles (+0x1f8)
+AnimationLayer_SetRootMotion 0x09537040 f vtable +0xb8 (layer, bool): +0xec, rebinds RootMotion to the current animation
+AnimationLayer_BlendPrevious 0x095371e0 f (layer) -> bool: blends previous (+0x18) into animation (+0x8) over blendFrames
+RootMotion_Calc 0x09537370 f (rootMotion): when enabled, takes the root bone's motion out of the animation into the delta Coords
+MaskedAnimationLayer_BlendInto 0x09539f50 f (layer, blender): each masked bone's transform (+0x118 scratch) into the blender
+ModelInstance_LightIndexListDeleter 0x0953adc0 f deleter of M +0x1c0: virtual +0x0, then the Graphics allocator's free (+0x30)
+ModelInstance_SetRenderMode 0x0953adf0 f (M, u8 mode): renderMode +0x370, clears the layers (+0x70) and enables the mode's (1: 0,1,3,4,shadowPass,10..17,0x29,0x2a,0x2c,18..23; 2: 0,1)
+ModelInstance_BoneCallback_Exec 0x0953b0c0 f vtable +0x10 (cb, {s32* bone?, s32 next}): emits the bone's signal from M +0x2d8 with {M, value}, next = the following key or -1
+ModelInstance_DrawShape 0x0953bb90 f vtable +0xb8 (M, ctx, shape, cullFlags, bool, info*): makes a ShapeDrawItem (0x90) and queues it by the pass mask of its render layer
+ModelInstance_MakeShapeBinders 0x0953c730 f vtable +0xd0: per shape three ShapeBinders (0xa0) into M +0xc0/+0xd8/+0xf0 (the third only with ShapeRenderInfo +0x2a)
+ModelInstance_UpdateBounds 0x0953d210 f after lastPosition moves: the model's bounding, and each visible shape's when shapeCullMode is 2
+ModelInstance_UpdateShaderOptions 0x0953d300 f (M, bufferIndex): when M +0x270 has the buffer's bit, pushes +0x269/+0x26f/+0x27c and virtual +0xa0 into every shape's shader selectors (ModelData +0x28), then clears the bit
+ShapeDrawItem_Execute 0x0953d9d0 f vtable +0x10 (item, ctx): picks the binder and shader selector by the pass id (ctx +0x188)
+ModelInstance_SetRasterState 0x0953e160 f (f32 depthBias M +0x274, item, ctx): binds the pass's rasterizer state with the item's depth bias (+0x5c), pass 1 max ctx +0x278, pass 10 + ctx +0x27c, cull mode item +0x6c
+ModelInstance_ConnectBoneCallback 0x095401a0 f (M, s32 bone, Function* cb) -> u32 connection: the bone's Signal in M +0x2d8 (made on first use), M +0x2f0 as the skeleton's calcWorldCallback, callbackBone the lowest key
 InstancedModel_Ctor 0x09551540 f (component, {name, length, enabled, owner, owner ctrl}*, model resource, cache key, shapes mask, model list): 0x310 bytes
+SoundPlayer_SortPriority 0x095e9dd0 f nn::atk SoundPlayer (player, sound): re-inserts the sound in its priority list (+0x7c + +0xf8)
+AdvancedWaveSoundManager_Create 0x095eb670 f stride 0x9b0
+AdvancedWaveSound_Ctor 0x095ec2e0 f nn::atk::detail::AdvancedWaveSound, 0x9b0 bytes
+BasicSound_Ctor 0x095ed3b0 f nn::atk::detail::BasicSound (0x210 bytes)
+BasicSound_Initialize 0x095ed470 f vtable +0x18
+BasicSound_Finalize 0x095ed620 f vtable +0x20; Sound_Stop calls it for 0 frames
 Sound_Stop 0x095ed7f0 f (sound, u32 frames)
 BgmManager_SetVolume 0x0859f3a0 f (f32 volume, u32 frames): Sound_SetVolume on every playing kind 1 instance; the event action SetBGMVolume
 BgmManager_MuteZone 0x0859f420 f (u32 frames): fades the kind 1 instances out; the item-get calls it with 8 frames before its fanfare when the item's info +0xe is set
+BasicSound_UpdateMoveValue 0x095ee610 f steps the fades +0xbc, +0xdc, +0x140
 Sound_SetVolume 0x095ee8c0 f (sound, u32 frames, f32 volume): fades the volume, +0x140 volume, +0x144 target, +0x148 frames, +0x14c frames gone
 BgmZoneUpdate_PlayCall 0x085a3004 l the zone update's BgmManager_Play call with the zone's track (volume from zone +0x4c); when it returns an instance, the other kind 1 instances fade out
 BgmManager_Play 0x085a3d60 f (f32 volume, BgmManager*, StringView* name, bool, bool, bool force) -> instance, null for an unknown name or a track already playing; instance +0x10 name (std::string), +0xf0 kind (1 zone and event BGM), +0xf8 id
 Sound_Play 0x085a97e0 f (StringView* name, nullptr, volume, pitch)
-Sound_PlayAtTracked 0x085a9a20 f (name, pos*, u64 extra, handle*, volume, pitch): 3D, extra unverified
-Sound_PlayAt 0x085a9c70 f (StringView* name, const Vec4* worldPos, SoundHandle* out|null, f32 volume, f32 pitch): 3D, request mode 2
+Sound_PlayAtTracked 0x085a9a20 f (name, pos*, u64 extra, SeRef* out, volume, pitch): 3D, extra unverified
+Sound_PlayAt 0x085a9c70 f (StringView* name, const Vec4* worldPos, SeRef* out|null, f32 volume, f32 pitch): 3D, request mode 2
 PlayZoneBgm 0x085aa790 f (bool fadeOthers) -> instance: BgmManager_Play of the zone's track (BgmManager +0x9250, volume +0x932c); fades nothing while a Guardian Acorn's or Piece of Power's music plays
 BuffMusic_Play 0x085b3560 f (bool): BGM_NUTS_INTRO, kind 3; the item-get calls it with true for the Guardian Acorn (111) and the Piece of Power (112)
 EventAction_PlayAnimation2 0x085f7bb0 f virtual +0x30 on the actor's root component
@@ -307,6 +577,12 @@ Node_UpdateWorld 0x094ba310 f (node): world coords (+0xb0) from coordsNew (+0x80
 Node_MarkDirty 0x094baaa0 f (node): unless +0xe0 is set, sets it, marks the children, calls the listener at +0xe8 (vtable +0x30)
 GameTextBox_Calculate 0x095e1f90 f draws the text only once each glyph is in the font's texture cache (+0x190 set then)
 BgmTable_Find 0x095e63d0 f (BgmTable*, const char* name) -> track id, -1 for an unknown name
+SequenceSound_Ctor 0x095f73c0 f nn::atk::detail::SequenceSound, 0x5a0 bytes
+SequenceSoundManager_Create 0x095fb3b0 f stride 0x5a0
+StreamSound_Ctor 0x095ff7d0 f nn::atk::detail::StreamSound, 0x11d40 bytes
+StreamSoundManager_Create 0x09609360 f (manager, buffer, size, config) -> count: StreamSound instances at stride 0x11d40
+WaveSoundManager_Create 0x09615c60 f stride 0x3f0
+WaveSound_Ctor 0x09616cc0 f nn::atk::detail::WaveSound, 0x3f0 bytes
 TextBox_RegisterGlyphs 0x09622cb0 f (text box, lock group): Font_RegisterGlyph for each character, returns how many were new
 Font_RegisterGlyph 0x096228c0 f (scalable font, char code, lock group): adds the glyph to the texture cache, drawn by the next cache update
 UiManager_LockGroup 0x093d47c0 f (UI manager, archive set) -> the font lock group of that set
@@ -371,11 +647,35 @@ Layouts_Update 0x095e0e60 f per frame: animates and calculates each built layout
 GameTextBox_SetString16 0x095e20b0 f vtable 0x1c52940 +0x100 (textbox, const char16_t*, u16 index): calls the std::function at +0x160 (scene layouts: queues the text box's glyphs), then the base setter
 GameTextBox_SetString8 0x095e21c0 f vtable 0x1c52940 +0x108 (textbox, const char*, u16 index)
 GameTextBox_RegisterGlyphs 0x095e2550 f
+Frustum_Make 0x09633b60 f (l, r, b, t, n, f, out frustum 0xf0, matrix): 6 planes, count +0xe0
+g3d_SkeletalAnimBlender_CalcBufferSize 0x0963b8b0 f (initArg): bone count * 0x50
+g3d_SkeletalAnimBlender_Initialize 0x0963b8f0 f (blender, initArg, buffer, size)
+g3d_SkeletalAnimBlender_ClearResult 0x0963b950 f
+g3d_SkeletalAnimBlender_BlendBone 0x0963ba30 f (f32 weight, blender, BoneAnimResult*, bone)
+g3d_SkeletalAnimBlender_BeginBlend 0x0963bb30 f (blender, mode)
+g3d_SkeletalAnimBlender_EndBlend 0x0963bb90 f normalizes the weights
+RasterizerStateInfo_SetDefault 0x09641f10 f
+BlendTargetStateInfo_SetDefault 0x09641f60 f
+DepthStencilStateInfo_SetDefault 0x09641fd0 f
 CmdBuf_DrawElementsBaseVertex 0x09642950 f (wrapper, ...)
 CmdBuf_DrawElementsInstanced 0x096429d0 f (wrapper, ...)
 CmdBuf_BindRasterState 0x09642a70 f (wrapper, state)
 CmdBuf_BindUniformBuffer 0x09643d70 f (wrapper, stage, slot, {GPU address, offset}*, size)
+MemoryPool_Initialize 0x096444f0 f nn::gfx MemoryPool (0x120): +0x0 -> +0x10 NVNmemoryPool, +0x8 CPU memory, +0x110 state
+MemoryPool_Finalize 0x09644580 f
+RasterizerState_Ctor 0x0964a170 f
 RasterizerState_Initialize 0x0964a190 f (state, ?, descriptor): alpha-to-coverage from descriptor +0x1a
+RasterizerState_Finalize 0x0964a360 f
+BlendState_Ctor 0x0964a380 f nn::gfx BlendState (0x28) zeroed
+BlendState_SetMemory 0x0964a3a0 f (state, memory, size): +0x0, +0x20
+BlendState_Initialize 0x0964a3c0 f (state, device, info)
+DepthStencilState_Ctor 0x0964a5e0 f
+VertexState_GetMemory 0x0964a860 f +0x10
+VertexState_Initialize 0x0964a870 f nn::gfx VertexState (0x30)
+VertexState_Finalize 0x0964abb0 f
+ViewportScissorState_Ctor 0x0964abc0 f nn::gfx, 0x48 bytes
+ViewportScissorState_Initialize 0x0964abf0 f (state, device, info)
+ViewportScissorState_Finalize 0x0964ad80 f
 Pane_FindByName 0x0966ae00 f pane vtable +0x60 (pane, name, recursive)
 vfx_EmitterSet_SetFade 0x0968cb10 f (eset): byte +9 = 1; role unverified
 vfx_EmitterSet_SetMatrix 0x0968cb20 f (eset, 4x float4 rows: axes, translation)
@@ -396,38 +696,89 @@ str_NpcGhost 0x09befdf4 l "NpcGhost": the row key and the actor table's name
 NpcCollisionFilters 0x09c06080 l 7 u32 collision filters
 Actor_vtable 0x0a054f28 l the game Actor; base slots +0x00..+0x120
 ActorSerial 0x0a055050 l counter -> actor +0xa8
+GroundQueryCache_vtable 0x0a055a70 l 0x30-byte cache {vtable, pad, Vec4 pos, u32 attribute, bool valid}; NpcComponent +0x2b0
 AreaLevelOpen_vtable 0x0a058b48 l vtable of the AreaLevelOpen actor
+SignalBool_vtable 0x0a05d008 l 0x58-byte signal: Node +0xe8, readySignal; second base 0x1b59098 at +0x8
+Signal_vtable 0x0a05d608 l 0x58-byte signal without an argument (Player's signal 2); the tasks' onFinished derives from it (vtable 0x0a05d6b0); second base 0x1b59698 at +0x8
+SeInstance_vtable 0x0a05d260 l SE instance (0x160 bytes)
+AimControl_vtable 0x0a05eb80 l
+EyeBlinkControl_vtable 0x0a061f18 l 0xc0-byte component, FacialControl +0xc0
+LipSync_vtable 0x0a062650 l 0x100-byte component, FacialControl +0xd0
+OcarinaReaction_vtable 0x0a0627e8 l
+WaterEvent_vtable 0x0a0633b8 l
 EnemyOctorok_vtable 0x0a09b418 l
 InstancedModelCtrl_vtable 0x0a0a0f50 l control block of FieldTip's InstancedModel (shared-from-this)
+EndingScene_vtable 0x0a0c6550 l the ending's scene ("Ending")
 RoomManager_vtable 0x0a0c6b00 l +0x20 RoomManager_Update, +0x50 StartLevelLoad, +0x58 UnloadRooms, +0x60 CreateRoom, +0x68 LevelLoad_Finish, +0x80 LevelJumpTeardown
+Task_vtable 0x0a0c88a0 l abstract task base (name pure)
 NpcComponent_vtable2 0x0a0c9290 l vtable
+ShellBeaconComponent_vtable 0x0a0cff88 l
 Area_vtable 0x0a0d00e0 l vtable
 Room_vtable 0x0a0d0100 l +0x20 Room_OnLebActor
 LevelData_vtable 0x0a0d04c0 l vtable
 LevelDataBase_vtable 0x0a0d0608 l abstract base of the LevelData classes
 ActorTable 0x0a0d0898 l 0x275 entries of 0x58 (scripts/re/ACTORS.md): +0x0 factory, +0x8 resources, +0x48 load group, +0x49 priority, +0x4a count, +0x4b actor-system owned, +0x50 name
+NpcBowWow_vtable2 0x0a0df6e8 l companion interface (kind 1) at actor +0x2a8
 NpcComponent_vtable 0x0a0e0570 l vtable
+LookAtTarget_vtable 0x0a0e0ed0 l
+NpcFlyingCucco_vtable2 0x0a0e5440 l companion interface (kind 4, Rooster) at actor +0x2a8
 NpcGhost_vtable 0x0a0e77c0 l vtable
 NpcGhostComponent_vtable 0x0a0e7ad8 l vtable
+NpcMarin_vtable2 0x0a0eaba0 l companion interface (kind 2) at actor +0x2a8
 ObjTreasureBox_vtable 0x0a116020 l
 PanelShadowLink_vtable 0x0a11a730 l vtable
 Player_vtable 0x0a11bb70 l vtable
+PlayerPutTarget_vtable 0x0a11bcf8 l player +0x1960
 PlayerItemModel_vtable 0x0a11d638 l bow and bottle model holders
 PlayerBottle_vtable 0x0a11d918 l vtable
+StateTransition_vtable 0x0a11f3d0 l {u8 state +0x8, vector<function> conditions +0x10}, 0x28
+SelectTransition_vtable 0x0a11f3f8 l StateTransition + function select +0x30, 0x60
 TailorPlayer_vtable 0x0a12a068 l vtable
 ActorTailorDelegate_vtable 0x0a12aa48 l vtable: ground material u16 at +0x70
+TailorWaterSurface_vtable 0x0a12ac88 l 0x190-byte Node subclass: +0x148 tailor player sp, +0x158 water event sp, +0x170 limit depth
+NaviGuideCallback_vtable 0x0a12eb88 l the std::function functor Navi_PaneReady stores in page +0xb0
+MessageWindow_KindNames 0x0a12ec68 l 20 window kind names: MessageWindow .. MessageWindow_Stalfos
+SystemChoice_vtable 0x0a130440 l L_SystemChoice_NN, 0x168 bytes
+MarkCursor_vtable 0x0a130530 l L_MarkCursor_00, 0x100 bytes
+MapChoice_vtable 0x0a1305c0 l L_MapChoice_NN, 0x168 bytes
+MapPlayer_vtable 0x0a130d48 l L_MapPlayer_00, 0xd8 bytes: On, Indoor, Sideview
+TimeCount_vtable 0x0a130dc0 l L_TimeCount_00, 0x150 bytes
 HudInteract_vtable 0x0a130eb0 l vtable
+FieldAreaPart_vtable 0x0a131050 l L_FldArea_<a>, 0x158 bytes
+MapMarkList_vtable 0x0a1319e8 l L_MapMarkList_00, 0xe98 bytes
+MemoryMarker_vtable 0x0a131dd0 l L_Memory_<i> on the overworld map, 0x230 bytes: StateMachine<4> +0x90, On/Loop/Off/SetMark +0x1d0
+MemoryMarkerMachine_vtable 0x0a131e48 l
+MessageFeed_vtable 0x0a132058 l L_MesFeed_00, the next-page icon, 0xf8 bytes
+SystemOp_vtable 0x0a133980 l L_SystemOp_00 (GmSystem +0x6f8), 0x678 bytes: Part + 9 SystemOpEntry at +0x90
+SystemOpEntry_vtable 0x0a1339f8 l L_Op_NN, 0xa8 bytes: Part + T_Operation_00 at +0x90
+SoundHandle_vtable 0x0a134a90 l base sound handle {vtable, nn::atk SoundHandle, std::string, ...}
+Datasheet_vtable 0x0a134d40 l a loaded .gsheet (0x110, a Resource): data +0x70, size +0x78, key field +0x80, id map +0xb0, key map +0xd8
 ActorBase_vtable 0x0a135198 l engine actor base (guess)
 Component_vtable 0x0a135358 l component base
 Entity_vtable 0x0a1353e8 l root class; +0x08 and +0x78 pure
+UniformBlock_vtable 0x0a1390a8 l named uniform block (0x48): +0x8 initialized, +0xc words, +0x10 count, +0x18 data, +0x28 GPU buffers, +0x30 std::string name
+ShapeBinder_vtable 0x0a14b250 l per-shape shader binder (0xa0): M +0xc0 elements (and M +0x108's base)
 AnimationLayer_vtable 0x0a14b2f8 l vtable
+RootMotion_vtable 0x0a14b3e0 l AnimationLayer +0x60 (0x90): +0x8 animation sp, +0x20 delta Coords, +0x50 last frame, +0x54 last root transform, +0x84 has last, +0x88 frame offset, +0x8c enabled
 AnimationLayers_vtable 0x0a14b438 l vtable
+ModelInstance_BoneCallback_vtable 0x0a14b728 l M +0x2f0 (0x18: map* +0x8 -> M +0x2d8, M* +0x10): the skeleton's calcWorldCallback (SkeletonObj +0x58)
+ShapeDrawItem_vtable 0x0a14b870 l a shape's draw item (0x90): +0x18 bufferIndex, +0x1c shape, +0x20 ShapeObj*, +0x28 ModelObj*, +0x30 M, +0x38/+0x40/+0x48 binders, +0x50..+0x58 pass flags, +0x5c depth bias, +0x6c cull mode
+ShapeBinder1_vtable 0x0a14b958 l M +0xd8 elements (pass set 1, 10, 16, 18, 20, 41)
+ShapeBinder2_vtable 0x0a14b9a8 l M +0xf0 elements (passes 11, 13); binds _depth
+WaterShapeBinder_vtable 0x0a14be68 l ShapeBinder with _waterColor, _waterDepth, _reflectionColor (M +0x108; +0xc0 elements of shapes with ShapeRenderInfo +0x2c)
 MultiMaterialAnimation_vtable 0x0a14d9f0 l vtable
 SkeletalAnimation_vtable 0x0a14dd70 l single layer, 0x1b0 bytes (NPCs)
 LayeredAnimation_vtable 0x0a14dee8 l 0x220 bytes (Link)
 SkeletalModel_vtable 0x0a14e060 l vtable
+RayQuery_vtable 0x0a154d18 l ray cast query (0xb8): hit cache +0x10/+0x20/+0x30, flags +0x40, hit* +0x48
+RayCallback_vtable 0x0a154d38 l the query's callback at +0x50 (hit record at its +0x8)
 Layout_vtable 0x0a1560c8 l the game layout, 0x78 bytes: +0x70 updated, +0x71 drawn
 GameTextBox_vtable 0x0a156940 l vtable
+AdvancedWaveSound_vtable 0x0a1570c8 l
+BasicSound_vtable 0x0a157248 l nn::atk::detail::BasicSound
+SequenceSound_vtable 0x0a1576e8 l
+StreamSound_vtable 0x0a157ba0 l
+WaveSound_vtable 0x0a158308 l
 ui2d_TextBox_vtable 0x0a189270 l vtable
 IdentityQuat_ptr 0x0a197de8 l pointer to an identity quaternion
 OneScale_ptr 0x0a197df0 l pointer to a Vec4 of ones
@@ -460,12 +811,14 @@ PanelPieceBits 0x0a1c5208 l {u8* bits, s32 bytes 7, s32 bits 51}: chamber stones
 PanelPieceSetBits2 0x0a1c5230 l {u8*, 2, 13}: the sets Dampé has made into panels (PanelDungeon_ProcessStones)
 PanelPieceBits2 0x0a1c5258 l {u8*, 7, 51}: the stones Dampé has made into panels (PanelDungeon_ProcessStones)
 PanelNotifyBits 0x0a1c52a8 l {u8*, 1, 8}: bit 0 a new stone, 2 a further stone or a set, 3 a special stone (7,13,18,19,24,32); Dampé's ProcessDungeonAndPanelStone clears them
-SaveHeader_ptr 0x0a1c5360 l points at the static save header (0x0a1c45a0): +0x8 the player's name, UTF-16, 8 letters and a 0 (the save file's +0x20); SaveCurrent follows at +0x140
+SaveHeader_ptr 0x0a1c5360 l points at the static save header (0x0a1c45a0): +0x8 the player's name, UTF-16, 8 letters and a 0; SaveCurrent follows at +0x140
 Inventory_ptr 0x0a1c5368 l +0x9c bits: 0 SwordLv2, 1 MirrorShield, 6 ClothesRed, 7 ClothesBlue
 LevelIndex 0x0a1c53c8 l u8: the current dungeon, 0xff outside dungeons
 EntityManager_ptr 0x0a1cad98 l seven task queues (+0x8 start, +0x100 update, +0x1f8 late update, +0x2f0, +0x3e8, +0x4e0 render, +0x5d8 destroy); +0x6d0 initialized count, +0x6d8 u8 flushing
+TaskCount_ptr 0x0a1cada8 l u32*: incremented by every task factory
 ResourceManager_ptr 0x0a1cadb8 l
 FrameDelta 0x0a1cae88 l time units per update (blend progress)
+ModelDataRegistry_ptr 0x0a1caf68 l 0x88 bytes: list of every ModelData at +0x18 (count +0x28), mutex +0x68
 EffectManager_ptr 0x0a1d2f58 l EffectManager (0x228 bytes): *mgr is the nn::vfx::System
 ui2d_TextBox_AllocateStringBuffer 0x096763c0 f vtable +0xe8 (text box, gfx device, length): +0xf0 with the draw buffer's length the same
 ui2d_TextBox_AllocateStringBuffer2 0x096763d0 f vtable +0xf0 (text box, gfx device, length, drawn length): frees and allocates the string (+0xd8, capacity +0x110) and draw buffers
@@ -506,7 +859,7 @@ Page_vtable 0x0a12e950 l pause-menu page base: +0x68/+0x70 play In/Out (animatio
 Navi_vtable 0x0a12ea18 l Gm_Navi owner, UI id 5
 GmItem_vtable 0x0a12c8e0 l Gm_Item page, UI id 6
 GmSystem_vtable 0x0a133e50 l Gm_System page, UI id 10
-Datasheet_Load 0x08d3e1e0 f (out shared_ptr, resource manager, StringView* path)
+Datasheet_Load 0x08d3e1e0 f (out shared_ptr, resource group, StringView* path): the path in the group's file map
 UiDatasheets_Load 0x08d6bf34 f boot: loads the UI datasheets (Datasheet_Load each) and hands them to their holders
 String_Format 0x08df15c0 f (out fixed-size string, StringView* format, arg): "{0}" formatting; the map formats "Place:{0}" with an icon row's label
 MessageManager_Ctor 0x08e05310 f
@@ -923,7 +1276,7 @@ BgmManager_Ctor 0x085a13b0 f 0x9420 bytes: SE player +0x50, BGM player +0x58c0, 
 Node_Dtor 0x085ad270 f Node vtable +0x10: destroys the attachment +0x140, the signal, the children vector
 Actor_GetOrMakeRoot 0x085badc0 f (out sp, actor, StringView* name): the root (+0x80), else Actor_MakeNode
 FacialControl_Ctor 0x08620df0 f (component, ComponentArgs*, StringView* row key, std::function*, u32 priority): 0x150 bytes, Facial row (0x50) at +0xf0
-EventQuery_Timer140 0x08d04c50 f (ctx) -> time param <= Inventory +0x140 / 1e6
+EventQuery_ComparePreviousLevelTime 0x08d04c50 f (ctx) -> Inventory +0x140 (the previous level's play time) / 1e6 >= time
 Player_MakeShared 0x08d41af0 f operator_new(0x1fb0), Player_Ctor
 Inventory_StoreLinkPosition 0x08d692b0 f (room manager): Link's position into +0xc4 (level type >= 3) or +0xd0
 Area_SetName 0x08de2d10 f (char[0x50] + u64 length, const char*): throws at 0x50 characters or more
@@ -937,9 +1290,9 @@ GridPuzzle_Step 0x08df8430 f compares a step with Inventory +0x86's 2-bit code; 
 TagProcessor_Ctor 0x08e078e0 f 0x118-byte text tag processor (vtable 0x0a0de908), set as a text box's +0x108
 PlayerCollision_Make 0x08e434a0 f (out, owner, name, ?, params): operator_new(0x290)
 NpcComponent_Dtor 0x08e48b50 f vtable +0x10
-NpcComponent_Setup 0x08e49510 f vtable +0x20: variant +0x90, LEB string +0x98, NpcPop_Check, resource loads, ready signal +0x1d8
-NpcComponent_Variant 0x08e4ece0 f vtable +0x1d0: the owner's int LEB param at row +0x140
-NpcComponent_ReadLebString 0x08e4ed40 f vtable +0x1d8 (component, out {char[0x20], u64}): the owner's string LEB param at row +0x144
+NpcComponent_Setup 0x08e49510 f vtable +0x20: layoutId +0x90, identifier +0x98, NpcComponent_CheckLayout, resource loads, ready signal +0x1d8
+NpcComponent_LayoutId 0x08e4ece0 f vtable +0x1d0: the owner's int LEB param the row's actorArgs.layoutID (+0x140) names
+NpcComponent_Identifier 0x08e4ed40 f vtable +0x1d8 (component, out FixedString<0x20>): the owner's string LEB param the row's actorArgs.identifier (+0x144) names
 NpcComponent_OnResourcesLoaded 0x08e6cdb0 f flowchart +0x1f8, bfres +0x1e8, drsb +0x208; BuildComponents; emits +0x1d8
 NpcGhost_Ctor 0x08ec0b50 f (out sp, ActorArgs*): make_shared 0x2f0 (actor 0x2d0 at +0x20), classBits |= 0x805
 NpcGhost_Dtor 0x08ec0cb0 f NpcGhost vtable +0x10
@@ -1023,7 +1376,7 @@ ThrobberSave_Ctor 0x094895f0 f 0x2a0 bytes
 Node_Ctor 0x094b95a0 f (node, ComponentArgs*): Component base, identity coords, transform signal at +0xe8
 Node_DeletingDtor 0x094b9890 f Node vtable +0x18
 Node_OnActiveChanged 0x094b98c0 f Node vtable +0x50: bit 1 of each child node (+0x68) from its own active state
-Scheduler_Ctor 0x094d2d30 f 0x150 bytes; +0x48 unordered_set of tasks (bucket count +0x50)
+Scheduler_Ctor 0x094d2d30 f 0x150 bytes; +0x0 tasks by order, +0x18 pending changes, +0x48 unordered_set of tasks (bucket count +0x50), +0x98/+0xf0 the added and removed signals
 Scheduler_Add 0x094d3f00 f (scheduler, task sp*, u32, name*)
 InstancedModelInstance_Count 0x094e87d0 f vtable +0x98: +0x394
 MatAnimSlot_Update 0x094ead90 f vtable +0x18
@@ -1136,7 +1489,7 @@ ActorLink_vtable 0x0a055088 l actor +0x100 entries (0x38 bytes)
 StateMachine_vtable 0x0a056ef0 l base: +0x10 StateCount, +0x18 StateName (pure)
 FacialControl_vtable 0x0a062008 l
 LebRoom_vtable 0x0a0d02f8 l +0x18 room id, +0x20/+0x28 actor count/record, +0x30/+0x38 rails, +0x40/+0x48 points, +0x50 string
-NpcGhost_vtable2 0x0a0e7948 l secondary base at actor +0x2a8
+NpcGhost_vtable2 0x0a0e7948 l the companion interface (kind 3) at actor +0x2a8
 PartsVisibility_vtable 0x0a115a20 l base: +0x8 sp model comp, +0x18 unordered_map group -> shapes
 PlayerAnimation_vtable 0x0a11b220 l animation controller (0x98)
 PlayerParts_vtable 0x0a11bca8 l PartsVisibility at player +0x498
@@ -1207,7 +1560,7 @@ ui2d_Pane_vtable 0x0a188e20 l RTTI nn::ui2d::Pane, 0xd8 bytes
 ZeroVec_ptr 0x0a197de0 l pointer to a zero Vec4
 FacialSheet_ptr 0x0a1c7c40 l -> {shared_ptr Facial.gsheet}
 Player_MakeFacialComp 0x0924e9f0 f (out shared_ptr, player, StringView* name, owner*): makes the FacialComp component, starts it and attaches it to the player; Player_InitAnimations stores it at +0x368
-GameState_vtable 0x0a0c8300 l the game state machine (Framework +0x4a8, 0xe0 bytes): +0x80 ends the main loop, +0x88 the scene (shared_ptr)
+GameState_vtable 0x0a0c8300 l the game state machine (Framework +0x4a8, 0xe0 bytes), task 'Root': +0x80 the task's finished flag (ends the main loop), +0x84 the scene id, +0x88 the scene (shared_ptr), +0x98 the next scene id
 TitleScene_vtable 0x0a0c89c0 l the scene of the intro and the title screen
 FileMenusScene_vtable 0x0a0c6740 l the scene of the file menus (file select, name entry)
 LevelScene_vtable 0x0a0c6f90 l the scene of a level, from the start of its load (SceneHolder_Lock's type)
