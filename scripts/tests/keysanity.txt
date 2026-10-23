@@ -1,0 +1,70 @@
+# Keys anywhere: a received key or dungeon item counts for its own dungeon wherever Link is (the ITEM line's dungeon,
+# the game's LevelIndex: D1-D8 0-7, the Color Dungeon 9), its text names that dungeon, and it opens that dungeon's
+# doors. STATE dkeys: per LevelIndex 0-9 <small keys>.<item bits> (1 compass, 2 map, 4 stone beak, 8 nightmare key).
+# Run on a save whose dungeons hold nothing yet (after newgame_file2; kept_items_save may run before it) with no LAS
+# client connected: `game` sends the ITEM lines. Link has no sword, so the doors are those with the fewest enemies,
+# and his health is raised there.
+free 10
+send DBG setrecv 0
+expect RECV\s0 5
+check dkeys=0\.0,0\.0,0\.0,0\.0,0\.0,0\.0,0\.0,0\.0,0\.0,0\.0\sdlevel=255\s
+# Outside the dungeons (Tarin's house or Mabe): a Face Shrine key, a Color Dungeon key, a Catfish's Maw compass.
+game ITEM 1 SmallKey 1 5 -1 Small Key (Face Shrine)|Finder
+until msg:KeyWaiting 15
+shot D:/DEV/LASAP-sandbox/keysanity_received.png
+dismiss 10
+free 10
+game ITEM 2 SmallKey 1 9 -1 Small Key (Color Dungeon)|Finder
+until msg:KeyWaiting 15
+dismiss 10
+free 10
+game ITEM 3 Compass 1 4 -1 Compass (Catfish's Maw)|Finder
+until msg:KeyWaiting 15
+dismiss 10
+free 10
+check dkeys=0\.0,0\.0,0\.0,0\.0,0\.1,1\.0,0\.0,0\.0,0\.0,1\.0\sdlevel=255\s
+# In the Face Shrine a Key Cavern key goes to Key Cavern. 07F, one tile south of its locked door (no enemies).
+warp Lv06FaceShrine 82.5 0 74.25
+game ITEM 4 SmallKey 1 2 -1 Small Key (Key Cavern)|Finder
+until msg:KeyWaiting 15
+dismiss 10
+free 10
+check dkeys=0\.0,0\.0,1\.0,0\.0,0\.1,1\.0,0\.0,0\.0,0\.0,1\.0\sdlevel=5\s
+# The Face Shrine key received outside opens the door; Key Cavern's stays.
+face up
+interact
+free 15
+check dkeys=0\.0,0\.0,1\.0,0\.0,0\.1,0\.0,0\.0,0\.0,0\.0,1\.0\s
+# The Color Dungeon (LevelIndex 9): 07E, one tile south of its locked door (a Stalfos further south).
+warp Lv10ClothesDungeon 67.5 0 74.25
+send DBG poke 84 1c00
+expect OK.poke 5
+check dlevel=9\s
+face up
+interact
+free 15
+check dkeys=0\.0,0\.0,1\.0,0\.0,0\.1,0\.0,0\.0,0\.0,0\.0,0\.0\s
+# Its Nightmare door (05B, no enemies) stays shut without the nightmare key.
+warp Lv10ClothesDungeon 22.5 0 50.25
+face up
+interact
+until msg:KeyWaiting 10
+dismiss 10
+free 10
+# The nightmare key received outside opens it: Link walks north through it.
+warp Field 38.25 10.5 128.25
+game ITEM 5 NightmareKey 1 9 -1 Nightmare Key (Color Dungeon)|Finder
+until msg:KeyWaiting 15
+dismiss 10
+free 10
+check dkeys=0\.0,0\.0,1\.0,0\.0,0\.1,0\.0,0\.0,0\.0,0\.0,0\.8\sdlevel=255\s
+warp Lv10ClothesDungeon 22.5 0 50.25
+face up
+interact
+free 15
+check msg=Closed
+send DBG input 0 2000 0 32767
+await 5 pos=\S+,\S+,4[0-7]\.
+# Out before the Nightmare wakes.
+warp Field 38.25 10.5 128.25
+free 10

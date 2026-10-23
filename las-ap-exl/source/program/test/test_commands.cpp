@@ -10,6 +10,7 @@
 #include "game/hooks/eventflags.hpp"
 #include "game/hooks/inventory.hpp"
 #include "game/hooks/level.hpp"
+#include "game/map.hpp"
 #include "game/sym.hpp"
 #include "game/time.hpp"
 #include "game/ui.hpp"
@@ -36,6 +37,20 @@ namespace {
     std::atomic<u32> g_EnemyLog[kEnemyLog];  // vanilla id << 16 | new id
     std::atomic<int> g_EnemyScale[kEnemyLog];  // scale x 100
     std::atomic<int> g_EnemyNext = 0;
+
+    // Each dungeon's entry by LevelIndex (0-7 D1-D8, 8 the Chamber Dungeon, 9 the Color Dungeon) as
+    // <small keys>.<item bits>, and the current LevelIndex (255 outside dungeons)
+    std::string DungeonItemsField() {
+        Game::Map::DungeonItemsEntry** entries = *Game::DungeonItems_ptr;
+        if (entries == nullptr) return "";
+        std::string s = " dkeys=";
+        for (int i = 0; i < 10; i++) {
+            if (i > 0) s += ",";
+            if (entries[i] == nullptr) s += "-";
+            else s += std::to_string(entries[i]->smallKeys) + "." + std::to_string(entries[i]->flags);
+        }
+        return s + " dlevel=" + std::to_string(*Game::LevelIndex);
+    }
 
     std::string StateLine() {
         Game::Framework* fmwk = Game::GetFramework();
@@ -64,6 +79,7 @@ namespace {
             s += " bombbag=" + std::to_string(items->MainItems.Bomb);
             s += " bow=" + std::to_string(items->MainItems.Bow);
             s += " cello=" + std::to_string(items->ExtraItems.FullMoonCello);
+            s += DungeonItemsField();
         }
         if (fmwk && fmwk->player && fmwk->player->playerCollision) {
             auto& p = fmwk->player->playerCollision->base.node.coordsNew.pos;
