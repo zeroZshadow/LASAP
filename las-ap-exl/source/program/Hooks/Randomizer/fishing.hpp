@@ -1,6 +1,6 @@
 #pragma once
 #include "../lib.hpp"
-#include "offsets.hpp"
+#include "Game/addr.hpp"
 #include "Hooks/Common/eventflags.hpp"
 #include "Config/config.hpp"
 
@@ -20,6 +20,6 @@ HOOK_DEFINE_INLINE(TagFishingManager__CheckCanSpawnBottle) {
 
 namespace FishingTweaks {
     void InstallHooks() {
-        TagFishingManager__CheckCanSpawnBottle::InstallAtOffset(offset_manager.Offset(0xe16da4));
+        TagFishingManager__CheckCanSpawnBottle::InstallAtOffset(Game::Offset(0xe16da4));
     }
 }

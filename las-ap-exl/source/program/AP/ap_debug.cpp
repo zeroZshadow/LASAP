@@ -97,7 +97,7 @@ namespace {
             g_Listener = -1;
             return false;
         }
-        Logging.Log("[AP] debug port " + std::to_string(g_Port));
+        Logging.Log("[AP] debug port %d", g_Port);
         return true;
     }
 

@@ -142,7 +142,7 @@ struct PatchConfig {
     }
 
     void parseMovement(std::string key, std::string value) {
-        Logging.Log(key + " | " + value);
+        Logging.Log("%s | %s", key.c_str(), value.c_str());
         if (key == "full_360" && value == "true") {
             movement.full_360 = true;
         }

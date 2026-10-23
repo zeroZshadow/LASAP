@@ -193,7 +193,7 @@ namespace {
                     svcSleepThread(1'000'000'000);
                     continue;
                 }
-                Logging.Log("[AP] listening on " + std::to_string(g_Port));
+                Logging.Log("[AP] listening on %d", g_Port);
             }
 #ifdef LASAP_TEST
             AP::Test::NetPoll();

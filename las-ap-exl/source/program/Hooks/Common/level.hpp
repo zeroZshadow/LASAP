@@ -1,6 +1,6 @@
 #pragma once
 #include "../lib.hpp"
-#include "offsets.hpp"
+#include "Game/addr.hpp"
 #include "Config/config.hpp"
 #include "Game/actor.hpp"
 #include "Game/framework.hpp"
@@ -20,7 +20,7 @@ HOOK_DEFINE_TRAMPOLINE(SetCurrentLevel) {
 };
 
 HOOK_DEFINE_TRAMPOLINE(SetGameState) {
-    static void Callback(Game::GameState* arg1, uint32_t arg2, bool arg3) {
+    static void Callback(Game::GameState* arg1, u32 arg2, bool arg3) {
         Orig(arg1, arg2, arg3);
     }
 };
@@ -60,7 +60,7 @@ namespace LevelSystem {
     }
 
     inline void InstallHooks() {
-        SetCurrentLevel::InstallAtOffset(offset_manager.Offset(0xdfa450));
-        SetGameState::InstallAtOffset(offset_manager.Offset(0x87b780));
+        SetCurrentLevel::InstallAtOffset(Game::Offset(0xdfa450));
+        SetGameState::InstallAtFuncPtr(Game::SetGameState.Ptr());
     }
 }

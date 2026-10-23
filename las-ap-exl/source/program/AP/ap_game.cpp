@@ -290,7 +290,7 @@ namespace {
         g_ItemEventId = itemId;
         g_ItemEventMessage = messageEntry;
         g_ItemEventShown = -1;
-        Logging.Log("[AP] item event " + std::to_string(itemId) + " request");
+        Logging.Log("[AP] item event %d request", itemId);
         if (!RequestCommonEvent(AP::ITEM_EVENT_ENTRY)) return false;
         g_ItemEventSwap = true;
         g_ItemEvent = ItemEvent::Requested;
@@ -318,7 +318,7 @@ namespace {
         std::string entry = std::string(AP::TRAP_EVENT_PREFIX) + key;
         g_ItemEventId = -1;
         g_ItemEventSwap = false;
-        Logging.Log("[AP] trap event " + key + " request");
+        Logging.Log("[AP] trap event %s request", key.c_str());
         if (!RequestCommonEvent(entry.c_str())) return false;
         g_ItemEvent = ItemEvent::Requested;
         g_ItemEventSince = NowMs();
@@ -428,7 +428,7 @@ namespace {
                     return true;
                 }
                 if (since < kItemEventStartMs) return true;
-                Logging.Log("[AP] item event " + std::to_string(g_ItemEventId) + " did not start");
+                Logging.Log("[AP] item event %d did not start", g_ItemEventId);
                 if ((g_Showing.id >= 0 || !g_Showing.trap.empty()) && ++g_ItemEventTry < kItemEventTries) {
                     g_ShowQueue.push_front(g_Showing);
                 }
@@ -436,7 +436,7 @@ namespace {
                 break;
             case ItemEvent::Running:
                 if (!free && since < kItemGetTimeoutMs) return true;
-                Logging.Log("[AP] item event " + std::to_string(g_ItemEventId) + " ended after " + std::to_string(since) + " ms");
+                Logging.Log("[AP] item event %d ended after %lu ms", g_ItemEventId, since);
                 g_ItemEventTry = 0;
                 g_ItemEventEnded = NowMs();
                 break;
@@ -674,7 +674,7 @@ namespace {
 
     // An item Link found shows as a popup instead of an item-get; the buffs only start their music.
     void InstantPickup(int itemId) {
-        Logging.Log("[AP] instant pickup " + std::to_string(itemId));
+        Logging.Log("[AP] instant pickup %d", itemId);
         RequestItemAutoSave(itemId);
         if (itemId == kGuardianAcorn || itemId == kPieceOfPower) {
             AP::Music::BuffMusic();
@@ -718,7 +718,7 @@ namespace {
                 g_ItemEventShown = g_ItemEventId;
                 if (g_ItemEvent == ItemEvent::Requested) g_ItemEventSince = NowMs();
                 g_ItemEvent = ItemEvent::Running;
-                Logging.Log("[AP] item event " + std::to_string(g_ItemEventId) + " start");
+                Logging.Log("[AP] item event %d start", g_ItemEventId);
                 Orig(out, player, g_ItemEventId, keepCarry, &message);
                 return;
             }
@@ -735,7 +735,7 @@ namespace {
     constexpr uintptr_t kItemGetTextDelay = 0xd741f8;   // in the text's step: ldr s0, [x20, #0xa0], the delay
     constexpr u32 kTextDelayQuarter = 0x1e2a1000;       // fmov s0, #0.25
 
-    HOOK_DEFINE_TRAMPOLINE(ItemGetFanfareDone) {
+    HOOK_DEFINE_REPLACE(ItemGetFanfareDone) {
         static bool Callback(void*) { return true; }
     };
 
@@ -860,7 +860,7 @@ namespace {
             g_Checks[local_id / 8] |= (1 << (local_id % 8));
             SaveChecks();
         }
-        Logging.Log("[AP] collected location " + std::to_string(local_id));
+        Logging.Log("[AP] collected location %d", local_id);
         AP::Send("CHECK " + std::to_string(local_id));
     }
 
@@ -927,7 +927,7 @@ namespace {
             }
             g_Kept.push_back({item, index, local_id, ""});
         }
-        Logging.Log("[AP] kept locations: " + std::to_string(g_Kept.size()));
+        Logging.Log("[AP] kept locations: %zu", g_Kept.size());
     }
 
     // Reports a companion once the flag its joining sets is set.
@@ -952,7 +952,7 @@ namespace {
             std::string n, flag, slot, location;
             if (ss >> n >> flag >> slot >> location) g_Hints.push_back({flag, slot + " " + location, false});
         }
-        Logging.Log("[AP] hints: " + std::to_string(g_Hints.size()));
+        Logging.Log("[AP] hints: %zu", g_Hints.size());
     }
 
     // Sends HINT for the hints read (their flag set) and not yet reported on this connection, or for all read.
@@ -1382,7 +1382,7 @@ namespace {
         } else if (a[0] == "MUSIC") {
             AP::Music::HandleLine(a);
         } else if (a[0] == "MSG") {
-            Logging.Log("[AP] " + line.substr(4));
+            Logging.Log("[AP] %s", line.c_str() + 4);
 #ifdef LASAP_TEST
         } else if (a[0] == "DBG") {
             return HandleDebug(a);
@@ -1425,7 +1425,7 @@ namespace AP {
     }
 
     void Log(const std::string& text) {
-        Logging.Log("[AP] " + text);
+        Logging.Log("[AP] %s", text.c_str());
         Send("LOG " + text);
     }
 
@@ -1537,7 +1537,7 @@ namespace {
         if (g_MinusHeld && PlayerFree() && !PlayerCarrying() && !LinkDead() && g_ItemEvent == ItemEvent::None &&
             !WarpMenuBlockedLevel(LevelSystem::GetCurrentLevel())) {
             g_WarpMenuShown = RequestCommonEvent(AP::WARP_MENU_ENTRY);
-            Logging.Log(std::string("[AP] warp menu ") + (g_WarpMenuShown ? "opened" : "could not be requested"));
+            Logging.Log("[AP] warp menu %s", g_WarpMenuShown ? "opened" : "could not be requested");
         }
     }
 }

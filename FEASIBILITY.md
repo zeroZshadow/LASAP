@@ -50,7 +50,7 @@ From `reference/LAS-exlaunch/source/program`:
   - This is both the place to **detect** a check (placeholder item → report the location) and the function to **grant** received items.
   - Trade items (IDs 29–42 apart from the lens) are deliberately not added to the inventory; LASR tracks them with flags. Receiving trade items remotely needs its own path.
 - **`Hooks/Common/eventflags.hpp`.** Callable `EventFlags::SetFlag/CheckFlag(name)` and `Set/CheckGettingFlag(itemID)`.
-- **`offsets.hpp`.** Base and update builds are told apart by a byte read; the update's offsets are shifted inside a known range. Both code versions (1.0.0, 1.0.1) are covered. 1.1.0 (Switch 2) reportedly changes only `main.npdm` and is unverified.
+- **Game versions (`version.hpp`, `Game::Offset`).** Base and update builds are told apart by a byte read; the update's offsets are shifted inside a known range. Both code versions (1.0.0, 1.0.1) are covered. 1.1.0 (Switch 2) reportedly changes only `main.npdm` and is unverified.
 - **NPDM permissions.** The NPDM shipped with LASR already grants `bsd:u`, `nifm:u`, `sfdnsres` and `ssl`, so sockets are allowed without permission changes.
 - **Source vs. shipped binary.** The public repo's `main.cpp` currently installs only the common hooks; the randomizer hooks are commented out while practice-mod work is in progress. The binary shipped in `DEV-BUILD-LASR/exl/subsdk9` contains the randomizer hooks (from its strings). Building from source matches the shipped binary only after re-enabling the randomizer hooks.
 
@@ -124,7 +124,7 @@ Archipelago server ──websocket/JSON──> LAS client (Python, CommonContext
 | Per-location flags for every location type | Medium | Chests in dungeons use room actor switches, not global flags; the placeholder/`AddItemID` path covers them, but each location type needs checking (shops, Trendy, Seashell Mansion, rapids, fishing) |
 | Indexed items (seashells, heart pieces, leaves, chamber stones) | Low–Med | Remote grants need non-colliding indexes |
 | Ryujinx socket quirks | Low | Already solved by Dread's code |
-| Two game builds | Low | Already handled by `OffsetManager` |
+| Two game builds | Low | Already handled by `Game::Offset` |
 | Moving upstream | Medium | DEV-BUILD-LASR is a public dev build (0.5.0) and the exlaunch repo is mid-refactor. A hard fork will drift |
 | Licensing | Low | LAS exlaunch and Dread exlaunch are both GPL-2.0, so copying Dread code is fine. LASR is MIT (its bntx editor is GPLv3). SMO Mod is MIT; SMO `World/` has no license, so reference it, don't copy it |
 

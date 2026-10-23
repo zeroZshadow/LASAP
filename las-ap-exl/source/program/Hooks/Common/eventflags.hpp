@@ -1,6 +1,5 @@
 #pragma once
-#include "../lib.hpp"
-#include "offsets.hpp"
+#include "lib.hpp"
 #include "Game/sym.hpp"
 #include "AP/ap.hpp"
 #include <string>
@@ -18,20 +17,18 @@ HOOK_DEFINE_TRAMPOLINE(EventFlags__SetGettingFlag) {
 };
 
 HOOK_DEFINE_TRAMPOLINE(EventFlags__CheckFlag) {
-    static bool Callback(long arg1, long strAddr) {
-        // The flag name is a {data, length} view (a libstdc++ std::string starts the same way).
-        auto* name = reinterpret_cast<const std::pair<const char*, size_t>*>(strAddr);
+    static bool Callback(void** flags, Game::StrView* name) {
         bool value;
-        if (AP::MapFlag(std::string_view(name->first, name->second), value)) return value;
-        return Orig(arg1, strAddr);
+        if (AP::MapFlag(name->View(), value)) return value;
+        return Orig(flags, name);
     }
 };
 
 HOOK_DEFINE_TRAMPOLINE(EventFlags__SetFlag) {
-    static void Callback(long arg1, long strAddr, uint arg3) {
-        Orig(arg1, strAddr, arg3);
+    static void Callback(void** flags, Game::StrView* name, bool value) {
+        Orig(flags, name, value);
         // The Wind Fish event sets ShadowClear once the final boss is defeated.
-        if (arg3 && *reinterpret_cast<std::string*>(strAddr) == "ShadowClear") {
+        if (value && name->View() == "ShadowClear") {
             AP::OnGoal();
         }
     }
@@ -46,20 +43,22 @@ namespace EventFlags {
         EventFlags__SetGettingFlag::Callback(itemID);
     }
 
-    inline bool CheckFlag(std::string flagName) {
-        return EventFlags__CheckFlag::Callback(reinterpret_cast<long>(Game::EventFlags_ptr.Ptr()), (long)&flagName);
+    inline bool CheckFlag(const std::string& flagName) {
+        Game::StrView name{flagName};
+        return EventFlags__CheckFlag::Callback(Game::EventFlags_ptr.Ptr(), &name);
     }
 
-    inline void SetFlag(std::string flagName, bool flagState) {
+    inline void SetFlag(const std::string& flagName, bool flagState) {
         if (CheckFlag(flagName) != flagState) {
-            EventFlags__SetFlag::Callback(reinterpret_cast<long>(Game::EventFlags_ptr.Ptr()), (long)&flagName, (long)flagState);
+            Game::StrView name{flagName};
+            EventFlags__SetFlag::Callback(Game::EventFlags_ptr.Ptr(), &name, flagState);
         }
     }
 
     inline void InstallHooks() {
-        EventFlags__CheckGettingFlag::InstallAtOffset(offset_manager.Offset(0x8d2940));
-        EventFlags__SetGettingFlag::InstallAtOffset(offset_manager.Offset(0x8d2a70));
-        EventFlags__CheckFlag::InstallAtOffset(offset_manager.Offset(0xdfa920));
-        EventFlags__SetFlag::InstallAtOffset(offset_manager.Offset(0xdfa7b0));
+        EventFlags__CheckGettingFlag::InstallAtFuncPtr(Game::Item_CheckGettingFlag.Ptr());
+        EventFlags__SetGettingFlag::InstallAtFuncPtr(Game::Item_SetGettingFlag.Ptr());
+        EventFlags__CheckFlag::InstallAtFuncPtr(Game::EventFlags_Check.Ptr());
+        EventFlags__SetFlag::InstallAtFuncPtr(Game::EventFlags_Set.Ptr());
     }
 }

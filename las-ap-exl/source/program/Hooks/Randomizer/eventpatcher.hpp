@@ -1,6 +1,6 @@
 #pragma once
 #include "../lib.hpp"
-#include "offsets.hpp"
+#include "Game/addr.hpp"
 #include <string>
 
 HOOK_DEFINE_TRAMPOLINE(EventFlow__ParseInt) {
@@ -17,14 +17,14 @@ HOOK_DEFINE_REPLACE(FlowControl__CompareInt) {
         long unk = *arg1 + 0x28;
         std::string argument = "value1";
         int value1 = EventFlow__ParseInt::Callback((long)&unk, (long)&argument);
-        Logging.Log(std::to_string(value1));
+        Logging.Log("%d", value1);
         return value1;
     }
 };
 
 namespace EventPatcher {
     void InstallHooks() {
-        EventFlow__ParseInt::InstallAtOffset(offset_manager.Offset(0x109f790));
-        FlowControl__CompareInt::InstallAtOffset(offset_manager.Offset(0x804960));
+        EventFlow__ParseInt::InstallAtOffset(Game::Offset(0x109f790));
+        FlowControl__CompareInt::InstallAtOffset(Game::Offset(0x804960));
     }
 }

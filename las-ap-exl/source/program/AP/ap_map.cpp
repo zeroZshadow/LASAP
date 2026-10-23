@@ -548,7 +548,7 @@ namespace {
         L::RefreshGuide(0);
         PlaySound("SE_SY_MAP_OMOIDE_ON");
         g_ListsBuilt++;
-        Logging.Log("[AP] map: check list of " + heading);
+        Logging.Log("[AP] map: check list of %s", heading.c_str());
     }
 
     void CloseList() {
@@ -694,8 +694,7 @@ namespace {
         }
         g_DotsMade += static_cast<int>(g_DotMarkers.size());
         ApplyDots();
-        Logging.Log("[AP] map: " + std::to_string(g_DotMarkers.size()) + " dungeon dots, " + std::to_string(missing) +
-                    " without their room");
+        Logging.Log("[AP] map: %zu dungeon dots, %zu without their room", g_DotMarkers.size(), missing);
     }
 
     // A room shown or hidden for the shown floor: its dots follow it (a hidden dot loses the hover on the next frame
@@ -1086,8 +1085,8 @@ namespace AP {
         DungeonUpdateHover::InstallAtFuncPtr(Game::DungeonMap_UpdateHover.Ptr());
         DungeonPinButton::InstallAtFuncPtr(Game::DungeonMap_PinButton.Ptr());
         AP::ListUi::AddGuideSource(ListGuide);
-        Logging.Log("[AP] map tracker: " + std::to_string(g_Overworld.size()) + " overworld icons, " +
-                    std::to_string(g_Dots.size()) + " dungeon dots, " + std::to_string(g_Chests.size()) + " chests");
+        Logging.Log("[AP] map tracker: %zu overworld icons, %zu dungeon dots, %zu chests", g_Overworld.size(),
+                    g_Dots.size(), g_Chests.size());
     }
 
     bool MapFlag(std::string_view name, bool& value) {

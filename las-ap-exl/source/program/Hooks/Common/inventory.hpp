@@ -1,6 +1,6 @@
 #pragma once
 #include "../lib.hpp"
-#include "offsets.hpp"
+#include "Game/addr.hpp"
 #include "Config/config.hpp"
 #include "Hooks/Common/eventflags.hpp"
 #include "Game/Data/inventory.hpp"
@@ -99,8 +99,6 @@ inline const std::unordered_map<int, std::string> itemsDict = {
 // Other items will just use the original code
 HOOK_DEFINE_TRAMPOLINE(Inventory__AddItemID) {
     static void Callback(int ID, int count, int index) {
-        EXL_ASSERT(global_config.initialized);
-
         // Archipelago placeholder: the index is the location's local id
         if (AP::IsPlaceholderItem(ID)) {
             AP::OnPlaceholderCollected(index);
@@ -226,6 +224,6 @@ namespace Inventory {
     }
 
     inline void InstallHooks() {
-        Inventory__AddItemID::InstallAtOffset(offset_manager.Offset(0x8d08e0));
+        Inventory__AddItemID::InstallAtFuncPtr(Game::Inventory_AddItemID.Ptr());
     }
 }

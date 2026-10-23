@@ -1,6 +1,6 @@
 #pragma once
 #include "../lib.hpp"
-#include "offsets.hpp"
+#include "Game/addr.hpp"
 
 /*
     The PlayReports are disabled so that telemetry does not get sent
@@ -29,8 +29,8 @@ HOOK_DEFINE_REPLACE(PlayReport__Add2) {
 
 namespace PlayReport {
     void InstallHooks() {
-        PlayReport__Add::InstallAtOffset(offset_manager.Offset(0x1432450));
-        PlayReport__Save::InstallAtOffset(offset_manager.Offset(0x1432460));
-        PlayReport__Add2::InstallAtOffset(offset_manager.Offset(0x1432470));
+        PlayReport__Add::InstallAtOffset(Game::Offset(0x1432450));
+        PlayReport__Save::InstallAtOffset(Game::Offset(0x1432460));
+        PlayReport__Add2::InstallAtOffset(Game::Offset(0x1432470));
     }
 }

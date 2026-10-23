@@ -9,20 +9,20 @@ namespace FileHandler {
     inline Result MountSD() {
         return nn::fs::MountSdCardForDebug("sd");
     }
-    inline Result ReadFile(const char *path, std::string &out) {
+
+    // The whole file; `out` is left as it was when it cannot be read.
+    inline Result ReadFile(const char* path, std::string& out) {
         nn::fs::FileHandle handle{};
         R_TRY(nn::fs::OpenFile(&handle, path, nn::fs::OpenMode_Read));
-        s64 size;
+        struct Closer {
+            nn::fs::FileHandle handle;
+            ~Closer() { nn::fs::CloseFile(handle); }
+        } closer{handle};
+        s64 size = 0;
         R_TRY(nn::fs::GetFileSize(&size, handle));
-        char* buffer = (char*)malloc(size);
-        Result res = nn::fs::ReadFile(handle, 0, buffer, size);
-        if (R_FAILED(res)) {
-            free(buffer);
-            return res;
-        }
-        nn::fs::CloseFile(handle);
-        out = std::string(buffer, size);
-        free(buffer);
+        std::string text(static_cast<size_t>(size), '\0');
+        R_TRY(nn::fs::ReadFile(handle, 0, text.data(), static_cast<ulong>(size)));
+        out = std::move(text);
         return 0;
     }
 }

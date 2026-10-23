@@ -3,7 +3,7 @@
 
 #pragma once
 #include "../lib.hpp"
-#include "offsets.hpp"
+#include "Game/addr.hpp"
 
 // Normally, the shadow tries to move towards its home position before starting the next phase
 // The margin of error is only 0.006944389, so if it gets pushed slightly, it wont continue
@@ -17,6 +17,6 @@ HOOK_DEFINE_INLINE(Deathl__SoftlockFix) {
 
 namespace GeneralFixes {
     void InstallHooks() {
-        Deathl__SoftlockFix::InstallAtOffset(offset_manager.Offset(0x6604dc));
+        Deathl__SoftlockFix::InstallAtOffset(Game::Offset(0x6604dc));
     }
 }

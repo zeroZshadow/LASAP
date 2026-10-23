@@ -1,6 +1,6 @@
 #pragma once
 #include "../lib.hpp"
-#include "offsets.hpp"
+#include "Game/addr.hpp"
 #include <cmath>
 #include <numbers>
 #include <Config/config.hpp>
@@ -64,24 +64,24 @@ namespace Controls {
         EXL_ASSERT(global_config.initialized);
 
         // walk
-        BaseWalkSpeedMultiplier::InstallAtOffset(offset_manager.Offset(0xdcdea4));
-        PowerWalkSpeedMultiplier::InstallAtOffset(offset_manager.Offset(0xdcff24));
+        BaseWalkSpeedMultiplier::InstallAtOffset(Game::Offset(0xdcdea4));
+        PowerWalkSpeedMultiplier::InstallAtOffset(Game::Offset(0xdcff24));
 
         // shield walk
-        BaseWalkSpeedMultiplier::InstallAtOffset(offset_manager.Offset(0xdb80a8));
-        PowerWalkSpeedMultiplier::InstallAtOffset(offset_manager.Offset(0xdb8eac));
+        BaseWalkSpeedMultiplier::InstallAtOffset(Game::Offset(0xdb80a8));
+        PowerWalkSpeedMultiplier::InstallAtOffset(Game::Offset(0xdb8eac));
 
         // swim
-        BaseSwimSpeedMultiplier::InstallAtOffset(offset_manager.Offset(0xdde288));
-        PowerSwimSpeedMultiplier::InstallAtOffset(offset_manager.Offset(0xddf128));
+        BaseSwimSpeedMultiplier::InstallAtOffset(Game::Offset(0xdde288));
+        PowerSwimSpeedMultiplier::InstallAtOffset(Game::Offset(0xddf128));
 
         // dash
-        DashSpeedNeutralMultiplier::InstallAtOffset(offset_manager.Offset(0xda74a8));
-        DashSpeedHoldMultiplier::InstallAtOffset(offset_manager.Offset(0xda7100));
+        DashSpeedNeutralMultiplier::InstallAtOffset(Game::Offset(0xda74a8));
+        DashSpeedHoldMultiplier::InstallAtOffset(Game::Offset(0xda7100));
 
         if (global_config.movement.full_360) {
             // 360 movement
-            PlayerLink__SnapDirection::InstallAtOffset(offset_manager.Offset(0xded9f0));
+            PlayerLink__SnapDirection::InstallAtOffset(Game::Offset(0xded9f0));
         }
     }
 }

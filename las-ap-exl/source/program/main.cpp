@@ -1,5 +1,4 @@
 #include "lib.hpp"
-#include "offsets.hpp"
 #include "patches.hpp"
 #include "nn/err.hpp"
 #include "Config/config.hpp"
@@ -9,7 +8,6 @@
 #include <string>
 
 PatchConfig global_config;
-OffsetManager offset_manager;
 
 HOOK_DEFINE_TRAMPOLINE(nnMain) {
     static void Callback() {
@@ -25,7 +23,7 @@ HOOK_DEFINE_TRAMPOLINE(nnMain) {
             EXL_ABORT("Failed to read config.");
         }
         global_config.parse(config_str);
-        runCodePatches();
+        Patches::Run();
         ModLoader::InstallCommonHooks();
         ModLoader::InstallRandomizerHooks();
         ModLoader::InstallMods();
@@ -37,7 +35,6 @@ HOOK_DEFINE_TRAMPOLINE(nnMain) {
 extern "C" void exl_main(void* x0, void* x1) {
     /* Setup hooking environment. */
     exl::hook::Initialize();
-    offset_manager.SetVersion();
     nnMain::InstallAtOffset(0x1bbf0);
 }
 

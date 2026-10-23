@@ -8,6 +8,7 @@
 
 namespace Game {
     struct Framework;
+    class GameState;
     struct RootComp;
     namespace Data::Inventory { struct InventoryItems; }
     namespace Ui { struct Pane; struct TextBox; struct TextHolder; struct LayoutWrapper; struct Animator;
@@ -266,8 +267,13 @@ namespace Game {
     inline constexpr Func<void(Map::MapCursor*, MessageRef*)> MapCursor_ShowName{0xea0f50};
 
     // ---- Flags ----
-    // The event flags; EventFlags_Check and _Set take the address of this pointer
+    // The event flags; EventFlags_Check (flags, name) and _Set (flags, name, value) take the address of this pointer
     inline constexpr Global<void*> EventFlags_ptr{0x1cc1120};
+    inline constexpr Func<bool(void**, StrView*)> EventFlags_Check{0xdfa920};
+    inline constexpr Func<void(void**, StrView*, bool)> EventFlags_Set{0xdfa7b0};
+    // (item id): the event flag the item's Items.gsheet row names, and setting it
+    inline constexpr Func<int(int)> Item_CheckGettingFlag{0x8d2940};
+    inline constexpr Func<void(int)> Item_SetGettingFlag{0x8d2a70};
     // (LEB record, slot, on): sets the actor switch's flag
     inline constexpr Func<void(void*, int, bool)> ActorSwitch_Set{0x231b0};
 
@@ -276,6 +282,10 @@ namespace Game {
     inline constexpr Global<const u8*> PlayerAnimationSheet_ptr{0x1cbaf70};
 
     // ---- Inventory and levels ----
+    // (item id, count, index): adds an item; per item id in scripts/re/ITEMS.md
+    inline constexpr Func<void(int, int, int)> Inventory_AddItemID{0x8d08e0};
+    // (the framework's game state, state, bool): 4 reloads from the save, 1 quit, 5 ending
+    inline constexpr Func<void(GameState*, u32, bool)> SetGameState{0x87b780};
     // The inventory (Game/Data/inventory.hpp)
     inline constexpr Global<Data::Inventory::InventoryItems*> Inventory_ptr{0x1cc1368};
     // The current dungeon (8 the Chamber Dungeon, 0xff outside dungeons), which dungeon items count for

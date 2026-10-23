@@ -165,7 +165,7 @@ HOOK_DEFINE_TRAMPOLINE(MsbtFindLabel) {
         else if (LabelIs(label, len, kMapPinLabel)) Remember(msbt, out->index, Kind::MapPin);
         else if (LabelIs(label, len, AP::SIGN_LABEL)) Remember(msbt, out->index, Kind::Sign);
         else return;
-        Logging.Log("[AP] text label " + std::string(label, len) + " index " + std::to_string(out->index));
+        Logging.Log("[AP] text label %.*s index %d", static_cast<int>(len), label, out->index);
     }
 };
 
@@ -290,7 +290,7 @@ HOOK_DEFINE_INLINE(MansionPopBox) {
         if (key != nullptr && key->data != nullptr && key->size >= len &&
             std::memcmp(key->data, AP::PLACEHOLDER_KEY, len) == 0) {
             g_PresentLocation = index;
-            Logging.Log("[AP] present holds location " + std::to_string(index));
+            Logging.Log("[AP] present holds location %d", index);
         }
     }
 };
@@ -343,7 +343,7 @@ namespace AP {
             } else {
                 g_Toasts.pop_front();
             }
-            Logging.Log("[AP] toast: " + g_Toast);
+            Logging.Log("[AP] toast: %s", g_Toast.c_str());
         }
     }
 
@@ -429,6 +429,6 @@ namespace AP {
                             bar == std::string::npos ? "" : names.substr(bar + 1));
             count++;
         }
-        Logging.Log("[AP] location names: " + std::to_string(count));
+        Logging.Log("[AP] location names: %d", count);
     }
 }

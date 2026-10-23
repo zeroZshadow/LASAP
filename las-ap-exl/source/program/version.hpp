@@ -4,21 +4,15 @@
 
 namespace exl::util {
 
-    /* Add versions here if you want to take advantage of this feature. */
+    // The game's versions: 1.0.0 and its update 1.0.1. In the update, a function at 0xdfaf44 grew, so the code after
+    // it sits 0xd0 further on, up to the next section (.rodata at 0x1434000); Game::Offset maps 1.0.0's offsets.
     enum class UserVersion {
-        DEFAULT,
-        /* Members can be assigned any constant of your choosing. */
-        /* OTHER = 123 */
+        BASE,
+        UPDATE,
     };
 
     namespace impl {
-        ALWAYS_INLINE UserVersion DetermineUserVersion() {
-            /* 
-                Implement a method of determining your application version here if you want to take advantage of this feature.
-                An example may be apply Murmur3 over the .text and .rodata of the main executable or calling nn::oe::GetDisplayVersion.
-                The former would have complications if other mods are in effect, and the latter may have issues with people doing safe downgrades on console.
-            */
-            return UserVersion::DEFAULT;
-        }
+        // Decided at the module's init (game_version.cpp).
+        UserVersion DetermineUserVersion();
     }
 }

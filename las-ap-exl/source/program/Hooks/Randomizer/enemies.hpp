@@ -1,6 +1,6 @@
 #pragma once
 #include "../lib.hpp"
-#include "offsets.hpp"
+#include "Game/addr.hpp"
 #include "Config/config.hpp"
 #include "Game/Data/inventory.hpp"
 #include "Hooks/Common/level.hpp"
@@ -214,7 +214,7 @@ namespace EnemyRandomizer {
     void InstallHooks() {
         EXL_ASSERT(global_config.initialized);
         if (global_config.randomizer.enemies) {
-            ObjTreasureBox__PopEnemy::InstallAtOffset(offset_manager.Offset(0xca92c4));
+            ObjTreasureBox__PopEnemy::InstallAtOffset(Game::Offset(0xca92c4));
         }
     }
 }

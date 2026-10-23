@@ -134,7 +134,7 @@ namespace AP::ListUi {
         layout.wrapper = BuildLayout(file, kPriority);
         layout.root = RootOf(layout.wrapper);
         if (layout.root == nullptr) {
-            Logging.Log(std::string("[AP] list: layout not built: ") + file);
+            Logging.Log("[AP] list: layout not built: %s", file);
             return false;
         }
         Attach(layout.wrapper, page, pageRoot);

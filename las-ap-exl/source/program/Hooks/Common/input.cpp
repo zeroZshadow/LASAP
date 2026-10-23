@@ -10,7 +10,7 @@ namespace {
 
     void OnPoll(u32 kind) {
         if (!(g_SeenKinds.fetch_or(1u << kind) & (1u << kind))) {
-            Logging.Log("[AP] input poll kind " + std::to_string(kind));
+            Logging.Log("[AP] input poll kind %u", kind);
         }
         AP::Tick();
     }
