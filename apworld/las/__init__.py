@@ -330,9 +330,19 @@ class LASWorld(World):
         for loc in self.shuffled + self.vanilla:
             if loc in self.shuffled or self._is_progression(self.content(loc)):
                 self.get_location(LOCATION_NAMES[loc]).access_rule = rule(self.compiler.node_expr(loc))
-        for loc in self.optional:  # filler and traps of any player: Location.can_fill turns away the rest
-            location = self.get_location(LOCATION_NAMES[loc])
-            location.progress_type = LocationProgressType.EXCLUDED
+        # Optional locations are excluded: filler and traps of any player, Location.can_fill turns away the rest. Those
+        # beyond the slot's own filler and traps (most categories off) take the slot's own items but small keys instead,
+        # so a slot alone does not run short of filler.
+        filler = sum(1 for item in self.multiworld.itempool
+                     if item.player == self.player and not (item.advancement or item.useful))
+        optional = [self.get_location(LOCATION_NAMES[loc]) for loc in self.optional]
+        own = set(self.random.sample(optional, len(optional) - filler)) if len(optional) > filler else set()
+        for location in optional:
+            if location in own:
+                location.item_rule = lambda item: item.player == self.player and \
+                    not ITEM_TABLE[item.name].lasr_name.startswith("key-")
+            else:
+                location.progress_type = LocationProgressType.EXCLUDED
             location.access_rule = lambda state, reach=location.access_rule: \
                 state.has(GOAL_EVENT, self.player) and reach(state)
         self.get_location(GOAL_LOCATION).access_rule = rule(self.compiler.token("kill-nightmare", 1))

@@ -117,6 +117,36 @@ class TestEverythingOptionalNoTraps(LASTestBase):
             self.assertFalse(item.advancement or item.useful, (loc, item))
 
 
+class TestFewFiller(unittest.TestCase):
+    """Alone with nearly every category off, the slot has fewer filler and traps than optional locations: as many are
+    excluded as it has filler and traps, the rest hold its own items but small keys, and the seed generates. Those can
+    hold progression, which the goal never needs but other locations may."""
+    options = {**{name: False for name in ("chests", "free_gifts", "golden_leaves", "heart_pieces", "seashells",
+                                           "miscellaneous", "shop", "boss_drops", "open_mabe")},
+               "seashell_mansion": 0, "keys": "own_dungeon", "dungeon_items": "own_dungeon",
+               "instruments": "any_dungeon", "start_inventory_from_pool": {}}
+
+    def test_generates(self) -> None:
+        world_type = AutoWorldRegister.world_types[GAME]
+        for seed in range(4):
+            multiworld = setup_multiworld(world_type, gen_steps, seed, self.options)
+            world = multiworld.worlds[1]
+            filler = sum(1 for item in multiworld.itempool if not (item.advancement or item.useful))
+            locations = [multiworld.get_location(LOCATION_NAMES[loc], 1) for loc in world.optional]
+            excluded = [loc for loc in locations if loc.progress_type == LocationProgressType.EXCLUDED]
+            self.assertEqual(len(excluded), filler, seed)
+            self.assertLess(len(excluded), len(locations), seed)
+            distribute_items_restrictive(multiworld)
+            call_all(multiworld, "post_fill")
+            self.assertTrue(multiworld.can_beat_game(), seed)
+            for location in locations:
+                if location in excluded:
+                    self.assertFalse(location.item.advancement or location.item.useful, (seed, location))
+                else:
+                    self.assertEqual(location.item.player, 1, (seed, location))
+                    self.assertFalse(ITEM_TABLE[location.item.name].lasr_name.startswith("key-"), (seed, location))
+
+
 class TestNothingOptional(LASTestBase):
     options = {"trade_quest": True, "dampe": True, "rapids": True, "fishing": True, "seashell_mansion": 50,
                "owl_statues": "all"}
