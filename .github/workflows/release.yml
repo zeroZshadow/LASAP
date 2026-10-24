@@ -40,6 +40,9 @@ jobs:
       run:
         shell: bash
     steps:
+      - name: Check out files as committed
+        # the Windows runner's git turns LF into CRLF (core.autocrlf), which a release built locally does not have
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
