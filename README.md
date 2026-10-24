@@ -16,7 +16,7 @@ It is built on LAS Randomizer, exlaunch, Archipelago and more: see [CREDITS.md](
 
 ## Getting started
 
-1. Install [Archipelago](https://github.com/ArchipelagoMW/Archipelago/releases) 0.6.7 or newer.
+1. Install [Archipelago](https://github.com/ArchipelagoMW/Archipelago/releases) 0.6.8 or newer.
 2. Download `las.apworld` from the [latest release](https://github.com/zeroZshadow/LASAP/releases/latest) and double-click it.
 3. Follow the [setup guide](apworld/las/docs/setup_en.md). You need the game at version 1.0.0 on Ryujinx or Eden and your own RomFS dump of it; the client patches the game and installs the mod for you.
 

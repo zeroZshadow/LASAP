@@ -2,7 +2,7 @@
 
 ## Required software
 
-- [Archipelago](https://github.com/ArchipelagoMW/Archipelago/releases) 0.6.7 or newer.
+- [Archipelago](https://github.com/ArchipelagoMW/Archipelago/releases) 0.6.8 or newer.
 - The Legend of Zelda: Link's Awakening (2019), game version 1.0.0, on a Switch emulator. Ryujinx and Eden are
   tested; other yuzu-based emulators should work the same way. A Switch with Atmosphère is untested.
 - The game's update turned off, if you installed it: in Ryujinx, right-click the game, Manage Title Updates, and
