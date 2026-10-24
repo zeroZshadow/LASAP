@@ -62,7 +62,7 @@ jobs:
         shell: pwsh
         # a junction, as TESTING.md sets up: the world's tests find the patcher through the world's real path
         run: New-Item -ItemType Junction -Path vendor/Archipelago/worlds/las -Target "$PWD/apworld/las" | Out-Null
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.2  # setup-uv publishes exact version tags only, no v10
       - name: Archipelago's venv
         run: |
           uv venv .venv-ap --python "$PYTHON_VERSION"
@@ -100,7 +100,7 @@ jobs:
       - name: Link the world into Archipelago
         shell: pwsh
         run: New-Item -ItemType Junction -Path vendor/Archipelago/worlds/las -Target "$PWD/apworld/las" | Out-Null
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.2  # setup-uv publishes exact version tags only, no v10
       - name: Venvs
         run: |
           uv venv .venv-ap --python "$PYTHON_VERSION"
