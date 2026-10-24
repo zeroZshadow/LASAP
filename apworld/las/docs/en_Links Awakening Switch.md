@@ -27,8 +27,8 @@ with its own option. The trade quest, Dampé, the Rapids Ride (its race and the 
 rupees, owl statues and the Seashell Mansion rewards can be added.
 
 An activity left out (the trade quest, Dampé, the Rapids Ride, fishing, the Seashell Mansion rewards above
-`seashell_mansion`) is optional: its rewards are checks holding random items of your own, but none you need, and they
-are in logic only after the goal. Do them for heart pieces, a second sword or whatever turns up, or skip them.
+`seashell_mansion`) is optional: its rewards are checks holding only junk and traps, yours or another player's,
+and they are in logic only after the goal. Skip them, or do them for completion.
 
 Any other category left unshuffled keeps its items in their places. Where the logic may need such an item (a song, a
 key, an instrument, the shovel), the spot is still a check: it can be hinted, and the item arrives from the server when

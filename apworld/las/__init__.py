@@ -8,7 +8,7 @@ from typing import Any, ClassVar, Dict, List, Mapping, Optional, Set, TextIO
 
 from BaseClasses import CollectionState, Item, ItemClassification, LocationProgressType, Region, Tutorial
 from Options import PerGameCommonOptions
-from Fill import FillError, fill_restrictive
+from Fill import fill_restrictive
 from worlds.AutoWorld import WebWorld, World
 from worlds.LauncherComponents import Component, SuffixIdentifier, Type, components, launch as launch_component
 
@@ -61,7 +61,6 @@ GOAL_EVENT = "Victory"
 PATCH_FORMAT = 1
 EARLY_LOCATIONS_WANTED = 10
 PRE_FILL_ATTEMPTS = 10
-OPTIONAL_FILL_ATTEMPTS = 5
 PROGRESSION_CHECKS = 3
 # the items traps replace, in this order; logic never needs them (rupees it needs come from farming)
 JUNK = ("rupee-50", "rupee-20", "rupee-5", "rupee-100", "chamber-stone", "rupee-300")
@@ -91,7 +90,7 @@ class LASWorld(World):
     goal_instruments: int  # the instruments the egg's rule takes (compile_logic)
     shuffled: List[str]  # LASR item locations that are AP locations
     locked: List[str]  # AP locations the options leave unrandomized: they hold their default item, locked
-    optional: List[str]  # AP locations of activities the options leave out: after the goal, the slot's own items
+    optional: List[str]  # AP locations of activities the options leave out: after the goal, excluded
     vanilla: List[str]  # LASR item locations that keep their vanilla content and are no AP locations
     plain: List[str]  # unrandomized locations whose default item never matters: no AP locations, left out of logic
     starting_items: List[str]  # LASR item names given at the start by options
@@ -331,12 +330,11 @@ class LASWorld(World):
         for loc in self.shuffled + self.vanilla:
             if loc in self.shuffled or self._is_progression(self.content(loc)):
                 self.get_location(LOCATION_NAMES[loc]).access_rule = rule(self.compiler.node_expr(loc))
-        for loc in self.optional:
+        for loc in self.optional:  # filler and traps of any player: Location.can_fill turns away the rest
             location = self.get_location(LOCATION_NAMES[loc])
+            location.progress_type = LocationProgressType.EXCLUDED
             location.access_rule = lambda state, reach=location.access_rule: \
                 state.has(GOAL_EVENT, self.player) and reach(state)
-            location.item_rule = lambda item, location=location: item.player == self.player and \
-                not (item.advancement and location.progress_type == LocationProgressType.EXCLUDED)
         self.get_location(GOAL_LOCATION).access_rule = rule(self.compiler.token("kill-nightmare", 1))
         self.multiworld.completion_condition[self.player] = lambda state: state.has(GOAL_EVENT, self.player)
 
@@ -366,7 +364,6 @@ class LASWorld(World):
             self.multiworld.local_early_items[self.player][self.random.choice(openers)] = 1
 
     def pre_fill(self) -> None:
-        self._fill_optional()
         if not self.pre_fill_items:
             return
         allowed = {name: {self.get_location(LOCATION_NAMES[loc]) for loc in locs}
@@ -409,79 +406,6 @@ class LASWorld(World):
                     location.item.location = None
                     location.item = None
                     location.locked = False
-
-    def _fill_optional(self) -> None:
-        """Fills the optional locations with the slot's own items from the pool (_optional_items) before the main
-        fill, which could run out of the slot's items for them. The last attempt takes no progression item."""
-        if not self.optional:
-            return
-        multiworld = self.multiworld
-        locations = [self.get_location(LOCATION_NAMES[loc]) for loc in self.optional]
-        for attempt in range(OPTIONAL_FILL_ATTEMPTS):
-            items = self._optional_items(len(locations), progression=attempt < OPTIONAL_FILL_ATTEMPTS - 1)
-            chosen = {id(item) for item in items}
-            state = CollectionState(multiworld)
-            for item in multiworld.itempool:
-                if id(item) not in chosen:
-                    state.collect(item, prevent_sweep=True)
-            for player in multiworld.player_ids:
-                for item in multiworld.worlds[player].get_pre_fill_items():
-                    state.collect(item, prevent_sweep=True)
-            state.sweep_for_advancements()
-            empty = list(locations)
-            self.random.shuffle(empty)
-            fill_restrictive(multiworld, state, empty, items, single_player_placement=True, lock=True,
-                             allow_partial=True, name="LAS Optional Locations")
-            if not items:
-                multiworld.itempool[:] = [item for item in multiworld.itempool if id(item) not in chosen]
-                return
-            for location in locations:  # try other items
-                if location.item is not None:
-                    location.item.location = None
-                    location.item = None
-                    location.locked = False
-        raise FillError(f"No placement for the optional locations of {multiworld.player_name[self.player]}")
-
-    def _optional_items(self, count: int, progression: bool) -> List[Item]:
-        """A random choice of the slot's items in the pool for the optional locations. A progression item is taken
-        only if the slot still reaches every location but the optional ones that it reaches with all its items,
-        without it and those taken before, so the rest of the seed never needs anything optional. Small keys stay in
-        the pool, as the player spends them on any door, not on those the logic counts them for; so do the early
-        items (generate_basic) and the starting gear, which Archipelago takes out of the pool afterwards."""
-        multiworld = self.multiworld
-        mine = [item for item in multiworld.itempool if item.player == self.player]
-        spare = [item for item in mine if not ITEM_TABLE[item.name].lasr_name.startswith("key-")]
-        self.random.shuffle(spare)
-        keep = Counter(multiworld.local_early_items[self.player]) + Counter(multiworld.early_items[self.player]) + \
-            Counter(self.options.start_inventory_from_pool.value)
-        left = Counter(item.name for item in spare)
-        optional = {LOCATION_NAMES[loc] for loc in self.optional}
-        regular = [loc for loc in multiworld.get_locations(self.player) if loc.name not in optional]
-        placed = [loc for loc in regular if loc.item is not None]
-
-        def reached(without: List[Item]) -> Set[str]:
-            left_out = {id(item) for item in without}
-            state = CollectionState(multiworld)
-            for item in mine + self.pre_fill_items:
-                if id(item) not in left_out:
-                    state.collect(item, prevent_sweep=True)
-            state.sweep_for_advancements(placed)
-            return {loc.name for loc in regular if loc.can_reach(state)}
-
-        everything = reached([]) if progression else set()
-        chosen: List[Item] = []
-        for item in spare:
-            if len(chosen) == count:
-                break
-            if left[item.name] <= keep[item.name]:
-                continue
-            if item.advancement and (not progression or reached(chosen + [item]) != everything):
-                continue
-            chosen.append(item)
-            left[item.name] -= 1
-        if len(chosen) < count:
-            raise FillError(f"Too few items of {multiworld.player_name[self.player]} for the optional locations")
-        return chosen
 
     def _progression_fits(self) -> bool:
         """Whether this world's progression items fit into its own empty locations, in each of a few random fills.

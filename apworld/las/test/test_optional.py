@@ -1,8 +1,8 @@
 """Optional locations (LASWorld.optional): the activities the options leave out are checks reached only after the goal,
-holding the slot's own items, so no seed needs them."""
+excluded locations holding filler and traps of any player, so no seed needs them."""
 import unittest
 
-from BaseClasses import CollectionState
+from BaseClasses import CollectionState, LocationProgressType
 from Fill import distribute_items_restrictive
 from test.general import gen_steps, setup_multiworld
 from worlds.AutoWorld import AutoWorldRegister, call_all
@@ -48,45 +48,46 @@ class TestDefaultOptional(LASTestBase):
                           settings["Seashell Mansion"]), (False, False, False, False, 30))
 
     def test_rules(self) -> None:
-        """Reached only after the goal; only the slot's own items, no progression where excluded."""
+        """Reached only after the goal; excluded: filler and traps of any player, no progression or useful item."""
         location = self.multiworld.get_location(LOCATION_NAMES["fishing-50"], self.player)
         state = self.multiworld.get_all_state()
         self.assertTrue(location.can_reach(state))
         state.prog_items[self.player][GOAL_EVENT] = 0
         self.assertFalse(location.can_reach(state))
-        other = self.world.create_item("Bombs")
-        other.player = self.player + 1
-        self.assertFalse(location.item_rule(other))
-        self.assertTrue(location.item_rule(self.world.create_item("Bombs")))
+        self.assertEqual(location.progress_type, LocationProgressType.EXCLUDED)
+        for name, fits in (("50 Rupees", True), ("Zap Trap", True), ("Piece of Heart", False),
+                           ("Heart Container", False), ("Secret Seashell", False), ("Progressive Sword", False)):
+            for player in (self.player, self.player + 1):
+                item = self.world.create_item(name)
+                item.player = player
+                self.assertEqual(location.can_fill(state, item, check_access=False), fits, (name, player))
 
     def test_items_in_pool(self) -> None:
         """Their vanilla items are the slot's like any shuffled location's: the trade items, the magnifying lens,
         the bottles, the level-2 sword, Dampe's heart container."""
         items = [item.name for item in self.multiworld.itempool + self.world.get_pre_fill_items()
                  if item.player == self.player]
-        items += [self.multiworld.get_location(LOCATION_NAMES[loc], self.player).item.name
-                  for loc in self.world.optional]
         for content in ("magnifying-lens", "mermaid-scale", "ribbon", "bottle", "heart-container"):
             self.assertIn(LASR_TO_ITEM[content], items, content)
         self.assertEqual(items.count("Progressive Sword"), 2)  # the tests leave the starting gear in the pool
         self.assertEqual(sum(self.world.item_pool().values()), len(self.world.shuffled) - len(self.world.locked))
 
-    def test_filled_before_the_main_fill(self) -> None:
+    def test_left_to_the_main_fill(self) -> None:
         for loc in self.world.optional:
-            location = self.multiworld.get_location(LOCATION_NAMES[loc], self.player)
-            self.assertIsNotNone(location.item, loc)
-            self.assertTrue(location.locked, loc)
-            self.assertEqual(location.item.player, self.player, loc)
-            self.assertFalse(any(item is location.item for item in self.multiworld.itempool), loc)
+            self.assertIsNone(self.multiworld.get_location(LOCATION_NAMES[loc], self.player).item, loc)
 
     def test_never_needed(self) -> None:
-        """Every other location of the slot, the goal included, is reached without the optional locations' items."""
+        """Every other location of the slot, the goal included, is reached without the optional locations' items,
+        which are filler and traps."""
         distribute_items_restrictive(self.multiworld)
         call_all(self.multiworld, "post_fill")
         state = self.multiworld.get_all_state()
         everything = {loc.name for loc in self.multiworld.get_locations(self.player) if loc.can_reach(state)}
         optional = {LOCATION_NAMES[loc] for loc in self.world.optional}
         self.assertEqual(regular_reached(self.multiworld, self.player, self.world.optional), everything - optional)
+        for name in optional:
+            item = self.multiworld.get_location(name, self.player).item
+            self.assertFalse(item.advancement or item.useful, (name, item))
 
 
 class TestEverythingOptional(LASTestBase):
@@ -100,6 +101,19 @@ class TestEverythingOptional(LASTestBase):
         self.assertTrue(self.world.create_item("Secret Seashell").advancement)
         # seashells left in place are checks holding them, locked
         self.assertIn("pond-island", self.world.locked)
+
+
+class TestEverythingOptionalNoTraps(LASTestBase):
+    """Alone, with every activity optional and no traps, the slot's own filler fills its optional locations."""
+    options = {"seashell_mansion": 0, "owl_statues": "overworld", "seashells": False, "traps": "none"}
+
+    def test_filled(self) -> None:
+        distribute_items_restrictive(self.multiworld)
+        call_all(self.multiworld, "post_fill")
+        for loc in self.world.optional:
+            item = self.multiworld.get_location(LOCATION_NAMES[loc], self.player).item
+            self.assertIsNotNone(item, loc)
+            self.assertFalse(item.advancement or item.useful, (loc, item))
 
 
 class TestNothingOptional(LASTestBase):
@@ -128,12 +142,14 @@ class TestOtherCategoriesUnchanged(LASTestBase):
         self.assertIn("shop-slot3-1st", self.world.locked)  # the shovel or the bow
 
 
-class TestOwnItemsInMultiworld(unittest.TestCase):
-    """With two LAS players, each one's optional locations hold its own items, and nothing either needs is there; no
-    small key either, which the player could have spent on another door than those the logic counts it for."""
+class TestJunkInMultiworld(unittest.TestCase):
+    """With two LAS players, each one's optional locations hold filler and traps, the other player's too, and nothing
+    either needs is there; no small key either, which the player could have spent on another door than those the
+    logic counts it for."""
 
     def test_two_players(self) -> None:
         world_type = AutoWorldRegister.world_types[GAME]
+        owners = set()
         for seed in range(6):
             multiworld = setup_multiworld([world_type, world_type], gen_steps, seed,
                                           {"keys": "anywhere", "traps": "few"})
@@ -146,8 +162,10 @@ class TestOwnItemsInMultiworld(unittest.TestCase):
                 self.assertTrue(world.optional)
                 for loc in world.optional:
                     item = multiworld.get_location(LOCATION_NAMES[loc], player).item
-                    self.assertEqual(item.player, player, (seed, loc))
+                    self.assertFalse(item.advancement or item.useful, (seed, loc, item))
                     self.assertFalse(ITEM_TABLE[item.name].lasr_name.startswith("key-"), (seed, loc))
+                    owners.add((player, item.player))
                 everything = {loc.name for loc in multiworld.get_locations(player) if loc.can_reach(state)}
                 optional = {LOCATION_NAMES[loc] for loc in world.optional}
                 self.assertEqual(regular_reached(multiworld, player, world.optional), everything - optional, seed)
+        self.assertLessEqual({(1, 2), (2, 1)}, owners)

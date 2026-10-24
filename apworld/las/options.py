@@ -30,8 +30,8 @@ class FreeGifts(DefaultOnToggle):
 class TradeQuest(Toggle):
     """Shuffle the rewards of the trading sequence. The Yoshi Doll that starts it stays in the Trendy Game, whose
     prizes are checks that are never shuffled.
-    Off, the trade quest is optional: its rewards are in logic only after the goal and hold only your own items, none
-    you need. The trade items are shuffled either way."""
+    Off, the trade quest is optional: its rewards are in logic only after the goal and hold only junk and traps,
+    yours or another player's. The trade items are shuffled either way."""
     display_name = "Trade Quest"
 
 
@@ -68,20 +68,20 @@ class BossDrops(DefaultOnToggle):
 
 class Dampe(Toggle):
     """Shuffle the rewards of Dampe's chamber challenges.
-    Off, they are optional: in logic only after the goal, holding only your own items, none you need."""
+    Off, they are optional: in logic only after the goal, holding only junk and traps, yours or another player's."""
     display_name = "Dampe"
 
 
 class Rapids(Toggle):
     """Shuffle the Rapids Ride: the race's rewards and the items on its west, middle and east islands (a heart piece,
     a chest and a seashell dig), and with owl statues on, its owl statue's gift.
-    Off, they are optional: in logic only after the goal, holding only your own items, none you need."""
+    Off, they are optional: in logic only after the goal, holding only junk and traps, yours or another player's."""
     display_name = "Rapids"
 
 
 class Fishing(Toggle):
     """Shuffle the rewards of the fishing pond.
-    Off, they are optional: in logic only after the goal, holding only your own items, none you need."""
+    Off, they are optional: in logic only after the goal, holding only junk and traps, yours or another player's."""
     display_name = "Fishing"
 
 
@@ -102,7 +102,7 @@ class OwlStatues(Choice):
 
 class SeashellMansion(Choice):
     """The Seashell Mansion rewards up to this seashell count are shuffled. The others are optional: in logic only
-    after the goal, holding only your own items, none you need."""
+    after the goal, holding only junk and traps, yours or another player's."""
     display_name = "Seashell Mansion"
     option_0 = 0
     option_5 = 5
