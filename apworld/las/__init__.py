@@ -24,7 +24,7 @@ from .lasr import (CATEGORIES, COUNTED, DUNGEON_NAMES, DUNGEON_REWARD_LOCATIONS,
 from .locations import LASR_LOCATIONS, LOCATION_NAME_GROUPS, LOCATION_NAME_TO_ID, LOCATION_NAMES, LASLocation
 from .logic import LogicCompiler, make_rule, referenced_regions
 from .models import model_for
-from .options import OPTION_GROUPS, LASOptions
+from .options import OPTION_GROUPS, DungeonItemPlacement, LASOptions
 from .tracker import SIGN_KEY, tracked_instruments
 from . import lasr_settings
 
@@ -112,7 +112,9 @@ class LASWorld(World):
         passthrough = getattr(self.multiworld, "re_gen_passthrough", {}).get(GAME)
         if passthrough:
             for name, value in passthrough["options"].items():
-                setattr(self.options, name, LASOptions.type_hints[name].from_any(value))
+                # the slot data of older seeds has "keys", which placed small and nightmare keys alike
+                for name in ("small_keys", "nightmare_keys") if name == "keys" else (name,):
+                    setattr(self.options, name, LASOptions.type_hints[name].from_any(value))
         options = self.options
         if passthrough:
             self.dungeon_entrances = dict(passthrough.get("dungeon_entrances") or {d: d for d in DUNGEONS})
@@ -132,9 +134,15 @@ class LASWorld(World):
         else:
             self.starting_instruments = self.random.sample(INSTRUMENTS, options.starting_instruments.value)
         self.starting_items = list(self.starting_instruments)
-        if options.dungeon_items == options.dungeon_items.option_start_with:
-            for number in range(9):
-                self.starting_items += [f"map-D{number}", f"compass-D{number}", f"stone-beak-D{number}"]
+        for kind, placement in self.dungeon_item_placements().items():
+            items = [item for item in ITEM_DEFS if item_dungeon(item) >= 0 and item[:-3] == kind]
+            if placement == placement.option_start_with:
+                for item in items:
+                    self.starting_items += [item] * ITEM_DEFS[item]["quantity"]
+            elif placement == placement.option_own_world:
+                options.local_items.value |= {LASR_TO_ITEM[item] for item in items}
+            elif placement == placement.option_different_world:
+                options.non_local_items.value |= {LASR_TO_ITEM[item] for item in items}
 
         removed = lasr_settings.removed_locations(options)
         vanilla = lasr_settings.fixed_locations()
@@ -153,6 +161,12 @@ class LASWorld(World):
         self.pre_fill_items = []
         self.restricted = {}
         self.replaced = self._replaced_by_starting_gear()
+
+    def dungeon_item_placements(self) -> Dict[str, DungeonItemPlacement]:
+        """The option placing each kind of dungeon item, by the LASR item name without its dungeon (key-D1: key)."""
+        options = self.options
+        return {"key": options.small_keys, "nightmare-key": options.nightmare_keys, "map": options.dungeon_items,
+                "compass": options.dungeon_items, "stone-beak": options.dungeon_items}
 
     def _replaced_by_starting_gear(self) -> Dict[str, str]:
         """Unrandomized locations (locked checks, or no AP location) whose item is starting gear
@@ -290,16 +304,17 @@ class LASWorld(World):
         def in_dungeon(number: int) -> Set[str]:
             return {loc for loc in shuffled if location_dungeon(loc) == number}
 
-        own_keys = options.keys == options.keys.option_own_dungeon
-        own_items = options.dungeon_items == options.dungeon_items.option_own_dungeon
+        any_dungeon = {loc for loc in shuffled if location_dungeon(loc) >= 0}
+        placements = self.dungeon_item_placements()
         for lasr_item in ITEM_DEFS:
             number = item_dungeon(lasr_item)
             if number < 0:
                 continue
-            kind = lasr_item[:-3]
-            if (own_keys and kind in ("key", "nightmare-key")) or \
-                    (own_items and kind in ("map", "compass", "stone-beak")):
+            placement = placements[lasr_item[:-3]]
+            if placement == placement.option_own_dungeon:
                 restricted[LASR_TO_ITEM[lasr_item]] = in_dungeon(number)
+            elif placement == placement.option_any_dungeon:
+                restricted[LASR_TO_ITEM[lasr_item]] = any_dungeon
         if options.instruments == options.instruments.option_dungeon_rewards:
             for instrument in INSTRUMENTS:
                 restricted[LASR_TO_ITEM[instrument]] = shuffled & set(DUNGEON_REWARD_LOCATIONS)
@@ -307,7 +322,6 @@ class LASWorld(World):
             for number, instrument in enumerate(INSTRUMENTS, 1):
                 restricted[LASR_TO_ITEM[instrument]] = in_dungeon(number)
         elif options.instruments == options.instruments.option_any_dungeon:
-            any_dungeon = {loc for loc in shuffled if location_dungeon(loc) >= 0}
             for instrument in INSTRUMENTS:
                 restricted[LASR_TO_ITEM[instrument]] = any_dungeon
         return restricted
@@ -511,8 +525,12 @@ class LASWorld(World):
         kept = lasr_settings.kept_locations()
         placements = {loc: self.content(loc) if loc in kept else "ap-item" for loc in self.shuffled}
         placements.update({loc: self.content(loc) for loc in self.vanilla + self.plain})
+        # Starting keys LASR's start event gives per dungeon (the Start With settings); as a starting item a key would
+        # count for the level Link wakes up in.
+        given = tuple(f"{kind}-D" for kind in ("key", "nightmare-key")
+                      if self.dungeon_item_placements()[kind] == DungeonItemPlacement.option_start_with)
         starting = [ITEM_TABLE[item.name].lasr_name for item in self.multiworld.precollected_items[self.player]
-                    if item.name in ITEM_TABLE]
+                    if item.name in ITEM_TABLE and not (given and ITEM_TABLE[item.name].lasr_name.startswith(given))]
         return {
             "format": PATCH_FORMAT,
             "seed_name": self.multiworld.seed_name,

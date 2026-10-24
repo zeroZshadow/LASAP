@@ -122,7 +122,7 @@ class TestEverythingShuffled(LASTestBase):
         "blue_rupees": True,
         "owl_statues": "all",
         "seashell_mansion": 50,
-        "keys": "anywhere",
+        "small_keys": "anywhere", "nightmare_keys": "anywhere",
         "dungeon_items": "anywhere",
         "instruments": "anywhere",
         "traps": "many",
@@ -214,7 +214,7 @@ class TestVanillaHeavy(LASTestBase):
 
 class TestOwnDungeon(LASTestBase):
     options = {
-        "keys": "own_dungeon",
+        "small_keys": "own_dungeon", "nightmare_keys": "own_dungeon",
         "dungeon_items": "own_dungeon",
         "instruments": "own_dungeon",
         "owl_statues": "dungeons",
@@ -236,12 +236,95 @@ class TestOwnDungeon(LASTestBase):
                 self.assertEqual(INSTRUMENTS.index(lasr_item) + 1, dungeon, location.name)
 
 
+class TestKeysAnyDungeon(LASTestBase):
+    """Small keys in any of the slot's dungeons, nightmare keys in their own."""
+    options = {"small_keys": "any_dungeon", "nightmare_keys": "own_dungeon"}
+
+    def test_keys_in_dungeons(self) -> None:
+        from ..lasr import location_dungeon, item_dungeon
+        from ..items import ITEM_TABLE
+        from ..locations import LASR_LOCATIONS
+        self.assertEqual(self.world.patch_data()["settings"]["Small Keys"], "Any Dungeon")
+        elsewhere = 0
+        for location in self.multiworld.get_locations(self.player):
+            if location.address is None or location.item is None or location.item.player != self.player:
+                continue
+            lasr_item = ITEM_TABLE[location.item.name].lasr_name
+            dungeon = location_dungeon(LASR_LOCATIONS[location.name])
+            if lasr_item.startswith("key-"):
+                self.assertGreaterEqual(dungeon, 0, location.name)
+                elsewhere += dungeon != item_dungeon(lasr_item)
+            elif lasr_item.startswith("nightmare-key-"):
+                self.assertEqual(dungeon, item_dungeon(lasr_item), location.name)
+        self.assertGreater(elsewhere, 0)
+
+
+class TestKeysStartWith(LASTestBase):
+    """Every small key and nightmare key at the start: the patch's Start With settings give them per dungeon, so its
+    starting items leave them out, and the pool holds 50 Rupees in their place."""
+    options = {"small_keys": "start_with", "nightmare_keys": "start_with"}
+
+    def test_started(self) -> None:
+        from collections import Counter
+        from ..items import ITEM_TABLE
+        expected = Counter({item: ITEM_DEFS[item]["quantity"] for item in ITEM_DEFS
+                            if item.startswith(("key-", "nightmare-key-"))})
+        started = Counter(ITEM_TABLE[item.name].lasr_name for item in self.multiworld.precollected_items[self.player])
+        self.assertEqual(Counter({item: started[item] for item in expected}), expected)
+        self.assertFalse([item for item in self.multiworld.itempool + self.world.get_pre_fill_items()
+                          if item.player == self.player and ITEM_TABLE[item.name].lasr_name in expected])
+        patch = self.world.patch_data()
+        self.assertEqual((patch["settings"]["Small Keys"], patch["settings"]["Nightmare Keys"]),
+                         ("Start With", "Start With"))
+        self.assertFalse([item for item in patch["starting_items"] if item in expected])
+
+
+class TestKeysLocality(LASTestBase):
+    """own_world and different_world make the keys local or non-local items, which Archipelago's fill keeps in or out
+    of the slot's world; for the patcher and the trackers they are placed anywhere."""
+    options = {"small_keys": "own_world", "nightmare_keys": "different_world"}
+
+    def test_locality(self) -> None:
+        from ..items import ITEM_NAME_GROUPS
+        self.assertLessEqual(ITEM_NAME_GROUPS["Small Keys"], self.world.options.local_items.value)
+        self.assertLessEqual(ITEM_NAME_GROUPS["Nightmare Keys"], self.world.options.non_local_items.value)
+        self.assertFalse(self.world.restricted)
+        settings = self.world.patch_data()["settings"]
+        self.assertEqual((settings["Small Keys"], settings["Nightmare Keys"]), ("Anywhere", "Anywhere"))
+
+
+class TestKeysInMultiworld(unittest.TestCase):
+    """With two players, own_world keeps a slot's small keys in its world and different_world its nightmare keys in
+    the other's."""
+
+    def test_two_players(self) -> None:
+        from test.general import setup_multiworld
+        from Fill import distribute_items_restrictive
+        from worlds.generic.Rules import locality_rules
+        from .. import LASWorld
+        from ..items import ITEM_TABLE
+        for seed in range(3):
+            multiworld = setup_multiworld([LASWorld, LASWorld], seed=seed,
+                                          options={"small_keys": "own_world", "nightmare_keys": "different_world"})
+            locality_rules(multiworld)
+            distribute_items_restrictive(multiworld)
+            self.assertTrue(multiworld.can_beat_game(), seed)
+            for location in multiworld.get_filled_locations():
+                if location.item.code is None:
+                    continue
+                lasr_item = ITEM_TABLE[location.item.name].lasr_name
+                if lasr_item.startswith("key-"):
+                    self.assertEqual(location.player, location.item.player, (seed, location))
+                elif lasr_item.startswith("nightmare-key-"):
+                    self.assertNotEqual(location.player, location.item.player, (seed, location))
+
+
 class TestFewLocations(unittest.TestCase):
     """Every location category off, dungeon items in their own dungeons, no starting gear: nearly all locations are in
     dungeons, and only Tarin's is reachable at the start."""
     options = {**{name: False for name in ("chests", "free_gifts", "golden_leaves", "heart_pieces", "seashells",
                                            "miscellaneous", "shop", "boss_drops", "open_mabe")},
-               "seashell_mansion": 0, "keys": "own_dungeon", "dungeon_items": "own_dungeon",
+               "seashell_mansion": 0, "small_keys": "own_dungeon", "nightmare_keys": "own_dungeon", "dungeon_items": "own_dungeon",
                "instruments": "any_dungeon", "start_inventory_from_pool": {}}
 
     def test_pre_fill_leaves_room_for_progression(self) -> None:
@@ -372,11 +455,11 @@ class TestGlitched(LASTestBase):
 
 
 class TestHell(LASTestBase):
-    options = {"logic": "hell", "keys": "anywhere", "stealing": "always"}
+    options = {"logic": "hell", "small_keys": "anywhere", "nightmare_keys": "anywhere", "stealing": "always"}
 
 
 class TestChestAppearance(LASTestBase):
-    options = {"chest_appearance": "texture_and_size", "keys": "own_dungeon"}
+    options = {"chest_appearance": "texture_and_size", "small_keys": "own_dungeon", "nightmare_keys": "own_dungeon"}
 
     def test_every_location_has_a_chest_look(self) -> None:
         from ..lasr_settings import lasr_settings
@@ -402,7 +485,7 @@ class TestChestAppearance(LASTestBase):
         self.assertEqual(chest_look(options, None, progression=True, trap=True), ["junk", "junk"])
         # small keys count as important with keys anywhere, as in LASR's shuffler
         self.assertEqual(chest_look(options, "key-D1"), ["good", "key"])
-        options.keys.value = options.keys.option_anywhere
+        options.small_keys.value = options.small_keys.option_anywhere
         self.assertEqual(chest_look(options, "key-D1"), ["important", "key"])
         self.assertEqual(chest_look(options, "heart-container"), ["important-health", "life-upgrade"])
         self.assertEqual(chest_look(options, "seashell"), ["seashell", "seashell"])

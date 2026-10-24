@@ -123,7 +123,7 @@ class TestFewFiller(unittest.TestCase):
     hold progression, which the goal never needs but other locations may."""
     options = {**{name: False for name in ("chests", "free_gifts", "golden_leaves", "heart_pieces", "seashells",
                                            "miscellaneous", "shop", "boss_drops", "open_mabe")},
-               "seashell_mansion": 0, "keys": "own_dungeon", "dungeon_items": "own_dungeon",
+               "seashell_mansion": 0, "small_keys": "own_dungeon", "nightmare_keys": "own_dungeon", "dungeon_items": "own_dungeon",
                "instruments": "any_dungeon", "start_inventory_from_pool": {}}
 
     def test_generates(self) -> None:
@@ -183,7 +183,7 @@ class TestJunkInMultiworld(unittest.TestCase):
         owners = set()
         for seed in range(6):
             multiworld = setup_multiworld([world_type, world_type], gen_steps, seed,
-                                          {"keys": "anywhere", "traps": "few"})
+                                          {"small_keys": "anywhere", "nightmare_keys": "anywhere", "traps": "few"})
             distribute_items_restrictive(multiworld)
             call_all(multiworld, "post_fill")
             self.assertTrue(multiworld.can_beat_game(), seed)

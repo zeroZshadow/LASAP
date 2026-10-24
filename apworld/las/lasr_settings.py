@@ -28,7 +28,8 @@ OPTIONAL_CATEGORIES = {attribute: CATEGORY_OPTIONS[attribute] for attribute in (
 MANSION_THRESHOLDS = {f"{n}-seashell-reward": n for n in (5, 15, 30, 40, 50)}
 
 _PRESETS = {0: "Basic", 1: "Advanced", 2: "Glitched", 3: "Hell"}
-_DUNGEON_ITEMS = {0: "Own Dungeon", 1: "Anywhere", 2: "Start With"}
+# own_world and different_world place them like anywhere does, as far as the patcher and the trackers are concerned
+_DUNGEON_ITEMS = {0: "Own Dungeon", 1: "Anywhere", 2: "Start With", 3: "Any Dungeon", 4: "Anywhere", 5: "Anywhere"}
 _INSTRUMENTS = {0: "Vanilla", 1: "Dungeon Rewards", 2: "Own Dungeon", 3: "Anywhere", 4: "Any Dungeon"}
 _OWLS = {0: "None", 1: "Overworld", 2: "Dungeons", 3: "All"}
 _STEALING = {0: "Standard", 1: "Always", 2: "Never"}
@@ -51,7 +52,7 @@ def chest_look(options: LASOptions, lasr_item: Optional[str], progression: bool 
     item_type = ITEM_DEFS[lasr_item]["type"]
     if (lasr_item == "bomb" and options.shuffled_bombs) or (lasr_item == "powder" and options.shuffled_powder):
         item_type = "important"
-    if lasr_item.startswith("key-") and options.keys.value == options.keys.option_anywhere:
+    if lasr_item.startswith("key-") and _DUNGEON_ITEMS[options.small_keys.value] in ("Any Dungeon", "Anywhere"):
         item_type = "important"
     if lasr_item.startswith("stone-beak-") and _OWLS[options.owl_statues.value] in ("Dungeons", "All"):
         item_type = "important"
@@ -153,8 +154,8 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Dungeon Maps": _DUNGEON_ITEMS[o.dungeon_items.value],
         "Compasses": _DUNGEON_ITEMS[o.dungeon_items.value],
         "Stone Beaks": _DUNGEON_ITEMS[o.dungeon_items.value],
-        "Small Keys": _DUNGEON_ITEMS[o.keys.value],
-        "Nightmare Keys": _DUNGEON_ITEMS[o.keys.value],
+        "Small Keys": _DUNGEON_ITEMS[o.small_keys.value],
+        "Nightmare Keys": _DUNGEON_ITEMS[o.nightmare_keys.value],
         "Shuffle Instruments": _INSTRUMENTS[o.instruments.value],
         "Starting Instruments": o.starting_instruments.value,
         "Race Mode": False,

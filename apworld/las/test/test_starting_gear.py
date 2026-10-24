@@ -46,7 +46,7 @@ class TestStartingGearPlain(StartingGearBase):
 
 class TestStartingGearPreFill(StartingGearBase):
     """With keys in their own dungeon the pre-fill places the small keys; a starting Tail Cave key stays in the pool."""
-    options = {"keys": "own_dungeon", "start_inventory_from_pool": {"Small Key (Tail Cave)": 1}}
+    options = {"small_keys": "own_dungeon", "nightmare_keys": "own_dungeon", "start_inventory_from_pool": {"Small Key (Tail Cave)": 1}}
 
     def test_gear_in_pool(self) -> None:
         self.assertIn("Small Key (Tail Cave)", self.world.restricted)

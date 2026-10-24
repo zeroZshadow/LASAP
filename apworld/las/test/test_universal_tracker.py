@@ -11,8 +11,9 @@ from .test_logic import OPTION_SETS, STEPS
 from ..items import GAME
 
 OPTIONS = OPTION_SETS + [
-    {"keys": "anywhere", "dungeon_items": "own_dungeon", "instruments": "own_dungeon", "starting_instruments": 2,
-     "owl_statues": "dungeons", "traps": "few"},
+    {"small_keys": "anywhere", "nightmare_keys": "anywhere", "dungeon_items": "own_dungeon",
+     "instruments": "own_dungeon", "starting_instruments": 2, "owl_statues": "dungeons", "traps": "few"},
+    {"small_keys": "any_dungeon", "nightmare_keys": "start_with", "dungeon_items": "own_world"},
     {"instruments": "dungeon_rewards", "seashell_mansion": 5, "heart_pieces": False, "seashells": False,
      "golden_leaves": False, "shop": False},
 ]
@@ -77,6 +78,18 @@ class TestUniversalTracker(unittest.TestCase):
         for index, options in enumerate(OPTIONS):
             with self.subTest(options=options):
                 self.check(options, 4000 + index)
+
+    def test_keys_of_older_seeds(self) -> None:
+        """The slot data of older seeds has "keys" in place of small_keys and nightmare_keys: it sets both."""
+        world_type = AutoWorldRegister.world_types[GAME]
+        original = setup_multiworld(world_type, STEPS, 4100, {"small_keys": "anywhere", "nightmare_keys": "anywhere"})
+        slot_data = original.worlds[1].fill_slot_data()
+        options = slot_data["options"]
+        options["keys"] = options.pop("small_keys")
+        del options["nightmare_keys"]
+        again = regenerate(slot_data, 4101).worlds[1]
+        self.assertEqual(again.options.small_keys.current_key, "anywhere")
+        self.assertEqual(again.options.nightmare_keys.current_key, "anywhere")
 
     def test_slot_data_holds_options(self) -> None:
         world_type = AutoWorldRegister.world_types[GAME]

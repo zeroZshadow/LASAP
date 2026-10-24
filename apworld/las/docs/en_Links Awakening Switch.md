@@ -35,7 +35,9 @@ Any other category left unshuffled keeps its items in their places. Where the lo
 key, an instrument, the shovel), the spot is still a check: it can be hinted, and the item arrives from the server when
 you pick it up. The rest (rupees, heart pieces) are not checks and are never needed. The Trendy Game's prizes are never
 shuffled; its Yoshi Doll, which starts the trade quest, is a check. Saving Bow-Wow and reviving the rooster are checks too. Small keys, nightmare keys, maps, compasses, stone beaks and instruments can stay in their own
-dungeon or go anywhere.
+dungeon or go anywhere. Small keys (`small_keys`), nightmare keys (`nightmare_keys`) and maps, compasses and stone beaks
+(`dungeon_items`) each have their own option, which can also put them in any of your dungeons, anywhere in your own
+world, only in other players' worlds, or give them at the start.
 
 ## Can dungeon entrances be shuffled?
 
@@ -47,7 +49,8 @@ and the logic follows each door. The spoiler log lists where each entrance leads
 
 By default, a sword, a shield, the ocarina with Manbo's Mambo, and 100 rupees, as in the original randomizer. The
 `start_inventory_from_pool` option lists the starting items (they leave the item pool) and `starting_rupees` sets the
-rupees. With `dungeon_items: start_with`, the player also starts with every dungeon's map, compass and stone beak.
+rupees. With `dungeon_items: start_with`, the player also starts with every dungeon's map, compass and stone beak, and
+with `small_keys` or `nightmare_keys` set to `start_with`, with every dungeon's keys of that kind.
 
 ## Which items can be in another player's world?
 

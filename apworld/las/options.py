@@ -114,23 +114,40 @@ class SeashellMansion(Choice):
 
 
 class DungeonItemPlacement(Choice):
-    """own_dungeon: placed inside their own dungeon. anywhere: placed anywhere in the multiworld."""
+    """own_dungeon: inside their own dungeon. any_dungeon: inside any of your dungeons, the Color Dungeon included.
+    own_world: anywhere in your world. different_world: in other players' worlds (anywhere when you play alone).
+    anywhere: anywhere in the multiworld. start_with: given at the start."""
     option_own_dungeon = 0
     option_anywhere = 1
+    option_start_with = 2
+    option_any_dungeon = 3
+    option_own_world = 4
+    option_different_world = 5
     default = 0
 
 
-class Keys(DungeonItemPlacement):
-    """Where small keys and nightmare keys are placed.
-    own_dungeon: inside their own dungeon. anywhere: anywhere in the multiworld."""
-    display_name = "Keys"
+class SmallKeys(DungeonItemPlacement):
+    """Where small keys are placed.
+    own_dungeon: inside their own dungeon. any_dungeon: inside any of your dungeons, the Color Dungeon included.
+    own_world: anywhere in your world. different_world: in other players' worlds (anywhere when you play alone).
+    anywhere: anywhere in the multiworld. start_with: given at the start."""
+    display_name = "Small Keys"
+
+
+class NightmareKeys(DungeonItemPlacement):
+    """Where nightmare keys are placed.
+    own_dungeon: inside their own dungeon. any_dungeon: inside any of your dungeons, the Color Dungeon included.
+    own_world: anywhere in your world. different_world: in other players' worlds (anywhere when you play alone).
+    anywhere: anywhere in the multiworld. start_with: given at the start."""
+    display_name = "Nightmare Keys"
 
 
 class DungeonItems(DungeonItemPlacement):
     """Where dungeon maps, compasses and stone beaks are placed.
-    own_dungeon: inside their own dungeon. anywhere: anywhere in the multiworld. start_with: given at the start."""
+    own_dungeon: inside their own dungeon. any_dungeon: inside any of your dungeons, the Color Dungeon included.
+    own_world: anywhere in your world. different_world: in other players' worlds (anywhere when you play alone).
+    anywhere: anywhere in the multiworld. start_with: given at the start."""
     display_name = "Maps, Compasses and Stone Beaks"
-    option_start_with = 2
     default = 2
 
 
@@ -407,7 +424,8 @@ class LASOptions(PerGameCommonOptions):
     blue_rupees: BlueRupees
     owl_statues: OwlStatues
     seashell_mansion: SeashellMansion
-    keys: Keys
+    small_keys: SmallKeys
+    nightmare_keys: NightmareKeys
     dungeon_items: DungeonItems
     instruments: Instruments
     starting_instruments: StartingInstruments
@@ -450,7 +468,7 @@ OPTION_GROUPS = [
     OptionGroup("Locations", [Chests, FreeGifts, TradeQuest, GoldenLeaves, HeartPieces, Seashells, Miscellaneous, Shop,
                               BossDrops, Dampe, Rapids, Fishing, BlueRupees, OwlStatues, SeashellMansion]),
     OptionGroup("Goal", [InstrumentsRequired]),
-    OptionGroup("Dungeon Items", [Keys, DungeonItems, Instruments]),
+    OptionGroup("Dungeon Items", [SmallKeys, NightmareKeys, DungeonItems, Instruments]),
     OptionGroup("Start", [StartingInstruments, StartingRupees]),
     OptionGroup("World", [OpenMabe, OpenKanalet, OpenMamu, CompletedBridge, ClassicD2, ShuffledDungeons, FreeBook,
                           FastFishing, FastStalfos, ShuffledBombs, ShuffledPowder, AmmoGhost, MapTracker, InGameHints,
