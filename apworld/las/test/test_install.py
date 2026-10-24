@@ -1,4 +1,7 @@
 import ast
+import importlib.util
+import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -6,10 +9,42 @@ import zipfile
 from pathlib import Path
 from unittest import mock
 
+from . import LASTestBase
 from .. import emulators, install
 from ..emulators import TITLE_ID
 from ..host_settings import PLAYER_DEFAULTS, PLAYER_SETTINGS
 from ..install import CONFIG_PATH, InstallError, installed_seed, patch_and_install, split_command
+
+ROMFS = Path(os.environ.get("LASAP_ROMFS", r"D:\Games\Switch\LASRomFS"))
+BUILD_RELEASE = install.SOURCE_PATCHER.parent / "scripts" / "build_release.py"
+
+# Runs before the code given to run_without_excluded: the folders the release leaves out cannot be imported.
+WITHOUT_EXCLUDED = """
+import importlib.abc
+import sys
+EXCLUDED = {excluded!r}
+class Excluded(importlib.abc.MetaPathFinder):
+    def find_spec(self, name, path, target=None):
+        if name in EXCLUDED or name.startswith(tuple(e + "." for e in EXCLUDED)):
+            raise ImportError(name + " is not in the release")
+sys.meta_path.insert(0, Excluded())
+sys.path.insert(0, {patcher!r})
+"""
+
+
+def build_release_value(name: str):
+    """A constant of build_release.py, read without running it."""
+    tree = ast.parse(BUILD_RELEASE.read_text(encoding="utf-8"))
+    return next(ast.literal_eval(node.value) for node in tree.body if isinstance(node, ast.Assign)
+                and isinstance(node.targets[0], ast.Name) and node.targets[0].id == name)
+
+
+def run_without_excluded(code: str) -> subprocess.CompletedProcess:
+    """Runs code in a new Python with the patcher's source on its path and PATCHER_EXCLUDED's folders blocked."""
+    excluded = [folder.replace("/", ".") for folder in build_release_value("PATCHER_EXCLUDED")]
+    prelude = WITHOUT_EXCLUDED.format(excluded=excluded, patcher=str(install.SOURCE_PATCHER))
+    return subprocess.run([sys.executable, "-c", prelude + code], capture_output=True, text=True, encoding="utf-8",
+                          errors="replace")
 
 # Stands in for las_ap_patch.py: writes the patcher's output layout for the seed named in the patch file.
 FAKE_PATCHER = """
@@ -221,18 +256,45 @@ class TestInstall(unittest.TestCase):
         modules = sorted(install.SOURCE_PATCHER.glob("*.py"))
         if not modules:
             self.skipTest("no patcher source")
-        tree = ast.parse((install.SOURCE_PATCHER.parent / "scripts" / "build_release.py").read_text(encoding="utf-8"))
-        files = next(ast.literal_eval(node.value) for node in tree.body if isinstance(node, ast.Assign)
-                     and isinstance(node.targets[0], ast.Name) and node.targets[0].id == "PATCHER_FILES")
+        files = build_release_value("PATCHER_FILES")
         for module in modules:
             with self.subTest(module=module.name):
                 self.assertIn(module.name, files)
                 self.assertIn(module.stem, install.PATCHER_MODULES)
 
+    def test_patcher_without_excluded_folders(self) -> None:
+        """The patcher loads without the folders the release leaves out (build_release.py's PATCHER_EXCLUDED)."""
+        if not (install.SOURCE_PATCHER / "las_ap_patch.py").is_file():
+            self.skipTest("no patcher source")
+        if importlib.util.find_spec("evfl") is None:
+            self.skipTest("the patcher's libraries are not installed (patcher/requirements.txt)")
+        for folder in build_release_value("PATCHER_EXCLUDED"):
+            self.assertTrue((install.SOURCE_PATCHER / folder).is_dir(), folder)  # a moved folder would ship again
+        result = run_without_excluded("import las_ap_patch")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_split_command(self) -> None:
         self.assertEqual(split_command('"C:/Program Files/py.exe" D:\\a\\b.py'),
                          ["C:/Program Files/py.exe", "D:\\a\\b.py"] if sys.platform == "win32"
                          else ["C:/Program Files/py.exe", "D:ab.py"])
+
+
+@unittest.skipUnless((ROMFS / "region_common").is_dir(), "RomFS dump not found (LASAP_ROMFS)")
+@unittest.skipUnless((install.SOURCE_PATCHER / "exl" / "subsdk9").is_file(), "no module build (scripts/build_exl.sh)")
+class TestPatchWithoutExcluded(LASTestBase):
+    """A default seed's patch, with the folders the release leaves out blocked."""
+
+    def test_patch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            self.world.generate_output(tmp)
+            patch = next(Path(tmp).glob("*.aplas"))
+            out = Path(tmp) / "out"
+            result = run_without_excluded(
+                f"import las_ap_patch\nsys.exit(las_ap_patch.main([{str(patch)!r}, '--romfs', {str(ROMFS)!r}, "
+                f"'--out', {str(out)!r}]))")
+            self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
+            self.assertTrue((out / "atmosphere" / "contents" / TITLE_ID / "exefs" / "subsdk9").is_file())
+            self.assertTrue((out / "atmosphere" / "contents" / TITLE_ID / "romfs" / "region_common").is_dir())
 
 
 class TestEmulators(unittest.TestCase):

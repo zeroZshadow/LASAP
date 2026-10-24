@@ -1,10 +1,10 @@
-import RandomizerCore.Tools.bntx_editor.bntx_editor as bntx_editor
 from RandomizerCore.Paths.randomizer_paths import RESOURCE_PATH, IS_RUNNING_FROM_SOURCE
 import os
 import struct
 from io import BytesIO
 
-from RandomizerCore.Tools.bntx_editor import bfres
+# The BNTX editor (GPLv3) is imported where it is used: only the asset build (ap_assets.py) runs these functions, and
+# the release leaves the editor out (build_release.py, PATCHER_EXCLUDED).
 
 
 # This method aims to create a custom BNTX archive based on the original one to add a custom title screen
@@ -13,6 +13,7 @@ def createRandomizerTitleScreenArchive(sarc_data):
     from PIL import Image
     import quicktex.dds as quicktex_dds
     import quicktex.s3tc.bc3 as bc3
+    from RandomizerCore.Tools.bntx_editor import bntx_editor
 
     editor = bntx_editor.BNTXEditor()
     editor.openFile(sarc_data.reader.get_file('timg/__Combined.bntx').data.tobytes())
@@ -90,6 +91,7 @@ def save(dds_file, new_dds: BytesIO):
 
 
 def replaceTextureInFile(bntxFileInput, bntxFileOutput, textureName, textureFile):
+    from RandomizerCore.Tools.bntx_editor import bntx_editor
     editor = bntx_editor.BNTXEditor()
     with open(bntxFileInput, 'rb') as bntxFileInputFile:
         bntxFileInputData = bntxFileInputFile.read()
@@ -121,6 +123,7 @@ def createChestBfresWithCustomTexturesIfMissing(chestBfresPath, bfresOutputFolde
 
     # If we have missing textures, then extracting needed files from RomFS and re-injecting them
     # Reading and extracting BNTX from original chest BFRES file
+    from RandomizerCore.Tools.bntx_editor import bfres
     chestBfres = bfres.File()
     chestBfres.readFromFile(chestBfresPath)
 

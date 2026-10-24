@@ -109,4 +109,4 @@ The core loop works on Ryujinx: checks, received items with the game's own item-
 ## Licenses
 
 - `las-ap-exl`: GPL-2.0, from exlaunch and Owen-Splat's fork; the socket code follows open-dread-rando-exlaunch.
-- `patcher/RandomizerCore` and `apworld/las/data`: MIT, from LASR (see the LICENSE files in those folders). The bntx editor is GPLv3.
+- `patcher/RandomizerCore` and `apworld/las/data`: MIT, from LASR (see the LICENSE files in those folders). The bntx editor (`RandomizerCore/Tools/bntx_editor`) is GPLv3; only the asset build (`scripts/build_assets.py`) uses it, and the release leaves it out.

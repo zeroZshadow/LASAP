@@ -1,6 +1,6 @@
 """The Archipelago item model: six balls in a ring, in the colors of the Archipelago logo.
 
-It is built at patch time from the Seashell Sensor model in the player's RomFS (ItemShellRader.bfres): the first
+The asset build (ap_assets.py) builds it from the Seashell Sensor model in the RomFS (ItemShellRader.bfres): the first
 shape's vertex and index buffers are overwritten with six spheres, the other shapes are emptied, the textures are
 replaced with flat ones (the albedo holds one stripe per ball color, the smoothness map makes them glossy), the
 material's rim light is white and kept to the balls' edges, and its glow is turned off. The model inside keeps its name.
@@ -9,9 +9,10 @@ import colorsys
 import io
 import math
 import struct
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
-from RandomizerCore.Tools.bntx_editor import bfres, bntx_editor
+if TYPE_CHECKING:
+    from RandomizerCore.Tools.bntx_editor import bfres
 
 SOURCE = "ItemShellRader.bfres"
 FILE_NAME = "ItemArchipelago.bfres"
@@ -225,7 +226,8 @@ def _textures(width: int, height: int) -> dict:
     }
 
 
-def _rebuild_textures(model: bfres.File) -> None:
+def _rebuild_textures(model: "bfres.File") -> None:
+    from RandomizerCore.Tools.bntx_editor import bntx_editor
     if model.bfresTexture.pos is None:
         raise ValueError(f"no textures in {SOURCE}")
     start, size = model.bfresTexture.pos, model.bfresTexture.size
@@ -249,6 +251,7 @@ def _rebuild_textures(model: bfres.File) -> None:
 
 def build(source_path: str) -> bytes:
     """ItemArchipelago.bfres, from the RomFS's ItemShellRader.bfres."""
+    from RandomizerCore.Tools.bntx_editor import bfres  # the asset build only: the release has no BNTX editor
     model = bfres.File()
     model.readFromFile(source_path)
     _rebuild_textures(model)

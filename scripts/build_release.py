@@ -36,6 +36,9 @@ PATCHER_FILES = ("las_ap_patch.py", "ap_assets.py", "ap_chest.py", "ap_deathlink
                  "ap_save_name.py", "ap_ui.py", "lasr_qt.py", "map_positions.json", "version.txt", "LICENSE-LASR.txt",
                  "RandomizerCore", "RandomizerUI/Resources/Info", "RandomizerUI/Resources/Menu",
                  "RandomizerUI/Resources/Theme", "assets", "exl/subsdk9", "exl/main.npdm")
+# Folders of PATCHER_FILES the patch never uses: the BNTX editor (GPLv3) only builds the assets (ap_assets.py), and
+# nothing uses the exefs editor. test_install.py patches with both blocked.
+PATCHER_EXCLUDED = ("RandomizerCore/Tools/bntx_editor", "RandomizerCore/Tools/exefs_editor")
 # Libraries for lib/: import name -> distribution name (for its license)
 LIBRARIES = {"evfl": "evfl", "lms": "pylibms", "appdirs": "appdirs"}
 MODULE_LICENSE = ROOT / "las-ap-exl" / "LICENSE"
@@ -49,8 +52,9 @@ def patcher_files() -> dict:
         if not path.exists():
             sys.exit(f"patcher/{entry} is missing" + (" (scripts/build_exl.sh)" if entry.startswith("exl") else ""))
         for file in ([path] if path.is_file() else sorted(path.rglob("*"))):
-            if file.is_file() and "__pycache__" not in file.parts:
-                files[PREFIX + file.relative_to(PATCHER).as_posix()] = file
+            name = file.relative_to(PATCHER).as_posix()
+            if file.is_file() and "__pycache__" not in file.parts and not name.startswith(PATCHER_EXCLUDED):
+                files[PREFIX + name] = file
     files[PREFIX + "licenses/LICENSE-las-ap-exl.txt"] = MODULE_LICENSE
     site = Path(str(importlib.import_module("yaml").__file__)).parent.parent
     for name, dist in LIBRARIES.items():
