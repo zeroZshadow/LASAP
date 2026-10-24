@@ -141,7 +141,6 @@ address. A relay behind a Cloudflare Tunnel needs no forwarded port: players ent
   oddly, report it; `easy_fishing: false` in your options file turns it off.
 - The option Nice Hookshot and the settings Music and Blur Removal are not confirmed in play.
 - Windows only so far: Linux and macOS are untested, and so is a Switch.
-- Dungeon entrance shuffle is not available.
 
 ## Reporting a problem
 

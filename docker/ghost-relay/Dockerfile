@@ -1,4 +1,4 @@
-# The ghost relay (apworld/las/ghost_relay.py) as a container image (README, Ghost relay). Build from the repository
+# The ghost relay (apworld/las/ghost_relay.py) as a container image (docs/ghost-relay.md). Build from the repository
 # root: docker build -f docker/ghost-relay/Dockerfile -t las-ghost-relay .
 # Arguments after the image name go to the relay (--password, --trusted-proxy, --nogroups, ...).
 FROM python:3.12-alpine

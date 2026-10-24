@@ -118,6 +118,7 @@ def main() -> None:
                 zf.writestr(info, built.read(info))
         for name in sorted(files):
             zf.write(files[name], name)
+        zf.write(ROOT / "LICENSE", "las/LICENSE.txt")  # the world's and the patcher's own code (README, Licenses)
         zf.writestr(PREFIX + "build.txt", build_id + "\n")
 
     templates = BUILD / "templates"
