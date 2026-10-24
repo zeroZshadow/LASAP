@@ -1,15 +1,11 @@
-# Builds the ghost relay's container image (docker/ghost-relay/Dockerfile) and pushes it to the GitHub Container
-# Registry as ghcr.io/<owner>/las-ghost-relay, tagged latest, protocol-<PROTOCOL_VERSION> and the commit.
+# Builds the ghost relay's container image (docker/ghost-relay/Dockerfile) when a GitHub release is published and
+# pushes it to the GitHub Container Registry as ghcr.io/<owner>/las-ghost-relay, tagged latest, the release's version,
+# protocol-<PROTOCOL_VERSION> and the commit.
 name: Ghost relay image
 
 on:
-  push:
-    branches: [master]
-    paths:
-      - apworld/las/ghost_relay.py
-      - docker/ghost-relay/**
-      - .github/workflows/ghost-relay-image.yml
-  workflow_dispatch:
+  release:
+    types: [published]
 
 permissions:
   contents: read
@@ -28,6 +24,7 @@ jobs:
           {
             echo "TAGS<<EOF"
             echo "$image:latest"
+            echo "$image:${GITHUB_REF_NAME#v}"
             echo "$image:protocol-$protocol"
             echo "$image:sha-${GITHUB_SHA::7}"
             echo "EOF"

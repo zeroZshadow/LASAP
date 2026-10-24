@@ -1,0 +1,94 @@
+# Builds the release when a GitHub release is published and attaches it: las.apworld (with the patcher and the game
+# module), the options template, the setup guide and LASGhostRelay.exe (README, Building a release). The release's
+# tag is the world's version (archipelago.json world_version, with or without a leading v). Run by hand, it builds the
+# same and keeps it as the workflow's "release" artifact only.
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ARCHIPELAGO_VERSION: "0.6.8"  # the Archipelago the world is built and tested with (TESTING.md, vendor/Archipelago)
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  module:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the game module
+        run: bash scripts/build_exl.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: module
+          path: patcher/exl/
+          if-no-files-found: error
+
+  release:
+    needs: module
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    env:
+      SKIP_REQUIREMENTS_UPDATE: "1"  # Archipelago's venv has every requirement the world needs; no pip for the others
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: The tag is the world's version
+        if: github.event_name == 'release'
+        run: |
+          version="$(python -c "import json; print(json.load(open('apworld/las/archipelago.json'))['world_version'])")"
+          if [ "${GITHUB_REF_NAME#v}" != "$version" ]; then
+            echo "::error::The release's tag is $GITHUB_REF_NAME, the world's version $version."
+            exit 1
+          fi
+      - uses: actions/download-artifact@v4
+        with:
+          name: module
+          path: patcher/exl
+      - uses: actions/checkout@v4
+        with:
+          repository: ArchipelagoMW/Archipelago
+          ref: ${{ env.ARCHIPELAGO_VERSION }}
+          path: vendor/Archipelago
+      - name: Link the world into Archipelago
+        shell: pwsh
+        # a junction, as TESTING.md sets up: the world's tests find the patcher through the world's real path
+        run: New-Item -ItemType Junction -Path vendor/Archipelago/worlds/las -Target "$PWD/apworld/las" | Out-Null
+      - uses: astral-sh/setup-uv@v6
+      - name: Venvs
+        run: |
+          uv venv .venv-ap --python "$PYTHON_VERSION"
+          uv pip install -r vendor/Archipelago/requirements.txt -r patcher/requirements.txt pytest --python .venv-ap
+          uv venv .venv-lasr --python "$PYTHON_VERSION"
+          uv pip install -r patcher/requirements.txt --python .venv-lasr
+          uv venv .venv-relay --python "$PYTHON_VERSION"
+          uv pip install pyinstaller --python .venv-relay
+      - name: The world's tests
+        working-directory: vendor/Archipelago
+        run: ../../.venv-ap/Scripts/python.exe -m pytest worlds/las/test -q
+      - name: Build the release
+        id: build
+        run: |
+          .venv-lasr/Scripts/python.exe scripts/build_release.py
+          echo "dir=$(ls -d build/release/LASAP-*)" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: ${{ steps.build.outputs.dir }}
+          if-no-files-found: error
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" "${{ steps.build.outputs.dir }}"/* --clobber --repo "$GITHUB_REPOSITORY"

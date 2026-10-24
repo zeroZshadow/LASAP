@@ -43,6 +43,10 @@ The release's `las.apworld` is all a player installs, on any system Archipelago 
 
 ### Building a release
 
+Publishing a GitHub release runs the Release workflow (`.github/workflows/release.yml`): it builds the module and the release as below, runs the world's tests and attaches the files to the release. The release's tag must be the world's version (`world_version` in `apworld/las/archipelago.json`, a leading `v` allowed). Publishing also builds the ghost relay's container image (`docs/ghost-relay.md`). Run the Release workflow by hand from the Actions tab to build without releasing; the files are then the run's `release` artifact.
+
+To build locally:
+
 1. Set up `.venv-lasr`, `.venv-ap` and `vendor/Archipelago` (TESTING.md) and build the module with `bash scripts/build_exl.sh` (Docker; it writes `patcher/exl/`, the same for every seed).
 2. Build:
    ```bash

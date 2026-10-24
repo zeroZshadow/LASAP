@@ -3,9 +3,11 @@
 # release ships) and the test build (LASAP_TEST: DBG commands, the debug port, the trace) into patcher/exl-test,
 # which deploy_mod.sh and reload_exl.sh install in the sandbox.
 set -e
+# devkitA64 by digest, so every build (and the release workflow, which runs this script) uses the same toolchain
+IMAGE=devkitpro/devkita64@sha256:1fc388c3a0d34bd2045a6dadcb1020e069d5f876a187fd705de14b4440c00282
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WINROOT="$(cygpath -m "$ROOT" 2>/dev/null || echo "$ROOT")"
-MSYS_NO_PATHCONV=1 docker run --rm -v "$WINROOT/las-ap-exl:/src" -w /src devkitpro/devkita64:latest bash -c '
+MSYS_NO_PATHCONV=1 docker run --rm -v "$WINROOT/las-ap-exl:/src" -w /src "$IMAGE" bash -c '
     set -e
     build() {
         rm -f deploy/subsdk9 deploy/main.npdm src.elf src.nso src.npdm

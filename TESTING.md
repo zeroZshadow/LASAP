@@ -5,7 +5,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 ## Requirements
 
 - Windows session **unlocked**. On a locked desktop the emulator stops presenting frames and the game loop stalls. Turning the monitors off is fine.
-- Docker Desktop with the image `devkitpro/devkita64:latest`.
+- Docker Desktop with the image `devkitpro/devkita64`; `build_exl.sh` pins it by digest (`IMAGE`), and the release workflow builds with the same.
 - Python venvs created with `uv` (Python 3.12):
   - `.venv-ap`: Archipelago requirements (`vendor/Archipelago/requirements.txt`) plus pytest, and the patcher's `requirements.txt` for the world from source.
   - `.venv-lasr`: the patcher's requirements with the asset tools (`patcher/requirements-assets.txt`: oead, quicktex, Pillow on top of `requirements.txt`).
