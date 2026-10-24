@@ -413,7 +413,7 @@ HOOK_DEFINE_TRAMPOLINE(SystemUpdate) {
         // at full volume
         AP::Music::Tick();
         if (g_Loud) AP::Music::Loud();
-        if (!AP::Music::IsChosen(g_Shown.c_str())) Fill();  // the client chose a track
+        if (!AP::Music::IsChosen(g_Shown.c_str())) Fill();  // the choice changed (a test command)
         if (g_GuideShown && OnChosen() != g_GuideStop) RefreshGuide(kSystem);  // A reads Play or Stop
         // Gm_System's own update runs while it opens (its In animation), never once it takes buttons
         if (page->machine.state == 0 || page->machine.state == 0xff) return Orig(page);

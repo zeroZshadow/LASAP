@@ -1,12 +1,12 @@
 #pragma once
-// The Jukebox's track names and descriptions, for players. Ids in the order of apworld/las/music.py TRACKS
-// (test_music checks it). Names fit one list row (at most 24 characters); an info is at most 80 characters, split
+// The Jukebox's track names and descriptions, for players. Ids in the order of the patcher's music randomizer
+// (patcher music.py BGM_TRACKS; test_music checks it). Names fit one list row (at most 24 characters); an info is at most 80 characters, split
 // by "\n" into two lines of at most 40. The lengths come from the RomFS (scripts/track_lengths.py writes them).
 // constexpr only: a dynamically initialised static freezes the game.
 
 namespace AP::Tracks {
     struct Track {
-        const char* id;    // BGM label, as the client's MUSIC line names it
+        const char* id;    // BGM label
         const char* name;  // list row and title
         const char* info;  // what and where, under the list
         unsigned ms;       // one play-through (a short loop repeated to a minute), after which the Jukebox moves on

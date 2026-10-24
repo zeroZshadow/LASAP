@@ -141,8 +141,7 @@ namespace {
         for (const char* v : kVerbs) {
             if (verb == v) return true;
         }
-        // MUSIC <track> | MUSIC off (a choice made in the game); DBG music's MUSIC reply has more fields
-        return verb == "MUSIC" && line.find(' ', 6) == std::string::npos;
+        return false;
     }
 }
 

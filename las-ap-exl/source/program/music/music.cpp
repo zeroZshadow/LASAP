@@ -1,6 +1,5 @@
-// Jukebox (DESIGN.md, Music): a MUSIC line from the client, or the Jukebox page (Choose), picks a BGM that plays
-// instead of the zone's music until MUSIC off. The game tells the client its choice: on each connection and on each
-// choice made in the game.
+// Jukebox (DESIGN.md, Music): the Jukebox page (Choose) picks a BGM that plays instead of the zone's music until the
+// player stops it. The game keeps the choice to itself: the client neither sees nor sets it.
 //
 // Zone music (each room's track from its level file) reaches BgmManager_Play from two places: the zone update, when
 // Link enters a zone whose track differs from the last one, and PlayZoneBgm (the event action PlayZoneBGM, which
@@ -10,8 +9,6 @@
 // comes back where the zone's music would.
 #include "music/music.hpp"
 #include "music/music_tracks.hpp"
-#include "ap/ap.hpp"
-#include "ap/ap_net.hpp"
 #include "ap/ap_text.hpp"
 #include "game/audio.hpp"
 #include "game/framework.hpp"
@@ -23,7 +20,6 @@
 #include <string>
 #include <string_view>
 #include <utility>
-#include <vector>
 
 namespace {
     using Game::StrView;
@@ -111,7 +107,7 @@ namespace {
     // Makes `track` ("" none) the choice; false when it is the choice already or too long.
     bool Set(const std::string& track) {
         if (track.size() >= sizeof(g_Track)) {
-            AP::Log("music: track name too long");
+            Logging.Log("[AP] music: track name too long");
             return false;
         }
         if (track == std::string(g_Track, g_TrackLen)) return false;
@@ -125,7 +121,7 @@ namespace {
         g_PlayedMs = 0;
         g_Ended = false;
         g_Pending = true;
-        AP::Log(track.empty() ? "music off" : "music " + track);
+        Logging.Log("[AP] music %s", track.empty() ? "off" : track.c_str());
         return true;
     }
 
@@ -314,18 +310,8 @@ namespace AP::Music {
 #endif
     }
 
-    void HandleLine(const std::vector<std::string>& a) {
-        // MUSIC <track> | MUSIC off; for a name refused as too long, the client learns what plays instead
-        std::string track = a.size() >= 2 && a[1] != "off" ? a[1] : "";
-        if (!Set(track) && track.size() >= sizeof(g_Track)) Report();
-    }
-
     void Choose(const std::string& track) {
-        if (Set(track == "off" ? "" : track)) Report();
-    }
-
-    void Report() {
-        AP::Send(std::string("MUSIC ") + (g_TrackLen > 0 ? g_Track : "off"));
+        Set(track == "off" ? "" : track);
     }
 
     void Tick(bool free) {
@@ -378,7 +364,7 @@ namespace AP::Music {
         if (!manager->bgm.starting.empty()) return;
         g_Pending = false;
         if (g_TrackLen > 0 && !KnownTrack(g_Track)) {
-            AP::Log(std::string("music: unknown track ") + g_Track);
+            Logging.Log("[AP] music: unknown track %s", g_Track);
             g_Track[0] = 0;
             g_TrackLen = 0;
             g_TrackIndex = -1;

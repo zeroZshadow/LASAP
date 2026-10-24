@@ -10,7 +10,6 @@
 #include "ghost/ghost_net.hpp"
 #include "loggers.hpp"
 #include "map/map_tracker.hpp"
-#include "music/music.hpp"
 #ifdef LASAP_TEST
 #include "test/test.hpp"
 #endif
@@ -105,8 +104,6 @@ namespace {
             QueueNotice(RestAfter(line, 1));
         } else if (a[0] == "GHOST" || a[0] == "GHOSTS" || a[0] == "GHOSTNAMES") {
             AP::GhostNet::HandleLine(line);
-        } else if (a[0] == "MUSIC") {
-            AP::Music::HandleLine(a);
         } else if (a[0] == "MSG") {
             Logging.Log("[AP] %s", line.c_str() + 4);
 #ifdef LASAP_TEST

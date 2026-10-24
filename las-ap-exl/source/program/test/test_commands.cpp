@@ -234,7 +234,9 @@ namespace {
         } else if (cmd == "text") {
             AP::Send(a.size() >= 3 ? AP::SeenText(a[2]) : AP::TextState());
         } else if (cmd == "music") {
-            // DBG music: the jukebox's STATE fields and the last BGM requests
+            // DBG music: the jukebox's STATE fields and the last BGM requests; DBG music <track>|off: chooses as the
+            // Jukebox page does
+            if (a.size() >= 3) AP::Music::Choose(a[2]);
             AP::Send("MUSIC" + AP::Music::StateField() + " " + AP::Music::LogText());
         } else if (cmd == "jukebox") {
             // DBG jukebox: the Jukebox page's state

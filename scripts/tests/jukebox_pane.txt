@@ -6,7 +6,7 @@
 # built and dropped and the text boxes whose glyphs are drawn, and shows the guide's A caption.
 warp Lv09WindFishsEgg 37.5 0 94.5
 expect HELLO 30
-send /music off
+send DBG music off
 await 10 music=-
 free 20
 tap 400 when free 3000
@@ -19,13 +19,13 @@ tap 80
 await 10 pane=3\snavi=2\sjbox=16/13
 send DBG jukebox
 expect JUKEBOX\smode=1.*rows=7\sdrawn=7\stexts=6\stextsdrawn=6.*guide=play\sname=Wind\sFish's\sEgg 5
-# Down to the next track; A plays it while the menu is open, at full volume, and the client learns the choice.
+# Down to the next track; A plays it while the menu is open, at full volume, and the client hears nothing of it.
 tap 8000
 await 5 jbox=17/13
 tap 1
 await 5 music=BGM_SEASHELL_HOUSE\szonebgm=\S+\sbgm=BGM_SEASHELL_HOUSE:1\sbgmvol=100\s
 check paused=1
-logged Music:\sBGM_SEASHELL_HOUSE\. 10 client
+logcount Music:\sBGM_|game:\smusic 0 client
 send DBG jukebox
 expect JUKEBOX.*guide=stop\sname=Seashell\sMansion 5
 # A on the chosen track turns the Jukebox off: the zone's own track again, at full volume; A again chooses it again.
@@ -132,7 +132,7 @@ send DBG jukebox
 expect JUKEBOX.*shuffle=0\srepeat=0 5
 tap 2
 await 10 paused=0
-send /music BGM_EVENT_MARINE_IN_BEACH
+send DBG music BGM_EVENT_MARINE_IN_BEACH
 await 5 music=BGM_EVENT_MARINE_IN_BEACH\s
 await 15 music=BGM_EVENT_RESCUE_BOWBOW_INTRO\s
 # Repeat one on again, as at the start.
@@ -147,6 +147,5 @@ send DBG jukebox
 expect JUKEBOX.*shuffle=0\srepeat=1 5
 tap 2
 await 10 paused=0
-# The client's /music off reaches the game: the client took the game's choice as its own.
-send /music off
+send DBG music off
 await 10 music=-
