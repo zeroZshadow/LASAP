@@ -6,7 +6,7 @@ import weakref
 from collections import Counter
 from typing import Any, ClassVar, Dict, List, Mapping, Optional, Set, TextIO
 
-from BaseClasses import CollectionState, Item, ItemClassification, LocationProgressType, Region, Tutorial
+from BaseClasses import CollectionState, Item, ItemClassification, Location, LocationProgressType, Region, Tutorial
 from Options import PerGameCommonOptions
 from Fill import fill_restrictive
 from worlds.AutoWorld import WebWorld, World
@@ -21,7 +21,7 @@ from .items import FILLER_ITEM, GAME, ITEM_GAME_INFO, ITEM_NAME_GROUPS, ITEM_TAB
 from .lasr import (CATEGORIES, COUNTED, DUNGEON_NAMES, DUNGEON_REWARD_LOCATIONS, DUNGEONS, INSTRUMENT_LOCATIONS,
                    INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC, TRAPS, dungeon_logic, goal_logic, item_dungeon,
                    location_dungeon, shuffle_dungeons)
-from .locations import LOCATION_NAME_GROUPS, LOCATION_NAME_TO_ID, LOCATION_NAMES, LASLocation
+from .locations import LASR_LOCATIONS, LOCATION_NAME_GROUPS, LOCATION_NAME_TO_ID, LOCATION_NAMES, LASLocation
 from .logic import LogicCompiler, make_rule, referenced_regions
 from .models import model_for
 from .options import OPTION_GROUPS, LASOptions
@@ -340,30 +340,8 @@ class LASWorld(World):
 
     # --- fill ---
 
-    def generate_basic(self) -> None:
-        # Very few locations are reachable with nothing (Tarin and a few loose items). Like LASR's Tarin rule,
-        # make one item that opens up the island early so the fill does not run out of starting locations.
-        events = [loc for loc in self.multiworld.get_locations(self.player) if loc.address is None]
-        mine = [loc for loc in self.multiworld.get_locations(self.player) if loc.address is not None]
-        state = CollectionState(self.multiworld)
-        state.sweep_for_advancements(events)
-        base = sum(loc.can_reach(state) for loc in mine)
-        if base >= EARLY_LOCATIONS_WANTED:
-            return
-        gains = {}
-        for name in sorted({item.name for item in self.multiworld.itempool
-                            if item.player == self.player and item.advancement}):
-            trial = state.copy()
-            trial.collect(self.create_item(name), prevent_sweep=True)
-            trial.sweep_for_advancements(events)
-            gains[name] = sum(loc.can_reach(trial) for loc in mine) - base
-        # the items that open enough locations, else those that open the most (with few locations shuffled)
-        wanted = min(EARLY_LOCATIONS_WANTED, max(gains.values(), default=0))
-        openers = [name for name, gain in gains.items() if gain >= wanted > 0]
-        if openers:
-            self.multiworld.local_early_items[self.player][self.random.choice(openers)] = 1
-
     def pre_fill(self) -> None:
+        self._place_opener()
         if not self.pre_fill_items:
             return
         allowed = {name: {self.get_location(LOCATION_NAMES[loc]) for loc in locs}
@@ -406,6 +384,40 @@ class LASWorld(World):
                     location.item.location = None
                     location.item = None
                     location.locked = False
+
+    def _place_opener(self) -> None:
+        """Very few locations are reachable with nothing (Tarin and a few loose items). Like LASR's Tarin rule, one of
+        them holds an item that opens up the island, so the fill does not run out of starting locations: one of the
+        pool's items that make EARLY_LOCATIONS_WANTED locations reachable (else of those that open the most), each item
+        as likely however many copies the pool holds. It goes to a starting location outside the shop, where only
+        stealing gets it, if there is one."""
+        state = CollectionState(self.multiworld)
+        state.sweep_for_advancements()
+
+        def open_locations(state: CollectionState) -> List[Location]:
+            return [loc for loc in self.multiworld.get_unfilled_locations(self.player)
+                    if loc.progress_type != LocationProgressType.EXCLUDED and loc.can_reach(state)]
+
+        start = open_locations(state)
+        if not start or len(start) >= EARLY_LOCATIONS_WANTED:
+            return
+        pool = [item for item in self.multiworld.itempool if item.player == self.player and item.advancement]
+        reach = {}
+        for name in sorted({item.name for item in pool}):
+            trial = state.copy()
+            trial.collect(self.create_item(name), prevent_sweep=True)
+            trial.sweep_for_advancements()
+            reach[name] = len(open_locations(trial))
+        wanted = min(EARLY_LOCATIONS_WANTED, max(reach.values(), default=0))
+        if wanted <= len(start):
+            return
+        name = self.random.choice(sorted(name for name, count in reach.items() if count >= wanted))
+        item = next(item for item in pool if item.name == name)
+        spots = [loc for loc in start if loc.can_fill(state, item, check_access=False)]
+        spots = [loc for loc in spots if LOGIC[LASR_LOCATIONS[loc.name]]["subtype"] != "shop"] or spots
+        if spots:  # this copy: list.remove would take the first equal item, the same name and player
+            del self.multiworld.itempool[next(i for i, other in enumerate(self.multiworld.itempool) if other is item)]
+            self.random.choice(spots).place_locked_item(item)
 
     def _progression_fits(self) -> bool:
         """Whether this world's progression items fit into its own empty locations, in each of a few random fills.

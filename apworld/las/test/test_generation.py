@@ -250,9 +250,44 @@ class TestFewLocations(unittest.TestCase):
         for seed in range(1, 9):
             multiworld = setup_multiworld(LASWorld, seed=seed, options=self.options)
             world = multiworld.worlds[1]
-            # an item that opens the most locations is placed early, though none opens EARLY_LOCATIONS_WANTED
-            self.assertEqual(len(multiworld.local_early_items[1]), 1, seed)
+            # an item that opens the most locations is placed at the start, though none opens EARLY_LOCATIONS_WANTED
+            self.assertEqual(len(opener_locations(multiworld)), 1, seed)
             self.assertTrue(world._progression_fits(), seed)
+
+
+def opener_locations(multiworld) -> list:
+    """The slot's locations that pre_fill gave an item of the pool, locked: the opener (LASWorld._place_opener)."""
+    world = multiworld.worlds[1]
+    locked = {LOCATION_NAMES[loc] for loc in world.locked}
+    return [loc for loc in multiworld.get_locations(1) if loc.locked and loc.address is not None and
+            loc.name not in locked and loc.item.player == 1 and loc.item.name not in world.restricted]
+
+
+class TestOpener(unittest.TestCase):
+    """No starting gear: only seven locations are reachable, three of them shop slots. One holds an item that makes ten
+    reachable, which differs between seeds, and none of the shop slots does."""
+    options = {"start_inventory_from_pool": {}}
+
+    def test_opener(self) -> None:
+        from test.general import setup_multiworld
+        from .. import LASWorld
+        from ..locations import LASR_LOCATIONS
+        names = set()
+        for seed in range(1, 9):
+            multiworld = setup_multiworld(LASWorld, seed=seed, options=self.options)
+            (location,) = opener_locations(multiworld)
+            self.assertTrue(location.item.advancement, seed)
+            self.assertNotEqual(LOGIC[LASR_LOCATIONS[location.name]]["subtype"], "shop", seed)
+            names.add(location.item.name)
+        self.assertGreater(len(names), 1)
+
+    def test_no_opener_with_sword(self) -> None:
+        from test.general import gen_steps, setup_multiworld
+        from .. import LASWorld
+        multiworld = setup_multiworld(LASWorld, seed=1, options=self.options, steps=gen_steps[:-1])
+        multiworld.push_precollected(multiworld.worlds[1].create_item("Progressive Sword"))
+        call_all(multiworld, "pre_fill")
+        self.assertEqual(opener_locations(multiworld), [])
 
 
 class TestAnyDungeon(LASTestBase):

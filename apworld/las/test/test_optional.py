@@ -65,8 +65,9 @@ class TestDefaultOptional(LASTestBase):
     def test_items_in_pool(self) -> None:
         """Their vanilla items are the slot's like any shuffled location's: the trade items, the magnifying lens,
         the bottles, the level-2 sword, Dampe's heart container."""
+        from .test_generation import opener_locations
         items = [item.name for item in self.multiworld.itempool + self.world.get_pre_fill_items()
-                 if item.player == self.player]
+                 if item.player == self.player] + [loc.item.name for loc in opener_locations(self.multiworld)]
         for content in ("magnifying-lens", "mermaid-scale", "ribbon", "bottle", "heart-container"):
             self.assertIn(LASR_TO_ITEM[content], items, content)
         self.assertEqual(items.count("Progressive Sword"), 2)  # the tests leave the starting gear in the pool
