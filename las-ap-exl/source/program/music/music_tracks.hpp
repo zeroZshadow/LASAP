@@ -84,7 +84,7 @@ namespace AP::Tracks {
         {"BGM_OWL_LAST", "The Owl's Last Words", "The owl's last words, at the door of the\nWind Fish's Egg.", 68064},
         {"BGM_DEMO_AFTER_LASTBOSS", "The Wind Fish", "Plays as the Wind Fish speaks to Link\nafter the final battle.", 70143},
         // the Jukebox's own: music.cpp plays its tracks for Link's instruments
-        {"BGM_ENSEMBLE_INST", "Ballad of the Wind Fish", "Played at the Wind Fish's Egg: each\ninstrument Link has adds its part.", 43192},
+        {"BGM_ENSEMBLE_INST", "Ballad of the Wind Fish", "Played at the Wind Fish's Egg: each\ninstrument Link has adds its part.", 75115},
     };
 
     constexpr int COUNT = sizeof(TRACKS) / sizeof(TRACKS[0]);

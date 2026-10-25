@@ -1,6 +1,6 @@
 # The Jukebox's Ballad of the Wind Fish (DESIGN.md, Music): BGM_ENSEMBLE_INST, a track per instrument, plays with the
-# tracks of the instruments Link has; one he finds while it plays fades in, and with repeat one it starts again once
-# it has ended (it does not loop). With no instrument it cannot play: the page greys it out and A on it beeps, and
+# tracks of the instruments Link has; one he finds while it plays fades in, and it loops (the patcher's looping copy,
+# BGM_ENSEMBLE_LOOP.bfstm, which the mod must hold). With no instrument it cannot play: the page greys it out and A on it beeps, and
 # next and previous pass over it. Run after newgame_file2: Link has no instruments; it gives him the Full Moon Cello
 # and the Conch Horn (raw adds, no item-get). STATE's layers= is the instruments the ensemble's tracks are set for
 # (bit i the instrument of dungeon i + 1), DBG music's log the BGM requests (+a688c, +a6988: PlayZoneBgm).
@@ -50,9 +50,13 @@ await 10 music=BGM_ENSEMBLE_INST zonebgm=\S+ bgm=BGM_ENSEMBLE_INST:1\s.*layers=0
 send DBG give 51 1 -1
 expect OK.give 5
 await 5 layers=03
-# 43 s in it ends and starts again: a second play of it from PlayZoneBgm, its tracks set for both instruments.
-poll (->BGM_ENSEMBLE_INST\s\+a6\w+\s\d+\snew.*){2} 60 DBG music
-await 5 music=BGM_ENSEMBLE_INST zonebgm=\S+ bgm=BGM_ENSEMBLE_INST:1\s.*layers=03
+# It plays the patcher's looping copy, which loops at 37.6 s in the same instance: one play of it 45 s in.
+send DBG music
+expect MUSICLOG\sopen=\S+/stream/BGM_ENSEMBLE_LOOP\.bfstm\s 5
+wait 45
+check music=BGM_ENSEMBLE_INST zonebgm=\S+ bgm=BGM_ENSEMBLE_INST:1\s.*layers=03
+send DBG music
+expect MUSICLOG(?!(.*->BGM_ENSEMBLE_INST\s\S+\s\d+\snew){2}) 5
 # Off: the field's own track comes back.
 send DBG music off
 await 10 music=- zonebgm=\S+ bgm=\S+:1\s.*layers=-

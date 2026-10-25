@@ -3,7 +3,8 @@
 A BGM label leads through the sound archive (region_common/audio/Richard.bfsar: its string tree, sound infos and
 file infos) to its stream file (region_common/audio/stream/*.bfstm), whose stream info holds the sample rate, the
 loop flag, the loop start and the end. A track plays through once at its end; a looping track then repeats its loop
-until at least MIN_SECONDS have passed, so a short loop is heard a few times before the Jukebox moves on.
+until at least MIN_SECONDS have passed, so a short loop is heard a few times before the Jukebox moves on. The Ballad
+of the Wind Fish's length is its looping copy's, which the patcher makes (patcher/ap_ballad.py).
 
 Run with any Python 3: python track_lengths.py [--romfs D:/Games/Switch/LASRomFS] [--check]
 --check only reports entries whose length differs from the RomFS's.
@@ -16,7 +17,10 @@ from pathlib import Path
 
 DEFAULT_ROMFS = "D:/Games/Switch/LASRomFS"
 MIN_SECONDS = 60
-HEADER = Path(__file__).resolve().parent.parent / "las-ap-exl" / "source" / "program" / "music" / "music_tracks.hpp"
+ROOT = Path(__file__).resolve().parent.parent
+HEADER = ROOT / "las-ap-exl" / "source" / "program" / "music" / "music_tracks.hpp"
+sys.path.insert(0, str(ROOT / "patcher"))
+import ap_ballad  # noqa: E402
 # {"BGM_...", "name", "info"} or {"BGM_...", "name", "info", ms}
 ENTRY = re.compile(r'(\{\s*"(BGM_\w+)"\s*,\s*"(?:[^"\\]|\\.)*"\s*,\s*"(?:[^"\\]|\\.)*")(?:\s*,\s*\d+)?(\s*\})')
 
@@ -75,8 +79,7 @@ def stream_paths(romfs: Path) -> dict:
     return paths
 
 
-def play_ms(path: Path) -> int:
-    data = path.read_bytes()
+def play_ms(data: bytes) -> int:
     info = sections(data)[0x4000] + 8
     _, offset = struct.unpack_from("<Hxxi", data, info)
     _, loop, _, _, rate, start, end = struct.unpack_from("<BBBBIII", data, info + offset)
@@ -102,7 +105,10 @@ def main() -> None:
         if label not in paths:
             missing.append(label)
             return match.group(0)
-        ms = play_ms(romfs / "region_common" / "audio" / paths[label])
+        data = (romfs / "region_common" / "audio" / paths[label]).read_bytes()
+        if label == ap_ballad.LABEL:  # the Jukebox plays the patcher's looping copy
+            data = ap_ballad.loop_stream(data, ap_ballad.LOOP_END)
+        ms = play_ms(data)
         new = f"{match.group(1)}, {ms}{match.group(3)}"
         if new != match.group(0):
             changed.append(label)

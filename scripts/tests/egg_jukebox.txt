@@ -1,0 +1,34 @@
+# The egg's Ballad stays the game's while the Jukebox plays its own (DESIGN.md, Music): the egg's PlayOrchestra opens
+# the original stream (BGM_ENSEMBLE_INST.bfstm), not the Jukebox's looping copy, as a new instance with the egg's own
+# tracks (the module sets none: layers=-). Run after newgame_file2 (default starting gear: the ocarina), on a mod that
+# holds the copy. DBG grant adds the Ballad, DBG give the Sea Lily's Bell; FourteenClear keeps the owl at the stairs
+# from talking.
+send DBG setflag FourteenClear 1
+expect FLAG.FourteenClear.1 5
+send DBG grant Song_WindFish 1 -1 0
+expect OK.grant 10
+send DBG give 52 1 -1
+expect OK.give 5
+# The ocarina (item 0x0c) on X with the Ballad selected (song 1), as the item menu sets them: inventory bytes a3, a1.
+send DBG poke a1 01
+expect OK.poke 5
+send DBG poke a3 0c
+expect OK.poke 5
+# On the stairs below the egg, with the Jukebox's Ballad playing (the warp's level asks for its track again).
+warp Field 98.25 32.25 8.25
+send DBG music BGM_ENSEMBLE_INST
+await 10 music=BGM_ENSEMBLE_INST zonebgm=\S+ bgm=\S*BGM_ENSEMBLE_INST:1\S*\s.*layers=04
+send DBG music
+expect MUSICLOG\sopen=\S+/stream/BGM_ENSEMBLE_LOOP\.bfstm\s 5
+# The Ballad at the egg: the egg's request starts its own from the original file.
+interact 4
+until event=22 10
+poll MUSICLOG\sopen=\S+/stream/BGM_ENSEMBLE_INST\.bfstm\s 20 DBG music
+send DBG music
+expect play\sBGM_ENSEMBLE_INST\s\+afe\w+\s000\snew 5
+check bgm=\S*BGM_ENSEMBLE_INST:1\S*\s.*layers=-
+free 90
+send DBG setflag FourteenClear 0
+expect FLAG.FourteenClear.0 5
+send DBG music off
+await 10 music=-

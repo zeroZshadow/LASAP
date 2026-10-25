@@ -54,6 +54,7 @@ from RandomizerCore.Randomizers.shop import TEXT_TO_CHANGE as SHOP_TEXT  # noqa:
 from RandomizerCore.Tools import event_tools  # noqa: E402
 from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct  # noqa: E402
 import ap_assets  # noqa: E402
+import ap_ballad  # noqa: E402
 import ap_chest  # noqa: E402
 import ap_deathlink  # noqa: E402
 import ap_ghost  # noqa: E402
@@ -737,6 +738,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     # all eight for patches from before the option
     ap_goal.set_instrument_count(proc.file_manager, patch["settings"].get("Instruments Required", 8))
     ap_save_name.set_default(proc.file_manager, patch.get("slot_name", ""))
+    ap_ballad.add(args.romfs, proc.romfs_dir)
     map_tracker = patch["settings"].get("Map Tracker", False)  # off for patches from before the option
     if map_tracker:
         # the activities the options leave out stay off the map, as in PopTracker

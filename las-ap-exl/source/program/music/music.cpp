@@ -16,6 +16,7 @@
 #include "game/sym.hpp"
 #include "game/time.hpp"
 #include "loggers.hpp"
+#include "nn/fs.hpp"
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -70,6 +71,16 @@ namespace {
     constexpr const char* kEnsemble = "BGM_ENSEMBLE_INST";
     constexpr int kInstruments = 8;
     constexpr u32 kLayerFadeFrames = 120;
+    // The stream does not loop: the egg plays it once. The patcher writes a looping copy beside it (ap_ballad.py), cut
+    // at the downbeat where the ending's decay begins, and the Jukebox's request opens that file instead
+    // (nn::fs::OpenFile, from the sound archive's path for the label): the latest request for the ensemble decides,
+    // the Jukebox's for the copy, any other (the egg's) for the original, before which the Jukebox's copy stops so the
+    // egg starts its own from the beginning. A mod without the copy plays the original.
+    constexpr const char* kEnsembleFile = "stream/BGM_ENSEMBLE_INST.bfstm";
+    constexpr const char* kEnsembleName = "INST";  // its part of the path the copy's name replaces
+    constexpr const char* kLoopName = "LOOP";
+    constexpr u32 kEnsembleOutFrames = 10;
+    volatile bool g_LoopFile = false;  // read on the audio loader's thread
 
     // The chosen track ("" none), its index in AP::Tracks::TRACKS (-1: none, or a track not in the list), and whether
     // the game should switch to it (or back) on the next tick in a level.
@@ -331,13 +342,52 @@ namespace {
         if (sound != nullptr) Game::Sound_Stop(sound, kHeldFadeFrames);
     }
 
+    // Another request for the ensemble (the egg's): the Jukebox's copy stops (a fading track does not keep the game
+    // from starting it again), held or not.
+    void StopEnsemble(const BgmManager* manager) {
+        for (const BgmInstance* instance : manager->bgm.playing) {
+            if (instance->handle.name.View() != kEnsemble || instance->handle.sound == nullptr) continue;
+            g_Held = g_Carried = false;
+            Game::Sound_Stop(instance->handle.sound, kEnsembleOutFrames);
+        }
+    }
+
+#ifdef LASAP_TEST
+    char g_StreamOpen[256] = {};  // the last stream file opened (DBG music)
+#endif
 }
+
+HOOK_DEFINE_TRAMPOLINE(FsOpenFile) {
+    static Result Callback(nn::fs::FileHandle* handle, const char* path, int mode) {
+        size_t length = path != nullptr ? strlen(path) : 0, tail = strlen(kEnsembleFile);
+#ifdef LASAP_TEST
+        if (path != nullptr && strstr(path, "/stream/") != nullptr) snprintf(g_StreamOpen, sizeof(g_StreamOpen), "%s", path);
+#endif
+        if (!g_LoopFile || length < tail || length >= 256 || strcmp(path + length - tail, kEnsembleFile) != 0) {
+            return Orig(handle, path, mode);
+        }
+        char looped[256];
+        memcpy(looped, path, length + 1);
+        memcpy(strstr(looped + length - tail, kEnsembleName), kLoopName, strlen(kLoopName));
+        Result result = Orig(handle, looped, mode);
+#ifdef LASAP_TEST
+        if (R_SUCCEEDED(result)) snprintf(g_StreamOpen, sizeof(g_StreamOpen), "%s", looped);
+#endif
+        return R_SUCCEEDED(result) ? result : Orig(handle, path, mode);  // a mod without the copy
+    }
+};
 
 HOOK_DEFINE_TRAMPOLINE(BgmManagerPlay) {
     static BgmInstance* Callback(float volume, BgmManager* manager, StrView* name, bool b2, bool b3, bool force) {
         uintptr_t ret = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
         StrView chosen{g_Track, g_TrackLen};
         bool swap = g_TrackLen > 0 && IsZoneCall(ret, name);
+        if (swap && chosen.View() == kEnsemble) {
+            g_LoopFile = true;
+        } else if (name != nullptr && name->View() == kEnsemble) {
+            g_LoopFile = false;
+            StopEnsemble(manager);
+        }
         BgmInstance* instance = Orig(volume, manager, swap ? &chosen : name, b2, b3, force);
         if (swap && instance != nullptr && chosen.View() == kEnsemble) SetLayers(instance);
         if ((g_Held || g_Carried) && !swap && instance != nullptr) StopHeld();  // an event's song, a fanfare
@@ -388,6 +438,7 @@ HOOK_DEFINE_TRAMPOLINE(SoundStop) {
 namespace AP::Music {
     void InstallHooks() {
         BgmManagerPlay::InstallAtFuncPtr(Game::BgmManager_Play.Ptr());
+        FsOpenFile::InstallAtFuncPtr(nn::fs::OpenFile);
         BgmStopAll::InstallAtFuncPtr(Game::BgmManager_StopAll.Ptr());
         BgmFadeZone::InstallAtFuncPtr(Game::BgmManager_FadeZone.Ptr());
         SoundStop::InstallAtFuncPtr(Game::Sound_Stop.Ptr());
@@ -574,7 +625,7 @@ namespace AP::Music {
     }
 
     std::string LogText() {
-        std::string s = "MUSICLOG";
+        std::string s = std::string("MUSICLOG open=") + (g_StreamOpen[0] != 0 ? g_StreamOpen : "-");
         size_t from = g_LogCount > kLogSize ? g_LogCount - kLogSize : 0;
         for (size_t i = from; i < g_LogCount; i++) s += " | " + g_Log[i % kLogSize];
         return s;
