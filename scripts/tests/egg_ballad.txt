@@ -1,0 +1,20 @@
+# The Ballad at the Wind Fish's Egg with no instruments, to hear the egg's scene (PlayOrchestra plays
+# BGM_ENSEMBLE_INST with every track silent, beside Link's ocarina). Run after newgame_file2 (default starting gear:
+# the ocarina). DBG grant adds the Ballad without an item-get; FourteenClear keeps the owl at the stairs from talking.
+send DBG setflag FourteenClear 1
+expect FLAG.FourteenClear.1 5
+send DBG grant Song_WindFish 1 -1 0
+expect OK.grant 10
+# The ocarina (item 0x0c) on X with the Ballad selected (song 1), as the item menu sets them: inventory bytes a3, a1.
+send DBG poke a1 01
+expect OK.poke 5
+send DBG poke a3 0c
+expect OK.poke 5
+# On the stairs below the egg, inside the area where the Ballad starts the egg's scene.
+warp Field 98.25 32.25 8.25
+interact 4
+until event=22 10
+free 90
+send DBG setflag FourteenClear 0
+expect FLAG.FourteenClear.0 5
+state

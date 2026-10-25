@@ -123,8 +123,12 @@ def start() -> None:
         del args[i:i + 2]
     out = open(os.path.join(HOME, "emu_stdout.txt"), "w")
     # --audio-volume 0 does not mute; SDL's dummy driver keeps the sandbox silent. --disable-ptc keeps translations
-    # of one run from the next; LASAP_PTC=1 keeps the translation cache on, as players have it.
+    # of one run from the next; LASAP_PTC=1 keeps the translation cache on, as players have it. LASAP_AUDIO=1 plays
+    # the game's sound, for the user to listen.
     env = dict(os.environ, SDL_AUDIO_DRIVER="dummy", SDL_AUDIODRIVER="dummy")
+    if os.environ.get("LASAP_AUDIO") == "1":
+        args[args.index("--audio-volume") + 1] = "1"
+        env = dict(os.environ)
     foreground = ctypes.windll.user32.GetForegroundWindow()
     info = subprocess.STARTUPINFO()
     info.dwFlags |= subprocess.STARTF_USESHOWWINDOW

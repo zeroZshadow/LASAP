@@ -656,7 +656,7 @@ Msbt_FindLabel 0x095aef40 f
 Tailor_StopChannel 0x095d7b50 f (core, const char* channel)
 Tailor_AddLayerChannel 0x095d7e60 f (core, const char* channel, const char* base, int, int): LayerMotion from Motion
 Tailor_Play 0x095d8340 f (core, StringView* channel, StringView* value): starts the drsb sequence channel/value
-Tailor_PrepareValue 0x095d8e10 f (core, StringView* channel, StringView* value): called before Tailor_Play for Other events; role unverified
+Tailor_StopValue 0x095d8e10 f (core, StringView* channel, StringView* value): stops that sequence; the event action StopTailorOtherChannel calls it, and PlayTailorOtherChannelEx with restart before Tailor_Play
 Tailor_IsPlaying 0x095d9330 f (core, const char* channel, StringView* value) -> bool
 Tailor_SetChannelFrame 0x095d9670 f (core, const char* channel, f32 frame)
 HudPass_Draw 0x095dce00 f draws each layout whose +0x71 byte is set, after the 3D scene, no depth test

@@ -6,8 +6,12 @@
 namespace AP::Music {
     void InstallHooks();
     // A choice made on the Jukebox page: a track, or "" or "off" for the game's own music. It only sets the change,
-    // which the next Tick applies; with the pause menu open the caller calls Tick to apply it at once.
+    // which the next Tick applies; with the pause menu open the caller calls Tick to apply it at once. A track that
+    // cannot play yet is refused.
     void Choose(const std::string& track);
+    // Whether `track` can play: the Ballad of the Wind Fish once Link has an instrument, every other track always.
+    // Next and previous pass over one that cannot.
+    bool Playable(const char* track);
     // Once per tick: switches to the chosen track (or back) once a level is loaded; with repeat one off and the
     // player free, moves on once the track has played through; with repeat one and the player free or the pause menu
     // open (`paused`), starts a track that does not loop again once it has ended.

@@ -1,6 +1,7 @@
 # The Jukebox's Ballad of the Wind Fish (DESIGN.md, Music): BGM_ENSEMBLE_INST, a track per instrument, plays with the
 # tracks of the instruments Link has; one he finds while it plays fades in, and with repeat one it starts again once
-# it has ended (it does not loop). Run after newgame_file2: Link has no instruments; it gives him the Full Moon Cello
+# it has ended (it does not loop). With no instrument it cannot play: the page greys it out and A on it beeps, and
+# next and previous pass over it. Run after newgame_file2: Link has no instruments; it gives him the Full Moon Cello
 # and the Conch Horn (raw adds, no item-get). STATE's layers= is the instruments the ensemble's tracks are set for
 # (bit i the instrument of dungeon i + 1), DBG music's log the BGM requests (+a688c, +a6988: PlayZoneBgm).
 send DBG music off
@@ -11,13 +12,41 @@ warp MarinTarinHouse 6.85 0 3.83
 hold 0 0 -32767 until level=Field 10
 loaded 20
 await 10 music=- zonebgm=\S+ bgm=\S+:1\s.*layers=-
+# No instrument: the Ballad is refused, and → from the track before it (the list's last but one) goes round to
+# the first.
 send DBG music BGM_ENSEMBLE_INST
-await 10 music=BGM_ENSEMBLE_INST zonebgm=\S+ bgm=BGM_ENSEMBLE_INST:1\s.*layers=00
-# Instruments found while it plays: their tracks fade in.
+expect MUSIC\smusic=-\s 5
+send DBG music BGM_DEMO_AFTER_LASTBOSS
+await 10 music=BGM_DEMO_AFTER_LASTBOSS zonebgm=\S+ bgm=BGM_DEMO_AFTER_LASTBOSS:1\s
+tap 4000 when free 3000
+await 10 music=BGM_DUNGEON_LV6_FACE zonebgm=\S+ bgm=BGM_DUNGEON_LV6_FACE:1\s
+# The page: Plus, R to System, R to the Jukebox, the cursor on the chosen track; down to the Ballad, greyed out,
+# where A beeps and changes nothing.
+send DBG music BGM_DEMO_AFTER_LASTBOSS
+await 10 music=BGM_DEMO_AFTER_LASTBOSS zonebgm=\S+ bgm=BGM_DEMO_AFTER_LASTBOSS:1\s
+tap 400 when free 3000
+await 10 pane=1\snavi=2
+tap 80
+await 10 pane=2\snavi=2
+tap 80
+await 10 pane=3\snavi=2
+send DBG jukebox
+expect JUKEBOX.*name=The\sWind\sFish\slocked=0 5
+tap 8000
+send DBG jukebox
+expect JUKEBOX.*name=Ballad\sof\sthe\sWind\sFish\slocked=1 5
+shot D:/DEV/LASAP-sandbox/jukebox_ballad_locked.png
+tap 1
+wait 1
+check music=BGM_DEMO_AFTER_LASTBOSS\s
+tap 2
+await 10 paused=0
+# An instrument: the Ballad plays, its tracks set for it; a second one found while it plays fades in.
 send DBG give 50 1 -1
 expect OK.give 5
-await 5 layers=01
 check cello=1
+send DBG music BGM_ENSEMBLE_INST
+await 10 music=BGM_ENSEMBLE_INST zonebgm=\S+ bgm=BGM_ENSEMBLE_INST:1\s.*layers=01
 send DBG give 51 1 -1
 expect OK.give 5
 await 5 layers=03

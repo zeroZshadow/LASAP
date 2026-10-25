@@ -185,11 +185,21 @@ namespace {
     }
 
     // The track `step` places from `current` (-1: a track not in the list, before the first) in the order.
-    int StepFrom(int current, int step) {
+    int StepOnce(int current, int step) {
         constexpr int n = AP::Tracks::COUNT;
         if (current < 0) return g_Shuffle ? g_Order[step > 0 ? 0 : n - 1] : step > 0 ? 0 : n - 1;
         if (!g_Shuffle) return ((current + step) % n + n) % n;
         return g_Order[((g_Place[current] + step) % n + n) % n];
+    }
+
+    // The next track in the order that can play.
+    int StepFrom(int current, int step) {
+        int at = current;
+        for (int i = 0; i < AP::Tracks::COUNT; i++) {
+            at = StepOnce(at, step);
+            if (AP::Music::Playable(AP::Tracks::TRACKS[at].id)) break;
+        }
+        return at;
     }
 
     // The chosen track's instance among those that play, or null.
@@ -387,8 +397,14 @@ namespace AP::Music {
     }
 
     void Choose(const std::string& track) {
+        if (track != "off" && !Playable(track.c_str())) {
+            Logging.Log("[AP] music: %s needs an instrument", track.c_str());
+            return;
+        }
         Set(track == "off" ? "" : track);
     }
+
+    bool Playable(const char* track) { return strcmp(track, kEnsemble) != 0 || Instruments() != 0; }
 
     void Tick(bool free, bool paused) {
         Game::Framework* fmwk = Game::GetFramework();
@@ -409,6 +425,7 @@ namespace AP::Music {
             StopHeld();  // an event that meant silence is over
         }
         g_Carried = false;
+        if (g_TrackLen > 0 && !Playable(g_Track)) Set("");  // a save without instruments loaded under the Ballad
         UpdateLayers(manager);
         // How long the chosen track has played: from its start, while it plays (also under the pause menu, which
         // does not tick this). With repeat one off, the next track once it has played through, only while the player

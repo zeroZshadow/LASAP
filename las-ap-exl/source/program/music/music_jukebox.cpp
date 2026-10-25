@@ -44,6 +44,10 @@ namespace {
     // The track list (Gm_MemoryList), right of the middle.
     constexpr float kListX = 250, kListY = 40;
     constexpr u8 kHighlight = 96;  // W_Add alpha of the row animation On: the track that plays
+    // A track that cannot play yet (AP::Music::Playable): its name faded into the row (its text box's alpha), A
+    // refused, and its description says why.
+    constexpr int kLockedAlpha = 90;
+    constexpr const char* kLockedInfo = "No instruments yet: each instrument Link\nfinds adds its part.";
 
     // Gm_MemoryCollect: T_Collect_00 (two lines, 33 characters) over the paper window W_window_00 (y -46), which holds
     // A_Collect_00 (x 10): the icon P_pict_00 (x -86, hidden here) and T_CollectNum_00 / T_CollectMaxNum_00. The text
@@ -164,6 +168,9 @@ namespace {
             int entry = list.top + r;
             if (entry >= kEntries) continue;
             SetText(row.text, Entry(entry).name);
+            if (row.text.box != nullptr) {
+                SetAlpha(&row.text.box->pane, AP::Music::Playable(Entry(entry).id) ? 255 : kLockedAlpha);
+            }
             SetAlpha(row.add0, entry == chosenEntry ? kHighlight : 0);
             SetAlpha(row.add1, entry == chosenEntry ? kHighlight : 0);
         }
@@ -178,7 +185,7 @@ namespace {
         SetText(g_Ui.number, playing >= 0 ? std::to_string(playing + 1) : "-");
         SetText(g_Ui.total, std::to_string(AP::Tracks::COUNT));
         SetText(g_Ui.name, Entry(list.at).name);
-        SetText(g_Ui.about, Entry(list.at).info);
+        SetText(g_Ui.about, AP::Music::Playable(Entry(list.at).id) ? Entry(list.at).info : kLockedInfo);
 
         SetText(g_Ui.status.note, std::string(AP::Music::Shuffle() ? "Shuffle: On" : "Shuffle: Off") +
                                       (AP::Music::RepeatOne() ? "    Repeat one: On" : "    Repeat one: Off") +
@@ -292,7 +299,9 @@ namespace {
         bool moved;
         u64 pressed = AP::ListUi::Input(g_Ui.list, moved);
         if (moved) Fill();
-        if (pressed & kButtonA) {
+        if ((pressed & kButtonA) && !OnChosen() && !AP::Music::Playable(Entry(g_Ui.list.at).id)) {
+            PlaySound("SE_SY_BEEP");
+        } else if (pressed & kButtonA) {
             AP::Music::Choose(OnChosen() ? "" : Entry(g_Ui.list.at).id);  // A on the chosen track: the Jukebox off
             g_Loud = true;
             PlaySound("SE_SY_DECIDE");
@@ -499,7 +508,10 @@ namespace AP::JukeboxPane {
         s += " fade=" + std::to_string(g_Fade);
         s += " shuffle=" + std::to_string(AP::Music::Shuffle()) + " repeat=" + std::to_string(AP::Music::RepeatOne());
         s += std::string(" guide=") + (g_GuideStop ? "stop" : "play");
-        if (g_Ui.page != nullptr) s += " name=" + std::string(Entry(g_Ui.list.at).name);
+        if (g_Ui.page != nullptr) {
+            s += " name=" + std::string(Entry(g_Ui.list.at).name);
+            s += " locked=" + std::to_string(!AP::Music::Playable(Entry(g_Ui.list.at).id));
+        }
         for (char& c : s) c = c == '\n' ? '|' : c;
         return s;
     }
