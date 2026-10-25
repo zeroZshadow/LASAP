@@ -26,6 +26,7 @@ TEXT_STYLE_FROM = "Lv5GhostHouse1"  # one of the ghost's own lines
 BOW_FLAG = "APBowFound"
 GIFTS = (("Bomb", "BombsFoundFlag"), ("Arrow", BOW_FLAG))
 GIFT_COUNT = 15  # what he tops up to
+GIFT_SE = "SE_SY_GET_ITEM"  # played as he gives them, after his line
 REFILL_INDEX = 1000  # must match AP::AMMO_REFILL_INDEX: the module tops up to the count instead of adding it
 TALK_FROM = "NpcTarin"  # whose talk settings (A prompt range) the ghost gets
 TALK_CONDITION = 2  # event trigger on talking
@@ -91,6 +92,7 @@ def _event(files) -> None:
     event_tools.addEntryPoint(chart, ENTRY)
     event_tools.createActionChain(chart, ENTRY, [
         (EVENT_ACTOR, "Talk", {"message": f"Scenario:{TEXT_KEY}"}),
+        ("Audio", "PlayOneshotSystemSE", {"label": GIFT_SE, "pitch": 1.0, "volume": 1.0}),
     ], after)
     files.writeFile(EVENT_FILE, flow)
 
