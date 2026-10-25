@@ -1,0 +1,29 @@
+# The Jukebox's Ballad of the Wind Fish (DESIGN.md, Music): BGM_ENSEMBLE_INST, a track per instrument, plays with the
+# tracks of the instruments Link has; one he finds while it plays fades in, and with repeat one it starts again once
+# it has ended (it does not loop). Run after newgame_file2: Link has no instruments; it gives him the Full Moon Cello
+# and the Conch Horn (raw adds, no item-get). STATE's layers= is the instruments the ensemble's tracks are set for
+# (bit i the instrument of dungeon i + 1), DBG music's log the BGM requests (+a688c, +a6988: PlayZoneBgm).
+send DBG music off
+await 10 music=-
+# The debug warp starts no music, as the game's restart path; walking out through Tarin's door starts the field's
+# (before the sword, BGM_FIELD_FIRST).
+warp MarinTarinHouse 6.85 0 3.83
+hold 0 0 -32767 until level=Field 10
+loaded 20
+await 10 music=- zonebgm=\S+ bgm=\S+:1\s.*layers=-
+send DBG music BGM_ENSEMBLE_INST
+await 10 music=BGM_ENSEMBLE_INST zonebgm=\S+ bgm=BGM_ENSEMBLE_INST:1\s.*layers=00
+# Instruments found while it plays: their tracks fade in.
+send DBG give 50 1 -1
+expect OK.give 5
+await 5 layers=01
+check cello=1
+send DBG give 51 1 -1
+expect OK.give 5
+await 5 layers=03
+# 43 s in it ends and starts again: a second play of it from PlayZoneBgm, its tracks set for both instruments.
+poll (->BGM_ENSEMBLE_INST\s\+a6\w+\s\d+\snew.*){2} 60 DBG music
+await 5 music=BGM_ENSEMBLE_INST zonebgm=\S+ bgm=BGM_ENSEMBLE_INST:1\s.*layers=03
+# Off: the field's own track comes back.
+send DBG music off
+await 10 music=- zonebgm=\S+ bgm=\S+:1\s.*layers=-

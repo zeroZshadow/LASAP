@@ -9,8 +9,9 @@ namespace AP::Music {
     // which the next Tick applies; with the pause menu open the caller calls Tick to apply it at once.
     void Choose(const std::string& track);
     // Once per tick: switches to the chosen track (or back) once a level is loaded; with repeat one off and the
-    // player free, moves on once the track has played through.
-    void Tick(bool free = false);
+    // player free, moves on once the track has played through; with repeat one and the player free or the pause menu
+    // open (`paused`), starts a track that does not loop again once it has ended.
+    void Tick(bool free = false, bool paused = false);
     // The chosen track, "" for none; the zone's own track, "" when not known.
     std::string Track();
     // Whether `track` is the chosen track ("" for none), and whether any music is known to play (a chosen track or
@@ -36,7 +37,8 @@ namespace AP::Music {
     std::string Skip(int step);
 #ifdef LASAP_TEST
     // STATE's " music=<chosen track or -> zonebgm=<the zone's track> bgm=<playing tracks as name:kind, or ->
-    // bgmvol=<their volume targets in percent>"
+    // bgmvol=<their volume targets in percent> layers=<the instruments the ensemble's tracks are set for, in hex,
+    // or ->"
     std::string StateField();
     // DBG music log: the last BGM requests
     std::string LogText();

@@ -1,6 +1,6 @@
 #pragma once
 // The Jukebox's track names and descriptions, for players. Ids in the order of the patcher's music randomizer
-// (patcher music.py BGM_TRACKS; test_music checks it). Names fit one list row (at most 24 characters); an info is at most 80 characters, split
+// (patcher music.py BGM_TRACKS; test_music checks it), then the Jukebox's own (test_music's JUKEBOX_ONLY). Names fit one list row (at most 24 characters); an info is at most 80 characters, split
 // by "\n" into two lines of at most 40. The lengths come from the RomFS (scripts/track_lengths.py writes them).
 // constexpr only: a dynamically initialised static freezes the game.
 
@@ -83,6 +83,8 @@ namespace AP::Tracks {
         {"BGM_OWL", "The Owl", "Plays when the owl lands to give Link\nadvice.", 78255},
         {"BGM_OWL_LAST", "The Owl's Last Words", "The owl's last words, at the door of the\nWind Fish's Egg.", 68064},
         {"BGM_DEMO_AFTER_LASTBOSS", "The Wind Fish", "Plays as the Wind Fish speaks to Link\nafter the final battle.", 70143},
+        // the Jukebox's own: music.cpp plays its tracks for Link's instruments
+        {"BGM_ENSEMBLE_INST", "Ballad of the Wind Fish", "Played at the Wind Fish's Egg: each\ninstrument Link has adds its part.", 43192},
     };
 
     constexpr int COUNT = sizeof(TRACKS) / sizeof(TRACKS[0]);

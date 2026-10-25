@@ -70,6 +70,13 @@ BgmInstance_Start 0x0859d130 f starts the stream (StartInfo start offset +0x128 
 BgmInstance_Prepare 0x0859d800 f prepares the stream (BgmManager_Play with prepareNow)
 BgmInstance_SetPosition 0x0859d8e0 f (instance, Vec4*): kind 4, radius 3, fade range 9, onUpdate[0] = BgmInstance_UpdatePositional
 BgmInstance_UpdatePositional 0x0859db70 f functor: volume by listener distance (+0x110, +0x120, +0x124); kind 1 gets 1 - that
+Function_Swap 0x0859d9c0 f (std::function* a, std::function* b): libc++ std::function swap; the game's assignment of an instance's onStart
+BgmInstance_SetTrackVolume 0x0859de70 f (f32 volume, instance, u32 track, u32 frames): SetTrackVolume(1 << track) on the instance's sound, nothing before it starts
+Orchestra_PlayOwned 0x085b3be0 f (out, bool wait): Orchestra_Play with the instruments of Inventory +0xac (bits 7-14, Full Moon Cello first)
+Orchestra_Play 0x085b3c00 f (out, u8 instruments, bool wait): 0x03 BGM_ENSEMBLE_DUET, 0xff BGM_ENSEMBLE_ALL, else BGM_ENSEMBLE_INST (a track per instrument) with onStart OrchestraTracks
+OrchestraTracks_Call 0x085b6cc0 f OrchestraTracks' operator(): BgmInstance_SetTrackVolume of tracks 0-7, 1 or 0 by the instrument's bit, 0 frames
+EventAction_PlayOrchestra 0x091c5050 f WindFishsEgg.PlayOrchestra body (ctx): Orchestra_PlayOwned(wait)
+EventAction_PlayInstrumentTailorChannel 0x09173c00 f SirenInstrument.PlayInstrumentTailorChannel body (index 1-8, channel): the instrument's note effect, only when owned
 BgmPlayer_Dtor 0x0859e4e0 f
 BgmPlayer_Init 0x0859e7e0 f resets the 8 instances into free
 BgmPlayer_DropStarting 0x0859f600 f stops prepared starting instances and returns them to free
@@ -712,6 +719,7 @@ Actor_vtable 0x0a054f28 l the game Actor; base slots +0x00..+0x120
 ActorSerial 0x0a055050 l counter -> actor +0xa8
 GroundQueryCache_vtable 0x0a055a70 l 0x30-byte cache {vtable, pad, Vec4 pos, u32 attribute, bool valid}; NpcComponent +0x2b0
 AreaLevelOpen_vtable 0x0a058b48 l vtable of the AreaLevelOpen actor
+OrchestraTracks_vtable 0x0a05d2c8 l std::function callable {vtable, BgmInstance*, u64 instruments} (0x18 bytes, in the buffer); +0x20 destroy, +0x30 OrchestraTracks_Call
 SignalBool_vtable 0x0a05d008 l 0x58-byte signal: Node +0xe8, readySignal; second base 0x1b59098 at +0x8
 Signal_vtable 0x0a05d608 l 0x58-byte signal without an argument (Player's signal 2); the tasks' onFinished derives from it (vtable 0x0a05d6b0); second base 0x1b59698 at +0x8
 SeInstance_vtable 0x0a05d260 l SE instance (0x160 bytes)

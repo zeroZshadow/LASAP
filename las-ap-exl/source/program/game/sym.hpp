@@ -266,6 +266,13 @@ namespace Game {
     inline constexpr Func<void(Audio::Sound*, u32)> Sound_Stop{0x10e97f0};
     // (sound, frames, volume)
     inline constexpr Func<void(Audio::Sound*, int, float)> Sound_SetVolume{0x10ea8c0};
+    // (volume, instance, track, fade frames): one track of the instance's stream; nothing before the stream starts
+    inline constexpr Func<void(float, Audio::BgmInstance*, u32, u32)> BgmInstance_SetTrackVolume{0x99e70};
+    // libc++ std::function's swap (a, b)
+    inline constexpr Func<void(Function*, Function*)> Function_Swap{0x999c0};
+    // The Wind Fish's Egg's onStart for BGM_ENSEMBLE_INST (Orchestra_Play): a callable {vtable, instance, u64
+    // instruments} in a Function's buffer that sets track i to volume 1 with instrument bit i, else 0
+    inline constexpr Global<const u8> OrchestraTracks_vtable{0x1b592c8};
     // (item id): the item's Items.gsheet jingle
     inline constexpr Func<void(u32)> ItemGet_PlayFanfare{0x8d5700};
     // (intro): the Guardian Acorn's and Piece of Power's music

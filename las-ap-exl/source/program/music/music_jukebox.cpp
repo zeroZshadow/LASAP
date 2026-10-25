@@ -411,7 +411,7 @@ HOOK_DEFINE_TRAMPOLINE(SystemUpdate) {
         Animate();
         // AP::Tick does not run while the menu is open: a choice applies here, and the track chosen on the page plays
         // at full volume
-        AP::Music::Tick();
+        AP::Music::Tick(false, true);
         if (g_Loud) AP::Music::Loud();
         if (!AP::Music::IsChosen(g_Shown.c_str())) Fill();  // the choice changed (a test command)
         if (g_GuideShown && OnChosen() != g_GuideStop) RefreshGuide(kSystem);  // A reads Play or Stop

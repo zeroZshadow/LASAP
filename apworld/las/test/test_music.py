@@ -7,6 +7,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 PATCHER_MUSIC = ROOT / "patcher" / "RandomizerCore" / "Randomizers" / "music.py"
 TRACK_NAMES = ROOT / "las-ap-exl" / "source" / "program" / "music" / "music_tracks.hpp"
+# tracks the Jukebox plays that the music randomizer does not shuffle, after the patcher's
+JUKEBOX_ONLY = ("BGM_ENSEMBLE_INST",)
 ENTRY = re.compile(r'\{\s*"(BGM_\w+)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*,\s*(\d+)\s*\}')
 
 
@@ -36,7 +38,7 @@ class TestTracks(unittest.TestCase):
         entries = [(i, c_string(n), c_string(t)) for i, n, t, _ in ENTRY.findall(source)]
         # each track's play-through (scripts/track_lengths.py): at least a few seconds, at most ten minutes
         self.assertTrue(all(3000 <= int(ms) <= 600000 for *_, ms in ENTRY.findall(source)))
-        self.assertEqual(tuple(i for i, _, _ in entries), patcher_tracks())
+        self.assertEqual(tuple(i for i, _, _ in entries), patcher_tracks() + JUKEBOX_ONLY)
         names = [n for _, n, _ in entries]
         self.assertEqual(len(names), len(set(names)))
         for _, name, info in entries:

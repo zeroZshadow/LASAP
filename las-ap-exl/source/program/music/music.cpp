@@ -11,6 +11,7 @@
 #include "music/music_tracks.hpp"
 #include "ap/ap_text.hpp"
 #include "game/audio.hpp"
+#include "game/data/inventory.hpp"
 #include "game/framework.hpp"
 #include "game/sym.hpp"
 #include "game/time.hpp"
@@ -58,6 +59,17 @@ namespace {
     constexpr u32 kFanfareOutFrames = 10;    // a fanfare that gives way to the next
     // The Guardian Acorn's and Piece of Power's music (bool intro): stops BGM_NUTS and BGM_NUTS_INTRO, plays one of
     // them (the intro for true) and fades kind 1 out; their item-get calls it with true (BuffMusic_Play).
+    // With repeat one, a track that does not loop starts again this many frames after it has ended.
+    constexpr u32 kLoopDelayFrames = 0;
+    // The Ballad of the Wind Fish as the Wind Fish's Egg plays it (WindFishsEgg.bfevfl, PlayOrchestra): a stream of
+    // eight tracks, one per instrument in dungeon order (Full Moon Cello first), those of the instruments Link lacks
+    // at volume 0. The egg sets them through the instance's onStart, which runs as the stream starts (Orchestra_Play);
+    // the chosen ensemble gets the same onStart, and an instrument found while it plays fades its track in. (The egg
+    // plays the first two instruments alone and all eight as mixes of their own, BGM_ENSEMBLE_DUET and
+    // BGM_ENSEMBLE_ALL; the Jukebox keeps to the tracks.)
+    constexpr const char* kEnsemble = "BGM_ENSEMBLE_INST";
+    constexpr int kInstruments = 8;
+    constexpr u32 kLayerFadeFrames = 120;
 
     // The chosen track ("" none), its index in AP::Tracks::TRACKS (-1: none, or a track not in the list), and whether
     // the game should switch to it (or back) on the next tick in a level.
@@ -68,8 +80,11 @@ namespace {
     // How long the chosen track has played (Tick, playback below).
     const BgmInstance* g_Instance = nullptr;  // the chosen track's instance as last seen playing
     u64 g_PlayedMs = 0, g_LastMs = 0;
-    bool g_Ended = false;            // the chosen track (one that does not loop) ended while the player was free
+    bool g_Ended = false;            // the chosen track (one that does not loop) has played to its end
+    bool g_Restart = false;          // the pending change starts the ended track again (repeat one)
     const BgmInstance* g_Started = nullptr;  // the instance the last change started (read only while it plays)
+    const BgmInstance* g_Layered = nullptr;  // the ensemble's instance whose tracks were set, until it is gone
+    u8 g_Layers = 0;                         // the instruments they were set for
     // The track chosen before the last change, stopped once the change applies.
     std::string g_Previous;
     // The jingle the last Fanfare started (named while its ItemGet_PlayFanfare call runs), stopped by the next.
@@ -120,6 +135,7 @@ namespace {
         g_Instance = nullptr;
         g_PlayedMs = 0;
         g_Ended = false;
+        g_Restart = false;
         g_Pending = true;
         Logging.Log("[AP] music %s", track.empty() ? "off" : track.c_str());
         return true;
@@ -183,6 +199,65 @@ namespace {
             if (instance->handle.name.View() == std::string_view(g_Track, g_TrackLen)) return instance;
         }
         return nullptr;
+    }
+
+    // Link's instruments: bit i the instrument of dungeon i + 1.
+    u8 Instruments() {
+        const Game::Data::Inventory::InventoryItems* items = Game::Data::Inventory::Items();
+        if (items == nullptr) return 0;
+        const auto& bits = items->ExtraItems;
+        const bool owned[kInstruments] = {bits.FullMoonCello, bits.ConchHorn, bits.SeaLilysBell, bits.SurfHarp,
+                                          bits.WindMarimba, bits.CoralTriangle, bits.EveningCalmOrgan, bits.ThunderDrum};
+        u8 instruments = 0;
+        for (int i = 0; i < kInstruments; i++) instruments |= owned[i] << i;
+        return instruments;
+    }
+
+    // The ensemble's new instance gets the egg's onStart: its tracks for Link's instruments from the first sample.
+    void SetLayers(BgmInstance* instance) {
+        struct OrchestraTracks {
+            const u8* vtable;
+            BgmInstance* instance;
+            u64 instruments;
+        };
+        static_assert(sizeof(OrchestraTracks) <= sizeof(Game::Function::buffer));
+        u8 instruments = Instruments();
+        Game::Function call = {};
+        *reinterpret_cast<OrchestraTracks*>(call.buffer) = {Game::OrchestraTracks_vtable.Ptr(), instance, instruments};
+        call.f = call.buffer;
+        Game::Function_Swap(&call, &instance->onStart);
+        // `call` now holds what onStart held, destroyed as libc++ does: in its buffer by destroy (vtable +0x20), else
+        // by destroy_deallocate (+0x28)
+        if (call.f != nullptr) {
+            auto* const* vtable = *reinterpret_cast<void (* const* const*)(void*)>(call.f);
+            vtable[call.f == call.buffer ? 4 : 5](call.f);
+        }
+        g_Layered = instance;
+        g_Layers = instruments;
+    }
+
+    // An instrument found (or lost) while the ensemble plays fades its track in (or out).
+    void UpdateLayers(const BgmManager* manager) {
+        if (g_Layered == nullptr) return;
+        for (const BgmInstance* instance : manager->bgm.starting) {
+            if (instance == g_Layered) return;  // its onStart sets the tracks
+        }
+        BgmInstance* playing = nullptr;
+        for (BgmInstance* instance : manager->bgm.playing) {
+            if (instance == g_Layered) playing = instance;
+        }
+        if (playing == nullptr || playing->handle.name.View() != kEnsemble) {
+            g_Layered = nullptr;
+            return;
+        }
+        if (playing->handle.sound == nullptr) return;
+        u8 instruments = Instruments();
+        for (int i = 0; i < kInstruments; i++) {
+            if (((instruments ^ g_Layers) >> i & 1) == 0) continue;
+            float volume = (instruments >> i & 1) != 0 ? 1.0f : 0.0f;
+            Game::BgmInstance_SetTrackVolume(volume, playing, static_cast<u32>(i), kLayerFadeFrames);
+        }
+        g_Layers = instruments;
     }
 
 #ifdef LASAP_TEST
@@ -254,6 +329,7 @@ HOOK_DEFINE_TRAMPOLINE(BgmManagerPlay) {
         StrView chosen{g_Track, g_TrackLen};
         bool swap = g_TrackLen > 0 && IsZoneCall(ret, name);
         BgmInstance* instance = Orig(volume, manager, swap ? &chosen : name, b2, b3, force);
+        if (swap && instance != nullptr && chosen.View() == kEnsemble) SetLayers(instance);
         if ((g_Held || g_Carried) && !swap && instance != nullptr) StopHeld();  // an event's song, a fanfare
         if (g_FanfareCall && instance != nullptr && name != nullptr) g_Fanfare.assign(name->data, name->size);
         if (swap) g_Held = false;  // the zone's music again: it plays on
@@ -314,7 +390,7 @@ namespace AP::Music {
         Set(track == "off" ? "" : track);
     }
 
-    void Tick(bool free) {
+    void Tick(bool free, bool paused) {
         Game::Framework* fmwk = Game::GetFramework();
         BgmManager* manager = Manager();
         if (fmwk == nullptr || fmwk->player == nullptr || manager == nullptr) {
@@ -333,16 +409,17 @@ namespace AP::Music {
             StopHeld();  // an event that meant silence is over
         }
         g_Carried = false;
+        UpdateLayers(manager);
         // How long the chosen track has played: from its start, while it plays (also under the pause menu, which
         // does not tick this). With repeat one off, the next track once it has played through, only while the player
         // is free: a change fades out the event songs too. A track that does not loop is gone once it has played: it
-        // has played through when it goes, with the player free, within a second of its length (an event that stops
-        // it does so with the player not free, and music that cuts it in plays on).
+        // has played to its end when it goes within a second of its length with no other music playing (music that
+        // cuts it in plays on). With repeat one it starts again, while the player is free or the pause menu is open.
         if (g_TrackIndex >= 0) {
             u64 now = NowMs();
             const BgmInstance* instance = PlayingInstance(manager);
             u64 length = AP::Tracks::TRACKS[g_TrackIndex].ms;
-            if (instance == nullptr && g_Instance != nullptr && free && g_PlayedMs + 1000 >= length &&
+            if (instance == nullptr && g_Instance != nullptr && g_PlayedMs + (now - g_LastMs) + 1000 >= length &&
                 !OtherMusic(manager)) {
                 g_Ended = true;
             }
@@ -354,6 +431,11 @@ namespace AP::Music {
             if (instance != nullptr) g_Ended = false;
             g_Instance = instance;
             g_LastMs = now;
+            if (g_Ended && g_RepeatOne && !g_Pending && (free || paused)) {
+                g_Ended = false;
+                g_Restart = true;
+                g_Pending = true;
+            }
             if (free && !g_RepeatOne && !g_Pending && (g_Ended || (instance != nullptr && g_PlayedMs >= length))) {
                 Skip(1);
             }
@@ -370,9 +452,10 @@ namespace AP::Music {
             g_TrackIndex = -1;
         }
         // The zone's music is asked for again: the chosen track (or the zone's own) starts from its beginning after
-        // kStartDelayFrames, and the rest fades out.
+        // kStartDelayFrames (an ended track again: kLoopDelayFrames), and the rest fades out.
         BgmInstance* started = Game::PlayZoneBgm(true);
-        if (started != nullptr) started->startDelay = kStartDelayFrames;
+        if (started != nullptr) started->startDelay = g_Restart ? kLoopDelayFrames : kStartDelayFrames;
+        g_Restart = false;
         g_Started = started;
         // PlayZoneBgm fades nothing when nothing new starts (the zone has no track, or a buff's music plays): the
         // track chosen before stops by name, unless it is what plays now (the chosen track, or the zone's own with none
@@ -447,9 +530,15 @@ namespace AP::Music {
     std::string StateField() {
         const BgmManager* manager = Manager();
         std::string s = std::string(" music=") + (g_TrackLen > 0 ? g_Track : "-");
-        if (manager == nullptr) return s + " zonebgm=- bgm=- bgmvol=-";
+        char layers[16];
+        if (g_Layered != nullptr) {
+            snprintf(layers, sizeof(layers), " layers=%02x", g_Layers);
+        } else {
+            snprintf(layers, sizeof(layers), " layers=-");
+        }
+        if (manager == nullptr) return s + " zonebgm=- bgm=- bgmvol=-" + layers;
         s += " zonebgm=" + ::ZoneTrack(manager) + " bgm=";
-        if (manager->bgm.playing.empty()) return s + "- bgmvol=-";
+        if (manager->bgm.playing.empty()) return s + "- bgmvol=-" + layers;
         std::string volumes;
         bool first = true;
         for (const BgmInstance* instance : manager->bgm.playing) {
@@ -458,7 +547,7 @@ namespace AP::Music {
             volumes += (first ? "" : ",") + std::to_string(static_cast<int>(target * 100.0f + 0.5f));
             first = false;
         }
-        return s + " bgmvol=" + volumes;
+        return s + " bgmvol=" + volumes + layers;
     }
 
     const u8* PeekBase(bool instance) {
