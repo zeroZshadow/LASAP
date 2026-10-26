@@ -41,6 +41,17 @@ tap 8000 30
 await 5 jbox=(19|[2-6][0-9])/(1[4-9]|[2-6][0-9])\s
 tap 2000
 tap 2000
+# The list goes round: Up held stops on the first track (a held button does not go round); Up pressed there goes to
+# the last track, the Ballad of the Wind Fish, the list scrolled to show it (selectable, greyed out without
+# instruments); Down pressed there goes to the first again.
+tap 2000 200
+await 5 jbox=0/0\s
+tap 2000
+await 5 jbox=70/64\s
+send DBG jukebox
+expect JUKEBOX.*name=Ballad\sof\sthe\sWind\sFish\slocked=\d 5
+tap 8000
+await 5 jbox=0/0\s
 # L: System again in place; R twice through the map and back with L, the cursor on the chosen track.
 tap 40
 await 10 pane=2\snavi=2

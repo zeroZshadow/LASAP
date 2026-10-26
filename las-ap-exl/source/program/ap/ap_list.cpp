@@ -205,7 +205,12 @@ namespace AP::ListUi {
         list.heldFrames = step != 0 ? list.heldFrames + 1 : 0;
         bool repeat = list.heldFrames > kRepeatDelay && (list.heldFrames - kRepeatDelay) % kRepeatEvery == 0;
         if ((pressed & (kButtonUp | kButtonDown)) || repeat) {
-            int next = std::clamp(list.at + step, 0, std::max(list.count - 1, 0));
+            int next = list.at + step;
+            // round only on a press: a held button stops at the end
+            if (list.wrap && list.count > 0 && (pressed & (step > 0 ? kButtonDown : kButtonUp))) {
+                next = (next + list.count) % list.count;
+            }
+            next = std::clamp(next, 0, std::max(list.count - 1, 0));
             if (next != list.at) {
                 list.at = next;
                 if (list.at < list.top) list.top = list.at;

@@ -288,6 +288,7 @@ namespace {
         int at = EntryOf(AP::Music::Track());
         if (at < 0) at = std::max(EntryOf(AP::Music::ZoneTrack()), 0);
         SetEntries(g_Ui.list, kEntries, at);
+        g_Ui.list.wrap = true;
         g_Fade = 0;
         Fill();
         Animate();
