@@ -91,12 +91,6 @@ def _source(romfs: Path, entry: Dict[str, str]) -> bytes:
     return source
 
 
-def check(romfs: Path) -> None:
-    """AssetError unless the RomFS files the assets come from are those of game version 1.0.0."""
-    for entry in json.loads(MANIFEST.read_text(encoding="utf-8")).values():
-        _source(romfs, entry)
-
-
 def load(romfs: Path, path: str) -> bytes:
     """One asset, patched from the player's RomFS dump; checked against the build's checksums."""
     entry = json.loads(MANIFEST.read_text(encoding="utf-8"))[path]

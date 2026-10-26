@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from . import emulators
-from .install import CHANGED, CURRENT, NONE, OTHER_SEED, builtin_patcher_available, installed_seed, mod_state
+from .install import (CHANGED, CURRENT, NONE, OTHER_SEED, builtin_patcher_available, installed_seed, mod_state,
+                      romfs_problem)
 
 OK, TODO, ERROR, INFO = "ok", "todo", "error", "info"
 
@@ -116,9 +117,11 @@ def check(patch_file: str, options: Dict[str, str], settings: Optional[Dict[str,
     romfs = options.get("romfs_folder", "")
     if not romfs:
         checks["romfs_folder"] = Check(TODO, romfs_help(exe))
-    elif emulators.romfs_root(romfs) is None:
+    elif (root := emulators.romfs_root(romfs)) is None:
         checks["romfs_folder"] = Check(ERROR, "This folder is not a RomFS dump of Link's Awakening (it has no "
                                               "region_common folder). " + romfs_help(exe))
+    elif problem := romfs_problem(root):
+        checks["romfs_folder"] = Check(ERROR, problem)
     else:
         checks["romfs_folder"] = Check(OK, "RomFS dump found.")
 

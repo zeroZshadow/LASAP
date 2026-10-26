@@ -10,6 +10,7 @@ import sys
 import tempfile
 import threading
 import traceback
+import types
 import zipfile
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
@@ -36,6 +37,7 @@ SOURCE_PATCHER = Path(__file__).resolve().parent.parent.parent / "patcher"
 # Top-level modules of the patcher and the libraries it carries (patcher/lib)
 PATCHER_MODULES = {"las_ap_patch", "ap_assets", "ap_ballad", "ap_chest", "ap_deathlink", "ap_entrances", "ap_ghost", "ap_goal",
                    "ap_hints", "ap_map", "ap_map_icons", "ap_model", "ap_player_ghost", "ap_save_name", "ap_ui", "lasr_qt",
+                   "romfs_check",
                    "RandomizerCore", "evfl", "lms", "appdirs", "PySide6"}
 _PATCHER_LOCK = threading.Lock()
 
@@ -190,6 +192,36 @@ def builtin_patcher_dir(log: Callable[[str], None]) -> Path:
                 raise
             (target / ".complete").touch()
     return target
+
+
+def _patcher_file(name: str) -> Optional[bytes]:
+    """A file of the patcher the world carries, read from the .apworld or, from source, the patcher folder."""
+    archive = _world_archive()
+    try:
+        if archive is None:
+            return (SOURCE_PATCHER / name).read_bytes()
+        with zipfile.ZipFile(archive) as zf:
+            return zf.read(PATCHER_PREFIX + name)
+    except (OSError, KeyError, zipfile.BadZipFile):
+        return None
+
+
+_romfs_check: Optional[types.ModuleType] = None
+_romfs_sources: Dict[str, str] = {}
+
+
+def romfs_problem(romfs: Path) -> Optional[str]:
+    """What keeps the patcher the world carries from patching from the RomFS dump, as one message (its
+    romfs_check.py, which needs no unpacking); None when nothing does, or without a built-in patcher."""
+    global _romfs_check, _romfs_sources
+    if _romfs_check is None:
+        code, manifest = _patcher_file("romfs_check.py"), _patcher_file("assets/assets.json")
+        if code is None or manifest is None:
+            return None
+        module = types.ModuleType("romfs_check")
+        exec(compile(code, "romfs_check.py", "exec"), module.__dict__)
+        _romfs_check, _romfs_sources = module, module.sources(json.loads(manifest))
+    return _romfs_check.problem(romfs, _romfs_sources)
 
 
 def _forget_patcher_modules() -> None:

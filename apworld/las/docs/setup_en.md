@@ -119,6 +119,9 @@ address. A relay behind a Cloudflare Tunnel needs no forwarded port: players ent
   the Patch tab names.
 - **Patching failed.** The Patch tab says why, and the Archipelago tab shows the patcher's output. "The RomFS dump is
   not of game version 1.0.0": turn the game's update off (Required software) and dump the RomFS again.
+- **The Patch tab says the RomFS dump is incomplete.** The folder lacks files of the game: it holds the update's RomFS
+  alone, or a copy that did not finish. Dump the RomFS of the game again with the update turned off, and choose the
+  folder holding `region_common` and the six `region` folders.
 - **The emulator changed nothing.** Mods load when the game starts: close the game and start it again.
 - **The game shows "Archipelago client not connected".** Start the client; the game connects when it runs. The
   Patch tab shows the game connection.

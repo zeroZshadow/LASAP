@@ -65,6 +65,7 @@ import ap_entrances  # noqa: E402
 import ap_map  # noqa: E402
 import ap_model  # noqa: E402
 import ap_save_name  # noqa: E402
+import romfs_check  # noqa: E402
 
 PATCH_FORMAT = 1
 PLACEHOLDER_KEY = "ArchipelagoItem"
@@ -692,10 +693,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not (args.romfs / "region_common" / "event" / "PlayerStart.bfevfl").exists():
         print(f"{args.romfs} is not a Link's Awakening RomFS dump")
         return 1
-    try:
-        ap_assets.check(args.romfs)
-    except ap_assets.AssetError as e:
-        print(e)
+    problem = romfs_check.problem(args.romfs,
+                                  romfs_check.sources(json.loads(ap_assets.MANIFEST.read_text(encoding="utf-8"))))
+    if problem:
+        print(problem)
         return 1
     if not (HERE / "exl" / "subsdk9").exists():
         print("patcher/exl/subsdk9 is missing; build the exlaunch module first (scripts/build_exl.sh)")
