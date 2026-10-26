@@ -12,7 +12,10 @@ The pack's pins become world coordinates by an affine fit through the checks wit
 has several doors or a prefix several actors, the one nearest the pin counts. A position without an actor (a room,
 a pin) takes the height of the overworld actor nearest to it, leaving out each room's static mesh (MapStatic), which
 sits at height 0.
-Dungeon checks get their room and level coordinates: the item actor or owl statue, else the room's upper left.
+Dungeon checks get their room and level coordinates: an owl statue's its ObjDungeonOwlStatue, any other check's its
+item actor, else the room's upper left (from the room's grid: Eagle's Tower's rooms do not sit where their names'
+rows and columns would put them). A check in a room of Eagle's Tower's collapsed top (UiDungeonArea mFloor 14) also
+gets its place in the same room before the collapse, on 3F four rows further south, where LASR puts its item too.
 Overworld checks also get the name of their spot, which names a map icon holding several checks: the pack's place of
 the check (its section's parent), or SPOT_NAMES.
 """
@@ -29,6 +32,7 @@ sys.path.insert(0, str(ROOT / "patcher"))
 sys.path.insert(0, str(ROOT / "vendor" / "Archipelago"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from RandomizerCore.Tools.leb import Room  # noqa: E402
+from RandomizerCore.Tools.oead_tools import parseStruct, readSheet  # noqa: E402
 from worlds.las.locations import display_name  # noqa: E402
 import poptracker_map  # noqa: E402
 
@@ -106,8 +110,12 @@ DUNGEON_ROOMS = {
     "D0-fairy-1": "Lv10ClothesDungeon_04C", "D0-fairy-2": "Lv10ClothesDungeon_04C",
     **{f"D0-rupee-{i}": "Lv10ClothesDungeon_08D" for i in range(1, 29)},
 }
-# Actors that mark a dungeon check in its room, by name prefix.
-DUNGEON_ACTORS = ITEM_ACTORS + ("ObjDungeonOwlStatue", "ObjDungeonOw", "NpcFairyQueen", "EnemyMasterS")
+# Actors that mark a dungeon check in its room, by name prefix: an owl statue's, and any other check's.
+OWL_ACTORS = ("ObjDungeonOw",)
+DUNGEON_ACTORS = ITEM_ACTORS + ("NpcFairyQueen", "EnemyMasterS")
+# Eagle's Tower once collapsed (UiDungeonArea mFloor): its top's rooms are those of 3F before the collapse, 4 rows
+# further south.
+COLLAPSED_FLOOR, COLLAPSED_ROWS = 14, 4
 
 
 def room_tables() -> dict:
@@ -135,8 +143,14 @@ class Level:
 
     def room(self, name: str) -> Room:
         if name not in self.cache:
-            self.cache[name] = Room((self.root / name.split("_")[0] / f"{name}.leb").read_bytes())
+            self.cache[name] = Room((self.root / name.split("_")[0] / f"{name}.leb").read_bytes(), edit_grid=True)
         return self.cache[name]
+
+    def box(self, name: str) -> tuple:
+        """(x0, z0, x1, z1): the room's box in level coordinates, from its grid."""
+        info = self.room(name).grid.info
+        return (info.x_coord, info.z_coord, info.x_coord + info.room_width * info.tile_size,
+                info.z_coord + info.room_height * info.tile_size)
 
     def field_rooms(self):
         return [self.room(path.stem) for path in sorted((self.root / "Field").glob("Field_*.leb"))]
@@ -162,14 +176,38 @@ class Level:
         return point[0], point[1], nearest(self.cache["heights"], point)[2]
 
 
-def item_actors(room: Room, prefixes=ITEM_ACTORS) -> list:
+def item_actors(room: Room, prefixes=ITEM_ACTORS, params=ITEM_PARAMS) -> list:
     found = []
     for actor in room.actors:
         param = actor.parameters[0] if actor.parameters else None
         if actor.name.startswith(tuple(p.encode() for p in prefixes)) or (
-                isinstance(param, bytes) and param.startswith(ITEM_PARAMS)):
+                params and isinstance(param, bytes) and param.startswith(params)):
             found.append((actor.posX, actor.posZ, actor.posY))
     return found
+
+
+def dungeon_place(level: Level, lasr: str, room: str) -> list:
+    """[room, x, z]: the check's actor in its room (an owl statue's statue), else the room's upper left, clear of the
+    boss icon in its middle."""
+    owl = "owl-statue" in lasr
+    actors = item_actors(level.room(room), OWL_ACTORS if owl else DUNGEON_ACTORS, () if owl else ITEM_PARAMS)
+    if len(actors) == 1:
+        x, z, _ = actors[0]
+    else:
+        x0, z0, x1, z1 = level.box(room)
+        x, z = x0 + (x1 - x0) / 4, z0 + (z1 - z0) / 4
+    return [room, round(x, 2), round(z, 2)]
+
+
+def collapsed_twin(room: str, floors: dict):
+    """The 3F room before Eagle's Tower's collapse of a room of its collapsed top, else None."""
+    if floors.get(room) != COLLAPSED_FLOOR:
+        return None
+    m = re.search(r"_(\d\d)([A-P])$", room)
+    twin = f"{room[:m.start()]}_{int(m.group(1)) + COLLAPSED_ROWS:02d}{m.group(2)}"
+    if floors.get(twin) != 3:
+        raise SystemExit(f"{room}: no 3F room {twin} before the collapse")
+    return twin
 
 
 def room_rect(room: str):
@@ -251,18 +289,15 @@ def main() -> None:
     rooms = {**room_tables(), **DUNGEON_ROOMS}
     doors = level.field_doors()
     pins = pack_pins(args.pack)
+    floors = {str(row["mLeaName"]): row["mFloor"] for row in map(
+        parseStruct, readSheet(str(args.romfs / "region_common" / "datasheets" / "UiDungeonArea.gsheet"))["values"])}
 
     overworld, dungeon, exact = {}, {}, {}
     for lasr in IDS["locations"]:
         room = rooms.get(lasr)
         if re.match(r"D\d-", lasr):
-            actors = item_actors(level.room(room), DUNGEON_ACTORS)
-            if len(actors) == 1:
-                x, z, _ = actors[0]
-            else:  # the room's upper left, clear of the boss icon in its middle
-                x0, z0 = room_rect(room)
-                x, z = x0 + ROOM_W / 4, z0 + ROOM_H / 4
-            dungeon[lasr] = [room, round(x, 2), round(z, 2)]
+            twin = collapsed_twin(room, floors)
+            dungeon[lasr] = [dungeon_place(level, lasr, r) for r in (room, twin) if r]
         elif room and room.startswith("Field_"):
             actors = item_actors(level.room(room))
             if len(actors) == 1:

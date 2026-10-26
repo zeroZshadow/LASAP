@@ -823,914 +823,1288 @@
  },
  "dungeon": {
   "D1-instrument": [
-   "Lv01TailCave_03G",
-   93.75,
-   27.0
+   [
+    "Lv01TailCave_03G",
+    93.75,
+    27.0
+   ]
   ],
   "D1-moldorm": [
-   "Lv01TailCave_04G",
-   93.75,
-   39.0
+   [
+    "Lv01TailCave_04G",
+    93.75,
+    39.0
+   ]
   ],
   "D1-west-hallway": [
-   "Lv01TailCave_05A",
-   6.75,
-   51.75
+   [
+    "Lv01TailCave_05A",
+    6.75,
+    51.75
+   ]
   ],
   "D1-middle-ledge": [
-   "Lv01TailCave_05D",
-   51.75,
-   50.25
+   [
+    "Lv01TailCave_05D",
+    51.75,
+    50.25
+   ]
   ],
   "D1-3-of-a-kind": [
-   "Lv01TailCave_05F",
-   78.75,
-   51.0
+   [
+    "Lv01TailCave_05F",
+    87.75,
+    51.75
+   ]
   ],
   "D1-bomb-room": [
-   "Lv01TailCave_06B",
-   21.75,
-   65.25
+   [
+    "Lv01TailCave_06B",
+    21.75,
+    65.25
+   ]
   ],
   "D1-middle-kill-chest": [
-   "Lv01TailCave_06C",
-   45.0,
-   63.75
+   [
+    "Lv01TailCave_06C",
+    45.0,
+    63.75
+   ]
   ],
   "D1-spark-chest": [
-   "Lv01TailCave_06D",
-   51.75,
-   63.75
+   [
+    "Lv01TailCave_06D",
+    51.75,
+    63.75
+   ]
   ],
   "D1-button-chest": [
-   "Lv01TailCave_07D",
-   57.75,
-   74.25
+   [
+    "Lv01TailCave_07D",
+    57.75,
+    74.25
+   ]
   ],
   "D1-stalfos-chest": [
-   "Lv01TailCave_07E",
-   72.75,
-   77.25
+   [
+    "Lv01TailCave_07E",
+    72.75,
+    77.25
+   ]
   ],
   "D1-4-zols-chest": [
-   "Lv01TailCave_08B",
-   20.25,
-   89.25
+   [
+    "Lv01TailCave_08B",
+    20.25,
+    89.25
+   ]
   ],
   "D1-beetles": [
-   "Lv01TailCave_08C",
-   33.75,
-   89.25
+   [
+    "Lv01TailCave_08C",
+    33.75,
+    89.25
+   ]
   ],
   "D1-owl-statue-long-hallway": [
-   "Lv01TailCave_04C",
-   35.25,
-   36.75
+   [
+    "Lv01TailCave_04C",
+    35.25,
+    36.75
+   ]
   ],
   "D1-owl-statue-spinies": [
-   "Lv01TailCave_04B",
-   23.25,
-   36.75
+   [
+    "Lv01TailCave_04B",
+    23.25,
+    36.75
+   ]
   ],
   "D1-owl-statue-3-of-a-kind": [
-   "Lv01TailCave_05F",
-   78.75,
-   51.0
+   [
+    "Lv01TailCave_05F",
+    83.25,
+    48.75
+   ]
   ],
   "D2-instrument": [
-   "Lv02BottleGrotto_04F",
-   78.75,
-   39.0
+   [
+    "Lv02BottleGrotto_04F",
+    78.75,
+    39.0
+   ]
   ],
   "D2-genie": [
-   "Lv02BottleGrotto_04G",
-   93.75,
-   39.0
+   [
+    "Lv02BottleGrotto_04G",
+    93.75,
+    39.0
+   ]
   ],
   "D2-boos": [
-   "Lv02BottleGrotto_02B",
-   27.75,
-   15.75
+   [
+    "Lv02BottleGrotto_02B",
+    27.75,
+    15.75
+   ]
   ],
   "D2-long-room-west": [
-   "Lv02BottleGrotto_02C",
-   41.25,
-   15.75
+   [
+    "Lv02BottleGrotto_02C",
+    41.25,
+    15.75
+   ]
   ],
   "D2-long-room-east": [
-   "Lv02BottleGrotto_02D",
-   56.25,
-   15.75
+   [
+    "Lv02BottleGrotto_02D",
+    56.25,
+    15.75
+   ]
   ],
   "D2-vacuum-mouth-room": [
-   "Lv02BottleGrotto_03C",
-   33.75,
-   27.75
+   [
+    "Lv02BottleGrotto_03C",
+    33.75,
+    27.75
+   ]
   ],
   "D2-kill-puzzle": [
-   "Lv02BottleGrotto_03F",
-   87.75,
-   27.75
+   [
+    "Lv02BottleGrotto_03F",
+    87.75,
+    27.75
+   ]
   ],
   "D2-west-chest": [
-   "Lv02BottleGrotto_06B",
-   21.75,
-   63.75
+   [
+    "Lv02BottleGrotto_06B",
+    21.75,
+    63.75
+   ]
   ],
   "D2-double-stalfos": [
-   "Lv02BottleGrotto_07D",
-   48.75,
-   77.25
+   [
+    "Lv02BottleGrotto_07D",
+    48.75,
+    77.25
+   ]
   ],
   "D2-double-shy-guys": [
-   "Lv02BottleGrotto_07F",
-   78.75,
-   77.25
+   [
+    "Lv02BottleGrotto_07F",
+    78.75,
+    77.25
+   ]
   ],
   "D2-entrance-chest": [
-   "Lv02BottleGrotto_08C",
-   32.25,
-   87.75
+   [
+    "Lv02BottleGrotto_08C",
+    32.25,
+    87.75
+   ]
   ],
   "D2-single-shy-guy": [
-   "Lv02BottleGrotto_08D",
-   57.75,
-   87.75
+   [
+    "Lv02BottleGrotto_08D",
+    57.75,
+    87.75
+   ]
   ],
   "D2-peg-circle": [
-   "Lv02BottleGrotto_08E",
-   65.25,
-   90.75
+   [
+    "Lv02BottleGrotto_08E",
+    65.25,
+    90.75
+   ]
   ],
   "D2-button-chest": [
-   "Lv02BottleGrotto_08F",
-   87.75,
-   87.75
+   [
+    "Lv02BottleGrotto_08F",
+    87.75,
+    87.75
+   ]
   ],
   "D2-owl-statue-first-switch": [
-   "Lv02BottleGrotto_07E",
-   66.75,
-   72.75
+   [
+    "Lv02BottleGrotto_07E",
+    66.75,
+    72.75
+   ]
   ],
   "D2-owl-statue-push-puzzle": [
-   "Lv02BottleGrotto_06G",
-   93.75,
-   60.75
+   [
+    "Lv02BottleGrotto_06G",
+    93.75,
+    60.75
+   ]
   ],
   "D2-owl-statue-past-hinox": [
-   "Lv02BottleGrotto_04C",
-   38.25,
-   36.75
+   [
+    "Lv02BottleGrotto_04C",
+    38.25,
+    36.75
+   ]
   ],
   "D3-instrument": [
-   "Lv03KeyCavern_06G",
-   93.75,
-   63.0
+   [
+    "Lv03KeyCavern_06G",
+    93.75,
+    63.0
+   ]
   ],
   "D3-slime-eye": [
-   "Lv03KeyCavern_07G",
-   93.75,
-   75.0
+   [
+    "Lv03KeyCavern_07G",
+    93.75,
+    75.0
+   ]
   ],
   "D3-pre-boss": [
-   "Lv03KeyCavern_08G",
-   93.75,
-   89.25
+   [
+    "Lv03KeyCavern_08G",
+    93.75,
+    89.25
+   ]
   ],
   "D3-triple-bombites": [
-   "Lv03KeyCavern_01B",
-   18.75,
-   5.25
+   [
+    "Lv03KeyCavern_01B",
+    18.75,
+    5.25
+   ]
   ],
   "D3-north-chest": [
-   "Lv03KeyCavern_01C",
-   36.75,
-   3.75
+   [
+    "Lv03KeyCavern_01C",
+    36.75,
+    3.75
+   ]
   ],
   "D3-central-ledge": [
-   "Lv03KeyCavern_02A",
-   12.75,
-   15.75
+   [
+    "Lv03KeyCavern_02A",
+    12.75,
+    15.75
+   ]
   ],
   "D3-central-chest": [
-   "Lv03KeyCavern_02C",
-   36.75,
-   15.75
+   [
+    "Lv03KeyCavern_02C",
+    36.75,
+    15.75
+   ]
   ],
   "D3-east-ledge": [
-   "Lv03KeyCavern_02D",
-   48.75,
-   15.0
+   [
+    "Lv03KeyCavern_02D",
+    57.75,
+    14.25
+   ]
   ],
   "D3-pairodds": [
-   "Lv03KeyCavern_03A",
-   3.75,
-   29.25
+   [
+    "Lv03KeyCavern_03A",
+    3.75,
+    29.25
+   ]
   ],
   "D3-five-zols": [
-   "Lv03KeyCavern_04C",
-   33.75,
-   41.25
+   [
+    "Lv03KeyCavern_04C",
+    33.75,
+    41.25
+   ]
   ],
   "D3-basement-north": [
-   "Lv03KeyCavern_03G",
-   93.75,
-   27.0
+   [
+    "Lv03KeyCavern_03G",
+    93.75,
+    29.25
+   ]
   ],
   "D3-basement-west": [
-   "Lv03KeyCavern_04F",
-   78.75,
-   41.25
+   [
+    "Lv03KeyCavern_04F",
+    78.75,
+    41.25
+   ]
   ],
   "D3-basement-south": [
-   "Lv03KeyCavern_05G",
-   93.75,
-   53.25
+   [
+    "Lv03KeyCavern_05G",
+    93.75,
+    53.25
+   ]
   ],
   "D3-hallway-4": [
-   "Lv03KeyCavern_04B",
-   20.25,
-   41.25
+   [
+    "Lv03KeyCavern_04B",
+    20.25,
+    41.25
+   ]
   ],
   "D3-hallway-3": [
-   "Lv03KeyCavern_05B",
-   27.75,
-   51.75
+   [
+    "Lv03KeyCavern_05B",
+    27.75,
+    51.75
+   ]
   ],
   "D3-hallway-2": [
-   "Lv03KeyCavern_06B",
-   27.75,
-   62.25
+   [
+    "Lv03KeyCavern_06B",
+    27.75,
+    62.25
+   ]
   ],
   "D3-hallway-side-room": [
-   "Lv03KeyCavern_06C",
-   38.25,
-   65.25
+   [
+    "Lv03KeyCavern_06C",
+    38.25,
+    65.25
+   ]
   ],
   "D3-hallway-1": [
-   "Lv03KeyCavern_07B",
-   27.75,
-   75.75
+   [
+    "Lv03KeyCavern_07B",
+    27.75,
+    75.75
+   ]
   ],
   "D3-vacuum-mouth": [
-   "Lv03KeyCavern_08C",
-   42.75,
-   87.75
+   [
+    "Lv03KeyCavern_08C",
+    42.75,
+    87.75
+   ]
   ],
   "D3-owl-statue-basement-north": [
-   "Lv03KeyCavern_03G",
-   93.75,
-   27.0
+   [
+    "Lv03KeyCavern_03G",
+    95.25,
+    29.25
+   ]
   ],
   "D3-owl-statue-arrow": [
-   "Lv03KeyCavern_02D",
-   48.75,
-   15.0
+   [
+    "Lv03KeyCavern_02D",
+    50.25,
+    12.75
+   ]
   ],
   "D3-owl-statue-northwest": [
-   "Lv03KeyCavern_01A",
-   6.75,
-   0.75
+   [
+    "Lv03KeyCavern_01A",
+    6.75,
+    0.75
+   ]
   ],
   "D4-instrument": [
-   "Lv04AnglersTunnel_03B",
-   18.75,
-   27.0
+   [
+    "Lv04AnglersTunnel_03B",
+    18.75,
+    27.0
+   ]
   ],
   "D4-angler": [
-   "Lv04AnglersTunnel_04B",
-   18.75,
-   39.0
+   [
+    "Lv04AnglersTunnel_04B",
+    18.75,
+    39.0
+   ]
   ],
   "D4-north-chest": [
-   "Lv04AnglersTunnel_02D",
-   51.75,
-   15.75
+   [
+    "Lv04AnglersTunnel_02D",
+    51.75,
+    15.75
+   ]
   ],
   "D4-east-side-north": [
-   "Lv04AnglersTunnel_03G",
-   98.25,
-   27.75
+   [
+    "Lv04AnglersTunnel_03G",
+    98.25,
+    27.75
+   ]
   ],
   "D4-east-side-south": [
-   "Lv04AnglersTunnel_05G",
-   101.25,
-   53.25
+   [
+    "Lv04AnglersTunnel_05G",
+    101.25,
+    53.25
+   ]
   ],
   "D4-west-ledge": [
-   "Lv04AnglersTunnel_07C",
-   33.75,
-   74.25
+   [
+    "Lv04AnglersTunnel_07C",
+    33.75,
+    74.25
+   ]
   ],
   "D4-east-of-puzzle": [
-   "Lv04AnglersTunnel_04D",
-   48.75,
-   39.75
+   [
+    "Lv04AnglersTunnel_04D",
+    48.75,
+    39.75
+   ]
   ],
   "D4-south-of-puzzle": [
-   "Lv04AnglersTunnel_05C",
-   39.75,
-   53.25
+   [
+    "Lv04AnglersTunnel_05C",
+    39.75,
+    53.25
+   ]
   ],
   "D4-sunken-item": [
-   "Lv04AnglersTunnel_04E",
-   65.25,
-   41.25
+   [
+    "Lv04AnglersTunnel_04E",
+    65.25,
+    41.25
+   ]
   ],
   "D4-central-room": [
-   "Lv04AnglersTunnel_05D",
-   54.75,
-   53.25
+   [
+    "Lv04AnglersTunnel_05D",
+    54.75,
+    53.25
+   ]
   ],
   "D4-small-island": [
-   "Lv04AnglersTunnel_06F",
-   78.75,
-   65.25
+   [
+    "Lv04AnglersTunnel_06F",
+    78.75,
+    65.25
+   ]
   ],
   "D4-ledge-north": [
-   "Lv04AnglersTunnel_04F",
-   77.4,
-   44.25
+   [
+    "Lv04AnglersTunnel_04F",
+    77.4,
+    44.25
+   ]
   ],
   "D4-statues-chest": [
-   "Lv04AnglersTunnel_07F",
-   81.75,
-   75.75
+   [
+    "Lv04AnglersTunnel_07F",
+    81.75,
+    75.75
+   ]
   ],
   "D4-lobby": [
-   "Lv04AnglersTunnel_07E",
-   69.75,
-   78.75
+   [
+    "Lv04AnglersTunnel_07E",
+    69.75,
+    78.75
+   ]
   ],
   "D4-crystals": [
-   "Lv04AnglersTunnel_08E",
-   66.75,
-   90.75
+   [
+    "Lv04AnglersTunnel_08E",
+    66.75,
+    90.75
+   ]
   ],
   "D4-owl-statue": [
-   "Lv04AnglersTunnel_05E",
-   65.25,
-   54.75
+   [
+    "Lv04AnglersTunnel_05E",
+    65.25,
+    54.75
+   ]
   ],
   "D5-instrument": [
-   "Lv05CatfishsMaw_01D",
-   48.75,
-   3.0
+   [
+    "Lv05CatfishsMaw_01D",
+    48.75,
+    3.0
+   ]
   ],
   "D5-slime-eel": [
-   "Lv05CatfishsMaw_02D",
-   48.75,
-   15.0
+   [
+    "Lv05CatfishsMaw_02D",
+    48.75,
+    15.0
+   ]
   ],
   "D5-master-stalfos": [
-   "Lv05CatfishsMaw_01B",
-   21.75,
-   5.25
+   [
+    "Lv05CatfishsMaw_01B",
+    21.75,
+    5.25
+   ]
   ],
   "D5-crystal-blocks": [
-   "Lv05CatfishsMaw_01C",
-   33.75,
-   3.75
+   [
+    "Lv05CatfishsMaw_01C",
+    33.75,
+    3.75
+   ]
   ],
   "D5-past-master-stalfos-3": [
-   "Lv05CatfishsMaw_01E",
-   66.75,
-   3.75
+   [
+    "Lv05CatfishsMaw_01E",
+    66.75,
+    3.75
+   ]
   ],
   "D5-water-tunnel": [
-   "Lv05CatfishsMaw_02E",
-   63.75,
-   15.75
+   [
+    "Lv05CatfishsMaw_02E",
+    63.75,
+    15.75
+   ]
   ],
   "D5-right-side-north": [
-   "Lv05CatfishsMaw_02G",
-   102.75,
-   14.25
+   [
+    "Lv05CatfishsMaw_02G",
+    102.75,
+    14.25
+   ]
   ],
   "D5-right-side-middle": [
-   "Lv05CatfishsMaw_03G",
-   101.25,
-   26.25
+   [
+    "Lv05CatfishsMaw_03G",
+    101.25,
+    26.25
+   ]
   ],
   "D5-right-side-east": [
-   "Lv05CatfishsMaw_03H",
-   117.75,
-   29.25
+   [
+    "Lv05CatfishsMaw_03H",
+    117.75,
+    29.25
+   ]
   ],
   "D5-past-master-stalfos-1": [
-   "Lv05CatfishsMaw_05G",
-   93.75,
-   51.75
+   [
+    "Lv05CatfishsMaw_05G",
+    93.75,
+    51.75
+   ]
   ],
   "D5-west-chest": [
-   "Lv05CatfishsMaw_06C",
-   35.25,
-   63.75
+   [
+    "Lv05CatfishsMaw_06C",
+    35.25,
+    63.75
+   ]
   ],
   "D5-helmasaurs": [
-   "Lv05CatfishsMaw_07D",
-   57.75,
-   75.75
+   [
+    "Lv05CatfishsMaw_07D",
+    57.75,
+    75.75
+   ]
   ],
   "D5-west-stairs-chest": [
-   "Lv05CatfishsMaw_08E",
-   71.25,
-   87.75
+   [
+    "Lv05CatfishsMaw_08E",
+    71.25,
+    87.75
+   ]
   ],
   "D5-near-entrance": [
-   "Lv05CatfishsMaw_08G",
-   101.25,
-   86.25
+   [
+    "Lv05CatfishsMaw_08G",
+    101.25,
+    86.25
+   ]
   ],
   "D5-owl-statue-triple-stalfos": [
-   "Lv05CatfishsMaw_06F",
-   86.25,
-   60.75
+   [
+    "Lv05CatfishsMaw_06F",
+    86.25,
+    60.75
+   ]
   ],
   "D5-owl-statue-before-slime-eel": [
-   "Lv05CatfishsMaw_03C",
-   38.25,
-   24.75
+   [
+    "Lv05CatfishsMaw_03C",
+    38.25,
+    24.75
+   ]
   ],
   "D6-instrument": [
-   "Lv06FaceShrine_03E",
-   63.75,
-   27.0
+   [
+    "Lv06FaceShrine_03E",
+    63.75,
+    27.0
+   ]
   ],
   "D6-facade": [
-   "Lv06FaceShrine_04E",
-   63.75,
-   39.0
+   [
+    "Lv06FaceShrine_04E",
+    63.75,
+    39.0
+   ]
   ],
   "D6-far-northwest": [
-   "Lv06FaceShrine_02A",
-   11.25,
-   15.75
+   [
+    "Lv06FaceShrine_02A",
+    11.25,
+    15.75
+   ]
   ],
   "D6-far-northeast": [
-   "Lv06FaceShrine_02H",
-   108.75,
-   15.75
+   [
+    "Lv06FaceShrine_02H",
+    108.75,
+    15.75
+   ]
   ],
   "D6-statue-line-north": [
-   "Lv06FaceShrine_03B",
-   20.25,
-   30.75
+   [
+    "Lv06FaceShrine_03B",
+    20.25,
+    30.75
+   ]
   ],
   "D6-statue-line-south": [
-   "Lv06FaceShrine_04B",
-   20.25,
-   38.25
+   [
+    "Lv06FaceShrine_04B",
+    20.25,
+    38.25
+   ]
   ],
   "D6-wizzrobe-pegs": [
-   "Lv06FaceShrine_03D",
-   50.25,
-   29.25
+   [
+    "Lv06FaceShrine_03D",
+    50.25,
+    29.25
+   ]
   ],
   "D6-pot-chest": [
-   "Lv06FaceShrine_03G",
-   93.75,
-   27.0
+   [
+    "Lv06FaceShrine_03G",
+    99.75,
+    27.75
+   ]
   ],
   "D6-canal": [
-   "Lv06FaceShrine_04G",
-   99.75,
-   38.25
+   [
+    "Lv06FaceShrine_04G",
+    99.75,
+    38.25
+   ]
   ],
   "D6-3-wizzrobes": [
-   "Lv06FaceShrine_05A",
-   12.75,
-   51.75
+   [
+    "Lv06FaceShrine_05A",
+    12.75,
+    51.75
+   ]
   ],
   "D6-tile-room": [
-   "Lv06FaceShrine_05D",
-   48.75,
-   53.25
+   [
+    "Lv06FaceShrine_05D",
+    48.75,
+    53.25
+   ]
   ],
   "D6-gated-hallway-north": [
-   "Lv06FaceShrine_06C",
-   41.25,
-   63.75
+   [
+    "Lv06FaceShrine_06C",
+    41.25,
+    63.75
+   ]
   ],
   "D6-gated-hallway-south": [
-   "Lv06FaceShrine_07C",
-   41.25,
-   77.25
+   [
+    "Lv06FaceShrine_07C",
+    41.25,
+    77.25
+   ]
   ],
   "D6-southwest-chest": [
-   "Lv06FaceShrine_07B",
-   18.0,
-   74.25
+   [
+    "Lv06FaceShrine_07B",
+    18.0,
+    74.25
+   ]
   ],
   "D6-wizzrobes-ledge": [
-   "Lv06FaceShrine_07G",
-   102.75,
-   80.25
+   [
+    "Lv06FaceShrine_07G",
+    102.75,
+    80.25
+   ]
   ],
   "D6-owl-statue-ledge": [
-   "Lv06FaceShrine_04D",
-   53.25,
-   44.25
+   [
+    "Lv06FaceShrine_04D",
+    53.25,
+    44.25
+   ]
   ],
   "D6-owl-statue-southeast": [
-   "Lv06FaceShrine_08G",
-   92.25,
-   84.75
+   [
+    "Lv06FaceShrine_08G",
+    92.25,
+    84.75
+   ]
   ],
   "D6-owl-statue-canal": [
-   "Lv06FaceShrine_03G",
-   93.75,
-   27.0
+   [
+    "Lv06FaceShrine_03G",
+    96.75,
+    24.75
+   ]
   ],
   "D7-instrument": [
-   "Lv07EagleTower_02G",
-   93.75,
-   15.0
+   [
+    "Lv07EagleTower_02G",
+    123.75,
+    15.0
+   ]
   ],
   "D7-eagle": [
-   "Lv07EagleTower_03G",
-   93.75,
-   27.0
+   [
+    "Lv07EagleTower_03G",
+    123.75,
+    27.0
+   ]
   ],
   "D7-like-likes": [
-   "Lv07EagleTower_08D",
-   48.75,
-   113.25
+   [
+    "Lv07EagleTower_08D",
+    48.75,
+    113.25
+   ]
   ],
   "D7-1f-west": [
-   "Lv07EagleTower_07A",
-   8.25,
-   99.75
+   [
+    "Lv07EagleTower_07A",
+    8.25,
+    99.75
+   ]
   ],
   "D7-west-ledge": [
-   "Lv07EagleTower_05A",
-   2.25,
-   74.25
+   [
+    "Lv07EagleTower_05A",
+    2.25,
+    74.25
+   ]
   ],
   "D7-east-ledge": [
-   "Lv07EagleTower_05D",
-   48.75,
-   51.0
+   [
+    "Lv07EagleTower_05D",
+    57.75,
+    74.25
+   ]
   ],
   "D7-3ofakind-north": [
-   "Lv07EagleTower_01B",
-   27.75,
-   3.75
+   [
+    "Lv07EagleTower_01B",
+    27.75,
+    3.75
+   ]
   ],
   "D7-2f-horseheads": [
-   "Lv07EagleTower_01C",
-   42.75,
-   3.75
+   [
+    "Lv07EagleTower_01C",
+    42.75,
+    3.75
+   ]
   ],
   "D7-hinox": [
-   "Lv07EagleTower_04A",
-   3.75,
-   41.25
+   [
+    "Lv07EagleTower_04A",
+    3.75,
+    41.25
+   ]
   ],
   "D7-3ofakind-south": [
-   "Lv07EagleTower_04B",
-   18.75,
-   39.0
+   [
+    "Lv07EagleTower_04B",
+    27.75,
+    39.75
+   ]
   ],
   "D7-blue-pegs-chest": [
-   "Lv07EagleTower_03D",
-   50.25,
-   27.75
+   [
+    "Lv07EagleTower_03D",
+    50.25,
+    27.75
+   ]
   ],
   "D7-3f-horseheads": [
-   "Lv07EagleTower_01G",
-   132.75,
-   3.75
+   [
+    "Lv07EagleTower_01G",
+    132.75,
+    3.75
+   ],
+   [
+    "Lv07EagleTower_05G",
+    132.75,
+    75.75
+   ]
   ],
   "D7-grim-creeper": [
-   "Lv07EagleTower_02H",
-   147.75,
-   15.75
+   [
+    "Lv07EagleTower_02H",
+    147.75,
+    15.75
+   ],
+   [
+    "Lv07EagleTower_06H",
+    147.75,
+    87.75
+   ]
   ],
   "D7-owl-statue-ball": [
-   "Lv07EagleTower_02D",
-   47.25,
-   12.75
+   [
+    "Lv07EagleTower_02D",
+    47.25,
+    12.75
+   ]
   ],
   "D7-owl-statue-kirbys": [
-   "Lv07EagleTower_05D",
-   48.75,
-   51.0
+   [
+    "Lv07EagleTower_05D",
+    51.75,
+    75.75
+   ]
   ],
   "D7-owl-statue-hookshot-chest": [
-   "Lv07EagleTower_04B",
-   18.75,
-   39.0
+   [
+    "Lv07EagleTower_04B",
+    17.25,
+    36.75
+   ]
   ],
   "D8-instrument": [
-   "Lv08TurtleRock_01D",
-   48.75,
-   3.0
+   [
+    "Lv08TurtleRock_01D",
+    48.75,
+    3.0
+   ]
   ],
   "D8-hothead": [
-   "Lv08TurtleRock_02D",
-   48.75,
-   15.0
+   [
+    "Lv08TurtleRock_02D",
+    48.75,
+    15.0
+   ]
   ],
   "D8-far-northwest": [
-   "Lv08TurtleRock_02A",
-   12.75,
-   15.75
+   [
+    "Lv08TurtleRock_02A",
+    12.75,
+    15.75
+   ]
   ],
   "D8-far-northeast": [
-   "Lv08TurtleRock_02H",
-   110.25,
-   14.25
+   [
+    "Lv08TurtleRock_02H",
+    110.25,
+    14.25
+   ]
   ],
   "D8-left-exit-chest": [
-   "Lv08TurtleRock_03C",
-   42.75,
-   26.25
+   [
+    "Lv08TurtleRock_03C",
+    42.75,
+    26.25
+   ]
   ],
   "D8-dodongos": [
-   "Lv08TurtleRock_03F",
-   86.25,
-   26.25
+   [
+    "Lv08TurtleRock_03F",
+    86.25,
+    26.25
+   ]
   ],
   "D8-northern-ledge": [
-   "Lv08TurtleRock_02E",
-   65.25,
-   13.5
+   [
+    "Lv08TurtleRock_02E",
+    65.25,
+    13.5
+   ]
   ],
   "D8-gibdos": [
-   "Lv08TurtleRock_03G",
-   97.5,
-   33.75
+   [
+    "Lv08TurtleRock_03G",
+    97.5,
+    33.75
+   ]
   ],
   "D8-beamos-chest": [
-   "Lv08TurtleRock_04B",
-   24.75,
-   41.25
+   [
+    "Lv08TurtleRock_04B",
+    24.75,
+    41.25
+   ]
   ],
   "D8-statue": [
-   "Lv08TurtleRock_04C",
-   33.75,
-   39.0
+   [
+    "Lv08TurtleRock_04C",
+    33.75,
+    41.25
+   ]
   ],
   "D8-torches": [
-   "Lv08TurtleRock_05B",
-   27.75,
-   51.75
+   [
+    "Lv08TurtleRock_05B",
+    27.75,
+    51.75
+   ]
   ],
   "D8-west-vire": [
-   "Lv08TurtleRock_06A",
-   3.75,
-   65.25
+   [
+    "Lv08TurtleRock_06A",
+    3.75,
+    65.25
+   ]
   ],
   "D8-west-roomba": [
-   "Lv08TurtleRock_06B",
-   27.75,
-   63.75
+   [
+    "Lv08TurtleRock_06B",
+    27.75,
+    63.75
+   ]
   ],
   "D8-surrounded-by-blocks": [
-   "Lv08TurtleRock_06D",
-   50.25,
-   63.75
+   [
+    "Lv08TurtleRock_06D",
+    50.25,
+    63.75
+   ]
   ],
   "D8-sparks-chest": [
-   "Lv08TurtleRock_07B",
-   24.75,
-   75.75
+   [
+    "Lv08TurtleRock_07B",
+    24.75,
+    75.75
+   ]
   ],
   "D8-east-of-pots": [
-   "Lv08TurtleRock_07F",
-   81.75,
-   78.75
+   [
+    "Lv08TurtleRock_07F",
+    81.75,
+    78.75
+   ]
   ],
   "D8-east-roomba": [
-   "Lv08TurtleRock_07G",
-   92.25,
-   77.25
+   [
+    "Lv08TurtleRock_07G",
+    92.25,
+    77.25
+   ]
   ],
   "D8-far-southwest": [
-   "Lv08TurtleRock_08A",
-   6.75,
-   90.0
+   [
+    "Lv08TurtleRock_08A",
+    6.75,
+    90.0
+   ]
   ],
   "D8-far-southeast": [
-   "Lv08TurtleRock_08H",
-   117.75,
-   87.75
+   [
+    "Lv08TurtleRock_08H",
+    117.75,
+    87.75
+   ]
   ],
   "D8-owl-statue-above-smasher": [
-   "Lv08TurtleRock_06H",
-   107.25,
-   67.88
+   [
+    "Lv08TurtleRock_06H",
+    107.25,
+    67.88
+   ]
   ],
   "D8-owl-statue-below-gibdos": [
-   "Lv08TurtleRock_04G",
-   101.25,
-   36.75
+   [
+    "Lv08TurtleRock_04G",
+    101.25,
+    36.75
+   ]
   ],
   "D8-owl-statue-eye-statue": [
-   "Lv08TurtleRock_04C",
-   33.75,
-   39.0
+   [
+    "Lv08TurtleRock_04C",
+    40.5,
+    36.75
+   ]
   ],
   "D0-northern-chest": [
-   "Lv10ClothesDungeon_04F",
-   81.75,
-   38.25
+   [
+    "Lv10ClothesDungeon_04F",
+    81.75,
+    38.25
+   ]
   ],
   "D0-zol-pots": [
-   "Lv10ClothesDungeon_05D",
-   57.75,
-   51.75
+   [
+    "Lv10ClothesDungeon_05D",
+    57.75,
+    51.75
+   ]
   ],
   "D0-north-orbs": [
-   "Lv10ClothesDungeon_05E",
-   66.75,
-   53.25
+   [
+    "Lv10ClothesDungeon_05E",
+    66.75,
+    53.25
+   ]
   ],
   "D0-south-orbs": [
-   "Lv10ClothesDungeon_07F",
-   87.75,
-   75.75
+   [
+    "Lv10ClothesDungeon_07F",
+    87.75,
+    75.75
+   ]
   ],
   "D0-east-color-puzzle": [
-   "Lv10ClothesDungeon_05F",
-   78.75,
-   51.0
+   [
+    "Lv10ClothesDungeon_05F",
+    83.25,
+    53.25
+   ]
   ],
   "D0-west-color-puzzle": [
-   "Lv10ClothesDungeon_07D",
-   48.75,
-   75.0
+   [
+    "Lv10ClothesDungeon_07D",
+    57.75,
+    75.75
+   ]
   ],
   "D0-putters": [
-   "Lv10ClothesDungeon_08E",
-   63.75,
-   92.25
+   [
+    "Lv10ClothesDungeon_08E",
+    63.75,
+    92.25
+   ]
   ],
   "D0-fairy-1": [
-   "Lv10ClothesDungeon_04C",
-   37.5,
-   39.75
+   [
+    "Lv10ClothesDungeon_04C",
+    37.5,
+    39.75
+   ]
   ],
   "D0-fairy-2": [
-   "Lv10ClothesDungeon_04C",
-   37.5,
-   39.75
+   [
+    "Lv10ClothesDungeon_04C",
+    37.5,
+    39.75
+   ]
   ],
   "D0-owl-statue-nine-switches": [
-   "Lv10ClothesDungeon_06C",
-   35.25,
-   60.75
+   [
+    "Lv10ClothesDungeon_06C",
+    35.25,
+    60.75
+   ]
   ],
   "D0-owl-statue-first-switches": [
-   "Lv10ClothesDungeon_07D",
-   48.75,
-   75.0
+   [
+    "Lv10ClothesDungeon_07D",
+    53.25,
+    72.75
+   ]
   ],
   "D0-owl-statue-before-mini-boss": [
-   "Lv10ClothesDungeon_05F",
-   78.75,
-   51.0
+   [
+    "Lv10ClothesDungeon_05F",
+    81.75,
+    48.75
+   ]
   ],
   "D0-rupee-1": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-2": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-3": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-4": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-5": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-6": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-7": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-8": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-9": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-10": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-11": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-12": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-13": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-14": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-15": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-16": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-17": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-18": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-19": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-20": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-21": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-22": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-23": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-24": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-25": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-26": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-27": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ],
   "D0-rupee-28": [
-   "Lv10ClothesDungeon_08D",
-   48.75,
-   87.0
+   [
+    "Lv10ClothesDungeon_08D",
+    48.75,
+    87.0
+   ]
   ]
  },
  "names": {

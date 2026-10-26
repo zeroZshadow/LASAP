@@ -22,21 +22,21 @@ send /game INLOGIC 64
 poll hover=\d+/3/in\s.*name=3/3\sMabe\sShop$ 5 DBG map
 tapuntil 800 paused=0 when map:KeyWait 5
 free 10
-# Tail Cave: 3 of a Kind and its owl statue (dot 4: locations 158 and 168) under the cursor.
-warp Lv01TailCave 52.5 0 92.25
+# Key Cavern: the basement's key and its owl statue (marker 10, dot 42: locations 196 and 205) under the cursor.
+warp Lv03KeyCavern 93.75 0 86.25
 tapuntil 800 paused=1 when free 5
 until dmap:KeyWait 10
-send DBG mapdot cursor 4
-expect hover=4/4/2 5
+send DBG mapdot cursor 10
+expect hover=10/42/2 5
 send /game INLOGIC CLEAR
-poll hover=4/4/2.*looks=oooooooooooooo\s 5 DBG mapdot
-poll name=0/2\s3\sof\sa\sKind\s\+1$ 5 DBG map
-send /game INLOGIC 158
-poll looks=oooopooooooooo\s 5 DBG mapdot
-poll name=1/2\s3\sof\sa\sKind\s\+1$ 5 DBG map
+poll hover=10/42/2.*looks=oooOOOOOOOoooOOOOOOOO\s 5 DBG mapdot
+poll name=0/2\sNorth\sBasement\sRoom\s\+1$ 5 DBG map
+send /game INLOGIC 196
+poll looks=oooOOOOOOOpooOOOOOOOO\s 5 DBG mapdot
+poll name=1/2\sNorth\sBasement\sRoom\s\+1$ 5 DBG map
 shot D:/DEV/LASAP-sandbox/map_live_dot.png
-send /game INLOGIC 168
-poll looks=ooooiooooooooo\s 5 DBG mapdot
-poll name=2/2\s3\sof\sa\sKind\s\+1$ 5 DBG map
+send /game INLOGIC 205
+poll looks=oooOOOOOOOiooOOOOOOOO\s 5 DBG mapdot
+poll name=2/2\sNorth\sBasement\sRoom\s\+1$ 5 DBG map
 tapuntil 800 paused=0 when dmap:KeyWait 5
 free 10

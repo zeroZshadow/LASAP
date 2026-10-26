@@ -121,9 +121,16 @@ namespace {
         }
         // Each dot's look as drawn: its SetMark frame, and its root pane's visibility.
         static const char kLookLetters[] = "ipoc";
+        // inroom: the dots whose position lies in their room's box (Map::Area min/max), which the page places them by.
         std::string looks;
-        size_t shown = 0;
+        size_t shown = 0, inRoom = 0;
         for (const auto& dm : g_DotMarkers) {
+            const Dot& dot = Dots()[dm.dot];
+            auto room = g_Rooms.find(TextOf(dot.room));
+            if (room != g_Rooms.end()) {
+                const Map::Area* area = room->second.first;
+                inRoom += dot.x >= area->min.x && dot.x <= area->max.x && dot.z >= area->min.z && dot.z <= area->max.z;
+            }
             const Ui::Animator* animator = dm.marker->setMark.animator;
             int look = animator == nullptr ? -1 :
                 static_cast<int>(animator->frame) - kGameMarkFrames - (DotIds(dm.dot).size() == 1 ? kLooks : 0);
@@ -134,7 +141,8 @@ namespace {
         }
         std::string s = "MAPDOT made=" + std::to_string(g_DotsMade) + " page=" + (g_DungeonPage ? "1" : "0") +
                         " dots=" + std::to_string(g_DotMarkers.size()) + " shown=" + std::to_string(shown) +
-                        " rooms=" + std::to_string(g_Rooms.size()) + " chests=" + std::to_string(g_ChestMatches);
+                        " inroom=" + std::to_string(inRoom) + " rooms=" + std::to_string(g_Rooms.size()) +
+                        " chests=" + std::to_string(g_ChestMatches);
         if (g_DungeonPage != nullptr) {
             s += " floor=" + std::to_string(g_DungeonPage->shownFloor) + " cursor=" +
                  std::to_string(std::lround(g_DungeonPage->cursorX)) + "," +

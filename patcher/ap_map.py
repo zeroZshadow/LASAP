@@ -31,8 +31,8 @@ FLAG_PREFIX = "APMap"  # AP::MAP_FLAG_PREFIX in the module
 LOOKS = ("", "P", "X", "C")
 # Checks closer than this (world units; a screen is 15 x 12) share an icon.
 GROUP_DISTANCE = 3.0
-# Dungeon checks closer than this in the same room share a dot (a chest and its room's owl statue sit together).
-DOT_DISTANCE = 1.0
+# Dungeon checks closer than this in the same room share a dot (Key Cavern's basement key beside its owl statue).
+DOT_DISTANCE = 2.0
 DOT_LABEL = "APMapDot"  # the Place.msbt entry the module names the hovered dungeon dot with (AP::MAP_DOT_LABEL)
 CHEST_ACTOR = 0xF7  # the chest's actor type in a room's .leb
 # The game's UiFieldMapIcons row marking each dungeon's entrance, by the dungeon's location prefix
@@ -70,18 +70,16 @@ def overworld_groups(positions: dict, location_ids: dict) -> list:
 
 def dungeon_dots(positions: dict, location_ids: dict) -> list:
     """[(room, x, z, [lasr location, ...])]: the slot's dungeon checks, each joined to the first spot near it in its
-    room."""
+    room; a check with several places (Eagle's Tower before and after its collapse) in each."""
     dots = []
     for loc in sorted(location_ids, key=lambda loc: int(location_ids[loc])):
-        if loc not in positions["dungeon"]:
-            continue
-        room, x, z = positions["dungeon"][loc]
-        for dot in dots:
-            if dot[0] == room and math.dist((dot[1], dot[2]), (x, z)) < DOT_DISTANCE:
-                dot[3].append(loc)
-                break
-        else:
-            dots.append((room, x, z, [loc]))
+        for room, x, z in positions["dungeon"].get(loc, ()):
+            for dot in dots:
+                if dot[0] == room and math.dist((dot[1], dot[2]), (x, z)) < DOT_DISTANCE:
+                    dot[3].append(loc)
+                    break
+            else:
+                dots.append((room, x, z, [loc]))
     return dots
 
 
@@ -141,7 +139,7 @@ def add(files, config_dir: Path, location_ids: dict, placeholder_key: str, shuff
     hidden = [hidden_until(locs, shuffled_dungeons) for *_, locs in overworld]
     _text(files, [HIDDEN_DUNGEON if flag else name for name, flag in zip(names, hidden)])
     lines = [f"C {level} {x:.3f} {z:.3f} {local_id}"
-             for level, x, z, local_id in _dungeon_chests(files, location_ids, placeholder_key)]
+             for level, x, z, local_id in _dungeon_chests(files, positions, location_ids, placeholder_key)]
     for g, (*_, locs) in enumerate(overworld):
         lines.append(f"O {g} " + " ".join(str(location_ids[loc]) for loc in locs))
     for d, (room, x, z, locs) in enumerate(dots):
@@ -150,7 +148,7 @@ def add(files, config_dir: Path, location_ids: dict, placeholder_key: str, shuff
     lines += [f"MG {d} {dot_name(positions, locs)}" for d, (*_, locs) in enumerate(dots)]
     lines += [f"H {g} {flag} {HIDDEN_DUNGEON}" for g, flag in enumerate(hidden) if flag]
     lines += [f"N {location_ids[loc]} {short_name(positions['names'][loc])}"
-              for *_, locs in overworld + dots for loc in sorted(set(locs))]
+              for loc in sorted({loc for *_, locs in overworld + dots for loc in locs})]
     (config_dir / FILE_NAME).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
@@ -171,19 +169,22 @@ def _field_icons(files, groups: list) -> None:
     files.writeFile("UiFieldMapIcons.gsheet", sheet)
 
 
-def _dungeon_chests(files, location_ids: dict, placeholder_key: str) -> list:
+def _dungeon_chests(files, positions: dict, location_ids: dict, placeholder_key: str) -> list:
     """[(level, x, z, local id)]: the chests of the slot's dungeon locations, found by the placeholder (or a model
-    variant of it) with the location's index."""
+    variant of it) with the location's index; in each room of the location (Eagle's Tower before and after its
+    collapse)."""
     chests = []
     for loc, room_name in CHEST_ROOMS.items():
         if loc not in location_ids or not room_name.startswith("Lv"):
             continue
         local_id = int(location_ids[loc])
-        for actor in files.readFile(f"{room_name}.leb").actors:
-            key = actor.parameters[1]
-            if (actor.type == CHEST_ACTOR and isinstance(key, bytes) and key.startswith(placeholder_key.encode())
-                    and actor.parameters[2] == local_id):
-                chests.append((room_name.split("_")[0], actor.posX, actor.posZ, local_id))
+        rooms = {room_name} | {room for room, *_ in positions["dungeon"].get(loc, ())}
+        for room in sorted(rooms):
+            for actor in files.readFile(f"{room}.leb").actors:
+                key = actor.parameters[1]
+                if (actor.type == CHEST_ACTOR and isinstance(key, bytes) and key.startswith(placeholder_key.encode())
+                        and actor.parameters[2] == local_id):
+                    chests.append((room.split("_")[0], actor.posX, actor.posZ, local_id))
     return chests
 
 
