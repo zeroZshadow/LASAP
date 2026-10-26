@@ -57,6 +57,28 @@ wait 45
 check music=BGM_ENSEMBLE_INST zonebgm=\S+ bgm=BGM_ENSEMBLE_INST:1\s.*layers=03
 send DBG music
 expect MUSICLOG(?!(.*->BGM_ENSEMBLE_INST\s\S+\s\d+\snew){2}) 5
+# Its eight stream channels (of the sound archive's ten): chosen while another track fades out and a fanfare plays,
+# it waits until there is room, and the fanfare plays (DBG pickup: item 3's fanfare).
+send DBG music BGM_FAIRY
+await 10 music=BGM_FAIRY zonebgm=\S+ bgm=BGM_FAIRY:1\s
+send DBG pickup 3
+expect OK.pickup 5
+send DBG music BGM_ENSEMBLE_INST
+await 5 bgm=\S*BGM_FANFARE_BIGITEM_GET:2
+await 20 music=BGM_ENSEMBLE_INST zonebgm=\S+ bgm=BGM_ENSEMBLE_INST:1\s.*layers=03
+# The ocarina's song (the Ballad on X: inventory a1 and a3, as the item menu sets them): the ensemble gives way to it
+# and comes back where it would be.
+send DBG poke a1 01
+expect OK.poke 5
+send DBG poke a3 0c
+expect OK.poke 5
+tap 4 when free 3000
+await 5 bgm=BGM_OCA_PLAY_FISH_OF_WIND:2\s
+send DBG music
+expect MUSICLOG.*\|\syield\sBGM_OCA_PLAY_FISH_OF_WIND\s 5
+await 20 music=BGM_ENSEMBLE_INST zonebgm=\S+ bgm=BGM_ENSEMBLE_INST:1\s.*layers=03
+send DBG music
+expect MUSICLOG.*\|\sresume\s[1-9] 5
 # Off: the field's own track comes back.
 send DBG music off
 await 10 music=- zonebgm=\S+ bgm=\S+:1\s.*layers=-

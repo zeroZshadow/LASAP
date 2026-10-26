@@ -17,6 +17,7 @@
 #include "game/time.hpp"
 #include "loggers.hpp"
 #include "nn/fs.hpp"
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -81,6 +82,37 @@ namespace {
     constexpr const char* kLoopName = "LOOP";
     constexpr u32 kEnsembleOutFrames = 10;
     volatile bool g_LoopFile = false;  // read on the audio loader's thread
+    // Stream channels: the sound archive lets all streams together hold 10 (its player info). Every BGM is a stream
+    // of 2 channels but the ensemble (8) and a few others, so beside the ensemble only one more stream fits; a stream
+    // that starts without room gets no sound and the BGM player drops it (a fanfare, the ocarina's song, or the
+    // ensemble itself). A stream fading out holds its channels until the fade ends.
+    constexpr int kStreamChannels = 10;
+    constexpr int kEnsembleChannels = 8;
+    constexpr std::pair<std::string_view, int> kWideStreams[] = {
+        {"BGM_FANFARE_BOSS_HEART_GET", 4}, {"BGM_TELEPHONE", 4}, {"BGM_PLACE_OF_FACE_KEY", 4},
+        {"BGM_DEMO_BEFORE_ENDING_SE_MIX", 5}};
+    // So the Jukebox's ensemble starts only when its channels are free and no jingle plays: it waits in the starting
+    // list (its start delay held at kWaitFrames). It gives way to a jingle (an item's fanfare, the ocarina's song),
+    // over which the game's music is silent anyway, and to any stream that would not fit beside it: it fades out
+    // over kYieldFrames, and a stream that needs its channels starts kFreeFrames after the fade has ended. Once the
+    // jingle is over and its channels are free it comes back from where it would be had it played on, fading in over
+    // kResumeFadeFrames as the game's music comes back after a jingle. Meanwhile it counts as playing: a stop of the
+    // game's holds it as it holds a playing track (Doors below), and a zone call brings it back. A choice, another
+    // request for the ensemble (the egg's) and the end of a hold end the wait.
+    constexpr u32 kWaitFrames = 10;
+    constexpr u32 kYieldFrames = 8;
+    constexpr u32 kFreeFrames = 3;
+    constexpr int kResumeFadeFrames = 150;
+    // The looping copy: 48 kHz, looping at ap_ballad.py's LOOP_END
+    constexpr u64 kBalladRate = 48000;
+    constexpr u64 kBalladLoop = 1802760;
+    BgmInstance* g_Ensemble = nullptr;  // the Jukebox's ensemble instance, the last a zone call started
+    bool g_EnsembleSeen = false;        // seen playing with its sound
+    bool g_Yielded = false;             // it gave way and comes back
+    BgmInstance* g_Resumed = nullptr;   // the instance that brings it back, until seen playing
+    const BgmInstance* g_Continued = nullptr;  // the last such instance (the play-through count goes on)
+    float g_ResumeVolume = 1.0f;        // that instance's volume, 0 until it plays
+    u64 g_EpochMs = 0;                  // when the ensemble's sample 0 played (from where it comes back)
 
     // The chosen track ("" none), its index in AP::Tracks::TRACKS (-1: none, or a track not in the list), and whether
     // the game should switch to it (or back) on the next tick in a level.
@@ -147,6 +179,7 @@ namespace {
         g_PlayedMs = 0;
         g_Ended = false;
         g_Restart = false;
+        g_Yielded = false;
         g_Pending = true;
         Logging.Log("[AP] music %s", track.empty() ? "off" : track.c_str());
         return true;
@@ -314,7 +347,18 @@ namespace {
         BgmManager* manager = Manager();
         BgmInstance* instance = manager != nullptr ? PlayingInstance(manager) : nullptr;
         Sound* sound = instance != nullptr ? instance->handle.sound : nullptr;
-        if (sound == nullptr) return stop();
+        Game::Framework* fmwk = Game::GetFramework();
+        if (sound == nullptr) {
+            stop();
+            if (!g_Yielded) return;
+            // the ensemble that gave way is held as if it played
+            g_Held = true;
+            g_HeldPlayer = fmwk != nullptr ? fmwk->player : nullptr;
+#ifdef LASAP_TEST
+            Record("hold yielded");
+#endif
+            return;
+        }
         u32 fadeOut = instance->handle.fadeOutFrames;
         g_HoldSound = sound;
         g_HoldSkipped = false;
@@ -325,7 +369,6 @@ namespace {
 #endif
         if (!g_HoldSkipped) return;
         instance->handle.fadeOutFrames = fadeOut;
-        Game::Framework* fmwk = Game::GetFramework();
         g_Held = true;
         g_HeldPlayer = fmwk != nullptr ? fmwk->player : nullptr;
     }
@@ -336,6 +379,7 @@ namespace {
         Record(std::string("held stop") + (g_Carried ? " carried" : ""));
 #endif
         g_Held = g_Carried = false;
+        g_Yielded = false;
         BgmManager* manager = Manager();
         const BgmInstance* instance = manager != nullptr ? PlayingInstance(manager) : nullptr;
         Sound* sound = instance != nullptr ? instance->handle.sound : nullptr;
@@ -349,6 +393,128 @@ namespace {
             if (instance->handle.name.View() != kEnsemble || instance->handle.sound == nullptr) continue;
             g_Held = g_Carried = false;
             Game::Sound_Stop(instance->handle.sound, kEnsembleOutFrames);
+        }
+        g_Ensemble = nullptr;
+        g_Yielded = false;
+    }
+
+    int Channels(const BgmInstance* instance) {
+        std::string_view name = instance->handle.name.View();
+        if (name == kEnsemble) return kEnsembleChannels;
+        for (const auto& [wide, channels] : kWideStreams) {
+            if (name == wide) return channels;
+        }
+        return 2;
+    }
+
+    // The channels the streams other than `except` hold (playing, until their fade-out ends) or will take (starting).
+    int ChannelsBeside(const BgmManager* manager, const BgmInstance* except) {
+        int channels = 0;
+        for (const BgmInstance* instance : manager->bgm.playing) {
+            if (instance != except && instance->handle.sound != nullptr) channels += Channels(instance);
+        }
+        for (const BgmInstance* instance : manager->bgm.starting) {
+            if (instance != except) channels += Channels(instance);
+        }
+        return channels;
+    }
+
+    bool JinglePlays(const BgmManager* manager) {
+        for (const BgmInstance* instance : manager->bgm.starting) {
+            if (instance->kind == Game::Audio::kJingle) return true;
+        }
+        for (const BgmInstance* instance : manager->bgm.playing) {
+            if (instance->kind == Game::Audio::kJingle && instance->handle.sound != nullptr) return true;
+        }
+        return false;
+    }
+
+    // Whether the ensemble (`instance`, or null for one not asked for yet) may start now.
+    bool EnsembleRoom(const BgmManager* manager, const BgmInstance* instance) {
+        return ChannelsBeside(manager, instance) + kEnsembleChannels <= kStreamChannels && !JinglePlays(manager);
+    }
+
+    // The Jukebox's ensemble in `list`, or null.
+    BgmInstance* JukeboxEnsemble(const Game::Vector<BgmInstance*>& list) {
+        if (g_Ensemble == nullptr || g_Ensemble->handle.name.View() != kEnsemble) return nullptr;
+        for (BgmInstance* instance : list) {
+            if (instance == g_Ensemble) return instance;
+        }
+        return nullptr;
+    }
+
+    // The sample the ensemble would be at `aheadFrames` from now, had it played on since sample 0.
+    u32 EnsembleSample(u32 aheadFrames) {
+        u64 ms = Game::NowMs() - g_EpochMs + aheadFrames * 1000 / 60;
+        return static_cast<u32>(ms * kBalladRate / 1000 % kBalladLoop);
+    }
+
+    // A zone call started the Jukebox's ensemble: one that gave way comes back, silent until it plays.
+    void StartEnsemble(BgmInstance* instance) {
+        g_Ensemble = instance;
+        g_EnsembleSeen = false;
+        g_Resumed = nullptr;
+        g_Continued = nullptr;
+        if (!g_Yielded) return;
+        g_Resumed = instance;
+        g_Continued = instance;
+        g_ResumeVolume = instance->volume;
+        instance->volume = 0.0f;
+        instance->startDelay = 0;
+        instance->startOffset = EnsembleSample(0);
+    }
+
+    // Another stream (`newcomer`) was asked for while the Jukebox's ensemble plays or starts.
+    void MakeRoom(const BgmManager* manager, BgmInstance* newcomer) {
+        if (BgmInstance* starting = JukeboxEnsemble(manager->bgm.starting)) {
+            starting->startDelay = std::max(starting->startDelay, kWaitFrames);  // Tick holds it from now on
+            return;
+        }
+        BgmInstance* ensemble = JukeboxEnsemble(manager->bgm.playing);
+        Sound* sound = ensemble != nullptr ? ensemble->handle.sound : nullptr;
+        if (sound == nullptr || newcomer == ensemble) return;
+        bool fits = ChannelsBeside(manager, ensemble) + kEnsembleChannels <= kStreamChannels;
+        if (sound->fadingOut) {
+            u32 left = static_cast<u32>(std::max(sound->stopFade.frames - sound->stopFade.framesGone, 0));
+            if (!fits) newcomer->startDelay = std::max(newcomer->startDelay, left + kFreeFrames);
+            return;
+        }
+        if (fits && newcomer->kind != Game::Audio::kJingle) return;
+        Game::Sound_Stop(sound, kYieldFrames);
+        g_Yielded = true;
+        if (!fits) newcomer->startDelay = std::max(newcomer->startDelay, kYieldFrames + kFreeFrames);
+#ifdef LASAP_TEST
+        Record(std::string("yield ") + std::string(newcomer->handle.name.View()));
+#endif
+    }
+
+    // Each tick: the ensemble waits for room, is seen starting, and comes back after giving way.
+    void TickEnsemble(const BgmManager* manager) {
+        bool chosen = std::string_view(g_Track, g_TrackLen) == kEnsemble;
+        if (!chosen) g_Yielded = false;
+        BgmInstance* starting = JukeboxEnsemble(manager->bgm.starting);
+        if (starting != nullptr && chosen) {
+            if (!EnsembleRoom(manager, starting)) starting->startDelay = std::max(starting->startDelay, kWaitFrames);
+            if (starting == g_Resumed) starting->startOffset = EnsembleSample(starting->startDelay);
+        }
+        BgmInstance* playing = JukeboxEnsemble(manager->bgm.playing);
+        if (playing != nullptr && playing->handle.sound != nullptr && !g_EnsembleSeen) {
+            g_EnsembleSeen = true;
+            if (playing == g_Resumed) {
+                playing->volume = g_ResumeVolume;
+                Game::Sound_SetVolume(playing->handle.sound, kResumeFadeFrames, g_ResumeVolume);
+                g_Resumed = nullptr;
+                g_Yielded = false;
+#ifdef LASAP_TEST
+                Record("resume " + std::to_string(playing->startOffset));
+#endif
+            } else {
+                g_EpochMs = Game::NowMs();
+            }
+        }
+        if (g_Yielded && chosen && !g_Pending && playing == nullptr && starting == nullptr &&
+            EnsembleRoom(manager, nullptr)) {
+            if (Game::PlayZoneBgm(false) == nullptr) g_Yielded = false;  // no zone music here
         }
     }
 
@@ -389,8 +555,12 @@ HOOK_DEFINE_TRAMPOLINE(BgmManagerPlay) {
             StopEnsemble(manager);
         }
         BgmInstance* instance = Orig(volume, manager, swap ? &chosen : name, b2, b3, force);
-        if (swap && instance != nullptr && chosen.View() == kEnsemble) SetLayers(instance);
+        if (swap && instance != nullptr && chosen.View() == kEnsemble) {
+            SetLayers(instance);
+            StartEnsemble(instance);
+        }
         if ((g_Held || g_Carried) && !swap && instance != nullptr) StopHeld();  // an event's song, a fanfare
+        if (!swap && instance != nullptr) MakeRoom(manager, instance);
         if (g_FanfareCall && instance != nullptr && name != nullptr) g_Fanfare.assign(name->data, name->size);
         if (swap) g_Held = false;  // the zone's music again: it plays on
 #ifdef LASAP_TEST
@@ -478,22 +648,25 @@ namespace AP::Music {
         g_Carried = false;
         if (g_TrackLen > 0 && !Playable(g_Track)) Set("");  // a save without instruments loaded under the Ballad
         UpdateLayers(manager);
+        TickEnsemble(manager);
         // How long the chosen track has played: from its start, while it plays (also under the pause menu, which
         // does not tick this). With repeat one off, the next track once it has played through, only while the player
         // is free: a change fades out the event songs too. A track that does not loop is gone once it has played: it
         // has played to its end when it goes within a second of its length with no other music playing (music that
         // cuts it in plays on). With repeat one it starts again, while the player is free or the pause menu is open.
+        // The ensemble plays on, as counted, while it gives way and once it is back.
         if (g_TrackIndex >= 0) {
             u64 now = NowMs();
             const BgmInstance* instance = PlayingInstance(manager);
             u64 length = AP::Tracks::TRACKS[g_TrackIndex].ms;
             if (instance == nullptr && g_Instance != nullptr && g_PlayedMs + (now - g_LastMs) + 1000 >= length &&
-                !OtherMusic(manager)) {
+                !OtherMusic(manager) && !g_Yielded) {
                 g_Ended = true;
             }
-            if (instance != g_Instance) {
+            bool goesOn = instance == nullptr ? g_Yielded : instance == g_Continued;
+            if (instance != g_Instance && !goesOn) {
                 g_PlayedMs = 0;
-            } else if (instance != nullptr) {
+            } else if (instance != nullptr || g_Yielded) {
                 g_PlayedMs += now - g_LastMs;
             }
             if (instance != nullptr) g_Ended = false;

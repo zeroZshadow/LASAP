@@ -124,6 +124,7 @@ namespace Game::Audio {
     static_assert(offsetof(BgmInstance, startOffset) == 0x128 && offsetof(BgmInstance, prepareNow) == 0x12c);
     static_assert(sizeof(BgmInstance) == 0x130);
     constexpr u8 kZoneMusic = 1;
+    constexpr u8 kJingle = 2;
 
     // The BGM player (BgmPlayer_Ctor; 0x9f0 bytes): eight instances and the lists they move through.
     struct BgmPlayer {
