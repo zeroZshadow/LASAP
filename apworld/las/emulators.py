@@ -40,6 +40,13 @@ class Emulator:
     def __init__(self, exe: str) -> None:
         self.exe = exe
 
+    # the same program is the same emulator: the Patch tab rebuilds only when its model, which holds one, changes
+    def __eq__(self, other: object) -> bool:
+        return type(other) is type(self) and other.exe == self.exe  # type: ignore[attr-defined]
+
+    def __hash__(self) -> int:
+        return hash((type(self), self.exe))
+
     @property
     def name(self) -> str:
         return Path(self.exe).stem or "your emulator"

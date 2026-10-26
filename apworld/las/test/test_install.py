@@ -326,6 +326,7 @@ class TestEmulators(unittest.TestCase):
         target = emulators.target(str(exe), "", "")
         self.assertIsInstance(target.emulator, emulators.Yuzu)
         self.assertEqual(target.emulator.name, "Eden")
+        self.assertEqual(target, emulators.target(str(exe), "", ""))  # the Patch tab compares its model
         self.assertEqual(target.sd_card, exe.parent / "user" / "sdmc")
         self.assertEqual(target.mods, exe.parent / "user" / "load" / TITLE_ID / "Archipelago")
         self.assertEqual(target.emulator.start_args("game.nsp", target.data_dir), [str(exe), "-g", "game.nsp"])
@@ -343,3 +344,4 @@ class TestEmulators(unittest.TestCase):
         self.assertIsNone(emulators.target("", "", ""))
         target = emulators.target("", str(self.root / "sd"), str(self.root / "mods"))
         self.assertEqual((target.sd_card, target.mods), (self.root / "sd", self.root / "mods"))
+        self.assertEqual(target, emulators.target("", str(self.root / "sd"), str(self.root / "mods")))  # a Switch's

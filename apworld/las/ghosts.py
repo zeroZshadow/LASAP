@@ -265,16 +265,19 @@ class GhostLink:
 
     async def run(self, exit_event: asyncio.Event) -> None:
         failures = 0
+        retrying = False  # the last try failed: its problem stays shown while the link tries again
         while not exit_event.is_set():
             self.wake.clear()
             reason = self.waiting_for()
             if reason:
                 self.set_status(checklist.INFO, reason)
                 await self.wait(self.wake, None)
+                retrying = False
                 continue
             try:
-                await self.session()
+                await self.session(announce=not retrying)
                 failures = 0
+                retrying = False
             except RelayRefused as e:
                 self.set_status(*self.problem(f"Ghosts: the relay refused: {e}"))
                 failures = len(RETRY_DELAYS) - 1
@@ -287,10 +290,14 @@ class GhostLink:
             finally:
                 self.drop()
             if self.wake.is_set():
+                retrying = False
                 continue  # the settings changed: connect again at once
             delay = RETRY_DELAYS[min(failures, len(RETRY_DELAYS) - 1)]
             failures += 1
+            retrying = True
             await self.wait(self.wake, delay)
+            if self.wake.is_set():
+                retrying = False
 
     def problem(self, text: str) -> Tuple[str, str]:
         """A status for a relay that cannot be reached or refuses: an error for a relay the player or the patch file
@@ -307,8 +314,11 @@ class GhostLink:
         except asyncio.TimeoutError:
             pass
 
-    async def session(self) -> None:
-        self.set_status(checklist.INFO, f"Ghosts: connecting to the relay {wire.shown_address(self.address)}...")
+    async def session(self, announce: bool = True) -> None:
+        """Joins the relay and serves it until it drops or the settings change; `announce` shows it connecting (not
+        on a retry, where the last problem stays shown and the Patch tab does not redraw on each try)."""
+        if announce:
+            self.set_status(checklist.INFO, f"Ghosts: connecting to the relay {wire.shown_address(self.address)}...")
         password, reader, writer = await wire.connect(self.address)
         self.writer = writer
         writer.write(wire.frame(wire.join_message(wire.group_id(self.secret), self.slot, self.player, password)))

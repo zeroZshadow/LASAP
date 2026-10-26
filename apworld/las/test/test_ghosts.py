@@ -777,6 +777,49 @@ class TestGhostLink(unittest.TestCase):
                          (checklist.INFO, f"Ghosts: the default relay {closed} is not available right now; trying "
                                           f"again in the background."))
 
+    def test_retries_keep_the_problem_shown(self) -> None:
+        """While the relay cannot be reached, each retry leaves the status as it is, so the Patch tab, which redraws
+        on a change, stays still; new settings show connecting again."""
+        from unittest import mock
+        from .. import ghosts
+        from ..ghosts import GhostLink
+
+        tries = []
+
+        async def refused(address: str) -> None:
+            tries.append(address)
+            raise ConnectionRefusedError("refused")
+
+        async def main() -> List[str]:
+            statuses: List[str] = []
+            link = GhostLink(lambda line: None, lambda: statuses.append(link.status.text))
+            exit_event = asyncio.Event()
+            task = asyncio.create_task(link.run(exit_event))
+
+            async def until(test) -> None:
+                for _ in range(150):
+                    if test():
+                        return
+                    await asyncio.sleep(0.02)
+                self.fail(f"timed out; statuses: {statuses}, tries: {len(tries)}")
+
+            link.configure(True, "127.0.0.1:1", "secret1", "A", "A")
+            await until(lambda: len(tries) >= 5)
+            link.configure(True, "127.0.0.1:1", "secret2", "A", "A")
+            await until(lambda: len(statuses) >= 4)
+            exit_event.set()
+            link.wake.set()
+            await task
+            return statuses
+
+        with mock.patch.object(ghosts, "RETRY_DELAYS", (0.01,)), mock.patch.object(ghosts.wire, "connect", refused):
+            statuses = asyncio.run(main())
+        self.assertEqual(len(statuses), 4, statuses)
+        self.assertIn("connecting", statuses[0])
+        self.assertIn("cannot reach the relay", statuses[1])
+        self.assertIn("connecting", statuses[2])
+        self.assertEqual(statuses[3], statuses[1])
+
     def test_link_sends_the_relay_password(self) -> None:
         from .. import checklist
         from ..ghosts import GhostLink
