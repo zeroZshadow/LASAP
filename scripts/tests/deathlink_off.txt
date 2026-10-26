@@ -1,14 +1,35 @@
 # DeathLink off: a seed with death_link off and the DeathLink peer as the other slot (deathlink.txt setup otherwise),
-# after boot_file1. A death from the peer never reaches the game, and Link's own death sends nothing. Ends with Link
+# after boot_file1. A death from the peer never reaches the game, and Link's own deaths send nothing: one that Tracy's
+# Secret Medicine saves, then one that ends in the game over. The script gives the medicine (DBG give 21) and clears
+# the medicines waiting in the save (APMedicine0..1), so whether the save holds one does not matter. Ends with Link
 # alive and free in Mabe. Patterns use \s for spaces.
 guard off dead
+send DBG setflag APMedicine0 0
+expect FLAG\sAPMedicine0\s0 5
+send DBG setflag APMedicine1 0
+expect FLAG\sAPMedicine1\s0 5
 warp Field 38.25 10.5 128.25
 peer /die Finder fell alone.
 logged DeathLink:\sSending 10 peer
 wait 3
 check health=[1-9]
 logcount DeathLink 0 client
-# An own death (a quarter heart and an Octorok south of Mabe): the game over shows, nothing goes out.
+# An own death (a quarter heart and an Octorok south of Mabe) with the medicine: it refills Link's hearts and is used
+# up, no game over, nothing goes out.
+send DBG give 21 1 0
+expect OK\sgive 5
+warp Field 41.25 9.0 147.75
+send DBG poke 84 0100
+hold 0 0 32767 until health=0 10
+await 20 health=[1-9]
+until free 20
+check paused=0
+check medicine=0/0\s
+wait 2
+check paused=0
+logcount Sending\sdeath 0 client
+logcount DeathLink:\sLink 0 peer
+# An own death without the medicine: the game over shows, nothing goes out.
 warp Field 41.25 9.0 147.75
 send DBG poke 84 0100
 hold 0 0 32767 until health=0 10
