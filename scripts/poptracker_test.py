@@ -571,6 +571,28 @@ def step_manual(pack: Pack, tracker: Tracker, server: Server) -> None:
         tracker.commands(*[f"set {c} Active {'true' if c in have else 'false'}" for c in codes])
         check(f"{chest} with {have}", tracker.dump().section(chest)[2], want)
     tracker.commands(*[f"set {c} Active false" for c in codes], "set d5sk AcquiredCount 0")
+    # Pots: a pot broken (bracelet, bombs or the level 2 sword) or thrown (the bracelet); each dungeon is entered
+    # through Tail Cave's door, marked as leading into it with Dungeon ER
+    cases = [
+        (6, "@Dungeons/D6 - Face Shrine/Compass Chest/Chest", ["bombs"], NONE),  # a pot thrown at the door
+        (6, "@Dungeons/D6 - Face Shrine/Compass Chest/Chest", ["bombs", "bracelet"], NORMAL),
+        (6, "@Dungeons/D6 - Face Shrine/North Wizzrobe Blocks/Key Drop", ["bombs"], NONE),
+        (6, "@Dungeons/D6 - Face Shrine/North Wizzrobe Blocks/Key Drop", ["bombs", "bracelet"], NORMAL),
+        (2, "@Dungeons/D2 - Bottle Grotto/Pols Voice, Keese, then the Hooded Stalfos/Chest",
+         ["sword", "rod", "feather"], NONE),
+        (2, "@Dungeons/D2 - Bottle Grotto/Pols Voice, Keese, then the Hooded Stalfos/Chest",
+         ["sword", "rod", "feather", "bombs"], NORMAL),
+        (8, "@Dungeons/D8 - Turtle Rock/Owl (Above Smasher)/Owl", ["feather", "d8beak", "badpets"], NONE),
+        (8, "@Dungeons/D8 - Turtle Rock/Owl (Above Smasher)/Owl", ["feather", "d8beak", "badpets", "rooster"], NORMAL),
+    ]
+    codes = ["bombs", "bracelet", "sword", "rod", "feather", "d8beak", "badpets", "rooster"]
+    tracker.commands("set dungeon_er_off CurrentStage 1", "set d2sk AcquiredCount 3")
+    for stage, section, have, want in cases:
+        tracker.commands(f"set tcdX CurrentStage {stage}",
+                         *[f"set {c} Active {'true' if c in have else 'false'}" for c in codes])
+        check(f"{section} with {have}", tracker.dump().section(section)[2], want)
+    tracker.commands(*[f"set {c} Active false" for c in codes], "set d2sk AcquiredCount 0",
+                     "set tcdX CurrentStage 0", "set dungeon_er_off CurrentStage 0")
     # With Dungeon ER the Face Shrine's door pin needs the door and the Face Key, not a door marked as leading to D6
     door = next(loc for loc in pack.locations if loc.endswith("/Face Shrine Entrance"))
     cases = [
