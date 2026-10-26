@@ -297,7 +297,7 @@ namespace AP {
         if (TakeNewConnection()) {
             SendAllChecks();
             Send("LOG level " + g_LastLevel);  // the client passes it on to trackers
-            ResetHints();  // sent again once the save is loaded
+            ResetReportedFlags();  // sent again once the save is loaded
             GhostNet::Reset();
         }
 
@@ -305,7 +305,7 @@ namespace AP {
         GhostNet::Tick();
         Puppets::Tick();
         TickKeptFlags();
-        TickHintFlags();
+        TickReportedFlags();
         AP::TickToasts(PlayerReady());
         TickItemGet();
         TickHeldModel();

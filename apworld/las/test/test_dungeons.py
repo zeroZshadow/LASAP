@@ -110,6 +110,42 @@ class TestDungeonLogic(unittest.TestCase):
         doors = " ".join(str(local_id) for local_id in sorted(LOCATION_OFFSETS[loc] for loc in d8))
         self.assertEqual(writer.lines, ["DOORS CLEAR", f"DOORS {doors}", "INLOGIC CLEAR"])
 
+    def test_client_publishes_found_doors(self) -> None:
+        """A dungeon the game reports entered (DUNGEON) finds the door that leads into it: the client adds it to
+        las_doors_<team>_<slot> once per connection, for the slot of the seed the game runs only. Turtle Rock is behind
+        Tail Cave's door."""
+        import asyncio
+        from ..client import LASContext, PROTOCOL_VERSION
+
+        async def run() -> list:
+            ctx = LASContext(None, None, "127.0.0.1", 0)
+            sent = []
+
+            async def send_msgs(msgs):
+                sent.extend(msgs)
+            ctx.send_msgs = send_msgs
+            ctx.server = object()
+            ctx.slot, ctx.team = 1, 0
+            ctx.slot_data = {"dungeon_entrances": SWAP}
+            ctx.slot_seed_hash = "aaaa"
+            # another seed's game: not its doors; then the game of the slot's seed, SYNC sending its dungeons again
+            for line in (f"HELLO {PROTOCOL_VERSION} bbbb", "DUNGEON 8", f"HELLO {PROTOCOL_VERSION} aaaa",
+                         "DUNGEON 8", "DUNGEON 3", "DUNGEON 8", "DUNGEON 3", "DUNGEON 9"):
+                ctx.handle_game_line(line)
+                await asyncio.sleep(0)
+            sent.append("reconnected")
+            ctx.doors_sent.clear()  # a new connection to the server sends them again
+            await ctx.send_doors()
+            return [msg if isinstance(msg, str) else msg["operations"] for msg in sent
+                    if isinstance(msg, str) or (msg["cmd"] == "Set" and msg["key"] == "las_doors_0_1")]
+        sent = asyncio.run(run())
+        self.assertEqual(sent, [
+            [{"operation": "update", "value": {"tail-cave": "turtle-rock"}}],
+            [{"operation": "update", "value": {"key-cavern": "key-cavern"}}],
+            "reconnected",
+            [{"operation": "update", "value": {"tail-cave": "turtle-rock", "key-cavern": "key-cavern"}}],
+        ])
+
 
 class TestShuffledDungeons(LASTestBase):
     options = {"shuffled_dungeons": True}

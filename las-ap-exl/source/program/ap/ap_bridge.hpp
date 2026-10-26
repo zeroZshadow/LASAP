@@ -136,11 +136,12 @@ namespace AP::Bridge {
     void NoteDoors(const std::vector<std::string>& a);
     // In-game hints the client makes server hints of (HINTS_PATH).
     void LoadHints();
-    // Sends HINT for the hints read and not yet reported on this connection, or for all read.
-    void ReportHints(bool all);
-    void TickHintFlags();
-    // A new connection: every hint read is reported again once the save is loaded.
-    void ResetHints();
+    // Sends HINT and DUNGEON for the hints read and the dungeons entered and not yet reported on this connection, or
+    // for all.
+    void ReportFlags(bool all);
+    void TickReportedFlags();
+    // A new connection: every hint read and dungeon entered is reported again once the save is loaded.
+    void ResetReportedFlags();
 #ifdef LASAP_TEST
     // DBG clearchecks
     void ClearChecks();
