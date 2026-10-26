@@ -29,6 +29,8 @@ namespace {
     // Locations in logic for the items received (INLOGIC lines), for the map tracker.
     std::vector<u8> g_InLogic(kChecksBytes, 0);
     bool g_HasLogic = false;
+    // Dungeon locations whose dungeon's door is reachable for the items received (DOORS lines), for the map tracker.
+    std::vector<u8> g_DoorOpen(kChecksBytes, 0);
 
     // In-game hints the client makes server hints of (HINTS_PATH): the flag reading the hint sets, and the hinted
     // location as "<slot> <location id>". Reported once per connection, and all again on SYNC.
@@ -113,15 +115,21 @@ namespace {
         }
     }
 
-    void NoteInLogic(const std::vector<std::string>& a) {
-        if (a.size() >= 2 && a[1] == "CLEAR") {
-            std::fill(g_InLogic.begin(), g_InLogic.end(), 0);
-            g_HasLogic = true;
-        }
+    void NoteBits(const std::vector<std::string>& a, std::vector<u8>& bits) {
+        if (a.size() >= 2 && a[1] == "CLEAR") std::fill(bits.begin(), bits.end(), 0);
         for (size_t i = 1; i < a.size(); i++) {
             int id = atoi(a[i].c_str());
-            if (a[i] != "CLEAR" && id >= 0 && id < (int)(kChecksBytes * 8)) g_InLogic[id / 8] |= (1 << (id % 8));
+            if (a[i] != "CLEAR" && id >= 0 && id < (int)(kChecksBytes * 8)) bits[id / 8] |= (1 << (id % 8));
         }
+    }
+
+    void NoteInLogic(const std::vector<std::string>& a) {
+        if (a.size() >= 2 && a[1] == "CLEAR") g_HasLogic = true;
+        NoteBits(a, g_InLogic);
+    }
+
+    void NoteDoors(const std::vector<std::string>& a) {
+        NoteBits(a, g_DoorOpen);
     }
 
     // "<n> <flag> <slot> <location id>" lines (patcher ap_hints.py)
@@ -176,6 +184,10 @@ namespace AP {
 
     bool IsInLogic(int local_id) {
         return local_id >= 0 && local_id < (int)(kChecksBytes * 8) && ((g_InLogic[local_id / 8] >> (local_id % 8)) & 1);
+    }
+
+    bool IsDoorOpen(int local_id) {
+        return local_id >= 0 && local_id < (int)(kChecksBytes * 8) && ((g_DoorOpen[local_id / 8] >> (local_id % 8)) & 1);
     }
 
     bool IsLocationChecked(int local_id) {

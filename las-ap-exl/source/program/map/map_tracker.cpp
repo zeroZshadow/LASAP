@@ -5,8 +5,9 @@
 // a row's icon while the event flag named in the row is set; those flags are answered here. The flag is
 // MAP_FLAG_PREFIX<group> for the in-logic look and MAP_FLAG_PREFIX<mark><group> for the others (MAP_LOOK_MARKS); the
 // group's look is set and the others are not. In logic: every unchecked location of the group is in logic, or what is
-// in logic is not known yet (the client sends it); partly in logic: some are; out of logic: none is, or the group's
-// name is hidden (a shuffled dungeon not entered yet); collected: all are checked. Hovering an icon shows Place:<its flag>, whose text names the unchecked locations, or the collected
+// in logic is not known yet (the client sends it); partly in logic: some are; out of logic: none is; collected: all
+// are checked. While the group's name is hidden (a shuffled dungeon not entered yet), its look is its door's: in logic
+// while the door into it can be reached (DOORS), else out of logic. Hovering an icon shows Place:<its flag>, whose text names the unchecked locations, or the collected
 // ones (ap_text.cpp). The map's X button, which opens the memories, instead hides or shows the out-of-logic icons
 // ("Toggle out of logic"): those icons are always made, and hidden after the map adds them while they are toggled
 // off; the toggle shows or hides the page's markers in place. A on an icon of one unchecked location marks it skipped

@@ -196,6 +196,7 @@ class LASContext(CommonContext):
         self.scouted_names: Dict[int, str] = {}
         self.logic_tracker: Optional[LogicTracker] = None  # the slot's rules, for the map tracker
         self.in_logic: Optional[Set[int]] = None  # local ids last sent to the game as in logic
+        self.doors_open: Optional[Set[int]] = None  # local ids last sent to the game as behind a reachable door
         self.logic_starting: List[str] = []  # the slot's starting items, which the server does not send
         self.slot_data: Dict[str, Any] = {}
         self.logic_tracker_instruments = 8  # the instruments the map tracker's rules take for the egg
@@ -296,7 +297,7 @@ class LASContext(CommonContext):
             self.slot_data.get("dungeon_entrances"), logic.get("optional", ()), instruments) if logic else None
         self.logic_tracker_instruments = instruments
         self.logic_starting = logic.get("starting", []) if logic else []
-        self.in_logic = None
+        self.in_logic = self.doors_open = None
 
     @property
     def sign_read(self) -> bool:
@@ -400,10 +401,16 @@ class LASContext(CommonContext):
             return
         names = list(self.logic_starting) + [self.item_names.lookup_in_game(item.item, self.game)
                                              for item in self.items_received]
-        ids = {LOCATION_OFFSETS[loc] for loc in self.logic_tracker.in_logic(names)}
-        if ids == self.in_logic and not force:
+        reachable, doors = self.logic_tracker.sweep(names)
+        ids = {LOCATION_OFFSETS[loc] for loc in reachable}
+        door_ids = {LOCATION_OFFSETS[loc] for loc in doors}
+        if ids == self.in_logic and door_ids == self.doors_open and not force:
             return
-        self.in_logic = ids
+        self.in_logic, self.doors_open = ids, door_ids
+        self.send_game("DOORS CLEAR")
+        ordered = sorted(door_ids)
+        for i in range(0, len(ordered), 64):
+            self.send_game("DOORS " + " ".join(str(local_id) for local_id in ordered[i:i + 64]))
         self.send_game("INLOGIC CLEAR")
         ordered = sorted(ids)
         for i in range(0, len(ordered), 64):

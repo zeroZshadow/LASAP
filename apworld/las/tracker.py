@@ -14,7 +14,7 @@ from typing import Callable, Dict, Iterable, List, Mapping, Optional, Set, Tuple
 from BaseClasses import ItemClassification
 
 from .items import ITEM_TABLE, LASR_TO_ITEM
-from .lasr import COUNTED, INSTRUMENTS, LOGIC, dungeon_logic, goal_logic
+from .lasr import COUNTED, DUNGEONS, INSTRUMENTS, LOGIC, dungeon_logic, goal_logic
 from .logic import LogicCompiler, make_rule
 
 PLAYER = 1
@@ -78,6 +78,12 @@ class LogicTracker:
 
     def in_logic(self, item_names: Iterable[str]) -> Set[str]:
         """The shuffled locations reachable with these items (AP item names, starting items included)."""
+        return self.sweep(item_names)[0]
+
+    def sweep(self, item_names: Iterable[str]) -> Tuple[Set[str], Set[str]]:
+        """The shuffled locations reachable with these items, and the shuffled dungeon locations whose dungeon's door
+        is reachable with them: a dungeon's region is entered through the door that leads into it (lasr.dungeon_logic),
+        so it stands for that door. The map tracker shows a dungeon's icon by its door while its name is hidden."""
         counts = Counter(name for name in item_names if name in ITEM_TABLE and is_progression(name))
         state = _State(counts)
         for region in self.regions.values():
@@ -95,4 +101,6 @@ class LogicTracker:
                     counts[item] += 1
                     pending.remove(event)
                     changed = True
-        return {loc for loc, region, rule in self.locations if region.reached and rule(state)}
+        reachable = {loc for loc, region, rule in self.locations if region.reached and rule(state)}
+        doors = {loc for loc, region, _ in self.locations if region.reached and LOGIC[loc]["region"] in DUNGEONS}
+        return reachable, doors

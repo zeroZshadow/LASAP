@@ -63,6 +63,53 @@ class TestDungeonLogic(unittest.TestCase):
         self.assertTrue(set(d1) <= vanilla and not set(d8) & vanilla)
         self.assertTrue(set(d8) <= swapped and not set(d1) & swapped)
 
+    def test_tracker_doors(self) -> None:
+        """Behind a reachable door: every check of the dungeon it leads into, in logic or not. With the Tail Key alone,
+        Tail Cave's door (into Turtle Rock) and none of Turtle Rock's checks."""
+        lasr = {data.lasr_name: name for name, data in ITEM_TABLE.items()}
+        tokens = {"open-mabe": True, "free-book": True, "shuffled-bombs": True, "can-steal": True}
+        d1 = [k for k in LOGIC if k.startswith("D1-") and LOGIC[k]["type"] == "item"]
+        d8 = [k for k in LOGIC if k.startswith("D8-") and LOGIC[k]["type"] == "item"]
+        reachable, doors = LogicTracker("basic", tokens, [], d1 + d8, SWAP).sweep([lasr["tail-key"]])
+        self.assertEqual(doors, set(d8))
+        self.assertFalse(reachable & set(d8))
+        reachable, doors = LogicTracker("basic", tokens, [], d1 + d8).sweep([lasr["tail-key"]])
+        self.assertEqual(doors, set(d1))
+        self.assertTrue(reachable < set(d1))
+
+    def test_client_sends_doors(self) -> None:
+        """The client sends the locations behind reachable doors (DOORS) before those in logic (INLOGIC)."""
+        import asyncio
+        from ..client import LASContext
+        from ..ids import LOCATION_BASE, LOCATION_OFFSETS
+
+        lasr = {data.lasr_name: name for name, data in ITEM_TABLE.items()}
+        d1 = [k for k in LOGIC if k.startswith("D1-") and LOGIC[k]["type"] == "item"]
+        d8 = [k for k in LOGIC if k.startswith("D8-") and LOGIC[k]["type"] == "item"]
+        tokens = {"open-mabe": True, "free-book": True, "shuffled-bombs": True, "can-steal": True}
+
+        class Writer:
+            def __init__(self) -> None:
+                self.lines = []
+
+            def write(self, data: bytes) -> None:
+                self.lines.append(data.decode().rstrip("\n"))
+
+        writer = Writer()
+
+        async def run() -> None:
+            ctx = LASContext(None, None, "127.0.0.1", 0)
+            ctx.slot, ctx.team, ctx.game_writer = 1, 0, writer  # type: ignore[assignment]
+            ctx.server_locations = {LOCATION_BASE + LOCATION_OFFSETS[loc] for loc in d1 + d8}
+            ctx.slot_data = {"dungeon_entrances": SWAP, "logic": {
+                "preset": "basic", "tokens": tokens, "vanilla": [], "optional": [], "starting": [lasr["tail-key"]]}}
+            ctx.make_logic_tracker()
+            ctx.send_logic()
+            ctx.send_logic()  # nothing changed: nothing sent
+        asyncio.run(run())
+        doors = " ".join(str(local_id) for local_id in sorted(LOCATION_OFFSETS[loc] for loc in d8))
+        self.assertEqual(writer.lines, ["DOORS CLEAR", f"DOORS {doors}", "INLOGIC CLEAR"])
+
 
 class TestShuffledDungeons(LASTestBase):
     options = {"shuffled_dungeons": True}

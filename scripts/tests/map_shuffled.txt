@@ -1,13 +1,14 @@
 # The map tracker with Shuffled Dungeons: run after newgame_file2 on a mod from make_test_patch.py --dungeons
 # '{"tail-cave": "color-dungeon", "color-dungeon": "tail-cave"}', where the dungeons' icons are groups 112 to 120 (D1 to
-# D8, then D0). Each dungeon's icon is named "Unknown dungeon" without a count and shows out of logic until the game
-# sets its marker flag on entering the dungeon; the other icons show in logic (no logic sent).
+# D8, then D0). Each dungeon's icon is named "Unknown dungeon" without a count until the game sets its marker flag on
+# entering the dungeon; while unknown it shows its door's look: in logic while the door into it can be reached (DOORS),
+# out of logic otherwise. Before the client sends any logic every icon shows in logic.
 send DBG maplabel 112
 expect MAPLABEL.Unknown.dungeon$ 5
 send DBG maplabel 120
 expect MAPLABEL.Unknown.dungeon$ 5
 send DBG map
-expect looks=112,0,9,0 5
+expect looks=121,0,0,0 5
 # Tail Cave's door, north of Link, leads into the Color Dungeon, whose name shows and sets its marker flag.
 send DBG setflag TailCaveShutterOpened 1
 expect FLAG.TailCaveShutterOpened.1 5
@@ -20,5 +21,18 @@ send DBG maplabel 120
 expect MAPLABEL.\d+/\d+.D0.Color.Dungeon$ 5
 send DBG maplabel 112
 expect MAPLABEL.Unknown.dungeon$ 5
-send DBG map
-expect looks=113,0,8,0 5
+# Logic as the client sends it: nothing in logic, no door reachable.
+game DOORS CLEAR
+game INLOGIC CLEAR
+poll looks=0,0,121,0 5 DBG map
+# Turtle Rock's door reachable (its checks, 274 to 295, behind it): its unknown icon shows in logic, also with one of
+# its checks in logic, as its checks' look would tell which dungeon is behind the door.
+game DOORS 274 275 276 277 278 279 280 281 282 283 284 285 286 287 288 289 290 291 292 293 294 295
+poll looks=1,0,120,0 5 DBG map
+game INLOGIC 274
+poll looks=1,0,120,0 5 DBG map
+# The Color Dungeon's icon, named, takes its checks' look: one of them (296) in logic, partly.
+game INLOGIC 296
+poll looks=1,1,119,0 5 DBG map
+game DOORS CLEAR
+poll looks=0,1,120,0 5 DBG map

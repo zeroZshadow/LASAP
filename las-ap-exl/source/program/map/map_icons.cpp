@@ -118,6 +118,11 @@ namespace {
         return !AP::HasLogic() || AP::IsInLogic(id);
     }
 
+    // A dungeon location whose dungeon's door can be reached.
+    bool DoorReachable(int id) {
+        return !AP::HasLogic() || AP::IsDoorOpen(id);
+    }
+
     // Checked, or marked skipped by the player: the map counts it as done.
     bool Done(int id) {
         return AP::IsLocationChecked(id) || AP::IsLocationSkipped(id);
@@ -129,16 +134,17 @@ namespace {
         return flag.size > 0 && !EventFlags::CheckFlag(TextOf(flag));
     }
 
-    // The look of an icon of these locations; none counts as in logic while its name is hidden, as its look would tell
-    // which dungeon its door leads into.
+    // The look of an icon of these locations. While its name is hidden it is its door's, in logic or out of logic, as
+    // its checks' look would tell which dungeon the door leads into.
     Look IdsLook(Ids ids, bool nameHidden) {
         size_t left = 0, reachable = 0;
         for (int id : ids) {
             if (Done(id)) continue;
             left++;
-            if (!nameHidden && Reachable(id)) reachable++;
+            if (nameHidden ? DoorReachable(id) : Reachable(id)) reachable++;
         }
         if (left == 0) return Collected;
+        if (nameHidden) return reachable == left ? InLogic : OutOfLogic;
         return reachable == left ? InLogic : reachable > 0 ? Partial : OutOfLogic;
     }
 
@@ -152,18 +158,17 @@ namespace {
     }
 
     // Whether a group's icon in this look is made: the look shown, and every look skipping or a logic update can give
-    // it while the map is open (collected and out of logic with an unchecked location, in logic too unless its name is
-    // hidden, partly with two), so the open map swaps them.
+    // it while the map is open (collected, in logic and out of logic with an unchecked location, partly with two unless
+    // its name is hidden), so the open map swaps them.
     bool LookMade(size_t group, Look look) {
         if (GroupLook(group) == look) return true;
         size_t unchecked = 0;
         for (int id : GroupIds(group)) unchecked += AP::IsLocationChecked(id) ? 0 : 1;
-        bool hidden = NameHidden(group);
         switch (look) {
             case Collected:
+            case InLogic:
             case OutOfLogic: return unchecked > 0;
-            case InLogic: return unchecked > 0 && !hidden;
-            case Partial: return unchecked > 1 && !hidden;
+            case Partial: return unchecked > 1 && !NameHidden(group);
             default: return false;
         }
     }

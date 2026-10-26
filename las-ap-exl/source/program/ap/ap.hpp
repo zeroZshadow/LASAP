@@ -27,6 +27,8 @@ namespace AP {
     // In logic for the items received, as the client reported (INLOGIC); HasLogic once it has.
     bool HasLogic();
     bool IsInLogic(int local_id);
+    // A dungeon location whose dungeon's door is reachable for the items received, as the client reported (DOORS).
+    bool IsDoorOpen(int local_id);
     // The client is connected and logged into the slot (SERVER lines).
     bool IsServerConnected();
     void ApplyInjectedInput(nn::hid::NpadBaseState* state);

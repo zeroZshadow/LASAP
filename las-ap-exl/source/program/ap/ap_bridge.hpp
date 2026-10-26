@@ -129,9 +129,11 @@ namespace AP::Bridge {
     // CHECKS lines with every location collected here.
     void SendAllChecks();
     // CHECKED <local id>...: locations the server has as checked; INLOGIC CLEAR, then INLOGIC <local id>...: the
-    // locations in logic for the items received.
+    // locations in logic for the items received; DOORS CLEAR, then DOORS <local id>...: the dungeon locations whose
+    // dungeon's door is reachable for them.
     void NoteServerChecks(const std::vector<std::string>& a);
     void NoteInLogic(const std::vector<std::string>& a);
+    void NoteDoors(const std::vector<std::string>& a);
     // In-game hints the client makes server hints of (HINTS_PATH).
     void LoadHints();
     // Sends HINT for the hints read and not yet reported on this connection, or for all read.
