@@ -4,7 +4,9 @@
 #                          built modules (patcher/exl, patcher/exl-test) and scripts/local_paths.json from the main
 #                          checkout
 #   worktree.sh test [args] the world's tests with pytest, on this worktree's world
-#   worktree.sh land       fast-forward master in the main checkout to this branch, then remove the Archipelago worktree
+#   worktree.sh land <subject> [<line> [<line>]]
+#                          rebase this branch onto master, put it on master as one commit with that message, then
+#                          remove the Archipelago worktree
 #   worktree.sh teardown   remove the Archipelago worktree only
 # The venvs stay in the main checkout ($MAIN/.venv-ap, $MAIN/.venv-lasr); nothing here links to them.
 set -e
@@ -46,27 +48,42 @@ test)
     cd "$AP" && "$MAIN/.venv-ap/Scripts/python.exe" -m pytest worlds/las/test -q "$@"
     ;;
 land)
+    shift
+    [ $# -ge 1 ] && [ $# -le 3 ] && [ -n "$1" ] || { echo "usage: worktree.sh land <subject> [<line> [<line>]]"; exit 1; }
     BRANCH="$(git branch --show-current)"
     [ -n "$BRANCH" ] || { echo "not on a branch"; exit 1; }
     if [ -n "$(git status --porcelain)" ]; then echo "commit or remove uncommitted changes first"; exit 1; fi
     [ "$(git -C "$MAIN" branch --show-current)" = master ] || { echo "the main checkout is not on master"; exit 1; }
     if ! git merge-base --is-ancestor master HEAD; then
-        echo "master has moved on: bring this branch up to date with master, rerun the tests, then land again"
+        if ! git rebase master; then
+            echo "rebase onto master stopped on conflicts: resolve them, git rebase --continue, rerun the tests, land again"
+            exit 1
+        fi
+        echo "rebased onto master: rerun the tests, then land again"
         exit 1
     fi
-    if ! git -C "$MAIN" merge --ff-only "$BRANCH"; then
+    [ "$(git rev-parse HEAD)" != "$(git rev-parse master)" ] || { echo "nothing to land: this branch is master"; exit 1; }
+    # The squash is made here, not in the main checkout, whose index other sessions may be using; master then only
+    # fast-forwards to it.
+    if [ $# -gt 1 ]; then
+        SQUASH="$(git commit-tree "HEAD^{tree}" -p master -m "$1" -m "$(printf '%s\n' "${@:2}")")"
+    else
+        SQUASH="$(git commit-tree "HEAD^{tree}" -p master -m "$1")"
+    fi
+    if ! git -C "$MAIN" merge --ff-only "$SQUASH"; then
         echo "not landed: the main checkout has uncommitted edits in files this branch changes (see above)."
         echo "Another session is working there; wait until it has committed them, then land again."
         exit 1
     fi
+    git reset -q --hard "$SQUASH"
     teardown
-    echo "landed $BRANCH on master"
+    echo "landed $BRANCH on master as $(git rev-parse --short "$SQUASH")"
     ;;
 teardown)
     teardown
     ;;
 *)
-    sed -n '2,9p' "$0"
+    sed -n '2,11p' "$0"
     exit 1
     ;;
 esac
