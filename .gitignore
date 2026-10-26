@@ -42,6 +42,7 @@ AP_*.zip
 
 # Logs and local tool state
 *.log
+scripts/local_paths.json
 .claude/
 .vscode/
 .idea/

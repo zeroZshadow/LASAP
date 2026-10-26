@@ -194,8 +194,9 @@ def stop(quiet: bool = False) -> None:
         print("stopped", pid)
 
 
-def shot(out: str) -> None:
-    """Captures the emulator's game window (PrintWindow: it works while the window is covered) into a PNG."""
+def shot(out: str, pid: int | None = None) -> None:
+    """Captures the emulator's game window (PrintWindow: it works while the window is covered) into a PNG, or the
+    window of another process (pid), such as the sandbox PopTracker's."""
     import struct
     import zlib
     from ctypes import wintypes
@@ -211,7 +212,8 @@ def shot(out: str) -> None:
                                 ctypes.c_void_p, wintypes.UINT]
     user32.PrintWindow.argtypes = [wintypes.HWND, wintypes.HANDLE, wintypes.UINT]
     user32.ReleaseDC.argtypes = [wintypes.HWND, wintypes.HANDLE]
-    pid = int(open(PIDFILE).read().strip())
+    if pid is None:
+        pid = int(open(PIDFILE).read().strip())
     found = []
     proc = wintypes.DWORD()
 
