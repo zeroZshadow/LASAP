@@ -1,0 +1,86 @@
+# The Zol Trap lets out Zols (DBG zols: where the last trap let them out, the traps so far, and its enemies alive as
+# <actor id>@<x>,<y>,<z>/<zone>; EnemyZolGreen is 1b). Run after newgame_file2 with no LAS client connected: `game`
+# sends the ITEM lines as the client does. Two chests hold placeholders and are closed in a new game: the beach chest
+# (beach-chest, local id 11, Field_15F, chest at 87.75 6 171.75) and the Armos Maze cave's (armos-cave, local id
+# 69, ArmosShrineCave_01A, chest at 6.75 0 5.25). Health is set to 3 hearts before each trap; the Zols may hit Link.
+# - Found: the chest's own Zol Trap comes back with the chest's location, and the chest lets out its Zol: in the cave
+#   the game's (it jumps out of the chest and lands on the floor), on the overworld one between the chest and Link.
+#   Each still stands on the floor 2 s later.
+# - Received (another player's, no chest): two Zols one tile left and right of Link, in his zone, on the overworld and
+#   in a dungeon room; a level jump takes them away with their room.
+# Screenshots: zol_chest_field, zol_chest_cave, zol_field, zol_dungeon.
+free 10
+send DBG setrecv 0
+expect RECV\s0 5
+send DBG zols
+expect OK.zols.from=-.spawned=0.alive=0$ 5
+# The beach chest, as beach_chest opens it: lift the rock in front of it, throw it, open the chest facing up.
+send DBG grant PowerBraceletLv1 1 -1 0
+expect OK.grant 5
+warp Field 86.25 6 173.25
+at 86.25 173.25
+face right
+interact
+until carry=1+free 3
+face left
+tap 1
+until carry=0 3
+goto 87.75 6 173.25
+at 87.75 173.25
+face up
+interact
+until textready 10
+dismiss 20
+free 10
+send DBG poke 84 0c00
+expect OK.poke 5
+game ITEM 1 $ENEMY 1 -1 11 Zol Trap|
+poll OK.zols.from=chest.spawned=1.alive=1.1b@87\.[0-9]+,6\.[0-9]+,17[23]\.[0-9]+/[0-9]+$ 10 DBG zols
+wait 2
+send DBG zols
+expect OK.zols.from=chest.spawned=1.alive=1.1b@[0-9.]+,[56]\.[0-9]+,[0-9.]+/ 5
+shot D:/DEV/LASAP-sandbox/zol_chest_field.png
+# The cave's chest: from the tile south of it, facing up, as seashell_chest opens it.
+warp ArmosShrineCave 6.75 0 6.75
+goto 6.75 0 6.75
+at 6.75 6.75
+face up
+interact
+until textready 10
+dismiss 20
+free 10
+send DBG poke 84 0c00
+expect OK.poke 5
+game ITEM 2 $ENEMY 1 -1 69 Zol Trap|
+poll OK.zols.from=chest.spawned=2.alive=1.1b@6\.[0-9]+,[0-9.]+,5\.[0-9]+/[0-9]+$ 10 DBG zols
+wait 2
+send DBG zols
+expect OK.zols.from=chest.spawned=2.alive=1.1b@[0-9.]+,-?0\.[0-9]+,[0-9.]+/ 5
+shot D:/DEV/LASAP-sandbox/zol_chest_cave.png
+# Received on the overworld, outside Marin's house in Mabe (38.25, 10.5, 128.25).
+warp Field 38.25 10.5 128.25
+send DBG zols
+expect OK.zols.from=chest.spawned=2.alive=0$ 5
+send DBG poke 84 0c00
+expect OK.poke 5
+game ITEM 3 $ENEMY 1 -1 -1 Zol Trap|Finder
+poll OK.zols.from=link.spawned=3.alive=2.1b@36\.75,1[01]\.[0-9]+,128\.25/[0-9]+.1b@39\.75,1[01]\.[0-9]+,128\.25/[0-9]+$ 10 DBG zols
+wait 2
+send DBG zols
+expect OK.zols.from=link.spawned=3.alive=2.1b@[0-9.]+,1[01]\.[0-9]+,[0-9.]+/[0-9]+.1b@[0-9.]+,1[01]\.[0-9]+,[0-9.]+/ 5
+shot D:/DEV/LASAP-sandbox/zol_field.png
+# Received in Tail Cave's entrance room.
+warp Lv01TailCave 52.5 0 93.75
+send DBG poke 84 0c00
+expect OK.poke 5
+game ITEM 4 $ENEMY 1 -1 -1 Zol Trap|Finder
+poll OK.zols.from=link.spawned=4.alive=2.1b@51\.00,0\.70,93\.75/[0-9]+.1b@54\.00,0\.70,93\.75/[0-9]+$ 10 DBG zols
+wait 2
+send DBG zols
+expect OK.zols.from=link.spawned=4.alive=2.1b@[0-9.]+,-?0\.[0-9]+,[0-9.]+/[0-9]+.1b@[0-9.]+,-?0\.[0-9]+,[0-9.]+/ 5
+shot D:/DEV/LASAP-sandbox/zol_dungeon.png
+warp Field 38.25 10.5 128.25
+send DBG zols
+expect OK.zols.from=link.spawned=4.alive=0$ 5
+send DBG poke 84 0c00
+expect OK.poke 5

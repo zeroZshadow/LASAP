@@ -223,6 +223,7 @@ NpcGhost_Update 0x08ec2630 f per frame
 NpcGhost_ScenarioTimer 0x08ec2e20 f the 40-frame timer's callback: +0x2c3 = 1, event Scenario:Lv5GhostGoGrave (TakeGhostGrave) or Scenario:Lv5GhostGoHouse1
 TreasureBox_Init 0x0919e0d0 f switch 0 on: opened (+0x320)
 TreasureBox_Open 0x0919f4b0 f sets switch 0
+ObjTreasureBox_PopEnemy 0x091ad290 f (out enemy sp, chest): a $ENEMY chest's enemy, EnemyZolGreen (0x1b, LEB param 0 int 3) at its root + (0, 0.7, 0.1), its zone, its parent as owner; LASR's enemy randomizer swaps the id (0xca92c4)
 ObjTreasureBox_Factory 0x091a2820 f ActorTable id 0xf7
 Player_AttackCols_Dtor 0x0921c120 f
 PlayerLookAt_Update 0x09221340 f (lookAt, player)

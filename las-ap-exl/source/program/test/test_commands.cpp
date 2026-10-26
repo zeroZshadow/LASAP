@@ -125,7 +125,7 @@ namespace {
             // Same path as ITEM without touching the received counter: DBG grant <key> <count> <dungeon> [show 0|1]
             if (!PlayerReady()) return false;
             int id = GrantItem(a[2], atoi(a[3].c_str()), atoi(a[4].c_str()));
-            if (IsTrapKey(a[2])) QueueTrap(a[2], "", "");
+            if (IsTrapKey(a[2])) QueueTrap(a[2], "", "", -1);
             else if (id >= 0 && (a.size() < 6 || a[5] != "0")) QueueShow(Show{id, "", "", ""});
             AP::Send("OK grant");
         } else if (cmd == "heldangle" && a.size() >= 6) {
@@ -391,6 +391,9 @@ namespace {
                      (n + 1 < next ? "," : "");
             }
             AP::Send(s);
+        } else if (cmd == "zols") {
+            // DBG zols: where the last Zol Trap let out its enemies, the traps so far and its enemies still alive
+            AP::Send("OK zols" + ZolTrapState());
         } else if (cmd == "ghostnet") {
             // DBG ghostnet: the positions sent and the ghosts received (ghost_net.cpp)
             AP::Send("OK " + AP::GhostNet::State());

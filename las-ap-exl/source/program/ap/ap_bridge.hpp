@@ -75,16 +75,17 @@ namespace AP::Bridge {
     // ---- Item-gets and popups (ap_itemget.cpp) ----
 
     // A received item waiting to be shown; with a sender, it shows "You got <item> from <sender>!".
-    // A trap (trap = its key) plays its effect instead; id is then -1.
+    // A trap (trap = its key) plays its effect instead; id is then -1, and location is the location that held it.
     // With Instant Pickups, an item Link found (found): it shows as a popup with that toast ("" to name it when it
     // shows), queued at that time.
     struct Show {
         int id; std::string item; std::string sender; std::string trap;
-        bool found = false; std::string toast; u64 at = 0;
+        bool found = false; std::string toast; u64 at = 0; int location = -1;
     };
     void QueueShow(const Show& show);
-    // A received trap waits like an item display, then plays its effect.
-    void QueueTrap(const std::string& key, const std::string& item, const std::string& sender);
+    // A received trap waits like an item display, then plays its effect. location: the local id of the location
+    // that held it, -1 for another slot's or none.
+    void QueueTrap(const std::string& key, const std::string& item, const std::string& sender, int location);
     // An item Link found shows as a popup instead of an item-get; the buffs only start their music.
     void InstantPickup(int itemId);
     // No item event is requested or running.
@@ -101,6 +102,17 @@ namespace AP::Bridge {
     std::string ItemGetState();
     // DBG itemget: the item event of that item with that message entry, without the queue (none must run).
     bool TestItemEvent(int itemId, const std::string& messageEntry);
+#endif
+
+    // ---- The Zol Trap (ap_zol_trap.cpp) ----
+
+    // A placeholder of this location was found: a chest opened for it lets out the location's Zol Trap.
+    void NoteChestFind(int local_id);
+    // The Zol Trap's effect: its chest lets out its enemy, or Zols appear beside Link. False when none appeared.
+    bool SpawnZolTrap(int location);
+#ifdef LASAP_TEST
+    // DBG zols: " from=<chest|link|-> spawned=<n> alive=<n>" and each alive one as " <id>@<x>,<y>,<z>/<zone>"
+    std::string ZolTrapState();
 #endif
 
     // ---- The pose of items held up in item-gets (ap_item_pose.cpp) ----

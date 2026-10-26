@@ -44,6 +44,10 @@ namespace Game {
     inline constexpr Func<bool(void*, void*)> Entity_AttachChild{0xfa9e40};
     // (entity): its own destroy (vtable +0x58), not immediate
     inline constexpr Func<void(void*)> Entity_Destroy{0xfabf70};
+    // The live actors with a LEB key: unordered_map<u64 key, shared_ptr<Actor>> (a node: next, hash, key, sp)
+    inline constexpr Global<UnorderedMap*> ActorRegistry_ptr{0x1cb2d00};
+    // (out enemy, chest): the enemy a chest of $ENEMY lets out, made in the chest's room and zone above its lid
+    inline constexpr Func<void(SharedPtr*, Actor*)> ObjTreasureBox_PopEnemy{0xca9290};
     // The entity manager: its start task (manager, entity shared_ptr*)
     inline constexpr Global<void*> EntityManager_ptr{0x1cc6d98};
     inline constexpr Func<void(void*, SharedPtr*)> EntityManager_PostStart{0xfae2d0};
