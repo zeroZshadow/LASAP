@@ -165,7 +165,7 @@ namespace {
         if (fmwk->player == nullptr || items == nullptr) return false;
         if (items->Health <= 0) return true;
         if (!PlayerFree() || !ItemEventIdle()) return false;
-        // The game over flow skips the Secret Medicine and reports no death for it (patcher, APDeathLink).
+        // The game over flow runs as for any death (the Secret Medicine saves Link) and reports none (patcher).
         EventFlags::SetFlag(AP::DEATHLINK_FLAG, true);
         g_DeathLinkAt = NowMs();
         items->Health = 0;
