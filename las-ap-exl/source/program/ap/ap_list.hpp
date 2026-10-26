@@ -48,6 +48,7 @@ namespace AP::ListUi {
         int count = 0;              // entries
         int at = 0;                 // the entry under the cursor
         int top = 0;                // the entry in the first row
+        bool wrap = false;          // Up pressed on the first entry goes to the last, Down on the last to the first
         u64 prevPad = 0;            // the buttons last frame
         int heldFrames = 0;         // frames Up or Down has been held
     };
@@ -58,8 +59,9 @@ namespace AP::ListUi {
     void SetEntries(List& list, int count, int at);
     // Shows the rows that hold an entry, the cursor on its row, the scroll bar while the entries do not fit.
     void Place(List& list);
-    // Once a frame: Up/Down move the cursor (held: again after 20 frames, then every 5) with a sound; returns the
-    // buttons pressed since last frame. It reads the buttons of the polls since its last call. `moved` is set when the cursor moved (the rows then show other entries).
+    // Once a frame: Up/Down move the cursor (held: again after 20 frames, then every 5, stopping at either end) with a
+    // sound; returns the buttons pressed since last frame. It reads the buttons of the polls since its last call.
+    // `moved` is set when the cursor moved (the rows then show other entries).
     u64 Input(List& list, bool& moved);
 
     // The pad: each input poll's buttons (nn::hid), and those of the last poll that saw any, while recent (50 ms).
