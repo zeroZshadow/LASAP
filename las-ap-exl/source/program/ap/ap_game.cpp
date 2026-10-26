@@ -232,6 +232,7 @@ namespace AP {
     void OnPlaceholderCollected(int local_id) {
         g_FoundSinceLoad.insert(local_id);
         SetFoundLocation(local_id);
+        NoteChestFind(local_id);
         RecordCheck(local_id);
     }
 

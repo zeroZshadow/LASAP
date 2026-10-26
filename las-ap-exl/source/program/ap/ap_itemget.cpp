@@ -72,15 +72,16 @@ namespace {
         if (key == "ZapTrap") return 6;
         if (key == "SquishTrap") return 4;
         if (key == "DrownTrap" || key == "DeathballTrap" || key == "QuakeTrap") return 2;
-        return -1;  // no event: the Zol Trap, which spawns enemies from a chest
+        return -1;  // no event: the Zol Trap (ap_zol_trap.cpp)
     }
 
-    // Plays a trap's effect as its event. In the normal damage mode a trap leaves at least a quarter heart.
-    bool StartTrapEvent(const std::string& key) {
+    // Plays a trap's effect as its event. In the normal damage mode a trap leaves at least a quarter heart. The Zol
+    // Trap lets out Zols instead, and costs one heart only when none could appear.
+    bool StartTrapEvent(const std::string& key, int location) {
         int damage = TrapEventDamage(key);
         auto* items = Game::Data::Inventory::Items();
         if (damage < 0) {
-            Damage(4);
+            if (!SpawnZolTrap(location)) Damage(4);
             return true;
         }
         if (global_config.damage.mode == DamageMode::Normal && items->Health <= damage) items->Health = damage + 1;
@@ -279,8 +280,10 @@ namespace {
     }
 
     // A received trap waits like an item display, then plays its effect (StartTrapEvent).
-    void QueueTrap(const std::string& key, const std::string& item, const std::string& sender) {
-        QueueShow(Show{-1, item.empty() ? key : item, sender, key});
+    void QueueTrap(const std::string& key, const std::string& item, const std::string& sender, int location) {
+        Show show{-1, item.empty() ? key : item, sender, key};
+        show.location = location;
+        QueueShow(show);
     }
 
     // An item Link found shows as a popup instead of an item-get; the buffs only start their music.
@@ -347,7 +350,7 @@ namespace {
             if (g_ItemEventTry == 0) {
                 AP::QueueToast(g_Showing.item + (g_Showing.sender.empty() ? "" : "\nfrom " + g_Showing.sender));
             }
-            if (!StartTrapEvent(g_Showing.trap)) AP::Log("trap event " + g_Showing.trap + " could not be requested");
+            if (!StartTrapEvent(g_Showing.trap, g_Showing.location)) AP::Log("trap event " + g_Showing.trap + " could not be requested");
             return;
         }
         int id = g_Showing.id;

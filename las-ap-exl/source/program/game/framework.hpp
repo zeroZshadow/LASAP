@@ -48,6 +48,26 @@ namespace Game {
     static_assert(sizeof(GameState) == 0xe0);
     constexpr u32 kSceneTitle = 1, kSceneFileMenus = 2, kSceneLevel = 4, kSceneEnding = 5;
 
+    // A loaded area's room (Room_Ctor; 0x250 bytes; ACTORS.md, Rooms): the container of its actors and its zone.
+    struct Room {
+        u8 pad_0[0x1b8];
+        SharedPtr root;            // 0x1b8: its actors' container, the owner the room's Actor_Create calls pass
+        u8 pad_1c8[0x78];
+        s32 zone;                  // 0x240
+        u8 pad_244[0x6];
+        u8 aborted;                // 0x24a: a level jump
+        u8 pad_24b[0x5];
+    };
+    static_assert(offsetof(Room, root) == 0x1b8 && offsetof(Room, zone) == 0x240);
+    static_assert(offsetof(Room, aborted) == 0x24a && sizeof(Room) == 0x250);
+
+    // The level's room manager (LevelScene::roomManager): a room per loaded area.
+    struct RoomManager {
+        u8 pad_0[0x210];
+        Vector<Room*> rooms;       // 0x210
+    };
+    static_assert(offsetof(RoomManager, rooms) == 0x210);
+
     // A level's scene (LevelScene_Ctor, task "Main"; 0x820 bytes; the task base first).
     struct LevelScene {
         u8 task[0x81];             // as GameState's first 0x81 bytes

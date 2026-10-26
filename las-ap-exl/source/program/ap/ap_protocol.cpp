@@ -70,7 +70,7 @@ namespace {
                 // An own item found in this save since it loaded was named by the found text already.
                 bool namedWhenFound = sender.empty() && g_FoundSinceLoad.count(location) != 0 &&
                                       AP::HasLocationName(location);
-                if (IsTrapKey(a[2])) QueueTrap(a[2], item, sender);
+                if (IsTrapKey(a[2])) QueueTrap(a[2], item, sender, sender.empty() ? location : -1);
                 else if (id >= 0 && !namedWhenFound) QueueShow(Show{id, item, sender, ""});
                 SetRecvCount(n);
                 have = n;
