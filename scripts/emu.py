@@ -28,10 +28,12 @@ import subprocess
 import sys
 import time
 
-RYU = r"D:\Games\Ryujinx\Ryujinx.exe"
-SANDBOX = r"D:\DEV\LASAP-sandbox"
-GAME = r"D:\Games\Switch\The Legend of Zelda Links Awakening [01006BB00C6F0000][v0].nsp"
-LOGS = r"D:\Games\Ryujinx\Logs"
+from local_paths import local_path
+
+RYU = str(local_path("ryujinx"))
+SANDBOX = str(local_path("sandbox"))
+GAME = str(local_path("game"))
+LOGS = str(local_path("ryujinx_logs"))
 LOCKFILE = os.path.join(SANDBOX, "sandbox.lock")
 
 

@@ -1,13 +1,13 @@
-import os
 import tempfile
 import unittest
 from unittest import mock
 from pathlib import Path
 
+from . import romfs
 from .. import checklist, install
 from ..emulators import TITLE_ID
 
-ROMFS = Path(os.environ.get("LASAP_ROMFS", r"D:\Games\Switch\LASRomFS"))
+ROMFS = romfs()
 
 
 class TestChecklist(unittest.TestCase):

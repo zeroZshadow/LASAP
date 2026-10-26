@@ -1,6 +1,5 @@
 import ast
 import importlib.util
-import os
 import subprocess
 import sys
 import tempfile
@@ -9,13 +8,13 @@ import zipfile
 from pathlib import Path
 from unittest import mock
 
-from . import LASTestBase
+from . import LASTestBase, romfs
 from .. import emulators, install
 from ..emulators import TITLE_ID
 from ..host_settings import PLAYER_DEFAULTS, PLAYER_SETTINGS
 from ..install import CONFIG_PATH, InstallError, installed_seed, patch_and_install, split_command
 
-ROMFS = Path(os.environ.get("LASAP_ROMFS", r"D:\Games\Switch\LASRomFS"))
+ROMFS = romfs()
 BUILD_RELEASE = install.SOURCE_PATCHER.parent / "scripts" / "build_release.py"
 
 # Runs before the code given to run_without_excluded: the folders the release leaves out cannot be imported.

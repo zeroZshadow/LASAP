@@ -16,11 +16,11 @@ goto 113.25 9.75 117.75
 face up
 tap 8
 free 5
-shot D:/DEV/LASAP-sandbox/dig_1.png
+shot dig_1.png
 # The location's item may be a trap.
 guard off hurt
 hold 0 0 32767 until !free 5
 until textready 10
 state
-shot D:/DEV/LASAP-sandbox/dig_2.png
+shot dig_2.png
 dismiss 20

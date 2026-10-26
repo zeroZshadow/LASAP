@@ -1,26 +1,15 @@
 """The map tracker's dungeon positions (patcher/map_positions.json, scripts/map_positions.py) against the RomFS rooms:
 each dot lies in its room's box and on its check's actor, in a room the dungeon map shows on a floor."""
 import json
-import os
 import re
 import sys
 import unittest
 from pathlib import Path
 
+from . import romfs
+
 ROOT = Path(__file__).resolve().parents[3]
 PATCHER = ROOT / "patcher"
-
-
-def romfs() -> Path:
-    """The RomFS dump: LASAP_ROMFS, else "romfs" in this machine's scripts/local_paths.json (gitignored)."""
-    if "LASAP_ROMFS" in os.environ:
-        return Path(os.environ["LASAP_ROMFS"])
-    try:
-        return Path(json.loads((ROOT / "scripts" / "local_paths.json").read_text(encoding="utf-8"))["romfs"])
-    except (OSError, KeyError, ValueError):
-        return ROOT / "romfs-not-set"
-
-
 ROMFS = romfs()
 LEVELS = ROMFS / "region_common" / "level"
 AREAS = ROMFS / "region_common" / "datasheets" / "UiDungeonArea.gsheet"

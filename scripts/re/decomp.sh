@@ -3,12 +3,12 @@
 #   scripts/re/decomp.sh <out.c> <hex module offset>[:<hex instruction word>]...
 # With :<word>, that instruction replaces the dump's at the offset first: a hooked function starts with the hook's
 # branch in the dump (its original first instruction, often sub sp, sp, #<frame>).
-# LASAP_RE (default D:/DEV/LASAP-sandbox/re) holds main.bin (DBG dumpmain); the Ghidra project is made there
+# LASAP_RE (default "re" in scripts/local_paths.json) holds main.bin (DBG dumpmain); the Ghidra project is made there
 # (ghidra/) on first use, without auto-analysis. GHIDRA_HOME defaults to scoop's ghidra. The project is opened
 # read-only: names and functions apply for the run only.
 set -e
 HERE="$(cd "$(dirname "$0")" && pwd)"
-RE="${LASAP_RE:-D:/DEV/LASAP-sandbox/re}"
+RE="${LASAP_RE:-$(python "$HERE/../local_paths.py" re)}"
 GHIDRA="${GHIDRA_HOME:-$HOME/scoop/apps/ghidra/current}"
 win() { cygpath -w "$1" 2>/dev/null || echo "$1"; }
 out="$1"

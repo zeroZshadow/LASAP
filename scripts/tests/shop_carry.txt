@@ -18,7 +18,7 @@ expect OK.grant 5
 # The item waits while Link holds the heart.
 wait 2
 check event=0 paused=0 carry=1 showq=1(\s|$)
-shot D:/DEV/LASAP-sandbox/carry_1.png
+shot carry_1.png
 # A at the counter puts the heart back; then the item-get plays as an event.
 tap 1
 until carry=0 5
@@ -26,14 +26,14 @@ await 5 event=22
 # It shows the received item, not the placeholder.
 await 3 shown=22(\s|$)
 until textready 10
-shot D:/DEV/LASAP-sandbox/carry_2.png
+shot carry_2.png
 dismiss 20
 # The item-get leaves Link facing the camera; he turns back to the counter to lift the heart again.
 face up
 interact
 until carry=1+event=0 5
 check event=0 paused=0
-shot D:/DEV/LASAP-sandbox/carry_3.png
+shot carry_3.png
 tap 1
 until carry=0+event=0 5
 check event=0 paused=0

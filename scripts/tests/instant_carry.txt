@@ -38,7 +38,7 @@ guard msg:Reading
 hold 0 0 32767 until !free 3
 await 3 popup=1
 check \scarry=1\s
-shot D:/DEV/LASAP-sandbox/instant_carry.png
+shot instant_carry.png
 await 5 toast=1
 send DBG text SystemSaving
 expect said=You\sfound 5

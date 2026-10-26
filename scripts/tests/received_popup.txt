@@ -17,14 +17,14 @@ expect said=You\sgot\sSeashell 5
 # Link walks while the model shows
 hold 0 0 20000 until anim=walk 3
 await 1 popup=1
-shot D:/DEV/LASAP-sandbox/popup_item.png
+shot popup_item.png
 await 5 popup=0
 check event=0\s.*showq=0(\s|$)
 send DBG grant Song_WindFish 1 -1
 expect OK.grant 5
 await 3 popup=1
 wait 0.6
-shot D:/DEV/LASAP-sandbox/popup_song.png
+shot popup_song.png
 await 5 popup=0
 guard off event=22
 guard off hurt

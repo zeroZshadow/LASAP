@@ -1,0 +1,10 @@
+{
+  "romfs": "<RomFS folder>",
+  "game": "<game file, .nsp>",
+  "ryujinx": "<Ryujinx.exe>",
+  "ryujinx_logs": "<Ryujinx's Logs folder>",
+  "sandbox": "<sandbox folder>",
+  "re": "<folder for main.bin and the Ghidra project>",
+  "poptracker": "<PopTracker test folder>",
+  "lasr_brooty": "<LASR PopTracker pack folder>"
+}

@@ -8,7 +8,7 @@ send /game ITEM 1 Rupee20 1 -1 -1 Progressive Mirror Shield|Finder
 await 5 showq=(1|0\+1)(\s|$)
 until msg:KeyWaiting 10
 check read=[0-3](\s|$)
-shot D:/DEV/LASAP-sandbox/text_received.png
+shot text_received.png
 # The page stays until a button.
 wait 2
 check event=[1-9].* showq=0\+1 .*msg=KeyWaiting
@@ -19,12 +19,12 @@ face right
 interact
 until msg:KeyWaiting 5
 check read=[0-3](\s|$)
-shot D:/DEV/LASAP-sandbox/text_talk_1.png
+shot text_talk_1.png
 wait 2
 check event=[1-9].*msg=KeyWaiting
 # B turns the page: the module sees it leave KeyWaiting on the frame it does (a page turn takes a few frames).
 tapuntil 2 !msg:KeyWaiting when textready 5
 until msg:KeyWaiting 5
 check read=[0-3](\s|$)
-shot D:/DEV/LASAP-sandbox/text_talk_2.png
+shot text_talk_2.png
 dismiss 20

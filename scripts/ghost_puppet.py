@@ -7,7 +7,7 @@ the mod has none), keeping each sheet as <sheet>.before-puppet.
 uninstall: removes the model and puts the kept sheets back.
 
 Run with .venv-lasr:
-  python scripts/ghost_puppet.py install|uninstall [--romfs D:/Games/Switch/LASRomFS] [--contents <mod contents>]
+  python scripts/ghost_puppet.py install|uninstall [--romfs <RomFS folder>] [--contents <mod contents>]
 """
 import argparse
 import sys
@@ -17,8 +17,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "patcher"))
 import ap_assets  # noqa: E402
 import ap_player_ghost  # noqa: E402
 from RandomizerCore.Tools.oead_tools import readSheet, writeSheet  # noqa: E402
+from local_paths import local_path  # noqa: E402
 
-CONTENTS = Path("D:/DEV/LASAP-sandbox/ryujinx/sdcard/atmosphere/contents/01006BB00C6F0000")
+CONTENTS = Path("ryujinx/sdcard/atmosphere/contents/01006BB00C6F0000")  # in the sandbox folder
 
 
 # Each sheet and how its APGhost row is added
@@ -28,9 +29,11 @@ SHEETS = {"Npc.gsheet": ap_player_ghost.add_row, "Facial.gsheet": ap_player_ghos
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("action", choices=("install", "uninstall"))
-    parser.add_argument("--romfs", type=Path, default=Path("D:/Games/Switch/LASRomFS"))
-    parser.add_argument("--contents", type=Path, default=CONTENTS)
+    parser.add_argument("--romfs", type=Path)
+    parser.add_argument("--contents", type=Path)
     args = parser.parse_args()
+    args.romfs = args.romfs or local_path("romfs", "LASAP_ROMFS")
+    args.contents = args.contents or local_path("sandbox") / CONTENTS
     model_path = args.contents / "romfs" / "region_common" / "actor" / "PlayerGhost.bfres"
     sheets = args.contents / "romfs" / "region_common" / "datasheets"
     if args.action == "install":

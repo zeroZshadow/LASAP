@@ -10,12 +10,13 @@ from BaseClasses import CollectionState
 from test.general import setup_multiworld
 from worlds.AutoWorld import AutoWorldRegister
 
+from . import romfs
 from .test_logic import STEPS
 from ..items import GAME, LASR_TO_ITEM
 from ..lasr import INSTRUMENTS
 
 PATCHER = Path(os.path.realpath(__file__)).parents[3] / "patcher"
-ROMFS = Path(os.environ.get("LASAP_ROMFS", r"D:\Games\Switch\LASRomFS"))
+ROMFS = romfs()
 EGG_EVENT = ROMFS / "region_common" / "event" / "WindFishsEgg.bfevfl"
 
 

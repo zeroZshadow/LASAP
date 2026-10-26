@@ -26,7 +26,7 @@ await 5 toast=1
 send DBG text SystemSaving
 expect said=You\sfound\sBallad\sof\sthe\sWind\sFish 5
 wait 0.6
-shot D:/DEV/LASAP-sandbox/instant_song.png
+shot instant_song.png
 free 5
 await 5 popup=0
 guard off anim=item_get_st

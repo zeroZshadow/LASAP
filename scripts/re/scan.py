@@ -12,15 +12,20 @@ Run with .venv-lasr (needs capstone):
   python scan.py sms [<from> <to>]      UI state machine ChangeState functions and their state counts
   python scan.py actors [regex]         the actor table (ACTORS.md): id, factory, load group, priority, actor-system
                                         owned, name and resources, for names matching regex
-Environment: LASAP_DUMP (default D:/DEV/LASAP-sandbox/re/main.bin), LASAP_BASE (runtime base, default 0x8504000).
+Environment: LASAP_DUMP (default main.bin in LASAP_RE, else in "re" of scripts/local_paths.json), LASAP_BASE (runtime
+base, default 0x8504000).
 """
 import os
 import re
 import struct
 import sys
 from functools import lru_cache
+from pathlib import Path
 
-DUMP = os.environ.get("LASAP_DUMP", "D:/DEV/LASAP-sandbox/re/main.bin")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from local_paths import local_path  # noqa: E402
+
+DUMP = os.environ.get("LASAP_DUMP") or local_path("re", "LASAP_RE") / "main.bin"
 BASE = int(os.environ.get("LASAP_BASE", "0x8504000"), 16)
 TEXT_END = 0x1434000
 ACTOR_TABLE, ACTOR_COUNT, ACTOR_ENTRY = 0x1bcc898, 0x275, 0x58

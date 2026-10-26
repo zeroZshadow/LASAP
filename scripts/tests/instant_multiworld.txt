@@ -31,7 +31,7 @@ free 5
 await 5 toast=1
 send DBG text SystemSaving
 expect said=You\sfound\sMap\sWidth\sfor\sWandering\sWalrus 5
-shot D:/DEV/LASAP-sandbox/instant_mw_found.png
+shot instant_mw_found.png
 logged Link\ssent\sMap\sWidth\sto\sWandering\sWalrus 10 server
 await 5 popup=0
 await 10 toast=0
@@ -48,7 +48,7 @@ await 3 toast=1
 check \sanim=walk
 send DBG text SystemSaving
 expect said=You\sgot\sProgressive\sPower\sBracelet\sfrom\sWandering\sWalrus 5
-shot D:/DEV/LASAP-sandbox/instant_mw_received.png
+shot instant_mw_received.png
 check \srecv=1\s
 await 5 popup=0
 guard off msg:Reading

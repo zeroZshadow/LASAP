@@ -19,7 +19,7 @@ hold 40 32767 0 until !event=9 3
 check pos=1[0-9]\.
 guard off event=22
 await 3 popup=1
-shot D:/DEV/LASAP-sandbox/instant_dash.png
+shot instant_dash.png
 await 5 toast=1
 send DBG text SystemSaving
 expect said=You\sfound 5

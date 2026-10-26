@@ -20,7 +20,7 @@ send DBG maplist
 expect MAPLIST.*open=1.*looks=iic.*rows=7\sdrawn=7.*count=2/2\sname=Shop\sSlot3\s1st\s\|\stitle=Mabe\sShop$ 5
 send DBG text MapCaptionPin
 expect TEXT.MapCaptionPin.said=.*Skip\s/\sunskip 5
-shot D:/DEV/LASAP-sandbox/map_list_open.png
+shot map_list_open.png
 # Nothing else reaches the map or the menu: X (out of logic), Plus (Items), L (Jukebox), R (zoom), the stick.
 tap 4
 tap 400
@@ -39,7 +39,7 @@ send DBG maplist
 expect MAPLIST.*looks=isc.*count=1/2\sname=Shop\sSlot3\s2nd 5
 send DBG maplabel
 expect MAPLABEL.1/2.Mabe.Shop$ 5
-shot D:/DEV/LASAP-sandbox/map_list_skipped.png
+shot map_list_skipped.png
 # Up, A: both unchecked locations skipped, the icon shows collected.
 tap 2000
 await 5 mlist=\d+/0/0\s

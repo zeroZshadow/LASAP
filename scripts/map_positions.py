@@ -1,6 +1,6 @@
 """Writes patcher/map_positions.json: where each check shows on the in-game map (the map tracker, DESIGN.md).
 
-Run with .venv-ap: python scripts/map_positions.py [<PopTracker pack folder>] [--romfs D:/Games/Switch/LASRomFS]
+Run with .venv-ap: python scripts/map_positions.py [<PopTracker pack folder>] [--romfs <RomFS folder>]
 
 Overworld checks get world coordinates (x, z, y; the map draws higher places further north):
 - an item actor in an overworld room (LASR's *_ROOMS tables): the actor's position;
@@ -35,6 +35,7 @@ from RandomizerCore.Tools.leb import Room  # noqa: E402
 from RandomizerCore.Tools.oead_tools import parseStruct, readSheet  # noqa: E402
 from worlds.las.locations import display_name  # noqa: E402
 import poptracker_map  # noqa: E402
+from local_paths import local_path  # noqa: E402
 
 OUT = ROOT / "patcher" / "map_positions.json"
 IDS = json.loads((ROOT / "apworld" / "las" / "data" / "ids.json").read_text(encoding="utf-8"))
@@ -283,9 +284,11 @@ def pack_places(pack: Path) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("pack", nargs="?", default="D:/DEV/lasr_brooty", type=Path)
-    parser.add_argument("--romfs", default="D:/Games/Switch/LASRomFS", type=Path)
+    parser.add_argument("pack", nargs="?", type=Path)
+    parser.add_argument("--romfs", type=Path)
     args = parser.parse_args()
+    args.pack = args.pack or local_path("lasr_brooty")
+    args.romfs = args.romfs or local_path("romfs", "LASAP_ROMFS")
 
     level = Level(args.romfs)
     rooms = {**room_tables(), **DUNGEON_ROOMS}

@@ -17,15 +17,15 @@ check event=[1-9]
 send DBG grant Seashell 1 -1 1
 expect OK.grant 5
 check event=[1-9][0-9]* paused=0 carry=0 showq=1(\s|$)
-shot D:/DEV/LASAP-sandbox/talk_1.png
+shot talk_1.png
 # B closes the talk; the item-get starts once Link has been free for a moment.
 tap 2 2 2 when textready
 await 5 showq=0\+1
 # It shows the received item, not the placeholder.
 await 3 shown=22(\s|$)
 until textready 10
-shot D:/DEV/LASAP-sandbox/talk_2.png
+shot talk_2.png
 dismiss 20
 # The screenshot waits for the camera to return.
 wait 1
-shot D:/DEV/LASAP-sandbox/talk_3.png
+shot talk_3.png

@@ -12,7 +12,7 @@ tapuntil 1 files:InputNameWaitKey when files:DataSelectFirstConfirm 5
 until name:KeyWait 10
 send DBG text NameEntry_Default
 expect ^TEXT\sNameEntry_Default\ssaid=${LASAP_SAVE_NAME}$ 3
-shot D:/DEV/LASAP-sandbox/save_name_entry.png
+shot save_name_entry.png
 # The cursor starts on the name, where A opens the keyboard; Down moves it to OK.
 guard name:InputName
 check \sentry=0\s

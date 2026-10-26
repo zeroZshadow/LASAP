@@ -39,7 +39,7 @@ poll OK.zols.from=chest.spawned=1.alive=1.1b@87\.[0-9]+,6\.[0-9]+,17[23]\.[0-9]+
 wait 2
 send DBG zols
 expect OK.zols.from=chest.spawned=1.alive=1.1b@[0-9.]+,[56]\.[0-9]+,[0-9.]+/ 5
-shot D:/DEV/LASAP-sandbox/zol_chest_field.png
+shot zol_chest_field.png
 # The cave's chest: from the tile south of it, facing up, as seashell_chest opens it.
 warp ArmosShrineCave 6.75 0 6.75
 goto 6.75 0 6.75
@@ -56,7 +56,7 @@ poll OK.zols.from=chest.spawned=2.alive=1.1b@6\.[0-9]+,[0-9.]+,5\.[0-9]+/[0-9]+$
 wait 2
 send DBG zols
 expect OK.zols.from=chest.spawned=2.alive=1.1b@[0-9.]+,-?0\.[0-9]+,[0-9.]+/ 5
-shot D:/DEV/LASAP-sandbox/zol_chest_cave.png
+shot zol_chest_cave.png
 # Received on the overworld, outside Marin's house in Mabe (38.25, 10.5, 128.25).
 warp Field 38.25 10.5 128.25
 send DBG zols
@@ -68,7 +68,7 @@ poll OK.zols.from=link.spawned=3.alive=2.1b@36\.75,1[01]\.[0-9]+,128\.25/[0-9]+.
 wait 2
 send DBG zols
 expect OK.zols.from=link.spawned=3.alive=2.1b@[0-9.]+,1[01]\.[0-9]+,[0-9.]+/[0-9]+.1b@[0-9.]+,1[01]\.[0-9]+,[0-9.]+/ 5
-shot D:/DEV/LASAP-sandbox/zol_field.png
+shot zol_field.png
 # Received in Tail Cave's entrance room.
 warp Lv01TailCave 52.5 0 93.75
 send DBG poke 84 0c00
@@ -78,7 +78,7 @@ poll OK.zols.from=link.spawned=4.alive=2.1b@51\.00,0\.70,93\.75/[0-9]+.1b@54\.00
 wait 2
 send DBG zols
 expect OK.zols.from=link.spawned=4.alive=2.1b@[0-9.]+,-?0\.[0-9]+,[0-9.]+/[0-9]+.1b@[0-9.]+,-?0\.[0-9]+,[0-9.]+/ 5
-shot D:/DEV/LASAP-sandbox/zol_dungeon.png
+shot zol_dungeon.png
 warp Field 38.25 10.5 128.25
 send DBG zols
 expect OK.zols.from=link.spawned=4.alive=0$ 5

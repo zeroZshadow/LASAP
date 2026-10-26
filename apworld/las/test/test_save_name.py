@@ -5,8 +5,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from . import romfs
+
 PATCHER = Path(os.path.realpath(__file__)).parents[3] / "patcher"
-ROMFS = Path(os.environ.get("LASAP_ROMFS", r"D:\Games\Switch\LASRomFS"))
+ROMFS = romfs()
 UI_TEXT = ROMFS / "regionUS" / "USen" / "message" / "UI.msbt"
 
 

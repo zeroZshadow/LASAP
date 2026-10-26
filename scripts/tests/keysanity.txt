@@ -11,7 +11,7 @@ check dkeys=0\.0,0\.0,0\.0,0\.0,0\.0,0\.0,0\.0,0\.0,0\.0,0\.0\sdlevel=255\s
 # Outside the dungeons (Tarin's house or Mabe): a Face Shrine key, a Color Dungeon key, a Catfish's Maw compass.
 game ITEM 1 SmallKey 1 5 -1 Small Key (Face Shrine)|Finder
 until msg:KeyWaiting 15
-shot D:/DEV/LASAP-sandbox/keysanity_received.png
+shot keysanity_received.png
 dismiss 10
 free 10
 game ITEM 2 SmallKey 1 9 -1 Small Key (Color Dungeon)|Finder

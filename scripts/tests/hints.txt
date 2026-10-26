@@ -8,7 +8,7 @@ warp Field 156.75 7.5 162.75
 face up
 interact
 until textready 10
-shot D:/DEV/LASAP-sandbox/hint_owl.png
+shot hint_owl.png
 dismiss 30
 send DBG flag APHint4
 expect FLAG.APHint4.1
@@ -20,7 +20,7 @@ interact
 until msg:Selecting 10
 choose 0
 until textready 10
-shot D:/DEV/LASAP-sandbox/hint_book.png
+shot hint_book.png
 dismiss 30
 send DBG flag APHint33
 expect FLAG.APHint33.1
@@ -31,7 +31,7 @@ warp Lv10ClothesDungeon 35.25 0 62.25
 face up
 interact
 until textready 10
-shot D:/DEV/LASAP-sandbox/hint_nobeak.png
+shot hint_nobeak.png
 dismiss 30
 send DBG flag APHint30
 expect FLAG.APHint30.0
@@ -42,7 +42,7 @@ goto 35.25 0 62.25
 face up
 interact
 until textready 10
-shot D:/DEV/LASAP-sandbox/hint_dungeon.png
+shot hint_dungeon.png
 dismiss 30
 send DBG flag APHint30
 expect FLAG.APHint30.1

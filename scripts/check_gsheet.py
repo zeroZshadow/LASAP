@@ -2,7 +2,7 @@
 same values and write the same bytes, for every datasheet of the RomFS and any extra .gsheet files given.
 
 Run with .venv-lasr (patcher/requirements-assets.txt has oead):
-  python scripts/check_gsheet.py [--romfs D:/Games/Switch/LASRomFS] [file.gsheet ...]
+  python scripts/check_gsheet.py [--romfs <RomFS folder>] [file.gsheet ...]
 """
 import argparse
 import sys
@@ -12,6 +12,7 @@ import oead
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "patcher"))
 from RandomizerCore.Tools import gsheet  # noqa: E402
+from local_paths import local_path  # noqa: E402
 
 
 def plain(value):
@@ -25,8 +26,9 @@ def plain(value):
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("files", nargs="*", type=Path)
-    parser.add_argument("--romfs", type=Path, default=Path("D:/Games/Switch/LASRomFS"))
+    parser.add_argument("--romfs", type=Path)
     args = parser.parse_args()
+    args.romfs = args.romfs or local_path("romfs", "LASAP_ROMFS")
     files = sorted((args.romfs / "region_common" / "datasheets").glob("*.gsheet")) + args.files
     failed = 0
     for path in files:

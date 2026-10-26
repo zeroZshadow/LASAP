@@ -14,7 +14,7 @@ python e2e.py tail [n]                             last lines of both logs
 python e2e.py run <script.txt> [trace file]        runs a test script (TESTING.md, "Script ops")
 
 Environment: LASAP_INSTANCE (a suite instance, emu.py; default 0, the sandbox), LASAP_E2E (session folder, default
-the instance's e2e folder, D:/DEV/LASAP-sandbox/e2e for the sandbox), LASAP_SLOT (default Link), LASAP_GAME_PORT
+the instance's e2e folder, the sandbox folder's e2e for the sandbox), LASAP_SLOT (default Link), LASAP_GAME_PORT
 (the game port, default the instance's, 43385 for the sandbox; the debug port is 100 above it).
 """
 import os

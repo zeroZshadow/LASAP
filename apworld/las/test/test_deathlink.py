@@ -1,13 +1,14 @@
 """DeathLink: the patched game over flow (patcher ap_deathlink.py) and the client's DIED and DEATH lines."""
 import asyncio
 import itertools
-import os
 import sys
 import unittest
 from pathlib import Path
 
+from . import romfs
+
 PATCHER = Path(__file__).resolve().parents[3] / "patcher"
-ROMFS = Path(os.environ.get("LASAP_ROMFS", r"D:\Games\Switch\LASRomFS"))
+ROMFS = romfs()
 COMMON_EVENT = ROMFS / "region_common" / "event" / "Common.bfevfl"
 
 

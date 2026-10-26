@@ -16,7 +16,7 @@ await 3 popup=1
 await 5 toast=1
 send DBG text SystemSaving
 expect said=You\sfound 5
-shot D:/DEV/LASAP-sandbox/instant_underwater.png
+shot instant_underwater.png
 await 5 anim=swim_wait
 send DBG input 0 1000 -20000 0
 expect OK.input 5

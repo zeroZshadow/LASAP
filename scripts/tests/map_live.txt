@@ -14,7 +14,7 @@ send /game INLOGIC CLEAR
 poll hover=\d+/3/out\smade=\d+\sdrawn=0,0,\d+,\d+\s\|\sname=0/3\sMabe\sShop$ 5 DBG map
 send /game INLOGIC 55
 poll hover=\d+/3/partly\s.*name=1/3\sMabe\sShop$ 5 DBG map
-shot D:/DEV/LASAP-sandbox/map_live_partly.png
+shot map_live_partly.png
 # The same look with another count: the module gives the cursor the new name.
 send /game INLOGIC 56
 poll hover=\d+/3/partly\s.*name=2/3\sMabe\sShop$ 5 DBG map
@@ -34,7 +34,7 @@ poll name=0/2\sNorth\sBasement\sRoom\s\+1$ 5 DBG map
 send /game INLOGIC 196
 poll looks=oooOOOOOOOpooOOOOOOOO\s 5 DBG mapdot
 poll name=1/2\sNorth\sBasement\sRoom\s\+1$ 5 DBG map
-shot D:/DEV/LASAP-sandbox/map_live_dot.png
+shot map_live_dot.png
 send /game INLOGIC 205
 poll looks=oooOOOOOOOiooOOOOOOOO\s 5 DBG mapdot
 poll name=2/2\sNorth\sBasement\sRoom\s\+1$ 5 DBG map

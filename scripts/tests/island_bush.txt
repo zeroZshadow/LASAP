@@ -6,16 +6,16 @@ warp Field 99.75 9.75 126.75
 at 99.75 126.75
 face up
 at 99.75 126.75
-shot D:/DEV/LASAP-sandbox/island_1.png
+shot island_1.png
 tap 2 2 2 when free
 # The drop plays as an event; Link walks into the item once it has landed.
 until !free 2
 free 5
-shot D:/DEV/LASAP-sandbox/island_2.png
+shot island_2.png
 # The location's item may be a trap.
 guard off hurt
 hold 0 0 32767 until !free 5
 until textready 10
 state
-shot D:/DEV/LASAP-sandbox/island_3.png
+shot island_3.png
 dismiss 20
