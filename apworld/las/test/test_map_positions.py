@@ -97,6 +97,15 @@ class TestDungeonPositions(unittest.TestCase):
             with self.subTest(loc=loc):
                 self.assertIn((x, z), [(round(ox, 2), round(oz, 2)) for ox, oz in self.actors(room, OWL)])
 
+    def test_instruments(self) -> None:
+        """Each instrument at its own actor (ItemFullMoon... : a room's actor names keep 12 characters)."""
+        names = (b"ItemFullMoon", b"ItemConchHorn", b"ItemSeaLilys", b"ItemSurfHarp", b"ItemWindMari", b"ItemCoralTri",
+                 b"ItemEveningC", b"ItemThunderD")
+        for n in range(1, 9):
+            (room, x, z), = self.dungeon[f"D{n}-instrument"]
+            with self.subTest(dungeon=n):
+                self.assertEqual([(x, z)], [(round(ix, 2), round(iz, 2)) for ix, iz in self.actors(room, names[n - 1])])
+
     def test_eagles_tower(self) -> None:
         """Eagle's Tower: the 3F chests in their rooms before and after the collapse, the boss and the instrument on
         4F, in their rooms though these sit two rooms east of their names' columns."""

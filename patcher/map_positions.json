@@ -825,8 +825,8 @@
   "D1-instrument": [
    [
     "Lv01TailCave_03G",
-    93.75,
-    27.0
+    97.5,
+    27.75
    ]
   ],
   "D1-moldorm": [
@@ -930,8 +930,8 @@
   "D2-instrument": [
    [
     "Lv02BottleGrotto_04F",
-    78.75,
-    39.0
+    82.5,
+    39.75
    ]
   ],
   "D2-genie": [
@@ -1049,8 +1049,8 @@
   "D3-instrument": [
    [
     "Lv03KeyCavern_06G",
-    93.75,
-    63.0
+    97.5,
+    63.75
    ]
   ],
   "D3-slime-eye": [
@@ -1203,8 +1203,8 @@
   "D4-instrument": [
    [
     "Lv04AnglersTunnel_03B",
-    18.75,
-    27.0
+    22.5,
+    27.75
    ]
   ],
   "D4-angler": [
@@ -1315,8 +1315,8 @@
   "D5-instrument": [
    [
     "Lv05CatfishsMaw_01D",
-    48.75,
-    3.0
+    52.5,
+    3.75
    ]
   ],
   "D5-slime-eel": [
@@ -1427,8 +1427,8 @@
   "D6-instrument": [
    [
     "Lv06FaceShrine_03E",
-    63.75,
-    27.0
+    67.5,
+    27.75
    ]
   ],
   "D6-facade": [
@@ -1553,8 +1553,8 @@
   "D7-instrument": [
    [
     "Lv07EagleTower_02G",
-    123.75,
-    15.0
+    127.5,
+    15.75
    ]
   ],
   "D7-eagle": [
@@ -1675,8 +1675,8 @@
   "D8-instrument": [
    [
     "Lv08TurtleRock_01D",
-    48.75,
-    3.0
+    52.5,
+    3.75
    ]
   ],
   "D8-hothead": [

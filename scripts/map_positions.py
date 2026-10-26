@@ -80,8 +80,7 @@ ACTOR_PREFIXES = {
 }
 
 # Actors that hold a check, by name prefix or by their first parameter (rocks, bushes and holes hiding an item).
-ITEM_ACTORS = ("ObjTreasureBox", "ItemHeartPiece", "ItemSeashell", "ItemGoldenLeaf", "ItemSmallKey", "ItemInstrument",
-               "ItemHeartContainer")
+ITEM_ACTORS = ("ObjTreasureBox", "ItemHeartPiece", "ItemSeashell", "ItemGoldenLeaf", "ItemSmallKey", "ItemHeartContainer")
 ITEM_PARAMS = (b"Seashell", b"GoldenLeaf", b"HeartPiece", b"SmallKey")
 
 # Dungeon checks without a room table. Owl statues: the room in the owl's event entry (DungeonOwlStatue.bfevfl
@@ -112,7 +111,10 @@ DUNGEON_ROOMS = {
 }
 # Actors that mark a dungeon check in its room, by name prefix: an owl statue's, and any other check's.
 OWL_ACTORS = ("ObjDungeonOw",)
-DUNGEON_ACTORS = ITEM_ACTORS + ("NpcFairyQueen", "EnemyMasterS")
+# The instruments, each its own actor (a room's actor names keep 12 characters).
+INSTRUMENT_ACTORS = ("ItemFullMoon", "ItemConchHorn", "ItemSeaLilys", "ItemSurfHarp", "ItemWindMari", "ItemCoralTri",
+                     "ItemEveningC", "ItemThunderD")
+DUNGEON_ACTORS = ITEM_ACTORS + INSTRUMENT_ACTORS + ("NpcFairyQueen", "EnemyMasterS")
 # Eagle's Tower once collapsed (UiDungeonArea mFloor): its top's rooms are those of 3F before the collapse, 4 rows
 # further south.
 COLLAPSED_FLOOR, COLLAPSED_ROWS = 14, 4
