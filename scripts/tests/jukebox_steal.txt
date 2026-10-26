@@ -1,0 +1,31 @@
+# The Jukebox's Ballad through a stolen item's exit and straight back in (DESIGN.md, Music): the item's fanfare makes
+# the ensemble give way, and it comes back while the shop loads, once the level has its rooms. Run after
+# newgame_file2 on a mod patched with Instant Pickups; it gives Link the Surf Harp and the Coral Triangle (raw adds)
+# and sets the steal flags instead of stealing. DBG music's log shows the yield and the resume.
+guard hurt
+send DBG give 53 1 -1
+expect OK.give 5
+send DBG give 55 1 -1
+expect OK.give 5
+send DBG music BGM_ENSEMBLE_INST
+await 10 music=BGM_ENSEMBLE_INST\s.*layers=28
+warp Field 51.75 10.5 117
+hold 0 0 32767 until level=Shop 5
+inlevel 20
+level Shop
+free 10
+send DBG setflag ShopHeartSteal 1
+expect FLAG.ShopHeartSteal.1 5
+send DBG setflag StealSuccess 1
+expect FLAG.StealSuccess.1 5
+# Out through the door: the exit's event gives the heart (a find); the stick held up walks Link back in at once.
+hold 0 0 -32767 until level=Field 10
+hold 0 0 32767 until level=Shop 15
+inlevel 30
+level Shop
+free 20
+await 10 music=BGM_ENSEMBLE_INST zonebgm=BGM_SHOP bgm=BGM_ENSEMBLE_INST:1\s.*layers=28
+send DBG music
+expect MUSICLOG.*\|\syield\sBGM_FANFARE_ITEM_GET\s.*\|\sresume\s 5
+send DBG music off
+await 10 music=-

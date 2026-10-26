@@ -139,6 +139,13 @@ namespace {
         return Game::BgmManager.Ptr();
     }
 
+    // PlayZoneBgm looks the zone's track up through the level scene's room manager. A level load makes the new
+    // player before its scene has one, and PlayZoneBgm then reads through null.
+    bool LevelReady(const Game::Framework* fmwk) {
+        if (Game::SceneOf(fmwk) != Game::Scene::Level) return false;
+        return static_cast<const Game::LevelScene*>(fmwk->gameState->scene)->roomManager.ptr != nullptr;
+    }
+
     std::string ZoneTrack(const BgmManager* manager) {
         return std::string(manager->zoneTrack.View());
     }
@@ -630,7 +637,7 @@ namespace AP::Music {
     void Tick(bool free, bool paused) {
         Game::Framework* fmwk = Game::GetFramework();
         BgmManager* manager = Manager();
-        if (fmwk == nullptr || fmwk->player == nullptr || manager == nullptr) {
+        if (fmwk == nullptr || fmwk->player == nullptr || manager == nullptr || !LevelReady(fmwk)) {
             if (g_Held) {
                 g_Held = false;  // held into a level load: it plays on
                 g_Carried = true;
