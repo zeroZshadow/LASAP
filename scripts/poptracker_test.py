@@ -47,10 +47,21 @@ LOG = CONFIG / "log.txt"
 SHOTS = HOME / "shots"
 PORT = 38297
 GAME = "Links Awakening Switch"
-PYTHON = ROOT / ".venv-ap" / "Scripts" / "python.exe"
+PYTHON = Path(sys.executable)  # .venv-ap, also from a worktree
 CREATE_NO_WINDOW = 0x08000000
 # AccessibilityLevel values
 NONE, NORMAL = 0, 6
+# Dungeon ER: each dungeon's door by its slot data name (dungeon_entrances), a progressive item whose stage is the
+# dungeon it leads into (0 Unknown, DOOR_COMPLETED Dungeon Completed)
+DOORS = {"tail-cave": "tcdX", "bottle-grotto": "bgdX", "key-cavern": "kcdX", "angler-tunnel": "atdX",
+         "catfish-maw": "cmdX", "face-shrine": "fsdX", "eagle-tower": "etdX", "turtle-rock": "trdX",
+         "color-dungeon": "cddX"}
+DUNGEON_STAGES = {"tail-cave": 1, "bottle-grotto": 2, "key-cavern": 3, "angler-tunnel": 4, "catfish-maw": 5,
+                  "face-shrine": 6, "eagle-tower": 7, "turtle-rock": 8, "color-dungeon": 9}
+DOOR_COMPLETED = 10
+# doors marked by hand in step marks, none of them found: Key Cavern's leads into Tail Cave, the Face Shrine's into
+# Bottle Grotto
+DOOR_MARKS = {"kcdX": 1, "fsdX": 2}
 
 
 class Fail(Exception):
@@ -378,9 +389,9 @@ class Client:
                     raise Fail(f"{self.slot}: no such message in {seconds} s")
                 self.cond.wait(left)
 
-    def set(self, key: str, value) -> None:
-        self.send({"cmd": "Set", "key": key, "default": None, "want_reply": False,
-                   "operations": [{"operation": "replace", "value": value}]})
+    def set(self, key: str, value, operation: str = "replace") -> None:
+        self.send({"cmd": "Set", "key": key, "default": {} if operation == "update" else None, "want_reply": False,
+                   "operations": [{"operation": operation, "value": value}]})
 
     def check(self, *ids: int) -> None:
         if not set(ids) <= self.slot_locations:
@@ -490,12 +501,26 @@ def check_instruments(dump: Dump, slot_data: dict, sign_read: bool) -> None:
     check("INSTRUMENTS_HIDDEN", dump.globals["INSTRUMENTS_HIDDEN"][0], str(hidden).lower())
 
 
-def check_all(tracker: Tracker, pack: Pack, client: Client, sign_read: bool = False, marks: dict | None = None):
+def check_doors(dump: Dump, doors: dict) -> None:
+    """Every door's dungeon as found or marked by hand, Unknown when neither."""
+    for code in DOORS.values():
+        check(f"{code} stage", dump.item(code)["stage"], doors.get(code, 0))
+
+
+def found_doors(client: Client) -> dict:
+    """The doors step full has the client find, as their items show: Tail Cave's with the dungeon it leads into,
+    Bottle Grotto's marked Dungeon Completed before it was found."""
+    return {"tcdX": DUNGEON_STAGES[client.slot_data["dungeon_entrances"]["tail-cave"]], "bgdX": DOOR_COMPLETED}
+
+
+def check_all(tracker: Tracker, pack: Pack, client: Client, sign_read: bool = False, marks: dict | None = None,
+              doors: dict | None = None):
     dump = tracker.barrier_dump(client)
     check_settings(dump, client.slot_data)
     check_instruments(dump, client.slot_data, sign_read)
     check_items(dump, pack, client.received)
     check_sections(dump, pack, client, marks)
+    check_doors(dump, doors or {})
     return dump
 
 
@@ -565,7 +590,8 @@ def step_manual(pack: Pack, tracker: Tracker, server: Server) -> None:
 
 
 def step_full(pack: Pack, tracker: Tracker, server: Server) -> None:
-    """Slot Full: settings, received items, checked locations, the hidden instrument count and the level."""
+    """Slot Full: settings, received items, checked locations, the hidden instrument count, the level and the doors
+    found."""
     server.start(fresh=True)
     client = Client("Full")
     shutil.rmtree(CONFIG / "saves", ignore_errors=True)
@@ -609,11 +635,20 @@ def step_full(pack: Pack, tracker: Tracker, server: Server) -> None:
     client.set(f"las_sign_{client.team}_{client.number}", True)
     check_all(tracker, pack, client, sign_read=True)
     tracker.shot("full_sign_read")
+    # Doors found, as the LASAP client adds them to las_doors_<team>_<slot> (the game's DUNGEON): a found door shows
+    # the dungeon it leads into, also over a door marked by hand, but not over one marked Dungeon Completed.
+    entrances = client.slot_data["dungeon_entrances"]
+    tracker.commands(f"set tcdX CurrentStage {DUNGEON_STAGES[entrances['tail-cave']] % 9 + 1}",
+                     f"set bgdX CurrentStage {DOOR_COMPLETED}")
+    for door in ("tail-cave", "bottle-grotto"):
+        client.set(f"las_doors_{client.team}_{client.number}", {door: entrances[door]}, "update")
+    check_all(tracker, pack, client, sign_read=True, doors=found_doors(client))
     client.close()
 
 
 def step_marks(pack: Pack, tracker: Tracker, server: Server) -> None:
-    """Marks by hand survive a reconnect to the same seed and a restart of PopTracker. Runs after step full."""
+    """Marks and doors by hand survive a reconnect to the same seed and a restart of PopTracker, as do the doors
+    found. Runs after step full."""
     if not server.proc:
         server.start()
     if not tracker.proc:
@@ -625,8 +660,10 @@ def step_marks(pack: Pack, tracker: Tracker, server: Server) -> None:
     unchecked = [code for code in sorted({c for _, cs in pack.location_map.values() for c in cs})
                  if dump.section(code)[0] > 0]
     marks = {unchecked[0]: 0, unchecked[1]: 0}
-    tracker.commands(*[f"mark {code} 0" for code in marks], "set up1 CurrentStage 2")
-    check_all(tracker, pack, client, sign, marks)
+    doors = {**found_doors(client), **DOOR_MARKS}
+    tracker.commands(*[f"mark {code} 0" for code in marks], "set up1 CurrentStage 2",
+                     *[f"set {code} CurrentStage {stage}" for code, stage in DOOR_MARKS.items()])
+    check_all(tracker, pack, client, sign, marks, doors)
     # a section cleared by hand stays cleared when one more of its locations is checked
     rupees = dump.find("/Rupee Room/Rupees")
     left = [i for i, (_, codes) in pack.location_map.items()
@@ -634,24 +671,28 @@ def step_marks(pack: Pack, tracker: Tracker, server: Server) -> None:
     tracker.commands(f"mark {rupees} 0")
     marks[rupees] = 0
     client.check(left[0])
-    check("Rupee Room cleared by hand", check_all(tracker, pack, client, sign, marks).section(rupees)[0], 0)
+    check("Rupee Room cleared by hand",
+          check_all(tracker, pack, client, sign, marks, doors).section(rupees)[0], 0)
     client.close()
     server.stop()
     server.start()
     tracker.wait(r"^LASAPTEST READY", 60)
     client = Client("Full")
-    check("egg arrow after reconnect", check_all(tracker, pack, client, sign, marks).item("up1")["stage"], 2)
+    check("egg arrow after reconnect",
+          check_all(tracker, pack, client, sign, marks, doors).item("up1")["stage"], 2)
     tracker.stop()
     tracker.start("Full")
     tracker.wait(r"^LASAPTEST READY", 30)
-    check("egg arrow after restart", check_all(tracker, pack, client, sign, marks).item("up1")["stage"], 2)
+    check("egg arrow after restart",
+          check_all(tracker, pack, client, sign, marks, doors).item("up1")["stage"], 2)
     tracker.shot("marks_restarted")
     client.close()
     tracker.stop()
 
 
 def step_lean(pack: Pack, tracker: Tracker, server: Server) -> None:
-    """Slot Lean, another seed, in the state Full left: everything resets; Lean's settings."""
+    """Slot Lean, another seed, in the state Full left: everything resets, the doors to Unknown (Lean found none);
+    Lean's settings."""
     tracker.start("Lean")
     tracker.wait(r"^LASAPTEST READY", 30)
     client = Client("Lean")

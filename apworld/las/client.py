@@ -30,6 +30,12 @@ BUSY_STATUS = ("Another client is connected to the game. If another Links Awaken
                "close it.")
 # Data storage key holding the level the game shows (LASR level names: Field, Lv01TailCave, ...), for trackers
 LEVEL_KEY = "las_level_{team}_{slot}"
+# Data storage key holding the dungeon doors the player has found, {door: dungeon} by the slot data's dungeon_entrances
+# names, for trackers: entering a dungeon (the game's DUNGEON) finds the door that leads into it
+DOORS_KEY = "las_doors_{team}_{slot}"
+# DUNGEON's level numbers (Lv<nn>)
+DUNGEON_NUMBERS = {"1": "tail-cave", "2": "bottle-grotto", "3": "key-cavern", "4": "angler-tunnel", "5": "catfish-maw",
+                   "6": "face-shrine", "7": "eagle-tower", "8": "turtle-rock", "10": "color-dungeon"}
 
 
 def clean(text: str) -> str:
@@ -191,6 +197,8 @@ class LASContext(CommonContext):
         self.hints_sent: Set[Tuple[int, int]] = set()
         self.goal_reached = False
         self.game_level: Optional[str] = None  # the level the game shows, from its LOG level lines
+        self.game_dungeons: Set[str] = set()  # the dungeons the game reports entered (DUNGEON), LASR names
+        self.doors_sent: Set[str] = set()  # the dungeons whose door was put in data storage since connecting
         self.last_item_sent = 0.0
         # Local location id -> "<item name>|<owner name, empty for our own items>", from LocationScouts.
         self.scouted_names: Dict[int, str] = {}
@@ -261,6 +269,8 @@ class LASContext(CommonContext):
             asyncio.create_task(self.send_level())
             self.send_checked(self.checked_locations)
             self.slot_data = args["slot_data"]
+            self.doors_sent.clear()
+            asyncio.create_task(self.send_doors())
             self.make_logic_tracker()
             asyncio.create_task(self.send_sign_read())
             # read in an earlier session: the game's save may have lost it (quit without saving)
@@ -488,6 +498,7 @@ class LASContext(CommonContext):
             # the game sends its checks again (CHECKS) after HELLO, for the seed it runs now
             self.game_hints.clear()
             self.game_checked.clear()
+            self.game_dungeons.clear()
             self.goal_reached = False
             if len(parts) < 2 or parts[1] != str(PROTOCOL_VERSION):
                 logger.error(f"Game protocol {parts[1:2]} does not match the client ({PROTOCOL_VERSION}).")
@@ -523,6 +534,10 @@ class LASContext(CommonContext):
         elif cmd == "GOAL":
             self.goal_reached = True
             asyncio.create_task(self.flush_checks())
+        elif cmd == "DUNGEON" and len(parts) == 2 and parts[1] in DUNGEON_NUMBERS:
+            # the player entered a dungeon: the game showed its name, as on the map
+            self.game_dungeons.add(DUNGEON_NUMBERS[parts[1]])
+            asyncio.create_task(self.send_doors())
         elif cmd == "SIGN":
             # the player read the sign naming the instruments the egg needs
             self.on_sign_read(self.game_seed_hash)
@@ -548,6 +563,20 @@ class LASContext(CommonContext):
             return
         await self.send_msgs([{"cmd": "Set", "key": LEVEL_KEY.format(team=self.team, slot=self.slot), "default": "",
                                "want_reply": False, "operations": [{"operation": "replace", "value": self.game_level}]}])
+
+    async def send_doors(self) -> None:
+        """Puts the doors that lead into the dungeons the game reports entered in the server's data storage
+        (DOORS_KEY): the player has found them. Only into the slot of the seed the game runs, whose doors these are."""
+        if self.slot is None or not self.slot_seed_hash or self.slot_seed_hash != self.game_seed_hash:
+            return
+        entrances = self.slot_data.get("dungeon_entrances") or {}
+        doors = {door: inside for door, inside in entrances.items()
+                 if inside in self.game_dungeons and inside not in self.doors_sent}
+        if not doors:
+            return
+        self.doors_sent.update(doors.values())
+        await self.send_msgs([{"cmd": "Set", "key": DOORS_KEY.format(team=self.team, slot=self.slot), "default": {},
+                               "want_reply": False, "operations": [{"operation": "update", "value": doors}]}])
 
     def set_game_status(self, level: str, text: str) -> None:
         self.game_status = checklist.Check(level, text)

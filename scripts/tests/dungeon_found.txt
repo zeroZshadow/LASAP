@@ -1,0 +1,19 @@
+# Dungeons entered (DESIGN.md, Data storage): the first time the game shows a dungeon's name on entering it, it sets
+# the dungeon's marker flag, and the module reports DUNGEON <n> to the client, which tells trackers the door that leads
+# into it; SYNC reports every dungeon entered again. Run after newgame_file2 with the client connected to the game, on
+# a mod with the dungeons' doors unshuffled.
+expect HELLO 30
+send DBG flag UI_FieldMapIcon_Lv01Dungeon
+expect FLAG.UI_FieldMapIcon_Lv01Dungeon.0 5
+send DBG setflag TailCaveShutterOpened 1
+expect FLAG.TailCaveShutterOpened.1 5
+# Tail Cave's door, north of Link
+warp Field 54.75 9.0 160.5
+hold 0 0 32767 until level=Lv01TailCave 10
+loaded 20
+# reported since the flags were set (the reply of the last send)
+expect ^AP.DUNGEON.1$ 20
+send DBG flag UI_FieldMapIcon_Lv01Dungeon
+expect FLAG.UI_FieldMapIcon_Lv01Dungeon.1 5
+game SYNC
+expect ^DUNGEON.1$ 10

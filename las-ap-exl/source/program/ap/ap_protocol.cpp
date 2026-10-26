@@ -82,7 +82,7 @@ namespace {
             SendAllChecks();
             if (EventFlags::CheckFlag(kGoalFlag) || LevelSystem::GetCurrentLevel() == kGoalLevel) AP::Send("GOAL");
             if (EventFlags::CheckFlag(AP::SIGN_FLAG)) AP::Send("SIGN");
-            ReportHints(true);
+            ReportFlags(true);
         } else if (a[0] == "DEATH") {
             return ReceiveDeath(RestAfter(line, 1));
         } else if (a[0] == "NAME" && a.size() >= 2) {

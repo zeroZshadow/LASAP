@@ -1,5 +1,6 @@
 // Checks (DESIGN.md, Checks): the locations collected here (saved per seed and reported), those the server has as
-// checked or in logic and those the player marked skipped, for the map tracker; and the in-game hints read.
+// checked or in logic and those the player marked skipped, for the map tracker; and the in-game hints read and the
+// dungeons entered.
 #include "ap/ap.hpp"
 #include "ap/ap_bridge.hpp"
 #include "ap/ap_net.hpp"
@@ -32,12 +33,33 @@ namespace {
     // Dungeon locations whose dungeon's door is reachable for the items received (DOORS lines), for the map tracker.
     std::vector<u8> g_DoorOpen(kChecksBytes, 0);
 
-    // In-game hints the client makes server hints of (HINTS_PATH): the flag reading the hint sets, and the hinted
-    // location as "<slot> <location id>". Reported once per connection, and all again on SYNC.
-    struct HintFlag { std::string flag; std::string target; bool reported; };
-    std::vector<HintFlag> g_Hints;
-    u64 g_HintFlagsPolled = 0;
-    constexpr u64 kHintFlagPollMs = 500;
+    // Flags of the save reported to the client by a line once they are set: once per connection, and all again on
+    // SYNC.
+    struct ReportedFlag { std::string flag; std::string line; bool reported; };
+    // In-game hints the client makes server hints of (HINTS_PATH): the flag reading the hint sets, reported as
+    // HINT <slot> <location id>.
+    std::vector<ReportedFlag> g_Hints;
+    // The dungeons entered: the flag the game sets the first time it shows a dungeon's name on entering it, which also
+    // shows its name on the map (map tracker), reported as DUNGEON <n> by the dungeon's level number (Lv<nn>). The
+    // client tells trackers the door that leads into it.
+    std::vector<ReportedFlag> g_Dungeons = {
+        {"UI_FieldMapIcon_Lv01Dungeon", "DUNGEON 1", false}, {"UI_FieldMapIcon_Lv02Dungeon", "DUNGEON 2", false},
+        {"UI_FieldMapIcon_Lv03Dungeon", "DUNGEON 3", false}, {"UI_FieldMapIcon_Lv04Dungeon", "DUNGEON 4", false},
+        {"UI_FieldMapIcon_Lv05Dungeon", "DUNGEON 5", false}, {"UI_FieldMapIcon_Lv06Dungeon", "DUNGEON 6", false},
+        {"UI_FieldMapIcon_Lv07Dungeon", "DUNGEON 7", false}, {"UI_FieldMapIcon_Lv08Dungeon", "DUNGEON 8", false},
+        {"UI_FieldMapIcon_Lv10Dungeon", "DUNGEON 10", false},
+    };
+    u64 g_FlagsPolled = 0;
+    constexpr u64 kFlagPollMs = 500;
+
+    void Report(std::vector<ReportedFlag>& flags, bool all) {
+        for (auto& f : flags) {
+            if ((all || !f.reported) && EventFlags::CheckFlag(f.flag.c_str())) {
+                AP::Send(f.line);
+                f.reported = true;
+            }
+        }
+    }
 
     void ReadBits(const std::string& path, std::vector<u8>& bits) {
         nn::fs::FileHandle h{};
@@ -141,30 +163,29 @@ namespace {
         while (std::getline(lines, line)) {
             std::stringstream ss(line);
             std::string n, flag, slot, location;
-            if (ss >> n >> flag >> slot >> location) g_Hints.push_back({flag, slot + " " + location, false});
+            if (ss >> n >> flag >> slot >> location) g_Hints.push_back({flag, "HINT " + slot + " " + location, false});
         }
         Logging.Log("[AP] hints: %zu", g_Hints.size());
     }
 
-    // Sends HINT for the hints read (their flag set) and not yet reported on this connection, or for all read.
-    void ReportHints(bool all) {
+    // Sends HINT and DUNGEON for the hints read and the dungeons entered (their flag set) and not yet reported on
+    // this connection, or for all.
+    void ReportFlags(bool all) {
         if (!AP::IsClientConnected()) return;
-        for (auto& hint : g_Hints) {
-            if ((all || !hint.reported) && EventFlags::CheckFlag(hint.flag.c_str())) {
-                AP::Send("HINT " + hint.target);
-                hint.reported = true;
-            }
+        Report(g_Hints, all);
+        Report(g_Dungeons, all);
+    }
+
+    void TickReportedFlags() {
+        if (!PlayerReady() || NowMs() - g_FlagsPolled < kFlagPollMs) return;
+        g_FlagsPolled = NowMs();
+        ReportFlags(false);
+    }
+
+    void ResetReportedFlags() {
+        for (auto* flags : {&g_Hints, &g_Dungeons}) {
+            for (auto& f : *flags) f.reported = false;
         }
-    }
-
-    void TickHintFlags() {
-        if (g_Hints.empty() || !PlayerReady() || NowMs() - g_HintFlagsPolled < kHintFlagPollMs) return;
-        g_HintFlagsPolled = NowMs();
-        ReportHints(false);
-    }
-
-    void ResetHints() {
-        for (auto& hint : g_Hints) hint.reported = false;
     }
 
 #ifdef LASAP_TEST

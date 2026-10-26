@@ -188,6 +188,8 @@ The client keeps the level the game shows (`Field`, `Lv01TailCave`, ...) in `las
 
 The client sets `las_sign_<team>_<slot>` to `true` once the game reports the sign at the egg's stairs as read (`SIGN`, for the slot's seed); trackers show a hidden instrument count from then on (Goal, **Hidden count**).
 
+The client adds each dungeon door the player has found to `las_doors_<team>_<slot>`, `{door: dungeon}` by `dungeon_entrances` names, from the game's `DUNGEON` lines (for the slot's seed); trackers show which dungeon each found door leads into (Shuffled dungeons, **Doors found**).
+
 ## Game ↔ client protocol (TCP 43384, game listens)
 
 ASCII lines terminated by `\n`, fields separated by single spaces. The game accepts one client at a time. The client sends `PING` every 2 s, and the game drops a client that has been silent for 10 s.
@@ -231,6 +233,7 @@ ASCII lines terminated by `\n`, fields separated by single spaces. The game acce
 | `HINT <slot> <location id>` | An in-game hint was read (its flag is set): once per hint and connection, and all read hints again on `SYNC` |
 | `GOAL` | Goal completed: Link entered the `Ending` level, or the `ShadowClear` flag is set (also resent on `SYNC`) |
 | `SIGN` | The player read the sign at the egg's stairs (Goal, **Hidden count**): once when it is read, and again on each `SYNC` after |
+| `DUNGEON <n>` | The player has entered dungeon `Lv<n>` (1–8, 10 the Color Dungeon; Shuffled dungeons, **Doors found**): once per connection when its marker flag is set, and again on each `SYNC` |
 | `DIED` | DeathLink: Link died, and no Secret Medicine saved him (see DeathLink) |
 | `DEATHDROPPED` | DeathLink: a `DEATH` arrived with no save loaded and was dropped; the client logs it |
 | `GHOSTNAMES 1` / `GHOSTNAMES 0` | The player turned the ghosts' name tags on or off in the game (d-pad up); the client keeps it as its `ghost_names` setting and sends it back |
@@ -313,6 +316,7 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 - Each of the nine dungeons' overworld doors leads into a random dungeon, the Color Dungeon included, as in LASR's shuffler (`lasr.shuffle_dungeons`). `dungeon_entrances` names each door by its dungeon's LASR region (`tail-cave`, ...) and maps it to the dungeon it leads into.
 - **Logic.** A dungeon's region node is its inside, and its conditions are its door's. `lasr.dungeon_logic` gives each dungeon the conditions of the door that leads into it, those of every preset. The Face Shrine's region is either of its entrance rooms (`D6-8D`, or `D6-3A`, which its side entrance reaches); its door is the outside part of `D6-8D`'s conditions (`river & face-key & (hookshot | rooster)` and the room's glitched and hell conditions), which the door leading into the Face Shrine replaces. LASR's shuffler moves only `condition-basic`, and moves the Face Shrine's region with its entrance rooms.
 - **Patch.** LASR's `EntranceRandomizer` points each door's loading zone into its dungeon and that dungeon's exit back out of the door, and swaps the overworld map's dungeon markers (label and show flag; the map tracker's dungeon dots follow the markers and hide their dungeon's name until it is entered). `InstrumentRandomizer` sends each instrument's warp out of the door that leads into its dungeon, and `FreeGiftsRandomizer` sends the Fairy Queen's warp after her gifts (`FairyQueen.bfevfl` `Event37`) to the Color Dungeon's. `ap_entrances.py` does the same for the Fairy Queen's other warps (`Event22`, `Event26`, `Event42`) and for her room's loading zone (`Lv10ClothesDungeon_04C`, which lies off the floor). The side entrances of the Face Shrine (`Field_07M`) and Turtle Rock (`Field_01A`, `Field_01C`) are not shuffled.
+- **Doors found.** The first time the game shows a dungeon's name on entering it, it sets the dungeon's marker flag (`UI_FieldMapIcon_Lv<nn>Dungeon`), the flag that shows the dungeon's name on the map (Map tracker). The module reports each dungeon whose flag is set as `DUNGEON <n>` (`ap_checks.cpp`, with the in-game hints' flags), so dungeons entered while the client was away count too. The client puts the door that leads into each in data storage (`las_doors_<team>_<slot>`, `update`, once per server connection), for the slot of the seed the game runs only. The PopTracker pack sets each found door's item to its dungeon, unless the player marked it Dungeon Completed; on another seed it sets every door back to Unknown. The slot data has every door, but the tracker shows only the doors found, as the map does.
 
 **Map tracker** (option `map_tracker`, settings key `Map Tracker`; `patcher/ap_map.py`, `map/`)
 - The pause map shows the slot's unchecked locations, and the whole overworld and every dungeon room are revealed. Off for a patch without the settings key.

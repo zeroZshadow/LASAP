@@ -20,3 +20,4 @@ ghosts ghost: boot_file1 ghost_net ghost_puppet jukebox_pane
 jukebox_ballad: newgame_file2 jukebox_ballad
 egg_jukebox: newgame_file2 egg_jukebox
 zol_trap: newgame_file2 zol_trap
+dungeon_found client: newgame_file2 dungeon_found
