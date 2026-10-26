@@ -47,10 +47,14 @@ LOG = CONFIG / "log.txt"
 SHOTS = HOME / "shots"
 PORT = 38297
 GAME = "Links Awakening Switch"
-PYTHON = ROOT / ".venv-ap" / "Scripts" / "python.exe"
+PYTHON = Path(sys.executable)  # .venv-ap, also from a worktree
 CREATE_NO_WINDOW = 0x08000000
 # AccessibilityLevel values
 NONE, NORMAL = 0, 6
+# Dungeon ER: each dungeon's door, a progressive item whose stage is the dungeon it leads into (0 Unknown)
+DOORS = ["tcdX", "bgdX", "kcdX", "atdX", "cmdX", "fsdX", "etdX", "trdX", "cddX"]
+# doors marked by hand in step marks: Tail Cave's leads into Key Cavern, the Face Shrine's into Tail Cave
+DOOR_MARKS = {"tcdX": 3, "fsdX": 1}
 
 
 class Fail(Exception):
@@ -490,12 +494,20 @@ def check_instruments(dump: Dump, slot_data: dict, sign_read: bool) -> None:
     check("INSTRUMENTS_HIDDEN", dump.globals["INSTRUMENTS_HIDDEN"][0], str(hidden).lower())
 
 
-def check_all(tracker: Tracker, pack: Pack, client: Client, sign_read: bool = False, marks: dict | None = None):
+def check_doors(dump: Dump, doors: dict) -> None:
+    """Every door's dungeon as marked by hand, Unknown when not marked."""
+    for code in DOORS:
+        check(f"{code} stage", dump.item(code)["stage"], doors.get(code, 0))
+
+
+def check_all(tracker: Tracker, pack: Pack, client: Client, sign_read: bool = False, marks: dict | None = None,
+              doors: dict | None = None):
     dump = tracker.barrier_dump(client)
     check_settings(dump, client.slot_data)
     check_instruments(dump, client.slot_data, sign_read)
     check_items(dump, pack, client.received)
     check_sections(dump, pack, client, marks)
+    check_doors(dump, doors or {})
     return dump
 
 
@@ -613,7 +625,8 @@ def step_full(pack: Pack, tracker: Tracker, server: Server) -> None:
 
 
 def step_marks(pack: Pack, tracker: Tracker, server: Server) -> None:
-    """Marks by hand survive a reconnect to the same seed and a restart of PopTracker. Runs after step full."""
+    """Marks and doors by hand survive a reconnect to the same seed and a restart of PopTracker. Runs after step
+    full."""
     if not server.proc:
         server.start()
     if not tracker.proc:
@@ -625,8 +638,9 @@ def step_marks(pack: Pack, tracker: Tracker, server: Server) -> None:
     unchecked = [code for code in sorted({c for _, cs in pack.location_map.values() for c in cs})
                  if dump.section(code)[0] > 0]
     marks = {unchecked[0]: 0, unchecked[1]: 0}
-    tracker.commands(*[f"mark {code} 0" for code in marks], "set up1 CurrentStage 2")
-    check_all(tracker, pack, client, sign, marks)
+    tracker.commands(*[f"mark {code} 0" for code in marks], "set up1 CurrentStage 2",
+                     *[f"set {code} CurrentStage {stage}" for code, stage in DOOR_MARKS.items()])
+    check_all(tracker, pack, client, sign, marks, DOOR_MARKS)
     # a section cleared by hand stays cleared when one more of its locations is checked
     rupees = dump.find("/Rupee Room/Rupees")
     left = [i for i, (_, codes) in pack.location_map.items()
@@ -634,24 +648,27 @@ def step_marks(pack: Pack, tracker: Tracker, server: Server) -> None:
     tracker.commands(f"mark {rupees} 0")
     marks[rupees] = 0
     client.check(left[0])
-    check("Rupee Room cleared by hand", check_all(tracker, pack, client, sign, marks).section(rupees)[0], 0)
+    check("Rupee Room cleared by hand",
+          check_all(tracker, pack, client, sign, marks, DOOR_MARKS).section(rupees)[0], 0)
     client.close()
     server.stop()
     server.start()
     tracker.wait(r"^LASAPTEST READY", 60)
     client = Client("Full")
-    check("egg arrow after reconnect", check_all(tracker, pack, client, sign, marks).item("up1")["stage"], 2)
+    check("egg arrow after reconnect",
+          check_all(tracker, pack, client, sign, marks, DOOR_MARKS).item("up1")["stage"], 2)
     tracker.stop()
     tracker.start("Full")
     tracker.wait(r"^LASAPTEST READY", 30)
-    check("egg arrow after restart", check_all(tracker, pack, client, sign, marks).item("up1")["stage"], 2)
+    check("egg arrow after restart",
+          check_all(tracker, pack, client, sign, marks, DOOR_MARKS).item("up1")["stage"], 2)
     tracker.shot("marks_restarted")
     client.close()
     tracker.stop()
 
 
 def step_lean(pack: Pack, tracker: Tracker, server: Server) -> None:
-    """Slot Lean, another seed, in the state Full left: everything resets; Lean's settings."""
+    """Slot Lean, another seed, in the state Full left: everything resets, the doors to Unknown; Lean's settings."""
     tracker.start("Lean")
     tracker.wait(r"^LASAPTEST READY", 30)
     client = Client("Lean")
