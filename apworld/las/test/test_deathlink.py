@@ -80,19 +80,15 @@ class TestGameOverFlow(unittest.TestCase):
                 vanilla = self.run_flow(original, False, revenge, medicine, panel)
                 own = self.run_flow(chart, False, revenge, medicine, panel)
                 received = self.run_flow(chart, True, revenge, medicine, panel)
-                self.assertEqual(vanilla[:4], own[:4])  # the death animation and the wait
-                self.assertEqual(vanilla[:4], received[:4])
                 # An own death runs as before and is reported when it stands.
-                self.assertEqual([s for s in own if s != died], vanilla)
+                self.assertEqual([s for s in own if s not in (died, cleared)], vanilla)
                 stands = revenge or not medicine
                 self.assertEqual(own.count(died), int(stands))
-                # A received death stands without the medicine and is not reported.
+                # A received death runs as before too, so the medicine saves Link from it; it is never reported, and
+                # the flow clears its flag however it ends.
+                self.assertEqual([s for s in received if s not in (died, cleared)], vanilla)
                 self.assertNotIn(died, received)
-                self.assertIn(cleared, received)
-                self.assertFalse([s for s in received if s[0] in ("RemoveItem", "Heal")])
-                self.assertEqual(received[-1], ("subflow", "GameOverPanel" if panel else "GameOverCommon"))
-                if stands:
-                    self.assertEqual(own[-1], received[-1])
+                self.assertEqual(received.count(cleared), 1)
 
 
 class TestClientDeathLink(unittest.TestCase):

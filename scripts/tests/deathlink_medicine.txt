@@ -1,17 +1,36 @@
 # DeathLink with Tracy's Secret Medicine, the item the game over revives Link with (a bottled fairy never does), on
-# the deathlink.txt setup (after boot_file1 or deathlink), with Link not holding the medicine. DBG give 21 adds it:
-# bit 1 of the inventory's byte ac. A received death kills Link past the medicine, which he keeps; then an own death
-# (a quarter heart and an Octorok south of Mabe) ends in the medicine's rescue and sends nothing. Ends with Link alive
-# and free in Mabe, the medicine used up. Patterns use \s for spaces.
+# the deathlink.txt setup (after boot_file1 or deathlink). DBG give 21 adds it: bit 1 of the inventory's byte ac.
+# Medicines waiting in the save (APMedicine0..1) are cleared first, so none replaces the one used up. A received death
+# ends in the medicine's rescue, as an own death does, and sends nothing; with the medicine used up the next received
+# death kills Link; with a new medicine an own death ends in its rescue and sends nothing. Ends with Link alive and
+# free in Mabe, the medicine used up. Patterns use \s for spaces.
 guard off dead
+send DBG setflag APMedicine0 0
+expect FLAG\sAPMedicine0\s0 5
+send DBG setflag APMedicine1 0
+expect FLAG\sAPMedicine1\s0 5
 warp Field 38.25 10.5 128.25
-send DBG peek i ac 1
-expect PEEK\si\sac\s[0-9a-f][014589cd] 5
 send DBG give 21 1 0
 expect OK\sgive 5
 send DBG peek i ac 1
 expect PEEK\si\sac\s[0-9a-f][2367abef] 5
-# A received death: the game over shows despite the medicine, nothing goes back, and Link keeps the medicine.
+# A received death: the medicine refills Link's hearts and he plays on; no game over, nothing goes back, the flag is
+# cleared and the medicine used up.
+peer /die Finder fell onto the medicine.
+logged DeathLink:\sFinder\sfell\sonto\sthe\smedicine 10 client
+until health=0 10
+await 20 health=[1-9]
+until free 20
+check paused=0
+send DBG peek i ac 1
+expect PEEK\si\sac\s[0-9a-f][014589cd] 5
+send DBG flag APDeathLink
+expect FLAG\sAPDeathLink\s0 5
+wait 2
+check paused=0
+logcount Sending\sdeath 0 client
+logcount DeathLink:\sLink 0 peer
+# A received death without the medicine: the game over shows, nothing goes back.
 peer /die Finder fell past the medicine.
 logged DeathLink:\sFinder\sfell\spast\sthe\smedicine 10 client
 until health=0 10
@@ -25,9 +44,11 @@ tapuntil 1 paused=0 when paused=1 20
 await 30 pos=[1-9]
 until free 20
 check health=[1-9]
+# An own death with a new medicine: the medicine refills Link's hearts and he plays on; no game over, no death sent.
+send DBG give 21 1 0
+expect OK\sgive 5
 send DBG peek i ac 1
 expect PEEK\si\sac\s[0-9a-f][2367abef] 5
-# An own death: the medicine refills Link's hearts and he plays on; no game over, no death sent.
 warp Field 41.25 9.0 147.75
 send DBG poke 84 0100
 hold 0 0 32767 until health=0 10

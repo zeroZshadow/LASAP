@@ -35,8 +35,8 @@ namespace AP {
     // An item-get whose message entry starts with this mark plays as the game's own also with Instant Pickups; the
     // mark is dropped from the entry. The patcher marks the instruments' pedestals (patcher: NATIVE_ITEM_GET_MARK).
     constexpr char NATIVE_ITEM_GET_MARK = '!';
-    // DeathLink event flags (patcher): the module sets DEATHLINK_FLAG with a received death, so the game over flow
-    // skips the Secret Medicine and clears it; the flow sets DIED_FLAG for any other death, which the module reports.
+    // DeathLink event flags (patcher): the module sets DEATHLINK_FLAG with a received death, and the game over flow
+    // clears it; the flow sets DIED_FLAG for any other death that stands, which the module reports.
     constexpr const char* DEATHLINK_FLAG = "APDeathLink";
     constexpr const char* DIED_FLAG = "APDied";
     // Secret Medicines received while Link holds one (it is a single inventory bit): a count in the event flags
