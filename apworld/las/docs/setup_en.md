@@ -20,25 +20,34 @@ Double-click `las.apworld`, or copy it into Archipelago's `custom_worlds` folder
 1. Get your `.aplas` patch file: on the website it is on the room page, from a local generation it is in the zip.
 2. Open it: double-click it, drag it onto the Archipelago Launcher, or use the Launcher's "Open Patch". The Links
    Awakening Switch Client opens on its Patch tab.
-3. The first time, choose your emulator's program with Browse: `Ryujinx.exe`, or `eden.exe` (or another yuzu-based
-   emulator). The client finds the emulator's SD card and mod folder, and the game in the emulator's game list.
-4. Choose the RomFS dump, also once. Each setting shows what to do when it is missing:
-   - Ryujinx: right-click Link's Awakening, Extract Data, RomFS, and pick a folder. Choose that folder.
-   - Yuzu-based emulators: right-click Link's Awakening, Dump RomFS. The client finds the dump by itself.
-5. Press **Play**. The client patches the game, installs the mod and starts the emulator with the game. The Patch tab
-   says when the mod is installed.
+3. The first time, the Patch tab walks you through four steps. Each says what to do:
+   1. **Patch file**: the file you opened. Leave "Open .aplas patch files in this client when I double-click them"
+      ticked: Archipelago's installer only sets this up for the games it ships with.
+   2. **Where you play**: an emulator on this PC, or a Nintendo Switch.
+   3. **Your emulator**: choose its program, `Ryujinx.exe` or `eden.exe` (or another yuzu-based emulator). The client
+      finds its SD card, mod folder and the game in its game list.
+      **Your Switch**: put the Switch's SD card in this PC and choose it (the client lists the drives, and marks those
+      with Atmosphère), and enter the Switch's IP address (on the Switch: System Settings, Internet, Connection
+      Status).
+   4. **Game files**: the RomFS dump.
+      - Ryujinx: right-click Link's Awakening, Extract Data, RomFS, and pick a folder. Choose that folder.
+      - Yuzu-based emulators: right-click Link's Awakening, Dump RomFS. The client finds the dump by itself.
+      - A Switch: dump the RomFS with a dump tool such as nxdumptool and copy it to this PC.
+      With an emulator, the game file is optional: when the client does not find the game in the emulator's game
+      list, Play opens the emulator and you start the game there.
+4. Press **Play** (with a Switch: **Install to SD card**). The client patches the game and installs the mod; the
+   Patch tab shows each step. With an emulator it then starts the emulator with the game. With a Switch, put the SD
+   card back and start the game; the client connects to it by itself.
    It connects to the server the patch names (patches from the website name their room) as your slot; otherwise,
    enter the address in the top bar.
-6. Start a new save file; its name starts as your slot name (cut to 8 characters). Items arrive once the save is
+5. Start a new save file; its name starts as your slot name (cut to 8 characters). Items arrive once the save is
    loaded. Once the client is connected to both the game and the server, a small popup at the bottom right says
    "Archipelago connected as <slot>". The game also says when it loses the client.
 
-The client remembers its settings. Opening the next seed's patch file shows it in the Patch tab; Play installs it
-and starts the game without further questions. Play also reinstalls the mod after an update of the world. "Reinstall mod" installs the current
-seed again without starting the game.
-
-"Open .aplas files with a double-click" at the bottom of the Patch tab sets Windows up to open `.aplas` files with
-the Archipelago Launcher. It is needed once, as Archipelago's installer only does this for the games it ships with.
+The client remembers its settings. Opening the next seed's patch file shows it in the Patch tab with "New seed"; Play
+installs it and starts the game without further questions. Play also reinstalls the mod after an update of the world.
+"Reinstall the mod without starting" installs the current seed again without starting the game. Below Play, Setup,
+Look and sound, Ghosts and Advanced each open their settings; Setup's Change links go back to a setup step.
 
 ### Look and sound
 
@@ -56,16 +65,18 @@ To start with more hearts, add Heart Containers to `start_inventory_from_pool` i
 
 ### Advanced settings
 
-The Patch tab's advanced settings are for setups the client cannot find by itself:
+The Patch tab's advanced settings are for setups the client cannot find by itself. Under each, "In use" shows the
+folder or address the client uses, also when the setting is empty.
 
 | Setting | When to set it |
 |---|---|
-| SD card folder | An emulator the client does not know, a Ryujinx data folder used with `--root-data-dir` (choose its `sdcard` folder; the client then starts Ryujinx with that data folder), or a Switch's SD card |
+| SD card folder | An emulator the client does not know, or a Ryujinx data folder used with `--root-data-dir` (choose its `sdcard` folder; the client then starts Ryujinx with that data folder). For a Switch, the setup sets it |
 | Mod folder | Mods go somewhere other than the emulator's default: `<SD card>/atmosphere/contents/01006BB00C6F0000` for Ryujinx and a Switch, `<data folder>/load/01006BB00C6F0000/Archipelago` for yuzu-based emulators |
 | Patcher command | Leave it empty: the client uses the patcher the world carries. Set it only to run another patcher program (see the repository's README) |
-| Game address | The Switch's IP address when the game runs on a Switch; `127.0.0.1` for an emulator on this computer |
+| Game address | The Switch's IP address when the game runs on a Switch (the setup sets it); `127.0.0.1` for an emulator on this computer |
 
-The settings are saved in `host.yaml` under `las_options`.
+The settings are saved in `host.yaml` under `las_options`; `platform` holds where you play. Changing where you play
+clears the SD card and mod folders, which belong to the other one.
 
 ## In-game hints
 
@@ -92,12 +103,13 @@ players of the same generation see each other, unless the relay runs with `--nog
 - Ghosts are on by default and use the default relay, `wss://ghosts.zerozshadow.com`; nobody has to set anything. When
   that relay can't be reached, the Patch tab says so and the client keeps trying in the background; the game plays as
   usual.
-- For another relay, each player enters it in the Patch tab's "Ghost relay" (`host:port`, `password@host:port` for a
+- For another relay, each player enters it in the Patch tab's Ghosts settings, "Ghost relay" (`host:port`, `password@host:port` for a
   relay with a password, or a `wss://` address for a relay behind a tunnel), or with `/ghostrelay <address>` in the
   client. `/ghostrelay` shows the relay in use; `/ghostrelay default` goes back to the default relay.
 - The person who generates can also set `ghost_relay` under `las_options` in `host.yaml` before generating: every patch
   file then carries it, and it applies to players whose "Ghost relay" field is empty.
-- "Show ghosts" on the Patch tab, or `/ghosts off` in the client, turns them off. The Patch tab shows the relay status.
+- "Show ghosts" in the Patch tab's Ghosts settings, or `/ghosts off` in the client, turns them off. The Patch tab's
+  Ghosts line shows the relay status.
 
 To run a relay on Windows, double-click `LASGhostRelay.exe` (it comes with the release; it needs no Python). It
 asks for a password (press Enter for none: then anyone who knows the address can use your relay), listens on TCP port
@@ -150,7 +162,7 @@ address. A relay behind a Cloudflare Tunnel needs no forwarded port: players ent
 Tell the person who gave you the world, with:
 
 - what happened, what you expected, and where (the area, or the check's name from the map or the server);
-- your slot name and the seed: the Patch tab's "Patch file" line names both;
+- your slot name and the seed: the top of the Patch tab names both;
 - the client's log: the newest `LASClient` file in Archipelago's `logs` folder (the Launcher's "Browse Files" opens
   Archipelago's folder);
 - your emulator and its version, and the look and sound settings you changed in the Patch tab;

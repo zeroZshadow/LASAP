@@ -39,6 +39,12 @@ def player_value(setting: PlayerSetting, value: Any) -> Any:
 
 
 class LASSettings(settings.Group):
+    class Platform(str):
+        """
+        Where the game runs: "emulator" (an emulator on this computer) or "switch" (a Switch with Atmosphère, whose
+        SD card is sd_card_folder and whose address is game_host). Empty: chosen in the Patch tab's setup.
+        """
+
     class Emulator(str):
         """
         Emulator executable, e.g. "C:/Ryujinx/Ryujinx.exe" or "C:/Eden/eden.exe". The client finds the emulator's SD
@@ -92,6 +98,7 @@ class LASSettings(settings.Group):
         behind a tunnel (password@wss://host with a password). Generating writes it into each LAS patch file. The
         client uses it; when it is empty, the patch file's, else the default relay."""
 
+    platform: Platform = Platform("")
     emulator: Emulator = Emulator("")
     game_file: GameFile = GameFile("")
     romfs_folder: RomfsFolder = RomfsFolder("")

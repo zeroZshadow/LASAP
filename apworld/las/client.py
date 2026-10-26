@@ -43,7 +43,8 @@ def clean(text: str) -> str:
     return " ".join(text.replace("|", "/").split())
 
 
-OPTION_KEYS = ("emulator", "game_file", "romfs_folder", "sd_card_folder", "mod_folder", "patcher_command", "game_host")
+OPTION_KEYS = ("platform", "emulator", "game_file", "romfs_folder", "sd_card_folder", "mod_folder", "patcher_command",
+               "game_host")
 GHOST_KEYS = ("ghost_relay",)
 
 
@@ -178,6 +179,9 @@ class LASContext(CommonContext):
         self.patch_slot = ""  # slot name from the patch file
         self.game_status = checklist.Check(checklist.INFO, "Waiting for the game to start.")
         self.patching = False  # an install runs; the Patch tab's buttons are off
+        self.install_steps: List[str] = []  # what Play or an install does, and the one it is at
+        self.install_step = 0
+        self.last_report: Optional[checklist.Check] = None  # the last line report() wrote, for the Patch tab
         self.notice_sent = False  # the game was told the server connection state
         container = self.read_patch_file()
         self.patch_slot = container.player_name if container else ""
@@ -378,8 +382,8 @@ class LASContext(CommonContext):
             return checklist.Check(checklist.OK, f"Connected to the Archipelago server as {name}.")
         if self.server:
             return checklist.Check(checklist.INFO, "Connecting to the Archipelago server...")
-        return checklist.Check(checklist.TODO, "Not connected to the Archipelago server: enter the room's address "
-                                               "(such as archipelago.gg:38281) at the top and press Connect.")
+        return checklist.Check(checklist.TODO, "Not connected to the server: enter the room's address at the top and "
+                                               "press Connect.")
 
     def check_seed(self) -> bool:
         if self.slot_seed_hash and self.game_seed_hash and self.slot_seed_hash != self.game_seed_hash:
@@ -660,13 +664,18 @@ class LASContext(CommonContext):
         value = value.strip().strip('"')
         if self.option(key) == value:
             return
+        if key == "platform" and self.platform() not in ("", value):
+            for folder in ("sd_card_folder", "mod_folder"):  # the other platform's SD card and mods
+                self.set_option(folder, "", detect=False)
         options = LASWorld.settings
         setattr(options, key, type(getattr(options, key))(value))
         settings.get_settings().save()
         if key == "game_host":
             self.game_host = value or "127.0.0.1"
-        if key == "emulator" and detect:
-            self.detect_from_emulator()
+        if key == "platform" and value == checklist.EMULATOR and self.option("game_host") != "127.0.0.1":
+            self.set_option("game_host", "127.0.0.1")  # the game runs on this PC, not on the Switch
+        if key in ("emulator", "platform") and detect:
+            asyncio.create_task(self.detect_from_emulator())
         if key in GHOST_KEYS:
             self.update_ghosts()
         self.refresh_patch_tab()
@@ -748,37 +757,58 @@ class LASContext(CommonContext):
         return self.ghosts.status if self.ghosts.status.text else checklist.Check(checklist.INFO,
                                                                                     self.ghosts.waiting_for())
 
+    def options(self) -> Dict[str, str]:
+        return {key: self.option(key) for key in OPTION_KEYS}
+
+    def platform(self) -> str:
+        """checklist.EMULATOR, checklist.SWITCH, or "" before the player chose."""
+        return checklist.platform_of(self.options())
+
+    def emulator(self) -> str:
+        """The emulator program, "" when the game runs on a Switch."""
+        return self.option("emulator") if self.platform() == checklist.EMULATOR else ""
+
     def install_target(self) -> Optional[emulators.Target]:
-        return emulators.target(self.option("emulator"), self.option("sd_card_folder"), self.option("mod_folder"))
+        return emulators.target(self.emulator(), self.option("sd_card_folder"), self.option("mod_folder"))
 
     def check_setup(self) -> checklist.Checklist:
-        return checklist.check(self.patch_file or "", {key: self.option(key) for key in OPTION_KEYS},
-                               self.player_settings())
+        return checklist.check(self.patch_file or "", self.options(), self.player_settings())
 
-    def detect_from_emulator(self, game: bool = True) -> None:
-        """Fills in the game file (unless not `game`) and RomFS dump the emulator knows about, when they are empty."""
-        exe = self.option("emulator")
-        if not exe:
+    async def detect_from_emulator(self, game: bool = True) -> None:
+        """Fills in the game file (unless not `game`) and RomFS dump the emulator knows about, when they are empty.
+        The search runs in a thread: the emulator's game folders can be large."""
+        exe, target = self.emulator(), self.install_target()
+        if not exe or target is None:
             return
-        target = self.install_target()
-        data_dir = target.data_dir if target else None
-        if game and not self.option("game_file"):
-            game = emulators.find_game(emulators.game_dirs(exe, data_dir),
-                                       recent=emulators.recent_games(exe, data_dir))
-            if game:
-                self.set_option("game_file", str(game), detect=False)
-                logger.info(f"Found the game: {game}")
-        if not self.option("romfs_folder"):
-            romfs = emulators.find_romfs(exe, data_dir)
-            if romfs:
-                self.set_option("romfs_folder", str(romfs), detect=False)
-                logger.info(f"Found the RomFS dump: {romfs}")
+        emulator, data_dir = target.emulator, target.data_dir
+        want_game, want_romfs = game and not self.option("game_file"), not self.option("romfs_folder")
 
-    def report(self, level: str, message: str, replace: bool = False) -> None:
-        """Logs a patching step and adds it to the Patch tab's progress lines; `replace` replaces the last one."""
+        def search() -> Tuple[Optional[Path], Optional[Path]]:
+            found = None
+            if want_game:
+                found = emulators.find_game(emulator.game_dirs(data_dir), recent=emulator.recent_games(data_dir))
+            return found, emulator.find_romfs(data_dir) if want_romfs else None
+
+        found, romfs = await asyncio.to_thread(search)
+        if self.emulator() != exe:
+            return  # the player chose another emulator meanwhile
+        if found and not self.option("game_file"):
+            self.set_option("game_file", str(found), detect=False)
+            logger.info(f"Found the game: {found}")
+        if romfs and not self.option("romfs_folder"):
+            self.set_option("romfs_folder", str(romfs), detect=False)
+            logger.info(f"Found the RomFS dump: {romfs}")
+
+    def report(self, level: str, message: str) -> None:
+        """Logs a patching step; the Patch tab shows the last one."""
         getattr(logger, level)(message)
-        if self.ui and hasattr(self.ui, "patch_panel"):
-            self.ui.patch_panel.show_progress(level, message, replace)
+        level = {"warning": checklist.TODO, "error": checklist.ERROR}.get(level, checklist.INFO)
+        self.last_report = checklist.Check(level, message)
+        self.refresh_patch_tab()
+
+    def set_install_step(self, step: int) -> None:
+        self.install_step = step
+        self.refresh_patch_tab()
 
     def show_patch_tab(self) -> None:
         if self.ui and hasattr(self.ui, "show_patch_tab"):
@@ -790,62 +820,85 @@ class LASContext(CommonContext):
 
     async def install_patch(self, force: bool = False, start: bool = False) -> None:
         """Installs the mod for `patch_file` unless the current one is installed (or `force`), then optionally starts
-        the emulator. The Patch tab's buttons are off meanwhile."""
+        the emulator (never for a Switch). The Patch tab's buttons are off meanwhile."""
         if self.patching:
             return
         self.patching = True
+        self.last_report = None
         self.refresh_patch_tab()
         try:
             await self._install_patch(force, start)
         finally:
             self.patching = False
+            self.install_steps = []
             self.refresh_patch_tab()
 
     async def _install_patch(self, force: bool, start: bool) -> None:
-        if self.ui and hasattr(self.ui, "patch_panel"):
-            self.ui.patch_panel.clear_progress()
-        self.detect_from_emulator()  # a RomFS dump or game added since the client started
+        await self.detect_from_emulator()  # a RomFS dump or game added since the client started
         checks = self.check_setup()
         if not checks.ready or checks.target is None:
             self.report("error", checks.problems())
             self.show_patch_tab()
             return
+        if checks.other_mods:
+            self.report("error", checks.checks["other_mods"].text)
+            self.show_patch_tab()
+            return
         target = checks.target
-        if force or checks.checks["installed"].level != checklist.OK:
+        switch = checks.platform == checklist.SWITCH
+        start = start and not switch
+        name = target.emulator.name
+        install = force or checks.checks["installed"].level != checklist.OK
+        if not install and not start:
+            self.report("info", f"The mod for this seed is installed already on {target.sd_card}." if switch else
+                        "The mod for this seed is installed already.")
+            return
+        self.install_steps = ((["Patch the game", f"Copy the mod to {target.sd_card}" if switch else
+                                f"Install the mod in {name}"] if install else []) +
+                              ([f"Start {name}"] if start else []))
+        self.set_install_step(0)
+        if install:
             loop = asyncio.get_running_loop()
 
             def log(line: str) -> None:
                 loop.call_soon_threadsafe(logger.info, line)
 
+            def copying() -> None:
+                loop.call_soon_threadsafe(self.set_install_step, 1)
+
             open_already = self.game_writer is not None
-            self.report("info", f"Installing the mod for slot {checks.player_name}... This takes a few seconds.")
-            logger.info(f"Seed {checks.seed_hash}, into {target.mods} and {target.sd_card}.")
+            logger.info(f"Installing the mod for slot {checks.player_name}, seed {checks.seed_hash}, into "
+                        f"{target.mods} and {target.sd_card}.")
             try:
                 await asyncio.to_thread(patch_and_install, self.option("patcher_command"), Path(self.patch_file),
                                         checks.seed_hash, emulators.romfs_root(self.option("romfs_folder")),
-                                        target.sd_card, target.mods, log, True, self.player_settings())
+                                        target.sd_card, target.mods, log, True, self.player_settings(), copying)
             except (InstallError, OSError) as e:
-                self.report("error", f"Patching failed: {e} The Archipelago tab shows the patcher's output.", True)
+                self.report("error", f"Patching failed: {e} The Archipelago tab shows the patcher's output.")
                 self.show_patch_tab()
                 return
-            self.report("info", f"Done: the mod for slot {checks.player_name} (seed {checks.seed_hash}) is installed.",
-                        True)
-            if open_already:
-                self.report("warning", "The game is running: restart it to load the new mod.")
-        else:
-            self.report("info", f"The mod for slot {checks.player_name} (seed {checks.seed_hash}) is installed.")
-        if "other_mods" in checks.checks:
-            self.report("warning", checks.checks["other_mods"].text)
+            self.set_install_step(2)
+            if switch:
+                self.report("info", f"Installed on {target.sd_card}. Put the SD card back in the Switch and start "
+                                    f"Link's Awakening.")
+            elif open_already:
+                self.report("warning", "The mod is installed. The game is running: restart it to load the new mod.")
+            elif not start:
+                self.report("info", "Done: the mod for this seed is installed.")
         if start:
             await self.start_emulator()
+            self.set_install_step(len(self.install_steps))
 
     async def start_emulator(self) -> None:
-        exe = self.option("emulator")
+        exe = self.emulator()
+        if self.platform() == checklist.SWITCH:
+            self.report("info", "Start Link's Awakening on the Switch: the client connects to it by itself.")
+            return
         if not exe:
             self.report("error", "Choose your emulator in the Patch tab first.")
             self.show_patch_tab()
             return
-        name = emulators.display_name(exe)
+        name = emulators.emulator(exe).name
         try:  # whether the game runs already, from the game loop's first try
             await asyncio.wait_for(self.game_probed.wait(), timeout=10)
         except asyncio.TimeoutError:
@@ -861,7 +914,7 @@ class LASContext(CommonContext):
             return
         target = self.install_target()
         game = self.option("game_file")
-        args = emulators.start_args(exe, game, target.data_dir if target else None)
+        args = emulators.emulator(exe).start_args(game, target.data_dir if target else None)
         import subprocess
         try:
             self.emulator_process = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
@@ -886,7 +939,7 @@ async def prepare_patch(ctx: LASContext, patch: bool) -> None:
         await asyncio.sleep(0.1)
     if patch:
         ctx.show_patch_tab()
-    ctx.detect_from_emulator()
+    await ctx.detect_from_emulator()
     ctx.refresh_patch_tab()
 
 

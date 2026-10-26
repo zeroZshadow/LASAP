@@ -89,3 +89,39 @@ def register() -> str:
         return f"Could not register .aplas files: {e}"
     ctypes.windll.shell32.SHChangeNotify(0x08000000, 0, None, None)  # SHCNE_ASSOCCHANGED
     return ""
+
+
+def unregister() -> str:
+    """Removes what register() wrote for the current user. Returns an error message, or "" on success."""
+    if sys.platform != "win32":
+        return ""
+    import ctypes
+    import winreg
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\.aplas") as key:
+            ours = winreg.QueryValue(key, None) == PROG_ID
+    except OSError:
+        ours = False
+    try:
+        _delete_tree(winreg.HKEY_CURRENT_USER, rf"Software\Classes\{PROG_ID}")
+        if ours:  # only its default: other programs may be listed under it (OpenWithProgids)
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Classes\.aplas", 0, winreg.KEY_SET_VALUE) as key:
+                winreg.DeleteValue(key, "")
+    except OSError as e:
+        return f"Could not remove the .aplas registration: {e}"
+    ctypes.windll.shell32.SHChangeNotify(0x08000000, 0, None, None)  # SHCNE_ASSOCCHANGED
+    return ""
+
+
+def _delete_tree(root, path: str) -> None:
+    """Deletes a registry key with its subkeys (DeleteKey removes only keys without subkeys); a missing key is
+    fine."""
+    import winreg
+    try:
+        with winreg.OpenKey(root, path) as key:
+            subkeys = [winreg.EnumKey(key, i) for i in range(winreg.QueryInfoKey(key)[0])]
+    except FileNotFoundError:
+        return
+    for name in subkeys:
+        _delete_tree(root, rf"{path}\{name}")
+    winreg.DeleteKey(root, path)

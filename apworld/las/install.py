@@ -336,9 +336,10 @@ def install(out: Path, sd_card: Path, mods: Path, build: Optional[str] = None,
 
 def patch_and_install(command: str, patch_file: Path, seed_hash: str, romfs: Path, sd_card: Path, mods: Path,
                       log: Callable[[str], None], force: bool = False,
-                      settings: Optional[Dict[str, Any]] = None) -> bool:
+                      settings: Optional[Dict[str, Any]] = None,
+                      on_install: Optional[Callable[[], None]] = None) -> bool:
     """Installs the mod for `patch_file` with these player settings unless it is installed already. Returns whether
-    it patched."""
+    it patched. `on_install` is called once patching is done, before the files are copied."""
     if not sd_card.is_dir():
         raise InstallError(f"The SD card folder {sd_card} does not exist.")
     if not force and mod_state(sd_card, mods, seed_hash, command, settings) == CURRENT:
@@ -347,6 +348,8 @@ def patch_and_install(command: str, patch_file: Path, seed_hash: str, romfs: Pat
     with tempfile.TemporaryDirectory(prefix="las-ap-") as tmp:
         log(f"Patching {patch_file.name}.")
         run_patcher(command, patch_file, romfs, Path(tmp), log, settings)
+        if on_install is not None:
+            on_install()
         install(Path(tmp), sd_card, mods, None if command.strip() else builtin_patcher_build(), settings)
     log(f"Installed the mod for seed {seed_hash}: {mods} and {sd_card / CONFIG_PATH}.")
     return True

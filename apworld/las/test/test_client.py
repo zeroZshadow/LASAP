@@ -177,3 +177,49 @@ class TestDetection(unittest.TestCase):
                     await ctx.install_patch()
                     self.assertEqual(options["romfs_folder"], str(dump.parent.parent))
             asyncio.run(run())
+
+
+class TestSwitchInstall(unittest.TestCase):
+    def test_play_installs_on_the_sd_card(self) -> None:
+        """For a Switch, Play copies the mod to its SD card and starts no emulator, even with one set; the install
+        goes through its steps and says what to do next."""
+        import tempfile
+        from pathlib import Path
+        from .. import client, checklist
+        from ..client import LASContext
+
+        with tempfile.TemporaryDirectory() as tmp:
+            sd = Path(tmp) / "sd"
+            (sd / "atmosphere").mkdir(parents=True)
+            options = {"platform": "switch", "emulator": "Ryujinx.exe", "sd_card_folder": str(sd),
+                       "game_host": "192.168.1.42"}
+            ready = checklist.Checklist(platform=checklist.SWITCH, target=client.emulators.target("", str(sd), ""))
+            ready.checks.update({key: checklist.Check(checklist.OK, "") for key in ready.required})
+            ready.checks["installed"] = checklist.Check(checklist.INFO, "No mod installed yet.")
+            steps = []
+
+            async def run() -> LASContext:
+                ctx = LASContext(None, None, "127.0.0.1", 0)
+
+                def install(*args) -> bool:
+                    steps.append(list(ctx.install_steps))
+                    args[-1]()  # patched: copying
+                    return True
+
+                with mock.patch.object(LASContext, "option", side_effect=lambda key: options.get(key, "")), \
+                        mock.patch.object(LASContext, "check_setup", return_value=ready), \
+                        mock.patch.object(client, "patch_and_install", side_effect=install), \
+                        mock.patch("subprocess.Popen", side_effect=AssertionError("started an emulator")):
+                    ctx.patch_file = str(Path(tmp) / "x.aplas")
+                    await ctx.install_patch(start=True)
+                    await asyncio.sleep(0)
+                    self.assertIn("Put the SD card back in the Switch", ctx.last_report.text)
+                    # pressed again with this seed's mod on the card: nothing to copy, and it says so
+                    ready.checks["installed"] = checklist.Check(checklist.OK, "")
+                    await ctx.install_patch(start=True)
+                return ctx
+
+            ctx = asyncio.run(run())
+            self.assertEqual(steps, [["Patch the game", f"Copy the mod to {sd}"]])
+            self.assertFalse(ctx.patching)
+            self.assertIn("installed already", ctx.last_report.text)

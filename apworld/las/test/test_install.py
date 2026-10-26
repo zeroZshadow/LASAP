@@ -310,24 +310,34 @@ class TestEmulators(unittest.TestCase):
         target = emulators.target(str(exe), "", "")
         self.assertEqual(target.sd_card, exe.parent / "portable" / "sdcard")
         self.assertEqual(target.mods, exe.parent / "portable" / "sdcard" / "atmosphere" / "contents" / TITLE_ID)
-        self.assertEqual(emulators.start_args(str(exe), "game.nsp", target.data_dir), [str(exe), "game.nsp"])
+        self.assertEqual(target.emulator.start_args("game.nsp", target.data_dir), [str(exe), "game.nsp"])
 
     def test_ryujinx_custom_data_folder(self) -> None:
         exe = self.root / "Ryujinx.exe"
         data = self.root / "data"
         target = emulators.target(str(exe), str(data / "sdcard"), "")
         self.assertEqual(target.mods, data / "sdcard" / "atmosphere" / "contents" / TITLE_ID)
-        self.assertEqual(emulators.start_args(str(exe), "game.nsp", target.data_dir),
+        self.assertEqual(target.emulator.start_args("game.nsp", target.data_dir),
                          [str(exe), "--root-data-dir", str(data), "game.nsp"])
 
     def test_yuzu_based(self) -> None:
         exe = self.root / "eden" / "eden.exe"
         (exe.parent / "user").mkdir(parents=True)
         target = emulators.target(str(exe), "", "")
-        self.assertEqual(target.kind, "yuzu")
+        self.assertIsInstance(target.emulator, emulators.Yuzu)
+        self.assertEqual(target.emulator.name, "Eden")
         self.assertEqual(target.sd_card, exe.parent / "user" / "sdmc")
         self.assertEqual(target.mods, exe.parent / "user" / "load" / TITLE_ID / "Archipelago")
-        self.assertEqual(emulators.start_args(str(exe), "game.nsp", target.data_dir), [str(exe), "-g", "game.nsp"])
+        self.assertEqual(target.emulator.start_args("game.nsp", target.data_dir), [str(exe), "-g", "game.nsp"])
+
+    def test_other_mods(self) -> None:
+        """Ryujinx's mods folder holds another mod, in a folder whose name has a comma."""
+        exe = self.root / "Ryujinx" / "Ryujinx.exe"
+        (exe.parent / "portable").mkdir(parents=True)
+        other = exe.parent / "portable" / "mods" / "contents" / TITLE_ID / "Mine, old"
+        other.mkdir(parents=True)
+        (other / "romfs").mkdir()
+        self.assertEqual(emulators.other_mods(emulators.target(str(exe), "", "")), [other])
 
     def test_without_emulator(self) -> None:
         self.assertIsNone(emulators.target("", "", ""))

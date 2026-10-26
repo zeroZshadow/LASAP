@@ -95,3 +95,48 @@ class TestChecklist(unittest.TestCase):
         result = checklist.check("", {"emulator": str(eden)})
         self.assertIn("Start Eden once", result.checks["emulator"].text)
         self.assertIn("Dump RomFS", result.checks["romfs_folder"].text)
+
+    def test_platform(self) -> None:
+        """Without the platform setting, an emulator means an emulator and an SD card with the address of another
+        device a Switch; otherwise the player still has to choose."""
+        self.assertEqual(checklist.platform_of({}), "")
+        self.assertEqual(checklist.platform_of({"emulator": "Ryujinx.exe"}), checklist.EMULATOR)
+        self.assertEqual(checklist.platform_of({"sd_card_folder": "E:/", "game_host": "192.168.1.42"}),
+                         checklist.SWITCH)
+        self.assertEqual(checklist.platform_of({"sd_card_folder": "E:/", "game_host": "127.0.0.1"}), "")
+        self.assertEqual(checklist.platform_of({"platform": "switch", "emulator": "Ryujinx.exe"}), checklist.SWITCH)
+        result = checklist.check("", {})
+        self.assertEqual(result.checks["platform"].level, checklist.TODO)
+        self.assertIn("platform", result.required)
+
+    def test_switch(self) -> None:
+        """A Switch needs its SD card, with Atmosphère, and its address; the emulator setting is not used."""
+        sd = self.root / "sd"
+        sd.mkdir()
+        options = {"platform": "switch", "emulator": str(self.ryujinx), "sd_card_folder": str(sd),
+                   "game_host": "127.0.0.1", "romfs_folder": str(self.romfs)}
+        with mock.patch.object(checklist, "romfs_problem", return_value=None), \
+                mock.patch.object(checklist, "builtin_patcher_available", return_value=True):
+            result = checklist.check("", options)
+            self.assertEqual(result.checks["sd_card_folder"].level, checklist.TODO)
+            self.assertIn("atmosphere", result.checks["sd_card_folder"].text)
+            self.assertEqual(result.checks["game_host"].level, checklist.TODO)
+            self.assertEqual(result.target.mods, sd / "atmosphere" / "contents" / TITLE_ID)
+            self.assertNotIn("emulator", result.required)
+
+            (sd / "atmosphere").mkdir()
+            result = checklist.check("", dict(options, game_host="192.168.1.42"))
+            self.assertEqual(result.checks["sd_card_folder"].level, checklist.OK)
+            self.assertEqual(result.checks["game_host"].level, checklist.OK)
+            self.assertEqual(result.problems(), result.checks["patch_file"].text)
+            self.assertIn("Install to SD card", result.checks["installed"].text)
+
+            self.assertTrue(result.steps_done()[3])
+
+            # the card taken out to play: not ready to install, but the setup stays done
+            result = checklist.check("", dict(options, sd_card_folder=str(self.root / "out"), game_host="192.168.1.42"))
+            self.assertEqual(result.checks["sd_card_folder"].level, checklist.TODO)
+            self.assertTrue(result.sd_card_out)
+            self.assertTrue(result.steps_done()[3])
+            self.assertFalse(result.ready)
+            self.assertIn("nxdumptool", checklist.check("", {"platform": "switch"}).checks["romfs_folder"].text)
