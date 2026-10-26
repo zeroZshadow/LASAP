@@ -292,6 +292,9 @@ namespace Game {
     inline constexpr Func<void(Map::DungeonMap*)> DungeonMap_Dtor{0xe73970};
     inline constexpr Func<void(Map::DungeonMap*, u8, SharedPtr*, const Map::UiDungeonAreaRow*)>
         DungeonMap_ShowCellFloor{0xe82250};
+    // ShowCellFloor for Eagle's Tower once collapsed (page, cell, Area shared_ptr*, {?, ctrl, UiDungeonArea row*}*):
+    // runs ShowCellFloor, then on 3F shows the rooms of floors 4 and 14 (the collapsed top) instead, and on 4F none
+    inline constexpr Func<void(Map::DungeonMap*, u8, SharedPtr*, void*)> DungeonMap_ShowCellFloorCollapsed{0xe81d80};
     inline constexpr Func<void(Map::DungeonMap*, bool)> DungeonMap_MoveCursor{0xe86750};
     inline constexpr Func<bool()> DungeonMap_PinButton{0xe86c10};
     inline constexpr Func<void(Map::DungeonMap*)> DungeonMap_UpdateHover{0xe87a20};

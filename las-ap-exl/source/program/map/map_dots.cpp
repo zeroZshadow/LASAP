@@ -1,7 +1,8 @@
 // The dungeon page's dots (DESIGN.md, Map tracker, Dungeon dots). The page's setup shows each room on its floor
 // (ShowCellFloor), which also gives the rooms by name; after it, each dot of the dungeon gets a map marker placed as
 // the page places its room icons and hung after them under N_MapPin_00, so the pins draw over the dots. The floor
-// buttons show the rooms again, and the dots of each room follow it.
+// buttons show the rooms again, and the dots of each room follow it; in Eagle's Tower once collapsed they follow
+// ShowCellFloorCollapsed, which shows the rooms of its collapsed top on 3F.
 #include "ap/ap.hpp"
 #include "ap/ap_patcher.hpp"
 #include "game/hooks/level.hpp"
@@ -181,6 +182,21 @@ namespace {
         }
     };
 
+    // Eagle's Tower once collapsed: after ShowCellFloor the game shows or hides the cell again (its 3F shows the
+    // collapsed top's rooms, its 4F none); the room's dots follow the cell.
+    HOOK_DEFINE_TRAMPOLINE(ShowCellFloorCollapsed) {
+        static void Callback(Map::DungeonMap* page, u8 cell, Game::SharedPtr* room, void* area) {
+            Orig(page, cell, room, area);
+            Ui::Pane* pane = cell < std::size(page->cells) ? page->cells[cell].pane : nullptr;
+            if (!g_Enabled || room == nullptr || room->ptr == nullptr || pane == nullptr) return;
+            std::string name = RoomName(static_cast<Map::Area*>(room->ptr));
+            bool onFloor = (pane->flags & Ui::kPaneVisible) != 0;
+            auto it = g_Rooms.find(name);
+            if (it != g_Rooms.end()) it->second.second = onFloor;
+            if (page == g_DungeonPage) ShowRoomDots(name, onFloor);
+        }
+    };
+
     HOOK_DEFINE_TRAMPOLINE(DungeonMoveCursor) {
         static void Callback(Map::DungeonMap* page, bool move) {
             Orig(page, move);
@@ -317,6 +333,7 @@ namespace {
         DungeonPageSetup::InstallAtFuncPtr(Game::DungeonMap_Setup.Ptr());
         DungeonPageDtor::InstallAtFuncPtr(Game::DungeonMap_Dtor.Ptr());
         ShowCellFloor::InstallAtFuncPtr(Game::DungeonMap_ShowCellFloor.Ptr());
+        ShowCellFloorCollapsed::InstallAtFuncPtr(Game::DungeonMap_ShowCellFloorCollapsed.Ptr());
         DungeonMoveCursor::InstallAtFuncPtr(Game::DungeonMap_MoveCursor.Ptr());
         DungeonUpdateHover::InstallAtFuncPtr(Game::DungeonMap_UpdateHover.Ptr());
         DungeonPinButton::InstallAtFuncPtr(Game::DungeonMap_PinButton.Ptr());

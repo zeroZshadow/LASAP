@@ -362,7 +362,7 @@ def run(script: Path, trace: str | None = None) -> None:
                 dbg(f"input {p[0]} {p[2] if len(p) > 2 else '400'}")
                 time.sleep(float(p[3]) if len(p) > 3 else 0.9)
         elif op == "shot":
-            emu.shot(rest)
+            emu.shot(os.path.join(emu.SANDBOX, rest))  # a relative path is in the sandbox folder
         elif op == "state":
             print(state())
         elif op == "screen":

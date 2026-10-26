@@ -80,14 +80,17 @@ if patch["settings"].get("Map Tracker"):
     positions = ap_map.load_positions()
     optional = set(patch.get("optional_locations", ()))
     shown = {loc: i for loc, i in patch["location_ids"].items() if loc not in optional}
-    # overworld icons: overworld and dungeon checks (at the dungeon's entrance); dungeon dots: the dungeons' checks
+    # overworld icons: overworld and dungeon checks (at the dungeon's entrance); dungeon dots: the dungeons' checks,
+    # one per place (Eagle's Tower before and after its collapse)
     want = [int(i) for loc, i in shown.items() if loc in positions["overworld"]]
-    want += [int(i) for loc, i in shown.items() if loc in positions["dungeon"]] * 2
+    want += [int(i) for loc, i in shown.items() for _ in range(1 + len(positions["dungeon"].get(loc, ())))
+             if loc in positions["dungeon"]]
     if sorted(iconed) != sorted(want):
         bad += 1
         print(f"MAP ICONS cover {len(iconed)} locations, want {len(want)}")
     chests = [int(p[4]) for p in lines if p[0] == "C"]
-    want = [int(i) for loc, i in patch["location_ids"].items() if CHEST_ROOMS.get(loc, "").startswith("Lv")]
+    want = [int(i) for loc, i in patch["location_ids"].items() if CHEST_ROOMS.get(loc, "").startswith("Lv")
+            for _ in {CHEST_ROOMS[loc]} | {room for room, *_ in positions["dungeon"].get(loc, ())}]
     if sorted(chests) != sorted(want):
         bad += 1
         print(f"MAP CHESTS found {len(chests)}, want {len(want)}")
