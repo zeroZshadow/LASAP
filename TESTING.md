@@ -12,6 +12,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
   - `.venv-relay`: PyInstaller, for `LASGhostRelay.exe` (README, Building a release).
 - `vendor/Archipelago`: Archipelago 0.6.8, with a junction `vendor/Archipelago/worlds/las` → `apworld/las`.
   - Universal Tracker: `tracker.apworld` (FarisTheAncient/Archipelago releases) in `custom_worlds`, with an empty `Players` folder in `vendor/Archipelago` (without it, UT's settings open a folder browser). Headless, `launch("--nogui", "--list", "--name", <slot>, "--connect", <host:port>)` from `worlds.tracker.TrackerClient` logs the in-logic locations at error level; `sys.argv` must contain `--nogui` before the import.
+- The RomFS dump for `test_map_positions.py`: `LASAP_ROMFS`, or `"romfs"` in `scripts/local_paths.json` (below); without either it is skipped.
 - PopTracker for `poptracker_test.py`: a copy of the user's in the `app` folder of this machine's PopTracker folder (`"poptracker"` in `scripts/local_paths.json`, a gitignored file of this machine's paths: `{"poptracker": "<folder>"}`), without its `packs`, in portable mode (`portable.txt`: config, saves and `log.txt` stay in its `portable-config` folder, never `%APPDATA%\PopTracker`), with `log` on and the update check and EmoTracker question answered in `portable-config\PopTracker\PopTracker.json`. It truncates `log.txt` on each start.
 
 ## Emulator: Ryubing (Ryujinx fork)
@@ -156,7 +157,7 @@ The sandbox is shared with every other session: take the lock (Emulator, "Sharin
   - `select <slot>`: in the file menu, move the cursor to a slot (0 = file 1).
   - `dismiss [s]`: close the open text with B, holding B while pages print; fails at a choice and when there is no text. `advance [buttons] [s] [fast]`: the same, stopping at a choice.
   - `free [s]`: wait until the player can move, no item-get shows or waits and no message holds him. `loaded [s]`: the same in a level entered after the last `send` or input op. `inlevel [s]`: a level entered after the last `send` or input op has loaded. `level <name>`: stop unless the player is in that level.
-  - `state`, `shot <png>`: print the STATE line, capture the window. `check <regex>`: stop unless the STATE line matches. `await <s> <regex>`: wait until it matches.
+  - `state`, `shot <png>`: print the STATE line, capture the window (a relative path is in the sandbox folder). `check <regex>`: stop unless the STATE line matches. `await <s> <regex>`: wait until it matches.
   - `warp <level> <x> <y> <z>`: reload a level there (through another level when it is the current one) and wait. `goto <x> <y> <z>`: teleport within the loaded room and wait until Link stands there. `at <x> <z> [tol]`: stop unless the player stands there.
   - `screen`, `press <buttons> <ms> <screen> [tries]`, `mash`: timed presses through `input`, for scripts that have no state to wait for.
 - **Test scripts.**

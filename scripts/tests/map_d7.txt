@@ -4,28 +4,28 @@
 # rows and columns); the 3F chests' dots show in their rooms before the collapse, and once the pillars are broken
 # (TowerPillarBrokenAll) on 3F, in the collapsed top's rooms, with the 4F rooms. Dot order (ap_map.txt): 02G 03G 08D
 # 07A 05A 05D 01B 01C 04A 04B 03D 01G 05G 02H 06H 02D 05D 04B. Screenshots map_d7_1f to map_d7_4f and
-# map_d7_collapsed_3f.
+# map_d7_collapsed_3f, in the sandbox folder.
 warp Lv07EagleTower 22.5 0 114
 tapuntil 800 paused=1 when free 5
 until dmap:KeyWait 10
 send DBG mapdot
 expect page=1.dots=18.shown=5.inroom=18.*floor=1.*looks=IIiiiiIIIIIIIIIIiI 5
-shot D:/DEV/LASAP-sandbox/map_d7_1f.png
+shot map_d7_1f.png
 tap 2000 2 2 when dmap:KeyWait
 until dmap:KeyWait 10
 send DBG mapdot
 expect dots=18.shown=7.inroom=18.*floor=2.*looks=IIIIIIiiiiiIIIIiIi 5
-shot D:/DEV/LASAP-sandbox/map_d7_2f.png
+shot map_d7_2f.png
 tap 2000 2 2 when dmap:KeyWait
 until dmap:KeyWait 10
 send DBG mapdot
 expect dots=18.shown=2.inroom=18.*floor=3.*looks=IIIIIIIIIIIIiIiIII 5
-shot D:/DEV/LASAP-sandbox/map_d7_3f.png
+shot map_d7_3f.png
 tap 2000 2 2 when dmap:KeyWait
 until dmap:KeyWait 10
 send DBG mapdot
 expect dots=18.shown=2.inroom=18.*floor=4.*looks=iiIIIIIIIIIIIIIIII 5
-shot D:/DEV/LASAP-sandbox/map_d7_4f.png
+shot map_d7_4f.png
 tapuntil 800 paused=0 when dmap:KeyWait 5
 free 10
 # The pillars broken: 3F shows the collapsed top (the boss, the instrument and the 3F chests' rooms after the
@@ -42,7 +42,7 @@ tap 2000 2 2 when dmap:KeyWait
 until dmap:KeyWait 10
 send DBG mapdot
 expect dots=18.shown=4.inroom=18.*floor=3.*looks=iiIIIIIIIIIiIiIIII 5
-shot D:/DEV/LASAP-sandbox/map_d7_collapsed_3f.png
+shot map_d7_collapsed_3f.png
 tapuntil 800 paused=0 when dmap:KeyWait 5
 free 10
 send DBG setflag TowerPillarBrokenAll 0

@@ -9,13 +9,25 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 PATCHER = ROOT / "patcher"
-ROMFS = Path(os.environ.get("LASAP_ROMFS", r"D:\Games\Switch\LASRomFS"))
+
+
+def romfs() -> Path:
+    """The RomFS dump: LASAP_ROMFS, else "romfs" in this machine's scripts/local_paths.json (gitignored)."""
+    if "LASAP_ROMFS" in os.environ:
+        return Path(os.environ["LASAP_ROMFS"])
+    try:
+        return Path(json.loads((ROOT / "scripts" / "local_paths.json").read_text(encoding="utf-8"))["romfs"])
+    except (OSError, KeyError, ValueError):
+        return ROOT / "romfs-not-set"
+
+
+ROMFS = romfs()
 LEVELS = ROMFS / "region_common" / "level"
 AREAS = ROMFS / "region_common" / "datasheets" / "UiDungeonArea.gsheet"
 CHEST, OWL = b"ObjTreasureBox", b"ObjDungeonOw"
 
 
-@unittest.skipUnless(AREAS.exists(), "RomFS dump not found (LASAP_ROMFS)")
+@unittest.skipUnless(AREAS.exists(), "RomFS dump not found (LASAP_ROMFS or local_paths.json romfs)")
 class TestDungeonPositions(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
