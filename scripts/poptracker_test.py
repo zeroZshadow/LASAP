@@ -543,6 +543,34 @@ def step_manual(pack: Pack, tracker: Tracker, server: Server) -> None:
         dump = tracker.dump()
         check(f"{castle} with {have or 'nothing'}", int(dump.locations[castle][0]), want)
     tracker.commands(*[f"set {c} Active false" for c in codes])
+    # Open Mabe opens the prairie without the bracelet, also for the pins past it (Key Cavern's door with Dungeon ER)
+    cases = [
+        ("Key Cavern Entrance", ["flippers", "slime"], NONE),
+        ("Key Cavern Entrance", ["openmabe", "flippers", "slime"], NORMAL),
+        ("Key Cavern Entrance", ["bracelet", "feather", "slime"], NORMAL),
+        ("Pothole Field", [], NONE),
+        ("Pothole Field", ["openmabe"], NORMAL),
+        ("Ghost House", ["openmabe"], NONE),
+        ("Ghost House", ["openmabe", "feather", "boots"], NORMAL),
+        ("Taltal Heights River Side", ["flippers"], NONE),
+        ("Taltal Heights River Side", ["openmabe", "flippers"], NORMAL),
+    ]
+    codes = ["openmabe", "bracelet", "flippers", "feather", "boots", "slime"]
+    tracker.commands("set dungeon_er_off CurrentStage 1")
+    for name, have, want in cases:
+        tracker.commands(*[f"set {c} Active {'true' if c in have else 'false'}" for c in codes])
+        check(f"{name} with {have or 'nothing'}", int(tracker.dump().locations[f"World/{name}"][0]), want)
+    tracker.commands(*[f"set {c} Active false" for c in codes], "set dungeon_er_off CurrentStage 0")
+    # Catfish's Maw's chest after the third Master Stalfos fight needs a pot broken; with Fast Stalfos no bombs are
+    # needed for him
+    chest = "@Dungeons/D5 - Catfish Maw/After Round 3/Chest"
+    base = ["openmabe", "flippers", "sword", "feather", "faststalfos"]
+    codes = base + ["bracelet"]
+    tracker.commands("set d5sk AcquiredCount 1")
+    for have, want in [(base, NONE), (base + ["bracelet"], NORMAL)]:
+        tracker.commands(*[f"set {c} Active {'true' if c in have else 'false'}" for c in codes])
+        check(f"{chest} with {have}", tracker.dump().section(chest)[2], want)
+    tracker.commands(*[f"set {c} Active false" for c in codes], "set d5sk AcquiredCount 0")
     # With Dungeon ER the Face Shrine's door pin needs the door and the Face Key, not a door marked as leading to D6
     door = next(loc for loc in pack.locations if loc.endswith("/Face Shrine Entrance"))
     cases = [
