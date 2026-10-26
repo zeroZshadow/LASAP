@@ -24,7 +24,7 @@ await 3 popup=1
 await 2 bgm=\S*FANFARE
 free 5
 check popup=1
-shot D:/DEV/LASAP-sandbox/instant_1.png
+shot instant_1.png
 await 5 toast=1
 send DBG text SystemSaving
 expect said=You\sfound 5

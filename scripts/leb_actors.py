@@ -1,6 +1,6 @@
 """Lists the actors of a level room with their positions, to find teleport targets for tests.
 
-Run with .venv-lasr: python leb_actors.py <room, e.g. Field_15F> [name regex] [--romfs D:/Games/Switch/LASRomFS]
+Run with .venv-lasr: python leb_actors.py <room, e.g. Field_15F> [name regex] [--romfs <RomFS folder>]
 """
 import argparse
 import re
@@ -9,21 +9,20 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "patcher"))
 from RandomizerCore.Tools.leb import Room  # noqa: E402
-
-DEFAULT_ROMFS = "D:/Games/Switch/LASRomFS"
+from local_paths import local_path  # noqa: E402
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("room")
     parser.add_argument("pattern", nargs="?", default="")
-    parser.add_argument("--romfs", default=DEFAULT_ROMFS)
+    parser.add_argument("--romfs")
     args = parser.parse_args()
 
     area = args.room.split("_")[0]
-    path = Path(args.romfs) / "region_common" / "level" / area / f"{args.room}.leb"
+    path = Path(args.romfs or local_path("romfs", "LASAP_ROMFS")) / "region_common" / "level" / area / f"{args.room}.leb"
     if not path.exists():  # rooms the mod does not change are only in the base RomFS
-        path = Path(DEFAULT_ROMFS) / "region_common" / "level" / area / f"{args.room}.leb"
+        path = local_path("romfs", "LASAP_ROMFS") / "region_common" / "level" / area / f"{args.room}.leb"
     room = Room(path.read_bytes())
     rx = re.compile(args.pattern, re.I)
     for actor in room.actors:

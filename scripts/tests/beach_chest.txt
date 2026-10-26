@@ -8,10 +8,10 @@ expect OK.grant 5
 warp Field 86.25 6 173.25
 at 86.25 173.25
 face right
-shot D:/DEV/LASAP-sandbox/chest_1.png
+shot chest_1.png
 interact
 until carry=1+free 3
-shot D:/DEV/LASAP-sandbox/chest_2.png
+shot chest_2.png
 face left
 tap 1
 until carry=0 3
@@ -19,11 +19,11 @@ goto 87.75 6 173.25
 at 87.75 173.25
 face up
 state
-shot D:/DEV/LASAP-sandbox/chest_3.png
+shot chest_3.png
 # The location's item may be a trap.
 guard off hurt
 interact
 until textready 10
 state
-shot D:/DEV/LASAP-sandbox/chest_4.png
+shot chest_4.png
 dismiss 20

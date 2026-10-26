@@ -16,13 +16,13 @@ expect skipped=1.hover=\d+/1/collected\s 5
 send DBG maplabel
 expect MAPLABEL.Skipped:.Tarin$ 5
 check paused=1
-shot D:/DEV/LASAP-sandbox/map_skip_on.png
+shot map_skip_on.png
 tap 1 2 2 when map:KeyWait
 send DBG map
 expect skipped=0.hover=\d+/1/in\s 5
 send DBG maplabel
 expect MAPLABEL.Tarin$ 5
 check paused=1
-shot D:/DEV/LASAP-sandbox/map_skip_off.png
+shot map_skip_off.png
 tapuntil 800 paused=0 when map:KeyWait 5
 free 10

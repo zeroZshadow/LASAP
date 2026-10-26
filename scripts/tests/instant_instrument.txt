@@ -10,7 +10,7 @@ guard popup=1
 interact
 await 10 anim=item_get_st
 until textready 10
-shot D:/DEV/LASAP-sandbox/instant_instrument.png
+shot instant_instrument.png
 dismiss 20
 inlevel 30
 level Field

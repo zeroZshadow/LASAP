@@ -27,18 +27,9 @@ from pathlib import Path
 from websockets.sync.client import connect
 
 import emu
+from local_paths import local_path
 
 ROOT = Path(__file__).resolve().parent.parent
-LOCAL_PATHS = ROOT / "scripts" / "local_paths.json"  # this machine's folders, gitignored
-
-
-def local_path(key: str) -> Path:
-    try:
-        return Path(json.loads(LOCAL_PATHS.read_text(encoding="utf-8"))[key])
-    except (OSError, KeyError, ValueError):
-        raise SystemExit(f'{LOCAL_PATHS} needs "{key}" (TESTING.md, Requirements)')
-
-
 HOME = local_path("poptracker")
 APP = HOME / "app"
 EXE = APP / "poptracker.exe"

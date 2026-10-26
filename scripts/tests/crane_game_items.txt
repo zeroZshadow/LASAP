@@ -12,7 +12,7 @@ expect OK.grant 5
 # The item waits while Link is free in the shop.
 wait 2
 check event=0 paused=0 carry=0 showq=1(\s|$)
-shot D:/DEV/LASAP-sandbox/crane_1.png
+shot crane_1.png
 # Out of the door; the item-get starts once Link has been free for a moment.
 hold 0 0 -32767 until level=Field 10
 inlevel 20
@@ -20,6 +20,6 @@ await 5 showq=0\+1
 # It shows the received item, not the placeholder.
 await 3 shown=22(\s|$)
 until textready 10
-shot D:/DEV/LASAP-sandbox/crane_2.png
+shot crane_2.png
 dismiss 20
 free 10

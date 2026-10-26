@@ -35,7 +35,7 @@ expect JUKEBOX.*name=The\sWind\sFish\slocked=0 5
 tap 8000
 send DBG jukebox
 expect JUKEBOX.*name=Ballad\sof\sthe\sWind\sFish\slocked=1 5
-shot D:/DEV/LASAP-sandbox/jukebox_ballad_locked.png
+shot jukebox_ballad_locked.png
 tap 1
 wait 1
 check music=BGM_DEMO_AFTER_LASTBOSS\s

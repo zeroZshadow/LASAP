@@ -5,7 +5,7 @@
 # Screenshots: warp_map, warp_menu, warp_home (outside the door after the jump within Field).
 warp Field 51.75 10.5 117
 tapuntil 800 paused=1 when free 5
-shot D:/DEV/LASAP-sandbox/warp_map.png
+shot warp_map.png
 tapuntil 800 paused=0 5
 free 10
 level Field
@@ -13,7 +13,7 @@ level Field
 hold 800 0 0 until !event=0 5
 until msg:Selecting 10
 check choice=0
-shot D:/DEV/LASAP-sandbox/warp_menu.png
+shot warp_menu.png
 # B moves the cursor to Continue; A takes it.
 tap 2 2 2 when choiceready
 until choice=1 3
@@ -29,7 +29,7 @@ await 30 pos=38\.[0-9]+,[0-9.]+,12[789]\.
 until free 20
 level Field
 at 38.25 128.5 1.5
-shot D:/DEV/LASAP-sandbox/warp_home.png
+shot warp_home.png
 # Warp home from inside a house.
 warp MarinTarinHouse 6.85 0 3.83
 hold 800 0 0 until !event=0 5

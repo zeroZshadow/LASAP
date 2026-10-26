@@ -8,7 +8,7 @@ warp Field 38.25 10.5 128.25
 warp MarinTarinHouse 7.5 0 10
 goto 5.5 0 8.5
 face up
-shot D:/DEV/LASAP-sandbox/ghost_none.png
+shot ghost_none.png
 # Nobody to talk to: A starts nothing.
 tap 1
 wait 1
@@ -22,10 +22,10 @@ warp Field 38.25 10.5 128.25
 warp MarinTarinHouse 7.5 0 10
 goto 5.5 0 8.5
 face up
-shot D:/DEV/LASAP-sandbox/ghost_bombs.png
+shot ghost_bombs.png
 interact
 until textready 10
-shot D:/DEV/LASAP-sandbox/ghost_talk.png
+shot ghost_talk.png
 # His line stays until a button closes it.
 wait 2
 check msg=KeyWaiting
@@ -57,7 +57,7 @@ goto 5.5 0 8.5
 face up
 interact
 until textready 10
-shot D:/DEV/LASAP-sandbox/ghost_both.png
+shot ghost_both.png
 dismiss 20
 check bombs=15 arrows=15
 state

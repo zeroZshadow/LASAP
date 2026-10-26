@@ -10,13 +10,13 @@ tapuntil 800 paused=1 when free 5
 until dmap:KeyWait 10
 send DBG mapdot
 expect MAPDOT.made=\d+.page=1.dots=14.shown=\d+.rooms=\d+.chests=[1-9] 5
-shot D:/DEV/LASAP-sandbox/map_dots.png
+shot map_dots.png
 # Feather Chest (dot 2): the cursor put beside it takes the hover and its name, and eases onto it with the stick
 # idle (by the time the screenshot is taken).
 send DBG mapdot near 2
 send DBG mapdot
 expect hover=2/2/1.at=.*text=Feather.Chest$ 5
-shot D:/DEV/LASAP-sandbox/map_dot_hover.png
+shot map_dot_hover.png
 send DBG mapdot
 expect cursor=(-?\d+),(-?\d+).hover=2/2/1.at=\1,\2 5
 tap 1 2 2 when dmap:KeyWait
@@ -33,7 +33,7 @@ expect hover=4/4/2.at=.*text=2/2.3.of.a.Kind.\+1$ 5
 tap 1 2 2 when dmap:KeyWait
 send DBG maplist
 expect open=1.*count=2/2 5
-shot D:/DEV/LASAP-sandbox/map_dot_list.png
+shot map_dot_list.png
 tap 2 2 2 when dmap:KeyWait
 send DBG maplist
 expect open=0 10
@@ -51,7 +51,7 @@ tap 2000 2 2 when dmap:KeyWait
 until dmap:KeyWait 10
 send DBG mapdot
 expect dots=20.shown=14.*floor=2.*looks=IIIiiiiiiiIIIiiiiiii 5
-shot D:/DEV/LASAP-sandbox/map_dots_floor.png
+shot map_dots_floor.png
 tap 8000 2 2 when dmap:KeyWait
 until dmap:KeyWait 10
 send DBG mapdot

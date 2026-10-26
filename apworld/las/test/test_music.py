@@ -1,14 +1,15 @@
 """The Jukebox page's track list (music_tracks.hpp) and the Ballad's looping stream (patcher/ap_ballad.py)."""
 import ast
-import os
 import re
 import struct
 import sys
 import unittest
 from pathlib import Path
 
+from . import romfs
+
 ROOT = Path(__file__).resolve().parents[3]
-ROMFS = Path(os.environ.get("LASAP_ROMFS", r"D:\Games\Switch\LASRomFS"))
+ROMFS = romfs()
 ENSEMBLE = ROMFS / "region_common" / "audio" / "stream" / "BGM_ENSEMBLE_INST.bfstm"
 PATCHER_MUSIC = ROOT / "patcher" / "RandomizerCore" / "Randomizers" / "music.py"
 TRACK_NAMES = ROOT / "las-ap-exl" / "source" / "program" / "music" / "music_tracks.hpp"

@@ -8,35 +8,35 @@ send DBG poke 84 0c00
 expect OK.poke 5
 send DBG grant ZapTrap 1 -1 1
 until !event=0 5
-shot D:/DEV/LASAP-sandbox/trap_zap.png
+shot trap_zap.png
 await 10 health=6
 free 30
 send DBG poke 84 0c00
 expect OK.poke 5
 send DBG grant SquishTrap 1 -1 1
 until !event=0 5
-shot D:/DEV/LASAP-sandbox/trap_squish.png
+shot trap_squish.png
 await 10 health=8
 free 30
 send DBG poke 84 0c00
 expect OK.poke 5
 send DBG grant DrownTrap 1 -1 1
 until !event=0 5
-shot D:/DEV/LASAP-sandbox/trap_drown.png
+shot trap_drown.png
 await 10 health=10
 free 30
 send DBG poke 84 0c00
 expect OK.poke 5
 send DBG grant DeathballTrap 1 -1 1
 until !event=0 5
-shot D:/DEV/LASAP-sandbox/trap_deathball.png
+shot trap_deathball.png
 await 10 health=10
 free 30
 send DBG poke 84 0c00
 expect OK.poke 5
 send DBG grant QuakeTrap 1 -1 1
 until !event=0 5
-shot D:/DEV/LASAP-sandbox/trap_quake.png
+shot trap_quake.png
 await 10 health=10
 free 30
 # One quarter heart left: the Zap Trap still plays and leaves a quarter heart.
@@ -44,7 +44,7 @@ send DBG poke 84 0100
 expect OK.poke 5
 send DBG grant ZapTrap 1 -1 1
 until !event=0 5
-shot D:/DEV/LASAP-sandbox/trap_low.png
+shot trap_low.png
 free 30
 check health=1
 send DBG poke 84 0c00

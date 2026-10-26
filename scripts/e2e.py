@@ -14,7 +14,7 @@ python e2e.py tail [n]                             last lines of both logs
 python e2e.py run <script.txt> [trace file]        runs a test script (TESTING.md, "Script ops")
 
 Environment: LASAP_INSTANCE (a suite instance, emu.py; default 0, the sandbox), LASAP_E2E (session folder, default
-the instance's e2e folder, D:/DEV/LASAP-sandbox/e2e for the sandbox), LASAP_SLOT (default Link), LASAP_GAME_PORT
+the instance's e2e folder, the sandbox folder's e2e for the sandbox), LASAP_SLOT (default Link), LASAP_GAME_PORT
 (the game port, default the instance's, 43385 for the sandbox; the debug port is 100 above it).
 """
 import os
@@ -362,7 +362,7 @@ def run(script: Path, trace: str | None = None) -> None:
                 dbg(f"input {p[0]} {p[2] if len(p) > 2 else '400'}")
                 time.sleep(float(p[3]) if len(p) > 3 else 0.9)
         elif op == "shot":
-            emu.shot(rest)
+            emu.shot(os.path.join(emu.SANDBOX, rest))  # a relative path is in the sandbox folder
         elif op == "state":
             print(state())
         elif op == "screen":

@@ -5,11 +5,11 @@
 guard hurt
 warp Field 66.75 13.5 56.25
 at 66.75 56.25
-shot D:/DEV/LASAP-sandbox/diamond_1.png
+shot diamond_1.png
 # The location's item may be a trap.
 guard off hurt
 hold 0 0 32767 until !free 5
 until textready 10
 state
-shot D:/DEV/LASAP-sandbox/diamond_2.png
+shot diamond_2.png
 dismiss 20

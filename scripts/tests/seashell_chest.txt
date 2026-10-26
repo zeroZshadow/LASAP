@@ -8,11 +8,11 @@ warp ArmosShrineCave 6.75 0 6.75
 goto 6.75 0 6.75
 at 6.75 6.75
 face up
-shot D:/DEV/LASAP-sandbox/seashell_chest_1.png
+shot seashell_chest_1.png
 interact
 until textready 10
 state
-shot D:/DEV/LASAP-sandbox/seashell_chest_2.png
+shot seashell_chest_2.png
 dismiss 20
 free 10
 check shells=20000\s

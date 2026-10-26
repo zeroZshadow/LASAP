@@ -4,8 +4,9 @@
 set -e
 TEST_MODULE="$(cd "$(dirname "$0")/.." && pwd)/patcher/exl-test/subsdk9"
 [ -f "$TEST_MODULE" ] || { echo "no test module: run scripts/build_exl.sh"; exit 1; }
-"${LASAP_PY:-/d/DEV/LASAP/.venv-lasr/Scripts/python.exe}" "$(dirname "$0")/emu.py" check
-SB=/d/DEV/LASAP-sandbox/ryujinx/sdcard
+PY="${LASAP_PY:-$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir)/../.venv-lasr/Scripts/python.exe}"
+"$PY" "$(dirname "$0")/emu.py" check
+SB="$("$PY" "$(dirname "$0")/local_paths.py" sandbox)/ryujinx/sdcard"
 OUT="$1"
 # A patch written before the patcher's last commit lacks that change (an old Common.bfevfl warps home into the house).
 PATCHED="$(stat -c %Y "$OUT/config/lasr-exl/config.ini")"

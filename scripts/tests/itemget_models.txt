@@ -7,29 +7,29 @@
 free 30
 send DBG itemget 71 ArchipelagoItem
 until textready 10
-shot D:/DEV/LASAP-sandbox/ig_ap.png
+shot ig_ap.png
 dismiss 15
 send DBG itemget Rupee20
 until textready 10
-shot D:/DEV/LASAP-sandbox/ig_rupee.png
+shot ig_rupee.png
 dismiss 15
 send DBG itemget ClothesRed
 until textready 10
-shot D:/DEV/LASAP-sandbox/ig_tunic_red.png
+shot ig_tunic_red.png
 dismiss 15
 send DBG itemget ClothesBlue
 until textready 10
-shot D:/DEV/LASAP-sandbox/ig_tunic_blue.png
+shot ig_tunic_blue.png
 dismiss 15
 send DBG itemget Song_WindFish
 until textready 10
-shot D:/DEV/LASAP-sandbox/ig_song_ballad.png
+shot ig_song_ballad.png
 dismiss 15
 send DBG itemget Song_Mambo
 until textready 10
-shot D:/DEV/LASAP-sandbox/ig_song_mambo.png
+shot ig_song_mambo.png
 dismiss 15
 send DBG itemget Song_Soul
 until textready 10
-shot D:/DEV/LASAP-sandbox/ig_song_soul.png
+shot ig_song_soul.png
 dismiss 15

@@ -6,7 +6,7 @@ loop flag, the loop start and the end. A track plays through once at its end; a 
 until at least MIN_SECONDS have passed, so a short loop is heard a few times before the Jukebox moves on. The Ballad
 of the Wind Fish's length is its looping copy's, which the patcher makes (patcher/ap_ballad.py).
 
-Run with any Python 3: python track_lengths.py [--romfs D:/Games/Switch/LASRomFS] [--check]
+Run with any Python 3: python track_lengths.py [--romfs <RomFS folder>] [--check]
 --check only reports entries whose length differs from the RomFS's.
 """
 import argparse
@@ -15,12 +15,12 @@ import struct
 import sys
 from pathlib import Path
 
-DEFAULT_ROMFS = "D:/Games/Switch/LASRomFS"
 MIN_SECONDS = 60
 ROOT = Path(__file__).resolve().parent.parent
 HEADER = ROOT / "las-ap-exl" / "source" / "program" / "music" / "music_tracks.hpp"
 sys.path.insert(0, str(ROOT / "patcher"))
 import ap_ballad  # noqa: E402
+from local_paths import local_path  # noqa: E402
 # {"BGM_...", "name", "info"} or {"BGM_...", "name", "info", ms}
 ENTRY = re.compile(r'(\{\s*"(BGM_\w+)"\s*,\s*"(?:[^"\\]|\\.)*"\s*,\s*"(?:[^"\\]|\\.)*")(?:\s*,\s*\d+)?(\s*\})')
 
@@ -92,10 +92,10 @@ def play_ms(data: bytes) -> int:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--romfs", default=DEFAULT_ROMFS)
+    parser.add_argument("--romfs")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    romfs = Path(args.romfs)
+    romfs = Path(args.romfs or local_path("romfs", "LASAP_ROMFS"))
     paths = stream_paths(romfs)
     text = HEADER.read_bytes().decode("utf-8")
     missing, changed = [], []

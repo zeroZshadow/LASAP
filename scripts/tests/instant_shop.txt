@@ -27,7 +27,7 @@ choose 0
 until carry=0 5
 dismiss 20
 await 5 popup=1
-shot D:/DEV/LASAP-sandbox/instant_shop.png
+shot instant_shop.png
 free 20
 await 5 popup=0
 guard off anim=item_get_st

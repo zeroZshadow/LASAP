@@ -1,7 +1,8 @@
 #!/bin/bash
 # Work in a git worktree of this repository beside other sessions (TESTING.md, "Working in a worktree").
 #   worktree.sh setup      own Archipelago worktree (vendor/Archipelago, worlds/las -> this worktree's world) and the
-#                          built modules (patcher/exl, patcher/exl-test) from the main checkout
+#                          built modules (patcher/exl, patcher/exl-test) and scripts/local_paths.json from the main
+#                          checkout
 #   worktree.sh test [args] the world's tests with pytest, on this worktree's world
 #   worktree.sh land       fast-forward master in the main checkout to this branch, then remove the Archipelago worktree
 #   worktree.sh teardown   remove the Archipelago worktree only
@@ -28,6 +29,9 @@ setup)
     fi
     if [ ! -e "$AP/worlds/las" ]; then
         cmd //c mklink //J "$(winpath "$AP/worlds/las")" "$(winpath "$ROOT/apworld/las")" > /dev/null
+    fi
+    if [ ! -e "$ROOT/scripts/local_paths.json" ] && [ -e "$MAIN/scripts/local_paths.json" ]; then
+        cp "$MAIN/scripts/local_paths.json" "$ROOT/scripts/"
     fi
     for dir in exl exl-test; do
         if [ ! -e "$ROOT/patcher/$dir/subsdk9" ] && [ -e "$MAIN/patcher/$dir/subsdk9" ]; then
@@ -62,7 +66,7 @@ teardown)
     teardown
     ;;
 *)
-    sed -n '2,8p' "$0"
+    sed -n '2,9p' "$0"
     exit 1
     ;;
 esac

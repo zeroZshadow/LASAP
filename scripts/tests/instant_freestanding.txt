@@ -13,7 +13,7 @@ hold 0 0 32767 until !free 5
 await 3 popup=1
 free 5
 check popup=1
-shot D:/DEV/LASAP-sandbox/instant_freestanding.png
+shot instant_freestanding.png
 # The heart piece's autosave shows its own popup first; the toast follows it.
 await 5 toast=1
 send DBG text SystemSaving

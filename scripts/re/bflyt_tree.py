@@ -1,14 +1,18 @@
 """Prints a layout's pane tree from a RomFS dump: kind, name, translate, scale, size, and for parts the layout they use.
 
 Run with .venv-lasr (needs oead):
-  python bflyt_tree.py <layout name, e.g. Dg_DgnMap> [--arc Game.arc] [--romfs D:/Games/Switch/LASRomFS]
+  python bflyt_tree.py <layout name, e.g. Dg_DgnMap> [--arc Game.arc] [--romfs <RomFS folder>]
   python bflyt_tree.py --list [--arc Game.arc]     layouts and animations in the archive
 """
 import argparse
 import struct
+import sys
 from pathlib import Path
 
 import oead
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from local_paths import local_path  # noqa: E402
 
 PANES = {b"pan1", b"pic1", b"txt1", b"wnd1", b"bnd1", b"prt1", b"ali1", b"scr1"}
 
@@ -41,9 +45,10 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("layout", nargs="?")
     parser.add_argument("--arc", default="Game.arc")
-    parser.add_argument("--romfs", type=Path, default=Path("D:/Games/Switch/LASRomFS"))
+    parser.add_argument("--romfs", type=Path)
     parser.add_argument("--list", action="store_true")
     args = parser.parse_args()
+    args.romfs = args.romfs or local_path("romfs", "LASAP_ROMFS")
     sarc = oead.Sarc((args.romfs / "region_common" / "ui" / args.arc).read_bytes())
     if args.list or not args.layout:
         for f in sorted(f.name for f in sarc.get_files() if f.name.endswith((".bflyt", ".bflan"))):

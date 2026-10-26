@@ -13,21 +13,21 @@ free 10
 goto 12 0 9.75
 at 12 9.75
 face up
-shot D:/DEV/LASAP-sandbox/pot_1.png
+shot pot_1.png
 interact
 # The lift plays as an event; A throws once it has ended.
 until carry=1+free 3
-shot D:/DEV/LASAP-sandbox/pot_2.png
+shot pot_2.png
 tap 1
 until carry=0 3
 # The pot breaks where it lands and drops its item where it stood.
 free 5
-shot D:/DEV/LASAP-sandbox/pot_3.png
+shot pot_3.png
 # The item drops where the pot stood; walk into it.
 # The location's item may be a trap.
 guard off hurt
 hold 0 0 32767 until !free 5
 until textready 10
-shot D:/DEV/LASAP-sandbox/pot_4.png
+shot pot_4.png
 dismiss 15
 state

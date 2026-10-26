@@ -46,7 +46,7 @@ class LASSettings(settings.Group):
         """
 
     class GameFile(str):
-        """The game file the emulator opens, e.g. "D:/Games/Link's Awakening.nsp". Empty: the emulator starts
+        """The game file the emulator opens, e.g. "C:/Switch/Link's Awakening.nsp". Empty: the emulator starts
         without a game."""
 
     class RomfsFolder(str):

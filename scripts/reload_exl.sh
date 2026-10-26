@@ -8,7 +8,7 @@ PY=.venv-ap/Scripts/python.exe
 [ -x "$PY" ] || PY="$(git rev-parse --git-common-dir)/../.venv-ap/Scripts/python.exe"
 $PY scripts/emu.py check
 $PY scripts/emu.py stop || true
-cp patcher/exl-test/subsdk9 /d/DEV/LASAP-sandbox/ryujinx/sdcard/atmosphere/contents/01006BB00C6F0000/exefs/subsdk9
+cp patcher/exl-test/subsdk9 "$($PY scripts/local_paths.py sandbox)"/ryujinx/sdcard/atmosphere/contents/01006BB00C6F0000/exefs/subsdk9
 $PY scripts/emu.py start
 $PY scripts/e2e.py run scripts/tests/boot_file1.txt
 $PY scripts/e2e.py state
