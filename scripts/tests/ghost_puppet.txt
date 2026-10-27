@@ -79,6 +79,13 @@ await 3 anim=wait
 at 46 137 1.2
 peer radius 1.5
 peer goto Field 46.5 10.5 137
+# the replay's buffer: 100 ms while the peer's lines arrive evenly; past 150 ms while they arrive in bursts (each
+# second's first 300 ms held back, as TCP holds the lines behind a lost packet)
+poll \|\s0\s[^|]*\sbuffer=100\b 5 DBG puppet
+peer burst 1000 300
+logged BURST\s1000\s300 5 peer
+poll \|\s0\s[^|]*\sbuffer=(1[5-9]\d|[2-4]\d\d)\b 15 DBG puppet
+peer burst 0 0
 # Link's own animations, sent by id, on DBG puppet's puppet: his path 20 frames late, replayed as a ghost's lines are
 send DBG puppet spawn 179 0 -2
 send DBG puppet follow 20

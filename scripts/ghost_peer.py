@@ -6,7 +6,11 @@ python scripts/ghost_peer.py --relay 127.0.0.1:43390 --secret <ghost secret> [--
 Logs "PLAYER <id> <slot>", "FRAME <id> <level> <x> <y> <z> <yaw> ..." (the first of each player, then every 20th;
 every n-th with --every n) and "OFF <id> <reason>" lines. stdin takes "goto <level> <x> <y> <z>", "radius <r>" (0:
 stand still, facing +z), "shapes <hex>", "tunic <n>", "face <eye> <mouth> <ear>", "upper <anim id>" (what it sends,
-ghost_relay.py's Pos) and "nowhere" while it runs. "record <file> [<slot>]" writes the frames one other player sends
+ghost_relay.py's Pos), "nowhere", "burst <every ms> <hold ms>" (holds its frames back for the first hold ms of
+every every ms, then sends them together, as TCP delivers the lines behind a lost packet; "burst 0 0" ends it) and
+"link <jitter ms> <loss %> <stall ms>" (a bad link: each frame waits a random time, jitter on average, and that
+percentage of them stall ms more, delivered in order as TCP does; "link 0 0 0" ends it) while it runs.
+"record <file> [<slot>]" writes the frames one other player sends
 (that slot's, or the first to send one; "<wall clock ms> <the position as a keyframe in hex>" per line; two peers'
 files sorted together make one, as a player goes from one area to another) until "record stop"; "play <file>" sends
 such frames as its own, on their timing and its clock, then stands at the last ("PLAYED <frames>").
@@ -15,6 +19,7 @@ import argparse
 import asyncio
 import importlib.util
 import math
+import random
 import struct
 import sys
 import time
@@ -41,6 +46,10 @@ async def main(args) -> None:
     sent = {"pos": None}  # the last position sent, which the next one's changes are against
     recording: dict = {"file": None, "slot": None, "player": None}
     playing = {"frames": [], "start": 0.0, "next": 0}
+    burst: dict = {"every": 0, "hold": 0, "held": []}  # frames held back (burst <every ms> <hold ms>; 0 0: none)
+    # link <jitter ms> <loss %> <stall ms>, and when the last frame sent through it goes out (event loop time)
+    link = {"jitter": 0.0, "loss": 0.0, "stall": 0.0, "due": 0.0}
+    rng = random.Random(1)
 
     async def receive() -> None:
         while True:
@@ -101,6 +110,12 @@ async def main(args) -> None:
             elif parts == ["nowhere"]:
                 place["here"] = False
                 log("NOWHERE")
+            elif len(parts) == 3 and parts[0] == "burst":
+                burst.update(every=int(parts[1]), hold=int(parts[2]))
+                log(f"BURST {parts[1]} {parts[2]}")
+            elif len(parts) == 4 and parts[0] == "link":
+                link.update(jitter=float(parts[1]), loss=float(parts[2]), stall=float(parts[3]))
+                log(f"LINK {' '.join(parts[1:])}")
             elif parts == ["record", "stop"] and recording["file"] is not None:
                 recording["file"].close()
                 recording["file"] = None
@@ -117,9 +132,32 @@ async def main(args) -> None:
                     playing.update(frames=frames, start=time.monotonic(), next=0)
                     log(f"PLAY {parts[1]} {len(frames)}")
 
+    def send(payload: bytes) -> None:
+        """Writes a frame, or holds it back for the first `hold` ms of every `every` (burst), then writes the held ones
+        with the next: delivered as TCP delivers the lines behind a lost packet."""
+        data = wire.frame(payload)
+        if burst["every"] and time.monotonic() * 1000 % burst["every"] < burst["hold"]:
+            burst["held"].append(data)
+            return
+        deliver(b"".join(burst["held"]) + data)
+        burst["held"].clear()
+
+    def deliver(data: bytes) -> None:
+        """Writes bytes after the link's delay (link), never ahead of bytes written before them."""
+        loop = asyncio.get_running_loop()
+        now = loop.time()
+        delay = rng.expovariate(1 / link["jitter"]) if link["jitter"] else 0.0
+        if rng.random() * 100 < link["loss"]:
+            delay += link["stall"]
+        if delay == 0 and link["due"] <= now:
+            writer.write(data)
+            return
+        link["due"] = max(link["due"] + 0.0001, now + delay / 1000)
+        loop.call_at(link["due"], writer.write, data)
+
     def send_pos(pos) -> None:
         """A POS frame: the changes since the last position sent (a keyframe after none)."""
-        writer.write(wire.frame(bytes([wire.POS]) + wire.encode_pos(pos, sent["pos"])))
+        send(bytes([wire.POS]) + wire.encode_pos(pos, sent["pos"]))
         sent["pos"] = pos
 
     receiver = asyncio.create_task(receive())
@@ -155,7 +193,7 @@ async def main(args) -> None:
                               0, 0, place["upper"], 0 if radius else wire.FLAG_STILL, place["shapes"], place["tunic"],
                               *place["face"]).quantized())
         else:
-            writer.write(wire.frame(bytes([wire.NOWHERE])))
+            send(bytes([wire.NOWHERE]))
             sent["pos"] = None
         await writer.drain()
         await asyncio.sleep(0.05)

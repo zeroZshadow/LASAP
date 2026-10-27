@@ -148,7 +148,7 @@ namespace {
                  std::to_string(p.look.eye) + "," + std::to_string(p.look.mouth) + "," + std::to_string(p.look.ear) + "@" +
                  std::to_string(p.faceSlots[0]) + "," + std::to_string(p.faceSlots[1]) + "," +
                  std::to_string(p.faceSlots[2]) + (p.ownFace ? "own" : "") + " upper=" + std::to_string(p.upper) +
-                 (p.track.arriving ? " arriving" : "");
+                 (p.track.arriving ? " arriving" : "") + " buffer=" + std::to_string(static_cast<int>(p.track.buffer));
             if (p.track.shownFrames > 60) {
                 // speed over the last 60 frames: mean and standard deviation, units per second
                 float sum = 0, sq = 0;
@@ -312,8 +312,32 @@ namespace {
             // DBG puppet blend <s>: the blend time of the sender's animations on the puppets
             g_AnimBlend = std::clamp(static_cast<float>(atof(a[3].c_str())), 0.0f, 2.0f);
         } else if (sub == "buffer" && a.size() >= 4) {
-            // DBG puppet buffer <ms>: how far behind the newest frame (on the sender's clock) puppets replay
+            // DBG puppet buffer <ms> [<most ms>]: the least and the most puppets replay behind the newest frame (on the
+            // sender's clock); both the same: a fixed buffer
             g_BufferMs = std::clamp(atof(a[3].c_str()), 0.0, 1000.0);
+            if (a.size() >= 5) g_BufferMaxMs = std::clamp(atof(a[4].c_str()), 0.0, 1000.0);
+        } else if (sub == "stats" && a.size() >= 4 && a[3] == "reset") {
+            // DBG puppet stats reset: the ghosts' replay stats start over
+            for (auto& q : g_Puppets) q.stats = {};
+        } else if (sub == "stats") {
+            // DBG puppet stats: "STATS | <slot> frames=<n> held=<per mille> past=<per mille> catchup=<per mille>
+            // snaps=<n> speed=<mean>~<deviation> buffer=<mean>/<most>" per ghost slot replayed since the reset: frames
+            // held at the newest line while the sender moved, run on past it, still correcting by 0.3 units or more;
+            // corrections over kCorrectMax (jumps); its speed per frame (units per second); the buffer (ms)
+            std::string line = "STATS";
+            for (int n = 0; n < kGhosts; n++) {
+                const auto& st = g_Puppets[n].stats;
+                if (st.frames == 0) continue;
+                double mean = st.speeds > 0 ? st.speed / st.speeds : 0;
+                double sd = st.speeds > 0 ? std::sqrt(std::max(0.0, st.speedSq / st.speeds - mean * mean)) : 0;
+                char buf[160];
+                snprintf(buf, sizeof(buf), " | %d frames=%u held=%u past=%u catchup=%u snaps=%u speed=%.2f~%.2f buffer=%.0f/%.0f",
+                         n, st.frames, st.held * 1000 / st.frames, st.past * 1000 / st.frames,
+                         st.catchup * 1000 / st.frames, st.snaps, mean, sd, st.buffer / st.frames, st.bufferMax);
+                line += buf;
+            }
+            AP::Send(line);
+            return true;
         } else if (sub == "anim" && a.size() >= 4) {
             // DBG puppet anim <name>: plays one of the model's animations (on the game thread)
             g_AnimPending = a[3];

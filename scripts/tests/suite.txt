@@ -17,6 +17,7 @@ instant_pickups tweaks.instant_pickups=True: boot_file1 received_popup instant_p
 instant_world tweaks.instant_pickups=True: newgame_file2 instant_freestanding instant_dash jukebox_steal
 instant_text tweaks.instant_text=True client: newgame_file2 instant_text map_live
 ghosts ghost: boot_file1 ghost_net ghost_puppet jukebox_pane
+ghost_link ghost: boot_file1 ghost_link
 jukebox_ballad: newgame_file2 jukebox_ballad
 egg_jukebox: newgame_file2 egg_jukebox
 zol_trap: newgame_file2 zol_trap

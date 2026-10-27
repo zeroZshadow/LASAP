@@ -1,0 +1,46 @@
+# Multiplayer ghosts on a bad link (DESIGN.md, Ghosts; TESTING.md, Ghost replay on a bad link): the peer runs a circle
+# beside Link while its frames go through a synthetic link (ghost_peer.py link), and the ghost's replay is measured
+# (DBG puppet stats) with the buffer fixed at 100 ms and adaptive. Set up as ghost_puppet; on the open lawn east of
+# Mabe's phone booth tree (Field_12D).
+connect
+expect HELLO 30
+warp Field 43 10.5 137
+free 10
+peer goto Field 46.5 10.5 137
+peer radius 4
+logged RADIUS\s4 5 peer
+await 5 puppets=1
+# Wi-Fi: 60 ms of jitter on average
+peer link 60 0 0
+logged LINK\s60\s0\s0 5 peer
+send DBG puppet buffer 100 100
+poll \|\s0\s[^|]*\sbuffer=100\b 40 DBG puppet
+send DBG puppet stats reset
+wait 30
+send DBG puppet stats
+expect STATS\s\|\s0\s
+send DBG puppet buffer 100 400
+wait 10
+send DBG puppet stats reset
+wait 30
+send DBG puppet stats
+# adaptive: held under 4% of the frames, catching up under 6%
+expect STATS\s\|\s0\sframes=\d+\sheld=[0-3]?\d\spast=\d+\scatchup=[0-5]?\d\s
+# packet loss: 20 ms of jitter, 2% of the frames 300 ms late (TCP holds the ones after them back)
+peer link 20 2 300
+logged LINK\s20\s2\s300 5 peer
+send DBG puppet buffer 100 100
+poll \|\s0\s[^|]*\sbuffer=100\b 40 DBG puppet
+send DBG puppet stats reset
+wait 30
+send DBG puppet stats
+expect STATS\s\|\s0\s
+send DBG puppet buffer 100 400
+wait 10
+send DBG puppet stats reset
+wait 30
+send DBG puppet stats
+# adaptive: held under 4% of the frames, catching up under 6%
+expect STATS\s\|\s0\sframes=\d+\sheld=[0-3]?\d\spast=\d+\scatchup=[0-5]?\d\s
+peer link 0 0 0
+peer radius 1.5

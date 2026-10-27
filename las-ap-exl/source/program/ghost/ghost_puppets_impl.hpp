@@ -27,14 +27,19 @@ namespace AP::Puppets {
     // ---- Replay (ghost_replay.cpp) ----
 
     constexpr int kTrack = 32;
+    // The lines whose lateness sets the buffer (ghost_replay.cpp).
+    constexpr int kLateLines = 128;
     using Frame = AP::GhostNet::Frame;
     struct Track {
         Frame frames[kTrack];  // newest at frames[(count - 1) % kTrack]
         u32 count = 0;
         double offset = 0;     // this clock minus the sender's (ms), the least seen
+        float late[kLateLines] = {};  // each line's delay past offset (ms), the newest at late[(count - 1) % kLateLines]
+        double target = 0;     // the buffer the lines' lateness asks for (ms)
+        double buffer = 0;     // the buffer the replay runs at (ms), moving towards target; 0: not set yet
         int gait = -1;         // index in kGaits, -1: none played yet
         int anim = -1;         // the sender's animation id playing, -1: none played yet
-        u32 started = ~0u;     // the frame (count) whose animation start was played last
+        u32 passed = 0;        // the frames (count) below this one the replay has reached: their starts looked at
         Game::Vec3 pos{};
         Game::Vec3 error{};    // added to the replay's position, fading out (kCorrectMs)
         u32 replayed = 0;      // count at the last frame
@@ -44,9 +49,9 @@ namespace AP::Puppets {
         float moved[60] = {};  // speed in each of the last 60 frames (DBG puppet: smoothness)
         u32 shownFrames = 0;
     };
-    // How far behind the newest frame (on the sender's clock) the replay runs, and the blend time of the sender's
-    // animations (DBG puppet buffer, blend).
-    extern double g_BufferMs;
+    // The least and the most a replay runs behind the newest frame (on the sender's clock; a ghost whose lines arrive
+    // unevenly runs further behind), and the blend time of the sender's animations (DBG puppet buffer, blend).
+    extern double g_BufferMs, g_BufferMaxMs;
     extern float g_AnimBlend;
     constexpr float kGaitBlend = 0.1f;
     constexpr int kFlagWarped = 1, kFlagHidden = 2, kFlagStill = 4, kFlagStarted = 8;
@@ -89,6 +94,11 @@ namespace AP::Puppets {
         u32 visFixes = 0;        // frames whose visibility the module had to write again
         std::vector<std::string> animLog;  // its plays and model loads, for DBG puppet animlog
         u32 shownAt = 0;                   // frame it was last shown
+        // its replay since DBG puppet stats reset (DBG puppet stats)
+        struct {
+            u32 frames = 0, held = 0, past = 0, catchup = 0, snaps = 0, speeds = 0;
+            double speed = 0, speedSq = 0, buffer = 0, bufferMax = 0;
+        } stats;
 #endif
     };
     extern Puppet g_Puppets[kPuppets];
