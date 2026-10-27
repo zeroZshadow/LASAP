@@ -81,7 +81,7 @@ The sandbox is shared with every other session: take the lock (Emulator, "Sharin
 
 - **Guest log.** Module output (`[AP] ...`, `[exlaunch|...]`) goes to the emulator log via `svcOutputDebugString`.
 - **Screenshots.** `emu.py shot` uses `PrintWindow`; it works while the window is covered or unfocused.
-- **Debug commands** exist only in the test build ("Building the exlaunch module"): `DBG ...` on the debug port (the game port + 100, 43485 in the sandbox) or the game socket, `/dbg ...` in the LAS client. The debug port answers within milliseconds; the client's `/dbg` path takes 0.2–1 s per command, as the client polls its stdin.
+- **Debug commands** exist only in the test build ("Building the exlaunch module"): `DBG ...` on the debug port (the game port + 100, 43485 in the sandbox) or the game socket, `/dbg ...` in the LAS client (`/dbg`, `/game`, `/patch`, `/play`, `/start`, `/setting` and `/setup` exist in a client run from source, not in the release world). The debug port answers within milliseconds; the client's `/dbg` path takes 0.2–1 s per command, as the client polls its stdin.
 
   | Command | Effect |
   |---|---|

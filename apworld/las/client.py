@@ -13,7 +13,7 @@ from .ids import LOCATION_BASE, LOCATION_OFFSETS
 from . import checklist, emulators, ghost_relay
 from .ghosts import DEFAULT_RELAY, GhostLink
 from .host_settings import PLAYER_SETTINGS, player_value
-from .install import InstallError, patch_and_install
+from .install import InstallError, builtin_patcher_build, patch_and_install
 from .items import GAME, ITEM_GAME_INFO
 from .tracker import SIGN_KEY, LogicTracker, tracked_instruments
 
@@ -22,6 +22,9 @@ PROTOCOL_VERSION = 2
 PING_INTERVAL = 2.0
 RESEND_INTERVAL = 3.0
 HELLO_TIMEOUT = 5.0
+# The release world (scripts/build_release.py): the client leaves out the commands for tests and a client run without
+# the window (LASCommandProcessor)
+RELEASE = builtin_patcher_build() is not None
 # Servers before this have no CreateHints; on them, in-game hints of this slot's own locations become hints by scouting
 CREATE_HINTS_VERSION = Utils.Version(0, 6, 2)
 # The game takes one client at a time; another client's connection waits without an answer (also for the 10 s the
@@ -59,14 +62,6 @@ class LASCommandProcessor(ClientCommandProcessor):
         else:
             logger.info(f"Connected to the game. Seed hash {ctx.game_seed_hash}, "
                         f"{ctx.game_recv} of {len(ctx.items_received)} items applied.")
-
-    def _cmd_dbg(self, *args: str) -> None:
-        """Send a debug command to the game module (testing only), e.g. /dbg state."""
-        self.ctx.send_game("DBG " + " ".join(args))
-
-    def _cmd_game(self, *args: str) -> None:
-        """Send a raw protocol line to the game module (testing only)."""
-        self.ctx.send_game(" ".join(args))
 
     def _cmd_ghosts(self, value: str = "") -> None:
         """Show the ghosts' state, or turn them on or off: /ghosts on|off."""
@@ -116,54 +111,65 @@ class LASCommandProcessor(ClientCommandProcessor):
         """Ask the game to resend its received-item count and collected locations."""
         self.ctx.send_game("SYNC")
 
-    def _cmd_patch(self, patch_file: str = "") -> None:
-        """Patch and install the mod again, from the given .aplas or the one this client was opened with."""
-        if patch_file:
-            self.ctx.set_patch_file(patch_file)
-        asyncio.create_task(self.ctx.install_patch(force=True))
+    # Commands for tests and a client run without the window (TESTING.md): players use the Patch tab
+    if not RELEASE:
+        def _cmd_dbg(self, *args: str) -> None:
+            """Send a debug command to the game module (testing only), e.g. /dbg state."""
+            self.ctx.send_game("DBG " + " ".join(args))
 
-    def _cmd_play(self) -> None:
-        """Install the mod when it is missing or out of date, then start the emulator with the game."""
-        asyncio.create_task(self.ctx.install_patch(start=True))
+        def _cmd_game(self, *args: str) -> None:
+            """Send a raw protocol line to the game module (testing only)."""
+            self.ctx.send_game(" ".join(args))
 
-    def _cmd_start(self) -> None:
-        """Start the emulator with the game."""
-        asyncio.create_task(self.ctx.start_emulator())
+        def _cmd_patch(self, patch_file: str = "") -> None:
+            """Patch and install the mod again, from the given .aplas or the one this client was opened with."""
+            if patch_file:
+                self.ctx.set_patch_file(patch_file)
+            asyncio.create_task(self.ctx.install_patch(force=True))
 
-    def _cmd_setting(self, key: str = "", value: str = "") -> None:
-        """Show the look and sound settings, or set one, e.g. /setting music Shuffled or /setting blur_removal on."""
-        settings = {s.key: s for s in PLAYER_SETTINGS}
-        if not key:
-            for s in PLAYER_SETTINGS:
-                value = self.ctx.player_option(s.key)
-                shown = ("on" if value else "off") if s.choices is None else value
-                logger.info(f"{s.key}: {shown} ({'/'.join(s.choices or ('on', 'off'))}) - {s.label}")
-            return
-        if key not in settings or not value:
-            logger.error("Usage: /setting <name> <value>, with a name from /setting.")
-            return
-        setting = settings[key]
-        if setting.choices is None:
-            if value.lower() not in ("on", "off", "true", "false"):
-                logger.error(f"{key} is on or off.")
+        def _cmd_play(self) -> None:
+            """Install the mod when it is missing or out of date, then start the emulator with the game."""
+            asyncio.create_task(self.ctx.install_patch(start=True))
+
+        def _cmd_start(self) -> None:
+            """Start the emulator with the game."""
+            asyncio.create_task(self.ctx.start_emulator())
+
+        def _cmd_setting(self, key: str = "", value: str = "") -> None:
+            """Show the look and sound settings, or set one, e.g. /setting music Shuffled or
+            /setting blur_removal on."""
+            settings = {s.key: s for s in PLAYER_SETTINGS}
+            if not key:
+                for s in PLAYER_SETTINGS:
+                    value = self.ctx.player_option(s.key)
+                    shown = ("on" if value else "off") if s.choices is None else value
+                    logger.info(f"{s.key}: {shown} ({'/'.join(s.choices or ('on', 'off'))}) - {s.label}")
                 return
-            self.ctx.set_player_option(key, value.lower() in ("on", "true"))
-        else:
-            choice = next((c for c in setting.choices if c.lower() == value.lower()), None)
-            if choice is None:
-                logger.error(f"{key} is one of {', '.join(setting.choices)}.")
+            if key not in settings or not value:
+                logger.error("Usage: /setting <name> <value>, with a name from /setting.")
                 return
-            self.ctx.set_player_option(key, choice)
-        logger.info(self.ctx.check_setup().checks["installed"].text)
+            setting = settings[key]
+            if setting.choices is None:
+                if value.lower() not in ("on", "off", "true", "false"):
+                    logger.error(f"{key} is on or off.")
+                    return
+                self.ctx.set_player_option(key, value.lower() in ("on", "true"))
+            else:
+                choice = next((c for c in setting.choices if c.lower() == value.lower()), None)
+                if choice is None:
+                    logger.error(f"{key} is one of {', '.join(setting.choices)}.")
+                    return
+                self.ctx.set_player_option(key, choice)
+            logger.info(self.ctx.check_setup().checks["installed"].text)
 
-    def _cmd_setup(self) -> None:
-        """Show the patch settings and what is missing (the Patch tab has the same)."""
-        checks = self.ctx.check_setup()
-        for key in OPTION_KEYS:
-            check = checks.checks.get(key)
-            note = f" - {check.text}" if check and check.text else ""
-            logger.info(f"{key}: {self.ctx.option(key) or '(empty)'}{note}")
-        logger.info(checks.checks["installed"].text)
+        def _cmd_setup(self) -> None:
+            """Show the patch settings and what is missing (the Patch tab has the same)."""
+            checks = self.ctx.check_setup()
+            for key in OPTION_KEYS:
+                check = checks.checks.get(key)
+                note = f" - {check.text}" if check and check.text else ""
+                logger.info(f"{key}: {self.ctx.option(key) or '(empty)'}{note}")
+            logger.info(checks.checks["installed"].text)
 
 
 class LASContext(CommonContext):
