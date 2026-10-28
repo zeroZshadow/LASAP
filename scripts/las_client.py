@@ -1,4 +1,5 @@
-"""Starts the LAS client from vendor/Archipelago without the Launcher: python scripts/las_client.py [client args]"""
+"""Starts the LAS client from vendor/Archipelago without the Launcher: python scripts/las_client.py [client args]
+Ghosts stay off unless --ghost-relay names a relay, so test runs never join the public one."""
 import os
 import sys
 
@@ -10,4 +11,7 @@ import ModuleUpdate  # noqa: E402
 ModuleUpdate.update_ran = True
 from worlds.las.client import launch  # noqa: E402
 
-launch(*sys.argv[1:])
+args = sys.argv[1:]
+if not any(arg == "--ghost-relay" or arg.startswith("--ghost-relay=") for arg in args):
+    args = ["--ghost-relay", "", *args]
+launch(*args)
