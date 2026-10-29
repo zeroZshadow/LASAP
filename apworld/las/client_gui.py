@@ -44,7 +44,8 @@ ADVANCED = (
      "For a Switch, an unknown emulator or a Ryujinx --root-data-dir folder."),
     ("mod_folder", "Mod folder", "The default", "Only when mods go somewhere else."),
     ("patcher_command", "Patcher command", "Built-in patcher", "Only to run another patcher program."),
-    ("game_host", "Game address", "This PC", "127.0.0.1 for an emulator on this PC, else the Switch's IP address."),
+    ("game_host", "Game address", "This computer",
+     "127.0.0.1 for an emulator on this computer, else the Switch's IP address."),
 )
 # key -> how Browse picks it: a file filter, or None for a folder
 BROWSE: Dict[str, Optional[List[Tuple[str, List[str]]]]] = {
@@ -57,7 +58,7 @@ BROWSE: Dict[str, Optional[List[Tuple[str, List[str]]]]] = {
 }
 TITLES = {
     "patch_file": "your .aplas patch file",
-    "emulator": "your emulator's program (Ryujinx.exe, eden.exe, ...)",
+    "emulator": "your emulator's program (Ryujinx, Eden, ...)",
     "game_file": "Link's Awakening's .nsp or .xci file",
     "romfs_folder": "the RomFS dump of Link's Awakening",
     "sd_card_folder": "the Switch's SD card",
@@ -436,7 +437,8 @@ class PatchPanel(ScrollView):
         card.add_widget(self.title("Where do you play?"))
         choices = GridLayout(cols=2, spacing=dp(12), size_hint_y=None, height=dp(96))
         for platform, name, glyph, text in (
-                (EMULATOR, "Emulator on this PC", "monitor", "Ryujinx, Eden, Citron or another yuzu-based emulator"),
+                (EMULATOR, "Emulator on this computer", "monitor",
+                 "Ryujinx, Eden, Citron or another yuzu-based emulator"),
                 (SWITCH, "Nintendo Switch", "nintendo-switch", "Modded with Atmosphère. The mod goes on its SD card.")):
             chosen = m["platform"] == platform
             tile = Tile(orientation="horizontal", spacing=dp(14), padding=(dp(16), dp(14)),
@@ -471,7 +473,7 @@ class PatchPanel(ScrollView):
         c = m["checks"]
         sd = m["options"]["sd_card_folder"]
         card.add_widget(self.title("Your Switch"))
-        card.add_widget(label("[b]SD card[/b] · put the Switch's SD card in this PC", 14, k.text))
+        card.add_widget(label("[b]SD card[/b] · put the Switch's SD card in this computer", 14, k.text))
         drives = list(m["drives"])
         if sd and not any(emulators.same_path(d.root, Path(sd)) for d in drives):
             drives.append(emulators.Drive(Path(sd), "", emulators.has_atmosphere(Path(sd))))
@@ -490,7 +492,7 @@ class PatchPanel(ScrollView):
             tile.bind(on_release=lambda *_, d=drive: self.commit("sd_card_folder", str(d.root)))
             cards.add_widget(tile)
         if not drives:
-            cards.add_widget(label("No SD card found. Put it in this PC, or choose its folder.", 14, k.muted))
+            cards.add_widget(label("No SD card found. Put it in this computer, or choose its folder.", 14, k.muted))
         card.add_widget(cards)
         card.add_widget(row(button("Another folder…", lambda: self.browse("sd_card_folder"), "text"),
                             button("Look again", self.refresh_drives, "text"), fill()))
@@ -500,7 +502,7 @@ class PatchPanel(ScrollView):
         card.add_widget(row(label("Switch's IP address", 14, k.text, bold=True, one_line=True, size_hint_x=None,
                                   width=dp(160), pos_hint={"center_y": 0.5}), host, fill(), height=32))
         card.add_widget(label("Such as 192.168.1.42. On the Switch: System Settings, Internet, Connection Status. "
-                              "The Switch and this PC must be on the same network.", 13, k.muted))
+                              "The Switch and this computer must be on the same network.", 13, k.muted))
         card_done = c["sd_card_folder"].level == OK or m["sd_card_out"]
         next_button = self.next_button(m["done"][3])
         # the address counts as typed, before the field commits it when it loses focus
@@ -713,7 +715,7 @@ class PatchPanel(ScrollView):
         exe = o["emulator"]
         name = emulators.emulator(exe).name
         rows = [("Patch file", short_path(m["patch_file"]), 1),
-                ("Where you play", "Nintendo Switch" if switch else "Emulator on this PC", 2),
+                ("Where you play", "Nintendo Switch" if switch else "Emulator on this computer", 2),
                 ("Your Switch", f"SD card {o['sd_card_folder']} · {o['game_host']}", 3) if switch else
                 ("Emulator", exe, 3),
                 ("RomFS dump", o["romfs_folder"], 4)]

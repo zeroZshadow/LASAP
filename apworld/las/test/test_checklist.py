@@ -85,6 +85,12 @@ class TestChecklist(unittest.TestCase):
 
         result = checklist.check("", {"emulator": str(self.ryujinx.parent)})
         self.assertIn("This is a folder", result.checks["emulator"].text)
+        app = self.root / "Ryujinx.app"
+        (app / "Contents" / "MacOS" / "portable" / "sdcard").mkdir(parents=True)
+        result = checklist.check("", {"emulator": str(app)})
+        self.assertIn("This program does not exist", result.checks["emulator"].text)
+        (app / "Contents" / "MacOS" / "Ryujinx").write_bytes(b"")
+        self.assertEqual(checklist.check("", {"emulator": str(app)}).checks["emulator"].level, checklist.OK)
 
         result = checklist.check("", {"sd_card_folder": str(self.root / "missing")})
         self.assertEqual(result.checks["emulator"].level, checklist.ERROR)

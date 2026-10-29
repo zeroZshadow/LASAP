@@ -23,16 +23,16 @@ Double-click `las.apworld`, or copy it into Archipelago's `custom_worlds` folder
 3. The first time, the Patch tab walks you through four steps. Each says what to do:
    1. **Patch file**: the file you opened. Leave "Open .aplas patch files in this client when I double-click them"
       ticked: Archipelago's installer only sets this up for the games it ships with.
-   2. **Where you play**: an emulator on this PC, or a Nintendo Switch.
-   3. **Your emulator**: choose its program, `Ryujinx.exe` or `eden.exe` (or another yuzu-based emulator). The client
-      finds its SD card, mod folder and the game in its game list.
-      **Your Switch**: put the Switch's SD card in this PC and choose it (the client lists the drives, and marks those
-      with Atmosphère), and enter the Switch's IP address (on the Switch: System Settings, Internet, Connection
+   2. **Where you play**: an emulator on this computer, or a Nintendo Switch.
+   3. **Your emulator**: choose its program, Ryujinx or Eden (or another yuzu-based emulator). The client finds its
+      SD card, mod folder and the game in its game list.
+      **Your Switch**: put the Switch's SD card in this computer and choose it (the client lists the drives, and marks
+      those with Atmosphère), and enter the Switch's IP address (on the Switch: System Settings, Internet, Connection
       Status).
    4. **Game files**: the RomFS dump.
       - Ryujinx: right-click Link's Awakening, Extract Data, RomFS, and pick a folder. Choose that folder.
       - Yuzu-based emulators: right-click Link's Awakening, Dump RomFS. The client finds the dump by itself.
-      - A Switch: dump the RomFS with a dump tool such as nxdumptool and copy it to this PC.
+      - A Switch: dump the RomFS with a dump tool such as nxdumptool and copy it to this computer.
       With an emulator, the game file is optional: when the client does not find the game in the emulator's game
       list, Play opens the emulator and you start the game there.
 4. Press **Play** (with a Switch: **Install to SD card**). The client patches the game and installs the mod; the

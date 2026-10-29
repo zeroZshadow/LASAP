@@ -679,7 +679,7 @@ class LASContext(CommonContext):
         if key == "game_host":
             self.game_host = value or "127.0.0.1"
         if key == "platform" and value == checklist.EMULATOR and self.option("game_host") != "127.0.0.1":
-            self.set_option("game_host", "127.0.0.1")  # the game runs on this PC, not on the Switch
+            self.set_option("game_host", "127.0.0.1")  # the game runs on this computer, not on the Switch
         if key in ("emulator", "platform") and detect:
             asyncio.create_task(self.detect_from_emulator())
         if key in GHOST_KEYS:
@@ -924,7 +924,7 @@ class LASContext(CommonContext):
         import subprocess
         try:
             self.emulator_process = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                                                     stderr=subprocess.DEVNULL, cwd=str(Path(exe).parent))
+                                                     stderr=subprocess.DEVNULL, cwd=str(Path(args[0]).parent))
         except OSError as e:
             self.report("error", f"Could not start {name}: {e}")
             return

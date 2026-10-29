@@ -2,6 +2,7 @@
 family the client knows is an Emulator subclass; emulator() picks it from the program's name."""
 import json
 import os
+import plistlib
 import re
 import sys
 from dataclasses import dataclass, field
@@ -13,6 +14,7 @@ GAME_EXTENSIONS = (".nsp", ".xci")
 
 
 def _config_home() -> Path:
+    """Where Ryujinx keeps its per-user folder (.NET's ApplicationData)."""
     if sys.platform == "win32":
         return Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
     if sys.platform == "darwin":
@@ -20,10 +22,22 @@ def _config_home() -> Path:
     return Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
 
 
-def _data_home() -> Path:
-    if sys.platform in ("win32", "darwin"):
-        return _config_home()
-    return Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+def _xdg_home(name: str, default: str) -> Path:
+    """An XDG base folder, which yuzu-based emulators use on Linux and macOS alike."""
+    return Path(os.environ.get(name, Path.home() / default))
+
+
+def program(exe: str) -> str:
+    """The file to run: the executable inside a macOS app bundle (Ryujinx.app is a folder), else `exe` itself."""
+    bundle = Path(exe)
+    if bundle.suffix.lower() != ".app" or not bundle.is_dir():
+        return exe
+    try:
+        with open(bundle / "Contents" / "Info.plist", "rb") as f:
+            name = plistlib.load(f).get("CFBundleExecutable")
+    except (OSError, ValueError):
+        name = None
+    return str(bundle / "Contents" / "MacOS" / (name if isinstance(name, str) and name else bundle.stem))
 
 
 def same_path(a: Path, b: Path) -> bool:
@@ -38,7 +52,8 @@ class Emulator:
     finds_romfs = False  # the client finds the emulator's RomFS dumps by itself (find_romfs)
 
     def __init__(self, exe: str) -> None:
-        self.exe = exe
+        self.exe = exe  # the program setting
+        self.program = program(exe)
 
     # the same program is the same emulator: the Patch tab rebuilds only when its model, which holds one, changes
     def __eq__(self, other: object) -> bool:
@@ -83,12 +98,13 @@ class Emulator:
 
     def start_args(self, game: str, data_dir: Optional[Path]) -> List[str]:
         """data_dir: the target's, None without one."""
-        return [self.exe] + ([game] if game else [])
+        return [self.program] + ([game] if game else [])
 
 
 class Ryujinx(Emulator):
-    """Ryujinx (and Ryubing) keeps everything in its data folder: `portable` next to Ryujinx.exe, else the per-user
-    Ryujinx folder, or the folder given with --root-data-dir, which an SD card folder setting stands for."""
+    """Ryujinx (and Ryubing) keeps everything in its data folder: `portable` next to its program (on macOS also next
+    to Ryujinx.app), else the per-user Ryujinx folder, or the folder given with --root-data-dir, which an SD card
+    folder setting stands for."""
     romfs_steps = ("In Ryujinx, right-click Link's Awakening.",
                    "Choose Extract Data, then RomFS, and pick an empty folder.",
                    "Choose that folder here.")
@@ -98,8 +114,10 @@ class Ryujinx(Emulator):
         return "Ryujinx"
 
     def default_data_dir(self) -> Path:
-        portable = Path(self.exe).parent / "portable"
-        return portable if portable.is_dir() else _config_home() / "Ryujinx"
+        portables = [Path(self.program).parent / "portable"]
+        if self.program != self.exe:  # an app bundle
+            portables.append(Path(self.exe).parent / "portable")
+        return next((p for p in portables if p.is_dir()), _config_home() / "Ryujinx")
 
     def mod_folders(self, target: "Target") -> List[Path]:
         contents = target.data_dir / "mods" / "contents"
@@ -113,7 +131,7 @@ class Ryujinx(Emulator):
         return [Path(d) for d in config.get("game_dirs", []) if isinstance(d, str)]
 
     def start_args(self, game: str, data_dir: Optional[Path]) -> List[str]:
-        args = [self.exe]
+        args = [self.program]
         if data_dir is not None and not same_path(data_dir, self.default_data_dir()):
             args += ["--root-data-dir", str(data_dir)]
         return args + ([game] if game else [])
@@ -130,8 +148,9 @@ class YuzuConfig:
 
 
 class Yuzu(Emulator):
-    """Yuzu and its forks use their `user` folder next to the program, else the per-user folder; their qt-config.ini
-    can move the SD card, mod and dump folders. An SD card folder setting moves only the SD card."""
+    """Yuzu and its forks use their `user` folder next to the program, else the per-user folder: in %APPDATA% on
+    Windows, else in the XDG data folder with the config in the XDG config folder. Their qt-config.ini can move the SD
+    card, mod and dump folders. An SD card folder setting moves only the SD card."""
     FORKS = ("yuzu", "eden", "citron", "sudachi", "suyu", "torzu")
     romfs_steps = ("In {name}, right-click Link's Awakening and choose Dump RomFS.",
                    "The client finds the dump by itself.")
@@ -145,18 +164,27 @@ class Yuzu(Emulator):
     def name(self) -> str:
         return self.fork.capitalize()
 
+    def portable_dir(self) -> Path:
+        return Path(self.program).parent / "user"
+
     def default_data_dir(self) -> Path:
-        user = Path(self.exe).parent / "user"
-        return user if user.is_dir() else _data_home() / self.fork
+        user = self.portable_dir()
+        if user.is_dir():
+            return user
+        return (_config_home() if sys.platform == "win32" else _xdg_home("XDG_DATA_HOME", ".local/share")) / self.fork
+
+    def config_dir(self, data_dir: Path) -> Path:
+        if sys.platform == "win32" or same_path(data_dir, self.portable_dir()):
+            return data_dir / "config"
+        return _xdg_home("XDG_CONFIG_HOME", ".config") / self.fork
 
     def data_dir(self, sd_card: Optional[Path]) -> Path:
         return self.default_data_dir()
 
-    @staticmethod
-    def config(data_dir: Path) -> YuzuConfig:
+    def config(self, data_dir: Path) -> YuzuConfig:
         result = YuzuConfig()
         try:
-            text = (data_dir / "config" / "qt-config.ini").read_text(encoding="utf-8", errors="replace")
+            text = (self.config_dir(data_dir) / "qt-config.ini").read_text(encoding="utf-8", errors="replace")
         except OSError:
             return result
         for line in text.splitlines():
@@ -199,7 +227,7 @@ class Yuzu(Emulator):
         return romfs_root(str((self.config(data_dir).dump or data_dir / "dump") / TITLE_ID))
 
     def start_args(self, game: str, data_dir: Optional[Path]) -> List[str]:
-        return [self.exe] + (["-g", game] if game else [])
+        return [self.program] + (["-g", game] if game else [])
 
 
 def emulator(exe: str) -> Emulator:

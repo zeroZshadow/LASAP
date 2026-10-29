@@ -1,5 +1,7 @@
 import ast
 import importlib.util
+import os
+import plistlib
 import subprocess
 import sys
 import tempfile
@@ -311,6 +313,37 @@ class TestEmulators(unittest.TestCase):
         self.assertEqual(target.sd_card, exe.parent / "portable" / "sdcard")
         self.assertEqual(target.mods, exe.parent / "portable" / "sdcard" / "atmosphere" / "contents" / TITLE_ID)
         self.assertEqual(target.emulator.start_args("game.nsp", target.data_dir), [str(exe), "game.nsp"])
+
+    def test_macos_app_bundle(self) -> None:
+        """Ryujinx.app is a folder: the program inside it runs, and its portable folder sits next to that program."""
+        app = self.root / "Ryujinx.app"
+        exe = app / "Contents" / "MacOS" / "Ryujinx"
+        (exe.parent / "portable").mkdir(parents=True)
+        exe.write_bytes(b"")
+        with open(app / "Contents" / "Info.plist", "wb") as f:
+            plistlib.dump({"CFBundleExecutable": "Ryujinx"}, f)
+        target = emulators.target(str(app), "", "")
+        self.assertIsInstance(target.emulator, emulators.Ryujinx)
+        self.assertEqual(target.sd_card, exe.parent / "portable" / "sdcard")
+        self.assertEqual(target.emulator.start_args("game.nsp", target.data_dir), [str(exe), "game.nsp"])
+        (exe.parent / "portable").rmdir()
+        (self.root / "portable").mkdir()  # next to Ryujinx.app
+        self.assertEqual(emulators.target(str(app), "", "").sd_card, self.root / "portable" / "sdcard")
+
+    def test_yuzu_based_xdg(self) -> None:
+        """Off Windows, a yuzu-based emulator without a user folder keeps its data in the XDG data folder and its
+        qt-config.ini in the XDG config folder, on macOS too."""
+        exe = self.root / "Eden.app" / "Contents" / "MacOS" / "eden"
+        exe.parent.mkdir(parents=True)
+        config = self.root / "config" / "eden" / "qt-config.ini"
+        config.parent.mkdir(parents=True)
+        config.write_text(f"sdmc_directory={self.root / 'sd'}\n", encoding="utf-8")
+        env = {"XDG_DATA_HOME": str(self.root / "data"), "XDG_CONFIG_HOME": str(self.root / "config")}
+        with mock.patch("sys.platform", "darwin"), mock.patch.dict(os.environ, env):
+            target = emulators.target(str(exe.parent.parent.parent), "", "")
+        self.assertEqual(target.data_dir, self.root / "data" / "eden")
+        self.assertEqual(target.sd_card, self.root / "sd")
+        self.assertEqual(target.mods, self.root / "data" / "eden" / "load" / TITLE_ID / "Archipelago")
 
     def test_ryujinx_custom_data_folder(self) -> None:
         exe = self.root / "Ryujinx.exe"

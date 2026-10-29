@@ -12,7 +12,7 @@ EMULATOR, SWITCH = "emulator", "switch"
 LOCAL_HOSTS = ("", "127.0.0.1", "localhost", "::1")
 SWITCH_ROMFS_STEPS = ("On the Switch, dump Link's Awakening's RomFS (version 1.0.0, no update) with a dump tool such as "
                       "nxdumptool.",
-                      "Copy the dumped folder to this PC.",
+                      "Copy the dumped folder to this computer.",
                       "Choose that folder here.")
 
 
@@ -29,7 +29,7 @@ class Checklist:
     platform: str = ""
     mod_state: str = ""  # install.mod_state's answer, "" without an SD card
     other_mods: List[Path] = field(default_factory=list)  # emulators.other_mods
-    sd_card_out: bool = False  # the Switch's SD card is set but not in this PC, as while the game runs
+    sd_card_out: bool = False  # the Switch's SD card is set but not in this computer, as while the game runs
     seed_hash: str = ""
     player_name: str = ""
     server: str = ""
@@ -45,8 +45,8 @@ class Checklist:
         return ("patch_file",) + self.where + ("romfs_folder", "patcher_command")
 
     def steps_done(self) -> Dict[int, bool]:
-        """Which of the Patch tab's four setup steps are complete. A Switch's SD card that is out of this PC does not
-        undo its step: the player takes it out to play."""
+        """Which of the Patch tab's four setup steps are complete. A Switch's SD card that is out of this computer does
+        not undo its step: the player takes it out to play."""
         def done(*keys: str) -> bool:
             return all(self.checks[k].level == OK or k == "sd_card_folder" and self.sd_card_out for k in keys)
         return {1: done("patch_file"), 2: bool(self.platform), 3: bool(self.platform) and done(*self.where),
@@ -94,8 +94,8 @@ def check(patch_file: str, options: Dict[str, str], settings: Optional[Dict[str,
     result.platform = platform = platform_of(options)
     exe = options.get("emulator", "") if platform == EMULATOR else ""
     name = emulators.emulator(exe).name
-    checks["platform"] = Check(OK, "") if platform else Check(TODO, "Choose where you play: an emulator on this PC or "
-                                                                     "a Nintendo Switch.")
+    checks["platform"] = Check(OK, "") if platform else Check(TODO, "Choose where you play: an emulator on this "
+                                                                     "computer or a Nintendo Switch.")
 
     # patch file
     if not patch_file:
@@ -123,11 +123,11 @@ def check(patch_file: str, options: Dict[str, str], settings: Optional[Dict[str,
     if platform == SWITCH:
         checks["emulator"] = Check(INFO, "")
         if not sd_card:
-            checks["sd_card_folder"] = Check(TODO, "Choose the Switch's SD card: put it in this PC first.")
+            checks["sd_card_folder"] = Check(TODO, "Choose the Switch's SD card: put it in this computer first.")
         elif not Path(sd_card).is_dir():
             result.sd_card_out = True
-            checks["sd_card_folder"] = Check(TODO, f"The SD card ({sd_card}) is not in this PC: put it in to install "
-                                                   f"the mod.")
+            checks["sd_card_folder"] = Check(TODO, f"The SD card ({sd_card}) is not in this computer: put it in to "
+                                                   f"install the mod.")
         elif not emulators.has_atmosphere(Path(sd_card)):
             checks["sd_card_folder"] = Check(TODO, "This folder has no atmosphere folder: choose the SD card of a "
                                                    "Switch with Atmosphère.")
@@ -139,12 +139,12 @@ def check(patch_file: str, options: Dict[str, str], settings: Optional[Dict[str,
         else:
             checks["game_host"] = Check(OK, f"The client connects to the game at {host}.")
     elif not exe and not sd_card:
-        checks["emulator"] = Check(TODO, "Choose your emulator's program: Ryujinx.exe, or Eden, Citron or another "
+        checks["emulator"] = Check(TODO, "Choose your emulator's program: Ryujinx, or Eden, Citron or another "
                                          "yuzu-based emulator.")
-    elif exe and Path(exe).is_dir():
-        checks["emulator"] = Check(ERROR, "This is a folder: choose the emulator's program in it (Ryujinx.exe, "
-                                          "eden.exe, ...).")
-    elif exe and not Path(exe).is_file():
+    elif exe and Path(emulators.program(exe)).is_dir():
+        checks["emulator"] = Check(ERROR, "This is a folder: choose the emulator's program in it (Ryujinx, "
+                                          "Eden, ...).")
+    elif exe and not Path(emulators.program(exe)).is_file():
         checks["emulator"] = Check(ERROR, "This program does not exist.")
     elif result.target is None:
         checks["emulator"] = Check(ERROR, f"The client does not know where {name} keeps its SD card. Set the SD card "

@@ -47,8 +47,9 @@ class LASSettings(settings.Group):
 
     class Emulator(str):
         """
-        Emulator executable, e.g. "C:/Ryujinx/Ryujinx.exe" or "C:/Eden/eden.exe". The client finds the emulator's SD
-        card, mod folder, game and (yuzu-based emulators) RomFS dump from it, and starts it with game_file.
+        Emulator program, e.g. "C:/Ryujinx/Ryujinx.exe", "/Applications/Ryujinx.app" or "C:/Eden/eden.exe". The
+        client finds the emulator's SD card, mod folder, game and (yuzu-based emulators) RomFS dump from it, and starts
+        it with game_file.
         """
 
     class GameFile(str):
