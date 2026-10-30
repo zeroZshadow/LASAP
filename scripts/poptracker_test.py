@@ -1,17 +1,17 @@
 """Tests the LASR PopTracker pack's Archipelago auto-tracking (the Br00ty/lasr_brooty fork) in a sandbox PopTracker.
 
 python scripts/poptracker_test.py <pack folder> [--variant <variant>] [<step> ...]
-in .venv-ap; steps: manual full marks lean (all, in this order); variant: tracker (default) or var_itemsonly
+in .venv-ap; steps: manual full marks lean shells (all, in this order); variant: tracker (default) or var_itemsonly
 
 The PopTracker folder is this machine's: "poptracker" in scripts/local_paths.json (gitignored, TESTING.md). Its
 sandbox PopTracker (app, a copy in portable mode: config, saves and log.txt stay in its portable-config folder) loads
 the pack from <pack folder> with a test hook from its user-override folder: the pack's scripts/init.lua followed by
 scripts/poptracker_test.lua, which prints the tracker's items, locations and sections on commands (DESIGN in
 poptracker_test.lua). A local MultiServer on PORT serves the newest seed in its out folder, generated from the slots
-Full and Lean in its players folder; the test connects to it as the slot to check locations and write data storage,
-and sends items with the server console's /send. Each step checks the tracker against the slot's received items,
-checked locations and settings and stops at the first difference. Screenshots of the tracker's window go to its shots
-folder for review.
+Full, Lean and Shells (goal seashell_hunt) in its players folder; the test connects to it as the slot to check
+locations and write data storage, and sends items with the server console's /send. Each step checks the tracker
+against the slot's received items, checked locations and settings and stops at the first difference. Screenshots of
+the tracker's window go to its shots folder for review.
 """
 import json
 import os
@@ -95,6 +95,7 @@ class Pack:
                         self.codes.append(code.strip())
                         self.item_of[code.strip()] = f"{index}:{item['name']}"
         self.locations, self.sections = [], []
+        self.visibility = {}  # section code -> its visibility_rules
         init = (path / "scripts" / "init.lua").read_text(encoding="utf-8")
         for name in re.findall(r'^Tracker:AddLocations\("([^"]+)"\)', init, re.M):
             self._walk(jsonc(path / name), "")
@@ -113,6 +114,7 @@ class Pack:
             self.locations.append(path)
             for section in node.get("sections", []):
                 self.sections.append(f"@{path}/{section.get('name', '')}")
+                self.visibility[self.sections[-1]] = section.get("visibility_rules", [])
             self._walk(node.get("children", []), path)
 
     def location_id(self, key: str) -> int:
@@ -161,6 +163,9 @@ class Dump:
         if row[0] == "missing":
             raise Fail(f"no section {code}")
         return int(row[0]), int(row[1]), int(row[2])
+
+    def highlight(self, code: str) -> str:
+        return self.sections[code][3]
 
     def find(self, suffix: str) -> str:
         found = [code for code in self.sections if code.endswith(suffix)]
@@ -268,10 +273,10 @@ class Tracker:
         lines = self.wait(rf"^LASAPTEST {tag}\tEND$", 10, prefix)[1]
         return Dump([line for line in lines if line != "END"])
 
-    def call(self, function: str) -> str:
-        """Calls a global Lua function of the pack (logic.lua's) without arguments."""
+    def call(self, function: str, *args) -> str:
+        """Calls a global Lua function of the pack (logic.lua's), its arguments as strings."""
         tag = self.tag()
-        for line in self.commands(f"call {tag} {function}"):
+        for line in self.commands(f"call {tag} {' '.join([function, *map(str, args)])}"):
             if line.startswith(f"{tag}\tCALL\t"):
                 return line.split("\t", 2)[2]
         raise Fail(f"no result for {function}()")
@@ -384,6 +389,23 @@ class Client:
         self.send({"cmd": "Set", "key": key, "default": {} if operation == "update" else None, "want_reply": False,
                    "operations": [{"operation": operation, "value": value}]})
 
+    def get(self, key: str):
+        since = self.mark()
+        self.send({"cmd": "Get", "keys": [key]})
+        return self.wait(lambda m: m["cmd"] == "Retrieved" and key in m["keys"], 10, since)["keys"][key]
+
+    def scout(self, *ids: int) -> list:
+        """The items at the slot's locations, without hinting them: {item, location, player, flags} each."""
+        since = self.mark()
+        self.send({"cmd": "LocationScouts", "locations": list(ids), "create_as_hint": 0})
+        return self.wait(lambda m: m["cmd"] == "LocationInfo", 10, since)["locations"]
+
+    def hint(self, location_id: int, status: int) -> None:
+        """Hints one of the slot's locations with that status (HintStatus), as a player's !hint_location would."""
+        since = self.mark()
+        self.send({"cmd": "CreateHints", "locations": [location_id], "status": status})
+        self.wait(lambda m: m["cmd"] == "PrintJSON" and m.get("type") == "Hint", 10, since)
+
     def check(self, *ids: int) -> None:
         if not set(ids) <= self.slot_locations:
             raise Fail(f"not locations of {self.slot}: {set(ids) - self.slot_locations}")
@@ -444,9 +466,29 @@ def check_items(dump: Dump, pack: Pack, received: list) -> None:
                 check(f"{name} stage", item["stage"], state["stage"])
 
 
+# A hint's status (HintStatus) -> the highlight of its location's sections (PopTracker's Highlight), highest first;
+# a found hint shows none
+HINT_HIGHLIGHTS = {30: "Priority", 0: "Unspecified", 10: "NoPriority", 20: "Avoid"}
+
+
+def hint_highlights(pack: Pack, client: Client) -> dict:
+    """The highlight of each section that the server's hints for the slot's own locations give it."""
+    rank = list(HINT_HIGHLIGHTS.values())
+    want = {}
+    for hint in client.get(f"_read_hints_{client.team}_{client.number}") or []:
+        name = HINT_HIGHLIGHTS.get(hint.get("status", 0))
+        if hint["found"] or hint["finding_player"] != client.number or not name:
+            continue
+        for code in pack.location_map.get(hint["location"], ("", []))[1]:
+            if code not in want or rank.index(name) < rank.index(want[code]):
+                want[code] = name
+    return want
+
+
 def check_sections(dump: Dump, pack: Pack, client: Client, marks: dict | None = None) -> None:
     """Every mapped section empties in proportion to its checked locations; one with none of the slot's locations
-    shows nothing to check; a section marked by hand keeps its mark."""
+    shows nothing to check; a section marked by hand keeps its mark; a hinted one shows the hint's highlight."""
+    highlights = hint_highlights(pack, client)
     total, checked = {}, {}
     for location_id, (_, codes) in pack.location_map.items():
         for code in codes:
@@ -459,6 +501,7 @@ def check_sections(dump: Dump, pack: Pack, client: Client, marks: dict | None = 
         if marks and code in marks:
             want = min(want, marks[code])
         check(f"{code} available", available, want)
+        check(f"{code} highlight", dump.highlight(code), highlights.get(code, "None"))
 
 
 SETTING_TOGGLES = {"Heart Pieces": "s_hp", "Seashells": "s_ss", "Trade Quest": "s_tq", "Trendy Game": "trendy",
@@ -482,6 +525,8 @@ def check_settings(dump: Dump, slot_data: dict) -> None:
     check("Fishing stage", dump.item("fishing_off")["stage"], fishing)
     check("Seashell Mansion", dump.item("mansion")["active"], settings["Seashell Mansion"] > 0)
     check("Owl Gifts", dump.item("owlstatue")["active"], settings["Owl Gifts"] != "None")
+    # Goal's stage: LASAP's Goal option (0 instruments, 1 seashell_hunt)
+    check("Goal stage", dump.item("goal_instruments")["stage"], slot_data["options"]["goal"])
 
 
 def check_instruments(dump: Dump, slot_data: dict, sign_read: bool) -> None:
@@ -490,6 +535,8 @@ def check_instruments(dump: Dump, slot_data: dict, sign_read: bool) -> None:
     check("Instruments Required count", item["count"], 0 if hidden else slot_data["instruments_required"])
     check("Instruments Required badge", item["badge"], "?" if hidden else "")
     check("INSTRUMENTS_HIDDEN", dump.globals["INSTRUMENTS_HIDDEN"][0], str(hidden).lower())
+    # 0 for the instrument goal
+    check("Seashells Required count", dump.item("seashells_required")["count"], slot_data["seashells_required"])
 
 
 def check_doors(dump: Dump, doors: dict) -> None:
@@ -523,6 +570,8 @@ def step_manual(pack: Pack, tracker: Tracker, server: Server) -> None:
     check("Fishing stage", dump.item("fishing_off")["stage"], 0)
     check("Instruments Required", (dump.item("instruments_required")["count"],
                                    dump.item("instruments_required")["badge"]), (8, ""))
+    check("Goal stage", dump.item("goal_instruments")["stage"], 0)
+    check("Seashells Required", dump.item("seashells_required")["count"], 30)
     check("Completed Bridge", dump.item("completedbridge")["active"], False)
     check("INSTRUMENTS_HIDDEN", dump.globals["INSTRUMENTS_HIDDEN"][0], "false")
     tracker.shot("manual_start")
@@ -623,6 +672,42 @@ def step_manual(pack: Pack, tracker: Tracker, server: Server) -> None:
                          *[f"set {c} Active {'true' if i < held else 'false'}" for i, c in enumerate(instruments)])
         check(f"instruments() with {held} of {required}", tracker.call("instruments"), want)
     tracker.commands("set instruments_required AcquiredCount 8", *[f"set {c} Active false" for c in instruments])
+    # The seashell hunt (Goal at stage 1): the egg opens with Seashells Required seashells and the way up, without
+    # the ocarina, the Ballad or instruments, and the open egg is the goal
+    codes = ["bracelet", "ocarina", "ballad"]
+    cases = [
+        (0, 20, 20, ["bracelet"], "false"),  # the instrument goal
+        (1, 20, 19, ["bracelet"], "false"),
+        (1, 20, 20, ["bracelet"], "true"),
+        (1, 20, 20, [], "false"),
+        (1, 20, 0, codes, "false"),
+    ]
+    for goal, required, shells, have, want in cases:
+        tracker.commands(f"set goal_instruments CurrentStage {goal}",
+                         f"set seashells_required AcquiredCount {required}", f"set shells AcquiredCount {shells}",
+                         *[f"set {c} Active {'true' if c in have else 'false'}" for c in codes])
+        what = f"with goal {goal}, {shells} of {required} seashells and {have or 'nothing'}"
+        check(f"egg() {what}", tracker.call("egg"), want)
+        check(f"windfish() {what}", tracker.call("windfish"), want)
+        check(f"World/Egg {what}", int(tracker.dump().locations["World/Egg"][0]), NORMAL if want == "true" else NONE)
+    # the Trendy Game's final prize takes all eight instruments on either goal
+    for held, want in [(0, "false"), (7, "false"), (8, "true")]:
+        tracker.commands(*[f"set {c} Active {'true' if i < held else 'false'}" for i, c in enumerate(instruments)])
+        check(f"all_instruments() with {held}", tracker.call("all_instruments"), want)
+    # the Seashell Mansion's rewards above Seashells Required are optional: hidden
+    rewards = (5, 15, 30, 40, 50)
+    for n in rewards:
+        section = f"@World/Ukuku Prairie/Seashell Mansion/{n} Seashells"
+        check(f"{section} visibility", pack.visibility[section], [f"$mansion_reward|{n}"])
+    tracker.commands("set mansion Active true")
+    for goal, required, shown in [(0, 20, rewards), (1, 20, (5, 15)), (1, 30, (5, 15, 30))]:
+        tracker.commands(f"set goal_instruments CurrentStage {goal}",
+                         f"set seashells_required AcquiredCount {required}")
+        check(f"Seashell Mansion rewards shown with goal {goal} and {required} required",
+              tuple(n for n in rewards if tracker.call("mansion_reward", n) == "true"), shown)
+    tracker.commands("set mansion Active false", "set goal_instruments CurrentStage 0",
+                     "set seashells_required AcquiredCount 30", "set shells AcquiredCount 0",
+                     *[f"set {c} Active false" for c in codes + instruments])
     for stage in (1, 2, 0):
         tracker.commands(f"set fishing_off CurrentStage {stage}")
         check("Fishing stage", tracker.dump().item("fishing_off")["stage"], stage)
@@ -631,8 +716,8 @@ def step_manual(pack: Pack, tracker: Tracker, server: Server) -> None:
 
 
 def step_full(pack: Pack, tracker: Tracker, server: Server) -> None:
-    """Slot Full: settings, received items, checked locations, the hidden instrument count, the level and the doors
-    found."""
+    """Slot Full: settings, received items, checked locations, the hidden instrument count, the level, the doors
+    found and hints highlighted."""
     server.start(fresh=True)
     client = Client("Full")
     shutil.rmtree(CONFIG / "saves", ignore_errors=True)
@@ -684,7 +769,31 @@ def step_full(pack: Pack, tracker: Tracker, server: Server) -> None:
     for door in ("tail-cave", "bottle-grotto"):
         client.set(f"las_doors_{client.team}_{client.number}", {door: entrances[door]}, "update")
     check_all(tracker, pack, client, sign_read=True, doors=found_doors(client))
+    # Hints for the slot's own locations, with the slot's own items (only those take any status): each highlights its
+    # section by status until it is found
+    hinted = hint_locations(pack, client, 3)
+    for location_id, status in zip(hinted, (30, 20, 0)):
+        client.hint(location_id, status)
+    check_all(tracker, pack, client, sign_read=True, doors=found_doors(client))
+    tracker.shot("full_hinted")
+    client.check(hinted[0])
+    dump = check_all(tracker, pack, client, sign_read=True, doors=found_doors(client))
+    check("highlight of a hint found", dump.highlight(pack.location_map[hinted[0]][1][0]), "None")
     client.close()
+
+
+def hint_locations(pack: Pack, client: Client, count: int) -> list:
+    """Unchecked locations of the slot that hold its own items, each with sections of its own."""
+    shared = {}
+    for location_id, (_, codes) in pack.location_map.items():
+        for code in codes:
+            shared[code] = shared.get(code, 0) + (location_id in client.slot_locations)
+    candidates = [i for i, (_, codes) in pack.location_map.items()
+                  if i in client.slot_locations and i not in client.checked and all(shared[c] == 1 for c in codes)]
+    own = [item["location"] for item in client.scout(*candidates) if item["player"] == client.number]
+    if len(own) < count:
+        raise Fail(f"{len(own)} unchecked locations with {client.slot}'s own items")
+    return own[:count]
 
 
 def step_marks(pack: Pack, tracker: Tracker, server: Server) -> None:
@@ -740,13 +849,47 @@ def step_lean(pack: Pack, tracker: Tracker, server: Server) -> None:
     dump = check_all(tracker, pack, client)
     check("egg arrow on another seed", dump.item("up1")["stage"], 0)
     check("fairyq on another seed", dump.item("fairyq")["active"], False)
-    check("Fairy Queen with Free Gifts off", dump.section(dump.find("/Fairy Queen/Red|Blue Tunic"))[0], 0)
+    # Free Gifts off leaves the Fairy Queen's tunics unrandomized: locked checks, still to check
+    check("Fairy Queen with Free Gifts off", dump.section(dump.find("/Fairy Queen/Red|Blue Tunic"))[0], 2)
     tracker.shot("lean_connected")
     client.close()
     tracker.stop()
 
 
-STEPS = {"manual": step_manual, "full": step_full, "marks": step_marks, "lean": step_lean}
+def step_shells(pack: Pack, tracker: Tracker, server: Server) -> None:
+    """Slot Shells, goal seashell_hunt, another seed: Seashells Required from the slot data, the egg open with that
+    many seashells and the bracelet (step manual: without the ocarina, the Ballad or instruments), and the open egg is
+    the goal; the Seashell Mansion's rewards above Seashells Required hidden."""
+    if not server.proc:
+        server.start(fresh=True)
+    client = Client("Shells")
+    required = client.slot_data["seashells_required"]
+    check("Shells goal (options, Goal.option_seashell_hunt)", client.slot_data["options"]["goal"], 1)
+    tracker.start("Shells")
+    tracker.wait(r"^LASAPTEST READY", 30)
+    check_all(tracker, pack, client)
+    limit = min(client.slot_data["settings"]["Seashell Mansion"], required)
+    for n in (5, 15, 30, 40, 50):
+        check(f"mansion_reward({n}) with {required} required", tracker.call("mansion_reward", n),
+              str(n <= limit).lower())
+    seashell = pack.item_id("seashell")
+    give(server, client, pack, "bracelet")
+    for _ in range(required - 1 - client.received.count(seashell)):
+        give(server, client, pack, "seashell")
+    for want in ("false", "true"):
+        if want == "true":
+            give(server, client, pack, "seashell")
+        dump = check_all(tracker, pack, client)
+        held = f"{client.received.count(seashell)} of {required} seashells"
+        check(f"egg() with {held}", tracker.call("egg"), want)
+        check(f"windfish() with {held}", tracker.call("windfish"), want)
+        check(f"World/Egg with {held}", int(dump.locations["World/Egg"][0]), NORMAL if want == "true" else NONE)
+    tracker.shot("shells_egg_open")
+    client.close()
+    tracker.stop()
+
+
+STEPS = {"manual": step_manual, "full": step_full, "marks": step_marks, "lean": step_lean, "shells": step_shells}
 
 
 def main() -> None:

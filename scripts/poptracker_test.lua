@@ -2,13 +2,15 @@
 -- pack's own scripts; it is not part of the pack. It prints the tracker's state as LASAPTEST lines (stdout, the log):
 --   LASAPTEST <tag> I <code> <increment> <active> <stage> <count> <badge>   an item, found by one of its codes
 --   LASAPTEST <tag> L <id> <accessibility>                             a location
---   LASAPTEST <tag> S <code> <available> <chests> <accessibility>      a location section
+--   LASAPTEST <tag> S <code> <available> <chests> <accessibility> <highlight>   a location section, its highlight by
+--                                                                        name (Highlight's: None, Priority, ...)
 --   LASAPTEST <tag> G <name> <value>                                   a global
 --   LASAPTEST <tag> END
 -- fields separated by tabs. Commands come from scripts/lasap_cmd.lua in the override folder, read every 0.1 s:
 -- LASAP_CMD = {seq = <n>, "<command>", ...}, each run once, then "LASAPTEST DONE <n>". Commands:
 --   dump <tag> | set <code> Active|CurrentStage|AcquiredCount <value> | mark <section code> <available> |
---   call <tag> <global function>   (prints "LASAPTEST <tag> CALL <result>"; the sandbox has no load)
+--   call <tag> <global function> [<argument> ...]   (prints "LASAPTEST <tag> CALL <result>"; the sandbox has no
+--   load; the arguments are strings, as a pack rule's $function|argument passes them)
 -- With Archipelago, a data storage write of lasap_test_barrier dumps with its value as the tag: the server sends it
 -- after everything the test did before, so the dump shows the tracker after those events.
 ScriptHost:LoadScript("scripts/lasap_test_codes.lua")
@@ -19,6 +21,13 @@ local function field(obj, prop)
         return tostring(value)
     end
     return "-"
+end
+
+local HIGHLIGHT_NAMES = {}
+if Highlight then
+    for name, value in pairs(Highlight) do
+        HIGHLIGHT_NAMES[value] = name
+    end
 end
 
 local function out(tag, kind, ...)
@@ -42,8 +51,9 @@ local function dump(tag)
     for _, code in ipairs(LASAP_TEST_SECTIONS) do
         local obj = Tracker:FindObjectForCode(code)
         if obj then
+            local ok, highlight = pcall(function() return obj.Highlight end)
             out(tag, "S", code, field(obj, "AvailableChestCount"), field(obj, "ChestCount"),
-                field(obj, "AccessibilityLevel"))
+                field(obj, "AccessibilityLevel"), ok and HIGHLIGHT_NAMES[highlight] or "-")
         else
             out(tag, "S", code, "missing")
         end
@@ -68,8 +78,12 @@ local function run(command)
         local code, value = rest:match("^(.-)%s+(%S+)$")
         Tracker:FindObjectForCode(code).AvailableChestCount = tonumber(value)
     elseif verb == "call" then
-        local tag, name = rest:match("^(%S+)%s+(%S+)$")
-        out(tag, "CALL", tostring(_G[name]()))
+        local tag, name, list = rest:match("^(%S+)%s+(%S+)%s*(.*)$")
+        local args = {}
+        for arg in list:gmatch("%S+") do
+            args[#args + 1] = arg
+        end
+        out(tag, "CALL", tostring(_G[name](table.unpack(args))))
     end
 end
 
