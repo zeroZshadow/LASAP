@@ -43,6 +43,7 @@ from RandomizerCore import mod_generator  # noqa: E402
 from RandomizerCore.Fixes.Datasheets.fishing import FishingDatasheetFixes  # noqa: E402
 from RandomizerCore.Fixes.Datasheets.item_drop import ItemDropDatasheetFixes  # noqa: E402
 from RandomizerCore.Fixes.Datasheets.items import ItemsDatasheetFixes  # noqa: E402
+from RandomizerCore.Fixes.Events import player_start  # noqa: E402
 from RandomizerCore.Helpers.file_manager import FileManager  # noqa: E402
 from RandomizerCore.Helpers.flag_manager import FlagManager  # noqa: E402
 from RandomizerCore.Helpers.item_get_manager import ItemGetManager  # noqa: E402
@@ -487,6 +488,9 @@ for _name in BOSS_METHODS:
 BossDropRandomizer.armosKnightChanges = _armos_knight_changes
 # The ghost's reward is a drop at its grave (ap_drop.GHOST_DROP), in place of LASR's item-get after the grave's event
 FreeGiftsRandomizer.ghostRewardChanges = lambda self: None
+# LASR gives that item in the owl's talk at the grave, which shows once the farewell turned Ghost4_Clear on, and so
+# leaves its watched flag out of the owl cutscenes it sets watched at the start: with the drop the owl stays away too
+player_start.START_FLAGS = (*player_start.START_FLAGS, "EighthClear")
 # The Color Dungeon's blue rupees are drops where they stand (ap_drop.BLUE_RUPEES), with Blue Rupees on or off, in
 # place of LASR's SinkingSword actors
 BlueRupeeRandomizer.__init__ = lambda self, mod_generator: None

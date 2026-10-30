@@ -1,0 +1,16 @@
+# The owl at the ghost's grave (Field_07E) stays away once the ghost's farewell turned Ghost4_Clear on: a new game's
+# start, as Link first walks out of Tarin's house, sets its watched flag EighthClear with LASR's other owl flags
+# (las_ap_patch). With the flag off the owl flies in as Link lands there and holds him, so the warp's wait for a free
+# player fails. Run after newgame_file2; resets Ghost4_Clear. Screenshot: ghost_owl.
+guard off hurt
+poll FLAG.EighthClear.0 3 DBG flag EighthClear
+warp MarinTarinHouse 6.85 0 3.83
+hold 0 0 -32767 until level=Field 10
+until free 20
+poll FLAG.EighthClear.1 3 DBG flag EighthClear
+send DBG setflag Ghost4_Clear 1
+warp Field 66.75 13.5 81.75
+wait 3
+until free 1
+shot ghost_owl.png
+send DBG setflag Ghost4_Clear 0
