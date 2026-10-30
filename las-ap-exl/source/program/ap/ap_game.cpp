@@ -43,6 +43,9 @@ namespace {
     // A save is loaded and its received count reported (AP::Tick): the client sends ITEM only after a RECV, so a save
     // loaded from the title, an older one or another file, gets the items it lacks.
     bool g_SaveRecvReported = false;
+    // When the System page's Load started (FileLoad): the save left behind keeps its player until the level jump, so the
+    // RECV waits for a level settled after it.
+    u64 g_SaveLoadAt = 0;
     // DeathLink (DESIGN.md, DeathLink): when the last received death was applied, 0 when none is pending
     u64 g_DeathLinkAt = 0;
     u64 g_DiedPolled = 0;
@@ -91,10 +94,14 @@ namespace {
     }
 
 namespace {
-    // The System page's Load: another save replaces the one in play, with the Jukebox off, as from the title (Tick).
-    // The track chosen in the save left behind then stops with the level's music instead of playing on into the next.
+    // The System page's Load: another save replaces the one in play without leaving the level scene, so it counts as a
+    // save load here, as from the title (Tick): RECV once Link stands in the loaded level, and the Jukebox off. The track chosen in
+    // the save left behind then stops with the level's music instead of playing on into the next.
     HOOK_DEFINE_TRAMPOLINE(FileLoad) {
         static void Callback(void* screen) {
+            g_SaveRecvReported = false;
+            g_SaveLoadAt = NowMs();
+            g_FoundSinceLoad.clear();
             Music::Choose("off");
             Orig(screen);
         }
@@ -313,7 +320,7 @@ namespace AP {
             g_SaveRecvReported = false;
             g_FoundSinceLoad.clear();
             Music::Choose("off");  // a save loads with the Jukebox off
-        } else if (!g_SaveRecvReported && PlayerReady()) {
+        } else if (!g_SaveRecvReported && PlayerReady() && g_LevelSince > g_SaveLoadAt) {
             g_SaveRecvReported = true;
             Send("RECV " + std::to_string(GetRecvCount()));
         }

@@ -228,7 +228,7 @@ ASCII lines terminated by `\n`, fields separated by single spaces. The game acce
 |---|---|
 | `HELLO <proto=2> <seed_hash>` | Sent on connect |
 | `PONG` | Answer to `PING` |
-| `RECV <count>` | Number of items applied, stored in the save as a flag-bit counter: in answer to `ITEM` and `SYNC`, and once each time a save has loaded, so a save loaded from the title (an older one, another file) gets the items it lacks |
+| `RECV <count>` | Number of items applied, stored in the save as a flag-bit counter: in answer to `ITEM` and `SYNC`, and once each time a save has loaded, so a save loaded from the title or the System page's Load (an older one, another file) gets the items it lacks |
 | `CHECK <local_id>` | A location was collected |
 | `CHECKS <id> <id> ...` | Every collected location, sent on connect and on `SYNC` (possibly several lines). The client keeps the checks and the goal of the game connection (a new `HELLO` drops them) and sends them only into a slot whose seed hash is the game's |
 | `HINT <slot> <location id>` | An in-game hint was read (its flag is set): once per hint and connection, and all read hints again on `SYNC` |

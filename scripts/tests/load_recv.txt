@@ -1,0 +1,34 @@
+# A save loaded from the System page counts as a save load (ap_game.cpp, FileLoad): once Link stands in it, the module
+# sends RECV with the loaded save's count, so the client resends the items that save lacks. Raising the counter in
+# play (setrecv, not saved) stands for items received after the save was written; the Load brings back the save's
+# count. The System page's machine is `choice`, the Load screen's `file`. Run after boot_file1 (no client: `game`
+# sends the ITEM line).
+free 10
+check recv=0\s
+send DBG setrecv 5
+expect RECV\s5 5
+await 10 recv=5\s
+# Plus opens the Items page, R the System page; Down to Load, A opens the Load screen.
+tap 400 when free 3000
+await 10 pane=1\snavi=2
+tap 80
+await 10 pane=2\snavi=2
+tap 8000 when choice:KeyWait 3000
+tap 1 when choice:KeyWait 3000
+until file:KeyWait 10
+# A on the file under the cursor asks to confirm; Right to Load, A loads it.
+tap 1 when file:KeyWait 3000
+until file:Confirmation 10
+guard file:ConfirmationCancel
+tap 4000 when file:Confirmation 3000
+tap 1 when file:Confirmation 3000
+loaded 60
+# RECV comes once Link stands in the loaded level (settled); expect reads the port since the tap that loads.
+expect RECV\s0 5
+guard off file:ConfirmationCancel
+check recv=0\s
+# The item the client resends next is the save's first missing one: applied.
+game ITEM 1 SmallKey 1 5 -1 Small Key (Face Shrine)|Finder
+until msg:KeyWaiting 15
+check recv=1\s
+dismiss 10

@@ -8,7 +8,7 @@
 # --models woods-north-cave-loose=heart-piece,ukuku-cave-west-loose=sword,ukuku-cave-east-loose=magnifying-lens,
 # graveyard-cave=seashell.
 file1: screens itemget_timing warp_menu itemget_models itemget_pose
-file1_items: boot_file1 ghost_house_pot beach_chest jukebox_height jukebox_load
+file1_items: boot_file1 ghost_house_pot beach_chest jukebox_height jukebox_load load_recv
 newgame_maps: newgame_file2 map_tracker map_skip map_dots map_d7 map_list kept_items_save keysanity
 enemies randomizer.enemies=True randomizer.enemy_sizes=True: boot_file1 enemy_rando
 ohko damage.mode=OHKO: newgame_file2 damage_ohko
