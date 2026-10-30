@@ -1,0 +1,25 @@
+# A save loaded from the System page turns the Jukebox off (ap_game.cpp, FileLoad): the chosen track, one with a
+# height update (BGM_TARUTARU2_AFTER_THE_RESCUE), stops with the level's music and the loaded save plays its zone's
+# own. The System page's machine is `choice`, the Load screen's `file`. Run after boot_file1 (no client needed).
+send DBG music off
+await 10 music=-
+warp Lv06FaceShrine 67.5 0 45
+send DBG music BGM_TARUTARU2_AFTER_THE_RESCUE
+await 10 music=BGM_TARUTARU2_AFTER_THE_RESCUE zonebgm=\S+ bgm=BGM_TARUTARU2_AFTER_THE_RESCUE:1\s
+# Plus opens the Items page, R the System page; Down to Load, A opens the Load screen.
+tap 400 when free 3000
+await 10 pane=1\snavi=2
+tap 80
+await 10 pane=2\snavi=2
+tap 8000 when choice:KeyWait 3000
+tap 1 when choice:KeyWait 3000
+until file:KeyWait 10
+# A on the file under the cursor asks to confirm; Right to Load, A loads it (Cancel would go back to the files).
+tap 1 when file:KeyWait 3000
+until file:Confirmation 10
+guard file:ConfirmationCancel
+tap 4000 when file:Confirmation 3000
+tap 1 when file:Confirmation 3000
+loaded 60
+guard off file:ConfirmationCancel
+await 10 music=- zonebgm=(\S+) bgm=\1:1\s

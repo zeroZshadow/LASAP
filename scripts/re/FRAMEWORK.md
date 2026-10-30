@@ -365,7 +365,9 @@ reads, and `fadeOutFrames` (30 at construction), which every `Sound_Stop` of the
 
 - `BgmManager_Play` fills an instance from the BgmTable row (`BgmTable_Find`, flags `0x10e24b0`): `onStart` with the
   row's flags bit 0 (lambda vtable `0x1b58de8`), called once when the stream starts; `onUpdate[0]` with bit 1
-  (`0x1b58e30`), `onUpdate[1]` cleared; both run every frame while playing. With `prepareNow` (its last argument) it
+  (`0x1b58e30`, `BgmInstance_UpdateHeight` `0xa0480` through its thunk `0xa0470`: the volume by Link's height,
+  reading Link's model node, Framework `+0x4b8` then `+0x80`, with no null check), `onUpdate[1]` cleared; both run
+  every frame while playing. With `prepareNow` (its last argument) it
   prepares the stream at once (`BgmInstance_Prepare` `0x99800`) and drops the instance on a failure (likely).
 - `kind`: 1 zone and event music; 2 a jingle (when Play's first bool is set): kinds 1 and 4 are `ducked` to 0 over 45
   frames while one plays and come back over 150; 3 a buff's music; 4 positional: `BgmInstance_SetPosition`

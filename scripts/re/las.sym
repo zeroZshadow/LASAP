@@ -95,6 +95,7 @@ BgmManager_OnEventEnd 0x085a1f30 f event manager +0x140 signal: unpauses SEs, cl
 BgmManager_OnEventStart 0x085a21c0 f event manager +0xe8 signal: pauses playing SEs; eventQuiet (+0x941a) unless the flow is ZeldaScroll
 BgmManager_OnZoneChanged 0x085a2460 f (functor, zone*, otherZone*, f32* blend): env SE/group (+0x9298/+0x92e0), zone BGM (+0x9250, start delay 150 or 0), zone effect +0x9328
 BgmManager_PlayEnvSe 0x085a3980 f (f32 volume, BgmManager*, StringView* label, bool): when envGroup's slot is loaded, plays label (kind 4) and label_EX (kind 5)
+BgmInstance_UpdateHeight 0x085a4480 f functor (lambda + 8): onUpdate[0] by BgmTable flags bit 1 (vtable 0x1b58e30, thunk 0x085a4470); volume by Link's height, reads Framework +0x4b8 / +0x80 with no null check
 BgmManager_SceneEnd 0x085a4d80 f disconnects +0x9330/+0x9334/+0x9338, stops SEs and BGM (StopAll 0), drops the starting list, clears +0x9419
 BgmManager_Update 0x085a4f90 f per frame (update phase, via 0x14114): listener from the camera fields, delay choice, SE start queue and playing list, BGM starting/playing lists (start delay, ducking), env SEs
 Sound_PlayAmbient 0x085a9ec0 f (f32 volume, StringView* name): starts a kind 3 SE or keeps it alive (+0x144 = 4)
@@ -973,6 +974,7 @@ NameEntry_Open 0x093b3500 f vtable +0x30
 FileOperate20_Setup 0x093c09a0 f vtable +0x20
 FileOperate20_Update 0x093c1da0 f vtable +0x28
 FileOperate20_Open 0x093c1dd0 f vtable +0x30
+FileOperate20_StartLoad 0x093c3530 f (screen): the System page's Load once a file is confirmed: SetGameState(4) (a level jump to the save's level), UiManager_Remove of the pause header (UI 5, no Close state), the BGM back from the pause menu's quiet (0x085aabb0(0)), zoneBgmNow, the screen's machine to state 4 (Close)
 PinStore_GetPosition 0x093e2050 f (function, slot) -> vec2: calls the pin store's get-position function
 PinStore_SetPosition 0x093e20b0 f (function, slot, vec2*)
 PinStore_SetCode 0x093e2110 f (function, slot, u8 code)

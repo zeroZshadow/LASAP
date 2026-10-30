@@ -90,6 +90,17 @@ namespace {
         return fmwk == nullptr || scene == Game::Scene::Title || scene == Game::Scene::FileMenus;
     }
 
+namespace {
+    // The System page's Load: another save replaces the one in play, with the Jukebox off, as from the title (Tick).
+    // The track chosen in the save left behind then stops with the level's music instead of playing on into the next.
+    HOOK_DEFINE_TRAMPOLINE(FileLoad) {
+        static void Callback(void* screen) {
+            Music::Choose("off");
+            Orig(screen);
+        }
+    };
+}
+
     bool PlayerReady() {
         Game::Framework* fmwk = Game::GetFramework();
         return fmwk != nullptr && fmwk->player != nullptr && !g_GameOver && NowMs() - g_LevelSince >= kSettleMs;
@@ -234,6 +245,7 @@ namespace AP {
         LoadHints();
         ListUi::InstallHooks();
         JukeboxPane::InstallHooks();
+        FileLoad::InstallAtFuncPtr(Game::FileOperate20_StartLoad.Ptr());
 #ifdef LASAP_TEST
         Test::InstallHooks();
 #endif
@@ -300,6 +312,7 @@ namespace AP {
         if (NoSaveLoaded(fmwk)) {
             g_SaveRecvReported = false;
             g_FoundSinceLoad.clear();
+            Music::Choose("off");  // a save loads with the Jukebox off
         } else if (!g_SaveRecvReported && PlayerReady()) {
             g_SaveRecvReported = true;
             Send("RECV " + std::to_string(GetRecvCount()));

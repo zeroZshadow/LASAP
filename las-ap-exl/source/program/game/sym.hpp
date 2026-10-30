@@ -279,6 +279,9 @@ namespace Game {
     inline constexpr Func<void(Ui::GmSystem*)> GmSystem_Update{0xf83650};
     // Gm_System's destructor, which PdPage's calls too (page)
     inline constexpr Func<void(Ui::GmSystem*)> GmSystem_Dtor{0xec4330};
+    // The System page's Load (Cm_FileOperate, UI 0x20) once a file is confirmed (screen): reloads the level from the
+    // save (SetGameState 4), removes the pause menu's header (UI 5) and puts the screen's machine in state 4
+    inline constexpr Func<void(void*)> FileOperate20_StartLoad{0xebf530};
     // The message window's Reading state update (window): shows the page letter by letter
     inline constexpr Func<void(Ui::MessageWindow*)> MessageWindow_Reading{0xef1960};
     // (text, letters): shows that many letters at once
@@ -334,6 +337,9 @@ namespace Game {
     inline constexpr Func<void(Audio::Sound*, int, float)> Sound_SetVolume{0x10ea8c0};
     // (volume, instance, track, fade frames): one track of the instance's stream; nothing before the stream starts
     inline constexpr Func<void(float, Audio::BgmInstance*, u32, u32)> BgmInstance_SetTrackVolume{0x99e70};
+    // A track's onUpdate[0] by its BgmTable row's flags bit 1 (lambda vtable 0x1b58e30, reached through its thunk
+    // 0xa0470 with the lambda + 8): the volume by Link's height. It reads Link (Framework +0x4b8) with no check
+    inline constexpr Func<void(void*)> BgmInstance_UpdateHeight{0xa0480};
     // libc++ std::function's swap (a, b)
     inline constexpr Func<void(Function*, Function*)> Function_Swap{0x999c0};
     // The Wind Fish's Egg's onStart for BGM_ENSEMBLE_INST (Orchestra_Play): a callable {vtable, instance, u64

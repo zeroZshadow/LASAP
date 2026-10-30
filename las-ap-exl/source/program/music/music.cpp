@@ -602,6 +602,17 @@ HOOK_DEFINE_TRAMPOLINE(BgmFadeZone) {
     static void Callback() { Holding([] { Orig(); }); }
 };
 
+// A track whose BgmTable row asks for it sets its volume by Link's height each frame, reading Link with no check. The
+// game stops such a track before a level load takes Link; the chosen track plays on through the load, and without
+// Link the update does nothing.
+HOOK_DEFINE_TRAMPOLINE(UpdateHeight) {
+    static void Callback(void* lambda) {
+        Game::Framework* fmwk = Game::GetFramework();
+        if (fmwk == nullptr || fmwk->player == nullptr) return;
+        Orig(lambda);
+    }
+};
+
 HOOK_DEFINE_TRAMPOLINE(SoundStop) {
     static void Callback(Sound* sound, u32 frames) {
         if (sound != nullptr && sound == g_HoldSound) {
@@ -619,6 +630,7 @@ namespace AP::Music {
         BgmStopAll::InstallAtFuncPtr(Game::BgmManager_StopAll.Ptr());
         BgmFadeZone::InstallAtFuncPtr(Game::BgmManager_FadeZone.Ptr());
         SoundStop::InstallAtFuncPtr(Game::Sound_Stop.Ptr());
+        UpdateHeight::InstallAtFuncPtr(Game::BgmInstance_UpdateHeight.Ptr());
 #ifdef LASAP_TEST
         BgmManagerStop::InstallAtFuncPtr(Game::BgmManager_StopByName.Ptr());
 #endif

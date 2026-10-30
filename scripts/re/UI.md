@@ -266,7 +266,10 @@ setup `0xf354b0`: the animations On, Off, Loop, Decide, Normal, Disable, Set and
 (`0xf839e0`) moves `cursor` (`previousCursor` the one it left) and plays the choices' On, Off and Loop; A on RubyOn
 goes to ChangeRuby (toggles `rubyOn` and the section's byte, plays ToggleOnOff), on Save or Load to Decide, which
 requests `choiceUis[cursor]` (0x1f save, 0x20 load, `Cm_FileOperate`) once Decide ends; WaitUiClose waits until
-that UI is gone. `systemOp` is the controls list (`SystemOp`, `L_SystemOp_00`, `GmSystem_SystemOpCtor` `0xf78af0`,
+that UI is gone. The Load screen's machine (`file` in the trace: Open, KeyWait, Decide, Close, Confirmation,
+ConfirmationCancel, ConfirmationToKeyWait, ConfirmationDecide, Load, LoadEnd) starts the load with
+`FileOperate20_StartLoad` (`0xebf530`): `SetGameState(4)`, which in a level is a level jump (`LevelManager_LevelJump`
+with no level name), and the pause header removed with `UiManager_Remove`, without its Close state. `systemOp` is the controls list (`SystemOp`, `L_SystemOp_00`, `GmSystem_SystemOpCtor` `0xf78af0`,
 `SystemOp_vtable` `0x1c2f980`, 0x678 bytes, to the end of the page): nine `SystemOpEntry` parts (`L_Op_00`..`08`,
 0xa8 bytes, `text` `T_Operation_00` with the labels `UI:SystemOperatingItem`, `Map`, `Guard`, `ItemX`, `ItemY`,
 `Dash`, `Action`, `Attack`, `Move`); its setup sets the layout's Set frame by the items owned. PdPage (UI 0xb,
