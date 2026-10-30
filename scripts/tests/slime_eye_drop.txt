@@ -1,0 +1,35 @@
+# Boss drops (DESIGN.md, Drop actor), a real defeat: in the Slime Eye's room (Lv03KeyCavern_07G) Link steps in, which
+# starts the fight (its controller EnemyDeguZol waits, state 2); DBG slimeeye fall does what Link's boots bonk does and
+# the body drops from the ceiling (it moves, body state 11); DBG slimeeye split does what a boots dash into it does and
+# it splits into its two halves (EnemyDeguZolPhase2, made with no LEB key; state 5); DBG hit kills each half at the
+# power of its life; the controller's dead event pops its drop where the heart container would start; Link takes it.
+# Run after boot_file1; resets the boss's and the drop's flags.
+# Screenshots: slime_eye_split, slime_eye_pop, slime_eye_rest.
+guard off hurt
+send DBG setflag DestroyBtl_L03_07G_Boss 0
+send DBG setflag Lv3BossDemoClear 1
+send DBG setflag APBossDrop_D3-slime-eye 0
+send DBG setflag APDropGet_D3-slime-eye 0
+warp Lv03KeyCavern 97.5 0 79.5
+poll OK.slimeeye.state=0 5 DBG slimeeye
+hold 0 0 -20000 until !free 3
+until free 30
+poll OK.slimeeye.state=[23] 10 DBG slimeeye
+send DBG slimeeye fall
+expect OK.slimeeye.state=4 5
+poll OK.slimeeye.state=4.body=11 30 DBG slimeeye
+send DBG slimeeye split
+expect OK.slimeeye.state=5 5
+shot slime_eye_split.png
+poll OK.hit 5 DBG hit EnemyDeguZolPhase2
+poll OK.hit 5 DBG hit EnemyDeguZolPhase2
+poll FLAG.APBossDrop_D3-slime-eye.1 40 DBG flag APBossDrop_D3-slime-eye
+poll OK.drop.-?[0-9] 8 DBG drop
+shot slime_eye_pop.png
+droprest 20
+shot slime_eye_rest.png
+until free 30
+gotodrop 5
+until textready 10
+dismiss 20
+poll FLAG.APDropGet_D3-slime-eye.1 5 DBG flag APDropGet_D3-slime-eye

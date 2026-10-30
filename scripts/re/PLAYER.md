@@ -51,7 +51,7 @@ interacting (`Player_CanInteract`).
 | 0, 1 | vtables `0x1b5e890` / `0x1b5e878` | | not found |
 | 2 `kShovelStart` | `0x1b59608` / `0x1b59698` | none | the Shovel state's enter (`0xdda850`) |
 | 3 `kShovelEnd` | constructor `0xd27b50` (vtable `0x1c17d18`) | u8 | the Shovel state's exit (`0xddaf40`) |
-| 4 | constructor `0xd27be0` | | not found |
+| 4 (dash crash) | constructor `0xd27be0` | `(const Vec3*, WeakPtr*)`: Link's world position, the object he ran into (moved out by the slot) | the Dash state's inner `Crash` state's enter (`PlayerState_Dash_CrashEnter` `0xda7a70`), a Pegasus Boots bonk; Slime Eye listens (ACTORS.md, Slime Eye) |
 | 5 `kFallAbyss` | constructor `0xd27c70` | `const Coords*` | the FallAbyss state's enter (`0xdb1150`): Link's world coordinates |
 | 6 `kRespawn` | as 5 | `const Coords*` | after `Player_Respawn(player, &respawnCoords, 1)` (`0xd336d0`, `0xd59e50`, `0xdb1f00`) |
 | 7 `kClingerReleased` | `0x1b5b288` / `0x1b5b270` | `{Actor*, ctrl}` | a clinging actor comes off (the update, `Player_ClearClingers`) |
@@ -221,6 +221,10 @@ condition, `0xd931d0` sets the selects' functions, and states add conditions (`0
 
 The `fishing` state is the owner TESTING.md's fishing rod rows call the rod and lure.
 
+**State virtuals.** `+0x10` (`PlayerState_BaseEnter` `0xd8d370`) calls `+0x28` (enter, with the previous state) and `+0x20` (`PlayerState_BaseExit` `0xd8d430`) calls `+0x30` (exit, with the next state); `+0x18` is the update. The Dash state (9) runs an inner state machine whose state 3 `Crash` (enter `0xda7a70`) is the Pegasus Boots bonk: it plays the bonk animation and emits signal 4.
+
+**Swim** (30; update `0xdddd20`, enter `0xddf710`, exit `0xde0670`): moves Link only through `Player_Move` (in the update and in `PlayerState_Swim_Move` `0xde0bb0`, which passes the animation's root motion), so his position is the character controller's. `PlayerState_Swim_Move` sets the controller's `useGravity` to 0, seeds the state's velocity (`+0x190`, a Vec4; side view: `(lastMove.x, 0, -lastMove.y)` scaled, at most 1.75) and keeps `+0x1c7` (in water): in side view (`sideView`) a water query (`0x13c850`) at Link's position plus a y offset, in top view deep-water ground (`groundAttribute` kind 7, `onGround`, `onGroundSurface`) with Flippers (inventory `+0xac` bit 0). The state keeps no position of its own; `Node_SetWorldRotation` (`0xfb72f0`) on Link's root turns him only in some branches (guess: on turns), so not every frame marks the node.
+
 ## Character controller
 
 **CharCtrlComp** (`CharCtrlComp_Ctor` `0x10b6cf0`, `CharCtrlComp_vtable` `0x1c50038`, 0x1d0 bytes; destructor `0x10b7700`, deleting `0x10b7980`; about 90 classes use it): a Node with a second base at `+0x148` (`vtable2`, `0x1c50138`, whose methods use `this - 0x148`), in Node's tail padding (MODELS.md, Skeletal model component).
@@ -229,7 +233,8 @@ The `fishing` state is the owner TESTING.md's fishing rod rows call the rod and 
 - `body`: `+0x8` the controller's implementation, `+0x38` its shape set (`+0x20` u8 count, `+0x28` shapes, 0x10 each, up to 64), `+0x458`/`+0x459` added flags.
 - `owner` is a weak pointer from the maker's third argument; `ignoreObject` is the owner's `+0xc0`, wrapped (vtable
   `0x1c4fbd8`) as the move query's ignore filter (likely).
-- `CharCtrlComp_Move` (`0x10b5f10`, virtual `+0xd0`, `(result*, ?, f32 dt, component, Vec4* delta)`): while `useGravity`, `fallVelocity` grows by `gravity` × dt up to `maxFallSpeed`, and goes back to `gravity` × dt on the ground (result bit 2); the step, `pendingMove` plus the fall, is clamped to `maxMove`; the body moves; `lastMove` is the position after minus before (w 0); `pendingMove` is zeroed; the node's `coordsNew` is written; `moving` is set during it. PlayerCollision overrides it (`0x10b8050`).
+- `CharCtrlComp_Move` (`0x10b5f10`, virtual `+0xd0`, `(result*, ?, f32 dt, component, Vec4* delta)`): while `useGravity`, `fallVelocity` grows by `gravity` × dt up to `maxFallSpeed`, and goes back to `gravity` × dt on the ground (result bit 2); the step, `pendingMove` plus the fall, is clamped to `maxMove`; the body moves; `lastMove` is the position after minus before (w 0); `pendingMove` is zeroed; the node's `coordsNew` is written; `moving` is set during it. It starts by putting the controller at the node's world position; PlayerCollision overrides it (`0x10b8050`) without that step: Link's Move starts from the controller's own position and overwrites `coordsNew` with the result.
+- **Teleport.** The constructor connects `CharCtrlComp_OnTransformChanged` (`0x10b6b60`) to the node's `transformChanged` (`0x10b50bc`, handle `+0x1d0`). Outside a Move (`moving` 0) it compares the controller's foot position (physics controller virtual `+0x30`, PhysX `getFootPosition`, doubles in d0-d2) with the node's world position (`Node_UpdateWorld` first) and, when they differ, calls `setFootPosition` (virtual `+0x28`, `(ctrl, const double xyz[3])`) with it and zeroes `fallVelocity` and `lastMove`. `Node_MarkDirty` emits `transformChanged` only when `needsCoordUpdate` is clear, so writing `coordsNew` and setting `needsCoordUpdate` by hand moves the controller only if a later `Node_MarkDirty` (Link's rotation, `Node_SetWorldRotation`) runs before the next Move; while swimming none may (guess), and the next Move puts Link back.
 - Virtuals: `+0xc0` shape i (`0x10b5d70`), `+0xd0` Move. Second base: `+0x120` `0x10b6520`, `+0x128` set the filter (`0x10b6540`), `+0x138` SetEnabled (`0x10b65f0`, `enabled`), `+0x148` shape count, `+0x150` shape i.
 
 **PlayerCollision** (`PlayerCollision_Make` `0x93f4a0 (out, owner, name, ?, params)`: `operator_new(0x290)`;

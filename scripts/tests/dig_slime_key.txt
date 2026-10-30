@@ -1,18 +1,19 @@
-# Digs up the item under the skull rock (under-skull-rock, Field_10H, an ItemSlimeKey actor at 113.25 9.75 116.25)
-# with the Slime Key owned, which hides LASR's dig items unless their inventory check is patched out (DESIGN.md, item
-# model). Run on a save where the location is unchecked (after newgame_file2 or boot_file1). Grants the Slime Key and
-# the Shovel and puts the Shovel on Y (sandbox saves only); Link digs the cell north of him.
+# Digs up the item in the owl statue's pen in Ukuku Prairie (above-cave-dig, Field_11I, a buried drop actor at
+# 125.25 9.75 128.25) with the Slime Key owned, which would hide the slime key LASR buries there; the item hops out and
+# Link walks north into it. Clears the location's got flag. Grants the Slime Key and the
+# Shovel and puts the Shovel on Y (sandbox saves only); kills the pen's enemies; Link digs the cell north of him.
 # Screenshots: dig_1 after the dig, dig_2 the item-get.
 guard hurt
+send DBG setflag AboveCaveDigShellGet 0
 send DBG grant SlimeKey 1 -1 0
 expect OK.grant 5
 send DBG grant Shovel 1 -1 0
 expect OK.grant 5
 send DBG poke a2 07
 expect OK.poke 5
-warp Field 110.25 9.75 115.5
-free 15
-goto 113.25 9.75 117.75
+warp Field 126.75 9.75 129.75
+poll OK.enemies.killed 3 DBG enemies kill
+goto 125.25 9.75 129.75
 face up
 tap 8
 free 5
@@ -24,3 +25,4 @@ until textready 10
 state
 shot dig_2.png
 dismiss 20
+poll FLAG.AboveCaveDigShellGet.1 5 DBG flag AboveCaveDigShellGet

@@ -10,7 +10,8 @@ namespace Game {
     struct Framework;
     struct GameState;
     struct Node; struct InstancedModelComponent; struct Actor; struct ActorParams; struct LebActorRecord;
-    struct Vec3;
+    struct ActorArgs; struct ActorTableEntry;
+    struct Vec3; struct Vec4;
     namespace Data { struct SaveHeader; }
     namespace Data::Inventory { struct InventoryItems; }
     namespace Actors { struct NpcComponent; }
@@ -46,6 +47,8 @@ namespace Game {
     inline constexpr Func<void(void*)> Entity_Destroy{0xfabf70};
     // The live actors with a LEB key: unordered_map<u64 key, shared_ptr<Actor>> (a node: next, hash, key, sp)
     inline constexpr Global<UnorderedMap*> ActorRegistry_ptr{0x1cb2d00};
+    // (out, key): the live actor with that LEB key, or null
+    inline constexpr Func<void(SharedPtr*, u64)> ActorRegistry_FindByKey{0x8f8200};
     // (out enemy, chest): the enemy a chest of $ENEMY lets out, made in the chest's room and zone above its lid
     inline constexpr Func<void(SharedPtr*, Actor*)> ObjTreasureBox_PopEnemy{0xca9290};
     // The entity manager: its start task (manager, entity shared_ptr*)
@@ -60,6 +63,24 @@ namespace Game {
         InstancedModel_Ctor{0x104d540};
     // The vtable of a control block of the component's own (FieldTip's)
     inline constexpr Global<const u8> InstancedModelCtrl_vtable{0x1b9cf50};
+    // The actor table: one entry per actor id below ActorTable_count, 45 of them empty (no factory)
+    inline constexpr Global<ActorTableEntry> ActorTable{0x1bcc898};
+    inline constexpr u16 ActorTable_count = 0x275;
+    // (out name, params): the LEB name, else "<table name>:<counter>"
+    inline constexpr Func<void(SharedString*, ActorParams*)> ActorName_Make{0x23830};
+    // (to, from)
+    inline constexpr Func<void(ActorParams*, const ActorParams*)> ActorParams_Copy{0x31100};
+    inline constexpr Func<void(ActorArgs*)> ActorArgs_Dtor{0x319f0};
+    // (child map, name, length): the child of that name, or null; an entity's maps are at +0x10, +0x38 and +0x60
+    inline constexpr Func<void*(void*, const char*, u64)> Entity_FindChildInMap{0xfb3470};
+    // (entity shared_ptr*): posts its start task
+    inline constexpr Func<void(SharedPtr*)> Entity_Start{0xfab470};
+    // (container, child shared_ptr*): false when the name is taken or the child is not initialized
+    inline constexpr Func<bool(void*, SharedPtr*)> Entity_AddChild{0xfb3290};
+    // (actor, name, length): it has a component of that name (its component map, by FNV-1a)
+    inline constexpr Func<bool(Actor*, const char*, u64)> Actor_HasComponent{0xfa9490};
+    // (node, world position*): moves the node there (guess: Node set world position)
+    inline constexpr Func<void(Node*, const Vec3*)> Node_SetWorldPos{0xfb6d30};
 
     // ---- NPCs ----
     // -> {shared_ptr Npc.gsheet, shared_ptr NpcPhysicsTraits.gsheet}
@@ -149,6 +170,42 @@ namespace Game {
     inline constexpr Func<bool(void*)> ItemGet_FanfareDone{0xd7af30};
     // (item id): the item's Items.gsheet row asks for an autosave
     inline constexpr Func<bool(u32)> ItemGet_RowAutoSave{0x8d5ad0};
+    // Item actors (ITEMS.md, Item actors). (actor, args, Npc row key*, item id, count, pose pair): the item base's
+    // constructor; a key of 0x20 characters or more throws
+    inline constexpr Func<void(Actor*, ActorArgs*, StrView*, u8, u32, const ItemPose*)> ItemActor_Ctor{0x8b6880};
+    // (out, source, position*, launch velocity*, item id, item index): an item actor of the item's Items.gsheet row at
+    // the position in the source's zone, launched; out null without a row. Enemy_DropItems (0x89b960) makes each drop
+    // with it, from the start and launch its callbacks give (scripts/re/ITEMS.md)
+    inline constexpr Func<void(SharedPtr*, Actor*, const Vec4*, const Vec3*, s32, s32)> ItemActor_Create{0x89d050};
+    // (component, name*, Npc row key*): the item base's NPC component
+    inline constexpr Func<void(void*, ComponentName*, StrView*)> ItemNpcComponent_Ctor{0x8c3f10};
+    // The item base's actor and NPC component vtables
+    inline constexpr Global<const uintptr_t> ItemActor_vtable{0x1bc9ac0};
+    inline constexpr Global<const uintptr_t> ItemComponent_vtable{0x1bc9d50};
+    // (object, type id): the item base actor's and component's IsA (vtable +0x68), for their base classes' type ids
+    inline constexpr Func<bool(const void*, const void*)> ItemActor_IsA{0x8b7250};
+    inline constexpr Func<bool(const void*, const void*)> ItemComponent_IsA{0x8c4120};
+    // (actor): the item base actor's zone enter (vtable +0x100): its component's +0x2e4 and its +0x30c cleared
+    inline constexpr Func<void(Actor*)> ItemActor_ZoneEnter{0x8b8410};
+    // (component, name*, x2, x3) -> the EventChara (x8): the item base's (component vtable +0x220), its action
+    // handler (the EventChara's std::function at +0x400) wrapped with the item base's actions
+    inline constexpr Func<SharedPtrOut(void*, const StrView*, void*, void*)> ItemNpcComponent_MakeEventChara{0x8c4a30};
+    // (component, name*, x2, x3) -> the collision (x8), null when the row's collision.shape is 0 (component vtable
+    // +0x210)
+    inline constexpr Func<SharedPtrOut(void*, const StrView*, void*, void*)> NpcComponent_MakeCollision{0x94b350};
+    // (component): every row popConditions entry holds (component vtable +0x88)
+    inline constexpr Func<bool(void*)> NpcComponent_CheckPop{0x947d70};
+    // (component): enables its actor (component vtable +0x98, once +0x88 holds)
+    inline constexpr Func<void(void*)> NpcComponent_Appear{0x948190};
+    // The type id of the collision with a body (a collision's +0x1c8 signal: its body was made, +0x220: lost)
+    inline constexpr Global<const u8> BodyCollision_TypeId{0x1cab3a8};
+    // (component): ItemSmallKey's Fall: the body dynamic and still, the actor 10 units above its spawn; without the
+    // body (component u8 +0x358 0) it sets u8 +0x359 and returns
+    inline constexpr Func<void(void*)> SmallKey_StartFall{0x8ce2f0};
+    // (item component): a dig spot of the scene's dig map is at the item's root (ItemSlimeKey's, 0x89fa90), and it is
+    // dug up (0x89fcb0); ItemSlimeKey's pop check (+0x88) is the second when the first holds
+    inline constexpr Func<bool(void*)> Item_OnDigSpot{0x89fa90};
+    inline constexpr Func<bool(void*)> Item_DugUp{0x89fcb0};
     // The chamber stones owned: {bits, bytes, bit count}
     struct BitTable { const u8* bits; s32 bytes; s32 count; };
     inline constexpr Global<BitTable> PanelPieceBits{0x1cc1208};
@@ -316,11 +373,15 @@ namespace Game {
     inline constexpr Global<void*> EventFlags_ptr{0x1cc1120};
     inline constexpr Func<bool(void**, StrView*)> EventFlags_Check{0xdfa920};
     inline constexpr Func<void(void**, StrView*, bool)> EventFlags_Set{0xdfa7b0};
+    // The level flags' bit table (LevelFlags +0x58; switch type 0, ActorSwitch_Set): bit `index`, not saved
+    inline constexpr Global<u8*> LevelFlags_bits{0x1cc1198};
     // (item id): the event flag the item's Items.gsheet row names, and setting it
     inline constexpr Func<int(int)> Item_CheckGettingFlag{0x8d2940};
     inline constexpr Func<void(int)> Item_SetGettingFlag{0x8d2a70};
     // (LEB record, slot, on): sets the actor switch's flag
     inline constexpr Func<void(const LebActorRecord*, int, bool)> ActorSwitch_Set{0x231b0};
+    // (LEB record, slot): the actor switch's flag is on; false for a null record
+    inline constexpr Func<bool(const LebActorRecord*, int)> ActorSwitch_IsOn{0x23490};
 
     // ---- Player ----
     // -> shared_ptr PlayerAnimation.gsheet

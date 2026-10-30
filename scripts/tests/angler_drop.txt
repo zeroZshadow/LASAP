@@ -1,0 +1,25 @@
+# Boss drops (DESIGN.md, Drop actor), a real defeat: in the Angler Fish's room (Lv04AnglersTunnel_04AL, side view,
+# underwater) DBG hit hits its weak point at the power of its life; its dead event pops its drop where the heart
+# container would start; Link, put on it, takes it. Run after boot_file1; resets the boss's and the drop's flags. Link
+# swims all along (event 30), never free: DBG warp, and the item-get's text paged with tapuntil, as warp and dismiss
+# wait for a free player.
+# Screenshots: angler_pop, angler_rest.
+guard off hurt
+send DBG setflag DoorOpen_Boss_L04_04AL 0
+send DBG setflag Lv4BossDemoClear 1
+send DBG setflag APBossDrop_D4-angler 0
+send DBG setflag APDropGet_D4-angler 0
+send DBG warp Lv04AnglersTunnel 144.75 2.5 0
+expect OK.warp 5
+inlevel 30
+await 10 event=30
+poll OK.hit 10 DBG hit EnemyAngler Angler:WeakPointDmgColComp
+poll FLAG.APBossDrop_D4-angler.1 30 DBG flag APBossDrop_D4-angler
+poll OK.drop.-?[0-9] 8 DBG drop
+shot angler_pop.png
+droprest 20
+shot angler_rest.png
+gotodrop 5
+until textready 10
+tapuntil 2 event=30 when textready 20
+poll FLAG.APDropGet_D4-angler.1 5 DBG flag APDropGet_D4-angler

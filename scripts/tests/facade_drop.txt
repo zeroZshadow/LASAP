@@ -1,0 +1,23 @@
+# Boss drops (DESIGN.md, Drop actor), a real defeat: in Facade's room (Lv06FaceShrine_04E) DBG hit hits it at the
+# power of its life; it speaks as it dies, then its dead event pops its drop where the heart container would start;
+# Link takes it. Run after boot_file1; resets the boss's and the drop's flags.
+# Screenshots: facade_pop, facade_rest.
+guard off hurt
+send DBG setflag DoorOpen_L06_4E 0
+send DBG setflag Lv6BossDemoClear 1
+send DBG setflag APBossDrop_D6-facade 0
+send DBG setflag APDropGet_D6-facade 0
+warp Lv06FaceShrine 67.5 0 45
+poll OK.hit 10 DBG hit EnemyMatFace
+until textready 30
+dismiss 30
+poll FLAG.APBossDrop_D6-facade.1 30 DBG flag APBossDrop_D6-facade
+poll OK.drop.-?[0-9] 8 DBG drop
+shot facade_pop.png
+droprest 20
+shot facade_rest.png
+until free 30
+gotodrop 5
+until textready 10
+dismiss 20
+poll FLAG.APDropGet_D6-facade.1 5 DBG flag APDropGet_D6-facade

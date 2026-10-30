@@ -1,0 +1,24 @@
+# Boss drops (DESIGN.md, Drop actor), a real defeat: in the Slime Eel's room (Lv05CatfishsMaw_02D) DBG hit hits it at
+# the power of its life (its intro seen, it starts the fight out of the wall); it speaks as it dies, then its dead event
+# pops its drop where the heart container would start; Link takes it. Run after boot_file1; resets the boss's and the
+# drop's flags.
+# Screenshots: slime_eel_pop, slime_eel_rest.
+guard off hurt
+send DBG setflag DoorOpen_Boss_L05_02D 0
+send DBG setflag Lv5BossDemoClear 1
+send DBG setflag APBossDrop_D5-slime-eel 0
+send DBG setflag APDropGet_D5-slime-eel 0
+warp Lv05CatfishsMaw 49.5 0 21
+poll OK.hit 10 DBG hit EnemyHooker
+until textready 30
+dismiss 30
+poll FLAG.APBossDrop_D5-slime-eel.1 30 DBG flag APBossDrop_D5-slime-eel
+poll OK.drop.-?[0-9] 8 DBG drop
+shot slime_eel_pop.png
+droprest 20
+shot slime_eel_rest.png
+until free 30
+gotodrop 5
+until textready 10
+dismiss 20
+poll FLAG.APDropGet_D5-slime-eel.1 5 DBG flag APDropGet_D5-slime-eel

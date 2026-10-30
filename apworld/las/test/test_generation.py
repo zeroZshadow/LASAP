@@ -12,6 +12,17 @@ from ..lasr import CATEGORIES, ITEM_DEFS, ITEM_LOCATIONS, LOGIC
 from ..locations import LOCATION_NAMES
 
 
+class TestBouncyItemsHidden(LASTestBase):
+    """Bouncy Items is in neither the template nor the options pages, and a YAML that names it sets it."""
+    options = {"bouncy_items": True}
+
+    def test_hidden_and_set(self) -> None:
+        from Options import Visibility
+        from ..options import BouncyItems
+        self.assertFalse(BouncyItems.visibility & (Visibility.template | Visibility.simple_ui | Visibility.complex_ui))
+        self.assertTrue(self.world.patch_data()["settings"]["Bouncy Items"])
+
+
 class TestDefault(LASTestBase):
     def test_patch_and_slot_data(self) -> None:
         from Fill import distribute_items_restrictive
@@ -129,9 +140,8 @@ class TestEverythingShuffled(LASTestBase):
     }
 
     def test_counts(self) -> None:
-        # every LASR location and the two companions, except the shop slots LASR does not shuffle and the Trendy
-        # Game's heart pieces and chamber stones, whose items never matter
-        self.assertEqual(len(self.world.shuffled), 344 + 2 - 7 - 4)
+        # every LASR location and the two companions, except the shop slots LASR does not shuffle
+        self.assertEqual(len(self.world.shuffled), 344 + 2 - 7)
 
 
 class TestVanillaHeavy(LASTestBase):
@@ -154,36 +164,34 @@ class TestVanillaHeavy(LASTestBase):
     }
 
     def test_unrandomized_locations(self) -> None:
-        """An unrandomized location whose default item the logic can need is a check holding that item, locked; any
-        other is no AP location."""
+        """An unrandomized location is a check holding its default item, locked."""
         from BaseClasses import ItemClassification
         from ..items import LASR_TO_ITEM
         from ..lasr import LOGIC
         from ..lasr_settings import MANSION_THRESHOLDS, fixed_locations, kept_locations
-        locked, plain = set(self.world.locked), set(self.world.plain)
+        locked = set(self.world.locked)
         # the Mansion at 0: its rewards are optional, and the seashells count for them
         self.assertLessEqual(set(MANSION_THRESHOLDS), set(self.world.optional))
         self.assertIn("pond-island", locked)  # a seashell
         self.assertTrue(self.world.create_item("Secret Seashell").advancement)
-        self.assertIn("mabe-well", plain)  # a heart piece
+        self.assertIn("mabe-well", locked)  # a heart piece
         self.assertTrue(any(LOGIC[loc]["content"] == "tail-key" for loc in locked))
         self.assertLessEqual({"moblin-cave", "rooster-statue", "trendy-prize-1"}, locked)
         instruments = {f"D{n}-instrument" for n in range(1, 9)}
         self.assertEqual(len(instruments & locked), 8 - len(self.world.starting_instruments))
-        self.assertFalse(plain & set(self.world.shuffled))
-        names = {loc.name for loc in self.multiworld.get_locations(self.player)}
-        self.assertFalse({LOCATION_NAMES[loc] for loc in plain} & names)
         for loc in locked:
             location = self.multiworld.get_location(LOCATION_NAMES[loc], self.player)
             self.assertEqual(location.address, self.world.location_name_to_id[LOCATION_NAMES[loc]])
             self.assertTrue(location.locked, loc)
             self.assertEqual(location.item.name, LASR_TO_ITEM[self.world.content(loc)], loc)  # the starting gear's hold 50 Rupees
             self.assertEqual(location.item.player, self.player)
-        self.assertFalse(fixed_locations() & set(self.world.shuffled))
+        self.assertFalse(fixed_locations(self.world.options) & set(self.world.shuffled))
         patch = self.world.patch_data()
+        # Blue Rupees off means vanilla: plain rupees, no checks
+        self.assertNotIn("D0-rupee-1", patch["location_ids"])
+        self.assertEqual((patch["placements"]["D0-rupee-1"], patch["settings"]["Blue Rupees"]), ("rupee-5", False))
         self.assertEqual({loc for loc in locked if patch["placements"][loc] != "ap-item"}, kept_locations() & locked)
         self.assertLessEqual(locked, set(patch["location_ids"]))
-        self.assertTrue(all(patch["placements"][loc] == self.world.content(loc) for loc in plain))
         # trackers and the patcher get the options as they are
         settings = patch["settings"]
         self.assertEqual((settings["Heart Pieces"], settings["Seashell Mansion"], settings["Seashells Important"]),

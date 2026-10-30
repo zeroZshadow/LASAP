@@ -31,9 +31,9 @@ GAME = "Links Awakening Switch"
 PREFIX = "las/patcher/"  # install.py PATCHER_PREFIX
 TESTS = "las/test/"  # the world's tests, which "Build APWorlds" packs and players do not need
 # Patcher files and folders, relative to patcher/
-PATCHER_FILES = ("las_ap_patch.py", "ap_assets.py", "ap_ballad.py", "ap_chest.py", "ap_deathlink.py", "ap_entrances.py", "ap_ghost.py",
+PATCHER_FILES = ("las_ap_patch.py", "ap_assets.py", "ap_ballad.py", "ap_chest.py", "ap_deathlink.py", "ap_drop.py", "ap_entrances.py", "ap_ghost.py",
                  "ap_goal.py", "ap_hints.py", "ap_map.py", "ap_map_icons.py", "ap_model.py", "ap_player_ghost.py",
-                 "ap_save_name.py", "ap_ui.py", "romfs_check.py", "lasr_qt.py", "map_positions.json", "version.txt",
+                 "ap_save_name.py", "ap_ui.py", "romfs_check.py", "lasr_qt.py", "map_positions.json", "model_bounds.py", "version.txt",
                  "LICENSE-LASR.txt", "RandomizerCore", "RandomizerUI/Resources/Info", "RandomizerUI/Resources/Menu",
                  "RandomizerUI/Resources/Theme", "assets", "exl/subsdk9", "exl/main.npdm")
 # Folders of PATCHER_FILES the patch never uses: the BNTX editor (GPLv3) only builds the assets (ap_assets.py), and

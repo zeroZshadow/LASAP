@@ -1,0 +1,23 @@
+# Cuts the lone bush on the southwest bay beach (southwest-bay-bush, Field_15J, bush at 138.75 7.5 177.75): its item, a
+# drop actor (ItemAPDrop), hops up out of the ground without taking Link's control; once it rests, Link is put on it
+# and picks it up. Run after boot_file1; clears the location's got flag, which that save has.
+# Screenshots: drop_1 facing the bush, drop_2 the item at rest, drop_3 the item-get.
+guard hurt
+send DBG setflag BayBushGet 0
+warp Field 138.75 7.5 179.25
+at 138.75 179.25
+face up
+at 138.75 179.25
+shot drop_1.png
+tap 2 2 2 when free
+poll OK.drop.-?[0-9] 6 DBG drop
+free 0.5
+droprest 10
+shot drop_2.png
+# The location's item may be a trap.
+guard off hurt
+gotodrop 10
+until textready 10
+state
+shot drop_3.png
+dismiss 20

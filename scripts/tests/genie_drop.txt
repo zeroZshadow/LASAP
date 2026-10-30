@@ -1,0 +1,21 @@
+# Boss drops (DESIGN.md, Drop actor), a real defeat: in Genie's room (Lv02BottleGrotto_04G) DBG hit hits Genie at the
+# power of its life; its dead event pops its drop where the heart container would start; Link takes it. Run after
+# boot_file1; resets the boss's and the drop's flags.
+# Screenshots: genie_pop, genie_rest.
+guard off hurt
+send DBG setflag GetHeart_L02_4G 0
+send DBG setflag Lv2BossDemoClear 1
+send DBG setflag APBossDrop_D2-genie 0
+send DBG setflag APDropGet_D2-genie 0
+warp Lv02BottleGrotto 94.5 0 45
+poll OK.hit 10 DBG hit EnemyPotDemonKing
+poll FLAG.APBossDrop_D2-genie.1 30 DBG flag APBossDrop_D2-genie
+poll OK.drop.-?[0-9] 8 DBG drop
+shot genie_pop.png
+droprest 20
+shot genie_rest.png
+until free 30
+gotodrop 5
+until textready 10
+dismiss 20
+poll FLAG.APDropGet_D2-genie.1 5 DBG flag APDropGet_D2-genie

@@ -47,7 +47,9 @@ from RandomizerCore.Helpers.file_manager import FileManager  # noqa: E402
 from RandomizerCore.Helpers.flag_manager import FlagManager  # noqa: E402
 from RandomizerCore.Helpers.item_get_manager import ItemGetManager  # noqa: E402
 from RandomizerCore.Randomizers import chests as lasr_chests  # noqa: E402
+from RandomizerCore.Randomizers.boss_drops import BossDropRandomizer  # noqa: E402
 from RandomizerCore.Randomizers.chests import ChestRandomizer  # noqa: E402
+from RandomizerCore.Randomizers.free_gifts import FreeGiftsRandomizer  # noqa: E402
 from RandomizerCore.Randomizers.instruments import InstrumentRandomizer  # noqa: E402
 from RandomizerCore.Randomizers.keysanity import Keysanity  # noqa: E402
 from RandomizerCore.Randomizers.shop import TEXT_TO_CHANGE as SHOP_TEXT  # noqa: E402
@@ -57,6 +59,7 @@ import ap_assets  # noqa: E402
 import ap_ballad  # noqa: E402
 import ap_chest  # noqa: E402
 import ap_deathlink  # noqa: E402
+import ap_drop  # noqa: E402
 import ap_ghost  # noqa: E402
 import ap_player_ghost  # noqa: E402
 import ap_hints  # noqa: E402
@@ -174,6 +177,15 @@ MOVEMENT_SPEED = 1.2
 # ItemDrop.gsheet rows of the two buffs; the settings empty them, for drops that name them. The buffs after a run of
 # kills come from the game's code, which the module skips (config.ini [tweaks]).
 BUFF_DROPS = {"Disable Guardian Acorn": "GuardianAcorn", "Disable Piece of Power": "PowerPiece"}
+# The bosses: their BossItemDrop event drops their ItemDrop.gsheet row (BOSS_DROP_ROWS), a heart container, the Angler
+# Key, the Face Key or the hookshot. Their item comes as the game's does, the drop actor in its place (ap_drop.py),
+# holding the location's item (without Boss Drops its vanilla one): LASR's methods for them keep their music without
+# LASR's item-get, which skips BossItemDrop (Armos Knight's, which also leads its flowchart past it, is las_ap_patch's
+# own), and the rows keep the item LASR takes out of them.
+BOSS_METHODS = ("moldormChanges", "genieChanges", "slimeEyeChanges", "anglerChanges", "slimeEelChanges",
+                "facadeChanges", "eagleChanges", "hotheadChanges", "lanmolaChanges", "masterStalfosChanges")
+BOSS_DROP_ROWS = {**{f"HeartContainer{i}": "HeartContainer" for i in range(8)},
+                  "AnglerKey": "AnglerKey", "FaceKey": "FaceKey", "HookShot": "HookShot"}
 # Easy Fishing: FishingSpot.gsheet weights of the deep spot (row mId 4, spot 2) by fish kind, Ol' Baron (kind 4) as
 # likely as the other fish there (vanilla [0, 25, 0, 0, 5, 0]). The line holds through the module (config.ini [tweaks]).
 EASY_FISHING_SPOT = (4, [0, 15, 0, 0, 15, 0])
@@ -190,6 +202,8 @@ def _add_ap_flags(self) -> None:
     for flag in ap_deathlink.FLAGS:
         self.addFlag(flag)
     for flag in ap_hints.FLAGS:
+        self.addFlag(flag)
+    for flag in ap_drop.FLAGS:
         self.addFlag(flag)
 
 
@@ -378,12 +392,36 @@ def _starting_index(self, item, index):
 
 
 def _drop_buffs(self, sheet, settings) -> None:
-    """Disabled Guardian Acorns and Pieces of Power drop nothing, as LASR does for the drops it removes."""
+    """Disabled Guardian Acorns and Pieces of Power drop nothing, as LASR does for the drops it removes; the bosses drop
+    their item again (BOSS_DROP_ROWS)."""
     _original_item_drop_changes(self, sheet, settings)
     keys = {BUFF_DROPS[k] for k in BUFF_DROPS if settings.get(k)}
     for row in sheet["values"]:
         if row["mKey"] in keys:
             row["mLotTable"][0]["mType"] = ""
+        if row["mKey"] in BOSS_DROP_ROWS:
+            row["mLotTable"][0]["mType"] = BOSS_DROP_ROWS[row["mKey"]]
+
+
+def _armos_knight_changes(self) -> None:
+    """LASR's Armos Knight changes without its item-get and the doors opening before it: its music."""
+    flow = self.parent.file_manager.readFile("DeguArmos.bfevfl")
+    for event in ("Event4", "Event23"):
+        event_tools.setEventSong(flow.flowchart, event,
+                                 self.parent.music_randomizer.songs_dict["BGM_DUNGEON_BOSS_MIDDLE"])
+    self.parent.file_manager.writeFile("DeguArmos.bfevfl", flow)
+
+
+def _boss(changes):
+    """LASR's changes of a boss (BOSS_METHODS) without its item-get."""
+    def without_item_get(self) -> None:
+        manager = self.parent.item_get_manager
+        manager.get = lambda *args, **kwargs: None
+        try:
+            changes(self)
+        finally:
+            del manager.get
+    return without_item_get
 
 
 def _fishing_spots(self, mod_generator) -> None:
@@ -400,7 +438,10 @@ def _fishing_spots(self, mod_generator) -> None:
 
 
 def _write_file(self, file_name: str, data) -> None:
-    """The Archipelago model gets an Npc entry, which the item-get shows."""
+    """The Archipelago model gets an Npc entry, which the item-get shows. The small key's flowchart stays the game's:
+    LASR's edits are its stand-ins' entries, and every stand-in is a drop actor, with a flowchart of its own (ap_drop)."""
+    if file_name == ap_drop.SMALL_KEY_EVENT:
+        return
     # Once: the sheet is written again after LASR's run (ap_ghost).
     if file_name == "Npc.gsheet" and not any(row["symbol"] == PLACEHOLDER_DEF["npc-key"] for row in data["values"]):
         # Parsed before appending: appending to the sheet invalidates references to its rows.
@@ -440,6 +481,11 @@ ItemGetManager.getWithoutAnimation = _starting_index
 ItemGetManager.getKeysanityItem = _no_keysanity_branch
 _original_item_drop_changes = ItemDropDatasheetFixes.makeDatasheetChanges
 ItemDropDatasheetFixes.makeDatasheetChanges = _drop_buffs
+for _name in BOSS_METHODS:
+    setattr(BossDropRandomizer, _name, _boss(getattr(BossDropRandomizer, _name)))
+BossDropRandomizer.armosKnightChanges = _armos_knight_changes
+# The ghost's reward is a drop at its grave (ap_drop.GHOST_DROP), in place of LASR's item-get after the grave's event
+FreeGiftsRandomizer.ghostRewardChanges = lambda self: None
 _original_fishing_fixes = FishingDatasheetFixes.__init__
 FishingDatasheetFixes.__init__ = _fishing_spots
 FlagManager.addCustomFlags = _add_ap_flags
@@ -490,7 +536,8 @@ class APModsProcess(mod_generator.ModsProcess):
                  f"no_piece_of_power = {self.settings.get('Disable Piece of Power', False)}\n"
                  f"easy_fishing = {self.settings.get('Easy Fishing', False)}\n"
                  f"no_30fps_drops = {NO_30FPS_DROPS[self.settings.get('No 30 FPS Drops', 'On emulators')]}\n"
-                 f"instant_pickups = {self.settings.get('Instant Pickups', False)}\n")
+                 f"instant_pickups = {self.settings.get('Instant Pickups', False)}\n"
+                 f"bouncy_items = {self.settings.get(ap_drop.BOUNCY_SETTING, False)}\n")
         path.write_text(text + f"\n[archipelago]\nseed_hash = {self.seed_hash}\n")
         # What each location holds, so the found text names it before the client connects (DESIGN.md)
         with open(self.config_dir / "ap_names.txt", "w", encoding="utf-8", newline="\n") as f:
@@ -747,12 +794,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         ap_map.add(proc.file_manager, proc.config_dir,
                    {loc: i for loc, i in patch["location_ids"].items() if loc not in optional}, PLACEHOLDER_KEY,
                    patch["settings"].get("Shuffled Dungeons", False))
+    drops = ap_drop.add(proc)  # after the map, which finds the AP chests by the item that Bouncy Items replaces
     try:
         for path in (ap_assets.MODEL, ap_assets.PLAYER_GHOST, ap_assets.UI) + ((ap_assets.GAME,) if map_tracker else ()):
             ap_assets.install(args.romfs, proc.romfs_dir, path)
     except ap_assets.AssetError as e:
         print(e)
         return 1
+    ap_drop.write_drops(drops, [proc.romfs_dir, args.romfs], proc.config_dir)  # the AP model is the mod's
     print(f"Mod written to {args.out}")
     return 0
 

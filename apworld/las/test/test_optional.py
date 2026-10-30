@@ -36,7 +36,7 @@ class TestDefaultOptional(LASTestBase):
             {"40-seashell-reward", "50-seashell-reward"}
         self.assertEqual(set(self.world.optional), expected)  # the rapids owl statue gives nothing without owls
         self.assertLessEqual(set(self.world.optional), set(self.world.shuffled))
-        self.assertFalse(set(self.world.optional) & (set(self.world.locked) | set(self.world.plain)))
+        self.assertFalse(set(self.world.optional) & set(self.world.locked))
         patch = self.world.patch_data()
         for loc in self.world.optional:
             self.assertEqual(patch["placements"][loc], "ap-item", loc)
@@ -157,8 +157,7 @@ class TestNothingOptional(LASTestBase):
 
 
 class TestOtherCategoriesUnchanged(LASTestBase):
-    """Places passed on the way stay vanilla when off: locked checks where the logic can need their item, else no
-    locations."""
+    """Places passed on the way stay vanilla when off: checks holding their default item, locked."""
     options = {name: False for name in CATEGORY_OPTIONS if name not in OPTIONAL_CATEGORIES}
 
     def test_vanilla(self) -> None:
@@ -168,8 +167,8 @@ class TestOtherCategoriesUnchanged(LASTestBase):
         for loc in others:
             if loc in self.world.removed or LOGIC[loc]["subtype"] == "shop" and loc not in CATEGORIES["Shop_Items"]:
                 continue
-            self.assertTrue(loc in self.world.locked or loc in self.world.plain, loc)
-        self.assertIn("D2-genie", self.world.plain)  # a boss's heart container
+            self.assertIn(loc, self.world.locked)
+        self.assertIn("D2-genie", self.world.locked)  # a boss's heart container
         self.assertIn("shop-slot3-1st", self.world.locked)  # the shovel or the bow
 
 

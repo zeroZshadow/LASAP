@@ -2,7 +2,6 @@
 import re
 from typing import Any, Dict, Iterable, List, Optional, Set
 
-from .items import LOGIC_ITEMS
 from .lasr import CATEGORIES, COMPANIONS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC
 from .options import LASOptions
 
@@ -74,10 +73,14 @@ def removed_locations(options: LASOptions) -> Set[str]:
     return removed
 
 
-def fixed_locations() -> Set[str]:
+def fixed_locations(options: LASOptions) -> Set[str]:
     """Locations that keep their vanilla content and are no AP locations: the shop slots LASR does not shuffle (those
-    not in Shop_Items)."""
-    return {k for k in ITEM_LOCATIONS if LOGIC[k]["subtype"] == "shop" and k not in CATEGORIES["Shop_Items"]}
+    not in Shop_Items), and the Color Dungeon's blue rupees with Blue Rupees off (off means vanilla, not locked checks:
+    LASR leaves them plain rupees)."""
+    fixed = {k for k in ITEM_LOCATIONS if LOGIC[k]["subtype"] == "shop" and k not in CATEGORIES["Shop_Items"]}
+    if not options.blue_rupees:
+        fixed |= set(CATEGORIES["Blue_Rupees"])
+    return fixed
 
 
 def kept_locations() -> Set[str]:
@@ -102,19 +105,12 @@ def optional_locations(options: LASOptions) -> Set[str]:
 
 def unrandomized_locations(options: LASOptions) -> Set[str]:
     """Locations whose default item stays, as the options do not randomize them (instruments are decided by the
-    world). The world makes them checks or leaves them out by default_item_matters."""
+    world). The world makes them checks holding that item, locked."""
     unrandomized: Set[str] = set()
     for attribute, category in CATEGORY_OPTIONS.items():
         if attribute not in OPTIONAL_CATEGORIES and not getattr(options, attribute).value:
             unrandomized |= set(CATEGORIES[category])
-    return (unrandomized | kept_locations()) - fixed_locations()
-
-
-def default_item_matters(loc: str) -> bool:
-    """Whether an unrandomized location's default item can matter for finishing the seed. Such a location is a check
-    holding its default item, locked; any other is no AP location and the logic leaves its item out, so the player
-    never needs it. Seashells always count: every Seashell Mansion reward is a check."""
-    return LOGIC[loc]["content"] in LOGIC_ITEMS
+    return (unrandomized | kept_locations()) - fixed_locations(options)
 
 
 # The settings trackers get in the slot data ("settings"): those that decide which checks exist and what reaches them.
@@ -164,6 +160,7 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Unrandomizer Mode": False,
         "Randomize Enemies": bool(o.randomize_enemies),
         "Randomize Enemy Sizes": bool(o.randomize_enemy_sizes),
+        "Bouncy Items": bool(o.bouncy_items),  # read by the AP patcher (ap_drop.py) and the module, not by LASR
         "Chest Types": _CHEST_TYPES[o.chest_appearance.value],
         "Open Kanalet": bool(o.open_kanalet),
         "Open Mabe": bool(o.open_mabe),

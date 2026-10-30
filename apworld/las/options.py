@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from Options import (Choice, DeathLink, DefaultOnToggle, NamedRange, OptionGroup, PerGameCommonOptions, Range,
-                     StartInventoryPool, Toggle)
+                     StartInventoryPool, Toggle, Visibility)
 
 
 class Logic(Choice):
@@ -86,7 +86,8 @@ class Fishing(Toggle):
 
 
 class BlueRupees(Toggle):
-    """Shuffle the 28 blue rupees of the Color Dungeon."""
+    """Shuffle the 28 blue rupees of the Color Dungeon.
+    Off, they stay plain blue rupees and are no checks."""
     display_name = "Blue Rupees"
 
 
@@ -395,6 +396,15 @@ class RandomizeEnemySizes(Toggle):
     display_name = "Randomize Enemy Sizes"
 
 
+class BouncyItems(Toggle):
+    """The items of bushes, rocks, pots, trees, holes, dig spots, chests, owl statues, golden leaves, bosses and the
+    dungeons' falling keys come out as a bouncing ball, launched in a random direction: chests and owl statues throw
+    theirs out too. A ball can get away, over a wall, into water or out of reach; it is back when the room loads
+    again, and a chest closes again. Hidden: set it in the YAML (bouncy_items: true)."""
+    display_name = "Bouncy Items"
+    visibility = Visibility.spoiler
+
+
 class EasyFishing(DefaultOnToggle):
     """At the fishing pond the line never breaks, and Ol' Baron bites more often."""
     display_name = "Easy Fishing"
@@ -460,6 +470,7 @@ class LASOptions(PerGameCommonOptions):
     easy_fishing: EasyFishing
     randomize_enemies: RandomizeEnemies
     randomize_enemy_sizes: RandomizeEnemySizes
+    bouncy_items: BouncyItems
     death_link: DeathLink
     start_inventory_from_pool: StartingGear
 
@@ -475,5 +486,5 @@ OPTION_GROUPS = [
                           HintDistribution, Stealing, ChestAppearance]),
     OptionGroup("Gameplay", [Damage, MovementSpeed, Movement360, SkipSongCutscenes, InstantText, NiceHookshot,
                              DisableGuardianAcorn, DisablePieceOfPower, EasyFishing, RandomizeEnemies,
-                             RandomizeEnemySizes]),
+                             RandomizeEnemySizes, BouncyItems]),
 ]

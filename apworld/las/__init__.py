@@ -92,7 +92,6 @@ class LASWorld(World):
     locked: List[str]  # AP locations the options leave unrandomized: they hold their default item, locked
     optional: List[str]  # AP locations of activities the options leave out: after the goal, excluded
     vanilla: List[str]  # LASR item locations that keep their vanilla content and are no AP locations
-    plain: List[str]  # unrandomized locations whose default item never matters: no AP locations, left out of logic
     starting_items: List[str]  # LASR item names given at the start by options
     pre_fill_items: List[Item]
     replaced: Dict[str, str] = {}  # location -> the item it holds instead of its own (_replaced_by_starting_gear)
@@ -145,17 +144,15 @@ class LASWorld(World):
                 options.non_local_items.value |= {LASR_TO_ITEM[item] for item in items}
 
         removed = lasr_settings.removed_locations(options)
-        vanilla = lasr_settings.fixed_locations()
+        vanilla = lasr_settings.fixed_locations(options)
         unrandomized = lasr_settings.unrandomized_locations(options)
         if options.instruments == options.instruments.option_vanilla:
             started = {f"D{INSTRUMENTS.index(i) + 1}-instrument" for i in self.starting_instruments}
             unrandomized |= set(INSTRUMENT_LOCATIONS) - started
         optional = lasr_settings.optional_locations(options)
-        plain = {loc for loc in unrandomized if not lasr_settings.default_item_matters(loc)}
         self.removed = [loc for loc in ITEM_LOCATIONS if loc in removed]
         self.vanilla = [loc for loc in ITEM_LOCATIONS if loc in vanilla and loc not in removed]
-        self.plain = [loc for loc in ITEM_LOCATIONS if loc in plain and loc not in removed]
-        self.shuffled = [loc for loc in ITEM_LOCATIONS if loc not in vanilla and loc not in plain and loc not in removed]
+        self.shuffled = [loc for loc in ITEM_LOCATIONS if loc not in vanilla and loc not in removed]
         self.locked = [loc for loc in self.shuffled if loc in unrandomized]
         self.optional = [loc for loc in self.shuffled if loc in optional]
         self.pre_fill_items = []
@@ -169,12 +166,12 @@ class LASWorld(World):
                 "compass": options.dungeon_items, "stone-beak": options.dungeon_items}
 
     def _replaced_by_starting_gear(self) -> Dict[str, str]:
-        """Unrandomized locations (locked checks, or no AP location) whose item is starting gear
+        """Unrandomized locations (locked checks) whose item is starting gear
         (start_inventory_from_pool) that the pool would otherwise not hold: Archipelago takes starting gear out of the
         item pool, so such a location holds 50 Rupees instead (as StartingGear says) and its item joins the pool.
         The Trendy Game's prizes stay: the game gives them itself (kept_locations)."""
         in_pool = Counter({k: v["quantity"] for k, v in ITEM_DEFS.items()})
-        for loc in self.vanilla + self.plain + self.locked:
+        for loc in self.vanilla + self.locked:
             in_pool[self.content(loc)] -= 1
         for item in self.starting_items:
             in_pool[item] -= 1
@@ -185,7 +182,7 @@ class LASWorld(World):
                 continue
             lasr_item = ITEM_TABLE[name].lasr_name
             missing = count - max(0, in_pool[lasr_item])
-            for loc in [loc for loc in self.locked + self.plain if self.content(loc) == lasr_item and loc not in kept]:
+            for loc in [loc for loc in self.locked if self.content(loc) == lasr_item and loc not in kept]:
                 if missing <= 0:
                     break
                 replaced[loc] = ITEM_TABLE[FILLER_ITEM].lasr_name
@@ -243,7 +240,7 @@ class LASWorld(World):
         pool = Counter({k: v["quantity"] for k, v in ITEM_DEFS.items()})
         for category in ("Overworld_Owl_Statues", "Dungeon_Owl_Statues"):
             pool["rupee-20"] += sum(1 for loc in CATEGORIES[category] if loc not in self.removed)
-        for loc in self.vanilla + self.plain + self.locked:
+        for loc in self.vanilla + self.locked:
             pool[self.content(loc)] -= 1
         for item in self.starting_items:
             if pool[item] > 0:
@@ -465,7 +462,7 @@ class LASWorld(World):
     # --- output ---
 
     def unrandomized(self) -> List[str]:
-        return self.vanilla + self.plain + self.locked
+        return self.vanilla + self.locked
 
     def seed_hash(self) -> str:
         return hashlib.sha256(f"{self.multiworld.seed_name}:{self.player}".encode()).hexdigest()[:8]
@@ -524,7 +521,7 @@ class LASWorld(World):
     def patch_data(self) -> Dict[str, Any]:
         kept = lasr_settings.kept_locations()
         placements = {loc: self.content(loc) if loc in kept else "ap-item" for loc in self.shuffled}
-        placements.update({loc: self.content(loc) for loc in self.vanilla + self.plain})
+        placements.update({loc: self.content(loc) for loc in self.vanilla})
         # Starting keys LASR's start event gives per dungeon (the Start With settings); as a starting item a key would
         # count for the level Link wakes up in.
         given = tuple(f"{kind}-D" for kind in ("key", "nightmare-key")

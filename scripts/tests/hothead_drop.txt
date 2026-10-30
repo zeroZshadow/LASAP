@@ -1,0 +1,23 @@
+# Boss drops (DESIGN.md, Drop actor), a real defeat: in Hot Head's room (Lv08TurtleRock_02D) DBG hit hits its
+# contents (the part inside its mask) at the power of its life; it speaks as it dies, then its dead event pops its drop
+# where the heart container would start; Link takes it. Run after boot_file1; resets the boss's and the drop's flags.
+# Screenshots: hothead_pop, hothead_rest.
+guard off hurt
+send DBG setflag DoorOpen_Boss_L08_02D 0
+send DBG setflag Lv8BossDemoClear 1
+send DBG setflag APBossDrop_D8-hothead 0
+send DBG setflag APDropGet_D8-hothead 0
+warp Lv08TurtleRock 52.5 0 21.75
+poll OK.hit 10 DBG hit EnemyDeguFlame DeguFlameContents:DamageColCom
+until textready 30
+dismiss 30
+poll FLAG.APBossDrop_D8-hothead.1 30 DBG flag APBossDrop_D8-hothead
+poll OK.drop.-?[0-9] 8 DBG drop
+shot hothead_pop.png
+droprest 20
+shot hothead_rest.png
+until free 30
+gotodrop 5
+until textready 10
+dismiss 20
+poll FLAG.APDropGet_D8-hothead.1 5 DBG flag APDropGet_D8-hothead

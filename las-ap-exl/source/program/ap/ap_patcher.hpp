@@ -57,6 +57,9 @@ namespace AP {
     // Item ids that show another item's model (the placeholder's variants, LASR's Dampe rewards): "<item id> <the
     // item's id>" lines; the item-get holds them up in that item's pose (ap_item_pose.cpp).
     constexpr const char* POSES_PATH = "sd:/config/lasr-exl/ap_poses.txt";
+    // Per drop actor, its model's bounds: "<LEB key> <centre x> <y> <z> <radius>" lines (patcher ap_drop.py,
+    // write_drops; ap_drop.cpp); the patcher's checks want one for every drop actor.
+    constexpr const char* DROPS_PATH = "sd:/config/lasr-exl/ap_drops.txt";
     // In-game hints that become server hints when read: "<n> <flag> <slot> <location id>" lines (patcher ap_hints.py).
     constexpr const char* HINTS_PATH = "sd:/config/lasr-exl/ap_hints.txt";
     // The map tracker's icons, written by the patcher when the option is on (map_tracker.cpp).
@@ -67,4 +70,21 @@ namespace AP {
     constexpr std::string_view MAP_DOT_LABEL = "APMapDot";
     // After the prefix, the icon's look other than in logic: partly in logic, out of logic, collected.
     constexpr const char* MAP_LOOK_MARKS = "PXC";
+    // The drop actor (ap_drop.cpp): its actor id, an empty one of the game's actor table, and its name, which is
+    // also its Npc.gsheet row (patcher: ap_drop.DROP_ACTOR_ID, DROP_ACTOR). Its LEB parameter 0 is how it appears
+    // (patcher ap_drop.Motion): hops up out of the ground (a bush's, rock's or pot's), on an arc from what its first LEB
+    // link names (a bonked tree's crown, a bombed hole), falls onto its spawn from above (a dungeon key, a golden
+    // leaf), so again whenever Link enters its zone, hops out when dug up where it is buried (a dig spot), or hops out
+    // where its boss's BossItemDrop starts the item, in place of it (so without standing when its room loads: the item
+    // falls into a pit), or shows where it stands (the ghost's reward); with Bouncy Items, out of the lid of the chest
+    // or off the top of the owl statue its first LEB link names.
+    constexpr u16 DROP_ACTOR_ID = 0xa7;
+    constexpr const char* DROP_ACTOR = "ItemAPDrop";
+    enum DropMotion {
+        DROP_HOPS = 0, DROP_TREE = 1, DROP_HOLE = 2, DROP_FALLS = 3, DROP_REFALLS = 4, DROP_BURIED = 5, DROP_CHEST = 6,
+        DROP_OWL = 7, DROP_BOSS = 8, DROP_BOSS_PIT = 9, DROP_STANDS = 10
+    };
+    // A chest's drop's switch that holds its chest's opened flag, which taking the drop sets (patcher:
+    // ap_drop.DROP_OPENED)
+    constexpr int DROP_OPENED_SWITCH = 2;
 }

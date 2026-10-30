@@ -33,6 +33,8 @@ SLOT = os.environ.get("LASAP_SLOT", "Link")
 LOGS = {"client": DIR / "client.log", "server": DIR / "server.log", "peer": DIR / "peer.log"}
 GAME_PORT = int(os.environ.get("LASAP_GAME_PORT", str(emu.instance_port(emu.INSTANCE))))
 DEBUG_PORT = GAME_PORT + 100
+DROP_STILL = 0.05  # a drop actor's body at rest: each velocity component at most this (units a second)
+DROP_FLOATING = 0.5  # in water, where a ball (Bouncy Items) drifts and dips: each component at most this
 REPLY = re.compile(r"^(OK|ERR|DONE|FAIL|HELD|HOLDS|CHOICE|STATE|FLAG|UI|FRAME|POPFRAME|PEEK|RECV|MAP|TEXT|MUSIC|map=)")
 
 
@@ -189,7 +191,19 @@ def goto(x: float, y: float, z: float) -> str:
     floor: warp to a target in another room. The game ignores `pos` during an event, so it waits for none first."""
     until("event=0", 10)
     game().request(f"DBG pos {x:.2f} {y:.2f} {z:.2f}", r"^OK pos")
-    return settle(x, z)
+    return landed(settle(x, z), x, y, z)
+
+
+def landed(line: str, x: float, y: float, z: float) -> str:
+    """Stops the script unless a teleport put Link on the floor at its target: a bush (ObjGrass), rock or pot there is
+    solid, and Link stands on top of it or is pushed off it (TESTING.md, Finding a location)."""
+    pos = position(line)
+    if pos is None:
+        raise SystemExit(f"no player position: {line}")
+    if pos[1] > y + 1 or abs(pos[0] - x) > 0.75 or abs(pos[2] - z) > 0.75:
+        raise SystemExit(f"Link landed at ({pos[0]:.2f}, {pos[1]:.2f}, {pos[2]:.2f}), not on the floor at "
+                         f"({x:.2f}, {y:.2f}, {z:.2f}): on or in something solid there; {line}")
+    return line
 
 
 def settle(x: float, z: float, seconds: float = 10) -> str:
@@ -207,6 +221,33 @@ def settle(x: float, z: float, seconds: float = 10) -> str:
             raise SystemExit(f"Link did not settle at ({x:.2f}, {z:.2f}): {line}")
         last = pos
         time.sleep(0.1)
+
+
+def drop_rest(seconds: float, show: bool = False) -> tuple[float, float, float] | None:
+    """Polls DBG drop every 0.2 s until the drop actor is active, its body still and where it was at the poll before
+    (returned), or gone once it was there (None); stops the script when neither happens within `seconds`. A bouncing
+    item can stand at the top of two bounces in a row. Floating, still allows DROP_FLOATING."""
+    end = time.time() + seconds
+    last = seen = None
+    while True:
+        reply = game().request("DBG drop", r"^OK drop")
+        if show and reply != seen:
+            print(reply)
+        seen = reply
+        m = re.search(r"OK drop ([-\d.]+),([-\d.]+),([-\d.]+) active=1", reply)
+        at = tuple(float(v) for v in m.groups()) if m else None
+        v = re.search(r" v=([-\d.]+),([-\d.]+),([-\d.]+)", reply)
+        limit = DROP_STILL if " water=- " in reply else DROP_FLOATING
+        still = v is None or all(abs(float(c)) <= limit for c in v.groups())
+        near = at is not None and last is not None and all(abs(a - b) <= limit * 0.2 for a, b in zip(at, last))
+        if near and still:
+            return at
+        if at is None and last is not None and reply.startswith("OK drop -"):
+            return None
+        if time.time() > end:
+            raise SystemExit(f"no drop actor at rest: {reply}; {state()}")
+        last = at if at is not None else last
+        time.sleep(0.2)
 
 
 def poll(test, seconds: float, what: str, interval: float = 0.05) -> str:
@@ -478,8 +519,20 @@ def run(script: Path, trace: str | None = None) -> None:
             at = time.time()
             game().request(f"DBG warp {rest}", r"^OK warp", 30)
             wait_free(40, since=at)
+            landed(state(), *[float(v) for v in rest.split()[1:4]])
         elif op == "goto":
             print(goto(*[float(v) for v in rest.split()][:3]))
+        elif op == "droprest":
+            # droprest [secs]: waits until the drop actor whose Fall ran last (DBG drop) is active and at rest, or
+            # gone (picked up, fallen out of the world) once it was there, printing where it goes
+            drop_rest(float(rest or 10), True)
+        elif op == "gotodrop":
+            # gotodrop [secs]: once the drop actor whose Fall ran last (DBG drop) is active and has come to rest, puts
+            # Link on it, which picks it up; no settling, as the pickup's event starts at once
+            at = drop_rest(float(rest or 10))
+            if at is None:
+                raise SystemExit(f"the drop actor is gone; {state()}")
+            print(game().request(f"DBG pos {at[0]:.2f} {at[1]:.2f} {at[2]:.2f}", r"^OK pos"))
         elif op == "check":
             # check <regex>: stops the script unless the STATE line matches
             line = state()

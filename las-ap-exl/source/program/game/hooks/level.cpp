@@ -8,11 +8,13 @@
 
 namespace {
     std::string g_CurrentLevel;
+    u32 g_LoadCount = 0;
 
     HOOK_DEFINE_TRAMPOLINE(SetCurrentLevel) {
         static void Callback(Game::StrView* level, Game::StrView* locator, Game::Vec3* pos) {
             Orig(level, locator, pos);
             g_CurrentLevel.assign(level->data, level->size);
+            g_LoadCount++;
         }
     };
 
@@ -28,6 +30,7 @@ namespace {
 
 namespace LevelSystem {
     std::string GetCurrentLevel() { return g_CurrentLevel; }
+    u32 LoadCount() { return g_LoadCount; }
 
     void LoadLevel(const char* level, Game::Vec3 pos) {
         Game::SetGameState(Game::GetFramework()->gameState, kReloadFromSave, false);

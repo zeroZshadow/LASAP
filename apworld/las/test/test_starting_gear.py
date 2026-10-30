@@ -31,16 +31,17 @@ class TestStartingGearAtLockedLocations(StartingGearBase):
         self.assert_gear_in_pool()
 
 
-class TestStartingGearPlain(StartingGearBase):
-    """With Boss Drops off the bosses' heart containers are no AP locations and Dampe's is the pool's only one; two
-    starting Heart Containers make one boss hold 50 Rupees in the patch, and the pool holds both."""
+class TestStartingGearBossDrops(StartingGearBase):
+    """With Boss Drops off the bosses' heart containers are locked and Dampe's is the pool's only one; two starting
+    Heart Containers make one boss hold 50 Rupees, and the pool holds both."""
     options = {"boss_drops": False, "start_inventory_from_pool": {"Heart Container": 2}}
 
-    def test_patch_and_pool(self) -> None:
+    def test_location_and_pool(self) -> None:
         replaced = [loc for loc, item in self.world.replaced.items() if item == "rupee-50"]
         self.assertEqual(len(replaced), 1)
-        self.assertIn(replaced[0], self.world.plain)
-        self.assertEqual(self.world.patch_data()["placements"][replaced[0]], "rupee-50")
+        self.assertIn(replaced[0], self.world.locked)
+        item = self.multiworld.get_location(LOCATION_NAMES[replaced[0]], self.player).item
+        self.assertEqual(item.name, "50 Rupees")
         self.assert_gear_in_pool()
 
 

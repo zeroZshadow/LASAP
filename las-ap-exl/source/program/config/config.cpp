@@ -61,6 +61,7 @@ namespace {
             tweaks.no_30fps_drops = on ? FpsDrops::On : value == "emulator" ? FpsDrops::Emulator : FpsDrops::Off;
         }
         else if (key == "instant_pickups" && on) tweaks.instant_pickups = true;
+        else if (key == "bouncy_items" && on) tweaks.bouncy_items = true;
     }
 }
 

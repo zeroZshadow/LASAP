@@ -1,11 +1,15 @@
 """Static checks on patcher output: every chest location holds the AP placeholder (the model variant of
-`location_models`) with its local id; with "Texture + Size" chests, the chests holding a seashell and only those are
+`location_models`), with Bouncy Items the drop actor's chest key, with its local id; with "Texture + Size" chests, the chests holding a seashell and only those are
 the seashell chest. Every randomized heart piece and seashell actor has a unique index above
 the received range (DESIGN.md, item model). With the map tracker on, every AP location but the optional ones has one icon in ap_map.txt
 and every icon its datasheet row and a name. Below eight required instruments, the egg's event checks single instruments instead of
 all of them. With in-game hints, every hint source shows its own message, which fits the text box, and a server hint
 sets its flag, which ap_hints.txt names with the hinted location. With Shuffled Dungeons, each dungeon door leads into
 the dungeon the patch's map names, whose exit and Fairy Queen warps (for the Color Dungeon) lead back out of that door.
+The drop actor's flowchart reads and holds every drop's take entry, every drop has its model's bounds and a linked one
+(a tree's, hole's, chest's, owl statue's or boss's) its link, and no small key or slime key stand-in is left. Each chest's launch flag (Bouncy Items) is
+used by that chest and its drop alone, among all actors of its level (the RomFS's rooms, as the mod has them) and the
+RomFS flowcharts' level flags; so is each owl statue's (Bouncy Items, Owl Gifts).
 
 python scripts/verify_patch.py <patch.aplas> <patcher output dir>
 """
@@ -14,7 +18,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "patcher"))
+from local_paths import local_path  # noqa: E402
 import ap_chest  # noqa: E402
+import ap_drop  # noqa: E402
 import ap_goal  # noqa: E402
 import evfl  # noqa: E402
 from RandomizerCore.Randomizers.chests import CHEST_ROOMS  # noqa: E402
@@ -37,6 +43,8 @@ for loc, room_name in CHEST_ROOMS.items():
     found = [(c.parameters[1], c.parameters[2]) for c in chests]
     item_key = item_defs[models[loc]]["item-key"] if loc in models else ""
     key = variant_key(item_key) if item_key else PLACEHOLDER_KEY
+    if patch["settings"].get(ap_drop.BOUNCY_SETTING) and loc in ap_drop.CHEST_LOCATIONS:
+        key = ap_drop.DROP_CHEST_KEY
     want = (key.encode(), patch["location_ids"][loc])
     if len(want[0]) > VARIANT_KEY_MAX:
         bad += 1
@@ -237,6 +245,65 @@ if patch["settings"].get("Shuffled Dungeons"):
             bad += 1
             print(f"FAIRY QUEEN exits {exits}, want {locator}")
     print(f"dungeon doors={doors} bad={bad}")
+
+# Drop actor: its flowchart reads (a duplicate entry name breaks the entry dictionary the game looks its entries up in)
+# and holds the take entry (LEB parameter 3) of every drop actor; every drop actor has its model's bounds, and a tree's
+# or hole's a link; no small key or slime key stand-in is left (LASR's are drops).
+drop_flow = evfl.EventFlow()
+try:
+    drop_flow.read((Path(sys.argv[2]) / "atmosphere/contents/01006BB00C6F0000/romfs/region_common/event" /
+                    ap_drop.EVENT_FILE).read_bytes())
+    entries = {e.name for e in drop_flow.flowchart.entry_points}
+except AssertionError:
+    entries = set()
+    bad += 1
+    print(f"DROP {ap_drop.EVENT_FILE} does not read: its entry dictionary does not match its entries (a duplicate name)")
+takes = {}
+keys = []
+unlinked = []
+drop_keys = set()
+launches = {}  # per level, its chest drops' launch flags
+for path in level_dir.rglob("*.leb"):
+    for actor in Room(path.read_bytes()).actors:
+        if actor.type == ap_drop.DROP_ACTOR_ID:
+            takes[actor.parameters[3].decode()] = path.stem
+            drop_keys.add(actor.key)
+            if actor.parameters[0] in ap_drop.LAUNCHED:
+                launches.setdefault(path.parent.name, []).append((path.stem, tuple(actor.switches[0])))
+            if actor.parameters[0] in ap_drop.LINKED and actor.relationships.x == 0:
+                unlinked.append(path.stem)
+        elif actor.type == ap_drop.SMALL_KEY_ID or (
+                actor.type == ap_drop.SLIME_KEY_ID and isinstance(actor.parameters[3], bytes) and
+                actor.parameters[3].decode() in ap_drop.DIG_ROOMS):
+            keys.append(path.stem)
+missing = sorted(loc for loc in takes if loc not in entries)
+if missing and entries:
+    bad += 1
+    print(f"DROP take entries missing: {[(loc, takes[loc]) for loc in missing]}")
+if keys:
+    bad += 1
+    print(f"DROP small key or slime key stand-ins left in {keys}")
+if unlinked:
+    bad += 1
+    print(f"DROP linked drops (tree, hole, chest, owl statue, boss) without a link in {unlinked}")
+measured = {int(line.split()[0]) for line in
+            (Path(sys.argv[2]) / "config/lasr-exl" / ap_drop.DROPS_FILE).read_text().splitlines()}
+if drop_keys - measured:
+    bad += 1
+    print(f"DROP drop actors without their model's bounds: {sorted(f'{key:016X}' for key in drop_keys - measured)}")
+for level, chests in launches.items():
+    users = {}  # level flag: the actors that use it
+    for room in (local_path("romfs") / "region_common/level" / level).glob("*.leb"):
+        modded = level_dir / level / room.name
+        for actor in Room((modded if modded.exists() else room).read_bytes()).actors:
+            for flag in {index for kind, index in actor.switches if kind == ap_drop.LEVEL_FLAG}:
+                users.setdefault(flag, []).append(actor.name.decode(errors="replace"))
+    for room, (kind, flag) in chests:
+        if kind != ap_drop.LEVEL_FLAG or flag in ap_drop.FLOW_LEVEL_FLAGS or len(users.get(flag, [])) != 2:
+            bad += 1
+            print(f"DROP {room}: the chest's or owl statue's launch flag {(kind, flag)} is not its own: "
+                  f"{users.get(flag)}")
+print(f"drops={len(takes)} take entries={len(entries)} bad={bad}")
 
 # Instruments Required: below eight, the egg's event checks single instruments instead of all of them.
 required = patch["settings"].get("Instruments Required", 8)

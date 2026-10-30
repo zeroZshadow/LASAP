@@ -221,8 +221,8 @@ NpcGhost_FollowLink 0x08ec1d20 f companion +0x38: while following, the root to L
 NpcGhost_UpdateTask 0x08ec25f0 f queue +0x100 task: NpcGhost_Update while (flags & 0x40000117) == 0x117
 NpcGhost_Update 0x08ec2630 f per frame
 NpcGhost_ScenarioTimer 0x08ec2e20 f the 40-frame timer's callback: +0x2c3 = 1, event Scenario:Lv5GhostGoGrave (TakeGhostGrave) or Scenario:Lv5GhostGoHouse1
-TreasureBox_Init 0x0919e0d0 f switch 0 on: opened (+0x320)
-TreasureBox_Open 0x0919f4b0 f sets switch 0
+TreasureBox_Init 0x0919e0d0 f opened flag on (LEB switch 1; slot 0 of the record at +0x250): opened (+0x320)
+TreasureBox_Open 0x0919f4b0 f sets the opened flag (as Init reads it)
 ObjTreasureBox_PopEnemy 0x091ad290 f (out enemy sp, chest): a $ENEMY chest's enemy, EnemyZolGreen (0x1b, LEB param 0 int 3) at its root + (0, 0.7, 0.1), its zone, its parent as owner; LASR's enemy randomizer swaps the id (0xca92c4)
 ObjTreasureBox_Factory 0x091a2820 f ActorTable id 0xf7
 Player_AttackCols_Dtor 0x0921c120 f
@@ -715,7 +715,8 @@ AddItemIdTable 0x09bb6d60 l Inventory_AddItemID jump table, 0x7f s32 offsets
 str_spine_a 0x09bbaecb l "spine_a": Link's upper-body bone
 str_drsb_Player 0x09be06c5 l "tailor/Player.drsb"
 str_NpcGhost 0x09befdf4 l "NpcGhost": the row key and the actor table's name
-NpcCollisionFilters 0x09c06080 l 7 u32 collision filters
+NpcCollisionFilters 0x09c06080 l 7 u32 collision filters: bits 0-4 the layer, 5-31 the layers it collides with
+Physics_FilterPair 0x08d2d920 f physics scene filter callback: a pair collides when each word's mask (bits 5-31) holds the other's layer (bits 0-4), unless both share a nonzero group word
 Actor_vtable 0x0a054f28 l the game Actor; base slots +0x00..+0x120
 ActorSerial 0x0a055050 l counter -> actor +0xa8
 GroundQueryCache_vtable 0x0a055a70 l 0x30-byte cache {vtable, pad, Vec4 pos, u32 attribute, bool valid}; NpcComponent +0x2b0
@@ -827,7 +828,7 @@ PlayerAnimationSheet_ptr 0x0a1bef70 l -> shared_ptr PlayerAnimation.gsheet
 GlobalSave 0x0a1bf200 l the save image: file header via +0x5f00, body via +0x5f20, header +0x6160, SaveCurrent +0x6168, map pins +0x6170 (pointer slots)
 SaveCurrent 0x0a1c46e0 l 0x160 bytes (GlobalSave_Reset, SaveCurrent_LoadKeepLocation)
 EventFlags_ptr 0x0a1c5120 l
-LevelFlags 0x0a1c5140 l level flags (EventFlags +0x20, 256 bits), switch type 0
+LevelFlags 0x0a1c5140 l level flags (EventFlags +0x20, 256 bits), switch type 0; +0x58 the bit table
 DungeonItems_ptr 0x0a1c51b0 l
 PanelPieceSetBits 0x0a1c51e0 l {u8* bits, s32 bytes 2, s32 bits 13}: PanelDungeonPieceSet (item 115) owned
 PanelPieceBits 0x0a1c5208 l {u8* bits, s32 bytes 7, s32 bits 51}: chamber stones (item 114) owned; CranePrize kind 0x14
@@ -1591,3 +1592,109 @@ GameState_vtable 0x0a0c8300 l the game state machine (Framework +0x4a8, 0xe0 byt
 TitleScene_vtable 0x0a0c89c0 l the scene of the intro and the title screen
 FileMenusScene_vtable 0x0a0c6740 l the scene of the file menus (file select, name entry)
 LevelScene_vtable 0x0a0c6f90 l the scene of a level, from the start of its load (SceneHolder_Lock's type)
+ActorArgs_Dtor 0x085359f0 f releases the owner and the params' members
+Item_IsSideView 0x08dba710 f (position*): the area there is a side view
+ItemActor_Ctor 0x08dba880 f (actor, ActorArgs*, StringView* row key, u8 item id, u32 count, pose pair*): the item base
+ItemNpcComponent_Ctor 0x08dc7f10 f (component, ComponentName*, StringView* row key)
+ItemNpcComponent_StartEntry 0x08dc8750 f component vtable +0x178 of the item base: runs a trigger's entry
+ItemNpcComponent_BuildComponents 0x08dc9530 f component vtable +0x388 of the item base
+ItemNpcComponent_Update 0x08dca030 f component vtable +0x3c8 of the item base: water lift, traits on landing, rest; not during events
+NpcPhysics_ApplyTraits 0x08e67df0 f (body, traits row): mass, linear and angular damping, axis locks
+SmallKey_Factory 0x08dcebb0 f the actor table's factory of ItemSmallKey
+SmallKey_Construct 0x08dcf220 f (out, ActorArgs*): make_shared of ItemSmallKey
+SmallKey_MakeComponent 0x08dcf8a0 f actor vtable +0x128 (actor, name*) -> sp x8: the NPC component, row ItemSmallKey
+SmallKeyComponent_Share 0x08dcff40 f (out, component): its shared_ptr and self pointer
+SmallKey_StartFall 0x08dd22f0 f (component): the Fall action: body dynamic, still, 10 units above the spawn; waits for the body
+Actor_HasComponent 0x094ad490 f (actor, name, length)
+Node_SetWorldPos 0x094bad30 f (node, Vec3*): guess
+ObjTree_DropItem 0x091b5f30 f (tree): a bonked tree's drop: Enemy_DropItems from the crown (+0x478 +0x6c, +0.5) at speed +0x478 +0x68 toward its first rail link's point, else toward Link
+AreaShellDropper_Drop 0x085895a0 f (dropper): a bombed hole's seashell through Enemy_DropItems; LASR hooks it at +0x15c
+AreaShellDropper_DropStart 0x085898c0 f (dropper): virtual +0x138: where its drop starts, 2.25 above it
+AreaShellDropper_DropLaunch 0x08589920 f (dropper, item...): virtual +0x140: launches the drop at 10.8 toward its first rail link's point, else itself
+ObjGrass_DropItem 0x090aa3e0 f guess (owner by address order): a cut bush's drop, the item its LEB parameter names, else table 0x11 (0x08da16e0), through Enemy_DropItemsDefault
+ObjRock_DropItem 0x0914db10 f guess (owner by address order): a lifted rock's drop, as the bush's
+ObjPot_DropItem 0x0902ee50 f guess (owner by address order): a pot's drop; skips ids 0x109 and 0x1eb, checks a switch for ObjHousePot (0xeb); LASR hooks its start
+Enemy_DropItemsDefault 0x08d9f7e0 f (actor, ...): Enemy_DropItems with the default callbacks (DropCallbacks_InitDefault)
+DropCallbacks_InitDefault 0x08d9dd10 f the default drop callbacks: +0x30 the start (Drop_DefaultStart), +0x60 the launch (Drop_DefaultLaunch)
+Drop_DefaultStart 0x08d9df40 f (actor, id, index, count): the root's world position + (0, 0.5, 0); with count >= 2 also 0.5 out at angle 2 pi index / count
+Drop_DefaultLaunch 0x08d9e190 f (actor, id, index, count): (0, 4, 0); with count >= 2 (sin a, 4, cos a) on the same fan
+Drop_LaunchVelocity 0x08da1880 f (f32 speed, Vec3* from, Vec3* to): velocity of that speed that lands on to under gravity -9.81, the higher arc; 45 degrees plus half the slope when out of reach
+ItemActor_vtable 0x0a0cdac0 l the item base's actor vtable (ItemActor_Ctor)
+ItemComponent_vtable 0x0a0cdd50 l the item base's NPC component vtable
+ItemActor_IsA 0x08dbb250 f actor vtable +0x68 of the item base: (actor, type id address)
+ItemComponent_IsA 0x08dc8120 f component vtable +0x68 of the item base: (component, type id address)
+ItemActor_ZoneEnter 0x08dbc410 f actor vtable +0x100 of the item base: clears the component's +0x2e4 and the actor's +0x30c
+ItemActor_MakeComponent 0x08dbc420 f actor vtable +0x128 of the item base: the NPC component with the row key at actor +0x2a8
+ItemNpcComponent_MakeEventChara 0x08dc8a30 f component vtable +0x220 of the item base (out x8, component, name*, ...): NpcComponent_MakeEventChara, its action handler (+0x400) wrapped with the item base's actions
+NpcComponent_Appear 0x08e4c190 f component vtable +0x98 (component, bool quiet): enables the actor
+SmallKey_MakeCollision 0x08dd0910 f component vtable +0x210 (out x8, component, name*, ...): NpcComponent_MakeCollision, then slots on the body's made (+0x1c8) and lost (+0x220) signals
+SmallKey_MakeEventChara 0x08dd0cb0 f component vtable +0x220: the item base's, its action handler wrapped with Fall
+BodyCollision_TypeId 0x0a1af3a8 l the type id of a collision with a body
+SlimeKey_CheckPop 0x08da35b0 f ItemSlimeKey component vtable +0x88: item id 0x19 on a dig spot: dug up there (Item_DugUp); else the row's popConditions
+SlimeKey_Appear 0x08da3770 f ItemSlimeKey component vtable +0x98 (component, bool quiet): enables the actor; unless quiet its body's velocity (0, 4, 0)
+Item_OnDigSpot 0x08da3a90 f (item component): a dig spot of the scene's dig map is at the item's root
+Item_DugUp 0x08da3cb0 f (item component): the dig spot at the item's root is dug up
+EnemyReactionComp_Ctor 0x085f2b70 f (component, ComponentArgs*, config*): an enemy's health and reactions (ACTORS.md, Enemy damage)
+EnemyReactionComp_vtable 0x0a05fe00 l +0x88 life, +0x90 set, +0xb0 subtract, +0xb8 dead (life +0x168 < 1), +0xc8 kill
+EnemyReactionComp_Update 0x085f0310 f vtable +0xe0, then ReactionComp_Update
+ReactionComp_Ctor 0x08633ae0 f base of EnemyReactionComp
+ReactionComp_vtable 0x0a062d60 l
+ReactionComp_Update 0x086340a0 f requests reaction 11 (dead) while dead and +0xd9 is set
+ReactionComp_Request 0x08634ef0 f (comp, u8 kind, u8*, attacker*, hit*): pending bit when it outranks the current reaction and has a state
+ReactionComp_Clear 0x08635030 f (comp, kind)
+ReactionComp_Take 0x086350e0 f (comp, current state): takes the highest pending reaction, returns its state
+Hit_Dispatch 0x085b8990 f (hit*, u16* result, attacker*): DamageColComp_OnHit, then the damage comp's result callbacks
+DamageColComp_OnHit 0x085e9490 f (damage comp, attacker*, hit*): the damage lambda (+0x330), else Defence_Reaction
+Defence_Reaction 0x085b7d40 f (u8 attack type, defence*): the defence's reaction for the attack type
+DeguArmos_OnDamage 0x0876f360 f (actor, attacker*, hit*, 0): result-0 handler (damage comp signal +0x3b8): subtracts life; dead in phase 2 -> state 9 (DeguArmosEnd), else next phase
+DeguArmos_HitVerdict 0x0876ef10 f (actor, attacker*, hit*): the damage lambda's verdict: guard in states 2-6, 2 in state 0, else Defence_Reaction (types 7 and 13 hit)
+DeguArmos_OnGuard 0x0876f2b0 f (actor, attacker*, hit*): result-1 handler, the defence reaction
+DamageColComp_Ctor 0x085e4f70 f (comp, ComponentArgs*, params*): params +0x8 defence -> +0x278; result signals +0x360 (1), +0x3b8 (0), +0x410 (2)
+DamageColComp_vtable 0x0a05f8b0 l
+ReactionRecord_Copy 0x085b9350 f (record, attacker record*): copies the hit record (weak pointers, count +0x1da0, entries of 0x3b0 from +0x20); the reaction comp's +0x68
+ReactionRecord_Find 0x085b9ab0 f (record, hit*): index of the entry whose weak pointers +0x0 and +0x10 equal the hit's; adds nothing; -1 when none
+FindComponentIf 0x085f1ca0 f (out sp*, actor, std::function<bool(sp*)>*): Actor_ForEachComponent until the predicate holds (a per-file copy)
+EventAction_ChannelTime 0x08610120 f an event action with the parameters channel, time, restart, index on its actor; its component found through the parent's components (0x085fc430) (guess: an animation channel action)
+AttackColComp_Ctor 0x085d2cf0 f (comp, ...): attack collision comp, 0xf140 bytes; hit records at +0x2f0; std::function +0xf100
+AttackColComp_vtable 0x0a05eef8 l
+AttackColComp_Make 0x08547220 f (out sp*, actor, StringView* name, ...): makes and attaches an AttackColComp (DeguArmos:AttkColCom2)
+AttackCol_Vector 0x086cf110 f (attack comp): its +0xf100 std::function's Vec4, else a constant (guess: the push direction)
+DamageReaction_Apply 0x08cd2520 f (state, node, record, entry, ...): the Damage reaction's start; reads the entry's attack comp (+0x0) through AttackCol_Vector
+HitEntry_Matches 0x085b8270 f (entry, ptr0, ptr10): both entry weak pointers alive and equal
+DeguArmos_Defence 0x09bf43a0 l the DmgColCom's defence: multipliers 1, reaction bytes per attack type
+DeguArmos_SetPhase 0x0876f790 f (actor, phase): +0x172d, new life
+DeguArmos_ChangeState 0x0876f750 f (machine actor+0xff0, state)
+DeguArmos_Update 0x087712c0 f takes pending reactions (ReactionComp_Take) and changes state
+EnemyDeguZol_Create 0x087bb030 f actor table factory of EnemyDeguZol (Slime Eye's controller)
+DeguZol_SpawnParts 0x087beb30 f (actor): makes EnemyDeguZolPhase1 (+0x1328) and two EnemyDeguZolPhase2 (+0x1338, +0x1348), key 0
+DeguZol_ChangeState 0x087c0960 f (machine actor+0xff0, state)
+DeguZol_Update 0x087c1310 f state 10 (End) once both halves are in state 17 or 19
+DeguZol_OnPlayerCrash 0x087c4c50 f (closure {actor, ctrl}): Player signal 4 slot; state 4 (Phase1) unless in 4..10
+DeguZol_OnSplit 0x087c08a0 f (actor): Phase1's split callback: places and starts the halves, Phase1 state 0, own state 5
+DeguZol_PlaceHalves 0x087c0d30 f (actor): Phase1's stretch callback: halves to Phase1's side bones
+DeguZol_PlayerEnterEvent_Enter 0x087c2bc0 f event DeguZolStart through Phase1; its end: state 2
+DeguZol_ZolRain_Update 0x087c2f30 f spawns EnemyZolGreen (0x1b, key 0) around Link, three per rain, into +0x1310
+DeguZol_Phase1_Enter 0x087c2fc0 f Phase1 state 4 (first time, +0x1988) or 6
+DeguZol_Phase2Wait_Update 0x087c2ff0 f every 2 s state 6 (Dive); after 20 s with both halves alive state 7 (recombine)
+EnemyDeguZolPhase1_Create 0x087cdcf0 f actor table factory
+DeguZolPhase1_ChangeState 0x087db140 f (machine actor+0xff0, state)
+DeguZolPhase1_OnDamage 0x087daac0 f (actor, attacker*, hit*): result-0 slot of each P1Dmg comp: state 12 (Damage), 15 at stage 4
+DeguZolPhase1_SetStage 0x087ee810 f (actor, stage): stretch stage +0x1980 and the body shapes
+DeguZolPhase1_Damage_Enter 0x087e5020 f stage above 3: the split callback (+0x18f0); else the stage's damage animation
+DeguZolPhase1_Stretching_Enter 0x087e5970 f calls the stretch callback (+0x18c0)
+DeguZolPhase1_OnStretchSensor 0x087f0da0 f (actor, contact*): a dashing Link on the sensor: +0x198a, state 14
+DeguZolPhase1_PopFreeFall_Enter 0x087e3fe0 f puts the body at spawn x/z, y 10, and lets it fall
+EnemyDeguZolPhase2_Create 0x087fe660 f actor table factory
+DeguZolPhase2_HitVerdict 0x088037b0 f (actor, attacker*, hit*): Defence_Reaction, then guards hits from outside the eye's side
+DeguZolPhase2_OnDamage 0x088041a0 f (actor, attacker*, hit*, 0): P2Dmg result-0 slot: EnemyReaction_ApplyHit
+DeguZolPhase2_Start 0x088176a0 f (actor): after the split (guess: leaves Sleep)
+EnemyReaction_ApplyHit 0x08639c80 f (reaction comp, attacker*, hit*, bool): generic enemy damage; true when it took the hit (likely)
+PlayerState_Dash_CrashEnter 0x092aba70 f the Dash state's inner Crash state: bonk animation, emits Player signal 4 (Link's position, weak hit object)
+PlayerState_BaseEnter 0x09291370 f state vtable +0x10: calls +0x28 (enter) with the previous state
+PlayerState_BaseExit 0x09291430 f state vtable +0x20: calls +0x30 (exit) with the next state
+PlayerState_Swim_Update 0x092e1d20 f state 30 vtable +0x18
+PlayerState_Swim_Enter 0x092e3710 f state 30 vtable +0x28
+PlayerState_Swim_Exit 0x092e4670 f state 30 vtable +0x30
+PlayerState_Swim_Move 0x092e4bb0 f Player_Move with the animation's root motion; in-water test; velocity +0x190, useGravity off
+Node_SetWorldRotation 0x094bb2f0 f (node, Quat*): coordsNew.rot from a world rotation, Node_MarkDirty (likely)
+CharCtrlComp_OnTransformChanged 0x095bab60 f (closure): outside Move, the controller's foot position to the node's world position

@@ -681,6 +681,7 @@ namespace {
         SmChange<9>::InstallAtPtr(Game::Addr(kSmHooks[9].offset));
         static_assert(kSmHookCount == 10);
         MainLoopPass::InstallAtPtr(Game::Addr(kMainLoopPass));
+        InstallSpawnTrack();
     }
 }
 #endif

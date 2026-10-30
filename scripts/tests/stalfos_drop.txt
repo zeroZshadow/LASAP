@@ -1,0 +1,28 @@
+# Boss drops (DESIGN.md, Drop actor) in a level with two boss drops (Catfish's Maw: Master Stalfos's and the Slime
+# Eel's): Link walks west into Master Stalfos's last fight (Lv05CatfishsMaw_01B, the third fight's door open), DBG hit
+# hits it until its dead event starts, and its drop pops where the hookshot would start. With the level loaded again
+# the boss drops the item again and the drop stands there; Link takes it. Run after boot_file1; resets the boss's and the drop's flags. With its intro not seen (MasterStalfos4DemoClear off) the boss
+# says nothing before the fight; once seen it talks first.
+# Screenshots: stalfos_pop, stalfos_rest, stalfos_reload.
+guard off hurt
+send DBG setflag HookShotPop_Btl4_L05_01B 0
+send DBG setflag MasterStalfos4DemoClear 0
+send DBG setflag DoorOpen_Btl3_L05_01F 1
+send DBG setflag APBossDrop_D5-master-stalfos 0
+send DBG setflag APDropGet_D5-master-stalfos 0
+warp Lv05CatfishsMaw 31.5 0 6
+hold 0 -32767 0 until !free 10
+until free 90
+poll ERR.hit.event 30 DBG hit EnemyMasterStalfon
+poll FLAG.APBossDrop_D5-master-stalfos.1 30 DBG flag APBossDrop_D5-master-stalfos
+poll OK.drop.-?[0-9] 8 DBG drop
+shot stalfos_pop.png
+droprest 20
+shot stalfos_rest.png
+warp Lv05CatfishsMaw 25.5 0 6
+shot stalfos_reload.png
+poll ItemAPDrop@21.75,-?0.00,5.25 5 DBG enemies at ItemAPDrop
+send DBG pos 21.75 0 5.25
+until textready 10
+dismiss 20
+poll FLAG.APDropGet_D5-master-stalfos.1 5 DBG flag APDropGet_D5-master-stalfos

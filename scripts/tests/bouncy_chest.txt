@@ -1,0 +1,47 @@
+# Bouncy Items chests (DESIGN.md, Drop actor): opens Bottle Grotto's entrance chest (D2-entrance-chest,
+# Lv02BottleGrotto_08C, chest at 32.25 0 87.75), whose ball pops out while the chest's opened flag goes off again;
+# leaves the level at once, before the ball can come down on Link, and after the level loads anew the chest is closed:
+# opened again, it launches the ball, which Link takes where it comes to rest; then the chest stays open.
+# Run after boot_file1 on a mod patched with Bouncy Items; clears the chest's opened flag. Link lifts the two pots in
+# front of the chest first.
+# Screenshots: chest_ball_out (open, the ball out), chest_closed (after the reload), chest_taken (open for good).
+guard hurt
+send DBG setflag TBOX_OPEN_L02_08C 0
+warp Lv02BottleGrotto 35.25 0 89.25
+face left
+interact
+until carry=1+free 3
+face right
+tap 1
+until carry=0 3
+goto 33.75 0 89.25
+face left
+interact
+until carry=1+free 3
+face right
+tap 1
+until carry=0 3
+goto 32.25 0 89.25
+face up
+interact
+poll OK.drop.-?[0-9] 8 DBG drop
+poll FLAG.TBOX_OPEN_L02_08C.0 5 DBG flag TBOX_OPEN_L02_08C
+shot chest_ball_out.png
+warp Field 138.75 7.5 179.25
+warp Lv02BottleGrotto 32.25 0 89.25
+poll FLAG.TBOX_OPEN_L02_08C.0 5 DBG flag TBOX_OPEN_L02_08C
+shot chest_closed.png
+face up
+interact
+poll OK.drop.-?[0-9] 8 DBG drop
+# The location's item may be a trap.
+guard off hurt
+droprest 15
+gotodrop 5
+until textready 10
+dismiss 20
+poll FLAG.TBOX_OPEN_L02_08C.1 5 DBG flag TBOX_OPEN_L02_08C
+warp Field 138.75 7.5 179.25
+warp Lv02BottleGrotto 32.25 0 89.25
+poll FLAG.TBOX_OPEN_L02_08C.1 5 DBG flag TBOX_OPEN_L02_08C
+shot chest_taken.png

@@ -51,6 +51,7 @@ struct PatchConfig {
         bool easy_fishing = false;
         FpsDrops no_30fps_drops = FpsDrops::Emulator;
         bool instant_pickups = false;  // items Link finds and items from the server show as a popup, not an item-get
+        bool bouncy_items = false;  // the drop actor is a ball, launched at random (ap_drop.cpp; Bouncy Items)
     } tweaks;
 
     struct {

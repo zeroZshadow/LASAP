@@ -47,6 +47,11 @@ namespace AP::Test {
 
     // DBG input, press, advance, hold, choose, tapuntil, release, interact, guard and await; false for any other.
     bool InputCommand(const std::vector<std::string>& a);
+
+    // ---- Commands (test_commands.cpp) ----
+
+    // Keeps the actors made with no LEB key for the commands that find actors by name (DBG hit, enemies, comps).
+    void InstallSpawnTrack();
 }
 
 namespace AP::Puppets {

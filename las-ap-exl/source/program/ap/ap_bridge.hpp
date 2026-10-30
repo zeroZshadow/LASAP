@@ -115,6 +115,15 @@ namespace AP::Bridge {
     std::string ZolTrapState();
 #endif
 
+    // ---- The drop actor (ap_drop.cpp) ----
+
+    // Adds ItemAPDrop to the actor table; before any room loads.
+    void InstallDropActor();
+#ifdef LASAP_TEST
+    // DBG drop: the drop actor that fell last (TESTING.md, DBG drop), " -" when it is gone
+    std::string DropState();
+#endif
+
     // ---- The pose of items held up in item-gets (ap_item_pose.cpp) ----
 
     void InstallItemPoseHooks();

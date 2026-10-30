@@ -124,7 +124,7 @@ class FlagManager:
         self.addFlag('D4-owl-statue')
 
         self.addFlag('D5-owl-statue-triple-stalfos')
-        self.addFlag('D5-owl-statue-before-boss')
+        self.addFlag('D5-owl-statue-before-slime-eel')
 
         self.addFlag('D6-owl-statue-ledge')
         self.addFlag('D6-owl-statue-southeast')
@@ -132,7 +132,7 @@ class FlagManager:
 
         self.addFlag('D7-owl-statue-ball')
         self.addFlag('D7-owl-statue-kirbys')
-        self.addFlag('D7-owl-statue-3-of-a-kind-south')
+        self.addFlag('D7-owl-statue-hookshot-chest')
 
         self.addFlag('D8-owl-statue-above-smasher')
         self.addFlag('D8-owl-statue-below-gibdos')

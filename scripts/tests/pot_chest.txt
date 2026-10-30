@@ -1,0 +1,29 @@
+# Bouncy Items, a chest that a thrown pot opens (D6-pot-chest, Lv06FaceShrine_03G, chest at 99.75 0 27.75). First A in
+# front of it (on the tile south of it, 99.75 0 29.25) only shakes it (TreasureBox_NoShock): its opened flag stays off
+# and no ball is out. Then Link lifts the pot south of him (99.75 0 30.75), turns back and throws it into the chest,
+# which opens through its shock entry (TreasureBox_ShockOpen) and launches its ball. Where the ball goes is random (it
+# can bounce into the next room); bouncy_chest takes a chest's ball. Run after boot_file1 on a mod patched with Bouncy
+# Items; resets the chest's opened flag and removes the room's enemies. The tile south of that pot is the ledge's wall:
+# a warp there voids Link out to the level's origin.
+# Screenshots: pot_chest_closed, pot_chest_lifted, pot_chest_ball.
+guard off hurt
+send DBG setflag TBOX_OPEN_L06_03G 0
+warp Lv06FaceShrine 99.75 0 29.25
+send DBG enemies kill
+expect OK.enemies 5
+face up
+tap 1
+until !free 3
+until free 10
+poll FLAG.TBOX_OPEN_L06_03G.0 2 DBG flag TBOX_OPEN_L06_03G
+poll OK.drop.-$ 2 DBG drop
+shot pot_chest_closed.png
+face down
+interact
+until carry=1+free 3
+face up
+shot pot_chest_lifted.png
+tap 1
+until carry=0 3
+poll OK.drop.-?[0-9] 15 DBG drop
+shot pot_chest_ball.png

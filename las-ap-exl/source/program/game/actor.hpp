@@ -174,6 +174,36 @@ namespace Game {
     static_assert(offsetof(ActorParams, rot) == 0x190 && offsetof(ActorParams, scale) == 0x1a0);
     static_assert(offsetof(ActorParams, unread) == 0x1b0 && sizeof(ActorParams) == 0x1c0);
 
+    // What a factory hands an actor class's constructor (ACTORS.md, Creation): the actor's name, its owner (a shared
+    // reference) and a copy of the params. ActorArgs_Dtor releases the owner and the params' members.
+    struct alignas(16) ActorArgs {
+        const char* name;
+        u64 length;                // 0x8
+        u8 enabled;                // 0x10: 1
+        u8 pad_11[0x7];
+        void* owner;               // 0x18
+        void* ownerCtrl;           // 0x20
+        u8 pad_28[0x8];
+        ActorParams params;        // 0x30
+    };
+    static_assert(offsetof(ActorArgs, owner) == 0x18 && offsetof(ActorArgs, params) == 0x30);
+    static_assert(sizeof(ActorArgs) == 0x1f0);
+
+    // An entry of the actor table (ActorTable, one per actor id; ACTORS.md, Actor table).
+    struct ActorTableEntry {
+        // (out actor, owner, params)
+        SharedPtrOut (*factory)(SharedPtr* owner, ActorParams* params);
+        const char* resources[8];  // 0x8: .bfres, .drsb or .bfevfl names
+        u8 loadGroup;              // 0x48
+        u8 priority;               // 0x49: the actor's +0xac
+        u8 resourceCount;          // 0x4a
+        u8 systemOwned;            // 0x4b: made with the actor system as owner
+        u8 pad_4c[0x4];
+        const char* name;          // 0x50
+    };
+    static_assert(offsetof(ActorTableEntry, loadGroup) == 0x48 && offsetof(ActorTableEntry, name) == 0x50);
+    static_assert(sizeof(ActorTableEntry) == 0x58);
+
     // A LEB actor record's link to another actor of the room, and its link to a rail point.
     struct LebLink {
         LebParam params[2];

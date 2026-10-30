@@ -31,9 +31,9 @@ An activity left out (the trade quest, Dampé, the Rapids Ride, fishing, the Sea
 and they are in logic only after the goal. Skip them, or do them for completion. With nearly every category off there
 is not enough junk for all of them: some then hold your own items, which the goal never needs.
 
-Any other category left unshuffled keeps its items in their places. Where the logic may need such an item (a song, a
-key, an instrument, the shovel), the spot is still a check: it can be hinted, and the item arrives from the server when
-you pick it up. The rest (rupees, heart pieces) are not checks and are never needed. The Trendy Game's prizes are never
+Any other category left unshuffled keeps its items in their places. Each spot is still a check: the server's hints can
+name it, and the item arrives from the server when you pick it up. The Color Dungeon's blue rupees left unshuffled
+are plain rupees and no checks. The Trendy Game's prizes are never
 shuffled; its Yoshi Doll, which starts the trade quest, is a check. Saving Bow-Wow and reviving the rooster are checks too. Small keys, nightmare keys, maps, compasses, stone beaks and instruments can stay in their own
 dungeon or go anywhere. Small keys (`small_keys`), nightmare keys (`nightmare_keys`) and maps, compasses and stone beaks
 (`dungeon_items`) each have their own option, which can also put them in any of your dungeons, anywhere in your own

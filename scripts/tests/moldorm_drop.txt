@@ -1,0 +1,21 @@
+# Boss drops (DESIGN.md, Drop actor), a real defeat: in Moldorm's room (Lv01TailCave_04G) DBG hit hits its tail, the
+# part that takes damage, at the power of its life; its dead event pops its drop where the heart container would start;
+# Link takes it. Run after boot_file1; resets the boss's and the drop's flags.
+# Screenshots: moldorm_pop, moldorm_rest.
+guard off hurt
+send DBG setflag DoorOpen_Btl_L01_04G_Boss 0
+send DBG setflag Lv1BossDemoClear 1
+send DBG setflag APBossDrop_D1-moldorm 0
+send DBG setflag APDropGet_D1-moldorm 0
+warp Lv01TailCave 102 0 42.75
+poll OK.hit 10 DBG hit EnemyDeguTail DamageColCompTail
+poll FLAG.APBossDrop_D1-moldorm.1 30 DBG flag APBossDrop_D1-moldorm
+poll OK.drop.-?[0-9] 8 DBG drop
+shot moldorm_pop.png
+droprest 20
+shot moldorm_rest.png
+until free 30
+gotodrop 5
+until textready 10
+dismiss 20
+poll FLAG.APDropGet_D1-moldorm.1 5 DBG flag APDropGet_D1-moldorm

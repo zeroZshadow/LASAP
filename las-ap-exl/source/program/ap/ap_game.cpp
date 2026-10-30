@@ -205,6 +205,7 @@ namespace AP {
         InstallItemGetHooks();
         InstallPickupEventHooks();
         InstallItemPoseHooks();
+        InstallDropActor();
         InstallHeldModelHooks();
         Popup::InstallHooks();
         LoadLocationNames();

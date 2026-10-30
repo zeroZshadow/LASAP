@@ -4,14 +4,18 @@ game's 60) for a while, for what lasts a frame or two (a ghost's arrival, a menu
 
 Run with .venv-lasr (needs Pillow):
   python scripts/burst.py <out dir> <seconds> [--at <s>] [--dbg "<DBG command>"] [--peer "<peer command>"]
-                          [--crop x0,y0,x1,y1]
+                          [--crop x0,y0,x1,y1] [--fps <n>] [--video <file.mp4>]
 --dbg sends a DBG command on the debug port (e2e.py's) and --peer appends a command to the session's peer_cmds.txt
 (LASAP_E2E, ghost_peer.py's stdin), --at seconds after the capture starts (default 0.3); it prints when.
---crop keeps only that part of each frame.
+--crop keeps only that part of each frame. --fps keeps at most that many frames a second (a video of a few seconds
+needs no more than the game's 60), which keeps the writing short; the PNGs are written with fast compression.
+--video writes the frames as an H.264 video through ffmpeg (on PATH) instead of PNGs, at their average rate: seconds
+for what takes a PNG per frame a minute; pull single frames out of it with ffmpeg.
 """
 import argparse
 import ctypes
 import os
+import subprocess
 import sys
 import threading
 import time
@@ -74,6 +78,8 @@ def main() -> None:
     parser.add_argument("--dbg")
     parser.add_argument("--peer")
     parser.add_argument("--crop")
+    parser.add_argument("--fps", type=float)
+    parser.add_argument("--video")
     args = parser.parse_args()
     os.makedirs(args.out, exist_ok=True)
     hwnd, w, h = game_window(int(open(emu.PIDFILE).read().strip()))
@@ -98,16 +104,35 @@ def main() -> None:
         threading.Thread(target=send, daemon=True).start()
     frames = []
     start = time.perf_counter()
+    step = 1 / args.fps if args.fps else 0
     while time.perf_counter() - start < args.seconds:
+        if step:
+            wait = start + len(frames) * step - time.perf_counter()
+            if wait > 0:
+                time.sleep(wait)
         user32.PrintWindow(hwnd, mdc, PW_CLIENTONLY | PW_RENDERFULLCONTENT)
         buf = ctypes.create_string_buffer(w * h * 4)
         gdi32.GetDIBits(mdc, bmp, 0, h, buf, ctypes.byref(info), 0)
         frames.append((buf, time.perf_counter() - start))
     if sent:
         print(f"command at {(sent[0] - start) * 1000:.0f} ms")
+    if args.video:
+        x0, y0, x1, y1 = crop or (0, 0, w, h)
+        rate = len(frames) / args.seconds
+        ffmpeg = subprocess.Popen(
+            ["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "bgra", "-s", f"{w}x{h}",
+             "-framerate", f"{rate:.3f}", "-i", "-", "-vf", f"crop={x1 - x0}:{y1 - y0}:{x0}:{y0}", "-c:v", "libx264",
+             "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", args.video], stdin=subprocess.PIPE)
+        for buf, _ in frames:
+            ffmpeg.stdin.write(buf.raw)
+        ffmpeg.stdin.close()
+        if ffmpeg.wait() != 0:
+            raise SystemExit("ffmpeg failed")
+        print(f"{len(frames)} frames in {args.seconds} s ({rate:.1f}/s) -> {args.video}")
+        return
     for n, (buf, t) in enumerate(frames):
         im = Image.frombuffer("RGBA", (w, h), buf, "raw", "BGRA", 0, 1).convert("RGB")
-        (im.crop(crop) if crop else im).save(os.path.join(args.out, f"{n:04d}_{t * 1000:05.0f}.png"))
+        (im.crop(crop) if crop else im).save(os.path.join(args.out, f"{n:04d}_{t * 1000:05.0f}.png"), compress_level=1)
     print(f"{len(frames)} frames in {args.seconds} s -> {args.out}")
 
 

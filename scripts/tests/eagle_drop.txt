@@ -1,0 +1,23 @@
+# Boss drops (DESIGN.md, Drop actor), a real defeat: in the Evil Eagle's room (Lv07EagleTower_05HL, the tower's top)
+# DBG hit hits it at the power of its life; it speaks as it dies, then its dead event pops its drop where the heart
+# container would start; Link takes it. Run after boot_file1; resets the boss's and the drop's flags.
+# Screenshots: eagle_pop, eagle_rest.
+guard off hurt
+send DBG setflag DestroyBtl_L07_02HU_Boss 0
+send DBG setflag Lv7BossDemoClear 1
+send DBG setflag APBossDrop_D7-eagle 0
+send DBG setflag APDropGet_D7-eagle 0
+warp Lv07EagleTower 172.5 12 0
+poll OK.hit 10 DBG hit EnemyAlbatoss
+until textready 30
+dismiss 30
+poll FLAG.APBossDrop_D7-eagle.1 30 DBG flag APBossDrop_D7-eagle
+poll OK.drop.-?[0-9] 8 DBG drop
+shot eagle_pop.png
+droprest 20
+shot eagle_rest.png
+until free 30
+gotodrop 5
+until textready 10
+dismiss 20
+poll FLAG.APDropGet_D7-eagle.1 5 DBG flag APDropGet_D7-eagle

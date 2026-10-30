@@ -20,7 +20,7 @@ namespace {
     // ocarina's place, the fix's angle (from upright in the item's frame, facing the camera) and the scale that
     // gives the model the ocarina's size, and the model's root bone moves by -center, putting its middle on the
     // origin.
-    // `radius` and `center` (model units) are the model's bind-pose bounds (scripts/model_bounds.py): its box centre
+    // `radius` and `center` (model units) are the model's bind-pose bounds (patcher/model_bounds.py): its box centre
     // and the radius around it, all vertices in model space. `angle` turns the model about its centre (degrees in
     // the item's frame: x pitch, y yaw, z roll, applied roll first).
     struct HeldModelFix { const char* model; float radius; Game::Vec3 center; Game::Vec3 angle; };
