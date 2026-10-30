@@ -9,6 +9,7 @@ namespace {
         static bool Callback(void** flags, Game::StrView* name) {
             bool value;
             if (AP::MapTracker::Flag(name->View(), value)) return value;
+            if (AP::GoalFlag(name->View(), value)) return value;
             return Orig(flags, name);
         }
     };

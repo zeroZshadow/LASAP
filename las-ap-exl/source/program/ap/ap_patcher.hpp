@@ -27,6 +27,9 @@ namespace AP {
     // as SIGN.
     constexpr const char* SIGN_LABEL = "SBMountTamaranch";
     constexpr const char* SIGN_FLAG = "APSignRead";
+    // The egg's event checks this flag when seashells are required (patcher ap_goal.SEASHELL_FLAG). It is no save flag:
+    // the module answers it set while Link holds config.ini's [archipelago] seashells_required seashells.
+    constexpr std::string_view SEASHELL_GOAL_FLAG = "APSeashellGoal";
     // Common.bfevfl entry the patcher adds: Link's item-get of the placeholder with RECEIVED_LABEL as its message
     // entry. Received items play as this event; the module swaps in the received item and its text.
     constexpr const char* ITEM_EVENT_ENTRY = "APItemGet";
@@ -76,13 +79,14 @@ namespace AP {
     // link names (a bonked tree's crown, a bombed hole), falls onto its spawn from above (a dungeon key, a golden
     // leaf), so again whenever Link enters its zone, hops out when dug up where it is buried (a dig spot), or hops out
     // where its boss's BossItemDrop starts the item, in place of it (so without standing when its room loads: the item
-    // falls into a pit), or shows where it stands (the ghost's reward); with Bouncy Items, out of the lid of the chest
-    // or off the top of the owl statue its first LEB link names.
+    // falls into a pit), shows where it stands (the ghost's reward), or so from the start (the blue rupees: the module
+    // turns its switch 0 on when it is made); with Bouncy Items, out of the lid of the chest or off the top of the owl
+    // statue its first LEB link names.
     constexpr u16 DROP_ACTOR_ID = 0xa7;
     constexpr const char* DROP_ACTOR = "ItemAPDrop";
     enum DropMotion {
         DROP_HOPS = 0, DROP_TREE = 1, DROP_HOLE = 2, DROP_FALLS = 3, DROP_REFALLS = 4, DROP_BURIED = 5, DROP_CHEST = 6,
-        DROP_OWL = 7, DROP_BOSS = 8, DROP_BOSS_PIT = 9, DROP_STANDS = 10
+        DROP_OWL = 7, DROP_BOSS = 8, DROP_BOSS_PIT = 9, DROP_STANDS = 10, DROP_PLACED = 11
     };
     // A chest's drop's switch that holds its chest's opened flag, which taking the drop sets (patcher:
     // ap_drop.DROP_OPENED)

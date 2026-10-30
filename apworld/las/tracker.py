@@ -49,12 +49,14 @@ def is_progression(item_name: str) -> bool:
 class LogicTracker:
     def __init__(self, preset: str, tokens: Mapping[str, bool], vanilla: Iterable[str], shuffled: Iterable[str],
                  dungeon_entrances: Optional[Mapping[str, str]] = None, optional: Iterable[str] = (),
-                 instruments_required: int = 8):
+                 instruments_required: int = 8, seashells_required: int = 0):
         """`vanilla`: LASR locations that keep a progression item and are no AP locations; `shuffled`: the slot's
         LASR locations; `dungeon_entrances`: the slot data's, None for none shuffled; `optional`: the shuffled
-        locations reached only after the goal, which opens with `instruments_required` instruments."""
+        locations reached only after the goal, which opens with `instruments_required` instruments or, on a
+        seashell hunt (`seashells_required` above 0), with that many secret seashells."""
         logic = dungeon_logic(LOGIC, dict(dungeon_entrances)) if dungeon_entrances else LOGIC
-        compiler = LogicCompiler(goal_logic(instruments_required, logic), preset, tokens, LASR_TO_ITEM, COUNTED)
+        compiler = LogicCompiler(goal_logic(instruments_required, logic, seashells_required), preset, tokens,
+                                 LASR_TO_ITEM, COUNTED)
         vanilla, self.shuffled, optional = list(vanilla), list(shuffled), set(optional)
         roots = self.shuffled + vanilla + (["kill-nightmare"] if optional else [])
         needed = set(compiler.dependencies(roots)) & compiler.region_nodes

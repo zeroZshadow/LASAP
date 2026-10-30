@@ -4,6 +4,7 @@
 #include "lib.hpp"
 #include "nn/hid.h"
 #include <string>
+#include <string_view>
 
 namespace AP {
     // Inventory bits (ap_indices.cpp): kind 'S' seashells, 'H' heart pieces, 'L' golden leaves, 'C' heart containers
@@ -19,6 +20,11 @@ namespace AP {
     void OnGoal();
     // The game shows the sign's text (SIGN_LABEL): kept in the save (SIGN_FLAG), reported as SIGN.
     void OnSignRead();
+    // Link holds the seashells the seashell hunt takes (config.ini's [archipelago] seashells_required).
+    bool GoalSeashellsHeld();
+    // The flags the module answers for the goal (SEASHELL_GOAL_FLAG, GoalSeashellsHeld): true with value set, false for
+    // other flags.
+    bool GoalFlag(std::string_view name, bool& value);
     // Checked in this game or, as the client reported, on the server.
     bool IsLocationChecked(int local_id);
     // Marked as skipped on the map by the player (map tracker); saved per seed, never reported.

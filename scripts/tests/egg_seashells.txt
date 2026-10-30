@@ -1,0 +1,37 @@
+# Seashells Required (DESIGN.md, Goal): on a seashell hunt with 3 required, the sign below the Wind Fish's egg says
+# so; the egg stays shut with two seashells, and the third, received at the egg, plays its opening without the Ballad.
+# Its door then leads to the ending. Run after newgame_file2 on a mod patched with Seashells Required 3 (and
+# Instruments Required 0, as a seashell hunt's settings have). DBG grant adds the seashells without an item-get.
+# The sign one tile north: its text (Place:SBMountTamaranch) names the number. The owl in front of the stairs talks
+# when Link first stands there; FourteenClear marks that talk as done.
+send DBG setflag FourteenClear 1
+expect FLAG.FourteenClear.1 5
+warp Field 96.75 20.25 24.75
+face up
+interact
+until textready 10
+send DBG text SBMountTamaranch
+expect said=.*Egg\sopens\swith\s3\ssecret\sseashells\. 5
+dismiss 10
+send DBG grant Seashell 1 -1 0
+expect OK.grant 10
+send DBG grant Seashell 1 -1 0
+expect OK.grant 10
+# Two seashells: the egg stays shut.
+send DBG flag Egg_Performance
+expect FLAG.Egg_Performance.0 5
+# On the stairs below the egg, the third plays the egg's opening, which opens it.
+warp Field 98.25 32.25 8.25
+send DBG grant Seashell 1 -1 0
+expect OK.grant 10
+await 15 event=[1-9]
+free 60
+send DBG flag Egg_Performance
+expect FLAG.Egg_Performance.1 5
+shot egg_open.png
+# Walking north enters the ending, not the egg.
+hold 0 0 32767 until level=Ending 15
+# the ending's event walks Link up the stairs
+await 10 event=16
+shot egg_ending.png
+state

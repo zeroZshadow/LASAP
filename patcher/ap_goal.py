@@ -1,11 +1,18 @@
-"""The Wind Fish's egg opens with fewer instruments (the Instruments Required option).
+"""The Wind Fish's egg opens with fewer instruments, or with secret seashells instead (the Goal, Instruments Required
+and Seashells Required options).
 
 The egg's song (`WindFishsEgg.bfevfl`, entry `orchestra`) asks `Inventory.HasAllInstruments` at four switches: whether
-the instruments play, which song plays, how the scene fades and whether the egg opens. Each switch becomes a chain of
-`Inventory.HasItem` checks, one per instrument, that takes the switch's case 1 once the required number is held and
-its case 0 once that number can no longer be reached.
+the instruments play, which song plays, how the scene fades and whether the egg opens. For the instruments goal each
+switch becomes a chain of `Inventory.HasItem` checks, one per instrument, that takes the switch's case 1 once the
+required number is held and its case 0 once that number can no longer be reached. For the seashell hunt each switch
+checks SEASHELL_FLAG instead, which the module answers as set once Link holds that many seashells (config.ini
+[archipelago] seashells_required); the instruments do not count.
 
-The sign at the foot of the egg's stairs (`Place:SBMountTamaranch`, only used there) names the number, so a random
+For the seashell hunt the module also opens the egg once Link holds the seashells (ap_egg.cpp), and the egg's door in
+EGG_ROOM leads to the end instead of into the egg: where the stairs after the fight with the Nightmare lead
+(Lv09WindFishsEgg.bfevfl, StairsUp's RequestLevelJump), the Wind Fish's ending.
+
+The sign at the foot of the egg's stairs (`Place:SBMountTamaranch`, only used there) names the numbers, so a random
 number can be read in the game. The module sets SIGN_FLAG in the save once the sign's text shows, for the trackers."""
 from typing import Dict, Optional
 
@@ -25,21 +32,44 @@ SIGN_FILE = "Place.msbt"
 SIGN_KEY = "SBMountTamaranch"
 SIGN_WAIT = "[1:4]"  # the sign's text ends waiting for input
 SIGN_FLAG = "APSignRead"  # AP::SIGN_FLAG, added to GlobalFlags by las_ap_patch
+FLAG_ACTOR = "EventFlags"
+FLAG_QUERY = "CheckFlag"
+SEASHELL_FLAG = "APSeashellGoal"  # AP::SEASHELL_GOAL_FLAG: never stored, the module answers it
+EGG_ROOM = "Field_01G"
+EGG_LEVEL = "Lv09WindFishsEgg"
+LOADING_ZONE = 0x190  # AreaLevelOpen: parameters level, locator (a TagPlayerStart there), ...
+ENDING_LEVEL = "Ending"
+ENDING_LOCATOR = "Lv09WindFishsEgg_05H"  # in Ending_13O
 
 
-def set_instrument_count(files, count: int) -> None:
-    """Opens the egg with `count` instruments and says so on the sign; with all of them the event stays as it is."""
-    _sign(files, count)
-    if count >= len(INSTRUMENT_ITEM_TYPES):
+def set_goal(files, count: int, seashells: int = 0) -> None:
+    """Opens the egg with `count` instruments, or with `seashells` secret seashells and no instruments, and says so on
+    the sign; with all instruments the event stays as it is. With seashells the egg's door leads to the ending."""
+    _sign(files, count, seashells)
+    if count >= len(INSTRUMENT_ITEM_TYPES) and not seashells:
         return
     flow = files.readFile(EVENT_FILE)
-    rewrite(flow.flowchart, count)
+    rewrite(flow.flowchart, count, seashells)
     files.writeFile(EVENT_FILE, flow)
+    if seashells:
+        room = files.readFile(f"{EGG_ROOM}.leb")
+        egg_door(room).parameters[:2] = [ENDING_LEVEL.encode(), ENDING_LOCATOR.encode()]
+        files.writeFile(f"{EGG_ROOM}.leb", room)
 
 
-def sign_text(count: int) -> str:
+def egg_door(room):
+    """The loading zone of EGG_ROOM that leads into the egg, or (patched) to the ending."""
+    doors = [actor for actor in room.actors if actor.type == LOADING_ZONE and
+             actor.parameters[0] in (EGG_LEVEL.encode(), ENDING_LEVEL.encode())]
+    assert len(doors) == 1, doors
+    return doors[0]
+
+
+def sign_text(count: int, seashells: int = 0) -> str:
     total = len(INSTRUMENT_ITEM_TYPES)
-    if count >= total:
+    if seashells:
+        needed = f"{seashells} secret seashell{'s' if seashells > 1 else ''}"
+    elif count >= total:
         needed = f"all {total} instruments"
     elif count == 0:
         needed = "no instruments"
@@ -48,14 +78,14 @@ def sign_text(count: int) -> str:
     return f"The Wind Fish's Egg opens\nwith {needed}."
 
 
-def _sign(files, count: int) -> None:
-    """Adds the count below the sign's place name, in every language (in English)."""
+def _sign(files, count: int, seashells: int = 0) -> None:
+    """Adds the numbers below the sign's place name, in every language (in English)."""
     for relative_path, msbt in files.getAllTextFiles(SIGN_FILE):
         entry = msbt.getEntry(SIGN_KEY)
         text = entry.message.text
         if text.endswith(SIGN_WAIT):
             text = text[:-len(SIGN_WAIT)]
-        entry.message.text = f"{text}\n{sign_text(count)}{SIGN_WAIT}"
+        entry.message.text = f"{text}\n{sign_text(count, seashells)}{SIGN_WAIT}"
         files.writeTextFile(relative_path, SIGN_FILE, msbt)
 
 
@@ -64,15 +94,19 @@ def _query(event) -> Optional[str]:
     return None if query is None else query.v.v
 
 
-def rewrite(chart, count: int) -> None:
-    """Replaces each ALL_QUERY switch in the flowchart by HasItem checks that need `count` instruments."""
+def rewrite(chart, count: int, seashells: int = 0) -> None:
+    """Replaces each ALL_QUERY switch in the flowchart by HasItem checks that need `count` instruments or, with
+    `seashells`, by a check of SEASHELL_FLAG alone, with the switch's cases."""
     switches = [event for event in chart.events if _query(event) == ALL_QUERY]
     assert len(switches) == SWITCHES, [event.name for event in switches]
-    actor = event_tools.findActor(chart, ACTOR)
-    event_tools.addActorQuery(actor, ITEM_QUERY)
+    actor, query = (FLAG_ACTOR, FLAG_QUERY) if seashells else (ACTOR, ITEM_QUERY)
+    event_tools.addActorQuery(event_tools.findActor(chart, actor), query)
     for switch in switches:
-        cases = {value: case.v for value, case in switch.data.cases.items()}
-        _replace(chart, switch, count, cases.get(1), cases.get(0))
+        if seashells:
+            _set_query(chart, switch, FLAG_ACTOR, FLAG_QUERY, {"symbol": SEASHELL_FLAG})
+        else:
+            cases = {value: case.v for value, case in switch.data.cases.items()}
+            _replace(chart, switch, count, cases.get(1), cases.get(0))
 
 
 def _replace(chart, switch, count: int, held, missing) -> None:
@@ -97,7 +131,7 @@ def _replace(chart, switch, count: int, held, missing) -> None:
         _set_cases(event, {1: node(index + 1, have + 1), 0: node(index + 1, have)})
         return event
 
-    _set_query(chart, switch, 0)
+    _set_query(chart, switch, ACTOR, ITEM_QUERY, _params(0))
     if count == 0:
         # decided before any check: both cases lead on
         _set_cases(switch, {1: held, 0: held})
@@ -109,12 +143,12 @@ def _params(index: int) -> dict:
     return {"itemType": INSTRUMENT_ITEM_TYPES[index], "count": 1}
 
 
-def _set_query(chart, event, index: int) -> None:
+def _set_query(chart, event, actor: str, query: str, params: dict) -> None:
     data = event.data
-    data.actor = make_rindex(event_tools.findActor(chart, ACTOR))
-    data.actor_query = make_rindex(data.actor.v.find_query(ITEM_QUERY))
+    data.actor = make_rindex(event_tools.findActor(chart, actor))
+    data.actor_query = make_rindex(data.actor.v.find_query(query))
     data.params = Container()
-    data.params.data = _params(index)
+    data.params.data = params
 
 
 def _set_cases(event, cases: dict) -> None:

@@ -2,6 +2,7 @@
 // The bridge's game side in parts, shared by its files (ap_game.cpp and the files named below) and by the test build's
 // DBG commands (test_commands.cpp).
 #include "lib.hpp"
+#include <initializer_list>
 #include <set>
 #include <string>
 #include <vector>
@@ -31,7 +32,10 @@ namespace AP::Bridge {
     bool PlayerCarrying();
     // Health is zero: Link is dying (until the Secret Medicine or a game over's Retry refills it).
     bool LinkDead();
-    // Starts an event of Common.bfevfl, as the game does for its game over.
+    // Starts an event of a flowchart (its resource path, "event/<name>.bfevfl"), as the game does for its game over,
+    // with the room's actors of these LEB keys in it; false, and no event, when one of them is missing.
+    bool RequestEvent(const char* path, const char* entry, std::initializer_list<u64> actorKeys);
+    // Starts an event of Common.bfevfl.
     bool RequestCommonEvent(const char* entry);
     // A toast in the autosave popup; '|' starts a new line.
     void QueueNotice(std::string text);
@@ -176,6 +180,11 @@ namespace AP::Bridge {
     bool HandleLine(const std::string& line);
     // Once per tick: lines that wait for a loaded save, then the new ones.
     void PumpLines();
+
+    // ---- The seashell hunt's egg (ap_egg.cpp) ----
+
+    // With seashells required: plays the Wind Fish's Egg's opening once Link stands at the egg holding them.
+    void TickEgg();
 
     // ---- The warp menu (ap_warp_menu.cpp) ----
 

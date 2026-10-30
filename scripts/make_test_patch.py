@@ -67,7 +67,7 @@ def main() -> None:
     categories = yaml.safe_load(open(DATA / "locations.yml"))
     ids = json.load(open(DATA / "ids.json"))["locations"]
 
-    vanilla = set(categories.get("Trendy_Rewards", [])) | set(categories.get("Blue_Rupees", []))
+    vanilla = set(categories.get("Trendy_Rewards", []))
     vanilla |= {k for k, v in logic.items() if v.get("type") == "item" and v.get("subtype") == "shop"
                 and k not in categories.get("Shop_Items", [])}
     vanilla |= {k for k, v in logic.items() if v.get("type") == "item" and "owl" in v.get("subtype", "")}

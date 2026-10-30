@@ -24,7 +24,7 @@ from .lasr import (CATEGORIES, COUNTED, DUNGEON_NAMES, DUNGEON_REWARD_LOCATIONS,
 from .locations import LASR_LOCATIONS, LOCATION_NAME_GROUPS, LOCATION_NAME_TO_ID, LOCATION_NAMES, LASLocation
 from .logic import LogicCompiler, make_rule, referenced_regions
 from .models import model_for
-from .options import OPTION_GROUPS, DungeonItemPlacement, LASOptions
+from .options import OPTION_GROUPS, DungeonItemPlacement, Goal, LASOptions, goal_instruments, goal_seashells
 from .tracker import SIGN_KEY, tracked_instruments
 from . import lasr_settings
 
@@ -88,6 +88,7 @@ class LASWorld(World):
 
     compiler: LogicCompiler
     goal_instruments: int  # the instruments the egg's rule takes (compile_logic)
+    goal_seashells: int  # the secret seashells the egg's rule takes (compile_logic)
     shuffled: List[str]  # LASR item locations that are AP locations
     locked: List[str]  # AP locations the options leave unrandomized: they hold their default item, locked
     optional: List[str]  # AP locations of activities the options leave out: after the goal, excluded
@@ -123,7 +124,7 @@ class LASWorld(World):
             self.dungeon_entrances = {d: d for d in DUNGEONS}
         self.settings_tokens = lasr_settings.logic_tokens(options)
         # Universal Tracker keeps a count left to chance hidden until the player reads the sign (tracked_instruments)
-        instruments = options.instruments_required.value
+        instruments = goal_instruments(options)
         if passthrough:
             instruments = tracked_instruments(instruments, passthrough.get("instruments_known", True), False)
         self.compile_logic(instruments)
@@ -144,7 +145,7 @@ class LASWorld(World):
                 options.non_local_items.value |= {LASR_TO_ITEM[item] for item in items}
 
         removed = lasr_settings.removed_locations(options)
-        vanilla = lasr_settings.fixed_locations(options)
+        vanilla = lasr_settings.fixed_locations()
         unrandomized = lasr_settings.unrandomized_locations(options)
         if options.instruments == options.instruments.option_vanilla:
             started = {f"D{INSTRUMENTS.index(i) + 1}-instrument" for i in self.starting_instruments}
@@ -468,15 +469,16 @@ class LASWorld(World):
         return hashlib.sha256(f"{self.multiworld.seed_name}:{self.player}".encode()).hexdigest()[:8]
 
     def compile_logic(self, instruments_required: int) -> None:
-        logic = goal_logic(instruments_required, dungeon_logic(LOGIC, self.dungeon_entrances))
         self.goal_instruments = instruments_required
+        self.goal_seashells = goal_seashells(self.options)
+        logic = goal_logic(instruments_required, dungeon_logic(LOGIC, self.dungeon_entrances), self.goal_seashells)
         self.compiler = LogicCompiler(logic, self.options.logic.current_key, self.settings_tokens, LASR_TO_ITEM,
                                       COUNTED)
 
     def reconnect_found_entrances(self, key: str, value: Any) -> None:
         """Universal Tracker: the data storage key SIGN_KEY changed. Once the player has read the sign, the rules
         take the slot's own count."""
-        required = self.options.instruments_required.value
+        required = goal_instruments(self.options)
         if value and self.goal_instruments != required:
             self.compile_logic(required)
             self.set_rules()
@@ -495,9 +497,11 @@ class LASWorld(World):
         return {
             "seed_hash": self.seed_hash(),
             "goal": "wind_fish",
-            "instruments_required": self.options.instruments_required.value,
+            "instruments_required": goal_instruments(self.options),
             # False for a count left to chance: trackers show it once the player read the sign (SIGN_KEY)
-            "instruments_known": self.options.instruments_required.known,
+            "instruments_known": self.options.instruments_required.known or
+                                 self.options.goal == Goal.option_seashell_hunt,
+            "seashells_required": goal_seashells(self.options),
             "death_link": bool(self.options.death_link.value),
             "location_count": len(self.shuffled),
             "settings": {key: settings[key] for key in lasr_settings.TRACKER_SETTINGS},

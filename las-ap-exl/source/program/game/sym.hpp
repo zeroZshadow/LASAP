@@ -226,6 +226,11 @@ namespace Game {
     inline constexpr Func<void(SharedPtr*, SharedPtr*, StrView*)> Event_Make{0x80c290};
     // (event)
     inline constexpr Func<void(void*)> Event_Prepare{0x80db00};
+    // (event, chara sp*): an actor of the event, named by the chara (+0x358, +0x380); an NPC's event adds its own and
+    // its LEB links' charas this way after Event_Prepare (NpcComponent virtual +0x310, scripts/re/EVENTS.md)
+    inline constexpr Func<void(void*, SharedPtr*)> Event_AddChara{0x80f7d0};
+    // (out chara sp, actor): the actor's event chara component, null when it has none
+    inline constexpr Func<void(SharedPtr*, void*)> Actor_FindEventChara{0xfd850};
     // (out, event manager, event*)
     inline constexpr Func<void(SharedPtr*, void*, SharedPtr*)> EventManager_Request{0x81f2e0};
     // (seconds, out future): for 0 seconds or less the game's ready future

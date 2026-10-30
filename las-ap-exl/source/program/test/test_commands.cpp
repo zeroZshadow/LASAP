@@ -5,6 +5,7 @@
 #include "ap/ap_net.hpp"
 #include "ap/ap_popup.hpp"
 #include "ap/ap_text.hpp"
+#include "game/actor.hpp"
 #include "game/data/inventory.hpp"
 #include "game/framework.hpp"
 #include "game/hooks/eventflags.hpp"
@@ -690,6 +691,14 @@ namespace {
         } else if (cmd == "drop") {
             // DBG drop: where the drop actor made last is (ap_drop.cpp)
             AP::Send("OK drop" + DropState());
+        } else if (cmd == "actor" && a.size() >= 3) {
+            // DBG actor <LEB key, hex>: 1 while the room's actor of that key is live (made, not gone), else 0
+            Game::SharedPtr held{};
+            Game::ActorRegistry_FindByKey(&held, strtoull(a[2].c_str(), nullptr, 16));
+            auto* actor = static_cast<Game::Actor*>(held.ptr);
+            bool live = actor != nullptr && !actor->entity.Gone();
+            Game::Release(held);
+            AP::Send("OK actor " + a[2] + " " + (live ? "1" : "0"));
         } else if (cmd == "ghostnet") {
             // DBG ghostnet: the positions sent and the ghosts received (ghost_net.cpp)
             AP::Send("OK " + AP::GhostNet::State());

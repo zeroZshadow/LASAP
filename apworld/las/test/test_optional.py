@@ -28,11 +28,12 @@ def regular_reached(multiworld, player: int, optional) -> set:
 
 
 class TestDefaultOptional(LASTestBase):
-    """By default the trade quest, Dampe, the Rapids Ride, fishing and the 40 and 50 seashell rewards are optional."""
+    """By default the trade quest, Dampe, the Rapids Ride, fishing, the Color Dungeon's blue rupees and the 40 and 50
+    seashell rewards are optional."""
 
     def test_which(self) -> None:
         expected = set(CATEGORIES["Trade_Gifts"]) | set(CATEGORIES["Dampe_Rewards"]) | \
-            set(CATEGORIES["Rapids_Rewards"]) | set(CATEGORIES["Fishing_Rewards"]) | \
+            set(CATEGORIES["Rapids_Rewards"]) | set(CATEGORIES["Fishing_Rewards"]) | set(CATEGORIES["Blue_Rupees"]) | \
             {"40-seashell-reward", "50-seashell-reward"}
         self.assertEqual(set(self.world.optional), expected)  # the rapids owl statue gives nothing without owls
         self.assertLessEqual(set(self.world.optional), set(self.world.shuffled))
@@ -148,8 +149,8 @@ class TestFewFiller(unittest.TestCase):
 
 
 class TestNothingOptional(LASTestBase):
-    options = {"trade_quest": True, "dampe": True, "rapids": True, "fishing": True, "seashell_mansion": 50,
-               "owl_statues": "all"}
+    options = {"trade_quest": True, "dampe": True, "rapids": True, "fishing": True, "blue_rupees": True,
+               "seashell_mansion": 50, "owl_statues": "all"}
 
     def test_none(self) -> None:
         self.assertEqual(self.world.optional, [])

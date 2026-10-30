@@ -3,7 +3,7 @@ import re
 from typing import Any, Dict, Iterable, List, Optional, Set
 
 from .lasr import CATEGORIES, COMPANIONS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC
-from .options import LASOptions
+from .options import LASOptions, goal_instruments, goal_seashells
 
 # Option attribute -> LASR location category it toggles.
 CATEGORY_OPTIONS = {
@@ -23,7 +23,7 @@ CATEGORY_OPTIONS = {
 }
 # The categories of activities: left out, their locations are optional (optional_locations), not unrandomized.
 OPTIONAL_CATEGORIES = {attribute: CATEGORY_OPTIONS[attribute] for attribute in ("trade_quest", "dampe", "rapids",
-                                                                                "fishing")}
+                                                                                "fishing", "blue_rupees")}
 MANSION_THRESHOLDS = {f"{n}-seashell-reward": n for n in (5, 15, 30, 40, 50)}
 
 _PRESETS = {0: "Basic", 1: "Advanced", 2: "Glitched", 3: "Hell"}
@@ -73,14 +73,10 @@ def removed_locations(options: LASOptions) -> Set[str]:
     return removed
 
 
-def fixed_locations(options: LASOptions) -> Set[str]:
+def fixed_locations() -> Set[str]:
     """Locations that keep their vanilla content and are no AP locations: the shop slots LASR does not shuffle (those
-    not in Shop_Items), and the Color Dungeon's blue rupees with Blue Rupees off (off means vanilla, not locked checks:
-    LASR leaves them plain rupees)."""
-    fixed = {k for k in ITEM_LOCATIONS if LOGIC[k]["subtype"] == "shop" and k not in CATEGORIES["Shop_Items"]}
-    if not options.blue_rupees:
-        fixed |= set(CATEGORIES["Blue_Rupees"])
-    return fixed
+    not in Shop_Items)."""
+    return {k for k in ITEM_LOCATIONS if LOGIC[k]["subtype"] == "shop" and k not in CATEGORIES["Shop_Items"]}
 
 
 def kept_locations() -> Set[str]:
@@ -91,13 +87,16 @@ def kept_locations() -> Set[str]:
 
 def optional_locations(options: LASOptions) -> Set[str]:
     """The locations of the activities the options leave out (OPTIONAL_CATEGORIES, the Seashell Mansion's rewards above
-    seashell_mansion, the Rapids Ride's owl statue): checks the logic reaches only after the goal, excluded (junk and
-    traps of any player), so no seed needs the activity."""
+    seashell_mansion or above the seashells the goal takes, the Rapids Ride's owl statue): checks the logic reaches only
+    after the goal, excluded (junk and traps of any player), so no seed needs the activity."""
     optional: Set[str] = set()
     for attribute, category in OPTIONAL_CATEGORIES.items():
         if not getattr(options, attribute).value:
             optional |= set(CATEGORIES[category])
-    optional |= {loc for loc, n in MANSION_THRESHOLDS.items() if n > options.seashell_mansion.value}
+    mansion = options.seashell_mansion.value
+    if goal_seashells(options):
+        mansion = min(mansion, goal_seashells(options))
+    optional |= {loc for loc, n in MANSION_THRESHOLDS.items() if n > mansion}
     if not options.rapids:
         optional.add("owl-statue-rapids")  # LASR excludes it without the Rapids category
     return optional - removed_locations(options)
@@ -110,7 +109,7 @@ def unrandomized_locations(options: LASOptions) -> Set[str]:
     for attribute, category in CATEGORY_OPTIONS.items():
         if attribute not in OPTIONAL_CATEGORIES and not getattr(options, attribute).value:
             unrandomized |= set(CATEGORIES[category])
-    return (unrandomized | kept_locations()) - fixed_locations(options)
+    return (unrandomized | kept_locations()) - fixed_locations()
 
 
 # The settings trackers get in the slot data ("settings"): those that decide which checks exist and what reaches them.
@@ -177,7 +176,9 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Shuffled Powder": bool(o.shuffled_powder),
         "Ammo Ghost": bool(o.ammo_ghost),  # read by the AP patcher (ap_ghost.py), not by LASR
         "Map Tracker": bool(o.map_tracker),  # read by the AP patcher (ap_map.py), not by LASR
-        "Instruments Required": o.instruments_required.value,  # read by the AP patcher (ap_goal.py), not by LASR
+        # read by the AP patcher (ap_goal.py), not by LASR; Seashells Required 0: the egg takes no seashells
+        "Instruments Required": goal_instruments(o),
+        "Seashells Required": goal_seashells(o),
         "Stealing": _STEALING[o.stealing.value],
         "Boss Cutscenes": True,
         "Song Cutscenes": bool(o.skip_song_cutscenes),  # on skips them

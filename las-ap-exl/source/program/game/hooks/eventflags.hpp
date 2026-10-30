@@ -1,6 +1,6 @@
 #pragma once
-// The game's event flags by name (eventflags.cpp). The map tracker answers its own flags (AP::MapTracker::Flag), and
-// ShadowClear set is the goal (AP::OnGoal).
+// The game's event flags by name (eventflags.cpp). The map tracker answers its own flags (AP::MapTracker::Flag), the
+// bridge the egg's seashell flag (AP::GoalFlag), and ShadowClear set is the goal (AP::OnGoal).
 #include <string>
 #include <string_view>
 

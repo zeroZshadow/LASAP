@@ -91,6 +91,7 @@ void PatchConfig::parse(const std::string& text) {
         else if (section == "archipelago") {
             if (key == "seed_hash") archipelago.seed_hash = value;
             else if (key == "port") archipelago.port = std::atoi(value.c_str());
+            else if (key == "seashells_required") archipelago.seashells_required = std::atoi(value.c_str());
         }
     }
 }

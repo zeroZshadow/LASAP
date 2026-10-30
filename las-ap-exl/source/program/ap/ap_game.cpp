@@ -9,6 +9,7 @@
 #include "ap/ap_patcher.hpp"
 #include "ap/ap_popup.hpp"
 #include "ap/ap_text.hpp"
+#include "config/config.hpp"
 #include "game/data/inventory.hpp"
 #include "game/framework.hpp"
 #include "game/hooks/eventflags.hpp"
@@ -114,14 +115,29 @@ namespace {
         return items != nullptr && items->Health <= 0;
     }
 
-    // Starting an event of Common.bfevfl, as the game does for its game over:
-    // load the flowchart resource, make an event for the entry, prepare it and hand it to the event manager.
-    bool RequestCommonEvent(const char* entry) {
+namespace {
+    // An actor of the room, by its LEB key, joins the event under the name its event chara gives it, as an NPC adds
+    // the actors its LEB entry links to. False when the actor or its chara is missing.
+    bool AddEventActor(void* event, u64 key) {
+        SharedPtr actor{}, chara{};
+        Game::ActorRegistry_FindByKey(&actor, key);
+        if (actor.ptr != nullptr) Game::Actor_FindEventChara(&chara, actor.ptr);
+        bool ok = chara.ptr != nullptr;
+        if (ok) Game::Event_AddChara(event, &chara);
+        Game::Release(chara);
+        Game::Release(actor);
+        return ok;
+    }
+}
+
+    // Starting an event, as the game does for its game over with Common.bfevfl:
+    // load the flowchart resource, make an event for the entry, prepare it and hand it to the event manager. The
+    // actors of actorKeys (LEB keys) join it first; the event is not started when one is missing.
+    bool RequestEvent(const char* flowchartPath, const char* entry, std::initializer_list<u64> actorKeys) {
         void* resources = *Game::ResourceManager_ptr;
         void* events = *Game::EventManager_ptr;
         if (resources == nullptr || events == nullptr) return false;
-        static const char kPath[] = "event/Common.bfevfl";
-        StrView path{kPath, sizeof(kPath) - 1};
+        StrView path{flowchartPath};
         StrView name{entry};
         SharedPtr handle{}, flowchart{}, event{}, request{};
         Game::Resource_Load(&handle, resources, &path);
@@ -132,8 +148,9 @@ namespace {
             Game::Event_Make(&event, &flowchart, &name);
             if (event.ptr != nullptr) {
                 Game::Event_Prepare(event.ptr);
-                Game::EventManager_Request(&request, events, &event);
                 ok = true;
+                for (u64 key : actorKeys) ok = ok && AddEventActor(event.ptr, key);
+                if (ok) Game::EventManager_Request(&request, events, &event);
             }
         }
         Game::Release(request);
@@ -142,6 +159,8 @@ namespace {
         Game::Release(handle);
         return ok;
     }
+
+    bool RequestCommonEvent(const char* entry) { return RequestEvent("event/Common.bfevfl", entry, {}); }
 
     // A toast in the autosave popup; '|' starts a new line.
     void QueueNotice(std::string text) {
@@ -249,6 +268,19 @@ namespace AP {
         Send("SIGN");
     }
 
+    bool GoalSeashellsHeld() {
+        // the game counts the seashells over all 64 bits (ap_items.cpp)
+        auto* items = Game::Data::Inventory::Items();
+        return items != nullptr &&
+               __builtin_popcountll(items->Seashells) >= global_config.archipelago.seashells_required;
+    }
+
+    bool GoalFlag(std::string_view name, bool& value) {
+        if (name != AP::SEASHELL_GOAL_FLAG) return false;
+        value = GoalSeashellsHeld();
+        return true;
+    }
+
     bool IsServerConnected() {
         return g_ServerConnected;
     }
@@ -313,6 +345,7 @@ namespace AP {
         TickHeldModel();
         Popup::Tick();
         TickWarpMenu();
+        TickEgg();
         TickMedicine();
         // the d-pad changes the music in free play, not where a minigame may steer with it
         JukeboxPane::Tick(PlayerFree() && g_LastLevel != kCraneGameLevel && g_LastLevel != "FishingPond");

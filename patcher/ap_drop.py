@@ -2,8 +2,8 @@
 that drops out of a cut bush, a lifted rock or pot, a bonked tree or a bombed hole, a dungeon's falling key, a Kanalet
 Castle golden leaf; a buried slime key for a dig spot) shows it as ItemAPDrop, an actor type the module adds to the
 game's actor table (ap_drop.cpp), instead. No small key or slime key stand-in is left in the rooms, and the mod keeps the
-game's small key flowchart (las_ap_patch skips LASR's). The bosses' items, the ghost's reward and, with Bouncy Items, the
-chests' and owl statues' gifts are drop actors too.
+game's small key flowchart (las_ap_patch skips LASR's). The bosses' items, the ghost's reward, the Color Dungeon's blue
+rupees and, with Bouncy Items, the chests' and owl statues' gifts are drop actors too.
 
 The actor has an Npc.gsheet row of its own (the small key's data: the model, the take entry and the shell sensor from
 LEB parameters 1 to 4) and its own flowchart, made here: the pops and one take entry per location. LEB parameter 0 picks
@@ -46,6 +46,7 @@ class Motion(IntEnum):
     BOSS = 8  # up out of the ground where the boss its first LEB link names starts its item, in its place
     BOSS_PIT = 9  # so, but standing nowhere when its room loads: the item falls into a pit, and BOSS_PITS stands it below
     STANDS = 10  # shows where it stands, as a free-standing item: the ghost's reward at its grave
+    PLACED = 11  # so from the start, its switch 0 turned on by the module when it is made: the blue rupees
 
 
 SMALL_KEY_ID = 0xA9
@@ -131,6 +132,13 @@ GOT_FLAG = "APDropGet_{}"
 GHOST_DROP = "ghost-reward"
 GHOST_ROOM, GHOST_TRIGGER, GHOST_GRAVE = "Field_07E", b"Graveyard_talk", "ObjGhostsGrave"
 GHOST_FLAG = "Ghost4_Clear"
+# The Color Dungeon's blue rupees (D0-rupee-1 to -28, BlueRupeeRandomizer's order: the room's rupees in turn): each
+# rupee made a drop actor where it stands (las_ap_patch skips LASR's pass, which makes them SinkingSword actors). Its
+# switch 1 is the rupee's own got flag (its switch 0, Lv10RupeeGet...); switch 0 a level flag of the drops' own, which
+# the module turns on when one is made and not taken, so it stands there from the start.
+BLUE_RUPEE_ROOM = "Lv10ClothesDungeon_08D"
+RUPEE_ACTOR = 0xAB
+BLUE_RUPEES = [f"D0-rupee-{n}" for n in range(1, 29)]
 # Bouncy Items, chests: a drop actor in front of each AP chest, linked to it. The chest holds DROP_CHEST_KEY, for which
 # TreasureBox.bfevfl plays no item-get but turns its switch LAUNCHED_SWITCH on (a level flag of its own, not saved),
 # the drop's switch 0: the ball pops out. The chest's opened flag (its switch 1, saved), which opening it set, is the
@@ -204,8 +212,9 @@ def add(proc) -> dict:
             _take_entry(proc, flow.flowchart, location)
     _bosses(proc, flow, drops)
     _ghost(proc, flow, drops)
+    level_flags = {}
+    _blue_rupees(proc, flow, drops, level_flags)
     if bouncy:
-        level_flags = {}
         _chests(proc, flow, drops, level_flags)
         _owls(proc, flow, drops, level_flags)
     files.writeFile(EVENT_FILE, flow)
@@ -449,6 +458,28 @@ def _ghost(proc, flow, drops: dict) -> None:
     files.writeFile(room_file, room)
     _take_entry(proc, flow.flowchart, GHOST_DROP)
     drops["models"].append((drop.key, *model))
+
+
+def _blue_rupees(proc, flow, drops: dict, level_flags: dict) -> None:
+    files = proc.file_manager
+    room_file = f"{BLUE_RUPEE_ROOM}.leb"
+    room = files.readFile(room_file)
+    rupees = [a for a in room.actors if a.type == RUPEE_ACTOR]
+    if len(rupees) != len(BLUE_RUPEES):
+        raise ValueError(f"{room_file}: {len(rupees)} blue rupees, want {len(BLUE_RUPEES)}")
+    shown = (LEVEL_FLAG, _free_level_flag(files, room_file, level_flags))
+    for location, drop in zip(BLUE_RUPEES, rupees):
+        model = _model(proc, location)
+        got = tuple(drop.switches[0])
+        _make_drop(drop)
+        drop.rotY = 0.0
+        drop.scaleX = drop.scaleY = drop.scaleZ = 1.0
+        drop.parameters = [int(Motion.PLACED), model[0].encode(), model[1].encode(), location.encode(), b"false", 0, 0,
+                           0]
+        drop.switches = [shown, got, NO_SWITCH, NO_SWITCH]
+        _take_entry(proc, flow.flowchart, location)
+        drops["models"].append((drop.key, *model))
+    files.writeFile(room_file, room)
 
 
 def _chests(proc, flow, drops: dict, level_flags: dict) -> None:

@@ -30,11 +30,13 @@ class TestDefault(LASTestBase):
         call_all(self.multiworld, "post_fill")
         slot_data = self.world.fill_slot_data()
         self.assertEqual(set(slot_data), {"seed_hash", "goal", "instruments_required", "instruments_known",
-                                          "death_link", "location_count", "settings", "logic", "options",
-                                          "starting_instruments", "dungeon_entrances"})
+                                          "seashells_required", "death_link", "location_count", "settings", "logic",
+                                          "options", "starting_instruments", "dungeon_entrances"})
         self.assertEqual(slot_data["instruments_required"], 8)
         self.assertTrue(slot_data["instruments_known"])
+        self.assertEqual(slot_data["seashells_required"], 0)
         self.assertEqual(self.world.patch_data()["settings"]["Instruments Required"], 8)
+        self.assertEqual(self.world.patch_data()["settings"]["Seashells Required"], 0)
         from ..lasr_settings import TRACKER_SETTINGS
         self.assertEqual(tuple(slot_data["settings"]), TRACKER_SETTINGS)
         self.assertEqual(slot_data["settings"]["Shuffle Instruments"], "Anywhere")
@@ -185,11 +187,12 @@ class TestVanillaHeavy(LASTestBase):
             self.assertTrue(location.locked, loc)
             self.assertEqual(location.item.name, LASR_TO_ITEM[self.world.content(loc)], loc)  # the starting gear's hold 50 Rupees
             self.assertEqual(location.item.player, self.player)
-        self.assertFalse(fixed_locations(self.world.options) & set(self.world.shuffled))
+        self.assertFalse(fixed_locations() & set(self.world.shuffled))
         patch = self.world.patch_data()
-        # Blue Rupees off means vanilla: plain rupees, no checks
-        self.assertNotIn("D0-rupee-1", patch["location_ids"])
-        self.assertEqual((patch["placements"]["D0-rupee-1"], patch["settings"]["Blue Rupees"]), ("rupee-5", False))
+        # Blue Rupees off: optional checks
+        self.assertIn("D0-rupee-1", self.world.optional)
+        self.assertNotIn("D0-rupee-1", locked)
+        self.assertEqual((patch["placements"]["D0-rupee-1"], patch["settings"]["Blue Rupees"]), ("ap-item", False))
         self.assertEqual({loc for loc in locked if patch["placements"][loc] != "ap-item"}, kept_locations() & locked)
         self.assertLessEqual(locked, set(patch["location_ids"]))
         # trackers and the patcher get the options as they are

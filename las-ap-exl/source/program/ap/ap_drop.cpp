@@ -467,7 +467,7 @@ namespace {
             if (Bouncy()) Spin(comp);
             return;
         }
-        if (motion == AP::DROP_STANDS) {
+        if (motion == AP::DROP_STANDS || motion == AP::DROP_PLACED) {
             const Game::Vec4& spawn = actor->spawnPos;
             Launch(comp, actor, {spawn.x, spawn.y, spawn.z}, {0, 0, 0});
             return;
@@ -827,6 +827,13 @@ namespace {
         Logging.Log("[AP] drop %016llx: launched again from its chest or statue", actor.record->key);
     }
 
+    // A drop that stands from the start (the blue rupees), made and not taken: its switch 0 (a level flag of the
+    // drops' own) goes on before its layout reads it, so it appears where it stands.
+    void Place(const Actor& actor) {
+        if (Motion(actor) != AP::DROP_PLACED || Game::ActorSwitch_IsOn(actor.record, 1)) return;
+        Game::ActorSwitch_Set(actor.record, 0, true);
+    }
+
     // The actor table's factory for the drop actor, as an item class's: named, set up, started and made the owner's
     // child; null when the owner has a child of that name already.
     SharedPtrOut Create(SharedPtr* owner, Game::ActorParams* params) {
@@ -847,6 +854,7 @@ namespace {
         auto* actor = static_cast<Actor*>(sp.ptr);
         if (actor != nullptr) Unlaunch(*actor);
         if (actor != nullptr && Boss(Motion(*actor))) MadeBossDrop(actor);
+        if (actor != nullptr) Place(*actor);
         if (actor != nullptr && !(actor->entity.flags & Flags::kDestroyRequested)) {
             Game::Entity& entity = actor->entity;
             if (!(entity.flags & (Flags::kDestroyRequested | Flags::kInitialized))) {

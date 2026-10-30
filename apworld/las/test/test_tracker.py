@@ -22,7 +22,8 @@ class TestTracker(unittest.TestCase):
         logic = slot_data["logic"]
         # The client knows the slot's locations from the server, and the rest from the slot data.
         tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], world.shuffled,
-                               slot_data["dungeon_entrances"], logic["optional"], slot_data["instruments_required"])
+                               slot_data["dungeon_entrances"], logic["optional"], slot_data["instruments_required"],
+                               slot_data["seashells_required"])
         # locked locations' items count once received, like the pool's
         locked = [multiworld.get_location(LOCATION_NAMES[loc], 1) for loc in logic["locked"]]
         pool = [item for item in multiworld.itempool + world.get_pre_fill_items() if item.player == 1]
@@ -47,6 +48,12 @@ class TestTracker(unittest.TestCase):
     def test_option_sets(self) -> None:
         for index, options in enumerate(OPTION_SETS):
             self.check(options, seed=2000 + index)
+
+    def test_seashell_hunt(self) -> None:
+        """The optional locations wait for an egg that takes seashells (and the Mansion's rewards above them)."""
+        self.check({"goal": "seashell_hunt", "seashells_required": 20, "dampe": False}, seed=2100)
+        self.check({"goal": "seashell_hunt", "instruments_required": 4, "seashells_required": 35,
+                    "seashell_mansion": 50}, seed=2101)
 
     def test_starting_items_count(self) -> None:
         """The slot data's starting items count: Marin's song needs the Ocarina, a starting item by default."""

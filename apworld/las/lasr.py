@@ -93,16 +93,29 @@ DUNGEON_REWARD_LOCATIONS = INSTRUMENT_LOCATIONS + ("D0-fairy-1", "D0-fairy-2")
 # The count token of the egg's condition: "instruments:N" holds with N different instruments (logic.py, counted).
 INSTRUMENTS_TOKEN = "instruments"
 COUNTED = {INSTRUMENTS_TOKEN: INSTRUMENTS}
+# What the egg's condition takes to play the Ballad there, and the goal's node: the Nightmare beaten.
+BALLAD = ("ocarina", "song-ballad")
+GOAL_NODE = "kill-nightmare"
 
 
-def goal_logic(instruments_required: int, logic: Dict[str, Dict[str, Any]] = LOGIC) -> Dict[str, Dict[str, Any]]:
-    """The logic with the Wind Fish's egg opening at this many instruments."""
-    if instruments_required >= len(INSTRUMENTS):
+def goal_logic(instruments_required: int, logic: Dict[str, Dict[str, Any]] = LOGIC,
+               seashells_required: int = 0) -> Dict[str, Dict[str, Any]]:
+    """The logic with the Wind Fish's egg opening at this many instruments, or with seashells at that many secret
+    seashells and no instruments. With seashells the egg opens by itself, without the Ballad, and its door leads to
+    the ending: the goal is the open egg."""
+    if instruments_required >= len(INSTRUMENTS) and not seashells_required:
         return logic
     parts = [part.strip() for part in logic["egg"]["condition-basic"].split("&")]
-    assert set(INSTRUMENTS) <= set(parts), parts
-    parts = [part for part in parts if part not in INSTRUMENTS] + [f"{INSTRUMENTS_TOKEN}:{instruments_required}"]
-    return {**logic, "egg": {**logic["egg"], "condition-basic": " & ".join(parts)}}
+    assert set(INSTRUMENTS) <= set(parts) and set(BALLAD) <= set(parts), parts
+    parts = [part for part in parts if part not in INSTRUMENTS]
+    if seashells_required:
+        parts = [part for part in parts if part not in BALLAD] + [f"seashell:{seashells_required}"]
+    else:
+        parts.append(f"{INSTRUMENTS_TOKEN}:{instruments_required}")
+    goal = {**logic, "egg": {**logic["egg"], "condition-basic": " & ".join(parts)}}
+    if seashells_required:
+        goal[GOAL_NODE] = {"type": logic[GOAL_NODE]["type"], "condition-basic": "egg"}
+    return goal
 
 
 # Dungeon entrance shuffle. The dungeons' region nodes are their insides, entered through their overworld door: the

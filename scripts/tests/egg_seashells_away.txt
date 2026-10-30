@@ -1,0 +1,28 @@
+# Seashells Required (DESIGN.md, Goal): on a seashell hunt with 3 required, the last seashell received away from the
+# egg leaves it shut and Link free; the egg's opening plays once he walks up to the egg, and its door leads to the
+# ending.
+# Run after newgame_file2 (Link in Tarin's house) on a mod patched with Seashells Required 3 (and Instruments
+# Required 0, as a seashell hunt's settings have). The owl in front of the egg's stairs talks when Link first stands there; FourteenClear marks that talk
+# as done.
+send DBG setflag FourteenClear 1
+expect FLAG.FourteenClear.1 5
+send DBG grant Seashell 1 -1 0
+expect OK.grant 10
+send DBG grant Seashell 1 -1 0
+expect OK.grant 10
+send DBG grant Seashell 1 -1 0
+expect OK.grant 10
+# Away from the egg the egg stays shut.
+send DBG flag Egg_Performance
+expect FLAG.Egg_Performance.0 5
+level MarinTarinHouse
+# From the foot of the egg's stairs (the sign's spot, then a tile right onto the stairs) Link walks up; near the top
+# the opening takes him, and at its end it has opened the egg.
+warp Field 96.75 20.25 24.75
+goto 98.25 20.25 24.75
+hold 0 0 32767 until !free 20
+free 60
+send DBG flag Egg_Performance
+expect FLAG.Egg_Performance.1 5
+hold 0 0 32767 until level=Ending 15
+state

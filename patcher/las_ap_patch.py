@@ -52,6 +52,7 @@ from RandomizerCore.Randomizers.chests import ChestRandomizer  # noqa: E402
 from RandomizerCore.Randomizers.free_gifts import FreeGiftsRandomizer  # noqa: E402
 from RandomizerCore.Randomizers.instruments import InstrumentRandomizer  # noqa: E402
 from RandomizerCore.Randomizers.keysanity import Keysanity  # noqa: E402
+from RandomizerCore.Randomizers.rupees import BlueRupeeRandomizer  # noqa: E402
 from RandomizerCore.Randomizers.shop import TEXT_TO_CHANGE as SHOP_TEXT  # noqa: E402
 from RandomizerCore.Tools import event_tools  # noqa: E402
 from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct  # noqa: E402
@@ -486,6 +487,9 @@ for _name in BOSS_METHODS:
 BossDropRandomizer.armosKnightChanges = _armos_knight_changes
 # The ghost's reward is a drop at its grave (ap_drop.GHOST_DROP), in place of LASR's item-get after the grave's event
 FreeGiftsRandomizer.ghostRewardChanges = lambda self: None
+# The Color Dungeon's blue rupees are drops where they stand (ap_drop.BLUE_RUPEES), with Blue Rupees on or off, in
+# place of LASR's SinkingSword actors
+BlueRupeeRandomizer.__init__ = lambda self, mod_generator: None
 _original_fishing_fixes = FishingDatasheetFixes.__init__
 FishingDatasheetFixes.__init__ = _fishing_spots
 FlagManager.addCustomFlags = _add_ap_flags
@@ -538,7 +542,8 @@ class APModsProcess(mod_generator.ModsProcess):
                  f"no_30fps_drops = {NO_30FPS_DROPS[self.settings.get('No 30 FPS Drops', 'On emulators')]}\n"
                  f"instant_pickups = {self.settings.get('Instant Pickups', False)}\n"
                  f"bouncy_items = {self.settings.get(ap_drop.BOUNCY_SETTING, False)}\n")
-        path.write_text(text + f"\n[archipelago]\nseed_hash = {self.seed_hash}\n")
+        path.write_text(text + f"\n[archipelago]\nseed_hash = {self.seed_hash}\n"
+                        f"seashells_required = {self.settings.get('Seashells Required', 0)}\n")
         # What each location holds, so the found text names it before the client connects (DESIGN.md)
         with open(self.config_dir / "ap_names.txt", "w", encoding="utf-8", newline="\n") as f:
             for local_id, (item, owner) in sorted(self.location_names.items()):
@@ -783,8 +788,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         ap_ghost.add(proc.file_manager)
     if hints:
         ap_hints.add(proc.file_manager, proc.config_dir, hints)
-    # all eight for patches from before the option
-    ap_goal.set_instrument_count(proc.file_manager, patch["settings"].get("Instruments Required", 8))
+    # all eight and no seashells for patches from before the options
+    ap_goal.set_goal(proc.file_manager, patch["settings"].get("Instruments Required", 8),
+                     patch["settings"].get("Seashells Required", 0))
     ap_save_name.set_default(proc.file_manager, patch.get("slot_name", ""))
     ap_ballad.add(args.romfs, proc.romfs_dir)
     map_tracker = patch["settings"].get("Map Tracker", False)  # off for patches from before the option

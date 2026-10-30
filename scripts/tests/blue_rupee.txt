@@ -1,0 +1,26 @@
+# Blue Rupees off (DESIGN.md, optional locations; Drop actor, The blue rupees): the Color Dungeon's blue rupees are
+# checks, optional ones, each a drop actor where it stands. Link, a tile above rupee 1 (D0-rupee-1,
+# Lv10ClothesDungeon_08D at 49.5 0.62 87.75), walks down into it: it shows the location's item and sets its flag (the
+# rupee's own, Lv10RupeeGet), and it is gone, also once the level loads again (DBG actor). Run after newgame_file2 on a mod patched with Blue Rupees off; clears the rupee's flag.
+# Screenshot: blue_rupee.
+guard hurt
+send DBG setflag Lv10RupeeGet 0
+expect FLAG.Lv10RupeeGet.0 5
+warp Lv10ClothesDungeon 49.5 0 86.25
+poll OK.actor.1F01C1005D036766.1 5 DBG actor 1F01C1005D036766
+# The location's item may be a trap.
+guard off hurt
+hold 0 0 -32767 until !free 5
+until textready 10
+state
+shot blue_rupee.png
+dismiss 20
+poll FLAG.Lv10RupeeGet.1 5 DBG flag Lv10RupeeGet
+send DBG actor 1F01C1005D036766
+expect OK.actor.1F01C1005D036766.0 5
+# Taken, it stays gone when the level loads again (its got flag, switch 1), while rupee 2 stands there again.
+warp Field 138.75 7.5 179.25
+warp Lv10ClothesDungeon 49.5 0 86.25
+poll OK.actor.1F01C2005D036766.1 5 DBG actor 1F01C2005D036766
+send DBG actor 1F01C1005D036766
+expect OK.actor.1F01C1005D036766.0 5

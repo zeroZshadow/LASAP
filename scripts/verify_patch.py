@@ -305,27 +305,49 @@ for level, chests in launches.items():
                   f"{users.get(flag)}")
 print(f"drops={len(takes)} take entries={len(entries)} bad={bad}")
 
-# Instruments Required: below eight, the egg's event checks single instruments instead of all of them.
+# Instruments Required: below eight, the egg's event checks single instruments instead of all of them. Seashells
+# Required: each of the four switches checks the seashell flag instead, and no instrument.
 required = patch["settings"].get("Instruments Required", 8)
+seashells = patch["settings"].get("Seashells Required", 0)
 egg = Path(sys.argv[2]) / "atmosphere/contents/01006BB00C6F0000/romfs/region_common/event" / ap_goal.EVENT_FILE
 queries = []
+flags = []
 if egg.exists():
     flow = evfl.EventFlow()
     flow.read(egg.read_bytes())
     queries = [e.data.actor_query.v.v for e in flow.flowchart.events
                if getattr(e.data, "actor_query", None) is not None]
-if required < 8 and (ap_goal.ALL_QUERY in queries or ap_goal.ITEM_QUERY not in queries):
+    flags = [e.data.params.data.get("symbol") for e in flow.flowchart.events
+             if getattr(e.data, "actor_query", None) is not None and e.data.actor_query.v.v == ap_goal.FLAG_QUERY]
+if seashells and flags.count(ap_goal.SEASHELL_FLAG) != ap_goal.SWITCHES:
+    bad += 1
+    print(f"EGG checks {ap_goal.SEASHELL_FLAG} {flags.count(ap_goal.SEASHELL_FLAG)} times with {seashells} seashells")
+if not seashells and ap_goal.SEASHELL_FLAG in flags:
+    bad += 1
+    print(f"EGG checks {ap_goal.SEASHELL_FLAG} with no seashells required")
+# With seashells the egg's door leads to the ending.
+egg_room = egg.parents[1] / "level" / "Field" / f"{ap_goal.EGG_ROOM}.leb"
+door = ap_goal.EGG_LEVEL
+if egg_room.exists():
+    door = ap_goal.egg_door(Room(egg_room.read_bytes())).parameters[0].decode()
+if door != (ap_goal.ENDING_LEVEL if seashells else ap_goal.EGG_LEVEL):
+    bad += 1
+    print(f"EGG door leads to {door} with {seashells} seashells required")
+if seashells and (ap_goal.ALL_QUERY in queries or ap_goal.ITEM_QUERY in queries):
+    bad += 1
+    print(f"EGG checks instruments with {seashells} seashells required")
+if not seashells and required < 8 and (ap_goal.ALL_QUERY in queries or ap_goal.ITEM_QUERY not in queries):
     bad += 1
     print(f"EGG still checks {ap_goal.ALL_QUERY} with {required} instruments required")
 # LASR writes the egg's event in every patch; with all eight required its switches stay as they are.
-if required >= 8 and egg.exists() and queries.count(ap_goal.ALL_QUERY) != ap_goal.SWITCHES:
+if not seashells and required >= 8 and egg.exists() and queries.count(ap_goal.ALL_QUERY) != ap_goal.SWITCHES:
     bad += 1
     print(f"EGG event lost its {ap_goal.ALL_QUERY} checks with all instruments required")
 from RandomizerCore.Tools.text_tools import TextFile  # noqa: E402
 sign = TextFile(Path(sys.argv[2]) / "atmosphere/contents/01006BB00C6F0000/romfs/regionUS/USen/message" /
                 ap_goal.SIGN_FILE).getEntry(ap_goal.SIGN_KEY).message.text
-if ap_goal.sign_text(required) not in sign:
+if ap_goal.sign_text(required, seashells) not in sign:
     bad += 1
-    print(f"EGG sign does not name {required} instruments: {sign!r}")
-print(f"egg instruments={required} item checks={queries.count(ap_goal.ITEM_QUERY)} bad={bad}")
+    print(f"EGG sign does not name {ap_goal.sign_text(required, seashells)!r}: {sign!r}")
+print(f"egg instruments={required} seashells={seashells} item checks={queries.count(ap_goal.ITEM_QUERY)} bad={bad}")
 sys.exit(1 if bad else 0)

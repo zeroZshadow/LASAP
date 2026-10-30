@@ -25,6 +25,12 @@ The flowchart is the `.bfevfl` file loaded and relocated in place: the layout of
 - Link's control mode (`Player_ControlMode`) does not depend on events: the scene's mode, the override or `kHeld`. During an event the input is still read; the demoEvent state ignores it.
 - `BgmManager_OnEventStart` pauses the sound effects that play and sets `eventQuiet` (new ones at 0.2) for every event but `ZeldaScroll` (FRAMEWORK.md).
 
+## How an event gets its scene actors
+
+An event made with `Event_Make` and handed to the event manager has the global actors (Link, `Timer`, `Camera`, `Audio`, `Fade`, ...) and no others: actions of a flowchart actor that is a room's actor (the Wind Fish's egg) reach nothing. Charas join an event by `Event_AddChara` (`0x80f7d0`, `(event, EventChara sp*)`), under the names the chara gives (`+0x358`, `+0x380`; a chara without `+0x378` is skipped), between `Event_Prepare` and the request. `Actor_FindEventChara` (`0xfd850`, `(out sp, actor)`) gives an actor's chara; `ActorRegistry_FindByKey` the actor of a LEB key.
+
+The game's own path is an owner's: an area linked to an NPC (its LEB entry's first relationship section, link index 0–3) is entered, and the NPC's component plays its row's event: `NpcComponent_OnTrigger` (`+0x330`) → `NpcComponent_StartTriggerEvent` (`+0x1c0`) → `NpcComponent_EventForCondition` (`+0x180`, the `eventTriggers` entry of condition 10 + link index whose `additionalConditions` hold) → `NpcComponent_StartEvent` (`+0x170`) → `NpcComponent_MakeEvent` (`+0x178`): `Event_Make` on the row's flowchart (`eventInfo.eventAsset`), `NpcComponent_SetupEvent` (`+0x310`: `Event_Prepare`, `Event_AddChara` for each linked actor whose chara names one of the flowchart's actors, then its own), then the request. The Ballad's area in `Field_01G` (`AreaOcarina`) owns the orchestra that way and links the egg, the instruments and the owl; in `Ending_12O` the Wind Fish owns the ending and links its `AreaEventBox`, the owl and the instruments. The module adds the egg to the opening it starts by its LEB key (`AP::Bridge::RequestEvent`); measured 2026-10-28, the egg then cracks, breaks and sets its switch as after the Ballad.
+
 ## Open questions
 
 - Which actor classes override `+0xb0` and keep updating during events.

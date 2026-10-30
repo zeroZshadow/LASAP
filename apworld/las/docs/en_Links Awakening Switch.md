@@ -20,20 +20,24 @@ with count toward it. The sign at the foot of the egg's stairs tells how many, s
 stays hidden in the client's map tracker, PopTracker and Universal Tracker until you have read the sign; until then
 they count on all eight.
 
+With `goal: seashell_hunt` the egg needs `seashells_required` of the 50 secret seashells (30 by default) instead, and
+no instruments. The egg opens by itself, without the ocarina: once you have them and stand at the egg, you watch it break open. Its door then takes you straight to the
+Wind Fish for the ending, past the maze and the Nightmare. The sign names the seashells too, and the Seashell
+Mansion's rewards above that number are optional, so the hunt never takes more seashells than the sign says.
+
 ## What items and locations get shuffled?
 
 Chests, free gifts, golden leaves, heart pieces, seashells, the shop, boss drops and other item locations, each category
 with its own option. The trade quest, Dampé, the Rapids Ride (its race and the items on its islands), fishing, blue
 rupees, owl statues and the Seashell Mansion rewards can be added.
 
-An activity left out (the trade quest, Dampé, the Rapids Ride, fishing, the Seashell Mansion rewards above
-`seashell_mansion`) is optional: its rewards are checks holding only junk and traps, yours or another player's,
+An activity left out (the trade quest, Dampé, the Rapids Ride, fishing, the Color Dungeon's blue rupees, the Seashell Mansion rewards above
+`seashell_mansion` or above the seashells the goal takes) is optional: its rewards are checks holding only junk and traps, yours or another player's,
 and they are in logic only after the goal. Skip them, or do them for completion. With nearly every category off there
 is not enough junk for all of them: some then hold your own items, which the goal never needs.
 
 Any other category left unshuffled keeps its items in their places. Each spot is still a check: the server's hints can
-name it, and the item arrives from the server when you pick it up. The Color Dungeon's blue rupees left unshuffled
-are plain rupees and no checks. The Trendy Game's prizes are never
+name it, and the item arrives from the server when you pick it up. The Trendy Game's prizes are never
 shuffled; its Yoshi Doll, which starts the trade quest, is a check. Saving Bow-Wow and reviving the rooster are checks too. Small keys, nightmare keys, maps, compasses, stone beaks and instruments can stay in their own
 dungeon or go anywhere. Small keys (`small_keys`), nightmare keys (`nightmare_keys`) and maps, compasses and stone beaks
 (`dungeon_items`) each have their own option, which can also put them in any of your dungeons, anywhere in your own

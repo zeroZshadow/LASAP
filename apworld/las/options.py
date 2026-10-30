@@ -87,7 +87,8 @@ class Fishing(Toggle):
 
 class BlueRupees(Toggle):
     """Shuffle the 28 blue rupees of the Color Dungeon.
-    Off, they stay plain blue rupees and are no checks."""
+    Off, they are optional: checks in logic only after the goal, holding only junk and traps, yours or another
+    player's."""
     display_name = "Blue Rupees"
 
 
@@ -102,8 +103,9 @@ class OwlStatues(Choice):
 
 
 class SeashellMansion(Choice):
-    """The Seashell Mansion rewards up to this seashell count are shuffled. The others are optional: in logic only
-    after the goal, holding only junk and traps, yours or another player's."""
+    """The Seashell Mansion rewards up to this seashell count, and with a seashell goal up to Seashells Required, are
+    shuffled. The others are optional: in logic only after the goal, holding only junk and traps, yours or another
+    player's."""
     display_name = "Seashell Mansion"
     option_0 = 0
     option_5 = 5
@@ -174,10 +176,23 @@ class StartingInstruments(Range):
     default = 0
 
 
+class Goal(Choice):
+    """What opens the Wind Fish's Egg.
+    instruments: Instruments Required of the eight instruments, with the Ballad; beat the Nightmare inside.
+    seashell_hunt: Seashells Required secret seashells, no instruments. The egg opens by itself when you reach it
+    with them, without the ocarina, and its door leads straight to the Wind Fish's ending: the maze and the Nightmare
+    are skipped."""
+    display_name = "Goal"
+    option_instruments = 0
+    option_seashell_hunt = 1
+    default = 0
+
+
 class InstrumentsRequired(Range):
-    """How many of the eight instruments open the Wind Fish's Egg. Starting instruments count toward it. The sign at
-    the foot of the egg's stairs tells the number, so it can be left to chance: random, random-low, random-high or
-    random-range-<min>-<max>. A number left to chance stays hidden in the trackers until you read the sign."""
+    """How many of the eight instruments open the Wind Fish's Egg (goal instruments).
+    Starting instruments count toward it. The sign at the foot of the egg's stairs tells the number, so it can be left
+    to chance: random, random-low, random-high or random-range-<min>-<max>. A number left to chance stays hidden in the
+    trackers until you read the sign."""
     display_name = "Instruments Required"
     range_start = 0
     range_end = 8
@@ -192,6 +207,16 @@ class InstrumentsRequired(Range):
         if not isinstance(data, cls):
             option.known = not (isinstance(data, str) and data.lower().startswith("random"))
         return option
+
+
+class SeashellsRequired(Range):
+    """How many of the 50 secret seashells open the Wind Fish's Egg (goal seashell_hunt).
+    The sign at the foot of the egg's stairs tells the number. The Seashell Mansion's rewards above it are optional: in
+    logic only after the goal, holding only junk and traps, yours or another player's."""
+    display_name = "Seashells Required"
+    range_start = 1
+    range_end = 50
+    default = 30
 
 
 class ChestAppearance(Choice):
@@ -439,7 +464,9 @@ class LASOptions(PerGameCommonOptions):
     dungeon_items: DungeonItems
     instruments: Instruments
     starting_instruments: StartingInstruments
+    goal: Goal
     instruments_required: InstrumentsRequired
+    seashells_required: SeashellsRequired
     starting_rupees: StartingRupees
     open_mabe: OpenMabe
     open_kanalet: OpenKanalet
@@ -478,7 +505,7 @@ class LASOptions(PerGameCommonOptions):
 OPTION_GROUPS = [
     OptionGroup("Locations", [Chests, FreeGifts, TradeQuest, GoldenLeaves, HeartPieces, Seashells, Miscellaneous, Shop,
                               BossDrops, Dampe, Rapids, Fishing, BlueRupees, OwlStatues, SeashellMansion]),
-    OptionGroup("Goal", [InstrumentsRequired]),
+    OptionGroup("Goal", [Goal, InstrumentsRequired, SeashellsRequired]),
     OptionGroup("Dungeon Items", [SmallKeys, NightmareKeys, DungeonItems, Instruments]),
     OptionGroup("Start", [StartingInstruments, StartingRupees]),
     OptionGroup("World", [OpenMabe, OpenKanalet, OpenMamu, CompletedBridge, ClassicD2, ShuffledDungeons, FreeBook,
@@ -488,3 +515,13 @@ OPTION_GROUPS = [
                              DisableGuardianAcorn, DisablePieceOfPower, EasyFishing, RandomizeEnemies,
                              RandomizeEnemySizes, BouncyItems]),
 ]
+
+
+def goal_instruments(options: LASOptions) -> int:
+    """The instruments the egg needs: none for the seashell hunt."""
+    return 0 if options.goal == Goal.option_seashell_hunt else options.instruments_required.value
+
+
+def goal_seashells(options: LASOptions) -> int:
+    """The secret seashells the egg needs: none for the instruments goal."""
+    return options.seashells_required.value if options.goal == Goal.option_seashell_hunt else 0
