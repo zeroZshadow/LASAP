@@ -14,7 +14,6 @@ from . import romfs
 from .test_logic import STEPS
 from ..items import GAME, LASR_TO_ITEM
 from ..lasr import INSTRUMENTS
-from ..locations import LOCATION_NAMES
 
 PATCHER = Path(os.path.realpath(__file__)).parents[3] / "patcher"
 ROMFS = romfs()
@@ -115,19 +114,19 @@ class TestSeashellsRequired(unittest.TestCase):
         self.assertEqual(world.patch_data()["settings"]["Seashells Required"], 0)
         self.assertTrue(self.beatable(world.multiworld, 0))
 
-    def test_mansion_above_the_count_is_optional(self) -> None:
-        """A reward the goal's seashells do not reach waits for the goal, so the hunt never takes more seashells."""
+    def test_mansion_follows_its_option(self) -> None:
+        """The goal changes only what the egg takes: the Mansion's rewards are optional above seashell_mansion alone."""
         world_type = AutoWorldRegister.world_types[GAME]
-        for goal, optional in (("seashell_hunt", {"40-seashell-reward", "50-seashell-reward"}), ("instruments", set())):
-            options = {"goal": goal, "seashells_required": 35, "seashell_mansion": 50}
-            world = setup_multiworld(world_type, STEPS, 72, options).worlds[1]
-            with self.subTest(goal=goal):
-                mansion = {loc for loc in world.optional if loc.endswith("-seashell-reward")}
-                self.assertEqual(mansion, optional)
+        for goal in ("seashell_hunt", "instruments"):
+            for required, mansion, optional in ((35, 50, set()), (15, 30, {"40-seashell-reward", "50-seashell-reward"})):
+                options = {"goal": goal, "seashells_required": required, "seashell_mansion": mansion}
+                world = setup_multiworld(world_type, STEPS, 72, options).worlds[1]
+                with self.subTest(goal=goal, required=required, mansion=mansion):
+                    got = {loc for loc in world.optional if loc.endswith("-seashell-reward")}
+                    self.assertEqual(got, optional)
 
     def test_fills(self) -> None:
-        """Seeds with the hunt fill and are beatable, also with all 50 seashells and few other locations; the Mansion's
-        rewards above the count hold no progression."""
+        """Seeds with the hunt fill and are beatable, also with all 50 seashells and few other locations."""
         from Fill import distribute_items_restrictive
         world_type = AutoWorldRegister.world_types[GAME]
         option_sets = ({"goal": "seashell_hunt"},
@@ -139,10 +138,6 @@ class TestSeashellsRequired(unittest.TestCase):
             distribute_items_restrictive(multiworld)
             with self.subTest(options=options):
                 self.assertTrue(multiworld.can_beat_game())
-                world = multiworld.worlds[1]
-                for loc in world.optional:
-                    if loc.endswith("-seashell-reward"):
-                        self.assertFalse(world.get_location(LOCATION_NAMES[loc]).item.advancement, loc)
 
     def test_random_count_is_known(self) -> None:
         """A seashell count left to chance shows at once: the trackers keep only an instrument count hidden."""

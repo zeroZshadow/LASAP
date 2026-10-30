@@ -694,13 +694,13 @@ def step_manual(pack: Pack, tracker: Tracker, server: Server) -> None:
     for held, want in [(0, "false"), (7, "false"), (8, "true")]:
         tracker.commands(*[f"set {c} Active {'true' if i < held else 'false'}" for i, c in enumerate(instruments)])
         check(f"all_instruments() with {held}", tracker.call("all_instruments"), want)
-    # the Seashell Mansion's rewards above Seashells Required are optional: hidden
+    # the goal changes only what the egg takes: the Seashell Mansion's rewards show on either goal, whatever the count
     rewards = (5, 15, 30, 40, 50)
     for n in rewards:
         section = f"@World/Ukuku Prairie/Seashell Mansion/{n} Seashells"
         check(f"{section} visibility", pack.visibility[section], [f"$mansion_reward|{n}"])
     tracker.commands("set mansion Active true")
-    for goal, required, shown in [(0, 20, rewards), (1, 20, (5, 15)), (1, 30, (5, 15, 30))]:
+    for goal, required, shown in [(0, 20, rewards), (1, 20, rewards), (1, 30, rewards)]:
         tracker.commands(f"set goal_instruments CurrentStage {goal}",
                          f"set seashells_required AcquiredCount {required}")
         check(f"Seashell Mansion rewards shown with goal {goal} and {required} required",
@@ -859,7 +859,7 @@ def step_lean(pack: Pack, tracker: Tracker, server: Server) -> None:
 def step_shells(pack: Pack, tracker: Tracker, server: Server) -> None:
     """Slot Shells, goal seashell_hunt, another seed: Seashells Required from the slot data, the egg open with that
     many seashells and the bracelet (step manual: without the ocarina, the Ballad or instruments), and the open egg is
-    the goal; the Seashell Mansion's rewards above Seashells Required hidden."""
+    the goal; the Seashell Mansion's rewards follow the Seashell Mansion setting alone."""
     if not server.proc:
         server.start(fresh=True)
     client = Client("Shells")
@@ -868,7 +868,7 @@ def step_shells(pack: Pack, tracker: Tracker, server: Server) -> None:
     tracker.start("Shells")
     tracker.wait(r"^LASAPTEST READY", 30)
     check_all(tracker, pack, client)
-    limit = min(client.slot_data["settings"]["Seashell Mansion"], required)
+    limit = client.slot_data["settings"]["Seashell Mansion"]
     for n in (5, 15, 30, 40, 50):
         check(f"mansion_reward({n}) with {required} required", tracker.call("mansion_reward", n),
               str(n <= limit).lower())

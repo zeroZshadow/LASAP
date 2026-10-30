@@ -22,8 +22,8 @@ they count on all eight.
 
 With `goal: seashell_hunt` the egg needs `seashells_required` of the 50 secret seashells (30 by default) instead, and
 no instruments. The egg opens by itself, without the ocarina: once you have them and stand at the egg, you watch it break open. Its door then takes you straight to the
-Wind Fish for the ending, past the maze and the Nightmare. The sign names the seashells too, and the Seashell
-Mansion's rewards above that number are optional, so the hunt never takes more seashells than the sign says.
+Wind Fish for the ending, past the maze and the Nightmare. The sign names the seashells too. The Seashell
+Mansion's rewards follow `seashell_mansion` as on any goal, so an item you need can wait at a reward above that number.
 
 ## What items and locations get shuffled?
 

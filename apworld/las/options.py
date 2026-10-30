@@ -103,9 +103,8 @@ class OwlStatues(Choice):
 
 
 class SeashellMansion(Choice):
-    """The Seashell Mansion rewards up to this seashell count, and with a seashell goal up to Seashells Required, are
-    shuffled. The others are optional: in logic only after the goal, holding only junk and traps, yours or another
-    player's."""
+    """The Seashell Mansion rewards up to this seashell count are shuffled. The others are optional: in logic only after the goal,
+    holding only junk and traps, yours or another player's."""
     display_name = "Seashell Mansion"
     option_0 = 0
     option_5 = 5
@@ -211,8 +210,7 @@ class InstrumentsRequired(Range):
 
 class SeashellsRequired(Range):
     """How many of the 50 secret seashells open the Wind Fish's Egg (goal seashell_hunt).
-    The sign at the foot of the egg's stairs tells the number. The Seashell Mansion's rewards above it are optional: in
-    logic only after the goal, holding only junk and traps, yours or another player's."""
+    The sign at the foot of the egg's stairs tells the number."""
     display_name = "Seashells Required"
     range_start = 1
     range_end = 50

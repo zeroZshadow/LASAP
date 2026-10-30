@@ -50,7 +50,8 @@ class TestTracker(unittest.TestCase):
             self.check(options, seed=2000 + index)
 
     def test_seashell_hunt(self) -> None:
-        """The optional locations wait for an egg that takes seashells (and the Mansion's rewards above them)."""
+        """The optional locations wait for an egg that takes seashells; the Mansion's rewards above the count are
+        checks before it."""
         self.check({"goal": "seashell_hunt", "seashells_required": 20, "dampe": False}, seed=2100)
         self.check({"goal": "seashell_hunt", "instruments_required": 4, "seashells_required": 35,
                     "seashell_mansion": 50}, seed=2101)

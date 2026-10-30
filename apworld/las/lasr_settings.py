@@ -87,16 +87,13 @@ def kept_locations() -> Set[str]:
 
 def optional_locations(options: LASOptions) -> Set[str]:
     """The locations of the activities the options leave out (OPTIONAL_CATEGORIES, the Seashell Mansion's rewards above
-    seashell_mansion or above the seashells the goal takes, the Rapids Ride's owl statue): checks the logic reaches only
+    seashell_mansion, the Rapids Ride's owl statue): checks the logic reaches only
     after the goal, excluded (junk and traps of any player), so no seed needs the activity."""
     optional: Set[str] = set()
     for attribute, category in OPTIONAL_CATEGORIES.items():
         if not getattr(options, attribute).value:
             optional |= set(CATEGORIES[category])
-    mansion = options.seashell_mansion.value
-    if goal_seashells(options):
-        mansion = min(mansion, goal_seashells(options))
-    optional |= {loc for loc, n in MANSION_THRESHOLDS.items() if n > mansion}
+    optional |= {loc for loc, n in MANSION_THRESHOLDS.items() if n > options.seashell_mansion.value}
     if not options.rapids:
         optional.add("owl-statue-rapids")  # LASR excludes it without the Rapids category
     return optional - removed_locations(options)
