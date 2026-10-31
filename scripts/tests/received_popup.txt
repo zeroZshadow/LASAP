@@ -26,6 +26,12 @@ await 3 popup=1
 wait 0.6
 shot popup_song.png
 await 5 popup=0
+# A received instrument plays its song
+send DBG grant WindMarimba 1 -1
+expect OK.grant 5
+await 3 popup=1
+await 3 bgm=\S*BGM_INST_MARIMBA:2
+await 5 popup=0
 guard off event=22
 guard off hurt
 # A level load during a popup takes the model with Link; the next popup shows in the new level

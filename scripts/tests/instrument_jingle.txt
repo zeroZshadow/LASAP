@@ -1,0 +1,31 @@
+# Each instrument's fanfare is its own song (DESIGN.md, Instrument songs): a received instrument's item-get, a find
+# (DBG pickup), then Tail Cave's pedestal (Lv01TailCave_03G, 97.5 2.0 27.75) holding the Full Moon Cello, whose song
+# plays alone (the music stopped before the item-get) and on through the whiteout until the warp out. Run after
+# newgame_file2 with Instant Pickups off, on a mod from make_test_patch.py --items D1-instrument=full-moon-cello. An
+# instrument's text closes by itself.
+guard hurt
+free 30
+send DBG grant SurfHarp 1 -1
+expect OK.grant 5
+await 5 event=22
+await 3 bgm=\S*BGM_INST_HARP:2
+until msg:Reading 5
+await 10 event=0
+free 10
+send DBG pickup ConchHorn
+expect OK.pickup 5
+await 3 bgm=\S*BGM_INST_HORN:2
+await 5 popup=0
+warp Lv01TailCave 97.5 1.5 29.25
+at 97.5 29.25
+goto 97.5 1.5 28.5
+face up
+interact
+await 10 anim=item_get_st
+await 3 bgm=\S*BGM_INST_VIOLIN:2
+until msg:Reading 10
+until msg:Closed 10
+wait 2.5
+check bgm=BGM_INST_VIOLIN:2\s
+inlevel 30
+level Field

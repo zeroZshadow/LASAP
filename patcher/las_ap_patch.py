@@ -188,6 +188,13 @@ BOSS_METHODS = ("moldormChanges", "genieChanges", "slimeEyeChanges", "anglerChan
                 "facadeChanges", "eagleChanges", "hotheadChanges", "lanmolaChanges", "masterStalfosChanges")
 BOSS_DROP_ROWS = {**{f"HeartContainer{i}": "HeartContainer" for i in range(8)},
                   "AnglerKey": "AnglerKey", "FaceKey": "FaceKey", "HookShot": "HookShot"}
+# Items.gsheet instrument rows -> their jingle: the instrument's own song, which the pedestal's whiteout plays in the
+# game (MusicalInstrument.bfevfl's PlayAndWaitMusicalInstrument), in place of the fanfare all eight share
+# (BGM_FANFARE_INST_GET). Every item-get and find of an instrument plays it.
+INSTRUMENT_JINGLES = {"FullMoonCello": "BGM_INST_VIOLIN", "ConchHorn": "BGM_INST_HORN", "SeaLilysBell": "BGM_INST_BELL",
+                      "SurfHarp": "BGM_INST_HARP", "WindMarimba": "BGM_INST_MARIMBA",
+                      "CoralTriangle": "BGM_INST_TRIANGLE", "EveningCalmOrgan": "BGM_INST_ORGAN",
+                      "ThunderDrum": "BGM_INST_DRUM"}
 # Easy Fishing: FishingSpot.gsheet weights of the deep spot (row mId 4, spot 2) by fish kind, Ol' Baron (kind 4) as
 # likely as the other fish there (vanilla [0, 25, 0, 0, 5, 0]). The line holds through the module (config.ini [tweaks]).
 EASY_FISHING_SPOT = (4, [0, 15, 0, 0, 15, 0])
@@ -217,6 +224,8 @@ def _add_placeholder_row(self, sheet) -> None:
     for item in sheet["values"]:
         if item["symbol"] in TUNIC_NPC_KEYS:
             item["npcKey"] = TUNIC_NPC_KEYS[item["symbol"]]
+        if item["symbol"] in INSTRUMENT_JINGLES:
+            item["jingle"] = INSTRUMENT_JINGLES[item["symbol"]]
     # Parsed up front: appending to the sheet invalidates references to its rows.
     rows = {str(item["symbol"]): parseStruct(item) for item in sheet["values"]}
     taken = {row["itemID"] for row in rows.values()} & {PLACEHOLDER_ITEM_ID, *VARIANT_ITEM_IDS}
@@ -355,8 +364,12 @@ def _no_keysanity_branch(self, flowchart, item, before, after):
 
 
 def _native_instrument_get(self, flowchart, room, room_data, destination=None):
-    """The instrument pedestal's item-gets (any item, progressive ones on both branches) keep the game's item-get."""
+    """The instrument pedestal's item-gets (any item, progressive ones on both branches) keep the game's item-get. The
+    music stops before it, as in the game (MusicalInstrument.bfevfl), so the item's jingle plays alone; LASR's whiteout
+    after it lets the jingle play on (its StopAllBGM is in a chain its fork cuts off) until the warp out."""
     _original_change_instrument(self, flowchart, room, room_data, destination)
+    first = event_tools.findEntryPoint(flowchart, room).main_event.v.name
+    event_tools.createActionChain(flowchart, room, [("Audio", "StopAllBGM", {"duration": 1.0})], first)
     mark_native_item_gets(flowchart, room)
 
 

@@ -202,13 +202,15 @@ namespace {
     }
 
     // Instant Pickups: the item's model above Link's head and the toast, while play goes on. The next one waits
-    // until both are done. Traps still play their effect as an event. A find also plays its fanfare.
+    // until both are done. Traps still play their effect as an event. A find also plays its fanfare, a received
+    // instrument its song (its Items.gsheet jingle).
     void ShowPopup(const ItemShow& show) {
         ItemId item = show.id;
         if (show.found) {
             AP::QueueToast(FoundToast(show));
             AP::Music::Fanfare(item);
         } else {
+            if (item >= ItemId::FullMoonCello && item <= ItemId::ThunderDrum) AP::Music::Fanfare(item);
             std::string name = show.item;
             if (name.empty()) {
                 auto it = Inventory::kItemNames.find(item);
