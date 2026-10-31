@@ -10,6 +10,7 @@ class FileManager:
     def __init__(self, mod_generator) -> None:
         self.parent = mod_generator
         self.out_files = set()
+        self.out_text_files = set()  # relative paths of the text files this run wrote
 
 
     def readFile(self, file_name: str, return_path=False):
@@ -104,7 +105,8 @@ class FileManager:
                 if subdir.name == "common":
                     continue
                 relative_path = Path(f"{region}/{subdir.name}/message")
-                if Path(self.parent.romfs_dir / relative_path / file_name).exists():
+                # the output's copy only once this run wrote it: an earlier run's copy holds its additions already
+                if str(relative_path / file_name) in self.out_text_files:
                     text_files.append((relative_path, TextFile(self.parent.romfs_dir / relative_path / file_name)))
                 else:
                     text_files.append((relative_path, TextFile(self.parent.rom_path / relative_path / file_name)))
@@ -116,5 +118,6 @@ class FileManager:
         """Writes the text file to the relative path with the given file name"""
 
         text_file.write(self.parent.romfs_dir / relative_path, file_name)
+        self.out_text_files.add(str(relative_path / file_name))
         self.parent.progress_value += 1
         self.parent.progress_update.emit(self.parent.progress_value)

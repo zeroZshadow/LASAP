@@ -115,29 +115,26 @@ namespace {
         Game::Framework* fmwk = Game::GetFramework();
         auto* comp = static_cast<Game::InstancedModelComponent*>(Game::operator_new(sizeof(Game::InstancedModelComponent)));
         Game::Entity* entity = &comp->node.entity;
-        SharedPtr owner{};
-        Game::SharedPtr_FromWeak(&owner, host->actor.entity.self.ptr, host->actor.entity.self.ctrl);
+        Game::Shared<> owner = Game::Shared<>::Lock(host->actor.entity.self);
         snprintf(g_InstName, sizeof(g_InstName), "APGhostInst%d", g_InstMade++);
-        Game::ComponentName name{g_InstName, strlen(g_InstName), 1, owner.ptr, owner.ctrl};
+        Game::ComponentName name{g_InstName, strlen(g_InstName), 1, owner.get(), owner.View().ctrl};
         Game::InstancedModel_Ctor(comp, &name, smc->modelResource, kInstMode + g, kInstGroups[g].shapes, &fmwk->renderer);
-        Game::ReleaseOwner(owner.ctrl);
+        owner = {};
         void** ctrl = static_cast<void**>(Game::operator_new(0x20));
         ctrl[0] = const_cast<u8*>(Game::InstancedModelCtrl_vtable.Ptr());
         ctrl[1] = nullptr;                      // one owner: the module
         ctrl[2] = reinterpret_cast<void*>(1);   // and the component's own weak reference
         ctrl[3] = comp;
         if (entity->self.ctrl == nullptr) entity->self = {comp, ctrl};
+        Game::Shared<> mine = Game::Shared<>::Adopt(comp, ctrl);
         comp->visible = 0;  // the game pushes no records; the module writes them
         comp->added = 1;    // as after a push, until the game's per-frame reset
-        if (!(entity->flags & (Game::EntityFlags::kDestroyRequested | Game::EntityFlags::kInitialized))) {
+        if (!entity->flags.Any(Game::EntityFlag::DestroyRequested | Game::EntityFlag::Initialized)) {
             Game::CallVirtual<void()>(comp, Game::EntityVirtual::kRegister);
             Game::CallVirtual<void()>(comp, Game::EntityVirtual::kSetup);
-            entity->flags |= Game::EntityFlags::kInitialized;
+            entity->flags.Set(Game::EntityFlag::Initialized);
         }
-        SharedPtr sp{comp, ctrl};
-        Game::AddOwner(ctrl);
-        Game::EntityManager_PostStart(*Game::EntityManager_ptr, &sp);
-        Game::ReleaseOwner(ctrl);
+        Game::EntityManager_PostStart(*Game::EntityManager_ptr, mine.Untyped());
         bool attached = Game::Actor_AttachComponent(&host->actor, comp, host->actor.root);
         Game::ModelInstance* m = attached ? comp->instance : nullptr;
         if (m != nullptr) {
@@ -150,7 +147,7 @@ namespace {
             if (old != nullptr) Game::operator_delete(old);
             g_Inst[g] = Inst{comp, host, 0};
         }
-        Game::ReleaseOwner(ctrl);  // the module's reference: the host's child map holds its own
+        mine = {};  // the module's reference: the host's child map holds its own
         return m != nullptr;
     }
 }

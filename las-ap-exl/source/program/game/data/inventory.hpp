@@ -1,5 +1,6 @@
 #pragma once
 #include "game/actor.hpp"
+#include "game/data/item_id.hpp"
 #include "game/sym.hpp"
 #include "lib.hpp"
 #include <cstddef>

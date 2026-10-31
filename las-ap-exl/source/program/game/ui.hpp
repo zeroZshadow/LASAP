@@ -1,11 +1,19 @@
 #pragma once
 // The game's UI (nn::ui2d through its UI manager): panes, text boxes and layouts of Game.arc built at runtime
 // (TESTING.md, "Layouts at runtime", "Text box glyphs"; scripts/re/UI.md).
+#include "flags.hpp"
 #include "game/stl.hpp"
 #include "lib.hpp"
 #include <cstddef>
 
 namespace Game::Ui {
+    // Pane::flags. Visible and Calculated together draw the pane; Dirty asks for the global matrix again.
+    enum class PaneFlag : u8 {
+        Visible = 0x01, InfluencedAlpha = 0x02, LocationAdjust = 0x04, UserAllocated = 0x08, Dirty = 0x10,
+        UserMatrix = 0x20, UserGlobalMatrix = 0x40, Calculated = 0x80,
+    };
+    FLAGS_ENUM(PaneFlag)
+
     // An nn::ui2d pane (ui2d_Pane_vtable; 0xd8 bytes). Virtual +0x60: FindPaneByName(name, recursive).
     struct Pane {
         const uintptr_t* vtable;
@@ -16,7 +24,7 @@ namespace Game::Ui {
         float rotate[3];           // 0x3c
         float scaleX, scaleY;      // 0x48
         float width, height;       // 0x50
-        u8 flags;                  // 0x58: kPane*
+        Flags<PaneFlag> flags;     // 0x58
         u8 alpha;                  // 0x59
         u8 globalAlpha;            // 0x5a: alpha times the parent's; Calculate sets it each frame for a visible pane
         u8 basePosition;           // 0x5b: bits 0-1 horizontal, 2-3 vertical origin
@@ -25,7 +33,7 @@ namespace Game::Ui {
         u32 systemFlags;           // 0x60: a bit per system data entry type in extUserData
         u8 pad_64[0xc];
         float globalMatrix[3][4];  // 0x70: computed by Calculate
-        const float (*userMatrix)[4];  // 0xa0: with kPaneUserMatrix
+        const float (*userMatrix)[4];  // 0xa0: with PaneFlag::UserMatrix
         const void* extUserData;   // 0xa8
         char name[0x19];           // 0xb0: 24 characters
         char userData[0x9];        // 0xc9
@@ -40,10 +48,6 @@ namespace Game::Ui {
     static_assert(offsetof(Pane, systemFlags) == 0x60 && offsetof(Pane, globalMatrix) == 0x70);
     static_assert(offsetof(Pane, extUserData) == 0xa8 && offsetof(Pane, name) == 0xb0);
     static_assert(offsetof(Pane, userData) == 0xc9 && sizeof(Pane) == 0xd8);
-    // kPaneVisible and kPaneCalculated together draw the pane; kPaneDirty asks for the global matrix again.
-    constexpr u8 kPaneVisible = 0x01, kPaneInfluencedAlpha = 0x02, kPaneLocationAdjust = 0x04,
-                 kPaneUserAllocated = 0x08, kPaneDirty = 0x10, kPaneUserMatrix = 0x20, kPaneUserGlobalMatrix = 0x40,
-                 kPaneCalculated = 0x80;
 
     // The game's text box (GameTextBox_Make, vtable 0x1c52940; 0x1a0 bytes): an nn::ui2d text box (ui2d_TextBox_vtable,
     // 0x158 bytes) and the game's fields. Virtual +0xe8: AllocateStringBuffer(gfx device, length); +0x120: the text's
@@ -91,14 +95,14 @@ namespace Game::Ui {
     // A text box as LayoutWrapper_FindTextBox returns it and MessageText_SetLabel and AP::SetPaneText fill it: the
     // layout's shared_ptr and the box.
     struct TextHolder {
-        SharedPtr layout;
+        SharedPtr<> layout;
         TextBox* box;              // 0x10
     };
     static_assert(offsetof(TextHolder, box) == 0x10 && sizeof(TextHolder) == 0x18);
 
     // A pane as LayoutWrapper_FindPane returns it.
     struct PaneHandle {
-        SharedPtr layout;
+        SharedPtr<> layout;
         Pane* pane;                // 0x10
     };
     static_assert(offsetof(PaneHandle, pane) == 0x10 && sizeof(PaneHandle) == 0x18);
@@ -116,7 +120,7 @@ namespace Game::Ui {
         void* resources;           // 0x40: the archive's resource accessor
         ListNode parts;            // 0x48: the parts panes' layouts
         void* field_58;            // 0x58: a table {s32, s32, void** entries} the parts build makes
-        SharedPtr archive;         // 0x60: the UI archive it was built from
+        SharedPtr<> archive;       // 0x60: the UI archive it was built from
         u8 calculate;              // 0x70
         u8 draw;                   // 0x71
         u8 pad_72[0x6];
@@ -129,14 +133,14 @@ namespace Game::Ui {
     // animations. UIs (the pause menu's pages, the map cursor, the map markers) are wrappers.
     struct LayoutWrapper {
         const uintptr_t* vtable;   // LayoutWrapperVirtual
-        WeakPtr weakThis;          // 0x8
+        WeakPtr<> weakThis;        // 0x8
         Layout* layout;            // 0x18: a shared_ptr
         void* layoutCtrl;          // 0x20
         LayoutWrapper* owner;      // 0x28: the page a part is bound to (Part_Bind); its layout stands in for a gone one
-        WeakPtr parentLayout;      // 0x30: the layout its root hangs in, once attached
-        SharedPtr attachLayout;    // 0x40: the parent wrapper's layout while attached
+        WeakPtr<> parentLayout;    // 0x30: the layout its root hangs in, once attached
+        SharedPtr<> attachLayout;  // 0x40: the parent wrapper's layout while attached
         Pane* attachPane;          // 0x50: the pane its root hangs under; the layout calculates itself only without
-        SharedPtr homeKeep;        // 0x58: released when the root leaves its first parent
+        SharedPtr<> homeKeep;      // 0x58: released when the root leaves its first parent
         Pane* homePane;            // 0x68: the root's own parent before it was attached
         u8 active;                 // 0x70: updated each frame while set; once cleared, the manager closes the UI
         u8 openPending;            // 0x71: the next update opens the UI again
@@ -179,10 +183,11 @@ namespace Game::Ui {
     static_assert(offsetof(Animator, speed) == 0x3c && offsetof(Animator, playState) == 0x44);
     static_assert(offsetof(Animator, groups) == 0x48 && sizeof(Animator) == 0x58);
 
-    // A layout's animation as LayoutWrapperVirtual::kAnimation returns it: the layout's shared_ptr and the animator.
+    // A layout's animation as LayoutWrapperVirtual::kAnimation returns it (through x8): the layout's shared_ptr,
+    // which the caller then owns, and the animator.
     struct Animation {
-        SharedPtr owner;
-        Animator* animator;
+        Shared<> owner;
+        Animator* animator = nullptr;
     };
     static_assert(offsetof(Animation, animator) == 0x10 && sizeof(Animation) == 0x18);
 
@@ -195,7 +200,7 @@ namespace Game::Ui {
 
     // A font the UI manager loads (UiManager_LoadFont): the resource and the nn::font::Font.
     struct FontHandle {
-        SharedPtr resource;
+        SharedPtr<> resource;
         void* font;                // 0x10
     };
     static_assert(sizeof(FontHandle) == 0x18);
@@ -230,11 +235,11 @@ namespace Game::Ui {
     struct Manager {
         void* owned_0;             // freed by the destructor
         u64 field_8;               // 0x8
-        SharedPtr sp_10[4];        // 0x10
-        SharedPtr gameArchivesLoad;     // 0x50: the ui/Game.arc set's resource group (UiManager_LoadGameArchives)
-        SharedPtr startUpArchivesLoad;  // 0x60: the StartUp set's
-        Vector<SharedPtr> vector_70;    // 0x70
-        SharedPtr archives[8];     // 0x88: per archive set s, slots s, s + 2 and s + 4; slot 0 Game.arc, set once the
+        SharedPtr<> sp_10[4];      // 0x10
+        SharedPtr<> gameArchivesLoad;   // 0x50: the ui/Game.arc set's resource group (UiManager_LoadGameArchives)
+        SharedPtr<> startUpArchivesLoad;  // 0x60: the StartUp set's
+        Vector<SharedPtr<>> vector_70;  // 0x70
+        SharedPtr<> archives[8];   // 0x88: per archive set s, slots s, s + 2 and s + 4; slot 0 Game.arc, set once the
                                    // game's UI is loaded; 6 DgnTex.arc, 7 PanelTex.arc
         void* hudPass;             // 0x108
         Function factories[44];    // 0x110: per UI id
@@ -324,6 +329,6 @@ namespace Game::Ui {
     Layout* LayoutOf(LayoutWrapper* wrapper);
     // The wrapper's root pane, or null.
     Pane* RootOf(LayoutWrapper* wrapper);
-    // A layout's animation by name; Release(animation.owner) drops it.
+    // A layout's animation by name; its owner drops with it.
     Animation GetAnimation(LayoutWrapper* wrapper, const char* name);
 }

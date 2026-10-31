@@ -84,11 +84,11 @@ namespace {
             r.mode = 'i';
             const Frame& fb = tr.frames[(r.a + 1) % kTrack];
             float span = static_cast<float>(fb.timeMs - fa.timeMs);
-            if (!(fb.flags & kFlagWarped) && span > 0) {
+            if (!fb.flags.Has(GhostFlag::Warped) && span > 0) {
                 r.pos = Along(fa, fb, static_cast<float>(t - fa.timeMs) / span);
                 r.speed = std::hypot(fb.x - fa.x, fb.z - fa.z) * 1000 / span;
             }
-        } else if (!(fa.flags & (kFlagStill | kFlagWarped)) && r.a > oldest && t - fa.timeMs < kExtrapolateMs) {
+        } else if (!fa.flags.Any(GhostFlag::Still | GhostFlag::Warped) && r.a > oldest && t - fa.timeMs < kExtrapolateMs) {
             const Frame& fp = tr.frames[(r.a - 1) % kTrack];
             float span = static_cast<float>(fa.timeMs - fp.timeMs);
             if (span > 0) {
@@ -114,7 +114,7 @@ namespace {
         bool released = t - static_cast<double>(fw.timeMs) >= kArriveHoldMs;
         for (u32 k = w + 1; k <= r.a && !released; k++) {
             const Frame& f = tr.frames[k % kTrack];
-            released = (f.flags & kFlagStarted) != 0 || f.anim != fw.anim ||
+            released = f.flags.Has(GhostFlag::Started) || f.anim != fw.anim ||
                        std::hypot(f.x - fw.x, f.y - fw.y, f.z - fw.z) > kArriveMove;
         }
         if (released) tr.arrival = 0;
@@ -151,7 +151,7 @@ namespace {
         tr.frames[tr.count % kTrack] = f;
         tr.count++;
         tr.target = Target(tr);
-        if (f.flags & kFlagWarped) tr.arrival = tr.count;
+        if (f.flags.Has(GhostFlag::Warped)) tr.arrival = tr.count;
     }
     // One frame of the replay; picks the animation from the speed.
     void ReplayFrame(Puppet& p, double now) {
@@ -167,12 +167,12 @@ namespace {
         // the animation starts in the frames reached since the last frame, the ones passed over included
         bool started = false;
         for (u32 k = std::max(tr.passed, oldest); k <= r.a; k++)
-            started |= (tr.frames[k % kTrack].flags & kFlagStarted) != 0;
+            started |= tr.frames[k % kTrack].flags.Has(GhostFlag::Started);
         tr.passed = std::max(tr.passed, r.a + 1);
         if (tr.replayed > oldest && tr.replayed < tr.count) {
             // new lines: where the replay had the puppet without them, less where it has it now
             bool warped = false;
-            for (u32 k = tr.replayed; k < tr.count; k++) warped |= (tr.frames[k % kTrack].flags & kFlagWarped) != 0;
+            for (u32 k = tr.replayed; k < tr.count; k++) warped |= tr.frames[k % kTrack].flags.Has(GhostFlag::Warped);
             Game::Vec3 was = ReplayAt(tr, t, tr.replayed).pos;
             if (!warped) tr.error = Game::Vec3{tr.error.x + was.x - r.pos.x, tr.error.y + was.y - r.pos.y,
                                                tr.error.z + was.z - r.pos.z};
@@ -201,12 +201,12 @@ namespace {
         tr.lastNow = now;
 #ifdef LASAP_TEST
         if (mode == 'e') g_Past++;
-        if (mode == 'h' && !(fa.flags & kFlagStill)) g_Held++;
+        if (mode == 'h' && !fa.flags.Has(GhostFlag::Still)) g_Held++;
         if (IndexOf(p) == g_TraceSlot) TraceReplay(now, t, fa.timeMs, r.a, tr.count, mode, pos.x, pos.z);
         auto& st = p.stats;
         st.frames++;
         if (mode == 'e') st.past++;
-        if (mode == 'h' && !(fa.flags & kFlagStill)) st.held++;
+        if (mode == 'h' && !fa.flags.Has(GhostFlag::Still)) st.held++;
         // still catching up: a correction of a third of a unit or more shows
         if (std::fabs(tr.error.x) + std::fabs(tr.error.y) + std::fabs(tr.error.z) >= 0.3f) st.catchup++;
         if (tr.shownFrames > 1 && dt > 0) {

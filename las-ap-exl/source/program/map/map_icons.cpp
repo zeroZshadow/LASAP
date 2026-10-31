@@ -114,17 +114,17 @@ namespace {
         return s.substr(0, std::strlen(prefix)) == prefix;
     }
 
-    bool Reachable(int id) {
+    bool Reachable(LocationId id) {
         return !AP::HasLogic() || AP::IsInLogic(id);
     }
 
     // A dungeon location whose dungeon's door can be reached.
-    bool DoorReachable(int id) {
+    bool DoorReachable(LocationId id) {
         return !AP::HasLogic() || AP::IsDoorOpen(id);
     }
 
     // Checked, or marked skipped by the player: the map counts it as done.
-    bool Done(int id) {
+    bool Done(LocationId id) {
         return AP::IsLocationChecked(id) || AP::IsLocationSkipped(id);
     }
 
@@ -138,7 +138,7 @@ namespace {
     // its checks' look would tell which dungeon the door leads into.
     Look IdsLook(Ids ids, bool nameHidden) {
         size_t left = 0, reachable = 0;
-        for (int id : ids) {
+        for (LocationId id : ids) {
             if (Done(id)) continue;
             left++;
             if (nameHidden ? DoorReachable(id) : Reachable(id)) reachable++;
@@ -163,7 +163,7 @@ namespace {
     bool LookMade(size_t group, Look look) {
         if (GroupLook(group) == look) return true;
         size_t unchecked = 0;
-        for (int id : GroupIds(group)) unchecked += AP::IsLocationChecked(id) ? 0 : 1;
+        for (LocationId id : GroupIds(group)) unchecked += AP::IsLocationChecked(id) ? 0 : 1;
         switch (look) {
             case Collected:
             case InLogic:
@@ -187,7 +187,7 @@ namespace {
         return std::atoi(std::string(name).c_str());
     }
 
-    Map::MapMarker* MarkerOf(const Game::SharedPtr& marker) { return static_cast<Map::MapMarker*>(marker.ptr); }
+    Map::MapMarker* MarkerOf(const Game::SharedPtr<Map::MapMarker>& marker) { return marker.ptr; }
 
     // The group and look of a map marker's row, or -1.
     int MarkerIcon(const Map::MapMarker* marker, Look& look) {
@@ -202,7 +202,7 @@ namespace {
 
     // Shows the page's markers of ours whose look shows (LookShown) and hides the others.
     void ApplyLooks(Map::OverworldMap* page) {
-        for (const Game::SharedPtr& sp : page->markers) {
+        for (const Game::SharedPtr<Map::MapMarker>& sp : page->markers) {
             Map::MapMarker* marker = MarkerOf(sp);
             Look look;
             int group = marker != nullptr ? MarkerIcon(marker, look) : -1;
@@ -236,7 +236,7 @@ namespace {
     // every location is checked.
     std::string CountText(Ids ids) {
         int unchecked = 0, todo = 0;
-        for (int id : ids) {
+        for (LocationId id : ids) {
             if (AP::IsLocationChecked(id)) continue;
             unchecked++;
             if (!Done(id) && Reachable(id)) todo++;

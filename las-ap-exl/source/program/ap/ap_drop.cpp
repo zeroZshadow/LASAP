@@ -12,9 +12,14 @@
 #include "config/config.hpp"
 #include "config/file_handler.hpp"
 #include "game/actor.hpp"
+#include "game/actors/item.hpp"
+#include "game/actors/tree.hpp"
+#include "game/data/inventory.hpp"
+#include "game/event.hpp"
 #include "game/framework.hpp"
 #include "game/hooks/level.hpp"
 #include "game/mem.hpp"
+#include "game/switch.hpp"
 #include "game/sym.hpp"
 #include "loggers.hpp"
 #include "lib.hpp"
@@ -24,19 +29,22 @@
 #include <cstring>
 #include <sstream>
 #include <string>
+#include <utility>
 
 namespace AP::Bridge {
 namespace {
     using Game::Actor;
+    using Game::Actors::ItemActor;
+    using Game::Actors::ItemComponent;
     using Game::Function;
     using Game::SharedPtr;
-    using Game::SharedPtrOut;
+    using Game::Shared;
+    using Game::SetSwitch;
     using Game::StrView;
-    namespace Flags = Game::EntityFlags;
+    using Game::SwitchOn;
+    using Game::EntityFlag;
 
-    // An item class's allocation (a make_shared block: the control block, then the actor), its NPC component's size
-    // and the sizes of the item base's two vtables, which the drop's actor and component copy
-    constexpr size_t kActorAlloc = 0x340, kActorAt = 0x20, kComponentSize = 0x360;
+    // The sizes of the item base's two vtables, which the drop's actor and component copy
     constexpr size_t kActorVtableSize = 0x170, kComponentVtableSize = 0x428;
     // Slots of both vtables: IsA (type id) and the type id
     constexpr size_t kIsA = 0x68, kTypeId = 0x70;
@@ -49,30 +57,27 @@ namespace {
     constexpr size_t kHidesOwned = 0x3e0, kImpulses = 0x3e8, kFrozen = 0x3f0, kSleeps = 0x3f8;
     // The destructor slots the control blocks call: the actor's (in place) and the component's deleting one
     constexpr size_t kActorDtor = 0x10, kComponentDelete = 0x18;
-    // NPC component: its actor, its body's linear velocity setter (const Vec3*), its collision; the two flags
-    // SmallKey_StartFall keeps, which the drop's component has at the same place: the body is made, a fall waits for it
-    constexpr size_t kComponentOwner = 0x58, kSetVelocity = 0x290, kComponentCollision = 0xf8;
-    constexpr size_t kBodyReady = 0x358, kFallPending = 0x359;
-    // The actor's NPC component (a shared_ptr)
-    constexpr size_t kActorComponent = 0x2f0;
+    // The NPC component's body linear velocity setter (const Vec3*)
+    constexpr size_t kSetVelocity = 0x290;
     // With Bouncy Items, the component's: the item update (0x8c6030; not during events), which the drop's wraps, and
     // in water the upward acceleration the item update adds while the body is deeper than 0.3 below the water surface
     // (the item base's 7.0, less than gravity: it sinks) and the body's linear damping (the item base's 1.8). The
     // drop's lift is a little more than gravity, so it floats, and its damping more, so it settles
     constexpr size_t kItemUpdate = 0x3c8, kWaterLift = 0x400, kWaterDamping = 0x410;
     constexpr float kLift = 12.0f, kDamping = 4.0f;
-    // A collision with a body: the signals of its body made and lost (Signal*, virtual +0x20 connects a Function*)
-    constexpr size_t kBodyMade = 0x1c8, kBodyLost = 0x220, kSignalConnect = 0x20;
-    // An EventChara's action handler: std::function<bool(Function* step, ActionArgs)> by action name (the args' first
-    // member, a StrView*), which sets the step the action runs each frame until it returns {0, 0}
-    constexpr size_t kActionHandler = 0x400;
+    // A signal's virtual that connects a Function*
+    constexpr size_t kSignalConnect = 0x20;
     // LebRoom virtual +0x28 (index): the room's LEB record of that index
     constexpr size_t kLebRoomRecord = 0x28;
     // The item id: the placeholder's Items.gsheet row (its sounds and eventPause)
-    constexpr u8 kItemId = AP::PLACEHOLDER_ITEM_ID;
+    constexpr u8 kItemId = static_cast<u8>(AP::PLACEHOLDER_ITEM_ID);
     // The items only a boss's BossItemDrop makes item actors of: the hookshot, the Angler Key, the Face Key and the
     // heart container
-    bool BossItem(s32 id) { return id == 6 || id == 26 || id == 27 || id == 59; }
+    bool BossItem(AP::ItemId item) {
+        using AP::ItemId;
+        return item == ItemId::HookShot || item == ItemId::AnglerKey || item == ItemId::FaceKey ||
+               item == ItemId::HeartContainer;
+    }
     // Its model, a component on a node under the actor's root, takes the item pose pair the item constructor stores
     // (read when the model is made). Each drop's pair stands its model's bind-pose bounds (DROPS_PATH) on the root,
     // centred and untilted, at the small key's scale or less, so that its radius around the centre is at most
@@ -86,18 +91,17 @@ namespace {
     // Out of the ground, as a bush's, rock's or pot's own seashell: the game's default drop start (0x899f40) and
     // launch (0x89a190) for a single item, 0.5 above the object and straight up at 4
     constexpr float kHopRise = 0.5f, kHopUp = 4.0f;
-    // On an arc, as the seashell would come: from a tree (its drop, 0xcb1f30) the tree's parameters (ObjTree +0x478)
-    // give the launch speed (+0x68) and the crown's height above its root (+0x6c), which the drop leaves 0.5 above;
+    // On an arc, as the seashell would come: from a tree (its drop, 0xcb1f30) the tree's parameters give the launch
+    // speed and the crown's height above its root, which the drop leaves 0.5 above;
     // from a hole, the AreaShellDropper's (virtuals +0x138 and +0x140) 2.25 above it at 10.8. The launch solver
     // (0x89d880) aims at the landing spot with the game's gravity, on the high arc, or at 45 degrees and half the
     // slope's angle when out of reach.
-    constexpr size_t kTreeParams = 0x478, kTreeSpeed = 0x68, kTreeCrown = 0x6c;
     constexpr float kCrownAbove = 0.5f, kDropperAbove = 2.25f, kDropperSpeed = 10.8f;
     constexpr float kGravity = -9.81f, kNear = 1e-4f, kQuarterPi = 0.7853982f;
     // The landing spot the tree and the dropper aim at, the point of their first LEB rail link, which the drop has as
-    // its own (a link: +0x1c u32 the point's index, +0x20 the rail, whose virtual +0x48 (index) gives the point's
-    // position); without one, the drop's spawn
-    constexpr size_t kLinkPoint = 0x1c, kLinkRail = 0x20, kRailPointPos = 0x48;
+    // its own (Game::ActorRailLink: the LEB room's virtual +0x48 (point index) gives the point's position); without
+    // one, the drop's spawn
+    constexpr size_t kRoomRailPoint = 0x48;
     // Bouncy Items. A ball out of the ground: the start above the spawn and the ranges of the speeds up and outward
     // (units per second), outward in any direction: it may get away from Link
     constexpr float kRise = 0.5f, kSpeedUpMin = 5.5f, kSpeedUpMax = 7.5f, kSpeedOutMin = 1.0f, kSpeedOutMax = 3.0f;
@@ -110,19 +114,15 @@ namespace {
     // Out of a chest: from 1 above it at this speed onto a random spot in front of it, up to 45 degrees from the way to
     // its spawn (in front of the chest) and 2.25 to 6.75 out; off an owl statue the same from its top
     constexpr float kChestLid = 1.0f, kStatueTop = 2.0f, kChestSpeed = 8.0f, kChestNear = 2.25f, kChestFar = 6.75f;
-    // and Link, who opened or examined it, cannot take it on its way over him: the item's touch delay (actor +0x308,
+    // and Link, who opened or examined it, cannot take it on its way over him: the item's touch delay (ItemActor,
     // seconds; 0.5 from when it is made) starts again and lasts the arc's flight
-    constexpr size_t kTouchDelay = 0x308;
     // Every launch spins it about a random level axis at 6 to 14 radians a second, so that it skips aside when it lands
     constexpr float kSpinMin = 6.0f, kSpinMax = 14.0f;
-    // The component's collision's body, the body's PhysX actor (PxRigidDynamic, PhysX 3.4), and the actor's
-    // getLinearVelocity (returns a PxVec3), getAngularVelocity, setAngularVelocity (const Vec3*, bool wake),
-    // setLinearDamping and setAngularDamping (float)
-    constexpr size_t kCollisionBody = 0x170, kBodyActor = 0x670;
+    // The PhysX actor of the component's collision's body (PxRigidDynamic, PhysX 3.4): its getLinearVelocity (returns
+    // a PxVec3), getAngularVelocity, setAngularVelocity (const Vec3*, bool wake), setLinearDamping and
+    // setAngularDamping (float)
     constexpr size_t kGetLinear = 0x130, kGetAngular = 0x140, kSetAngular = 0x148;
     constexpr size_t kSetLinearDamping = 0x1c8, kSetAngularDamping = 0x1d8;
-    // The component's water event (a shared_ptr) and its in-water flag
-    constexpr size_t kComponentWater = 0x168, kWaterIn = 0x151;
     // The ball's update. Its spin is free in the air and damped while it touches the ground out of water, as is its
     // speed (PhysX has no rolling resistance), so that it rolls to a stop; in the air its linear damping is its row's
     // drag again (component virtual +0x408). It touches the ground for two updates in a row in which its vertical speed
@@ -146,24 +146,33 @@ namespace {
         u8 touches;                // updates in a row it touched the ground
         u8 opened;                 // out of its chest, whose opened flag is still to go off
     };
-    constexpr size_t kBall = kComponentSize;
+    // The drop's NPC component: the item component's, then the ball's
+    struct DropComponent {
+        ItemComponent item;
+        Ball ball;
+    };
+    static_assert(offsetof(DropComponent, ball) == sizeof(ItemComponent));
+    // An item class's allocation (make_shared): the control block, then the actor
+    struct ActorBlock {
+        Game::SharedCtrl ctrl;
+        u8 pad_18[0x8];
+        ItemActor actor;
+    };
+    static_assert(offsetof(ActorBlock, actor) == 0x20 && sizeof(ActorBlock) == 0x340);
 #ifdef LASAP_TEST
-    // The water event's water surface height, and the PhysX actor's getAngularDamping
-    constexpr size_t kWaterSurface = 0x154, kGetAngularDamping = 0x1e0;
+    // The PhysX actor's getAngularDamping
+    constexpr size_t kGetAngularDamping = 0x1e0;
 #endif
 
     // libc++ std::function's callable (__func, the game built without RTTI): its vtable's slots
     enum FuncSlot { kFuncDtor, kFuncDelete, kFuncClone, kFuncCloneInto, kFuncDestroy, kFuncDestroyFree, kFuncCall,
                     kFuncSlots };
-    // libc++ __shared_weak_count: a control block's vtable slots; the block: vtable, shared owners - 1, weak owners - 1
-    enum CtrlSlot { kCtrlDtor, kCtrlDelete, kCtrlZeroShared, kCtrlDeleter, kCtrlZeroWeak, kCtrlSlots };
-    constexpr size_t kCtrlWeak = 0x10, kCtrlPointer = 0x18, kCtrlSize = 0x20;
 
     uintptr_t g_ActorVtable[kActorVtableSize / 8];
     uintptr_t g_ComponentVtable[kComponentVtableSize / 8];
-    // The control blocks: the actor's make_shared block, the component's pointer block (+0x18 the component)
-    uintptr_t g_ActorCtrlVtable[kCtrlSlots];
-    uintptr_t g_ComponentCtrlVtable[kCtrlSlots];
+    // The control blocks: the actor's make_shared block (ActorBlock), the component's pointer block
+    uintptr_t g_ActorCtrlVtable[Game::kCtrlSlots];
+    uintptr_t g_ComponentCtrlVtable[Game::kCtrlSlots];
     // The callables the drop puts in the game's std::functions: its body made and lost, its event actions, the Fall
     // action's step
     uintptr_t g_BodyMadeVtable[kFuncSlots];
@@ -187,12 +196,12 @@ namespace {
         ~PxVec3() {}
     };
 #ifdef LASAP_TEST
-    Game::WeakPtr g_Last{};  // the drop actor that fell last
+    Game::Weak<Actor> g_Last;  // the drop actor that fell last
 #endif
     // The boss drop actors made, a level's at once (Catfish's Maw has Master Stalfos's and the Slime Eel's), and the
     // one made last
     constexpr int kBossSlots = 4;
-    Game::WeakPtr g_Bosses[kBossSlots]{};
+    Game::Weak<Actor> g_Bosses[kBossSlots];
     int g_BossLast = 0;
     // Where a boss's item (a heart container, the Angler Key, the Face Key, the hookshot) would have started while its
     // drop was not made yet (its room loading): the boss's LEB key (0: none), the spot, and the level load it holds
@@ -253,7 +262,13 @@ namespace {
         return actor.lebParams[0].type == kLebInt ? static_cast<s32>(actor.lebParams[0].value) : -1;
     }
 
-    Actor* Owner(void* comp) { return Game::Field<Actor*>(comp, kComponentOwner); }
+    ItemComponent* Item(void* comp) { return static_cast<ItemComponent*>(comp); }
+
+    Actor* Owner(void* comp) { return Item(comp)->npc.owner; }
+
+    Game::Actors::WaterEvent* WaterOf(void* comp) {
+        return Item(comp)->npc.waterEvent.get();
+    }
 
     // ---- The game's std::function, holding the drop's callables ----
 
@@ -317,21 +332,20 @@ namespace {
     }
 
     // The actor the first LEB link of the drop's record names, held in `hold`
-    Actor* LinkedActor(const Actor& drop, SharedPtr* hold) {
+    Actor* LinkedActor(const Actor& drop, Shared<Actor>* hold) {
         const Game::LebActorRecord* target = LinkedRecord(drop);
         if (target == nullptr) return nullptr;
-        Game::ActorRegistry_FindByKey(hold, target->key);
-        auto* actor = static_cast<Actor*>(hold->ptr);
+        Game::ActorRegistry_FindByKey(hold->Reset(), target->key);
+        Actor* actor = hold->get();
         return actor != nullptr && !actor->entity.Gone() ? actor : nullptr;
     }
 
     // The point of the drop's first rail link, which it has from what drops it
     bool LandingPoint(const Actor& drop, Game::Vec3* point) {
         if (drop.railLinks.begin() == drop.railLinks.end()) return false;
-        void* link = *drop.railLinks.begin();
-        void* rail = Game::Field<void*>(link, kLinkRail);
-        if (rail == nullptr) return false;
-        auto* pos = Game::CallVirtual<const Game::Vec3*(u32)>(rail, kRailPointPos, Game::Field<u32>(link, kLinkPoint));
+        auto* link = static_cast<const Game::ActorRailLink*>(*drop.railLinks.begin());
+        if (link->room.ptr == nullptr) return false;
+        auto* pos = Game::CallVirtual<const Game::Vec3*(u32)>(link->room.ptr, kRoomRailPoint, link->link.point);
         if (pos == nullptr) return false;
         *point = *pos;
         return true;
@@ -366,15 +380,15 @@ namespace {
 
     // The drop's arc; false without the tree, dropper or chest
     bool ArcOf(const Actor& drop, int motion, Arc* arc) {
-        SharedPtr hold{};
+        Shared<Actor> hold;
         Actor* source = LinkedActor(drop, &hold);
         float above = motion == AP::DROP_CHEST ? kChestLid : motion == AP::DROP_OWL ? kStatueTop : kDropperAbove;
         arc->speed = Launched(motion) ? kChestSpeed : kDropperSpeed;
         if (source != nullptr && motion == AP::DROP_TREE) {
-            auto* params = Game::Field<u8*>(source, kTreeParams);
+            const Game::Actors::TreeParams* params = reinterpret_cast<Game::Actors::Tree*>(source)->params;
             if (params != nullptr) {
-                above = Game::Field<float>(params, kTreeCrown) + kCrownAbove;
-                arc->speed = Game::Field<float>(params, kTreeSpeed);
+                above = params->crownHeight + kCrownAbove;
+                arc->speed = params->launchSpeed;
             } else {
                 source = nullptr;
             }
@@ -387,7 +401,6 @@ namespace {
             arc->to = {spawn.x, spawn.y, spawn.z};
             if (!Launched(motion)) LandingPoint(drop, &arc->to);
         }
-        Game::Release(hold);
         return found;
     }
 
@@ -397,10 +410,11 @@ namespace {
     }
 
     void* PhysxActor(void* comp) {
-        return Game::At<void*>(Game::At<void*>(Game::At<void*>(comp, kComponentCollision), kCollisionBody), kBodyActor);
+        Game::Actors::BodyCollision* collision = Item(comp)->npc.collision.get();
+        return collision != nullptr && collision->body != nullptr ? collision->body->pxActor : nullptr;
     }
 
-    Ball& BallOf(void* comp) { return Game::Field<Ball>(comp, kBall); }
+    Ball& BallOf(void* comp) { return static_cast<DropComponent*>(comp)->ball; }
 
     void Spin(void* comp) {
         void* px = PhysxActor(comp);
@@ -434,7 +448,7 @@ namespace {
             Game::Vec3 to = Ahead(arc.start, arc.to, out);
             Game::Vec3 velocity = LaunchVelocity(arc.speed, arc.start, to);
             Launch(comp, actor, arc.start, velocity);
-            Game::Field<float>(actor, kTouchDelay) = out / std::hypot(velocity.x, velocity.z);
+            reinterpret_cast<ItemActor*>(actor)->touchDelay = out / std::hypot(velocity.x, velocity.z);
             BallOf(comp).opened = motion == AP::DROP_CHEST;
         } else {
             float angle = exl::util::GetRandomF32(0, kTwoPi), out = exl::util::GetRandomF32(kSpeedOutMin, kSpeedOutMax);
@@ -452,12 +466,10 @@ namespace {
     // the body yet, it runs again once the body is made.
     void Fall(void* comp) {
         Game::SmallKey_StartFall(comp);
-        if (!Game::Field<u8>(comp, kBodyReady)) return;
+        if (!Item(comp)->bodyReady) return;
         Actor* actor = Owner(comp);
         if (actor == nullptr || actor->root == nullptr) return;
 #ifdef LASAP_TEST
-        Game::ReleaseWeakOwner(g_Last.ctrl);
-        Game::AddWeakOwner(actor->entity.self.ctrl);
         g_Last = {actor, actor->entity.self.ctrl};
 #endif
         int motion = Motion(*actor);
@@ -518,7 +530,7 @@ namespace {
         Ball& ball = BallOf(comp);
         Actor* actor = Owner(comp);
         if (ball.opened && actor != nullptr) {
-            Game::ActorSwitch_Set(actor->record, AP::DROP_OPENED_SWITCH, false);
+            SetSwitch(*actor, AP::DropSwitch::Opened, false);
             ball.opened = 0;
         }
         void* px = PhysxActor(comp);
@@ -528,7 +540,7 @@ namespace {
         ball.tick = tick;
         PxVec3 v = Game::CallVirtual<PxVec3()>(px, kGetLinear);
         Game::Vec3 now{v.x, v.y, v.z};
-        bool water = Game::At<u8>(Game::At<void*>(comp, kComponentWater), kWaterIn);
+        bool water = WaterOf(comp) != nullptr && WaterOf(comp)->inWater;
         bool ground = ball.touches >= kTouching;
         if (!water && step <= kMaxStep) {
             float drag = ground ? kDragGround : Game::CallVirtual<float()>(comp, kTraitsDrag);
@@ -570,7 +582,7 @@ namespace {
         if (motion == AP::DROP_BURIED) {
             Game::NpcComponent_Appear(comp);
             if (!quiet) Fall(comp);
-        } else if (motion != AP::DROP_BOSS_PIT && Game::ActorSwitch_IsOn(actor->record, 0)) {
+        } else if (motion != AP::DROP_BOSS_PIT && SwitchOn(*actor, AP::DropSwitch::Pop)) {
             Game::NpcComponent_Appear(comp);
         }
     }
@@ -579,22 +591,19 @@ namespace {
     bool Yes(const void*) { return true; }
 
     // A body signal's slot: its argument (a shared_ptr, moved in) released
-    void BodyMade(ComponentCall* self, SharedPtr* arg) {
-        SharedPtr body = *arg;
-        *arg = {};
-        Game::Release(body);
-        Game::Field<u8>(self->comp, kBodyReady) = 1;
-        if (Game::Field<u8>(self->comp, kFallPending)) {
-            Game::Field<u8>(self->comp, kFallPending) = 0;
+    void BodyMade(ComponentCall* self, SharedPtr<>* arg) {
+        Shared<>::Adopt(*arg);
+        ItemComponent* item = Item(self->comp);
+        item->bodyReady = true;
+        if (item->fallPending) {
+            item->fallPending = false;
             Fall(self->comp);
         }
     }
 
-    void BodyLost(ComponentCall* self, SharedPtr* arg) {
-        SharedPtr body = *arg;
-        *arg = {};
-        Game::Release(body);
-        Game::Field<u8>(self->comp, kBodyReady) = 0;
+    void BodyLost(ComponentCall* self, SharedPtr<>* arg) {
+        Shared<>::Adopt(*arg);
+        Item(self->comp)->bodyReady = false;
     }
 
     void Connect(void* signal, const uintptr_t* vtable, void* comp) {
@@ -605,13 +614,15 @@ namespace {
     }
 
     // The collision (x8), whose body's signals tell the drop when its body is there to fall
-    SharedPtrOut MakeCollision(void* comp, const StrView* name, void* a2, void* a3) {
-        SharedPtrOut out = Game::NpcComponent_MakeCollision(comp, name, a2, a3);
-        auto* collision = static_cast<Game::Entity*>(out.ptr);
-        if (collision != nullptr && !(collision->flags & Flags::kDestroyRequested) &&
-            Game::CallVirtual<bool(const void*)>(collision, kIsA, Game::BodyCollision_TypeId.Ptr())) {
-            Connect(Game::Field<void*>(collision, kBodyMade), g_BodyMadeVtable, comp);
-            Connect(Game::Field<void*>(collision, kBodyLost), g_BodyLostVtable, comp);
+    Shared<Game::Entity> MakeCollision(void* comp, const StrView* name, void* a2, void* a3) {
+        Shared<Game::Entity> out = Game::NpcComponent_MakeCollision(comp, name, a2, a3);
+        // none for a row without collision.shape (the maker's null cases)
+        if (!out) return out;
+        if (!out->flags.Has(EntityFlag::DestroyRequested) &&
+            Game::CallVirtual<bool(const void*)>(out.get(), kIsA, Game::BodyCollision_TypeId.Ptr())) {
+            auto* body = reinterpret_cast<Game::Actors::BodyCollision*>(out.get());
+            Connect(body->bodyMade.owner, g_BodyMadeVtable, comp);
+            Connect(body->bodyLost.owner, g_BodyLostVtable, comp);
         }
         return out;
     }
@@ -642,7 +653,8 @@ namespace {
         return copy;
     }
 
-    // The step a Fall action runs: one frame. {0, 0}: done (its non-trivial destructor returns it through x8)
+    // The Fall action's step, called once: it makes the fall and returns no waiter ({0, 0}), so the action is done at
+    // once (its non-trivial destructor returns it through x8)
     struct StepResult {
         u64 a = 0, b = 0;
         ~StepResult() {}
@@ -666,11 +678,12 @@ namespace {
         return true;
     }
 
-    SharedPtrOut MakeEventChara(void* comp, const StrView* name, void* a2, void* a3) {
-        SharedPtrOut out = Game::ItemNpcComponent_MakeEventChara(comp, name, a2, a3);
-        auto* chara = static_cast<Game::Entity*>(out.ptr);
-        if (chara != nullptr && !(chara->flags & Flags::kDestroyRequested)) {
-            auto& handler = Game::Field<Function>(chara, kActionHandler);
+    Shared<Game::Event::EventChara> MakeEventChara(void* comp, const StrView* name, void* a2, void* a3) {
+        Shared<Game::Event::EventChara> out = Game::ItemNpcComponent_MakeEventChara(comp, name, a2, a3);
+        // none when the drop is destroyed or already has one (the maker's null cases)
+        if (!out) return out;
+        if (!out->entity.flags.Has(EntityFlag::DestroyRequested)) {
+            auto& handler = out->actionLookup;
             auto* actions = static_cast<Actions*>(Game::operator_new(sizeof(Actions)));
             std::memset(actions, 0, sizeof(Actions));
             actions->vtable = g_ActionsVtable;
@@ -692,9 +705,9 @@ namespace {
     // A dungeon key that falls again whenever Link enters its zone (the small key's ReFall) does once its switch is on
     void ZoneEnter(Actor* actor) {
         Game::ItemActor_ZoneEnter(actor);
-        auto* comp = Game::Field<Game::Entity*>(actor, kActorComponent);
+        auto* comp = reinterpret_cast<Game::Entity*>(reinterpret_cast<ItemActor*>(actor)->component);
         if (comp != nullptr && !comp->Gone() && Motion(*actor) == AP::DROP_REFALLS &&
-            Game::ActorSwitch_IsOn(actor->record, 0)) {
+            SwitchOn(*actor, AP::DropSwitch::Pop)) {
             Fall(comp);
         }
     }
@@ -704,68 +717,61 @@ namespace {
     void CtrlNothing(void*) {}
     void CtrlFree(void* ctrl) { Game::operator_delete(ctrl); }
     void* CtrlNoDeleter(const void*, const void*) { return nullptr; }
-    void ActorGone(u8* ctrl) { Game::CallVirtual<void()>(ctrl + kActorAt, kActorDtor); }
-    void ComponentGone(u8* ctrl) { Game::CallVirtual<void()>(Game::Field<void*>(ctrl, kCtrlPointer), kComponentDelete); }
+    void ActorGone(ActorBlock* block) { Game::CallVirtual<void()>(&block->actor, kActorDtor); }
+    void ComponentGone(Game::SharedPointerBlock* block) { Game::CallVirtual<void()>(block->ptr, kComponentDelete); }
 
-    void SetCtrlVtable(uintptr_t (&vtable)[kCtrlSlots], void (*zeroShared)(u8*)) {
-        vtable[kCtrlDtor] = reinterpret_cast<uintptr_t>(&CtrlNothing);
-        vtable[kCtrlDelete] = vtable[kCtrlZeroWeak] = reinterpret_cast<uintptr_t>(&CtrlFree);
-        vtable[kCtrlZeroShared] = reinterpret_cast<uintptr_t>(zeroShared);
-        vtable[kCtrlDeleter] = reinterpret_cast<uintptr_t>(&CtrlNoDeleter);
+    template<typename Block>
+    void SetCtrlVtable(uintptr_t (&vtable)[Game::kCtrlSlots], void (*zeroShared)(Block*)) {
+        vtable[Game::kCtrlDtor] = reinterpret_cast<uintptr_t>(&CtrlNothing);
+        vtable[Game::kCtrlDelete] = vtable[Game::kCtrlZeroWeak] = reinterpret_cast<uintptr_t>(&CtrlFree);
+        vtable[Game::kCtrlZeroShared] = reinterpret_cast<uintptr_t>(zeroShared);
+        vtable[Game::kCtrlDeleter] = reinterpret_cast<uintptr_t>(&CtrlNoDeleter);
     }
 
     // The component in a shared_ptr of its own, which its self pointer holds weakly
-    SharedPtr Share(void* comp) {
-        auto* ctrl = static_cast<u8*>(Game::operator_new(kCtrlSize));
-        std::memset(ctrl, 0, kCtrlSize);
-        Game::Field<const uintptr_t*>(ctrl, 0) = g_ComponentCtrlVtable;
-        Game::Field<s64>(ctrl, kCtrlWeak) = 1;
-        Game::Field<void*>(ctrl, kCtrlPointer) = comp;
+    Shared<> Share(void* comp) {
+        auto* ctrl = static_cast<Game::SharedPointerBlock*>(Game::operator_new(sizeof(Game::SharedPointerBlock)));
+        *ctrl = {{g_ComponentCtrlVtable, 0, 1}, comp};
         static_cast<Game::Entity*>(comp)->self = {comp, ctrl};
-        return SharedPtr{comp, ctrl};
+        return Shared<>::Adopt(comp, ctrl);
     }
 
     // The actor's NPC component (its vtable +0x128, as an item class's maker), with the drop actor's row.
-    SharedPtrOut MakeComponent(Actor* actor, StrView* name) {
-        SharedPtrOut out{};
+    Shared<> MakeComponent(Actor* actor, StrView* name) {
         Game::Entity& owner = actor->entity;
-        if ((owner.flags & Flags::kDestroyed) || name->size - 1 > 30 ||
+        if (owner.flags.Has(EntityFlag::Destroyed) || name->size - 1 > 30 ||
             Game::Actor_HasComponent(actor, name->data, name->size)) {
-            return out;
+            return {};
         }
-        SharedPtr self{};
-        Game::SharedPtr_FromWeak(&self, owner.self.ptr, owner.self.ctrl);
-        Game::ComponentName args{name->data, name->size, 1, self.ptr, self.ctrl};
-        void* comp = Game::operator_new(kComponentSize + sizeof(Ball));
-        std::memset(static_cast<u8*>(comp) + kBall, 0, sizeof(Ball));
+        Shared<> self = Shared<>::Lock(owner.self);
+        Game::ComponentName args{name->data, name->size, 1, self.get(), self.View().ctrl};
+        void* comp = Game::operator_new(sizeof(DropComponent));
+        static_cast<DropComponent*>(comp)->ball = {};
         StrView key = RowKey();
         Game::ItemNpcComponent_Ctor(comp, &args, &key);
-        Game::Release(self);
+        self = {};
         *static_cast<uintptr_t**>(comp) = g_ComponentVtable;
-        Game::Field<u16>(comp, kBodyReady) = 0;
-        SharedPtr sp = Share(comp);
+        Item(comp)->bodyReady = Item(comp)->fallPending = false;
+        Shared<> sp = Share(comp);
         auto* entity = static_cast<Game::Entity*>(comp);
-        if (!(entity->flags & (Flags::kDestroyRequested | Flags::kInitialized))) {
+        if (!entity->flags.Any(EntityFlag::DestroyRequested | EntityFlag::Initialized)) {
             Game::CallVirtual<void()>(comp, Game::EntityVirtual::kRegister);
             Game::CallVirtual<void()>(comp, Game::EntityVirtual::kSetup);
-            if (!(entity->flags & Flags::kDestroyRequested)) entity->flags |= Flags::kInitialized;
+            if (!entity->flags.Has(EntityFlag::DestroyRequested)) entity->flags.Set(EntityFlag::Initialized);
         }
         bool wasActive = entity->Active();
-        entity->flags = owner.Active() ? entity->flags | Flags::kParentActive : entity->flags & ~Flags::kParentActive;
+        entity->flags.Set(EntityFlag::ParentActive, owner.Active());
         if (entity->Active() != wasActive) Game::CallVirtual<void()>(comp, Game::EntityVirtual::kOnActiveChanged);
-        Game::EntityManager_PostStart(*Game::EntityManager_ptr, &sp);
-        if ((owner.flags & Flags::kDestroyRequested) || !Game::Entity_AttachChild(actor, comp)) {
+        Game::EntityManager_PostStart(*Game::EntityManager_ptr, sp.Untyped());
+        if (owner.flags.Has(EntityFlag::DestroyRequested) || !Game::Entity_AttachChild(actor, comp)) {
             Game::Entity_Destroy(comp);
-            Game::Release(sp);
-            return out;
+            return {};
         }
-        out.ptr = sp.ptr;
-        out.ctrl = sp.ctrl;
-        return out;
+        return sp;
     }
 
     // The actor in a make_shared block of an item class's layout, with its own vtable and self pointer.
-    SharedPtr Construct(SharedPtr* owner, Game::ActorParams* params, const char* name, u64 length) {
+    Shared<Actor> Construct(SharedPtr<>* owner, Game::ActorParams* params, const char* name, u64 length) {
         Game::ActorArgs args{};
         args.name = name;
         args.length = length;
@@ -774,19 +780,19 @@ namespace {
         args.ownerCtrl = owner->ctrl;
         if (owner->ctrl != nullptr) Game::AddOwner(owner->ctrl);  // released with the args
         Game::ActorParams_Copy(&args.params, params);
-        auto* mem = static_cast<u8*>(Game::operator_new(kActorAlloc));
-        std::memset(mem, 0, kActorAlloc);
-        Game::Field<const uintptr_t*>(mem, 0) = g_ActorCtrlVtable;  // shared and weak owners - 1: 0
-        auto* actor = reinterpret_cast<Actor*>(mem + kActorAt);
+        auto* mem = static_cast<ActorBlock*>(Game::operator_new(sizeof(ActorBlock)));
+        std::memset(static_cast<void*>(mem), 0, sizeof(ActorBlock));
+        mem->ctrl.vtable = g_ActorCtrlVtable;  // shared and weak owners - 1: 0
+        auto* actor = reinterpret_cast<Actor*>(&mem->actor);
         StrView key = RowKey();
         Game::ItemActor_Ctor(actor, &args, &key, kItemId, 1, PosesOf(params->lebKey));
         actor->entity.vtable = g_ActorVtable;
         if (actor->entity.self.ctrl == nullptr) {
             actor->entity.self = {actor, mem};
-            Game::Field<s64>(mem, kCtrlWeak) = 1;  // and the self pointer's weak reference
+            mem->ctrl.weakOwners = 1;  // and the self pointer's weak reference
         }
         Game::ActorArgs_Dtor(&args);
-        return SharedPtr{actor, mem};
+        return Shared<Actor>::Adopt(actor, mem);
     }
 
     // The boss drop's boss: the boss whose LEB key its first link names
@@ -801,19 +807,19 @@ namespace {
         // a slot whose drop is gone, else the one after the last made
         int slot = (g_BossLast + 1) % kBossSlots;
         for (int i = 0; i < kBossSlots; i++) {
-            if (!Game::Alive(g_Bosses[i].ctrl)) {
+            if (!g_Bosses[i].Alive()) {
                 slot = i;
                 break;
             }
         }
-        Game::ReleaseWeakOwner(g_Bosses[slot].ctrl);
-        Game::AddWeakOwner(actor->entity.self.ctrl);
         g_Bosses[slot] = {actor, actor->entity.self.ctrl};
         g_BossLast = slot;
         if (g_Heart.boss == 0 || g_Heart.load != LevelSystem::LoadCount() || !OfBoss(*actor, g_Heart.boss)) return;
         actor->spawnPos = {g_Heart.at.x, g_Heart.at.y, g_Heart.at.z, actor->spawnPos.t};
         g_Heart = {};
-        if (!Game::ActorSwitch_IsOn(actor->record, 1)) Game::ActorSwitch_Set(actor->record, 0, true);
+        if (!SwitchOn(*actor, AP::DropSwitch::Got)) {
+            SetSwitch(*actor, AP::DropSwitch::Pop, true);
+        }
         Logging.Log("[AP] drop %016llx: at its boss's item", actor->record->key);
     }
 
@@ -822,22 +828,22 @@ namespace {
     // goes off before the drop's layout reads it, so no ball waits at its spawn (a drop whose switch 0 is on when it is
     // made appears there), and opening a closed chest or examining the statue launches it again.
     void Unlaunch(const Actor& actor) {
-        if (!Launched(Motion(actor)) || !Game::ActorSwitch_IsOn(actor.record, 0)) return;
-        Game::ActorSwitch_Set(actor.record, 0, false);
+        if (!Launched(Motion(actor)) || !SwitchOn(actor, AP::DropSwitch::Pop)) return;
+        SetSwitch(actor, AP::DropSwitch::Pop, false);
         Logging.Log("[AP] drop %016llx: launched again from its chest or statue", actor.record->key);
     }
 
     // A drop that stands from the start (the blue rupees), made and not taken: its switch 0 (a level flag of the
     // drops' own) goes on before its layout reads it, so it appears where it stands.
     void Place(const Actor& actor) {
-        if (Motion(actor) != AP::DROP_PLACED || Game::ActorSwitch_IsOn(actor.record, 1)) return;
-        Game::ActorSwitch_Set(actor.record, 0, true);
+        if (Motion(actor) != AP::DROP_PLACED || SwitchOn(actor, AP::DropSwitch::Got)) return;
+        SetSwitch(actor, AP::DropSwitch::Pop, true);
     }
 
     // The actor table's factory for the drop actor, as an item class's: named, set up, started and made the owner's
     // child; null when the owner has a child of that name already.
-    SharedPtrOut Create(SharedPtr* owner, Game::ActorParams* params) {
-        SharedPtrOut out{};
+    Shared<Actor> Create(SharedPtr<>* owner, Game::ActorParams* params) {
+        Shared<Actor> out;
         Game::SharedString name{};
         Game::ActorName_Make(&name, params);
         auto* container = static_cast<u8*>(owner->ptr);
@@ -850,30 +856,27 @@ namespace {
                 taken = Game::Entity_FindChildInMap(container + 0x38, name.data, length) != nullptr;
             }
         }
-        SharedPtr sp = taken ? SharedPtr{} : Construct(owner, params, name.data, length);
-        auto* actor = static_cast<Actor*>(sp.ptr);
+        Shared<Actor> sp = taken ? Shared<Actor>{} : Construct(owner, params, name.data, length);
+        Actor* actor = sp.get();
         if (actor != nullptr) Unlaunch(*actor);
         if (actor != nullptr && Boss(Motion(*actor))) MadeBossDrop(actor);
         if (actor != nullptr) Place(*actor);
-        if (actor != nullptr && !(actor->entity.flags & Flags::kDestroyRequested)) {
+        if (actor != nullptr && !actor->entity.flags.Has(EntityFlag::DestroyRequested)) {
             Game::Entity& entity = actor->entity;
-            if (!(entity.flags & (Flags::kDestroyRequested | Flags::kInitialized))) {
+            if (!entity.flags.Any(EntityFlag::DestroyRequested | EntityFlag::Initialized)) {
                 Game::CallVirtual<void()>(actor, Game::EntityVirtual::kRegister);
                 Game::CallVirtual<void()>(actor, Game::EntityVirtual::kSetup);
-                if (!(entity.flags & Flags::kDestroyRequested)) entity.flags |= Flags::kInitialized;
+                if (!entity.flags.Has(EntityFlag::DestroyRequested)) entity.flags.Set(EntityFlag::Initialized);
             }
-            if (!(entity.flags & Flags::kDestroyRequested)) {
-                Game::Entity_Start(&sp);
-                if (Game::Entity_AddChild(container, &sp)) {
-                    out.ptr = sp.ptr;
-                    out.ctrl = sp.ctrl;
-                    sp = SharedPtr{};
+            if (!entity.flags.Has(EntityFlag::DestroyRequested)) {
+                Game::Entity_Start(sp.Untyped());
+                if (Game::Entity_AddChild(container, sp.Untyped())) {
+                    out = std::move(sp);
                 } else {
                     Game::Entity_Destroy(actor);
                 }
             }
         }
-        Game::Release(sp);
         Game::Release(name.holder);
         return out;
     }
@@ -884,34 +887,34 @@ namespace {
     // on, so it pops out of the ground there with the item's launch (its row's pop, Fall); a drop not made yet takes
     // the spot as its spawn when it is (MadeBossDrop).
     HOOK_DEFINE_TRAMPOLINE(ItemCreate) {
-        static void Callback(SharedPtr* out, Actor* source, const Game::Vec4* pos, const Game::Vec3* velocity, s32 id,
-                             s32 index) {
+        static void Callback(SharedPtr<Actor>* out, Actor* source, const Game::Vec4* pos, const Game::Vec3* velocity,
+                             AP::ItemId id, s32 index) {
             // one with no LEB actor to name its drop (no boss drop's link) comes as the game's
             if (!BossItem(id) || source == nullptr || source->record == nullptr) {
                 Orig(out, source, pos, velocity, id, index);
                 return;
             }
-            *out = SharedPtr{};
+            *out = {};
             u64 boss = source->record->key;
             Game::Vec3 at{pos->x, pos->y, pos->z};
             Actor* drop = nullptr;
-            for (const Game::WeakPtr& made : g_Bosses) {
-                auto* its = static_cast<Actor*>(made.ptr);
-                if (Game::Alive(made.ctrl) && !its->entity.Gone() && OfBoss(*its, boss)) drop = its;
+            for (const Game::Weak<Actor>& made : g_Bosses) {
+                Actor* its = made.Peek();
+                if (its != nullptr && !its->entity.Gone() && OfBoss(*its, boss)) drop = its;
             }
             if (drop == nullptr) {
                 g_Heart = {boss, at, LevelSystem::LoadCount()};
-                Logging.Log("[AP] drop: boss %016llx's item %d kept for its drop at %.2f %.2f %.2f", boss, id, at.x,
-                            at.y, at.z);
+                Logging.Log("[AP] drop: boss %016llx's item %d kept for its drop at %.2f %.2f %.2f", boss,
+                            std::to_underlying(id), at.x, at.y, at.z);
                 return;
             }
-            if (Game::ActorSwitch_IsOn(drop->record, 1)) return;
+            if (SwitchOn(*drop, AP::DropSwitch::Got)) return;
             g_BossLaunch = *velocity;
             drop->spawnPos = {at.x, at.y, at.z, drop->spawnPos.t};
             if (drop->root != nullptr) Game::Node_SetWorldPos(drop->root, &at);
-            Game::ActorSwitch_Set(drop->record, 0, true);
-            Logging.Log("[AP] drop %016llx: the boss's item %d at %.2f %.2f %.2f", drop->record->key, id, at.x, at.y,
-                        at.z);
+            SetSwitch(*drop, AP::DropSwitch::Pop, true);
+            Logging.Log("[AP] drop %016llx: the boss's item %d at %.2f %.2f %.2f", drop->record->key,
+                        std::to_underlying(id), at.x, at.y, at.z);
         }
     };
 
@@ -967,17 +970,16 @@ namespace {
 
 #ifdef LASAP_TEST
     std::string DropState() {
-        if (!Game::Alive(g_Last.ctrl)) return " -";
-        auto* actor = static_cast<Actor*>(g_Last.ptr);
-        if (actor->entity.Gone() || actor->root == nullptr) return " -";
+        Actor* actor = g_Last.Peek();
+        if (actor == nullptr || actor->entity.Gone() || actor->root == nullptr) return " -";
         const Game::Vec3& p = actor->root->coords.pos;
-        void* comp = Game::Field<void*>(actor, kActorComponent);
-        void* water = comp != nullptr ? Game::Field<void*>(comp, kComponentWater) : nullptr;
+        void* comp = reinterpret_cast<ItemActor*>(actor)->component;
+        Game::Actors::WaterEvent* water = comp != nullptr ? WaterOf(comp) : nullptr;
         char text[160];
         int n = snprintf(text, sizeof(text), " %.2f,%.2f,%.2f active=%d water=", p.x, p.y, p.z,
                          actor->entity.Active() ? 1 : 0);
-        if (water != nullptr && Game::Field<u8>(water, kWaterIn)) {
-            n += snprintf(text + n, sizeof(text) - n, "%.2f", Game::Field<float>(water, kWaterSurface));
+        if (water != nullptr && water->inWater) {
+            n += snprintf(text + n, sizeof(text) - n, "%.2f", water->surface);
         } else {
             n += snprintf(text + n, sizeof(text) - n, "-");
         }

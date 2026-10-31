@@ -38,11 +38,9 @@ namespace {
 
     // The egg is in the level: the opening can take it (RequestEvent would load the flowchart to find it missing).
     bool EggLoaded() {
-        Game::SharedPtr egg{};
-        Game::ActorRegistry_FindByKey(&egg, kEggKey);
-        bool loaded = egg.ptr != nullptr;
-        Game::Release(egg);
-        return loaded;
+        Game::Shared<Game::Actor> egg;
+        Game::ActorRegistry_FindByKey(egg.Reset(), kEggKey);
+        return static_cast<bool>(egg);
     }
 }
 
@@ -57,7 +55,7 @@ namespace {
         // The opening waits until Link is free at the egg, with no item display starting or showing; it tries again
         // on a later tick while the egg is not loaded.
         if (PlayerCarrying() || LinkDead() || !ItemEventIdle() || !EggLoaded()) return;
-        if (RequestEvent(kEggEvent, kEggEntry, {kEggKey})) {
+        if (RequestEvent(kEggEvent, kEggEntry, {kEggKey})) {  // the request drops: the opening runs on its own
             g_Requested = true;
             Logging.Log("[AP] egg opening requested");
         }

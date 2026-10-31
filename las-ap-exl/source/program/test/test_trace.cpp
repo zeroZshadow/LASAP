@@ -126,7 +126,7 @@ namespace {
     };
 
     std::string StateName(const Machine& m, int state) {
-        if (state == 0xff) return "-";
+        if (state == Game::kNoState) return "-";
         uintptr_t p = 0;
         if (state < 0 || state >= kSmHooks[m.hook].states || !Read(m.names + state * 8, p) || !InRodata(p)) {
             return std::to_string(state);

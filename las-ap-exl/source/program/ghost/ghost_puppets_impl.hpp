@@ -54,7 +54,7 @@ namespace AP::Puppets {
     extern double g_BufferMs, g_BufferMaxMs;
     extern float g_AnimBlend;
     constexpr float kGaitBlend = 0.1f;
-    constexpr int kFlagWarped = 1, kFlagHidden = 2, kFlagStill = 4, kFlagStarted = 8;
+    using AP::GhostNet::GhostFlag;
     // The animations a sender that sends none plays by speed.
     constexpr const char* kGaits[] = {"wait", "walk", "run", "dash_lp"};
 
@@ -68,8 +68,7 @@ namespace AP::Puppets {
 #endif
 
     struct Puppet {
-        Game::Actor* actor = nullptr;  // an inactive actor (Entity::Active) is neither updated nor drawn
-        void* ctrl = nullptr;    // a weak reference to the actor
+        Game::Weak<Game::Actor> actor;  // an inactive actor (Entity::Active) is neither updated nor drawn
         Game::ModelObj* model = nullptr;  // once loaded
         AP::GhostNet::Look look;                 // the look of the frame replayed
         int tunic = -1;                          // the tunic set, -1: none yet, kNoTunic: the model has none

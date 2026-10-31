@@ -1,19 +1,23 @@
 #pragma once
 // Ids, names and paths the patcher shares with the module: each must match the patcher's.
+#include "game/data/item_id.hpp"
 #include "lib.hpp"
 #include <string_view>
 
 namespace AP {
+    using Game::Data::ItemId;
+
     // Items.gsheet itemID of the placeholder that every randomized location gives.
     // Its AddItemID index is the location's local id.
-    constexpr int PLACEHOLDER_ITEM_ID = 71;
+    constexpr ItemId PLACEHOLDER_ITEM_ID{71};
     constexpr const char* PLACEHOLDER_KEY = "ArchipelagoItem";
     // Model variants of the placeholder (ArchipelagoItem_<item key>) take item ids that neither the game nor LASR
     // uses (LASR's Dampe and shop dummies take 63-70, its traps 127-131 and its trade items 200-202); the item-get
     // picks its model by id. They count as the placeholder too. Must match VARIANT_ITEM_IDS in the patcher.
-    constexpr bool IsPlaceholderItem(int id) {
-        return (id >= PLACEHOLDER_ITEM_ID && id <= 99) || id == 103 || id == 107 || id == 109 || id == 118 ||
-               id == 119 || (id >= 132 && id <= 199) || (id >= 203 && id <= 255);
+    constexpr bool IsPlaceholderItem(ItemId item) {
+        int id = static_cast<int>(item);
+        return (id >= static_cast<int>(PLACEHOLDER_ITEM_ID) && id <= 99) || id == 103 || id == 107 || id == 109 ||
+               id == 118 || id == 119 || (id >= 132 && id <= 199) || (id >= 203 && id <= 255);
     }
     // The game's TCP port; config.ini can set another ([archipelago] port), e.g. for a second modded game on one PC.
     constexpr int PORT = 43384;
@@ -88,7 +92,8 @@ namespace AP {
         DROP_HOPS = 0, DROP_TREE = 1, DROP_HOLE = 2, DROP_FALLS = 3, DROP_REFALLS = 4, DROP_BURIED = 5, DROP_CHEST = 6,
         DROP_OWL = 7, DROP_BOSS = 8, DROP_BOSS_PIT = 9, DROP_STANDS = 10, DROP_PLACED = 11
     };
-    // A chest's drop's switch that holds its chest's opened flag, which taking the drop sets (patcher:
-    // ap_drop.DROP_OPENED)
-    constexpr int DROP_OPENED_SWITCH = 2;
+    // A drop's switches (patcher: ap_drop, the pops; DROP_OPENED). Pop lets it appear: a chest's or owl statue's
+    // launch flag, a falling drop's pop event's, the boss's global flag. Got is set by taking it, and its row lays out
+    // no drop once it is on. Opened, a chest's drop's only, holds its chest's opened flag, which taking the drop sets.
+    enum class DropSwitch { Pop = 0, Got = 1, Opened = 2 };
 }

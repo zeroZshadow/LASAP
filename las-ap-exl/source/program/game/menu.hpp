@@ -58,6 +58,8 @@ namespace Game::Ui {
     static_assert(offsetof(NaviGuide, relayout) == 0xf10 && offsetof(NaviGuide, attention) == 0xf12);
     static_assert(sizeof(NaviGuide) == 0xf18);
 
+    struct MenuPage;
+
     // The pause menu's header (UI kNaviUi, Gm_Navi.bflyt, Navi_Ctor, vtable 0x1c2aa18; 0x1350 bytes): the page titles,
     // the guide and the pages, by index (0 the map, 1 Items, 2 System).
     struct Navi {
@@ -84,7 +86,7 @@ namespace Game::Ui {
         PaneHandle nextIcon;       // 0x1278
         PaneHandle backIcon;       // 0x1290
         PaneHandle anchors[3];     // 0x12a8: the panes the pages hang under
-        SharedPtr pages[3];        // 0x12f0: MenuPage
+        SharedPtr<MenuPage> pages[3];  // 0x12f0
         u8 overworldZoom;          // 0x1320: kept from the overworld map's zoom index
         u8 dungeonZoom;            // 0x1321
         u8 pad_1322[0x6];
@@ -298,7 +300,7 @@ namespace Game::Ui {
         u8 pageEnd;                // 0x1600: 3 more pages follow
         u8 resumeState;            // 0x1601: after TimerWaiting or EventWaiting
         u8 pad_1602[0x6];
-        SharedPtr msbt;            // 0x1608: the open message's file
+        SharedPtr<> msbt;          // 0x1608: the open message's file
         s32 label;                 // 0x1618: its label index
         u8 pad_161c[0x4];
         s32 page;                  // 0x1620
@@ -308,7 +310,7 @@ namespace Game::Ui {
         u32 pageLineBreaks;        // 0x1b50: the current page's; not read
         u8 result;                 // 0x1b54: the chosen option + 1, 0xff none
         u8 pad_1b55[0x3];
-        SharedPtr handle;          // 0x1b58: the opener's request handle
+        SharedPtr<> handle;        // 0x1b58: the opener's request handle
         u8 kind;                   // 0x1b68: MessageWindow_KindNames' index, 0x14 none (MessageWindow_SetKind)
         u8 pad_1b69;
         u16 pageLetters;           // 0x1b6a: letters in the current page

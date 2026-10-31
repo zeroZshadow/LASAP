@@ -23,7 +23,7 @@ poll hover=\d+/3/in\s.*name=3/3\sMabe\sShop$ 5 DBG map
 tapuntil 800 paused=0 when map:KeyWait 5
 free 10
 # Key Cavern: the basement's key and its owl statue (marker 10, dot 42: locations 196 and 205) under the cursor.
-warp Lv03KeyCavern 93.75 0 86.25
+warp Lv03KeyCavern 96.75 0 32.25
 tapuntil 800 paused=1 when free 5
 until dmap:KeyWait 10
 send DBG mapdot cursor 10

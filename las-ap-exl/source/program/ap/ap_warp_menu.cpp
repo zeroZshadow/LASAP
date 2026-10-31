@@ -43,7 +43,7 @@ namespace {
         g_WarpMenuWanted = false;
         if (g_MinusHeld && PlayerFree() && !PlayerCarrying() && !LinkDead() && ItemEventIdle() &&
             !WarpMenuBlockedLevel(LevelSystem::GetCurrentLevel())) {
-            g_WarpMenuShown = RequestCommonEvent(AP::WARP_MENU_ENTRY);
+            g_WarpMenuShown = static_cast<bool>(RequestCommonEvent(AP::WARP_MENU_ENTRY));
             Logging.Log("[AP] warp menu %s", g_WarpMenuShown ? "opened" : "could not be requested");
         }
     }

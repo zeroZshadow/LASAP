@@ -15,6 +15,7 @@
 #include "game/hooks/eventflags.hpp"
 #include "game/hooks/level.hpp"
 #include "game/menu.hpp"
+#include "game/resource.hpp"
 #include "game/sym.hpp"
 #include "game/time.hpp"
 #include "ghost/ghost_net.hpp"
@@ -34,6 +35,7 @@ namespace AP::Bridge {
 
 namespace {
     using Game::NowMs;
+    using Game::Shared;
     using Game::SharedPtr;
     using Game::StrView;
 
@@ -114,10 +116,12 @@ namespace {
     }
 
     // True when the player can move: no talk, event, cutscene or pause menu.
+    // TODO (TODO.md, PlayerFree during events): Link's state alone; true during a pickup event Instant Pickups keeps
+    // him out of, so a DeathLink death can land in an event.
     bool PlayerFree() {
         Game::Framework* fmwk = Game::GetFramework();
         if (!PlayerReady()) return false;
-        return fmwk->paused == 0 && fmwk->player->machine.state == 0;
+        return fmwk->paused == 0 && fmwk->player->State() == Game::Actors::PlayerState::Locomotion;
     }
 
     // An item-get takes what Link holds over his head out of the game, so item-gets wait until he puts it down.
@@ -137,48 +141,49 @@ namespace {
     // An actor of the room, by its LEB key, joins the event under the name its event chara gives it, as an NPC adds
     // the actors its LEB entry links to. False when the actor or its chara is missing.
     bool AddEventActor(void* event, u64 key) {
-        SharedPtr actor{}, chara{};
-        Game::ActorRegistry_FindByKey(&actor, key);
-        if (actor.ptr != nullptr) Game::Actor_FindEventChara(&chara, actor.ptr);
-        bool ok = chara.ptr != nullptr;
-        if (ok) Game::Event_AddChara(event, &chara);
-        Game::Release(chara);
-        Game::Release(actor);
-        return ok;
+        Shared<Game::Actor> actor;
+        Game::ActorRegistry_FindByKey(actor.Reset(), key);
+        if (!actor) return false;
+        Shared<Game::Event::EventChara> chara;
+        Game::Actor_FindEventChara(chara.Reset(), actor.get());
+        if (!chara) return false;
+        Game::Event_AddChara(event, chara.Borrowed());
+        return true;
     }
 }
 
     // Starting an event, as the game does for its game over with Common.bfevfl:
     // load the flowchart resource, make an event for the entry, prepare it and hand it to the event manager. The
-    // actors of actorKeys (LEB keys) join it first; the event is not started when one is missing.
-    bool RequestEvent(const char* flowchartPath, const char* entry, std::initializer_list<u64> actorKeys) {
+    // actors of actorKeys (LEB keys) join it first; the event is not started when one is missing. The manager makes
+    // no request while the level's room manager does not run (re/EVENTS.md, Requests).
+    Shared<Game::Event::EventRequest> RequestEvent(const char* flowchartPath, const char* entry,
+                                                   std::initializer_list<u64> actorKeys) {
         void* resources = *Game::ResourceManager_ptr;
         void* events = *Game::EventManager_ptr;
-        if (resources == nullptr || events == nullptr) return false;
+        if (resources == nullptr || events == nullptr) return {};
         StrView path{flowchartPath};
         StrView name{entry};
-        SharedPtr handle{}, flowchart{}, event{}, request{};
+        Game::ResourceHandle handle;
         Game::Resource_Load(&handle, resources, &path);
-        if (handle.ptr != nullptr) Game::Resource_Wait(handle.ptr);
-        Game::Resource_TakeFlowchart(&flowchart, &handle);
-        bool ok = false;
-        if (flowchart.ptr != nullptr) {
-            Game::Event_Make(&event, &flowchart, &name);
-            if (event.ptr != nullptr) {
-                Game::Event_Prepare(event.ptr);
-                ok = true;
-                for (u64 key : actorKeys) ok = ok && AddEventActor(event.ptr, key);
-                if (ok) Game::EventManager_Request(&request, events, &event);
-            }
+        if (handle.loading) Game::Resource_Wait(handle.loading.get());
+        Shared<> flowchart;
+        Game::Resource_TakeFlowchart(flowchart.Reset(), &handle);
+        if (!flowchart) return {};
+        Shared<> event;
+        Game::Event_Make(event.Reset(), flowchart.Untyped(), &name);
+        if (!event) return {};
+        Game::Event_Prepare(event.get());
+        for (u64 key : actorKeys) {
+            if (!AddEventActor(event.get(), key)) return {};
         }
-        Game::Release(request);
-        Game::Release(event);
-        Game::Release(flowchart);
-        Game::Release(handle);
-        return ok;
+        Shared<Game::Event::EventRequest> request;
+        Game::EventManager_Request(request.Reset(), events, event.Untyped());
+        return request;
     }
 
-    bool RequestCommonEvent(const char* entry) { return RequestEvent("event/Common.bfevfl", entry, {}); }
+    Shared<Game::Event::EventRequest> RequestCommonEvent(const char* entry) {
+        return RequestEvent("event/Common.bfevfl", entry, {});
+    }
 
     // A toast in the autosave popup; '|' starts a new line.
     void QueueNotice(std::string text) {
@@ -219,7 +224,7 @@ namespace {
         switch (Game::SceneOf(fmwk)) {
             case Game::Scene::Title:
                 return title == nullptr || title->machine.state == Game::Ui::kTitleDeactive ||
-                               title->machine.state == 0xff
+                               title->machine.state == Game::kNoState
                            ? "intro"
                            : "title";
             case Game::Scene::FileMenus: return "menu";
@@ -268,11 +273,11 @@ namespace AP {
         Send("LOG " + text);
     }
 
-    void OnPlaceholderCollected(int local_id) {
-        g_FoundSinceLoad.insert(local_id);
-        SetFoundLocation(local_id);
-        NoteChestFind(local_id);
-        RecordCheck(local_id);
+    void OnPlaceholderCollected(LocationId location) {
+        g_FoundSinceLoad.insert(location);
+        SetFoundLocation(location);
+        NoteChestFind(location);
+        RecordCheck(location);
     }
 
     void OnGoal() {

@@ -27,17 +27,17 @@ namespace {
         static const char* const kLookNames[kLooks] = {"in", "partly", "out", "collected"};
         size_t skipped = 0;
         for (const Group& group : Groups()) {
-            for (int id : IdsOf(group.ids)) skipped += IsLocationSkipped(id) ? 1 : 0;
+            for (LocationId id : IdsOf(group.ids)) skipped += IsLocationSkipped(id) ? 1 : 0;
         }
         std::string drawn;
         if (g_MarkerPage != nullptr) {
             size_t made = 0, shown[kLooks] = {};
-            for (const Game::SharedPtr& sp : g_MarkerPage->markers) {
+            for (const Game::SharedPtr<Map::MapMarker>& sp : g_MarkerPage->markers) {
                 Map::MapMarker* marker = MarkerOf(sp);
                 Look look;
                 if (marker == nullptr || MarkerIcon(marker, look) < 0) continue;
                 made++;
-                if (MarkerPane(marker)->flags & Ui::kPaneVisible) shown[look]++;
+                if (MarkerPane(marker)->flags.Has(Ui::PaneFlag::Visible)) shown[look]++;
             }
             drawn = " made=" + std::to_string(made) + " drawn=" + std::to_string(shown[InLogic]) + "," +
                     std::to_string(shown[Partial]) + "," + std::to_string(shown[OutOfLogic]) + "," +
@@ -134,7 +134,7 @@ namespace {
             const Ui::Animator* animator = dm.marker->setMark.animator;
             int look = animator == nullptr ? -1 :
                 static_cast<int>(animator->frame) - kGameMarkFrames - (DotIds(dm.dot).size() == 1 ? kLooks : 0);
-            bool on = (MarkerRoot(&dm.marker->part.wrapper)->flags & Ui::kPaneVisible) != 0;
+            bool on = MarkerRoot(&dm.marker->part.wrapper)->flags.Has(Ui::PaneFlag::Visible);
             shown += on;
             char letter = look >= 0 && look < kLooks ? kLookLetters[look] : '?';
             looks += on ? letter : static_cast<char>(std::toupper(letter));
@@ -174,7 +174,7 @@ namespace {
         Ids ids = g_Panel.ids;
         static const char kRowLooks[] = "ipoc";
         std::string looks;
-        for (int id : ids) looks += IsLocationSkipped(id) ? 's' : kRowLooks[RowLook(id)];
+        for (LocationId id : ids) looks += IsLocationSkipped(id) ? 's' : kRowLooks[RowLook(id)];
         int texts = 0, drawn = 0;
         for (auto& row : g_Panel.list.rows) {
             if (row.text.box == nullptr) continue;

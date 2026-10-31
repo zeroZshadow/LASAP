@@ -57,7 +57,6 @@ namespace {
     }
 
     void DropDots() {
-        for (auto& dm : g_DotMarkers) Game::ReleaseOwner(dm.control);
         g_DotMarkers.clear();
         g_DotHovered = -1;
         g_DungeonPage = nullptr;
@@ -81,21 +80,22 @@ namespace {
                 missing++;
                 continue;
             }
-            Game::SharedPtr made{}, roomPtr{room->first, nullptr};
-            Game::MapMarker_Make(&made);
-            Map::MapMarker* marker = MarkerOf(made);
+            Game::Shared<Map::MapMarker> made;
+            Game::SharedPtr<> roomPtr{room->first, nullptr};
+            Game::MapMarker_Make(made.Reset());
+            Map::MapMarker* marker = MarkerOf(made.View());
             if (marker == nullptr) continue;
             Game::MapMarker_SetupPart(marker);
             Game::LayoutWrapper_AttachBefore(&marker->part.wrapper, &page->page.wrapper, pinRoot, pinOffset);
             float at[2] = {};
             Game::DungeonMap_PositionIcon(dot.x, 0, dot.z, page, at, &roomPtr);
             Ui::MoveTo(MarkerRoot(&marker->part.wrapper), at[0], at[1]);
-            DotMarker dm{d, marker, made.ctrl};
+            DotMarker dm{d, std::move(made)};
             // under N_MapPosition_00, which moves after the setup (DotAt)
             dm.x = at[0] + pinRoot->x;
             dm.y = at[1] + pinRoot->y;
             dm.onFloor = room->second;
-            g_DotMarkers.push_back(dm);
+            g_DotMarkers.push_back(std::move(dm));
         }
         g_DotsMade += static_cast<int>(g_DotMarkers.size());
         ApplyDots();
@@ -171,7 +171,8 @@ namespace {
     };
 
     HOOK_DEFINE_TRAMPOLINE(ShowCellFloor) {
-        static void Callback(Map::DungeonMap* page, u8 cell, Game::SharedPtr* room, const Map::UiDungeonAreaRow* area) {
+        static void Callback(Map::DungeonMap* page, u8 cell, Game::SharedPtr<>* room,
+                             const Map::UiDungeonAreaRow* area) {
             Orig(page, cell, room, area);
             if (!g_Enabled || room == nullptr || room->ptr == nullptr || area == nullptr) return;
             auto* roomArea = static_cast<Map::Area*>(room->ptr);
@@ -185,12 +186,12 @@ namespace {
     // Eagle's Tower once collapsed: after ShowCellFloor the game shows or hides the cell again (its 3F shows the
     // collapsed top's rooms, its 4F none); the room's dots follow the cell.
     HOOK_DEFINE_TRAMPOLINE(ShowCellFloorCollapsed) {
-        static void Callback(Map::DungeonMap* page, u8 cell, Game::SharedPtr* room, void* area) {
+        static void Callback(Map::DungeonMap* page, u8 cell, Game::SharedPtr<>* room, void* area) {
             Orig(page, cell, room, area);
             Ui::Pane* pane = cell < std::size(page->cells) ? page->cells[cell].pane : nullptr;
             if (!g_Enabled || room == nullptr || room->ptr == nullptr || pane == nullptr) return;
             std::string name = RoomName(static_cast<Map::Area*>(room->ptr));
-            bool onFloor = (pane->flags & Ui::kPaneVisible) != 0;
+            bool onFloor = pane->flags.Has(Ui::PaneFlag::Visible);
             auto it = g_Rooms.find(name);
             if (it != g_Rooms.end()) it->second.second = onFloor;
             if (page == g_DungeonPage) ShowRoomDots(name, onFloor);
@@ -294,7 +295,7 @@ namespace {
     // radius, unless a pin is hovered or Y shows the dungeon's info.
     void UpdateDotHover(Map::DungeonMap* page) {
         for (auto& dm : g_DotMarkers) {
-            Game::CallVirtual<void()>(dm.marker, Map::MapMarkerVirtual::kUpdate);
+            Game::CallVirtual<void()>(dm.marker.get(), Map::MapMarkerVirtual::kUpdate);
         }
         int hovered = -1;
         Map::MapCursor* cursor = FindCursor();
@@ -316,11 +317,11 @@ namespace {
             }
         }
         if (hovered == g_DotHovered) return;
-        if (g_DotHovered >= 0) SetMarkerState(g_DotMarkers[g_DotHovered].marker, Map::kMarkerOff);
+        if (g_DotHovered >= 0) SetMarkerState(g_DotMarkers[g_DotHovered].marker.get(), Map::kMarkerOff);
         bool had = g_DotHovered >= 0;
         g_DotHovered = hovered;
         if (hovered >= 0) {
-            SetMarkerState(g_DotMarkers[hovered].marker, Map::kMarkerOn);
+            SetMarkerState(g_DotMarkers[hovered].marker.get(), Map::kMarkerOn);
             ShowDotName();
         } else if (had && page->hoveredPin == nullptr) {
             HideCursorName();

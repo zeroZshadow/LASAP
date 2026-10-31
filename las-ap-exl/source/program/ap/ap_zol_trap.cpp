@@ -11,8 +11,8 @@
 
 namespace AP::Bridge {
 namespace {
-    using Game::SharedPtr;
-    using Game::WeakPtr;
+    using Game::Shared;
+    using Game::Weak;
 
     constexpr u16 kTreasureBox = 0xf7, kZolGreen = 0x1b;
     // A chest's find: its placeholder's AddItemID in the chest's event, Link standing in front of the chest.
@@ -25,35 +25,23 @@ namespace {
     // overworld such a Zol falls through the ground, so there the chest's Zol is made without it, as Link's are.
     constexpr const char* kOverworld = "Field";
 
-    WeakPtr g_FindChest{};      // the chest of the last chest find, and its location
-    int g_FindLocation = -1;
+    Weak<Game::Actor> g_FindChest;  // the chest of the last chest find, and its location
+    std::optional<AP::LocationId> g_FindLocation;
 #ifdef LASAP_TEST
     const char* g_From = "-";
     int g_Spawned = 0;
-    WeakPtr g_Zols[kKept]{};    // the last trap's enemies
+    Weak<Game::Actor> g_Zols[kKept];  // the last trap's enemies
 #endif
 
-    void Drop(WeakPtr& weak) {
-        Game::ReleaseWeakOwner(weak.ctrl);
-        weak = WeakPtr{};
-    }
-
-    void Keep(WeakPtr& weak, void* ptr, void* ctrl) {
-        Drop(weak);
-        if (ctrl == nullptr) return;
-        Game::AddWeakOwner(ctrl);
-        weak = WeakPtr{ptr, ctrl};
-    }
-
-    Game::Actor* Lock(const WeakPtr& weak) {
-        if (!Game::Alive(weak.ctrl)) return nullptr;
-        auto* actor = static_cast<Game::Actor*>(weak.ptr);
-        return actor->entity.Gone() ? nullptr : actor;
+    // The actor while it is there and not gone (game thread)
+    Game::Actor* Live(const Weak<Game::Actor>& weak) {
+        Game::Actor* actor = weak.Peek();
+        return actor != nullptr && !actor->entity.Gone() ? actor : nullptr;
     }
 
 #ifdef LASAP_TEST
-    void KeepSpawned(size_t i, const SharedPtr& enemy) {
-        if (i < kKept) Keep(g_Zols[i], enemy.ptr, enemy.ctrl);
+    void KeepSpawned(size_t i, const Shared<Game::Actor>& enemy) {
+        if (i < kKept) g_Zols[i] = enemy;
     }
 #endif
 
@@ -61,12 +49,11 @@ namespace {
     Game::Actor* ChestBesideLink(const Game::Actor& link) {
         Game::UnorderedMap* registry = *Game::ActorRegistry_ptr;
         if (registry == nullptr || link.root == nullptr) return nullptr;
-        struct RegistryNode { RegistryNode* next; u64 hash; u64 key; SharedPtr actor; };
         const Game::Vec3& at = link.root->coords.pos;
         Game::Actor* nearest = nullptr;
         float best = kChestReach * kChestReach;
-        for (auto* node = static_cast<RegistryNode*>(registry->first); node != nullptr; node = node->next) {
-            auto* actor = static_cast<Game::Actor*>(node->actor.ptr);
+        for (auto* node = static_cast<Game::ActorRegistryNode*>(registry->first); node != nullptr; node = node->next) {
+            Game::Actor* actor = node->actor.get();
             if (actor == nullptr || actor->actorId != kTreasureBox || actor->zone != link.zone ||
                 actor->root == nullptr || actor->entity.Gone()) {
                 continue;
@@ -86,7 +73,7 @@ namespace {
         Game::Framework* fmwk = Game::GetFramework();
         if (zone < 0 || Game::SceneOf(fmwk) != Game::Scene::Level) return nullptr;
         auto* scene = static_cast<Game::LevelScene*>(fmwk->gameState->scene);
-        auto* manager = static_cast<Game::RoomManager*>(scene->roomManager.ptr);
+        Game::RoomManager* manager = scene->roomManager.get();
         if (manager == nullptr) return nullptr;
         for (Game::Room* room : manager->rooms) {
             if (room != nullptr && room->zone == zone && !room->aborted && room->root.ptr != nullptr) return room;
@@ -96,15 +83,14 @@ namespace {
 
     // The chest's Zol: the game's own (the enemy randomizer's pick with Randomize Enemies).
     bool PopFromChest(Game::Actor* chest) {
-        SharedPtr enemy{};
-        Game::ObjTreasureBox_PopEnemy(&enemy, chest);
-        if (enemy.ptr == nullptr) return false;
+        Shared<Game::Actor> enemy;
+        Game::ObjTreasureBox_PopEnemy(enemy.Reset(), chest);
+        if (!enemy) return false;
 #ifdef LASAP_TEST
         g_From = "chest";
         KeepSpawned(0, enemy);
-        for (size_t i = 1; i < kKept; i++) Drop(g_Zols[i]);
+        for (size_t i = 1; i < kKept; i++) g_Zols[i] = {};
 #endif
-        Game::Release(enemy);
         return true;
     }
 
@@ -114,25 +100,19 @@ namespace {
         void* rot = *Game::IdentityQuat_ptr;
         void* scale = *Game::OneScale_ptr;
         if (room == nullptr || rot == nullptr || scale == nullptr) return false;
-        Game::ActorParams params{};
+        Game::ScopedActorParams made;
+        Game::ActorParams& params = made.params;
         params.actorId = kZolGreen;
         params.zone = zone;
         params.pos = {pos.x, pos.y, pos.z, 0};
         std::memcpy(&params.rot, rot, sizeof(params.rot));
         std::memcpy(&params.scale, scale, sizeof(params.scale));
-        SharedPtr enemy{};
-        Game::Actor_Create(&enemy, &room->root, &params);
-        Game::ReleaseWeakOwner(params.unread.ctrl);
-        Game::ReleaseOwner(params.lebRoom.ctrl);
-        Game::ReleaseOwner(params.flowchart.ctrl);
-        Game::ActorParams_Dtor0(params.drsb);
-        Game::ActorParams_Dtor1(params.bfres);
-        Game::ActorParams_Dtor2(params.lebParams);
-        if (enemy.ptr == nullptr) return false;
+        Shared<Game::Actor> enemy;
+        Game::Actor_Create(enemy.Reset(), &room->root, &params);
+        if (!enemy) return false;
 #ifdef LASAP_TEST
         KeepSpawned(slot, enemy);
 #endif
-        Game::Release(enemy);
         return true;
     }
 
@@ -146,7 +126,7 @@ namespace {
         if (!SpawnZol(chest->zone, {(c.x + l.x) / 2, l.y + kAboveFloor, (c.z + l.z) / 2}, 0)) return false;
 #ifdef LASAP_TEST
         g_From = "chest";
-        for (size_t i = 1; i < kKept; i++) Drop(g_Zols[i]);
+        for (size_t i = 1; i < kKept; i++) g_Zols[i] = {};
 #endif
         return true;
     }
@@ -166,28 +146,28 @@ namespace {
     }
 }
 
-    void NoteChestFind(int local_id) {
+    void NoteChestFind(LocationId location) {
         auto* player = Game::GetPlayer();
         Game::Actor* chest = player != nullptr ? ChestBesideLink(player->actor) : nullptr;
         if (chest == nullptr) return;
-        Keep(g_FindChest, chest, chest->entity.self.ctrl);
-        g_FindLocation = local_id;
+        g_FindChest = Weak<Game::Actor>(chest, chest->entity.self.ctrl);
+        g_FindLocation = location;
     }
 
     // From the chest of its location while it still stands in Link's zone (he may have left it as the trap waited
     // to show), else beside Link.
-    bool SpawnZolTrap(int location) {
+    bool SpawnZolTrap(std::optional<LocationId> location) {
 #ifdef LASAP_TEST
         g_From = "-";
         g_Spawned++;
-        for (auto& zol : g_Zols) Drop(zol);
+        for (auto& zol : g_Zols) zol = {};
 #endif
         auto* player = Game::GetPlayer();
         if (player == nullptr) return false;
-        Game::Actor* chest = location >= 0 && location == g_FindLocation ? Lock(g_FindChest) : nullptr;
+        Game::Actor* chest = location && location == g_FindLocation ? Live(g_FindChest) : nullptr;
         if (chest != nullptr && chest->zone == player->actor.zone) {
-            Drop(g_FindChest);
-            g_FindLocation = -1;
+            g_FindChest = {};
+            g_FindLocation.reset();
             if (ChestZol(chest, player->actor)) {
                 Logging.Log("[AP] zol trap: from its chest");
                 return true;
@@ -204,7 +184,7 @@ namespace {
         std::string zols;
         int alive = 0;
         for (const auto& zol : g_Zols) {
-            Game::Actor* actor = Lock(zol);
+            Game::Actor* actor = Live(zol);
             if (actor == nullptr) continue;
             alive++;
             char text[80];

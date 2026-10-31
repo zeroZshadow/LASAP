@@ -62,10 +62,12 @@ namespace {
     char g_MapText[512];
     char g_CaptionText[64];
 
-    std::map<int, std::pair<std::string, std::string>> g_LocationNames;
-    int g_FoundLocation = -1;
+    using AP::LocationId;
+
+    std::map<LocationId, std::pair<std::string, std::string>> g_LocationNames;
+    std::optional<LocationId> g_FoundLocation;
     bool g_FoundFresh = false;      // g_FoundLocation was set during the current event
-    int g_PresentLocation = -1;     // the popped mansion present holding a placeholder
+    std::optional<LocationId> g_PresentLocation;  // the popped mansion present holding a placeholder
     std::string g_RecvItem, g_RecvSender;
     char g_FoundText[512];
     char g_RecvText[512];
@@ -142,6 +144,29 @@ namespace {
         g_SeenTexts[it->second] = plain;
     }
 #endif
+
+    // The item and player names of the location's item; null without them
+    const std::pair<std::string, std::string>* NamesOf(std::optional<LocationId> location) {
+        if (!location) return nullptr;
+        auto it = g_LocationNames.find(*location);
+        return it != g_LocationNames.end() ? &it->second : nullptr;
+    }
+
+    // The placeholder just found, else the mansion's present
+    std::optional<LocationId> FoundOrPresent() { return g_FoundFresh ? g_FoundLocation : g_PresentLocation; }
+
+    std::string ToastOf(std::optional<LocationId> location) {
+        const auto* names = NamesOf(location);
+        if (names == nullptr) return "";
+        const auto& [item, player] = *names;
+        std::string to = player.empty() ? "" : "\nfor " + Clip(player, kPlayerNameMax);
+        return "You found " + Clip(item, kItemNameMax) + to;
+    }
+#ifdef LASAP_TEST
+    std::string IdText(std::optional<LocationId> location) {
+        return location ? AP::ToString(*location) : "-1";
+    }
+#endif
 }
 
 HOOK_DEFINE_TRAMPOLINE(MsbtFindLabel) {
@@ -198,9 +223,9 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
         Kind kind = KindOf(msbt, index);
         switch (kind) {
             case Kind::Found: {
-                auto it = g_LocationNames.find(g_FoundFresh ? g_FoundLocation : g_PresentLocation);
-                if (it == g_LocationNames.end()) return;  // unknown: keep "You found an Archipelago item!"
-                const auto& [item, player] = it->second;
+                const auto* names = NamesOf(FoundOrPresent());
+                if (names == nullptr) return;  // unknown: keep "You found an Archipelago item!"
+                const auto& [item, player] = *names;
                 std::string t = player.empty()
                     ? "You found your " + kColorItem + Clip(item, kItemNameMax) + kColorWhite + "!"
                     : "You found " + kColorItem + Clip(item, kItemNameMax) + kColorWhite + "\nfor " +
@@ -290,7 +315,7 @@ HOOK_DEFINE_INLINE(MansionPopBox) {
         // The placeholder's key, or a model variant of it (ArchipelagoItem_<item key>).
         if (key != nullptr && key->data != nullptr && key->size >= len &&
             std::memcmp(key->data, AP::PLACEHOLDER_KEY, len) == 0) {
-            g_PresentLocation = index;
+            g_PresentLocation = LocationId{index};
             Logging.Log("[AP] present holds location %d", index);
         }
     }
@@ -348,15 +373,15 @@ namespace AP {
         }
     }
 
-    void SetLocationName(int local_id, const std::string& item, const std::string& player) {
-        g_LocationNames[local_id] = {item, player};
+    void SetLocationName(LocationId location, const std::string& item, const std::string& player) {
+        g_LocationNames[location] = {item, player};
     }
 
 #ifdef LASAP_TEST
     std::string TextState() {
         return "TEXT names=" + std::to_string(g_LocationNames.size()) + " slots=" + std::to_string(g_SlotCount) +
-               " found=" + std::to_string(g_FoundLocation) + " finds=" + std::to_string(g_FindCalls) +
-               " gets=" + std::to_string(g_GetCalls) + " present=" + std::to_string(g_PresentLocation);
+               " found=" + IdText(g_FoundLocation) + " finds=" + std::to_string(g_FindCalls) +
+               " gets=" + std::to_string(g_GetCalls) + " present=" + IdText(g_PresentLocation);
     }
 
     std::string SeenText(const std::string& label) {
@@ -365,14 +390,14 @@ namespace AP {
     }
 #endif
 
-    bool HasLocationName(int local_id) {
-        return g_LocationNames.count(local_id) != 0;
+    bool HasLocationName(LocationId location) {
+        return g_LocationNames.count(location) != 0;
     }
 
-    void SetFoundLocation(int local_id) {
-        g_FoundLocation = local_id;
+    void SetFoundLocation(LocationId location) {
+        g_FoundLocation = location;
         g_FoundFresh = true;
-        if (local_id == g_PresentLocation) g_PresentLocation = -1;
+        if (location == g_PresentLocation) g_PresentLocation.reset();
     }
 
     void ExpireFoundLocation() {
@@ -384,15 +409,12 @@ namespace AP {
         return "You got " + Clip(item, kItemNameMax) + from;
     }
 
-    std::string FoundToast(int local_id) {
-        auto it = g_LocationNames.find(local_id);
-        if (it == g_LocationNames.end()) return "";
-        const auto& [item, player] = it->second;
-        return "You found " + Clip(item, kItemNameMax) + (player.empty() ? "" : "\nfor " + Clip(player, kPlayerNameMax));
+    std::string FoundToast(LocationId location) {
+        return ToastOf(location);
     }
 
     std::string FoundToast() {
-        return FoundToast(g_FoundFresh ? g_FoundLocation : g_PresentLocation);
+        return ToastOf(FoundOrPresent());
     }
 
     bool ToastsIdle() {
@@ -426,7 +448,7 @@ namespace AP {
             if (space == std::string::npos) continue;
             std::string names = line.substr(space + 1);
             size_t bar = names.find('|');
-            SetLocationName(atoi(line.substr(0, space).c_str()), names.substr(0, bar),
+            SetLocationName(LocationId{atoi(line.substr(0, space).c_str())}, names.substr(0, bar),
                             bar == std::string::npos ? "" : names.substr(bar + 1));
             count++;
         }

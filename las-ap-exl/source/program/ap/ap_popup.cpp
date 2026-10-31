@@ -25,9 +25,7 @@ namespace {
     using Game::NowMs;
 
     // ItemModel_Make loads the item's model and, once loaded, makes the component (in a task: the item-get's model
-    // task); the holder's +0x18 is then the component (a shared_ptr). Owner, name and root are copied; the name's
-    // characters are not.
-    constexpr size_t kHolderModel = 0x18;
+    // task) into its holder (Game::ItemModelHolder). Owner, name and root are copied; the name's characters are not.
     // The model is owned by Link (his actor's self pointer) and hangs under his model component: under his root
     // component (PlayerCollision) it is not drawn. The game enables an entity by setting kEnabled and, when that makes
     // it active, calling its kOnActiveChanged. The item model maker leaves the component disabled; the item-get
@@ -60,12 +58,12 @@ namespace {
 
     void Enable(Game::Entity& entity) {
         bool was = entity.Active();
-        entity.flags |= Game::EntityFlags::kEnabled;
+        entity.flags.Set(Game::EntityFlag::Enabled);
         if (!was && entity.Active()) Game::CallVirtual<void()>(&entity, Game::EntityVirtual::kOnActiveChanged);
     }
 
     Game::Actors::Player* g_Player = nullptr;  // the player the model was made for; another player (a level load) drops it
-    SharedPtr g_Holder{};
+    Game::Shared<Game::ItemModelHolder> g_Holder;
     u64 g_Since = 0;               // when the model was asked for
     u64 g_ShownAt = 0;             // when it first showed, 0 before
     float g_Scale = 1.0f;
@@ -82,7 +80,8 @@ namespace {
     Quat g_Angle{0.0f, 0.0f, 0.0f, 1.0f};
 
     Game::Node* Model() {
-        return g_Holder.ptr != nullptr ? Game::Field<Game::Node*>(g_Holder.ptr, kHolderModel) : nullptr;
+        const Game::ItemModelHolder* holder = g_Holder.get();
+        return holder != nullptr ? holder->model.get() : nullptr;
     }
 
     // Destroys the component (unless a level load took it with Link) and lets the holder go.
@@ -92,7 +91,7 @@ namespace {
         if (destroy && model != nullptr && !model->entity.Gone()) {
             Game::Entity_Destroy(model);
         }
-        Game::Release(g_Holder);
+        g_Holder = {};
         g_Player = nullptr;
         g_ShownAt = 0;
     }
@@ -169,38 +168,39 @@ namespace AP::Popup {
         InstallDrawHooks();
     }
 
-    bool Show(int itemId) {
+    bool Show(Game::Data::ItemId item) {
         Drop(true);
         Game::Framework* fmwk = Game::GetFramework();
         if (fmwk == nullptr || fmwk->player == nullptr) return false;
         Game::Actors::Player* player = fmwk->player;
-        SharedPtr owner{player->actor.entity.self.ptr, player->actor.entity.self.ctrl};
-        SharedPtr parent{player->modelComp, player->modelCompCtrl};
-        if (owner.ptr == nullptr || parent.ptr == nullptr) return false;
+        // Link as the owner: a reference of his own self pointer (weak)
+        Game::Shared<> owner = Game::Shared<>::Lock(player->actor.entity.self);
+        SharedPtr<> parent{player->modelComp, player->modelCompCtrl};
+        if (!owner || parent.ptr == nullptr) return false;
         Game::StrView name{kName, sizeof(kName) - 1};
         // The item-get's size (its pose by item id, the variants' that of their item); an NPC model's fix sets its
         // own (Fit)
-        const Game::ItemPose* pose = Game::ItemPose_ItemGet(static_cast<u8>(itemId), false);
+        const Game::ItemPose* pose = Game::ItemPose_ItemGet(static_cast<u8>(item), false);
         g_Scale = pose != nullptr ? pose->scale[0] : 1.0f;
         g_RootMoved = true;
         g_Fitted = false;
         g_PlacedAt = 0;
         // a model that shows while Link holds something starts above it
         g_CarryRaise = player->carried != nullptr ? kCarryRaise : 0.0f;
-        Game::ItemModel_Make(&g_Holder, &owner, &name, &parent, static_cast<u8>(itemId));
-        if (g_Holder.ptr == nullptr) return false;
+        Game::ItemModel_Make(g_Holder.Reset(), owner.Untyped(), &name, &parent, static_cast<u8>(item));
+        if (!g_Holder) return false;
         g_Player = player;
         g_Since = NowMs();
         g_ShownAt = 0;
         return true;
     }
 
-    bool Busy() { return g_Holder.ptr != nullptr; }
+    bool Busy() { return static_cast<bool>(g_Holder); }
 
 #ifdef LASAP_TEST
     void Sway(bool on) { g_NoSway = !on; }
 
-    float Scale() { return g_Holder.ptr != nullptr ? g_Scale : 0.0f; }
+    float Scale() { return g_Holder ? g_Scale : 0.0f; }
 
     void RecordFrames(size_t count) {
         g_PoseFrames.clear();
@@ -219,7 +219,7 @@ namespace AP::Popup {
     }
 #endif
 
-    bool IsHolder(const void* holder) { return holder != nullptr && holder == g_Holder.ptr; }
+    bool IsHolder(const void* holder) { return holder != nullptr && holder == g_Holder.get(); }
 
     void Fit(float scale, const Game::Vec3& center, const Game::Vec3& angle) {
         g_Scale = scale;
@@ -230,7 +230,7 @@ namespace AP::Popup {
     }
 
     void Tick() {
-        if (g_Holder.ptr == nullptr) return;
+        if (!g_Holder) return;
         Game::Framework* fmwk = Game::GetFramework();
         if (fmwk == nullptr || fmwk->player != g_Player) {
             // A level load took Link and his children

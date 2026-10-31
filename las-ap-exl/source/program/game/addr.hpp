@@ -1,6 +1,8 @@
 #pragma once
 // The game's code and data by address. Every address is an offset in the main module of game 1.0.0 (las.sym's
 // address - 0x8504000); Addr maps it to the running game, the update's included (version.hpp).
+#include "game/abi.hpp"
+#include "game/stl.hpp"
 #include "lib.hpp"
 
 namespace Game {
@@ -24,6 +26,11 @@ namespace Game {
 
     template<typename R, typename... Args>
     struct Func<R(Args...)> {
+        // The game returns a std::shared_ptr through x8 and takes one by value as a pointer to it: a shared pointer
+        // it returns is a Shared (the layout types would come back in x0 and x1), and one it takes is a pointer or
+        // reference
+        static_assert(!kSharedPointer<R> || ReturnedThroughX8<R>, "a returned shared pointer must come through x8");
+        static_assert((!kSharedPointer<Args> && ...), "pass a shared pointer to the game by pointer");
         using Ptr_t = R (*)(Args...);
         uintptr_t offset;
 

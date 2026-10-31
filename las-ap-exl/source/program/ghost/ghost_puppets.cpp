@@ -32,6 +32,7 @@ namespace AP::Puppets {
 
 namespace {
     using Game::At;
+    using Game::Shared;
     using Game::SharedPtr;
     using Game::StrView;
     using Game::GetPlayer;
@@ -92,7 +93,6 @@ namespace {
     // Lets the actor go, once the game has destroyed it.
     void Forget(Puppet& p) {
         ClearSpan(IndexOf(p));
-        Game::ReleaseWeakOwner(p.ctrl);
 #ifdef LASAP_TEST
         std::vector<std::string> log = std::move(p.animLog);
         p = Puppet{};
@@ -163,7 +163,9 @@ namespace {
             p.ready = false;
             return;
         }
-        bool active = p.actor->entity.Active();
+        Game::Actor* actor = p.actor.Peek();
+        if (actor == nullptr) return;
+        bool active = actor->entity.Active();
         bool draw = p.shown && g_DrawGhosts && p.detail > 0 && !p.track.arriving;
         bool kept = WriteLook(p, draw);
         p.readyFrames = draw && kept && active ? p.readyFrames + 1 : 0;
@@ -181,11 +183,11 @@ namespace {
     void DriveGhost(int n, const std::string& level, u32 frame, u64 now, double nowFine) {
         Puppet& p = g_Puppets[n];
         const AP::GhostNet::Ghost& g = AP::GhostNet::Get(n);
-        bool shown = AP::IsClientConnected() && g.active && !(g.flags & kFlagHidden) && g.level == level &&
+        bool shown = AP::IsClientConnected() && g.active && !g.flags.Has(GhostFlag::Hidden) && g.level == level &&
                      now - g.receivedMs < kStaleMs;
         if (!shown) {
             if (p.shown) Hide(p, now);
-            else if (p.ctrl != nullptr && now - p.hiddenSince >= kHiddenRemoveMs) Remove(p);
+            else if (p.actor.Holds() && now - p.hiddenSince >= kHiddenRemoveMs) Remove(p);
             return;
         }
         if (!p.shown) {
@@ -193,7 +195,9 @@ namespace {
             if (frame < p.spawnAfter || !Spawn(p, kGhostActor, Game::Vec3{g.x, g.y, g.z}, frame, err)) return;
             p.framesSeen = g.timelineFrom;
         }
-        if (!p.actor->entity.Active()) {
+        Game::Actor* actor = p.actor.Peek();
+        if (actor == nullptr) return;
+        if (!actor->entity.Active()) {
             if (!p.wasActive && ++p.inactiveFrames >= kInactiveFrames) {
                 g_Remade++;
                 Remove(p);  // spawned again next frame
@@ -218,10 +222,10 @@ namespace {
 
     int IndexOf(const Puppet& p) { return static_cast<int>(&p - g_Puppets); }
 
-    bool Alive(const Puppet& p) { return Game::Alive(p.ctrl); }
+    bool Alive(const Puppet& p) { return p.actor.Alive(); }
 
     Game::Actors::NpcComponent* NpcOf(const Puppet& p) {
-        return Alive(p) ? reinterpret_cast<Game::Actors::NpcActor*>(p.actor)->npc : nullptr;
+        return Alive(p) ? reinterpret_cast<Game::Actors::NpcActor*>(p.actor.Peek())->npc : nullptr;
     }
 
     void* AnimatorOf(const Puppet& p) {
@@ -251,9 +255,9 @@ namespace {
     // Removal as the game does it (0x8e3440): Entity_RemoveChild from the actor system, keyed by the actor's name.
     void Remove(Puppet& p) {
         ClearSpan(IndexOf(p));
-        if (Alive(p) && !p.actor->entity.Gone()) {
+        if (Game::Actor* actor = p.actor.Peek(); actor != nullptr && !actor->entity.Gone()) {
             void* system = Game::GetFramework()->actorSystem.ptr;
-            Game::Entity_RemoveChild(system, p.actor->entity.name, p.actor->entity.nameLength, false);
+            Game::Entity_RemoveChild(system, actor->entity.name, actor->entity.nameLength, false);
         }
         Forget(p);
     }
@@ -274,51 +278,44 @@ namespace {
             err = "no player";
             return false;
         }
-        Game::ActorParams params{};
-        params.actorId = id;
-        // Zone -1: NpcGhost is zone-scoped, and an actor of a zone Link has left is suspended until he enters it
-        // again (ACTORS.md, Activity); a ghost goes where its player goes, so it belongs to no zone.
-        params.zone = -1;
-        params.pos = {pos.x, pos.y, pos.z, 0};
         void* rot = *Game::IdentityQuat_ptr;
         void* scale = *Game::OneScale_ptr;
         if (rot == nullptr || scale == nullptr) {
             err = "no identity globals";
             return false;
         }
-        std::memcpy(&params.rot, rot, sizeof(params.rot));
-        std::memcpy(&params.scale, scale, sizeof(params.scale));
-
-        // The owner is the framework's actor system (a shared_ptr), as the player's hookshot
-        // passes it.
         if (id == kGhostActor && !HasGhostRow()) {
             err = "no APGhost row (a mod patched before ghosts)";
             p.spawnAfter = frame + kNoRowFrames;
             return false;
         }
-        SharedPtr* system = &Game::GetFramework()->actorSystem;
-        SharedPtr out{};
+        Game::ScopedActorParams made;
+        Game::ActorParams& params = made.params;
+        params.actorId = id;
+        // Zone -1: NpcGhost is zone-scoped, and an actor of a zone Link has left is suspended until he enters it
+        // again (ACTORS.md, Activity); a ghost goes where its player goes, so it belongs to no zone.
+        params.zone = -1;
+        params.pos = {pos.x, pos.y, pos.z, 0};
+        std::memcpy(&params.rot, rot, sizeof(params.rot));
+        std::memcpy(&params.scale, scale, sizeof(params.scale));
+
+        // The owner is the framework's actor system (a shared_ptr), as the player's hookshot
+        // passes it.
+        SharedPtr<>* system = &Game::GetFramework()->actorSystem;
+        Shared<Game::Actor> out;
         g_SpawningGhost = id == kGhostActor;
-        Game::Actor_Create(&out, system, &params);
+        Game::Actor_Create(out.Reset(), system, &params);
         g_SpawningGhost = false;
 
-        Game::ReleaseWeakOwner(params.unread.ctrl);
-        Game::ReleaseOwner(params.lebRoom.ctrl);
-        Game::ReleaseOwner(params.flowchart.ctrl);
-        Game::ActorParams_Dtor0(params.drsb);
-        Game::ActorParams_Dtor1(params.bfres);
-        Game::ActorParams_Dtor2(params.lebParams);
 
-        if (out.ptr == nullptr || out.ctrl == nullptr) {
+        if (!out || out.View().ctrl == nullptr) {
             err = "factory returned nothing";
             p.spawnAfter = frame + kRespawnFrames;
             return false;
         }
         Forget(p);
-        Game::AddWeakOwner(out.ctrl);
-        Game::ReleaseOwner(out.ctrl);
-        p.actor = static_cast<Game::Actor*>(out.ptr);
-        p.ctrl = out.ctrl;
+        p.actor = out;
+        out = {};  // the actor system's reference keeps it
 #ifdef LASAP_TEST
         p.animLog.clear();
 #endif
@@ -367,15 +364,15 @@ namespace {
         if (animator == nullptr || !IsLayered(animator)) return;
         auto* sac = static_cast<Game::LayeredAnimation*>(animator);
         if (sac->layers.count <= kUpperLayer) return;
-        SharedPtr played{};
+        Shared<> played;
         const char* name = anim > 0 ? AP::GhostNet::AnimName(anim) : nullptr;
         if (name != nullptr) {
             StrView view{name};
-            Game::NpcAnimation_Get(&played, comp, &view);
+            Game::NpcAnimation_Get(played.Reset(), comp, &view);
         }
         // none: the layer is only turned off
-        if (played.ptr != nullptr) {
-            Game::LayeredAnimation_SetSlot(sac, kUpperLayer, &played, g_AnimBlend, 0);
+        if (played) {
+            Game::LayeredAnimation_SetSlot(sac, kUpperLayer, played.Untyped(), g_AnimBlend, 0);
             Game::AnimationLayer* layer = sac->layers.layers[kUpperLayer];
             if (layer != nullptr) {
                 namespace Layer = Game::AnimationLayerVirtual;
@@ -383,11 +380,10 @@ namespace {
                 Game::CallVirtual<void(float)>(layer, Layer::kSetStart, 0);
             }
         }
-        Game::AnimationLayers_SetEnabled(&sac->layers, kUpperLayer, played.ptr != nullptr);
-        Game::ReleaseOwner(played.ctrl);
+        Game::AnimationLayers_SetEnabled(&sac->layers, kUpperLayer, static_cast<bool>(played));
 #ifdef LASAP_TEST
         if (p.animLog.size() < 40)
-            p.animLog.push_back("upper:" + std::string(name != nullptr ? name : "-") + (played.ptr != nullptr ? "" : "?") +
+            p.animLog.push_back("upper:" + std::string(name != nullptr ? name : "-") + (played ? "" : "?") +
                                 "@" + std::to_string(g_LastFrame));
 #endif
     }
@@ -395,7 +391,7 @@ namespace {
     Game::Vec4 QuatOf(float yaw) { return Game::Vec4{0, std::sin(yaw / 2), 0, std::cos(yaw / 2)}; }
 
     void Place(Puppet& p, const Game::Vec3& pos, const Game::Vec4* rot) {
-        Game::Node* root = Alive(p) ? p.actor->root : nullptr;
+        Game::Node* root = Alive(p) ? p.actor.Peek()->root : nullptr;
         if (root == nullptr) return;
         root->coordsNew.pos = pos;
         root->coords.pos = pos;
@@ -418,30 +414,25 @@ namespace {
     };
 
     // A ghost's NPC component (the APGhost row) gets a layered animation player with Link's upper-body layer. The
-    // player comes back through x8 (a shared_ptr), so the hook returns a type that is not trivial.
+    // player comes back through x8 (a shared_ptr), as a Shared.
     HOOK_DEFINE_TRAMPOLINE(MakeAnimator) {
-        static Game::SharedPtrOut Callback(Game::Actors::NpcComponent* comp, StrView* name, SharedPtr* model) {
+        static Game::Shared<Game::SkeletalAnimation> Callback(Game::Actors::NpcComponent* comp, StrView* name,
+                                                              SharedPtr<>* model) {
             const void* row = comp != nullptr ? comp->row : nullptr;
             if (g_LayeredGhosts && row != nullptr && model != nullptr && model->ptr != nullptr && row == GhostRow()) {
-                Game::SharedPtrOut out;
+                Game::Shared<Game::LayeredAnimation> out;
                 int layers = 2;
-                Game::LayeredAnimation_Make(&out, comp->owner, name, model, &layers);
-                if (out.ptr != nullptr) {
-                    Game::AnimationLayers* set = &static_cast<Game::LayeredAnimation*>(out.ptr)->layers;
-                    Game::AnimationLayers_SetBoneMask(set, kUpperLayer, Game::str_spine_a.Ptr(), true);
-                    Game::AnimationLayers_SetEnabled(set, kUpperLayer, false);
-                    // started and made the entity's child, as NpcAnimator_Make does with its player
-                    Game::Entity* entity = comp->owner != nullptr ? &comp->owner->entity : nullptr;
-                    void* manager = *Game::EntityManager_ptr;
-                    if (manager != nullptr) {
-                        SharedPtr sp{out.ptr, out.ctrl};
-                        if (sp.ctrl != nullptr) Game::AddOwner(sp.ctrl);
-                        Game::EntityManager_PostStart(manager, &sp);
-                        Game::ReleaseOwner(sp.ctrl);
-                    }
-                    Game::Entity_AttachChild(entity, out.ptr);
-                    return out;
-                }
+                Game::LayeredAnimation_Make(out.Reset(), comp->owner, name, model, &layers);
+                // none when the owner has a component of that name already: the game's maker answers then
+                if (!out) return Orig(comp, name, model);
+                Game::AnimationLayers_SetBoneMask(&out->layers, kUpperLayer, Game::str_spine_a.Ptr(), true);
+                Game::AnimationLayers_SetEnabled(&out->layers, kUpperLayer, false);
+                // started and made the entity's child, as NpcAnimator_Make does with its player
+                Game::Entity* entity = comp->owner != nullptr ? &comp->owner->entity : nullptr;
+                void* manager = *Game::EntityManager_ptr;
+                if (manager != nullptr) Game::EntityManager_PostStart(manager, out.Untyped());
+                Game::Entity_AttachChild(entity, out.get());
+                return std::move(out).Alias(&out->base);
             }
             return Orig(comp, name, model);
         }
@@ -497,8 +488,8 @@ namespace {
         }
         g_LastFrame = frame;
         for (auto& p : g_Puppets) {
-            if (p.ctrl != nullptr && !Alive(p)) Forget(p);
-            if (p.ctrl != nullptr) RefreshModel(p);
+            if (p.actor.Holds() && !Alive(p)) Forget(p);
+            if (p.actor.Holds()) RefreshModel(p);
         }
 #ifdef LASAP_TEST
         TestFrameStart(player);

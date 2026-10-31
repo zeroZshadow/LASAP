@@ -7,6 +7,7 @@
 #include "ap/ap_text.hpp"
 #include "game/actor.hpp"
 #include "game/data/inventory.hpp"
+#include "game/event.hpp"
 #include "game/framework.hpp"
 #include "game/hooks/eventflags.hpp"
 #include "game/hooks/inventory.hpp"
@@ -26,11 +27,18 @@
 #include <cstdlib>
 #include <cstring>
 #include <malloc.h>
+#include <utility>
 
 namespace AP::Test {
 namespace {
     using namespace AP::Bridge;
     using Game::NowMs;
+
+    // An item argument: its id or its Items.gsheet key; none for an unknown key
+    std::optional<ItemId> ItemArg(const std::string& arg) {
+        bool numeric = !arg.empty() && arg.find_first_not_of("0123456789") == std::string::npos;
+        return numeric ? ItemId{std::stoi(arg)} : ItemIdFromKey(arg);
+    }
 
     // DBG enemies: what the enemy randomizer did since the last DBG enemies reset
     std::atomic<int> g_EnemiesSeen = 0, g_EnemiesChanged = 0, g_EnemiesSized = 0;
@@ -72,17 +80,14 @@ namespace {
     // Actors made with no LEB key (a boss's parts, as the Slime Eye's body and halves; ACTORS.md, Slime Eye), which the
     // registry does not hold: the last kSpawned made, weakly
     constexpr size_t kSpawned = 64;
-    Game::WeakPtr g_Spawned[kSpawned]{};
+    Game::Weak<Game::Actor> g_Spawned[kSpawned];
     size_t g_SpawnedNext = 0;
 
     HOOK_DEFINE_TRAMPOLINE(SpawnTrack) {
-        static void Callback(Game::SharedPtr* out, Game::SharedPtr* owner, Game::ActorParams* params) {
+        static void Callback(Game::SharedPtr<Game::Actor>* out, Game::SharedPtr<>* owner, Game::ActorParams* params) {
             Orig(out, owner, params);
             if (out->ptr == nullptr || params->lebKey != 0) return;
-            Game::WeakPtr& slot = g_Spawned[g_SpawnedNext++ % kSpawned];
-            Game::ReleaseWeakOwner(slot.ctrl);
-            Game::AddWeakOwner(out->ctrl);
-            slot = {out->ptr, out->ctrl};
+            g_Spawned[g_SpawnedNext++ % kSpawned] = {out->ptr, out->ctrl};
         }
     };
 
@@ -97,21 +102,20 @@ namespace {
     size_t FindActors(Game::Actor** found, const char* prefix) {
         Game::UnorderedMap* registry = *Game::ActorRegistry_ptr;
         if (registry == nullptr) return 0;
-        struct RegistryNode { RegistryNode* next; u64 hash; u64 key; Game::SharedPtr actor; };
         size_t count = 0;
-        for (auto* node = static_cast<RegistryNode*>(registry->first); node != nullptr && count < kMaxKilled;
+        for (auto* node = static_cast<Game::ActorRegistryNode*>(registry->first); node != nullptr && count < kMaxKilled;
              node = node->next) {
-            auto* actor = static_cast<Game::Actor*>(node->actor.ptr);
+            Game::Actor* actor = node->actor.get();
             if (Named(actor, prefix)) found[count++] = actor;
         }
-        for (const Game::WeakPtr& made : g_Spawned) {
-            auto* actor = static_cast<Game::Actor*>(made.ptr);
-            if (count < kMaxKilled && Game::Alive(made.ctrl) && Named(actor, prefix)) found[count++] = actor;
+        for (const Game::Weak<Game::Actor>& made : g_Spawned) {
+            Game::Actor* actor = made.Peek();
+            if (count < kMaxKilled && actor != nullptr && Named(actor, prefix)) found[count++] = actor;
         }
         return count;
     }
 
-    struct CompNode { CompNode* next; u64 hash; const char* name; u64 length; Game::SharedPtr comp; };
+    struct CompNode { CompNode* next; u64 hash; const char* name; u64 length; Game::SharedPtr<> comp; };
 
     // The actor's component whose vtable is the main module's `vtable` offset, or null
     u8* ComponentOf(Game::Actor* actor, uintptr_t vtable) {
@@ -180,7 +184,7 @@ namespace {
             }
         }
         if (controller == nullptr) return "no controller";
-        auto* body = reinterpret_cast<Game::SharedPtr*>(controller + kSlimeBody);
+        auto* body = reinterpret_cast<Game::SharedPtr<>*>(controller + kSlimeBody);
         bool hasBody = body->ptr != nullptr && Game::Alive(body->ctrl);
         auto* bodyAt = static_cast<u8*>(body->ptr);
         if (what == "fall") {
@@ -209,9 +213,9 @@ namespace {
         if (sword == nullptr) return "no sword";
         Game::Actor* actors[kMaxKilled];
         size_t count = FindActors(actors, name.c_str());
-        // none while Link is in an event (state 22): no hit lands during one, and one during a boss's dead event starts
-        // its death again
-        if (Holds("event=22")) return "event";
+        // none while Link is in an event: no hit lands during one, and one during a boss's dead event starts its death
+        // again
+        if (player->State() == Game::Actors::PlayerState::DemoEvent) return "event";
         // the first of that name with a damage comp, one with life left before one without (Master Stalfos's falls
         // apart at none, and a boss may have more than one actor)
         Game::Actor* actor = nullptr;
@@ -255,8 +259,8 @@ namespace {
         g_Attack[kAttackType] = type;
         u8* hit = g_Record + kRecordHits;
         *reinterpret_cast<u32*>(g_Record + kRecordCount) = 1;
-        *reinterpret_cast<Game::WeakPtr*>(hit + kHitAttacker) = reinterpret_cast<Game::Entity*>(sword)->self;
-        *reinterpret_cast<Game::WeakPtr*>(hit + kHitComp) = reinterpret_cast<Game::Entity*>(comp)->self;
+        *reinterpret_cast<Game::WeakPtr<>*>(hit + kHitAttacker) = reinterpret_cast<Game::Entity*>(sword)->self;
+        *reinterpret_cast<Game::WeakPtr<>*>(hit + kHitComp) = reinterpret_cast<Game::Entity*>(comp)->self;
         *reinterpret_cast<u8**>(hit + kHitAttack) = g_Attack;
         *reinterpret_cast<u8**>(hit + kHitDefence) = defence;
         if (actor->root != nullptr) {
@@ -317,6 +321,68 @@ namespace {
             else s += std::to_string(entries[i]->smallKeys) + "." + std::to_string(entries[i]->flags);
         }
         return s + " dlevel=" + std::to_string(*Game::LevelIndex);
+    }
+
+    // A flowchart string or a map key as text
+    std::string Text(const Game::Event::ResString* s) { return s != nullptr ? std::string(s->data, s->size) : "-"; }
+
+    // DBG event: the event manager's queue and signals, and the running event: its entry, flowchart, flow (its back
+    // pointers), actor map (name, user data, lookups) and the first flowchart's bindings (scripts/re/EVENTS.md)
+    std::string EventLine() {
+        using namespace Game::Event;
+        auto* manager = static_cast<const EventManager*>(*Game::EventManager_ptr);
+        if (manager == nullptr) return " manager=-";
+        auto handles = [](const Game::Signal& signal) {
+            return std::to_string(signal.slots.size) + "/" + std::to_string(signal.nextHandle);
+        };
+        std::string s = " requests=" + std::to_string(manager->requests.size);
+        s += " cancelAll=" + std::to_string(manager->cancelAll);
+        s += " slots=" + handles(manager->queueStarted) + "," + handles(manager->queueEnded) + "," +
+             handles(manager->eventStarted) + "," + handles(manager->eventEnded);
+        s += " owners=" + std::to_string(manager->eventStarted.owner == &manager->eventStarted) +
+             std::to_string(manager->eventEnded.owner == &manager->eventEnded);
+        const RunningEvent* event = Running(manager);
+        if (event == nullptr) return s;
+        const EventRequest* request = Game::Event::FrontRequest(manager);
+        s += " cancelled=" + std::to_string(request->cancelled) + " finishedOpen=" +
+             std::to_string(request->finished.nextHandle != 0);
+        Game::StrView entry = event->Entry();
+        s += " entry=" + std::string(entry.data, entry.size) + " kind=" + std::to_string(event->kind);
+        s += " jump=" + std::string(event->jumpLocator.View()) + " task=" + std::to_string(event->task != nullptr);
+        s += " charas=" + std::to_string(event->charas.size);
+        const Flow* flow = event->flow;
+        if (flow == nullptr) return s + " flow=-";
+        s += " flowEvent=" + std::to_string(flow->event == event) +
+             " flowSelf=" + std::to_string(flow->self.ptr == flow && flow->context.user == &flow->self);
+        s += " chart=" + (flow->flowchart != nullptr ? Text(flow->flowchart->name) : std::string("-"));
+        s += " objs=" + std::to_string(flow->context.objCount) + " nodes=" + std::to_string(flow->context.nodeCount) +
+             " allocated=" + std::to_string(flow->context.allocatedNodes);
+        s += " actors=";
+        struct Node {
+            Node* next;
+            u64 hash;
+            Game::SharedString key;
+            ActorMapValue value;
+        };
+        static_assert(offsetof(Node, value) == 0x30);
+        for (auto* n = static_cast<const Node*>(event->actors.first); n != nullptr; n = n->next) {
+            s += std::string(n->key.data, n->key.length) + ":" + (n->value.userData != nullptr ? "c" : "s") +
+                 (n->value.actionLookup.f != nullptr ? "a" : "") + (n->value.queryLookup.f != nullptr ? "q" : "") +
+                 (n->value.bySubName.size != 0 ? "+" + std::to_string(n->value.bySubName.size) : "") + ",";
+        }
+        if (flow->context.objCount > 0) {
+            const FlowchartObj& obj = flow->context.objs[0];
+            s += " bindings=";
+            for (u32 b = 0; b < obj.bindingCount; b++) {
+                const ActorBinding& binding = obj.bindings[b];
+                u32 bound = 0;
+                for (u32 k = 0; k < binding.actionCount; k++) bound += binding.actions[k].handler != nullptr;
+                s += Text(binding.actor != nullptr ? binding.actor->name : nullptr) + ":" +
+                     (binding.userData != nullptr ? "c" : "-") + std::to_string(bound) + "/" +
+                     std::to_string(binding.actionCount) + ",";
+            }
+        }
+        return s;
     }
 
     std::string StateLine() {
@@ -386,14 +452,14 @@ namespace {
         } else if (cmd == "give" && a.size() >= 5) {
             // Raw AddItemID through the LASR hook: DBG give <id> <count> <index>
             if (!PlayerReady()) return false;
-            Inventory::AddItemID(atoi(a[2].c_str()), atoi(a[3].c_str()), atoi(a[4].c_str()));
+            Inventory::AddItemID(ItemId{atoi(a[2].c_str())}, atoi(a[3].c_str()), atoi(a[4].c_str()));
             AP::Send("OK give");
         } else if (cmd == "grant" && a.size() >= 5) {
             // Same path as ITEM without touching the received counter: DBG grant <key> <count> <dungeon> [show 0|1]
             if (!PlayerReady()) return false;
-            int id = GrantItem(a[2], atoi(a[3].c_str()), atoi(a[4].c_str()));
-            if (IsTrapKey(a[2])) QueueTrap(a[2], "", "", -1);
-            else if (id >= 0 && (a.size() < 6 || a[5] != "0")) QueueShow(Show{id, "", "", ""});
+            std::optional<ItemId> id = GrantItem(a[2], atoi(a[3].c_str()), atoi(a[4].c_str()));
+            if (IsTrapKey(a[2])) QueueTrap(a[2], "", "", std::nullopt);
+            else if (id && (a.size() < 6 || a[5] != "0")) QueueShow(ItemShow{*id, "", ""});
             AP::Send("OK grant");
         } else if (cmd == "heldangle" && a.size() >= 6) {
             // An NPC model's item-get angle until the game restarts: DBG heldangle <model> <pitch> <yaw> <roll>
@@ -606,24 +672,21 @@ namespace {
                 AP::Send("ERR itemget: a display is running");
                 return true;
             }
-            bool numeric = !a[2].empty() && a[2].find_first_not_of("0123456789") == std::string::npos;
-            int id = numeric ? std::stoi(a[2]) : ItemIdFromKey(a[2]);
-            bool ok = id >= 0 && TestItemEvent(id, a.size() >= 4 ? a[3] : "");
-            AP::Send(std::string(ok ? "OK" : "ERR") + " itemget " + std::to_string(id));
+            std::optional<ItemId> id = ItemArg(a[2]);
+            bool ok = id && TestItemEvent(*id, a.size() >= 4 ? a[3] : "");
+            AP::Send(std::string(ok ? "OK" : "ERR") + " itemget " + ItemText(id));
         } else if (cmd == "pickup" && a.size() >= 3) {
             // DBG pickup <item key or id>: what an item-get of it does with Instant Pickups, without the event
             if (!PlayerReady()) return false;
-            bool numeric = a[2].find_first_not_of("0123456789") == std::string::npos;
-            int id = numeric ? std::stoi(a[2]) : ItemIdFromKey(a[2]);
-            if (id >= 0) InstantPickup(id);
-            AP::Send(std::string(id >= 0 ? "OK" : "ERR") + " pickup " + std::to_string(id));
+            std::optional<ItemId> id = ItemArg(a[2]);
+            if (id) InstantPickup(*id);
+            AP::Send(std::string(id ? "OK" : "ERR") + " pickup " + ItemText(id));
         } else if (cmd == "popmodel" && a.size() >= 3) {
             // DBG popmodel <item key or id>: the received-item popup's model alone, without the toast or the queue
             if (!PlayerReady()) return false;
-            bool numeric = a[2].find_first_not_of("0123456789") == std::string::npos;
-            int id = numeric ? std::stoi(a[2]) : ItemIdFromKey(a[2]);
-            bool ok = id >= 0 && AP::Popup::Show(id);
-            AP::Send(std::string(ok ? "OK" : "ERR") + " popmodel " + std::to_string(id));
+            std::optional<ItemId> id = ItemArg(a[2]);
+            bool ok = id && AP::Popup::Show(*id);
+            AP::Send(std::string(ok ? "OK" : "ERR") + " popmodel " + ItemText(id));
         } else if (cmd == "dumpmain") {
             // Writes the loaded, decrypted main module (text..data) to sd:/lasap/main.bin for reverse engineering.
             const auto& info = exl::util::GetMainModuleInfo();
@@ -646,8 +709,8 @@ namespace {
             Game::ThrobberSave_Show(true);
             AP::Send("OK savepopup");
         } else if (cmd == "collect" && a.size() >= 3) {
-            // Simulates picking up a placeholder: DBG collect <local_id>
-            AP::OnPlaceholderCollected(atoi(a[2].c_str()));
+            // Simulates picking up a placeholder: DBG collect <location id>
+            AP::OnPlaceholderCollected(AP::LocationId{atoi(a[2].c_str())});
         } else if (cmd == "enemies") {
             // DBG enemies [reset]: enemies seen, changed and resized, and the last few as <vanilla id>><id>@<scale%>;
             // DBG enemies kill: removes every enemy of the loaded rooms (KillEnemies); DBG enemies at: where they are
@@ -693,12 +756,19 @@ namespace {
             AP::Send("OK drop" + DropState());
         } else if (cmd == "actor" && a.size() >= 3) {
             // DBG actor <LEB key, hex>: 1 while the room's actor of that key is live (made, not gone), else 0
-            Game::SharedPtr held{};
-            Game::ActorRegistry_FindByKey(&held, strtoull(a[2].c_str(), nullptr, 16));
-            auto* actor = static_cast<Game::Actor*>(held.ptr);
-            bool live = actor != nullptr && !actor->entity.Gone();
-            Game::Release(held);
+            Game::Shared<Game::Actor> held;
+            Game::ActorRegistry_FindByKey(held.Reset(), strtoull(a[2].c_str(), nullptr, 16));
+            bool live = held && !held->entity.Gone();
             AP::Send("OK actor " + a[2] + " " + (live ? "1" : "0"));
+        } else if (cmd == "event") {
+            // DBG event: the event manager and the running event (EventLine)
+            AP::Send("OK event" + EventLine());
+        } else if (cmd == "flow" && a.size() >= 4) {
+            // DBG flow <flowchart> <entry>: requests the entry of event/<flowchart>.bfevfl with Link and the system
+            // actors (AP::Bridge::RequestEvent); the flowchart's other actors are missing
+            std::string path = "event/" + a[2] + ".bfevfl";
+            bool ok = static_cast<bool>(AP::Bridge::RequestEvent(path.c_str(), a[3].c_str(), {}));
+            AP::Send(std::string(ok ? "OK" : "ERR") + " flow " + a[2] + " " + a[3]);
         } else if (cmd == "ghostnet") {
             // DBG ghostnet: the positions sent and the ghosts received (ghost_net.cpp)
             AP::Send("OK " + AP::GhostNet::State());

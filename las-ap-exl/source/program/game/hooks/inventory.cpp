@@ -8,14 +8,16 @@
 #include "hooks.hpp"
 
 namespace {
+    using Game::Data::ItemId;
+
     // The purpose of this is to have our own code run for specific items
     // One example would be that getting SurfHarp needs to set 4 flags to disable the ghost
     // Other items will just use the original code
     HOOK_DEFINE_TRAMPOLINE(Inventory_AddItemID) {
-        static void Callback(int ID, int count, int index) {
+        static void Callback(ItemId ID, int count, int index) {
             // Archipelago placeholder: the index is the location's local id
             if (AP::IsPlaceholderItem(ID)) {
-                AP::OnPlaceholderCollected(index);
+                AP::OnPlaceholderCollected(AP::LocationId{index});
                 return;
             }
             AP::OnItemAdded(ID, index);
@@ -25,10 +27,10 @@ namespace {
                 return;
             }
 
-            // The ghost in Tarin's house: tops bombs (4) or arrows (60) up to count
-            if ((ID == 4 || ID == 60) && index == AP::AMMO_REFILL_INDEX) {
+            // The ghost in Tarin's house: tops bombs or arrows up to count
+            if ((ID == ItemId::Bomb || ID == ItemId::Arrow) && index == AP::AMMO_REFILL_INDEX) {
                 auto* items = Game::Data::Inventory::Items();
-                int have = ID == 4 ? items->BombCount : items->ArrowCount;
+                int have = ID == ItemId::Bomb ? items->BombCount : items->ArrowCount;
                 if (have < count) Orig(ID, count - have, -1);
                 return;
             }
@@ -41,7 +43,7 @@ namespace {
             u8 actualLevel = *Game::LevelIndex; // for dungeon items
 
             switch (ID) {
-                case 4: // Bomb
+                case ItemId::Bomb:
                     if (Game::Data::Inventory::Items()->MainItems.Bomb) {
                         // add 3 bombs instead of 1 if the player already has some
                         if (count == 1) {
@@ -53,11 +55,11 @@ namespace {
                         Orig(ID, 60, index); // give max bombs if not
                     }
                     break;
-                case 5: // Bow
+                case ItemId::Bow:
                     Orig(ID, count, index);
-                    Orig(60, 60, -1);
+                    Orig(ItemId::Arrow, 60, -1);
                     break;
-                case 11: // MagicPowder
+                case ItemId::MagicPowder:
                     if (Game::Data::Inventory::Items()->MainItems.MagicPowder) {
                         // add 3 powder instead of 1 if the player already has some
                         if (count == 1) {
@@ -69,11 +71,11 @@ namespace {
                         Orig(ID, 40, index);
                     }
                     break;
-                case 44: // Compass
-                case 45: // DungeonMap
-                case 47: // StoneBeak
-                case 48: // SmallKey
-                case 49: // NightmareKey
+                case ItemId::Compass:
+                case ItemId::DungeonMap:
+                case ItemId::StoneBeak:
+                case ItemId::SmallKey:
+                case ItemId::NightmareKey:
                     // index -1 will only be used by Chamber Dungeons in which case we want to keep orig func
                     if (index == -1) {
                         Orig(ID, count, index);
@@ -88,44 +90,45 @@ namespace {
                         *Game::LevelIndex = actualLevel;
                     }
                     break;
-                case 50: // FullMoonCello - additional flags
+                case ItemId::FullMoonCello: // additional flags
                     EventFlags::SetFlag("BowWowEvent", true);
                     EventFlags::SetFlag("DoorOpen_Btl_MoriblinCave_2A", false);
                     EventFlags::SetFlag("DoorOpen_Btl_MoriblinCave_1A", false);
                     Orig(ID, count, index);
                     break;
-                case 53: // SurfHarp - additional flags
+                case ItemId::SurfHarp: // additional flags
                     EventFlags::SetFlag("GhostClear1", true);
                     EventFlags::SetFlag("Ghost2_Clear", true);
                     EventFlags::SetFlag("Ghost3_Clear", true);
                     EventFlags::SetFlag("Ghost4_Clear", true);
                     Orig(ID, count, index);
                     break;
-                case 60: // arrow
+                case ItemId::Arrow:
                     if (count == 1) {
                         count = 3;
                     }
                     Orig(ID, count, index);
                     break;
-                case 123: // MagicPowder_MaxUp - give max powder if the player found the main source
+                case ItemId::MagicPowderMaxUp: // give max powder if the player found the main source
                     Orig(ID, count, index);
                     if (EventFlags::CheckFlag("GetMagicPowder")) {
-                        Orig(11, 40, -1);
+                        Orig(ItemId::MagicPowder, 40, -1);
                     }
                     break;
-                case 124: // Bomb_MaxUp - give max bombs if the player found the main source
+                case ItemId::BombMaxUp: // give max bombs if the player found the main source
                     Orig(ID, count, index);
                     if (EventFlags::CheckFlag("BombsFoundFlag")) {
-                        Orig(4, 60, -1);
+                        Orig(ItemId::Bomb, 60, -1);
                     }
                     break;
-                case 125: // Arrow_MaxUp
+                case ItemId::ArrowMaxUp:
                     Orig(ID, count, index);
-                    Orig(60, 60, -1);
+                    Orig(ItemId::Arrow, 60, -1);
                     break;
                 default:
-                    if (ID < 127) { // only add item if it is within the vanilla range
-                        if (ID < 29 || ID > 42) { // do not add trade items besides MagifyingLens
+                    if (ID <= ItemId::BottleFairy) { // only add item if it is within the vanilla range
+                        // do not add trade items besides MagnifyingLens
+                        if (ID < ItemId::YoshiDoll || ID > ItemId::MermaidsScale) {
                             Orig(ID, count, index);
                         }
                     }
@@ -136,93 +139,93 @@ namespace {
 }
 
 namespace Inventory {
-    const std::unordered_map<int, std::string> kItemNames = {
-        {0,     "SwordLv1"},
-        {1,     "SwordLv2"},
-        {2,     "Shield"},
-        {3,     "MirrorShield"},
-        {4,     "Bomb"},
-        {5,     "Bow"},
-        {6,     "HookShot"},
-        {7,     "Boomerang"},
-        {8,     "MagicRod"},
-        {9,     "Shovel"},
-        {10,    "SleepyMushroom"},
-        {11,    "MagicPowder"},
-        {12,    "RocsFeather"},
-        {13,    "PowerBraceletLv1"},
-        {14,    "PowerBraceletLv2"},
-        {15,    "PegasusBoots"},
-        {16,    "Ocarina"},
-        {17,    "ClothesGreen"},
-        {18,    "ClothesRed"},
-        {19,    "ClothesBlue"},
-        {20,    "Flippers"},
-        {21,    "SecretMedicine"},
-        {22,    "Seashell"},
-        {23,    "GoldenLeaf"},
-        {24,    "TailKey"},
-        {25,    "SlimeKey"},
-        {26,    "AnglerKey"},
-        {27,    "FaceKey"},
-        {28,    "BirdKey"},
-        {29,    "YoshiDoll"},
-        {30,    "Ribbon"},
-        {31,    "DogFood"},
-        {32,    "Bananas"},
-        {33,    "Stick"},
-        {34,    "Honeycomb"},
-        {35,    "Pineapple"},
-        {36,    "Hibiscus"},
-        {37,    "Letter"},
-        {38,    "Broom"},
-        {39,    "FishingHook"},
-        {40,    "PinkBra"},
-        {42,    "MermaidsScale"},
-        {43,    "MagnifyingLens"},
-        {44,    "Compass"},
-        {45,    "DungeonMap"},
-        {47,    "StoneBeak"},
-        {48,    "SmallKey"},
-        {49,    "NightmareKey"},
-        {50,    "FullMoonCello"},
-        {51,    "ConchHorn"},
-        {52,    "SeaLilysBell"},
-        {53,    "SurfHarp"},
-        {54,    "WindMarimba"},
-        {55,    "CoralTriangle"},
-        {56,    "EveningCalmOrgan"},
-        {57,    "ThunderDrum"},
-        {58,    "HeartPiece"},
-        {59,    "HeartContainer"},
-        {60,    "Arrow"},
-        {61,    "Apple"},
-        {62,    "GreenApple"},
-        {100,   "Heart"},
-        {101,   "Rupee1"},
-        {102,   "Rupee5"},
-        {104,   "Rupee20"},
-        {105,   "Rupee50"},
-        {106,   "Rupee100"},
-        {108,   "Rupee300"},
-        {110,   "Fairy"},
-        {111,   "DefenceUp"},
-        {112,   "PowerUp"},
-        {113,   "Bottle"},
-        {114,   "PanelDungeonPiece"},
-        {115,   "PanelDungeonPieceSet"},
-        {116,   "ShellRader"},
-        {117,   "PanelDungeonPlusChip"},
-        {120,   "Song_WindFish"},
-        {121,   "Song_Mambo"},
-        {122,   "Song_Soul"},
-        {123,   "MagicPowder_MaxUp"},
-        {124,   "Bomb_MaxUp"},
-        {125,   "Arrow_MaxUp"},
-        {126,   "BottleFairy"}
+    const std::unordered_map<ItemId, std::string> kItemNames = {
+        {ItemId::SwordLv1, "SwordLv1"},
+        {ItemId::SwordLv2, "SwordLv2"},
+        {ItemId::Shield, "Shield"},
+        {ItemId::MirrorShield, "MirrorShield"},
+        {ItemId::Bomb, "Bomb"},
+        {ItemId::Bow, "Bow"},
+        {ItemId::HookShot, "HookShot"},
+        {ItemId::Boomerang, "Boomerang"},
+        {ItemId::MagicRod, "MagicRod"},
+        {ItemId::Shovel, "Shovel"},
+        {ItemId::SleepyMushroom, "SleepyMushroom"},
+        {ItemId::MagicPowder, "MagicPowder"},
+        {ItemId::RocsFeather, "RocsFeather"},
+        {ItemId::PowerBraceletLv1, "PowerBraceletLv1"},
+        {ItemId::PowerBraceletLv2, "PowerBraceletLv2"},
+        {ItemId::PegasusBoots, "PegasusBoots"},
+        {ItemId::Ocarina, "Ocarina"},
+        {ItemId::ClothesGreen, "ClothesGreen"},
+        {ItemId::ClothesRed, "ClothesRed"},
+        {ItemId::ClothesBlue, "ClothesBlue"},
+        {ItemId::Flippers, "Flippers"},
+        {ItemId::SecretMedicine, "SecretMedicine"},
+        {ItemId::Seashell, "Seashell"},
+        {ItemId::GoldenLeaf, "GoldenLeaf"},
+        {ItemId::TailKey, "TailKey"},
+        {ItemId::SlimeKey, "SlimeKey"},
+        {ItemId::AnglerKey, "AnglerKey"},
+        {ItemId::FaceKey, "FaceKey"},
+        {ItemId::BirdKey, "BirdKey"},
+        {ItemId::YoshiDoll, "YoshiDoll"},
+        {ItemId::Ribbon, "Ribbon"},
+        {ItemId::DogFood, "DogFood"},
+        {ItemId::Bananas, "Bananas"},
+        {ItemId::Stick, "Stick"},
+        {ItemId::Honeycomb, "Honeycomb"},
+        {ItemId::Pineapple, "Pineapple"},
+        {ItemId::Hibiscus, "Hibiscus"},
+        {ItemId::Letter, "Letter"},
+        {ItemId::Broom, "Broom"},
+        {ItemId::FishingHook, "FishingHook"},
+        {ItemId::PinkBra, "PinkBra"},
+        {ItemId::MermaidsScale, "MermaidsScale"},
+        {ItemId::MagnifyingLens, "MagnifyingLens"},
+        {ItemId::Compass, "Compass"},
+        {ItemId::DungeonMap, "DungeonMap"},
+        {ItemId::StoneBeak, "StoneBeak"},
+        {ItemId::SmallKey, "SmallKey"},
+        {ItemId::NightmareKey, "NightmareKey"},
+        {ItemId::FullMoonCello, "FullMoonCello"},
+        {ItemId::ConchHorn, "ConchHorn"},
+        {ItemId::SeaLilysBell, "SeaLilysBell"},
+        {ItemId::SurfHarp, "SurfHarp"},
+        {ItemId::WindMarimba, "WindMarimba"},
+        {ItemId::CoralTriangle, "CoralTriangle"},
+        {ItemId::EveningCalmOrgan, "EveningCalmOrgan"},
+        {ItemId::ThunderDrum, "ThunderDrum"},
+        {ItemId::HeartPiece, "HeartPiece"},
+        {ItemId::HeartContainer, "HeartContainer"},
+        {ItemId::Arrow, "Arrow"},
+        {ItemId::Apple, "Apple"},
+        {ItemId::GreenApple, "GreenApple"},
+        {ItemId::Heart, "Heart"},
+        {ItemId::Rupee1, "Rupee1"},
+        {ItemId::Rupee5, "Rupee5"},
+        {ItemId::Rupee20, "Rupee20"},
+        {ItemId::Rupee50, "Rupee50"},
+        {ItemId::Rupee100, "Rupee100"},
+        {ItemId::Rupee300, "Rupee300"},
+        {ItemId::Fairy, "Fairy"},
+        {ItemId::DefenceUp, "DefenceUp"},
+        {ItemId::PowerUp, "PowerUp"},
+        {ItemId::Bottle, "Bottle"},
+        {ItemId::PanelDungeonPiece, "PanelDungeonPiece"},
+        {ItemId::PanelDungeonPieceSet, "PanelDungeonPieceSet"},
+        {ItemId::ShellRader, "ShellRader"},
+        {ItemId::PanelDungeonPlusChip, "PanelDungeonPlusChip"},
+        {ItemId::SongWindFish, "Song_WindFish"},
+        {ItemId::SongMambo, "Song_Mambo"},
+        {ItemId::SongSoul, "Song_Soul"},
+        {ItemId::MagicPowderMaxUp, "MagicPowder_MaxUp"},
+        {ItemId::BombMaxUp, "Bomb_MaxUp"},
+        {ItemId::ArrowMaxUp, "Arrow_MaxUp"},
+        {ItemId::BottleFairy, "BottleFairy"}
     };
 
-    void AddItemID(int id, int count, int index) { Inventory_AddItemID::Callback(id, count, index); }
+    void AddItemID(ItemId id, int count, int index) { Inventory_AddItemID::Callback(id, count, index); }
 
     void Install() {
         Inventory_AddItemID::InstallAtFuncPtr(Game::Inventory_AddItemID.Ptr());

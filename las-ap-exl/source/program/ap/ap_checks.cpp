@@ -10,6 +10,7 @@
 #include "game/time.hpp"
 #include "nn/fs.hpp"
 #include <algorithm>
+#include <optional>
 #include <cstdlib>
 #include <sstream>
 
@@ -94,23 +95,36 @@ namespace {
     void SaveChecks() {
         WriteBits(g_ChecksPath, g_Checks);
     }
+
+    // A location's bit in the bit sets: its byte's index and its mask; none for an id out of their range
+    struct Bit { size_t byte; u8 mask; };
+    std::optional<Bit> BitOf(LocationId location) {
+        int i = std::to_underlying(location);
+        if (i < 0 || i >= (int)(kChecksBytes * 8)) return std::nullopt;
+        return Bit{static_cast<size_t>(i / 8), static_cast<u8>(1 << (i % 8))};
+    }
+
+    bool Has(const std::vector<u8>& bits, LocationId location) {
+        std::optional<Bit> bit = BitOf(location);
+        return bit && (bits[bit->byte] & bit->mask) != 0;
+    }
 }
 
     // Saves a location collected here and reports it.
-    void RecordCheck(int local_id) {
+    void RecordCheck(LocationId location) {
         if (!g_ChecksLoaded) LoadChecks();
-        if (local_id >= 0 && local_id < (int)(kChecksBytes * 8)) {
-            g_Checks[local_id / 8] |= (1 << (local_id % 8));
+        if (std::optional<Bit> bit = BitOf(location)) {
+            g_Checks[bit->byte] |= bit->mask;
             SaveChecks();
         }
-        Logging.Log("[AP] collected location %d", local_id);
-        AP::Send("CHECK " + std::to_string(local_id));
+        Logging.Log("[AP] collected location %d", std::to_underlying(location));
+        AP::Send("CHECK " + ToString(location));
     }
 
-    bool CollectedHere(int local_id) {
-        if (local_id < 0 || local_id >= (int)(kChecksBytes * 8)) return false;
+    bool CollectedHere(LocationId location) {
+        if (!BitOf(location)) return false;
         if (!g_ChecksLoaded) LoadChecks();
-        return (g_Checks[local_id / 8] >> (local_id % 8)) & 1;
+        return Has(g_Checks, location);
     }
 
     void SendAllChecks() {
@@ -203,31 +217,31 @@ namespace AP {
         return g_HasLogic;
     }
 
-    bool IsInLogic(int local_id) {
-        return local_id >= 0 && local_id < (int)(kChecksBytes * 8) && ((g_InLogic[local_id / 8] >> (local_id % 8)) & 1);
+    bool IsInLogic(LocationId location) {
+        return Has(g_InLogic, location);
     }
 
-    bool IsDoorOpen(int local_id) {
-        return local_id >= 0 && local_id < (int)(kChecksBytes * 8) && ((g_DoorOpen[local_id / 8] >> (local_id % 8)) & 1);
+    bool IsDoorOpen(LocationId location) {
+        return Has(g_DoorOpen, location);
     }
 
-    bool IsLocationChecked(int local_id) {
-        if (local_id < 0 || local_id >= (int)(kChecksBytes * 8)) return false;
+    bool IsLocationChecked(LocationId location) {
+        if (!BitOf(location)) return false;
         if (!g_ChecksLoaded) LoadChecks();
-        return ((g_Checks[local_id / 8] | g_ServerChecks[local_id / 8]) >> (local_id % 8)) & 1;
+        return Has(g_Checks, location) || Has(g_ServerChecks, location);
     }
 
-    bool IsLocationSkipped(int local_id) {
-        if (local_id < 0 || local_id >= (int)(kChecksBytes * 8)) return false;
+    bool IsLocationSkipped(LocationId location) {
+        if (!BitOf(location)) return false;
         if (!g_ChecksLoaded) LoadChecks();
-        return (g_Skipped[local_id / 8] >> (local_id % 8)) & 1;
+        return Has(g_Skipped, location);
     }
 
-    void SetLocationSkipped(int local_id, bool skipped) {
-        if (local_id < 0 || local_id >= (int)(kChecksBytes * 8)) return;
+    void SetLocationSkipped(LocationId location, bool skipped) {
+        std::optional<Bit> bit = BitOf(location);
+        if (!bit) return;
         if (!g_ChecksLoaded) LoadChecks();
-        u8 bit = 1 << (local_id % 8);
-        g_Skipped[local_id / 8] = skipped ? g_Skipped[local_id / 8] | bit : g_Skipped[local_id / 8] & ~bit;
+        g_Skipped[bit->byte] = skipped ? g_Skipped[bit->byte] | bit->mask : g_Skipped[bit->byte] & ~bit->mask;
         WriteBits(g_SkippedPath, g_Skipped);
     }
 }

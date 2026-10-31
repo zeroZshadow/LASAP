@@ -1,6 +1,7 @@
 #pragma once
 // The item popup (ap_popup.cpp): an item's model above Link's head while play goes on (Instant Pickups, received
 // items).
+#include "game/data/item_id.hpp"
 #include "lib.hpp"
 #include <string>
 #include <vector>
@@ -10,7 +11,7 @@ namespace Game { struct Vec3; }
 namespace AP::Popup {
     void InstallHooks();
     // Shows the item's model above Link's head for a moment; false when it cannot be made.
-    bool Show(int itemId);
+    bool Show(Game::Data::ItemId item);
     // A model is loading or showing.
     bool Busy();
 #ifdef LASAP_TEST

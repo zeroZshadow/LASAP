@@ -26,11 +26,11 @@ namespace {
     // The states Link moves freely in; an event that starts in any other (talk, a chest's opening, fishing) keeps
     // him in it as the game does.
     bool MovesFreely(const Game::Actors::Player* player) {
-        using namespace Game::Actors::PlayerState;
-        if ((player->flags & Game::Actors::PlayerFlags::kHeld) != 0) return false;
-        switch (player->machine.state) {
-            case kLocomotion: case kJump: case kSwordAttack: case kFall: case kCarry: case kDash: case kGuard:
-            case kSwordChargeAttack: case kSwordPoke: case kSwim:
+        using enum Game::Actors::PlayerState;
+        if (player->flags.Has(Game::Actors::PlayerFlag::Held)) return false;
+        switch (player->State()) {
+            case Locomotion: case Jump: case SwordAttack: case Fall: case Carry: case Dash: case Guard:
+            case SwordChargeAttack: case SwordPoke: case Swim:
                 return true;
             default:
                 return false;
@@ -68,7 +68,7 @@ namespace {
         if (event == nullptr || event->flow == nullptr) return false;
         const ResFlowchart* chart = event->flow->flowchart;
         if (chart == nullptr || chart->magic != kFlowchartMagic) return false;
-        int entry = FindEntry(chart, event->entry);
+        int entry = FindEntry(chart, event->Entry());
         if (entry < 0) return false;
         int link = -1;
         for (u16 i = 0; i < chart->actorCount; i++) {
@@ -145,7 +145,7 @@ namespace {
             if (global_config.tweaks.instant_pickups && MovesFreely(link)) {
                 const RunningEvent* event = Running(static_cast<const EventManager*>(*Game::EventManager_ptr));
                 if (PickupFlow(event)) {
-                    Logging.Log("[AP] pickup event %.*s: Link moves on", static_cast<int>(event->entry.size),
+                    Logging.Log("[AP] pickup event %.*s: Link moves on", static_cast<int>(event->entry.length),
                                 event->entry.data);
                     g_KeptOut = true;
                     return;

@@ -5,6 +5,9 @@
 #include <cstddef>
 
 namespace Game {
+    // StateMachine::state of a machine in no state
+    constexpr u8 kNoState = 0xff;
+
     // A state machine of N states (base vtable StateMachine_vtable: +0x10 the state count, +0x18 a state's name).
     // ChangeState runs the old state's exit (with the new state), then the new one's enter (with the old state).
     // Each state is three Itanium member-function pointers {fn, adj} (enter, update, exit) on the owner, or, with its
@@ -14,7 +17,7 @@ namespace Game {
         const uintptr_t* vtable;
         u32 framesInState;         // 0x8: cleared by a change, counted by the update
         u8 field_c;                // 0xc: cleared by a change
-        u8 state;                  // 0xd: 0xff none
+        u8 state;                  // 0xd: kNoState none
         u8 previous;               // 0xe
         u8 pad_f;
         Function onChange;         // 0x10: told each change (state, name)

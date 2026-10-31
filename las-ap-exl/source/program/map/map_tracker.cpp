@@ -51,14 +51,14 @@ namespace {
     constexpr size_t kMaxIds = 768, kMaxText = 20 * 1024;
     // A location's name (N line); kept in local id order.
     struct LocationName {
-        int id = 0;
+        LocationId id{};
         Ref name;
     };
     Group g_Groups[kMaxGroups];
     Dot g_Dots[kMaxDots];
     Chest g_Chests[kMaxChests];
     LocationName g_LocationNames[kMaxChecks];
-    int g_Ids[kMaxIds];
+    LocationId g_Ids[kMaxIds];
     char g_Text[kMaxText];
     size_t g_GroupCount = 0, g_DotCount = 0, g_ChestCount = 0, g_CheckCount = 0, g_IdCount = 0, g_TextSize = 0;
     size_t g_LeftOut = 0;  // lines that did not fit
@@ -116,7 +116,7 @@ namespace {
     // Adds the line's remaining ids to the ids; false (none added) when they do not fit.
     bool AddIds(std::stringstream& ss, Ref& ref) {
         size_t start = g_IdCount;
-        for (int id; ss >> id;) {
+        for (LocationId id{}; ss >> id;) {
             if (g_IdCount == kMaxIds) {
                 g_IdCount = start;
                 return false;
@@ -128,14 +128,14 @@ namespace {
     }
 
     // The first location name at or after the id.
-    LocationName* FindCheck(int id) {
+    LocationName* FindCheck(LocationId id) {
         return std::lower_bound(g_LocationNames, g_LocationNames + g_CheckCount, id,
-                                [](const LocationName& check, int i) { return check.id < i; });
+                                [](const LocationName& check, LocationId i) { return check.id < i; });
     }
 
     // Adds a location's name in local id order. A location in two icons (its dungeon's at the entrance and its dot)
     // keeps the first.
-    bool AddCheckName(int id, std::string_view name) {
+    bool AddCheckName(LocationId id, std::string_view name) {
         LocationName* end = g_LocationNames + g_CheckCount;
         LocationName* at = FindCheck(id);
         if (at != end && at->id == id) return true;
@@ -161,7 +161,7 @@ namespace {
             return true;
         }
         if (kind == "N") {
-            int id;
+            LocationId id{};
             return !(ss >> id) || AddCheckName(id, RestOf(ss));
         }
         size_t index;
@@ -201,7 +201,7 @@ namespace {
     std::string_view GroupName(size_t group) { return TextOf(g_Groups[group].name); }
     Ids DotIds(size_t dot) { return IdsOf(g_Dots[dot].ids); }
 
-    bool FindCheckName(int id, std::string_view& name) {
+    bool FindCheckName(LocationId id, std::string_view& name) {
         const LocationName* at = FindCheck(id);
         if (at == g_LocationNames + g_CheckCount || at->id != id) return false;
         name = TextOf(at->name);

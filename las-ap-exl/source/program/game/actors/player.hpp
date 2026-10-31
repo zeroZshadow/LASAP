@@ -17,7 +17,7 @@ namespace Game::Actors {
         const uintptr_t* vtable2;  // 0x148: an interface (vtable 0x1c50138): filter, enabled, shapes
         void* filter;              // 0x150: filter words, bit 0 of the first disabled
         void* body;                // 0x158: the physics body
-        WeakPtr owner;             // 0x160
+        WeakPtr<> owner;           // 0x160
         void* ignoreObject;        // 0x170: the owner's +0xc0, the move query's ignore filter
         u8 pad_178[0x8];
         Vec4 pendingMove;          // 0x180: added by callers, consumed by Move
@@ -39,10 +39,10 @@ namespace Game::Actors {
 
     // A contact the physics body reports (its +0x80 signal): Player::bodyContacts, PlayerCollision::contacts.
     struct PlayerContact {
-        SharedPtr first;
+        SharedPtr<> first;
         u8 data_10[0x38];          // 0x10
-        SharedPtr second;          // 0x48
-        SharedPtr third;           // 0x58
+        SharedPtr<> second;        // 0x48
+        SharedPtr<> third;         // 0x58
         u32 field_68;              // 0x68
         u8 pad_6c[0x4];
     };
@@ -50,13 +50,13 @@ namespace Game::Actors {
 
     // A touch the physics body reports (its +0xd8 signal): Player::bodyTouches, PlayerCollision::touches.
     struct PlayerTouch {
-        SharedPtr first;
+        SharedPtr<> first;
         u8 data_10[0x10];          // 0x10
         Vec4 normal;               // 0x20: negated when the signal's bool is set
         u8 data_30[0x10];          // 0x30
         u32 field_40;              // 0x40
         u8 pad_44[0x4];
-        SharedPtr other;           // 0x48: its weak owner is the touched actor
+        SharedPtr<> other;         // 0x48: its weak owner is the touched actor
         u8 pad_58[0x8];
     };
     static_assert(offsetof(PlayerTouch, normal) == 0x20 && offsetof(PlayerTouch, other) == 0x48);
@@ -110,7 +110,7 @@ namespace Game::Actors {
     using PlayerAnimTable = SheetData<PlayerAnimRow>;
 
     struct PlayerAnimSlot {
-        SharedPtr sheetData;       // keeps the sheet data alive
+        SharedPtr<> sheetData;     // keeps the sheet data alive
         const PlayerAnimRow* row;  // 0x10: the row playing
     };
     static_assert(offsetof(PlayerAnimSlot, row) == 0x10 && sizeof(PlayerAnimSlot) == 0x18);
@@ -123,9 +123,9 @@ namespace Game::Actors {
         void* animationCtrl;       // 0x10
         SkeletalModelComponent* model;  // 0x18: a shared_ptr
         void* modelCtrl;           // 0x20
-        SharedPtr facial;          // 0x28: the FacialComp; a play sets the row's expression on it
+        SharedPtr<> facial;        // 0x28: the FacialComp; a play sets the row's expression on it
         UnorderedMap anims;        // 0x38: by key: the row and its animation bound to the model
-        Vector<SharedPtr> layerAnims;  // 0x60: per layer, the animation set on it
+        Vector<SharedPtr<>> layerAnims;  // 0x60: per layer, the animation set on it
         Vector<PlayerAnimSlot> slots;  // 0x78: per layer
         bool facialEnabled;        // 0x90
         u8 pad_91[0x7];
@@ -134,27 +134,27 @@ namespace Game::Actors {
     static_assert(offsetof(PlayerAnimController, slots) == 0x78 && sizeof(PlayerAnimController) == 0x98);
 
     // Link's states (PlayerSM_ChangeState); PlayerState_*_vtable in las.sym.
-    namespace PlayerState {
-        constexpr u8 kLocomotion = 0, kJump = 1, kSwordAttack = 2, kFall = 3, kTalk = 4, kOpen = 5, kPush = 6,
-                     kPull = 7, kCarry = 8, kDash = 9, kGuard = 10, kDamage = 11, kOcarina = 12, kMagicPower = 13,
-                     kLadder = 14, kSwordChargeAttack = 15, kMoveTarget = 16, kSwordPoke = 17, kDeath = 18,
-                     kResurrection = 19, kThrow = 20, kFallAbyss = 21, kDemoEvent = 22, kBlownAway = 23,
-                     kBoomerang = 24, kBow = 25, kHookshot = 26, kMagicRod = 27, kBomb = 28, kWarp = 29, kSwim = 30,
-                     kForcePlayAnim = 31, kShovel = 32, kBottle = 33, kFishing = 34, kDoPush = 35, kNone = 0xff;
-    }
+    enum class PlayerState : u8 {
+        Locomotion = 0, Jump = 1, SwordAttack = 2, Fall = 3, Talk = 4, Open = 5, Push = 6, Pull = 7, Carry = 8,
+        Dash = 9, Guard = 10, Damage = 11, Ocarina = 12, MagicPower = 13, Ladder = 14, SwordChargeAttack = 15,
+        MoveTarget = 16, SwordPoke = 17, Death = 18, Resurrection = 19, Throw = 20, FallAbyss = 21, DemoEvent = 22,
+        BlownAway = 23, Boomerang = 24, Bow = 25, Hookshot = 26, MagicRod = 27, Bomb = 28, Warp = 29, Swim = 30,
+        ForcePlayAnim = 31, Shovel = 32, Bottle = 33, Fishing = 34, DoPush = 35, None = kNoState,
+    };
 
     // Player::flags.
-    namespace PlayerFlags {
-        constexpr u32 kInEvent = 1u << 0, kCarrying = 1u << 2, kControlModeOverride = 1u << 4, kSetUp = 1u << 7,
-                      kHeld = 1u << 8, kForcedAngle = 1u << 12;
-    }
+    enum class PlayerFlag : u32 {
+        InEvent = 1u << 0, Carrying = 1u << 2, ControlModeOverride = 1u << 4, SetUp = 1u << 7, Held = 1u << 8,
+        ForcedAngle = 1u << 12,
+    };
+    FLAGS_ENUM(PlayerFlag)
 
     // Player::input.actions: the actions the buttons ask for (Player_RegisterActionChecks). Items are on Y or X.
-    namespace PlayerAction {
-        constexpr u8 kSword = 1, kRocsFeather = 2, kA = 3, kDash = 4, kShield = 5, kMagicPowder = 7, kOcarina = 8,
-                     kShovel = 9, kBomb = 10, kBow = 11, kHookshot = 12, kBoomerang = 13, kMagicRod = 14,
-                     kSwordHeld = 15, kSwordReleased = 16, kThrow = 17, kBottle0 = 18, kSwordNotHeld = 21;
-    }
+    enum class PlayerAction : u8 {
+        Sword = 1, RocsFeather = 2, A = 3, Dash = 4, Shield = 5, MagicPowder = 7, Ocarina = 8, Shovel = 9, Bomb = 10,
+        Bow = 11, Hookshot = 12, Boomerang = 13, MagicRod = 14, SwordHeld = 15, SwordReleased = 16, Throw = 17,
+        Bottle0 = 18, SwordNotHeld = 21,
+    };
 
     // Player::signals by index: shovel start (no argument), shovel end (u8), fall into an abyss and respawn
     // (const Coords*), a clinger released ({Actor*, ctrl}).
@@ -164,7 +164,7 @@ namespace Game::Actors {
 
     // A check of Link's input: sets its action's bool when check(player, controller) holds.
     struct PlayerActionCheck {
-        u8 action;
+        PlayerAction action;
         u8 pad_1[0xf];
         Function check;            // 0x10
     };
@@ -240,7 +240,7 @@ namespace Game::Actors {
         u8 pad_8[0x8];
         Vec4 hitPosition;          // 0x10: flags bit 3
         Vec4 hitNormal;            // 0x20: flags bit 4
-        SharedPtr collider;        // 0x30: flags bit 2
+        SharedPtr<> collider;      // 0x30: flags bit 2
         u8 flags;                  // 0x40: bit 0 hit
         u8 pad_41[0x7];
         void* hit;                 // 0x48: callback's +0x8
@@ -278,7 +278,7 @@ namespace Game::Actors {
         void* defence;             // 0x8: the hit data's +0x28, a reaction per attack type
         u8 kind;                   // 0x10: the caller's; 4 when made
         u8 pad_11[0x7];
-        WeakPtr attacker;          // 0x18
+        WeakPtr<> attacker;        // 0x18
         u8 pad_28[0x8];
         Vec4 direction;            // 0x30: from the attacker's position, zero without one
         Vec4 direction2;           // 0x40
@@ -327,7 +327,7 @@ namespace Game::Actors {
     // The actors stuck to Link (Player_InitClingers, Player_ClearClingers): each comes off when its time reaches its
     // limit; with any, Link walks at a quarter speed.
     struct PlayerClingers {
-        SharedPtr points[6];       // locators on the head bone
+        SharedPtr<> points[6];     // locators on the head bone
         UnorderedMap actors;       // 0x60: node +0x18 WeakPtr actor, +0x28 float limit, +0x2c float time
         u32 next;                  // 0x88
         u8 pad_8c[0x4];
@@ -371,31 +371,31 @@ namespace Game::Actors {
         void* materialAnimCtrl;    // 0x2d0
         PlayerCollision* playerCollision;  // 0x2d8: a shared_ptr; his position
         void* playerCollisionCtrl; // 0x2e0
-        SharedPtr damageCollision; // 0x2e8: DamageColComp
-        SharedPtr eventChara;      // 0x2f8: EventChara, chara Link
-        SharedPtr eventEntity;     // 0x308: destroyed at an event's end
-        SharedPtr camera;          // 0x318: CameraCom
-        SharedPtr cameraShaker;    // 0x328
-        SharedPtr boneEffect;      // 0x338
-        SharedPtr damageColor;     // 0x348: the flash on a hit
-        SharedPtr waterEvent;      // 0x358
-        SharedPtr facial;          // 0x368: FacialComp
-        SharedPtr eventSensor;     // 0x378
-        SharedPtr itemSensor;      // 0x388
-        SharedPtr ladderInfo;      // 0x398
+        SharedPtr<> damageCollision; // 0x2e8: DamageColComp
+        SharedPtr<> eventChara;    // 0x2f8: EventChara, chara Link
+        SharedPtr<> eventEntity;   // 0x308: destroyed at an event's end
+        SharedPtr<> camera;        // 0x318: CameraCom
+        SharedPtr<> cameraShaker;  // 0x328
+        SharedPtr<> boneEffect;    // 0x338
+        SharedPtr<> damageColor;   // 0x348: the flash on a hit
+        SharedPtr<> waterEvent;    // 0x358
+        SharedPtr<> facial;        // 0x368: FacialComp
+        SharedPtr<> eventSensor;   // 0x378
+        SharedPtr<> itemSensor;    // 0x388
+        SharedPtr<> ladderInfo;    // 0x398
         void* attackCols;          // 0x3a8: owned (0x2b0), the attack collision components (Player_AttackCols_Ctor)
-        SharedPtr locItemAL;       // 0x3b0: bone locators: itemA_L
-        SharedPtr locItemAR;       // 0x3c0: itemA_R, the bow's
-        SharedPtr locHead;         // 0x3d0
-        SharedPtr locHara;         // 0x3e0: n_hara
-        SharedPtr locWaist;        // 0x3f0
-        WeakPtr arrows[2];         // 0x400: PlayerArrow actors (Player_SpawnArrow)
-        WeakPtr hookshot;          // 0x420: the HookShot actor
-        Vector<WeakPtr> magicRodBalls;  // 0x430: PlayerMagicRodBall actors, a pool
-        WeakPtr boomerang;         // 0x448: the boomerang actor
-        WeakPtr swordBeam;         // 0x458: the PlayerSwordBeam actor
-        WeakPtr tempEntity;        // 0x468: destroyed by the update while alive
-        SharedPtr modelResource[2];  // 0x478: Link's bfres
+        SharedPtr<> locItemAL;     // 0x3b0: bone locators: itemA_L
+        SharedPtr<> locItemAR;     // 0x3c0: itemA_R, the bow's
+        SharedPtr<> locHead;       // 0x3d0
+        SharedPtr<> locHara;       // 0x3e0: n_hara
+        SharedPtr<> locWaist;      // 0x3f0
+        WeakPtr<> arrows[2];       // 0x400: PlayerArrow actors (Player_SpawnArrow)
+        WeakPtr<> hookshot;        // 0x420: the HookShot actor
+        Vector<WeakPtr<>> magicRodBalls;  // 0x430: PlayerMagicRodBall actors, a pool
+        WeakPtr<> boomerang;       // 0x448: the boomerang actor
+        WeakPtr<> swordBeam;       // 0x458: the PlayerSwordBeam actor
+        WeakPtr<> tempEntity;      // 0x468: destroyed by the update while alive
+        SharedPtr<> modelResource[2];  // 0x478: Link's bfres
         u8 parts[0x40];            // 0x498: PartsVisibility, the item shape groups (Player_ShowItem)
         u8 pad_4d8[0x8];
         StateMachine<64> machine;  // 0x4e0: PlayerSM_vtable; PlayerState
@@ -409,12 +409,12 @@ namespace Game::Actors {
         PlayerInput input;         // 0x1590
         Vector<PlayerContact> bodyContacts;  // 0x1600: this frame's (Player_OnBodyContact)
         Vector<PlayerTouch> bodyTouches;  // 0x1618: this frame's (Player_OnBodyTouch)
-        WeakPtr selfWeak;          // 0x1630
+        WeakPtr<> selfWeak;        // 0x1630
         RayQuery groundQuery;      // 0x1640: cast down each frame (Player_UpdateGround)
         u8 pad_16f8[0x8];
         u32 groundAttribute;       // 0x1700: the ground's collision attribute: bits 0-5 material, 6-9 kind
         u8 pad_1704[0x4];
-        WeakPtr groundActor;       // 0x1708: the owner of the collider under Link
+        WeakPtr<> groundActor;     // 0x1708: the owner of the collider under Link
         UnorderedMap lowerLevelHoles;  // 0x1718: entities a fall into an abyss takes to a lower level
         UnorderedMap slowAreas;    // 0x1740: Link moves at 0.75 while not empty
         u8 pad_1768[0x8];
@@ -444,7 +444,7 @@ namespace Game::Actors {
         u8 pad_18ca[0x6];
         PlayerClingers clingers;   // 0x18d0
         PlayerPutTarget putTarget; // 0x1960
-        WeakPtr fairy;             // 0x1990: an ItemFairy Link touched, for the Bottle state
+        WeakPtr<> fairy;           // 0x1990: an ItemFairy Link touched, for the Bottle state
         bool inWaterArea;          // 0x19a0
         u8 recoilFlags;            // 0x19a1: bit 0 hit, 1 during a dash, 2 from the second source
         u8 pad_19a2[0x2];
@@ -454,7 +454,7 @@ namespace Game::Actors {
         u8 pad_19ad[0x3];
         Actor* carried;            // 0x19b0: a weak_ptr, set while Link holds something over his head
         void* carriedCtrl;         // 0x19b8
-        WeakPtr holder;            // 0x19c0: the actor holding Link (PlayerFlags::kHeld)
+        WeakPtr<> holder;          // 0x19c0: the actor holding Link (PlayerFlag::Held)
         u8 lookAt[0x100];          // 0x19d0: the head's look-at (PlayerLookAt_Ctor), given the head locator
         s32 shieldAngle;           // 0x1ad0: clamped to 45 degrees (Player_AimShield)
         PlayerStateHandoff handoff;  // 0x1ad4
@@ -469,36 +469,38 @@ namespace Game::Actors {
         u32 field_1b80;            // 0x1b80
         s32 boneClavicleL;         // 0x1b84
         s32 boneHead;              // 0x1b88
-        u32 flags;                 // 0x1b8c: PlayerFlags
+        Flags<PlayerFlag> flags;   // 0x1b8c
         u16 itemGroupBits;         // 0x1b90: a bit per item shape group shown
         u16 handItems;             // 0x1b92: bit 0 sword shown, bit 1 shield shown
         u8 pendingState;           // 0x1b94: entered at the next chance, 0xff none
         u8 pad_1b95[0x3];
-        SharedPtr companion;       // 0x1b98: the companion (Player_SpawnCompanion)
+        SharedPtr<> companion;     // 0x1b98: the companion (Player_SpawnCompanion)
         void* owned_1ba8;          // 0x1ba8: its first byte blocks interacting
         void* bottle;              // 0x1bb0: owned PlayerBottle
         void* bow;                 // 0x1bb8: owned PlayerItemModel
         u8 signals[8][0x58];       // 0x1bc0: PlayerSignal
         float damageFlashTime;     // 0x1e80
         float field_1e84;          // 0x1e84: counted down
-        SharedPtr tailor;          // 0x1e88: TailorPlayer
-        SharedPtr tailorWaterSurface;  // 0x1e98
+        SharedPtr<> tailor;        // 0x1e88: TailorPlayer
+        SharedPtr<> tailorWaterSurface;  // 0x1e98
         u8 field_1ea8;             // 0x1ea8
-        u8 controlModeOverride;    // 0x1ea9: Player_ControlMode's while flags kControlModeOverride
+        u8 controlModeOverride;    // 0x1ea9: Player_ControlMode's while flags ControlModeOverride
         u8 pad_1eaa[0x6];
         Vec4 holdOffset;           // 0x1eb0: moves towards holdOffsetTarget
         Vec4 holdOffsetTarget;     // 0x1ec0
-        SharedPtr animPowerUp;     // 0x1ed0: material animation powerUp
-        SharedPtr animDefence;     // 0x1ee0: defence
+        SharedPtr<> animPowerUp;   // 0x1ed0: material animation powerUp
+        SharedPtr<> animDefence;   // 0x1ee0: defence
         u8 eventKind;              // 0x1ef0: from the running event's actor
         u8 pad_1ef1[0x7];
         FixedString<0x20> ocarinaAreaName;  // 0x1ef8: Player_SetOcarinaArea
-        WeakPtr ocarinaArea;       // 0x1f20
-        u32 forcedAngle;           // 0x1f30: used while flags kForcedAngle
+        WeakPtr<> ocarinaArea;     // 0x1f20
+        u32 forcedAngle;           // 0x1f30: used while flags ForcedAngle
         u8 pad_1f34[0xc];
         float shieldArmMatrix[16]; // 0x1f40: Player_AimShield; identity when made
         s32 shapeBody;             // 0x1f80: body_low__MI_body
         u8 pad_1f84[0xc];
+
+        PlayerState State() const { return static_cast<PlayerState>(machine.state); }
     };
     static_assert(offsetof(Player, modelComp) == 0x2a8 && offsetof(Player, materialAnim) == 0x2c8);
     static_assert(offsetof(Player, playerCollision) == 0x2d8 && offsetof(Player, ladderInfo) == 0x398);

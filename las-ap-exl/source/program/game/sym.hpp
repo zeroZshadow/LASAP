@@ -8,11 +8,14 @@
 
 namespace Game {
     struct Framework;
-    struct GameState;
+    struct GameState; struct LevelScene; struct ItemModelHolder; struct ResourceHandle;
+    struct Entity; struct SkeletalAnimation; struct LayeredAnimation;
+    namespace Event { struct EventChara; struct EventRequest; }
     struct Node; struct InstancedModelComponent; struct Actor; struct ActorParams; struct LebActorRecord;
     struct ActorArgs; struct ActorTableEntry;
     struct Vec3; struct Vec4;
     namespace Data { struct SaveHeader; }
+    namespace Data { enum class ItemId : int; }
     namespace Data::Inventory { struct InventoryItems; }
     namespace Actors { struct NpcComponent; }
     template<int N> struct StateMachine;
@@ -29,7 +32,7 @@ namespace Game {
 
     // ---- Actors and entities ----
     // (out actor, owner, params): the actor factory, as the player's hookshot calls it with the actor system as owner
-    inline constexpr Func<void(SharedPtr*, SharedPtr*, ActorParams*)> Actor_Create{0x8f5ea0};
+    inline constexpr Func<void(SharedPtr<Actor>*, SharedPtr<>*, ActorParams*)> Actor_Create{0x8f5ea0};
     // Member destructors of actor params: drsb, bfres, lebParams
     inline constexpr Func<void(void*)> ActorParams_Dtor0{0x1cf70};
     inline constexpr Func<void(void*)> ActorParams_Dtor1{0x1d190};
@@ -48,14 +51,14 @@ namespace Game {
     // The live actors with a LEB key: unordered_map<u64 key, shared_ptr<Actor>> (a node: next, hash, key, sp)
     inline constexpr Global<UnorderedMap*> ActorRegistry_ptr{0x1cb2d00};
     // (out, key): the live actor with that LEB key, or null
-    inline constexpr Func<void(SharedPtr*, u64)> ActorRegistry_FindByKey{0x8f8200};
+    inline constexpr Func<void(SharedPtr<Actor>*, u64)> ActorRegistry_FindByKey{0x8f8200};
     // (out enemy, chest): the enemy a chest of $ENEMY lets out, made in the chest's room and zone above its lid
-    inline constexpr Func<void(SharedPtr*, Actor*)> ObjTreasureBox_PopEnemy{0xca9290};
+    inline constexpr Func<void(SharedPtr<Actor>*, Actor*)> ObjTreasureBox_PopEnemy{0xca9290};
     // The entity manager: its start task (manager, entity shared_ptr*)
     inline constexpr Global<void*> EntityManager_ptr{0x1cc6d98};
-    inline constexpr Func<void(void*, SharedPtr*)> EntityManager_PostStart{0xfae2d0};
+    inline constexpr Func<void(void*, SharedPtr<>*)> EntityManager_PostStart{0xfae2d0};
     // (out, object, control block): a shared_ptr from a weak one (an entity's self pointer at +0x8)
-    inline constexpr Func<void(SharedPtr*, void*, void*)> SharedPtr_FromWeak{0x21470};
+    inline constexpr Func<void(SharedPtr<>*, void*, void*)> SharedPtr_FromWeak{0x21470};
     // A component's name as its constructor takes it: {name, length, enabled, owner, owner's control block}
     struct ComponentName { const char* data; u64 size; u8 enabled; void* owner; void* ownerCtrl; };
     // (component, name*, model resource, cache key, shapes' mask, the model list at Framework +0x540)
@@ -74,9 +77,9 @@ namespace Game {
     // (child map, name, length): the child of that name, or null; an entity's maps are at +0x10, +0x38 and +0x60
     inline constexpr Func<void*(void*, const char*, u64)> Entity_FindChildInMap{0xfb3470};
     // (entity shared_ptr*): posts its start task
-    inline constexpr Func<void(SharedPtr*)> Entity_Start{0xfab470};
+    inline constexpr Func<void(SharedPtr<>*)> Entity_Start{0xfab470};
     // (container, child shared_ptr*): false when the name is taken or the child is not initialized
-    inline constexpr Func<bool(void*, SharedPtr*)> Entity_AddChild{0xfb3290};
+    inline constexpr Func<bool(void*, SharedPtr<>*)> Entity_AddChild{0xfb3290};
     // (actor, name, length): it has a component of that name (its component map, by FNV-1a)
     inline constexpr Func<bool(Actor*, const char*, u64)> Actor_HasComponent{0xfa9490};
     // (node, world position*): moves the node there (guess: Node set world position)
@@ -95,16 +98,19 @@ namespace Game {
     inline constexpr Func<void(void*, StrView*, u8, float, float)> NpcAnimation_PlayByName{0x949260};
     inline constexpr Func<void(void*, StrView*, u8, float, float)> NpcAnimation_PlayByName2{0x9df590};
     // (out shared_ptr, NPC component, name*): the animation bound by name
-    inline constexpr Func<void(SharedPtr*, void*, StrView*)> NpcAnimation_Get{0x9670d0};
+    inline constexpr Func<void(SharedPtr<>*, void*, StrView*)> NpcAnimation_Get{0x9670d0};
     // (component, name*, the model component's shared_ptr*) -> the animation player; vtable +0x208
-    inline constexpr Func<SharedPtrOut(Actors::NpcComponent*, StrView*, SharedPtr*)> NpcComponent_MakeAnimator{0x94b310};
+    inline constexpr Func<Shared<SkeletalAnimation>(Actors::NpcComponent*, StrView*, SharedPtr<>*)>
+        NpcComponent_MakeAnimator{0x94b310};
     // (out shared_ptr, NPC component, name*, at once)
-    inline constexpr Func<void(SharedPtr*, void*, StrView*, bool)> NpcComponent_PlayMaterialAnimation{0x9c1b30};
-    // Link's kind of animation player: (out, entity, name*, model component shared_ptr*, int* layers)
-    inline constexpr Func<void(SharedPtrOut*, void*, StrView*, SharedPtr*, int*)> LayeredAnimation_Make{0x67ba70};
+    inline constexpr Func<void(SharedPtr<>*, void*, StrView*, bool)> NpcComponent_PlayMaterialAnimation{0x9c1b30};
+    // Link's kind of animation player: (out, entity, name*, model component shared_ptr*, int* layers); null when the
+    // name is longer than 30 or the entity has a component of that name
+    inline constexpr Func<void(SharedPtr<LayeredAnimation>*, void*, StrView*, SharedPtr<>*, int*)>
+        LayeredAnimation_Make{0x67ba70};
     inline constexpr Global<const u8> LayeredAnimation_vtable{0x1c49ee8};
     // (player, layer, animation shared_ptr*, blend, start frame)
-    inline constexpr Func<void(void*, int, SharedPtr*, float, float)> LayeredAnimation_SetSlot{0x1059dd0};
+    inline constexpr Func<void(void*, int, SharedPtr<>*, float, float)> LayeredAnimation_SetSlot{0x1059dd0};
     // (layers, layer, bone name, bool): the layer masked to the bones from that one up
     inline constexpr Func<void(void*, int, const char*, bool)> AnimationLayers_SetBoneMask{0x1035390};
     // (layers, layer, on)
@@ -148,7 +154,8 @@ namespace Game {
     // ---- Items ----
     // (out holder, owner entity, name*, root node, item id): loads the item's model and makes its component in a
     // task (ItemGet_ModelTask); the holder's +0x18 is then the component (a shared_ptr)
-    inline constexpr Func<void(SharedPtr*, SharedPtr*, StrView*, SharedPtr*, u8)> ItemModel_Make{0x8d3670};
+    inline constexpr Func<void(SharedPtr<ItemModelHolder>*, SharedPtr<>*, StrView*, SharedPtr<>*, u8)>
+        ItemModel_Make{0x8d3670};
     // (task): the item-get's model; the task's +0x8 is the item-get's holder
     inline constexpr Func<void(u8*)> ItemGet_ModelTask{0x8d41c0};
     // (out, resource holder, model name)
@@ -161,7 +168,7 @@ namespace Game {
     inline constexpr Func<const ItemPose*(u8, bool)> ItemPose_ItemGet{0x8d2f50};
     // (out future, player, item id, keep carry, message entry*): the item-get, the body of the event actions
     // Link.GenericItemGetSequence(ByKey)
-    inline constexpr Func<void(SharedPtr*, void*, int, bool, StrView*)> Player_ItemGetSequence{0xd795d0};
+    inline constexpr Func<void(SharedPtr<>*, void*, Data::ItemId, bool, StrView*)> Player_ItemGetSequence{0xd795d0};
     // (player): Link's actor slots +0xb0 and +0xb8, which the event manager's start and end signals call
     // (re/EVENTS.md)
     inline constexpr Func<void(void*)> Player_OnEventStart{0xd32a60};
@@ -169,14 +176,15 @@ namespace Game {
     // (wait closure): the item-get's fanfare has stopped
     inline constexpr Func<bool(void*)> ItemGet_FanfareDone{0xd7af30};
     // (item id): the item's Items.gsheet row asks for an autosave
-    inline constexpr Func<bool(u32)> ItemGet_RowAutoSave{0x8d5ad0};
+    inline constexpr Func<bool(Data::ItemId)> ItemGet_RowAutoSave{0x8d5ad0};
     // Item actors (ITEMS.md, Item actors). (actor, args, Npc row key*, item id, count, pose pair): the item base's
     // constructor; a key of 0x20 characters or more throws
     inline constexpr Func<void(Actor*, ActorArgs*, StrView*, u8, u32, const ItemPose*)> ItemActor_Ctor{0x8b6880};
     // (out, source, position*, launch velocity*, item id, item index): an item actor of the item's Items.gsheet row at
     // the position in the source's zone, launched; out null without a row. Enemy_DropItems (0x89b960) makes each drop
     // with it, from the start and launch its callbacks give (scripts/re/ITEMS.md)
-    inline constexpr Func<void(SharedPtr*, Actor*, const Vec4*, const Vec3*, s32, s32)> ItemActor_Create{0x89d050};
+    inline constexpr Func<void(SharedPtr<Actor>*, Actor*, const Vec4*, const Vec3*, Data::ItemId, s32)>
+        ItemActor_Create{0x89d050};
     // (component, name*, Npc row key*): the item base's NPC component
     inline constexpr Func<void(void*, ComponentName*, StrView*)> ItemNpcComponent_Ctor{0x8c3f10};
     // The item base's actor and NPC component vtables
@@ -188,11 +196,14 @@ namespace Game {
     // (actor): the item base actor's zone enter (vtable +0x100): its component's +0x2e4 and its +0x30c cleared
     inline constexpr Func<void(Actor*)> ItemActor_ZoneEnter{0x8b8410};
     // (component, name*, x2, x3) -> the EventChara (x8): the item base's (component vtable +0x220), its action
-    // handler (the EventChara's std::function at +0x400) wrapped with the item base's actions
-    inline constexpr Func<SharedPtrOut(void*, const StrView*, void*, void*)> ItemNpcComponent_MakeEventChara{0x8c4a30};
-    // (component, name*, x2, x3) -> the collision (x8), null when the row's collision.shape is 0 (component vtable
-    // +0x210)
-    inline constexpr Func<SharedPtrOut(void*, const StrView*, void*, void*)> NpcComponent_MakeCollision{0x94b350};
+    // handler (the EventChara's std::function at +0x400) wrapped with the item base's actions. Null as
+    // NpcComponent_MakeEventChara's (0x94f220): without the component's row (+0x88), or when its owner is destroyed
+    // or has a component of that name.
+    inline constexpr Func<Shared<Event::EventChara>(void*, const StrView*, void*, void*)>
+        ItemNpcComponent_MakeEventChara{0x8c4a30};
+    // (component, name*, x2, x3) -> the collision (x8), null without the component's row (+0x88) or when the row's
+    // collision.shape is 0 (component vtable +0x210)
+    inline constexpr Func<Shared<Entity>(void*, const StrView*, void*, void*)> NpcComponent_MakeCollision{0x94b350};
     // (component): every row popConditions entry holds (component vtable +0x88)
     inline constexpr Func<bool(void*)> NpcComponent_CheckPop{0x947d70};
     // (component): enables its actor (component vtable +0x98, once +0x88 holds)
@@ -217,26 +228,26 @@ namespace Game {
     inline constexpr Global<void*> ResourceManager_ptr{0x1cc6db8};
     inline constexpr Global<void*> EventManager_ptr{0x1cb24d8};
     // (out handle, manager, path*)
-    inline constexpr Func<void(SharedPtr*, void*, StrView*)> Resource_Load{0xfbbd80};
+    inline constexpr Func<void(ResourceHandle*, void*, StrView*)> Resource_Load{0xfbbd80};
     // (resource)
     inline constexpr Func<void(void*)> Resource_Wait{0x3dc20};
-    // (out flowchart, handle*)
-    inline constexpr Func<void(SharedPtr*, SharedPtr*)> Resource_TakeFlowchart{0x3d9f0};
+    // (out flowchart, handle*): the handle's resource's flowchart, after waiting for its load
+    inline constexpr Func<void(SharedPtr<>*, ResourceHandle*)> Resource_TakeFlowchart{0x3d9f0};
     // (out event, flowchart*, entry*)
-    inline constexpr Func<void(SharedPtr*, SharedPtr*, StrView*)> Event_Make{0x80c290};
+    inline constexpr Func<void(SharedPtr<>*, SharedPtr<>*, StrView*)> Event_Make{0x80c290};
     // (event)
     inline constexpr Func<void(void*)> Event_Prepare{0x80db00};
     // (event, chara sp*): an actor of the event, named by the chara (+0x358, +0x380); an NPC's event adds its own and
     // its LEB links' charas this way after Event_Prepare (NpcComponent virtual +0x310, scripts/re/EVENTS.md)
-    inline constexpr Func<void(void*, SharedPtr*)> Event_AddChara{0x80f7d0};
+    inline constexpr Func<void(void*, SharedPtr<Event::EventChara>*)> Event_AddChara{0x80f7d0};
     // (out chara sp, actor): the actor's event chara component, null when it has none
-    inline constexpr Func<void(SharedPtr*, void*)> Actor_FindEventChara{0xfd850};
+    inline constexpr Func<void(SharedPtr<Event::EventChara>*, void*)> Actor_FindEventChara{0xfd850};
     // (out, event manager, event*)
-    inline constexpr Func<void(SharedPtr*, void*, SharedPtr*)> EventManager_Request{0x81f2e0};
+    inline constexpr Func<void(SharedPtr<Event::EventRequest>*, void*, SharedPtr<>*)> EventManager_Request{0x81f2e0};
     // (seconds, out future): for 0 seconds or less the game's ready future
-    inline constexpr Func<void(float, SharedPtr*)> Delay_Make{0x7f3c90};
+    inline constexpr Func<void(float, SharedPtr<>*)> Delay_Make{0x7f3c90};
     // (out, holder): the scene, from *(Framework +0x4a8)
-    inline constexpr Func<void(SharedPtr*, void*)> SceneHolder_Lock{0x11b70};
+    inline constexpr Func<void(SharedPtr<LevelScene>*, void*)> SceneHolder_Lock{0x11b70};
     // (save manager, kind, bool): false when a request waits already
     inline constexpr Func<bool(void*, u8, bool)> SaveManager_RequestAutoSave{0xe0b360};
     // The save header (game/data/inventory.hpp)
@@ -346,7 +357,7 @@ namespace Game {
     // instruments} in a Function's buffer that sets track i to volume 1 with instrument bit i, else 0
     inline constexpr Global<const u8> OrchestraTracks_vtable{0x1b592c8};
     // (item id): the item's Items.gsheet jingle
-    inline constexpr Func<void(u32)> ItemGet_PlayFanfare{0x8d5700};
+    inline constexpr Func<void(Data::ItemId)> ItemGet_PlayFanfare{0x8d5700};
     // (intro): the Guardian Acorn's and Piece of Power's music
     inline constexpr Func<void(bool)> BuffMusic_Play{0xaf560};
 
@@ -358,22 +369,22 @@ namespace Game {
     // PinButton () -> A pressed, then UpdateHover (page), the pins' hover; MemoriesButton (page) -> X pressed.
     inline constexpr Func<void(Map::DungeonMap*)> DungeonMap_Setup{0xe748a0};
     inline constexpr Func<void(Map::DungeonMap*)> DungeonMap_Dtor{0xe73970};
-    inline constexpr Func<void(Map::DungeonMap*, u8, SharedPtr*, const Map::UiDungeonAreaRow*)>
+    inline constexpr Func<void(Map::DungeonMap*, u8, SharedPtr<>*, const Map::UiDungeonAreaRow*)>
         DungeonMap_ShowCellFloor{0xe82250};
     // ShowCellFloor for Eagle's Tower once collapsed (page, cell, Area shared_ptr*, {?, ctrl, UiDungeonArea row*}*):
     // runs ShowCellFloor, then on 3F shows the rooms of floors 4 and 14 (the collapsed top) instead, and on 4F none
-    inline constexpr Func<void(Map::DungeonMap*, u8, SharedPtr*, void*)> DungeonMap_ShowCellFloorCollapsed{0xe81d80};
+    inline constexpr Func<void(Map::DungeonMap*, u8, SharedPtr<>*, void*)> DungeonMap_ShowCellFloorCollapsed{0xe81d80};
     inline constexpr Func<void(Map::DungeonMap*, bool)> DungeonMap_MoveCursor{0xe86750};
     inline constexpr Func<bool()> DungeonMap_PinButton{0xe86c10};
     inline constexpr Func<void(Map::DungeonMap*)> DungeonMap_UpdateHover{0xe87a20};
     inline constexpr Func<bool(Map::DungeonMap*)> DungeonMap_MemoriesButton{0xe87840};
     // (x, y, z, page, out vec2, Area shared_ptr*): an icon's position under N_MapPin_00
-    inline constexpr Func<void(float, float, float, Map::DungeonMap*, float*, SharedPtr*)>
+    inline constexpr Func<void(float, float, float, Map::DungeonMap*, float*, SharedPtr<>*)>
         DungeonMap_PositionIcon{0xe84b60};
     // (icon, actor): an icon's visibility and open state
     inline constexpr Func<void(Map::DungeonMapIcon*, const Map::MapActorDesc*)> DungeonMapIcon_Update{0xf38040};
     // Map markers (Gm_MapMarker): Make (out shared_ptr), SetupPart (marker), ChangeState (the marker's machine, state)
-    inline constexpr Func<void(SharedPtr*)> MapMarker_Make{0xe9c870};
+    inline constexpr Func<void(SharedPtr<Map::MapMarker>*)> MapMarker_Make{0xe9c870};
     inline constexpr Func<void(Map::MapMarker*)> MapMarker_SetupPart{0xf3ad80};
     inline constexpr Func<void(StateMachine<4>*, u8)> MapMarker_ChangeState{0xf3a8c0};
     // (cursor, message ref*): the map cursor's name
@@ -387,8 +398,8 @@ namespace Game {
     // The level flags' bit table (LevelFlags +0x58; switch type 0, ActorSwitch_Set): bit `index`, not saved
     inline constexpr Global<u8*> LevelFlags_bits{0x1cc1198};
     // (item id): the event flag the item's Items.gsheet row names, and setting it
-    inline constexpr Func<int(int)> Item_CheckGettingFlag{0x8d2940};
-    inline constexpr Func<void(int)> Item_SetGettingFlag{0x8d2a70};
+    inline constexpr Func<int(Data::ItemId)> Item_CheckGettingFlag{0x8d2940};
+    inline constexpr Func<void(Data::ItemId)> Item_SetGettingFlag{0x8d2a70};
     // (LEB record, slot, on): sets the actor switch's flag
     inline constexpr Func<void(const LebActorRecord*, int, bool)> ActorSwitch_Set{0x231b0};
     // (LEB record, slot): the actor switch's flag is on; false for a null record
@@ -400,7 +411,7 @@ namespace Game {
 
     // ---- Inventory and levels ----
     // (item id, count, index): adds an item; per item id in scripts/re/ITEMS.md
-    inline constexpr Func<void(int, int, int)> Inventory_AddItemID{0x8d08e0};
+    inline constexpr Func<void(Data::ItemId, int, int)> Inventory_AddItemID{0x8d08e0};
     // (level, locator, position): the level the game loads; the save takes them
     inline constexpr Func<void(StrView*, StrView*, Vec3*)> SetCurrentLevel{0xdfa450};
     // (the framework's game state, state, bool): 4 reloads from the save, 1 quit, 5 ending

@@ -66,7 +66,7 @@ namespace {
     // or standing at g_At.
     void DriveTest(u32 frame, u64 now, double nowFine) {
         Puppet& p = g_Puppets[kTest];
-        if (p.ctrl == nullptr) return;
+        if (!p.actor.Holds()) return;
         if (!g_AnimPending.empty()) {
             PlayAnim(p, g_AnimPending.c_str(), kGaitBlend, 0);
             g_AnimPending.clear();
@@ -82,7 +82,9 @@ namespace {
                     bool still = last != nullptr && last->x == s.pos.x && last->y == s.pos.y && last->z == s.pos.z;
                     // Link's animation now (with follow, ahead of his path by the delay)
                     AP::GhostNet::Anim anim = AP::GhostNet::LinkAnim();
-                    int flags = (still ? kFlagStill : 0) | (anim.starts != g_TestStarts ? kFlagStarted : 0);
+                    Flags<GhostFlag> flags{};
+                    flags.Set(GhostFlag::Still, still);
+                    flags.Set(GhostFlag::Started, anim.starts != g_TestStarts);
                     g_TestStarts = anim.starts;
                     Push(p.track, Frame{static_cast<s64>(now), now, s.pos.x, s.pos.y, s.pos.z,
                                         YawOf(s.rot) * 180 / Game::kPi, anim.anim, anim.frame,
@@ -130,14 +132,14 @@ namespace {
         for (auto& p : g_Puppets) {
             if (!Alive(p)) continue;
             int n = IndexOf(p);
-            const char* name = p.actor->entity.name;
+            const char* name = p.actor.Peek()->entity.name;
             s += " | " + (n == kTest ? std::string("test") : std::to_string(n)) + " actor=" +
-                 Hex(reinterpret_cast<uintptr_t>(p.actor)) + (p.shown ? "" : " hidden") + " name=" +
+                 Hex(reinterpret_cast<uintptr_t>(p.actor.Peek())) + (p.shown ? "" : " hidden") + " name=" +
                  std::string(name, strnlen(name, 0x20));
-            if (Game::Node* root = p.actor->root) s += " pos=" + PosText(root->coordsNew.pos);
+            if (Game::Node* root = p.actor.Peek()->root) s += " pos=" + PosText(root->coordsNew.pos);
             s += " model=" + (p.model != nullptr ? Hex(reinterpret_cast<uintptr_t>(p.model)) : "-");
-            s += " flags=" + Hex(p.actor->entity.flags);
-            s += " zone=" + std::to_string(p.actor->zone);
+            s += " flags=" + Hex(p.actor.Peek()->entity.flags.Raw());
+            s += " zone=" + std::to_string(p.actor.Peek()->zone);
             const char* anim = p.track.anim > 0 ? AP::GhostNet::AnimName(p.track.anim)
                                                 : p.track.gait >= 0 ? kGaits[p.track.gait] : nullptr;
             s += " anim=" + std::string(anim != nullptr ? anim : "-");
@@ -224,7 +226,7 @@ namespace {
         int shown = 0, actors = 0;
         for (int i = 0; i < kGhosts; i++) {
             shown += g_Spans[i].hi.load() != 0;
-            actors += g_Puppets[i].ctrl != nullptr;
+            actors += g_Puppets[i].actor.Holds();
         }
         // and ghost slot 0's look on its model: the shapes, tunic, face frames and upper-body animation last set
         const auto& p = g_Puppets[0];

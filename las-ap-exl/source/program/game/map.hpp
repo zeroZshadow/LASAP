@@ -34,7 +34,7 @@ namespace Game::Map {
         Ui::Animation loop;                 // 0x1e8
         Ui::Animation off;                  // 0x200
         Ui::Animation setMark;              // 0x218: its frame picks the look
-        SharedPtr sheet;                    // 0x230: UiFieldMapIcons, kept alive
+        SharedPtr<> sheet;                  // 0x230: UiFieldMapIcons, kept alive
         const UiFieldMapIconsRow* row;      // 0x240
         u8 hoverLost;                       // 0x248: set by the page; Loop goes to Off
         u8 pad_249[0x7];
@@ -163,7 +163,7 @@ namespace Game::Map {
 
     // A gsheet row and the shared_ptr keeping its sheet alive.
     struct SheetRowRef {
-        SharedPtr sheet;
+        SharedPtr<> sheet;
         const void* row;                    // 0x10
     };
     static_assert(sizeof(SheetRowRef) == 0x18);
@@ -265,7 +265,7 @@ namespace Game::Map {
         Ui::Animation deactive;             // 0xf0: played when the row's conditions hold
         Ui::Animation zoomIn;               // 0x108
         Ui::Animation zoomOut;              // 0x120
-        SharedPtr maskSheet;                // 0x138: UiFieldMapMask
+        SharedPtr<> maskSheet;              // 0x138: UiFieldMapMask
         const void* maskRow;                // 0x148: once set, the update does nothing
         u8 setUp;                           // 0x150: not read
         u8 traversed;                       // 0x151: the row's UI_FieldMapTraverse flag
@@ -291,7 +291,7 @@ namespace Game::Map {
         Ui::MenuPage page;
         StateMachine<16> machine;           // 0xf0: 2 KeyWait
         UnorderedMap cellOfArea;            // 0x4d0: Area::id to row * 8 + column
-        SharedPtr memories;                 // 0x4f8: the Memories UI (DungeonMap_MemoryCreated)
+        SharedPtr<> memories;               // 0x4f8: the Memories UI (DungeonMap_MemoryCreated)
         Ui::Animation floors[17];           // 0x508: Dgn_00..16, by UiDungeonAreaRow::animFloorIndex
         Ui::Animation dgn14;                // 0x6a0
         Ui::Animation dgnMapOn;             // 0x6b8
@@ -313,14 +313,14 @@ namespace Game::Map {
         Ui::TextHolder dungeonName;         // 0x838
         Ui::TextHolder panelDungeonName;    // 0x850
         Ui::PaneHandle cells[64];           // 0x868: B_00..63
-        SharedPtr chips[64];                // 0xe68
-        Vector<SharedPtr> roomIcons;        // 0x1268: DungeonMapIcon
-        SharedPtr pins[20];                 // 0x1280: MapMarkUnit
+        SharedPtr<> chips[64];              // 0xe68
+        Vector<SharedPtr<>> roomIcons;      // 0x1268: DungeonMapIcon
+        SharedPtr<> pins[20];               // 0x1280: MapMarkUnit
         void* hoveredPin;                   // 0x13c0: a shared_ptr, null none
         void* hoveredPinCtrl;               // 0x13c8
         Ui::Part dungeonItems[3];           // 0x13d0: the map, the compass, the stone beak
         MapChoice floorChoices[4];          // 0x1580: L_MapChoice_00..03
-        SharedPtr bossIcon;                 // 0x1b20
+        SharedPtr<> bossIcon;               // 0x1b20
         MapMarkList pinBar;                 // 0x1b30
         DungeonMapIcon entrance;            // 0x29c8: L_MapStart_00
         MapPlayer linkMarker;               // 0x2a98
@@ -399,8 +399,8 @@ namespace Game::Map {
         Ui::Animation story;                // 0x5b8
         Ui::Animation heart;                // 0x5d0
         Ui::Animation sell;                 // 0x5e8
-        Vector<SharedPtr> heartMarkers;     // 0x600: MapMarker, the Memories'
-        Vector<SharedPtr> shellMarkers;     // 0x618
+        Vector<SharedPtr<>> heartMarkers;   // 0x600: MapMarker, the Memories'
+        Vector<SharedPtr<>> shellMarkers;   // 0x618
         Ui::PaneHandle mapCore;             // 0x630
         Ui::PaneHandle mapPin;              // 0x648
         Ui::PaneHandle mapBox;              // 0x660
@@ -411,7 +411,7 @@ namespace Game::Map {
         Ui::PaneHandle sellMarkerPane;      // 0x6d8
         Ui::PaneHandle markerLimit;         // 0x6f0
         u64 markerRowCount;                 // 0x708: UiFieldMapIcons rows
-        Vector<SharedPtr> markers;          // 0x710: MapMarker
+        Vector<SharedPtr<MapMarker>> markers;  // 0x710
         u64 placeNameCount;                 // 0x728: UiFieldMapLocationName rows
         Ui::TextHolder placeNames[64];      // 0x730: T_MapName_<i>
         u8 placeNamesShown;                 // 0xd30: Y held
@@ -419,9 +419,9 @@ namespace Game::Map {
         u64 maskRowCount;                   // 0xd38: UiFieldMapMask rows
         FieldAreaPart fieldAreas[32];       // 0xd40: L_FldArea_<a>
         Ui::PaneHandle fieldAreaMasks[32];  // 0x3840: L_FldAreaMask_<a>
-        SharedPtr pins[30];                 // 0x3b40: MapMarkUnit
-        SharedPtr hoveredPin;               // 0x3d20
-        SharedPtr memories;                 // 0x3d30: the Memories UI
+        SharedPtr<> pins[30];               // 0x3b40: MapMarkUnit
+        SharedPtr<> hoveredPin;             // 0x3d20
+        SharedPtr<> memories;               // 0x3d30: the Memories UI
         Vector<SheetRowRef> memoryList;     // 0x3d40: the UiMemory rows shown
         u8 pad_3d58[0x8];
         MemoryMarker memoryParts[24];       // 0x3d60: L_Memory_<i>

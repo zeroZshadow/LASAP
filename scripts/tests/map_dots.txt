@@ -30,7 +30,7 @@ tapuntil 800 paused=0 when dmap:KeyWait 5
 free 10
 # Key Cavern: the map opens on B1 (Link's floor) with its 6 dots of 21; up shows 1F's 15 and none of B1's, down
 # B1's again. Screenshot map_dots_floor (1F).
-warp Lv03KeyCavern 93.75 0 86.25
+warp Lv03KeyCavern 96.75 0 32.25
 tapuntil 800 paused=1 when free 5
 until dmap:KeyWait 10
 send DBG mapdot

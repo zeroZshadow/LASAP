@@ -26,7 +26,7 @@ namespace {
 
     struct Kind {
         u64 vanilla = 0;                // bits set by the seed's vanilla sources
-        std::map<int, int> shuffled;    // bit -> local id of its shuffled source
+        std::map<int, AP::LocationId> shuffled;  // bit -> the location of its shuffled source
     };
     std::map<char, Kind> g_Kinds;
 
@@ -67,7 +67,7 @@ namespace AP {
             int index, local_id;
             if (!(ss >> kind >> index >> local_id) || index < 0 || index >= 64) continue;
             if (local_id < 0) g_Kinds[kind].vanilla |= 1ULL << index;
-            else g_Kinds[kind].shuffled[index] = local_id;
+            else g_Kinds[kind].shuffled[index] = AP::LocationId{local_id};
         }
         HeartMarkerTest::InstallAtPtr(Game::Addr(kHeartMarkerTest));
         ShellMarkerTest::InstallAtPtr(Game::Addr(kShellMarkerTest));

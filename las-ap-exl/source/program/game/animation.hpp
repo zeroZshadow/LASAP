@@ -11,7 +11,7 @@ namespace Game {
     // control, f32 frame at +0), the resource and the FSKA.
     struct BoundAnimation {
         void* obj;
-        SharedPtr resource;        // 0x8
+        SharedPtr<> resource;      // 0x8
         const u8* res;             // 0x18: FSKA
     };
     static_assert(offsetof(BoundAnimation, res) == 0x18 && sizeof(BoundAnimation) == 0x20);
@@ -31,7 +31,7 @@ namespace Game {
     // bone's motion is taken out of the animation into delta.
     struct RootMotion {
         const uintptr_t* vtable;
-        SharedPtr animation;       // 0x8: the layer's current one
+        SharedPtr<> animation;     // 0x8: the layer's current one
         u8 pad_18[0x8];
         Coords delta;              // 0x20: the root's motion since the last calc; identity when an animation is set
         float lastFrame;           // 0x50
@@ -51,7 +51,7 @@ namespace Game {
         const uintptr_t* vtable;
         BoundAnimation* animation; // 0x8: a shared_ptr
         void* animationCtrl;       // 0x10
-        SharedPtr previous;        // 0x18: the blend's source
+        SharedPtr<> previous;      // 0x18: the blend's source
         ModelInstance* instance;   // 0x28
         ModelObj* model;           // 0x30
         SkeletalAnimBlender blender;  // 0x38
@@ -140,7 +140,7 @@ namespace Game {
     // A bound material animation (MaterialAnim_Bind, vtable 0x1c35150; 0x28 bytes).
     struct MaterialAnim {
         const uintptr_t* vtable;
-        SharedPtr resource;        // 0x8
+        SharedPtr<> resource;      // 0x8
         const u8* res;             // 0x18: FMAA
         void* obj;                 // 0x20: nn::g3d MaterialAnimObj; null when binding failed
     };
@@ -174,7 +174,7 @@ namespace Game {
         u8 paused;                 // 0x88
         u8 pad_89[0x3];
         u32 order;                 // 0x8c: 0x400
-        WeakPtr modelComp;         // 0x90
+        WeakPtr<> modelComp;       // 0x90
         Vector<MatAnimSlot*> slots;  // 0xa0: owned
         s32 slotCount;             // 0xb8: 1 to 8
         u8 pad_bc[0x4];

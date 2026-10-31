@@ -34,39 +34,32 @@ namespace {
     // The ocarina's size in the item-get: its radius around its root (0.459) times the scale the game gives it
     constexpr float kItemModelRadius = 0.459f * 1.17f;
     constexpr Game::Vec3 kItemModelPos = {0.0f, 0.55f, 1.0f};  // the ocarina's place under the item's node
-    // The item-get's model task (ItemGet_ModelTask): +0x8 the item-get's holder, +0x18 the component as a shared_ptr.
+    // The item-get's model task (ItemGet_ModelTask): +0x8 the item-get's holder (Game::ItemModelHolder).
     // Node_MarkDirty does nothing while the node is marked (needsCoordUpdate), so setting that flag alone leaves the
     // model where it was.
-    constexpr size_t kTaskHolder = 0x8, kHolderModel = 0x18;
+    constexpr size_t kTaskHolder = 0x8;
     constexpr u64 kItemModelWindowMs = 3000;  // an item model task this soon after an item-get starts is its model
 
     bool g_InItemModelTask = false;
     const HeldModelFix* g_ItemModelFix = nullptr;  // the fix for the model the running task gets
-    // The component being fixed, held weakly through its control block (libc++: +0x8 owners - 1, +0x10 weak owners
-    // - 1); whether its root bone moved.
-    Game::Node* g_HeldModel = nullptr;
-    u8* g_HeldCtrl = nullptr;
+    // The component being fixed, held weakly; whether its root bone moved.
+    Game::Weak<Game::Node> g_HeldModel;
     const HeldModelFix* g_HeldFix = nullptr;
     bool g_HeldRootMoved = false;
 #ifdef LASAP_TEST
     // DBG heldpose: the last item-get's model component, any item's, held weakly as g_HeldModel is
-    Game::Node* g_ItemModel = nullptr;
-    u8* g_ItemCtrl = nullptr;
+    Game::Weak<Game::Node> g_ItemModel;
 #endif
 
     void DropHeldModel() {
-        Game::ReleaseWeakOwner(g_HeldCtrl);
-        g_HeldCtrl = nullptr;
-        g_HeldModel = nullptr;
+        g_HeldModel = {};
         g_HeldFix = nullptr;
     }
-
-    bool HeldModelAlive() { return Game::Alive(g_HeldCtrl); }
 
     // The held NPC model's component node in the ocarina's place, turned by the fix's angle, at the ocarina's size;
     // the game writes its pose once the item pops up, and that write is replaced here.
     void PlaceHeldModel() {
-        Game::Coords& c = g_HeldModel->coordsNew;
+        Game::Coords& c = g_HeldModel.View().ptr->coordsNew;
         const HeldModelFix& fix = *g_HeldFix;
         float scale = kItemModelRadius / fix.radius;
         Game::Quat q = Game::EulerQuat(fix.angle);
@@ -93,7 +86,7 @@ namespace {
             g_ItemModelFix = nullptr;
             Orig(task);
             g_InItemModelTask = false;
-            u8* holder = *reinterpret_cast<u8**>(task + kTaskHolder);
+            auto* holder = *reinterpret_cast<Game::ItemModelHolder**>(task + kTaskHolder);
             if (AP::Popup::IsHolder(holder)) {
                 // The popup's model: the same size, centre and angle
                 const HeldModelFix* fix = g_ItemModelFix;
@@ -102,24 +95,14 @@ namespace {
             }
 #ifdef LASAP_TEST
             if (holder != nullptr && NowMs() - g_ItemGetAt <= kItemModelWindowMs) {
-                auto* itemModel = Game::Field<Game::Node*>(holder, kHolderModel);
-                u8* itemCtrl = Game::Field<u8*>(holder, kHolderModel + 8);
-                if (itemModel != nullptr && itemCtrl != nullptr) {
-                    Game::ReleaseWeakOwner(g_ItemCtrl);
-                    Game::AddWeakOwner(itemCtrl);
-                    g_ItemModel = itemModel;
-                    g_ItemCtrl = itemCtrl;
-                }
+                const Game::SharedPtr<Game::Node>& itemModel = holder->model;
+                if (itemModel && itemModel.ctrl != nullptr) g_ItemModel = {itemModel.get(), itemModel.ctrl};
             }
 #endif
             if (g_ItemModelFix == nullptr || NowMs() - g_ItemGetAt > kItemModelWindowMs || holder == nullptr) return;
-            auto* model = Game::Field<Game::Node*>(holder, kHolderModel);
-            u8* ctrl = Game::Field<u8*>(holder, kHolderModel + 8);
-            if (model == nullptr || ctrl == nullptr) return;
-            DropHeldModel();
-            Game::AddWeakOwner(ctrl);
-            g_HeldModel = model;
-            g_HeldCtrl = ctrl;
+            const Game::SharedPtr<Game::Node>& model = holder->model;
+            if (!model || model.ctrl == nullptr) return;
+            g_HeldModel = {model.get(), model.ctrl};
             g_HeldFix = g_ItemModelFix;
             g_HeldRootMoved = false;
             PlaceHeldModel();
@@ -128,8 +111,8 @@ namespace {
 
     HOOK_DEFINE_TRAMPOLINE(NodeMarkDirty) {
         static void Callback(Game::Node* node) {
-            if (node != nullptr && node == g_HeldModel) {
-                if (HeldModelAlive()) PlaceHeldModel();
+            if (node != nullptr && node == g_HeldModel.View().ptr) {
+                if (g_HeldModel.Alive()) PlaceHeldModel();
                 else DropHeldModel();
             }
             Orig(node);
@@ -139,10 +122,10 @@ namespace {
 
     // Each frame: the held model's root bone once it can move, and its weak reference goes once the model is gone.
     void TickHeldModel() {
-        if (g_HeldModel == nullptr) return;
-        if (!HeldModelAlive()) DropHeldModel();
+        if (g_HeldModel.View().ptr == nullptr) return;
+        if (!g_HeldModel.Alive()) DropHeldModel();
         else if (!g_HeldRootMoved) {
-            auto* component = reinterpret_cast<Game::SkeletalModelComponent*>(g_HeldModel);
+            auto* component = reinterpret_cast<Game::SkeletalModelComponent*>(g_HeldModel.View().ptr);
             g_HeldRootMoved = Game::MoveRootBone(component, g_HeldFix->center);
         }
     }
@@ -164,11 +147,11 @@ namespace {
     }
 
     Game::Node* HeldModel() {
-        return g_HeldModel != nullptr && HeldModelAlive() ? g_HeldModel : nullptr;
+        return g_HeldModel.Peek();
     }
 
     Game::Node* ItemGetModel() {
-        return g_ItemModel != nullptr && Game::Alive(g_ItemCtrl) ? g_ItemModel : nullptr;
+        return g_ItemModel.Peek();
     }
 #endif
 }

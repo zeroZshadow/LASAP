@@ -24,9 +24,9 @@ namespace {
 }
 
 namespace EventFlags {
-    bool CheckGettingFlag(int itemId) { return Game::Item_CheckGettingFlag(itemId) != 0; }
+    bool CheckGettingFlag(Game::Data::ItemId item) { return Game::Item_CheckGettingFlag(item) != 0; }
 
-    void SetGettingFlag(int itemId) { Game::Item_SetGettingFlag(itemId); }
+    void SetGettingFlag(Game::Data::ItemId item) { Game::Item_SetGettingFlag(item); }
 
     bool CheckFlag(std::string_view name) {
         Game::StrView view{name};

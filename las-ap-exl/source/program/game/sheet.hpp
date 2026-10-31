@@ -52,10 +52,10 @@ namespace Game {
     template<typename Row>
     struct Sheet {
         const uintptr_t* vtable;
-        WeakPtr self;              // 0x8: shared-from-this
-        SharedPtr resourceOwner;   // 0x18: the resource info's
+        WeakPtr<> self;            // 0x8: shared-from-this
+        SharedPtr<> resourceOwner; // 0x18: the resource info's
         u64 resourceInfo_28[2];    // 0x28
-        SharedPtr resourceArchive; // 0x38: the resource info's
+        SharedPtr<> resourceArchive; // 0x38: the resource info's
         StrView path;              // 0x48: the resource manager's key
         u8 resourceFlags;          // 0x58: bit 0 checked by the destructor
         u8 resourceLocked;         // 0x59: the destructor unlocks the resource manager

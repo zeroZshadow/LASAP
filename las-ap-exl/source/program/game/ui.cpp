@@ -22,7 +22,7 @@ namespace Game::Ui {
 
     void SetVisible(Pane* pane, bool visible) {
         if (pane == nullptr) return;
-        pane->flags = (pane->flags & ~kPaneVisible) | (visible ? kPaneVisible : 0);
+        pane->flags.Set(PaneFlag::Visible, visible);
     }
 
     void SetAlpha(Pane* pane, int alpha) {
@@ -36,14 +36,14 @@ namespace Game::Ui {
         if (pane == nullptr) return;
         pane->x = x;
         pane->y = y;
-        pane->flags |= kPaneDirty;
+        pane->flags.Set(PaneFlag::Dirty);
     }
 
     void ScaleTo(Pane* pane, float x, float y) {
         if (pane == nullptr) return;
         pane->scaleX = x;
         pane->scaleY = y;
-        pane->flags |= kPaneDirty;
+        pane->flags.Set(PaneFlag::Dirty);
     }
 
     void ScaleTo(Pane* pane, float scale) { ScaleTo(pane, scale, scale); }

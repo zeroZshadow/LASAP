@@ -18,7 +18,7 @@ How the game's actors are made, run, stopped and removed, and what decides wheth
 
 ## Classes
 
-Vtables start at the object's `+0x0` (no RTTI before them); `+0x68 IsA(type*)` and `+0x70 TypeId()` use the game's own type ids. Classes: Entity (`0x1c313e8`) → Component (`0x1c31358`) and the engine actor base (`0x1c31198`, guess) → the game Actor (`Actor_vtable`, `0x1b50f28`, base slots `+0x0`..`+0x120`, shared by 486 actor classes) → each class (NpcGhost `0x1be37c0`, Player `0x1c17b70`, EnemyOctorok `0x1b97418`, ObjTreasureBox `0x1c12020`). Slots from `+0x128` are class-specific.
+Vtables start at the object's `+0x0` (no RTTI before them); `+0x68 IsA(type id)` and `+0x70 TypeId()` use the game's own type ids (Components). Classes: Entity (`0x1c313e8`) → Component (`0x1c31358`) and the engine actor base (`0x1c31198`, guess) → the game Actor (`Actor_vtable`, `0x1b50f28`, base slots `+0x0`..`+0x120`, shared by 486 actor classes) → each class (NpcGhost `0x1be37c0`, Player `0x1c17b70`, EnemyOctorok `0x1b97418`, ObjTreasureBox `0x1c12020`). Slots from `+0x128` are class-specific.
 
 **Entity slots** (actors and components):
 
@@ -102,6 +102,16 @@ A **Node** (`Node_Ctor` `0xfb55a0 (node, ComponentArgs*)`, `Node_vtable` `0x1c31
 - `Node_MarkDirty` (`0xfb6aa0`) and `Node_UpdateWorld` (`0xfb6310`) as TESTING.md, Reverse engineering, describes them. A node with an `attachment` (a bone attachment: `+0x10` locator, `+0x30` position, `+0x40` rotation, `+0x50` scale, `+0x60` dirty) and no parent has the world local × the attachment's; `Node_MarkDirty` skips children with one.
 - Its vtable has the Entity slots only; `+0x50` `Node_OnActiveChanged` (`0xfb58c0`) sets bit 1 of each child node from its own active state, raising the actor's `componentIterDepth` around the walk.
 
+## Components
+
+A **component** (`Component_vtable` `0x1c31358`) is an Entity whose `parent` is its actor: the Entity's 0x58 bytes, the parent set from the arguments' owner. Its constructor arguments (`ComponentArgs`) start as `ActorArgs` do: `+0x0` name, `+0x8` length, `+0x10` u8 enabled, `+0x18`/`+0x20` the owner (shared pointer). An actor keeps its components in its map by name (`+0x58`; `Actor_AttachComponent`, `Actor_HasComponent` `0xfa9490 (actor, name, length)`, `Actor_RemoveComponent`), visits them with `Actor_ForEachComponent` (`0xfa8e50`) and finds one with `Actor_FindComponentIf` (`0xfa9920 (out sp, actor, std::function<bool(sp*)>*)`; a copy at `0xedca0`).
+
+**Type ids.** Each class has a static type object made on first use (a guarded function-local static): Entity's at `0x1cab338`, Component's `0x1cab328`, EventChara's `0x1caccf8`, DeferredInit's `0x1cab4e0`, TailorPlayer's `0x1cab308`. A type id is that static's address: virtual `+0x70` `TypeId()` returns it, `+0x68` `IsA(id)` compares the id with the class's own and each base's (`Component_IsA` `0xfab7c0`, `Component_TypeId` `0xfab8a0`). The static's value is a vtable whose slot 0 is `isA(self, id)`: equal, else the base type's `isA` (Entity's `0x1b50908` compares only itself; Component's `0x1b511f8` asks Entity's). Identical code folding gives every direct subclass of Component the one vtable `0x1b511e0`, so that value names no class; the static's address does. `FindComponent<T>` is inlined per class: it wraps the caller's predicate in a lambda that first asks `IsA(T's id)`, runs `Actor_FindComponentIf` and checks the found component's type again (EventChara's `0xfe420`, which `Actor_FindEventChara` calls; DeferredInit's `0x52000`).
+
+**DeferredInit** (`DeferredInit_Make` `0x3b920 (out sp, actor, StringView* name)`, vtable `0x1b52408`, 0x60 bytes): an actor's setup makes it (128 callers, NpcGhost's among them) for the resources it loads after its creation. Its `+0x58` is ready: the load callback (`0x3d850`, lambda vtable `0x1b52360`, over the actor, the resource handle and the component) takes the loaded flowchart into the actor (`+0x2c8` for the classes seen) and sets ready, or destroys the actor (`Entity_Destroy`) when the resource holds no flowchart. `ActorCreate_ReadyTask` (Creation) waits for it.
+
+## Signals
+
 A **signal** (`Signal`, 0x58 bytes) has one layout for every argument type. `transformChanged` and NPC components'
 `readySignal` (a make_shared of 0x78 bytes, the signal at its `+0x18`) take a bool (`SignalBool_vtable` `0x1b59008`);
 the tasks' and some of Player's take none (`Signal_vtable` `0x1b59608`, FRAMEWORK.md). The bool signal's virtuals:
@@ -119,6 +129,23 @@ with a bool).
 | `+0x34` | `oneShot`: 1: Emit drops every slot and closes the signal after calling them |
 | `+0x38` | `mutex`: an nn::os mutex (0x20 bytes) |
 
+Code reaches a signal through its `owner`: it loads the signal's `+0x10` and calls the virtual from there. The offsets it loads are 0x10 past the signals', so a structure whose code is read before its constructor seems to hold signals at `+0x10` past where they start. The signals found so far, by the offset they start at:
+
+| Owner | Signals |
+|---|---|
+| Event manager | `+0x28` queueStarted, `+0x80` queueEnded, `+0xd8` eventStarted, `+0x130` eventEnded (EVENTS.md) |
+| Event request | `+0x8` finished, one-shot |
+| Task | `+0x28` onFinished, one-shot (FRAMEWORK.md) |
+| Scheduler | `taskAdded`, `taskRemoved` (FRAMEWORK.md) |
+| Level scene | `+0x6a0` zone changed, `+0x6f8` room changed (the actors connect to its owner `+0x708`), `+0x750` room blend (the BGM manager's zone signal, owner `+0x760`), `+0x7a8` active zone (the actors' zone signal, owner `+0x7b8`); Dungeon rooms |
+| Room manager | the signal whose owner is `+0x278` (the actors' destroy callback) |
+| Node | `+0xe8` transformChanged (bool) |
+| NPC component | `readySignal` (bool, in a make_shared of its own) |
+| EventChara | `+0x3a8` |
+| Area actors | AreaEventBox, AreaEventSphere, AreaEventBoxWithoutJump: the signal NPC components connect their triggers to, reached through `+0x2b8` |
+| DamageColComp | `+0x360`, `+0x3b8`, `+0x410` (its results) |
+| Model instance | one signal per bone with a callback (MODELS.md) |
+
 ## Creation
 
 `Actor_Create` (`0x8f5ea0`, `(shared_ptr* out, shared_ptr* owner, params*)`; every spawn goes through it):
@@ -127,7 +154,7 @@ with a bool).
 2. Copies the params. With a non-zero key: null when the registry holds the key, or the owner has a child of the actor's name (`ActorName_Make` `0x23830`: the LEB name, else `"{0:S22}:{1:X8}"` of the table name and a counter; `Entity_FindChildInMap` `0xfb3470` on the owner's maps `+0x10` and `+0x38`).
 3. Loads each table resource (`Resource_Load`) and takes it with `Resource_TakeModel` `0x57d50`, `Resource_TakeTailor` `0xdbb60`, `Resource_TakeFlowchart` `0x3d9f0`; each waits (`Resource_Wait`) until the file is loaded. A spawn from code waits on the game thread for files not loaded yet.
 4. Calls the factory.
-5. When the actor lives and is not being destroyed: its key into the registry (`ActorRegistry_ptr`, `0x1cb2d00`, `unordered_map<u64, shared_ptr<Actor>>`, strong references; `ActorRegistry_FindByKey` `0x8f8200`), and a task on the Framework's scheduler (`Task_Post` `0x2d7430`, `ActorCreate_ReadyTask` `0x8f7860`) that waits until flags bit 4 is set and the actor's component of type `0x1b511e0` reports ready (`+0x58`), then `Actor_RegisterEvents` (`0x22a30`) and virtual `+0xd0` (zone subscription).
+5. When the actor lives and is not being destroyed: its key into the registry (`ActorRegistry_ptr`, `0x1cb2d00`, `unordered_map<u64, shared_ptr<Actor>>`, strong references; `ActorRegistry_FindByKey` `0x8f8200`), and a task on the Framework's scheduler (`Task_Post` `0x2d7430`, `ActorCreate_ReadyTask` `0x8f7860`) that waits until flags bit 4 is set (started: `EntityManager_StartTask`, from the start queue `Entity_Start` posts to, runs the entity's Start (`+0x28`), sets bit 4 and calls `+0x50`) and the actor's DeferredInit (Components; found by `0x52000`), when it has one, is ready (`+0x58`), then `Actor_RegisterEvents` (`0x22a30`) and virtual `+0xd0` (zone subscription).
 
 A factory (Octorok `0x54e0a0`, TreasureBox `0xc9e820`, NpcGhost `0x9bc540`): builds the name and checks it and the owner's maps, `make_shared` of the class (the control block at `+0x0`, the actor at `+0x20`; NpcGhost 0x2f0 bytes), `Actor_Ctor` then the class constructor, the weak self pointer, then unless `flags & 0x40000008`: `Register` (`+0x78`), `Setup` (`+0x20`), bit 3; `Entity_Start` (`0xfab470`: a start task) and `Entity_AddChild(owner, sp)` (`0xfb3290`, bit 1 from the owner). Failing that, `Entity_Destroy` and null. At the next flush the start task calls `Start` (`+0x28`) and sets bit 4; the actor is updated from the frame after.
 
@@ -216,13 +243,25 @@ the room, unless the removal memory holds them.
   node lies inside that box, or the area's `showForced` is set (each update copies it to Room `+0x24d` and clears
   it); on a change it sets bit 1 of each child (`Entity_ForEachChild` `0xfafd20`, functor `0xfb3220`). Actors of the
   actor system (Link, factory spawns from code) are not in a room and never get this.
-- Bit 2 by zone (a zone is one camera room). An actor subscribes in `+0xd0` (`0x1e980`) to the room manager's `+0x278`, the scene's `+0x708` (room changed → `+0xe0`) and `+0x7b8` (`0x1f2e0`). For a zone-scoped actor (`+0xa4` bit 0) of the zone Link left, `0x1f2e0` saves bit 2 into `+0xa2` bit 1, sets `+0xa2` bit 0 and clears bit 2. `Actor_OnRoomChanged` (`+0xe0`, `0x1f090`) restores bit 2 from `+0xa2` bit 1 when Link enters its zone. An actor made outside the current zone is suspended at once. Zone -1 (`+0xb0`) is never suspended.
+- Bit 2 by zone (a zone is one camera room). An actor subscribes in `+0xd0` (`0x1e980`) to the room manager's `+0x278`, the scene's `+0x708` (room changed → `+0xe0`) and `+0x7b8` (active zone, `Actor_ZoneSignal` `0x1f2e0 (entered*, left*)`). An actor of the entered zone gets its virtual `+0x110`. For a zone-scoped actor (`+0xa4` bit 0) of the zone Link left, `Actor_ZoneSignal` saves bit 2 into `+0xa2` bit 1, sets `+0xa2` bit 0, clears bit 2 and calls virtual `+0x108`. `Actor_OnRoomChanged` (`+0xe0`, `0x1f090`) restores bit 2 from `+0xa2` bit 1 when Link enters its zone. An actor made outside the current zone is suspended at once. Zone -1 (`+0xb0`) is never suspended.
 - Bit 2 by freeze: `ActorTree_Freeze` (`0x7d5910`, functor `0x7d5b30`) clears it on every enabled actor of a tree that is not of type `0x1cab3f8` (`IsA`; Player's own type id is `0x1cab518`, so guess: a base class of Link's) and lists them, `ActorTree_Unfreeze` (`0x7d5f60`) sets it again; about a hundred classes call the pair. Actors of the actor system are not in those trees: a factory-spawned NpcGhost in zone -1 keeps bit 2 through a dungeon scroll (measured 2026-10-23).
 - Bit 2 by `GameControl.LoadZone(zoneID)` (`0x7ffc50` → `0x866d90`): set on every direct child of the rooms of that zone.
 
-**Dungeon rooms.** The scene's update (`0x836270`) follows Link's room (scene `+0x800` zone, `+0x804` room index); on a
-change it fires the room signal (`+0x6f8`, the actors' `+0x708` callback, with new and old) and, on a zone change,
-`+0x6a0` and `RoomManager_VisitZone` (`0x865e90`). In a dungeon (level data vtable `+0x48` == 3) `UpdateRooms` reloads a
+**Dungeon rooms.** The scene's update (`Scene_UpdateZone`, `0x836270`) looks up Link's position in the level data's zone
+grid (`+0x230`, `ZoneGrid_Lookup` `0x8ea680`: 1.5-unit cells of {u32 zone, u8 blend, u8 room A, u8 room B}) and keeps
+the cell in the scene (`+0x800` zone, `+0x808`/`+0x80c` rooms, `+0x810` blend; `+0x804` Link's room). On a room change
+it fires the room signal (`+0x6f8`, the actors' `+0x708` callback, with new and old); when the rooms or the blend change,
+the room blend (`+0x750`: blend / 255, room A's and room B's data through the level data's virtual `+0x40`; room A's
+first u32 goes to the inventory's `ZoneId`); on a zone change, `+0x6a0` (with `RoomManager_FindZoneRoom`'s room) and
+`RoomManager_VisitZone` (`0x865e90`). The active zone (`+0x7a8`) follows later: `Scene_SetActiveZone` (`0x845560
+(scene, entered, left)`) emits it and reloads the rooms of other zones whose area `+0xc0` is set
+(`RoomManager_ReloadOtherZones` `0x866130`). The zone camera's update (`ZoneCamera_Update` `0xc7fd0`, vtable
+`0x1b5a910` `+0x28`) calls it once the camera's scroll ends (mode `+0x158` below 3) with its zones `+0x14c` and `+0x150`
+differing, and a room manager state (`0x858190`, table `0x1bc2990` `+0x40`) at a level's start with the first room's
+zone and -1. `Scene_LeaveRooms` (`0x845380`, from `RoomManager_LevelJumpTeardown` and `LevelManager_WarpInLevel`) fires
+the room signal, the blend (null, null, 1.0) and the zone signal with nothing, and sets zone, rooms and blend back to -1.
+Measured 2026-10-30 (Emit hooks, `boot_file1`, Tail Cave): a warp emits the blend from both, the active zone from
+`Scene_SetActiveZone`. In a dungeon (level data vtable `+0x48` == 3) `UpdateRooms` reloads a
 running room whose area's `showForced` differs from the room's copy (Room `+0x24d`) while
 the area's `active` is set (`Room_Reload` `0x8e5e60`): its actors are kept (`+0x1e0`; keyless ones with `+0xa4` bit 1
 are destroyed, `0x8e62a0`) and the room goes back to LebLoad, where `Room_OnLebActor` skips the actors still present.
@@ -402,9 +441,7 @@ is set, and one more after them, the slot `NpcComponent_PlayMaterialAnimation` u
 
 ## Open questions
 
-- What fires the scene's `+0x7b8` signal.
 - Who sets `+0xa4` bit 0 for other classes (the class constructors write `+0xa4`).
-- The type `0x1b511e0` of the component whose `+0x58` gates readiness, and who sets flags bit 4 for it.
 - Queue `+0x2f0` (bit 10) has no runner in 1.0.0.
 - The level load from state 6 to state 1, and level data vtable `+0x48` (level kind; 3 dungeon) and `+0x50`.
 - LEB record `b` (`+0x86`): no reader found (actor, room and LEB code searched).

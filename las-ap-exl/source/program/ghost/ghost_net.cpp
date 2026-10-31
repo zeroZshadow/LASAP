@@ -31,7 +31,6 @@ namespace {
     constexpr float kTurnDeg = 10;
     // A jump this far between two sent positions is a warp (respawn, warp, door within a level): the ghost snaps.
     constexpr float kWarpDistance = 4.0f;
-    constexpr int kFlagWarped = 1, kFlagStill = 4, kFlagStarted = 8;
     // Link's animations (game 1.0.0): his animation controller plays rows of PlayerAnimation.gsheet by key (the row
     // index). Its slot 0 is the whole body, slot 1 his upper body (idle_carry while he holds something over his head,
     // none otherwise). The frame is in the controller's layered animation: layer i is slot i, its bound animation the
@@ -80,6 +79,7 @@ namespace {
 
     using Game::At;
     using Game::NowMs;
+    using AP::GhostNet::GhostFlag;
 
     std::vector<std::string> Split(const std::string& line, size_t max) {
         std::vector<std::string> out;
@@ -241,19 +241,18 @@ namespace {
     }
 
     void SendPos(const Sample& s, u64 now) {
-        int flags = 0;
-        if (s.inLevel && (!g_SentAny || !g_Sent.inLevel || g_Sent.level != s.level ||
-                          std::hypot(s.x - g_Sent.x, s.y - g_Sent.y, s.z - g_Sent.z) > kWarpDistance)) {
-            flags |= kFlagWarped;
-        }
-        if (s.still) flags |= kFlagStill;
-        if (g_SentAny && s.starts != g_Sent.starts) flags |= kFlagStarted;
+        Flags<GhostFlag> flags{};
+        flags.Set(GhostFlag::Warped, s.inLevel && (!g_SentAny || !g_Sent.inLevel || g_Sent.level != s.level ||
+                                                   std::hypot(s.x - g_Sent.x, s.y - g_Sent.y, s.z - g_Sent.z) >
+                                                       kWarpDistance));
+        flags.Set(GhostFlag::Still, s.still);
+        flags.Set(GhostFlag::Started, g_SentAny && s.starts != g_Sent.starts);
         char buf[192];
         if (s.inLevel) {
             // POS <level> <x> <y> <z> <yaw> <anim> <anim frame> <upper anim> <flags> <time ms> <shapes> <tunic> <eye>
             // <mouth> <ear>
             snprintf(buf, sizeof(buf), "POS %s %.3f %.3f %.3f %.1f %d %d %d %d %u %u %d %d %d %d", s.level.c_str(), s.x,
-                     s.y, s.z, s.yaw, s.anim, s.animFrame, s.upperAnim, flags, static_cast<u32>(now), s.look.shapes,
+                     s.y, s.z, s.yaw, s.anim, s.animFrame, s.upperAnim, flags.Raw(), static_cast<u32>(now), s.look.shapes,
                      s.look.tunic, s.look.eye, s.look.mouth, s.look.ear);
         } else {
             snprintf(buf, sizeof(buf), "POS none");
@@ -340,7 +339,7 @@ namespace AP::GhostNet {
         ghost.anim = atoi(a[7].c_str());
         ghost.animFrame = atoi(a[8].c_str());
         ghost.upperAnim = atoi(a[9].c_str());
-        ghost.flags = atoi(a[10].c_str());
+        ghost.flags = Flags<GhostFlag>::FromRaw(atoi(a[10].c_str()));
         ghost.look.shapes = static_cast<u32>(strtoul(a[12].c_str(), nullptr, 10));
         ghost.look.tunic = atoi(a[13].c_str());
         ghost.look.eye = atoi(a[14].c_str());
@@ -349,7 +348,7 @@ namespace AP::GhostNet {
         ghost.name = a[17];
         ghost.receivedMs = NowMs();
 #ifdef LASAP_TEST
-        if ((ghost.flags & 8) && g_StartLog.size() < 60) {
+        if (ghost.flags.Has(GhostFlag::Started) && g_StartLog.size() < 60) {
             const char* name = AnimName(ghost.anim);
             g_StartLog.push_back("rx:" + std::string(name != nullptr ? name : "?") + "@" + std::to_string(FrameNow()));
         }
@@ -407,7 +406,7 @@ namespace AP::GhostNet {
             snprintf(buf, sizeof(buf),
                      " | %d %s %s %.2f,%.2f,%.2f yaw=%.0f anim=%s upper=%s flags=%d shapes=%x tunic=%d face=%d,%d,%d"
                      " frames=%u", n, g.name.c_str(), g.level.c_str(), g.x, g.y, g.z, g.yaw, anim != nullptr ? anim : "-",
-                     upper != nullptr ? upper : "-", g.flags, g.look.shapes, g.look.tunic, g.look.eye, g.look.mouth,
+                     upper != nullptr ? upper : "-", g.flags.Raw(), g.look.shapes, g.look.tunic, g.look.eye, g.look.mouth,
                      g.look.ear, g.frames);
             s += buf;
         }

@@ -1,7 +1,10 @@
 """Writes a synthetic .aplas patch (every shuffleable location gives the AP placeholder) for patcher tests.
 
-python make_test_patch.py <out.aplas> [--seed-hash test0001] [--slot Tester] [--vanilla loc,loc,...] [--settings JSON]
+python make_test_patch.py <out.aplas> [--seed-hash <hash>] [--slot Tester] [--vanilla loc,loc,...] [--settings JSON]
                           [--dungeons JSON] [--items loc=item,...] [--kept loc,loc,...] [--models loc=item,...]
+
+--seed-hash defaults to a hash of the patch's contents, so the seed_hash of a mod made from it (config.ini) names the
+patch: the same options and world data give the same hash (scripts/suite.py checks the installed mod by it).
 
 --items gives locations an item of this slot (logic.yml's content names, e.g. beach-chest=song-ballad); they are no
 AP locations.
@@ -14,6 +17,7 @@ game it knows, e.g. woods-north-cave-loose=heart-piece; the patcher makes them p
 '{"tail-cave": "color-dungeon", "color-dungeon": "tail-cave"}' (door: the dungeon it leads into).
 """
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -51,7 +55,7 @@ DUNGEONS = ("tail-cave", "bottle-grotto", "key-cavern", "angler-tunnel", "catfis
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("out", type=Path)
-    parser.add_argument("--seed-hash", default="test0001")
+    parser.add_argument("--seed-hash")
     parser.add_argument("--slot", default="Tester")
     parser.add_argument("--vanilla", default="")
     parser.add_argument("--settings", default="{}")
@@ -102,6 +106,8 @@ def main() -> None:
         "settings": settings, "starting_items": [], "placements": placements, "location_ids": location_ids,
         "dungeon_entrances": dungeons, "location_models": models,
     }
+    if patch["seed_hash"] is None:
+        patch["seed_hash"] = hashlib.sha256(json.dumps(patch, sort_keys=True).encode()).hexdigest()[:8]
     args.out.write_text(json.dumps(patch, indent=1))
     print(f"{args.out}: {len(location_ids)} AP locations, {len(placements) - len(location_ids)} vanilla")
 

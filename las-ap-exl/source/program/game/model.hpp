@@ -85,9 +85,13 @@ namespace Game {
     static_assert(offsetof(MaterialObj, blockOffset) == 0x38 && offsetof(MaterialObj, srcParams) == 0x48);
     static_assert(offsetof(MaterialObj, blockSize) == 0x60 && sizeof(MaterialObj) == 0x80);
 
+    // LocalTransform::flags: the bone's (ResBone) and these
+    enum class LocalTransformFlag : u32 { TranslateZero = 1u << 27 };
+    FLAGS_ENUM(LocalTransformFlag)
+
     // nn::g3d LocalMtx: a bone's local transform, computed into the world ones each frame.
     struct LocalTransform {
-        u32 flags;                 // kLocalTranslateZero, the ResBone's
+        Flags<LocalTransformFlag> flags;  // the ResBone's
         u8 pad_4[0xc];
         float scale[4];            // 0x10
         float rotation[3][4];      // 0x20: X, Y, Z axes
@@ -96,7 +100,6 @@ namespace Game {
     };
     static_assert(offsetof(LocalTransform, scale) == 0x10 && offsetof(LocalTransform, rotation) == 0x20);
     static_assert(offsetof(LocalTransform, translate) == 0x50 && sizeof(LocalTransform) == 0x60);
-    constexpr u32 kLocalTranslateZero = 1u << 27;
 
     // nn::g3d SkeletonObj (0x80).
     struct Skeleton {
@@ -183,7 +186,7 @@ namespace Game {
         u64 blockOffset;           // 0x90: its block buffer, in the graphics system's pool
         u32 blockSize;             // 0x98
         u32 bufferSize;            // 0x9c
-        SharedPtr resource;        // 0xa0
+        SharedPtr<> resource;      // 0xa0
         const u8* resModel;        // 0xb0: FMDL
         Vector<ShapeRenderInfo> shapeInfos;  // 0xb8: per shape
         u8 initialized;            // 0xd0
@@ -212,7 +215,7 @@ namespace Game {
         s32 bufferCount;           // 0x40: the model's buffering, 2
         u8 pad_44[0x4];
         void** vertexStates;       // 0x48: per shape, nn::gfx VertexState
-        SharedPtr resource;        // 0x50
+        SharedPtr<> resource;      // 0x50
         const u8* resModel;        // 0x60: FMDL
     };
     static_assert(offsetof(ModelData, model) == 0x10 && offsetof(ModelData, shapeShaders) == 0x28);
@@ -277,7 +280,7 @@ namespace Game {
     // (vtable 0x1c34eb8, 0x3c0 bytes) adds instanceCount and records; a plain instance ends at 0x3a0.
     struct ModelInstance {
         const uintptr_t* vtable;
-        WeakPtr self;              // 0x8
+        WeakPtr<> self;            // 0x8
         u8 pad_18[0x8];
         u64 passMask;              // 0x20
         Vector<u32> passes;        // 0x28
@@ -422,13 +425,17 @@ namespace Game {
     };
     static_assert(sizeof(StencilStateInfo) == 0x10);
 
+    // DepthStencilStateInfo::flags (nn::gfx)
+    enum class DepthStencilFlag : u16 { DepthTest = 1, DepthWrite = 2, StencilTest = 4, DepthBoundsTest = 8 };
+    FLAGS_ENUM(DepthStencilFlag)
+
     // nn::gfx DepthStencilStateInfo.
     struct DepthStencilStateInfo {
         u8 depthFunc;
         u8 stencilReadMask;        // 0x1
         u8 stencilWriteMask;       // 0x2
         u8 pad_3;
-        u16 flags;                 // 0x4: bit 0 depth test, 1 depth write, 2 stencil test
+        Flags<DepthStencilFlag> flags;  // 0x4
         u8 pad_6[0x2];
         StencilStateInfo front;    // 0x8
         StencilStateInfo back;     // 0x18
@@ -496,7 +503,7 @@ namespace Game {
         Node node;
         ModelInstance* instance;   // 0x148: a shared_ptr
         void* instanceCtrl;        // 0x150
-        WeakPtr modelList;         // 0x158: Framework::renderer
+        WeakPtr<> modelList;       // 0x158: Framework::renderer
         void* modelResource[3];    // 0x168: {resource, control block, model}
         void* blendStatePtr;       // 0x180: points at blendState
         void* depthStencilStatePtr;  // 0x188
@@ -549,10 +556,20 @@ namespace Game {
         ModelObj* model = component->instance != nullptr ? component->instance->Model() : nullptr;
         LocalTransform* root = model != nullptr && model->skeleton != nullptr ? model->skeleton->locals : nullptr;
         if (root == nullptr) return false;
-        root->flags &= ~kLocalTranslateZero;
+        root->flags.Clear(LocalTransformFlag::TranslateZero);
         root->translate[0] -= center.x;
         root->translate[1] -= center.y;
         root->translate[2] -= center.z;
         return true;
     }
+
+    // ItemModel_Make's holder (made with its control block, 0x98 bytes; vtable 0x1bcb6a0): the item's model component
+    // once ItemGet_ModelTask has made it
+    struct ItemModelHolder {
+        const uintptr_t* vtable;
+        WeakPtr<> self;            // 0x8
+        SharedPtr<Node> model;     // 0x18: the component, null until the model task has run
+        Signal signal;             // 0x28
+    };
+    static_assert(offsetof(ItemModelHolder, model) == 0x18 && sizeof(ItemModelHolder) == 0x80);
 }

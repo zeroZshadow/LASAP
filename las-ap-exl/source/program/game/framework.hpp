@@ -12,8 +12,8 @@
 namespace Game {
     // GameState::vector_c0's element.
     struct GameStateEntry {
-        SharedPtr first;           // dropped once its object's u32 +0x78 is 0
-        SharedPtr second;          // 0x10
+        SharedPtr<> first;         // dropped once its object's u32 +0x78 is 0
+        SharedPtr<> second;        // 0x10
     };
     static_assert(sizeof(GameStateEntry) == 0x20);
 
@@ -23,8 +23,8 @@ namespace Game {
     // task base (Task_Ctor): the scenes share them.
     struct GameState {
         const uintptr_t* vtable;
-        WeakPtr weakThis;          // 0x8
-        SharedPtr parent;          // 0x18: the task that made it; null for the game state
+        WeakPtr<> weakThis;        // 0x8
+        SharedPtr<> parent;        // 0x18: the task that made it; null for the game state
         Signal onFinished;         // 0x28: one-shot, emitted by Finish
         u8 finished;               // 0x80: the scheduler drops a finished task; the main loop ends with the game state
         u8 pad_81[0x3];
@@ -33,8 +33,8 @@ namespace Game {
         void* sceneCtrl;           // 0x90
         u32 nextSceneId;           // 0x98: SetGameState's (3 a level too); another finishes the game state
         u8 pad_9c[0x4];
-        SharedPtr fadePresets;     // 0xa0: the FadePreset.gsheet resource group
-        SharedPtr globalFlags;     // 0xb0: the GlobalFlags.gsheet resource group
+        SharedPtr<> fadePresets;   // 0xa0: the FadePreset.gsheet resource group
+        SharedPtr<> globalFlags;   // 0xb0: the GlobalFlags.gsheet resource group
         Vector<GameStateEntry> vector_c0;  // 0xc0
         u8 resetResources;         // 0xd8: the next scene change resets the resource manager first
         u8 startupDone;            // 0xd9: the UI datasheets are loaded
@@ -51,7 +51,7 @@ namespace Game {
     // A loaded area's room (Room_Ctor; 0x250 bytes; ACTORS.md, Rooms): the container of its actors and its zone.
     struct Room {
         u8 pad_0[0x1b8];
-        SharedPtr root;            // 0x1b8: its actors' container, the owner the room's Actor_Create calls pass
+        SharedPtr<> root;          // 0x1b8: its actors' container, the owner the room's Actor_Create calls pass
         u8 pad_1c8[0x78];
         s32 zone;                  // 0x240
         u8 pad_244[0x6];
@@ -74,8 +74,8 @@ namespace Game {
         u8 pad_81[0xf];
         u8 saveManager[0x480];     // 0x90: SaveManager_RequestAutoSave's
         u8 object_510[0x108];      // 0x510
-        SharedPtr roomManager;     // 0x618
-        SharedPtr sheets;          // 0x628: the level's datasheets' resource group
+        SharedPtr<RoomManager> roomManager;  // 0x618
+        SharedPtr<> sheets;        // 0x628: the level's datasheets' resource group
         u8 pad_638[0x8];
         u8 buffKind;               // 0x640: 1 PowerUp, 2 DefenceUp
         u8 pad_641[0x3];
@@ -89,21 +89,23 @@ namespace Game {
         u32 field_690;             // 0x690
         u8 field_694;              // 0x694: cleared by Finish
         u8 pad_695[0xb];
-        Signal zoneChanged;        // 0x6a0: Scene_UpdateZone emits it
-        Signal roomChanged;        // 0x6f8: the actors' room change
-        Signal signal_750;         // 0x750: DungeonMap_SubscribeZone's outside dungeons
-        Signal signal_7a8;         // 0x7a8: Actor_SubscribeZones'
+        Signal zoneChanged;        // 0x6a0: Scene_UpdateZone emits it with the room manager's room of the new zone
+        Signal roomChanged;        // 0x6f8: (new room, old room); the actors' room change
+        // 0x750: (blend 0..1 in s0, room A's data, room B's data) when the zone grid cell's rooms or blend change;
+        // DungeonMap_SubscribeZone's outside dungeons and the BGM's zoneSub
+        Signal roomBlend;
+        Signal activeZone;         // 0x7a8: (entered zone, left zone), Scene_SetActiveZone; Actor_SubscribeZones'
         s32 zone;                  // 0x800: -1 none
         s32 room;                  // 0x804
-        s32 field_808;             // 0x808: -1, a room while it is pending
-        s32 field_80c;             // 0x80c
-        u8 field_810;              // 0x810: 0xff
+        s32 roomA;                 // 0x808: the zone grid cell's two rooms (-1 none) and the blend between them
+        s32 roomB;                 // 0x80c
+        u8 blend;                  // 0x810: 0..255; 0xff none
         u8 jumpFlag;               // 0x811: SetGameState's bool, written with a level jump
         u8 pad_812[0xe];
     };
     static_assert(offsetof(LevelScene, saveManager) == 0x90 && offsetof(LevelScene, roomManager) == 0x618);
     static_assert(offsetof(LevelScene, buffKind) == 0x640 && offsetof(LevelScene, zoneChanged) == 0x6a0);
-    static_assert(offsetof(LevelScene, signal_7a8) == 0x7a8 && offsetof(LevelScene, zone) == 0x800);
+    static_assert(offsetof(LevelScene, activeZone) == 0x7a8 && offsetof(LevelScene, zone) == 0x800);
     static_assert(offsetof(LevelScene, jumpFlag) == 0x811 && sizeof(LevelScene) == 0x820);
 
     // A view's frustum (Frustum_Make): its box and six planes.
@@ -144,7 +146,7 @@ namespace Game {
     // (View_Update) from the game camera.
     struct Camera {
         const uintptr_t* vtable;
-        WeakPtr self;              // 0x8
+        WeakPtr<> self;            // 0x8
         u32 id;                    // 0x18: 1
         u8 pad_1c[0x4];
         float view[16];            // 0x20
@@ -160,18 +162,18 @@ namespace Game {
         u8 ownMatrices;            // 0x1e4: the view computes its own (orthographic) matrices
         u8 pad_1e5[0x3];
         s32 width, height;         // 0x1e8: the render target's
-        WeakPtr source;            // 0x1f0: the game camera
+        WeakPtr<> source;          // 0x1f0: the game camera
         Vec4 shadowMin;            // 0x200: a followed point plus Framework::shadowMinOffset, each frame
         Vec4 shadowMax;            // 0x210
         float shadowMatrix[16];    // 0x220: from the shadow bounds and the directional light
         float shadowParams[4];     // 0x260
-        SharedPtr renderObject;    // 0x270
+        SharedPtr<> renderObject;  // 0x270
         ViewportScissorState viewport;  // 0x280
         u8 viewportReady;          // 0x2c8
         u8 pad_2c9[0x7];
         u32 bufferIndex;           // 0x2d0: View_Update's
         u32 setupArg;              // 0x2d4
-        SharedPtr drawRoot;        // 0x2d8
+        SharedPtr<> drawRoot;      // 0x2d8
         Vector<void*> drawables;   // 0x2e8
         u8 setUp;                  // 0x300
         u8 active;                 // 0x301: the renderer adds drawables only while set; cleared at the first present
@@ -179,7 +181,7 @@ namespace Game {
         u8 pad_302[0x6];
         u32 field_308;             // 0x308
         u8 pad_30c[0x4];
-        SharedPtr sp_310;          // 0x310
+        SharedPtr<> sp_310;        // 0x310
         u64 field_320;             // 0x320
         u64 field_328;             // 0x328
         u32 resizePending;         // 0x330: a bit per buffer whose viewport View_Update rebuilds (View_Resize)
@@ -243,7 +245,7 @@ namespace Game {
         u8 pad_c[0x4];
         Vector<s32> handheldSizes; // 0x10
         Vector<s32> dockedSizes;   // 0x28
-        WeakPtr renderer;          // 0x40
+        WeakPtr<> renderer;        // 0x40
         u64 field_50;              // 0x50
         Vector<u8> vector_58;      // 0x58
         u64 field_70;              // 0x70
@@ -255,7 +257,7 @@ namespace Game {
     // Link and the renderer. Its shared_ptrs the module reads are typed `T* x; void* xCtrl`.
     struct Framework {
         void* romMount;            // owned
-        SharedPtr regionResources; // 0x8
+        SharedPtr<> regionResources; // 0x8
         void* heapMemory;          // 0x18
         void* heapMemoryFree;      // 0x20
         const uintptr_t* mainHeapVtable;  // 0x28
@@ -271,7 +273,7 @@ namespace Game {
         PhaseQueue frameQueue;     // 0x1b0: the frame step, each pass of the main loop
         PhaseQueue updatePhases;   // 0x2a8
         PhaseQueue renderPhases;   // 0x3a0
-        SharedPtr actorSystem;     // 0x498: the owner of factory spawns
+        SharedPtr<> actorSystem;   // 0x498: the owner of factory spawns
         GameState* gameState;      // 0x4a8: a shared_ptr; the game state machine: SceneHolder_Lock gives its scene,
                                    // SetGameState changes its state
         void* gameStateCtrl;       // 0x4b0
@@ -296,21 +298,21 @@ namespace Game {
         u8 paused;                 // 0x510: the pause menu is open or a level loads
         u8 roomPaused;             // 0x511: set by Scene_UpdateZone
         u8 pad_512[0x6];
-        SharedPtr controller;      // 0x518
+        SharedPtr<> controller;    // 0x518
         void* gfxMemory;           // 0x528
-        SharedPtr sp_530;          // 0x530
-        SharedPtr renderer;        // 0x540: the model list InstancedModel_Ctor takes
-        SharedPtr drawRoot;        // 0x550
+        SharedPtr<> sp_530;        // 0x530
+        SharedPtr<> renderer;      // 0x540: the model list InstancedModel_Ctor takes
+        SharedPtr<> drawRoot;      // 0x550
         Camera* camera;            // 0x560: a shared_ptr
         void* cameraCtrl;          // 0x568
-        SharedPtr view2;           // 0x570: the orthographic view, id 2
-        SharedPtr view3;           // 0x580: a view given the camera's shadow bounds while its active is set
-        SharedPtr renderEnv;       // 0x590
+        SharedPtr<> view2;         // 0x570: the orthographic view, id 2
+        SharedPtr<> view3;         // 0x580: a view given the camera's shadow bounds while its active is set
+        SharedPtr<> renderEnv;     // 0x590
         u64 field_5a0;             // 0x5a0
         void* physicsHeap;         // 0x5a8: owned, 0x2000000 bytes (likely PhysX's)
-        SharedPtr physics;         // 0x5b0: the physics system (likely)
+        SharedPtr<> physics;       // 0x5b0: the physics system (likely)
         void* playReports[15];     // 0x5c0: owned
-        SharedPtr systemEvents;    // 0x638
+        SharedPtr<> systemEvents;  // 0x638
         Present present;           // 0x648
     };
     static_assert(offsetof(Framework, mainHeap) == 0x30 && offsetof(Framework, nextUpdatePhaseId) == 0x54);

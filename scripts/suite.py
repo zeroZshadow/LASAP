@@ -4,15 +4,17 @@ tests beside it (TESTING.md, "Test suite"). Run in .venv-ap, with the sandbox lo
 python suite.py [-j <instances>] [--no-world] [<group> ...]
 
 Each group runs on a suite instance (emu.py, LASAP_INSTANCE 1 and up): a copy of the sandbox's data folder with the
-mod the sandbox has installed (deploy_mod.sh), this checkout's test module (patcher/exl-test, build_exl.sh) and the
-group's config.ini changes, from the new-game snapshot's saves, in a fresh emulator, with a fresh client session
-when the group needs one. The sandbox itself is left as it is. Instances run their groups side by side,
-the longest first (by the last run's times). Logs go to the sandbox folder's suite/logs.
+mod the sandbox has installed (deploy_mod.sh), which must be suite.txt's (its mod: line), this checkout's test
+module (patcher/exl-test, build_exl.sh) and the group's config.ini changes, from the new-game snapshot's saves, in a
+fresh emulator, with a fresh client session when the group needs one. The sandbox itself is left as it is.
+Instances run their groups side by side, the longest first (by the last run's times). Logs go to the sandbox folder's
+suite/logs.
 """
 import argparse
 import json
 import os
 import queue
+import shlex
 import shutil
 import socket
 import subprocess
@@ -50,7 +52,7 @@ def read_groups(path: Path) -> list[Group]:
     groups = []
     for raw in path.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
-        if not line or line.startswith("#"):
+        if not line or line.startswith("#") or line.startswith("mod:"):
             continue
         head, _, scripts = line.partition(":")
         name, *opts = head.split()
@@ -264,6 +266,27 @@ def base_config_hash() -> str:
     return next((l.partition("=")[2].strip() for l in config.splitlines() if l.startswith("seed_hash")), "?")
 
 
+def check_mod(path: Path) -> None:
+    """Refuses a sandbox whose installed mod is not the suite's: the make_test_patch.py patch of suite.txt's `mod:`
+    options, whose seed_hash (a hash of the patch) the mod's config.ini carries."""
+    line = next((l for l in path.read_text(encoding="utf-8").splitlines() if l.startswith("mod:")), None)
+    if line is None:
+        raise SystemExit(f"{path}: no mod: line")
+    SUITE.mkdir(parents=True, exist_ok=True)
+    patch = SUITE / "suite.aplas"
+    subprocess.run([PY, str(ROOT / "scripts" / "make_test_patch.py"), str(patch), *shlex.split(line[4:])],
+                   check=True, stdout=subprocess.DEVNULL)
+    wanted = json.loads(patch.read_text(encoding="utf-8"))["seed_hash"]
+    if base_config_hash() != wanted:
+        out = SUITE / "mod"
+        raise SystemExit(
+            f"the sandbox's mod {base_config_hash()} is not the suite's ({wanted}, suite.txt's mod: line). Install it "
+            f"(with the sandbox lock):\n"
+            f"  python patcher/las_ap_patch.py {patch.as_posix()} --romfs \"$(python scripts/local_paths.py romfs)\" "
+            f"--out {out.as_posix()}\n"
+            f"  bash scripts/deploy_mod.sh {out.as_posix()}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("-j", type=int, default=4, help="emulator instances (default 4)")
@@ -283,6 +306,7 @@ def main() -> None:
         for name in g.scripts:
             if not script_path(name).exists():
                 raise SystemExit(f"group {g.name}: no script {script_path(name)}")
+    check_mod(TESTS / "suite.txt")
     print(f"test module built {time.strftime('%Y-%m-%d %H:%M', time.localtime(MODULE.stat().st_mtime))}; mod "
           f"{base_config_hash()}", flush=True)
     began = time.time()

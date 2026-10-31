@@ -19,7 +19,7 @@
 #include <sstream>
 
 namespace AP::Bridge {
-    std::set<int> g_FoundSinceLoad;
+    std::set<LocationId> g_FoundSinceLoad;
 
 namespace {
     std::deque<std::string> g_Deferred;
@@ -60,18 +60,21 @@ namespace {
             int have = GetRecvCount();
             if (n == have + 1) {
                 // ITEM <n> <key> <count> <dungeon> [<location> <item name>|<sender>]
-                int location = a.size() >= 6 ? atoi(a[5].c_str()) : -1;
-                const KeptLocation* kept = FindKept(location);
-                int id = kept ? GrantKept(*kept) : GrantItem(a[2], atoi(a[3].c_str()), atoi(a[4].c_str()));
+                // -1: another player's item, or one from no location
+                std::optional<LocationId> location;
+                if (a.size() >= 6 && atoi(a[5].c_str()) >= 0) location = LocationId{atoi(a[5].c_str())};
+                const KeptLocation* kept = location ? FindKept(*location) : nullptr;
+                std::optional<ItemId> id =
+                    kept ? GrantKept(*kept) : GrantItem(a[2], atoi(a[3].c_str()), atoi(a[4].c_str()));
                 std::string names = RestAfter(line, 6);
                 size_t bar = names.find('|');
                 std::string item = bar == std::string::npos ? names : names.substr(0, bar);
                 std::string sender = bar == std::string::npos ? "" : names.substr(bar + 1);
                 // An own item found in this save since it loaded was named by the found text already.
-                bool namedWhenFound = sender.empty() && g_FoundSinceLoad.count(location) != 0 &&
-                                      AP::HasLocationName(location);
-                if (IsTrapKey(a[2])) QueueTrap(a[2], item, sender, sender.empty() ? location : -1);
-                else if (id >= 0 && !namedWhenFound) QueueShow(Show{id, item, sender, ""});
+                bool namedWhenFound = sender.empty() && location && g_FoundSinceLoad.count(*location) != 0 &&
+                                      AP::HasLocationName(*location);
+                if (IsTrapKey(a[2])) QueueTrap(a[2], item, sender, sender.empty() ? location : std::nullopt);
+                else if (id && !namedWhenFound) QueueShow(ItemShow{*id, item, sender});
                 SetRecvCount(n);
                 have = n;
             }
@@ -89,7 +92,7 @@ namespace {
             // NAME <local id> <item name>|<player name, empty for an own item>
             std::string names = RestAfter(line, 2);
             size_t bar = names.find('|');
-            AP::SetLocationName(atoi(a[1].c_str()), names.substr(0, bar),
+            AP::SetLocationName(LocationId{atoi(a[1].c_str())}, names.substr(0, bar),
                                 bar == std::string::npos ? "" : names.substr(bar + 1));
         } else if (a[0] == "CHECKED") {
             NoteServerChecks(a);

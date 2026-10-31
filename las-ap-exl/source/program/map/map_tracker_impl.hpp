@@ -3,6 +3,7 @@
 // (test_map.cpp). See map_tracker.cpp for the whole.
 #include "map/map_tracker.hpp"
 #include "ap/ap_list.hpp"
+#include "ap/location_id.hpp"
 #include "game/map.hpp"
 #include "game/stl.hpp"
 #include "game/ui.hpp"
@@ -23,7 +24,8 @@ namespace AP::MapTracker {
     // Read once at boot and never changed, the map file's data is in static storage: its texts in one character
     // buffer (each terminated) and its local ids in one flat array, which the groups, dots, chests and check names
     // refer to by offset and length (Ref).
-    using Ids = std::span<const int>;
+    using AP::LocationId;
+    using Ids = std::span<const LocationId>;
     struct Ref {
         u16 at = 0, size = 0;
     };
@@ -42,7 +44,7 @@ namespace AP::MapTracker {
     struct Chest {
         Ref level;
         float x = 0, z = 0;
-        int id = 0;
+        LocationId id{};
     };
     extern bool g_Loaded;
     extern bool g_Enabled;      // loaded and not switched off for a test (DBG map 0)
@@ -56,7 +58,7 @@ namespace AP::MapTracker {
     std::string_view GroupName(size_t group);
     Ids DotIds(size_t dot);
     // A location's name without its area (N line); false when the file has none.
-    bool FindCheckName(int id, std::string_view& name);
+    bool FindCheckName(LocationId id, std::string_view& name);
     // How often the hooks ran (DBG map): the dungeon map's flags, the dungeon icons' update, chests matched
     extern int g_FlagsCalls, g_IconCalls, g_ChestMatches;
 
@@ -70,9 +72,9 @@ namespace AP::MapTracker {
     extern Map::OverworldMap* g_MarkerPage;     // the map page whose markers hold ours (the icon setup ran for it)
 
     bool StartsWith(std::string_view s, const char* prefix);
-    bool Reachable(int id);
+    bool Reachable(LocationId id);
     // Checked, or marked skipped by the player: the map counts it as done.
-    bool Done(int id);
+    bool Done(LocationId id);
     // A group whose other name shows: a shuffled dungeon's until its flag is set.
     bool NameHidden(size_t group);
     // The look of an icon of these locations.
@@ -84,7 +86,7 @@ namespace AP::MapTracker {
     bool LookMade(size_t group, Look look);
     // The group and look a flag or label names (MAP_FLAG_PREFIX[mark]<group>), or -1.
     int ParseIcon(std::string_view name, Look& look);
-    Map::MapMarker* MarkerOf(const Game::SharedPtr& marker);
+    Map::MapMarker* MarkerOf(const Game::SharedPtr<Map::MapMarker>& marker);
     // The group and look of a map marker's row, or -1.
     int MarkerIcon(const Map::MapMarker* marker, Look& look);
     Ui::Pane* MarkerPane(Map::MapMarker* marker);
@@ -125,8 +127,8 @@ namespace AP::MapTracker {
     bool ListOpen();
     Map::MapCursor* FindCursor();
     // The look a location's row shows.
-    Look RowLook(int id);
-    std::string CheckName(int id);
+    Look RowLook(LocationId id);
+    std::string CheckName(LocationId id);
     void DropList();
     // The header's count, the rows' names, dots and tags.
     void FillList();
@@ -141,12 +143,11 @@ namespace AP::MapTracker {
 
     // ---- Dungeon dots (map_dots.cpp) ----
 
-    // A dot on the open dungeon page: its marker (a shared pointer's object and control block) and position under
-    // N_MapPosition_00, and whether its room is on the shown floor.
+    // A dot on the open dungeon page: its marker and position under N_MapPosition_00, and whether its room is on the
+    // shown floor.
     struct DotMarker {
         size_t dot;
-        Map::MapMarker* marker = nullptr;
-        void* control = nullptr;
+        Game::Shared<Map::MapMarker> marker;
         float x = 0, y = 0;
         bool onFloor = false;
     };

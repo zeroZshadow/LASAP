@@ -124,14 +124,14 @@ fresh boot to a level (2026-10-23, `screens`).
   Facial, InterestIK, Npc, NpcPhysicsTraits, Reaction, CranePrize*, Light, FishingFish, FishingSpot and
   AutoSaveLocation (`.gsheet`) and `kodama/environment.kar`.
 - `buffKind` (ITEMS.md) and `buffTime`, counted down by `0x837218` (likely).
-- Four signals (`Signal`, ACTORS.md, Nodes): `zoneChanged` (constructor `0x8326e0`, emitted by `Scene_UpdateZone`),
-  `roomChanged` (`0x833530`), `signal_750` (`0x834150`) and `signal_7a8` (`0x835000`). Subscribers reach a signal
+- Four signals (`Signal`, ACTORS.md, Nodes and Dungeon rooms): `zoneChanged` (constructor `0x8326e0`),
+  `roomChanged` (`0x833530`) and `roomBlend` (`0x834150`), which `Scene_UpdateZone` emits, and `activeZone`
+  (`0x835000`), which `Scene_SetActiveZone` emits once the zone camera's scroll ends. Subscribers reach a signal
   through its `owner` (`+0x10`), so the scene's `+0x708`, `+0x760` and `+0x7b8` other docs name are those of
-  `roomChanged` (the actors), `signal_750` (`DungeonMap_SubscribeZone` outside dungeons, the BGM's `zoneSub`) and
-  `signal_7a8` (`Actor_SubscribeZones`).
-- `zone` and `room`: -1 at construction. `field_808` and `field_80c` (-1) take the current room (`0x836c38`), are
-  read as a zone index into the room manager's `+0x208` `+0x210` and go back to -1 (`0x83661c`); likely a pending
-  room pair. `field_810` (0xff) is compared in the update (`0x836724`, `0x836c28`).
+  `roomChanged` (the actors), `roomBlend` (`DungeonMap_SubscribeZone` outside dungeons, the BGM's `zoneSub`) and
+  `activeZone` (`Actor_SubscribeZones`).
+- `zone`, `room`, `roomA`, `roomB` (-1) and `blend` (0xff) at construction: Link's zone grid cell (`ZoneGrid_Lookup`)
+  and room; `Scene_LeaveRooms` sets them back.
 - `field_674` and `field_694` are cleared by the scene's Finish (`0x838188`).
 
 ## Scheduler and phases
@@ -401,8 +401,7 @@ parameters); `SoundSlot::field_f0` and `LoadRequest`'s `+0x9c`/`+0x9e`; the load
 - Framework `field_48`, `field_4e8`, `sp_530` (only released), `field_5a0` (only cleared), the writers of `view3` and
   `restart`; Present `field_50`, `vector_58`, `field_70`.
 - GameState `vector_c0`: what its entries' first object is, and their writer; the writer of `resetResources`.
-- LevelScene `object_510`, `field_648`..`field_694`, the meaning of `field_808`..`field_810`; what `signal_750` and
-  `signal_7a8` signal (their emitters).
+- LevelScene `object_510`, `field_648`..`field_694`.
 - TitleScene `+0x82` and `+0x83`.
 - Camera `field_308`, `sp_310`, `field_320`, `field_328`; the object whose `+0x600` the shadow bounds follow.
 - PhaseQueue `id` (from an SDK import, `0x14312c0`); the exact shape of a priority group and a phase.

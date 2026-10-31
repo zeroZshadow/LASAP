@@ -25,7 +25,6 @@ namespace {
     constexpr int kKeyLayerShift = 54;
     // nn::gfx ComparisonFunction
     constexpr u8 kLessEqual = 3, kAlways = 7;
-    constexpr u16 kDepthTest = 1, kDepthWrite = 2;
     constexpr int kHeldMax = 32;
 
     std::atomic<const void*> g_Instance{nullptr};  // the popup's model instance
@@ -49,7 +48,10 @@ namespace {
         Game::DepthStencilStateInfo info;
         Game::DepthStencilStateInfo_SetDefault(&info);
         info.depthFunc = func;
-        info.flags = (info.flags & ~0xf) | kDepthTest | kDepthWrite;
+        using Game::DepthStencilFlag;
+        info.flags.Clear(DepthStencilFlag::DepthTest | DepthStencilFlag::DepthWrite | DepthStencilFlag::StencilTest |
+                         DepthStencilFlag::DepthBoundsTest);
+        info.flags.Set(DepthStencilFlag::DepthTest | DepthStencilFlag::DepthWrite);
         *state = {};
         Game::DepthStencilState_Initialize(state, device, &info);
     }

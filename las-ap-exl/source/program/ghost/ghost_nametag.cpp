@@ -120,8 +120,8 @@ namespace {
             tag.window->width = width + 2 * g_PadX;
             tag.window->height = height + 2 * g_PadY;
         }
-        tag.text->pane.flags |= kPaneDirty;
-        tag.window->flags |= kPaneDirty;
+        tag.text->pane.flags.Set(PaneFlag::Dirty);
+        tag.window->flags.Set(PaneFlag::Dirty);
     }
 
     void SetName(Tag& tag, const std::string& name) {

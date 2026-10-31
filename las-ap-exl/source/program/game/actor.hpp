@@ -1,5 +1,6 @@
 #pragma once
 // Entities, scene-graph nodes and actors (scripts/re/ACTORS.md).
+#include "flags.hpp"
 #include "game/stl.hpp"
 #include "lib.hpp"
 #include <cstddef>
@@ -29,12 +30,17 @@ namespace Game {
         float paddingScale;
     };
 
-    // Entity::flags. Active (updated and drawn) while (flags & kActiveMask) == kActive.
-    namespace EntityFlags {
-        constexpr u32 kEnabled = 1u << 0, kParentActive = 1u << 1, kInZone = 1u << 2, kInitialized = 1u << 3,
-                      kStarted = 1u << 4, kDestroyRequested = 1u << 30, kDestroyed = 1u << 31;
-        constexpr u32 kActiveMask = 0x40000017, kActive = 0x17, kGone = kDestroyRequested | kDestroyed;
-    }
+    // Entity::flags. Active (updated and drawn) while enabled, its parent active, in its zone, started and no
+    // destroy requested.
+    enum class EntityFlag : u32 {
+        Enabled = 1u << 0, ParentActive = 1u << 1, InZone = 1u << 2, Initialized = 1u << 3, Started = 1u << 4,
+        DestroyRequested = 1u << 30, Destroyed = 1u << 31,
+    };
+    FLAGS_ENUM(EntityFlag)
+    constexpr Flags<EntityFlag> kEntityActive =
+        EntityFlag::Enabled | EntityFlag::ParentActive | EntityFlag::InZone | EntityFlag::Started;
+    constexpr Flags<EntityFlag> kEntityActiveMask = kEntityActive | EntityFlag::DestroyRequested;
+    constexpr Flags<EntityFlag> kEntityGone = EntityFlag::DestroyRequested | EntityFlag::Destroyed;
     // Entity virtuals, byte offsets for CallVirtual (ACTORS.md, Classes).
     namespace EntityVirtual {
         constexpr size_t kSetup = 0x20, kOnActiveChanged = 0x50, kRegister = 0x78;
@@ -44,15 +50,15 @@ namespace Game {
     // Entity whose parent is its actor.
     struct Entity {
         const uintptr_t* vtable;
-        WeakPtr self;              // 0x8: shared-from-this
+        WeakPtr<> self;            // 0x8: shared-from-this
         char name[0x20];           // 0x18: NUL-terminated
         u64 nameLength;            // 0x38
-        u32 flags;                 // 0x40: EntityFlags
+        Flags<EntityFlag> flags;   // 0x40
         u8 pad_44[0x4];
-        WeakPtr parent;            // 0x48: an actor's container; a component's actor
+        WeakPtr<> parent;          // 0x48: an actor's container; a component's actor
 
-        bool Active() const { return (flags & EntityFlags::kActiveMask) == EntityFlags::kActive; }
-        bool Gone() const { return (flags & EntityFlags::kGone) != 0; }
+        bool Active() const { return flags.Match(kEntityActiveMask, kEntityActive); }
+        bool Gone() const { return flags.Any(kEntityGone); }
     };
     static_assert(offsetof(Entity, self) == 0x8 && offsetof(Entity, name) == 0x18);
     static_assert(offsetof(Entity, nameLength) == 0x38 && offsetof(Entity, flags) == 0x40);
@@ -79,7 +85,7 @@ namespace Game {
         Entity entity;
         Node* parent;              // 0x58: a weak_ptr
         void* parentCtrl;          // 0x60
-        Vector<SharedPtr> children;  // 0x68
+        Vector<SharedPtr<>> children;  // 0x68
         Coords coordsNew;          // 0x80: local
         Coords coords;             // 0xb0: world
         bool needsCoordUpdate;     // 0xe0
@@ -119,10 +125,10 @@ namespace Game {
         LebParam lebParams[8];     // 0xbc
         Vector<void*> links;       // 0x100: one per LEB link, owned (vtable 0x1b51088)
         Vector<void*> railLinks;   // 0x118: one per LEB rail link, owned (vtable 0x1b51068)
-        SharedPtr bfres[8];        // 0x130
-        SharedPtr drsb[8];         // 0x1b0
-        SharedPtr flowchart;       // 0x230
-        SharedPtr lebRoom;         // 0x240
+        SharedPtr<> bfres[8];      // 0x130
+        SharedPtr<> drsb[8];       // 0x1b0
+        SharedPtr<> flowchart;     // 0x230
+        SharedPtr<> lebRoom;       // 0x240
         const LebActorRecord* record;  // 0x250: its switches
         u8 pad_258[0x8];
         Vec4 spawnPos;             // 0x260
@@ -149,23 +155,23 @@ namespace Game {
     static_assert(offsetof(Actor, zoneSignalSub) == 0x2a0 && sizeof(Actor) == 0x2a8);
 
     // Actor_Create's params (0x1c0 bytes; ACTORS.md, Params): zeroed but for the id, zone and transform, they make
-    // an actor as PopEnemy does. The caller releases the shared and weak pointers and the members with destructors.
+    // an actor as PopEnemy does. The caller releases them after (ScopedActorParams).
     struct alignas(16) ActorParams {
         u64 lebKey;
         u16 actorId;               // 0x8: the actor table's index, as in LEB files
         u8 pad_a[0x2];
         s32 zone;                  // 0xc: -1 none
         LebParam lebParams[8];     // 0x10: ActorParams_Dtor2
-        SharedPtr bfres[8];        // 0x50: ActorParams_Dtor1
-        SharedPtr drsb[8];         // 0xd0: ActorParams_Dtor0
-        SharedPtr flowchart;       // 0x150
-        SharedPtr lebRoom;         // 0x160
+        SharedPtr<> bfres[8];      // 0x50: ActorParams_Dtor1
+        SharedPtr<> drsb[8];       // 0xd0: ActorParams_Dtor0
+        SharedPtr<> flowchart;     // 0x150
+        SharedPtr<> lebRoom;       // 0x160
         const LebActorRecord* lebRecord;  // 0x170
         u8 pad_178[0x8];
         Vec4 pos;                  // 0x180
         Vec4 rot;                  // 0x190: a quaternion
         Vec4 scale;                // 0x1a0
-        WeakPtr unread;            // 0x1b0: copied, never read
+        WeakPtr<> unread;          // 0x1b0: copied, never read
     };
     static_assert(offsetof(ActorParams, actorId) == 0x8 && offsetof(ActorParams, zone) == 0xc);
     static_assert(offsetof(ActorParams, lebParams) == 0x10 && offsetof(ActorParams, bfres) == 0x50);
@@ -173,6 +179,17 @@ namespace Game {
     static_assert(offsetof(ActorParams, lebRoom) == 0x160 && offsetof(ActorParams, pos) == 0x180);
     static_assert(offsetof(ActorParams, rot) == 0x190 && offsetof(ActorParams, scale) == 0x1a0);
     static_assert(offsetof(ActorParams, unread) == 0x1b0 && sizeof(ActorParams) == 0x1c0);
+
+    // Actor_Create's params as the module makes them, released when it goes as the caller of Actor_Create releases
+    // them: their shared and weak references, and their members with destructors (drsb, bfres, lebParams)
+    struct ScopedActorParams {
+        ActorParams params{};
+
+        ScopedActorParams() = default;
+        ScopedActorParams(const ScopedActorParams&) = delete;
+        ScopedActorParams& operator=(const ScopedActorParams&) = delete;
+        ~ScopedActorParams();
+    };
 
     // What a factory hands an actor class's constructor (ACTORS.md, Creation): the actor's name, its owner (a shared
     // reference) and a copy of the params. ActorArgs_Dtor releases the owner and the params' members.
@@ -191,8 +208,8 @@ namespace Game {
 
     // An entry of the actor table (ActorTable, one per actor id; ACTORS.md, Actor table).
     struct ActorTableEntry {
-        // (out actor, owner, params)
-        SharedPtrOut (*factory)(SharedPtr* owner, ActorParams* params);
+        // (owner, params) -> the actor (x8)
+        Shared<Actor> (*factory)(SharedPtr<>* owner, ActorParams* params);
         const char* resources[8];  // 0x8: .bfres, .drsb or .bfevfl names
         u8 loadGroup;              // 0x48
         u8 priority;               // 0x49: the actor's +0xac
@@ -217,8 +234,26 @@ namespace Game {
     };
     static_assert(sizeof(LebRailLink) == 0x18);
 
+    // An actor's rail link (Actor::railLinks, vtable 0x1b51068; 0x30 bytes): its LEB record's rail link and the LEB
+    // room, whose virtual +0x48 (point index) gives the rail point's position
+    struct ActorRailLink {
+        const uintptr_t* vtable;
+        LebRailLink link;          // 0x8
+        SharedPtr<> room;          // 0x20: the actor's lebRoom
+    };
+    static_assert(offsetof(ActorRailLink, link) == 0x8 && offsetof(ActorRailLink, room) == 0x20);
+    static_assert(sizeof(ActorRailLink) == 0x30);
+
     // An actor's record in a level's LEB file (ACTORS.md, LEB actor record), as the level loads it: 0x90 bytes, then
     // linkCount links, railLinkCount rail links and linkedIdCount actor indices.
+    // A node of the actor registry (ActorRegistry_ptr, an unordered map by LEB key)
+    struct ActorRegistryNode {
+        ActorRegistryNode* next;
+        u64 hash;
+        u64 key;
+        SharedPtr<Actor> actor;
+    };
+
     struct LebActorRecord {
         u64 key;
         u32 nameOffset;            // 0x8

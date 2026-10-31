@@ -152,7 +152,13 @@ Task_OnFinishedIface 0x08d2f120 f task vtable +0x10: this + 0x30 (the signal's c
 Task_IsFinished 0x08d2f130 f task vtable +0x18: +0x80
 Task_Order 0x08d2fa00 f task vtable +0x38: 0 (Scheduler_Add's order)
 LevelScene_Ctor 0x08d39fa0 f (scene, SharedPtr* parent): save manager +0x90, room manager +0x618, sheets +0x628, signals +0x6a0/+0x6f8/+0x750/+0x7a8, zone/room +0x800
-Scene_UpdateZone 0x08d3a270 f per frame: Link's room (scene +0x800 zone, +0x804 room); room signal +0x6f8, zone signal +0x6a0, RoomManager_VisitZone
+Scene_UpdateZone 0x08d3a270 f per frame: Link's zone grid cell (ZoneGrid_Lookup: scene +0x800 zone, +0x808/+0x80c rooms, +0x810 blend); room signal +0x6f8, roomBlend +0x750, zone signal +0x6a0, RoomManager_VisitZone
+ZoneGrid_Lookup 0x08dee680 f (grid, u32* roomA, u32* roomB, u8* blend, u32* zone, Vec2* xz) -> bool: level data +0x230; 1.5-unit cells of 8 bytes {u32 zone, u8 blend, u8 roomA, u8 roomB}
+RoomManager_FindZoneRoom 0x08d69db0 f (manager, zone) -> the room in +0x210 whose +0x60 is that zone
+Scene_LeaveRooms 0x08d49380 f (scene): room signal (null), roomBlend (null, null, 1.0), zone signal (null); zone, rooms and blend back to -1
+Scene_SetActiveZone 0x08d49560 f (scene, entered zone, left zone): emits activeZone +0x7a8, then the room manager reloads the rooms of other zones whose area +0xc0 is set (RoomManager_ReloadOtherZones)
+RoomManager_ReloadOtherZones 0x08d6a130 f (manager, zone): Room_Reload on each room not of that zone whose area +0xc0 is set
+ZoneCamera_Update 0x085cbfd0 f vtable 0x0a05e910 +0x28: camera follow; once its mode +0x158 < 3 and its zones +0x14c (entered) and +0x150 differ, Scene_SetActiveZone
 LevelScene_Dtor 0x08d48ea0 f
 PlayTask_Ctor 0x08d56550 f the level's "Play" task (0x410 bytes, vtable 0x0a0c7850)
 RoomManager_StartLevelLoad 0x08d58bf0 f vtable +0x50
@@ -442,10 +448,10 @@ Event_AddChara 0x08d137d0 f (event, EventChara sp*): the chara joins the event u
 Event_HasChara 0x08d1eac0 f (event, EventChara sp*): the chara is one of the event's actors (map +0x78/+0x80)
 PanelQuery_Stone4 0x08d157e0 f event query lambda: save +0x5093 >= 5 and chamber stone 4 owned
 GameControl_FindAction 0x08d180e0 l leaf after udf, no prologue: GameControl action name -> std::function vtable
-GameControl_SetLevelJump 0x08d1f950 f (gc, StringView* level, StringView* locator, Vec2* offset): +0xa8/+0xe8 level, +0xf0/+0x130 locator, +0x140 offset
-GameControl_ProcessLevelJump 0x08d1fa80 f (gc): $RETRY, $QUIT, $ENDING, else LevelManager_LevelJump or LevelManager_WarpInLevel; a bl target after a noreturn call
-EventManager_Request 0x08d232e0 f (out, manager, event*)
-GameControl_Update 0x08d24bc0 f calls GameControl_ProcessLevelJump while a locator is pending (+0x130)
+Event_SetLevelJump 0x08d1f950 f (event, StringView* level, StringView* locator, offset*): the event's pending jump, +0xa8/+0xe8 level, +0xf0/+0x130 locator, +0x140 offset
+Event_ProcessLevelJump 0x08d1fa80 f (event): the pending jump at the request's end: $RETRY, $QUIT, $ENDING, else LevelManager_LevelJump or LevelManager_WarpInLevel; a bl target after a noreturn call
+EventManager_Request 0x08d232e0 f (out request sp, manager, event sp*): EventManager_RequestImpl
+EventManager_OnRequestFinished 0x08d24bc0 f lambda 0x0a0c5fa8 {manager, request} on the request's finished signal: eventEnded, pop, Event_ProcessLevelJump, cancelAll, the next request or queueEnded
 CompanionEventEntry 0x08d26c20 f picks <entry>_Ghost, <entry>_Marin or {0}_Companion when the flowchart has it
 Datasheets_Load 0x08d3cb30 f boot: loads Npc.gsheet and NpcPhysicsTraits.gsheet into 0x1cb8360
 RoomManager_Update 0x08d569b0 f (manager): per frame in state 1 (+0x3f8); calls RoomManager_UpdateRooms when the camera system's +0x700 bit 3 is set
@@ -1664,7 +1670,7 @@ DamageColComp_vtable 0x0a05f8b0 l
 ReactionRecord_Copy 0x085b9350 f (record, attacker record*): copies the hit record (weak pointers, count +0x1da0, entries of 0x3b0 from +0x20); the reaction comp's +0x68
 ReactionRecord_Find 0x085b9ab0 f (record, hit*): index of the entry whose weak pointers +0x0 and +0x10 equal the hit's; adds nothing; -1 when none
 FindComponentIf 0x085f1ca0 f (out sp*, actor, std::function<bool(sp*)>*): Actor_ForEachComponent until the predicate holds (a per-file copy)
-EventAction_ChannelTime 0x08610120 f an event action with the parameters channel, time, restart, index on its actor; its component found through the parent's components (0x085fc430) (guess: an animation channel action)
+EventAction_ChannelTime 0x08610120 f PlayTailorOtherChannelEx's step (channel, time, restart, index): EventChara_PlayTailorOther
 AttackColComp_Ctor 0x085d2cf0 f (comp, ...): attack collision comp, 0xf140 bytes; hit records at +0x2f0; std::function +0xf100
 AttackColComp_vtable 0x0a05eef8 l
 AttackColComp_Make 0x08547220 f (out sp*, actor, StringView* name, ...): makes and attaches an AttackColComp (DeguArmos:AttkColCom2)
@@ -1708,3 +1714,72 @@ PlayerState_Swim_Exit 0x092e4670 f state 30 vtable +0x30
 PlayerState_Swim_Move 0x092e4bb0 f Player_Move with the animation's root motion; in-water test; velocity +0x190, useGravity off
 Node_SetWorldRotation 0x094bb2f0 f (node, Quat*): coordsNew.rot from a world rotation, Node_MarkDirty (likely)
 CharCtrlComp_OnTransformChanged 0x095bab60 f (closure): outside Move, the controller's foot position to the node's world position
+EventManager_Get 0x08d20070 f (): EventManager_ptr, made on first use
+EventManager_Ctor 0x08d20100 f (manager): 0x1e0 bytes; signals queueStarted +0x28, queueEnded +0x80, eventStarted +0xd8, eventEnded +0x130; request deque +0x1a8
+EventRequest_Cancel 0x08d232b0 f request vtable +0x20: sets cancelled (+0x80) once; finishes the event's task unless event +0x181
+EventManager_RequestImpl 0x08d23310 f (out, manager, event sp*, x3): needs the room manager in state 1; an EventRequest (0x90, vtable 0x0a0c6240) to the queue; queueStarted and StartRequest when it was empty
+EventManager_StartRequest 0x08d23d20 f (out, request): eventStarted, Flow_UnbindAll, Flow_Bind, Flow_Start (the FlowchartContext:Run() task into event +0x40)
+EventActorMap_AddChara 0x08d13f60 f (event, evhb sp*, StringView* name, StringView* subName, chara sp*): the chara under its name, its sub name and each evhb ancestor
+EventActorMap_Add 0x0958c7f0 f (map, StringView* name, StringView* subName, user data): an actor map entry (0x90: user data, sub map +0x8, action lookup +0x30, query lookup +0x60)
+Event_AddLink 0x08d12bb0 f (event): Event_AddChara with Link's chara (player +0x2f8); Event_Prepare's
+Event_HasCompanionActor 0x08d12d90 f (event) -> bool: a flowchart actor is named companion
+Event_AddCompanion 0x08d13160 f (event): the current companion's chara
+EventChara_Ctor 0x085f5730 f (chara, ComponentArgs*, StringView* name, StringView* subName): 0x520 bytes, vtable 0x0a060208; action lookup +0x400, query lookup +0x430
+Flow_FromContext 0x09590070 f (out flow sp, FlowchartContext*): locks the weak pointer the context's +0x78 points to (flow +0x0)
+Flow_Bind 0x0958d270 f (actor map, flow sp*): binds the flowchart's actors, actions and queries through lambdas 0x10898b0, 0x10896a0, 0x1089480
+Flow_UnbindAll 0x09594690 f (flow): clears every ActorBinding of the context's FlowchartObjs and the flow's callback maps
+Flow_Start 0x09594a40 f (out task sp, flow sp*, scheduler, metadata sp*): FlowchartContext::Start at the entry, then the task FlowchartContext:Run()
+Flow_CancelCallback 0x095950d0 f lambda 0x0a150788 {flow}: the run task's cancel: clears the context once (+0x1b8), finishes the pending waiters (+0x188)
+Flow_RunTask 0x09595470 f lambda 0x0a150740 {flow}: the FlowchartContext:Run() task's update: running while the context plays; then finishes the pending waiters (+0x188) and ends when none is left
+Flow_BindActions 0x09590160 f stores each action's step in the flow's +0x138 map and Flow_RunAction as its evfl handler
+Flow_RunAction 0x09592300 f evfl action handler (ActionArg*, ActionDoneHandler*): the step from +0x138 called once; no waiter or a finished one: done at once; else the waiter into +0x188 and Flow_ActionDone on its finished signal
+Flow_ActionDone 0x09593a20 f functor vtable 0x0a1506f8 {flow, done handler, waiter}: the node done (state 4), the context processed, the waiter out of +0x188
+FunctionTask_Make 0x085b43a0 f (out sp, scheduler, std::function* update, std::function* cancel, u32, name*): a 0x100-byte task (vtable 0x0a05d520)
+EventFlow_ParseFloat 0x095a3ad0 f (args, StringView* name) -> float: an event action's float argument by name
+EventFlow_ParseString 0x095a3b80 f (out StringView, args, StringView* name): an event action's string argument by name
+Player_FindAction 0x0926e3e0 f Link's action lookup (lambda 0x0a11c228 at chara +0x400): Heal, GenericItemGetSequence, GenericItemGetSequenceByKey, AddDeadCounter, ...
+Actor_FindComponentIf 0x094ad920 f (out sp, actor, std::function<bool(sp*)>*): Actor_ForEachComponent until the predicate holds
+FindComponent_EventChara 0x08602420 f (out sp, actor, std::function predicate*): the predicate and IsA(EventChara), then the result's type checked
+FindComponent_DeferredInit 0x08556000 f (out sp, actor, std::function predicate*): Actor_Create's, for its ready task
+Component_IsA 0x094af7c0 f component vtable +0x68 (component, type id): its own id 0x0a1af328 or Entity's 0x0a1af338
+Component_TypeId 0x094af8a0 f component vtable +0x70: the address of its type object static
+EventChara_IsA 0x085f6930 f EventChara vtable +0x68
+EventChara_TypeId 0x085f6a70 f EventChara vtable +0x70: 0x0a1b0cf8
+EventManager_MakeCameras 0x08d27340 f (manager): from Framework_Init; two EventCamera actors in the actor system, EventCameraLocator_1P/_2P, into +0x188/+0x198
+Interaction_Update 0x085ecbe0 f per frame: counts the interaction cooldown (0x0a1b0c88) down by the frame time; takes the pending target
+Interaction_Cooldown 0x0a1b0c88 l float: 0.5 s after an event queue ends (EventManager_OnRequestFinished); Interaction_Target gives none while above 0
+EventCamera_Ctor 0x08ce06a0 f (camera, args, u32 id at +0x2a4): an Actor with a transform, then 10, 0.349, 0.1, 4096, 16:9 (likely fov, near, far, aspect); the event manager's +0x188/+0x198
+EventCamera_vtable 0x0a0bfce8 l
+EventChara_FindAction 0x086089a0 f the generic actions (TalkKeep, PlayAnimation, LookAt*, Aim*, MoveTo*, Trail*, Warp*, SetFacialExpression, ...); EventActorMap_AddChara's action lookup (0x08d14e70) calls it
+EventChara_WrapStep 0x0860b190 f functor vtable 0x0a060b20: emits the chara's +0x3a8 signal, then calls the wrapped step
+EventChara_PlayTailorOther 0x085fc430 f (out waiter, chara, StrView* value, ...): hook 2, else Tailor_Play on the owner's channel Other and a waiting task
+EventChara_StopTailorOther 0x085fce30 f (chara, StrView* value): hook 3, else Tailor_StopValue on the owner's channel Other
+EventChara_SetTailorProperty 0x085fd530 f (chara, u32 index, value*): hook 4, else the owner's Tailor component (+0x68)
+EventChara_SetTailorOtherHooks 0x08787c90 f (chara, std::function* play, std::function* stop): assigns hooks 2 and 3
+EventChara_PointPosition 0x08600bb0 f (actor sp*, StrView* name, ...) -> Vec: the chara's +0x4d0 hook (Link), else the name in the actor's model
+EventChara_CameraAnimation 0x08615eb0 f the Play*OriginCameraAnimation steps' camera from the chara's +0x4a0 hook (by name); nothing without it
+EventChara_SetPose 0x08604460 f (chara, Vec* pos, Quat* rot): hook 9, else the owner's root node position and rotation; the Warp actions
+EventChara_TrailRail 0x08604840 f (out waiter, chara, actor sp*, ...): hook 8 while the target actor lives; the Trail*Rail actions
+EventChara_SetGravity 0x086049d0 f (chara, bool): hook 10, else a default
+EventChara_ResetVelocity 0x08604db0 f (chara): hook 11, else a default
+EventChara_Start 0x085f6230 f EventChara vtable +0x20: connects to eventStarted (0x085f7d40: looking on for a chara in the event) and eventEnded (0x085f7960: look and turn reset); handles +0x510/+0x514
+EventChara_Register 0x085f6ad0 f EventChara vtable +0x78: flags |= 0x100, TaskQueue_Add of EventChara_LookAndTurn
+EventChara_LookAndTurn 0x085f70f0 f per-frame task: the look target (+0x460) into the look-at hook (12) while +0x50c, the turn hook (7) at rate +0x500 while +0x508 and not +0x509
+NpcChara_PlayAnimation 0x08e671e0 f EventChara hook 0 of an NPC (out waiter, name, blend): @IDLE/@TALK to virtual +0xd8/+0xe0, else +0xc0
+NpcComponent_PlayAnimationWaiter 0x08e4c550 f vtable +0xc0 (out waiter, blend, component, name, bool): NpcComponent_PlayAnimation and a waiter for its end
+NpcComponent_MoveTo 0x08e4d710 f vtable +0xf8 (out task, speed mode, component, target, mode): walk/run animation (row +0x50/+0x60), a move task (0x08e6ef20)
+PlayerChara_PlayAnimation 0x0924a3e0 f EventChara hook 0 of Link: wait, $death, $resurrection, else PlayerAnimation_PlayByName; a waiter
+PlayerChara_Facial 0x09249540 f EventChara hook 5 of Link (name): a facial by name
+PlayerChara_MoveTo 0x09249fb0 f EventChara hook 6 of Link (target, u8 mode, float): Player_MoveTo, mode 0 at 2.25, else 4.5
+PlayerChara_TurnTo 0x09249870 f EventChara hook 7 of Link (Vec* target, float* rate)
+PlayerChara_LookAt 0x092495e0 f EventChara hook 12 of Link (u8 mode, Vec* target): Player +0x1ac0 mode, +0x19e0 target
+NpcChara_LookTarget 0x08600400 f EventChara +0x460 of an NPC: the held node's world position, valid unless its actor is being destroyed
+DeferredInit_OnLoaded 0x08541850 f lambda (vtable 0x0a056360) {actor weak, resource handle, component}: the flowchart into actor +0x2c8 and ready (+0x58), or Entity_Destroy without one
+EventChara_vtable 0x0a060208 l EventChara component (0x520 bytes)
+DeferredInit_vtable 0x0a056408 l DeferredInit component (0x60 bytes): +0x58 ready
+TailorPlayerComponent_vtable 0x0a12a068 l the tailor player component; type id 0x0a1af308
+TypeId_Entity 0x0a1af338 l Entity's type object static: its address is the type id; holds vtable 0x0a054908 (isA: equal)
+TypeId_Component 0x0a1af328 l Component's type object static; holds vtable 0x0a0551f8 (isA: equal, else Entity's)
+TypeId_EventChara 0x0a1b0cf8 l EventChara's type object static; holds 0x0a0551e0, the isA of every direct Component subclass (identical code folding)
+TypeId_DeferredInit 0x0a1af4e0 l DeferredInit's type object static
+TypeId_TailorPlayer 0x0a1af308 l the tailor player component's type object static

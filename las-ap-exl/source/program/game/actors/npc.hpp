@@ -8,6 +8,7 @@
 #include <cstddef>
 
 namespace Game::Actors {
+    struct BodyCollision; struct WaterEvent;
     // Facial.gsheet FacialSettings: the open and close random ranges of a blink or a lip sync.
     struct FacialSettings {
         SheetString key;
@@ -64,8 +65,8 @@ namespace Game::Actors {
         u8 pad_5c[0x4];
         Function onChangeA;        // 0x60: the constructor's
         Function onChangeB;        // 0x90: NpcComponent_MakeFacial's
-        SharedPtr eyeBlink;        // 0xc0: EyeBlinkControl (0xc0 bytes), when an expression has blink settings
-        SharedPtr lipSync;         // 0xd0: LipSync (0x100 bytes), when an expression has lip sync settings
+        SharedPtr<> eyeBlink;      // 0xc0: EyeBlinkControl (0xc0 bytes), when an expression has blink settings
+        SharedPtr<> lipSync;       // 0xd0: LipSync (0x100 bytes), when an expression has lip sync settings
         void* sheet;               // 0xe0: a shared_ptr keeping Facial.gsheet alive
         void* sheetCtrl;           // 0xe8
         const FacialRow* row;      // 0xf0
@@ -95,7 +96,7 @@ namespace Game::Actors {
 
     // An animSettings entry and the shared_ptr keeping Npc.gsheet alive (NpcComponent_AnimSetting's result).
     struct AnimSettingRef {
-        SharedPtr sheet;
+        SharedPtr<> sheet;
         const NpcAnimSetting* setting;  // 0x10
     };
     static_assert(sizeof(AnimSettingRef) == 0x18);
@@ -104,7 +105,7 @@ namespace Game::Actors {
     // to 13 name LEB links 0 to 3).
     struct NpcTriggerLink {
         u64 linkIndex;
-        SharedPtr area;            // 0x8: AreaEventBox, AreaEventSphere, AreaEventBoxWithoutJump or AreaLevelOpen
+        SharedPtr<> area;          // 0x8: AreaEventBox, AreaEventSphere, AreaEventBoxWithoutJump or AreaLevelOpen
         u32 handle;                // 0x18: on the area's signal; 0 for AreaLevelOpen (a function of its own)
         u8 pad_1c[0x4];
     };
@@ -130,43 +131,43 @@ namespace Game::Actors {
         Entity entity;
         Actor* owner;              // 0x58: a shared_ptr; null unless the owner is an actor
         void* ownerCtrl;           // 0x60
-        SharedPtr parentNode;      // 0x68: the actor's root
-        SharedPtr npcSheet;        // 0x78: keeps Npc.gsheet alive
+        SharedPtr<> parentNode;    // 0x68: the actor's root
+        SharedPtr<> npcSheet;      // 0x78: keeps Npc.gsheet alive
         const void* row;           // 0x88: the Npc.gsheet row (kNpcRowSize bytes); null destroys the component
         s32 layoutId;              // 0x90: the owner's int LEB parameter the row's actorArgs.layoutID names
         u8 pad_94[0x4];
         FixedString<0x20> identifier;  // 0x98: the string LEB parameter the row's actorArgs.identifier names
         u32 eventSubA;             // 0xc0: the event manager's signal handles
         u32 eventSubB;             // 0xc4
-        SharedPtr task;            // 0xc8
-        SharedPtr model;           // 0xd8: the skeletal model component (virtual +0x200)
+        SharedPtr<> task;          // 0xc8
+        SharedPtr<> model;         // 0xd8: the skeletal model component (virtual +0x200)
         void* animator;            // 0xe8: a shared_ptr (virtual +0x208): a SkeletalAnimation, or a LayeredAnimation
         void* animatorCtrl;        // 0xf0
-        SharedPtr collision;       // 0xf8: +0x210
-        SharedPtr damageCollision; // 0x108: +0x218
-        SharedPtr doAction;        // 0x118: +0x228
-        SharedPtr eventChara;      // 0x128: +0x220
-        SharedPtr ocarinaReaction; // 0x138: +0x230, a 0x1b0-byte Node; with the row's ocarina.enable
-        SharedPtr lookAtTarget;    // 0x148: +0x238, a 0x150-byte Node; when the row's lookAtOffsetY is not 0
-        SharedPtr tailorPlayer;    // 0x158: +0x240
-        SharedPtr waterEvent;      // 0x168: +0x248, with the row's graphics.waterChannel.enable
-        SharedPtr groundAttr;      // 0x178: +0x250
-        SharedPtr tailorWaterSurface;  // 0x188: +0x258, a 0x190-byte Node; with waterChannel.enable
+        SharedPtr<BodyCollision> collision;  // 0xf8: +0x210
+        SharedPtr<> damageCollision; // 0x108: +0x218
+        SharedPtr<> doAction;      // 0x118: +0x228
+        SharedPtr<> eventChara;    // 0x128: +0x220
+        SharedPtr<> ocarinaReaction; // 0x138: +0x230, a 0x1b0-byte Node; with the row's ocarina.enable
+        SharedPtr<> lookAtTarget;  // 0x148: +0x238, a 0x150-byte Node; when the row's lookAtOffsetY is not 0
+        SharedPtr<> tailorPlayer;  // 0x158: +0x240
+        SharedPtr<WaterEvent> waterEvent;  // 0x168: +0x248, with the row's graphics.waterChannel.enable
+        SharedPtr<> groundAttr;    // 0x178: +0x250
+        SharedPtr<> tailorWaterSurface;  // 0x188: +0x258, a 0x190-byte Node; with waterChannel.enable
         FacialControl* facial;     // 0x198: a shared_ptr (+0x260)
         void* facialCtrl;          // 0x1a0
-        SharedPtr aimControl;      // 0x1a8: +0x268, 0x130 bytes; when the row's graphics.interestIK is set
+        SharedPtr<> aimControl;    // 0x1a8: +0x268, 0x130 bytes; when the row's graphics.interestIK is set
         MaterialAnimComponent* materialAnim;  // 0x1b8: a shared_ptr (+0x270)
         void* materialAnimCtrl;    // 0x1c0
-        SharedPtr shellBeacon;     // 0x1c8: +0x278, ShellBeaconComponent; when the row's shellSensor has entries
-        SharedPtr readySignal;     // 0x1d8: emitted once the components are built
-        SharedPtr modelResource;   // 0x1e8: the bfres; NpcAnimation_Get binds animations from it
-        SharedPtr flowchart;       // 0x1f8
-        SharedPtr tailorResource;  // 0x208: the drsb
+        SharedPtr<> shellBeacon;   // 0x1c8: +0x278, ShellBeaconComponent; when the row's shellSensor has entries
+        SharedPtr<> readySignal;   // 0x1d8: emitted once the components are built
+        SharedPtr<> modelResource; // 0x1e8: the bfres; NpcAnimation_Get binds animations from it
+        SharedPtr<> flowchart;     // 0x1f8
+        SharedPtr<> tailorResource;  // 0x208: the drsb
         UnorderedMap animationCache;  // 0x218: NpcAnimation_Get's bound animations by name
         UnorderedMap animSettingCache;  // 0x240: SharedString name to AnimSettingRef (NpcComponent_AnimSetting)
-        SharedPtr animSettingSheet;  // 0x268: keeps Npc.gsheet alive for animSetting
+        SharedPtr<> animSettingSheet;  // 0x268: keeps Npc.gsheet alive for animSetting
         const NpcAnimSetting* animSetting;  // 0x278: the playing animation's (NpcComponent_PlayAnimation)
-        SharedPtr event_280;       // 0x280: an event of the flowchart
+        SharedPtr<> event_280;     // 0x280: an event of the flowchart
         Vector<NpcTriggerLink> triggerLinks;  // 0x290: the event-trigger areas it is connected to
         bool triggersPending;      // 0x2a8: built before Start; Start connects the triggers
         bool popRejected;          // 0x2a9: the pop conditions failed, so the ready signal came without a build

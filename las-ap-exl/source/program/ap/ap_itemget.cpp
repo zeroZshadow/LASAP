@@ -7,6 +7,7 @@
 #include "ap/ap_text.hpp"
 #include "config/config.hpp"
 #include "game/data/inventory.hpp"
+#include "game/event.hpp"
 #include "game/framework.hpp"
 #include "game/hooks/inventory.hpp"
 #include "game/sym.hpp"
@@ -15,6 +16,8 @@
 #include <algorithm>
 #include <cstring>
 #include <deque>
+#include <utility>
+#include <variant>
 
 namespace AP::Bridge {
     u64 g_ItemGetAt = 0;
@@ -24,8 +27,7 @@ namespace {
     using Game::SharedPtr;
     using Game::StrView;
 
-    constexpr u64 kItemGetTimeoutMs = 120000;
-    constexpr u64 kItemEventStartMs = 3000;      // a requested item event that has not started by then is retried
+    constexpr u64 kItemGetTimeoutMs = 120000;    // an item event tracked longer than this is left to run on its own
     constexpr size_t kShowQueueMax = 16;
     constexpr size_t kShowFillerMax = 3;          // with this many waiting, filler is no longer shown
     constexpr u64 kFreeSettleMs = 600;            // the player must be free this long before an item-get starts
@@ -40,27 +42,41 @@ namespace {
     u64 g_FreeSince = 0;
     u64 g_ItemEventEnded = 0;   // when the last item event ended, so a queued item-get follows it sooner
     bool g_WasFree = false;
+    // A received trap waiting to play its effect (key) as an event, named by item; location: the local id of the
+    // location that held it, -1 for another slot's or none
+    struct TrapShow { std::string key; std::string item; std::string sender; std::optional<LocationId> location; };
+    using Show = std::variant<ItemShow, TrapShow>;
     std::deque<Show> g_ShowQueue;
-    Show g_Showing{};  // what the current event shows; DBG itemget sets id -1 and no trap, which is not retried
-    // A received item plays as the Common.bfevfl event AP::ITEM_EVENT_ENTRY, a trap as its own event: requested,
-    // then running until the player is free again.
+    // What the current event or popup shows; none for DBG itemget's event, which is not retried
+    std::optional<Show> g_Showing;
+
+    // The queue's front when it is an item
+    const ItemShow* FrontItem() {
+        return g_ShowQueue.empty() ? nullptr : std::get_if<ItemShow>(&g_ShowQueue.front());
+    }
+    // A received item plays as the Common.bfevfl event AP::ITEM_EVENT_ENTRY, a trap as its own event: requested
+    // (queued behind other events), running once its request is at the front of the event manager's queue, until
+    // the request finishes (re/EVENTS.md, Requests).
     enum class ItemEvent { None, Requested, Running };
     ItemEvent g_ItemEvent = ItemEvent::None;
+    Game::Shared<Game::Event::EventRequest> g_ItemRequest;  // the item event's request
     u64 g_ItemEventSince = 0;
-    int g_ItemEventId = -1;            // what the event's item-get shows instead of the placeholder
+    // What the event's item-get shows instead of the placeholder; none for a trap's event, which has no item-get
+    std::optional<ItemId> g_ItemEventId;
     // The item event's item-get is still to be swapped (an item, not a trap). Kept apart from the event state, which
-    // turns Running as soon as the event takes the player, before its item-get starts.
+    // turns Running as soon as the event starts, before its item-get does.
     bool g_ItemEventSwap = false;
-    int g_ItemEventShown = -1;         // the item the last item event's item-get showed; -1 until the swap (STATE)
+    std::optional<ItemId> g_ItemEventShown;  // the item the last item event's item-get showed, from the swap (STATE)
     std::string g_ItemEventMessage;    // and its message entry
 
-    // Plays an item-get of itemId with that message entry ("" for the item's own text) as the item event.
-    bool StartItemEvent(int itemId, const std::string& messageEntry) {
-        g_ItemEventId = itemId;
+    // Plays an item-get of the item with that message entry ("" for the item's own text) as the item event.
+    bool StartItemEvent(ItemId item, const std::string& messageEntry) {
+        g_ItemEventId = item;
         g_ItemEventMessage = messageEntry;
-        g_ItemEventShown = -1;
-        Logging.Log("[AP] item event %d request", itemId);
-        if (!RequestCommonEvent(AP::ITEM_EVENT_ENTRY)) return false;
+        g_ItemEventShown.reset();
+        Logging.Log("[AP] item event %d request", std::to_underlying(item));
+        g_ItemRequest = RequestCommonEvent(AP::ITEM_EVENT_ENTRY);
+        if (!g_ItemRequest) return false;
         g_ItemEventSwap = true;
         g_ItemEvent = ItemEvent::Requested;
         g_ItemEventSince = NowMs();
@@ -77,7 +93,7 @@ namespace {
 
     // Plays a trap's effect as its event. In the normal damage mode a trap leaves at least a quarter heart. The Zol
     // Trap lets out Zols instead, and costs one heart only when none could appear.
-    bool StartTrapEvent(const std::string& key, int location) {
+    bool StartTrapEvent(const std::string& key, std::optional<LocationId> location) {
         int damage = TrapEventDamage(key);
         auto* items = Game::Data::Inventory::Items();
         if (damage < 0) {
@@ -86,10 +102,11 @@ namespace {
         }
         if (global_config.damage.mode == DamageMode::Normal && items->Health <= damage) items->Health = damage + 1;
         std::string entry = std::string(AP::TRAP_EVENT_PREFIX) + key;
-        g_ItemEventId = -1;
+        g_ItemEventId.reset();
         g_ItemEventSwap = false;
         Logging.Log("[AP] trap event %s request", key.c_str());
-        if (!RequestCommonEvent(entry.c_str())) return false;
+        g_ItemRequest = RequestCommonEvent(entry.c_str());
+        if (!g_ItemRequest) return false;
         g_ItemEvent = ItemEvent::Requested;
         g_ItemEventSince = NowMs();
         return true;
@@ -97,67 +114,76 @@ namespace {
 
     // Items whose own text tells where they came from in the vanilla game (the Boomerang's trade, the Mad Batter's
     // capacity upgrades); they show the AP text instead.
-    bool HasSourceText(int itemId) {
-        return itemId == 7 || itemId == 123 || itemId == 124 || itemId == 125;
+    bool HasSourceText(ItemId item) {
+        return item == ItemId::Boomerang || item == ItemId::MagicPowderMaxUp || item == ItemId::BombMaxUp ||
+               item == ItemId::ArrowMaxUp;
     }
 
-    bool IsFiller(int itemId) {
+    bool IsFiller(ItemId item) {
         // Rupees, ammo, hearts and other drops.
-        return itemId == 4 || itemId == 11 || itemId == 60 || itemId >= 100;
+        return item == ItemId::Bomb || item == ItemId::MagicPowder || item == ItemId::Arrow || item >= ItemId::Heart;
     }
 
     // Names of the game's items that Link can find outside AP locations (Instant Pickups' toast), as the world names
     // them; any other shows its Items.gsheet key.
-    struct ItemName { int id; const char* name; };
+    struct ItemName { ItemId id; const char* name; };
     constexpr ItemName kItemNames[] = {
-        {4, "Bombs"}, {11, "Magic Powder"}, {17, "Green Tunic"}, {18, "Red Tunic"}, {19, "Blue Tunic"},
-        {21, "Secret Medicine"}, {22, "Secret Seashell"}, {58, "Piece of Heart"}, {59, "Heart Container"},
-        {60, "Arrows"}, {61, "Apple"}, {62, "Green Apple"}, {100, "Heart"}, {101, "1 Rupee"}, {102, "5 Rupees"},
-        {104, "20 Rupees"}, {105, "50 Rupees"}, {106, "100 Rupees"}, {108, "300 Rupees"}, {110, "Fairy"},
-        {113, "Bottle"}, {114, "Chamber Stone"}, {120, "Ballad of the Wind Fish"}, {121, "Manbo's Mambo"},
-        {122, "Frog's Song of Soul"}, {126, "Fairy"},
+        {ItemId::Bomb, "Bombs"}, {ItemId::MagicPowder, "Magic Powder"}, {ItemId::ClothesGreen, "Green Tunic"},
+        {ItemId::ClothesRed, "Red Tunic"}, {ItemId::ClothesBlue, "Blue Tunic"},
+        {ItemId::SecretMedicine, "Secret Medicine"}, {ItemId::Seashell, "Secret Seashell"},
+        {ItemId::HeartPiece, "Piece of Heart"}, {ItemId::HeartContainer, "Heart Container"},
+        {ItemId::Arrow, "Arrows"}, {ItemId::Apple, "Apple"}, {ItemId::GreenApple, "Green Apple"},
+        {ItemId::Heart, "Heart"}, {ItemId::Rupee1, "1 Rupee"}, {ItemId::Rupee5, "5 Rupees"},
+        {ItemId::Rupee20, "20 Rupees"}, {ItemId::Rupee50, "50 Rupees"}, {ItemId::Rupee100, "100 Rupees"},
+        {ItemId::Rupee300, "300 Rupees"}, {ItemId::Fairy, "Fairy"}, {ItemId::Bottle, "Bottle"},
+        {ItemId::PanelDungeonPiece, "Chamber Stone"}, {ItemId::SongWindFish, "Ballad of the Wind Fish"},
+        {ItemId::SongMambo, "Manbo's Mambo"}, {ItemId::SongSoul, "Frog's Song of Soul"},
+        {ItemId::BottleFairy, "Fairy"},
     };
 
-    std::string ItemDisplayName(int itemId) {
+    std::string ItemDisplayName(ItemId item) {
         for (const auto& n : kItemNames) {
-            if (n.id == itemId) return n.name;
+            if (n.id == item) return n.name;
         }
-        auto it = Inventory::kItemNames.find(itemId);
-        return it != Inventory::kItemNames.end() ? it->second : std::to_string(itemId);
+        auto it = Inventory::kItemNames.find(item);
+        return it != Inventory::kItemNames.end() ? it->second : ItemText(item);
     }
 
     // Instant Pickups: a find shows before the received items that wait, after the finds before it.
-    void QueueFound(const Show& show) {
-        auto it = std::find_if(g_ShowQueue.begin(), g_ShowQueue.end(), [](const Show& s) { return !s.found; });
+    void QueueFound(const ItemShow& show) {
+        auto it = std::find_if(g_ShowQueue.begin(), g_ShowQueue.end(), [](const Show& s) {
+            const auto* item = std::get_if<ItemShow>(&s);
+            return item == nullptr || !item->found;
+        });
         g_ShowQueue.insert(it, show);
     }
 
-    // True while a received item's event is requested or running.
-    bool ItemEventActive(bool free) {
+    // True while a received item's event is requested or running. A request waits in the queue until its event runs
+    // or the game cancels it (a level jump cancels the queue), and is then retried; a running event times out.
+    bool ItemEventActive() {
+        using Game::Event::EventRequest;
+        if (g_ItemEvent == ItemEvent::None) return false;
+        const EventRequest* request = g_ItemRequest.get();
         u64 since = NowMs() - g_ItemEventSince;
-        switch (g_ItemEvent) {
-            case ItemEvent::None:
-                return false;
-            case ItemEvent::Requested:
-                // It runs once it takes the player (a trap) or its item-get starts (the hook).
-                if (!free) {
-                    g_ItemEvent = ItemEvent::Running;
-                    return true;
-                }
-                if (since < kItemEventStartMs) return true;
-                Logging.Log("[AP] item event %d did not start", g_ItemEventId);
-                if ((g_Showing.id >= 0 || !g_Showing.trap.empty()) && ++g_ItemEventTry < kItemEventTries) {
-                    g_ShowQueue.push_front(g_Showing);
-                }
-                else g_ItemEventTry = 0;
-                break;
-            case ItemEvent::Running:
-                if (!free && since < kItemGetTimeoutMs) return true;
-                Logging.Log("[AP] item event %d ended after %lu ms", g_ItemEventId, since);
-                g_ItemEventTry = 0;
-                g_ItemEventEnded = NowMs();
-                break;
+        bool finished = request == nullptr || request->Finished();
+        if (g_ItemEvent == ItemEvent::Requested && !finished &&
+            Game::Event::FrontRequest(static_cast<const Game::Event::EventManager*>(*Game::EventManager_ptr)) ==
+                request) {
+            g_ItemEvent = ItemEvent::Running;
+            g_ItemEventSince = NowMs();
+            since = 0;
         }
+        if (!finished && (g_ItemEvent == ItemEvent::Requested || since < kItemGetTimeoutMs)) return true;
+        if (g_ItemEvent == ItemEvent::Requested && (request == nullptr || request->cancelled)) {
+            Logging.Log("[AP] item event %s did not start", ItemText(g_ItemEventId).c_str());
+            if (g_Showing && ++g_ItemEventTry < kItemEventTries) g_ShowQueue.push_front(*g_Showing);
+            else g_ItemEventTry = 0;
+        } else {
+            Logging.Log("[AP] item event %s ended after %lu ms", ItemText(g_ItemEventId).c_str(), since);
+            g_ItemEventTry = 0;
+            g_ItemEventEnded = NowMs();
+        }
+        g_ItemRequest = {};
         g_ItemEvent = ItemEvent::None;
         g_ItemEventSwap = false;
         return false;
@@ -165,11 +191,11 @@ namespace {
 
     // A find's toast: as queued, else the location that keeps this vanilla item if the find collected it, else the
     // item's name.
-    std::string FoundToast(const Show& show) {
+    std::string FoundToast(const ItemShow& show) {
         if (!show.toast.empty()) return show.toast;
-        int kept = KeptAddedSince(show.id, show.at);
-        if (kept >= 0) {
-            std::string toast = AP::FoundToast(kept);
+        std::optional<LocationId> kept = KeptAddedSince(show.id, show.at);
+        if (kept) {
+            std::string toast = AP::FoundToast(*kept);
             if (!toast.empty()) return toast;
         }
         return "You found " + ItemDisplayName(show.id);
@@ -177,20 +203,21 @@ namespace {
 
     // Instant Pickups: the item's model above Link's head and the toast, while play goes on. The next one waits
     // until both are done. Traps still play their effect as an event. A find also plays its fanfare.
-    void ShowPopup(const Show& show) {
+    void ShowPopup(const ItemShow& show) {
+        ItemId item = show.id;
         if (show.found) {
             AP::QueueToast(FoundToast(show));
-            AP::Music::Fanfare(show.id);
+            AP::Music::Fanfare(item);
         } else {
             std::string name = show.item;
             if (name.empty()) {
-                auto it = Inventory::kItemNames.find(show.id);
-                name = it != Inventory::kItemNames.end() ? it->second : std::to_string(show.id);
+                auto it = Inventory::kItemNames.find(item);
+                name = it != Inventory::kItemNames.end() ? it->second : ItemText(item);
             }
             AP::QueueToast(AP::ReceivedToast(name, show.sender));
         }
-        if (!AP::Popup::Show(show.id)) AP::Log("popup " + std::to_string(show.id) + " could not be made");
-        g_ItemEventShown = show.id;
+        if (!AP::Popup::Show(item)) AP::Log("popup " + ItemText(item) + " could not be made");
+        g_ItemEventShown = item;
     }
 
     // Instant Pickups (DESIGN.md, Instant pickups). The item-get is the body of the event actions
@@ -201,24 +228,20 @@ namespace {
     // what the module does in its place: the fanfare, the buffs' music and the autosave. It also takes what Link
     // holds over his head out of the game; without it he keeps holding it (the shop's flows take their goods from him
     // before their item-get, RemoveGoods). The inventory and the item's getting flag are the event's AddItemByKey's.
-    constexpr int kGuardianAcorn = 111, kPieceOfPower = 112;
     // The autosave: when the Items.gsheet row's autoSave holds (enabled, its condition true now: ItemGet_RowAutoSave),
-    // the item-get asks the scene's save manager (scene +0x90) for one (SaveManager_RequestAutoSave(manager, kind 3,
-    // false)), which saves once no event runs. SceneHolder_Lock(out, the framework's game state) gives the scene.
-    constexpr size_t kSceneSaveManager = 0x90;
+    // the item-get asks the scene's save manager (LevelScene::saveManager) for one
+    // (SaveManager_RequestAutoSave(manager, kind 3, false)), which saves once no event runs. SceneHolder_Lock(out, the
+    // framework's game state) gives the scene.
     constexpr u8 kAutoSaveKind = 3;
 
-    void RequestItemAutoSave(int itemId) {
+    void RequestItemAutoSave(ItemId item) {
         Game::Framework* fmwk = Game::GetFramework();
-        if (fmwk == nullptr || !Game::ItemGet_RowAutoSave(static_cast<u32>(itemId))) return;
+        if (fmwk == nullptr || !Game::ItemGet_RowAutoSave(item)) return;
         void* holder = fmwk->gameState;
         if (holder == nullptr) return;
-        SharedPtr scene{};
-        Game::SceneHolder_Lock(&scene, holder);
-        if (scene.ptr != nullptr) {
-            Game::SaveManager_RequestAutoSave(static_cast<u8*>(scene.ptr) + kSceneSaveManager, kAutoSaveKind, false);
-        }
-        Game::Release(scene);
+        Game::Shared<Game::LevelScene> scene;
+        Game::SceneHolder_Lock(scene.Reset(), holder);
+        if (scene) Game::SaveManager_RequestAutoSave(scene->saveManager, kAutoSaveKind, false);
     }
 
     // Native item-get (Link holds the item up and the item text shows). This is the body of the event action
@@ -228,7 +251,7 @@ namespace {
     // and its message take their place. With Instant Pickups any other item-get is a find, unless its entry has the
     // native mark.
     HOOK_DEFINE_TRAMPOLINE(ItemGetSequence) {
-        static void Callback(SharedPtr* out, void* player, int itemId, bool keepCarry, StrView* messageEntry) {
+        static void Callback(SharedPtr<>* out, void* player, ItemId item, bool keepCarry, StrView* messageEntry) {
             g_ItemGetAt = NowMs();
             size_t len = strlen(AP::RECEIVED_LABEL);
             bool received = messageEntry != nullptr && messageEntry->size == len &&
@@ -240,22 +263,23 @@ namespace {
                 entry.size--;
             }
             if (global_config.tweaks.instant_pickups && !received && !native) {
-                InstantPickup(itemId);
+                InstantPickup(item);
                 Game::Delay_Make(0.0f, out);
                 return;
             }
             if (native) messageEntry = &entry;
-            if (g_ItemEventSwap && g_ItemEvent != ItemEvent::None && itemId == AP::PLACEHOLDER_ITEM_ID && received) {
+            if (g_ItemEventSwap && g_ItemEventId && g_ItemEvent != ItemEvent::None && item == AP::PLACEHOLDER_ITEM_ID &&
+                received) {
                 StrView message{g_ItemEventMessage.c_str(), g_ItemEventMessage.size()};
                 g_ItemEventSwap = false;
                 g_ItemEventShown = g_ItemEventId;
                 if (g_ItemEvent == ItemEvent::Requested) g_ItemEventSince = NowMs();
                 g_ItemEvent = ItemEvent::Running;
-                Logging.Log("[AP] item event %d start", g_ItemEventId);
-                Orig(out, player, g_ItemEventId, keepCarry, &message);
+                Logging.Log("[AP] item event %s start", ItemText(g_ItemEventId).c_str());
+                Orig(out, player, *g_ItemEventId, keepCarry, &message);
                 return;
             }
-            Orig(out, player, itemId, keepCarry, messageEntry);
+            Orig(out, player, item, keepCarry, messageEntry);
         }
     };
 
@@ -273,31 +297,31 @@ namespace {
     };
 }
 
-    void QueueShow(const Show& show) {
+    void QueueShow(const ItemShow& show) {
         if (g_ShowQueue.size() >= kShowQueueMax) return;
         if (g_ShowQueue.size() >= kShowFillerMax && IsFiller(show.id)) return;
         g_ShowQueue.push_back(show);
     }
 
     // A received trap waits like an item display, then plays its effect (StartTrapEvent).
-    void QueueTrap(const std::string& key, const std::string& item, const std::string& sender, int location) {
-        Show show{-1, item.empty() ? key : item, sender, key};
-        show.location = location;
-        QueueShow(show);
+    void QueueTrap(const std::string& key, const std::string& item, const std::string& sender,
+                   std::optional<LocationId> location) {
+        if (g_ShowQueue.size() >= kShowQueueMax) return;
+        g_ShowQueue.push_back(TrapShow{key, item.empty() ? key : item, sender, location});
     }
 
     // An item Link found shows as a popup instead of an item-get; the buffs only start their music.
-    void InstantPickup(int itemId) {
-        Logging.Log("[AP] instant pickup %d", itemId);
-        RequestItemAutoSave(itemId);
-        if (itemId == kGuardianAcorn || itemId == kPieceOfPower) {
+    void InstantPickup(ItemId item) {
+        Logging.Log("[AP] instant pickup %d", std::to_underlying(item));
+        RequestItemAutoSave(item);
+        if (item == ItemId::DefenceUp || item == ItemId::PowerUp) {
             AP::Music::BuffMusic();
             return;
         }
-        Show show{itemId, "", "", ""};
+        ItemShow show{item, "", ""};
         show.found = true;
         // the placeholder's location is known now (its flows add it first); a vanilla item is added after
-        if (AP::IsPlaceholderItem(itemId)) {
+        if (AP::IsPlaceholderItem(item)) {
             show.toast = AP::FoundToast();
             if (show.toast.empty()) show.toast = "You found an\nArchipelago item";
         }
@@ -317,21 +341,21 @@ namespace {
         if (free && !g_WasFree) g_FreeSince = NowMs();
         if (free) AP::ExpireFoundLocation();
         g_WasFree = free;
-        if (ItemEventActive(free)) {
+        if (ItemEventActive()) {
             g_WasFree = false;  // the settle time starts again after each item-get
             return;
         }
-        if (!g_ShowQueue.empty() && g_ShowQueue.front().found) {
-            if (AP::Popup::Busy() || !AP::ToastsIdle() || !PlayerReady() ||
-                NowMs() - g_ShowQueue.front().at < kFoundSettleMs) {
+        if (const ItemShow* found = FrontItem(); found != nullptr && found->found) {
+            if (AP::Popup::Busy() || !AP::ToastsIdle() || !PlayerReady() || NowMs() - found->at < kFoundSettleMs) {
                 return;
             }
-            g_Showing = g_ShowQueue.front();
+            ItemShow show = *found;
+            g_Showing = show;
             g_ShowQueue.pop_front();
-            ShowPopup(g_Showing);
+            ShowPopup(show);
             return;
         }
-        bool popup = global_config.tweaks.instant_pickups && !g_ShowQueue.empty() && g_ShowQueue.front().trap.empty();
+        bool popup = global_config.tweaks.instant_pickups && FrontItem() != nullptr;
         if (popup && (AP::Popup::Busy() || !AP::ToastsIdle())) return;
         // An item-get right after the last item event's end follows it sooner than after other events
         u64 settle = popup ? kPopupSettleMs : g_FreeSince - g_ItemEventEnded < 100 ? kNextItemGetMs : kFreeSettleMs;
@@ -341,25 +365,27 @@ namespace {
         }
         g_Showing = g_ShowQueue.front();
         g_ShowQueue.pop_front();
-        if (popup) {
-            ShowPopup(g_Showing);
-            return;
-        }
-        if (!g_Showing.trap.empty()) {
+        if (const auto* trap = std::get_if<TrapShow>(&*g_Showing)) {
             // The notice names the trap and who sent it; a retry does not repeat it.
             if (g_ItemEventTry == 0) {
-                AP::QueueToast(g_Showing.item + (g_Showing.sender.empty() ? "" : "\nfrom " + g_Showing.sender));
+                AP::QueueToast(trap->item + (trap->sender.empty() ? "" : "\nfrom " + trap->sender));
             }
-            if (!StartTrapEvent(g_Showing.trap, g_Showing.location)) AP::Log("trap event " + g_Showing.trap + " could not be requested");
+            if (!StartTrapEvent(trap->key, trap->location)) AP::Log("trap event " + trap->key + " could not be requested");
             return;
         }
-        int id = g_Showing.id;
+        const auto& show = *std::get_if<ItemShow>(&*g_Showing);
+        if (popup) {
+            ShowPopup(show);
+            return;
+        }
         std::string message;
-        if (!g_Showing.sender.empty() || HasSourceText(id)) {
-            AP::SetReceivedText(g_Showing.item, g_Showing.sender);
+        if (!show.sender.empty() || HasSourceText(show.id)) {
+            AP::SetReceivedText(show.item, show.sender);
             message = AP::RECEIVED_LABEL;
         }
-        if (!StartItemEvent(id, message)) AP::Log("item event " + std::to_string(id) + " could not be requested");
+        if (!StartItemEvent(show.id, message)) {
+            AP::Log("item event " + ItemText(show.id) + " could not be requested");
+        }
     }
 
     void InstallItemGetHooks() {
@@ -371,12 +397,12 @@ namespace {
 #ifdef LASAP_TEST
     std::string ItemGetState() {
         return " showq=" + std::to_string(g_ShowQueue.size()) + (g_ItemEvent != ItemEvent::None ? "+1" : "") +
-               " shown=" + std::to_string(g_ItemEventShown);
+               " shown=" + ItemText(g_ItemEventShown);
     }
 
-    bool TestItemEvent(int itemId, const std::string& messageEntry) {
-        g_Showing = Show{-1, "", "", ""};
-        return StartItemEvent(itemId, messageEntry);
+    bool TestItemEvent(ItemId item, const std::string& messageEntry) {
+        g_Showing.reset();
+        return StartItemEvent(item, messageEntry);
     }
 #endif
 }

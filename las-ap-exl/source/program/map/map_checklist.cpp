@@ -198,7 +198,7 @@ namespace {
     // A on a row: the location skipped or not, as on an icon of one location; a location checked in the game or on
     // the server is not.
     void ToggleRow() {
-        int id = ListIds()[g_Panel.list.at];
+        LocationId id = ListIds()[g_Panel.list.at];
         if (AP::IsLocationChecked(id)) {
             PlaySound("SE_SY_BEEP");
             return;
@@ -231,17 +231,17 @@ namespace {
     Map::MapCursor* FindCursor() { return reinterpret_cast<Map::MapCursor*>(Ui::FindUi(Map::kMapCursorUi)); }
 
     // The look a location's row shows: checked or skipped collected, else in or out of logic.
-    Look RowLook(int id) { return Done(id) ? Collected : Reachable(id) ? InLogic : OutOfLogic; }
+    Look RowLook(LocationId id) { return Done(id) ? Collected : Reachable(id) ? InLogic : OutOfLogic; }
 
-    std::string CheckName(int id) {
+    std::string CheckName(LocationId id) {
         std::string_view name;
-        return FindCheckName(id, name) ? std::string(name) : "Location " + std::to_string(id);
+        return FindCheckName(id, name) ? std::string(name) : "Location " + AP::ToString(id);
     }
 
     void DropList() {
         if (g_Panel.page == nullptr) return;
         ShowMapCursor(true);
-        for (auto& mark : g_Panel.marks) Game::Release(mark.owner);
+        for (auto& mark : g_Panel.marks) mark = {};  // the layouts' references, before their wrappers go
         for (auto& tag : g_Panel.tags) L::Drop(tag);
         for (auto& dot : g_Panel.dots) L::Drop(dot);
         L::Drop(g_Panel.count);
@@ -264,7 +264,7 @@ namespace {
             Ui::SetVisible(g_Panel.dots[r].root, shown);
             Ui::SetVisible(g_Panel.tags[r].root, shown && AP::IsLocationSkipped(ids[entry]));
             if (!shown) continue;
-            int id = ids[entry];
+            LocationId id = ids[entry];
             L::Row& row = list.rows[r];
             L::SetText(row.text, CheckName(id));
             Ui::SetAlpha(Ui::FindPane(row.part, "A_Item_00"), Done(id) ? kDoneAlpha : 255);

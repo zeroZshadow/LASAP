@@ -1,10 +1,15 @@
 #pragma once
 // Multiplayer ghosts, the network half (ghost_net.cpp, DESIGN.md "Ghosts"): POS lines to the client, GHOST lines
 // from it.
+#include "flags.hpp"
 #include "lib.hpp"
 #include <string>
 
 namespace AP::GhostNet {
+    // A GHOST or POS line's flags. Warped: snap, do not move there. Still: still since the previous line. Started: an
+    // animation started since the previous line.
+    enum class GhostFlag : int { Warped = 1, Hidden = 2, Still = 4, Started = 8 };
+    FLAGS_ENUM(GhostFlag)
     // Ghosts the client shows at once; GHOST lines name a slot 0..SLOTS-1.
     constexpr int SLOTS = 30;
     // The last GHOST lines of a slot are kept: the puppet replays them on the sender's timeline.
@@ -29,7 +34,7 @@ namespace AP::GhostNet {
         float x, y, z, yaw;
         int anim, animFrame;
         int upperAnim;     // the animation on his upper body, as anim
-        int flags;
+        Flags<GhostFlag> flags;
         Look look;
     };
     // Another player in this area, as the last GHOST line for its slot gave it.
@@ -43,8 +48,7 @@ namespace AP::GhostNet {
         int animFrame = 0;      // its frame, in tenths
         int upperAnim = 0;      // the animation on his upper body (from the bone spine_a up: idle_carry while he holds
                                 // something over his head), as anim
-        int flags = 0;          // 1: warped (snap, do not move there), 2: hidden, 4: still since the previous frame,
-                                // 8: an animation started since the previous line
+        Flags<GhostFlag> flags{};
         Look look;
         u64 receivedMs = 0;     // when the line arrived (system counter, ms)
         s64 timeMs = 0;         // the sender's clock when it was taken (ms, unwrapped)

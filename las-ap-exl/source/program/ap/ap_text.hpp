@@ -1,5 +1,6 @@
 #pragma once
 // In-game text (ap_text.cpp): the found and received items' texts, the map tracker's labels and the toasts.
+#include "ap/location_id.hpp"
 #include "lib.hpp"
 #include <string>
 
@@ -8,8 +9,8 @@ namespace Game::Ui { struct TextHolder; }
 namespace AP {
     void InstallTextHooks();
     // What a location holds: item name and, for another player's item, that player's name.
-    void SetLocationName(int local_id, const std::string& item, const std::string& player);
-    bool HasLocationName(int local_id);
+    void SetLocationName(LocationId location, const std::string& item, const std::string& player);
+    bool HasLocationName(LocationId location);
 #ifdef LASAP_TEST
     // DBG text: the text features' counts.
     std::string TextState();
@@ -17,7 +18,7 @@ namespace AP {
     std::string SeenText(const std::string& label);
 #endif
     // The location of a placeholder just added; it names the found text until the player is free again.
-    void SetFoundLocation(int local_id);
+    void SetFoundLocation(LocationId location);
     void ExpireFoundLocation();
     void SetReceivedText(const std::string& item, const std::string& sender);
     void LoadLocationNames();
@@ -41,6 +42,6 @@ namespace AP {
     // A found item's toast (Instant Pickups): "You found <item>", then "for <player>" for another player's item; the
     // names as the found text has them. FoundToast() for the placeholder just found (or the mansion's present), "" for
     // a location with no name.
-    std::string FoundToast(int local_id);
+    std::string FoundToast(LocationId location);
     std::string FoundToast();
 }

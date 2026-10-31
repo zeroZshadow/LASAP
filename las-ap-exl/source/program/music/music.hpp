@@ -1,4 +1,5 @@
 #pragma once
+#include "game/data/item_id.hpp"
 #include "lib.hpp"
 #include <string>
 
@@ -27,7 +28,7 @@ namespace AP::Music {
     void Loud();
     // Instant Pickups: the item's fanfare, as its item-get starts it; one this started before and still plays fades
     // out first, so two never play over each other.
-    void Fanfare(int itemId);
+    void Fanfare(Game::Data::ItemId item);
     // The Guardian Acorn's and Piece of Power's music, as their item-get starts it.
     void BuffMusic();
     // Playback: repeat one (on at the start: the chosen track loops) and shuffle (turning it on draws a new order).

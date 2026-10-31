@@ -1,12 +1,16 @@
 #pragma once
 // Archipelago bridge, the game side (ap_game.cpp): applies received items, reports collected locations and runs the
 // other features once per input poll on the game thread.
+#include "ap/location_id.hpp"
+#include "game/data/item_id.hpp"
 #include "lib.hpp"
 #include "nn/hid.h"
 #include <string>
 #include <string_view>
 
 namespace AP {
+    using Game::Data::ItemId;
+
     // Inventory bits (ap_indices.cpp): kind 'S' seashells, 'H' heart pieces, 'L' golden leaves, 'C' heart containers
     void LoadIndices();
     // The bits the seed's vanilla sources of a kind set when collected; received items take others.
@@ -14,9 +18,9 @@ namespace AP {
 
     void Init(const std::string& seed_hash, int port);
     void Tick();
-    void OnPlaceholderCollected(int local_id);
+    void OnPlaceholderCollected(LocationId location);
     // The game adds an item (Inventory::AddItemID): reports the check of a location that keeps this vanilla item.
-    void OnItemAdded(int item_id, int index);
+    void OnItemAdded(ItemId item, int index);
     void OnGoal();
     // The game shows the sign's text (SIGN_LABEL): kept in the save (SIGN_FLAG), reported as SIGN.
     void OnSignRead();
@@ -26,15 +30,15 @@ namespace AP {
     // other flags.
     bool GoalFlag(std::string_view name, bool& value);
     // Checked in this game or, as the client reported, on the server.
-    bool IsLocationChecked(int local_id);
+    bool IsLocationChecked(LocationId location);
     // Marked as skipped on the map by the player (map tracker); saved per seed, never reported.
-    bool IsLocationSkipped(int local_id);
-    void SetLocationSkipped(int local_id, bool skipped);
+    bool IsLocationSkipped(LocationId location);
+    void SetLocationSkipped(LocationId location, bool skipped);
     // In logic for the items received, as the client reported (INLOGIC); HasLogic once it has.
     bool HasLogic();
-    bool IsInLogic(int local_id);
+    bool IsInLogic(LocationId location);
     // A dungeon location whose dungeon's door is reachable for the items received, as the client reported (DOORS).
-    bool IsDoorOpen(int local_id);
+    bool IsDoorOpen(LocationId location);
     // The client is connected and logged into the slot (SERVER lines).
     bool IsServerConnected();
     void ApplyInjectedInput(nn::hid::NpadBaseState* state);

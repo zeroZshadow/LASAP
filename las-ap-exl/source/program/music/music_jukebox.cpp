@@ -318,7 +318,7 @@ namespace {
 
     // What Navi_WaitKey asks before it turns the page: no dialog open (UIs 0x1f, 0x20, 0x26) and the page's +0xe0 set.
     bool MayTurn(Navi* navi) {
-        auto* page = static_cast<MenuPage*>(navi->pages[navi->target].ptr);
+        MenuPage* page = navi->pages[navi->target].get();
         if (page == nullptr || page->canClose == 0) return false;
         return FindUi(0x20) == nullptr && FindUi(0x1f) == nullptr && FindUi(0x26) == nullptr;
     }
@@ -326,7 +326,7 @@ namespace {
     // A page change the header would not make: index 2 to index 2.
     void ChangeInPlace(Navi* navi, bool jukebox, u8 direction) {
         int index = navi->target;
-        auto* old = static_cast<MenuPage*>(navi->pages[index].ptr);
+        MenuPage* old = navi->pages[index].get();
         if (old != nullptr) old->wrapper.active = 0;
         navi->lr = 0;
         navi->direction = direction == kRight;

@@ -1,6 +1,6 @@
 #include "game/actor.hpp"
 #include "game/addr.hpp"
-#include "game/sym.hpp"
+#include "game/switch.hpp"
 #include "hooks.hpp"
 #include <algorithm>
 #include <iterator>
@@ -9,6 +9,9 @@
 // their actor switch instead, whose flag the patcher's item uses.
 namespace {
     using Game::Actor;
+
+    // The dropper's, tree's and pot's switch the patcher's seashell item appears on
+    enum class ShellSwitch { Dropped = 0 };
 
     // The trees and the pot that drop a seashell, by LEB hash
     constexpr u64 kShellTrees[] = {7061688197741586161ULL, 8430773688343466954ULL, 5188616263732613924ULL};
@@ -20,7 +23,7 @@ namespace {
     constexpr uintptr_t kDropperDrop = 0x856fc, kDropperCheckShell = 0x84a44, kDropperDelete = 0x85510;
     constexpr uintptr_t kTreeBonkDrop = 0xcb1f30, kPotDrop = 0xb2ae50;
 
-    void SetSwitch(Actor* actor) { Game::ActorSwitch_Set(actor->record, 0, true); }
+    void SetSwitch(Actor* actor) { Game::SetSwitch(*actor, ShellSwitch::Dropped, true); }
 
     HOOK_DEFINE_INLINE(AreaShellDropper_Drop) {
         static void Callback(exl::hook::nx64::InlineCtx* ctx) { SetSwitch(reinterpret_cast<Actor*>(ctx->X[19])); }

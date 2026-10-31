@@ -111,7 +111,7 @@ namespace {
         Game::MaterialAnimComponent* mat = npc != nullptr ? npc->materialAnim : nullptr;
         const Game::Actors::FacialControl* facial = npc != nullptr ? npc->facial : nullptr;
         index = 0;
-        if (facial != nullptr && !(facial->entity.flags & Game::EntityFlags::kDestroyRequested)) {
+        if (facial != nullptr && !facial->entity.flags.Has(Game::EntityFlag::DestroyRequested)) {
             const Game::Actors::FacialRow* row = facial->row;
             index = row != nullptr ? row->SlotCount() : 0;
         }
@@ -127,10 +127,10 @@ namespace {
         if (slot == nullptr || p.tunic == kNoTunic) return;
         void* playing = slot->anim;
         if (p.tunicAnim == nullptr || playing != p.tunicAnim) {
-            SharedPtr out{};
             StrView name{"clothes", 7};
-            Game::NpcComponent_PlayMaterialAnimation(&out, NpcOf(p), &name, true);
-            Game::ReleaseOwner(out.ctrl);
+            Game::Shared<> played;
+            Game::NpcComponent_PlayMaterialAnimation(played.Reset(), NpcOf(p), &name, true);
+            played = {};
             p.tunicAnim = slot->anim;
             // not put there (the model has no "clothes"): no tunic for this model
             p.tunic = p.tunicAnim == nullptr || p.tunicAnim == playing ? kNoTunic : -1;

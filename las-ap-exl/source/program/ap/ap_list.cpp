@@ -133,7 +133,7 @@ namespace AP::ListUi {
             return false;
         }
         Attach(layout.wrapper, page, pageRoot);
-        layout.root->flags |= kPaneInfluencedAlpha;
+        layout.root->flags.Set(PaneFlag::InfluencedAlpha);
         SetAlpha(layout.root, 0);
         return true;
     }
@@ -151,7 +151,7 @@ namespace AP::ListUi {
         SetVisible(FindPane(root, "N_Panel_00"), false);
         for (const char* name : kBlankRows) {
             Pane* blank = FindPane(root, name);
-            if (blank != nullptr) blank->flags |= kPaneInfluencedAlpha;
+            if (blank != nullptr) blank->flags.Set(PaneFlag::InfluencedAlpha);
             SetAlpha(blank, 0);
         }
         list.cursor = FindPane(root, "L_ListCursor_00");

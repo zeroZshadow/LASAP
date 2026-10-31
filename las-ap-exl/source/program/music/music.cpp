@@ -747,7 +747,7 @@ namespace AP::Music {
         }
     }
 
-    void Fanfare(int itemId) {
+    void Fanfare(Game::Data::ItemId item) {
         if (!g_Fanfare.empty()) {
             // stops nothing once it has ended
             StrView name{g_Fanfare.data(), g_Fanfare.size()};
@@ -756,7 +756,7 @@ namespace AP::Music {
         }
         Game::BgmManager_MuteZone(kMuteZoneFrames);
         g_FanfareCall = true;
-        Game::ItemGet_PlayFanfare(static_cast<u32>(itemId));
+        Game::ItemGet_PlayFanfare(item);
         g_FanfareCall = false;
     }
 
