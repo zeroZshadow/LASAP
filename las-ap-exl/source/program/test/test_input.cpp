@@ -1,5 +1,5 @@
-// Input for the tests (test build, TESTING.md): frame-exact presses, optionally waiting for a condition, text advance
-// that presses only while a message waits for a button, and the other ops; each frame's step.
+// Input for the tests (test build, TESTING.md, Debug commands): frame-exact presses, optionally waiting for a
+// condition, text advance that presses only while a message waits for a button, and the other ops; each frame's step.
 #ifdef LASAP_TEST
 #include "ap/ap_bridge.hpp"
 #include "ap/ap_net.hpp"
@@ -39,7 +39,7 @@ namespace {
 
     // ---- Input ----
 
-    // DBG input: buttons held until a time (the old blind hold).
+    // DBG input: buttons held until a time.
     u64 g_HoldButtons = 0, g_HoldUntil = 0;
     s32 g_HoldLX = 0, g_HoldLY = 0;
 
@@ -162,7 +162,7 @@ namespace {
         }
     }
 
-    // DBG choose <n>: at a choice, Down/Up until the cursor is on option n, then A.
+    // DBG choose: at a choice, Down/Up until the cursor is on the option, then A.
     struct Choose {
         bool on = false;
         int target = 0;
@@ -205,8 +205,8 @@ namespace {
         }
     }
 
-    // DBG tapuntil <buttons> <until> [when <cond>] [timeout ms]: presses (when the condition holds) until the other
-    // holds, again only after a press changed nothing for a while; the reply counts the presses.
+    // DBG tapuntil: presses (when the condition holds) until the other holds, again only after a press changed nothing
+    // for a while; the reply counts the presses.
     struct TapUntil {
         bool on = false;
         u64 buttons = 0;
@@ -236,8 +236,8 @@ namespace {
         }
     }
 
-    // DBG interact [buttons hex] [timeout ms]: once Link is free, one press (A by default) that must start something:
-    // an event, a message or a lift. FAIL interact nothing when Link is still free and empty-handed after the press.
+    // DBG interact: once Link is free, one press (A by default) that must start something: an event, a message or a
+    // lift. FAIL interact nothing when Link is still free and empty-handed after the press.
     struct Interact {
         bool on = false;
         u64 buttons = 1;
@@ -270,7 +270,7 @@ namespace {
         }
     }
 
-    // DBG hold <buttons> <lx> <ly> until <cond> [timeout ms]: holds buttons and the stick until the condition holds.
+    // DBG hold: holds buttons and the stick until the condition holds.
     struct Hold {
         bool on = false;
         u64 buttons = 0;
@@ -299,7 +299,7 @@ namespace {
         }
     }
 
-    // DBG guard <condition>: a state a test must never reach. When one starts to hold, every pending op fails with
+    // DBG guard: a state a test must never reach. When one starts to hold, every pending op fails with
     // "alert <condition>" and all debug clients get "ALERT <condition> <fields>". "dead" is always guarded; "hurt"
     // holds once health drops below what it was when the guard was set (or last healed to).
     struct Guard { std::string cond; bool held; int health = -1; };
@@ -394,7 +394,7 @@ namespace {
             g_Presses.push_back(p);
             AP::Send("OK press");
         } else if (cmd == "advance") {
-            // DBG advance [buttons hex] [timeout ms] | DBG advance off
+            // DBG advance [buttons hex] [timeout ms] [fast] | DBG advance off
             if (a.size() >= 3 && a[2] == "off") {
                 g_Advance.on = false;
                 AP::Send("OK advance off");
@@ -442,7 +442,7 @@ namespace {
             g_TapUntil.client = client;
             AP::Send("OK tapuntil");
         } else if (cmd == "release") {
-            // Drops queued presses and holds.
+            // DBG release: drops every pending op but the guards, with no reply to them.
             g_Presses.clear();
             g_Awaits.clear();
             g_HoldUntil = 0;

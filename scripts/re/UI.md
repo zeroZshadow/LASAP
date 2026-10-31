@@ -1,6 +1,6 @@
 # Game UI (game 1.0.0)
 
-The game's UIs, pause menu pages and maps, from static analysis of the main module. Offsets are module offsets (what `InstallAtOffset` and `scan.py` take); `las.sym` names them at their runtime addresses (module offset + 0x8504000). Object offsets are bytes from the object's start. Field names are those of `game/ui.hpp`, `game/menu.hpp`, `game/map.hpp` and `game/state_machine.hpp`, which list every field; this file gives the evidence and what their comments leave out. TESTING.md, Reverse engineering, has the pause menu header and pages, the HUD pass and the text boxes' glyphs as the module uses them; this file does not repeat them.
+The game's UIs, pause menu pages and maps, from static analysis of the main module. Offsets are module offsets (what `InstallAtOffset` and `scan.py` take); `las.sym` names them at their runtime addresses (module offset + 0x8504000). Object offsets are bytes from the object's start. Field names are those of `game/ui.hpp`, `game/menu.hpp`, `game/map.hpp` and `game/state_machine.hpp`, which list every field; this file gives the evidence and what their comments leave out.
 
 ## Framework
 
@@ -34,6 +34,8 @@ class derived from it) answers from `owner`'s virtual `+0x40` when the wrapper's
 | `0xe5a0a0` `LayoutWrapper_AttachBefore` | `(child, parent wrapper, pane, sibling)`: as AttachTo, inserted before the sibling (ui2d `InsertChild` `0x1166c10`; `AppendChild` `0x1166bd0`, `RemoveChild` `0x1166c40`) |
 | `0xf343a0` `Part_Bind` | `(part, page, StringView* name)`: a wrapper over an `L_` part pane of the page's layout; `owner` the page |
 
+**Building a layout.** `LayoutWrapper_Build` (`(wrapper, StringView* file name, priority, archive set, true)`) builds a layout of Game.arc (set 0) or StartUp.arc (1), e.g. `Gm_MapPopName.bflyt`, into a 0x78-byte wrapper (`operator_new`); the layout joins the per-frame update and the HUD pass, which draws by priority (HUD 0, Navi 5, the item menu 6, the map 0xf, the map cursor 0x1c, fade 0x22, message window 0x24); priority -1 attaches it to a parent layout instead. The wrapper's deleting destructor (virtual `+0x18`) takes it out again. `LayoutWrapper_AttachTo` moves a layout from the manager's lists to the parent layout's and its root under the pane; the destructor takes the root off that pane first. The pause pages are built at priority 10 and attached by `Navi_PaneReady`.
+
 **Parts** (`Part`, `Part_vtable` `0x1c27338`, 0x90 bytes): a wrapper and the pane handle of the `L_` part pane it is bound to (`Part_Bind`); their constructors write `+0x70`..`+0x73` as 1, 0, 1, 0. The guide's slots, the message window's parts, the System page's choices and the map pages' parts are parts.
 
 **Layouts** (`Layout`: the game's layout, vtable `0x1c520c8`, 0x78 bytes, around `nn::ui2d::Layout`,
@@ -63,7 +65,19 @@ transform, 8 round half extents, 12 vertical centre; 4, 5, 9–11 and 13–14 co
 null, or set by the layout for a text box whose resource asks for extended tags (its flag bit 7). Virtuals beyond the
 pane's: `+0xe0` InitString, `+0xe8`/`+0xf0` AllocateStringBuffer, `+0xf8` FreeStringBuffer, `+0x100`..`+0x118` the
 setters, `+0x120` `ui2d_TextBox_GetTextDrawRect` (`0x1171270`, the rectangle through `x8`), `+0x128`/`+0x130` the text
-writer's setup. TESTING.md, Text box glyphs, has the glyph queue.
+writer's setup. A colour tag (`0x0e`, group 0, type 3) in a layout text box's text draws nothing and changes nothing.
+
+**Glyphs.** `GameTextBox_Calculate` (`0x10ddf90`) draws a text box's text only once the scalable font has every glyph
+in its texture cache (`glyphsReady` set then). The setters hand the string to `onSetString`: for a scene's layouts it
+queues the box with `UiManager_QueueGlyphs` (`0xeda8d0 (manager, {owner, shared count, text box}*, archive set)`); the
+default functor does nothing, so the new characters of a layout built with `LayoutWrapper_Build` never draw unless its
+box is queued. `UiManager_UpdateGlyphs` registers the queued boxes' glyphs (`TextBox_RegisterGlyphs` `0x111ecb0 (text
+box, lock group)`, the group from `UiManager_LockGroup` `0xed07c0 (manager, archive set)`), draws them on `glyphWorker`
+and empties the queue (two std::lists at manager `+0xab40`, 0x18 bytes each, nodes `{previous, next, owner, count,
+text box, set}`); registering alone leaves the glyphs undrawn. A setter cuts a string longer than `capacity` (with the
+terminator, from the layout file). `AllocateStringBuffer` (virtual `+0xe8`, `(box, gfx device, length)`) frees and
+allocates the string buffer and the box's draw buffer; the UI manager builds layouts with the device
+`*(Graphics_ptr)[1]`.
 
 **Tag processor** (`TagProcessor`, `TagProcessor_Ctor` `0x9038e0`, vtable `0x1bda908`, 0x118 bytes; its base nn::font
 TagProcessorBase, whose constructor `0x111f1c0` sets only the vtable): draws the button tags of the text boxes that
@@ -91,7 +105,7 @@ StartUp.arc, 2 GameRegion.arc, 3 StartUpRegion.arc, 4 GameRegionCommon.arc, 5 St
 (the dungeon map's icons read it, `0xf386ac`) and 7 PanelTex.arc. `UiManager_LoadGameArchives` (`0xed5450`) loads the
 `ui/Game.arc` set into the resource group `gameArchivesLoad` (`0xed5770`; FRAMEWORK.md, Resource groups), whose
 completion lambda (`0xed5890`, which needs `owned_0` set) fills slots 0, 2, 4, 6 and 7; `startUpArchivesLoad` is the
-StartUp set's group (lambda `0xed2c70`). The glyph queue: TESTING.md, Text box glyphs. `font` is an nn::font
+StartUp set's group (lambda `0xed2c70`). The glyph queue: Text boxes, Glyphs. `font` is an nn::font
 ScalableFont (`+0x10` its TextureCache, `glyphCache`, set by its Initialize `0x111ded0` from `UiManager_InitFonts`
 `0xecb470`; `+0x18` the font size, 0x28 at construction; `+0x32` the face; the font's RegisterGlyphs `0x11211b0` takes
 these; likely); `glyphCache` is the nn::font TextureCache that holds the glyphs (Initialize `0x10de850`; likely).
@@ -131,6 +145,12 @@ is 1 or more (`Graphics_UnregisterCallback`). `lockGroups` are 32 `LockGroup`s (
 
 **Layout files.** `scripts/re/bflyt_tree.py <layout>` prints a layout's pane tree from the RomFS dump (`--list` lists the archive's layouts and animations). Which function builds which layout: `scan.py xstr '\.bflyt$'`.
 
+- `Gm_MapPopName`: `N_MarkerName_00` with the bubble `W_window_00` (arrow `P_pict_01`) and the centred text `T_MarkerName_00` (30 characters, alpha 0 in the file); the map sizes the bubble to the text (`MapPopName_SetText`: window width = text width / scale + 60).
+- `Gm_MemoryList` (the Memories list): 11 `Gm_MemoryListItem` rows 48 px apart (7 visible), each a `T_Item_00` of 29 characters, animations Up/Down (the rows ±52, 6 frames), Reset and Set; `L_ListCursor_00` (`Cm_ListCursor`: On, Off, Loop) and `L_ScrollBar_00` (`Cm_ScrollBar`: `W_ScrollHandle_00`, no animations). The rows sit in the alignment pane `A_List_00`: a hidden row (such as the blank rows `L_Blank_00`/`01` above them) gives its place to the rows under it, which then draw two rows above the cursor; a transparent row keeps its place. `Cm_TabCursor` belongs to the Memories' icon tabs; `Gm_Memory`'s `W_window_01` (the window the list sits in) is light and translucent.
+- `Gm_SystemChoice` rows have a `T_List_00` of 10 characters; `Gm_SystemOpUnit` is a single text box (`T_Operation_00`, 20 characters). `Gm_Item`'s `T_Name_00` sits with `T_Info_00` in the alignment pane `A_alignment_07`. The font `jpn_main.bffnt` has the eighth note U+266A.
+- Screen masks: the `P_DisplyMask_*` pictures of `Cm_Dlg` (the game's dialogs), `Gm_Navi` and `Pd_PanelResult` draw a capture of the screen into a texture the pause menu's backdrop shares, so one drawn from a layout built at runtime over a pause page changes the backdrop. Plain black pictures (no texture, the white colour black): `Cm_Dlg`'s `P_pict_00`, `Gm_MapMarkList`'s `P_pict_00` (the pin bar), `Gm_Picture`'s `P_pict_01`.
+- Button tags (`0x0e`, group 1, type 1) draw in the guide's text boxes but not in a text box of a layout built with `LayoutWrapper_Build`, which has no tag processor. `MessageText_SetLabel` (`0xf8c8b0 (text object, StringView* label)`) reads only the text box (`+0x10`) of its text object.
+
 ## State machines
 
 UIs, pages, markers, parts and some actors (Link, the fishing rod, the pond fish) run a state machine object, `StateMachine<N>` of N states (`game/state_machine.hpp`). The base vtable `StateMachine_vtable` (`0x1b52ef0`) has `+0x0` the destructor (`StateMachine_Dtor` `0x4f9a0`, which destroys `onChange`), `+0x10` the state count and `+0x18` a state's name, both pure; each machine class implements them. The code is a template per N, so every machine class has its own `ChangeState` and update; `scan.py sms` lists them.
@@ -155,7 +175,10 @@ A machine is 0x58 + N × 0x38 bytes, rounded up to 16. `ChangeState` runs the ol
 | Title (UI 0x1d) | 6 | `+0x80` | `Title_ChangeState` `0x87f1b0`: Deactive (`Title_Setup`; the intro plays), LogoIn, BtnIn, WaitLR, GameStart, End |
 | ThrobberSave (UI 0x2a) | 6 | `+0x80` | `ThrobberSave_ChangeState` `0xf85d20` |
 | Throbber (UI 0x29) | 4 | `+0x80` | `Throbber_ChangeState` `0xf85230` |
-| GmSystem (UI 10) | 6 | `+0xf0` | |
+| GmSystem (UI 10) | 6 | `+0xf0` | `0xf83750` |
+| FileOperate (UI 0xc, the file menu; vtable `0x1c274a0`) | | | `0xe60b90`; its cursor u8 at owner `+0x159b0`, 0 file 1 |
+| FileOperate20 (UI 0x20, the Load screen) | | | `0xebde10` |
+| NameEntry (UI 0xd) | 6 | `+0x80` | `NameEntry_ChangeState` `0xeaf540` |
 | MessageWindow (UI 0x24) | 15 | `+0x1260` | `MessageWindow_ChangeState` `0xef0f40` |
 | MapMarker | 4 | `+0x90` | `MapMarker_ChangeState` `0xf3a8c0` |
 | MapCursor (UI 0x1c) | 5 | `+0x80` | `MapCursor_ChangeState` `0xea0750` |
@@ -167,7 +190,7 @@ A machine 16-aligned after an 8-byte-aligned field leaves 8 bytes of padding bef
 
 ## Input
 
-The game's controller is `*(Framework+0x518)` (a shared pointer, count `+0x520`): `+0x10` the pad (virtual `+0x10` returns `{u32 held, u32 held last frame}`, so `held & ~last` is a press), `+0x228` the left stick (virtual `+0x18` returns `{f32 x, f32 y}`), `+0x234` u8 locked (no input). Button bits are the physical buttons of `HidButtonTable.gsheet` (`mButtonType`): 0 A, 1 B, 2 X, 3 Y, 4 R, 5 L, 10 Plus, 11 Minus, 14 to 17 up, down, right, left. The maps read A (pin), X (memories) and Y held (place names / dungeon info) this way. Per-function flags: `+0xb1` and `+0xd1` zoom out / in, `+0x171` and `+0x181` floor up / down (the maps' zoom and the dungeon floors).
+The game's controller is `*(Framework+0x518)` (a shared pointer, count `+0x520`): `+0x10` the pad (virtual `+0x10` returns `{u32 held, u32 held last frame}`, so `held & ~last` is a press), `+0x220` u32 the buttons, `+0x228` the left stick (virtual `+0x18` returns `{f32 x, f32 y}`), `+0x234` u8 locked (no input). Button bits are the physical buttons of `HidButtonTable.gsheet` (`mButtonType`): 0 A, 1 B, 2 X, 3 Y, 4 R, 5 L, 10 Plus, 11 Minus, 14 to 17 up, down, right, left. The maps read A (pin), X (memories) and Y held (place names / dungeon info) this way. Per-function flags: `+0xb1` and `+0xd1` zoom out / in, `+0x171` and `+0x181` floor up / down (the maps' zoom and the dungeon floors).
 
 ## Datasheets
 
@@ -197,11 +220,30 @@ and `rowsByKey` (key string to row index).
 
 ## Text
 
-`MessageManager_Find` (`0x903250`, manager `*0x1cb2db8`): `(out {msbt sp, count, s32 label index}, manager, StringView* "File:Label")` finds a label in a loaded `<File>.msbt` (index -1 when missing). `String_Format` (`0x8ed5c0`) formats `{0}`. The overworld map names an icon by `Place:<mNameLabel>`; `MessageText_SetLabel` sets a text box from a label.
+`MessageManager_Find` (`0x903250`, manager `*0x1cb2db8`): `(out {msbt sp, count, s32 label index}, manager, StringView* "File:Label")` finds a label in a loaded `<File>.msbt` (index -1 when missing). `String_Format` (`0x8ed5c0`) formats `{0}`. In a loaded MSBT, `Msbt_FindLabel` (`0x10aaf40`) finds a label in an MSBT and `Msbt_GetText` (`0x10aa5a0`) gives a message's text. The overworld map names an icon by `Place:<mNameLabel>`; `MessageText_SetLabel` sets a text box from a label.
 
 ## Pause menu
 
-TESTING.md, Pause menu header and Pause menu pages, has how the header changes pages.
+**The header** (`Gm_Navi.bflyt`, the Navi UI) has the title `T_Navih1_00` (12 characters) and the L and R neighbours'
+names `T_NaviBack_00` (9) and `T_NaviNext_00` (8), which `Navi_SetTitles` (`0xeedec0 (navi, index 0-4)`; 3 does
+nothing, 4 the Memories) fills with `UI:SubScreenTitleMap`, `Item`, `System`, `Memory`; the layout has no tab panes.
+The pages hang under the empty anchors `N_Map_00`, `N_Item_00` and `N_System_00` inside `N_Page_00`, which
+NextOut/NextIn and BackOut/BackIn slide by 40 and fade. `Navi_SetGuide` (`0xeed6f0 (navi, index 0-4)`) clears the
+button guide, then sets each of the page's slots (`Guide_Set`) and shows that many slot panes. Guide kinds: Items
+`0xf` X/Y Set item, `0xe` Back; System `0x10`; the overworld map `0x13` X Memories, `0x14` Y Hide markers, `0x15` R
+Zoom, `0x12` A Pin, `0x11` B Back. `Guide_Set` loads a slot's icon and caption only for a kind other than the one it
+keeps, and loads the caption again each time it does, so a text swapped for one call does not stay; `Guide_Clear`
+keeps the kinds. The d-pad does nothing on any page (2026-10-17, sandbox).
+
+**Changing pages.** Index 0 is the map (UI 0xf, 0xe in a dungeon), 1 Items (6), 2 System (10, 0xb with level index 8);
+the HUD's `+0x61dc` is the index the menu opens on (Minus stores 0). `Navi_WaitKey` (`0xee8ca0`, WaitKey's update)
+takes no button while UI 0x1f, 0x20 or 0x26 exists; B closes the menu and L/R turn the page only while the page's
+`canClose` is set; Plus on Items and Minus on the map close it, Plus and Minus elsewhere go to index 1 and 0, and `lr`
+steps `target` over the three pages. A change clears the old page's `active`, then runs CloseOldUi (the header's
+NextOut or BackOut by `direction`, the old page's virtual `+0xa8`, its state saved, its slot cleared,
+`UiManager_Remove`), Selected, Open (`UiManager_Request` of the target id with `Navi_PaneReady` as its task) and
+WaitKey once the new page's In animation ends (page virtual `+0x98`). The Memories are a UI the map requests itself
+(0x1a `Gm_Memory.bflyt` from the overworld map, 0x10 from the dungeon map), titled and guided with index 4.
 
 **Navi** (UI 5, `Gm_Navi.bflyt` at priority 5; `Navi_Ctor` `0xee4a40`, `Navi_Dtor` `0xee4fb0` (deleting `0xee6200`),
 setup `0xee6230`, update `0xee6f80`, open `0xee7830`; 0x1350 bytes, which its factory (`0xec8b44`) allocates with a
@@ -308,7 +350,7 @@ Constructor `0xea35c0`, setup `0xea6990`, update `0xea7990`, open `0xea84f0` (bu
 | `+0x430 + i*0x300` | `L_Life_<i>` (20 hearts, `Cm_HeartGauge`, two rows of 10) |
 | `+0x4030` / `+0x4258` | `L_SetItem_00` (Y, `Inventory+0xa2`) / `L_SetItem_01` (X, `+0xa3`): cached item `+0x210`, icon frame `+0x214` |
 | `+0x4480` | `L_Rupee_00` (machine at part `+0x90`, shown value part `+0x2ec`) |
-| `+0x4790` | `L_Interact_00` (the A prompt: Talk, Open, Push, Hold, Lift, Examine, Take, Play; state `+0x4898`) |
+| `+0x4790` | `L_Interact_00` (`Gm_HUDInteract`, the A prompt: Talk, Open, Push, Hold, Lift, Examine, Take, Play; state `+0x4898`); its `T_Interact_00` text object `+0x4868`, set with `MessageText_SetLabel`. `Hud_Update` places it next to Link with `WorldToLayout` (FRAMEWORK.md, Camera) |
 | `+0x48b0` / `+0x4b00` | `L_ShellRadar_00` / `L_Compass_00` |
 | `+0x4d68 + i*0xc0` | `L_Leaf_<i>` (5 golden leaves, in `A_Leaf_00`) |
 | `+0x5140 + i*0xc0` | `L_Key_<i>` (21 small keys, in `A_Key_00`); `+0x6100` `L_BossKey_00`. Key, leaf and boss key parts: In animator part `+0xa0`, Out `+0xb8` |
@@ -328,9 +370,25 @@ Constructor `0xea35c0`, setup `0xea6990`, update `0xea7990`, open `0xea84f0` (bu
 
 **Throbber** (UI 0x29, `Ld_Throbber.bflyt`; `Throbber_Ctor` `0xf84cb0`, destructor `0xec5e60`, `Throbber_Setup` `0xf84e90`, `Throbber_Update` `0xf85170`, `Throbber_ChangeState` `0xf85230`; 0x210 bytes, its factory `0xec5ca4`; vtable `0x1c2fff0`): a machine of 4 states at `+0x80` (vtable `0x1c30068`: None, In, Loop, Out), the animations In `+0x1c0`, Loop `+0x1d8`, Out `+0x1f0`; `+0x208` unknown. The module has no type for it.
 
+## Name entry (UI 0xd, `Tl_Entry`)
+
+`NameEntry_vtable` `0x1c286a8`; its machine at `+0x80` (`NameEntry_ChangeState` `0xeaf540`: Open, KeyWait,
+InputName, Decide, Cancel, Close). The setup (`NameEntry_Setup` `0xeaec70`, virtual `+0x20`) puts
+`UI:NameEntry_Default` into the name (`+0x598`, UTF-8). KeyWait's update (`NameEntry_KeyWait` `0xeaf8a0`) moves the
+cursor (u8 `+0x590`): 0 on the name, where A goes to InputName, 1 on OK, where A writes the name as UTF-16, cut to 8
+letters, to the save header's name (`*SaveHeader_ptr` `+0x8`) and goes to Decide. InputName (`0xeafe50`) shows the
+keyboard: `Swkbd_ShowName` (`0xf89b50 (out string, name view)`) opens `nn::swkbd` with the UserName preset, up to 8
+characters and at least 1, invalid characters `0x12c` (`@`, `%`, `\` and those outside the Mii nickname set), a
+keyboard mode from the language (`0xf8a340`); its text check (`Swkbd_CheckName` `0xf8a440`) refuses a name of spaces
+only (`UI:NameEntry_NoName`) and vulgar words (`UI:NameEntry_VulgarCheck`). `NameEntry_SpecialNames` (`0xeb058c`)
+compares the name with `UI:NameEntry_Zelda`, `_Totakeke` and `_Marin` and their katakana forms.
+
 ## Message window (UI 0x24, `Cm_Message`)
 
-**MessageWindow** (`MessageWindow_Ctor` `0xeee6b0`, `MessageWindow_Dtor` `0xeefbb0`, `MessageWindow_Setup` `0xeeffc0`, `MessageWindow_Update` `0xef0bc0`, UI id `0xef0f30`; 0x1d20 bytes, its factory `0xec9554`; `MessageWindow_vtable` `0x1c2abd0`, followed by `MessageWindow_MachineVtable` `0x1c2ac48`). TESTING.md, `0xef1960`, has its states as the test build reads them.
+**MessageWindow** (`MessageWindow_Ctor` `0xeee6b0`, `MessageWindow_Dtor` `0xeefbb0`, `MessageWindow_Setup` `0xeeffc0`, `MessageWindow_Update` `0xef0bc0`, UI id `0xef0f30`; 0x1d20 bytes, its factory `0xec9554`; `MessageWindow_vtable` `0x1c2abd0`, followed by `MessageWindow_MachineVtable` `0x1c2ac48`). Its machine's states (names from `+0x1588`): Closed, Opening, FadeIn,
+Reading, TextFadeOut, KeyWaiting, PreSelecting, Selecting, Selected and more. Reading (`MessageWindow_Reading`
+`0xef1960`) shows a page letter by letter; KeyWaiting takes a button once `keyWait`'s count reaches its limit; B sets
+`skipping`, which shows pages whole and skips their pauses.
 
 - `inOutChoice[n − 2]` plays for a choice of n options: `MessageWindow_Selecting` (`0xef2300`) takes buttons once that animation's animator has stopped (`speed`, `+0x3c`, is 0). Its animator pointer is at window `+0x58 + choiceCount × 0x18` (`inOutChoice[choiceCount − 2]` `+0x10`).
 - The parts: `talk` (vtable `0x1c2e310`, with `talkName`), `getItem` (`0x1c2e0d0`), `system` (`0x1c2e250`), `telop` (`0x1c2e3d0`) and `modeless` (`0x1c2e190`, with `modelessName`; its setup `0xf54eb0`); `text` is the one in use, whose virtual `+0x28` the update calls.
@@ -380,7 +438,7 @@ cleared by Out); its In-to-Loop handover runs while `hasFeed` (the layout has `L
 
 ## Map cursor (UI 0x1c, `Gm_MapCursor`)
 
-One UI drawn over both map pages; each page's open requests it (`UiManager_Request(0x1c)`), and pages find it with
+One UI drawn over both map pages (its priority 0x1c is above theirs); each page's open requests it (`UiManager_Request(0x1c)`), and pages find it with
 `0xe79560`. `MapCursor_Make` (`0xec2c50`) makes it, 0x310 bytes (vtable `0x1c28370`, setup `0xe9fdc0`, destructor
 `0xe9fa40`). Fields: `+0x80` the name bubble's machine (`MapCursorMachine_vtable` `0x1c283e8`; Deactive, On, Loop, Off,
 HideName; change `0xea0750`, run by its update `0xea0690`; On's enter is `MapPopName_SetText` `0xea0960`, which sizes
@@ -427,7 +485,7 @@ Placing a pin (both maps): A off a pin goes to PutMarkPin, which takes the first
 
 ## Overworld map (UI 0xf, `Gm_Map`)
 
-Vtable `0x1c281b0`: setup `0xe8f9d0`, update `0xe93800`, open `0xe93fd0`, destructor `0xe8e680`. Machine at `+0xf0` (change `0xe941d0`): Deactive, Open, KeyWait (`0xe95090`), PutMarkPin, StartEditMarkPin, EditMarkPin, EndEditMarkPin, PutMarkPinEmpty, StartEditMarkPinEmpty, EditMarkPinEmpty, EndEditMarkPinEmpty, MemoryStart, MemoryUpdate, MemoryEnd, MemoryFromDungeon, Close, OpenMask.
+Vtable `0x1c281b0`: setup `0xe8f9d0`, update `0xe93800`, open `0xe93fd0`, destructor `0xe8e680` (vtable `+0x10`; the deleting destructor `0xe8f9a0` calls it). Machine at `+0xf0` (change `0xe941d0`): Deactive, Open, KeyWait (`0xe95090`), PutMarkPin, StartEditMarkPin, EditMarkPin, EndEditMarkPin, PutMarkPinEmpty, StartEditMarkPinEmpty, EditMarkPinEmpty, EndEditMarkPinEmpty, MemoryStart, MemoryUpdate, MemoryEnd, MemoryFromDungeon, Close, OpenMask.
 
 | Field | |
 |---|---|
@@ -465,11 +523,11 @@ marker (`MemoryMarker`, `L_Memory_<i>`, `MemoryMarker_vtable` `0x1c2ddd0`, 0x230
 `+0x90` (Deactive, On, Wait, Off; `MemoryMarker_ChangeState` `0xf516f0`) and On, Loop, Off, SetMark. Link's marker
 (`MapPlayer`, `L_MapPlayer_00`, `MapPlayer_vtable` `0x1c2cd48`, 0xd8 bytes): On, Indoor, Sideview.
 
-**Setup**: place names; Link's marker; the pins (`AttachBefore(pin, page, N_MapPin_00, Link's root)`); the icon markers: per `UiFieldMapIcons` row by id, a marker with the row, SetMark frame `mType`, kept and pushed onto `+0x710` only when its show flag is set (the AP hook `0xe917c8` is after the push), attached like the pins; the field areas, which reveal an area once traversed (`EventFlags_Set` `0xdfa7b0` of its Open flag); the heart pieces (inventory `+0x90` bit i, frame 5) and seashells (`+0x88`, frame 6) markers, hidden until the Memories show them.
+**Setup**: place names; Link's marker; the pins (`AttachBefore(pin, page, N_MapPin_00, Link's root)`); the icon markers: per `UiFieldMapIcons` row by id, a marker with the row, SetMark frame `mType` (`0xe91560`), kept and pushed onto `+0x710` only when its show flag is set (the AP hook `0xe917c8` is after the push), attached like the pins; the field areas, which reveal an area once traversed (`EventFlags_Set` `0xdfa7b0` of its Open flag); the heart pieces (inventory `+0x90` bit i, frame 5) and seashells (`+0x88`, frame 6) markers, hidden until the Memories show them (the bit tests `tst x8, x9` at `0xe91c28` and `0xe91ee0`: `x8` the inventory's bits, `x9` = 1 << the row `x21`).
 
 **KeyWait** (`0xe95090`) each frame:
 1. `0xe9e7f0 (page, true)` moves the cursor: with the stick it speeds up (4.25 to 9); idle, it eases toward the hovered pin, else the hovered icon marker (cursor += 0.3 × (target − cursor)), not while Y is held; clamped to `B_PointerLimit_00`.
-2. A (`0xe9e220`): on a pin `StartEditMarkPin`, else `PutMarkPin` (a beep while Y is held). The zoom buttons, else X: `MemoryStart`.
+2. A (`0xe9e220`, its result in `w0` at `0xe950f4`, the page in `x19`): on a pin `StartEditMarkPin`, else `PutMarkPin` (a beep while Y is held). The zoom buttons, else X (in `w21` at `0xe95278`): `MemoryStart`.
 3. Pin hover: the nearest shown pin within `cursor+0x300 × 0.2 × +0x8170`.
 4. Icon hover: the same over the shown markers in `+0x710`. On a change the old marker gets `+0x248`; the new one state On and its name: `MessageManager_Find("Place:" + row label)` and `MapCursor_ShowName`; nothing hovered takes the name away.
 5. Y held (`+0xd30`) shows the place names and hides the cursor's name.
@@ -513,7 +571,7 @@ bytes: box `+0x20`/`+0x30`, the view box `viewMin`/`viewMax`
 `+0x64`, its file's path `+0x68` as `level/Lv01TailCave/Lv01TailCave_03G.leb` with its length at `+0xb8`, row `+0xc2`,
 column `+0xc3`), zones `+0x210`, virtual `+0x20` the room at a position.
 
-**Setup**: per room visited, or on the map or compass: its chip under `B_<cell>`, then `0xe80950` `DungeonMap_MakeRoomIcons (page, room, dungeon, visited, map, compass)`: the boss icon (`UiDungeonArea` `mIsBoss`, until beaten), an icon per room actor and per `UiDungeonIcon` row of the room from `0xe832c0` `DungeonMap_MakeActorIcon (out, page, actor {u16 id, f32 x, y, z, switches}, room, visited, map, compass)` by actor id: `ObjTreasureBox` a chest (`Dg_DgnTresure`), `ObjLockDoor`/`ObjBossDoor`/`ObjClosedDoor` and the one-way and Panel doors, `ObjDungeonCrackedWall` and Panel cracked walls (`Dg_DgnBombWall`), `AreaUpstairs`/`AreaDownstairs` and Panel stairs, `ObjDungeonWarpHole`, `PanelJointOpeningStraight`; no icon for other actors. Each icon is placed by `0xe84b60` `DungeonMap_PositionIcon (x, y, z, page, out vec2, room sp*)` (world to map, `0xe827b0`: the cell's position plus the offset from the room's middle × 5.333; the result is the icon's translate, set through icon virtual `+0x80`), attached with `AttachBefore(icon, page, N_MapPin_00, N_PinOffset_00)` and pushed onto `+0x1268`. Then `0xe82250` `DungeonMap_ShowCellFloor (page, cell, room, area row)` per room (and on every floor change): the cell, its icons (icon vtable `+0x78`), Link's and the entrance markers and the pins (code / 10) are shown on their floor only. The floor art is the animation `Dgn_<mAnimFloorIndex>`.
+**Setup**: it reads the dungeon's flags byte into `w8` (bit 0 compass, bit 1 map; `0xe76204`); per room visited, or on the map or compass: its chip under `B_<cell>`, then `0xe80950` `DungeonMap_MakeRoomIcons (page, room, dungeon, visited, map, compass)`: the boss icon (`UiDungeonArea` `mIsBoss`, until beaten), an icon per room actor and per `UiDungeonIcon` row of the room from `0xe832c0` `DungeonMap_MakeActorIcon (out, page, actor {u16 id, f32 x, y, z, switches}, room, visited, map, compass)` by actor id: `ObjTreasureBox` a chest (`Dg_DgnTresure`), `ObjLockDoor`/`ObjBossDoor`/`ObjClosedDoor` and the one-way and Panel doors, `ObjDungeonCrackedWall` and Panel cracked walls (`Dg_DgnBombWall`), `AreaUpstairs`/`AreaDownstairs` and Panel stairs, `ObjDungeonWarpHole`, `PanelJointOpeningStraight`; no icon for other actors. Each icon is placed by `0xe84b60` `DungeonMap_PositionIcon (x, y, z, page, out vec2, room sp*)` (world to map, `0xe827b0`: the cell's position plus the offset from the room's middle × 5.333; the result is the icon's translate, set through icon virtual `+0x80`), attached with `AttachBefore(icon, page, N_MapPin_00, N_PinOffset_00)` and pushed onto `+0x1268`. Then `0xe82250` `DungeonMap_ShowCellFloor (page, cell, room, area row)` per room (and on every floor change): the cell, its icons (icon vtable `+0x78`), Link's and the entrance markers and the pins (code / 10) are shown on their floor only. The floor art is the animation `Dgn_<mAnimFloorIndex>`.
 
 **Room icons** (`DungeonMapIcon_vtable` `0x1c2cb38`, 0xd0 bytes, built by `0xf37fb0 (icon, layout name)`, initialised by `0xf36e60 (icon, actor, visited)`): open/closed animators `+0xa0`/`+0xb8`, `+0xc0` the area's id, `+0xc4` shown, `+0xc5` map, `+0xc6` compass, `+0xcc` visited. These fields and the animations belong to its base class DungeonMapPart (`DungeonMapPart_vtable` `0x1c2c638`, 0xd0 bytes, destructor `0xe71ff0`), which the page's `L_MapStart_00` (`+0x29c8`) is too. Virtuals `+0x80` `DungeonMapIcon_SetTranslate` (`0xf36d20`, `(vec2 in x0, icon)`) and `+0x88` `DungeonMapIcon_SetScale` (`0xf36d60`) move and scale the root pane. `0xf38040` (vtable `+0x70`, `DungeonMapIcon_Update (icon, actor)`) sets `+0xc4` and the icon's visibility when the compass is owned (`+0xc6`) or the actor's shown switch is set (with `+0xcc`), open by its open switch; `0xf380f0` (vtable `+0x78`, `(icon, bool on the floor)`) shows it while both `+0xc4` and the bool are set.
 
@@ -522,6 +580,8 @@ column `+0xc3`), zones `+0x210`, virtual `+0x20` the room at a position.
 **KeyWait** (`0xe7a0f0`) each frame: `0xe86750 (page, true)` moves the cursor (eases toward the hovered pin only; `+0x2d08` the speed, 4.25 while the stick is idle); A (`0xe86c10`, `bool ()`: the rising edge of A, the page not passed): on a pin (`0xe871e0`) StartEditMarkPin, else PutMarkPin; zoom (`0xe874a0`); floor buttons (`0xe87670`) to ChangeFloor (`0xe7d8a0`: the floor buttons, `DungeonMap_ShowCellFloor` per room, the floor art animations); X (`0xe87840`) MemoryStart; then, whatever was pressed, `0xe87a20` the pin hover (nearest shown pin within `cursor+0x300 × 0.2 × page+0x2ce4`; the pins' positions compared with cursor − `N_MapPosition_00` − `N_PinOffset_00`); `0xe87d60` Y held.
 
 The dungeon page has no icon markers, no hover over its room icons and no names on the cursor; it shares the cursor UI, the pins' classes and the marker functions with the overworld page.
+
+`DungeonMap_ShowCellFloorCollapsed` replaces `DungeonMap_ShowCellFloor` in Eagle's Tower once its pillars are broken (`TowerPillarBrokenAll`): its 3F shows the rooms of 4F and of the collapsed top (`UiDungeonArea` `mFloor` 14), and its 4F none. Eagle's Tower's rooms do not sit where their names' rows and columns put them (`scripts/map_positions.py` takes a room's place from the room's grid).
 
 ## Warp map (UI 7, `Gm_Map`)
 

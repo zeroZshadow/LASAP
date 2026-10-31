@@ -30,7 +30,7 @@ namespace AP::ListUi {
     bool Build(Layout& layout, const char* file, Game::Ui::LayoutWrapper* page, Game::Ui::Pane* pageRoot);
     void Drop(Layout& layout);
 
-    // Gm_MemoryList: 7 rows, y 119 down by 48; the list's own panel P_pict_00 (420 by 470) behind them.
+    // Gm_MemoryList's visible rows and their places; the list's own panel P_pict_00 (420 by 470) behind them.
     constexpr int kRows = 7;
     constexpr float kRowTop = 119, kRowStep = 48;
     struct Row {
@@ -59,9 +59,9 @@ namespace AP::ListUi {
     void SetEntries(List& list, int count, int at);
     // Shows the rows that hold an entry, the cursor on its row, the scroll bar while the entries do not fit.
     void Place(List& list);
-    // Once a frame: Up/Down move the cursor (held: again after 20 frames, then every 5, stopping at either end) with a
-    // sound; returns the buttons pressed since last frame. It reads the buttons of the polls since its last call.
-    // `moved` is set when the cursor moved (the rows then show other entries).
+    // Once a frame: Up/Down move the cursor (held: they repeat, ap_list.cpp's kRepeatDelay and kRepeatEvery, stopping
+    // at either end) with a sound; returns the buttons pressed since last frame. It reads the buttons of the polls
+    // since its last call. `moved` is set when the cursor moved (the rows then show other entries).
     u64 Input(List& list, bool& moved);
 
     // The pad: each input poll's buttons (nn::hid), and those of the last poll that saw any, while recent (50 ms).
@@ -71,9 +71,9 @@ namespace AP::ListUi {
     constexpr u64 kButtonA = 0x1, kButtonB = 0x2, kButtonX = 0x4, kButtonY = 0x8, kButtonUp = 0x2000 | (1ull << 17),
                   kButtonDown = 0x8000 | (1ull << 19);
 
-    // A guide made from the overworld map's (X 0x13, Y 0x14, R 0x15, A 0x12, B 0x11; Navi_SetGuide with index 0 and
-    // the map's id): its slots' kinds in order, the other slots hidden, and the words after the button of the map's
-    // X (Memories), Y (Hide markers) and A (Pin) captions ("" the game's).
+    // A guide made from the overworld map's (Navi_SetGuide with index 0 and the map's id; scripts/re/UI.md, Pause
+    // menu): its slots' kinds in order, the other slots hidden, and the words after the button of the map's X
+    // (Memories), Y (Hide markers) and A (Pin) captions ("" the game's).
     constexpr u32 kGuideX = 0x13, kGuideY = 0x14, kGuideR = 0x15, kGuideA = 0x12, kGuideB = 0x11;
     struct Guide {
         int count = 0;

@@ -1,12 +1,6 @@
-// The ghosts of multiplayer ghosts (DESIGN.md, Ghosts). One puppet per ghost slot of AP::GhostNet, and in the test
-// build one for DBG puppet: an NPC actor spawned at runtime through the game's actor factory (as a chest
-// pops its enemy), drawn with Link's model (its Npc row, set up by ghost_puppet.py) dithered by alpha-to-coverage,
-// and moved by hand every frame: replaying the positions and animations it is fed on their sender's clock.
-// The actor system owns the actors, and they outlive level changes: each puppet keeps a weak reference to its actor
-// and reuses it for the whole session, hidden while its ghost is not shown.
-// This file has the actors and the frame; the replay (ghost_replay.cpp), the look (ghost_look.cpp), the dither
-// (ghost_dither.cpp), the instanced equipment and faces (ghost_instanced.cpp) and the crowds (ghost_crowd.cpp) have
-// files of their own.
+// The ghosts' puppets (DESIGN.md, Ghosts, Puppet): one per ghost slot of AP::GhostNet, and in the test build one for
+// DBG puppet. This file has the actors and the frame; the replay, the look, the dither, the instanced equipment and
+// the crowds have ghost_*.cpp files of their own.
 #include "ghost/ghost_puppets_impl.hpp"
 #include "ap/ap_net.hpp"
 #include "game/framework.hpp"
@@ -40,48 +34,33 @@ namespace {
     using Game::NowMsFine;
     using Game::Ticks;
 
-    // Actor factory (Actor_Create, game 1.0.0). The player's hookshot calls it with the actor system as owner and
-    // params zeroed but for the actor id, the zone (the hookshot copies its owner's), the position, the rotation and
-    // the scale (PopEnemy copies an identity quaternion and a Vec4 of ones from globals). PopEnemy then releases the
-    // params' weak and shared pointers and calls three member destructors (ActorParams_Dtor0..2).
-    // Ghosts are NpcGhost actors (0x179) with an Npc row of their own. Each NPC class passes its row's symbol, a
-    // literal in its code (str_NpcGhost), to the NPC component constructor, which looks the row up
-    // (Datasheet_FindRow, row size 0x220; null when missing) in the Npc sheet (**NpcSheets_ptr). All of it runs
-    // inside the factory call, so while the module's own spawn runs the key is APGhost, if the sheet has that row
-    // (ghost_puppet.py adds it; a missing row crashes).
+    // Spawned through the actor factory (Actor_Create; scripts/re/ACTORS.md, Creation). Ghosts are NpcGhost actors
+    // with an Npc row of their own: the NPC component's constructor looks its class's row up inside the factory call
+    // (ACTORS.md, NPCs), so while the module's own spawn runs the key is APGhost, if the sheet has that row (the
+    // patcher adds it, ap_player_ghost.py; a missing row crashes).
     constexpr u16 kGhostActor = 0x179;
     using Game::Actors::kNpcRowSize;
     StrView g_GhostRow{"APGhost", 7};
     bool g_SpawningGhost = false;
     constexpr u64 kHiddenRemoveMs = 10000;  // a ghost hidden this long loses its actor
-    // Animations by name: the NPC component has a virtual play (NpcAnimation_PlayByName, overridden by
-    // NpcAnimation_PlayByName2): (component, {name, length}*, mode, blend seconds, frame). Mode 0 looks the name up in
-    // its animation set (+0x1e8, cache +0x218) and hands it to its animator at frame 0 and rate 0 (the animator's
-    // virtual +0xc0 frame, +0xd8 rate); mode 2 sets the rate 1. The slot is found in the component's vtable at its
-    // first use.
+    // Animations by name: the NPC component's virtual play (NpcAnimation_PlayByName, or a class's
+    // NpcAnimation_PlayByName2; scripts/re/ACTORS.md, NPCs), its slot found in the component's vtable at its first use.
     int g_PlaySlot = -1;  // -1: not looked up; -2: not in the component's vtable
-    // The upper body, as Link has it: every NPC component class makes its animation player through the same
-    // NpcComponent_MakeAnimator (0x94b310, vtable +0x208: out, component, {name, length}*, the model component's
-    // shared_ptr*), a single-layer SkeletalAnimationComponent, each time the actor loads its model. For a ghost's
-    // component (its row, APGhost's) the module makes Link's kind instead (Player_InitAnimator):
-    // LayeredAnimation_Make (0x67ba70: out, the component's owner, {name, length}*, model component sp*, int*
-    // layers) with two layers, layer 1 masked to the bones from spine_a up (0x1035390: layerSet, layer, bone name,
-    // true) and off (0x10355f0: layerSet, layer, on). Playing on layer 0 stays the NPC's (the layered
-    // player's set-animation is layer 0's); layer 1 takes the sender's upper-body animation as Link's controller
-    // hands it over (PlayerAnimation_SetSlot): LayeredAnimation_SetSlot (0x1059dd0: player, layer, animation sp*,
-    // blend, start frame) with the bound animation by name (NpcAnimation_Get 0x9670d0: out sp, NPC component,
-    // {name, length}*), then the layer's virtual +0x30 (loops) and +0x48 (0), and the layer turned on. Like the
-    // single-layer player (NpcAnimator_Make), the layered one is then started (the entity manager's start task) and
-    // made a child of the component's owner (0xfa9e40: entity, child), which binds it to the model.
+    // The upper body, as Link has it: each time a ghost's component (the APGhost row) loads its model, the module makes
+    // it Link's kind of animation player instead of the NPC's single-layer one (NpcComponent_MakeAnimator): a
+    // LayeredAnimation with two layers, layer 1 masked from spine_a up and off (scripts/re/MODELS.md,
+    // LayeredAnimation).
+    // Layer 0 plays as the NPC's; layer 1 takes the sender's upper-body animation as Link's controller hands it over
+    // (PlayerAnimation_SetSlot).
     constexpr int kUpperLayer = 1;
 
     // A ghost whose last line is older than this is not shown (the relay and the client send offs; this covers a
-    // lost one). A still player's game sends a position twice a second.
+    // lost one). A still player's game sends a position every kStillMs (ghost_net.cpp).
     constexpr u64 kStaleMs = 5000;
     constexpr u32 kRespawnFrames = 60;  // after a failed spawn
     // The name tag's point: above the head bone of the ghost's model (where Link's head is drawn, so it follows a
     // fall from above, a jump or a warp's lift), or above its feet while the model has no skeleton yet.
-    constexpr float kTagAboveHead = 0.68f, kTagHeight = 1.3f;  // kTagHeight: above the feet (the head standing + 0.68)
+    constexpr float kTagAboveHead = 0.68f, kTagHeight = 1.3f;  // kTagHeight: above the feet (the head + kTagAboveHead)
     constexpr u32 kNoRowFrames = 600;   // after a spawn without the APGhost row
     // A shown puppet whose actor was never active this long is made again (a backstop: zone -1 keeps the zones from
     // suspending it).
@@ -262,8 +241,6 @@ namespace {
         Forget(p);
     }
 
-    // Creates actor <id> at pos as PopEnemy does, with the player as owner, and keeps a weak reference to it; a
-    // puppet that has an actor shows it there again.
     bool Spawn(Puppet& p, u16 id, const Game::Vec3& pos, u32 frame, std::string& err) {
         if (Alive(p)) {
             Place(p, pos, nullptr);
@@ -293,14 +270,13 @@ namespace {
         Game::ActorParams& params = made.params;
         params.actorId = id;
         // Zone -1: NpcGhost is zone-scoped, and an actor of a zone Link has left is suspended until he enters it
-        // again (ACTORS.md, Activity); a ghost goes where its player goes, so it belongs to no zone.
+        // again (scripts/re/ACTORS.md, Activity); a ghost goes where its player goes, so it belongs to no zone.
         params.zone = -1;
         params.pos = {pos.x, pos.y, pos.z, 0};
         std::memcpy(&params.rot, rot, sizeof(params.rot));
         std::memcpy(&params.scale, scale, sizeof(params.scale));
 
-        // The owner is the framework's actor system (a shared_ptr), as the player's hookshot
-        // passes it.
+        // The owner is the framework's actor system (a shared_ptr), as the player's hookshot passes it.
         SharedPtr<>* system = &Game::GetFramework()->actorSystem;
         Shared<Game::Actor> out;
         g_SpawningGhost = id == kGhostActor;
@@ -332,7 +308,6 @@ namespace {
         return true;
     }
 
-    // Plays an animation of the puppet's model by name from a frame (the animator's kSetFrame).
     void PlayAnim(Puppet& p, const char* name, float blend, float frame) {
         Game::Actors::NpcComponent* comp = NpcOf(p);
         if (comp == nullptr) return;
@@ -354,8 +329,6 @@ namespace {
             Game::CallVirtual<void(float)>(comp->animator, Game::SkeletalAnimationVirtual::kSetFrame, frame);
     }
 
-    // The sender's upper-body animation (anim id, 0 none) on layer 1 of the puppet's layered animation player, from
-    // its start; nothing on a model whose player is not layered.
     void SetUpper(Puppet& p, int anim) {
         if (anim == p.upper) return;
         p.upper = anim;
@@ -450,7 +423,7 @@ namespace {
 
     void TickPuppets();
 
-    // Once per input poll (after GhostNet's); moves the puppets once per frame.
+    // Moves the puppets once per frame.
     void Tick() {
 #ifdef LASAP_TEST
         u64 t0 = Ticks();

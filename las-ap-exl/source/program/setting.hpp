@@ -16,7 +16,7 @@ namespace exl::setting {
        0x50000 held 323440 bytes in free play with Map Tracker on, too few with the map open (DBG heap, 2026-10-22). */
     constexpr size_t HeapSize = 0xA0000;
 
-    /* How large the JIT area will be for hooks: 200 bytes per trampoline hook installed (0x4000 held 81, too few). */
+    /* How large the JIT area will be for hooks: 200 bytes per trampoline hook installed; it must hold them all. */
     constexpr size_t JitSize = 0x8000;
 
     /* How large the area will be inline hook pool. */

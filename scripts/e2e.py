@@ -1,5 +1,5 @@
-"""Drives the sandbox game for tests (TESTING.md, "Driving the game"): the test module's debug port for DBG
-commands and the game's state, and a scripted AP session (a MultiServer and an LAS client whose stdin are fed from
+"""Drives the sandbox game for tests (TESTING.md, "Observing and driving the game"): the test module's debug port for
+DBG commands and the game's state, and a scripted AP session (a MultiServer and an LAS client whose stdin are fed from
 files) for everything that goes through Archipelago.
 
 python e2e.py send <item name> [<item name> ...]   server /send to the slot

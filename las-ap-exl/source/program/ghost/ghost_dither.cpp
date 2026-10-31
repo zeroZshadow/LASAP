@@ -17,12 +17,10 @@ namespace {
     using Game::At;
 
     // Screen-space dither on the puppets only: the model file's shown albedos carry a constant alpha (render pass
-    // 1), and their draws get an NVN multisample state with alpha-to-coverage. The renderer binds a material's
-    // parameter block through the command buffer wrapper's bind-uniform-buffer (CmdBuf_BindUniformBuffer); an address
-    // inside a puppet's blocks marks its draw. The context's cached raster-state setter (GfxContext_SetRasterState;
-    // cache at +0xa0, which other code reads, the wrapper at +8) would bind the material's own state over it, so it
-    // binds ours again until the draw (CmdBuf_DrawElements*); after the draw the cached state is bound again
-    // (CmdBuf_BindRasterState), as the context believes it is.
+    // 1), and their draws get an NVN multisample state with alpha-to-coverage. A material's parameter block bound
+    // (CmdBuf_BindUniformBuffer) inside a puppet's blocks marks its draw. The context's cached raster-state setter
+    // (GfxContext_SetRasterState) would bind the material's own state over it, so it binds ours again until the draw;
+    // after the draw the cached state is bound again, as the context believes it is (scripts/re/MODELS.md, Draw tree).
     constexpr size_t kWrapperCmdBuf = 0xb8, kContextWrapper = 8, kContextRasterCache = 0xa0;
     alignas(16) u8 g_GhostMs[64];
     bool g_GhostMsReady = false;
@@ -147,8 +145,7 @@ namespace {
         g_Spans[n].lo.store(0, std::memory_order_release);
     }
 
-    // The model's blocks (its materials' parameter blocks and its shapes' blocks, one span in its pool) as GPU
-    // addresses, for the render thread.
+    // One span in the model's pool, around its materials' parameter blocks and its shapes' blocks.
     void PublishSpan(int n, const Game::ModelObj* model) {
         u64 gpu = model->pool != nullptr ? model->pool->gpu : 0;
         u64 lo = ~0ull, hi = 0;

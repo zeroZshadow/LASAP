@@ -4,7 +4,8 @@
 #include "hooks.hpp"
 #include "patches/patches.hpp"
 
-// Settings LASR lists but never implemented (config.ini [tweaks])
+// config.ini [tweaks]: settings LASR lists but never implemented, and our own (DESIGN.md, Gameplay options and player
+// settings)
 namespace {
     using Patches::Patch;
     namespace inst = exl::armv8::inst;
@@ -13,30 +14,25 @@ namespace {
     // The low-health warning: the two calls that play SE_SY_HP_ALLEART (the first five beeps, then quieter ones)
     constexpr Patch kNoLowHealthBeep[] = {{0xeabeb0, inst::Nop()}, {0xeabf44, inst::Nop()}};
 
-    // An enemy's death picks the buff that replaces its drop: a Guardian Acorn once KillCountNoDamage reaches 14
-    // (b.hs to it), else a Piece of Power once KillCount reaches maximum hearts + 32 (b.lt to the normal drop below
-    // it, which the patch makes a b).
+    // The buff that replaces an enemy's drop (scripts/re/ITEMS.md, Item actors, Buff drops): the b.hs to the acorn
+    // is a nop, and the b.lt to the normal drop, past the Piece of Power, a b.
     constexpr Patch kNoGuardianAcorn[] = {{0x89c038, inst::Nop()}};
     constexpr Patch kNoPieceOfPower[] = {Patches::BranchTo(0x89c054, 0x89ba3c)};
 
-    // A hooked fish's line tension (fish +0x9e4) rises while Link reels against it and falls otherwise; its fight
-    // states snap the line once it reaches the fish's limit. Easy Fishing stores 0 in place of the new tension
+    // A hooked fish's line tension (scripts/re/ACTORS.md, Fishing): Easy Fishing stores 0 in place of the new tension
     // (str w8, [x20, #0x9e4] -> str wzr, [x20, #0x9e4]).
     constexpr Patch kEasyFishing[] = {{0xb5c534, exl::armv8::InstBitSet(0xb909e69f)}};
 
-    // Frame pacing (TESTING.md): the graphics system's init starts a vsync watcher (VsyncWatcher_Init: watcher,
-    // system), and while it runs each frame ends by waiting for the display's next vsync, so a frame that misses one
-    // waits for the next and the game drops from 60 to 30 fps at once. No 30 FPS Drops starts no watcher: frames end
-    // when the GPU is done. "emulator": only where the kernel is no Atmosphere (mesosphere answers
+    // No 30 FPS Drops starts no vsync watcher (VsyncWatcher_Init; scripts/re/FRAMEWORK.md, Frame pacing): frames end
+    // when the GPU is done. "emulator": only where the kernel is not Atmosphere (mesosphere answers
     // svcGetInfo(InfoType_MesosphereMeta); Ryujinx and the yuzu-based emulators do not).
     bool OnEmulator() {
         u64 version = 0;
         return R_FAILED(svcGetInfo(&version, InfoType_MesosphereMeta, INVALID_HANDLE, 0));
     }
 
-    // The message window (talk, item-get and telop text) shows a page letter by letter in its state "Reading".
-    // B during it skips to the page's end; InstantPage does the same on the state's first update
-    // (MessageWindow_Reading).
+    // B in the message window's Reading state (talk, item-get and telop text) shows the page whole (scripts/re/UI.md,
+    // Message window); InstantPage does the same on the state's first update (MessageWindow_Reading).
     HOOK_DEFINE_TRAMPOLINE(InstantPage) {
         static void Callback(Game::Ui::MessageWindow* window) {
             Game::Ui::MessageText* text = window->text;

@@ -1,5 +1,6 @@
-// The debug port (test build, TESTING.md): DBG commands and any protocol line from the test scripts, replied to on the
-// same connection within milliseconds; everything the module sends the AP client is mirrored there as "AP <line>".
+// The debug port (test build, TESTING.md, Debug commands): DBG commands and any protocol line from the test scripts,
+// replied to on the same connection within milliseconds; everything the module sends the AP client is mirrored there
+// as "AP <line>".
 #ifdef LASAP_TEST
 #include "ap/ap.hpp"
 #include "ap/ap_bridge.hpp"
@@ -187,8 +188,8 @@ namespace {
             Push(to, line);
             return true;
         }
-        // A line for the AP client: the client gets it also when a debug command caused it (a give's CHECK), so the
-        // server sees what the game did; the debug client whose command it was gets it as its reply.
+        // The AP client gets it also when a debug command caused it (a give's CHECK), so the server sees what the game
+        // did.
         Lock();
         for (int i = 0; i < kMaxClients; i++) {
             auto& c = g_Clients[i];

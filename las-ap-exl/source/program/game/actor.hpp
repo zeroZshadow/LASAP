@@ -8,7 +8,7 @@
 namespace Game {
     struct LebActorRecord;
 
-    // Vec3 still pads to 0x10 bytes just like Vec4, we use both for clarity
+    // 12 bytes, unpadded; where the game pads one to 0x10 (Coords) the padding is an explicit field
     struct Vec3 {
         float x;
         float y;
@@ -78,9 +78,8 @@ namespace Game {
     static_assert(offsetof(Signal, slots) == 0x18 && offsetof(Signal, nextHandle) == 0x30);
     static_assert(offsetof(Signal, mutex) == 0x38 && sizeof(Signal) == 0x58);
 
-    // A component that is a scene-graph node (Node_vtable 0x1c31a68, Node_Ctor; 0x148 bytes, allocated 0x150): an
-    // actor's root, a model component, the item-get's model. Node_UpdateWorld makes coords from coordsNew and the
-    // parent's coords; Node_MarkDirty sets needsCoordUpdate and emits transformChanged.
+    // A component that is a scene-graph node (Node_vtable 0x1c31a68, Node_Ctor; 0x148 bytes, allocated 0x150;
+    // ACTORS.md, Nodes): an actor's root, a model component, the item-get's model.
     struct Node {
         Entity entity;
         Node* parent;              // 0x58: a weak_ptr
@@ -91,7 +90,7 @@ namespace Game {
         bool needsCoordUpdate;     // 0xe0
         u8 pad_e1[0x7];
         Signal transformChanged;   // 0xe8: the skeletal model subscribes
-        void* attachment;          // 0x140: an owned bone attachment; without a parent the world is local times its
+        void* attachment;          // 0x140: an owned bone attachment; without a parent the world is local times its own
     };
     static_assert(offsetof(Node, parent) == 0x58 && offsetof(Node, children) == 0x68);
     static_assert(offsetof(Node, coordsNew) == 0x80 && offsetof(Node, coords) == 0xb0);
@@ -244,8 +243,6 @@ namespace Game {
     static_assert(offsetof(ActorRailLink, link) == 0x8 && offsetof(ActorRailLink, room) == 0x20);
     static_assert(sizeof(ActorRailLink) == 0x30);
 
-    // An actor's record in a level's LEB file (ACTORS.md, LEB actor record), as the level loads it: 0x90 bytes, then
-    // linkCount links, railLinkCount rail links and linkedIdCount actor indices.
     // A node of the actor registry (ActorRegistry_ptr, an unordered map by LEB key)
     struct ActorRegistryNode {
         ActorRegistryNode* next;
@@ -254,6 +251,8 @@ namespace Game {
         SharedPtr<Actor> actor;
     };
 
+    // An actor's record in a level's LEB file (ACTORS.md, LEB actor record), as the level loads it: 0x90 bytes, then
+    // linkCount links, railLinkCount rail links and linkedIdCount actor indices.
     struct LebActorRecord {
         u64 key;
         u32 nameOffset;            // 0x8

@@ -1,10 +1,5 @@
-// The game state the tests read and its trace (test build, TESTING.md "Game state").
-// - The trace (DBG trace on): a "T <ms> <frame> <what>" line on every change of the screen, the level, the
-//   player's event state, the pause flag, the game's controller (its buttons and input lock), the buttons each
-//   frame's input polls carried (physical and injected), the UI state machines and watched memory.
-// - UI state machines (title, file select, message window, choices, name entry) are learned from their ChangeState
-//   calls; each keeps its state names in a table, so the trace names their states.
-// - Conditions on that state, which the ops (test_input.cpp) wait for.
+// The game state the tests read (test build, TESTING.md, Game state): the traced fields, the UI state machines learned
+// from their ChangeState calls, the conditions the ops (test_input.cpp) wait for, and the trace.
 #ifdef LASAP_TEST
 #include "ap/ap.hpp"
 #include "ap/ap_bridge.hpp"
@@ -51,9 +46,7 @@ namespace {
     }
 
     // ---- UI state machines ----
-    // Layout (game 1.0.0): u32 frames in the state at +0x8, current state +0xd (0xff none), previous +0xe, owner
-    // +0x40, per state {enter, update, exit} member functions from +0x48 (0x30 each), then for N states a bitset at
-    // +0x50 + N*0x30 and the name pointers at +0x58 + N*0x30. Each class has its own ChangeState(machine, state).
+    // The machine's layout and each class's own ChangeState(machine, state): UI.md, State machines.
     // A hook on a ChangeState(machine, state) function (owner = -1), or on a state's update(owner) for machines whose
     // class changes state inline: the machine is then at owner + `owner`.
     struct SmHook { const char* name; uintptr_t offset; int states; ptrdiff_t owner = -1; };
@@ -73,7 +66,7 @@ namespace {
     // Names for the owner classes found in the trace (owner vtable, module offset).
     struct KnownOwner { uintptr_t vt; const char* name; };
     constexpr KnownOwner kKnownOwners[] = {
-        {0x1c30140, "title"},       // Deactive LogoIn BtnIn WaitLR GameStart End; takes L+R in WaitLR
+        {0x1c30140, "title"},       // takes L+R in WaitLR (UI.md, State machines)
     };
 
     constexpr int kMaxMachines = 32;
@@ -143,9 +136,8 @@ namespace {
         return state;
     }
 
-    // The framework's main loop (0x1b920) makes a pass a frame: its frame step (0x11cc0 on framework +0x1b0), then
-    // the frame counter (+0x4d4) counts up unless the game is paused (+0x510 or +0x511 set: the pause menu and other
-    // menus), while the frames are still drawn. Hooked at the start of each pass.
+    // A pass of the framework's main loop is a frame, menus included; its frame counter stalls while the game is
+    // paused (FRAMEWORK.md, Main loop). Hooked at the start of each pass.
     constexpr uintptr_t kMainLoopPass = 0x1b97c;
 
     struct MainLoopPass : public exl::hook::impl::InlineHook<MainLoopPass> {
@@ -165,8 +157,7 @@ namespace {
         Trace(std::string(g_Fields[i].key) + "=" + value);
     }
 
-    // The game's controller (Framework +0x518): input lock at +0x234 and its buttons (getter at the pad's vtable
-    // +0x10), as the title reads them for L+R.
+    // The game's controller: its input lock and its pad's buttons, as the title reads them for L+R (UI.md, Input).
     uintptr_t Controller() {
         uintptr_t mgr = 0, holder = 0, ctl = 0;
         if (!Read(reinterpret_cast<uintptr_t>(Game::Framework_ptr.Ptr()), mgr) || !Read(mgr + 0x518, holder) ||
@@ -326,7 +317,7 @@ namespace {
     }
 
     // The open message window (Game::Ui::MessageWindow), its owner found from its machine and read with Read: a
-    // button counts once waitCount is at waitLimit.
+    // button counts once keyWait's count reaches its limit (UI.md, Message window).
     using Game::Ui::MessageWindow;
     constexpr size_t kMsgMachine = offsetof(MessageWindow, machine);
     constexpr size_t kMsgWaitCount = offsetof(MessageWindow, keyWait) + offsetof(Game::Ui::WaitCounter, count);
@@ -357,11 +348,9 @@ namespace {
         return StateName(*m, m->state) + "," + std::to_string(count) + "/" + std::to_string(limit);
     }
 
-    // The file menu's cursor: u8 at the menu's owner (machine at owner +0x80) +0x159b0, the slot (0 = file 1); its
-    // DataSelectKeyWait update (0xe61040) moves it.
+    // The file menu's cursor (0 = file 1; its DataSelectKeyWait update 0xe61040 moves it; UI.md, State machines) and
+    // the name entry's (0 on the name, 1 on OK; UI.md, Name entry): u8s at their owners.
     constexpr size_t kFilesMachine = 0x80, kFilesCursor = 0x159b0;
-    // The name entry's cursor: u8 at its owner (machine at owner +0x80) +0x590, 0 on the name (A opens the
-    // keyboard), 1 on OK; its KeyWait update (0xeaf8a0) moves it.
     constexpr size_t kNameMachine = 0x80, kNameCursor = 0x590;
     // A byte of a hooked machine's owner, -1 while that machine is not there.
     int OwnerByte(const char* hook, size_t machine, size_t offset) {
@@ -393,20 +382,7 @@ namespace {
         return "up";
     }
 
-    // Conditions, joined with '+', each negated by a leading '!':
-    //   free             the player can move, no message is open and no item display waits
-    //   unlocked         the game's controller takes input (lock=0)
-    //   textready        the open message waits for a button and takes one now
-    //   choiceready      a choice is open and takes buttons now
-    //   choice=<n>       a choice is open with the cursor on option n (from 0)
-    //   <field>=<value>  a traced field: screen, level, event, paused, free, lock, pad, show, text, choice,
-    //                    client (the AP client is connected), server (the client is logged into the slot),
-    //                    file (the file menu's cursor, 0 = file 1), face (up, down, left, right: where Link faces),
-    //                    carry (Link holds something over his head), health (quarter hearts), zone (Link's
-    //                    zone, -1 none)
-    //   dead             Link is in a level with no health left
-    //   navi=<state>     the pause menu header's state (1 Open, 2 WaitKey, ...; - with the menu closed)
-    //   <machine>:<state> a UI machine (its label or hook name) in that state
+    // One condition of a '+' list (TESTING.md, Conditions).
     bool HoldsOne(const std::string& c) {
         if (c.empty()) return true;
         if (c[0] == '!') return !HoldsOne(c.substr(1));
@@ -447,7 +423,7 @@ namespace {
         return buf;
     }
 
-    // Game thread only. Remembers the last few readable regions (the heap, the module's data).
+    // Remembers the last few readable regions (the heap, the module's data).
     bool Readable(uintptr_t addr, size_t len) {
         struct Region { uintptr_t start, end; };
         static Region ok[4] = {};
@@ -515,7 +491,7 @@ namespace {
         int entry = NameCursor();
         SetField(16, entry < 0 ? "-" : std::to_string(entry));
         SetField(17, LinkAnimName());
-        // Link's zone (actor +0xb0, the camera room he is in; ACTORS.md)
+        // Link's zone (actor +0xb0, the camera room he is in; ACTORS.md, Actor fields)
         SetField(18, player ? std::to_string(*reinterpret_cast<s32*>(reinterpret_cast<u8*>(fmwk->player) + 0xb0)) : "-");
         SampleWatches();
     }
@@ -530,7 +506,6 @@ namespace {
         }
     }
 
-    // A machine of that label or hook name in that state (by name); "<label>:<state>".
     bool MachineIn(const std::string& label, const std::string& state) {
         for (auto& m : g_Machines) {
             if (!m.ready || m.sm.load() == 0 || (m.label != label && kSmHooks[m.hook].name != label)) continue;
@@ -550,7 +525,6 @@ namespace {
         return out.empty() ? "none" : out;
     }
 
-    // The open message waits for a button and takes one now.
     bool TextReady() {
         Machine* m = OpenMessage();
         s16 count = 0, limit = 0;
@@ -559,8 +533,7 @@ namespace {
                Read(owner + kMsgWaitLimit, limit) && count >= limit;
     }
 
-    // A choice takes buttons once its animation has run: the Selecting update (0xef2300) returns while the animator
-    // of inOutChoice[choiceCount - 2] plays (its speed is not 0).
+    // A choice takes buttons once its inOutChoice animation has stopped (UI.md, Message window).
     constexpr size_t kMsgChoiceCount = offsetof(MessageWindow, choiceCount),
                      kMsgInOutChoice = offsetof(MessageWindow, inOutChoice) + offsetof(Game::Ui::Animation, animator),
                      kAnimatorSpeed = offsetof(Game::Ui::Animator, speed);

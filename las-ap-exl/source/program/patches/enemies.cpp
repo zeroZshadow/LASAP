@@ -14,9 +14,7 @@
 // Enemy Randomizer and Enemy Sizes (config.ini [randomizer]): each enemy a level's actor data loads becomes another
 // of its kind, and chests that pop an enemy pop a random one.
 namespace {
-    // we want to group actors by types
-    // actors not included are too problematic, whether they just block paths or straight up crash the game without
-    // additional work
+    // The enemy groups, by type. Enemies left out block paths or crash the game without more work.
     u16 land_ids[] = {0x1, 0x2, 0x3, 0x4, 0x5, 0x8, 0x9, 0xa, 0x12, 0x13, 0x14, 0x15, 0x16,
                         0x17, 0x1b, 0x1c, 0x1d, 0x22, 0x24, 0x25, 0x27, 0x28, 0x29, 0x2e, 0x2f,
                         0x30, 0x31, 0x32, 0x33, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c,
@@ -131,7 +129,7 @@ namespace {
     std::deque<int> lastTen;
 
     bool isEnemyValid(u16 vanilla_id, u16 new_id) {
-        // if the enemy is vanilla then it is obviously valid :P
+        // the vanilla enemy is always valid
         if (new_id == vanilla_id) {
             return true;
         }
@@ -146,7 +144,7 @@ namespace {
             return false;
         }
 
-        // prevent a powerful or annoying enemies from spawning too frequently
+        // a powerful or annoying enemy spawns at most once in ten
         if (std::find(std::begin(annoying_ids), std::end(annoying_ids), new_id) != std::end(annoying_ids)) {
             if (std::find(lastTen.begin(), lastTen.end(), (int)new_id) != lastTen.end()) {
                 return false;
@@ -156,8 +154,7 @@ namespace {
         return true;
     }
 
-    // The variants are just different colors but the same enemy effectively
-    // We only include the first variant in the enemy pool so that they arent prominent
+    // The variants differ only in colour: the pool holds the first, so they are not over-represented.
     u16 randomizeEnemyVariants(u16 id) {
         if (id == 0x4a || id == 0x4d) {
             id += exl::util::GetRandomU64() % 3;
@@ -165,8 +162,7 @@ namespace {
         return id;
     }
 
-    // although pretty much anything can work, these are ones that look the best
-    // we can easily add more later if we want
+    // The enemies a trap chest lets out: those that look best coming out of a chest.
     uint16_t chest_ids[] = {0xc, 0x10, 0x12, 0x19, 0x1b, 0x1c, 0x1d, 0x25, 0x34, 0x3c};
 
     HOOK_DEFINE_INLINE(ObjTreasureBox_PopEnemy) {
@@ -193,8 +189,7 @@ namespace {
                 lastTen.push_back((int)new_enemy);
                 new_enemy = randomizeEnemyVariants(new_enemy);
                 record->actorId = new_enemy;
-                // some enemies are rotated, we do not want them to randomize into an enemy that is rotation locked
-                // while they still work, I just dont like how it looks
+                // some enemies are placed rotated, which looks wrong on a rotation-locked enemy in their place
                 record->rotDegrees.y = 0.0f;
             }
             if (global_config.randomizer.enemy_sizes) {

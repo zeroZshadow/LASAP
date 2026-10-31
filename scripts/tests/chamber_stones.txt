@@ -1,6 +1,7 @@
-# Received chamber stones (DESIGN.md, Item model: indexed items) take the stones the Items page counts that no vanilla
-# source of the seed gives: on a make_test_patch.py mod 4, 8, 11, 12 and 13 (the shop's and the Trendy Game's stay
-# vanilla); a sixth finds none and adds nothing. Run after newgame_file2. DBG grant adds an item as a received one.
+# Received chamber stones (DESIGN.md, Item model: remote items, Indexed items) take the stones the Items page counts
+# that no vanilla source of the seed gives: on a make_test_patch.py mod 4, 8, 11, 12 and 13 (the shop's and the Trendy
+# Game's stay vanilla); a sixth finds none and adds nothing. Run after newgame_file2. DBG grant adds an item as a
+# received one.
 free 10
 check stones=0\s
 send DBG grant PanelDungeonPiece 1 -1 0

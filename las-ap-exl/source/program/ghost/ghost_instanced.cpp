@@ -18,17 +18,9 @@ namespace {
     using Game::StrView;
     using Game::GetPlayer;
 
-    // Equipment and faces, instanced (DESIGN.md, Ghosts): the shapes bound to one bone each draw once for all ghosts.
-    // Per group of them one InstancedModel component (the game's for lawn grass and floor tiles) on Link, with one
-    // instance per drawn ghost whose look has the group's shapes written each frame; the puppets draw none of them.
-    // Made as FieldTip makes its own (0xb846e0): the component (InstancedModel_Ctor with the model resource as a
-    // skeletal model component holds it), a control block of its own (InstancedModelCtrl_vtable) as its
-    // shared-from-this, the entity manager's closures (kRegister) and its model instance M (kSetup, in the model list
-    // at once), the entity manager's start task (EntityManager_PostStart) and the actor's child map
-    // (Actor_AttachComponent). Hidden (visible clear), it gets no records from the game. M's instances: its
-    // records, turned into a storage buffer at each draw (0xfe4020, up to 512). M is drawn in its bind pose with an
-    // identity world, so a shape bound to one bone shows at a ghost's bone with the ghost's bone world times the
-    // inverse of M's.
+    // Per group one InstancedModel component on Link, made as FieldTip makes its own; its model instance M draws its
+    // records in M's bind pose (scripts/re/MODELS.md, Instanced models). Hidden (visible clear), it gets no records
+    // from the game: the module writes one per drawn ghost, the ghost's bone world times the inverse of M's (Compose).
     constexpr u32 kInstMode = 0x4c41;  // cache keys (+ group) no game component uses: models of their own
     constexpr int kInstCapacity = 32;
     using Record = Game::InstanceRecord;
@@ -161,8 +153,8 @@ namespace {
         for (int g = 0; g < kInstGroupCount; g++) InstDrop(g, hostAlive);
     }
 
-    // Each frame: each group's component on Link (made once a ghost's model gives the resource), with one record per
-    // drawn ghost whose look has the group's shapes.
+    // A group's component is made once a ghost's model gives the resource; its records are the drawn ghosts whose look
+    // has the group's shapes.
     void InstTick() {
         auto* host = GetPlayer();
         for (int g = 0; g < kInstGroupCount; g++)

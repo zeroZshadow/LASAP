@@ -1,4 +1,5 @@
-// NPC models held up in item-gets (LASR's songs and tunics): placed, turned and sized as the ocarina is.
+// NPC models held up in item-gets (LASR's songs and tunics; DESIGN.md, Showing received items): placed, turned and
+// sized as the ocarina is.
 #include "ap/ap_bridge.hpp"
 #include "ap/ap_popup.hpp"
 #include "game/math.hpp"
@@ -11,15 +12,11 @@ namespace AP::Bridge {
 namespace {
     using Game::NowMs;
 
-    // NPC models as items (LASR's songs and tunics: Marin, Manbo, Mamu and the Color Dungeon's guards). The item-get
-    // makes its model in a task (kItemModelTask, component "ItemModel"), a node of its own under the item's node (2
-    // units above Link, tilted back 65 degrees towards the camera, its scale popping from 0 to 1, the shine). The
-    // game gives the component a pose per kind of item: the ocarina and the songs kItemModelPos, rolled by about 21
-    // degrees, scale 1.17; the tunics 0.15 higher, tilted forward 70 degrees, scale 0.8. Item models are small and
-    // centred on their origin; an NPC model stands on its feet there. For these models the component gets the
-    // ocarina's place, the fix's angle (from upright in the item's frame, facing the camera) and the scale that
-    // gives the model the ocarina's size, and the model's root bone moves by -center, putting its middle on the
-    // origin.
+    // The item-get makes its model in a task, a node under the item's node, and gives it the pose of its item id
+    // (scripts/re/ITEMS.md, Item-get, Nodes; Item-get poses). Item models are small and centred on their origin; an
+    // NPC model stands on its feet there. For these models the component gets the ocarina's place, the fix's angle
+    // (from upright in the item's frame, facing the camera) and the scale that gives the model the ocarina's size, and
+    // the model's root bone moves by -center, putting its middle on the origin.
     // `radius` and `center` (model units) are the model's bind-pose bounds (patcher/model_bounds.py): its box centre
     // and the radius around it, all vertices in model space. `angle` turns the model about its centre (degrees in
     // the item's frame: x pitch, y yaw, z roll, applied roll first).
@@ -31,7 +28,7 @@ namespace {
         {"SkeletalGuardRed", 0.673f, {0.0f, 0.523f, 0.035f}, {20.0f, 0.0f, -20.0f}},
         {"SkeletalGuardBlue", 0.673f, {0.0f, 0.523f, 0.035f}, {20.0f, 0.0f, -20.0f}},
     };
-    // The ocarina's size in the item-get: its radius around its root (0.459) times the scale the game gives it
+    // The ocarina's size in the item-get: its radius around its root times its item-get scale
     constexpr float kItemModelRadius = 0.459f * 1.17f;
     constexpr Game::Vec3 kItemModelPos = {0.0f, 0.55f, 1.0f};  // the ocarina's place under the item's node
     // The item-get's model task (ItemGet_ModelTask): +0x8 the item-get's holder (Game::ItemModelHolder).
@@ -120,7 +117,7 @@ namespace {
     };
 }
 
-    // Each frame: the held model's root bone once it can move, and its weak reference goes once the model is gone.
+    // The weak reference goes once the model is gone.
     void TickHeldModel() {
         if (g_HeldModel.View().ptr == nullptr) return;
         if (!g_HeldModel.Alive()) DropHeldModel();

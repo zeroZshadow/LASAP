@@ -138,7 +138,7 @@ namespace AP::Bridge {
     // Adds ItemAPDrop to the actor table; before any room loads.
     void InstallDropActor();
 #ifdef LASAP_TEST
-    // DBG drop: the drop actor that fell last (TESTING.md, DBG drop), " -" when it is gone
+    // DBG drop: the drop actor that fell last (TESTING.md, Debug commands), " -" when it is gone
     std::string DropState();
 #endif
 

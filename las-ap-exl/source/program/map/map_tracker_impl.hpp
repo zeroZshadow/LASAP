@@ -1,6 +1,6 @@
 #pragma once
-// The map tracker's parts, shared by the map_*.cpp files and by the test build's DBG map, maplist and mapdot
-// (test_map.cpp). See map_tracker.cpp for the whole.
+// The map tracker's parts (DESIGN.md, Map tracker), shared by the map_*.cpp files and by the test build's DBG map,
+// maplist and mapdot (test_map.cpp).
 #include "map/map_tracker.hpp"
 #include "ap/ap_list.hpp"
 #include "ap/location_id.hpp"

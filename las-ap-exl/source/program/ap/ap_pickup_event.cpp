@@ -1,8 +1,7 @@
-// Instant Pickups: Link keeps moving through a pickup's event (DESIGN.md, Instant pickups). An event's start puts
-// Link in the demoEvent state, which holds him still, when his EventChara is in the event, else stops his updates
-// (re/EVENTS.md). A pickup's flow only gives the item: its Link actions are item-gets, which Instant Pickups makes
-// instant. When Link moves freely as such an event starts, the hooks leave him out of it: no event state, no
-// suspension.
+// Instant Pickups: Link keeps moving through a pickup's event (DESIGN.md, Instant pickups; scripts/re/EVENTS.md, What
+// an event's start does to the actors). A pickup's flow only gives the item: its Link actions are item-gets, which
+// Instant Pickups makes instant. When Link moves freely as such an event starts, the hooks leave him out of it: no
+// event state, no suspension.
 #include "ap/ap_bridge.hpp"
 #include "ap/ap_patcher.hpp"
 #include "config/config.hpp"

@@ -39,7 +39,7 @@ Its virtuals: `+0x10` the connector of `finished`, `+0x18` finished (`finished` 
 
 ## Event
 
-`Event_Make` (`0x80c290 (out, flowchart resource sp*, StringView* entry)`) builds the event (400 bytes, make_shared by `0x80caa0`). It throws (Japanese messages) when the resource is invalid, holds no flowchart, or the flow context cannot be made.
+`Event_Make` (`0x80c290 (out, flowchart resource sp*, StringView* entry)`) builds the event (400 bytes, make_shared by `0x80caa0`). It throws (Japanese messages) when the resource is invalid, holds no flowchart, or the flow context cannot be made. The game over starts its event from code this way: `event/Common.bfevfl` through `Resource_Load`, `Resource_Wait` and `Resource_TakeFlowchart` (FRAMEWORK.md, Resource groups), then `Event_Make`, `Event_Prepare` and `EventManager_Request`.
 
 | Offset | |
 |---|---|

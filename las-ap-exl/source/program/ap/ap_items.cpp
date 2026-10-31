@@ -1,5 +1,5 @@
-// Received items (DESIGN.md, Received items): granting an item the way a pickup would, the received count, Secret
-// Medicines that wait, and the locations that keep their vanilla item.
+// Received items (DESIGN.md, Items with special handling in the module): granting an item the way a pickup would, the
+// received count, Secret Medicines that wait, and the locations that keep their vanilla item.
 #include "ap/ap.hpp"
 #include "ap/ap_bridge.hpp"
 #include "ap/ap_patcher.hpp"
@@ -16,15 +16,15 @@ namespace {
     using Game::NowMs;
 
     constexpr int kRecvBits = 16;
-    // Bits for received heart pieces and seashells (the game has 32 and 50), less those of the seed's vanilla sources
-    // (AP::VanillaBits). Item actors ignore the inventory (kRandoFixes in patches.hpp), so receiving never hides one; the
-    // game counts over all 64 bits.
+    // Bits for received heart pieces and seashells (the game's totals), less those of the seed's vanilla sources
+    // (AP::VanillaBits). Item actors ignore the inventory (kRandoFixes in patches.hpp), so receiving never hides one;
+    // the game counts over all 64 bits.
     constexpr int kHeartPieceBits = 32;
     constexpr int kSeashellBits = 50;
-    // Heart containers: Inventory_AddItemID takes indices 0-8 (scripts/re/ITEMS.md).
+    // Heart containers: Inventory_AddItemID takes indices 0-8 (scripts/re/ITEMS.md, Adding and owning).
     constexpr int kHeartContainerBits = 9;
-    // Chamber stones: received ones take the stones the Items page counts (PanelStone's mItemMenuCount: 3, 4, 8,
-    // 10-13, 20-26), each a chamber panel Dampé makes at his next talk (scripts/re/ITEMS.md, Chamber stones).
+    // Chamber stones: received ones take the stones the Items page counts (PanelStone's mItemMenuCount), each a
+    // chamber panel Dampé makes at his next talk (scripts/re/ITEMS.md, Chamber stones).
     constexpr u64 kChamberStoneBits = 0x7f03d18;
 
     template<typename T>
@@ -47,7 +47,8 @@ namespace {
         return main.Bottle0 | main.Bottle1 << 1 | main.Bottle2 << 2;
     }
 
-    // Secret Medicines waiting (AP::MEDICINE_FLAG): the game holds one at a time (scripts/re/ITEMS.md).
+    // Secret Medicines waiting (AP::MEDICINE_FLAG): the game holds one at a time (scripts/re/ITEMS.md, Adding
+    // and owning).
     constexpr u64 kMedicinePollMs = 500;
     u64 g_MedicinePolled = 0;
 
@@ -103,7 +104,6 @@ namespace {
 
     bool IsTrapKey(const std::string& key) { return key.ends_with("Trap") || key == "$ENEMY"; }
 
-    // The chamber stones owned (PanelPieceBits), bit i for stone i.
     u64 ChamberStoneBits() {
         const Game::BitTable* table = Game::PanelPieceBits.Ptr();
         u64 owned = 0;
@@ -124,13 +124,12 @@ namespace {
         return n;
     }
 
-    // Grants one item the way an in-game pickup would, including LASR's progressive items.
-    // Returns the item granted, none for traps (QueueTrap) and unknown keys.
     std::optional<ItemId> GrantItem(const std::string& key, int count, int dungeon) {
         auto* items = Game::Data::Inventory::Items();
         std::string k = key;
         if (IsTrapKey(k)) return std::nullopt;
-        // LASR's "$EXT:" keys only name a chest text (Master Stalfos' Note); "None" is an item the client has no key for.
+        // LASR's "$EXT:" keys only name a chest text (Master Stalfos' Note); "None" is an item the client has no key
+        // for.
         if (k.starts_with("$EXT:") || k == "None") return std::nullopt;
         if (k == "SwordLv1" && EventFlags::CheckFlag("SwordFoundFlag")) k = "SwordLv2";
         else if (k == "Shield" && EventFlags::CheckFlag("ShieldFoundFlag")) k = "MirrorShield";
@@ -207,10 +206,9 @@ namespace {
         return nullptr;
     }
 
-    // The server's item for a location that keeps its vanilla item. The game gave it when the location was collected
-    // in this save; a save without it (an older one, another file, a !collect) gets it now with the location's own
-    // index, which also takes the prize out of the Trendy Game. A companion joins only in the game. Returns the item
-    // to show, if any.
+    // The game gave it when the location was collected in this save; a save without it (an older one, another file,
+    // a !collect) gets it now with the location's own index, which also takes the prize out of the Trendy Game. A
+    // companion joins only in the game.
     std::optional<ItemId> GrantKept(const KeptLocation& kept) {
         if (!kept.flag.empty() || SaveHasKept(kept)) return std::nullopt;
         g_Granting = true;
@@ -251,7 +249,6 @@ namespace {
         Logging.Log("[AP] kept locations: %zu", g_Kept.size());
     }
 
-    // Reports a companion once the flag its joining sets is set.
     void TickKeptFlags() {
         if (!PlayerReady() || NowMs() - g_KeptFlagsPolled < kKeptFlagPollMs) return;
         g_KeptFlagsPolled = NowMs();

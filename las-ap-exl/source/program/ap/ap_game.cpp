@@ -45,8 +45,8 @@ namespace {
     // A save is loaded and its received count reported (AP::Tick): the client sends ITEM only after a RECV, so a save
     // loaded from the title, an older one or another file, gets the items it lacks.
     bool g_SaveRecvReported = false;
-    // When the System page's Load started (FileLoad): the save left behind keeps its player until the level jump, so the
-    // RECV waits for a level settled after it.
+    // When the System page's Load started (FileLoad): the save left behind keeps its player until the level jump, so
+    // the RECV waits for a level settled after it.
     u64 g_SaveLoadAt = 0;
     // DeathLink (DESIGN.md, DeathLink): when the last received death was applied, 0 when none is pending
     u64 g_DeathLinkAt = 0;
@@ -89,7 +89,6 @@ namespace {
     }
 }
 
-    // The intro, the title or the file menus show: no save is loaded.
     bool NoSaveLoaded(Game::Framework* fmwk) {
         Game::Scene scene = Game::SceneOf(fmwk);
         return fmwk == nullptr || scene == Game::Scene::Title || scene == Game::Scene::FileMenus;
@@ -97,8 +96,8 @@ namespace {
 
 namespace {
     // The System page's Load: another save replaces the one in play without leaving the level scene, so it counts as a
-    // save load here, as from the title (Tick): RECV once Link stands in the loaded level, and the Jukebox off. The track chosen in
-    // the save left behind then stops with the level's music instead of playing on into the next.
+    // save load here, as from the title (Tick): RECV once Link stands in the loaded level, and the Jukebox off. The
+    // track chosen in the save left behind then stops with the level's music instead of playing on into the next.
     HOOK_DEFINE_TRAMPOLINE(FileLoad) {
         static void Callback(void* screen) {
             g_SaveRecvReported = false;
@@ -115,7 +114,6 @@ namespace {
         return fmwk != nullptr && fmwk->player != nullptr && !g_GameOver && NowMs() - g_LevelSince >= kSettleMs;
     }
 
-    // True when the player can move: no talk, event, cutscene or pause menu.
     // TODO (TODO.md, PlayerFree during events): Link's state alone; true during a pickup event Instant Pickups keeps
     // him out of, so a DeathLink death can land in an event.
     bool PlayerFree() {
@@ -124,14 +122,12 @@ namespace {
         return fmwk->paused == 0 && fmwk->player->State() == Game::Actors::PlayerState::Locomotion;
     }
 
-    // An item-get takes what Link holds over his head out of the game, so item-gets wait until he puts it down.
     bool PlayerCarrying() {
         Game::Framework* fmwk = Game::GetFramework();
         if (fmwk == nullptr || fmwk->player == nullptr) return false;
         return fmwk->player->carried != nullptr;
     }
 
-    // Health is zero: Link is dying (until the Secret Medicine or a game over's Retry refills it).
     bool LinkDead() {
         auto* items = Game::Data::Inventory::Items();
         return items != nullptr && items->Health <= 0;
@@ -152,10 +148,9 @@ namespace {
     }
 }
 
-    // Starting an event, as the game does for its game over with Common.bfevfl:
-    // load the flowchart resource, make an event for the entry, prepare it and hand it to the event manager. The
-    // actors of actorKeys (LEB keys) join it first; the event is not started when one is missing. The manager makes
-    // no request while the level's room manager does not run (re/EVENTS.md, Requests).
+    // Loads the flowchart resource, makes an event for the entry, prepares it, adds the actors and hands it to the
+    // event manager, which makes no request while the level's room manager does not run (scripts/re/EVENTS.md, Event
+    // manager, Requests).
     Shared<Game::Event::EventRequest> RequestEvent(const char* flowchartPath, const char* entry,
                                                    std::initializer_list<u64> actorKeys) {
         void* resources = *Game::ResourceManager_ptr;
@@ -185,7 +180,6 @@ namespace {
         return RequestEvent("event/Common.bfevfl", entry, {});
     }
 
-    // A toast in the autosave popup; '|' starts a new line.
     void QueueNotice(std::string text) {
         for (auto& c : text) if (c == '|') c = '\n';
         AP::QueueToast(text);
@@ -193,9 +187,8 @@ namespace {
 
     void SetServerConnected(bool connected) { g_ServerConnected = connected; }
 
-    // A death from another player. Without a save (intro, title, file menus) or with Link dead already it is dropped;
-    // otherwise it waits until Link is free (no event, message or pause menu) and no item display is starting or
-    // showing.
+    // Without a save (intro, title, file menus) or with Link dead already it is dropped; otherwise it waits until Link
+    // is free (no event, message or pause menu) and no item display is starting or showing.
     bool ReceiveDeath(const std::string& source) {
         Game::Framework* fmwk = Game::GetFramework();
         auto* items = Game::Data::Inventory::Items();

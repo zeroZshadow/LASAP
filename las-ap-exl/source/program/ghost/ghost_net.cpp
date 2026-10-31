@@ -22,25 +22,19 @@
 #include <vector>
 
 namespace {
-    // 20 Hz while anything changes, a keep-alive at 2 Hz while Link stands still. What the player does goes out at
-    // once: an animation starting, a turn of kTurnDeg or more, starting or stopping to move; an animation's frame
-    // running on is no change (the receiver plays it on). Each line carries the time it was taken: the receiver
-    // replays them on that timeline, so their delivery may be uneven.
+    // The rate (DESIGN.md, Ghosts, Rate): every kMovingMs while anything changes, every kStillMs while Link stands
+    // still, at once for what the player does (Acted); an animation's frame running on is no change (the receiver plays
+    // it on). Each line carries the time it was taken: the receiver replays them on that timeline, so their delivery
+    // may be uneven.
     constexpr u64 kMovingMs = 50;
     constexpr u64 kStillMs = 500;
     constexpr float kTurnDeg = 10;
     // A jump this far between two sent positions is a warp (respawn, warp, door within a level): the ghost snaps.
     constexpr float kWarpDistance = 4.0f;
-    // Link's animations (game 1.0.0): his animation controller plays rows of PlayerAnimation.gsheet by key (the row
-    // index). Its slot 0 is the whole body, slot 1 his upper body (idle_carry while he holds something over his head,
-    // none otherwise). The frame is in the controller's layered animation: layer i is slot i, its bound animation the
-    // frame control (f32 frame at +0).
+    // Link's animations: the PlayerAnimation.gsheet rows on slot 0 (the whole body) and slot 1 (the upper body) of
+    // his animation controller, the frame in layer 0's frame control (scripts/re/PLAYER.md, Animations).
     using Game::Actors::PlayerAnimRow;
     constexpr size_t kAnimFrameCtrl = 0x8;
-    // Link's look: his model component's instance's shapeVisible (Player_ShowItem shows the items he holds this way),
-    // as many as the model object's shapes. His tunic is the inventory's upgrade bits, red first. His face: the
-    // material animations "eye", "mouth" and "ear" on his material animation component, each held at the frame the
-    // game sets for his expression.
 
     struct Sample {
         bool inLevel = false;
@@ -160,6 +154,10 @@ namespace {
         return 0;
     }
 
+    // Link's look: his model component's instance's shapeVisible (the game shows the items he holds this way), as many
+    // as the model object's shapes; his tunic from the inventory's upgrade bits, red first (scripts/re/PLAYER.md,
+    // Tunic); his face: the frames of the material animations "eye", "mouth" and "ear", which the game sets for his
+    // expression.
     AP::GhostNet::Look ReadLook(const Game::Actors::Player* player) {
         AP::GhostNet::Look look;
         const Game::ModelInstance* instance = player->modelComp != nullptr ? player->modelComp->instance : nullptr;

@@ -1,4 +1,4 @@
-// The DBG commands (test build, TESTING.md) on the game's state, and the STATE line.
+// The DBG commands (test build, TESTING.md, Debug commands) on the game's state, and the STATE line.
 #ifdef LASAP_TEST
 #include "ap/ap.hpp"
 #include "ap/ap_bridge.hpp"
@@ -53,22 +53,16 @@ namespace {
     constexpr size_t kMaxKilled = 256;
 
     // DBG hit <actor table name>: a hit that counts on that enemy, as one its own checks let through (the side it is
-    // hit from, its state, the weapon): the enemy's damage comp emits its damaged signal (result 0), which Hit_Dispatch
-    // emits after the comp's damage lambda judged a hit so, and the enemy's own slot takes the damage, a phase or its
-    // death (ACTORS.md, Enemy damage). Comps by vtable: the damage comp (its defence pointer at +0x278, its damaged
-    // signal at +0x3b8, emitted through the signal's vtable +0x30 with (attacker record*, hit*)) and the reaction comp
-    // (life at +0x168, dead: virtual +0xb8).
+    // hit from, its state, the weapon): its damage comp's result-0 signal, emitted as Hit_Dispatch does, so the enemy's
+    // own slot takes the damage, a phase or its death. The damage and reaction comps, the hit and the hit record:
+    // ACTORS.md, Enemy damage.
     constexpr uintptr_t kDamageCompVtable = 0x1b5b8b0, kReactionCompVtable = 0x1b5be00;
     constexpr size_t kCompDefence = 0x278, kCompDamaged = 0x3b8, kSignalEmit = 0x30, kReactionLife = 0x168;
     constexpr size_t kReactionDead = 0xb8;
-    // The attacker is the attacking side's hit record (0x1da8): two weak pointers (null here), its hits from +0x20
-    // (0x3b0 apart, up to 8) and their count at +0x1da0. The hit is one of them: the enemy's reaction copies the record
-    // and finds the hit in it by the hit's two weak pointers, so the record holds the hit as its only one, and both
-    // stay off the stack with the attack, which the reaction reads later. The hit: +0x0 the attacking side's attack
-    // collision comp's weak pointer (Link's sword's: the Damage reaction reads its push vector at +0xf120, past an
-    // actor's end), +0x10 the damage comp's, +0x20 the attack (+0x8 u16 power, +0xc not 0xb, +0xd the attack type),
-    // +0x28 the defence (an f32 multiplier per attack type from +0x8), +0x30 where the hit effect plays, +0x70 the
-    // direction (XZ). The power is the enemy's life: the hit ends its phase or its life.
+    // The attacker record holds the hit as its only entry, since the reaction finds the hit in its copy of the record;
+    // both stay off the stack with the attack, which the reaction reads later. The hit's attacker is Link's sword comp
+    // (the Damage reaction reads an attack comp's push vector). The power is the enemy's life: the hit ends its phase
+    // or its life.
     constexpr size_t kRecordSize = 0x1db0, kRecordHits = 0x20, kRecordCount = 0x1da0;
     constexpr size_t kHitAttacker = 0x0, kHitComp = 0x10, kHitAttack = 0x20, kHitDefence = 0x28;
     constexpr size_t kHitAt = 0x30, kHitDirection = 0x70;
@@ -158,12 +152,9 @@ namespace {
         return s;
     }
 
-    // The Slime Eye (ACTORS.md, Slime Eye): its controller (EnemyDeguZol, a LEB actor) and its body
-    // (EnemyDeguZolPhase1, made with no LEB key, a shared pointer at the controller's +0x1328), each with its state
-    // machine at +0xff0 and the state at +0xffd. The controller falls from Sleep (0) to its start event (1), then waits
-    // (2) and rains Zols (3) until Link's boots bonk sets Phase1 (4); the body then drops from the ceiling (its states
-    // 4, 7, 8 PopFreeFall, 9, 10 Wait). A body hit at stage 4 (+0x1980, SetStage) in Damage (12) splits it into its
-    // halves (EnemyDeguZolPhase2), as a boots dash into it does.
+    // The Slime Eye: its controller (EnemyDeguZol, a LEB actor) and its body (EnemyDeguZolPhase1, made with no LEB
+    // key). The fall is the bonk's change to Phase1, the split the body's change to Damage at stage 4 (ACTORS.md,
+    // Slime Eye; For the module, Slime Eye from code).
     constexpr size_t kSlimeMachine = 0xff0, kSlimeState = 0xffd, kSlimeBody = 0x1328;
     constexpr u8 kSlimeWait = 2, kSlimeRain = 3, kSlimePhase1 = 4, kBodyDamage = 12;
     constexpr s32 kSplitStage = 4;
@@ -292,8 +283,8 @@ namespace {
     }
 
     // The enemies, defeated: each removed from its room as the game removes an actor (Entity_RemoveChild, destroyed
-    // later), with no death of its own (no drop, no event). LEB ones stay away while their zone is among the last five
-    // visited. Returns how many.
+    // later), with no death of its own (no drop, no event); LEB ones stay away as defeated enemies do (ACTORS.md,
+    // Removal memory). Returns how many.
     int KillEnemies() {
         Game::Actor* enemies[kMaxKilled];
         size_t count = FindActors(enemies, kEnemyPrefix);
@@ -579,8 +570,8 @@ namespace {
             // DBG jukebox: the Jukebox page's state
             AP::Send(AP::JukeboxPane::Info());
         } else if (cmd == "name") {
-            // DBG name: the player's name as the game holds it for the save (UTF-16, up to 8 letters, at +0x8 of the
-            // save header), set by a new file's name entry on OK
+            // DBG name: the player's name as the save header holds it (UTF-16, up to 8 letters), set by a new file's
+            // name entry on OK (UI.md, Name entry)
             const Game::Data::SaveHeader* info = *Game::SaveHeader_ptr;
             if (info == nullptr) {
                 AP::Send("ERR name: no object");

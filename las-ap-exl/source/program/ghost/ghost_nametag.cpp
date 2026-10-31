@@ -1,6 +1,5 @@
-// Multiplayer ghosts' name tags (DESIGN.md, Ghosts): each shown ghost's slot name above its head, small, in the game's
-// action prompt (Gm_HUDInteract.bflyt of Game.arc: text in a dark rounded window, without its button picture) built as
-// a layout of its own and placed on the screen every frame. All on the game thread.
+// Multiplayer ghosts' name tags (DESIGN.md, Ghosts, Name tags): each in a layout of its own built from the game's
+// action prompt, placed on the screen every frame. All on the game thread.
 #include "ghost/ghost_nametag.hpp"
 #include "ap/ap.hpp"
 #include "ap/ap_text.hpp"
@@ -37,8 +36,8 @@ namespace {
     // height, so the letters (capital top to baseline) sit in the window's middle.
     constexpr float kTextLift = 0.14f;
     u8 g_Alpha = 230, g_BackAlpha = 200;
-    // Projection (WorldToLayout, 0xf88c40): through the camera's view and projection (Game::GetCamera); layout
-    // coordinates are NDC times (640, 360), y up. Hidden when the head is behind the camera or off screen.
+    // Projection as WorldToLayout does it (scripts/re/FRAMEWORK.md, Camera), but hidden when the head is behind the
+    // camera or off screen.
     constexpr float kHalfWidth = 640, kHalfHeight = 360, kMargin = 120, kNear = 0.01f;
 
     struct Tag {

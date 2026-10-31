@@ -10,9 +10,7 @@
 namespace {
     using Game::Data::ItemId;
 
-    // The purpose of this is to have our own code run for specific items
-    // One example would be that getting SurfHarp needs to set 4 flags to disable the ghost
-    // Other items will just use the original code
+    // The items the module adds its own effects to (AP placeholders, refills, flags, dungeon items by index)
     HOOK_DEFINE_TRAMPOLINE(Inventory_AddItemID) {
         static void Callback(ItemId ID, int count, int index) {
             // Archipelago placeholder: the index is the location's local id
@@ -35,7 +33,7 @@ namespace {
                 return;
             }
 
-            // Automatically set item GettingFlags so that we dont need as many cases
+            // Every item's GettingFlag, so no case has to set its own
             if (!EventFlags::CheckGettingFlag(ID)) {
                 EventFlags::SetGettingFlag(ID);
             }
@@ -45,7 +43,6 @@ namespace {
             switch (ID) {
                 case ItemId::Bomb:
                     if (Game::Data::Inventory::Items()->MainItems.Bomb) {
-                        // add 3 bombs instead of 1 if the player already has some
                         if (count == 1) {
                             count = 3;
                         }
@@ -61,7 +58,6 @@ namespace {
                     break;
                 case ItemId::MagicPowder:
                     if (Game::Data::Inventory::Items()->MainItems.MagicPowder) {
-                        // add 3 powder instead of 1 if the player already has some
                         if (count == 1) {
                             count = 3;
                         }
@@ -76,15 +72,12 @@ namespace {
                 case ItemId::StoneBeak:
                 case ItemId::SmallKey:
                 case ItemId::NightmareKey:
-                    // index -1 will only be used by Chamber Dungeons in which case we want to keep orig func
+                    // index -1 (none, e.g. the Chamber Dungeon's): the current dungeon's, as vanilla
                     if (index == -1) {
                         Orig(ID, count, index);
                     }
                     else {
-                        // index is normally ignored for dungeon items, game uses a level byte to determine where to
-                        // add the items in memory, so we assign an index to the dungeon items and actually make use
-                        // of it
-                        // set the level byte to the index and call the orig func, then set the level byte back
+                        // The game ignores the index for dungeon items and adds them to LevelIndex's dungeon
                         *Game::LevelIndex = index;
                         Orig(ID, count, index);
                         *Game::LevelIndex = actualLevel;

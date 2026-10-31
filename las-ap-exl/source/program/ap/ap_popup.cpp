@@ -1,9 +1,6 @@
-// The item popup (DESIGN.md, Showing received items): with Instant Pickups, a received or found item
-// shows its 3D model above Link's head for a moment while the toast names it; play goes on. The model is made the
-// way NPCs that hold an item make theirs: the game's item model maker loads the item's model (its Items.gsheet
-// npcKey's Npc row, as the item-get's model task does) and makes a skeletal model component of the owner, a node
-// under the root given: here owned by Link and hanging under his model component. The module enables it, poses its
-// node each frame and destroys it again.
+// The item popup (DESIGN.md, Showing received items, Popup): with Instant Pickups, a received or found item shows its
+// 3D model above Link's head for a moment while the toast names it; play goes on. The module enables the model, poses
+// its node each frame and destroys it again.
 #include "ap/ap_popup.hpp"
 #include "ap/ap.hpp"
 #include "game/actor.hpp"
@@ -24,13 +21,11 @@ namespace {
     using Game::AxisQuat;
     using Game::NowMs;
 
-    // ItemModel_Make loads the item's model and, once loaded, makes the component (in a task: the item-get's model
-    // task) into its holder (Game::ItemModelHolder). Owner, name and root are copied; the name's characters are not.
-    // The model is owned by Link (his actor's self pointer) and hangs under his model component: under his root
-    // component (PlayerCollision) it is not drawn. The game enables an entity by setting kEnabled and, when that makes
-    // it active, calling its kOnActiveChanged. The item model maker leaves the component disabled; the item-get
-    // enables it once the item pops up.
-    // One popup shows at a time, and each is destroyed before the next is made.
+    // ItemModel_Make makes the model component, disabled, into its holder (Game::ItemModelHolder; scripts/re/ITEMS.md,
+    // Item-get, Model), keeping a view of the name, not its characters; the module enables it as the game enables an
+    // entity (kEnabled, then kOnActiveChanged). The model is owned by Link (his actor's self pointer) and hangs under
+    // his model component: under his root component (PlayerCollision) it is not drawn. One popup shows at a time, and
+    // each is destroyed before the next is made.
     constexpr const char kName[] = "APItemPopup";
     constexpr u64 kShowMs = 2800;      // how long the model shows (the toast shows 3 s)
     constexpr u64 kGrowMs = 200;       // it grows from nothing, and shrinks away again at the end

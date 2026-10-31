@@ -321,10 +321,8 @@ namespace Game::Event {
     struct EventChara {
         Entity entity;
         u8 pad_58[0x8];            // Component's own
-        // 0x60: 0 play an animation (a waiter), 1 play a timeline clip's animation, 2/3 play/stop a Tailor value on
-        // channel Other, 4 set a Tailor property, 5 a facial, 6 move to a position (a waiter), 7 turn toward a
-        // position, 8 follow a rail, 9 set the pose, 10 gravity, 11 reset the velocity, 12 look at
-        // (scripts/re/EVENTS.md, EventChara)
+        // 0x60: the action hooks (play an animation, move to a position, look at, ...), by index in
+        // scripts/re/EVENTS.md, EventChara
         Function hooks[13];
         FixedString<0x10> idleAnim;  // 0x2d0: NPCs: "@IDLE"
         float idleBlend;           // 0x2e8

@@ -26,10 +26,10 @@
 #include <netinet/in.h>
 
 namespace {
-    // This game's SDK asserts on the 640 KiB pool that Dread uses; give it room.
+    // This game's SDK asserts on a 640 KiB socket pool; give it room.
     constexpr size_t kSocketAllocatorSize = 128 * 1024;
     constexpr size_t kSocketPoolSize = 1024 * 1024;
-    // Drop a client that is silent for 10 s. Timed by the system counter: emulators sleep far longer than asked.
+    // Drop a client that stays silent this long. Timed by the system counter: emulators sleep far longer than asked.
     constexpr u64 kKeepAliveMs = 10'000;
     constexpr size_t kMaxLine = 4096;
     constexpr size_t kSendChunk = 4096;
@@ -147,7 +147,8 @@ namespace {
         while (true) {
             svcSleepThread(2'000'000);
 
-            // all that has arrived: the client's lines can outrun one read per wake (30 ghosts send ~300 lines/s)
+            // all that has arrived: the client's lines can outrun one read per wake (GHOST lines: TESTING.md,
+            // Measurements, Ghost network)
             ssize_t n;
             while ((n = nn::socket::Recv(g_Client, buf, sizeof(buf), MSG_DONTWAIT)) > 0) {
                 lastHeard = NowMs();

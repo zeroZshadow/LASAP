@@ -1,6 +1,6 @@
 #pragma once
 // nn::g3d model objects, the game's model instances and the model components that hold them (scripts/re/MODELS.md;
-// DESIGN.md, Showing received items; TESTING.md, Model object, Shape draw gate, Instanced models).
+// DESIGN.md, Showing received items).
 #include "game/actor.hpp"
 #include "game/mem.hpp"
 #include "game/stl.hpp"

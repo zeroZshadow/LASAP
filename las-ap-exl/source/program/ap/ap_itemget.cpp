@@ -1,5 +1,5 @@
-// Item-gets (DESIGN.md, Received items, Instant pickups): received items shown one at a time as the item event, traps
-// as their effect, and with Instant Pickups found and received items as popups.
+// Item-gets (DESIGN.md, Showing received items; Instant pickups): received items shown one at a time as the item
+// event, traps as their effect, and with Instant Pickups found and received items as popups.
 #include "ap/ap.hpp"
 #include "ap/ap_bridge.hpp"
 #include "ap/ap_patcher.hpp"
@@ -42,8 +42,8 @@ namespace {
     u64 g_FreeSince = 0;
     u64 g_ItemEventEnded = 0;   // when the last item event ended, so a queued item-get follows it sooner
     bool g_WasFree = false;
-    // A received trap waiting to play its effect (key) as an event, named by item; location: the local id of the
-    // location that held it, -1 for another slot's or none
+    // A received trap waiting to play its effect (key) as an event, named by item; location: the location that held
+    // it, none for another slot's
     struct TrapShow { std::string key; std::string item; std::string sender; std::optional<LocationId> location; };
     using Show = std::variant<ItemShow, TrapShow>;
     std::deque<Show> g_ShowQueue;
@@ -56,7 +56,7 @@ namespace {
     }
     // A received item plays as the Common.bfevfl event AP::ITEM_EVENT_ENTRY, a trap as its own event: requested
     // (queued behind other events), running once its request is at the front of the event manager's queue, until
-    // the request finishes (re/EVENTS.md, Requests).
+    // the request finishes (scripts/re/EVENTS.md, Event manager, Requests).
     enum class ItemEvent { None, Requested, Running };
     ItemEvent g_ItemEvent = ItemEvent::None;
     Game::Shared<Game::Event::EventRequest> g_ItemRequest;  // the item event's request
@@ -222,18 +222,9 @@ namespace {
         g_ItemEventShown = item;
     }
 
-    // Instant Pickups (DESIGN.md, Instant pickups). The item-get is the body of the event actions
-    // Link.GenericItemGetSequence(ByKey) (and of the Chamber Dungeon's panels): it returns a future the event waits
-    // for. Delay_Make(seconds, out) makes one; for 0 seconds it is the game's ready future, which Link's own actions
-    // return when they are done at once, so the event goes on in its next update. The item-get's other work is for
-    // its display (Link's animation and held model, the text, the zone's music faded out for the fanfare), apart from
-    // what the module does in its place: the fanfare, the buffs' music and the autosave. It also takes what Link
-    // holds over his head out of the game; without it he keeps holding it (the shop's flows take their goods from him
-    // before their item-get, RemoveGoods). The inventory and the item's getting flag are the event's AddItemByKey's.
-    // The autosave: when the Items.gsheet row's autoSave holds (enabled, its condition true now: ItemGet_RowAutoSave),
-    // the item-get asks the scene's save manager (LevelScene::saveManager) for one
-    // (SaveManager_RequestAutoSave(manager, kind 3, false)), which saves once no event runs. SceneHolder_Lock(out, the
-    // framework's game state) gives the scene.
+    // Instant Pickups (DESIGN.md, Instant pickups): the item-get hook returns the game's ready future (Delay_Make(0)),
+    // and the module does the item-get's fanfare, buffs' music and autosave in its place. The autosave is the one the
+    // item's Items.gsheet row asks for, requested as the item-get does (scripts/re/ITEMS.md, Item-get, Autosave).
     constexpr u8 kAutoSaveKind = 3;
 
     void RequestItemAutoSave(ItemId item) {
@@ -246,12 +237,10 @@ namespace {
         if (scene) Game::SaveManager_RequestAutoSave(scene->saveManager, kAutoSaveKind, false);
     }
 
-    // Native item-get (Link holds the item up and the item text shows). This is the body of the event action
-    // Link.GenericItemGetSequenceByKey; it only displays, the inventory is changed separately.
-    // It returns the running action as a libc++ shared_ptr (Player_ItemGetSequence).
-    // The item event's item-get shows the placeholder with RECEIVED_LABEL as message entry; the requested item
-    // and its message take their place. With Instant Pickups any other item-get is a find, unless its entry has the
-    // native mark.
+    // The item-get (Player_ItemGetSequence; scripts/re/ITEMS.md, Item-get): it only displays, the inventory is changed
+    // separately. The item event's item-get shows the placeholder with RECEIVED_LABEL as message entry; the requested
+    // item and its message take their place. With Instant Pickups any other item-get is a find, unless its entry has
+    // the native mark.
     HOOK_DEFINE_TRAMPOLINE(ItemGetSequence) {
         static void Callback(SharedPtr<>* out, void* player, ItemId item, bool keepCarry, StrView* messageEntry) {
             g_ItemGetAt = NowMs();
@@ -285,12 +274,9 @@ namespace {
         }
     };
 
-    // A shorter item-get, for every item-get (TESTING.md, Item-get timing). The sequence (the item-get) runs as
-    // steps: Link raises the item (animation item_get_st), a delay of 1 s, the item's text; then a short delay and
-    // Link lowers the item (item_get_ed). Alongside the text runs the item's fanfare (its Items.gsheet sound, a BGM
-    // or an SE), and the text's step ends only once the text has closed and the fanfare has stopped, which held Link
-    // up to 2.5 s after a text closed with B. The fanfare still plays on; the item-get no longer waits for it, and
-    // the text opens 0.25 s after the raise.
+    // A shorter item-get, for every item-get (DESIGN.md, Shorter item-get; TESTING.md, Measurements, Item-get timing):
+    // the text's delay is a quarter second, and the text's step does not wait for the fanfare, which plays on
+    // (scripts/re/ITEMS.md, Item-get, Text).
     constexpr uintptr_t kItemGetTextDelay = 0xd741f8;   // in the text's step: ldr s0, [x20, #0xa0], the delay
     constexpr u32 kTextDelayQuarter = 0x1e2a1000;       // fmov s0, #0.25
 
@@ -305,14 +291,12 @@ namespace {
         g_ShowQueue.push_back(show);
     }
 
-    // A received trap waits like an item display, then plays its effect (StartTrapEvent).
     void QueueTrap(const std::string& key, const std::string& item, const std::string& sender,
                    std::optional<LocationId> location) {
         if (g_ShowQueue.size() >= kShowQueueMax) return;
         g_ShowQueue.push_back(TrapShow{key, item.empty() ? key : item, sender, location});
     }
 
-    // An item Link found shows as a popup instead of an item-get; the buffs only start their music.
     void InstantPickup(ItemId item) {
         Logging.Log("[AP] instant pickup %d", std::to_underlying(item));
         RequestItemAutoSave(item);
@@ -335,9 +319,8 @@ namespace {
 
     bool ItemDisplayPending() { return !g_ShowQueue.empty() || g_ItemEvent != ItemEvent::None; }
 
-    // Shows queued items one at a time, each as an event, once the player is free and holds nothing; with Instant
-    // Pickups, as popups. Finds come first and show as soon as the popup is free, also during the event that gave
-    // them.
+    // With Instant Pickups, as popups; finds come first and show as soon as the popup is free, also during the event
+    // that gave them.
     void TickItemGet() {
         bool free = PlayerFree();
         if (free && !g_WasFree) g_FreeSince = NowMs();

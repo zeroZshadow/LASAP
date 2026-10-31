@@ -1,7 +1,6 @@
 #pragma once
-// The Jukebox's track names and descriptions, for players. Ids in the order of the patcher's music randomizer
-// (patcher music.py BGM_TRACKS; test_music checks it), then the Jukebox's own (test_music's JUKEBOX_ONLY). Names fit one list row (at most 24 characters); an info is at most 80 characters, split
-// by "\n" into two lines of at most 40. The lengths come from the RomFS (scripts/track_lengths.py writes them).
+// The Jukebox's track names, descriptions and play-through lengths (DESIGN.md, Jukebox page): the patcher's
+// BGM_TRACKS in order, then the Jukebox's own (JUKEBOX_ONLY); test_music checks both. "\n" splits an info's two lines.
 // constexpr only: a dynamically initialised static freezes the game.
 
 namespace AP::Tracks {

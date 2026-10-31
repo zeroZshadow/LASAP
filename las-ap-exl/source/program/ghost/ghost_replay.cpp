@@ -1,39 +1,35 @@
-// The puppets' replay (DESIGN.md, Ghosts): a puppet is fed frames (a ghost's lines, or Link's own path for DBG puppet),
-// each stamped with the sender's clock, and shows them on that timeline a buffer behind: its position between the two
-// frames around that time, its facing that of the last frame before it (Link turns in steps: a turn is not smoothed).
-// The sender's clock maps to this one by the least delay seen, drifting up slowly, so a line that arrives late waits
-// less instead of moving the ghost faster. The buffer covers how late the lines arrive past that delay: the lateness
-// kLateShare of the last kLateLines stayed within, plus kLateMargin, from g_BufferMs up to g_BufferMaxMs (a link whose
-// lines arrive unevenly, such as Wi-Fi or one that loses packets, which TCP holds the later lines back for). It moves
-// there gradually, the replay running slower while it grows and faster while it shrinks, so it never jumps; a line later
-// than the buffer is caught up with as below. Past the newest frame it goes on along the last segment for up to
-// kExtrapolateMs, unless that frame stood still, then holds. A warped frame is jumped to at its time. A frame more than
-// kResetMs behind the newest starts a new timeline. When new lines move the replay's position (the sender turned or
-// stopped while the replay ran on past its newest line), the puppet does not jump: the difference is added to where it
-// shows and fades out with the time constant kCorrectMs (unless it is over kCorrectMax units). A ghost that arrives (a
-// warped frame: another level, a respawn, a warp) stays hidden from that frame's time until a frame after it moved,
-// started or changed the animation, or kArriveHoldMs pass on its clock: a player entering a level stands still through
-// its own screen's fade-in first (falling into the well: on the floor, then fall_from_top drops the model from above
-// while the position sinks). It shows again with that frame, whose animation then plays unblended. An animation start
-// in a frame the replay passed over (catching up) plays too, so the same animation started again is not missed.
+// The puppets' replay (DESIGN.md, Ghosts, Puppet): a puppet is fed frames (a ghost's lines, or Link's own path for DBG
+// puppet) stamped with the sender's clock and shows them on that timeline a buffer behind: its position between the
+// two frames around that time, its facing that of the last frame before it (Link turns in steps: a turn is not
+// smoothed). The sender's clock maps to this one by the least delay seen, drifting up slowly (kOffsetRise), so a line
+// that arrives late waits less instead of moving the ghost faster. The buffer covers how late the lines arrive past
+// that delay: the lateness kLateShare of the last kLateLines stayed within, plus kLateMargin, from g_BufferMs up to
+// g_BufferMaxMs. It moves there gradually, so it never jumps. Past the newest frame the replay goes on along the last
+// segment for up to kExtrapolateMs, unless that frame stood still, then holds. A warped frame is jumped to at its time;
+// a frame more than kResetMs behind the newest starts a new timeline. When new lines move the replay's position (the
+// sender turned or stopped while the replay ran on past its newest line), the puppet does not jump: the difference is
+// added to where it shows and fades out with the time constant kCorrectMs (unless it is over kCorrectMax units). An
+// arriving ghost stays hidden (ArrivalHeld, kArriveHoldMs; falling into the well: on the floor, then fall_from_top
+// drops the model from above while the position sinks). An animation start in a frame the replay passed over (catching
+// up) plays too, so the same animation started again is not missed.
 #include "game/math.hpp"
 #include "ghost/ghost_puppets_impl.hpp"
 #include <algorithm>
 #include <cmath>
 
 namespace AP::Puppets {
-    // Two lines' time (20 a second while moving), so the next line has mostly arrived when the replay needs it: a
-    // shorter buffer runs on past the newest line and corrects when the next one comes in, which shows as jerks
-    // (2026-10-15, 30 ghosts: per-frame speed spread 1.06 at 33 ms, 0.31 at 66, 0.24 at 100).
-    // The least buffer, which a link that delivers evenly keeps. The most: a ghost further behind no longer looks like
-    // the player beside Link, and kTrack lines are 1.6 s while moving.
+    // The least buffer, which a link that delivers evenly keeps: two lines' time while moving (ghost_net.cpp,
+    // kMovingMs), so the next line has mostly arrived when the replay needs it; a shorter buffer runs on past the
+    // newest line and corrects when the next one comes in, which shows as jerks (TESTING.md, Measurements, Ghost crowd
+    // motion and frame pacing). The most: a ghost further behind no longer looks like the player beside Link, and the
+    // track holds kTrack lines.
     double g_BufferMs = 100, g_BufferMaxMs = 400;  // DBG puppet buffer
     // Animations: the sender's (its PlayerAnimation.gsheet key, named in this game's sheet, the same FSKA in the
     // puppet's model), from the frame it started at, played when the replay reaches that frame; for a sender that
     // sends none (anim id 0), by speed (units per second): each from its threshold on, with a margin either side so a
     // speed near one does not switch back and forth (kGaits).
-    // Blend times in seconds (the layer adds the frame's time to its progress): Link's own (PlayerAnimation's
-    // default, 0x16afc44) for the sender's animations, a little longer between gaits (kGaitBlend).
+    // Blend times in seconds (the layer adds the frame's time to its progress): Link's own
+    // (PlayerAnimation_DefaultBlend) for the sender's animations, a little longer between gaits (kGaitBlend).
     float g_AnimBlend = 0.0667f;  // DBG puppet blend
 
 namespace {
@@ -42,11 +38,9 @@ namespace {
     constexpr double kExtrapolateMs = 100, kOffsetRise = 0.02, kCorrectMs = 100;
     constexpr float kCorrectMax = 2;
     constexpr s64 kResetMs = 1000;
-    // The buffer (2026-10-27, ghost_link: a runner over 60 ms of jitter held at its newest line in 10.1% of the frames
-    // with 100 ms, 1.4% with these at 214 ms on average; over 2% of its frames 300 ms late 6.0% and 2.5% at 211 ms; an
-    // even link stays at 100 ms).
-    // It grows by kBufferGrow of the time passing (the replay at 0.85x) and shrinks by kBufferShrink (1.01x), so one
-    // late burst does not set it swinging.
+    // The buffer (TESTING.md, Measurements, Ghost replay on a bad link) grows by kBufferGrow of the time passing and
+    // shrinks by kBufferShrink, the replay running that much slower or faster, so one late burst does not set it
+    // swinging.
     constexpr double kLateShare = 0.95, kLateMargin = 20, kBufferGrow = 0.15, kBufferShrink = 0.01;
     constexpr float kGaitFrom[] = {0, 0.4f, 3.5f, 7.5f}, kGaitMargin = 0.3f;
     int GaitAt(float speed) {
@@ -153,7 +147,6 @@ namespace {
         tr.target = Target(tr);
         if (f.flags.Has(GhostFlag::Warped)) tr.arrival = tr.count;
     }
-    // One frame of the replay; picks the animation from the speed.
     void ReplayFrame(Puppet& p, double now) {
         Track& tr = p.track;
         if (tr.count == 0) return;

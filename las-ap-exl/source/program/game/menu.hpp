@@ -31,9 +31,7 @@ namespace Game::Ui {
     static_assert(sizeof(GuideCaption) == 0x48);
 
     // The guide at the bottom of the pause menu (Guide_Ctor, L_Operation_00, vtable 0x1c2e538; 0xf18 bytes; Navi
-    // +0x318). Navi_SetGuide(navi, index) clears it, then Guide_Set(guide, slot, kind) per slot, which loads a slot's
-    // caption only when its kind differs from the one kept in `kinds`. The update lays the shown slots out from the
-    // right while `relayout` is set.
+    // +0x318; UI.md, Pause menu). Guide_Set loads a slot's caption only for a kind other than the one in `kinds`.
     struct NaviGuide {
         Part part;
         GuideSlot slots[9];        // 0x90: L_Btn00..08

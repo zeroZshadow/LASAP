@@ -1,11 +1,6 @@
-// In-game text for Archipelago items. The patched messages Place:ArchipelagoItem (a found placeholder) and
-// System:APReceived (an item from another player) are replaced at runtime with text naming the item and the
-// player. Two game functions are hooked: the MSBT label lookup, to learn which (file, index) pairs are ours,
-// and the MSBT text getter, to hand out our text for them.
-//
-// The found text names the location of the last placeholder added while the player was busy. Most flows add the
-// placeholder before its item-get (see the patcher). The Seashell Mansion's presents add it after, so the module
-// reads the location from the present when it pops.
+// In-game text for Archipelago items, and the toasts (DESIGN.md, In-game text). Hooks: the MSBT label lookup, to
+// learn which (file, index) pairs are ours, and the text getter, to hand out our text for them; the Seashell
+// Mansion's present as it pops, for its location; the autosave popup's state, for the toasts.
 #include "ap/ap_text.hpp"
 #include "ap/ap.hpp"
 #include "ap/ap_list.hpp"

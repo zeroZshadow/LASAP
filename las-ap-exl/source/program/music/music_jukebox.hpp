@@ -3,10 +3,11 @@
 #include <string>
 #include <vector>
 
-// The Jukebox page (music_jukebox.cpp, DESIGN.md "Jukebox page"): the pause menu's fourth page as a mode of System's slot.
+// The Jukebox page (DESIGN.md, Jukebox page): the pause menu's fourth page as a mode of System's slot.
 namespace AP::JukeboxPane {
     void InstallHooks();
-    // Once a tick: the d-pad's left and right choose the track before and after while the player is free.
+    // Once a tick, while the player is free: the d-pad's left and right choose the track before and after, up turns the
+    // ghosts' name tags on or off.
     void Tick(bool free);
 #ifdef LASAP_TEST
     // STATE's " pane=<0-3|-> navi=<header state> jbox=<cursor>/<top>"

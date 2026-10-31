@@ -57,9 +57,11 @@ namespace AP {
     constexpr int AMMO_REFILL_INDEX = 1000;
     // Location names the patcher writes next to config.ini.
     constexpr const char* NAMES_PATH = "sd:/config/lasr-exl/ap_names.txt";
-    // Per seashell, heart piece, golden leaf and heart container source: its bit and its location (ap_indices.cpp).
+    // Per seashell, heart piece, golden leaf, heart container, bottle and chamber stone source: its bit and its
+    // location (ap_indices.cpp).
     constexpr const char* INDICES_PATH = "sd:/config/lasr-exl/ap_indices.txt";
-    // AP locations that keep their vanilla item (the Trendy Game's prizes): "<item key> <index> <local id>" lines.
+    // AP locations that keep their vanilla item: "<item key> <index> <local id>" lines (the Trendy Game's prizes) and
+    // "F <flag> <local id>" lines (the companions).
     constexpr const char* VANILLA_PATH = "sd:/config/lasr-exl/ap_vanilla.txt";
     // Item ids that show another item's model (the placeholder's variants, LASR's Dampe rewards): "<item id> <the
     // item's id>" lines; the item-get holds them up in that item's pose (ap_item_pose.cpp).
@@ -77,20 +79,24 @@ namespace AP {
     constexpr std::string_view MAP_DOT_LABEL = "APMapDot";
     // After the prefix, the icon's look other than in logic: partly in logic, out of logic, collected.
     constexpr const char* MAP_LOOK_MARKS = "PXC";
-    // The drop actor (ap_drop.cpp): its actor id, an empty one of the game's actor table, and its name, which is
-    // also its Npc.gsheet row (patcher: ap_drop.DROP_ACTOR_ID, DROP_ACTOR). Its LEB parameter 0 is how it appears
-    // (patcher ap_drop.Motion): hops up out of the ground (a bush's, rock's or pot's), on an arc from what its first LEB
-    // link names (a bonked tree's crown, a bombed hole), falls onto its spawn from above (a dungeon key, a golden
-    // leaf), so again whenever Link enters its zone, hops out when dug up where it is buried (a dig spot), or hops out
-    // where its boss's BossItemDrop starts the item, in place of it (so without standing when its room loads: the item
-    // falls into a pit), shows where it stands (the ghost's reward), or so from the start (the blue rupees: the module
-    // turns its switch 0 on when it is made); with Bouncy Items, out of the lid of the chest or off the top of the owl
-    // statue its first LEB link names.
+    // The drop actor (ap_drop.cpp; DESIGN.md, Drop actor): its actor id, an empty one of the game's actor table, and
+    // its name, which is also its Npc.gsheet row (patcher: ap_drop.DROP_ACTOR_ID, DROP_ACTOR).
     constexpr u16 DROP_ACTOR_ID = 0xa7;
     constexpr const char* DROP_ACTOR = "ItemAPDrop";
+    // LEB parameter 0: how the drop appears (patcher ap_drop.Motion; DESIGN.md, Drop actor, Appearing).
     enum DropMotion {
-        DROP_HOPS = 0, DROP_TREE = 1, DROP_HOLE = 2, DROP_FALLS = 3, DROP_REFALLS = 4, DROP_BURIED = 5, DROP_CHEST = 6,
-        DROP_OWL = 7, DROP_BOSS = 8, DROP_BOSS_PIT = 9, DROP_STANDS = 10, DROP_PLACED = 11
+        DROP_HOPS = 0,       // up out of the ground: a bush's, rock's or pot's
+        DROP_TREE = 1,       // on an arc from the crown of the tree its first LEB link names
+        DROP_HOLE = 2,       // so from the bombed hole its first LEB link names
+        DROP_FALLS = 3,      // onto its spawn from above: a dungeon key, a golden leaf
+        DROP_REFALLS = 4,    // so, and again whenever Link enters its zone
+        DROP_BURIED = 5,     // hops out when dug up: a dig spot
+        DROP_CHEST = 6,      // Bouncy Items: out of the lid of the chest its first LEB link names
+        DROP_OWL = 7,        // Bouncy Items: off the top of the owl statue its first LEB link names
+        DROP_BOSS = 8,       // hops out where its boss's BossItemDrop starts the item, in place of it
+        DROP_BOSS_PIT = 9,   // so, but standing nowhere when its room loads: the item falls into a pit
+        DROP_STANDS = 10,    // shows where it stands: the ghost's reward
+        DROP_PLACED = 11     // so from the start, its switch 0 turned on by the module when it is made: the blue rupees
     };
     // A drop's switches (patcher: ap_drop, the pops; DROP_OPENED). Pop lets it appear: a chest's or owl statue's
     // launch flag, a falling drop's pop event's, the boss's global flag. Got is set by taking it, and its row lays out

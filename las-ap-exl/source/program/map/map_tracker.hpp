@@ -1,5 +1,5 @@
 #pragma once
-// Map tracker (map_tracker.cpp, DESIGN.md "Map tracker"): the pause map shows the slot's unchecked locations, and the
+// Map tracker (DESIGN.md, Map tracker): the pause map shows the slot's unchecked locations, and the
 // whole overworld and every dungeon room are revealed.
 #include "lib.hpp"
 #include "nn/hid.h"

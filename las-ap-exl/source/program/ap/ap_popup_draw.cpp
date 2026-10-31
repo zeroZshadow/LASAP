@@ -1,13 +1,10 @@
-// The popup's model in front of the world (DESIGN.md, Showing received items): Link walks on while it shows, also
-// into a doorway, whose roof would cut into it. The renderer's draw tree has group nodes (DrawGroup_Draw: each child
-// in turn, the context's pass id set from it) and leaf passes, which bind their states and draw their sorted items
-// (ShapeDrawItem_Execute). The popup model's opaque shapes are held back in their pass and drawn once the pass's node
-// is done, after everything else in it: first all of them with the depth test always passing, their depth written
-// over the world's, then all of them again with the usual test (less or equal), which keeps each pixel's nearest part
-// of the model. Its depth stays in the depth buffer, so what draws later is hidden behind it. Translucent shapes
-// (render layers 2 and 3, the glass of the bottles and the magnifying lens) draw in later passes of their own, as the
-// game draws them; the glass shows what is on screen behind it. The shadow pass draws the model as usual. Runs on the
-// render threads; each context holds its own items.
+// The popup's model in front of the world (DESIGN.md, Showing received items, Popup; scripts/re/MODELS.md, Draw tree).
+// Its opaque shapes are held back in their pass and drawn once the pass's node is done, after everything else in it:
+// first all of them with the depth test always passing, their depth written over the world's, then all of them again
+// with the usual test (less or equal), which keeps each pixel's nearest part of the model. Its depth stays in the
+// depth buffer, so what draws later is hidden behind it. Translucent shapes (render layers 2 and 3) draw in their own
+// later passes, as the game draws them; the shadow pass draws the model as usual. Runs on the render threads; each
+// context holds its own items.
 #include "ap/ap_popup.hpp"
 #include "game/model.hpp"
 #include "game/sym.hpp"

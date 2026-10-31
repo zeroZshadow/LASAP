@@ -1,33 +1,6 @@
-// Map tracker (DESIGN.md, Map tracker): the pause map shows the slot's unchecked locations, and the whole overworld
-// and every dungeon room are revealed.
-//
-// The patcher adds four UiFieldMapIcons rows per overworld spot holding checks (a group), one per look. The map shows
-// a row's icon while the event flag named in the row is set; those flags are answered here. The flag is
-// MAP_FLAG_PREFIX<group> for the in-logic look and MAP_FLAG_PREFIX<mark><group> for the others (MAP_LOOK_MARKS); the
-// group's look is set and the others are not. In logic: every unchecked location of the group is in logic, or what is
-// in logic is not known yet (the client sends it); partly in logic: some are; out of logic: none is; collected: all
-// are checked. While the group's name is hidden (a shuffled dungeon not entered yet), its look is its door's: in logic
-// while the door into it can be reached (DOORS), else out of logic. Hovering an icon shows Place:<its flag>, whose text names the unchecked locations, or the collected
-// ones (ap_text.cpp). The map's X button, which opens the memories, instead hides or shows the out-of-logic icons
-// ("Toggle out of logic"): those icons are always made, and hidden after the map adds them while they are toggled
-// off; the toggle shows or hides the page's markers in place. A on an icon of one unchecked location marks it skipped
-// or not (saved per seed, ap_checks.cpp): a skipped location counts as checked on the map. A on an icon of several
-// locations opens its check list: a panel in the middle of the map (ap_list.cpp's Gm_MemoryList) listing them, where
-// A marks one skipped or not. An icon is made in every look skipping can give it, and those not shown are hidden the
-// same way. The overworld's areas show once their UI_FieldMapTraverse_<area> flag is set (UI_FieldMapOpen_<area> once
-// the reveal has played); both read as set.
-//
-// In dungeons the map draws the rooms Link visited and, with the compass, the room icons. Both come from the
-// dungeon's DungeonItems entry: its visited-room mask is filled while Link is in the dungeon (the rooms then count as
-// visited in the save), and an inline hook makes the compass and map owned for the map screen only, so the items keep
-// their use. The dungeon page has no icons of its own for checks, so the module adds a dot per spot holding checks
-// (ap_map.txt M lines): a map marker (Gm_MapMarker, the overworld's dots) hung beside the room icons, in the looks of
-// the overworld's icons, shown on its room's floor only. Its hover, the cursor easing onto it and its name on the
-// cursor follow the overworld page's icons; A on it does what A on an overworld icon does. The icon update hides the
-// game's chest icons of the slot's chests.
-//
-// This file reads the patcher's map file into static storage and answers the game's flags and labels; the overworld
-// icons (map_icons.cpp), the check list (map_checklist.cpp) and the dungeon dots (map_dots.cpp) have files of their own.
+// Map tracker (DESIGN.md, Map tracker): reads the patcher's map file into static storage and answers the game's flags
+// and labels; the overworld icons (map_icons.cpp), the check list (map_checklist.cpp) and the dungeon dots
+// (map_dots.cpp) have files of their own.
 #include "map/map_tracker_impl.hpp"
 #include "ap/ap.hpp"
 #include "ap/ap_patcher.hpp"
@@ -66,14 +39,11 @@ namespace {
 
     constexpr const char* kTraversePrefix = "UI_FieldMapTraverse_";
     constexpr const char* kOpenPrefix = "UI_FieldMapOpen_";
-    // A logic or checks update arrived (MapDataChanged): the open map refreshes once a frame passes without one, as an
+    // A logic or checks update arrived (DataChanged): the open map refreshes once a frame passes without one, as an
     // update comes in several lines.
     bool g_MapDataChanged = false, g_MapDataChangedLately = false;
 }
 
-    // The open map after a change of the logic, the checks or a skip mark: the overworld page's markers or the dungeon
-    // page's dots take their looks, the open check list its rows, and the name on the cursor, while it shows one of
-    // ours, its text.
     void RefreshOpenMap() {
         Map::MapCursor* cursor = FindCursor();
         bool named = cursor != nullptr && cursor->nameHidden == 0 && cursor->nameHideRequest == 0;
@@ -209,10 +179,7 @@ namespace {
     }
 
     void Load() {
-        // Written by the patcher (ap_map.py): "O <group> <local id>...", "M <dot> <room> <x> <z> <local id>..." (a
-        // dungeon dot), "C <level> <x> <z> <local id>" (a dungeon chest), "G <group> <name>" (an overworld group's
-        // name), "MG <dot> <name>" (a dot's name), "H <group> <flag> <name>" (the group's name until the flag is set)
-        // and "N <local id> <name>" (a location's name without its area, for the check list) lines.
+        // Written by the patcher (ap_map.py); its lines: DESIGN.md, Map tracker, ap_map.txt.
         std::string text;
         if (R_FAILED(FileHandler::ReadFile(AP::MAP_PATH, text))) {
             Logging.Log("[AP] no map tracker file");

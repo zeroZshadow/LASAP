@@ -1,12 +1,5 @@
-// Jukebox (DESIGN.md, Music): the Jukebox page (Choose) picks a BGM that plays instead of the zone's music until the
-// player stops it. The game keeps the choice to itself: the client neither sees nor sets it.
-//
-// Zone music (each room's track from its level file) reaches BgmManager_Play from two places: the zone update, when
-// Link enters a zone whose track differs from the last one, and PlayZoneBgm (the event action PlayZoneBGM, which
-// events call to bring the zone's music back). While a track is chosen, those requests ask for it instead; the game
-// then keeps it playing through room and level changes as it keeps one zone track playing. Every other request
-// (event songs, instrument songs, fanfares, jingles, boss and buff music) plays as usual, and the chosen track
-// comes back where the zone's music would.
+// Jukebox (DESIGN.md, Music): the chosen BGM in the zone music's place, its playback, the Ballad, and Instant
+// Pickups' fanfares. The BGM manager: scripts/re/FRAMEWORK.md, Audio.
 #include "music/music.hpp"
 #include "music/music_tracks.hpp"
 #include "ap/ap_text.hpp"
@@ -31,62 +24,41 @@ namespace {
     using Game::Audio::BgmManager;
     using Game::Audio::Sound;
 
-    // The BGM manager (game 1.0.0, game/audio.hpp): a static of the game, made on its first use (guard bit 0 set
-    // then). BgmManager_Play(f32 volume, manager*, StringView* name, bool, bool, bool force) returns the new instance,
-    // or null for an unknown name or a track that plays already. A new instance starts its stream from the beginning,
-    // intro included. Kind 1 instances (zone and event BGM) are those the zone update fades out when the zone's track
-    // changes. A zone change (the zone update) fades the other kind 1 instances out over 90 frames and starts the new
-    // track 150 frames later (at once right after a level load); PlayZoneBgm fades out the same, and a change made
-    // here starts its track 30 frames (0.5 s) later.
-    // PlayZoneBgm(bool fadeOthers): plays the zone's track (+0x9250) and, when it starts, fades out the other kind 1
-    // instances; while a Guardian Acorn's or Piece of Power's music plays it starts the track without fading.
-    // BgmTable_Find(table, const char* name): the track's id, -1 for an unknown name; the table is a static (guard
-    // bit 0) that BgmManager_Play makes.
+    // BgmManager_Play, PlayZoneBgm, BgmTable_Find, the kinds and their fades (game 1.0.0, game/audio.hpp):
+    // scripts/re/FRAMEWORK.md, Audio.
     // Return addresses of the zone music's BgmManager_Play calls: the zone update, PlayZoneBgm (twice).
     constexpr uintptr_t kZoneCalls[] = {0x9f008, 0xa688c, 0xa6988};
     // The event action PlayBGM's call, and the event songs that stand in for the zone's music, which no PlayZoneBGM
     // follows: the washed-up sword's (SinkingSword.bfevfl) and the new game's wake-up (PlayerStart.bfevfl).
     constexpr uintptr_t kEventPlayCall = 0x805bc4;
     constexpr const char* kZoneStandIns[] = {"BGM_FIELD_NORMAL_INTRO", "BGM_HOUSE_FIRST"};
-    // The pause menu sets every BGM's volume target to 0.2, and 1 again as it closes.
     constexpr u32 kFadeFrames = 90;  // the zone update's
     constexpr u32 kStartDelayFrames = 30;
-    constexpr int kLoudFrames = 8;  // as the pause menu sets the volume back
-    // Item fanfares (DESIGN.md, Instant pickups). ItemGet_PlayFanfare(u8 item id) plays the item's Items.gsheet jingle,
-    // a BGM of kind 2 whose stream starts about 0.45 s later. While a kind 2 instance plays, the BGM manager fades
-    // the kind 1 instances out (45 frames) and, once none plays, in again (150 frames). The item-get first fades kind
-    // 1 out itself over 8 frames (BgmManager_MuteZone: every kind 1 instance's volume to 0), so the zone's music
-    // stops before the jingle starts. Two different jingles play over each other; one asked for while it plays is not
-    // started again.
+    constexpr int kLoudFrames = 8;  // as the pause menu sets the volume back (scripts/re/FRAMEWORK.md, Audio)
+    // Item fanfares (DESIGN.md, Instant pickups): ItemGet_PlayFanfare's jingle and the item-get's BgmManager_MuteZone
+    // (scripts/re/ITEMS.md, Item-get), the jingles' ducking (scripts/re/FRAMEWORK.md, Audio). A jingle's stream starts
+    // about 0.45 s after its request; two different jingles play over each other.
     constexpr u32 kMuteZoneFrames = 8;       // the item-get's: 60 * 0.1333 s
     constexpr u32 kFanfareOutFrames = 10;    // a fanfare that gives way to the next
-    // The Guardian Acorn's and Piece of Power's music (bool intro): stops BGM_NUTS and BGM_NUTS_INTRO, plays one of
-    // them (the intro for true) and fades kind 1 out; their item-get calls it with true (BuffMusic_Play).
     // With repeat one, a track that does not loop starts again this many frames after it has ended.
     constexpr u32 kLoopDelayFrames = 0;
-    // The Ballad of the Wind Fish as the Wind Fish's Egg plays it (WindFishsEgg.bfevfl, PlayOrchestra): a stream of
-    // eight tracks, one per instrument in dungeon order (Full Moon Cello first), those of the instruments Link lacks
-    // at volume 0. The egg sets them through the instance's onStart, which runs as the stream starts (Orchestra_Play);
-    // the chosen ensemble gets the same onStart, and an instrument found while it plays fades its track in. (The egg
-    // plays the first two instruments alone and all eight as mixes of their own, BGM_ENSEMBLE_DUET and
-    // BGM_ENSEMBLE_ALL; the Jukebox keeps to the tracks.)
+    // The Ballad of the Wind Fish (DESIGN.md, Music, Ballad of the Wind Fish). The egg's streams and their onStart
+    // (Orchestra_Play, OrchestraTracks_Call): scripts/re/FRAMEWORK.md, Audio, and las.sym. The Jukebox keeps to
+    // BGM_ENSEMBLE_INST's tracks.
     constexpr const char* kEnsemble = "BGM_ENSEMBLE_INST";
     constexpr int kInstruments = 8;
     constexpr u32 kLayerFadeFrames = 120;
-    // The stream does not loop: the egg plays it once. The patcher writes a looping copy beside it (ap_ballad.py), cut
-    // at the downbeat where the ending's decay begins, and the Jukebox's request opens that file instead
-    // (nn::fs::OpenFile, from the sound archive's path for the label): the latest request for the ensemble decides,
-    // the Jukebox's for the copy, any other (the egg's) for the original, before which the Jukebox's copy stops so the
-    // egg starts its own from the beginning. A mod without the copy plays the original.
+    // The looping copy (ap_ballad.py) opens in the original's place (nn::fs::OpenFile, from the sound archive's path
+    // for the label) while the latest request for the ensemble is the Jukebox's; before any other (the egg's) the
+    // Jukebox's copy stops, so the egg starts its own from the beginning.
     constexpr const char* kEnsembleFile = "stream/BGM_ENSEMBLE_INST.bfstm";
     constexpr const char* kEnsembleName = "INST";  // its part of the path the copy's name replaces
     constexpr const char* kLoopName = "LOOP";
     constexpr u32 kEnsembleOutFrames = 10;
     volatile bool g_LoopFile = false;  // read on the audio loader's thread
-    // Stream channels: the sound archive lets all streams together hold 10 (its player info). Every BGM is a stream
-    // of 2 channels but the ensemble (8) and a few others, so beside the ensemble only one more stream fits; a stream
-    // that starts without room gets no sound and the BGM player drops it (a fanfare, the ocarina's song, or the
-    // ensemble itself). A stream fading out holds its channels until the fade ends.
+    // Stream channels (scripts/re/FRAMEWORK.md, Audio): all streams together hold kStreamChannels; a BGM takes 2, the
+    // ensemble and kWideStreams more. A stream that starts without room is dropped, and one fading out holds its
+    // channels until the fade ends.
     constexpr int kStreamChannels = 10;
     constexpr int kEnsembleChannels = 8;
     constexpr std::pair<std::string_view, int> kWideStreams[] = {
@@ -204,11 +176,7 @@ namespace {
         return false;
     }
 
-    // Playback (the Jukebox page's controls, DESIGN.md "Jukebox page"). With repeat one (on at the start) the chosen
-    // track loops, as the game loops its music. With it off, once the chosen track has played through (its length in
-    // music_tracks.hpp, counted while it plays, from the start again whenever the game starts it again) the next one
-    // follows. Next and previous step through one order, round: the list's, or with shuffle a random order of the
-    // list drawn when shuffle turns on, so every track plays once before any plays again and previous retraces next.
+    // Playback (DESIGN.md, Jukebox page, Playback): repeat one, shuffle and the order next and previous step through.
     bool g_RepeatOne = true, g_Shuffle = false;
     int g_Order[AP::Tracks::COUNT] = {};  // shuffle's order: indexes into AP::Tracks::TRACKS
     int g_Place[AP::Tracks::COUNT] = {};  // each track's place in it
@@ -330,16 +298,13 @@ namespace {
     void Record(const std::string& entry) { g_Log[g_LogCount++ % kLogSize] = entry; }
 #endif
 
-    // Doors: a door's event stops all music (Audio.StopAllBGM) and fades the zone's out, and the level load stops what
-    // is left (BgmManager_StopAll with 0 frames); the new level then starts the chosen track again from its beginning.
-    // The module keeps the chosen track out of those stops and decides afterwards: a level load follows (another
-    // player, or none): it plays on, and the new level finds it playing; the game asks for the zone's music again
-    // (an event's PlayZoneBGM): it plays on; another track starts (an event's song, a fanfare): it stops then; the
-    // player stays free with none of these (an event that meant silence): it stops then. Stairs into a room of the same
-    // level (a 2D room and back) hold it, free the player for a frame and then ask for the zone's music: the player
-    // counts as free again after kHeldFreeFrames frames in a row.
-    // BgmManager_StopAll(u32 frames), the zone music's fade (void: the kind 1 instances over 90 frames),
-    // Sound_Stop(sound, u32 frames); a stop sets the instance's fade-out frames.
+    // Doors: a door's event stops all music and fades the zone's out, and the level load stops what is left
+    // (scripts/re/FRAMEWORK.md, Audio), else the new level would start the chosen track again from its beginning. The
+    // module keeps the chosen track out of those stops (Holding) and decides afterwards: a level load follows (another
+    // player, or none) or the game asks for the zone's music again (an event's PlayZoneBGM): it plays on; another
+    // track starts (an event's song, a fanfare), or the player stays free with none of these (an event that meant
+    // silence): it stops then. Stairs into a room of the same level (a 2D room and back) hold it, free the player for
+    // a frame and then ask for the zone's music: the player counts as free again after kHeldFreeFrames frames in a row.
     constexpr u32 kHeldFadeFrames = 30;
     constexpr int kHeldFreeFrames = 10;
     int g_FreeFrames = 0;               // ticks in a row with the player free
@@ -794,6 +759,8 @@ namespace AP::Music {
         g_FanfareCall = false;
     }
 
+    // BuffMusic_Play(bool intro) stops BGM_NUTS and BGM_NUTS_INTRO, plays one of them (the intro for true) and fades
+    // kind 1 out.
     void BuffMusic() {
         Game::BuffMusic_Play(true);
     }

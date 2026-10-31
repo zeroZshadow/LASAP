@@ -24,7 +24,8 @@ namespace AP::Test {
     extern std::atomic<u32> g_Passes;  // passes of the framework's main loop, one a frame
     // A "T <ms> <frame> <what>" line to the debug clients while DBG trace is on.
     void Trace(const std::string& what);
-    // A traced field's value (screen, level, event, ...; TESTING.md), "" for an unknown one; all as " key=value".
+    // A traced field's value (screen, level, event, ...; TESTING.md, Fields), "" for an unknown one; all as
+    // " key=value".
     const std::string& FieldValue(const char* key);
     std::string AllFields();
     // Each frame, before the ops step: the fields, the UI state machines and the watches.
@@ -50,7 +51,8 @@ namespace AP::Test {
 
     // ---- Commands (test_commands.cpp) ----
 
-    // Keeps the actors made with no LEB key for the commands that find actors by name (DBG hit, enemies, comps).
+    // Keeps the actors made with no LEB key for the commands that find actors by name (DBG hit, enemies, comps,
+    // slimeeye).
     void InstallSpawnTrack();
 }
 

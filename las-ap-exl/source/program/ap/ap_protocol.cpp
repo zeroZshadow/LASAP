@@ -1,5 +1,5 @@
-// The protocol's lines from the client (DESIGN.md, Protocol): each handled on the game thread, those that need a
-// loaded save kept until there is one.
+// The protocol's lines from the client (DESIGN.md, Game ↔ client protocol): each handled on the game thread, those
+// that need a loaded save kept until there is one.
 #include "ap/ap.hpp"
 #include "ap/ap_bridge.hpp"
 #include "ap/ap_net.hpp"
@@ -50,7 +50,6 @@ namespace {
     }
 }
 
-    // Returns false if the line must be retried on a later frame.
     bool HandleLine(const std::string& line) {
         auto a = Split(line);
         if (a.empty()) return true;
@@ -132,7 +131,8 @@ namespace {
             }
         }
         std::string line;
-        // up to 16 lines a frame, GHOST lines not counted (30 ghosts send up to 600 a second; each is cheap)
+        // up to 16 lines a frame, GHOST lines not counted (a crowd sends hundreds a second: TESTING.md, Measurements,
+        // Ghost network; each is cheap)
         for (int i = 0, all = 0; i < 16 && all < 1024 && PopLine(line); all++) {
             if (line.compare(0, 6, "GHOST ") != 0) i++;
             if (!HandleLine(line)) Defer(line);

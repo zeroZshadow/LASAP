@@ -1554,7 +1554,7 @@ PlayerState_DemoEvent_vtable 0x0a120470 l state 22 (talk, events, cutscenes)
 PlayerState_DoPush_vtable 0x0a1205c0 l state 35
 PlayerState_Fall_vtable 0x0a1206c8 l state 3
 PlayerState_FallAbyss_vtable 0x0a120920 l state 21
-PlayerState_Fishing_vtable 0x0a1209e0 l state 34 (TESTING.md's fishing owner)
+PlayerState_Fishing_vtable 0x0a1209e0 l state 34, the fishing rod's owner (ACTORS.md, Fishing)
 PlayerState_ForcePlayAnim_vtable 0x0a120b18 l state 31
 PlayerState_Guard_vtable 0x0a120c68 l state 10
 PlayerState_Hookshot_vtable 0x0a120f50 l state 26

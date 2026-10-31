@@ -25,11 +25,9 @@ namespace {
 
     // Dungeon map screen (game 1.0.0)
     constexpr uintptr_t kDungeonMapFlags = 0xe76204;    // w8 = DungeonItems flags byte (bit0 compass, bit1 map)
-    // The dungeon map page (Game::Map::DungeonMap, scripts/re/UI.md "Dungeon map"): its setup and destructor;
-    // DungeonMap_ShowCellFloor shows a room on the shown floor (its UiDungeonArea row's floor == the page's
-    // shownFloor); KeyWait runs MoveCursor, PinButton () -> A pressed, then UpdateHover, the pins' hover.
-    // DungeonMap_PositionIcon: an icon's position under N_MapPin_00. A dot within kHoverRadius of the cursor's size
-    // is hovered; the cursor eases onto it while the stick is idle (the page's cursor speed kIdleSpeed).
+    // The dungeon map page's setup, KeyWait, pin hover and icon placement: scripts/re/UI.md, Dungeon map. A dot within
+    // kHoverRadius of the cursor's size is hovered; the cursor eases onto it while the stick is idle (the page's cursor
+    // speed kIdleSpeed).
     constexpr float kIdleSpeed = 4.25f, kEase = 0.3f, kHoverRadius = 0.2f;
 
     const std::pair<Map::Area*, bool>* FindRoom(std::string_view room) {
@@ -243,12 +241,11 @@ namespace {
     };
 }
 
-    // A map marker's or room icon's root pane.
     Ui::Pane* MarkerRoot(Ui::LayoutWrapper* wrapper) {
         return Game::CallVirtual<Ui::Pane*()>(wrapper, Ui::LayoutWrapperVirtual::kRootPane);
     }
 
-    // Each dot's look (its SetMark frame, smaller for one check) and whether it shows.
+    // The look is a SetMark frame, smaller for one check.
     void ApplyDots() {
         for (auto& dm : g_DotMarkers) {
             Ids ids = DotIds(dm.dot);
@@ -260,8 +257,8 @@ namespace {
         }
     }
 
-    // A dot's position in the cursor's units (N_MapOrigin_00's): N_MapPosition_00 moves after the page's setup (y 48
-    // in Tail Cave), as the pins' hover reads it each frame.
+    // N_MapPosition_00 moves after the page's setup (scripts/re/UI.md, Dungeon map), so it is read each time, as the
+    // pins' hover does.
     void DotAt(const Map::DungeonMap* page, const DotMarker& dm, float& x, float& y) {
         const Ui::Pane* position = page->mapPosition.pane;
         x = dm.x + (position != nullptr ? position->x : 0);
@@ -272,7 +269,6 @@ namespace {
         return g_DotHovered >= 0 ? &Dots()[g_DotMarkers[g_DotHovered].dot] : nullptr;
     }
 
-    // A name on the map cursor: Place:<label>, whose text LabelText gives.
     void ShowCursorName(std::string_view placeLabel) {
         Map::MapCursor* cursor = FindCursor();
         if (cursor == nullptr) return;
@@ -286,13 +282,11 @@ namespace {
         Game::ReleaseOwner(ref.ctrl);
     }
 
-    // The hovered dot's name on the map cursor.
     void ShowDotName() {
         ShowCursorName(AP::MAP_DOT_LABEL);
     }
 
-    // Once a frame of the dungeon page's KeyWait, after its pins' hover: the nearest shown dot within the pins'
-    // radius, unless a pin is hovered or Y shows the dungeon's info.
+    // The nearest shown dot within the pins' radius, unless a pin is hovered or Y shows the dungeon's info.
     void UpdateDotHover(Map::DungeonMap* page) {
         for (auto& dm : g_DotMarkers) {
             Game::CallVirtual<void()>(dm.marker.get(), Map::MapMarkerVirtual::kUpdate);

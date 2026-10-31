@@ -123,19 +123,17 @@ namespace {
         return !AP::HasLogic() || AP::IsDoorOpen(id);
     }
 
-    // Checked, or marked skipped by the player: the map counts it as done.
     bool Done(LocationId id) {
         return AP::IsLocationChecked(id) || AP::IsLocationSkipped(id);
     }
 
-    // A group whose other name shows: a shuffled dungeon's until its flag is set.
     bool NameHidden(size_t group) {
         Ref flag = Groups()[group].hiddenFlag;
         return flag.size > 0 && !EventFlags::CheckFlag(TextOf(flag));
     }
 
-    // The look of an icon of these locations. While its name is hidden it is its door's, in logic or out of logic, as
-    // its checks' look would tell which dungeon the door leads into.
+    // While its name is hidden the look is its door's, in logic or out of logic, as its checks' look would tell which
+    // dungeon the door leads into.
     Look IdsLook(Ids ids, bool nameHidden) {
         size_t left = 0, reachable = 0;
         for (LocationId id : ids) {
@@ -152,14 +150,13 @@ namespace {
         return IdsLook(GroupIds(group), NameHidden(group));
     }
 
-    // A group A marks skipped or not: one location, not checked.
     bool Skippable(Ids ids) {
         return ids.size() == 1 && !AP::IsLocationChecked(ids[0]);
     }
 
-    // Whether a group's icon in this look is made: the look shown, and every look skipping or a logic update can give
-    // it while the map is open (collected, in logic and out of logic with an unchecked location, partly with two unless
-    // its name is hidden), so the open map swaps them.
+    // The look shown, and every look skipping or a logic update can give it while the map is open (collected, in logic
+    // and out of logic with an unchecked location, partly with two unless its name is hidden), so the open map swaps
+    // them.
     bool LookMade(size_t group, Look look) {
         if (GroupLook(group) == look) return true;
         size_t unchecked = 0;
@@ -173,7 +170,6 @@ namespace {
         }
     }
 
-    // The group and look a flag or label names (MAP_FLAG_PREFIX[mark]<group>), or -1.
     int ParseIcon(std::string_view name, Look& look) {
         if (!StartsWith(name, AP::MAP_FLAG_PREFIX)) return -1;
         name.remove_prefix(std::strlen(AP::MAP_FLAG_PREFIX));
@@ -189,7 +185,6 @@ namespace {
 
     Map::MapMarker* MarkerOf(const Game::SharedPtr<Map::MapMarker>& marker) { return marker.ptr; }
 
-    // The group and look of a map marker's row, or -1.
     int MarkerIcon(const Map::MapMarker* marker, Look& look) {
         const Map::UiFieldMapIconsRow* row = marker->row;
         if (row == nullptr || row->showFlag.data == nullptr) return -1;
@@ -200,7 +195,6 @@ namespace {
         return Game::CallVirtual<Ui::Layout*()>(marker, Ui::LayoutWrapperVirtual::kLayout)->root;
     }
 
-    // Shows the page's markers of ours whose look shows (LookShown) and hides the others.
     void ApplyLooks(Map::OverworldMap* page) {
         for (const Game::SharedPtr<Map::MapMarker>& sp : page->markers) {
             Map::MapMarker* marker = MarkerOf(sp);
@@ -210,20 +204,17 @@ namespace {
         }
     }
 
-    // The page's hovered marker of ours, or null.
     Map::MapMarker* HoveredMarker(const Map::OverworldMap* page) {
         s32 index = page->hoveredMarker;
         if (index < 0 || static_cast<size_t>(index) >= page->markers.size()) return nullptr;
         return MarkerOf(page->markers[index]);
     }
 
-    // The group and look of the page's hovered marker, or -1.
     int HoveredIcon(const Map::OverworldMap* page, Look& look) {
         Map::MapMarker* marker = HoveredMarker(page);
         return marker != nullptr ? MarkerIcon(marker, look) : -1;
     }
 
-    // X on a map page (overworld or dungeon).
     void ToggleOutOfLogic(const void* page) {
         g_OutHidden = !g_OutHidden;
         if (page == g_MarkerPage) ApplyLooks(g_MarkerPage);
@@ -231,9 +222,8 @@ namespace {
         PlaySound(g_OutHidden ? "SE_SY_MAP_PIN_OFF" : "SE_SY_MAP_PIN_ON");
     }
 
-    // An icon's count, in its hover text and its check list's header: "<to do>/<unchecked>", its locations in logic
-    // neither checked nor skipped over those not checked (skipping one lowers the first, not the second). Empty when
-    // every location is checked.
+    // In its hover text and its check list's header: its locations in logic neither checked nor skipped over those not
+    // checked (skipping one lowers the first, not the second). Empty when every location is checked.
     std::string CountText(Ids ids) {
         int unchecked = 0, todo = 0;
         for (LocationId id : ids) {
@@ -244,7 +234,7 @@ namespace {
         return unchecked == 0 ? "" : std::to_string(todo) + "/" + std::to_string(unchecked);
     }
 
-    // An icon's hover text: its name after its count when it has several locations and some are unchecked, or after
+    // Its name after its count when it has several locations and some are unchecked, or after
     // "Skipped: " when its one location is skipped.
     std::string IconText(Ids ids, std::string_view name) {
         if (Skippable(ids) && AP::IsLocationSkipped(ids[0])) return std::string("Skipped: ").append(name);

@@ -1,14 +1,6 @@
 // Inventory bits of seashells, heart pieces, golden leaves, heart containers, bottles and chamber stones (DESIGN.md,
-// Received items).
-//
-// The game counts these items by bits: collecting one sets the bit of its source, and the count is the number of
-// bits set. The patcher writes INDICES_PATH: per source its kind, its vanilla bit and the local id of its location
-// when shuffled. A source left vanilla sets its own bit when collected, so a received item takes a bit that no
-// vanilla source of the seed sets (VanillaBits); otherwise that source would add nothing.
-//
-// The Memories map marks bit i of the seashells and heart pieces at the vanilla place of source i. Received items
-// take the bits of shuffled sources, so those marks would name places unrelated to them: the module marks source i
-// once it is done instead: a vanilla source by its bit, a shuffled one by its location's check.
+// Item model: remote items): the bits the seed's vanilla sources set (VanillaBits), which received items leave free,
+// and the Memories map's seashell and heart piece marks, each set once its source is done.
 #include "ap/ap.hpp"
 #include "ap/ap_patcher.hpp"
 #include "config/file_handler.hpp"

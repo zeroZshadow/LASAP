@@ -1,6 +1,6 @@
-// Checks (DESIGN.md, Checks): the locations collected here (saved per seed and reported), those the server has as
-// checked or in logic and those the player marked skipped, for the map tracker; and the in-game hints read and the
-// dungeons entered.
+// Checks (DESIGN.md, Map tracker; In-game hints; Persistence): the locations collected here (saved per seed and
+// reported), those the server has as checked or in logic and those the player marked skipped, for the map tracker;
+// and the in-game hints read and the dungeons entered.
 #include "ap/ap.hpp"
 #include "ap/ap_bridge.hpp"
 #include "ap/ap_net.hpp"
@@ -110,7 +110,6 @@ namespace {
     }
 }
 
-    // Saves a location collected here and reports it.
     void RecordCheck(LocationId location) {
         if (!g_ChecksLoaded) LoadChecks();
         if (std::optional<Bit> bit = BitOf(location)) {
@@ -182,8 +181,6 @@ namespace {
         Logging.Log("[AP] hints: %zu", g_Hints.size());
     }
 
-    // Sends HINT and DUNGEON for the hints read and the dungeons entered (their flag set) and not yet reported on
-    // this connection, or for all.
     void ReportFlags(bool all) {
         if (!AP::IsClientConnected()) return;
         Report(g_Hints, all);

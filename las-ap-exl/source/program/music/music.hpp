@@ -3,7 +3,7 @@
 #include "lib.hpp"
 #include <string>
 
-// Jukebox (music.cpp, DESIGN.md "Music"): a chosen BGM plays instead of the zone's music.
+// Jukebox (DESIGN.md, Music): a chosen BGM plays instead of the zone's music.
 namespace AP::Music {
     void InstallHooks();
     // A choice made on the Jukebox page: a track, or "" or "off" for the game's own music. It only sets the change,

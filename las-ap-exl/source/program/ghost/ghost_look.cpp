@@ -15,17 +15,16 @@ namespace {
     using Game::StrView;
 
     // Link's materials drawn for a ghost: his body and the items on his model. Which of its shapes draw is the
-    // ghost's look (SetGear).
+    // ghost's look (SetShapes).
     const char* const kShownMaterials[] = {"MI_body", "MI_boots", "MI_ear", "MI_eye", "MI_mouth", "MI_hair",
                                            "linkShieldA_MI_shieldA", "linkSwordA_MI_sowrdA", "linkSwordA_MI_sowrdAball",
                                            "MI_flippers", "MagicRod_MI_magicRod", "Ocarina_MI_ocarina", "Shovel_MI_shovel",
                                            "linkHookShot_MI_hookShot", "linkShieldB_MI_shieldB",
                                            "linkShieldB_MI_shieldBMirror", "linkSwordB_MI_sowrdB",
                                            "linkSwordB_MI_sowrdBball"};
-    // The look's tunic: the material animation "clothes" swaps MI_body's albedo (frames 0 green, 1 red, 3 blue).
-    // NpcComponent_PlayMaterialAnimation (0x9c1b30: out shared_ptr, NPC component, {name, length}*, at once) puts it
-    // on a slot of the NPC's material animation component; the slot is the facial row's slot count unless the NPC
-    // has no facial control or its destroy is requested, then 0 (NpcComponent_MakeMaterialAnimator counts the same).
+    // The look's tunic: the material animation "clothes" held at the tunic's frame (scripts/re/PLAYER.md, Tunic), which
+    // NpcComponent_PlayMaterialAnimation puts on the slot after the facial row's (scripts/re/ACTORS.md, NPCs);
+    // TunicSlot counts it as NpcComponent_MakeMaterialAnimator does.
     using Game::MatAnimSlot;
     namespace Slot = Game::MatAnimSlotVirtual;
     constexpr float kTunicFrames[] = {0, 1, 3};
@@ -33,7 +32,7 @@ namespace {
     // APGhost row's facial row (Facial.gsheet, ap_player_ghost.py) names them, so the NPC's material animation
     // component has a slot for each (before the tunic's), at frame 0 with no blinking; the module finds each by its
     // animation's name and holds its frame.
-    // The instanced face (Instanced models) draws as the model draws without these animations, which is frame 0 of
+    // The instanced face (ghost_instanced.cpp) draws as the model draws without these animations, which is frame 0 of
     // each; a ghost with another face draws its own face shapes, the frames set on its slots.
     constexpr const char* kFaceAnims[] = {"eye", "mouth", "ear"};
     constexpr int kFaceFrames[kFaceParts] = {14, 14, 2};  // the FMAAs' frames
@@ -66,9 +65,8 @@ namespace {
     }
 }
 
-    // Draws only the materials a ghost shows, or (hidden) none; true when they already were. The game sets the
-    // visibility again at times (the model's setup some frames after it appears, the actor coming back after a
-    // dungeon room's scroll), so it is checked every frame.
+    // The game sets the visibility again at times (the model's setup some frames after it appears, the actor coming
+    // back after a dungeon room's scroll), so it is checked every frame.
     bool WriteLook(Puppet& p, bool draw) {
         if (p.model == nullptr) return false;
         if (p.matWords < 0) ComputeShownMats(p);
@@ -94,7 +92,6 @@ namespace {
         return kept;
     }
 
-    // The look's shapes on the puppet's model.
     void SetShapes(Puppet& p) {
         Game::ModelInstance* instance = AnimatorInstance(AnimatorOf(p));
         if (instance == nullptr || instance->Model() != p.model || p.model == nullptr) return;
@@ -143,8 +140,8 @@ namespace {
     }
 
     // The sender's face on the face's slots, written again whenever a slot's frame differs; the puppet draws its own
-    // face shapes while it differs from the instanced face (all frames 0). A model without all three slots (an older
-    // mod's row) keeps the instanced face; a slot not found is looked for again each frame.
+    // face shapes while it differs from the instanced face (all frames 0). A model without all three slots (a facial
+    // row that does not name them) keeps the instanced face; a slot not found is looked for again each frame.
     void SetFace(Puppet& p) {
         bool all = true;
         for (int k = 0; k < kFaceParts; k++) {

@@ -1,5 +1,5 @@
 // Lists built from the game's layouts (ap_list.hpp): layouts of Game.arc built at runtime and hung under a pause menu
-// page (TESTING.md, "Layouts at runtime", "Text box glyphs"; ghost_nametag.cpp), the Memories list with its rows, cursor
+// page (scripts/re/UI.md, "Building a layout", "Glyphs"; ghost_nametag.cpp), the Memories list with its rows, cursor
 // and scroll bar, the pad, and the button guide made from the overworld map's.
 #include "ap/ap.hpp"
 #include "ap/ap_list.hpp"
@@ -24,12 +24,11 @@ namespace {
 
     constexpr int kPriority = 10;
 
-    // Gm_MemoryList: rows L_Item_00..06 (Gm_MemoryListItem: T_Item_00 in the alignment pane A_Item_00, alpha 0 in
-    // the file, beside the Memories' marks L_Way_00, B_bounding_01 and L_MemoryMark_00, hidden here; the highlight
-    // windows W_Add_00/01); the blank rows L_Blank_00..03 above and below; the cursor L_ListCursor_00 (Cm_ListCursor)
-    // at the root; the scroll bar L_ScrollBar_00 with its handle W_ScrollHandle_00 (y 189 at the top, 94 high in a
-    // 390 track); the Memories' panel count N_Panel_00, hidden. A_List_00 is an alignment pane: a hidden row gives
-    // its place to the rows under it, so the blank rows stay and are made transparent instead.
+    // Gm_MemoryList (scripts/re/UI.md, Framework): rows L_Item_00..06 (Gm_MemoryListItem: T_Item_00 in the alignment
+    // pane A_Item_00, alpha 0 in the file, beside the Memories' marks, hidden here; the highlight windows W_Add_00/01);
+    // the blank rows L_Blank_00..03, made transparent, as a hidden one would move the rows (A_List_00); the cursor
+    // L_ListCursor_00 at the root; the scroll bar L_ScrollBar_00 with its handle W_ScrollHandle_00; the Memories' panel
+    // count N_Panel_00, hidden.
     constexpr const char* kListLayout = "Gm_MemoryList.bflyt";
     constexpr const char* kRowHidden[] = {"L_Way_00", "B_bounding_01", "L_MemoryMark_00"};
     constexpr const char* kBlankRows[] = {"L_Blank_00", "L_Blank_01", "L_Blank_02", "L_Blank_03"};
@@ -37,8 +36,7 @@ namespace {
     constexpr u64 kPadStaleMs = 50;  // the last poll's buttons count as held this long
     constexpr int kRepeatDelay = 20, kRepeatEvery = 5;  // frames before Up/Down repeat, and between repeats
 
-    // The pause menu header's guide (Game::Ui::NaviGuide): the overworld map's uses its first five slots, X, Y, R, A,
-    // B.
+    // The pause menu header's guide (Game::Ui::NaviGuide): the overworld map's slots.
     constexpr int kGuideSlotCount = 5;
     constexpr u32 kMapGuide[kGuideSlotCount] = {kGuideX, kGuideY, kGuideR, kGuideA, kGuideB};
 

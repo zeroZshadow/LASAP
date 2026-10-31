@@ -1,6 +1,6 @@
 #pragma once
 // The game's UI (nn::ui2d through its UI manager): panes, text boxes and layouts of Game.arc built at runtime
-// (TESTING.md, "Layouts at runtime", "Text box glyphs"; scripts/re/UI.md).
+// (scripts/re/UI.md, Framework: "Building a layout", "Glyphs").
 #include "flags.hpp"
 #include "game/stl.hpp"
 #include "lib.hpp"
@@ -139,7 +139,7 @@ namespace Game::Ui {
         LayoutWrapper* owner;      // 0x28: the page a part is bound to (Part_Bind); its layout stands in for a gone one
         WeakPtr<> parentLayout;    // 0x30: the layout its root hangs in, once attached
         SharedPtr<> attachLayout;  // 0x40: the parent wrapper's layout while attached
-        Pane* attachPane;          // 0x50: the pane its root hangs under; the layout calculates itself only without
+        Pane* attachPane;          // 0x50: the pane its root hangs under; without one the layout calculates itself
         SharedPtr<> homeKeep;      // 0x58: released when the root leaves its first parent
         Pane* homePane;            // 0x68: the root's own parent before it was attached
         u8 active;                 // 0x70: updated each frame while set; once cleared, the manager closes the UI

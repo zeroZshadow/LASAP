@@ -1,17 +1,13 @@
-// The check list of an icon of several locations (DESIGN.md, Map tracker, Check list): a panel in the middle of the
-// overworld map, hung under the map page while it is open, the map dimmed behind it:
+// The check list of an icon of several locations (DESIGN.md, Map tracker, Check list), hung under the map page:
 // - the dim: Gm_MapMarkList (the map's pin bar) with only its black P_pict_00, stretched over the map between the
 //   page's rules (the black of Cm_Dlg, the game's dialogs, would bring its masks, which capture the screen into a
 //   texture the pause menu's backdrop shares);
-// - the back: Gm_MemoryCollect (the Memories' count) with only its paper window W_window_00, as on the Jukebox
-//   page, sized to the header and the rows;
-// - the list: Gm_MemoryList (ap_list.cpp), one row per location of the icon, its name without the area; the header
-//   above the rows names the icon (as its hover text) with its count (CountText) on the right, in two
+// - the back: Gm_MemoryCollect (the Memories' count) with only its paper window W_window_00;
+// - the list: Gm_MemoryList (ap_list.cpp); the header above the rows, the icon's name and its count, in two
 //   Gm_SystemOpUnit text boxes;
-// - per row the icon's dot of the location's look: a Gm_MapMarker at the frame of its SetMark animation the map's
-//   rows use (ap_map_icons.py), and for a skipped location "skipped" after its name (Gm_SystemOpUnit, italic).
-// While it is open the map and the header see no buttons and no sticks (MapListTakesPad); the list reads the pad
-// itself. B closes it; A marks the location under the cursor skipped or not, as A on an icon of one location does.
+// - per row the dot of the location's look, a Gm_MapMarker at a frame of its SetMark animation (ap_map_icons.py), and
+//   for a skipped location "skipped" after its name (Gm_SystemOpUnit, italic).
+// While it is open the game sees no buttons and no sticks (ListTakesPad); the list reads the pad itself.
 #include "ap/ap.hpp"
 #include "game/sym.hpp"
 #include "game/time.hpp"
@@ -48,7 +44,6 @@ namespace {
     constexpr float kNameWidth = 1000;  // a row's text box's width (338 in the file), so a long name does not wrap
     constexpr float kTagGap = 10, kTagLower = -3;  // "skipped" after a name: the space between, how much lower
     constexpr float kNameSqueeze = 0.6f;  // a long name is narrowed to fit its row, down to this
-    // A colour tag in the text does not reach a text box of a layout: its colours are set instead.
 
     // The panel (layout units): its middle, its margins beside the rows and above and below them, the header's
     // height; a row's dot and the right end of its name and "skipped", from the list's middle.
@@ -58,6 +53,7 @@ namespace {
     constexpr int kPanelAlpha = 245, kDimAlpha = 150;
     constexpr int kDoneAlpha = 170;  // a checked or skipped location's name
 
+    // A colour tag in the text does not reach a text box of a layout: its colours are set instead.
     constexpr u8 kInk[] = {0x0f, 0x07, 0x02, 0xff};   // the header's: dark brown on the paper (shows as 46 30 1e)
     constexpr u8 kGray[] = {0xb4, 0xb4, 0xb4, 0xff};  // "skipped": light grey (shows as d9)
 
@@ -230,7 +226,6 @@ namespace {
 
     Map::MapCursor* FindCursor() { return reinterpret_cast<Map::MapCursor*>(Ui::FindUi(Map::kMapCursorUi)); }
 
-    // The look a location's row shows: checked or skipped collected, else in or out of logic.
     Look RowLook(LocationId id) { return Done(id) ? Collected : Reachable(id) ? InLogic : OutOfLogic; }
 
     std::string CheckName(LocationId id) {
@@ -252,7 +247,6 @@ namespace {
         g_Panel = Panel{};
     }
 
-    // The header's count, the rows' names, dots and tags.
     void FillList() {
         Ids ids = ListIds();
         L::SetText(g_Panel.title.note, g_Panel.heading);
@@ -296,13 +290,11 @@ namespace {
 #endif
     }
 
-    // The map's guide while the list is open: A Skip / unskip, B Back.
     const L::Guide* ListGuide(u32 index) {
         static const L::Guide guide{2, {L::kGuideA, L::kGuideB}, {"", "", "Skip / unskip"}};
         return index == 0 && ListOpen() ? &guide : nullptr;
     }
 
-    // Whether A opens the group's check list: it has several locations and its name is not hidden.
     bool Listable(int group) {
         if (group < 0 || static_cast<size_t>(group) >= Groups().size() || GroupIds(group).size() < 2) {
             return false;

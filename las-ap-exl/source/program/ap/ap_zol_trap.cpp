@@ -1,6 +1,6 @@
-// The Zol Trap (DESIGN.md, Showing received items): the game's chests of $ENEMY let out a Zol. Here every chest at a
-// location holds the placeholder, so the trap comes back as a received item: the chest that held it lets out its Zol,
-// else Zols appear beside Link.
+// The Zol Trap (DESIGN.md, Showing received items, Zol Trap): the game's chests of $ENEMY let out a Zol. Here every
+// chest at a location holds the placeholder, so the trap comes back as a received item: the chest that held it lets
+// out its Zol, else Zols appear beside Link.
 #include "ap/ap.hpp"
 #include "ap/ap_bridge.hpp"
 #include "game/actor.hpp"

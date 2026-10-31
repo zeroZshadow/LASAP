@@ -1,5 +1,5 @@
 # DeathLink with a second DeathLink player: scripts/deathlink_peer.py as slot Finder (`peer` op), on a seed with
-# death_link on (TESTING.md, "DeathLink"). Starts with Link free in a level (boot_file1); ends with him alive and free
+# death_link on. Starts with Link free in a level (boot_file1); ends with him alive and free
 # in Mabe. Patterns use \s for spaces.
 guard off dead
 # A received death: Link dies and the game over shows; no death goes back, and the flag is cleared.

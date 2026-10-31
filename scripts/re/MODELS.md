@@ -1,6 +1,6 @@
 # Models and animation (game 1.0.0)
 
-The game's model objects (nn::g3d), the model instances the renderer draws, the model components that hold them and the animation components that pose them, from static analysis of the main module. Offsets are module offsets (what `InstallAtOffset` and `scan.py` take); `las.sym` names them at their runtime addresses (module offset + 0x8504000). Object offsets are bytes from the object's start. Field names are those of `game/model.hpp` and `game/animation.hpp`, which list every field; this file gives the evidence and what their comments leave out. "Guess" marks what the code suggests but was not followed to the end. TESTING.md, Reverse engineering, has Link's model, his shapes, the model material's parameter block and the instanced draw; this file does not repeat them.
+The game's model objects (nn::g3d), the model instances the renderer draws, the model components that hold them and the animation components that pose them, from static analysis of the main module. Offsets are module offsets (what `InstallAtOffset` and `scan.py` take); `las.sym` names them at their runtime addresses (module offset + 0x8504000). Object offsets are bytes from the object's start. Field names are those of `game/model.hpp` and `game/animation.hpp`, which list every field; this file gives the evidence and what their comments leave out. "Guess" marks what the code suggests but was not followed to the end. PLAYER.md, Model, has Link's model, his shapes and his tunic.
 
 ## nn::g3d objects
 
@@ -13,7 +13,9 @@ The layouts follow NX nn::g3d: ResShape's material index at `+0x52` and bone ind
 | `LocalTransform` (LocalMtx) | 0x60 | | `flags` bit 27 TRANS_ZERO (`kLocalTranslateZero`; by g3d, 26 is ROT_ZERO and 24/25 scale one / uniform, not followed); `MoveRootBone` clears bit 27 |
 | `ShapeObj` | 0x70 | `g3d_ShapeObj_Initialize` `0x1131240` | `flags` bits 2 and 3 both set run `g3d_ShapeObj_CalculateBlendShape` (`0x1131cd0`). A `viewDependent` shape is skipped by `g3d_ModelObj_CalculateShape` (`0x112a7a0`) and calculated per view by the instance's virtual `+0x80`; `shapeBlockCount` is `viewCount` for such a shape, else 1. `shapeBlocks` index `view * bufferCount + buffer`: 0x100-byte blocks (world matrix, skin count, the user area). `boundings`: two `{centre, extent, radius}` copies per mesh, which the draws cull against. `buffer_40` (the builder's block 6) unknown |
 | `MaterialObj` | 0x80 | `g3d_MaterialObj_Initialize` `0x1128aa0` | `srcParams` is a CPU copy of the FMAT's `+0x60` (FMAT `+0xa2` bytes), not uploaded again. `blockCopies` (2) is the dirty set's buffering count: the parameter block's copies, `blockSize` rounded up to 0x100 apart (`g3d_MaterialObj_CalculateMaterial` `0x1129240`). `paramDirty` is set up by `0x1129530`; `dirtyBufferMask` has a bit per buffer; `dirtyFlags` (`+0x2c`) bit 0 is set when any parameter is marked dirty; `+0x78` has no access |
-| `MemoryPool` | 0x120 | `MemoryPool_Initialize` `0x11404f0` | nn::gfx TMemoryPool<NVN>: `nvnPool` points at `nvnStorage` (`+0x10`, the NVNmemoryPool, to `+0x110`), `cpu` (`+0x8`) the memory it is made on, `state` (`+0x110`) 1 once initialized (`MemoryPool_Finalize` `0x1140580` clears it). `gpu` (`+0x50`, inside the NVN pool) is measured (TESTING.md, Model object), not read statically. The graphics system's shared pool is at its `+0x7210` |
+| `MemoryPool` | 0x120 | `MemoryPool_Initialize` `0x11404f0` | nn::gfx TMemoryPool<NVN>: `nvnPool` points at `nvnStorage` (`+0x10`, the NVNmemoryPool, to `+0x110`), `cpu` (`+0x8`) the memory it is made on, `state` (`+0x110`) 1 once initialized (`MemoryPool_Finalize` `0x1140580` clears it). `gpu` (`+0x50`, inside the NVN pool) is measured, not read statically. The graphics system's shared pool is at its `+0x7210` |
+
+**bezel_pbr parameter block** (a material's shader parameters): `+0x33c` outline width, `+0x350` world position scale, `+0x36c` fresnel core darkness, then edge brightness, intensity and power, `+0x380` the fresnel colour (RGBA). A write to every copy of the block shows at once; a write at `+0x0` shows nothing.
 
 Play policies (AnimFrameCtrl `+0x10`): `g3d_PlayPolicy_Onetime` `0x11272d0`, `g3d_PlayPolicy_Loop` `0x11272f0`. An AnimFrameCtrl is `{f32 frame, start, end, step (the rate), policy function, user}`.
 
@@ -33,6 +35,15 @@ and lists it in `ModelDataRegistry_ptr` (`0x1cc6f68` → a 0x88-byte object: a l
 - `bufferCount`: the int argument (2 from `ModelInstance_Init`), the model's skeleton, shape and material
   buffering. `resModel` is the FMDL.
 
+**Shader options.** `ShaderSelector_SetOption` (`0xff3dd0 (selector, option, value)`) sets a runtime option of the
+model shader (the option table `0x1c45838`: model, instancing, shadow filtering and profile, shadow distance fade, fog,
+alpha test, ambient lighting, light culling, dither, light probe grid, collision); `0xff2ff0` sets them per material
+at setup, `dither_mode` (option 9) always 0, and the selector's `+0x70` is the model object. Every `bezel_pbr*.bfsha`
+compiles `dither_mode` with the single choice 0, so a model cannot be dithered (the selector ignores other values).
+`use_alpha_test` 1 cuts nothing on Link: his materials (`bezel_pbr_basic`) take alpha from combiner stage 0, fed by
+constant colours, not from the albedo texture; `combiner_stage_count` 0 on them crashes (no program for that option
+set).
+
 **Model** (0xd8 bytes, allocated by `ModelData_Get`): `obj` the nn::g3d ModelObj (0x90); `blockOffset` its block
 buffer's offset in the graphics system's shared pool (`+0x7330`), `blockSize` (`g3d_ModelObj_CalculateBlockBufferSize`
 `0x112a0f0`), `bufferSize`, `resource`, `resModel`, `initialized`, and `shapeInfos`: a `ShapeRenderInfo` (0x38) per
@@ -50,7 +61,8 @@ shape, from its material (FMAT array ResModel `+0x38`, by ResShape `+0x52`):
 
 The render passes (their ids are the draw context's `+0x188`) have no names in the binary; the flags are named by the
 passes they select. Pass 1 is likely the shadow map (its depth bias is the larger of the draw's and the context's
-`+0x278`).
+`+0x278`). The cutout render layer alpha-tests (alpha below 0.5 discarded) in the depth and the colour passes; Link's
+colour shader outputs the albedo's alpha in both.
 
 **ModelInstance** (`ModelInstance_Make` `0x10361f0`, `ModelInstance_Ctor` `0x1036510`, `ModelInstance_Init` `0x1036900`,
 `ModelInstance_Dtor` `0x1037350`, vtable `0x1c47640`; 0x3a0 bytes). Its base (vtable `0x1c346d0`, `+0x0`..`+0x60`; its
@@ -119,7 +131,12 @@ and draws it; a leaf pass binds its blend, depth-stencil and raster states (the 
 (`GfxContext_SetBlendState` `0xff93b0`, `GfxContext_SetDepthStencilState` `0xff93f0`, `GfxContext_SetRasterState`
 `0xff9430`: `+0x90`, `+0x98`, `+0xa0`) and binds through its command buffer wrapper (`+0x8`; `CmdBuf_BindBlendState`
 `0x113eb70`, `CmdBuf_BindDepthStencilState` `0x113ec20`, `CmdBuf_BindRasterState` `0x113ea70`); only the raster
-state is rebuilt per item (`ModelInstance_SetRasterState`). A model drawn in the main view goes through passes 11, 12,
+state is rebuilt per item (`ModelInstance_SetRasterState`). The command buffer wrapper's `+0xb8` is the NVN command
+buffer; besides the binds it has `CmdBuf_BindUniformBuffer` (`0x113fd70 (wrapper, stage, slot, {GPU address, offset}*,
+size)`), `CmdBuf_DrawElementsBaseVertex` (`0x113e950`) and `CmdBuf_DrawElementsInstanced` (`0x113e9d0`); a raster
+state holds its NVN multisample state at `+0x4`, and other code reads the context's cached raster state (`+0xa0`).
+The game's NVN function pointers sit behind GOT slots (`0x1c951e8` multisample SetDefaults, `0x1c95200`
+SetAlphaToCoverageEnable, `0x1c947c0` command buffer BindMultisampleState). A model drawn in the main view goes through passes 11, 12,
 18 and 19 (render layers 0 and 1) and 13, 14, 20 and 21 (2 and 3), on two contexts side by side (11 to 14 and 18 to
 21), each in that order.
 
@@ -161,6 +178,11 @@ Both draws, `ModelInstance_Draw` and `InstancedModelInstance_Draw`, draw shape i
   connects to the node's `transformChanged` through its pointer at node `+0xf8` (`signalConnection`), whose callback
   (`0x105c060`) sets `worldDirty`. `SkeletalModel_SyncWorld` (`0x105aa40`) then copies the node's world into the
   instance.
+- `RasterizerState_Initialize` (`0x1146190 (state, ?, descriptor)`) sets NVN alpha-to-coverage from descriptor
+  `+0x1a`; it is the only caller of `nvnMultisampleStateSetAlphaToCoverageEnable`, and the game never enables it.
+  NVN's dither default is on, so with it forced on every draw with alpha below 1 (the HUD's button circles) dithers
+  in screen space. The renderer fills tables of prepared states at setup (callers around `0xfe99d0`, `0x1012b3c`) and
+  its draws pick them by index, so a per-model switch belongs at bind or draw time.
 - `SkeletalModel_Cleanup` (`0x105aac0`, virtual `+0x38`) disconnects and leaves a shared instance alone.
 - `modelList` is a weak pointer to the renderer (`Framework::renderer`, FRAMEWORK.md): `SkeletalModel_AddToModelList` (`0x105aed0`, virtual `+0x40`) and `SkeletalModel_RemoveFromModelList` (`0x105b090`, `+0x48`) call the list's virtuals `+0x10` and `+0x18` on activation and deactivation.
 - `order` is 0x401 (the animation components' 0x400); virtual `+0x0` returns it.
@@ -193,11 +215,13 @@ Both draws, `ModelInstance_Draw` and `InstancedModelInstance_Draw`, draw shape i
 
 **InstancedModelComponent** (`InstancedModel_Ctor` `0x104d540`, `InstancedModel_vtable` `0x1c49340`, 0x310 bytes) is a skeletal model component whose vtable replaces the setup with `InstancedModel_Setup` (`0x104db10`): it looks the instance up in a cache of 0x40-byte entries (global `0x1cc6f78`) by model, `cacheKey` and `shapeMask`, else makes a new instanced instance, so components with the same key and mask share one instance. Its virtuals `+0x28` (`0x104ec60`) and `+0x40` (`InstancedModel_PushRecord` `0x104ef90`) push the node's world (node `+0xb0` position, `+0xc0` rotation, `+0xd0` scale) as an InstanceRecord, unless `added` is set or `visible` is clear; a per-frame task (`0x1050088`) clears `added`, so only a clear `visible` keeps the game from adding records. `visible`: virtuals `+0x80` set, `+0x88` get, `+0x108` Show, `+0x110` Hide (`0x104fa40`, `0x104fc70`, `0x104fc80`). Its `IsShapeVisible` (`+0xa8`, `0x104fb10`) tests `shapeMask`.
 
+Every g3d model draw is an instanced draw (the count is the instance's virtual `+0x98`: 1, or `instanceCount`). `InstancedModel_Ctor` takes the component arguments `{name, length, enabled, owner, owner's control block}`, the model resource as a model component holds it (`+0x168`), the cache key, the shapes' mask, the renderer (Framework `+0x540`) and its model list. The shared instance goes into the model list at once and is drawn every frame without model culling. Each draw turns its `records` (0x30 bytes: position, rotation quaternion, scale) into the storage buffer `InstanceInfoArray` (`InstancedModelInstance_Draw`, up to 512); they are emptied each frame drawn, also while the game pauses. The instance is in its bind pose with an identity world, so a shape bound to one bone shows at another model's bone with that model's bone world times the inverse of the instance's. FieldTip makes its own (`0xb846e0`): a control block of its own (`InstancedModelCtrl_vtable` `0x1b9cf50`), virtuals `+0x78` and `+0x20`, the start task (`EntityManager_PostStart`), then `Actor_AttachComponent(actor, component, root)`.
+
 The skeletal model component's last field is `instanceShared` at `+0x2f8`: its sizeof is 0x300 with tail padding from `+0x2f9`, where the instanced component's fields begin (`added` `+0x2f9`, `visible` `+0x2fa`, `cacheKey` `+0x2fc`); `shapeMask` ends at `+0x304`, rounded up to 0x310. `game/model.hpp` therefore spells the base part out as bytes instead of embedding `SkeletalModelComponent`.
 
 ## Animation components
 
-**BoundAnimation** (`Animation_Bind` `0x1033c00 (out, animation, model)`, 0x20 bytes, control block vtable `0x1c47400`): `obj` is an nn::g3d SkeletalAnimObj (0x90 bytes, `g3d_SkeletalAnimObj_vtable` `0x1c5e160`): `+0x8` its AnimFrameCtrl, `+0x68` the ResSkeletalAnim.
+**BoundAnimation** (`Animation_Bind` `0x1033c00 (out, animation, model)`, 0x20 bytes, control block vtable `0x1c47400`): `obj` is an nn::g3d SkeletalAnimObj (0x90 bytes, `g3d_SkeletalAnimObj_vtable` `0x1c5e160`): `+0x8` its AnimFrameCtrl, `+0x68` the ResSkeletalAnim. Enemies take an animation by name with `AnimationSet_Make` (`0x1046480 (out, animation set, const char* name)`), then bind it.
 
 **AnimationLayer** (`AnimationLayer_vtable` `0x1c472f8`, 0x100 bytes; `AnimationLayer_Dtor` `0x1032810`). The layered
 animation's layers are the masked kind (`MaskedAnimationLayer`, `MaskedAnimationLayer_vtable`
@@ -244,7 +268,7 @@ writer found), `boneMask` (`+0x100`, a u16 `{mask, effective}` per bone: `Masked
 it reads directly (`+0x150` paused, `+0x154` last frame, `+0x158` loop count). `SkeletalAnimation_BindModel`
 (`0x1058130`, virtual `+0x20`) sets the layer's `instance` and `model` (seen from the component at `+0x88` and `+0x90`).
 `modelComp` is a weak pointer, locked at each update (`0x1058eb0`). `onAnimationSet` (`std::function<void(animation sp,
-int)>`) is the Tailor listener (TESTING.md, Effects and sounds), called by `SkeletalAnimation_SetAnimation`
+int)>`) is the Tailor listener (Tailor, below), called by `SkeletalAnimation_SetAnimation`
 (`0x10589e0`) and `LayeredAnimation_SetSlot`. `pad_58` and `+0x178` are alignment (the layer and the function are
 16-aligned); `field_160` is zeroed by the
 constructors and never read; `+0x1a8` is written nowhere.
@@ -267,7 +291,7 @@ constructors and never read; `+0x1a8` is written nowhere.
 
 **AnimationLayers** (`AnimationLayers_Init` `0x1034bc0 (layers, count, model instance)`, `AnimationLayers_vtable` `0x1c47438`, 0x60 bytes, `AnimationLayers_Dtor` `0x1034260`): `count` is clamped to 1..8 and that many masked layers are made; `AnimationLayers_Calc` (`0x10342e0`) blends the enabled layers into the skeleton through `blender`. `paused` follows the layered animation's pause virtuals (`+0xe8`, `+0xf0`, `+0xf8`, `0x1059b70`).
 
-**LayeredAnimation** (`LayeredAnimation_Make` `0x67ba70` allocates 0x220 bytes; `LayeredAnimation_Ctor` `0x1059200 (animation, owner, model component sp*, layer count)`, `LayeredAnimation_vtable` `0x1c49ee8`, `LayeredAnimation_Dtor` `0x1059460`): a SkeletalAnimation whose own layer at `+0x60` is unused, and the AnimationLayers at `+0x1b0`. `requestedLayers` is the constructor's count until `LayeredAnimation_BindModel` (`0x10594e0`, `+0x20`) binds the model. `LayeredAnimation_SetSlot` (`0x1059dd0`) sets an animation on a layer; `LayeredAnimation_Update` (`0x1059cf0`, `+0x118`). Link's has 2 layers, layer 1 masked from `spine_a` (PLAYER.md).
+**LayeredAnimation** (`LayeredAnimation_Make` `0x67ba70` allocates 0x220 bytes; `LayeredAnimation_Ctor` `0x1059200 (animation, owner, model component sp*, layer count)`, `LayeredAnimation_vtable` `0x1c49ee8`, `LayeredAnimation_Dtor` `0x1059460`): a SkeletalAnimation whose own layer at `+0x60` is unused, and the AnimationLayers at `+0x1b0`. `requestedLayers` is the constructor's count until `LayeredAnimation_BindModel` (`0x10594e0`, `+0x20`) binds the model. `LayeredAnimation_SetSlot` (`0x1059dd0`) sets an animation on a layer; `LayeredAnimation_Update` (`0x1059cf0`, `+0x118`). Link's has 2 layers, layer 1 masked from `spine_a` (PLAYER.md). `NpcComponent_MakeAnimator` (`0x94b310`, virtual `+0x208`, shared by all NPC classes: `(component, name, model component sp*)`, the result through `x8`) makes an NPC's single-layer one. A layered one comes from `LayeredAnimation_Make` (`(out, entity, StringView* name, model component sp*, int* layers)`); then `AnimationLayers_SetBoneMask` (`0x1035390 (layers, layer, bone name, true)`) masks a layer from a bone down, `AnimationLayers_SetEnabled` (`0x10355f0 (layers, layer, bool)`) turns one on or off, and the start task (`EntityManager_PostStart`) and `Entity_AttachChild` (`0xfa9e40 (entity, child)`) bind it. `LayeredAnimation_SetSlot` takes `(animator, layer, animation sp*, blend, start frame)`, an animation from `NpcAnimation_Get`.
 
 **MaterialAnim** (`MaterialAnim_Bind` `0xfe70a0 (out sp, animation entry, model component)`, `MaterialAnim_vtable` `0x1c35150`, base `0x1c351e0`; 0x28 bytes): `obj` is an nn::g3d MaterialAnimObj (0xa0 bytes, `g3d_MaterialAnimObj_vtable` `0x1c5dc08`; its AnimFrameCtrl at `+0x8`), null when binding failed.
 
@@ -284,7 +308,11 @@ constructors and never read; `+0x1a8` is written nowhere.
 | `+0x98` | `model` |
 | `+0xa0` | IsAnimation |
 
-**MaterialAnimComponent** (MultiMaterialAnimation; `NpcComponent_MakeMaterialAnimator` `0x9535f0`, `MultiMaterialAnimation_vtable` `0x1c499f0`, base `MaterialAnimation_vtable` `0x1c49850` with one slot; 0xc0 bytes, `MultiMaterialAnimation_Dtor` `0x1054500`): `baseSlot` is the base class's slot, unused here. `MultiMaterialAnimation_Setup` (`0x1054710`, virtual `+0x20`) makes `slotCount` slots (clamped to 1..8) with the model object of `modelComp`. `MultiMaterialAnimation_Update` (`0x1055190`, `+0x80`) calls each slot's `+0x10`, or `+0x18` while `paused`; `MultiMaterialAnimation_Apply` (`0x10552d0`, `+0x88`) applies each slot's animation to the model (the animation's virtual `+0x28`) and sets the slot's `applied`. Virtual `+0x90` sets slot 0; the virtuals from `+0xb8` forward to slot 0. An NPC's slot count is its facial row's (ACTORS.md, NPCs) plus one; Link's is 7 (TESTING.md, Tunic colour).
+**MaterialAnimComponent** (MultiMaterialAnimation; `NpcComponent_MakeMaterialAnimator` `0x9535f0`, `MultiMaterialAnimation_vtable` `0x1c499f0`, base `MaterialAnimation_vtable` `0x1c49850` with one slot; 0xc0 bytes, `MultiMaterialAnimation_Dtor` `0x1054500`): `baseSlot` is the base class's slot, unused here. `MultiMaterialAnimation_Setup` (`0x1054710`, virtual `+0x20`) makes `slotCount` slots (clamped to 1..8) with the model object of `modelComp`. `MultiMaterialAnimation_Update` (`0x1055190`, `+0x80`) calls each slot's `+0x10`, or `+0x18` while `paused`; `MultiMaterialAnimation_Apply` (`0x10552d0`, `+0x88`) applies each slot's animation to the model (the animation's virtual `+0x28`) and sets the slot's `applied`. Virtual `+0x90` sets slot 0; the virtuals from `+0xb8` forward to slot 0. An NPC's slot count is its facial row's (ACTORS.md, NPCs) plus one; Link's is 7 (PLAYER.md, Model). `NpcComponent_PlayMaterialAnimation` (`0x9c1b30 (out[2], npc component, StringView* name, bool at once)`) puts an animation of the NPC's model, such as `clothes`, on its last slot; the slot's virtuals `+0x60` (rate 0) and `+0x48` (a frame) then hold one frame.
+
+## Tailor (effects and sounds)
+
+Link's sword trails, dust, footsteps, splashes, voice and cloth sounds are data: `region_common/tailor/<name>.drsb` maps an animation name to clips (effect, sound, light, material, rumble) at its frames, on bones. Setting an animation (`SkeletalAnimation_SetAnimation`, `LayeredAnimation_SetSlot`, and so `NpcAnimation_PlayByName`) calls the animator's `onAnimationSet`, which a TailorPlayer sets (`TailorPlayer_SetAnimator` `0xe3d420 (tailor player, animator sp*)`) to play the sequence of that name on its `Motion` channel (`TailorPlayer_OnMotion` `0xe3d710`). Link's TailorPlayer is at player `+0x1e88` (`Player.drsb`, loaded by `Player_Setup`); an NPC gets one (NPC component `+0x158`) only when its row's `graphics.drsb` names a file, which NpcGhost's leaves empty. Footstep sounds take the ground material at `*(*(tailor player+0x68)+0x70)`. Sequences that code starts, not an animation (the charge, water): `Tailor_Play` (`0x10d4340 (core, StringView* channel, StringView* value)`) on `*(tailor player+0x58)` with the channel `Other`. A positional sound is `Sound_PlayAt` (FRAMEWORK.md, Audio); an effect without Tailor, `EffectParams_SetEmitterSet` (`0x1082fe0 (params*, StringView* name, resId)`) and `EffectManager_Create` (`0x1082dd0 (manager, EffectParams*, handle** out)`, the manager `*0x1cced58`).
 
 ## Open questions
 

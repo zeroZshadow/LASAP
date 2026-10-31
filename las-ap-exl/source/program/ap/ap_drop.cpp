@@ -1,12 +1,6 @@
-// The drop actor (DESIGN.md, Drop actor): ItemAPDrop, an item actor class of the module's own at an empty id of the
-// game's actor table, for every location LASR shows as a stand-in item: the item a bush, rock, pot, tree or hole drops,
-// a dungeon's falling key, a golden leaf, the item buried at a dig spot, a boss's item, the ghost's reward (patcher
-// ap_drop.py). Its class is the item base's (scripts/re/ITEMS.md, Item actors) with type ids of its own, made with an
-// Npc.gsheet row of its own. Its LEB parameter 0 says how it appears (AP::DropMotion): its Fall event action hops it
-// out of the ground, sends a tree's or hole's on the arc of the seashell the tree or hole drops, or drops a dungeon key
-// or golden leaf from above. With Bouncy Items (config.ini's bouncy_items) it is a ball, also out of the chests: it
-// launches in a random direction and spins, a chest's out of its lid and an owl statue's off its top, rolls to a stop,
-// bounces off walls and floats.
+// The drop actor (DESIGN.md, Drop actor; patcher ap_drop.py): ItemAPDrop, an item actor class of the module's own on
+// the item base (scripts/re/ITEMS.md, Item actors), for every location LASR shows as a stand-in item. Its LEB parameter
+// 0 says how it appears (AP::DropMotion). With Bouncy Items (DESIGN.md, Bouncy Items) it is a ball.
 #include "ap/ap_bridge.hpp"
 #include "ap/ap_patcher.hpp"
 #include "config/config.hpp"
@@ -59,10 +53,9 @@ namespace {
     constexpr size_t kActorDtor = 0x10, kComponentDelete = 0x18;
     // The NPC component's body linear velocity setter (const Vec3*)
     constexpr size_t kSetVelocity = 0x290;
-    // With Bouncy Items, the component's: the item update (0x8c6030; not during events), which the drop's wraps, and
-    // in water the upward acceleration the item update adds while the body is deeper than 0.3 below the water surface
-    // (the item base's 7.0, less than gravity: it sinks) and the body's linear damping (the item base's 1.8). The
-    // drop's lift is a little more than gravity, so it floats, and its damping more, so it settles
+    // With Bouncy Items, the component's: the item update, which the drop's wraps, and in water the upward
+    // acceleration and the linear damping (scripts/re/ITEMS.md, Item actors, Physics, Water). The drop's lift is a
+    // little more than gravity, so it floats, and its damping more than the item base's, so it settles
     constexpr size_t kItemUpdate = 0x3c8, kWaterLift = 0x400, kWaterDamping = 0x410;
     constexpr float kLift = 12.0f, kDamping = 4.0f;
     // A signal's virtual that connects a Function*
@@ -78,29 +71,21 @@ namespace {
         return item == ItemId::HookShot || item == ItemId::AnglerKey || item == ItemId::FaceKey ||
                item == ItemId::HeartContainer;
     }
-    // Its model, a component on a node under the actor's root, takes the item pose pair the item constructor stores
-    // (read when the model is made). Each drop's pair stands its model's bind-pose bounds (DROPS_PATH) on the root,
-    // centred and untilted, at the small key's scale or less, so that its radius around the centre is at most
-    // kModelRadius; a drop without a line has its model's origin on the root. Both poses of the pair are that one, and
-    // so are the side view's pair's, which the constructor takes from right after it in a side-view area (kPoses).
-    // A ball's (Bouncy Items) puts the centre on the ball's centre instead, the sphere's radius above the root, apart
-    // from the ball and its touch, and a drop without a line its origin there.
+    // Its model takes the item pose pair the item constructor stores (DESIGN.md, Drop actor, Model; DROPS_PATH): all
+    // kPoses poses (the pair, and the side view's pair after it) are the drop's one pose. A ball's (Bouncy Items) puts
+    // the model's centre, or without a line its origin, on the ball's centre, the sphere's radius above the root.
     constexpr float kBallCentre = 0.3f, kModelScale = 1.1f, kModelRadius = 0.6f;
     constexpr size_t kMaxDrops = 256, kPoses = 4;
     constexpr u32 kLebInt = 3;
-    // Out of the ground, as a bush's, rock's or pot's own seashell: the game's default drop start (0x899f40) and
-    // launch (0x89a190) for a single item, 0.5 above the object and straight up at 4
+    // Out of the ground, as a bush's, rock's or pot's own seashell: the game's default drop start and launch for a
+    // single item (scripts/re/ITEMS.md, Item actors, Seashell drops)
     constexpr float kHopRise = 0.5f, kHopUp = 4.0f;
-    // On an arc, as the seashell would come: from a tree (its drop, 0xcb1f30) the tree's parameters give the launch
-    // speed and the crown's height above its root, which the drop leaves 0.5 above;
-    // from a hole, the AreaShellDropper's (virtuals +0x138 and +0x140) 2.25 above it at 10.8. The launch solver
-    // (0x89d880) aims at the landing spot with the game's gravity, on the high arc, or at 45 degrees and half the
-    // slope's angle when out of reach.
+    // On an arc, as the seashell would come from a tree or a hole's AreaShellDropper, and the launch solver's gravity
+    // (scripts/re/ITEMS.md, Item actors, Seashell drops)
     constexpr float kCrownAbove = 0.5f, kDropperAbove = 2.25f, kDropperSpeed = 10.8f;
     constexpr float kGravity = -9.81f, kNear = 1e-4f, kQuarterPi = 0.7853982f;
     // The landing spot the tree and the dropper aim at, the point of their first LEB rail link, which the drop has as
-    // its own (Game::ActorRailLink: the LEB room's virtual +0x48 (point index) gives the point's position); without
-    // one, the drop's spawn
+    // its own (Game::ActorRailLink; its LEB room's virtual gives the point's position); without one, the drop's spawn
     constexpr size_t kRoomRailPoint = 0x48;
     // Bouncy Items. A ball out of the ground: the start above the spawn and the ranges of the speeds up and outward
     // (units per second), outward in any direction: it may get away from Link
@@ -109,35 +94,33 @@ namespace {
     // starts 10 above, which a ball bounces back from for over 15 s)
     constexpr float kFallHeight = 3.0f;
     constexpr float kTwoPi = 6.2831853f;
-    // A ball's arc lands on a spot rolled around the seashell's: up to 45 degrees either side, 0.6 to 1.4 as far
+    // A ball's arc lands on a spot rolled around the seashell's (Ahead), this share as far
     constexpr float kArcNear = 0.6f, kArcFar = 1.4f;
-    // Out of a chest: from 1 above it at this speed onto a random spot in front of it, up to 45 degrees from the way to
-    // its spawn (in front of the chest) and 2.25 to 6.75 out; off an owl statue the same from its top
+    // Out of a chest, from above its lid (an owl statue: its top), onto a random spot rolled in front of it (Ahead,
+    // toward its spawn in front of the chest). Link, who opened or examined it, cannot take it on its way over him:
+    // the item's touch delay (ItemActor, seconds) starts again and lasts the arc's flight (BallFall)
     constexpr float kChestLid = 1.0f, kStatueTop = 2.0f, kChestSpeed = 8.0f, kChestNear = 2.25f, kChestFar = 6.75f;
-    // and Link, who opened or examined it, cannot take it on its way over him: the item's touch delay (ItemActor,
-    // seconds; 0.5 from when it is made) starts again and lasts the arc's flight
-    // Every launch spins it about a random level axis at 6 to 14 radians a second, so that it skips aside when it lands
+    // Every launch spins it about a random level axis (radians a second), so that it skips aside when it lands
     constexpr float kSpinMin = 6.0f, kSpinMax = 14.0f;
-    // The PhysX actor of the component's collision's body (PxRigidDynamic, PhysX 3.4): its getLinearVelocity (returns
-    // a PxVec3), getAngularVelocity, setAngularVelocity (const Vec3*, bool wake), setLinearDamping and
-    // setAngularDamping (float)
+    // The PhysX actor of the component's collision's body (PxRigidDynamic; scripts/re/ITEMS.md, Item actors, Physics):
+    // its velocity getters (a PxVec3), setAngularVelocity (const Vec3*, bool wake) and damping setters (float)
     constexpr size_t kGetLinear = 0x130, kGetAngular = 0x140, kSetAngular = 0x148;
     constexpr size_t kSetLinearDamping = 0x1c8, kSetAngularDamping = 0x1d8;
-    // The ball's update. Its spin is free in the air and damped while it touches the ground out of water, as is its
-    // speed (PhysX has no rolling resistance), so that it rolls to a stop; in the air its linear damping is its row's
-    // drag again (component virtual +0x408). It touches the ground for two updates in a row in which its vertical speed
-    // did not drop by kFallingShare of free fall's (a roll, rest; a bounce is one); the first update in which it does
-    // again, it is in the air. Each update's time from the system tick (19.2 MHz); one after more than kMaxStep (the
-    // update did not run, as during events) only takes the velocity.
+    // The ball's update (DESIGN.md, Bouncy Items, Motion). Its spin is free in the air and damped while it touches the
+    // ground out of water, as is its speed (PhysX has no rolling resistance), so that it rolls to a stop; in the air
+    // its linear damping is its row's drag again. It touches the ground after kTouching updates in a row in which its
+    // vertical speed did not drop by kFallingShare of free fall's (a roll, rest; a bounce is one); the first update in
+    // which it does again, it is in the air. An update after more than kMaxStep (the update did not run, as during
+    // events) only takes the velocity.
     constexpr size_t kTraitsDrag = 0x408;
     constexpr float kSpinDampAir = 0.05f, kSpinDampGround = 8.0f, kDragGround = 3.0f, kFallingShare = 0.37f;
     constexpr float kTicksPerSecond = 19200000.0f, kMaxStep = 0.1f;
     constexpr u8 kTouching = 2;
     // PhysX bounces no contact slower than the scene's bounce threshold, so a ball that meets a wall at walking pace
-    // stops against it. An update in which its level velocity lost more against its way than its damping takes, by
-    // over kImpact a second, without landing (its vertical speed did not go up by kFallingShare of gravity's), met a
-    // wall: the wall's normal is the way of that loss, and the ball gets back kWallBounce (its row's bounciness) of the
-    // speed it had into the wall, less what PhysX gave back.
+    // stops against it (scripts/re/ITEMS.md, Item actors, Physics). An update in which its level velocity lost more
+    // against its way than its damping takes, by over kImpact a second, without landing (its vertical speed did not go
+    // up by kFallingShare of gravity's), met a wall: the wall's normal is the way of that loss, and the ball gets back
+    // kWallBounce (its row's bounciness) of the speed it had into the wall, less what PhysX gave back.
     constexpr float kImpact = 30.0f, kWallBounce = 0.7f;
     // Its state, after the item component's
     struct Ball {
@@ -211,7 +194,7 @@ namespace {
         Game::Vec3 at{};
         u32 load = 0;
     } g_Heart;
-    // The launch the boss gave its item last (Enemy_DropItems' default: straight up at 4)
+    // The launch the boss gave its item last (Enemy_DropItems' default before any)
     Game::Vec3 g_BossLaunch{0, 4, 0};
 
     bool Bouncy() { return global_config.tweaks.bouncy_items; }
@@ -351,7 +334,7 @@ namespace {
         return true;
     }
 
-    // The launch solver's velocity (0x89d880): `speed` from `from` to land on `to`.
+    // The game's launch solver's velocity (Drop_LaunchVelocity): `speed` from `from` to land on `to`.
     Game::Vec3 LaunchVelocity(float speed, const Game::Vec3& from, const Game::Vec3& to) {
         float dx = to.x - from.x, dz = to.z - from.z, dy = to.y - from.y;
         float d = std::sqrt(dx * dx + dz * dz);
@@ -458,12 +441,9 @@ namespace {
         Spin(comp);
     }
 
-    // The Fall: the small key's makes the body dynamic and still, 10 above the spawn, which a dungeon key's and a
-    // golden leaf's keep; then the drop hops out of the ground just above its spawn, or a tree's or hole's leaves the
-    // bonked tree's crown or the bombed hole on the arc that lands on the seashell's landing spot; with Bouncy Items a
-    // ball's (BallFall). A boss's leaves its spawn, where the boss's item would start, as the boss launches the item;
-    // a ball spins as any. A free-standing one (the ghost's reward) stays at its spawn. Gravity does the rest. Without
-    // the body yet, it runs again once the body is made.
+    // The Fall: the small key's (scripts/re/ITEMS.md, Item actors, Event actions), which a dungeon key's and a golden
+    // leaf's keep; then the drop's launch by its motion (DESIGN.md, Drop actor, Appearing), a ball's in BallFall.
+    // Gravity does the rest. Without the body yet, it runs again once the body is made.
     void Fall(void* comp) {
         Game::SmallKey_StartFall(comp);
         if (!Item(comp)->bodyReady) return;
@@ -522,9 +502,8 @@ namespace {
     }
 
     // The item update, then the ball's: its chest's opened flag off again, a wall's bounce, and the damping on the
-    // ground or in the air. The chest's opened flag, which its opening set, goes off at the first update after the
-    // launch, once no event runs: during its event the chest, still opening, would close again with it off; afterwards
-    // it stays open until its room loads again, closed while the item was not taken.
+    // ground or in the air. The opened flag goes off at the first update after the launch, once no event runs: during
+    // its event the chest, still opening, would close again with it off (DESIGN.md, Bouncy Items, Opened when taken).
     void ItemUpdate(void* comp) {
         g_ItemUpdate(comp);
         Ball& ball = BallOf(comp);
@@ -881,11 +860,10 @@ namespace {
         return out;
     }
 
-    // A boss's item (its BossItemDrop event, and again when its room loads while the item is not had:
-    // Enemy_DropItems with the boss's start and launch) is never made (Enemy_DropItems gives no callback an empty item
-    // actor). The boss's drop, made and not taken, moves to where it would start and its switch 0 (a global flag) goes
-    // on, so it pops out of the ground there with the item's launch (its row's pop, Fall); a drop not made yet takes
-    // the spot as its spawn when it is (MadeBossDrop).
+    // A boss's item (DESIGN.md, Drop actor, Boss drops; scripts/re/ITEMS.md, Item actors, Boss drops) is never made
+    // (Enemy_DropItems gives no callback an empty item actor). The boss's drop, made and not taken, moves to where it
+    // would start and its switch 0 goes on, so it pops out there with the item's launch (its row's pop, Fall); a drop
+    // not made yet takes the spot as its spawn when it is (MadeBossDrop).
     HOOK_DEFINE_TRAMPOLINE(ItemCreate) {
         static void Callback(SharedPtr<Actor>* out, Actor* source, const Game::Vec4* pos, const Game::Vec3* velocity,
                              AP::ItemId id, s32 index) {

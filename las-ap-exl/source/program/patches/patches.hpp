@@ -74,7 +74,7 @@ namespace Patches {
         BranchTo(0xd798c4, 0xd799f8),
         BranchTo(0xd79814, 0xd799f8),
         BranchTo(0xd79804, 0xd799f8),
-        // AreaShellDropper does not call its drop table: the module sets its actor switch instead (seashells.hpp)
+        // AreaShellDropper does not call its drop table: the module sets its actor switch instead (seashells.cpp)
         {0x856e4, inst::Nop()},
         // Item actors appear by their actor switch flag alone (ItemActor_CanAppear's Inventory_HasItem(item, 1,
         // index) forced false: without it, LASR's dig items, ItemSlimeKey actors, hide while the Slime Key is owned,

@@ -27,8 +27,8 @@ then `Framework_Shutdown` (`0x1ab30`), and starts at the init again while `resta
 `regionJP`, `JPja`), `heapMemory` (a block of (total − 0x6da00000) & ~0xfff bytes, freed through `heapMemoryFree`,
 `0x5390` by default) and the main heap (0x53600000 bytes in it).
 
-**Main loop.** Each pass runs `frameQueue` (`PhaseQueue_Run` `0x11cc0`) and counts `frameCount` unless `paused` or
-`roomPaused` is set; the loop ends when the game state's task has `finished` set (`GameState_Finish`, below). A set
+**Main loop.** Each pass (from `0x1b97c`) runs `frameQueue` (`PhaseQueue_Run` `0x11cc0`) and counts `frameCount`
+unless `paused` or `roomPaused` is set, while the render phases still draw the frames; the loop ends when the game state's task has `finished` set (`GameState_Finish`, below). A set
 bit 0 in `systemEvents`' first byte makes it call `SetGameState(gameState, 0, 0)` (id 0: the game state finishes).
 
 | Field | |
@@ -66,6 +66,12 @@ with graphics `+0x812c`), the display sizes `handheldSizes` and `dockedSizes` wi
 graphics `+0x6e48`) and `dockedIndex` (the first entry ≥ graphics `+0x6e4c`, used when graphics `+0x56a8` is 1; both
 likely) and `renderer`. `vector_58` is freed by the destructor.
 
+**Frame pacing.** `GraphicsSystem_Init` (`0x10194c0 (system, config)`, the graphics system `*(Graphics_ptr)[1]`,
+`Graphics_ptr` `0x1cc8b30`) starts `VsyncWatcher_Init` (`0x10410d0 (watcher, system)`) at system `+0x8168`: a thread
+that waits for the display's vsync event (`nn::vi::GetDisplayVsyncEvent`) and signals a light event at each one. While
+the watcher runs (`+0x8169`), each frame's end (`0x101f820`, after the wait for the GPU) clears that event and waits
+for it: a frame that misses a vsync waits for the next, so the game drops from 60 to 30 fps at once.
+
 **Game state** (`GameState`, `Framework::gameState`; `GameStateFactory_Create` `0xc450`, `GameState_vtable`
 `0x1bc4300`, 0xe0 bytes): the root task (Tasks, below; task name "Root", `parent` null). `GameState_Start` (`0x8672a0`,
 task virtual `+0x48`) runs the present setup and `GlobalSave_Reset`, makes `fadePresets` (`0x87a9c0`), requests UI
@@ -93,7 +99,9 @@ vtable `0x1b640a0`, a second vtable `0x1b640f8` at `+0x48`) is a set of files lo
 (out, group, StringView* path)`) finds the path in the group's map (`0x153a50`) and returns the entry's `+0x30`. The
 makers name their first file: `0x87a9c0` FadePreset.gsheet (`GameState::fadePresets`), `0x86cb80` GlobalFlags.gsheet
 (`GameState::globalFlags`), `0x83e0a0` the level's sheets (`LevelScene::sheets`), `0xed5770` `ui/Game.arc` (UI.md, UI
-manager).
+manager). Single files go through the resource manager (`ResourceManager_ptr` `0x1cc6db8`): `Resource_Load`
+(`0xfbbd80 (out handle, manager, StringView* path)`), `Resource_Wait` (`0x3dc20 (handle*)`) and the takers
+(`Resource_TakeFlowchart` `0x3d9f0 (out, handle*)`; ACTORS.md, Creation).
 
 **Scenes.** The game state's current scene (`GameState::scene`) is a task of one class per kind of screen, told apart
 by its vtable (`SceneOf`, `Scene` in `game/framework.hpp`; `DBG uis` prints it). The makers take the game state as
@@ -105,6 +113,9 @@ by its vtable (`SceneOf`, `Scene` in `game/framework.hpp`; `DBG uis` prints it).
 | FileMenusScene | `0x1bc2740` | FileSelector | 0x88 | `FileMenusScene_Make` `0x86b970` | the file menus (file select, name entry) |
 | LevelScene | `0x1bc2f90` | Main | 0x820 | `LevelScene_Make` `0x86b4e0` | a level, from the start of its load (the type `SceneHolder_Lock` takes) |
 | EndingScene | `0x1bc2550` | Ending | 0x88 | `EndingScene_Make` `0x86b030` | the ending |
+
+`SceneHolder_Lock` (`0x11b70 (shared_ptr* out, holder*)`) gives the holder's scene (`+0x88`/`+0x90`) when its type is
+the level scene's; the game passes `gameState`.
 
 The small scenes' fields follow the task base: TitleScene `+0x81` the step (`TitleScene_Update` `0x87bde0`, 0 to 8),
 `+0x82` set while the save read `0xe072b0(0)` runs (`0x87e570`; guess), `+0x83` set once the timer
@@ -173,7 +184,9 @@ drops them). The connector at `+0x8` has the vtable `0x1b59698`, whose slot 0 (`
 `+0x18`. Every operation holds `mutex` (lock `0x1431600`, unlock `0x1431610`).
 
 **Scheduler** (`Scheduler`, `Framework::scheduler`; `Scheduler_Ctor` `0xfced30`, destructor `0xfcfeb0`; 0x150
-bytes): `Task_Post` (`0x2d7430`) and `Delay_Make` (`0x7f3c90`) add tasks through `Scheduler_Add` (`0xfcff00
+bytes): `Task_Post` (`0x2d7430`) and `Delay_Make` (`0x7f3c90 (f32 seconds, out future)`; for 0 s or less no task but
+the game's ready future, the static `0x1cc6e40` with a new control block, which Link's event actions also return when
+they are done at once) add tasks through `Scheduler_Add` (`0xfcff00
 (scheduler, task sp*, u32 order, tag*)`), which inserts into `byOrder` and `tasks` and emits `taskAdded` with the
 tag.
 
@@ -279,7 +292,9 @@ above 1, from the info's `+0x2`), `viewport` (x, y, width, height), `depthRange`
 height; 0, 0, INT_MAX, INT_MAX without a scissor), `initialized` (1 by Initialize, 0 by Finalize), `flags` (the
 info's byte 0; bit 0 the scissor).
 
-`WorldToLayout` (`0xf88c40`) projects through `view` and `projection` (TESTING.md, WorldToLayout).
+`WorldToLayout` (`0xf88c40 (const Vec4* world)`) projects through the camera's `view` and `projection` (Framework
+`+0x560`) to layout coordinates in s0/s1 (origin at the centre, x ±640, y ±360). It divides by clip w unchecked: a point
+behind the camera lands mirrored on screen. `Hud_Update` places the action prompt next to Link with it (UI.md, HUD).
 
 ## Audio
 
@@ -302,17 +317,34 @@ effects, the SE queue, the BGM lists and the environment SEs.
   `{step, elapsed, frames}`) holds 30 frames between changes. `zoneEffect` (the zone record's `+0xb4`) sets kinds 1-6
   on a zone change.
 - `se` (`SePlayer`, 0x5870; constructor `0xac440`, destructor `0xac720`): 64 `SeInstance`s; `free` (manager
-  `+0x5860`), whose last `Sound_Play` and `Sound_PlayAt` (`0xa5c70`) take; `queued` (`+0x5890`), the start queue the
+  `+0x5860`), whose last `Sound_Play` (`0xa57e0 (StringView* name, nullptr, volume, pitch)`) and `Sound_PlayAt`
+  (`0xa5c70`) take; `queued` (`+0x5890`), the start queue the
   plays push to, which the next update starts (into `playing`) or frees (`SePlayer_IsQueued` `0xae110`); `playing`
   (`+0x5878`), released once their sound is gone (`SePlayer_FindPlaying` `0xae020`, `SePlayer_StopByName` `0xad8f0`).
   `SePlayer_Admit` (`0xace60`) applies the SE table's flags: the cooldowns `cooldown8`, `cooldown16`, `cooldown32`
   (45, 60 and 20 frames after an SE with flags bit 3, 4 or 5), ducking (bit 8: `duckVolume` 0.2, back up by 0.05 a
   frame after `duckHold`, 120 frames), restart limits, distance culling, counts and volume caps. `serial` (manager
-  `+0x58bc`) counts the accepted plays.
+  `+0x58bc`) counts the accepted plays. The SE names are plain strings in main, so `scan.py xstr` finds their
+  callers: the low-health warning plays `SE_SY_HP_ALLEART` from `0xeabeb0` (the first five beeps) and `0xeabf44`
+  (the quieter ones after).
 - `bgm` (`BgmPlayer_Ctor` `0x99f90`, destructor `0x9a4e0`, `BgmPlayer_Init` `0x9a7e0`): `BgmManager_Play`
-  (`0x9fd60`) takes the last of `free`, keeps it in `starting` while its stream is prepared and its `startDelay`
-  runs, then in `playing`; fades and stops by name reach only `playing` (TESTING.md, `0x9fd60`). `pad_9d8` is zeroed
-  and never read.
+  (`0x9fd60 (f32 volume, BgmManager*, StringView* name, bool, bool, bool force)`) returns the new instance, or null
+  for an unknown name or a track already playing or starting (a playing one that fades out does not count). It
+  takes the last of `free`, keeps it in `starting` while its stream is prepared (a few frames) and its `startDelay`
+  runs, then in `playing`; a new instance starts its stream from the beginning. Fades and stops by name reach only
+  `playing`, so a track asked for just before another change starts after it and plays on. The zone music's calls
+  return to `0x9f008` (the zone update) and `0xa688c`/`0xa6988` (`PlayZoneBgm`); the event action `PlayBGM`
+  (`EventAction_PlayBGM` `0x805a30`) passes its `label` and `volume` with the bools false. `BgmTable_Find`
+  (`0x10e23d0 (table, const char* name)`) gives the track id, -1 for an unknown name; the table (`0x1caba28`, guard
+  `0x1cac378`) is made on first use. `pad_9d8` is zeroed and never read.
+- The other BGM calls: `BgmManager_StopAll` (`0x9b550 (u32 frames)`: each playing instance's `fadeOutFrames`, then
+  `Sound_Stop`; the event action `StopAllBGM` and the level load, 0 frames), `BgmManager_StopByName` (`0x9b7b0
+  (StringView* name, u32 fade frames)`, the event action `StopBGM`), `BgmManager_SetVolume` (`0x9b3a0 (f32 volume,
+  u32 frames)`: `Sound_SetVolume` on every playing kind 1 instance; the event action `SetBGMVolume`),
+  `BgmManager_MuteZone` (`0x9b420 (u32 frames)`: fades the kind 1 instances out; the item-get's, ITEMS.md) and
+  `BuffMusic_Play` (`0xaf560 (bool)`: `BGM_NUTS_INTRO`, kind 3). A door to another level (Tarin's house) runs
+  `BgmManager_StopAll` and `BgmManager_FadeZone` from its event before the load, and the new level's start calls
+  `PlayZoneBgm` (2026-10-17, sandbox).
 - `envSePlayer` (`EnvSePlayer`, 0x2900; `EnvSe_Ctor` `0x97840`, destructor `0x985b0`, `EnvSe_StopAll` `0x98620`):
   the environment's SEs, run by the update. 12 `AmbientLine`s (`SE_AMB_LINE_BG1` to `12`, rows at `0x1b58c38`;
   the volume by the listener's distance from the segment, `Sound_PlayAmbient` `0xa5ec0`); 3 forest insect spots
@@ -330,15 +362,19 @@ effects, the SE queue, the BGM lists and the environment SEs.
   or queued; a worker `task` and `machine` (`StateMachine<2>`) run the loads.
 - `outputTv`, `outputSpeaker`, `outputJack`, `outputUsb`: `AudioTvOutput`, `AudioBuiltInSpeakerOutput`,
   `AudioStereoJackOutput`, `AudioUsbDeviceOutput`.
-- `zoneTrack` and `zoneVolume` (1.0): `PlayZoneBgm` (`0xa6790`).
+- `zoneTrack` and `zoneVolume` (1.0): `PlayZoneBgm` (`0xa6790 (bool fadeOthers)`, the event action `PlayZoneBGM`)
+  plays them at once and fades the other kind 1 instances out over 90 frames, but fades nothing while a Guardian
+  Acorn's or Piece of Power's music plays. The zone update maps some zone tracks to variants by the game's flags
+  (`BGM_TARUTARU` plays `BGM_TARUTARU2_AFTER_THE_RESCUE`).
 - `envSe` and `envGroup`: the environment SE and the sound group it needs, the zone record's (`+0x74`, `+0x94`) or an
   event's. `BgmManager_OnZoneChanged` (`0x9e460`, on the zone signal) sets them, plays the zone BGM with `startDelay`
-  150 (0 with `zoneBgmNow`, which it then clears) and changes the effect. `BgmManager_PlayEnvSe` (`0x9f980`) plays
+  150 (0 with `zoneBgmNow`, which it then clears), fades the other kind 1 instances out over 90 frames and changes the
+  effect. `BgmManager_PlayEnvSe` (`0x9f980`) plays
   the environment SE (kind 4) and its `_EX` (kind 5) once the group's slot is loaded. `BgmManager_SetEnvSound`
   (`0xa6180`, an event action's `label` and `groupLabel`) saves the current ones in `savedEnvSe` and `savedEnvGroup`,
   `BgmManager_RestoreEnvSound` (`0xa70a0`) plays them again; a zone change clears the saved ones.
-- `holdTrack` (`BGM_FANFARE_BOSS_HEART_GET` from the constructor): `BgmManager_FadeZone` (`0xa6510`) fades nothing
-  while it or `BGM_EVENT_RESCUE_BOWBOW` plays (`BgmManager_IsPlaying` `0x9ba40`: a starting or playing instance with
+- `holdTrack` (`BGM_FANFARE_BOSS_HEART_GET` from the constructor): `BgmManager_FadeZone` (`0xa6510`, an event
+  action's) fades the kind 1 instances out over 90 frames, but nothing while it or `BGM_EVENT_RESCUE_BOWBOW` plays (`BgmManager_IsPlaying` `0x9ba40`: a starting or playing instance with
   that track id).
 - `eventStartSub`, `eventEndSub` and `zoneSub`: handles on the event manager's `+0xe8` and `+0x140` signals and the
   scene's `+0x760` (`BgmManager_ConnectSignals` `0x9dba0`; `BgmManager_SceneEnd` `0xa0d80` disconnects them).
@@ -366,7 +402,8 @@ reads, and `fadeOutFrames` (30 at construction), which every `Sound_Stop` of the
 - `BgmManager_Play` fills an instance from the BgmTable row (`BgmTable_Find`, flags `0x10e24b0`): `onStart` with the
   row's flags bit 0 (lambda vtable `0x1b58de8`), called once when the stream starts; `onUpdate[0]` with bit 1
   (`0x1b58e30`, `BgmInstance_UpdateHeight` `0xa0480` through its thunk `0xa0470`: the volume by Link's height,
-  reading Link's model node, Framework `+0x4b8` then `+0x80`, with no null check), `onUpdate[1]` cleared; both run
+  reading Link's model node, Framework `+0x4b8` then `+0x80`, with no null check; `BGM_TARUTARU2_AFTER_THE_RESCUE`
+  is one such track), `onUpdate[1]` cleared; both run
   every frame while playing. With `prepareNow` (its last argument) it
   prepares the stream at once (`BgmInstance_Prepare` `0x99800`) and drops the instance on a failure (likely).
 - `kind`: 1 zone and event music; 2 a jingle (when Play's first bool is set): kinds 1 and 4 are `ducked` to 0 over 45
@@ -377,7 +414,19 @@ reads, and `fadeOutFrames` (30 at construction), which every `Sound_Stop` of the
 - `flags` bit 2 marks a buff's music (`PlayZoneBgm` tests it); `volume` (`BgmManager_SetVolume` `0x9b3a0` writes
   it); `pitch` (1.0) has no reader.
 - `startDelay`: the frames the starting list waits before `BgmInstance_Start` (`0x99130`) starts the stream, which
-  passes `startOffset` as the stream's start offset when it is set.
+  passes `startOffset` (in samples) as the stream's start offset when it is set.
+- The instruments' own songs, `BGM_INST_VIOLIN` (Full Moon Cello) to `BGM_INST_DRUM` (Thunder Drum), play only in
+  the pedestal's whiteout (`MusicalInstrument.bfevfl`, `PlayAndWaitMusicalInstrument`); every instrument's
+  `Items.gsheet` row names the shared fanfare `BGM_FANFARE_INST_GET`.
+- The Ballad's streams (`Orchestra_Play`): `BGM_ENSEMBLE_DUET` and `BGM_ENSEMBLE_ALL` are stereo mixes of their own;
+  `BGM_ENSEMBLE_INST` is eight mono tracks, one per instrument in dungeon order (Full Moon Cello first), panned in
+  the sound archive. Every track is an instrument's part: with no instrument the Wind Fish's Egg's scene plays only
+  the Ballad's ocarina intro (`BGM_OCA_PLAY_FISH_OF_WIND`), then silence.
+- Stream channels: the sound archive's player info lets all streams together hold 10 channels. Every BGM is a
+  2-channel stream but `BGM_ENSEMBLE_INST` (8), `BGM_FANFARE_BOSS_HEART_GET`, `BGM_TELEPHONE`, `BGM_PLACE_OF_FACE_KEY`
+  (4 each) and `BGM_DEMO_BEFORE_ENDING_SE_MIX` (5), so beside the ensemble only one more stream fits. A stream that
+  starts without room gets no sound and the BGM player drops it (a fanfare, the ocarina's song, or the ensemble
+  itself). A stream fading out holds its channels until its fade ends.
 
 **Sound** (`nn::atk::detail::BasicSound`, by its RTTI; `BasicSound_vtable` `0x1c53248`, `BasicSound_Ctor`
 `0x10e93b0`; 0x210 bytes, abstract) is the base of the nn::atk sounds, whose instance pools' strides give their
@@ -388,7 +437,8 @@ virtuals `+0x18` `BasicSound_Initialize` (`0x10e9470`) and `+0x20` `BasicSound_F
 once when `state` is 2 (likely paused), else sets `fadingOut` and fades out over `stopFade`, and clears `+0xee`,
 `+0xf1`, `+0xf4` and `priorityBonus`. `Sound_FadeFramesLeft` (`0x10ea8a0`) is `stopFade`'s frames left, 0 when done;
 `BgmManager_Play` uses it to tell a track still fading out. `Sound_SetVolume` (`0x10ea8c0 (sound, frames, volume)`)
-sets the `volume` fade. `id` is the sound archive item (the BgmTable id), `playFrames` what the SE restart limits
+sets the `volume` fade. The pause menu sets every BGM's target volume to 0.2 (a track that starts while it is open
+gets 0.2 at once) and back to 1 over 8 frames as it closes. `id` is the sound archive item (the BgmTable id), `playFrames` what the SE restart limits
 compare, `lifecycle` 1 initialized, 2 finalized, 3 destroyed.
 
 Open: the writers of `quiet`, `startOffset` and `noPositional`; the readers of `pitch`, `SoundHandle`'s unread fields,

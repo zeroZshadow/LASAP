@@ -8,10 +8,9 @@ namespace Game {
     // StateMachine::state of a machine in no state
     constexpr u8 kNoState = 0xff;
 
-    // A state machine of N states (base vtable StateMachine_vtable: +0x10 the state count, +0x18 a state's name).
-    // ChangeState runs the old state's exit (with the new state), then the new one's enter (with the old state).
-    // Each state is three Itanium member-function pointers {fn, adj} (enter, update, exit) on the owner, or, with its
-    // bit in objectStates, a state object at its first word (vtable +0x10 enter, +0x20 exit).
+    // A state machine of N states (StateMachine_vtable). ChangeState runs the old state's exit, then the new one's
+    // enter. Each state is three Itanium member-function pointers {fn, adj} (enter, update, exit) on the owner, or,
+    // with its bit in objectStates, a state object at its first word.
     template<int N>
     struct StateMachine {
         const uintptr_t* vtable;

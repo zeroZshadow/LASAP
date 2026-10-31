@@ -1,16 +1,11 @@
-// Jukebox page (DESIGN.md "Jukebox page"): the pause menu's fourth page, after System, as a mode of
-// index 2, System's slot. The header (Navi) keeps its three pages; while g_Jukebox is set, the Gm_System page it
-// builds for index 2 hides its content and shows the Jukebox instead, built from the game's own layouts:
-// - the track list: Gm_MemoryList (the Memories list, ap_list.cpp), right of the middle;
-// - "Now playing": Gm_MemoryCollect (the Memories count card) on the left, with a note (the font's U+266A) in its
-//   paper window and notes floating up out of it while music plays;
-// - the name and description of the track under the cursor: the Items page's info texts (Gm_Item N_Info_00);
-// - the guide "X Shuffle, Y Repeat one, A Play, B Back" (A Stop on the chosen track: the Jukebox off, the game's own
-//   music again): the map's guide with its captions swapped (ap_list.cpp, ap_text.cpp);
-// - the playback state under the card: Shuffle and Repeat one, on or off, and the d-pad's use in the game.
-// The module steers the moves that differ from the game's: R on System and L on the Jukebox change index 2 to
-// index 2 (System is removed and built again), L on the map lands on the Jukebox. Not in the Chamber Dungeon,
-// whose third page is the dungeon's own.
+// Jukebox page (DESIGN.md, Jukebox page): a mode of index 2, System's slot, whose Gm_System page hides its content
+// (kSystemContent) and shows the Jukebox, built from the game's layouts:
+// - the track list: Gm_MemoryList (ap_list.cpp);
+// - "Now playing": Gm_MemoryCollect (the Memories count card), with a note (the font's U+266A) in its paper window;
+// - the track under the cursor: the Items page's info texts (Gm_Item N_Info_00);
+// - the guide: the map's with its captions swapped (ap_list.cpp, ap_text.cpp);
+// - the playback state: a second Gm_MemoryCollect.
+// R on System and L on the Jukebox change index 2 to index 2: System is removed and built again.
 #include "music/music_jukebox.hpp"
 #include "music/music.hpp"
 #include "ap/ap.hpp"
@@ -37,8 +32,6 @@ namespace {
     constexpr int kMap = 0, kSystem = 2;
     constexpr u8 kChamberDungeon = 8;  // the level index (Game::LevelIndex) of the Chamber Dungeon (third page id 0xb)
 
-    // Gm_System (Game::Ui::GmSystem): setup (vtable +0x20), update (+0x28), the destructor its deleting destructor
-    // calls (GmSystem_Dtor).
     constexpr const char* kSystemContent = "N_SystemChoice_00";
 
     // The track list (Gm_MemoryList), right of the middle.
@@ -406,6 +399,8 @@ HOOK_DEFINE_TRAMPOLINE(NaviSetTitles) {
     }
 };
 
+// Gm_System (Game::Ui::GmSystem): setup (vtable +0x20), update (+0x28), the destructor its deleting destructor
+// calls (GmSystem_Dtor).
 HOOK_DEFINE_TRAMPOLINE(SystemSetup) {
     static void Callback(GmSystem* page) {
         Orig(page);

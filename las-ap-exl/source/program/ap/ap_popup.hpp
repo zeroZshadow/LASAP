@@ -35,7 +35,8 @@ namespace AP::Popup {
     void Fit(float scale, const Game::Vec3& center, const Game::Vec3& angle);
     // Once per tick.
     void Tick();
-    // ap_popup_draw.cpp: the model instance drawn in front of the world (null: none)
+    // ap_popup_draw.cpp
     void InstallDrawHooks();
+    // The model instance drawn in front of the world (null: none)
     void DrawOnTop(const void* instance);
 }

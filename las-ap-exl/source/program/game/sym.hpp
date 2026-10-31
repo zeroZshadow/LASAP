@@ -130,11 +130,9 @@ namespace Game {
     inline constexpr Func<void(void*, void*, const void*)> DepthStencilState_Initialize{0x1146600};
     // (DepthStencilStateInfo*): depth less, no test or write, stencil masks 0xff
     inline constexpr Func<void(void*)> DepthStencilStateInfo_SetDefault{0x113dfd0};
-    // (group node, context): sets the context's pass id (+0x188) from each enabled child (+0x8, enabled +0x9) and
-    // draws it (virtual +0x38); the draw tree's inner nodes
+    // (group node, context): the draw tree's inner nodes, drawing each enabled child in its pass (MODELS.md, Draw tree)
     inline constexpr Func<void(u8*, u8*)> DrawGroup_Draw{0xffc230};
-    // (draw item, context): draws a model shape in the context's pass (ShapeDrawItem_vtable +0x10); a leaf pass node
-    // binds its states and calls it for each of its sorted items
+    // (draw item, context): a model shape's draw in the context's pass (ShapeDrawItem_vtable +0x10), run by a leaf pass
     inline constexpr Func<u64(u8*, u8*)> ShapeDrawItem_Execute{0x10399d0};
     // (wrapper, state)
     inline constexpr Func<void(void*, void*)> CmdBuf_BindRasterState{0x113ea70};
@@ -144,11 +142,10 @@ namespace Game {
     inline constexpr Global<void**> got_nvnMultisampleStateSetDefaults{0x1c951e8};
     inline constexpr Global<void**> got_nvnMultisampleStateSetAlphaToCoverageEnable{0x1c95200};
     inline constexpr Global<void**> got_nvnCommandBufferBindMultisampleState{0x1c947c0};
-    // (node): marks the node and its children for a new world position and tells its listeners (the model); nothing
-    // while it is marked (needsCoordUpdate), so setting that flag alone leaves the model where it was
+    // (node): marks it and its children (needsCoordUpdate) and emits transformChanged; nothing while it is marked
+    // (ACTORS.md, Nodes)
     inline constexpr Func<void(Node*)> Node_MarkDirty{0xfb6aa0};
-    // (node): the world coords from coordsNew and the parent's world coords, the parent first while it is marked;
-    // lazy, when something reads a marked node
+    // (node): the world coords from coordsNew and the parent's, the parent first; run when a marked node is read
     inline constexpr Func<void(Node*)> Node_UpdateWorld{0xfb6310};
 
     // ---- Items ----
@@ -162,15 +159,13 @@ namespace Game {
     inline constexpr Func<void(void*, void*, const char*)> ModelResource_Get{0x1046190};
     // An item's pose under the item-get's item node: position, rotation (degrees about x, y, z) and scale
     struct ItemPose { float pos[3]; float rotate[3]; float scale[3]; };
-    // (item id, side view): the pose the item-get holds the item up in, by item id (the heart piece's scale 1.7, the
-    // ocarina's 1.17); ids without one (63-99, 101-107, 109, 118, 119, 127-255) get a default: scale 1, tipped 20
-    // degrees
+    // (item id, side view): the pose the item-get holds the item up in, by item id, else a default (ITEMS.md, Item-get
+    // poses)
     inline constexpr Func<const ItemPose*(u8, bool)> ItemPose_ItemGet{0x8d2f50};
     // (out future, player, item id, keep carry, message entry*): the item-get, the body of the event actions
     // Link.GenericItemGetSequence(ByKey)
     inline constexpr Func<void(SharedPtr<>*, void*, Data::ItemId, bool, StrView*)> Player_ItemGetSequence{0xd795d0};
-    // (player): Link's actor slots +0xb0 and +0xb8, which the event manager's start and end signals call
-    // (re/EVENTS.md)
+    // (player): Link's actor slots +0xb0 and +0xb8, which the event manager's start and end signals call (EVENTS.md)
     inline constexpr Func<void(void*)> Player_OnEventStart{0xd32a60};
     inline constexpr Func<void(void*)> Player_OnEventEnd{0xd32d30};
     // (wait closure): the item-get's fanfare has stopped
@@ -181,8 +176,7 @@ namespace Game {
     // constructor; a key of 0x20 characters or more throws
     inline constexpr Func<void(Actor*, ActorArgs*, StrView*, u8, u32, const ItemPose*)> ItemActor_Ctor{0x8b6880};
     // (out, source, position*, launch velocity*, item id, item index): an item actor of the item's Items.gsheet row at
-    // the position in the source's zone, launched; out null without a row. Enemy_DropItems (0x89b960) makes each drop
-    // with it, from the start and launch its callbacks give (scripts/re/ITEMS.md)
+    // the position in the source's zone, launched; out null without a row (ITEMS.md, Item actors)
     inline constexpr Func<void(SharedPtr<Actor>*, Actor*, const Vec4*, const Vec3*, Data::ItemId, s32)>
         ItemActor_Create{0x89d050};
     // (component, name*, Npc row key*): the item base's NPC component
@@ -195,10 +189,8 @@ namespace Game {
     inline constexpr Func<bool(const void*, const void*)> ItemComponent_IsA{0x8c4120};
     // (actor): the item base actor's zone enter (vtable +0x100): its component's +0x2e4 and its +0x30c cleared
     inline constexpr Func<void(Actor*)> ItemActor_ZoneEnter{0x8b8410};
-    // (component, name*, x2, x3) -> the EventChara (x8): the item base's (component vtable +0x220), its action
-    // handler (the EventChara's std::function at +0x400) wrapped with the item base's actions. Null as
-    // NpcComponent_MakeEventChara's (0x94f220): without the component's row (+0x88), or when its owner is destroyed
-    // or has a component of that name.
+    // (component, name*, x2, x3) -> the EventChara (x8), the item base's (component vtable +0x220; ITEMS.md, Item
+    // actors); null without the component's row (+0x88), or when its owner is destroyed or has a component of that name
     inline constexpr Func<Shared<Event::EventChara>(void*, const StrView*, void*, void*)>
         ItemNpcComponent_MakeEventChara{0x8c4a30};
     // (component, name*, x2, x3) -> the collision (x8), null without the component's row (+0x88) or when the row's
@@ -290,8 +282,7 @@ namespace Game {
     inline constexpr Func<void(Ui::GmSystem*)> GmSystem_Update{0xf83650};
     // Gm_System's destructor, which PdPage's calls too (page)
     inline constexpr Func<void(Ui::GmSystem*)> GmSystem_Dtor{0xec4330};
-    // The System page's Load (Cm_FileOperate, UI 0x20) once a file is confirmed (screen): reloads the level from the
-    // save (SetGameState 4), removes the pause menu's header (UI 5) and puts the screen's machine in state 4
+    // (screen): the System page's Load (Cm_FileOperate, UI 0x20) starting once a file is confirmed (UI.md, Pause menu)
     inline constexpr Func<void(void*)> FileOperate20_StartLoad{0xebf530};
     // The message window's Reading state update (window): shows the page letter by letter
     inline constexpr Func<void(Ui::MessageWindow*)> MessageWindow_Reading{0xef1960};
@@ -350,8 +341,7 @@ namespace Game {
     inline constexpr Func<void(Audio::Sound*, int, float)> Sound_SetVolume{0x10ea8c0};
     // (volume, instance, track, fade frames): one track of the instance's stream; nothing before the stream starts
     inline constexpr Func<void(float, Audio::BgmInstance*, u32, u32)> BgmInstance_SetTrackVolume{0x99e70};
-    // A track's onUpdate[0] by its BgmTable row's flags bit 1 (lambda vtable 0x1b58e30, reached through its thunk
-    // 0xa0470 with the lambda + 8): the volume by Link's height. It reads Link (Framework +0x4b8) with no check
+    // (lambda + 8): a track's onUpdate[0], the volume by Link's height; reads Link with no check (FRAMEWORK.md, Audio)
     inline constexpr Func<void(void*)> BgmInstance_UpdateHeight{0xa0480};
     // libc++ std::function's swap (a, b)
     inline constexpr Func<void(Function*, Function*)> Function_Swap{0x999c0};

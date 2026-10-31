@@ -1,7 +1,6 @@
-// The pose the item-get holds an item up in (DESIGN.md, Showing received items): the game picks it by item id
-// (ItemPose_ItemGet), and ids it has no pose for get a default one (scale 1, tipped 20 degrees). The placeholder's
-// variants and LASR's Dampe rewards have such ids but show another item's model; they take that item's pose
-// (POSES_PATH), so a heart piece found at an AP location shows at the heart piece's size (1.7).
+// The pose the item-get holds an item up in (DESIGN.md, Item model: remote items; scripts/re/ITEMS.md, Item-get
+// poses): the placeholder's variants and LASR's Dampe rewards, which get the default pose, take the pose of the item
+// whose model they show (POSES_PATH).
 #include "ap/ap.hpp"
 #include "ap/ap_bridge.hpp"
 #include "ap/ap_patcher.hpp"

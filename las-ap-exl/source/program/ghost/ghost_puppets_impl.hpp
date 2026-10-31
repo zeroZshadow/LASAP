@@ -18,8 +18,6 @@ namespace Game::Actors { struct Player; }
 namespace AP::Puppets {
     // ---- Actors (ghost_puppets.cpp) ----
 
-    // The look's shapes: the animator's model instance's shapeVisible. Nothing but the model's creation and the
-    // shape setters writes them.
     // The face: Link's eyes, mouth and ears (ghost_look.cpp, SetFace).
     constexpr int kFaceParts = 3;
     constexpr u32 kFaceShapes = 0x380;  // the ear, eyes and mouth
@@ -127,7 +125,8 @@ namespace AP::Puppets {
     void Place(Puppet& p, const Game::Vec3& pos, const Game::Vec4* rot);
     // Plays an animation of the puppet's model by name from a frame.
     void PlayAnim(Puppet& p, const char* name, float blend, float frame);
-    // The sender's upper-body animation (anim id, 0 none) on layer 1 of the puppet's layered animation player.
+    // The sender's upper-body animation (anim id, 0 none) on layer 1 of the puppet's layered animation player, from
+    // its start; nothing on a model whose player is not layered.
     void SetUpper(Puppet& p, int anim);
     Game::Vec4 QuatOf(float yaw);
 
@@ -135,7 +134,7 @@ namespace AP::Puppets {
 
     void ResetTrack(Track& tr);
     void Push(Track& tr, const Frame& f);
-    // One frame of the replay; picks the animation from the speed.
+    // One frame of the replay: the puppet's position, facing, look and animation (the sender's, or one by speed).
     void ReplayFrame(Puppet& p, double now);
 
     // ---- Look (ghost_look.cpp) ----
@@ -143,6 +142,8 @@ namespace AP::Puppets {
     constexpr int kNoTunic = -2;
     // Draws only the materials a ghost shows, or (hidden) none; true when they already were.
     bool WriteLook(Puppet& p, bool draw);
+    // The look's shapes on the puppet's model: the animator's model instance's shapeVisible, which nothing but the
+    // model's creation and the shape setters writes.
     void SetShapes(Puppet& p);
     Game::MatAnimSlot* TunicSlot(const Puppet& p, int& index);
     void SetTunic(Puppet& p);

@@ -1,6 +1,6 @@
 # Actors (game 1.0.0)
 
-How the game's actors are made, run, stopped and removed, and what decides whether a room's actor appears, from static analysis of the main module. Offsets are module offsets (what `InstallAtOffset` and `scan.py` take); `las.sym` names them at their runtime addresses (module offset + 0x8504000). Object offsets are bytes from the object's start. "Guess" marks what the code suggests but was not followed to the end. Field names are those of `game/actor.hpp` and `game/actors/npc.hpp`. TESTING.md, Reverse engineering, has the item-get models, NPC components, skeletons and animation; this file does not repeat them. MODELS.md has the model and animation components, PLAYER.md Link's actor, FRAMEWORK.md the framework and its phases.
+How the game's actors are made, run, stopped and removed, and what decides whether a room's actor appears, from static analysis of the main module. Offsets are module offsets (what `InstallAtOffset` and `scan.py` take); `las.sym` names them at their runtime addresses (module offset + 0x8504000). Object offsets are bytes from the object's start. "Guess" marks what the code suggests but was not followed to the end. Field names are those of `game/actor.hpp` and `game/actors/npc.hpp`. MODELS.md has the model and animation components, PLAYER.md Link's actor, ITEMS.md the item actors and the item-get, FRAMEWORK.md the framework and its phases.
 
 ## Actor table
 
@@ -90,7 +90,8 @@ Vtables start at the object's `+0x0` (no RTTI before them); `+0x68 IsA(type id)`
 `+0x10` 8 LEB parameters, `+0x50`/`+0xd0` 8 bfres / drsb resources, `+0x150` flowchart, `+0x160`/`+0x168` `LebRoom` sp,
 `+0x170` LEB record, `+0x180` position, `+0x190` rotation, `+0x1a0` scale, `+0x1b0`/`+0x1b8` a weak pointer the room's
 params builder zeroes and nothing reads. Destructors `0x1cf70` (`+0xd0`), `0x1d190` (`+0x50`), `0x1d3b0` (`+0x10`,
-releases type-5 strings).
+releases type-5 strings). Spawns from code take the identity rotation from `*IdentityQuat_ptr` (`0x1c93de8`) and unit
+scale from `*0x1c93df0`.
 
 **LEB actor record** (`LebActorRecord`; the one-letter names as LASR's `Tools/leb.py`): `+0x0` u64 key, `+0x8` name offset, `+0xc` the actor id, `+0x10` u32 room (zone) id, `+0x14` position, `+0x20` rotation, `+0x2c` scale, `+0x38` 8 parameters, `+0x78` u8 switch types [4], `+0x7c` u16 switch indices [4], `+0x84` `e`, `+0x85` `k`, `+0x86` `b` (no reader found), `+0x87` `x`, `+0x88` `y`, `+0x89` `z`; 0x90 bytes, then three lists in this order: `x` links of 0x14 bytes (`{2 parameters, u32 actor index}`), `z` rail links of 0x18 bytes (`{2 parameters, u32 rail, u32 point}`) and `y` u32 actor indices (`Actor_Ctor` reads the first two, `Room_OnLebActor` `0x8e53b8` the third). `LebRoom` (`LebRoom_vtable` `0x1bcc2f8`, 0x98 bytes, `LebRoom_Ctor` `0x8eab00`) virtuals: `+0x18` room id, `+0x20` actor count, `+0x28` record i (`LebRoom_ActorAt` `0x8eb0e0`), `+0x30`/`+0x38` rails, `+0x40`/`+0x48` points, `+0x50` a string by offset (`LebRoom_String` `0x8eb1c0`).
 
@@ -99,7 +100,7 @@ releases type-5 strings).
 A **Node** (`Node_Ctor` `0xfb55a0 (node, ComponentArgs*)`, `Node_vtable` `0x1c31a68`, `Node_Dtor` `0xa9270`) is a component that is a scene-graph node: an actor's root, a model component, a character controller. `Actor_MakeNode` (`0x20d10`) allocates 0x150 bytes; the data ends at `+0x148` (MODELS.md, Skeletal model component). `Actor_AttachComponent` (`0xfaa8a0 (actor, component, parent node)`) attaches one: under the parent node (a weak `parent`, the child appended to the parent's `children`, shared pointers), or as the actor's root with a null parent. `Actor_GetOrMakeRoot` (`0xb6dc0`) returns the root or makes it.
 
 - The constructor sets `coordsNew` and `coords` to a zero position (`ZeroVec_ptr`), the identity rotation and unit scale, and builds `transformChanged`.
-- `Node_MarkDirty` (`0xfb6aa0`) and `Node_UpdateWorld` (`0xfb6310`) as TESTING.md, Reverse engineering, describes them. A node with an `attachment` (a bone attachment: `+0x10` locator, `+0x30` position, `+0x40` rotation, `+0x50` scale, `+0x60` dirty) and no parent has the world local × the attachment's; `Node_MarkDirty` skips children with one.
+- `Node_MarkDirty` (`0xfb6aa0 (node)`): unless `needsCoordUpdate` is set already, sets it on the node and its `children` (those without an `attachment`) and emits `transformChanged` (its vtable `+0x30`), which makes a model component refresh its copy of the world; setting `needsCoordUpdate` alone leaves the model as it was. `Node_UpdateWorld` (`0xfb6310 (node)`): the parent first, then `coords` from `coordsNew`, and `needsCoordUpdate` cleared; readers of the world call it lazily. A node with an `attachment` (a bone attachment: `+0x10` locator, `+0x30` position, `+0x40` rotation, `+0x50` scale, `+0x60` dirty) and no parent has the world local × the attachment's; `Node_MarkDirty` skips children with one.
 - Its vtable has the Entity slots only; `+0x50` `Node_OnActiveChanged` (`0xfb58c0`) sets bit 1 of each child node from its own active state, raising the actor's `componentIterDepth` around the walk.
 
 ## Components
@@ -210,7 +211,7 @@ Pause (a menu opening; a level jump sets `+0x510`): the two actor phases do noth
 
 - `Entity_Destroy` (`0xfabf70`): while flushing, `Detach` (`+0x08`) now; else `Destroy(false)` (`+0x58`).
 - `Actor_Destroy` (`0xfa7d40`): `Actor_DestroyComponents` (`0xfa8410`) with the same `immediate`, then `Entity_RequestDestroy` (`0xfaba60`): sets bit 30, `+0x50` when it was active, a destroy task (a strong reference) into queue `+0x5d8` unless immediate, `+0x30`.
-- `Entity_RemoveChild` (`0xfb00c0`, `(container, name, length, immediate)`): not immediate (and not flushing) requests as above; immediate destroys the components, erases the child (`Entity_EraseChild` `0xfb04e0`) and calls `Actor_DestroyNow`.
+- `Entity_RemoveChild` (`0xfb00c0`, `(container, name, length, immediate)`): not immediate (and not flushing) requests as above; immediate destroys the components, erases the child (`Entity_EraseChild` `0xfb04e0`) and calls `Actor_DestroyNow`. It treats the child as an actor (it destroys its components), so a component given to it crashes the game; a component goes through `Entity_Destroy`. The game removes an actor with the actor system (or its room's root) as container, the actor's name (`+0x18`, length `+0x38`) and `immediate` false.
 - The flush runs the destroy tasks by priority (components, priority 0, before their actors); each calls `Detach`.
 - `Actor_DestroyNow` (`0xfa7d80`): the root and every component go (`+0x60` each), the actor leaves every queue, bit 31, `+0x50` when it was active, `OnDestroyed` (`+0x38`).
 - The container's map entry, the actor's component map, the root and each queued task hold strong references; the destructor runs with the last one, the memory goes with the last weak reference. Weak pointers then lock to null; code holding a raw pointer checks `flags & 0xc0000000`.
@@ -245,6 +246,7 @@ the room, unless the removal memory holds them.
   actor system (Link, factory spawns from code) are not in a room and never get this.
 - Bit 2 by zone (a zone is one camera room). An actor subscribes in `+0xd0` (`0x1e980`) to the room manager's `+0x278`, the scene's `+0x708` (room changed → `+0xe0`) and `+0x7b8` (active zone, `Actor_ZoneSignal` `0x1f2e0 (entered*, left*)`). An actor of the entered zone gets its virtual `+0x110`. For a zone-scoped actor (`+0xa4` bit 0) of the zone Link left, `Actor_ZoneSignal` saves bit 2 into `+0xa2` bit 1, sets `+0xa2` bit 0, clears bit 2 and calls virtual `+0x108`. `Actor_OnRoomChanged` (`+0xe0`, `0x1f090`) restores bit 2 from `+0xa2` bit 1 when Link enters its zone. An actor made outside the current zone is suspended at once. Zone -1 (`+0xb0`) is never suspended.
 - Bit 2 by freeze: `ActorTree_Freeze` (`0x7d5910`, functor `0x7d5b30`) clears it on every enabled actor of a tree that is not of type `0x1cab3f8` (`IsA`; Player's own type id is `0x1cab518`, so guess: a base class of Link's) and lists them, `ActorTree_Unfreeze` (`0x7d5f60`) sets it again; about a hundred classes call the pair. Actors of the actor system are not in those trees: a factory-spawned NpcGhost in zone -1 keeps bit 2 through a dungeon scroll (measured 2026-10-23).
+- Bit 2 by a dungeon room change: it is cleared on every actor but Link's for the scroll (about 25 frames) and set again on those of the room Link enters.
 - Bit 2 by `GameControl.LoadZone(zoneID)` (`0x7ffc50` → `0x866d90`): set on every direct child of the rooms of that zone.
 
 **Dungeon rooms.** The scene's update (`Scene_UpdateZone`, `0x836270`) looks up Link's position in the level data's zone
@@ -267,7 +269,11 @@ the area's `active` is set (`Room_Reload` `0x8e5e60`): its actors are kept (`+0x
 are destroyed, `0x8e62a0`) and the room goes back to LebLoad, where `Room_OnLebActor` skips the actors still present.
 Actors of a dungeon room Link left are kept.
 
-**Level jump.** `LevelManager_LevelJump` (`0x864d50`, state 1 only) saves Link's position, stores the destination, aborts every room (`+0x24a`), resets the event and message managers, state 4. State 4 (`0x864a30`) waits for no running event, sets Framework `+0x510`, waits until every room is in Prepare or Run, then vtable `+0x80` (`RoomManager_LevelJumpTeardown` `0x857660`): the BGM fades (90 frames), Link is disabled, every room is deleted (its actors with it), the level data is released (and the removal memory with it). Only the actor system's children survive (Link, the hookshot, actors spawned from code with that owner); they load their models again in the next level. The next level's rooms come up from the one at Link's position, one per frame, each group by group.
+**Zones and areas.** The room manager (scene `+0x618`, the scene from `SceneHolder_Lock`) keeps the zone Link is in at `+0x230` (null over pits and while loading) and the level data at `+0x208`. A zone is one camera room, which several screens can share: `+0x0` u32 id (the LEB actors' room id), `+0x10`/`+0x20` its camera box, `+0xb9` 1 for a 2D side view, `+0xba` its area count, `+0xbc` its area indices. `LevelData_ZoneAt` (`0x8f09e0`, level data vtable `+0x28`, `(level, const Vec4* pos)`) gives the zone at a position, null outside every area. The areas (level data `+0x1f8`, shared pointers, count `+0x2d8`; fields in UI.md, Dungeon map) are the LEB files: the name's row (`+0xc2`) and column (`+0xc3`) (`Lv01TailCave_05D`: row 4, column 3) give the dungeon map's visited bit, column + 8 × row. Top-down rooms are 15 × 12 at (column × 15, row × 12) in Field, Lv01–Lv06, Lv08, Lv10 and the houses and caves, not in Eagle's Tower, Kanalet Castle and some caves; side-view rooms lie in the x/y plane beyond x 120. Each overworld room's static mesh actor (`MapStatic`) stands at height 0.
+
+**Doors.** A door to another level is an `AreaLevelOpen` actor (id 0x190; `AreaLevelOpen_StartEvent` `0x75ac0`): LEB parameter 0 the level, 1 the locator (a `TagPlayerStart` of that level, which also picks Link's arrival in `PlayerStart.bfevfl`), 2 the entry in `event/Area.bfevfl` (default `DefaultLevelOpen`); a gated door has switch `(1, flag)`. Its event's `GameControl.RequestLevelJump` stores the jump on the event (EVENTS.md, Event). On arrival `SetCurrentLevel` (`0xdfa450 (StringView* level, StringView* locator, Vec3* pos)`, from `LevelLoad_Finish` `0x855040`) writes the save's `LevelName` (`+0x0`), `Locator` (`+0x40`) and `RestartPos` (`+0xdc`) and the dungeon index from the level name (Lv01 0 … Lv08 7, PanelAdventure 8).
+
+**Level jump.** Every level change goes through `LevelManager_LevelJump` (`0x864d50 (manager, level, locator, offset)`, state 1 only), which saves Link's position, stores the destination, aborts every room (`+0x24a`), resets the event and message managers, state 4. State 4 (`0x864a30`) waits for no running event, sets Framework `+0x510`, waits until every room is in Prepare or Run, then vtable `+0x80` (`RoomManager_LevelJumpTeardown` `0x857660`): the BGM fades (90 frames), Link is disabled, every room is deleted (its actors with it), the level data is released (and the removal memory with it). Only the actor system's children survive (Link, the hookshot, actors spawned from code with that owner); they load their models again in the next level. The next level's rooms come up from the one at Link's position, one per frame, each group by group.
 
 ## Persistence
 
@@ -276,12 +282,14 @@ Actors of a dungeon room Link left are kept.
 | Type | Flag |
 |---|---|
 | 0 | level flag: bit `index` of 256 at EventFlags `+0x20` (`LevelFlags`, `0x1cc1140`; the bit table at its `+0x58`), not saved; a level jump clears them, a zone change in Field keeps them (`DBG peek l`, 2026-10-29) |
-| 1 | global event flag: `GlobalFlags.gsheet` index, the saved flags (EventFlags `+0x268`); `EventFlags_Set`/`Check` resolve names to the same index |
+| 1 | global event flag: `GlobalFlags.gsheet` index, the saved flags (EventFlags `+0x268`); `EventFlags_Set` (`0xdfa7b0`) and `EventFlags_Check` (`0xdfa920 (flags, StringView* name)`) resolve names to the same index |
 | 2 | constant: on when `index` is not 0; setting does nothing |
 | 3 | Chamber Dungeon bit (PanelDungeon `+0x16a0`) |
 | other | IsOn false, IsOff true, setting does nothing |
 
 Usual meanings: switch 0 "appear when" or "opened" (ItemSmallKey: enabled while on, `0x8cc280`), ObjTreasureBox's opened flag its LEB switch 1 (slot 0 a constant): `TreasureBox_Init` (`0xc9a0d0`) reads it, opened while on, and `TreasureBox_Open` (`0xc9b4b0`) sets it, each through slot 0 of the record at `+0x250` (how that maps to LEB switch 1 not looked into). It reads the flag again while its opening event runs, closing with it off, but not afterwards; switch 1 "got" (the small key sets it when collected, `0x8cc4bc`). Event actions on level flags: `EventFlags.SetLevelFlag` (`0x7e1420`), `CheckLevelFlag` (`0x7e14c0`) and the `…FromLevelEditorArgument` versions (`0x1041e0`, `0x104620`), whose flag index is the actor's LEB parameter `argumentIndex`.
+
+`Egg_Performance` is global flag 288: switch 0 of `Field_01G`'s egg (`ObjWindFishsEgg`), of its door and of the Ballad's area; set, the egg is open. The end of the orchestra (`WindFishsEgg.bfevfl` `oepn`: the egg cracks and breaks) sets it.
 
 **Removal memory** (defeated enemies and other actors without switches; LevelData `+0x8`, `LevelData_Ctor` `0x8ed720`): a hash set of keys (for the level) and a ring of 5 slots `{s32 zone, vector<u64> keys}` (current slot LevelData `+0xd8`). An actor that sets `+0xa2` bit 2 (enemies when they die, e.g. `0x2461fc`) has its key added in `OnDestroyed` (`RemovedSet_Add` `0x8e6ac0`: the slot of its zone `+0xb8`, else the hash set). `RoomManager_VisitZone` gives the zone Link enters a slot when it has none (the oldest, cleared). `Room_OnLebActor` for a room whose zone is in the ring (`RemovedSet_Has` `0x8e71e0`): without links, made when `e` is 0, else unless removed; with links, the highest `k` among linked actors not removed decides: 1 made, 2 made unless removed itself, 0 as without links. Defeated enemies stay away while their zone is among the last 5 visited, and come back after 5 other zones or a level change. A second set at LevelData `+0xe0` (current slot `+0x1b0`) is used by the drop code (`0x89c2f4`; guess: one drop per zone visit).
 
@@ -291,7 +299,7 @@ NpcComponent virtual `+0x80`): the first of the Npc row's
 `layoutConditions` (`+0x160`, 0x20 each, `layoutID` at `+0x18`) that holds (`Conditions_Check`) gives its
 `layoutID`, true when it equals the component's `layoutId`. `NpcComponent_CheckPop` (`0x947d70`, virtual `+0x88`):
 every entry of the row's `popConditions` (`+0x148`, 0x18 each; `depopEnable` at `+0x158`) holds. `ItemActor_CanAppear`
-(`0x8c4510`) adds the inventory check (TESTING.md).
+(`0x8c4510`) adds the inventory check (ITEMS.md, Item actors).
 
 ## NPCs
 
@@ -326,7 +334,10 @@ subtract 0x2a8):
 
 - `owner` is a strong pointer to the owning actor, null unless it is of the type at `0x1cab3e8` (its virtual `+0x68` IsA).
 - `parentNode` is the constructor's fourth argument, the actor's root (NpcGhost: `Actor_GetOrMakeRoot` with `"root"`), on which the model is made.
-- `row` is the Npc.gsheet row (TESTING.md, Npc row); `NpcComponent_Setup` (`0x945510`, virtual `+0x20`) destroys a
+- `row` is the Npc.gsheet row (Npc row, below), which the constructor looks up by the key it is given: each NPC class
+  passes its row's symbol, a literal in its code (`NpcGhost`: `str_NpcGhost` `0x16ebdf4`), in its factory call, and
+  the constructor calls `Datasheet_FindRow` (`0xfa6370 (sheet, StringView* key, row size)`, null for a missing key)
+  on the Npc sheet (`*(*NpcSheets_ptr)`, `0x1cb8360`). `NpcComponent_Setup` (`0x945510`, virtual `+0x20`) destroys a
   component without one. The setup reads `layoutId` (`NpcComponent_LayoutId` `0x94ace0`, virtual `+0x1d0`: the owner's
   int LEB parameter the row's `actorArgs.layoutID` (`+0x140`) names, counted from 1), which `NpcComponent_CheckLayout`
   compares (Persistence, Appearing), and `identifier` (`NpcComponent_Identifier` `0x94ad40`, `+0x1d8`: the string LEB
@@ -334,6 +345,10 @@ subtract 0x2a8):
   the resource loads and makes `readySignal`.
 - `NpcComponent_OnResourcesLoaded` (`0x968db0`) takes `flowchart`, `modelResource` (the bfres) and `tailorResource` (the drsb), runs `NpcComponent_BuildComponents` (`0x957d80`) and emits `readySignal`.
 - `animationCache`: `NpcAnimation_Get` (`0x9670d0`) binds the animations of `modelResource` (the animation set) and keeps them by name.
+- `NpcAnimation_PlayByName` (`0x949260`, virtual `+0xe8`, `(component, {name, length}*, u8 mode, f32 blend seconds,
+  f32 start frame)`): mode 0 puts the named animation of the set (`+0x1e8`) on `animator` at frame 0 and rate 0 (the
+  animator's virtuals `+0xc0` frame, `+0xd8` rate), mode 2 sets the rate 1. Some NPC classes override it
+  (`NpcAnimation_PlayByName2` `0x9df590`).
 - `eventSubA` and `eventSubB` are handles on the event manager's `+0xe8` and `+0x140` signals; `task` is a
   `Task_Post` task (`0x947f38`); `event_280` an event of the flowchart (`0x80c290 (out, flowchart, name)`, virtual
   `+0x178`; likely).
@@ -385,6 +400,12 @@ subtract 0x2a8):
 TailorWaterSurface holds copies of `tailorPlayer` (its `+0x148`) and `waterEvent` (`+0x158`). Virtual `+0x288`
 (`0x954520`) is the `RailTrailer` maker.
 
+**Npc row** (an Npc.gsheet row, 0x220 bytes, `kNpcRowSize`): `symbol` `+0x0`, `graphics` `+0x10` (`model` `+0x20`),
+`eventTriggers` `+0x100`, `doAction` `+0x110`, `popConditions` `+0x148`, `layoutConditions` `+0x160`, `behavior`
+`+0x178`, `movement` `+0x190`, `collision` `+0x1a0` (`shape` `+0x1a0`, `traits` `+0x1a8`, `component` `+0x1b8`,
+`isStatic` `+0x1bc`, `filter` `+0x1c0`, `material` `+0x1c4`, `groundCheck` `+0x1c8`, `offset` `+0x1cc`, `rotation`
+`+0x1d8`, `parameters` `+0x1e8`), `damageCollision` `+0x1f8`, `attribute` `+0x218`.
+
 **FacialControl** (`FacialControl_Ctor` `0x11cdf0 (component, ComponentArgs*, StringView* row key, std::function*, u32
 priority)`, `FacialControl_vtable` `0x1b5e008`; 0x150 bytes, which `NpcComponent_MakeFacial` allocates): `priority` 100
 from the maker; `onChangeA` is the constructor's function, `onChangeB` the maker's (`0x120150`); `sheet` keeps
@@ -400,7 +421,8 @@ Facial.gsheet (`FacialSheet_ptr` `0x1cc3c40`) alive; `row` is `Datasheet_FindRow
   `mouth` set and an expression with `lipSyncSettings`) holds.
 - `FacialControl_SetExpression` (`0x120a30`, `(facial, index)`) sets `expression`, ignoring an index out of range.
 - `FacialControl_Update` (`0x11e4d0`, virtual `+0x80`) advances each of `frames` modulo the expression's lengths
-  (`eyeLength`, `mouthLength`, `otherLengths`); nothing while `frozen`.
+  (`eyeLength`, `mouthLength`, `otherLengths`); nothing while `frozen`. An expression without blink or lip sync
+  settings holds its frames, so a slot frame set through the slot's virtual `+0x48` stays.
 
 **FacialRow** (a Facial.gsheet row, 0x50 bytes, the row size `FacialControl_Ctor` asks for; the schema's names `mKey`,
 `mMaterialAnimNames` `{mEye, mMouth, mOthers}` at `+0x10`/`+0x20`/`+0x30`, `mExpressions` at `+0x40`): the material
@@ -432,6 +454,16 @@ is set, and one more after them, the slot `NpcComponent_PlayMaterialAnimation` u
 - **EnemyDeguZolPhase2** (a half; `DeguZolPhase2_ChangeState` `0x300e40`). States: 0 Sleep, 1 Wait, 2 MoveJump, 3 MoveRise, 4 MoveFreeFall, 5 MoveLand, 6 DiveJump, 7 DiveRise, 8 DiveFreeFall, 9 DiveLand, 10 CombineJump, 11 CombineRise, 12 CombineRised, 13 CombineScaling, 14 CombineScaled, 15 CombineFreeFall, 16 the damage reaction state, 17 the dead reaction state, 18 DeadLastOne, 19 End. One damage comp `DeguZol:P2Dmg` (`+0x15e0`) and an EnemyReactionComp (`+0x1600`, config `0x16f0aac`: life 16; reaction 6 → state 16, 11 → 17): a regular enemy's death. Its damage lambda (`DeguZolPhase2_HitVerdict` `0x2ff7b0`) takes `Defence_Reaction` and then guards (1) a hit whose position lies outside the eye's side (the XZ direction from the half to the hit against the one to the bone `+0x1670`). The result-0 slot (`DeguZolPhase2_OnDamage` `0x3001a0`) calls `EnemyReaction_ApplyHit` (`0x135c80`), so a hit of power ≥ life kills; in states 6-8 and 10-15 it drops the damage reaction but keeps the damage.
 - **The end.** `DeguZol_Update` (`0x2bd310`) sets state 10 once the controller is in 5 to 10 and both halves are in 17 or 19. In state 5 (`0x2beff0`) the controller dives every 2 s; after 20 s with neither half dead it recombines them (state 7) into Phase1.
 
+## Fishing
+
+The fishing rod and the pond's fish each run a state machine (UI.md, State machines).
+
+- **Rod and lure.** The owner is Link's `fishing` state (34, `PlayerState_Fishing_vtable` `0x1c1c9e0`; PLAYER.md, State machine). `ChangeState` (`0xdb6680 (machine, state)`) of its machine at owner `+0x70`: Wait, Casting, Throw, Fall, LiftUp, LiftRight, RetrieveFast, RetrieveHold, HitWait, HitSuccess, HitFailure, HitIdle, HitRetrieveFast, HitRetrieveHold, Catch, Lost, Replay, DemoWait; the next state is requested at owner `+0x4c0`. The lure actor is at owner `+0x40`, its hooked fish (a weak pointer) at lure `+0x740`. Each hooked state's update goes to Catch when `0xdb5a00` holds and to Lost when `0xdb5c60` (the hooked fish is still alive) fails.
+- **Results.** Lost (`0xdb5608`) writes result 2 to the fishing manager (`+0x3bc`), whose event launcher (`0xe1a630`) then plays `Fisherman.bfevfl`'s `Cut_String` (`Cut_Bottle` for the bottle, actor `0x22f`); results 0, 1 and 3 play `FishingClear`, `FishingGetBottle` and `Retry_2`.
+- **Pond fish** (base vtable `0x1bffd60`, the big fish's `0x1c00320`): `ChangeState` (`0xb5e870 (machine, state)`) of its machine at fish `+0x400`, 21 states from Enter to WaitEscape; the next state is requested at fish `+0x8f0`.
+- **Line tension** (fish `+0x9e4`, updated from `0xb5c410`): each frame it can rise while the lure actor (fish `+0x2a8`) is in its state 12 or 13 (machine at lure `+0x320`, next state `+0x760`) and falls by 1 otherwise, never below 0; `str w8, [x20, #0x9e4]` at `0xb5c534` stores it.
+- **The fight** (`0xb59bf0`, the base class's update; the big fish's override `0xb66260` and the states at `0xb5ff68` and `0xb60654` do the same): `0xb5c830` true catches the fish (state Get); otherwise a tension at or above the fish's limit (s16 at `[fish +0x968] +0x96`) or `0xb5bf60` (the fish's x past the pond's edge, -10 or 16) loses it through `0xb5c910` (`0xb5c970` plays `SE_PL_FISHING_FISH_LOST` and lets go of the lure).
+
 ## For the module
 
 - **Slime Eye from code** (static analysis, not run): the fall is `DeguZol_ChangeState(controller + 0xff0, 4)` while the controller's state is 2 or 3 (after `DeguZolStart`), the same as the bonk's slot does; emitting Player signal 4 (`player + 0x1d20`, vtable `+0x30`, `(signal, const Vec3*, WeakPtr*)`) reaches every listener. The split is `DeguZolPhase1_SetStage(body, 4)` then `DeguZolPhase1_ChangeState(body + 0xff0, 12)`, with the body in `Wait` or `Move`. The body and the halves have key 0, so the registry does not hold them: reach them through the controller's `+0x1328`, `+0x1338`, `+0x1348`. A half dies to its P2Dmg comp's result-0 signal with power ≥ its life, as `DBG hit` emits it; unless one dies within 20 s of the split, the two recombine.
@@ -449,3 +481,5 @@ is set, and one more after them, the slot `NpcComponent_PlayMaterialAnimation` u
 - NpcComponent: the owner type (`0x1cab3e8`) its constructor checks; the row's `eventTriggers` conditions 0xe-0x11
   (virtual `+0x320`) and the names of conditions 10-13.
 - FacialControl `frozen`: no writer found besides the constructor.
+- A missing Npc row: `NpcComponent_Setup` destroys a component without one, yet a null Npc row crashes the game; where
+  is not traced.

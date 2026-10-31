@@ -11,7 +11,8 @@
 namespace AP {
     using Game::Data::ItemId;
 
-    // Inventory bits (ap_indices.cpp): kind 'S' seashells, 'H' heart pieces, 'L' golden leaves, 'C' heart containers
+    // Inventory bits (ap_indices.cpp): kind 'S' seashells, 'H' heart pieces, 'L' golden leaves, 'C' heart containers,
+    // 'B' bottles, 'P' chamber stones
     void LoadIndices();
     // The bits the seed's vanilla sources of a kind set when collected; received items take others.
     u64 VanillaBits(char kind);

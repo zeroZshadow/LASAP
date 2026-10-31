@@ -15,15 +15,11 @@ namespace AP::Puppets {
     float g_Fps = 60;
 
 namespace {
-    // Crowds. Each shape a ghost draws costs a draw call in each of two render passes, and on an emulator the draw
-    // calls limit the frame rate (2026-10-15, Ryubing: 60 fps up to about 120 ghost shapes a pass, whatever their
-    // size; a ghost in its usual look draws about 6). The nearest ghosts draw their whole look, the next ones only
-    // kCrowdShapes (arms, tunic, face, hair), the farthest none. How many of each follows the frame rate: down by a
-    // quarter after a second under kSlowFps, up by one after kRaiseMs at kSteadyFps or more, but back to a count that
-    // was too slow only after kRetryMs. The kMinWhole nearest are always whole and the kMinDrawn nearest always drawn
-    // (the game's own slow moments, as after a level load, which kSettleMs skips, are no reason to hide a few).
-    // Ranked by distance, less g_KeepMargin per step of detail a ghost has: one near a limit keeps its detail until
-    // another is that much nearer, so ghosts walking about at about the same distance do not switch back and forth.
+    // Crowds (DESIGN.md, Ghosts, Crowds; their cost: TESTING.md, Measurements, Ghost crowd). The limits follow the
+    // frame rate: down by a quarter after a second under kSlowFps, up by one after kRaiseMs at kSteadyFps or more, but
+    // back to a count that was too slow only after kRetryMs. The kMinWhole nearest are always whole and the kMinDrawn
+    // nearest always drawn; the kSettleMs after a level load are not judged. Ranked by distance, less g_KeepMargin per
+    // step of detail a ghost has: one near a limit keeps its detail until another is that much nearer.
     constexpr float kSlowFps = 55, kSteadyFps = 59;
     constexpr u64 kRaiseMs = 3000, kRetryMs = 30000, kSettleMs = 3000;
     constexpr int kMinWhole = 6, kMinDrawn = 16;
@@ -65,7 +61,6 @@ namespace {
 
     void SettleCrowd() { g_SettleUntil = Game::NowMs() + kSettleMs; }
 
-    // Each frame: the shown ghosts by distance from Link, nearest first, get their detail.
     void Rank(Game::Actors::Player* player, u32 frame, u64 now) {
         int order[kGhosts];
         int count = 0;

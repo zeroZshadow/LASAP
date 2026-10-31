@@ -1,6 +1,6 @@
 # Link's player actor (game 1.0.0)
 
-Link's actor, his state machine, his character controller and his animation controller, from static analysis of the main module. Offsets are module offsets (what `InstallAtOffset` and `scan.py` take); `las.sym` names them at their runtime addresses (module offset + 0x8504000). Object offsets are bytes from the object's start. Field names are those of `game/actors/player.hpp`, which lists every field; this file gives the evidence and what its comments leave out. "Guess" marks what the code suggests but was not followed to the end. TESTING.md, Reverse engineering, has Link's model, shapes, tunic, item shape groups and animation controller as the module uses them; this file does not repeat them.
+Link's actor, his state machine, his character controller and his animation controller, from static analysis of the main module. Offsets are module offsets (what `InstallAtOffset` and `scan.py` take); `las.sym` names them at their runtime addresses (module offset + 0x8504000). Object offsets are bytes from the object's start. Field names are those of `game/actors/player.hpp`, which lists every field; this file gives the evidence and what its comments leave out. "Guess" marks what the code suggests but was not followed to the end. MODELS.md has the model and animation components he is made of.
 
 ## Player
 
@@ -24,11 +24,15 @@ Link's actor, his state machine, his character controller and his animation cont
 
 **Components.** The makers called in `Player_Setup`: `modelComp` `SkeletalModelComponent_Make` (model `link`); `animator` `0xd1a4e0` (`LayeredAnimation_Make` with 2 layers, then `AnimationLayers_SetBoneMask(layers, 1, "spine_a")`); `materialAnim` `0x3b48e0`; `playerCollision` `PlayerCollision_Make` (`0x93f4a0`); `damageCollision` `0x869f0` (its `+0x330` takes the damage lambda `Player_OnDamage`); `eventChara` `0x60eb0` (chara `Link`); `camera` `0xd42630`, given the shaker, its `+0x515` set by the update; `cameraShaker` `0xc6320`; `boneEffect` `0x1fe170` (bones `clavicle_L`, `head`); `damageColor` `Player_MakeDamageColor`; `waterEvent` `0x35dfc0`; `eventSensor` `0xd3f840` (sensor `player:EventSensor`); `itemSensor` `0xd42290` (`player:ItemSensor`); `ladderInfo` `0x93ce20`; the locators `SkeletalModel_MakeLocator`; `hookshot` `0xd80c00` (the HookShot actor, model `HookShot`); `boomerang` `0xd63850` (`linkBoomerang`); `tailor` `TailorPlayer_MakeLayered` (flags NoLift, TopView, SwordInvisible, ShieldInvisible); `tailorWaterSurface` `0x9790e0`; `animPowerUp` and `animDefence` `MaterialAnim_Bind`; `facial` is the FacialComp `PlayerAnimation_Make` takes. `boneClavicleL` and `boneHead` come from `0xd3fec0 (skeleton, bone name)`, `shapeBody` from the model component's virtual `+0xb8`, `selfWeak` from the actor's weak self (`0xd35050`).
 
-**parts** (`PlayerParts_vtable` `0x1c17ca8`, base `PartsVisibility_vtable` `0x1c11a20`; 0x40 bytes): `+0x8` the model component (shared), `+0x18` an `unordered_map` from s32 group to `{vector<s16> shapes +0x18, u8 visible +0x30}` (`PartsVisibility_AddShape`, `PartsVisibility_SetGroup`; TESTING.md, Player `+0x498`).
+**parts** (`PlayerParts_vtable` `0x1c17ca8`, base `PartsVisibility_vtable` `0x1c11a20`; 0x40 bytes): `+0x8` the model component (shared), `+0x18` an `unordered_map` from s32 group to `{vector<s16> shapes +0x18, u8 visible +0x30}` (`PartsVisibility_AddShape`, `PartsVisibility_SetGroup`). The item shape groups: 0 sword, 1 shield, 2 ocarina, 3 shovel, 4 hookshot, 5 flippers, 6 magic rod, 7 boots, 8 second sword, 9 mirror shield; `Player_ShowItem` (`0xd3e390 (player, u8 item, bool)`) picks the sword and the shield by inventory `+0x9c` bit 0 (`SwordLv2`) and bit 1 (`MirrorShield`).
 
 **Owned objects.** `bottle`: a PlayerBottle (vtable `0x1c19918`; `+0x8` a PlayerItemModel, `+0x10` a PartsVisibility of
 vtable `0x1c19938`; `PlayerBottle_Init`). `bow`: a PlayerItemModel (0x38 bytes, vtable `0x1c19638`; `+0x28` its model
-component, which the damage handler reads; `PlayerBow_Init`). `owned_1ba8`: `{u16, u32}`, whose first byte blocks
+component, which the damage handler reads; `PlayerBow_Init`). Both are models of `Playerlink.bfres` (`Bow`,
+`linkBottle`) from `ModelResource_Get`, made with `SkeletalModelComponent_Make` and hung on a bone locator
+(`SkeletalModel_MakeLocator` `0x105c070 (out, model component, const char* bone, translate, rotate, scale)`, e.g.
+`itemA_R`; Link's own are `locItemAL` `itemA_L`, `locItemAR` `itemA_R` and `locHead` `head`) with
+`SkeletalModel_Attach` (`0xfb8320 (model component, locator sp*, bool, int* flags)`). `owned_1ba8`: `{u16, u32}`, whose first byte blocks
 interacting (`Player_CanInteract`).
 
 - `attackCols` (0x2b0 bytes, `Player_AttackCols_Ctor` `0xd1f2f0`, made by `Player_InitAttackCollisions` `0xd40720`):
@@ -115,8 +119,9 @@ and sets `pendingState` to 0xff; `respawnKind` (0 ground, 1 the side-view point,
 **Damage.** Health is the inventory's: `Player_OnDamage` (`0xd4c690`, a lambda on the DamageColComp, the player at
 its `+0x8`) subtracts from `Health` (quarter hearts, clamped to `Inventory_MaxHealth` `0xdf8260`), halves the damage
 with the Guardian Acorn (item 0x6f) or the blue tunic (`UpgradeItems.ClothesBlue`), doubles it with `HeroMode`,
-clears `KillCountNoDamage`, and sets `damageFlashTime` from the damage colour animation's length; LASR's damage patch
-(`0xd4c754`) is inside it. `Player_SetHit` (`0xd249c0 (hit, kind, attacker WeakPtr*, hit data*)`) writes `hit`
+clears `KillCountNoDamage`, and sets `damageFlashTime` from the damage colour animation's length. LASR's Damage setting
+(`damageModifier`) rewrites the health subtractions: hits (`0xd4c754`, in `Player_OnDamage`), traps (`0xd7c8c8`), falls
+and drowning (`0xdb1f74`) and Blaino (`0xd96950`). `Player_SetHit` (`0xd249c0 (hit, kind, attacker WeakPtr*, hit data*)`) writes `hit`
 (`PlayerHit`, 0x60): the hit data's `attack` (its `+0xd` the attack type) and `defence` (a reaction per attack type),
 `kind`, `attacker`, `direction` from the attacker's position, `pending` (cleared once taken, `0xd58c80`), the
 knockback scales `scaleA` (kind 2) and `scaleB` (kinds 1, 4, 5), and `reaction0`/`reaction1` from the defence.
@@ -182,6 +187,19 @@ Item actions 2 to 15 are on Y or X: their numbers are the equip ids, `MainItems`
 - `tempEntity` is destroyed by the update while alive; `field_1e84` counts down to 0 each frame, and `0xd57db0` is
   true while it is above 0 (no positive writer found).
 
+## Model
+
+`modelComp` (model `link` of `Playerlink.bfres`) draws every item (the rod, ocarina, shovel, hookshot, flippers, both
+swords and both shields) unless their material bits are cleared (MODELS.md, Shape draw gate). Its 20 shapes, by index:
+0 magic rod, 1 ocarina, 2 shovel, 3–5 arm, belt, body, 6 boots, 7–9 face (ear, eye, mouth), 10 flippers, 11 hair, 12
+hookshot handle, 13 shield, 14–15 mirror shield, 16–17 sword, 18–19 second sword. The bow, the bottle, the arrows, the
+hookshot's chain and the boomerang are other models or actors.
+
+**Tunic.** The material animation `clothes` swaps `MI_body`'s albedo: `MI_body_alb.0` green, `.1` red, `.2` blue, at
+frames 0, 1 and 3. `materialAnim` (7 slots) holds it on slot 4 at rate 0, its frame set each frame from inventory
+`+0x9c` (bit 6 red, bit 7 blue, red first). Slot 5 carries `powerUp` or `defence` (`Player_SetBuffGlow` `0xd3ea40
+(player, bool defence)`), slot 6 the mirror shield's.
+
 ## State machine
 
 `machine` is a `StateMachine<64>` (UI.md, State machines) at `+0x4e0`: `PlayerSM_vtable` `0x1c17cc8` (`+0x10` `PlayerSM_StateCount` `0xd2af90`: 64; `+0x18` `PlayerSM_StateName` `0xd2afa0`), changed by `PlayerSM_ChangeState` (`0xd34660 (machine, u8 state)`). Its state is `Player::machine.state` (`+0x4ed`), the state names start at `+0x1138`, its bit set object at `+0x1128` (vtable `0x1c14df0`, the bits at `+0x1130`).
@@ -219,7 +237,7 @@ Every one of Link's states is an object: `Player_Setup` gives entry id the objec
 condition, `0xd931d0` sets the selects' functions, and states add conditions (`0xdad340`, `0xda54c0`, `0xdb7530`).
 `states[id]` holds state id's object for ids 0 to 35; slots 36 to 63 stay null.
 
-The `fishing` state is the owner TESTING.md's fishing rod rows call the rod and lure.
+The `fishing` state is the owner of the fishing rod and its lure (ACTORS.md, Fishing).
 
 **State virtuals.** `+0x10` (`PlayerState_BaseEnter` `0xd8d370`) calls `+0x28` (enter, with the previous state) and `+0x20` (`PlayerState_BaseExit` `0xd8d430`) calls `+0x30` (exit, with the next state); `+0x18` is the update. The Dash state (9) runs an inner state machine whose state 3 `Crash` (enter `0xda7a70`) is the Pegasus Boots bonk: it plays the bonk animation and emits signal 4.
 
@@ -250,13 +268,16 @@ a Move, `+0x28a` cleared at each Move).
 
 ## Animations
 
-**PlayerAnimation.gsheet** (`PlayerAnimationSheet_ptr`): 416 rows of 0x48 bytes (`SheetData` count and row size). The row fields are the sheet's own field table (`gsheet.py` on the RomFS file) and the code: `fileName` goes to `AnimationSet_Make`; `PlayerAnimation_SetSlot` loops an animation whose `policy` is `kPlayerAnimLoops`; `Player_UpdateAnimation` plays `nextKey` when the layer ends; with `rootMotionStepOffset`, `PlayerAnimation_Play` sets the animator's virtual `+0xc8` to 1.0 on slot 0 (else 0); `facialEye`, `facialMouth` and `facialEar` are the sheet's `FacialAnim` (Eye, Mouse, Ear); `PlayerAnimation_Play` looks `facialName` up in the FacialComp (its `+0xf8`). `+0x4` and `+0x34` are alignment.
+**PlayerAnimation.gsheet** (`PlayerAnimationSheet_ptr` `0x1cbaf70`, `**` the sheet): 416 rows of 0x48 bytes (`SheetData` count and row size). The row fields are the sheet's own field table (`gsheet.py` on the RomFS file) and the code: `fileName` goes to `AnimationSet_Make`; `PlayerAnimation_SetSlot` loops an animation whose `policy` is `kPlayerAnimLoops`; `Player_UpdateAnimation` plays `nextKey` when the layer ends; with `rootMotionStepOffset`, `PlayerAnimation_Play` sets the animator's virtual `+0xc8` to 1.0 on slot 0 (else 0); `facialEye`, `facialMouth` and `facialEar` are the sheet's `FacialAnim` (Eye, Mouse, Ear); `PlayerAnimation_Play` looks `facialName` up in the FacialComp (its `+0xf8`). `+0x4` and `+0x34` are alignment.
 
 **PlayerAnimController** (`PlayerAnimation_Make` `0xd4aca0`: `operator_new(0xb0)`, the control block 0x18; `PlayerAnimation_Ctor` `0xdeb320 (controller, weak LayeredAnimation*, FacialComp sp*, model component sp*)`; `PlayerAnimation_vtable` `0x1c17220`). Make takes the material animation component too and does not keep it.
 
 - `animation` is locked from the player's animator (`0xdeb6e0`); `PlayerAnimation_SetSlot` reads its layers.
 - `anims`: nodes of 0x40 bytes, `+0x10` key, `+0x18` the sheet data (shared), `+0x28` the row, `+0x30` the animation bound to the model; `Player_InitAnimations` registers every row (`PlayerAnimation_Register`).
-- `layerAnims` and `slots` are sized by the animator's `requestedLayers`; slot i plays on layer i.
+- `layerAnims` and `slots` are sized by the animator's `requestedLayers`; slot i plays on layer i. Slot 0 is the whole
+  body, slot 1 an upper-body overlay: layer 1 is masked to `spine_a` and its children and carries only `idle_carry`,
+  `bottle_use` and `eat`. A slot entry (`+0x78`, 0x18 apart) keeps the row playing at `+0x10`; a layer's bound
+  animation leads to its frame control by `+0x8` → `+0x0` → `+0x8` (f32 frame, `+0xc` rate).
 - Every play goes through `PlayerAnimation_Play` (`0xdeca80 (controller, key, slot, blend)`), from frame 0; `PlayerAnimation_SetSlot` hands the animation to `LayeredAnimation_SetSlot`. After a `nextKey` play the update calls `model`'s virtual `+0x150`.
 - `facialEnabled` (1): a play changes the face (`0x121590`, `0x120a30`) only while it is set, and only on slot 1 or with slot 1 empty.
 

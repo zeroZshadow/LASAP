@@ -36,8 +36,8 @@ namespace {
     }
 }
 
-    // Minus held long enough: opens the warp menu when the player is free, holds nothing and no item display
-    // waits to start. The game does not tick this while paused (the map), so the menu needs Minus still held.
+    // The player can take it when free, holding nothing, with no item display waiting to start. The game does not
+    // tick this while paused (the map), so the menu needs Minus still held.
     void TickWarpMenu() {
         if (!g_WarpMenuWanted) return;
         g_WarpMenuWanted = false;
