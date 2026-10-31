@@ -96,12 +96,16 @@ namespace Game::Audio {
     static_assert(offsetof(SoundHandle, sound) == 0x8 && offsetof(SoundHandle, name) == 0x10);
     static_assert(offsetof(SoundHandle, fadeOutFrames) == 0x58 && sizeof(SoundHandle) == 0x60);
 
+    // A BGM instance's kind: zone and event music, an item's jingle, a buff's music, a positional track (the Great
+    // Fairy's sets it after BgmManager_Play).
+    enum class BgmKind : u8 { Zone = 1, Jingle = 2, Buff = 3, Positional = 4 };
+
     // A BGM that plays or is about to (vtable 0x1b58cf0; 0x130 bytes; BgmPlayer::instances).
     struct BgmInstance {
         SoundHandle handle;        // the track's name and sound
         Function onStart;          // 0x60: once, when it starts (BgmTable row flags bit 0)
         Function onUpdate[2];      // 0x90: each frame while playing ([0] by flags bit 1, or the positional update)
-        u8 kind;                   // 0xf0: 1 zone and event music, 2 jingle, 3 buff, 4 positional
+        BgmKind kind;              // 0xf0
         u8 pad_f1[0x3];
         u32 flags;                 // 0xf4: the BgmTable row's; bit 2 a buff's music
         s32 trackId;               // 0xf8: the BgmTable row, -1 none
@@ -123,8 +127,6 @@ namespace Game::Audio {
     static_assert(offsetof(BgmInstance, startDelay) == 0x104 && offsetof(BgmInstance, position) == 0x110);
     static_assert(offsetof(BgmInstance, startOffset) == 0x128 && offsetof(BgmInstance, prepareNow) == 0x12c);
     static_assert(sizeof(BgmInstance) == 0x130);
-    constexpr u8 kZoneMusic = 1;
-    constexpr u8 kJingle = 2;
 
     // The BGM player (BgmPlayer_Ctor; 0x9f0 bytes): eight instances and the lists they move through.
     struct BgmPlayer {

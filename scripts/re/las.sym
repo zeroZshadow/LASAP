@@ -81,6 +81,9 @@ BgmPlayer_Dtor 0x0859e4e0 f
 BgmPlayer_Init 0x0859e7e0 f resets the 8 instances into free
 BgmPlayer_DropStarting 0x0859f600 f stops prepared starting instances and returns them to free
 BgmManager_StopByName 0x0859f7b0 f (StringView* name, u32 fade frames) on the static BgmManager
+BgmManager_SetVolumeByName 0x0859fe70 f (f32 volume, StringView* name, u32 fade frames): the playing instances with that track id, their volume (+0xfc) and their sound's fade
+BgmManager_SetStartVolumeByName 0x085a0090 f (f32 volume, StringView* name): the starting instances with that track id, their volume (+0xfc)
+NpcGreatFairy_Init 0x08ecdb20 f (npc): plays BGM_FAIRY at volume 0 as kind 4; +0x2b8 her music on
 BgmManager_StopAll 0x0859f550 f (u32 frames): every playing instance's fade-out +0x58 and Sound_Stop; the event action StopAllBGM and the level load (0 frames)
 AudioEffects_Dtor 0x085a05f0 f removes the reverb and delay effects, waiting until removable
 AudioEffects_SetDelay 0x085a09e0 f (effects, u8 kind 5|6)

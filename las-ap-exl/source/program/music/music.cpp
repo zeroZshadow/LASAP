@@ -27,6 +27,7 @@
 namespace {
     using Game::StrView;
     using Game::Audio::BgmInstance;
+    using Game::Audio::BgmKind;
     using Game::Audio::BgmManager;
     using Game::Audio::Sound;
 
@@ -197,7 +198,7 @@ namespace {
     // Zone or event music (kind 1) other than the chosen track plays: a boss's, an event's.
     bool OtherMusic(const BgmManager* manager) {
         for (const BgmInstance* instance : manager->bgm.playing) {
-            if (instance->kind != Game::Audio::kZoneMusic) continue;
+            if (instance->kind != BgmKind::Zone) continue;
             if (instance->handle.name.View() != std::string_view(g_Track, g_TrackLen)) return true;
         }
         return false;
@@ -393,6 +394,30 @@ namespace {
         if (sound != nullptr) Game::Sound_Stop(sound, kHeldFadeFrames);
     }
 
+    // The game's own uses of the chosen track, by its name. The Great Fairy (NpcGreatFairy: Field_06D in the woods and
+    // the fountains) plays BGM_FAIRY as she appears, as a kind 4 instance at volume 0 unless it plays already; each
+    // frame she sets its volume by Link's distance (BgmManager_SetVolumeByName: full within 3.5, none from 9.5) and the
+    // zone's track's the other way; as she goes (a level load) she stops it by name. With BGM_FAIRY chosen, her stop is
+    // held as the doors' stops are, her volume is left out (unless the chosen track is the zone's own, whose fade hers
+    // then is), and her instance, when a zone call finds it playing, becomes the chosen track's at the zone's volume.
+    // An event's Audio.StopBGM of a song that is the chosen track is held alike.
+    constexpr u32 kTakeOverFrames = 30;
+
+    bool NamesChosen(const StrView* name) {
+        return g_TrackLen > 0 && name != nullptr && name->View() == std::string_view(g_Track, g_TrackLen);
+    }
+
+    void TakeOver(BgmManager* manager, float volume) {
+        BgmInstance* instance = PlayingInstance(manager);
+        if (instance == nullptr || instance->kind != BgmKind::Positional) return;
+        instance->kind = BgmKind::Zone;
+        instance->volume = volume;
+        if (instance->handle.sound != nullptr) Game::Sound_SetVolume(instance->handle.sound, kTakeOverFrames, volume);
+#ifdef LASAP_TEST
+        Record("take over");
+#endif
+    }
+
     // Another request for the ensemble (the egg's): the Jukebox's copy stops (a fading track does not keep the game
     // from starting it again), held or not.
     void StopEnsemble(const BgmManager* manager) {
@@ -428,10 +453,10 @@ namespace {
 
     bool JinglePlays(const BgmManager* manager) {
         for (const BgmInstance* instance : manager->bgm.starting) {
-            if (instance->kind == Game::Audio::kJingle) return true;
+            if (instance->kind == BgmKind::Jingle) return true;
         }
         for (const BgmInstance* instance : manager->bgm.playing) {
-            if (instance->kind == Game::Audio::kJingle && instance->handle.sound != nullptr) return true;
+            if (instance->kind == BgmKind::Jingle && instance->handle.sound != nullptr) return true;
         }
         return false;
     }
@@ -486,7 +511,7 @@ namespace {
             if (!fits) newcomer->startDelay = std::max(newcomer->startDelay, left + kFreeFrames);
             return;
         }
-        if (fits && newcomer->kind != Game::Audio::kJingle) return;
+        if (fits && newcomer->kind != BgmKind::Jingle) return;
         Game::Sound_Stop(sound, kYieldFrames);
         g_Yielded = true;
         if (!fits) newcomer->startDelay = std::max(newcomer->startDelay, kYieldFrames + kFreeFrames);
@@ -566,6 +591,7 @@ HOOK_DEFINE_TRAMPOLINE(BgmManagerPlay) {
             SetLayers(instance);
             StartEnsemble(instance);
         }
+        if (swap && instance == nullptr) TakeOver(manager, volume);
         if ((g_Held || g_Carried) && !swap && instance != nullptr) StopHeld();  // an event's song, a fanfare
         if (!swap && instance != nullptr) MakeRoom(manager, instance);
         if (g_FanfareCall && instance != nullptr && name != nullptr) g_Fanfare.assign(name->data, name->size);
@@ -581,18 +607,27 @@ HOOK_DEFINE_TRAMPOLINE(BgmManagerPlay) {
     }
 };
 
-#ifdef LASAP_TEST
 HOOK_DEFINE_TRAMPOLINE(BgmManagerStop) {
     static void Callback(StrView* name, u32 frames) {
+#ifdef LASAP_TEST
         uintptr_t ret = reinterpret_cast<uintptr_t>(__builtin_return_address(0)) - Game::Base();
         char entry[120];
         snprintf(entry, sizeof(entry), "stop %.*s +%lx %u", (int)(name ? name->size : 0), name ? name->data : "", ret,
                  frames);
         Record(entry);
-        Orig(name, frames);
+#endif
+        if (!NamesChosen(name)) return Orig(name, frames);
+        Holding([name, frames] { Orig(name, frames); });
     }
 };
-#endif
+
+HOOK_DEFINE_TRAMPOLINE(BgmSetVolume) {
+    static void Callback(float volume, StrView* name, u32 frames) {
+        const BgmManager* manager = Manager();
+        if (NamesChosen(name) && manager != nullptr && name->View() != manager->zoneTrack.View()) return;
+        Orig(volume, name, frames);
+    }
+};
 
 HOOK_DEFINE_TRAMPOLINE(BgmStopAll) {
     static void Callback(u32 frames) { Holding([frames] { Orig(frames); }); }
@@ -631,9 +666,8 @@ namespace AP::Music {
         BgmFadeZone::InstallAtFuncPtr(Game::BgmManager_FadeZone.Ptr());
         SoundStop::InstallAtFuncPtr(Game::Sound_Stop.Ptr());
         UpdateHeight::InstallAtFuncPtr(Game::BgmInstance_UpdateHeight.Ptr());
-#ifdef LASAP_TEST
         BgmManagerStop::InstallAtFuncPtr(Game::BgmManager_StopByName.Ptr());
-#endif
+        BgmSetVolume::InstallAtFuncPtr(Game::BgmManager_SetVolumeByName.Ptr());
     }
 
     void Choose(const std::string& track) {
@@ -802,7 +836,8 @@ namespace AP::Music {
         std::string volumes;
         bool first = true;
         for (const BgmInstance* instance : manager->bgm.playing) {
-            s += (first ? "" : ",") + std::string(instance->handle.name.View()) + ":" + std::to_string(instance->kind);
+            s += (first ? "" : ",") + std::string(instance->handle.name.View()) + ":" +
+                 std::to_string(static_cast<int>(instance->kind));
             float target = instance->handle.sound != nullptr ? instance->handle.sound->volume.target : 0.0f;
             volumes += (first ? "" : ",") + std::to_string(static_cast<int>(target * 100.0f + 0.5f));
             first = false;

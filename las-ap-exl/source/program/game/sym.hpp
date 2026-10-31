@@ -332,6 +332,8 @@ namespace Game {
         BgmManager_Play{0x9fd60};
     // (name*, fade frames)
     inline constexpr Func<void(StrView*, u32)> BgmManager_StopByName{0x9b7b0};
+    // (volume, name*, fade frames): the playing instances of that track, their volume and their sound's
+    inline constexpr Func<void(float, StrView*, u32)> BgmManager_SetVolumeByName{0x9be70};
     // (fade frames)
     inline constexpr Func<void(u32)> BgmManager_StopAll{0x9b550};
     // Fades the kind 1 instances out over 90 frames

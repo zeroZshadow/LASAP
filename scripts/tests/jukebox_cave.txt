@@ -1,0 +1,31 @@
+# The jukebox and the woods' Great Fairy (music.cpp, the game's own uses of the chosen track): she plays BGM_FAIRY by
+# Link's distance and stops it by name as her level unloads. BGM_FAIRY chosen in the woods takes her instance over at
+# full volume, and plays on (no new instance) at full volume through the Woods Crossing Cave's door and out again.
+# Run after boot_file1 (no client needed).
+send DBG music off
+await 10 music=-
+# South of the cave's east door (Field_07C).
+warp Field 41.25 12.75 79.5
+send DBG enemies kill
+expect OK 5
+# Her BGM_FAIRY plays, silent this far from her.
+await 10 music=- zonebgm=BGM_STRANGE_FOREST bgm=\S*BGM_FAIRY:4
+send DBG music BGM_FAIRY
+await 10 music=BGM_FAIRY zonebgm=BGM_STRANGE_FOREST bgm=BGM_FAIRY:1 bgmvol=100\s
+send DBG music
+expect take\sover
+# North into the cave: her stop is held and the cave finds the track playing.
+hold 0 0 32767 until level=MysteriousWoodsCave01 10
+loaded 20
+await 10 music=BGM_FAIRY zonebgm=BGM_CAVE bgm=BGM_FAIRY:1 bgmvol=100\s
+send DBG music
+expect play\sBGM_CAVE->BGM_FAIRY\s\S+\s000\s-\s*$
+# South out of it: she finds it playing and leaves its volume alone.
+hold 0 0 -32767 until level=Field 10
+loaded 20
+wait 1
+check music=BGM_FAIRY zonebgm=BGM_STRANGE_FOREST bgm=BGM_FAIRY:1 bgmvol=100\s
+send DBG music
+expect play\sBGM_STRANGE_FOREST->BGM_FAIRY\s\S+\s000\s-\s*$
+send DBG music off
+await 10 music=- zonebgm=BGM_STRANGE_FOREST bgm=\S*BGM_STRANGE_FOREST:1
