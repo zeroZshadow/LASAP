@@ -1,0 +1,91 @@
+# Mute on the Jukebox page (DESIGN.md, Jukebox page and Music, Mute): ZR silences all music, also a track chosen or
+# started while muted and one that sets its own volume every frame, and leaves jingles; ZR again gives the music back at the volume the game gave it. Run after
+# boot_file1 (no client needed). STATE's bgmvol= is the playing tracks' volume targets in percent (the pause menu
+# turns music down to 20), muted= the mute; DBG jukebox shows the guide's A and ZR captions. Screenshot:
+# jukebox_mute.png (the page muted: "Music muted" on the card, "ZR Unmute" in the guide).
+send DBG music off
+await 10 music=-\s.*muted=0
+warp Lv09WindFishsEgg 37.5 0 94.5
+tap 400 when free 3000
+await 10 pane=1\snavi=2
+tap 80
+await 10 pane=2\snavi=2
+tap 80
+await 10 pane=3\snavi=2
+poll JUKEBOX.*guide=play,mute\s 5 DBG jukebox
+# ZR mutes, and turns no page (as R would); A on the zone's own track chooses it, which starts silent although a choice on the page plays loud.
+tap 200
+await 5 muted=1
+check pane=3\snavi=2
+poll JUKEBOX.*guide=play,unmute\s 5 DBG jukebox
+tap 1
+await 10 music=BGM_DUNGEON_HOLY_EGG\szonebgm=\S+\sbgm=BGM_DUNGEON_HOLY_EGG:1\sbgmvol=0\s
+poll JUKEBOX.*guide=stop,unmute\s 5 DBG jukebox
+shot jukebox_mute.png
+# B closes the menu, whose volume back up stays 0.
+tap 2
+await 10 paused=0
+free 10
+check bgm=BGM_DUNGEON_HOLY_EGG:1\sbgmvol=0\s
+# A jingle plays as the game plays it (item 3's fanfare, kind 2), over the muted music; the music it ducked comes
+# back silent.
+send DBG pickup 3
+await 10 bgm=BGM_DUNGEON_HOLY_EGG:1,\S+:2\sbgmvol=0,(?!0\s)\d+\s
+await 15 bgm=BGM_DUNGEON_HOLY_EGG:1\sbgmvol=0\s
+# Another track starting from the game (the Jukebox off: the zone's own after Seashell Mansion) starts silent.
+send DBG music BGM_SEASHELL_HOUSE
+await 10 music=BGM_SEASHELL_HOUSE\szonebgm=\S+\sbgm=BGM_SEASHELL_HOUSE:1\sbgmvol=0\s
+send DBG music off
+await 10 music=-\szonebgm=(\S+)\sbgm=\1:1\sbgmvol=0\s
+# ZR again on the page: the music back at the pause menu's volume, and at full volume once the menu closes.
+tap 400 when free 3000
+await 10 pane=1\snavi=2
+tap 80
+await 10 pane=2\snavi=2
+tap 80
+await 10 pane=3\snavi=2
+tap 200
+await 5 bgm=\S+:1\sbgmvol=20\s.*muted=0
+check pane=3\snavi=2
+poll JUKEBOX.*,mute\s 5 DBG jukebox
+tap 2
+await 10 paused=0
+await 5 bgm=\S+:1\sbgmvol=100\s
+send DBG music off
+await 10 music=-
+# A track that sets its own volume every frame stays silent: on the Wind Fish's Egg's stairs
+# BGM_TARUTARU2_AFTER_THE_RESCUE plays at a volume by Link's height (BgmInstance_UpdateHeight, through
+# Sound_SetVolume), about half at this step, the last track listed. FourteenClear marks the owl's talk at the stairs
+# as done.
+send DBG setflag FourteenClear 1
+expect FLAG.FourteenClear.1 5
+warp Field 98.25 21.86 19.5
+send DBG music BGM_TARUTARU2_AFTER_THE_RESCUE
+await 10 bgm=(\S+,)?BGM_TARUTARU2_AFTER_THE_RESCUE:1\sbgmvol=(\d+,)*4\d\s
+tap 400 when free 3000
+await 10 pane=1\snavi=2
+tap 80
+await 10 pane=2\snavi=2
+tap 80
+await 10 pane=3\snavi=2
+tap 200
+await 5 bgm=(\S+,)?BGM_TARUTARU2_AFTER_THE_RESCUE:1\sbgmvol=(\d+,)*0\s.*muted=1
+tap 2
+await 10 paused=0
+free 10
+wait 1
+check pos=98.25,21\.\d+,19\.50\s.*bgm=(\S+,)?BGM_TARUTARU2_AFTER_THE_RESCUE:1\sbgmvol=(\d+,)*0\s
+# Unmuted, the track is back at its height's volume.
+tap 400 when free 3000
+await 10 pane=1\snavi=2
+tap 80
+await 10 pane=2\snavi=2
+tap 80
+await 10 pane=3\snavi=2
+tap 200
+await 5 muted=0
+tap 2
+await 10 paused=0
+await 5 bgm=(\S+,)?BGM_TARUTARU2_AFTER_THE_RESCUE:1\sbgmvol=(\d+,)*4\d\s
+send DBG music off
+await 10 music=-

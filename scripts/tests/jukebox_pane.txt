@@ -3,7 +3,7 @@
 # server needed). It warps Link into the Wind Fish's Egg, whose track the cursor opens on. STATE's pane= is the page
 # the player sees (3 the Jukebox), navi= the header's state (2 WaitKey), jbox= the list's cursor and first row,
 # bgmvol= the playing tracks' volume targets (the pause menu turns music down to 20); DBG jukebox counts the pages
-# built and dropped and the text boxes whose glyphs are drawn, and shows the guide's A caption.
+# built and dropped and the text boxes whose glyphs are drawn, and shows the guide's A and ZR captions.
 warp Lv09WindFishsEgg 37.5 0 94.5
 expect HELLO 30
 send DBG music off
@@ -18,7 +18,7 @@ await 10 pane=2\snavi=2
 tap 80
 await 10 pane=3\snavi=2\sjbox=16/13
 send DBG jukebox
-expect JUKEBOX\smode=1.*rows=7\sdrawn=7\stexts=6\stextsdrawn=6.*guide=play\sname=Wind\sFish's\sEgg 5
+expect JUKEBOX\smode=1.*rows=7\sdrawn=7\stexts=6\stextsdrawn=6.*guide=play,mute\sname=Wind\sFish's\sEgg 5
 # Down to the next track; A plays it while the menu is open, at full volume, and the client hears nothing of it.
 tap 8000
 await 5 jbox=17/13
@@ -27,7 +27,7 @@ await 5 music=BGM_SEASHELL_HOUSE\szonebgm=\S+\sbgm=BGM_SEASHELL_HOUSE:1\sbgmvol=
 check paused=1
 logcount Music:\sBGM_|game:\smusic 0 client
 send DBG jukebox
-expect JUKEBOX.*guide=stop\sname=Seashell\sMansion 5
+expect JUKEBOX.*guide=stop,mute\sname=Seashell\sMansion 5
 # A on the chosen track turns the Jukebox off: the zone's own track again, at full volume; A again chooses it again.
 tap 1
 await 5 music=-\szonebgm=(\S+)\sbgm=\1:1\sbgmvol=100\s

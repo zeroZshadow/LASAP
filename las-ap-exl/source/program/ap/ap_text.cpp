@@ -43,10 +43,11 @@ namespace {
     std::string g_Toast;
     char g_ToastBuf[256];
 
-    enum class Kind { None, Found, Received, Saving, MapCaption, MapPlace, MapPin, Sign };
+    enum class Kind { None, Found, Received, Saving, MapCaption, MapPlace, MapPin, MapZoom, Sign };
     constexpr const char* kMapCaptionLabel = "MapCaptionMemory";  // the map's X button: memories
     constexpr const char* kMapPlaceLabel = "MapCaptionPlace";     // Y: hide markers
     constexpr const char* kMapPinLabel = "MapCaptionPin";         // A: pin
+    constexpr const char* kMapZoomLabel = "MapCaptionZoom";       // R: zoom
     struct Slot { void* msbt; s32 index; Kind kind; };
     Slot g_Slots[16];
     int g_SlotCount = 0;
@@ -72,6 +73,7 @@ namespace {
     const std::string kColorPlayer("\x0e\x00\x00\x03\x00\x04\x00\x62\xcf\xff\xff", 11); // sky blue
     const std::string kColorWhite("\x0e\x00\x00\x03\x00\x04\x00\xed\xed\xed\xff", 11);
     const std::string kWaitInput("\x0e\x01\x00\x04\x00\x00\x00", 7);
+    const std::string kHidIcon("\x0e\x01\x00\x01\x00\x01\x00", 7);  // and one byte: the HidIcon, the button it draws
     constexpr size_t kItemNameMax = 32;
     constexpr size_t kPlayerNameMax = 16;
 
@@ -184,6 +186,7 @@ HOOK_DEFINE_TRAMPOLINE(MsbtFindLabel) {
         else if (LabelIs(label, len, kMapCaptionLabel)) Remember(msbt, out->index, Kind::MapCaption);
         else if (LabelIs(label, len, kMapPlaceLabel)) Remember(msbt, out->index, Kind::MapPlace);
         else if (LabelIs(label, len, kMapPinLabel)) Remember(msbt, out->index, Kind::MapPin);
+        else if (LabelIs(label, len, kMapZoomLabel)) Remember(msbt, out->index, Kind::MapZoom);
         else if (LabelIs(label, len, AP::SIGN_LABEL)) Remember(msbt, out->index, Kind::Sign);
         else return;
         Logging.Log("[AP] text label %.*s index %d", static_cast<int>(len), label, out->index);
@@ -249,19 +252,23 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
                 break;
             case Kind::MapCaption:
             case Kind::MapPlace:
-            case Kind::MapPin: {
-                // the map's X, Y and A captions; the Jukebox's guide, made from the map's, uses them too
-                int button = kind == Kind::MapCaption ? 0 : kind == Kind::MapPlace ? 1 : 2;
+            case Kind::MapPin:
+            case Kind::MapZoom: {
+                // the map's X, Y, A and R captions; the Jukebox's guide, made from the map's, uses them too
+                int button = kind == Kind::MapCaption ? 0 : kind == Kind::MapPlace ? 1 : kind == Kind::MapPin ? 2 : 3;
                 std::string text = AP::ListUi::GuideCaption(button);
                 if (text.empty() && kind == Kind::MapCaption) text = AP::MapTracker::CaptionText();
                 if (text.empty()) return;
-                // The caption starts with a tag drawing the button (0x0E, group, type, parameter size, parameters).
+                // The caption starts with a tag drawing the button (0x0E, group, type, parameter size, parameters),
+                // or with the guide's own.
                 s64 tags = 0;
                 while (tags + 7 <= out->length && out->text[tags] == 0x0e) {
                     tags += 7 + static_cast<u8>(out->text[tags + 5]) + (static_cast<u8>(out->text[tags + 6]) << 8);
                 }
                 tags = std::min(tags, out->length);
-                out->length = Store(g_CaptionText, sizeof(g_CaptionText), std::string(out->text, tags) + text);
+                int icon = AP::ListUi::GuideIcon(button);
+                std::string head = icon >= 0 ? kHidIcon + static_cast<char>(icon) : std::string(out->text, tags);
+                out->length = Store(g_CaptionText, sizeof(g_CaptionText), head + text);
                 out->text = g_CaptionText;
                 break;
             }

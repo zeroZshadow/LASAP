@@ -870,7 +870,7 @@ Graphics_ptr 0x0a1ccb30 l the graphics object (200 bytes): +8 points at the gfx 
 GraphicsSystem_Init 0x0951d4c0 f (system, config): swap chain, display layer, VsyncWatcher_Init at +0x8168
 VsyncWatcher_Init 0x095450d0 f (watcher, system): the display's vsync event and a thread that signals a light event and counts each vsync
 Navi_Setup 0x093ea230 f Gm_Navi owner (pause menu header) vtable +0x20: builds Gm_Navi and its states; page id table +0x230 (0xf overworld or 0xe dungeon map, 6 items, 10 system or 0xb in the Chamber Dungeon), target index +0x23d
-Navi_Update 0x093eaf80 f vtable +0x28: runs the machine at +0x80; with input on (+0x1342) an L or R press goes to +0x1341 (1 L, 2 R)
+Navi_Update 0x093eaf80 f vtable +0x28: runs the machine at +0x80; with input on (+0x1342) an L or ZL, R or ZR press goes to +0x1341 (1 L, 2 R)
 Navi_Open 0x093eb830 f vtable +0x30: the page index to open from the HUD's +0x61dc into +0x23d and +0x23c, then state Open
 Navi_ChangeState 0x093ebdc0 f (machine at Navi +0x80, state): Open 1, WaitKey 2, Selected 3, CloseOldUi 4, Close 5; names at machine +0x178 + state*8
 Navi_OpenEnter 0x093ebfa0 f enter of Open: UiManager_Request of the target page's id, with Navi_PaneReady as its task

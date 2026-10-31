@@ -270,8 +270,10 @@ namespace Game {
     inline constexpr Func<void(Ui::Navi*, u32)> Navi_SetGuide{0xeed6f0};
     // (guide, slot, kind)
     inline constexpr Func<void(Ui::NaviGuide*, int, u32)> Guide_Set{0xf571b0};
-    // Navi, the pause menu header: its state machine's ChangeState (machine, state); the updates and enters of its
-    // states (navi); its page titles (navi, index).
+    // Navi, the pause menu header: its update, which with input on takes an L or R press into lr (navi); its state
+    // machine's ChangeState (machine, state); the updates and enters of its states (navi); its page titles (navi,
+    // index).
+    inline constexpr Func<void(Ui::Navi*)> Navi_Update{0xee6f80};
     inline constexpr Func<void(StateMachine<6>*, int)> Navi_ChangeState{0xee7dc0};
     inline constexpr Func<void(Ui::Navi*)> Navi_WaitKey{0xee8ca0};
     inline constexpr Func<void(Ui::Navi*)> Navi_CloseOldUiUpdate{0xeea4f0};

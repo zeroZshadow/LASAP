@@ -253,6 +253,26 @@ namespace Game {
     static_assert(offsetof(Present, handheldSizes) == 0x10 && offsetof(Present, renderer) == 0x40);
     static_assert(sizeof(Present) == 0x78);
 
+    // The game's controller (scripts/re/UI.md, Input): the shoulder buttons' press flags, set for the frame of a press.
+    // The rest is not laid out here.
+    struct Controller {
+        u8 pad_0[0x1b1];
+        u8 zrPressed;              // 0x1b1
+        u8 pad_1b2[0xf];
+        u8 zlPressed;              // 0x1c1
+        u8 pad_1c2[0xf];
+        u8 rPressed;               // 0x1d1
+        u8 pad_1d2[0xf];
+        u8 lPressed;               // 0x1e1
+    };
+    static_assert(offsetof(Controller, zrPressed) == 0x1b1 && offsetof(Controller, zlPressed) == 0x1c1);
+    static_assert(offsetof(Controller, rPressed) == 0x1d1 && offsetof(Controller, lPressed) == 0x1e1);
+
+    // Framework::controller's object (0x570 bytes): the controller first, the rest not laid out here.
+    struct ControllerHolder {
+        Controller* controller;
+    };
+
     // The framework (Framework_Ctor; 0x6c0 bytes): the main loop's state, the actor system, the game state machine,
     // Link and the renderer. Its shared_ptrs the module reads are typed `T* x; void* xCtrl`.
     struct Framework {
@@ -298,7 +318,7 @@ namespace Game {
         u8 paused;                 // 0x510: the pause menu is open or a level loads
         u8 roomPaused;             // 0x511: set by Scene_UpdateZone
         u8 pad_512[0x6];
-        SharedPtr<> controller;    // 0x518
+        SharedPtr<ControllerHolder> controller;  // 0x518
         void* gfxMemory;           // 0x528
         SharedPtr<> sp_530;        // 0x530
         SharedPtr<> renderer;      // 0x540: the model list InstancedModel_Ctor takes

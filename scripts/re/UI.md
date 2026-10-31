@@ -149,7 +149,7 @@ is 1 or more (`Graphics_UnregisterCallback`). `lockGroups` are 32 `LockGroup`s (
 - `Gm_MemoryList` (the Memories list): 11 `Gm_MemoryListItem` rows 48 px apart (7 visible), each a `T_Item_00` of 29 characters, animations Up/Down (the rows ±52, 6 frames), Reset and Set; `L_ListCursor_00` (`Cm_ListCursor`: On, Off, Loop) and `L_ScrollBar_00` (`Cm_ScrollBar`: `W_ScrollHandle_00`, no animations). The rows sit in the alignment pane `A_List_00`: a hidden row (such as the blank rows `L_Blank_00`/`01` above them) gives its place to the rows under it, which then draw two rows above the cursor; a transparent row keeps its place. `Cm_TabCursor` belongs to the Memories' icon tabs; `Gm_Memory`'s `W_window_01` (the window the list sits in) is light and translucent.
 - `Gm_SystemChoice` rows have a `T_List_00` of 10 characters; `Gm_SystemOpUnit` is a single text box (`T_Operation_00`, 20 characters). `Gm_Item`'s `T_Name_00` sits with `T_Info_00` in the alignment pane `A_alignment_07`. The font `jpn_main.bffnt` has the eighth note U+266A.
 - Screen masks: the `P_DisplyMask_*` pictures of `Cm_Dlg` (the game's dialogs), `Gm_Navi` and `Pd_PanelResult` draw a capture of the screen into a texture the pause menu's backdrop shares, so one drawn from a layout built at runtime over a pause page changes the backdrop. Plain black pictures (no texture, the white colour black): `Cm_Dlg`'s `P_pict_00`, `Gm_MapMarkList`'s `P_pict_00` (the pin bar), `Gm_Picture`'s `P_pict_01`.
-- Button tags (`0x0e`, group 1, type 1) draw in the guide's text boxes but not in a text box of a layout built with `LayoutWrapper_Build`, which has no tag processor. `MessageText_SetLabel` (`0xf8c8b0 (text object, StringView* label)`) reads only the text box (`+0x10`) of its text object.
+- Button tags (`0x0e`, group 1, type 1: `HidIcon` in `richard.msbp`) draw in the guide's text boxes but not in a text box of a layout built with `LayoutWrapper_Build`, which has no tag processor. The tag's one-byte parameter is a game function, the `HidButtonTable.gsheet` row of that `mId` (the msbp's list holds the same names in the same order), and the tag draws the button of the row's `mButtonType` (0 A, 2 X, 3 Y, 4 R, 5 L, 6 ZR, 7 ZL, 10 Plus, 11 Minus, 16 and 17 a d-pad; sixteen functions drawn in the guide, 2026-10-31). ZR is `0x21` (PanelCategoryRight), ZL `0x22`. `MessageText_SetLabel` (`0xf8c8b0 (text object, StringView* label)`) reads only the text box (`+0x10`) of its text object.
 
 ## State machines
 
@@ -190,7 +190,8 @@ A machine 16-aligned after an 8-byte-aligned field leaves 8 bytes of padding bef
 
 ## Input
 
-The game's controller is `*(Framework+0x518)` (a shared pointer, count `+0x520`): `+0x10` the pad (virtual `+0x10` returns `{u32 held, u32 held last frame}`, so `held & ~last` is a press), `+0x220` u32 the buttons, `+0x228` the left stick (virtual `+0x18` returns `{f32 x, f32 y}`), `+0x234` u8 locked (no input). Button bits are the physical buttons of `HidButtonTable.gsheet` (`mButtonType`): 0 A, 1 B, 2 X, 3 Y, 4 R, 5 L, 10 Plus, 11 Minus, 14 to 17 up, down, right, left. The maps read A (pin), X (memories) and Y held (place names / dungeon info) this way. Per-function flags: `+0xb1` and `+0xd1` zoom out / in, `+0x171` and `+0x181` floor up / down (the maps' zoom and the dungeon floors).
+The game's controller is `**(Framework+0x518)` (a shared pointer, count `+0x520`, to a 0x570-byte object whose
+first field points at the controller): `+0x10` the pad (virtual `+0x10` returns `{u32 held, u32 held last frame}`, so `held & ~last` is a press), `+0x220` u32 the buttons, `+0x228` the left stick (virtual `+0x18` returns `{f32 x, f32 y}`), `+0x234` u8 locked (no input). Button bits are the physical buttons of `HidButtonTable.gsheet` (`mButtonType`): 0 A, 1 B, 2 X, 3 Y, 4 R, 5 L, 10 Plus, 11 Minus, 14 to 17 up, down, right, left. The maps read A (pin), X (memories) and Y held (place names / dungeon info) this way. Per-function flags: `+0xb1` and `+0xd1` zoom out / in, `+0x171` and `+0x181` floor up / down (the maps' zoom and the dungeon floors), `+0x1b1` ZR, `+0x1c1` ZL, `+0x1d1` R, `+0x1e1` L, each set for the frame of a press (`DBG watch c`, 2026-10-31).
 
 ## Datasheets
 
@@ -239,7 +240,9 @@ keeps the kinds. The d-pad does nothing on any page (2026-10-17, sandbox).
 the HUD's `+0x61dc` is the index the menu opens on (Minus stores 0). `Navi_WaitKey` (`0xee8ca0`, WaitKey's update)
 takes no button while UI 0x1f, 0x20 or 0x26 exists; B closes the menu and L/R turn the page only while the page's
 `canClose` is set; Plus on Items and Minus on the map close it, Plus and Minus elsewhere go to index 1 and 0, and `lr`
-steps `target` over the three pages. A change clears the old page's `active`, then runs CloseOldUi (the header's
+steps `target` over the three pages. `Navi_Update` (`0xee6f80`, vtable `+0x28`) sets `lr` while `inputOn` is set (after
+looking up UIs 0x1a, 0x1f and 0x20, not read further): in Open from the pad's presses, else from the controller's press flags, R or ZR
+(`+0x1d1`, `+0x1b1`) 2 and L or ZL (`+0x1e1`, `+0x1c1`) 1 (Input), so ZR and ZL turn pages as R and L do. A change clears the old page's `active`, then runs CloseOldUi (the header's
 NextOut or BackOut by `direction`, the old page's virtual `+0xa8`, its state saved, its slot cleared,
 `UiManager_Remove`), Selected, Open (`UiManager_Request` of the target id with `Navi_PaneReady` as its task) and
 WaitKey once the new page's In animation ends (page virtual `+0x98`). The Memories are a UI the map requests itself

@@ -515,6 +515,27 @@ namespace {
         }
     }
 
+    // Mute: every BGM's volume goes through Sound_SetVolume (BgmInstance_Start, the ducking, the positional update,
+    // BgmManager_SetVolume, the pause menu), so its hook gives a music instance's sound 0 and keeps the volume the
+    // game asked for, per instance, which unmuting gives back. Muting and unmuting fade over kMuteFadeFrames.
+    constexpr u32 kMuteFadeFrames = 20;
+    bool g_Muted = false;
+    float g_Wanted[8] = {};  // per BgmPlayer::instances slot
+
+    // The music instance (not a jingle) that plays `sound` or is about to, or null.
+    BgmInstance* MusicOf(BgmManager* manager, const Sound* sound) {
+        for (const Game::Vector<BgmInstance*>* list : {&manager->bgm.starting, &manager->bgm.playing}) {
+            for (BgmInstance* instance : *list) {
+                if (instance->handle.sound == sound) return instance->kind != BgmKind::Jingle ? instance : nullptr;
+            }
+        }
+        return nullptr;
+    }
+
+    float& Wanted(const BgmManager* manager, const BgmInstance* instance) {
+        return g_Wanted[instance - manager->bgm.instances];
+    }
+
 #ifdef LASAP_TEST
     char g_StreamOpen[256] = {};  // the last stream file opened (DBG music)
 #endif
@@ -623,6 +644,18 @@ HOOK_DEFINE_TRAMPOLINE(SoundStop) {
     }
 };
 
+HOOK_DEFINE_TRAMPOLINE(SoundSetVolume) {
+    static void Callback(Sound* sound, int frames, float volume) {
+        BgmManager* manager = Manager();
+        BgmInstance* music = manager != nullptr && sound != nullptr ? MusicOf(manager, sound) : nullptr;
+        if (music != nullptr) {
+            Wanted(manager, music) = volume;
+            if (g_Muted) volume = 0.0f;
+        }
+        Orig(sound, frames, volume);
+    }
+};
+
 namespace AP::Music {
     void InstallHooks() {
         BgmManagerPlay::InstallAtFuncPtr(Game::BgmManager_Play.Ptr());
@@ -633,6 +666,7 @@ namespace AP::Music {
         UpdateHeight::InstallAtFuncPtr(Game::BgmInstance_UpdateHeight.Ptr());
         BgmManagerStop::InstallAtFuncPtr(Game::BgmManager_StopByName.Ptr());
         BgmSetVolume::InstallAtFuncPtr(Game::BgmManager_SetVolumeByName.Ptr());
+        SoundSetVolume::InstallAtFuncPtr(Game::Sound_SetVolume.Ptr());
     }
 
     void Choose(const std::string& track) {
@@ -773,6 +807,20 @@ namespace AP::Music {
         g_Shuffle = on;
     }
 
+    bool Muted() { return g_Muted; }
+
+    void SetMuted(bool on) {
+        g_Muted = on;
+        Logging.Log("[AP] music %s", on ? "muted" : "unmuted");
+        BgmManager* manager = Manager();
+        if (manager == nullptr) return;
+        // each playing track's volume again, through the hook: 0 muted, else the game's
+        for (BgmInstance* instance : manager->bgm.playing) {
+            if (instance->kind == BgmKind::Jingle || instance->handle.sound == nullptr) continue;
+            Game::Sound_SetVolume(instance->handle.sound, kMuteFadeFrames, Wanted(manager, instance));
+        }
+    }
+
     std::string Track() { return std::string(g_Track, g_TrackLen); }
 
     bool IsChosen(const char* track) { return strcmp(track, g_Track) == 0; }
@@ -791,11 +839,11 @@ namespace AP::Music {
     std::string StateField() {
         const BgmManager* manager = Manager();
         std::string s = std::string(" music=") + (g_TrackLen > 0 ? g_Track : "-");
-        char layers[16];
+        char layers[32];
         if (g_Layered != nullptr) {
-            snprintf(layers, sizeof(layers), " layers=%02x", g_Layers);
+            snprintf(layers, sizeof(layers), " layers=%02x muted=%d", g_Layers, g_Muted);
         } else {
-            snprintf(layers, sizeof(layers), " layers=-");
+            snprintf(layers, sizeof(layers), " layers=- muted=%d", g_Muted);
         }
         if (manager == nullptr) return s + " zonebgm=- bgm=- bgmvol=-" + layers;
         s += " zonebgm=" + ::ZoneTrack(manager) + " bgm=";

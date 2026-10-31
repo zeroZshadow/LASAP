@@ -239,8 +239,13 @@ namespace AP::ListUi {
     }
 
     std::string GuideCaption(int button) {
-        if (g_Guide == nullptr || button < 0 || button > 2) return "";
+        if (g_Guide == nullptr || button < 0 || button > 3) return "";
         return g_Guide->captions[button];
+    }
+
+    int GuideIcon(int button) {
+        if (g_Guide == nullptr || button < 0 || button > 3) return -1;
+        return g_Guide->icons[button];
     }
 
     void InstallHooks() {

@@ -73,20 +73,24 @@ namespace AP::ListUi {
 
     // A guide made from the overworld map's (Navi_SetGuide with index 0 and the map's id; scripts/re/UI.md, Pause
     // menu): its slots' kinds in order, the other slots hidden, and the words after the button of the map's X
-    // (Memories), Y (Hide markers) and A (Pin) captions ("" the game's).
+    // (Memories), Y (Hide markers), A (Pin) and R (Zoom) captions ("" the game's). A caption can draw another button
+    // than the game's: icons holds the HidIcon to draw (scripts/re/UI.md, Text boxes), -1 the game's.
     constexpr u32 kGuideX = 0x13, kGuideY = 0x14, kGuideR = 0x15, kGuideA = 0x12, kGuideB = 0x11;
     struct Guide {
         int count = 0;
         u32 kinds[5] = {};
-        const char* captions[3] = {"", "", ""};
+        const char* captions[4] = {"", "", "", ""};
+        int icons[4] = {-1, -1, -1, -1};
     };
     // A page that shows its own guide: its guide for the header's page index, or null.
     using GuideSource = const Guide* (*)(u32 index);
     void AddGuideSource(GuideSource source);
     // Sets the guide of the header's page at that index again (Navi_SetGuide), as the page changes its own.
     void RefreshGuide(u32 index);
-    // While a guide of a source is set: the words for the map's caption of button 0 X, 1 Y or 2 A; else "".
+    // While a guide of a source is set: the words for the map's caption of button 0 X, 1 Y, 2 A or 3 R, else "";
+    // the HidIcon it draws instead of the game's, else -1.
     std::string GuideCaption(int button);
+    int GuideIcon(int button);
 
     void InstallHooks();
 }

@@ -40,10 +40,15 @@ namespace AP::Music {
     // Chooses the next track (step 1) or the previous (step -1) from the chosen one, or the zone's own: in the list's
     // order, or with shuffle in the order drawn when it turned on; shows its name in a toast and returns it.
     std::string Skip(int step);
+    // Mute: all music plays silent, jingles as the game plays them (the zone's, events', bosses', buffs' and the
+    // chosen track: every BGM but kind Jingle). The game's music runs on as without it; unmuted, each track comes back
+    // at the volume the game last gave it.
+    bool Muted();
+    void SetMuted(bool on);
 #ifdef LASAP_TEST
     // STATE's " music=<chosen track or -> zonebgm=<the zone's track> bgm=<playing tracks as name:kind, or ->
     // bgmvol=<their volume targets in percent> layers=<the instruments the ensemble's tracks are set for, in hex,
-    // or ->"
+    // or -> muted=<0|1>"
     std::string StateField();
     // DBG music log: the last BGM requests
     std::string LogText();

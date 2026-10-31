@@ -11,6 +11,7 @@
 #include "ap/ap.hpp"
 #include "ap/ap_list.hpp"
 #include "ap/ap_text.hpp"
+#include "game/framework.hpp"
 #include "game/menu.hpp"
 #include "game/sym.hpp"
 #include "game/ui.hpp"
@@ -72,8 +73,9 @@ namespace {
     constexpr u16 kStatusChars = 80;
     constexpr float kStatusY = kCardY - 46 - 49 - 40, kStatusScale = 0.72f;
 
-    // Buttons (nn::hid): the d-pad's left, up and right alone.
-    constexpr u64 kDpadLeft = 0x1000, kDpadUp = 0x2000, kDpadRight = 0x4000;
+    // Buttons (nn::hid): ZR; the d-pad's left, up and right alone.
+    constexpr u64 kButtonZR = 0x200, kDpadLeft = 0x1000, kDpadUp = 0x2000, kDpadRight = 0x4000;
+    constexpr int kIconZR = 0x21;  // the HidIcon that draws ZR: PanelCategoryRight (the Chamber Dungeon's)
 
     constexpr int kEntries = AP::Tracks::COUNT;
 
@@ -85,6 +87,7 @@ namespace {
     bool g_ChangeAhead = false;     // a page change runs: g_Pending applies when CloseOldUi ends
     bool g_GuideShown = false;      // the guide shows the Jukebox's captions
     bool g_GuideStop = false;       // its A caption reads Stop (the cursor was on the chosen track)
+    bool g_GuideMuted = false;      // its ZR caption reads Unmute
     bool g_Loud = false;            // a track was chosen on the page: it plays at full volume while the menu is open
     int g_Changes = 0;              // changes through index 2 the module steered (2 to 2)
 
@@ -174,7 +177,8 @@ namespace {
 
         bool silent = chosen.empty() && AP::Music::ZoneTrack().empty();
         const char* playingName = playing >= 0 ? Entry(playing).name : silent ? "Silence" : "The game's music";
-        SetText(g_Ui.title, std::string(chosen.empty() ? "Jukebox off\n" : "Now playing\n") + playingName);
+        const char* heading = AP::Music::Muted() ? "Music muted\n" : chosen.empty() ? "Jukebox off\n" : "Now playing\n";
+        SetText(g_Ui.title, heading + std::string(playingName));
         SetText(g_Ui.number, playing >= 0 ? std::to_string(playing + 1) : "-");
         SetText(g_Ui.total, std::to_string(AP::Tracks::COUNT));
         SetText(g_Ui.name, Entry(list.at).name);
@@ -201,7 +205,7 @@ namespace {
         // a two-line description lower, every frame: the layout's first update lays its alignment pane out again
         float lower = strchr(Entry(g_Ui.list.at).info, '\n') != nullptr ? kInfoLower : 0;
         if (g_Ui.about.box != nullptr) MoveTo(&g_Ui.about.box->pane, 0, kInfoY - lower);
-        bool music = AP::Music::HasMusic();
+        bool music = AP::Music::HasMusic() && !AP::Music::Muted();
         for (int i = 0; i < kFloating; i++) {
             Pane* note = g_Ui.floating[i].root;
             if (note == nullptr) continue;
@@ -288,7 +292,7 @@ namespace {
         Logging.Log("[AP] jukebox: page built");
     }
 
-    // The page's buttons, once a frame while it takes them: Up/Down (repeating while held), A, X, Y.
+    // The page's buttons, once a frame while it takes them: Up/Down (repeating while held), A, X, Y, ZR.
     void Input() {
         bool moved;
         u64 pressed = AP::ListUi::Input(g_Ui.list, moved);
@@ -301,9 +305,10 @@ namespace {
             PlaySound("SE_SY_DECIDE");
             Fill();
         }
-        if (pressed & (kButtonX | kButtonY)) {
+        if (pressed & (kButtonX | kButtonY | kButtonZR)) {
             if (pressed & kButtonX) AP::Music::SetShuffle(!AP::Music::Shuffle());
             if (pressed & kButtonY) AP::Music::SetRepeatOne(!AP::Music::RepeatOne());
+            if (pressed & kButtonZR) AP::Music::SetMuted(!AP::Music::Muted());
             PlaySound("SE_SY_DECIDE");
             Fill();
         }
@@ -331,14 +336,18 @@ namespace {
         PlaySound("SE_SY_MENU_LR_MOVE");
     }
 
-    // The Jukebox's guide is the overworld map's (X, Y, R, A, B) with A and B moved up over R and the last slot
-    // hidden, its captions read as Shuffle, Repeat one and Play (or Stop).
+    // The Jukebox's guide is the overworld map's (X, Y, R, A, B), its captions read as Shuffle, Repeat one, Mute (or
+    // Unmute) with ZR's button in R's place, and Play (or Stop).
     const Guide* JukeboxGuide(u32 index) {
         static Guide guide;
         g_GuideShown = index == kSystem && g_Jukebox && !InChamberDungeon();
         if (!g_GuideShown) return nullptr;
         g_GuideStop = OnChosen();
-        guide = Guide{4, {kGuideX, kGuideY, kGuideA, kGuideB}, {"Shuffle", "Repeat one", g_GuideStop ? "Stop" : "Play"}};
+        g_GuideMuted = AP::Music::Muted();
+        guide = Guide{5,
+                      {kGuideX, kGuideY, kGuideR, kGuideA, kGuideB},
+                      {"Shuffle", "Repeat one", g_GuideStop ? "Stop" : "Play", g_GuideMuted ? "Unmute" : "Mute"},
+                      {-1, -1, -1, kIconZR}};
         return &guide;
     }
 }
@@ -358,6 +367,21 @@ HOOK_DEFINE_TRAMPOLINE(NaviWaitKey) {
             g_Pending = index == kMap && lr == kLeft && navi->target == kSystem;
             g_ChangeAhead = true;
         }
+    }
+};
+
+// The header turns the page on ZR as on R (and on ZL as on L). On the Jukebox ZR mutes: the header's update, which
+// takes the press, does not see it. A press while the page opens the header reads from the pad, and turns the page.
+HOOK_DEFINE_TRAMPOLINE(NaviUpdate) {
+    static void Callback(Navi* navi) {
+        Game::Framework* fmwk = Game::GetFramework();
+        Game::ControllerHolder* holder = fmwk != nullptr ? fmwk->controller.ptr : nullptr;
+        Game::Controller* pad = holder != nullptr ? holder->controller : nullptr;
+        if (pad == nullptr || !g_Jukebox || navi->target != kSystem || InChamberDungeon()) return Orig(navi);
+        u8 zr = pad->zrPressed;
+        pad->zrPressed = 0;
+        Orig(navi);
+        pad->zrPressed = zr;
     }
 };
 
@@ -419,7 +443,8 @@ HOOK_DEFINE_TRAMPOLINE(SystemUpdate) {
         AP::Music::Tick(false, true);
         if (g_Loud) AP::Music::Loud();
         if (!AP::Music::IsChosen(g_Shown.c_str())) Fill();  // the choice changed (a test command)
-        if (g_GuideShown && OnChosen() != g_GuideStop) RefreshGuide(kSystem);  // A reads Play or Stop
+        // A reads Play or Stop, ZR Mute or Unmute
+        if (g_GuideShown && (OnChosen() != g_GuideStop || AP::Music::Muted() != g_GuideMuted)) RefreshGuide(kSystem);
         // Gm_System's own update runs while it opens (its In animation), never once it takes buttons
         if (page->machine.state == 0 || page->machine.state == 0xff) return Orig(page);
         page->page.canClose = 1;
@@ -436,6 +461,7 @@ HOOK_DEFINE_TRAMPOLINE(PageDtor) {
 
 namespace AP::JukeboxPane {
     void InstallHooks() {
+        NaviUpdate::InstallAtFuncPtr(Game::Navi_Update.Ptr());
         NaviWaitKey::InstallAtFuncPtr(Game::Navi_WaitKey.Ptr());
         NaviCloseOldUiUpdate::InstallAtFuncPtr(Game::Navi_CloseOldUiUpdate.Ptr());
         NaviCloseEnter::InstallAtFuncPtr(Game::Navi_CloseEnter.Ptr());
@@ -503,7 +529,7 @@ namespace AP::JukeboxPane {
         s += " texts=" + std::to_string(texts) + " textsdrawn=" + std::to_string(glyphs);
         s += " fade=" + std::to_string(g_Fade);
         s += " shuffle=" + std::to_string(AP::Music::Shuffle()) + " repeat=" + std::to_string(AP::Music::RepeatOne());
-        s += std::string(" guide=") + (g_GuideStop ? "stop" : "play");
+        s += std::string(" guide=") + (g_GuideStop ? "stop" : "play") + (g_GuideMuted ? ",unmute" : ",mute");
         if (g_Ui.page != nullptr) {
             s += " name=" + std::string(Entry(g_Ui.list.at).name);
             s += " locked=" + std::to_string(!AP::Music::Playable(Entry(g_Ui.list.at).id));

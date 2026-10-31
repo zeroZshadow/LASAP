@@ -438,7 +438,10 @@ once when `state` is 2 (likely paused), else sets `fadingOut` and fades out over
 `+0xf1`, `+0xf4` and `priorityBonus`. `Sound_FadeFramesLeft` (`0x10ea8a0`) is `stopFade`'s frames left, 0 when done;
 `BgmManager_Play` uses it to tell a track still fading out. `Sound_SetVolume` (`0x10ea8c0 (sound, frames, volume)`)
 sets the `volume` fade. The pause menu sets every BGM's target volume to 0.2 (a track that starts while it is open
-gets 0.2 at once) and back to 1 over 8 frames as it closes. `id` is the sound archive item (the BgmTable id), `playFrames` what the SE restart limits
+gets 0.2 at once) and back to 1 over 8 frames as it closes. Every BGM volume change goes through `Sound_SetVolume`:
+`BgmInstance_Start` (the instance's `volume` at once, 0 when a jingle plays), the positional update,
+`BgmManager_SetVolume`, the jingles' ducking and its end, and the pause menu's (a hook on it held every BGM at 0,
+2026-10-31). `id` is the sound archive item (the BgmTable id), `playFrames` what the SE restart limits
 compare, `lifecycle` 1 initialized, 2 finalized, 3 destroyed.
 
 Open: the writers of `quiet`, `startOffset` and `noPositional`; the readers of `pitch`, `SoundHandle`'s unread fields,
