@@ -423,6 +423,7 @@ Sound_Play 0x085a97e0 f (StringView* name, nullptr, volume, pitch)
 Sound_PlayAtTracked 0x085a9a20 f (name, pos*, u64 extra, SeRef* out, volume, pitch): 3D, extra unverified
 Sound_PlayAt 0x085a9c70 f (StringView* name, const Vec4* worldPos, SeRef* out|null, f32 volume, f32 pitch): 3D, request mode 2
 PlayZoneBgm 0x085aa790 f (bool fadeOthers) -> instance: BgmManager_Play of the zone's track (BgmManager +0x9250, volume +0x932c); fades nothing while a Guardian Acorn's or Piece of Power's music plays
+ZoneTrack_Choose 0x085b2390 f (out StringView*, StringView* zone track): the track the zone update and PlayZoneBgm ask for: flag variants, or the stand-in music that plays (FRAMEWORK.md, Audio)
 BuffMusic_Play 0x085b3560 f (bool): BGM_NUTS_INTRO, kind 3; the item-get calls it with true for the Guardian Acorn (111) and the Piece of Power (112)
 EventAction_PlayAnimation2 0x085f7bb0 f virtual +0x30 on the actor's root component
 EventAction_PlayAnimation 0x0861d0c0 f
@@ -1036,6 +1037,9 @@ Picture_Update 0x0947f030 f vtable +0x28
 Picture_Open 0x0947f040 f vtable +0x30
 RaftGame_Setup 0x0947fd00 f vtable +0x20
 RaftGame_Update 0x09480a00 f vtable +0x28
+RapidflowGame_Finish 0x092f6360 f (game): the rapids game's end; stops the playing kind 1 instances (Sound_Stop, fade 90) and plays BGM_FIELD_NORMAL (return 0xdf24d8)
+RapidflowGame_StopBgm 0x092f2710 f (game): stops the playing kind 1 instances while BGM_GAME_OF_RAFT or BGM_RAFTING_TIMEATTACK plays; plays nothing
+RapidflowGame_PlayRideBgm 0x092f6840 f (game): mode 1 (the ride): BgmManager_FadeZone, then BGM_GAME_OF_RAFT unless it plays
 FileOperate1f_Setup 0x09482060 f vtable +0x20
 FileOperate1f_Update 0x09483590 f vtable +0x28
 FileOperate1f_Open 0x094835c0 f vtable +0x30

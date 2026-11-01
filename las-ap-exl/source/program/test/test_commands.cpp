@@ -162,6 +162,10 @@ namespace {
     constexpr Game::Func<void(u8*, s32)> DeguZolPhase1_ChangeState{0x2d7140};
     constexpr Game::Func<void(u8*, s32)> DeguZolPhase1_SetStage{0x2ea810};
 
+    // The rapids game's notices (kind): 0 its end, RapidflowGame_Finish on the game, as at the last waterfall
+    // (scripts/re/FRAMEWORK.md, Audio).
+    constexpr Game::Func<void(u8)> RapidflowGame_Notify{0x828b0};
+
     // DBG slimeeye: " state=<controller's> body=<body's, - without one>"; with fall, first the bonk's change to
     // Phase1 (from the wait or the rain only), with split the split; an ERR reply's reason otherwise
     std::string SlimeEye(const std::string& what, bool* ok) {
@@ -760,6 +764,10 @@ namespace {
             std::string path = "event/" + a[2] + ".bfevfl";
             bool ok = static_cast<bool>(AP::Bridge::RequestEvent(path.c_str(), a[3].c_str(), {}));
             AP::Send(std::string(ok ? "OK" : "ERR") + " flow " + a[2] + " " + a[3]);
+        } else if (cmd == "rapids" && a.size() >= 3 && a[2] == "end") {
+            // DBG rapids end: ends the rapids game as the last waterfall does; for a ride or race under way
+            RapidflowGame_Notify(0);
+            AP::Send("OK rapids end");
         } else if (cmd == "ghostnet") {
             // DBG ghostnet: the positions sent and the ghosts received (ghost_net.cpp)
             AP::Send("OK " + AP::GhostNet::State());

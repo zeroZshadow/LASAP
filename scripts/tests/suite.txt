@@ -21,3 +21,4 @@ jukebox_ballad: newgame_file2 jukebox_ballad
 egg_jukebox: newgame_file2 egg_jukebox
 zol_trap: newgame_file2 zol_trap
 dungeon_found client: newgame_file2 dungeon_found
+jukebox_rapids: boot_file1 jukebox_rapids

@@ -26,8 +26,9 @@ namespace {
 
     // BgmManager_Play, PlayZoneBgm, BgmTable_Find, the kinds and their fades (game 1.0.0, game/audio.hpp):
     // scripts/re/FRAMEWORK.md, Audio.
-    // Return addresses of the zone music's BgmManager_Play calls: the zone update, PlayZoneBgm (twice).
-    constexpr uintptr_t kZoneCalls[] = {0x9f008, 0xa688c, 0xa6988};
+    // Return addresses of the zone music's BgmManager_Play calls: the zone update, PlayZoneBgm (twice), and the rapids
+    // game's end (RapidflowGame_Finish), which stops the kind 1 tracks and plays BGM_FIELD_NORMAL, the rapids' track.
+    constexpr uintptr_t kZoneCalls[] = {0x9f008, 0xa688c, 0xa6988, 0xdf24d8};
     // The event action PlayBGM's call, and the event songs that stand in for the zone's music, which no PlayZoneBGM
     // follows: the washed-up sword's (SinkingSword.bfevfl) and the new game's wake-up (PlayerStart.bfevfl).
     constexpr uintptr_t kEventPlayCall = 0x805bc4;
@@ -126,6 +127,27 @@ namespace {
     bool KnownTrack(const char* name) {
         if ((*Game::BgmTable_guard & 1) == 0) return true;  // not known yet
         return Game::BgmTable_Find(Game::BgmTable.Ptr(), name) != -1;
+    }
+
+    // Set while the module asks for the zone's music itself (Tick's change, the ensemble's return).
+    bool g_Changing = false;
+
+    // While music that stands in for the zone's plays (Marin's song, a miniboss's, the rapids' ride and race), the zone
+    // update asks for that music again (ZoneTrack_Choose), which Play leaves alone: a track that plays already, or for
+    // the race a name one character short, which names no track. Swapped, the chosen track would start and the zone
+    // update would fade that music out, so such a call stays the game's. The chosen track as the zone's own is swapped
+    // as any zone call (Doors below).
+    bool KeepsMusic(const BgmManager* manager, std::string_view name) {
+        if (name == std::string_view(g_Track, g_TrackLen)) return false;
+        if (!KnownTrack(std::string(name).c_str())) return true;
+        for (const BgmInstance* instance : manager->bgm.starting) {
+            if (instance->handle.name.View() == name) return true;
+        }
+        for (const BgmInstance* instance : manager->bgm.playing) {
+            const Sound* sound = instance->handle.sound;
+            if (instance->handle.name.View() == name && sound != nullptr && !sound->fadingOut) return true;
+        }
+        return false;
     }
 
     // `ret` the call's return address.
@@ -511,7 +533,9 @@ namespace {
         }
         if (g_Yielded && chosen && !g_Pending && playing == nullptr && starting == nullptr &&
             EnsembleRoom(manager, nullptr)) {
+            g_Changing = true;
             if (Game::PlayZoneBgm(false) == nullptr) g_Yielded = false;  // no zone music here
+            g_Changing = false;
         }
     }
 
@@ -565,7 +589,8 @@ HOOK_DEFINE_TRAMPOLINE(BgmManagerPlay) {
     static BgmInstance* Callback(float volume, BgmManager* manager, StrView* name, bool b2, bool b3, bool force) {
         uintptr_t ret = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
         StrView chosen{g_Track, g_TrackLen};
-        bool swap = g_TrackLen > 0 && IsZoneCall(ret, name);
+        bool swap = g_TrackLen > 0 && IsZoneCall(ret, name) &&
+                    (g_Changing || name == nullptr || !KeepsMusic(manager, name->View()));
         if (swap && chosen.View() == kEnsemble) {
             g_LoopFile = true;
         } else if (name != nullptr && name->View() == kEnsemble) {
@@ -746,7 +771,9 @@ namespace AP::Music {
         }
         // The zone's music is asked for again: the chosen track (or the zone's own) starts from its beginning after
         // kStartDelayFrames (an ended track again: kLoopDelayFrames), and the rest fades out.
+        g_Changing = true;
         BgmInstance* started = Game::PlayZoneBgm(true);
+        g_Changing = false;
         if (started != nullptr) started->startDelay = g_Restart ? kLoopDelayFrames : kStartDelayFrames;
         g_Restart = false;
         g_Started = started;

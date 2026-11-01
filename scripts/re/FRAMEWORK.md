@@ -333,7 +333,8 @@ effects, the SE queue, the BGM lists and the environment SEs.
   takes the last of `free`, keeps it in `starting` while its stream is prepared (a few frames) and its `startDelay`
   runs, then in `playing`; a new instance starts its stream from the beginning. Fades and stops by name reach only
   `playing`, so a track asked for just before another change starts after it and plays on. The zone music's calls
-  return to `0x9f008` (the zone update) and `0xa688c`/`0xa6988` (`PlayZoneBgm`); the event action `PlayBGM`
+  return to `0x9f008` (the zone update) and `0xa688c`/`0xa6988` (`PlayZoneBgm`), the rapids' end's to `0xdf24d8`
+  (below); the event action `PlayBGM`
   (`EventAction_PlayBGM` `0x805a30`) passes its `label` and `volume` with the bools false. `BgmTable_Find`
   (`0x10e23d0 (table, const char* name)`) gives the track id, -1 for an unknown name; the table (`0x1caba28`, guard
   `0x1cac378`) is made on first use. `pad_9d8` is zeroed and never read.
@@ -364,8 +365,19 @@ effects, the SE queue, the BGM lists and the environment SEs.
   `AudioStereoJackOutput`, `AudioUsbDeviceOutput`.
 - `zoneTrack` and `zoneVolume` (1.0): `PlayZoneBgm` (`0xa6790 (bool fadeOthers)`, the event action `PlayZoneBGM`)
   plays them at once and fades the other kind 1 instances out over 90 frames, but fades nothing while a Guardian
-  Acorn's or Piece of Power's music plays. The zone update maps some zone tracks to variants by the game's flags
-  (`BGM_TARUTARU` plays `BGM_TARUTARU2_AFTER_THE_RESCUE`).
+  Acorn's or Piece of Power's music plays. The zone update and `PlayZoneBgm` ask for the track `ZoneTrack_Choose`
+  (`0xae390 (out StringView*, StringView* zone track)`) gives: some zone tracks map to variants by the game's flags
+  (`BGM_TARUTARU` plays `BGM_TARUTARU2_AFTER_THE_RESCUE`), and while `BGM_FIELD_NORMAL_INTRO`, `BGM_GAME_OF_RAFT`,
+  `BGM_RAFTING_TIMEATTACK`, `BGM_DUNGEON_BOSS_MIDDLE` (under a further check) or `BGM_FIELD_MARINE` plays, that
+  track, which `BgmManager_Play` then leaves playing. The race's comes as `GM_RAFTING_TIMEATTACK` (a name one
+  character short), an unknown name, with the same effect (2026-10-31, sandbox).
+- The rapids game (the event system actor `RapidflowGame`, set up by `RaftShopMan.bfevfl`; mode 1 the ride, 2 the
+  race): the ride's music starts in `RapidflowGame_PlayRideBgm` (`0xdf2840`: `BgmManager_FadeZone`, then
+  `BGM_GAME_OF_RAFT` unless it plays), the race's in `Common.bfevfl` as Link boards the raft (`StopAllBGM`, then 2 s
+  later `PlayBGM` `BGM_RAFTING_TIMEATTACK`). `RapidflowGame_Finish` (`0xdf2360`, down the last waterfall) stops every
+  playing kind 1 instance itself (`fadeOutFrames` 90, `Sound_Stop`) and plays `BGM_FIELD_NORMAL`, its call returning
+  to `0xdf24d8`; `RapidflowGame_StopBgm` (`0xdee710`) makes the same stop while the ride's or the race's track plays, and plays nothing. Measured
+  2026-10-31 (sandbox, the race).
 - `envSe` and `envGroup`: the environment SE and the sound group it needs, the zone record's (`+0x74`, `+0x94`) or an
   event's. `BgmManager_OnZoneChanged` (`0x9e460`, on the zone signal) sets them, plays the zone BGM with `startDelay`
   150 (0 with `zoneBgmNow`, which it then clears), fades the other kind 1 instances out over 90 frames and changes the

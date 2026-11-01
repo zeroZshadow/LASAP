@@ -1,0 +1,52 @@
+# The jukebox through the rapids race (music.cpp, KeepsMusic and kZoneCalls; scripts/re/FRAMEWORK.md, Audio): the
+# race's music plays alone while the zone update asks for it again (as GM_RAFTING_TIMEATTACK, a name that is no
+# track), and the race's end, which stops the music and plays BGM_FIELD_NORMAL itself, brings the chosen track back.
+# Run after boot_file1 (no client needed). Last in its group: Link stays on the raft.
+send DBG music off
+await 10 music=-
+# The race costs 100 rupees.
+send DBG give 106 1 -1
+expect OK\sgive 5
+# South of the raft shop's door (Field_04P), one tile out of its trigger.
+warp Field 228.75 12.75 42.0
+send DBG enemies kill
+expect OK 5
+send DBG music BGM_FAIRY
+await 10 music=BGM_FAIRY zonebgm=\S+ bgm=BGM_FAIRY:1\s
+# In the shop the keeper (RaftShopMan.bfevfl, entry talk): yes, then the race (the second of three options).
+hold 0 0 32767 until level=RapidsRideTicket 10
+loaded 20
+goto 10.3 0 7.84
+face right
+interact
+advance 2 30 fast
+until msg:Selecting 5
+choose 0
+advance 2 30 fast
+until msg:Selecting 5
+choose 1
+dismiss 60
+# Out through the door, down the steps onto the dock and east onto the raft: the race starts (Common.bfevfl:
+# StopAllBGM, which the jukebox holds, then 2 s later PlayBGM BGM_RAFTING_TIMEATTACK).
+goto 7.5 0 9.0
+hold 0 0 -32767 until level=Field 10
+loaded 20
+goto 228.75 12.15 46.05
+hold 0 32767 0 until !free 3
+await 15 music=BGM_FAIRY zonebgm=\S+ bgm=BGM_RAFTING_TIMEATTACK:1\s
+# A second east into the next zone, whose update asks for the race's music again: those calls stay the game's, and it
+# plays alone.
+tap 0 60 2 32767 0
+poll play\sGM_RAFTING_TIMEATTACK\s\+9f008\s000\s-\s*$ 10 DBG music
+check music=BGM_FAIRY zonebgm=\S+ bgm=BGM_RAFTING_TIMEATTACK:1\s
+# The race's end (as at the last waterfall; steering the raft there takes many timed turns) stops the music and asks
+# for BGM_FIELD_NORMAL, which is the chosen track.
+send DBG rapids end
+expect OK\srapids\send 5
+await 10 music=BGM_FAIRY zonebgm=\S+ bgm=BGM_FAIRY:1\s
+send DBG music
+expect play\sBGM_FIELD_NORMAL->BGM_FAIRY\s\+df24d8\s000\snew
+wait 3
+check music=BGM_FAIRY zonebgm=\S+ bgm=BGM_FAIRY:1\s
+send DBG music off
+await 10 music=- zonebgm=(\S+) bgm=\1:1\s
