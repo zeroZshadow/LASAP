@@ -82,7 +82,7 @@ namespace Game {
     inline constexpr Func<bool(void*, SharedPtr<>*)> Entity_AddChild{0xfb3290};
     // (actor, name, length): it has a component of that name (its component map, by FNV-1a)
     inline constexpr Func<bool(Actor*, const char*, u64)> Actor_HasComponent{0xfa9490};
-    // (node, world position*): moves the node there (guess: Node set world position)
+    // (node, world position*): moves the node there (coordsNew through the parent's or attachment's inverse transform)
     inline constexpr Func<void(Node*, const Vec3*)> Node_SetWorldPos{0xfb6d30};
 
     // ---- NPCs ----

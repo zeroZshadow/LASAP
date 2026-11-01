@@ -17,12 +17,14 @@ allocates 0x6c0 bytes (`operator_new(0x6c0)` at every such site, `0x1bca0`, `0x8
 The framework has no vtable.
 
 **Lifecycle.** The game's entry loop (`0x1bc34`) runs `Framework_Init` (`0x9410`), `Framework_MainLoop` (`0x1b920`),
-then `Framework_Shutdown` (`0x1ab30`), and starts at the init again while `restart` is set (its writer is not found).
+then `Framework_Shutdown` (`0x1ab30`), and starts at the init again while `restart` is set (nothing writes it, so
+Init runs once).
 `Framework_Init`, in order: the present setup; `systemEvents` (`0xa980`, `0xfa1e60`); `controller` (`0xa9f0`);
-`Framework_InitGraphics` (`0xaa40`); `0xb6a0` (`physicsHeap`, `physics`); `Framework_InitResourceListener` (`0xb990`);
-`ActorSystem_Make` (`0xba30`, `actorSystem`); `0xbde0`; `Audio_Init` (`0xbf00`); `PlayReports_Init` (`0xdf6870`,
-`playReports`); the frame step's task in `frameQueue` (`0xbf90`: lambda vtable `0x1b502d0` → `Framework_FrameStep`
-`0x17e30`); the 14 update and 5 render phases (below); `gameState` (`GameStateFactory_Create` `0xc450`).
+`Framework_InitGraphics` (`0xaa40`); `Physics_Init` (`0xb6a0`: `physicsHeap`, `physics`);
+`Framework_InitResourceListener` (`0xb990`); `ActorSystem_Make` (`0xba30`, `actorSystem`); `0xbde0`; `Audio_Init`
+(`0xbf00`); `PlayReports_Init` (`0xdf6870`, `playReports`); the frame step's task in `frameQueue` (`0xbf90`: lambda
+vtable `0x1b502d0` → `Framework_FrameStep` `0x17e30`); the 14 update and 5 render phases (below); `gameState`
+(`GameStateFactory_Create` `0xc450`).
 `Framework_InitStorage` (`0xa4a0`) fills `romMount` (`"rom"`), `regionResources` (`region_common`, `common`,
 `regionJP`, `JPja`), `heapMemory` (a block of (total − 0x6da00000) & ~0xfff bytes, freed through `heapMemoryFree`,
 `0x5390` by default) and the main heap (0x53600000 bytes in it).
@@ -41,10 +43,11 @@ bit 0 in `systemEvents`' first byte makes it call `SetGameState(gameState, 0, 0)
 | `player` | Link (PLAYER.md); about 500 places load the pair `+0x4b8`/`+0x4c0` |
 | `resourceListener` | an interface (vtable `0x1c31138`) registered with the resource manager |
 | `renderCallbackId` | the graphics callback the graphics init registers (graphics `+0x83c0` counts them); `Framework_TeardownGraphics` (`0x1b1d0`) unregisters it (`Graphics_UnregisterCallback` `0x10211f0`) |
+| `lastFrameTick`, `elapsedOffset` | `Phase_Present` counts one missed vsync less when the time since `lastFrameTick` (ns) minus `elapsedOffset` is below 13333332 and graphics `+0x81c0` (ns: the frame's GPU time, the difference of two GPU timestamps, `0x101fb98`) below 14166666; nothing writes `elapsedOffset` |
 | `presentCount`, `lastPresentVsync`, `skipRenderFrames`.. `presented` | `Phase_Present` (`0xc910`, render phase 4) counts presents, records the vsync counter (graphics `+0x81ac`) + 1 and sets `skipRenderFrames` from the vsyncs missed, clamped to `minSkip`..`maxSkip` (0 in levels: `0x854624`, `0x854c14`; 1 at construction); `Phase_EndOfUpdate` (`0x11960`) counts it down, flushing instead of rendering, and clears `presented` |
 | `presentInitDone` | the one-time present setup (the camera's `active` cleared, the skip count to `minSkip`), also inlined at `0x8545e4`, `0x8379a4`, `0x8646ec` |
-| `zoneFlagB5` | copied from the current zone's `+0xb5` (`0x7fe4e4`, `0x865fdc`; likely) |
-| `shadowMinOffset`, `shadowMaxOffset` | (FLT_MIN × 3, 0) and (FLT_MAX × 3, 0) at construction, then the constants at `0x16af170` and `0x16aeec0` from the graphics init; render phase 0 adds them to the followed point for the camera's `shadowMin` and `shadowMax` (`0x10994`, `0x10998`) |
+| `zoneFlagB5` | copied from a zone's `+0xb5`: the new zone's when the scene's zone changes (`0x865fdc`), the looked-at room's zone in `SetLookAtEnvironmentNonWait` (`0x7fe524`); while set, render phase 0 makes the shadow bounds the box around the camera's position and the bounding spheres of the renderer's models that lie in the camera's frustum, instead of the camera entity's eye plus the offsets (`0x1098c`) |
+| `shadowMinOffset`, `shadowMaxOffset` | (FLT_MIN × 3, 0) and (FLT_MAX × 3, 0) at construction, then the constants at `0x16af170` and `0x16aeec0` from the graphics init; render phase 0 adds them to the camera's eye for the camera's `shadowMin` and `shadowMax` (`0x10994`, `0x10998`) |
 | `paused` | 1 at construction; the pause menu or a level load (ACTORS.md, Entity manager and the frame) |
 | `roomPaused` | set by `Scene_UpdateZone` (`0x8364a4`, `0x8364f4`) |
 | `controller` | make_shared of 0x570 bytes (constructor `0x87f850`; UI.md, Input) |
@@ -53,18 +56,22 @@ bit 0 in `systemEvents`' first byte makes it call `SetGameState(gameState, 0, 0)
 | `drawRoot` | the camera's draw node tree (its `+0x2d8`) |
 | `camera` | the renderer's view with id 1 (Camera, below) |
 | `view2` | the view with id 2: 0x5e0 bytes (vtable `0x1b50c68`, constructor `0x18d50`), orthographic (`ownMatrices` 1, an identity view) |
-| `view3` | another view: render phase 0 (`0x109bc`, `0x11220`) gives it the camera's shadow bounds while its `active` is set; no writer found (likely) |
+| `view3` | another view: render phase 0 (`0x109bc`, `0x11220`) gives it the camera's shadow bounds while its `active` is set; nothing writes it |
+| `unused_530`, `unused_5a0` | their only accesses are the clears in `Framework_TeardownGraphics` (`0x1b204`, `0x1b230`) and the destructor's release of `unused_530` (`0x9110`) |
 | `renderEnv` | 0x290 bytes (constructor `0xff94d0`; its init `0xff9880` loads `shader/ResetData_cube.bntx`); the renderer's `+0x40` |
-| `physicsHeap`, `physics` | made by `0xb6a0`: 0x2000000 bytes handed to the allocator `0x1cd3668` (`0x1431470`); an object from `0x10c5730`, configured twice by `0x10c6790` (scenes 0 and 1, with the collision filter callbacks `0x829920` and `0x8299d0`, which compare group and mask words). PhysX strings (`0x16b73ca`..) suggest PhysX (likely) |
+| `physicsHeap`, `physics` | made by `Physics_Init` (`0xb6a0`): 0x2000000 bytes handed to the physics heap `0x1ccf668` (`0x1431470`); the physics system from `0x10c5730`, whose PhysX 3.4 worlds 0 and 1 it makes through `Physics_GetWorld` (ITEMS.md, Physics step) |
 | `playReports` | 15 PlayReport objects (0x58 bytes, constructors `0xdf6d40 + i × 0x70`): 0 clear, 1 dead, 2 get_item, 3 play_minigame, 4 warp, 5 fishing_result, 6 mappin, 7 panel_dungeon, 8 panel_plus, 9 panel_theme, 10 amiibo_touched_id, 11 amiibo_get_panel, 12 amiibo_touched_count, 13 amiibo_write_dungeon, 14 amiibo_read_dungeon |
 | `systemEvents` | 0x118 bytes (constructor `0xfa01a0`; init `0xfa1e60` sets four nn::oe notification modes); its `+0x18` takes a callback (`0x18af0`) that resizes the graphics on an operation mode change |
 | `present` | `Present` (below) |
 
-**Present** (`Framework::present`, 0x78 bytes; init `0x107cb90 (present, list, list, WeakPtr renderer)`, destructor
-`0x107cb20`): `active` (1), `maxInterval` (the maximum present interval: 0xff at construction, 1 in levels, clamped
-with graphics `+0x812c`), the display sizes `handheldSizes` and `dockedSizes` with `handheldIndex` (the first entry ≥
-graphics `+0x6e48`) and `dockedIndex` (the first entry ≥ graphics `+0x6e4c`, used when graphics `+0x56a8` is 1; both
-likely) and `renderer`. `vector_58` is freed by the destructor.
+**Present** (`Framework::present`, 0x70 bytes; `Present_Init` `0x107cb90 (present, list, list, WeakPtr renderer)`,
+destructor `0x107cb20`): `active` (1), `maxInterval` (the maximum present interval: 0xff at construction, 1 in levels,
+clamped with graphics `+0x812c`), `renderer`, and per mode a list of graphics levels with an index into it:
+`handheldIndex` starts at the first entry ≥ graphics `+0x6e48` (14), `dockedIndex` at the one ≥ graphics `+0x6e4c`
+(8); graphics `+0x56a8` picks the mode (1 docked). `Phase_Present` pushes each present's GPU load into `loadHistory`:
+graphics `+0x81c0` in % of `frameTime` × the present interval. At 6 entries it clears the history, first moving the
+mode's index one entry on (clamped) when all were above 90, or one back when all were below 70, and requesting the new
+entry (`Present_RequestLevel` `0x107d110`: a graphics callback that applies it).
 
 **Frame pacing.** `GraphicsSystem_Init` (`0x10194c0 (system, config)`, the graphics system `*(Graphics_ptr)[1]`,
 `Graphics_ptr` `0x1cc8b30`) starts `VsyncWatcher_Init` (`0x10410d0 (watcher, system)`) at system `+0x8168`: a thread
@@ -83,15 +90,16 @@ loaded (`0x868528`) and starts the title. Each `GameState_Start*` (`GameState_St
 connects a lambda (`0x1bc43f8`..) to the scene's `onFinished` that runs `GameState_NextScene` (`0x86a120`).
 
 - `SetGameState` (`0x87b780 (state, u32 id, bool)`) stores `nextSceneId` and finishes the current scene by `sceneId`;
-  ids 3 and 4 go through the level scene's `roomManager` and write its `jumpFlag` with the bool.
+  a level scene through its `roomManager` (`LevelManager_LevelJump` with no level, unless the room manager has
+  finished; ACTORS.md, Level jump), the bool into `jumpFlag`.
 - `GameState_NextScene` resets the resource manager first (`0xfc6380`) when `resetResources` is set and clears it,
   then dispatches on `nextSceneId` (jump table `0x16b2d14`): 1 the title, 2 the file menus, 3 and 4 a level, 5 the
   ending, else `GameState_Finish` (`0x8674d0`, virtual `+0x50`), which resets the systems, drops `fadePresets`,
-  `globalFlags` and `vector_c0` and finishes the task, which ends the main loop.
-- `GameState_Update` (`0x8670f0`, virtual `+0x20`) drops the `vector_c0` entries whose first object's u32 `+0x78` is
+  `globalFlags` and `unused_c0` and finishes the task, which ends the main loop.
+- `GameState_Update` (`0x8670f0`, virtual `+0x20`) drops the `unused_c0` entries whose first object's u32 `+0x78` is
   0.
-- `titleSeen` is set when a title scene finishes (`0x87e318`); each title scene copies it into its `+0x84` and then
-  starts on the title screen (Title UI state 5; `0x87e374`, `0x87de24`, `0x87df14`; likely).
+- `titleSeen` is set when a title scene finishes (`0x87e374`); each title scene copies it into its `+0x84` as it
+  starts (`0x87de24`, `0x87df14`), which nothing else reads.
 
 **Resource groups.** A resource group (a make_shared of 0x68 bytes, control vtable `0x1b64040`, the object at `+0x18`:
 vtable `0x1b640a0`, a second vtable `0x1b640f8` at `+0x48`) is a set of files loaded asynchronously: `+0x8` an
@@ -118,9 +126,12 @@ by its vtable (`SceneOf`, `Scene` in `game/framework.hpp`; `DBG uis` prints it).
 the level scene's; the game passes `gameState`.
 
 The small scenes' fields follow the task base: TitleScene `+0x81` the step (`TitleScene_Update` `0x87bde0`, 0 to 8),
-`+0x82` set while the save read `0xe072b0(0)` runs (`0x87e570`; guess), `+0x83` set once the timer
-`*(0x1cb26f0)+0xbc0` passes a threshold (`0x87ce04`; guess), `+0x84` the game state's `titleSeen`, which makes the
-Title UI go to state 5; FileMenusScene `+0x81` the step; EndingScene `+0x81` the step (0 to 7), `+0x82` and `+0x83`.
+`+0x82` no save file (`0x87e570`, when the byte `0x1cc1896` is set: 0 when `SaveFile_Exists` `0xe072b0` finds slot
+0, 1 or 2, else 1; `nn::fs::GetEntryType`, false only for PathNotFound); with `+0x84` clear it makes the update
+ignore the buttons that otherwise end the intro (step 4; `0x87cac0`). `+0x83` is set once the timer
+`*(0x1cb26f0)+0xbc0` passes a threshold and the scene moves the Title UI to LogoIn (1) (`0x87ce04`, `0x87cdf4`);
+`+0x84` starts as the game state's `titleSeen` and is set when the scene moves the Title UI to state 5 (`0x87c7f4`,
+`0x87c930`, `0x87cc6c`, `0x87ccb8`). FileMenusScene `+0x81` the step; EndingScene `+0x81` the step (0 to 7), `+0x82` and `+0x83`.
 
 The intro and the title share their scene: the intro plays while the title screen's UI (UI 0x1d, `Title`) is not
 there yet or its machine waits in Deactive (UI.md, State machines). The module counts a save as loaded outside the
@@ -129,12 +140,41 @@ fresh boot to a level (2026-10-23, `screens`).
 
 **Level scene** (`LevelScene`; `LevelScene_Ctor` `0x835fa0 (scene, SharedPtr* parent)`, destructor `0x844ea0`):
 
-- `saveManager`: constructor `0xe081a0`, destructor `0x835d80`. `object_510`: constructor `0x7d69c0`, destructor
-  `0x7d71a0`.
+- `saveManager`: constructor `0xe081a0`, destructor `0x835d80`. `environment`: constructor `0x7d69c0`, destructor
+  `0x7d71a0`, the scene's Finish `0x7dad30`. The level load (`0x838e80`) hands it `archive` (`0x7d7510`), which also
+  connects to `zoneChanged` and `roomBlend` and reads the environments. It takes `Framework::renderEnv`, whose `+0x10`
+  holds 32 light slots of 0x9c bytes (`+0x8` intensity, `+0x90` handle, `+0x98` base intensity). Each frame
+  `Scene_UpdateZone` steps the blend (`0x7da010`) while `blending`, else the fade (`0x7dbd70`) while `fadeFrame` is
+  not `fadeEnd`, then the look-at blend. A string switch in its code (`0x7d9690`..) names screen effects (Mist,
+  HotAir, SandCloud, VignetteTop, WindFishsEgg). The `Environment` event actor's actions (`Environment_FindAction`
+  `0x8168ac`; each std::function's call is its vtable `+0x30`) work on it:
+  - `ChangeEnvironment`, `ChangeEnvironmentNonWait`: `0x7fe1a0 (name, duration)` → `0x7d9fc0`, which also resets the
+    fade and clears `savedIntensities`.
+  - `StashSaveIntensity` (`0x7fedf0 (attenuation, duration)` → `0x7db5f0`) saves every live light slot and starts the
+    fade down from `fadeFrame` = `fadeFrames`; `StashPopIntensity` (`0x7fefb0 (duration)`) fades back up from 0 when
+    lights are saved. Each fade step (`0x7dbd70`) sets a saved light's intensity to base × saved ×
+    (`attenuation` + (1 − `attenuation`) × `fadeFrame` / `fadeFrames`).
+  - `SetLookAtEnvironmentNonWait` (`0x7fe380`) takes the first object of a scene list (`0x1b730`, `+0x210`) whose box
+    (its `+0x1a8` → `+0x20`..`+0x3c`) holds the camera's point `+0x600`. `0x7d80b0 (env, object, 0)` sets
+    `lookAtPending` to the node under the object's `+0x1b8` that the predicate `0x7d8490` picks and, from state 0,
+    starts the delay; then the action changes to the object's environment (`0x7d9fc0`). When `delayFrame` reaches
+    `delayFrames`, `0x7dc510` moves `lookAtPending` into `lookAt` and starts the blend; it clears both and goes to state
+    0 when either is gone or both are the same. While blending, `Scene_UpdateZone` waits for the `Loader` component
+    among `lookAt`'s components (`+0x58`; ready: its `+0x58`), copies `lookAt`'s environment (`+0x318`, floats
+    `+0x320`..`+0x388`) into the render env with its `+0x1d8` = 1 − `lookAtFrame` × `lookAtRate`, and at the end makes
+    it the render env's own and calls `0x7dc510`.
 - `sheets`: the level's datasheets (`0x83e0a0` from `0x8389e0`; the loads `0x838b50`..`0x838e50`): PlayerAnimation,
   Facial, InterestIK, Npc, NpcPhysicsTraits, Reaction, CranePrize*, Light, FishingFish, FishingSpot and
   AutoSaveLocation (`.gsheet`) and `kodama/environment.kar`.
-- `buffKind` (ITEMS.md) and `buffTime`, counted down by `0x837218` (likely).
+- `buffKind` (ITEMS.md) and `buffTime`, which `Scene_UpdateZone` counts down by the frame time and, at 0, clears
+  with `buffKind` (`0x837218`).
+- `buyCount`: NpcCrazyTracy's code (`0x96cb44` adds 1 up to 99, `0x96cce0` zeroes it, `0x96c77c` reads it; its
+  strings name the actions `AddBuyCount` and `ResetBuyCount`).
+- `cameraFacing`: the camera system's `0xbc048` writes 1, 2, 3, 2 for its mode 1-4 (`0xbc190`), else 0. NPC code
+  (`0x92bd10`) and Link's (`0xd6e994`) turn an offset by it: entry `64 × cameraFacing` of the 256-entry angle table at
+  `*0x1c93ed0` (16 bytes each, outside the main module), whose first two floats scale the offset into z and x.
+- `minigame`: NpcGameShopOwner sets 1 (`0x9bbb84`, `0x9bbd70`), TagFishingManager 2 (`0xe16e7c`), the rapids ride 3
+  (`0xdeebd0`), each 0 again after; `NpcGhost_Update` counts its `timer` down only while it is 0 (`0x9beacc`).
 - Four signals (`Signal`, ACTORS.md, Nodes and Dungeon rooms): `zoneChanged` (constructor `0x8326e0`),
   `roomChanged` (`0x833530`) and `roomBlend` (`0x834150`), which `Scene_UpdateZone` emits, and `activeZone`
   (`0x835000`), which `Scene_SetActiveZone` emits once the zone camera's scroll ends. Subscribers reach a signal
@@ -143,7 +183,14 @@ fresh boot to a level (2026-10-23, `screens`).
   `activeZone` (`Actor_SubscribeZones`).
 - `zone`, `room`, `roomA`, `roomB` (-1) and `blend` (0xff) at construction: Link's zone grid cell (`ZoneGrid_Lookup`)
   and room; `Scene_LeaveRooms` sets them back.
-- `field_674` and `field_694` are cleared by the scene's Finish (`0x838188`).
+- `retryA`, `retryB`: `Event_ProcessLevelJump`'s `$RETRY` (`0x81bbb4`) copies `retryB` when its `set` is, else
+  `retryA`, into the current data (position `+0xdc`, facing `+0x121`), then clears both `set`s and the buff through
+  `minigame`, as the scene's Finish (`0x838180`) also does. `Player_UpdateAnimation` writes `retryB`
+  (`0xd35928`..`0xd35a6c`): the centre of the cell under Link of the level data's 1.5-unit grid (`+0x228`, origin
+  `+0x80`; `0x8e8520`), at his height, and his node's facing. `retryA` is Link's world position
+  and facing at the end of each level load: `LevelLoad_Finish` sets room manager `+0x3fb`, and a callback that
+  `RoomManager_FinishLevelLoad` installs (`0x859490`) then writes it (`Scene_SetRetryA` `0xd8c800`, which also clears
+  `retryB`'s `set`) and clears `+0x3fb`.
 
 ## Scheduler and phases
 
@@ -208,18 +255,25 @@ tag.
 **ThreadPool** (`game/stl.hpp`; `ThreadPool_Ctor` `0x8700 (pool, u64 threadCount, std::function* threadFactory)`,
 `ThreadPool_Dtor` `0x7b80`, `ThreadPool_Worker` `0x8bd0`; 0x78 bytes): `threads` (0x18 bytes each, element vtable
 `0x1b50058`); `jobs`, a deque of `Function`s (0x30 bytes, 0x55 a block) whose front each thread pops under `mutex`,
-waiting on `wake` (likely); a thread returns once `stop` is set and the deque is empty. The thread factories are plain
+waiting on `wake` while it is empty; a thread returns once `stop` is set and the deque is empty. The thread factories are plain
 functions: the framework's `0x76c0`, `0x7840` and `0x7860` (each `0x81b0(out, 0x1001, 0x10000, index)`), the UI
 manager's `0xecd020`.
 
 **PhaseQueue** (`PhaseQueue_Ctor` `0x76e0 (queue, std::function* threadFactory)`, destructor `0x7ab0`, `PhaseQueue_Run`
-`0x11cc0`; 0xf8 bytes): `byPriority` is a `std::map` by s32 priority to a group of phases (node `+0x28` the group,
-`+0x38` its first phase, chained through `+0x0`; a phase's `Function` at `+0x20`, its pending result at `+0x50`;
-likely), `phases` an `unordered_map`. `pending` holds the changes made while it runs: a deque of 0x50-byte entries,
-0x33 a block (`+0x0` u32 op: 0 add, 1 remove, 2 clear, 3 set priority; `+0x4` u32 id; `+0x10` the `Function`; `+0x40`
-s32 priority), applied after Run by `PhaseQueue_ApplyPending` (`0x13050`). `worker` is a one-thread `ThreadPool`: Run
-hands a priority group to it (`0x11f70`) when one of its phases returned work, and waits (likely). The entity
-manager's queues have the same shape (ACTORS.md).
+`0x11cc0`; 0xf8 bytes): `ownerThread` comes from `std::__libcpp_thread_get_current_id` (the import
+`0x14312c0`). A `byPriority` node (0x50 bytes) holds the priority at `+0x20` and the group from `+0x28` (buckets,
+`+0x38` the first phase, `+0x48` the maximum load factor 1.0); a phase node (0x60 bytes) holds the id `+0x10`, its
+`Function` `+0x20` and the `std::future<void>` it returned `+0x50`. A `phases` node (0x18 bytes) holds the id `+0x10`.
+`PhaseQueue_Add` (`0xe120 (queue, u32* id, std::function*, s32 priority)`, which `Framework_AddUpdatePhase` calls)
+returns false for a known id, else records it and inserts the phase (`PhaseQueue_Insert` `0xe8e0`, making the group
+when new), or queues the add in `pending` while `running` is set. `pending` holds the changes made while it runs: a
+deque of 0x50-byte entries, 0x33 a block (`+0x0` u32 op: 0 add, 1 remove, 2 clear, 3 set priority; `+0x4` u32 id;
+`+0x10` the `Function`; `+0x40` s32 priority), applied after Run by `PhaseQueue_ApplyPending` (`0x13050`; remove
+`PhaseQueue_Take` `0x133c0`, set priority `0x13510`: take, then insert). Run calls each phase's `Function` in
+ascending priority and keeps the future it returns; a group with a valid future goes to `worker` (`0x11f70`), while
+the calling thread runs the jobs of its thread-local queue (one each `0xfd35d0`) until that job sets its done
+flag. The entity manager's queues have the same
+shape (ACTORS.md).
 
 **Phases.** `Framework_AddUpdatePhase` (`0xc0e0 (framework, id, priority, std::function*)`) adds to `updatePhases`,
 `Framework_AddRenderPhase` (`0xc290`) to `renderPhases`; each queue runs in ascending priority. `Framework_FrameStep`
@@ -229,7 +283,7 @@ runs the update phases; the last, `Phase_EndOfUpdate`, runs the render phases.
 |---|---|---|---|---|
 | update | 0 | `0x0` | `0x17800` | |
 | update | 1 | `0x4e20` | `0x174d0` | `Scheduler_Update` |
-| update | 2 | `0x61a8` | `0x15d80` | game control (guess) |
+| update | 2 | `0x61a8` | `0x15d80` | the controller (`Framework::controller`; UI.md, Input) |
 | update | 9 | `0x6d60` | `0x14510` | the UI manager |
 | update | 3 | `0x7530` | `0x15b80` | `Phase_ActorUpdate`: the actors' update, the play time |
 | update | 4 | `0x88b8` | `0x15730` | |
@@ -259,15 +313,24 @@ pointer (control block vtable `0x1b50db0`).
   `nearZ` `+0x100`, `farZ` `+0x104`, `frustum` `+0x110` (0xf0 bytes). A view with `ownMatrices` (`view2`) computes its
   orthographic projection from `nearZ`, `farZ` and `aspect`, the inverse from `view`, and the frustum through
   `Frustum_Make` (`0x112fb60 (l, r, b, t, n, f, out, matrix)`). It then builds `shadowMatrix` from `shadowMin`,
-  `shadowMax` and the light set's directional light (`+0x20` its index, `+0x10` the entries of 0x9c bytes, the
-  direction at `+0x50`; identity without one; likely), writes `shadowParams` with it (guess) and copies the matrix to
-  `renderObject` `+0x200`..`+0x240`. The constructor's defaults: `nearZ` 0.2, `farZ` 1000, `aspect` 16/9,
+  `shadowMax` and the light set's directional light (`+0x20` its index, -1 none, which leaves the matrix as it is;
+  `+0x10` the entries of 0x9c bytes, the direction at `+0x50`): a look-at from `shadowParams`, the bounds' centre
+  moved back against the light by half their diagonal, to the centre; identity for a zero direction. It copies the
+  matrix to `renderObject` `+0x200`..`+0x240`. The constructor's defaults: `nearZ` 0.2, `farZ` 1000, `aspect` 16/9,
   `frustumCulling` 1, `bufferIndex` -1, `active` 1.
-- `frustum` (`Frustum`): `boxMin` and `boxMax` (w 0; guess), six planes (d = −dot(normal, a point of the plane);
-  likely) and `planeCount` 6. Model culling (`0x10377f0`) tests models against it only while `frustumCulling` is set
-  (`0x1037828`).
-- `shadowMin` and `shadowMax`: render phase 0 (`0x10540`, `0x109b8`) sets them each frame to a world point (`+0x600`
-  of an object, unless its `+0x700` bit 2) plus `Framework::shadowMinOffset` and `shadowMaxOffset`.
+- `frustum` (`Frustum`): `boxMin` and `boxMax`, the box around the frustum's eight corners (w 0), six planes (d = −dot(normal, a point of the plane); normals
+  outward) and `planeCount` 6; `Frustum_Make` writes `planeCount` and `boxTest` (0) as one 8-byte store (`0x112fee4`).
+  `Frustum_TestSphere` (`0x1130090 (frustum, {Vec4 center, f32 radius})`) is false when the sphere lies wholly outside a
+  plane, `Frustum_ClassifySphere` (`0x1130100`) gives -1 outside, 0 crossing, 1 inside; `Frustum_TestBox` (`0x1130180
+  (frustum, {Vec4 min, Vec4 max})`) tests the box against each plane, after an overlap test with `boxMin`..`boxMax`
+  while `boxTest` is set (callers `0x174284`, the camera's frustum, and `0x8e7a58`). Model culling (`0x10377f0`) tests
+  models with `Frustum_TestSphere` only while `frustumCulling` is set (`0x1037828`).
+- `shadowMin` and `shadowMax`: render phase 0 (`0x10540`, `0x109b8`) sets them each frame to the active camera
+  entity's eye plus `Framework::shadowMinOffset` and `shadowMaxOffset` (with `Framework::zoneFlagB5` clear). The
+  entity is the shared pointer at `+0x0` of the CameraSystem (`CameraSystem_ptr`, 0xa8 bytes, constructor
+  `0xbdaa0`); its eye `+0x600` (also `AudioCamera_Update`'s) is recomputed first while its `+0x700` bit 2 is set:
+  the followed node's (`+0x510`, else the transform at `+0x530`) world position plus (0, 0, −`+0x560`) scaled and
+  rotated by its scale and rotation (`0x10e48`).
 - `View_Setup` (`0x1025200`, `+0x20`, `(view, arg, width, height)`) makes `renderObject` (0x470 bytes, vtable
   `0x1c47c60`) and `viewport`, an nn::gfx `ViewportScissorState` (`ViewportScissorState_Ctor` `0x1146bc0`,
   `ViewportScissorState_Initialize` `0x1146bf0 (state, device, info)`, `ViewportScissorState_Finalize` `0x1146d80`;
@@ -306,12 +369,15 @@ bytes) and `audioHeap2` (0x3000000). `BgmManager_Init` (`0x9d840`) sets up the p
 and loads `GROUP_COMMON`. `BgmManager_Update` (`0xa0f90`, from the sound update phase) runs the listener, the
 effects, the SE queue, the BGM lists and the environment SEs.
 
-- `cameraEye`, `cameraTarget` and `cameraFov` (20 when made; no reader found): `AudioCamera_Update` (`0xb84f0`, a
-  camera entity's task) copies them each frame. `listenerPos` is 0.7 × the eye + 0.3 × Link's world position (the
+- `cameraEye`, `cameraTarget` and `cameraFov` (20 when made; no reader found): `AudioCamera_Update` (`0xb84f0`)
+  copies them each frame from MainCamera. MainCamera's `Setup` (`0xb60a0`) attaches an `AudioListenerComponent`
+  (vtable `0x1b5a158`, type id `0x1cac9f8`, made by `0xb7970`) at its `+0x788`, whose `Register` (`0xb7e90`) posts
+  that task. `listenerPos` is 0.7 × the eye + 0.3 × Link's world position (the
   eye alone without Link): the 3D listener for SE distance culling, positional BGM and ambient lines.
-- `effects` (`AudioEffects`): the aux buses' effects, objects in a static at `0x1cac798`. A reverb on bus 0 (kinds
-  1-2 one effect, 3-4 another, likely an I3DL2 reverb; `AudioEffects_ApplyReverb` `0x9cca0`) and a delay on bus 1
-  (kinds 5-6: 250 ms, feedback 0.6 or 0.4; `AudioEffects_ApplyDelay` `0x9d070`). A state of 2 waits until the effect
+- `effects` (`AudioEffects`): the aux buses' effects, nn::atk effect objects (by their RTTI) in a static at
+  `0x1cac798` (constructor `0xfa2650`): `EffectReverb` (`+0x0`) for kinds 1-2 and `EffectI3dl2Reverb` (`+0x98`) for
+  kinds 3-4 on bus 0 (`AudioEffects_ApplyReverb` `0x9cca0`), `EffectDelay` (`+0x140`) for kinds 5-6 on bus 1 (250 ms,
+  feedback 0.6 or 0.4; `AudioEffects_ApplyDelay` `0x9d070`). A state of 2 waits until the effect
   can be removed, then applies the next kind. The update picks the delay itself: 5 in a side-view room inside the
   area test `0x13c850`, else 6 while Link's Y is 24 or more, else none; `delayCooldown` (a `FrameTimer`
   `{step, elapsed, frames}`) holds 30 frames between changes. `zoneEffect` (the zone record's `+0xb4`) sets kinds 1-6
@@ -349,7 +415,8 @@ effects, the SE queue, the BGM lists and the environment SEs.
 - `envSePlayer` (`EnvSePlayer`, 0x2900; `EnvSe_Ctor` `0x97840`, destructor `0x985b0`, `EnvSe_StopAll` `0x98620`):
   the environment's SEs, run by the update. 12 `AmbientLine`s (`SE_AMB_LINE_BG1` to `12`, rows at `0x1b58c38`;
   the volume by the listener's distance from the segment, `Sound_PlayAmbient` `0xa5ec0`); 3 forest insect spots
-  (`EnvSeEmitter`s placed by an actor's update, `0xbf1e00`); 64 torch and lamp emitters (`EnvSe_AddLamp`
+  (`EnvSeEmitter`s placed by ObjLawn's Idle update `0xbf1e00`: within 2 to 10 of Link it takes a free one for
+  `SE_AMB_FOREST_INSECT`, `2` or `3`, picked at random, at the lawn's position); 64 torch and lamp emitters (`EnvSe_AddLamp`
   `0x98e20 (name, pos, id, zone)`, `EnvSe_RemoveLamp` `0x99020 (id)`; each plays within 10 of Link in its `zone`);
   three `wind` SEs while Link's Y is 18 or more, unless `windOff` (an event action's); the cove (`coveProbe`,
   `coveHits`: one point a frame of a 5×5 grid around Link is ray-tested, and after 25 the count sets
@@ -360,7 +427,9 @@ effects, the SE queue, the BGM lists and the environment SEs.
   once loaded) and `state` (0 free, 1 claimed, 2 loaded): slot 0 (0xa000000 bytes) holds `GROUP_COMMON`, slots 1-3
   (0xc00000 each) the zone's groups. `SoundLoader_Request` (`0xa8a80 (f32 volume, loader, StringView* group, u8 slot
   mode, StringView* playLabel, bool noPlay)`) queues a `LoadRequest` (0xa0) in `requests` unless the group is loaded
-  or queued; a worker `task` and `machine` (`StateMachine<2>`) run the loads.
+  or queued. `machine` (`StateMachine<2>`) runs them: state 0 (`SoundLoader_StartNext` `0xa7a80`) loads the first
+  request at once, or with `async` posts a job (`0xa8a30`, `SoundLoader_LoadNow`) to `task`, a one-thread
+  `ThreadPool` (thread factory `0xa7640`); state 1 (`0xa7e40`) waits until the slot is loaded.
 - `outputTv`, `outputSpeaker`, `outputJack`, `outputUsb`: `AudioTvOutput`, `AudioBuiltInSpeakerOutput`,
   `AudioStereoJackOutput`, `AudioUsbDeviceOutput`.
 - `zoneTrack` and `zoneVolume` (1.0): `PlayZoneBgm` (`0xa6790 (bool fadeOthers)`, the event action `PlayZoneBGM`)
@@ -392,7 +461,8 @@ effects, the SE queue, the BGM lists and the environment SEs.
   scene's `+0x760` (`BgmManager_ConnectSignals` `0x9dba0`; `BgmManager_SceneEnd` `0xa0d80` disconnects them).
   `BgmManager_OnEventStart` (`0x9e1c0`) pauses the playing SEs and sets `eventQuiet` (not for the flow
   `ZeldaScroll`); `BgmManager_OnEventEnd` (`0x9df30`) undoes both.
-- `quiet`: BGM and SEs play at 0.2 and the positional update stops; it is only cleared (no writer found).
+- `quiet`: BGM and SEs play at 0.2 and the positional update stops. Nothing sets it: the constructor (`0x9d760`),
+  `BgmManager_Shutdown` (`0x9d350`) and `BgmManager_SceneEnd` (`0xa0e68`) only clear it.
   `eventQuiet`: SEs at 0.2. `zoneBgmNow`: set by a retry, a game over, warps and a file load.
 
 **SeInstance** (`SeInstance_vtable` `0x1b59260`, 0x160 bytes; `SeInstance_Setup` `0xaab80` fills it from a play
@@ -402,13 +472,15 @@ frames of a same-id SE, 3-5 the cooldowns, 6-7 volume caps 0.5 and 0.7, 8 duckin
 from the listener, 17 at most 3, 18 the volume divided by the count, 22 bus 1, 27 dropped within 3.5 of a same-id SE.
 The sound's volume is `volume` × `volumeScale` (1, the duck volume or a cap). `actor` is a caller's nn::atk 3D actor,
 `ownActor` one made for a 3D SE without; `onUpdate` and `onUpdate2` run each frame (kinds 2, 3 and 5 install
-lambdas); `echoArea` is the delay's area test at the SE's position. `serial` (-1 free) is the play's: a play's out
+lambdas); `echoArea` is the delay's area test at the SE's position. A kind 2 SE in the echo area without flags bit
+13 gets a `wobble` (`BgmManager_Update`): from 0.95, `onUpdate2` (`0xab460`) steps it by 0.006 between 0.9 and 1.02
+and its `apply` (`0xab5a0`) sets the sound's pitch. `serial` (-1 free) is the play's: a play's out
 argument is an `SeRef` `{instance, serial}`, valid while the instance's `serial` is still its own.
 
 **BgmInstance** (vtable `0x1b58cf0`: `+0x0` `BgmInstance_Dtor` `0x9a400`, `+0x8` deleting `0x9a4b0`; 0x130 bytes,
 the stride of `BgmPlayer::instances`). Its base is the sound handle (`SoundHandle`, `SoundHandle_vtable`
-`0x1c30a90`, 0x60 bytes, SeInstance's base too): `{vtable, Sound* sound, std::string name}`, three fields no code
-reads, and `fadeOutFrames` (30 at construction), which every `Sound_Stop` of the handle uses. Its destructor
+`0x1c30a90`, 0x60 bytes, SeInstance's base too): `{vtable, Sound* sound, std::string name}`, unused bytes, and
+`fadeOutFrames` (30 at construction), which every `Sound_Stop` of the handle uses. Its destructor
 (`0xfa20f0`) clears the sound's back-links (`Sound::handles`) that point at the handle's `+0x8`.
 
 - `BgmManager_Play` fills an instance from the BgmTable row (`BgmTable_Find`, flags `0x10e24b0`): `onStart` with the
@@ -417,16 +489,19 @@ reads, and `fadeOutFrames` (30 at construction), which every `Sound_Stop` of the
   reading Link's model node, Framework `+0x4b8` then `+0x80`, with no null check; `BGM_TARUTARU2_AFTER_THE_RESCUE`
   is one such track), `onUpdate[1]` cleared; both run
   every frame while playing. With `prepareNow` (its last argument) it
-  prepares the stream at once (`BgmInstance_Prepare` `0x99800`) and drops the instance on a failure (likely).
+  prepares the stream at once (`BgmInstance_Prepare` `0x99800`) and on a failure returns null without queuing the
+  instance for its start.
 - `kind`: 1 zone and event music; 2 a jingle (when Play's first bool is set): kinds 1 and 4 are `ducked` to 0 over 45
   frames while one plays and come back over 150; 3 a buff's music; 4 positional: `BgmInstance_SetPosition`
   (`0x998e0`, from `PlayZoneBgm`) sets `position`, `radius` 3, `fadeRange` 9 and `onUpdate[0]`
   `BgmInstance_UpdatePositional` (`0x99b70`: the volume by the listener's distance, kind 1 instances get 1 − it;
-  volume 0 while `noPositional`).
+  volume 0 while `noPositional`). NpcMarin's singing (`0x9e6a60`) sets `noPositional` on the playing kind 4
+  instances, and clears it while `BGM_MEVE`, `BGM_ANIMAL_VILLAGE` or a `BGM_EVENT_RESCUE_BOWBOW` track plays.
 - `flags` bit 2 marks a buff's music (`PlayZoneBgm` tests it); `volume` (`BgmManager_SetVolume` `0x9b3a0` writes
-  it); `pitch` (1.0) has no reader.
+  it); `pitch` (1.0): `BgmInstance_Start` passes it to the sound (`0x99238`).
 - `startDelay`: the frames the starting list waits before `BgmInstance_Start` (`0x99130`) starts the stream, which
-  passes `startOffset` (in samples) as the stream's start offset when it is set.
+  passes `startOffset` (in samples) as the stream's start offset when it is set. The game writes it only as 0
+  (`BgmManager_Play`, the constructor and the instance resets).
 - The instruments' own songs, `BGM_INST_VIOLIN` (Full Moon Cello) to `BGM_INST_DRUM` (Thunder Drum), play only in
   the pedestal's whiteout (`MusicalInstrument.bfevfl`, `PlayAndWaitMusicalInstrument`); every instrument's
   `Items.gsheet` row names the shared fanfare `BGM_FANFARE_INST_GET`.
@@ -440,33 +515,25 @@ reads, and `fadeOutFrames` (30 at construction), which every `Sound_Stop` of the
   starts without room gets no sound and the BGM player drops it (a fanfare, the ocarina's song, or the ensemble
   itself). A stream fading out holds its channels until its fade ends.
 
-**Sound** (`nn::atk::detail::BasicSound`, by its RTTI; `BasicSound_vtable` `0x1c53248`, `BasicSound_Ctor`
-`0x10e93b0`; 0x210 bytes, abstract) is the base of the nn::atk sounds, whose instance pools' strides give their
-sizes: StreamSound 0x11d40 (likely the BGM's), WaveSound 0x3f0, SequenceSound 0x5a0, AdvancedWaveSound 0x9b0. Its
-virtuals `+0x18` `BasicSound_Initialize` (`0x10e9470`) and `+0x20` `BasicSound_Finalize` (`0x10e9620`).
-`Sound_Stop` (`0x10e97f0`) calls virtual `+0x48`, re-sorts the sound in its `player`'s priority list
-(`SoundPlayer_SortPriority` `0x10e5dd0`, by `priority` + `priorityBonus`), needs one of `active` set, finalizes at
-once when `state` is 2 (likely paused), else sets `fadingOut` and fades out over `stopFade`, and clears `+0xee`,
-`+0xf1`, `+0xf4` and `priorityBonus`. `Sound_FadeFramesLeft` (`0x10ea8a0`) is `stopFade`'s frames left, 0 when done;
-`BgmManager_Play` uses it to tell a track still fading out. `Sound_SetVolume` (`0x10ea8c0 (sound, frames, volume)`)
-sets the `volume` fade. The pause menu sets every BGM's target volume to 0.2 (a track that starts while it is open
-gets 0.2 at once) and back to 1 over 8 frames as it closes. Every BGM volume change goes through `Sound_SetVolume`:
-`BgmInstance_Start` (the instance's `volume` at once, 0 when a jingle plays), the positional update,
-`BgmManager_SetVolume`, the jingles' ducking and its end, and the pause menu's (a hook on it held every BGM at 0,
-2026-10-31). `id` is the sound archive item (the BgmTable id), `playFrames` what the SE restart limits
-compare, `lifecycle` 1 initialized, 2 finalized, 3 destroyed.
-
-Open: the writers of `quiet`, `startOffset` and `noPositional`; the readers of `pitch`, `SoundHandle`'s unread fields,
-`SeInstance`'s `params3d` and `function_d0`; most `Sound` fields' nn::atk names; the camera entity class
-`AudioCamera_Update` runs for and the insect spots' actor (`0xbf1e00`); the effect classes (inferred from their
-parameters); `SoundSlot::field_f0` and `LoadRequest`'s `+0x9c`/`+0x9e`; the loader's worker.
-
-## Open questions
-
-- Framework `field_48`, `field_4e8`, `sp_530` (only released), `field_5a0` (only cleared), the writers of `view3` and
-  `restart`; Present `field_50`, `vector_58`, `field_70`.
-- GameState `vector_c0`: what its entries' first object is, and their writer; the writer of `resetResources`.
-- LevelScene `object_510`, `field_648`..`field_694`.
-- TitleScene `+0x82` and `+0x83`.
-- Camera `field_308`, `sp_310`, `field_320`, `field_328`; the object whose `+0x600` the shadow bounds follow.
-- PhaseQueue `id` (from an SDK import, `0x14312c0`); the exact shape of a priority group and a phase.
+**Sound** (`nn::atk::detail::BasicSound`, by its RTTI; `BasicSound_vtable` `0x1c53248`, `BasicSound_Ctor` `0x10e93b0`;
+0x210 bytes, abstract) is the base of the nn::atk sounds, whose instance pools' strides give their sizes: StreamSound
+0x11d40 (every BGM is a stream), WaveSound 0x3f0, SequenceSound 0x5a0, AdvancedWaveSound 0x9b0. Its field names and order are
+those of BasicSound in a decompiled nn::atk of a later SDK (Super Mario 3D World + Bowser's Fury decomp, also 0x210
+bytes); the constructor's defaults, `BasicSound_Initialize`, `BasicSound_Finalize`, `BasicSound_Update` (`0x10e9a40`),
+`BasicSound_Pause` (`0x10e9920`), `Sound_Stop`, `SoundPlayer_SortPriority` and the setters (`0x10ea8b0` `initVolume`,
+`0x10ea950` `surroundPan`) match it. Its virtuals: `+0x0` the type info (`0x10e8620`), `+0x8` the destructor
+(`0x10eab60`), `+0x18` `BasicSound_Initialize` (`0x10e9470 (sound, output)`), `+0x20` `BasicSound_Finalize`
+(`0x10e9620`), `+0x28`..`+0x40` pure (prepared, temporary special handle, its driver player), `+0x48` the priority hook
+(empty), `+0x50` `BasicSound_UpdateMoveValue`, `+0x58` the param hook (empty). `BasicSound_Update` passes `ambientParam`
+through `ambientInfo`'s param callback, copies `actorParam` from `soundActor`, starts a prepared sound when
+`startRequested` is set, counts `playFrames` while not paused and finalizes once a fade-out ends. `Sound_Stop`
+(`0x10e97f0`) clears `playerPriority`, re-sorts the sound in its `player`'s priority list (`SoundPlayer_SortPriority`
+`0x10e5dd0`, by `ambientParam.priority` + `playerPriority` clamped to 0..127) and calls virtual `+0x48`, then sets
+`fadingOut`, fades out over `stopFade` and clears `autoStop`, `pauseState`, `muteState`, `unpause` and `pauseMode`; it
+finalizes at once instead for 0 frames, a `pauseState` of 2, or neither `startRequested` nor `started` set.
+`Sound_FadeFramesLeft` (`0x10ea8a0`) is `stopFade`'s frames left, 0 when done; `BgmManager_Play` uses it to tell a track
+still fading out. `Sound_SetVolume` (`0x10ea8c0 (sound, frames, volume)`) sets the `volume` fade. The pause menu sets
+every BGM's target volume to 0.2 (a track that starts while it is open gets 0.2 at once) and back to 1 over 8 frames as
+it closes. Every BGM volume change goes through `Sound_SetVolume`: `BgmInstance_Start` (the instance's `volume`
+at once, 0 when a jingle plays), the positional update, `BgmManager_SetVolume`, the jingles' ducking and its end, and
+the pause menu's (a hook on it held every BGM at 0, 2026-10-31).

@@ -54,6 +54,13 @@ namespace AP::Test {
     // Keeps the actors made with no LEB key for the commands that find actors by name (DBG hit, enemies, comps,
     // slimeeye).
     void InstallSpawnTrack();
+
+    // ---- DBG probe (test_probes.cpp) ----
+
+    // NPC components still to make with the row key "NoSuchRow" (DBG probe norow; ghost_puppets.cpp's hook).
+    extern int g_ProbeNoRow;
+    void ProbeSample();
+    void InstallProbeHooks();
 }
 
 namespace AP::Puppets {

@@ -44,21 +44,23 @@ allocates one (aligned to 0x100), `Layout_BuildPartsLayout` (`0x10d7e00`, virtua
 `Layout_Dtor` (`0x10d7ed0`) releases `archive`. `Layouts_Update` (`0x10dce60`) animates and calculates the layouts whose
 `calculate` is set, `HudPass_Draw` (`0x10d8e00`) draws those whose `draw` is set; a UI's open sets `calculate` while the
 wrapper has no `attachPane`. `ui2d_Layout_SetTagProcessor` (`0x11597d0`, `+0x68`) sets every text box's `tagProcessor`;
-`GameTextBox_Make` (`0x10d7cd0`, `+0x88`) builds the `txt1` panes. `field_58` is a heap table `{s32 count, s32 count2,
-void** entries}` that `0x1158450` builds during a parts build from the build context's two lists (`+0x40`/`+0x48`,
-`+0x58`/`+0x60`) and the ui2d Layout destructor frees (`0x1158540`, `0x1156d2c`; likely); what its entries are is
-unknown.
+`GameTextBox_Make` (`0x10d7cd0`, `+0x88`) builds the `txt1` panes. `dynamicTextures` holds the layout's
+nn::ui2d::detail::DynamicRenderingTexture objects (RTTI; `CaptureTexture`, vtable `0x1c84330`, made by `0x1155d90`):
+`0x1158450` collects them during a parts build from the build context's lists `+0x50` (the front entries) and `+0x40`
+(count `+0x48`; sorted by the texture's byte `+0x18`), `0x1159460` draws them (virtual `+0x28`) after the parts
+layouts' own, and `ui2d_Layout_Finalize` (`0x1156ce0 (layout, device)`, which `Layout_Dtor` and `ui2d_Pane_Finalize`
+call for a parts pane's layout) frees the table (`0x1156d2c`).
 
-**Panes** (`Pane`: `nn::ui2d::Pane`, `ui2d_Pane_vtable` `0x1c84e20`; 0xd8 bytes, its data ending at `+0xd2`): `ui2d_Pane_Calculate` (`0x1167140`, virtual `+0x98`) recomputes `globalAlpha` and `globalMatrix` of every visible pane each time its layout calculates and sets `kPaneCalculated` (cleared for an invisible pane) and `flagsEx` bit 4; `ui2d_Pane_Draw` (`0x1167e90`, `+0xa0`) draws a pane with `kPaneVisible`, `kPaneCalculated` and `flagsEx` bit 4. A `globalAlpha` written by hand thus holds for the current frame only, unless the layout's `calculate` is off. `ui2d_Pane_Finalize` (`0x1166890`, `+0x18`) deletes the children without `kPaneUserAllocated` and frees a heap copy of `extUserData` (`flagsEx` bit 2). `systemFlags` has a bit per system data entry type in `extUserData`; bit 17 drives a per-pane path in the calculation and the draw. Virtuals: `+0x60` FindPaneByName(name, recursive) (`0x1166e00`, comparing 24 characters), `+0x70` FindMaterialByName, `+0x80`..`+0x90` bind and unbind animations, `+0xa8` DrawSelf, `+0xb8` LoadMtx (`0x1168160`).
+**Panes** (`Pane`: `nn::ui2d::Pane`, `ui2d_Pane_vtable` `0x1c84e20`; allocated as 0xe0 bytes, 16-aligned (`0x1154dc0`), its data ending at `+0xd2`, so a derived pane's own fields start at `+0xd4` or `+0xd8`; `ui2d_Pane_Ctor` `0x11655e0` leaves `+0x64`..`+0x6f` unwritten and copies the identity into `globalMatrix` in 16-byte rows): `ui2d_Pane_Calculate` (`0x1167140`, virtual `+0x98`) recomputes `globalAlpha` and `globalMatrix` of every visible pane each time its layout calculates and sets `kPaneCalculated` (cleared for an invisible pane) and `flagsEx` bit 4; `ui2d_Pane_Draw` (`0x1167e90`, `+0xa0`) draws a pane with `kPaneVisible`, `kPaneCalculated` and `flagsEx` bit 4. A `globalAlpha` written by hand thus holds for the current frame only, unless the layout's `calculate` is off. `ui2d_Pane_Finalize` (`0x1166890`, `+0x18`) deletes the children without `kPaneUserAllocated` and frees a heap copy of `extUserData` (`flagsEx` bit 2). `systemFlags` has a bit per system data entry type in `extUserData`; bit 17 drives a per-pane path in the calculation and the draw. Virtuals: `+0x60` FindPaneByName(name, recursive) (`0x1166e00`, comparing 24 characters), `+0x70` FindMaterialByName, `+0x80`..`+0x90` bind and unbind animations, `+0xa8` DrawSelf, `+0xb8` LoadMtx (`0x1168160`).
 
 **Text boxes** (`TextBox`: the game's GameTextBox, `GameTextBox_vtable` `0x1c52940`, 0x1a0 bytes, around
 `nn::ui2d::TextBox`, `ui2d_TextBox_vtable` `0x1c85270`, 0x158 bytes, `ui2d_TextBox_Ctor` `0x116f9a0`).
 `GameTextBox_Make` sets `onSetString` to a default functor (`0x1c52a98`) and `notDrawn`. The game's four setters
 (`GameTextBox_SetString16` `0x10de0b0`, `GameTextBox_SetString8` `0x10de1c0`, `GameTextBox_SetString16Len` `0x10de2d0`,
 `GameTextBox_SetString8Len` `0x10de3f0`; virtuals `+0x100`..`+0x118`) call `onSetString` before the ui2d setter.
-`field_191` is zeroed by `GameTextBox_Make` (a u16 write with `glyphsReady`) and set to 1 before a game string is set,
-by the game's string setters (`0x10de6d8`, `0x10de79c`; `TextBox_SetString` `0x10de620`) and many UI sites
-(`MessageText_SetLabel` among them); nothing in GameTextBox, ui2d or the UI code reads it. `bits`: 0–1 line alignment, 2
+`stringSet` is zeroed by `GameTextBox_Make` (a u16 write with `glyphsReady`) and set to 1 by the game's string setters
+(`0x10de6d8`, `0x10de79c`; `TextBox_SetString` `0x10de620`) and many UI sites (`MessageText_SetLabel` among them).
+`bits`: 0–1 line alignment, 2
 text dirty (set by the setters, by colour changes and by `UiManager_Update` on queued boxes once their glyphs are drawn;
 cleared by `ui2d_TextBox_Calculate`), 3 shadow, 6 width limit (always set by the constructor), 7 per-character
 transform, 8 round half extents, 12 vertical centre; 4, 5, 9–11 and 13–14 come from the resource. `tagProcessor` is
@@ -89,7 +91,6 @@ nn::font::Font*}` as `UiManager_LoadFont` (`0xeda2a0`) returns them. `color` is 
 +0x80, 0)` in the constructor; 0xff000000 before that). `colorIndex` (-1 at construction) picks the text's top and
 bottom colours in `TagProcessor_ApplyColor` (`0x904860`, virtual `+0x30`): -1 keeps the writer's colour, 0 is `color`, n
 the message colour n (`0x10af170(msbp +0x80, n)`). `scale` is set by `0x904a00` from its argument's `+0xc`/`+0x10`.
-`pad_40` is zeroed by the constructor; none of the processor's functions (`0x903e00`..`0x904a00`) reads it.
 
 **Animators** (`Animator`: `nn::ui2d::GroupArrayAnimator`, `ui2d_GroupArrayAnimator_vtable` `0x1c84a18`; `ui2d_Layout_CreateAnimator` makes 0x58 bytes and a pointer per group): `ui2d_Animator_UpdateFrame` (`0x115da80`, virtual `+0x18`) advances `frame` by `speed` × the step as `playType` says and sets `playState`; the layout's update applies the frame, so a frame set shows at the next layout update (the map markers pick their texture this way, `SetMark`). Virtuals: `+0x20` enable (`ui2d_AnimTransform_SetEnabled`), `+0xb8` `ui2d_Animator_Play(speed, playType)` from the start (from the end for a negative speed), `+0xc0` PlayAuto (the play type from the data), `+0xc8` PlayFromCurrent, `+0xd0` StopAt(frame), `+0xd8` Stop, `+0xe0` / `+0xe8` StopAtStart / StopAtEnd. `Animator_FrameCount` (`0x114c840`) reads the resource's u16 `+0x8`.
 
@@ -104,18 +105,26 @@ slots s, s + 2 and s + 4 are searched for a layout: 0 Game.arc (its resource acc
 StartUp.arc, 2 GameRegion.arc, 3 StartUpRegion.arc, 4 GameRegionCommon.arc, 5 StartUpRegionCommon.arc; 6 is DgnTex.arc
 (the dungeon map's icons read it, `0xf386ac`) and 7 PanelTex.arc. `UiManager_LoadGameArchives` (`0xed5450`) loads the
 `ui/Game.arc` set into the resource group `gameArchivesLoad` (`0xed5770`; FRAMEWORK.md, Resource groups), whose
-completion lambda (`0xed5890`, which needs `owned_0` set) fills slots 0, 2, 4, 6 and 7; `startUpArchivesLoad` is the
+completion lambda (`0xed5890`, which needs `heap` set) fills slots 0, 2, 4, 6 and 7; `startUpArchivesLoad` is the
 StartUp set's group (lambda `0xed2c70`). The glyph queue: Text boxes, Glyphs. `font` is an nn::font
-ScalableFont (`+0x10` its TextureCache, `glyphCache`, set by its Initialize `0x111ded0` from `UiManager_InitFonts`
-`0xecb470`; `+0x18` the font size, 0x28 at construction; `+0x32` the face; the font's RegisterGlyphs `0x11211b0` takes
-these; likely); `glyphCache` is the nn::font TextureCache that holds the glyphs (Initialize `0x10de850`; likely).
+ScalableFont: its Initialize (`0x111ded0`, from `UiManager_InitFonts` `0xecb470`) sets `+0x10` its TextureCache
+(`glyphCache`), `+0x18` the font size (0x28 at construction, 0x2a from InitFonts) and `+0x32` the face, which the
+cache's RegisterGlyphs (`0x11211b0 (cache, chars, count, size, face, lock group, …)`) takes; `glyphCache` is the
+nn::font TextureCache that holds the glyphs (Initialize `0x10de850`).
 `glyphResetRequest` (its writer is not found): 1 unlocks every lock group, 2 clears the cache; `UiManager_ResetGlyphs`
 (`0xed10d0`) applies it once the worker is idle, then registers the common characters again and requeues every UI's
 text. `glyphWorker` is a one-thread `ThreadPool` (FRAMEWORK.md, Scheduler and phases; its thread factory `0xecd020`).
 `graphicsCallbackId` (-1 none) is the graphics callback `UiManager_UnregisterCallback` (`0xecc4f0`) unregisters when it
 is 1 or more (`Graphics_UnregisterCallback`). `lockGroups` are 32 `LockGroup`s (`id` and `lockGroup` -1 at construction);
 `UiManager_UpdateGlyphs` (`0xed0130`) passes a group's `pending` characters and `lockGroup` to RegisterGlyphs.
-`owned_0`, `sp_10`, `vector_70` (released by the destructor) and `field_ab70` (0xff, not read) have no known role.
+`UiManager_Init` (`0xecd180`, from `Framework_Init` with 0x1400000) allocates `heap`, hands it to the static at
+`0x1cad7b0` (`0x10db990`), whose allocator at `+0x630` serves nn::ui2d (its initialize `0x1154ac0` gets the callbacks
+`0x10dc0d0` and `0x10db920`) and the glyph cache, then makes `hudPass`, the factories and the fonts;
+`UiManager_Shutdown` (`0xecd710`, from `Framework_Shutdown`) removes every UI, releases `fonts`, the archives and the
+resource groups, and frees `heap`. `UiManager_LoadFont` searches `fonts` by path. `currentFile` is set when a file is
+chosen in the file menu (`0xe63cf0`) or on the Load screen (`0xebf5f4`) and reset to 0xff at `0xe603e8` and
+`0xf815ac`; `0xf8d2b0 (bool with file 3, bool current first)` returns it when it is below 3 and asked, else the most
+recently saved file.
 `UiManager_Find` has typed copies per UI class that return a lock handle `{vtable, mutex, locked, ?, UI, count}`:
 `0xe85520` Gm_Navi (5), `0xe79560` Gm_MapCursor (0x1c), `0xe789b0` Dg_DgnPlayer (0x1b).
 
@@ -159,7 +168,7 @@ UIs, pages, markers, parts and some actors (Link, the fishing rod, the pond fish
 |---|---|
 | `+0x0` | vtable |
 | `+0x8` | `framesInState`: cleared by a change, counted by the update |
-| `+0xc` | `field_c`: cleared by a change (the constructors write u16 0xff00 at `+0xc`: no state) |
+| `+0xc` | `nextState`: a state object's exit gets only the owner, so a caller stores the new state here before the change (Link: `0xd33b40`, `0xd55610`, `0xd55a00`; read by `PlayerState_BaseExit` `0xd8d430`); the change clears it (the constructors write u16 0xff00 at `+0xc`: no state) |
 | `+0xd` / `+0xe` | `state` (0xff none) / `previous` |
 | `+0x10` | `onChange`: a libc++ `std::function` (its call target at `+0x30`), told `(state, name)` after each change |
 | `+0x40` | `owner`: `this` for the member pointers |
@@ -167,7 +176,7 @@ UIs, pages, markers, parts and some actors (Link, the fishing rod, the pond fish
 | `+0x48 + N*0x30` | the bit set object: its vtable (one per N), then `objectStates`, a bit per state (u8 up to 8 states, u16 up to 16, u64 up to 64) |
 | `+0x58 + N*0x30` | `names`: N name pointers |
 
-A machine is 0x58 + N × 0x38 bytes, rounded up to 16. `ChangeState` runs the old state's exit with the new state, sets `state` and `previous` and clears `framesInState` and `field_c`, runs the new state's enter with the old state, then calls `onChange`. A setup fills the table, so the state names are in the setup's code.
+A machine is 0x58 + N × 0x38 bytes, rounded up to 16. `ChangeState` runs the old state's exit with the new state, sets `state` and `previous` and clears `framesInState` and `nextState`, runs the new state's enter with the old state, then calls `onChange`. A setup fills the table, so the state names are in the setup's code.
 
 | Owner | N | Machine at | ChangeState |
 |---|---|---|---|
@@ -191,7 +200,7 @@ A machine 16-aligned after an 8-byte-aligned field leaves 8 bytes of padding bef
 ## Input
 
 The game's controller is `**(Framework+0x518)` (a shared pointer, count `+0x520`, to a 0x570-byte object whose
-first field points at the controller): `+0x10` the pad (virtual `+0x10` returns `{u32 held, u32 held last frame}`, so `held & ~last` is a press), `+0x220` u32 the buttons, `+0x228` the left stick (virtual `+0x18` returns `{f32 x, f32 y}`), `+0x234` u8 locked (no input). Button bits are the physical buttons of `HidButtonTable.gsheet` (`mButtonType`): 0 A, 1 B, 2 X, 3 Y, 4 R, 5 L, 10 Plus, 11 Minus, 14 to 17 up, down, right, left. The maps read A (pin), X (memories) and Y held (place names / dungeon info) this way. Per-function flags: `+0xb1` and `+0xd1` zoom out / in, `+0x171` and `+0x181` floor up / down (the maps' zoom and the dungeon floors), `+0x1b1` ZR, `+0x1c1` ZL, `+0x1d1` R, `+0x1e1` L, each set for the frame of a press (`DBG watch c`, 2026-10-31).
+first field points at the controller): `+0x10` the pad (virtual `+0x10` returns `{u32 held, u32 held last frame}`, so `held & ~last` is a press), `+0x220` u32 the buttons, `+0x228` the left stick (virtual `+0x18` returns `{f32 x, f32 y}`), `+0x234` u8 locked (no input). Button bits are `PadButton` (`PadState_Update`, PLAYER.md); `HidButtonTable.gsheet`'s `mButtonType` numbers the button icons, not these bits. The maps read A (pin), X (memories) and Y held (place names / dungeon info) this way. Per-function flags: `+0xb1` and `+0xd1` zoom out / in, `+0x171` and `+0x181` floor up / down (the maps' zoom and the dungeon floors), `+0x1b1` ZR, `+0x1c1` ZL, `+0x1d1` R, `+0x1e1` L, each set for the frame of a press (`DBG watch c`, 2026-10-31).
 
 ## Datasheets
 
@@ -201,15 +210,16 @@ first field points at the controller): `+0x10` the pad (virtual `+0x10` returns 
 | `0xfa6130` `Datasheet_RowById` | `(sheet, s32 id, row size)`: the row whose `mId` is id (a hash map); rows at `*(sheet+0x70)+0x20`, count `+0x28` |
 | `0xf9d320` `Datasheet_RowAt` | `(out {sheet sp, count, row}, sheet, index)` |
 | `0xf9d260` `Datasheet_FindRowShared` | `(out {sheet sp, count, row}, sheet, StringView* key)`: by the key column (`Datasheet_FindRow`) |
-| `0xf9de10` `Conditions_Check` | `(conditions, u32 type, StringView* arg, actor)`: type 0 true, 1 event flag (`!` negates), 2 `name:value` counter, 3 companion (`None`, `BowWow`, `Marin`, `Ghost`, `Rooster`), 4 to 7 actor parameters; the sheets' condition arrays are `{u32 type, string}` elements of 0x18 bytes |
+| `0xf9de10` `Conditions_Check` | `(conditions, u32 type, StringView* arg, actor)`; an argument's leading `!` negates, `$N` takes the actor's LEB parameter N (`0xf9e420`): 0 true, 1 event flag, 2 an Items.gsheet key with an optional `:index` (`Inventory_HasItem(id, 1, index)`), 3 companion (`None`, `BowWow`, `Marin`, `Ghost`, `FlyingCucco` against Inventory `+0x9d`), 4-7 the actor's LEB parameter 0-3 equals the argument, 8 the actor's switch 0-3 on, 9 a Conditions.gsheet row (`Conditions_CheckRow` `0xf9dc70`: every condition of the row), 10 `ShopPanelStocks` (Chamber Dungeon panels in stock), 11 an Items.gsheet key's obtained bit (`Inventory_HasObtained`); the sheets' condition arrays are `{u32 type, string}` elements of 0x18 bytes |
 
 A loaded sheet (`Sheet` in `game/sheet.hpp`; `Datasheet_Create` `0xfa64f0`, a make_shared of 0x110 bytes,
 `Datasheet_vtable` `0x1c30d40`) is a resource (`Resource_Ctor` `0xfb8e40`; virtual bases with vtables at `+0x100`
 and `+0x108`): `self` (shared-from-this), the resource info (`+0x18`..`+0x40`), `path` (the resource manager's key,
 by which the destructor unregisters it), `keep` (the file buffer), `data` (the `gsht` data, checked for version 1)
 and `dataSize`, `keyField` (-1 without a key column, when `Datasheet_RowById` and `Datasheet_FindRow` throw;
-`Datasheet_KeyField` `0xfa5f10`), and three hash maps: `map_88` (by a u32, not traced), `rowsById` (id to row index)
-and `rowsByKey` (key string to row index).
+`Datasheet_KeyField` `0xfa5f10`), and three hash maps: `fieldsByStruct` (built by `0xfa5140` from
+`Datasheet_Create`, recursing into struct fields; no code looks it up), `rowsById` (id to row index) and `rowsByKey`
+(key string to row index).
 
 `UiDatasheets_Load` (`0x867f34`) loads the UI sheets into holders of shared pointers:
 
@@ -363,7 +373,7 @@ Constructor `0xea35c0`, setup `0xea6990`, update `0xea7990`, open `0xea84f0` (bu
 | `+0x61cf` / `+0x61d0` / `+0x61d1` | leaves / keys / boss key shown |
 | `+0x61dc` | the page index the pause menu opens on |
 
-**Hearts.** A heart part has 17 animation handles at `+0x160 + k*0x18`: the fills between quarters (k 0 to 7, guess), Life4 8, Life0 9, In 10, Out 11, Normal 12 (guess), Caution 13, RevivalOn 14, RevivalOff 15, LifeUp 16; `+0x2f8` its fill animation's index. `0xf40e90 HudHeart_SetFill (heart, quarter, bool up)`. InGame moves the drawn health one quarter toward the health each time the current heart's fill animation stops, not during events (unless health is 0 or `+0x61c4`). With the drawn health at the drawn max and health above it (`0xeabae0`), it reveals one heart (In, Life4, LifeUp), jumps the drawn health to the health and the drawn max to the real max (`0xdf8260`); no other code raises the drawn max until the next open, so two containers at once, or health not above the old max, leave hearts in Out.
+**Hearts.** A heart part has 17 animation handles at `+0x160 + k*0x18`: the fills between quarters (k 0 to 3 Life0-1 to Life3-4 up, 4 to 7 Life1-0 to Life4-3 down; names `0x1c2d1d8`), Life4 8, Life0 9, In 10, Out 11, Normal 12, Caution 13, RevivalOn 14, RevivalOff 15, LifeUp 16 (`HudHeart_Setup` `0xf3fdf0`); `+0x2f8` its fill animation's index. `0xf40e90 HudHeart_SetFill (heart, quarter, bool up)`. InGame moves the drawn health one quarter toward the health each time the current heart's fill animation stops, not during events (unless health is 0 or `+0x61c4`). With the drawn health at the drawn max and health above it (`0xeabae0`), it reveals one heart (In, Life4, LifeUp), jumps the drawn health to the health and the drawn max to the real max (`0xdf8260`); no other code raises the drawn max until the next open, so two containers at once, or health not above the old max, leave hearts in Out.
 
 **Counters.** Keys: `DungeonItems[level]` byte 0 (up to 21), boss key byte 1 bit 3, hidden in the overworld; the boss key goes once the level's boss door switch is set (`0xf886c0`). Golden leaves (overworld, until `GoldenLeafComplete`): the bits of `Inventory+0xc2`; a drop plays Out on the key parts, not the leaf parts (a bug in the game). Item slots: Bomb, Bow and Powder show their counts (`0xf459c0`), the ocarina its song, bottles a fairy.
 
@@ -371,7 +381,7 @@ Constructor `0xea35c0`, setup `0xea6990`, update `0xea7990`, open `0xea84f0` (bu
 
 **ThrobberSave** ("Now Saving", archive set 1, StartUp.arc; `ThrobberSave_Ctor` `0xf855f0`, destructor `0xec5a90`, `ThrobberSave_Setup` `0xf85800`, `ThrobberSave_Update` `0xf85c60`; 0x2a0 bytes, its factory `0xec587c`; vtable `0x1c30098`, the machine's `0x1c30110`). The setup sets `text` (`T_Info_00`) to `UI:SystemSaving` with `MessageText_SetLabel` and puts `out` at its end. `ThrobberSave_Show` (`0xf895c0 (bool auto)`) from None or Out goes to InAuto with `timer` 0.5 s, or to In; LoopAuto counts `timer` down and slides out at zero (`ThrobberSave_ChangeState`). The module's toasts use it (DESIGN.md, Toasts).
 
-**Throbber** (UI 0x29, `Ld_Throbber.bflyt`; `Throbber_Ctor` `0xf84cb0`, destructor `0xec5e60`, `Throbber_Setup` `0xf84e90`, `Throbber_Update` `0xf85170`, `Throbber_ChangeState` `0xf85230`; 0x210 bytes, its factory `0xec5ca4`; vtable `0x1c2fff0`): a machine of 4 states at `+0x80` (vtable `0x1c30068`: None, In, Loop, Out), the animations In `+0x1c0`, Loop `+0x1d8`, Out `+0x1f0`; `+0x208` unknown. The module has no type for it.
+**Throbber** (UI 0x29, `Ld_Throbber.bflyt`; `Throbber_Ctor` `0xf84cb0`, destructor `0xec5e60`, `Throbber_Setup` `0xf84e90`, `Throbber_Update` `0xf85170`, `Throbber_ChangeState` `0xf85230`; 0x210 bytes, its factory `0xec5ca4`; vtable `0x1c2fff0`): a machine of 4 states at `+0x80` (vtable `0x1c30068`: None, In, Loop, Out), the animations In `+0x1c0`, Loop `+0x1d8`, Out `+0x1f0`; nothing accesses `+0x208`..`+0x20f`. The module has no type for it.
 
 ## Name entry (UI 0xd, `Tl_Entry`)
 
@@ -399,8 +409,9 @@ Reading, TextFadeOut, KeyWaiting, PreSelecting, Selecting, Selected and more. Re
 - `MessageWindow_OpenTalker` (`0xef7300`) and `MessageWindow_PlaceBalloon` (`0xef7a30`, which opens a modeless message
   before it places it) set `msbt`, `label` and `page`. `MessageWindow_SetPage` (`0xef43b0`) reads the message from
   `msbt` `+0x90` and fills `pageText`, `choiceText`, `choiceCount`, `choiceDefault`, `choiceCancel`, `pageLetters` and
-  `pageEnd` (3: more follows, and Reading `0xef1960` asks `0xef6080` for the next page; otherwise a kind it computes;
-  likely), and copies `pageColor` into the tag processor's `colorIndex`. `MessageText_SetText` gets `pageText`.
+  `pageEnd`, the state Reading (`0xef1960`) goes to at the page's end: 6 PreSelecting for a choice, 5 KeyWaiting when
+  the tag visitor's second flag is set, else 3, for which Reading asks `0xef6080` whether another page follows
+  (TextFadeOut, or FadeOut with `fadeOut`, if so; else DrawEnd or Closing), and copies `pageColor` into the tag processor's `colorIndex`. `MessageText_SetText` gets `pageText`.
   `pageColor` is the colour the next page starts in: the page's tag visitor (`MessageWindow_CollectTag` `0xef5b30`)
   stores a colour tag's value in it (and sets `fadeIn` and `follow` from tags 0xe and 0x10), and the opens reset it to
   0. `pageLineBreaks` is the page's count of line and page breaks, which nothing reads.
@@ -416,8 +427,9 @@ Reading, TextFadeOut, KeyWaiting, PreSelecting, Selecting, Selected and more. Re
   kind's and picks its text box (`MessageText_SelectText` `0xf54060` with the second box for kinds 0xc and 0x10 to
   0x12, `MessageText_SelectStalfosText` `0xf54190` for 0x13); `MessageWindow_OpenTalker` tests 9. `kindOfStyle` is
   the kind per message project style (`MessageWindow_MapStyles` `0xef4020` finds each kind name in the project's
-  styles), from which the opens pick `kind`. `handle` is the opener's request handle, released by DrawEnd and Closing
-  (`0xef10c0`, `0xef3120`, `0xef33f0`; likely). `closeAtEnd` (1 at construction) sends the last page to Closing, else
+  styles), from which the opens pick `kind`. `handle` is the opener's request: DrawEnd's enter (`0xef3120`) and Closing's
+  end (`0xef33f0`) write `result` into its `+0x60`, signal it (`+0x8`'s virtual `+0x30`) and drop it;
+  `MessageWindow_Close` (`0xef10c0`, which other code calls) goes to Closed and does the same with 0xff. `closeAtEnd` (1 at construction) sends the last page to Closing, else
   DrawEnd.
 
 **MessageText** (`MessageText_vtable` `0x1c2df20`, the base of the five parts; destructor `0xeef6b0`):
@@ -449,7 +461,7 @@ the bubble only while `nameHidden` is clear); animations OnName `+0x238`, OffNam
 On `+0x1f0`, Loop `+0x208`, Off `+0x220` (animator at `+0x10` of each); `T_MarkerName_00` text box `+0x2a8`;
 `W_window_00` `+0x2c0`; `W_Cursor_00` `+0x2f8`, its size copied to `+0x300`/`+0x304` (the hover radius and the cursor's
 size for clamping). `nameHidden` (`+0x2e0`) and `nameHideRequest` (`+0x2e1`) are two u8 flags (the constructor sets the
-first); the handle at `+0x2c8` (`field_2c8`) is never set.
+first).
 
 - `0xea0f50` `MapCursor_ShowName (cursor, MessageRef*)`: shows the name with the message's text, clears `+0x2e0`, then `0xea1000`.
 - `0xea1000` `MapCursor_NameOn (cursor)`: clears `+0x2e1`, bubble state On, `SE_SY_MAP_CURSOL_WIDE`.
@@ -501,7 +513,7 @@ Vtable `0x1c281b0`: setup `0xe8f9d0`, update `0xe93800`, open `0xe93fd0`, destru
 | `+0x6d0` / `+0x6e8` | `N_heartMarker_00` / `N_SellMarker_00` |
 | `+0x710` | vector of shared pointers: the icon markers (`+0x708` the sheet's row count) |
 | `+0x730 + i*0x18` | `T_MapName_<i>` (place names, `Place:<label>` when their flag is set) |
-| `+0x500` / `+0x540` | `map_500`, an `unordered_map` only made and destroyed; `field_540`, a handle never set |
+| `+0x500` / `+0x540` | `map_500`, an `unordered_map` only made and destroyed; `unused_540` |
 | `+0xd30` | Y held: place names shown, no hover, no snapping |
 | `+0xd38` | `maskRowCount`: the `UiFieldMapMask` rows |
 | `+0xd40 + a*0x158`, `+0x3840 + a*0x18` | `fieldAreas` (`L_FldArea_<a>`, below) and `L_FldAreaMask_<a>` (32 areas) |
@@ -560,7 +572,7 @@ Pane tree (`bflyt_tree.py Dg_DgnMap`): `N_MapOrigin_00` (zoom and scroll) > `P_G
 | `+0x2b70` | Link's map position |
 | `+0x2cc8` | the dungeon index (`*0x1cc13c8`; 8 the Chamber Dungeon, which has no sidebar items) |
 | `+0x2cd5` / `+0x2cd6` | `pinType` / `previousPinType` (Pause menu, Navi) |
-| `+0x2cd8` | zoom scale (levels `{1, 2}` at `+0x2d0c`, index `+0x2cec`); `zoomFrom` (`+0x2cdc`, the level the zoom started from, likely) and `zoomProgress` (`+0x2ce0`, 0 to 1): `DungeonMap_UpdateZoom` (`0xe78d70`) lerps the scroll from `+0x2cf8` to `+0x2d00` and the cursor's scale by it |
+| `+0x2cd8` | zoom scale (levels `{1, 2}` at `+0x2d0c`, index `+0x2cec`); `zoomFrom` (`+0x2cdc`, the level at `previousZoomIndex` when the zoom starts, `0xe7866c`) and `zoomProgress` (`+0x2ce0`, 0 to 1): `DungeonMap_UpdateZoom` (`0xe78d70`) makes it (scale − `zoomFrom`) / (target − `zoomFrom`) and lerps the scroll from `+0x2cf8` to `+0x2d00` and the cursor's scale by it |
 | `+0x2d18` | cursor position |
 | `+0x2d20` | Link in a side-view room |
 | `+0x2d21`..`+0x2d32` | floors: count `+0x2d21`, top `+0x2d22`, shown `+0x2d23` (previous `+0x2d24`), floor art index `+0x2d28`, Link's `+0x2d30`, the boss's `+0x2d31`, the entrance's `+0x2d32` |
@@ -574,9 +586,9 @@ bytes: box `+0x20`/`+0x30`, the view box `viewMin`/`viewMax`
 `+0x64`, its file's path `+0x68` as `level/Lv01TailCave/Lv01TailCave_03G.leb` with its length at `+0xb8`, row `+0xc2`,
 column `+0xc3`), zones `+0x210`, virtual `+0x20` the room at a position.
 
-**Setup**: it reads the dungeon's flags byte into `w8` (bit 0 compass, bit 1 map; `0xe76204`); per room visited, or on the map or compass: its chip under `B_<cell>`, then `0xe80950` `DungeonMap_MakeRoomIcons (page, room, dungeon, visited, map, compass)`: the boss icon (`UiDungeonArea` `mIsBoss`, until beaten), an icon per room actor and per `UiDungeonIcon` row of the room from `0xe832c0` `DungeonMap_MakeActorIcon (out, page, actor {u16 id, f32 x, y, z, switches}, room, visited, map, compass)` by actor id: `ObjTreasureBox` a chest (`Dg_DgnTresure`), `ObjLockDoor`/`ObjBossDoor`/`ObjClosedDoor` and the one-way and Panel doors, `ObjDungeonCrackedWall` and Panel cracked walls (`Dg_DgnBombWall`), `AreaUpstairs`/`AreaDownstairs` and Panel stairs, `ObjDungeonWarpHole`, `PanelJointOpeningStraight`; no icon for other actors. Each icon is placed by `0xe84b60` `DungeonMap_PositionIcon (x, y, z, page, out vec2, room sp*)` (world to map, `0xe827b0`: the cell's position plus the offset from the room's middle × 5.333; the result is the icon's translate, set through icon virtual `+0x80`), attached with `AttachBefore(icon, page, N_MapPin_00, N_PinOffset_00)` and pushed onto `+0x1268`. Then `0xe82250` `DungeonMap_ShowCellFloor (page, cell, room, area row)` per room (and on every floor change): the cell, its icons (icon vtable `+0x78`), Link's and the entrance markers and the pins (code / 10) are shown on their floor only. The floor art is the animation `Dgn_<mAnimFloorIndex>`.
+**Setup**: it reads the dungeon's flags byte into `w8` (bit 0 compass, bit 1 map; `0xe76204`); per room visited, or on the map or compass: its chip under `B_<cell>`, then `0xe80950` `DungeonMap_MakeRoomIcons (page, room, dungeon, visited, map, compass)`: the boss icon (`UiDungeonArea` `mIsBoss`, until beaten), an icon per room actor and per `UiDungeonIcon` row of the room from `0xe832c0` `DungeonMap_MakeActorIcon (out, page, actor {u16 id, f32 x, y, z, switches}, room, visited, map, compass)` by actor id: `ObjTreasureBox` a chest (`Dg_DgnTresure`), `ObjLockDoor`/`ObjBossDoor`/`ObjClosedDoor` and the one-way and Panel doors, `ObjDungeonCrackedWall` and Panel cracked walls (`Dg_DgnBombWall`), `AreaUpstairs`/`AreaDownstairs` and Panel stairs, `ObjDungeonWarpHole`, `PanelJointOpeningStraight`; no icon for other actors. The actors are the level's LVB `staticObject` entries (`MapActorDesc`, 0x30 bytes each, copied by `LevelData_Load` into `+0x2b8`); their `rotation` holds quarter turns (0, 0x40000000, 0x80000000, 0xc0000000) and the icons scale it by 2π / 2^32 and 360 / 2^32; `unusedSwitchType` is 4 except in four Face Shrine `AreaDownstairs` (2, with `iconSwitchType` 2). Each icon is placed by `0xe84b60` `DungeonMap_PositionIcon (x, y, z, page, out vec2, room sp*)` (world to map, `0xe827b0`: the cell's position plus the offset from the room's middle × 5.333; the result is the icon's translate, set through icon virtual `+0x80`), attached with `AttachBefore(icon, page, N_MapPin_00, N_PinOffset_00)` and pushed onto `+0x1268`. Then `0xe82250` `DungeonMap_ShowCellFloor (page, cell, room, area row)` per room (and on every floor change): the cell, its icons (icon vtable `+0x78`), Link's and the entrance markers and the pins (code / 10) are shown on their floor only. The floor art is the animation `Dgn_<mAnimFloorIndex>`.
 
-**Room icons** (`DungeonMapIcon_vtable` `0x1c2cb38`, 0xd0 bytes, built by `0xf37fb0 (icon, layout name)`, initialised by `0xf36e60 (icon, actor, visited)`): open/closed animators `+0xa0`/`+0xb8`, `+0xc0` the area's id, `+0xc4` shown, `+0xc5` map, `+0xc6` compass, `+0xcc` visited. These fields and the animations belong to its base class DungeonMapPart (`DungeonMapPart_vtable` `0x1c2c638`, 0xd0 bytes, destructor `0xe71ff0`), which the page's `L_MapStart_00` (`+0x29c8`) is too. Virtuals `+0x80` `DungeonMapIcon_SetTranslate` (`0xf36d20`, `(vec2 in x0, icon)`) and `+0x88` `DungeonMapIcon_SetScale` (`0xf36d60`) move and scale the root pane. `0xf38040` (vtable `+0x70`, `DungeonMapIcon_Update (icon, actor)`) sets `+0xc4` and the icon's visibility when the compass is owned (`+0xc6`) or the actor's shown switch is set (with `+0xcc`), open by its open switch; `0xf380f0` (vtable `+0x78`, `(icon, bool on the floor)`) shows it while both `+0xc4` and the bool are set.
+**Room icons** (`DungeonMapIcon_vtable` `0x1c2cb38`, 0xd0 bytes, built by `0xf37fb0 (icon, layout name)`, initialised by `0xf36e60 (icon, actor, visited)`): open/closed animators `+0xa0`/`+0xb8`, `+0xc0` the area's id, `+0xc4` shown, `+0xc5` map, `+0xc6` compass, `+0xcc` visited. These fields and the animations belong to its base class DungeonMapPart (`DungeonMapPart_vtable` `0x1c2c638`, 0xd0 bytes, destructor `0xe71ff0`), which the page's `L_MapStart_00` (`+0x29c8`) is too. Virtuals `+0x80` `DungeonMapIcon_SetTranslate` (`0xf36d20`, `(vec2 in x0, icon)`) and `+0x88` `DungeonMapIcon_SetScale` (`0xf36d60`) move and scale the root pane. `0xf38040` (vtable `+0x70`, `DungeonMapIcon_Update (icon, actor)`) sets `+0xc4` and the icon's visibility when the compass is owned (`+0xc6`) or the actor's shown switch is set (with `+0xcc`), open by its open switch; `0xf380f0` (vtable `+0x78`, `(icon, bool on the floor)`) shows it while both `+0xc4` and the bool are set. Door icons (`Dg_DgnDoor`, vtable `0x1c2c778`, update `0xf37270`) copy the actor's `rotation` and sit 4 units back against it (`0xf373a0`: x − 4 sin, y + 4 cos); a door with `iconSwitchType` 0 (`ObjClosedDoor`, `PanelPanelBlockedDoor`) shows (visited) only once that switch is set, any other only while its open switch is set and its shown switch is not. Cracked walls and panel joints (`Dg_DgnBombWall`, `Pd_DgnPassJoint`, vtable `0x1c2c8b8`, update `0xf37840`) turn their root pane by it.
 
 `N_MapPosition_00` moves after the setup (y 48 in Tail Cave, at runtime); `N_PinOffset_00` is at 0 then, not the file's 256. The cursor (`+0x2d18`) is in `N_MapOrigin_00`'s units: a room icon at translate t under `N_MapPin_00` is at t + `N_MapPin_00` + `N_MapPosition_00` there.
 

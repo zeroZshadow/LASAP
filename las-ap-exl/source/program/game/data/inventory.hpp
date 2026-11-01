@@ -111,7 +111,7 @@ namespace Game::Data::Inventory {
         uint8_t BombCount; // 0x9e
         uint8_t ArrowCount; // 0x9f
         uint8_t PowderCount; // 0xa0
-        uint8_t EquippedSong; // 0xa1
+        uint8_t EquippedSong; // 0xa1: 0 none, 1 Ballad, 2 Mambo, 3 Frog's Song
         uint8_t EquipY; // 0xa2
         uint8_t EquipX; // 0xa3
         uint8_t KillCount; // 0xa4

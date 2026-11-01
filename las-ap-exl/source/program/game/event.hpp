@@ -117,24 +117,141 @@ namespace Game::Event {
 
     // ---- The evfl runtime (scripts/re/EVENTS.md, Flow and the evfl runtime) ----
 
-    // An action's or a query's binding: the handler the actor's lookup gave, its user data and the resource
-    struct BindingEntry {
-        void* handler;
-        void* userData;            // 0x8
-        const void* res;           // 0x10: ResAction* or ResQuery*
+    // ore::Allocator
+    struct Allocator {
+        struct Vtable {
+            void (*dtor)(Allocator*);
+            void (*deletingDtor)(Allocator*);
+            void* (*alloc)(Allocator*, size_t size, size_t alignment);
+            void (*free)(Allocator*, void* ptr);
+        };
+        const Vtable* vtable;
     };
-    static_assert(sizeof(BindingEntry) == 0x18);
+
+    // The callbacks an EvflAllocator allocates through
+    struct AllocateArg {
+        void* (*alloc)(size_t size, size_t alignment, void* userData);
+        void (*free)(void* ptr, void* userData);
+        void* allocUserData;       // 0x10
+        void* freeUserData;        // 0x18
+    };
+
+    // An Allocator over AllocateArg (vtable 0x1c4c850)
+    struct EvflAllocator {
+        Allocator base;
+        AllocateArg arg;           // 0x8
+    };
+    static_assert(sizeof(EvflAllocator) == 0x28);
+
+    // ore::Array
+    template<typename T>
+    struct Array {
+        T* data;
+        s32 size;                  // 0x8
+        u8 pad_c[0x4];
+
+        T* begin() const { return data; }
+        T* end() const { return data + size; }
+        T& operator[](size_t i) const { return data[i]; }
+    };
+    static_assert(sizeof(Array<u8>) == 0x10);
+
+    // ore::DynArrayList: an Array that grows through its allocator
+    template<typename T>
+    struct DynArrayList {
+        T* data;
+        s32 size;                  // 0x8
+        s32 capacity;              // 0xc
+        Allocator* allocator;      // 0x10
+
+        T* begin() const { return data; }
+        T* end() const { return data + size; }
+        T& operator[](size_t i) const { return data[i]; }
+    };
+    static_assert(sizeof(DynArrayList<u8>) == 0x18);
+
+    // ore::IntrusiveList: the end node and the offset of the node in an element
+    struct IntrusiveList {
+        ListNode end;
+        s32 nodeOffset;            // 0x10
+        u8 pad_14[0x4];
+    };
+    static_assert(sizeof(IntrusiveList) == 0x18);
+
+    struct FlowchartContext;
+    struct FlowchartObj;
+
+    // evfl::ParamAccessor: an action's or a query's parameters, a context's node's (the counter tells a reused node
+    // apart) or a timeline clip's
+    struct ParamAccessor {
+        const ResContainer* params;  // a timeline clip's; null for a node, whose event holds them
+        FlowchartContext* context; // 0x8
+        s32 node;                  // 0x10: -1 for a clip
+        s32 counter;               // 0x14
+    };
+
+    // evfl::TriggerType: what runs an action
+    enum class TriggerType : u8 { Flowchart = 0, ClipEnter = 1, ClipLeave = 2, Oneshot = 3 };
+
+    // evfl::ActionArg
+    struct ActionArg {
+        ParamAccessor params;
+        void* actorUserData;       // 0x18: the ActorBinding's
+        void* actionUserData;      // 0x20: the ActionEntry's
+        FlowchartContext* context; // 0x28
+        void* variablePack;        // 0x30: the node's
+        const ResEvent* event;     // 0x38: a timeline's ResClip or ResOneshot instead
+        float timelineTimeDelta;   // 0x40: 0 for a flowchart node
+        TriggerType triggerType;   // 0x44
+        u8 pad_45[0x3];
+    };
+    static_assert(offsetof(ActionArg, actionUserData) == 0x20 && sizeof(ActionArg) == 0x48);
+    static_assert(offsetof(ActionArg, triggerType) == 0x44);
+
+    // evfl::QueryArg
+    struct QueryArg {
+        void* actorUserData;
+        void* queryUserData;       // 0x8: the QueryEntry's
+        const ResEvent* event;     // 0x10
+        FlowchartContext* context; // 0x18
+        void* variablePack;        // 0x20
+        ParamAccessor params;      // 0x28
+    };
+    static_assert(offsetof(QueryArg, context) == 0x18 && sizeof(QueryArg) == 0x40);
+
+    // evfl::ActionDoneHandler: marks the action's node done and processes the context, once. The context lists the
+    // pending ones.
+    struct ActionDoneHandler {
+        ListNode link;
+        FlowchartContext* context; // 0x10: null once the context is cleared
+        s32 node;                  // 0x18
+        s32 counter;               // 0x1c
+        FlowchartObj* obj;         // 0x20
+        bool done;                 // 0x28
+        bool isFlowchart;          // 0x29: false for a timeline clip (obj a TimelineObj): Flow_RunAction marks it done
+        u8 pad_2a[0x6];
+    };
+    static_assert(offsetof(ActionDoneHandler, done) == 0x28 && sizeof(ActionDoneHandler) == 0x30);
+
+    // The done handler goes by value in evfl's signature; not trivially copyable, it is passed by address
+    using ActionHandler = void (*)(const ActionArg* arg, ActionDoneHandler* done);
+    using QueryHandler = s32 (*)(const QueryArg* arg);  // the case to take
+
+    // ActorBinding::Action / Query: the flow binds Flow_RunAction / Flow_RunQuery with the key of its step
+    template<typename Handler>
+    struct BindingEntry {
+        Handler handler;
+        void* userData;            // 0x8
+        const ResString* const* name;  // 0x10: in ResActor::actions / queries
+    };
+    using ActionEntry = BindingEntry<ActionHandler>;
+    using QueryEntry = BindingEntry<QueryHandler>;
+    static_assert(sizeof(ActionEntry) == 0x18);
 
     // evfl::ActorBinding: what a flowchart actor is bound to
     struct ActorBinding {
-        BindingEntry* actions;
-        u32 actionCount;           // 0x8
-        u32 actionCapacity;
-        u8 pad_10[0x8];
-        BindingEntry* queries;     // 0x18
-        u32 queryCount;            // 0x20
-        u32 queryCapacity;
-        u8 pad_28[0x8];
+        DynArrayList<ActionEntry> actions;
+        DynArrayList<QueryEntry> queries;  // 0x18
         void* userData;            // 0x30: the actor map value's user data
         const ResActor* actor;     // 0x38
         bool initialized;          // 0x40
@@ -147,12 +264,10 @@ namespace Game::Event {
     // evfl::FlowchartObj: a flowchart of the context and its ActBinder, one binding per actor
     struct FlowchartObj {
         const ResFlowchart* flowchart;
-        u32 usedActorCount;        // 0x8: the ActBinder from here
+        s32 usedActorCount;        // 0x8: the ActBinder from here
         u8 pad_c[0x4];
-        void* allocator;           // 0x10
-        ActorBinding* bindings;    // 0x18
-        u32 bindingCount;          // 0x20
-        u8 pad_24[0x4];
+        Allocator* allocator;      // 0x10: the context's
+        Array<ActorBinding> bindings;  // 0x18
         bool used;                 // 0x28
         u8 pad_29[0x7];
     };
@@ -177,15 +292,12 @@ namespace Game::Event {
 
     // evfl::FlowchartContext (0x98 bytes, the layout of Breath of the Wild's evfl)
     struct FlowchartContext {
-        u8 allocator[0x28];
-        FlowchartObj* objs;        // 0x28
-        u32 objCount;              // 0x30
-        u8 pad_34[0x4];
-        ContextNode* nodes;        // 0x38
-        u32 nodeCount;             // 0x40
-        u32 nodeCapacity;          // 0x44
-        u8 pad_48[0x8];
-        u8 handlers[0x20];         // 0x50: the ActionDoneHandlers, an intrusive list
+        EvflAllocator allocator;   // everything the context allocates, the bindings' arrays included
+        Array<FlowchartObj> objs;  // 0x28
+        DynArrayList<ContextNode> nodes;  // 0x38: grows by 16
+        IntrusiveList handlers;    // 0x50: the pending ActionDoneHandlers
+        // 0x68: called as a sub flow starts (false) and as it returns (true); EventFlow_Make leaves it null
+        void (*subFlowCallback)(FlowchartContext*, const ResFlowchart*, const ResEvent* subFlow, bool returned);
         void* metadataPack;        // 0x70
         WeakPtr<>* user;           // 0x78: the flow's weak self (Flow_FromContext)
         s32 nextNode;              // 0x80
@@ -193,9 +305,11 @@ namespace Game::Event {
         s32 obj;                   // 0x88: the object the entry is in
         s32 entry;                 // 0x8c
         bool processing;           // 0x90
-        u8 pad_91[0x7];
+        bool processAgain;         // 0x91: a node asked for another pass over the nodes
+        u8 pad_92[0x6];
     };
     static_assert(offsetof(FlowchartContext, objs) == 0x28 && offsetof(FlowchartContext, nodes) == 0x38);
+    static_assert(offsetof(FlowchartContext, handlers) == 0x50 && offsetof(FlowchartContext, subFlowCallback) == 0x68);
     static_assert(offsetof(FlowchartContext, metadataPack) == 0x70 && offsetof(FlowchartContext, obj) == 0x88);
     static_assert(sizeof(FlowchartContext) == 0x98);
 
@@ -206,29 +320,35 @@ namespace Game::Event {
     // The flow an event runs (EventFlow_Make, 0x1c8 bytes): the evfl context over the flowchart
     struct Flow {
         WeakPtr<> self;
-        u8 unknown10[0x10];
+        SharedPtr<> resource;      // 0x10: the flowchart resource EventFlow_Make got
         FlowchartContext context;  // 0x20
-        u8 unknownB8[0x70];
+        UnorderedMap flowcharts;   // 0xb8: the entry and the sub flows it reaches (Flow_CollectFlowcharts)
+        UnorderedMap actorUserData;  // 0xe0: each binding's user data by flowchart resource and ResActor (Flow_Bind)
+        SharedPtr<> args;          // 0x108: the request's EventArgs (Flow_Start), dropped by the cancel callback
+        SharedPtr<> entryResource;  // 0x118: Flow_FindEntry's result: the resource, the flowchart and the entry
         const ResFlowchart* flowchart;  // 0x128
-        u8 unknown130[0x8];
-        UnorderedMap callbacksA;   // 0x138: std::functions, emptied by Flow_UnbindAll
-        UnorderedMap callbacksB;   // 0x160
+        const ResEntryPoint* entry;  // 0x130
+        UnorderedMap actionSteps;  // 0x138: std::functions by action key, emptied by Flow_UnbindAll
+        UnorderedMap querySteps;   // 0x160: by query key
         UnorderedMap waiting;      // 0x188: the pending actions' waiters (a set of shared pointers), Flow_RunAction's
-        u8 unknown1b0[0x8];
+        u32 nextActionKey;         // 0x1b0: from 1
+        u32 nextQueryKey;          // 0x1b4: from 1
         bool cancelled;            // 0x1b8
         u8 pad_1b9[0x7];
         RunningEvent* event;       // 0x1c0
     };
-    static_assert(offsetof(Flow, context) == 0x20 && offsetof(Flow, flowchart) == 0x128);
-    static_assert(offsetof(Flow, callbacksA) == 0x138 && offsetof(Flow, waiting) == 0x188);
-    static_assert(offsetof(Flow, cancelled) == 0x1b8 && offsetof(Flow, event) == 0x1c0 && sizeof(Flow) == 0x1c8);
+    static_assert(offsetof(Flow, context) == 0x20 && offsetof(Flow, flowcharts) == 0xb8);
+    static_assert(offsetof(Flow, args) == 0x108 && offsetof(Flow, flowchart) == 0x128);
+    static_assert(offsetof(Flow, actionSteps) == 0x138 && offsetof(Flow, waiting) == 0x188);
+    static_assert(offsetof(Flow, nextActionKey) == 0x1b0 && offsetof(Flow, cancelled) == 0x1b8);
+    static_assert(offsetof(Flow, event) == 0x1c0 && sizeof(Flow) == 0x1c8);
 
     // A value of an event's actor map, keyed by a flowchart actor's name: a system actor (no user data) or the
     // charas registered under the name, and the lookups that give an action's or a query's handler by name
     struct ActorMapValue {
         void* userData;            // the EventChara, null for a system actor
         UnorderedMap bySubName;    // 0x8: user data by a flowchart actor's secondary name
-        Function actionLookup;     // 0x30: the evfl handler of a ResAction (returned through x8)
+        Function actionLookup;     // 0x30: a ResAction's step, kept in Flow::actionSteps (returned through x8)
         Function queryLookup;      // 0x60: of a ResQuery
     };
     static_assert(offsetof(ActorMapValue, actionLookup) == 0x30 && sizeof(ActorMapValue) == 0x90);
@@ -243,15 +363,15 @@ namespace Game::Event {
         void* taskCtrl;
         UnorderedMap actors;       // 0x50: ActorMapValue by name
         UnorderedMap charas;       // 0x78: the EventCharas in the event (Event_HasChara)
-        u32 unknownA0;
+        s32 returnValue;           // 0xa0: FlowControl.SetReturnValue's value, 0 when made; read once the request ends
         u8 pad_a4[0x4];
         FixedString<0x40> jumpLevel;    // 0xa8: the pending level jump (Event_SetLevelJump)
         FixedString<0x40> jumpLocator;  // 0xf0: length 0 when none is pending
-        u8 unknown138[0x8];
-        u8 jumpOffset[0x10];       // 0x140: offsetX and offsetZ
-        Function hook150;          // 0x150: when set, EventManager_StartRequest calls it instead of Flow_Start (likely)
+        u8 pad_138[0x8];
+        u8 jumpOffset[0x10];       // 0x140: offsetX and offsetZ (a 16-aligned vector)
+        Function startGate;        // 0x150: returns a waiter; the flow starts once it finishes
         u8 kind;                   // 0x180: Player_OnEventStart's eventKind from it
-        bool keepTaskOnCancel;     // 0x181
+        bool keepTaskOnCancel;     // 0x181: also keeps the flow from starting when the start gate opens
         u8 pad_182[0xe];
 
         StrView Entry() const { return StrView{entry.data, entry.length}; }
@@ -259,7 +379,8 @@ namespace Game::Event {
     static_assert(offsetof(RunningEvent, flow) == 0x10 && offsetof(RunningEvent, task) == 0x40);
     static_assert(offsetof(RunningEvent, actors) == 0x50 && offsetof(RunningEvent, charas) == 0x78);
     static_assert(offsetof(RunningEvent, jumpLevel) == 0xa8 && offsetof(RunningEvent, jumpLocator) == 0xf0);
-    static_assert(offsetof(RunningEvent, jumpOffset) == 0x140 && offsetof(RunningEvent, hook150) == 0x150);
+    static_assert(offsetof(RunningEvent, jumpOffset) == 0x140 && offsetof(RunningEvent, startGate) == 0x150);
+    static_assert(offsetof(RunningEvent, returnValue) == 0xa0);
     static_assert(offsetof(RunningEvent, kind) == 0x180 && sizeof(RunningEvent) == 400);
 
     // A request of the event manager (EventManager_Request; vtable 0x1bc2240, a second base at +0x88)
@@ -268,7 +389,9 @@ namespace Game::Event {
         Signal finished;           // 0x8: one-shot; the event's task ended or the request was cancelled
         RunningEvent* event;       // 0x60: a shared pointer
         void* eventCtrl;
-        u8 unknown70[0x10];        // 0x70: Flow_Start takes it as the metadata pack's owner (+0x10 of it)
+        // 0x70: the entry point's arguments (EventArgs, a shared pointer; null for EventManager_Request)
+        void* args;
+        void* argsCtrl;
         bool cancelled;            // 0x80
         u8 pad_81[0x7];
         const uintptr_t* vtable2;  // 0x88
@@ -278,21 +401,23 @@ namespace Game::Event {
         bool Finished() const { return __atomic_load_n(&finished.nextHandle, __ATOMIC_ACQUIRE) == 0; }
     };
     static_assert(offsetof(EventRequest, finished) == 0x8 && offsetof(EventRequest, event) == 0x60);
+    static_assert(offsetof(EventRequest, args) == 0x70);
     static_assert(offsetof(EventRequest, cancelled) == 0x80 && sizeof(EventRequest) == 0x90);
 
     // The event manager (EventManager_ptr, 0x1e0 bytes): its requests, a deque of shared_ptrs (0x10 each, 256 a
     // block), the running one first, and the signals around them. Code connects to a signal through its owner.
     struct EventManager {
-        u8 unknown0[0x8];
-        const uintptr_t* vtable;   // 0x8
+        u8 unused_0[0x8];          // never accessed
+        // 0x8: vtable 0x1bc1910: operator new (the alignment ignored) and delete; the evfl runtime's allocator
+        Allocator allocator;
         const uintptr_t* resourceListener;  // 0x10
         SharedPtr<> resources;     // 0x18: holds event/common.evhb
         Signal queueStarted;       // 0x28: a request entered the empty queue
         Signal queueEnded;         // 0x80: the last request finished
         Signal eventStarted;       // 0xd8: before each event starts
         Signal eventEnded;         // 0x130: an event's request finished
-        // 0x188: two event camera actors (EventCamera_Ctor, vtable 0x1bbbce8), disabled once the queue empties; the
-        // item-get's event enables the first
+        // 0x188: the event cameras of players 1 and 2 (EventCamera_Ctor, vtable 0x1bbbce8), disabled once the queue
+        // empties; camera actions enable the first (scripts/re/EVENTS.md, Event cameras), none the second
         SharedPtr<> cameraA;
         SharedPtr<> cameraB;       // 0x198
         Deque requests;            // 0x1a8: SharedPtr<EventRequest>
@@ -320,7 +445,7 @@ namespace Game::Event {
     // The component that makes an actor a flowchart actor (EventChara_Ctor, vtable 0x1b5c208, 0x520 bytes)
     struct EventChara {
         Entity entity;
-        u8 pad_58[0x8];            // Component's own
+        u8 pad_58[0x8];
         // 0x60: the action hooks (play an animation, move to a position, look at, ...), by index in
         // scripts/re/EVENTS.md, EventChara
         Function hooks[13];
@@ -329,7 +454,8 @@ namespace Game::Event {
         u8 pad_2ec[0x4];
         FixedString<0x10> talkAnim;  // 0x2f0: NPCs: "@TALK"
         float talkBlend;           // 0x308
-        u8 unknown30c[0x4c];
+        u8 pad_30c[0x4];
+        FixedString<0x40> talker;  // 0x310: the talk window's speaker name, a message label (NPCs: "Talker:{0}")
         FixedString<0x20> name;    // 0x358: a flowchart actor's name binds to it
         FixedString<0x20> subName;  // 0x380: and its secondary name
         Signal signal;             // 0x3a8
@@ -341,7 +467,7 @@ namespace Game::Event {
         Function cameraAnimation;  // 0x4a0: a camera animation by name (Play*OriginCameraAnimation)
         Function pointPosition;    // 0x4d0: a named point's world position (Link's)
         float turnRate;            // 0x500
-        float unknown504;          // 0x504: 1 when made
+        float stopDistance;        // 0x504: 1 when made; the PlayerMoveTarget's as Link walks up to it
         bool turning;              // 0x508: EventChara_LookAndTurn turns toward the look target
         bool turnHeld;             // 0x509
         u8 pad_50a[0x2];
@@ -356,6 +482,7 @@ namespace Game::Event {
     static_assert(offsetof(EventChara, subName) == 0x380 && offsetof(EventChara, signal) == 0x3a8);
     static_assert(offsetof(EventChara, actionLookup) == 0x400 && offsetof(EventChara, queryLookup) == 0x430);
     static_assert(offsetof(EventChara, cameraAnimation) == 0x4a0 && offsetof(EventChara, pointPosition) == 0x4d0);
+    static_assert(offsetof(EventChara, talker) == 0x310);
     static_assert(offsetof(EventChara, turnRate) == 0x500 && sizeof(EventChara) == 0x520);
 
     // event/common.evhb: the event actors' names and their parents (Character, Object, Item, Enemy, ...)

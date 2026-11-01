@@ -8,6 +8,12 @@
 #include "game/time.hpp"
 #include <cstring>
 
+#ifdef LASAP_TEST
+namespace AP::Test {
+    void ProbeMarkDirty(Game::Node* node);  // test_probes.cpp: DBG probe dirty
+}
+#endif
+
 namespace AP::Bridge {
 namespace {
     using Game::NowMs;
@@ -108,6 +114,9 @@ namespace {
 
     HOOK_DEFINE_TRAMPOLINE(NodeMarkDirty) {
         static void Callback(Game::Node* node) {
+#ifdef LASAP_TEST
+            AP::Test::ProbeMarkDirty(node);
+#endif
             if (node != nullptr && node == g_HeldModel.View().ptr) {
                 if (g_HeldModel.Alive()) PlaceHeldModel();
                 else DropHeldModel();

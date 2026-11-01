@@ -79,7 +79,7 @@ namespace Game {
     struct MaskedAnimationLayer {
         u8 base[0xfc];             // the AnimationLayer, up to its tail padding
         u8 enabled;                // 0xfc
-        u8 additive;               // 0xfd: the masked bones stay on the lower layers too; no writer found
+        u8 additive;               // 0xfd: the masked bones stay on the lower layers too; always 0
         u8 pad_fe[0x2];
         Vector<u16> boneMask;      // 0x100: per bone, byte 0 the mask, byte 1 the effective one
         u8 blendScratch[0x30];     // 0x118: a masked bone's transform for the blender
@@ -94,7 +94,7 @@ namespace Game {
         Entity entity;
         u8 pad_58[0x8];
         AnimationLayer layer;      // 0x60
-        u8 field_160;              // 0x160: zeroed by the constructors, not read
+        u8 unused_160;             // 0x160: zeroed by the constructors, never read
         u8 pad_161[0x3];
         u32 order;                 // 0x164: 0x400
         SkeletalModelComponent* modelComp;  // 0x168: a weak_ptr, locked each update

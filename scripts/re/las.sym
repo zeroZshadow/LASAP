@@ -10,7 +10,7 @@ PhaseQueue_ApplyPending 0x08517050 f after Run: the deque +0x48 (0 add, 1 remove
 Phase_ActorLateUpdate 0x08518210 f update phase 0xbb80: queue +0x1f8, nothing while Framework +0x510/+0x511
 Phase_ActorUpdate 0x08519b80 f update phase 0x7530: queue +0x100, nothing while Framework +0x510/+0x511
 Framework_FrameStep 0x0851be30 f the frame delta, then the update phases
-Gfx_FlushEntities 0x0851c930 f graphics callback: EntityManager_Flush
+Gfx_FlushEntities 0x0851c930 f graphics callback (the frame end 0x09523820, after the GPU wait): EntityManager_Flush, then every function on the thread's queue (TlsQueue_RunOne)
 View_GetId 0x0851d5f0 f vtable +0x78: +0x18
 Actor_Ctor 0x0851fdb0 f (actor, ActorArgs*): Entity_Ctor, the params into +0x98..+0x2a0, priority +0xac from ActorTable +0x49
 ActorParams_Dtor0 0x08520f70 f member destructor at params +0xd0
@@ -146,8 +146,8 @@ Task_Post 0x087db430 f (out, scheduler Framework +0x60, std::function*, x3)
 WaterEvent_Make 0x08861fc0 f 0x160-byte component
 EnemyOctorok_Factory 0x08a520a0 f ActorTable id 2
 OcarinaReaction_Make 0x08ad8760 f (out, actor, StringView* name, sp<Node>* parent, float* distance): 0x1b0-byte Node subclass
-ActorTree_Freeze 0x08cd9910 f (obj, entity): clears flags bit 2 of every enabled actor of the tree not of type 0x1cab3f8, listed at obj +0x18
-ActorTree_Unfreeze 0x08cd9f60 f sets flags bit 2 again on the list
+Actor_FreezeComponents 0x08cd9910 f (freezer, actor): clears flags bit 2 of every enabled component but the ReactionComp (type 0x1cab3f8), listed at freezer +0x18; the ReactionComp at +0x8
+Actor_UnfreezeComponents 0x08cd9f60 f sets flags bit 2 again on the list
 EventAction_LoadZone 0x08d03c50 f GameControl.LoadZone(zoneID)
 EventQuery_CompareCurrentLevelTime 0x08d04bd0 f (ctx) -> (totalTimePlayed - Inventory +0x138) / 1e6 >= time
 Task_Ctor 0x08d2ee90 f (task, VTT, SharedPtr* parent): base of the GameState and the scenes: weakThis +0x8, parent +0x18, onFinished signal +0x28, finished +0x80
@@ -164,7 +164,7 @@ RoomManager_ReloadOtherZones 0x08d6a130 f (manager, zone): Room_Reload on each r
 ZoneCamera_Update 0x085cbfd0 f vtable 0x0a05e910 +0x28: camera follow; once its mode +0x158 < 3 and its zones +0x14c (entered) and +0x150 differ, Scene_SetActiveZone
 LevelScene_Dtor 0x08d48ea0 f
 PlayTask_Ctor 0x08d56550 f the level's "Play" task (0x410 bytes, vtable 0x0a0c7850)
-RoomManager_StartLevelLoad 0x08d58bf0 f vtable +0x50
+RoomManager_Finish 0x08d58bf0 f vtable +0x50, the task's Finish: state 6 (+0x3f8), finished (+0x80), onFinished emitted; the scene's slot (LevelScene_OnRoomManagerFinished) loads the destination
 RoomManager_UnloadRooms 0x08d58cd0 f vtable +0x58: the actors of rooms whose area left the load box, a few per call, then the room
 RoomManager_CreateRoom 0x08d58fd0 f vtable +0x60 (out, manager, area sp*, bool): Room_Ctor
 RoomManager_LevelJumpTeardown 0x08d5b660 f vtable +0x80: BGM fade, Link disabled, every room deleted, the level data released
@@ -237,7 +237,7 @@ NpcGhost_StopFollowing 0x08ec1a40 f companion +0x48: into the current room's roo
 NpcGhost_FollowLink 0x08ec1d20 f companion +0x38: while following, the root to Link's world position
 NpcGhost_UpdateTask 0x08ec25f0 f queue +0x100 task: NpcGhost_Update while (flags & 0x40000117) == 0x117
 NpcGhost_Update 0x08ec2630 f per frame
-NpcGhost_ScenarioTimer 0x08ec2e20 f the 40-frame timer's callback: +0x2c3 = 1, event Scenario:Lv5GhostGoGrave (TakeGhostGrave) or Scenario:Lv5GhostGoHouse1
+NpcGhost_ScenarioTimer 0x08ec2e20 f the 40-frame timer's callback: +0x2c3 = 1, event Scenario:Lv5GhostGoGrave when the Conditions row TakeGhostGrave holds, else Scenario:Lv5GhostGoHouse1
 TreasureBox_Init 0x0919e0d0 f opened flag on (LEB switch 1; slot 0 of the record at +0x250): opened (+0x320)
 TreasureBox_Open 0x0919f4b0 f sets the opened flag (as Init reads it)
 ObjTreasureBox_PopEnemy 0x091ad290 f (out enemy sp, chest): a $ENEMY chest's enemy, EnemyZolGreen (0x1b, LEB param 0 int 3) at its root + (0, 0.7, 0.1), its zone, its parent as owner; LASR's enemy randomizer swaps the id (0xca92c4)
@@ -259,8 +259,8 @@ Player_ControlMode 0x092421d0 f 0 normal, 1 A/throw only, 3/5 no input, 4 no das
 Player_ClearClingers 0x09242c60 f fires onClingerReleased (+0x1e28) for each
 Player_RegisterActionChecks 0x092431d0 f the 21 action checks of the input (+0x1590)
 Player_InitAttackCollisions 0x09244720 f makes the SwordAttackColComp ... BottleColComp set at +0x3a8
-Player_OnBodyTouch 0x092527d0 f lambda on the body's +0xd8 signal: bodyTouches (+0x1618), touchedActors (+0x1850)
-Player_OnBodyContact 0x09253fb0 f lambda on the body's +0x80 signal: bodyContacts (+0x1600)
+Player_OnBodyTouch 0x092527d0 f lambda on the body's +0xc8 signal: bodyTouches (+0x1618), touchedActors (+0x1850)
+Player_OnBodyContact 0x09253fb0 f lambda on the body's +0x70 signal: bodyContacts (+0x1600)
 Player_FreeMagicRodBall 0x092555e0 f first free slot of +0x430
 Player_MagicRodBall 0x09255790 f (player, slot): PlayerMagicRodBall (0x1b5)
 Player_SpawnArrow 0x092561f0 f (player, index 0/1): PlayerArrow (0x183) into +0x400 + index*0x10
@@ -275,7 +275,6 @@ Player_SetModelFlag 0x09258df0 f (player, bool) +0x1b3b: model virtual +0xf0 on 
 Player_SpawnSwordBeam 0x09259000 f PlayerSwordBeam (0x1fc) into +0x458
 Player_MoveTo 0x092595b0 f (future out, player, params 0x39): copies to +0x1810, state 16
 Player_BlowAway 0x092599c0 f (future out, player, params 0x13): copies to +0x1870, state 23
-Player_SetOcarinaArea 0x09259b00 f (player, StringView* name, WeakPtr*): +0x1ef8, +0x1f20 (guess: AreaOcarina)
 Player_ShowItemGroupBit 0x0925a7c0 f (player, group): Player_ShowItem by +0x1b90 bit unless flags bit 1
 Player_Move 0x0925b260 f knockback, kind-6 pull, playerCollision Move; moveDelta +0x17a0, moveResult +0x1790
 Player_SetHolder 0x0925c8f0 f (player, WeakPtr*): +0x19c0, flags bit 8
@@ -401,7 +400,7 @@ ModelInstance_BoneCallback_Exec 0x0953b0c0 f vtable +0x10 (cb, {s32* bone?, s32 
 ModelInstance_DrawShape 0x0953bb90 f vtable +0xb8 (M, ctx, shape, cullFlags, bool, info*): makes a ShapeDrawItem (0x90) and queues it by the pass mask of its render layer
 ModelInstance_MakeShapeBinders 0x0953c730 f vtable +0xd0: per shape three ShapeBinders (0xa0) into M +0xc0/+0xd8/+0xf0 (the third only with ShapeRenderInfo +0x2a)
 ModelInstance_UpdateBounds 0x0953d210 f after lastPosition moves: the model's bounding, and each visible shape's when shapeCullMode is 2
-ModelInstance_UpdateShaderOptions 0x0953d300 f (M, bufferIndex): when M +0x270 has the buffer's bit, pushes +0x269/+0x26f/+0x27c and virtual +0xa0 into every shape's shader selectors (ModelData +0x28), then clears the bit
+ModelInstance_UpdateShaderOptions 0x0953d300 f (M, bufferIndex): when M +0x270 has the buffer's bit, pushes receiveShadow +0x269 (shadow_profile_mode), ambientLighting +0x26f, lightCullingMode +0x27c and virtual +0xa0 (instancing_mode) into every shape's option selectors (ModelData +0x28), then clears the bit
 ShapeDrawItem_Execute 0x0953d9d0 f vtable +0x10 (item, ctx): picks the binder and shader selector by the pass id (ctx +0x188)
 ModelInstance_SetRasterState 0x0953e160 f (f32 depthBias M +0x274, item, ctx): binds the pass's rasterizer state with the item's depth bias (+0x5c), pass 1 max ctx +0x278, pass 10 + ctx +0x27c, cull mode item +0x6c
 ModelInstance_ConnectBoneCallback 0x095401a0 f (M, s32 bone, Function* cb) -> u32 connection: the bone's Signal in M +0x2d8 (made on first use), M +0x2f0 as the skeleton's calcWorldCallback, callbackBone the lowest key
@@ -450,11 +449,11 @@ Event_Make 0x08d10290 f (out, flowchart*, StringView* entry)
 Event_Prepare 0x08d11b00 f (event*)
 Event_AddChara 0x08d137d0 f (event, EventChara sp*): the chara joins the event under its names (+0x358, +0x380; nothing without +0x378) and in the chara map +0x78
 Event_HasChara 0x08d1eac0 f (event, EventChara sp*): the chara is one of the event's actors (map +0x78/+0x80)
-PanelQuery_Stone4 0x08d157e0 f event query lambda: save +0x5093 >= 5 and chamber stone 4 owned
+PanelQuery_CheckCompleteAmiiboGift 0x08d157e0 f the query CheckCompleteAmiiboGift: save +0x5093 (amiibo touch count) >= 5 and chamber stone 32 owned (PanelPieceBits byte 4 bit 0)
 GameControl_FindAction 0x08d180e0 l leaf after udf, no prologue: GameControl action name -> std::function vtable
 Event_SetLevelJump 0x08d1f950 f (event, StringView* level, StringView* locator, offset*): the event's pending jump, +0xa8/+0xe8 level, +0xf0/+0x130 locator, +0x140 offset
 Event_ProcessLevelJump 0x08d1fa80 f (event): the pending jump at the request's end: $RETRY, $QUIT, $ENDING, else LevelManager_LevelJump or LevelManager_WarpInLevel; a bl target after a noreturn call
-EventManager_Request 0x08d232e0 f (out request sp, manager, event sp*): EventManager_RequestImpl
+EventManager_Request 0x08d232e0 f (out request sp, manager, event sp*): EventManager_RequestImpl with no arguments
 EventManager_OnRequestFinished 0x08d24bc0 f lambda 0x0a0c5fa8 {manager, request} on the request's finished signal: eventEnded, pop, Event_ProcessLevelJump, cancelAll, the next request or queueEnded
 CompanionEventEntry 0x08d26c20 f picks <entry>_Ghost, <entry>_Marin or {0}_Companion when the flowchart has it
 Datasheets_Load 0x08d3cb30 f boot: loads Npc.gsheet and NpcPhysicsTraits.gsheet into 0x1cb8360
@@ -462,7 +461,7 @@ RoomManager_Update 0x08d569b0 f (manager): per frame in state 1 (+0x3f8); calls 
 LevelLoad_Finish 0x08d59040 f on arrival: SetCurrentLevel with level +0x88, locator +0xd0, position +0x120 of its object
 RoomManager_UpdateRooms 0x08d60280 f (manager, Vec4*, Vec4*, const Vec4* link position, bool): loads rooms around; +0x230 current Zone* (LevelData_ZoneAt), +0x228 nearest loaded room instance
 LevelManager_LevelJump 0x08d68d50 f (mgr, StringView* level, StringView* locator, Vec2* offset) -> bool: only in state +0x3f8 == 1; +0x138 level, +0x180 locator, +0x1d0 offset, state 4
-LevelManager_WarpInLevel 0x08d694d0 f (mgr, StringView* locator, Vec2* offset, int): jump within the current level
+LevelManager_WarpInLevel 0x08d694d0 f (mgr, StringView* locator, Vec2* offset, int): state 1 only; stores the jump, Scene_LeaveRooms, every room deleted, state 3 (description update)
 SetGameState 0x08d7f780 f (state machine, u32 state, bool): 4 reloads from the save, 1 quit, 5 ending; hooked by the module
 Title_ChangeState 0x08d831b0 f (machine*, state)
 ItemsSheet_FindRow 0x08d9dbc0 f (out {sheet shared_ptr, row*}, ItemsSheet_ptr holder, u8 itemId): the Items.gsheet row (0x98 bytes) whose itemID (+0x10) is itemId, all null when none; actorID +0x14
@@ -509,7 +508,7 @@ NpcComponent_MakeAnimator 0x08e4f310 f vtable +0x208: a single-layer SkeletalAni
 NpcComponent_MakeCollision 0x08e4f350 f vtable +0x210: null when the row's collision.shape is 0
 NpcComponent_MakeDamageCollision 0x08e52700 f vtable +0x218: only with damageCollision.enable
 NpcComponent_MakeEventChara 0x08e53220 f vtable +0x220
-NpcComponent_MakeDoAction 0x08e546a0 f vtable +0x228: only with doAction.type != 0
+NpcComponent_MakeDoAction 0x08e546a0 f vtable +0x228, only with doAction.type != 0: the DoAction component, kind = row doAction.type - 1, angle ranges and distances from the row
 NpcComponent_MakeTailorPlayer 0x08e54e60 f vtable +0x240: null without the row's graphics.drsb; TailorPlayer at component +0x158
 NpcComponent_MakeGroundAttr 0x08e55670 f vtable +0x250: only with a Collision, and groundCheck
 NpcComponent_MakeFacial 0x08e56380 f vtable +0x260: the FacialControl (component +0x198) from the row's graphics.facial row of Facial.gsheet; none without one
@@ -764,7 +763,7 @@ ActorTable 0x0a0d0898 l 0x275 entries of 0x58 (scripts/re/ACTORS.md): +0x0 facto
 NpcBowWow_vtable2 0x0a0df6e8 l companion interface (kind 1) at actor +0x2a8
 NpcComponent_vtable 0x0a0e0570 l vtable
 LookAtTarget_vtable 0x0a0e0ed0 l
-NpcFlyingCucco_vtable2 0x0a0e5440 l companion interface (kind 4, Rooster) at actor +0x2a8
+NpcFlyingCucco_vtable2 0x0a0e5440 l companion interface (kind 4, FlyingCucco) at actor +0x2a8
 NpcGhost_vtable 0x0a0e77c0 l vtable
 NpcGhostComponent_vtable 0x0a0e7ad8 l vtable
 NpcMarin_vtable2 0x0a0eaba0 l companion interface (kind 2) at actor +0x2a8
@@ -1069,7 +1068,7 @@ Datasheet_FindRowShared 0x094a1260 f (out {sheet sp, count, row}, sheet, StringV
 Datasheet_RowAt 0x094a1320 f (out {sheet sp, count, row}, sheet, index): row by position
 Datasheet_FindRowShared2 0x094a13e0 f (out {sheet sp, count, row}, sheet, StringView* key): Datasheet_FindRowShared for UiDungeonStair's rows
 UiMemorySheets_Set 0x094a16a0 f (holder, 3 sheet shared_ptrs*): fills UiMemorySheets_ptr
-Conditions_Check 0x094a1e10 f (conditions, type, StringView* arg, actor ctx) -> bool: 0 true, 1 event flag (arg "!" negates), 2 counter "name:value" compare, 3 companion (None/BowWow/Marin/Ghost/Rooster by Inventory +0x9d), 4-7 actor parameters
+Conditions_Check 0x094a1e10 f (conditions, type, StringView* arg, actor ctx) -> bool: 0 true, 1 event flag (arg "!" negates), 2 Items key[:index] owned, 3 companion (None/BowWow/Marin/Ghost/FlyingCucco by Inventory +0x9d), 4-7 actor LEB parameter 0-3 equals, 8 actor switch 0-3, 9 Conditions row, 10 ShopPanelStocks, 11 item obtained; ! negates, $N the actor's LEB parameter N
 Datasheet_RowById 0x094aa130 f (sheet, s32 id, row size) -> row: the row whose mId is id (hash map sheet +0xb0/+0xb8), rows at *(sheet+0x70)+0x20; throws for a sheet without an id column
 ui2d_Layout_CreateAnimator 0x0965cda0 f (layout, resource accessor, const char* animation name, bool): the animator LayoutWrapper_GetAnimation returns
 ui2d_Pane_AppendChild 0x0966abd0 f (pane, child)
@@ -1333,7 +1332,7 @@ LebRoom_ActorAt 0x08def0e0 f vtable +0x28 (lebRoom, u32 index) -> LebActorRecord
 LebRoom_String 0x08def1c0 f vtable +0x50 (lebRoom, u32 offset) -> const char*
 LevelData_MapActorCount 0x08df4e20 f vtable +0x70: entries of the map actor vector (+0x2b8, 0x30 bytes each)
 LevelData_MapActorAt 0x08df4e40 f vtable +0x78 (level, index): &mapActors[index] (MapActorDesc)
-GridPuzzle_Step 0x08df8430 f compares a step with Inventory +0x86's 2-bit code; BGM_NAZOTOKI_SEIKAI on completion (guess)
+GridPuzzle_Step 0x08df8430 f the Signpost Maze: compares Link's grid step with Inventory +0x86's 2-bit code; BGM_NAZOTOKI_SEIKAI on completion
 TagProcessor_Ctor 0x08e078e0 f 0x118-byte text tag processor (vtable 0x0a0de908), set as a text box's +0x108
 PlayerCollision_Make 0x08e434a0 f (out, owner, name, ?, params): operator_new(0x290)
 NpcComponent_Dtor 0x08e48b50 f vtable +0x10
@@ -1347,12 +1346,12 @@ NpcGhost_OnEventStart 0x08ec14c0 f vtable +0xb0: +0x2c2 = 1
 NpcGhost_OnEventEnd 0x08ec1680 f vtable +0xb8: +0x2c2 = 0
 Actor_AddNpcComponent 0x08ec4060 f (out sp, actor, StringView* name, sp<Node>* parent): Actor_AddComponent, start, attach (guess: name)
 KeptItem_Kind 0x08ec9680 f -> Inventory +0xc3
-Hint_NextRow 0x09197310 f round-robin over a datasheet's eligible rows with Inventory +0x123 (guess)
+Hint_NextRow 0x09197310 f round-robin over TelephoneHint.gsheet's eligible rows (owner +0x2e0) with Inventory +0x123
 Player_Create 0x09228890 f actor table factory: make_shared Player (0x1fb0 block, Player 0x1f90 at +0x20)
 Player_Ctor 0x0922a910 f
 PlayerSM_StateCount 0x0922ef90 f sm vtable +0x10: 64
 PlayerSM_StateName 0x0922efa0 f sm vtable +0x18: names at sm +0xc58
-Player_Cleanup 0x09235df0 f vtable +0x38: clears the signal sets, updates the locators, drops +0x308 (guess)
+Player_OnDestroyed 0x09235df0 f vtable +0x38 (Actor_OnDestroyed last): clears the signal sets, updates the locators, drops eventEntity (+0x308)
 Player_DropCarried 0x09236720 f vtable +0x48: clears the carried weak_ptr (+0x19b0), flag bit 2, NoLift, ClearUpper
 Player_OnEventStart 0x09236a60 f vtable +0xb0 (EVENTS.md): Link in the event (Event_HasChara): +0x1ef0 event kind, flag bit 0 (kInEvent), DamageColComp off; else Actor_SuspendUpdates; hooked by the module
 Player_OnEventEnd 0x09236d30 f vtable +0xb8: destroys +0x308; undoes the start (flag bit 0, DamageColComp on, or Actor_ResumeUpdates); hooked by the module
@@ -1629,14 +1628,14 @@ SmallKey_MakeComponent 0x08dcf8a0 f actor vtable +0x128 (actor, name*) -> sp x8:
 SmallKeyComponent_Share 0x08dcff40 f (out, component): its shared_ptr and self pointer
 SmallKey_StartFall 0x08dd22f0 f (component): the Fall action: body dynamic, still, 10 units above the spawn; waits for the body
 Actor_HasComponent 0x094ad490 f (actor, name, length)
-Node_SetWorldPos 0x094bad30 f (node, Vec3*): guess
+Node_SetWorldPos 0x094bad30 f (node, Vec3*): coordsNew.pos from a world position (relative to the parent), Node_MarkDirty
 ObjTree_DropItem 0x091b5f30 f (tree): a bonked tree's drop: Enemy_DropItems from the crown (+0x478 +0x6c, +0.5) at speed +0x478 +0x68 toward its first rail link's point, else toward Link
 AreaShellDropper_Drop 0x085895a0 f (dropper): a bombed hole's seashell through Enemy_DropItems; LASR hooks it at +0x15c
 AreaShellDropper_DropStart 0x085898c0 f (dropper): virtual +0x138: where its drop starts, 2.25 above it
 AreaShellDropper_DropLaunch 0x08589920 f (dropper, item...): virtual +0x140: launches the drop at 10.8 toward its first rail link's point, else itself
-ObjGrass_DropItem 0x090aa3e0 f guess (owner by address order): a cut bush's drop, the item its LEB parameter names, else table 0x11 (0x08da16e0), through Enemy_DropItemsDefault
-ObjRock_DropItem 0x0914db10 f guess (owner by address order): a lifted rock's drop, as the bush's
-ObjPot_DropItem 0x0902ee50 f guess (owner by address order): a pot's drop; skips ids 0x109 and 0x1eb, checks a switch for ObjHousePot (0xeb); LASR hooks its start
+ObjGrass_DropItem 0x090aa3e0 f (grass, bool): a cut bush's drop: the ItemDrop key its LEB parameter names, else ItemDrop row 17 (Grass), through Enemy_DropItemsDefault
+ObjRock_DropItem 0x0914db10 f (rock, bool): a lifted rock's drop, as the bush's
+ObjPot_DropItem 0x0902ee50 f ObjDungeonPot's drop: its LEB parameter, else the ItemDrop row its +0x578 names; skips ids 0x109 and 0x1eb, checks a switch for ObjHousePot (0xeb); LASR hooks its start
 Enemy_DropItemsDefault 0x08d9f7e0 f (actor, ...): Enemy_DropItems with the default callbacks (DropCallbacks_InitDefault)
 DropCallbacks_InitDefault 0x08d9dd10 f the default drop callbacks: +0x30 the start (Drop_DefaultStart), +0x60 the launch (Drop_DefaultLaunch)
 Drop_DefaultStart 0x08d9df40 f (actor, id, index, count): the root's world position + (0, 0.5, 0); with count >= 2 also 0.5 out at angle 2 pi index / count
@@ -1719,13 +1718,13 @@ PlayerState_Swim_Update 0x092e1d20 f state 30 vtable +0x18
 PlayerState_Swim_Enter 0x092e3710 f state 30 vtable +0x28
 PlayerState_Swim_Exit 0x092e4670 f state 30 vtable +0x30
 PlayerState_Swim_Move 0x092e4bb0 f Player_Move with the animation's root motion; in-water test; velocity +0x190, useGravity off
-Node_SetWorldRotation 0x094bb2f0 f (node, Quat*): coordsNew.rot from a world rotation, Node_MarkDirty (likely)
+Node_SetWorldRotation 0x094bb2f0 f (node, Quat*): coordsNew.rot from a world rotation, Node_MarkDirty
 CharCtrlComp_OnTransformChanged 0x095bab60 f (closure): outside Move, the controller's foot position to the node's world position
 EventManager_Get 0x08d20070 f (): EventManager_ptr, made on first use
 EventManager_Ctor 0x08d20100 f (manager): 0x1e0 bytes; signals queueStarted +0x28, queueEnded +0x80, eventStarted +0xd8, eventEnded +0x130; request deque +0x1a8
 EventRequest_Cancel 0x08d232b0 f request vtable +0x20: sets cancelled (+0x80) once; finishes the event's task unless event +0x181
-EventManager_RequestImpl 0x08d23310 f (out, manager, event sp*, x3): needs the room manager in state 1; an EventRequest (0x90, vtable 0x0a0c6240) to the queue; queueStarted and StartRequest when it was empty
-EventManager_StartRequest 0x08d23d20 f (out, request): eventStarted, Flow_UnbindAll, Flow_Bind, Flow_Start (the FlowchartContext:Run() task into event +0x40)
+EventManager_RequestImpl 0x08d23310 f (out, manager, event sp*, EventArgs sp*): needs the room manager in state 1; an EventRequest (0x90, vtable 0x0a0c6240; the arguments at +0x70) to the queue; queueStarted and StartRequest when it was empty
+EventManager_StartRequest 0x08d23d20 f (out, request): eventStarted, Flow_UnbindAll, Flow_Bind, the event's start gate (+0x150 = EventManager_WaitForLink), then a task into event +0x40 that starts the flow (Event_StartFlow) once the gate's waiter finishes
 EventActorMap_AddChara 0x08d13f60 f (event, evhb sp*, StringView* name, StringView* subName, chara sp*): the chara under its name, its sub name and each evhb ancestor
 EventActorMap_Add 0x0958c7f0 f (map, StringView* name, StringView* subName, user data): an actor map entry (0x90: user data, sub map +0x8, action lookup +0x30, query lookup +0x60)
 Event_AddLink 0x08d12bb0 f (event): Event_AddChara with Link's chara (player +0x2f8); Event_Prepare's
@@ -1735,7 +1734,7 @@ EventChara_Ctor 0x085f5730 f (chara, ComponentArgs*, StringView* name, StringVie
 Flow_FromContext 0x09590070 f (out flow sp, FlowchartContext*): locks the weak pointer the context's +0x78 points to (flow +0x0)
 Flow_Bind 0x0958d270 f (actor map, flow sp*): binds the flowchart's actors, actions and queries through lambdas 0x10898b0, 0x10896a0, 0x1089480
 Flow_UnbindAll 0x09594690 f (flow): clears every ActorBinding of the context's FlowchartObjs and the flow's callback maps
-Flow_Start 0x09594a40 f (out task sp, flow sp*, scheduler, metadata sp*): FlowchartContext::Start at the entry, then the task FlowchartContext:Run()
+Flow_Start 0x09594a40 f (out task sp, flow sp*, scheduler, EventArgs sp*): FlowchartContext::Start at the entry with the arguments' metadata pack (+0x10), then the task FlowchartContext:Run()
 Flow_CancelCallback 0x095950d0 f lambda 0x0a150788 {flow}: the run task's cancel: clears the context once (+0x1b8), finishes the pending waiters (+0x188)
 Flow_RunTask 0x09595470 f lambda 0x0a150740 {flow}: the FlowchartContext:Run() task's update: running while the context plays; then finishes the pending waiters (+0x188) and ends when none is left
 Flow_BindActions 0x09590160 f stores each action's step in the flow's +0x138 map and Flow_RunAction as its evfl handler
@@ -1755,7 +1754,7 @@ EventChara_TypeId 0x085f6a70 f EventChara vtable +0x70: 0x0a1b0cf8
 EventManager_MakeCameras 0x08d27340 f (manager): from Framework_Init; two EventCamera actors in the actor system, EventCameraLocator_1P/_2P, into +0x188/+0x198
 Interaction_Update 0x085ecbe0 f per frame: counts the interaction cooldown (0x0a1b0c88) down by the frame time; takes the pending target
 Interaction_Cooldown 0x0a1b0c88 l float: 0.5 s after an event queue ends (EventManager_OnRequestFinished); Interaction_Target gives none while above 0
-EventCamera_Ctor 0x08ce06a0 f (camera, args, u32 id at +0x2a4): an Actor with a transform, then 10, 0.349, 0.1, 4096, 16:9 (likely fov, near, far, aspect); the event manager's +0x188/+0x198
+EventCamera_Ctor 0x08ce06a0 f (camera, args, u32 id at +0x2a4): an Actor with a transform; its rig +0x2d0 with the goal state +0x310 (+0x360 distance 10, fovY 0.349, nearZ 0.1, farZ 4096, aspect 16:9); the event manager's +0x188/+0x198
 EventCamera_vtable 0x0a0bfce8 l
 EventChara_FindAction 0x086089a0 f the generic actions (TalkKeep, PlayAnimation, LookAt*, Aim*, MoveTo*, Trail*, Warp*, SetFacialExpression, ...); EventActorMap_AddChara's action lookup (0x08d14e70) calls it
 EventChara_WrapStep 0x0860b190 f functor vtable 0x0a060b20: emits the chara's +0x3a8 signal, then calls the wrapped step
@@ -1790,3 +1789,472 @@ TypeId_Component 0x0a1af328 l Component's type object static; holds vtable 0x0a0
 TypeId_EventChara 0x0a1b0cf8 l EventChara's type object static; holds 0x0a0551e0, the isA of every direct Component subclass (identical code folding)
 TypeId_DeferredInit 0x0a1af4e0 l DeferredInit's type object static
 TypeId_TailorPlayer 0x0a1af308 l the tailor player component's type object static
+PhaseQueue_Add 0x08512120 f (queue, u32* id, std::function* phase, s32 priority) -> bool: false when the id is in phases; inserts now, or queues op 0 in pending while running
+PhaseQueue_Insert 0x085128e0 f (queue, u32* id, std::function* phase, s32 priority): the phase node (0x60) into the priority's group, making the group node (0x50) when new
+PhaseQueue_Take 0x085173c0 f (out std::function+future, queue, u32 id, bool dropEmptyGroup): unlinks the phase, returns its Function and future; erases the group once empty when asked
+PhaseQueue_SetPriority 0x08517510 f (queue, u32* id, s32 priority): PhaseQueue_Take then PhaseQueue_Insert
+PhaseQueue_RunGroup 0x08515f70 f (queue, group*): posts the group to the queue's worker pool, then runs the jobs of the thread's thread-local queue until the posted job sets its done flag
+Present_Init 0x09580b90 f (present, list* handheld, list* docked, WeakPtr* renderer): the level lists, the start index of each (first entry >= graphics +0x6e48 / +0x6e4c), frameTime 16666000 ns, requests the current mode's level
+Present_Dtor 0x09580b20 f
+Present_RequestLevel 0x09581110 f (present, s32 level): a graphics callback (id graphics +0x83c0, lambda vtable 0x0a14f9c0) that applies the level
+SaveFile_Exists 0x0930b2b0 f (s8 slot) -> bool: mounts save:, nn::fs::GetEntryType on the slot's file; false only for PathNotFound
+CameraSystem_Ctor 0x085c1aa0 f 0xa8 bytes (CameraSystem_ptr): +0x0 a shared_ptr to the active camera entity (+0x600 its eye, +0x510 the followed node, +0x560 an offset (likely), +0x700 flags)
+Actor_IsA 0x085222e0 f vtable +0x68 (actor, type id): the game Actor's 0x1cab3e8, then the engine actor base's 0x1cab3c8, then Entity's
+Actor_TypeId 0x08522420 f vtable +0x70: 0x1cab3e8, the game Actor's type id
+NpcGhost_IsA 0x08ec12a0 f vtable +0x68: NpcGhost's type id 0x1cb2828, then the bases'
+NpcGhost_TypeId 0x08ec13d0 f vtable +0x70: 0x1cb2828
+NpcGhost_SharedSelf 0x08ec16a0 f companion slot +0x10 (out sp x8, actor): NpcGhost_LockSelf on the weak self pointer
+NpcGhost_SharedSelf2 0x08ec16e0 f companion slot +0x18: the same through NpcGhost_LockSelf2
+NpcGhost_LockSelf 0x08ec20b0 f (out sp, ptr, ctrl): locks a weak pointer (throws bad_weak_ptr when expired); null when it is not an NpcGhost (IsA 0x1cb2828)
+NpcGhost_LockSelf2 0x08ec21e0 f identical copy of NpcGhost_LockSelf
+NpcComponent_StartSwitchEvent 0x08e4ecd0 f vtable +0x1c8 (component, slot): vtable +0x180 with condition 14 + slot
+NpcComponent_WatchSwitch 0x08e5ad00 f vtable +0x320 (component, u64 slot 0-3): unless the owner's LEB switch slot is on, posts NpcComponent_SwitchTask on the Framework scheduler; BuildComponents calls it per eventTriggers condition 14-17
+NpcComponent_SwitchTask 0x08e5ea10 f lambda (vtable 0x0a0e0a30 +0x30) {component weak, slot}: done when the component is gone; else, with Framework +0x510 clear and no event (EventManager +0x1d0), once the owner's switch slot is on: vtable +0x1c8, done
+LevelData_Kind 0x08df4d90 f vtable +0x48: +0x2b0, LVB config byte 0: 0 dungeons/caves/Chamber Dungeon, 1 shop, 2 house, 3 Field, 4 ending/event
+LevelData_KindBelow3 0x08df4da0 f vtable +0x50: kind < 3
+LevelData_CompanionsAllowed 0x08df4db0 f vtable +0x58: +0x2b1, LVB config byte 1
+LevelData_Color 0x08df4dc0 f vtable +0x60: Vec4 RGBA from +0x2b3..+0x2b6 over 255
+RoomManager_FinishLevelLoad 0x08d5c190 f vtable +0x90 (x0, manager): Scene_SetActiveZone with the first room's zone, state 1 (+0x3f8), +0x3fa 1
+RoomManager_ToState2 0x08d686c0 f RoomManager_Update in state 3: state 2, present setup, vtable +0x68 (false), then +0x90 when it completes (lambda 0x0a0c8138) (description update)
+EventManager_SetEvflAllocator 0x0958c300 f (allocator*): from EventManager_Ctor with the manager's +0x8; keeps it for the evfl runtime and registers a resource listener
+EventManager_WaitForLink 0x08d25050 f (out waiter): the event start gate; a task (0x90) on the framework's scheduler, EventStartGate_Update
+EventStartGate_Update 0x08d25600 f (task): done at once without Link, while paused (Framework +0x510) or with Link's kInEvent clear; else once Link is in state 22 (demoEvent) or after 5 s
+Event_StartFlow 0x08d1f8e0 f (functor {event, flow, scheduler, args sp}, out task sp): Flow_Start, nothing when the event's +0x181 is set; functor vtable 0x0a0c5880
+EventArgs_Make 0x095a3da0 f (out sp, u32 capacity): an event's entry-point arguments (0x68 bytes; evfl's metadata pack at +0x10, entries at +0x20, count +0x28)
+EventArgs_Ctor 0x095a3e00 f (args, u32 capacity)
+EventArgs_AddInt 0x095a4260 f (args, char* name, len, s32): entry type 0
+EventArgs_AddFloat 0x095a4620 f (args, char* name, len, float): entry type 2
+EventArgs_AddString 0x095a47d0 f (args, char* name, len, StringView* value): entry type 3
+Flow_FindEntry 0x0958fe10 f (out {resource sp, ResFlowchart*, ResEntryPoint*}, flowchart resource sp*, StringView* entry): the entry by name in the flowchart's dictionary; null when missing
+Flow_CollectFlowcharts 0x095992f0 f (map, entry ref*): adds the entry to the flow's +0xb8 map, then recurses into each of its sub flows
+FlowControl_SetReturnValue 0x08d04cc0 f (step): FlowControl.SetReturnValue: the event's +0xa0 = value
+FlowControl_FindAction 0x08d17b20 l FlowControl action name -> std::function vtable: SetReturnValue, PreloadTimeline, InvokeTimeline, InvokeStreamSyncTimeline
+Camera_FindAction 0x08d1af30 l Camera action name -> std::function vtable: Activate, Reset, Shake, ShakeTL, Quake, QuakeTL, FocusCameraReset, ApplyPreset, SetFocusedCamera, SetFixedCamera, SetFixedCameraWithChase, LookAt2ActorsCenterAsTalker, LookAt3ActorsCenterAsTalker, ...
+Camera_Activate 0x08cf8340 f (step): Camera.Activate: 0x08ce46e0 on the first event camera with 1.0, then disables it
+Camera_Reset 0x08cf8610 f (step): Camera.Reset: chaseRatio into the first event camera's +0x520, disables it
+Camera_SetFixedCamera 0x08cf9ff0 f (step): Camera.SetFixedCamera and SetFixedCameraWithChase: posX..rotZ; enables the first event camera
+Camera_Shake 0x08cfbe80 f (step): Camera.Shake (power, duration); the first event camera when it is enabled
+Camera_ShakeTL 0x08cfc640 f (step): Camera.ShakeTL (power)
+Camera_Quake 0x08cfcb60 f (step): Camera.Quake (initPower, targetPower, duration)
+Camera_QuakeTL 0x08cfd250 f (step): Camera.QuakeTL (initPower, targetPower)
+Camera_LookAt2ActorsCenterAsTalker 0x08cfd750 f (step): actor1, actor2, weight1, weight2, duration, chaseRatio; enables the first event camera
+Camera_LookAt3ActorsCenterAsTalker 0x08cfe500 f (step): actor1..3, weight1..3, ...; enables the first event camera
+EventChara_FocusCamera 0x085fe190 f (out, chara, ...): enables the first event camera; from the LookAt* steps and GenericTalkSequence
+EventChara_FocusCamera2 0x085fef70 f (out, chara, ...): enables the first event camera; from the LookAt* steps
+EventChara_TalkSequence 0x08605490 f (out, chara, flags*, float): GenericTalkSequence's body; walks Link up to the chara (PlayerMoveTarget +0x1c = chara +0x504), flag bit 4 EventChara_FocusCamera
+EventChara_ExamineSequence 0x08606400 f GenericExamineSequence's body; reads the chara's +0x504 like EventChara_TalkSequence
+EventChara_GimmickSequence 0x08606ae0 f GenericGimmickSequence's body
+EventChara_Ctor2 0x085f7f20 f (chara, args, StringView* name, StringView* subName, sp*, sp*): the second constructor, used by 13 actor factories
+LookAtFishingPlayer 0x09321720 f (step): the fishing game's camera action; enables the first event camera
+ItemActor_Setup 0x08dbab70 f actor vtable +0x20 of the item base: ItemsSheet_FindRow of +0x2e8 (data sp +0x2d0, row +0x2e0), DeferredInit, then vtable +0x128 "Npc" into +0x2f0
+ItemComponent_AddImpulse 0x08dc9980 f component vtable +0x3a8 of the item base (component, const Vec4*, bool hold): unless +0x2e5 or vtable +0x3e8 off: +0x2e7 set, +0x2e6 = hold, launch +0x2f0 += vector
+ItemComponent_Swallow 0x08dc99f0 f component vtable +0x3b0 of the item base: while vtable +0x3f0 holds and +0x2e5 clear: BodyCollision_SetEnabled(0), dynamic, gravity on, launch zeroed, +0x2e5 set; destroys an item without a body collision
+ItemComponent_AddItem 0x08dcb6a0 f component vtable +0x418 of the item base (component, item, count, index): actor flags +0xa2 bit 2, Inventory_AddItemID, emits the component's signal +0x300 with the actor sp
+AreaAntlion_PullItems 0x0853da60 f guess: an antlion pit's task: pulls items with component +0x3a8, at its centre +0x3b0
+DeathBall_PullItems 0x0875f8f0 f guess: a DeathBall's (Vacuum) task: pulls items with component +0x3a8, within reach +0x3b0
+BodyCollision_Ctor 0x095bda50 f (collision, args*, weak world*): Node_Ctor, second base +0x148, world weak_ptr +0x150, signals +0x1b8/+0x210, +0x268 -1, +0x26c 1; 0x270 bytes
+BodyCollision_Dtor 0x095beb10 f
+BodyCollision_vtable 0x0a154420 l collision with a body, base; +0x28 SyncPose, +0xa8 SetEnabled, +0xd8 enable, +0xe0 disable; second base at +0xf8 (0x0a154518)
+BodyCollision_SyncPose 0x095beed0 f vtable +0x28: the node's world pose to the body: setKinematicTarget when kinematic in a scene, else setGlobalPose
+BodyCollision_SetEnabled 0x095bfc50 f vtable +0xa8 (collision, bool): +0x26c, then vtable +0xd8 (on) or +0xe0 (off)
+BodyCollision_AddToScene 0x095c0bf0 f (collision) -> bool: with +0x180 the PxAggregate's addActor (PhysicsBody_AddToAggregate); else the world's (+0x150) PxScene addActor under lockWrite (body +0x458 = 1) or its pending entry +0x268, then emits +0x1b8 with the body
+BodyCollision_SetKinematic 0x095c1430 f (collision, bool): dynamic body only: PxRigidBody setRigidBodyFlag(eKINEMATIC), body +0x678; turning it off wakes a body in a scene (+0x248 wakeUp)
+BodyCollision_SetGravity 0x095c1590 f (collision, bool on): dynamic body only: PxActor setActorFlag(eDISABLE_GRAVITY, !on)
+PhysicsBody_Ctor 0x095c6720 f (body, PxRigidActor*): actor ref +0x18, shapes' wrappers +0x28 (count +0x20), userData sp +0x448, six signals +0x460..+0x618
+PhysicsBody_vtable 0x0a154e48 l a collision's body, base; +0x0 IsA
+PhysicsBody_MakeDynamic 0x095cac00 f guess: (out, physics*, desc*): a PxRigidDynamic (createRigidDynamic, vtable +0xb8) and its 0x680-byte body (vtable 0x0a154f88): +0x670 the actor, +0x678 kinematic
+DynamicBody_vtable 0x0a154f88 l the dynamic body (0x680 bytes): PxRigidDynamic at +0x670
+PhysicsBody_AddToAggregate 0x095c55c0 f (aggregate wrapper*, body sp*): PxAggregate addActor (vtable +0x30), body +0x459 = 1
+PhysicsBody_RemoveFromAggregate 0x095c5640 f (aggregate wrapper*, body sp*): PxAggregate removeActor (vtable +0x38), body +0x459 = 0
+WaterEvent_Dtor 0x0863f720 f
+WaterEvent_Leave 0x0863f980 f vtable +0x48: when +0x151: clears it, emits +0xb0 with true
+WaterEvent_Update 0x08640100 f the water event's task (closure call): probes at WaterEvent_ProbePoint; on a change of +0x151 emits +0xb0 (left) or +0x58 (surface +0x154, kind +0x158 from the std::function +0x110)
+WaterEvent_ProbePoint 0x08640730 f (water event) -> Vec4: the owner's root world position, plus +0x140 when +0x150
+ObjTree_Make 0x091ad9b0 f the actor table's factory of ObjTree (0xbb): ActorName_Make, then 0x091adae0 (operator_new(0x560), the 0x540-byte actor at +0x20)
+ObjTree_vtable 0x0a116a78 l ObjTree (and the other tree actors): +0x20 Setup, +0x28 MakeApples
+ObjTree_Dtor 0x091ae220 f
+ObjTree_Setup 0x091ae810 f vtable +0x20: apples +0x4c0 (LEB param 1), params +0x478 by actor id, model +0x3b0, animation +0x3c0, collisions +0x3d0/+0x3e0 (or Tree.cidb +0x430), machine Wait/Hit/Talk +0x2b0, tailor +0x3f0, ShellBeacon +0x440, DamageColComp +0x400, EventChara +0x420, DoAction +0x410, slot on Player +0x1d30 (+0x470)
+ObjTree_MakeApples 0x091b2010 f vtable +0x28: with +0x4c0, three j_root locators +0x4c8..+0x4e8 (AppleLow, Applehigh)
+ObjTree_OnPlayerSignal 0x091b4f30 f closure call of the tree's slot on Player +0x1d30 (actor sp): in Wait, when the actor is the tree, machine to Hit (0x091b4000)
+ObjTree_DropApples 0x091b58f0 f (replaces the existing line) (tree +0x4c8, tree): an apple tree's Hit drop: each apple (+0x4f8..) falls; +0x528 set
+CmdBuf_BindStorageBuffer 0x09643de0 f (wrapper, stage, slot, {GPU address, offset}*, size): nvnCommandBufferBindStorageBuffer
+CmdBuf_BindTexture 0x09643cf0 f (wrapper, slot, stage, texture descriptor slot*, sampler descriptor slot*): the combined handle, then the NVN texture bind (guess name)
+ShapeBinder_BindMaterialSamplers 0x09533c50 f (binder, cmd, program, MaterialObj*, shading model*): builds samplerTable (+0x68) once (+0x60), binds each {program sampler, material sampler} (guess name)
+ShapeBinder_BindUniformBlock 0x095345a0 f (binder, cmd, buffer, UniformBlock*, program, shading model*): binds the block by name as a uniform buffer, location cached in +0x88 (guess name)
+ShaderOptionSelector_vtable 0x0a1497c0 l per shape and binder option selector (ModelData +0x28 holders' entry +0x18); its option names follow at +0x78
+ShaderOptionSelector2_vtable 0x0a14af88 l the option selector subclass of binders [1] and [2]
+ShaderOptionSelector_Update 0x094f6e40 f vtable +0x28 (selector, buffer): copies the option values into +0x80, updates the variation
+ShaderOptionSelector_Setup 0x094f6ff0 f vtable +0x38: model_mode (ResShape +0x5a skin count), shadow_filtering_mode 1, ambient_lighting_mode 2, the rest 0, then +0x68(0), +0x60(shape)
+ShaderOptionSelector_SetShadowProfile 0x094f7490 f vtable +0x48 (selector, bool): shadow_profile_mode (option 3)
+ShaderOptionSelector_SetShadowFiltering 0x094f74a0 f vtable +0x50: shadow_filtering_mode (option 2)
+ShaderOptionSelector_SetAmbientLighting 0x094f74b0 f vtable +0x58 (selector, bool): ambient_lighting_mode (option 7) 4 or 2
+ShaderOptionSelector_SetAlphaTest 0x094f74d0 f vtable +0x60 (selector, shape): use_alpha_test (option 6) = ShapeRenderInfo renderLayer == 1
+ShaderOptionSelector_SetLightCulling 0x094f7500 f vtable +0x68: light_culling_mode (option 8)
+ShaderOptionSelector_SetInstancing 0x094f7510 f vtable +0x70 (selector, bool): instancing_mode (option 1)
+ModelInstance_IsInstanced 0x0953ba20 f vtable +0xa0: 0
+InstancedModelInstance_IsInstanced 0x094e87e0 f vtable +0xa0: 1
+RenderLayerFilter0_vtable 0x0a14b750 l render layer 0's pass filter: +0x30 0x0953d940 (passes 0,3-6; 1 shadow; 11,12 under_water; 16,17 water_reflection; 10 water; 41,42; 18,44; 18,19)
+RenderLayerFilter1_vtable 0x0a14b798 l render layer 1's pass filter: +0x30 0x0953d880 (layer 0's without 10, 16, 17)
+RenderLayerFilter2_vtable 0x0a14b7e0 l render layer 2's pass filter: +0x30 0x0953d7c0 (13,14 under_water; 22 translucent, else 20,21)
+RenderLayerFilter3_vtable 0x0a14b828 l render layer 3's pass filter: +0x30 0x0953d730 (23; 15 under_water)
+PlayerHook_Damage 0x092488a0 f stateHooks[1] (into 11) condition: hit.pending with hit.kind 0
+PlayerHook_FallAbyss 0x09248580 f stateHooks[2] (into 21) condition: not in 21/22, not carrying the flying cucco; ground kind 5, kind 7 surface without Flippers, kind 8 surface, or side-view water (0x13c850) on kind 8 or without Flippers
+PlayerHook_Recoil 0x092484a0 f stateHooks[3] (into 1) condition: recoilFlags bit 0; sets handoff.kind (0/1 or 4/5) and handoff.value (0.5/1 by heldFeather), clears recoilFlags
+PlayerHook_HeldStart 0x09248410 f stateHooks[4] (into 0) condition: Player flags bit 24, cleared by the test
+PlayerAction_CanJump 0x09297bd0 f toJump condition: kRocsFeather, ground kind not 6, no clingers, not carrying (or carrying the flying cucco), gate
+PlayerAction_CanSwordAttack 0x09297ad0 f toSwordAttack condition: kSword, not carrying, no clingers, gate
+PlayerAction_CanGuard 0x092979d0 f toGuard condition: kShield, not carrying, no clingers, gate
+PlayerAction_CanDash 0x092978d0 f toDash condition: kDash, not carrying, no clingers, gate
+PlayerAction_CanSwordCharge 0x092977b0 f toSwordChargeAttack condition: kSwordReleased, swordCharge charging and charged, not carrying, gate
+PlayerAction_CanInteract 0x092976c0 f toInteract condition: kA, Player_CanInteract, gate
+PlayerAction_SelectInteract 0x09297400 f toInteract select: interaction target +0x1a0 kind 1 open (5), 2 doPush (35), 3 pull (7), 4 carry (8), else talk (4)
+PlayerAction_CanUseItem 0x09297530 f toItem condition: an item action (6-14, 18-20), not carrying, no clingers, gate
+PlayerAction_SelectItem 0x09297390 f toItem select: the first set item action (6,7,8,9,11,10,12,13,14,18,19,20) mapped to its state (PlayerAction_ItemStateFind)
+PlayerAction_ItemStateFind 0x09296a70 f (u8 action) -> node: the static action -> state map (buckets 0x0a1bf028); node +0x10 action, +0x11 state
+Player_CarryingCucco 0x09292250 f (player) -> bool: kCarrying and the carried actor is NpcFlyingCucco (actor id 0x181)
+PlayerState_Ocarina_Enter 0x092dab00 f vtable +0x28: emits Player signal 0 (EquippedSong, Inventory +0xa1), runs the song's event of event/Common.bfevfl (ocarinaAreaName overrides the entry)
+PlayerState_Ocarina_SongDone 0x092db770 f (state, u8 song): the song event's completion: emits Player signal 1 with the song
+ItemGet_MakeCarryModel 0x0927ddb0 f (out sp, Player*, StringView* "CarryModel", model component sp*, u8*): the entity Player_ItemGetSequence keeps in Player +0x308 unless keepCarry
+Function_Swap 0x092971d0 f (std::function*, std::function*): libc++ swap; sets PlayerActionTransitions' select functions
+Function_Swap 0x092acbe0 f (std::function*, std::function*): libc++ swap; states put their gate into PlayerActionTransitions +0x0 on enter and an empty one on exit
+EventAllocator_vtable 0x0a0c5910 l EventManager +0x8's ore::Allocator: +0x10 EventAllocator_Alloc, +0x18 EventAllocator_Free
+EventAllocator_Alloc 0x08d23200 f vtable +0x10 (this, size, alignment): operator new(size), the alignment ignored
+EventAllocator_Free 0x08d23220 f vtable +0x18 (this, ptr): operator delete
+Evfl_Alloc 0x0958c3c0 f AllocateArg alloc (size, alignment): size + alignment (at least 8) + 8 from Evfl_allocator's allocator, aligned, the block's start kept in the 8 bytes below
+Evfl_Free 0x0958c420 f AllocateArg free (ptr): frees the block Evfl_Alloc kept below ptr
+Evfl_allocator 0x0a1d3590 l {Allocator*, AllocateArg {Evfl_Alloc, Evfl_Free, 0, 0}}: EventManager_SetEvflAllocator's; EventFlow_Make copies the AllocateArg into each context's EvflAllocator
+EvflAllocator_vtable 0x0a150850 l ore::Allocator over an AllocateArg (FlowchartContext +0x0): +0x10 EvflAllocator_Alloc, +0x18 EvflAllocator_Free
+EvflAllocator_Alloc 0x0959e2d0 f vtable +0x10 (this, size, alignment): arg.alloc(size, alignment, arg.allocUserData)
+EvflAllocator_Free 0x0959e2f0 f vtable +0x18 (this, ptr): arg.free(ptr, arg.freeUserData)
+Flow_RunQuery 0x09591dc0 f evfl query handler (QueryArg*) -> s32: the step from the flow's +0x160 by the arg's user data; 0 without a step, once cancelled or once the flow has ended
+Flow_BindQuery 0x095917c0 f (flow sp*, QueryEntry*, name, ResActor*, actor user data): Flow_BindActions' query binding: the step into the flow's +0x160 under a new key (+0x1b4), handler Flow_RunQuery
+FlowchartContext_ProcessNode 0x0959e5d0 f (context, s32 node) -> bool: runs a node's event; builds the ActionArg/QueryArg and calls the binding's handler, calls the context's sub flow callback (+0x68)
+FlowchartContext_Clear 0x0959f9b0 f (context): every node back to free (its owned variable pack freed), the pending ActionDoneHandlers reset; Flow_UnbindAll's first step
+FlowchartContext_FreeVariablePack 0x0959e580 f (allocator*, void** pack): destroys and frees the pack, nulls the slot
+FlowchartObj_ClearArray 0x0959df90 f (FlowchartObj*, s32 count): frees each object's bindings and their arrays
+ActBinder_Init 0x095a22f0 f (binder = FlowchartObj +0x8, allocator*, ResActor* begin, end): one ActorBinding per actor, actions and queries reserved to 1
+BasicSound_SetAmbientInfo 0x095eeaa0 f (sound, AmbientInfo*): copies the info's arg into a block from its argAllocator (+0x10, virtual +0x10), then the callbacks into the sound's +0x40
+PlayerCollisionBehavior_vtable 0x0a154360 l PlayerCollision's controller behaviour (PlayerCollision +0x220); +0x10 Shape, +0x18 Controller
+PlayerCollisionBehavior_Shape 0x095bb680 f (x8 flags*, this, SharedPtr* shape, actor userData +0x8): Slide unless shape +0x30, then its +0x31; Slide for the last contact's shape and actor unless +0x28a
+PlayerCollisionBehavior_Controller 0x095bb6f0 f (x8 flags*, this, userData): Slide
+PlayerCollision_Init 0x095bb9b0 f vtable +0x20: connects to the body's hit signals (+0x80, +0xd8 owners), behavior.owner = this
+PlayerCollision_Move 0x095bc050 f vtable +0xd0: CharCtrlComp_Move without the sync to the node; velocity from force/frameForce, wall normals, slope
+CharCtrl_CreateController 0x095ccdb0 f (?, desc): PhysX 3.4 PxController from CharCtrlComp's desc; callbacks object {hit report, behaviour, desc +0x48}
+CctHitReport_vtable 0x0a153a98 l PxUserControllerHitReport of the callbacks object: onShapeHit, onControllerHit, onObstacleHit (nothing)
+CctBehavior_vtable 0x0a153ad0 l PxControllerBehaviorCallback of the callbacks object (+0x8); forwards to the desc's behaviour object (+0x10)
+CctHitReport_OnShapeHit 0x095b4970 f PxControllerShapeHit -> PlayerContact on the body's +0x70 signal (false) and the PhysicsBody's +0x618 (true)
+CctHitReport_OnControllerHit 0x095b4cf0 f PxControllersHit -> PlayerTouch on both bodies' +0xc8 signals (false, true)
+CctBehavior_Shape 0x095b4770 f getBehaviorFlags(shape, actor): locks the shape's userData object, calls the behaviour's +0x10
+CctBehavior_Controller 0x095b48e0 f getBehaviorFlags(controller): the behaviour's +0x18 with the controller's userData
+PlayerState_Jump_Start 0x092ca5e0 f (state, player): handoff.kind as PlayerJumpKind: animation and launch speed; from the enter and the update
+PlayerState_Jump_Enter 0x092c99d0 f state 1 vtable +0x28: handoff variant, value, angle (facing), flag with velocityX/Z
+PlayerState_Jump_Exit 0x092ca130 f state 1 vtable +0x30
+PlayerState_Ladder_Enter 0x092cede0 f state 14 vtable +0x28: handoff payload Ladder restores +0x314
+PlayerState_Ladder_Exit 0x092cf1d0 f state 14 vtable +0x30: into 22 hands +0x314 over (payload Ladder) and sets pendingState 14
+PlayerState_Damage_Enter 0x092a6ab0 f state 11 vtable +0x28
+PlayerState_Damage_Exit 0x092a7480 f state 11 vtable +0x30
+PlayerState_Fall_Enter 0x092b4260 f state 3 vtable +0x28
+PlayerState_Fall_Exit 0x092b4680 f state 3 vtable +0x30
+PlayerState_Locomotion_Enter 0x092d48e0 f state 0 vtable +0x28
+RoomManager_Start 0x08d585c0 f task virtual +0x48: present setup, Link enabled, then the load chain (0x08d65b10): vtable +0x70, +0x78, +0x68 (true), +0x90
+RoomManager_LoadLvb 0x08d59f60 f vtable +0x70 (out, manager): Resource_Load of level/{0}/{0}.lvb for the level at +0x88 into +0x1e8
+RoomManager_OnLvbLoaded 0x08d5a1d0 f vtable +0x78 (out, manager): after the LVB, the map textures (map/{0}.bntx, map/Field.bntx, ...)
+RoomManager_LoadChain 0x08d65b10 f (out, lvb load, lambdas over the manager): +0x78, then +0x68 (true), then +0x90 as each completes
+RoomManager_SpawnCompanion 0x08d61980 f (manager): Player_SpawnCompanion while level data vtable +0x58 (LVB config byte 1) holds; not BowWow in MadamHouse; in CraneGame only Marin while MarinGameEventDone is clear
+RoomManager_SetRetryA 0x08d5d490 f lambda body (vtable 0x0a0c7988, installed by RoomManager_FinishLevelLoad): while manager +0x3fb (LevelLoad_Finish sets it), Scene_SetRetryA with Link's world coords; clears +0x3fb
+Scene_SetRetryA 0x09290800 f (LevelScene::retryA*, const Coords*): position, angle from the rotation, set; clears retryB's set (+0x34)
+LevelScene_MakeRoomManager 0x08d3efa0 f (out, scene, StringView* level, StringView* locator, pos*, facing*): the Play task into scene +0x618; level Panel* PanelPlay (0x08d3fa40), Lv09* 0x08d3fd30, else 0x08d3ff40
+LevelScene_OnRoomManagerFinished 0x08d41080 f lambda body {scene, level, locator, pos, facing} on the room manager's finish: resource manager reset when jumpFlag (+0x811), then LevelScene_MakeRoomManager, or the scene's Finish (+0x50) when the level is empty
+PanelPlay_vtable 0x0a0c7420 l room manager subclass "PanelPlay" (levels named Panel*): +0x50 0x08d49bd0, +0x60 0x08d4a100 (its rooms), +0x90 0x08d4a8d0 (RoomManager_FinishLevelLoad first)
+PanelRoom_OnLebActor 0x091d1660 f Room vtable +0x20 of PanelPlay's rooms (vtable 0x0a118628): Room_OnLebActor while +0x324; a LEB record with b (+0x86) only when +0x318 (bits 12-15 of the panel's grid word, 0x091deac0) is 5
+LevelData_Byte2 0x08df4e10 f vtable +0x68: LVB config byte 2; RoomManager_FinishLevelLoad makes it Framework minSkip (+0x4e2), present maxInterval (+0x649) byte 2 + 1, when at most maxSkip
+Environment_FindAction 0x08d1a8ac l Environment action name -> std::function vtable: ChangeEnvironment, ChangeEnvironmentNonWait, StashPopIntensity, ...
+Environment_ChangeEnvironmentNonWait 0x08d021a0 f event action body (name, duration): the scene's environment (+0x510) through 0x08cddfc0; ChangeEnvironment (0x08d020f0) calls it
+NpcComponent_OnRequestFinished 0x08e6ada0 f (component): from NpcComponent_MakeEvent's finished functor (0x08e6ad90); vtable +0x380 with its event's (+0x280) return value and false, or 0 and true once destroyed or without an event
+NpcComponent_OnEventResult 0x08e5bd70 f vtable +0x380 (component, s32 return value, bool destroyed): empty; every NPC class keeps it
+GameShopOwner_OnEventFinished 0x08ebf840 f (functor): its component's event return value 0, 1, 2 -> 0x08ebf980, 0x08ebfae0, 0x08ebfcb0
+FishingManager_OnEventFinished 0x0931fbc0 f (functor {manager, event}): FishingManager_OnEventResult with the event's return value
+FishingManager_OnEventResult 0x0931fbd0 f (manager, s32 value): 2 (EndFishing) level jump to Field, Field_09B; 3-5 (lure1jump..lure3jump) FishingLure type 0-2
+EventCamera_OnActivated 0x08ce0e30 f vtable +0x40: takes the CameraSystem slot of its id (+0x2a4, 0x50 bytes each) with 1.0; +0x520 = 0.058
+EventCamera_OnDeactivated 0x08ce0fd0 f vtable +0x48: while its CameraSystem slot holds it, hands it back at the rate +0x520
+EventChara_OpenMessage 0x085fae00 f (out waiter, chara, StringView* message, StringView* talker, bool): MessageManager_Find of both, MessageWindow_OpenTalker; the message steps pass the chara's talker (+0x310)
+PhysicsWorld_Ctor 0x095cdc90 f (world, desc*, u32): PxScene (+0xb0 holder: scene, CPU dispatcher, controller manager), event callback +0xb8 (PhysicsEvents_Make), signals +0x228 and +0x280 (stepped)
+PhysicsEvents_Make 0x095ce2f0 f () -> PhysicsEvents*: 0xd8 bytes, PhysicsEvents_Ctor
+PhysicsEvents_Ctor 0x095ce490 f a world's PxSimulationEventCallback: contacts vector +0x10 (0x60-byte PhysicsContact), triggers +0x28 (0x48-byte PhysicsTrigger), contact point pool +0xd0
+PhysicsEvents_vtable 0x0a1552b8 l PxSimulationEventCallback: +0x0 onConstraintBreak, +0x8 onWake, +0x10 onSleep (all empty), +0x18 onContact, +0x20 onTrigger, +0x28 onAdvance
+PhysicsEvents_OnContact 0x095ce9f0 f PxSimulationEventCallback::onContact: queues a PhysicsContact per pair (events: PxContactPair +0x32)
+PhysicsEvents_OnTrigger 0x095cf9e0 f PxSimulationEventCallback::onTrigger: queues a PhysicsTrigger per pair (status: PxTriggerPair +0x20)
+Physics_DeliverEvents 0x095cab10 f (physics manager) after a step (+0x78): PhysicsWorld_DeliverEvents for the worlds at +0x38/+0x48/+0x58/+0x68, then each world's stepped (+0x280)
+PhysicsWorld_DeliverEvents 0x095d0fb0 f (world): the event callback's queued contacts (PhysicsContact_Emit) and triggers (status 4: triggerEntered, 0x10: triggerLeft of both bodies), then empties them
+PhysicsContact_Emit 0x095c5930 f (PhysicsContact*): PhysicsBody_EmitContact on body 0 (other body 1, false) and body 1 (other body 0, true)
+PhysicsBody_EmitContact 0x095c56b0 f (body sp*, other sp*, PhysicsContact*, bool second): contactFound/Persists/Lost (+0x460/+0x4b8/+0x510) per event bit 0x4/0x8/0x10
+BodyCollision_OnDestroyed 0x095bf070 f vtable +0x38: slots off, signals cleared, shapeSource released, body removed, name released
+BodyCollision_SetName 0x095bf6a0 f vtable +0x80 (collision, const char*): name +0x190 (SharedString_MakeCopy), then the PxActor's setName (vtable +0x40)
+BodyCollision_Name 0x095bf890 f vtable +0x88 (x8 out {data, length}, collision): name +0x1a0
+BodyCollision_ConnectWorld 0x095c0f30 f (collision): slot on the world's stepped (owner +0x290) into +0x1b4; the slot calls the collision's vtable +0xd0
+BodyCollision_MakeBodyFromResource 0x095c1f20 f (collision, resource sp*, x2, x3): a body from the resource's first shape entry (0x10c8960), body +0x438 the collision, shapeSource +0x160 the resource
+SharedString_MakeCopy 0x091c53c0 f (out SharedString, const char* data, u64 length): as SharedString_Make
+Physics_ShapeAttribute 0x08d29a20 f (u32* out, shape wrapper sp*, u32 triangle): the u32 the shape's material's userData points at; a triangle mesh's material by triangle
+Collision_SetFilter 0x08580240 f (collision sp*, CollisionFilterDesc*, u32 group): cast by type id 0x0a1af3b8, then CollisionFilter_Apply
+CollisionFilter_Apply 0x08d2de50 f (collision sp*, CollisionFilterDesc*, u32 group): word from CollisionFilter_Presets[preset] and the overrides, collision vtable +0x90 with PxFilterData {word, group, 0, 0}
+CollisionFilter_Presets 0x0a1b6578 l 19 u32 collision filter words (CollisionFilter_Apply's function static)
+ObjTree_WaitEnter 0x091b43e0 f the tree machine's Wait enter: wait animation, blend params +0x60
+ObjTree_HitEnter 0x091b44e0 f the tree machine's Hit enter: hit animation, blend params +0x64; ObjTree_DropApples with apples, else ObjTree_DropItem once
+ShaderArchive_Load 0x094f33b0 f (path, name, factory): registers a shader archive with its factory in the shader registry (*0xa1ccd20)
+ShaderRegistry_Find 0x0952cf50 f (registry, name, length): the archive entry by name (+0x30 ResShaderArchive, +0x38 factory)
+ShaderRegistry_FindShadingModel 0x0952ccf0 f (registry, archive, shading model): the ResShadingModel
+ShaderRegistry_GetHolder 0x0952d130 f (registry, archive, shading model, factory or null, shader assign, bool, shaders*): a ShaderHolder (0x50): shader and option selector
+ModelShader_Make 0x0952d8c0 f (out sp, archive, shading model, factory, shader assign, bool): the factory's +0x0, then the shader assign
+ShaderHolder_Free 0x0952bf10 f releases a ShaderHolder's shared pointers
+ModelShader_Dtor 0x094e1ff0 f
+ModelShader_Init 0x094e2290 f vtable +0x20 (shader, archive, shading model name): ResShadingModel +0x30, ShadingModelObj +0x40 and its block buffer
+ModelShader_Bind 0x094e28b0 f vtable +0x30 (shader, cmdbuf, buffer, program, ?, ShapeObj, MaterialObj): option, material and shape blocks
+BezelShader_Init 0x094f5c40 f vtable +0x20: the base's, then the PerObject block (+0x50)
+BezelShader_Bind 0x094f5f60 f vtable +0x30: the base's, then the PerObject block by name
+BezelShader_ShadowArraySampler 0x094f62b0 f vtable +0x38: the program's _shadowArray0 sampler index, -1 none
+ModelShader_vtable 0x0a138c30 l shader of a shading model (0x50)
+BezelShader_vtable 0x0a149700 l the bezel_pbr archives' shader (0x60)
+ShadowmapShader_vtable 0x0a14b028 l the shadowmap_pbr archives' shader
+WaterShader_vtable 0x0a14be18 l the water archives' shader
+BezelShaderFactory_vtable 0x0a149510 l bezel_pbr, _noncombiner, _uber, _noncombiner_uber: +0x0 shader, +0x10 option selector
+ShadowmapShaderFactory_vtable 0x0a149590 l shadowmap_pbr, _uber
+WaterShaderFactory_vtable 0x0a149610 l water, water_uber
+Model_SetCombinerColor 0x094e1d40 f (model, shape, k, const float4*): ShapeRenderInfo combinerColorParams[k] through g3d_MaterialObj_EditShaderParam
+g3d_MaterialObj_EditShaderParam 0x094e1dc0 f (material, param): marks the parameter dirty, returns its srcParams slot
+Model_GetCombinerColor 0x094e1e60 f (model, shape, k): float4, zero without the parameter
+Model_SetCombinerColorAll 0x0953fe00 f (model, k, const float4*): Model_SetCombinerColor for every shape
+DrawGroup_Ctor 0x09500390 f (node, pass id, name)
+Base3DPass_Build 0x09501ac0 f adds passes 41, 18, 42, 43, 19, 44, 20, 21, 23
+UnderWaterPass_Build 0x09510060 f adds passes 10 to 15
+WaterReflectionPass_Build 0x09511ea0 f adds passes 16, 17
+DrawPass_AddOpacity 0x09501db0 f (group, pass id, name, ?): an opacity pass node (vtable 0xa149f88)
+DrawPass_AddZPre 0x09502230 f (group, pass id, name, ?): a depth pre-pass node (vtable 0xa149e98)
+DrawPass_AddTranslucent 0x09502490 f (group, pass id, name, ?): a translucent pass node (vtable 0xa149e48)
+PadState_Update 0x08d853b0 f (pad): held buttons +0x14 (last frame's +0x18) from nn::hid GetNpadState (full key, handheld, joy-con dual) as PadButton bits, stick directions past the dead zone +0x40; sticks +0x24
+Pad_vtable 0x0a0c8c68 l the game pad (controller +0x10): +0x10 {held, held last frame} (+0x14), +0x18 left stick (+0x24), +0x20 set the dead zone (+0x40)
+PlayerKnockback_Update 0x092270c0 f (knockback, player): kinds 1-5: facing towards angle, moveFrame to moveFrames, then endFrame to endFrames (velocity x 0.88 each), then state 1
+PhysicsShape_Ctor 0x095c85c0 f (shape, PxShape*): 0x50-byte wrapper; the PxShape's userData; extents from the geometry; walkable 1, behavior CanRideOnObject
+PhysicsShape_vtable 0x0a154fb8 l a PxShape's wrapper (PlayerContact::shape, PhysicsBody::shapes); +0x0 IsA
+PlayerCollision_OnContact 0x095bd4f0 f PlayerCollision's contacts slot: ground (touchedGround, lastContactGround, minGroundUp, groundNormal) or wall (touchedWall, maxWallUp, wallNormals) by the normal against slopeLimit
+PlayerState_Locomotion_Eat 0x092d5240 f state 0 vtable +0x70 (state, player, u8 item): eats the apple (item 61 red, else green): AppleModel item model, animation eat
+PlayerState_Jump_KeepEat 0x092ca5a0 f state 1 vtable +0x70 (state, player, u8 item): keeps the apple (+0x23c) for Locomotion after landing
+PlayerState_Fall_KeepEat 0x092b4990 f state 3 vtable +0x70 (state, player, u8 item): keeps the apple (+0x2b4) for Locomotion after landing
+Player_IdleAnimation 0x09292020 f (player, bool underwater) -> animation key: raft_idle while kHeld, (s_)ladder_wait with pendingState 14, u_swim_wait, fall_carry with the cucco, swim_wait / wt_swim_wait in water, else wait or idle_bare
+PlayerBow_Combo 0x092a1380 f (player, s8 arrow slot, bool* attached): while a bomb's comboTime runs attaches it to the arrow; else comboTime 1/6 s, comboArrow the slot, comboBomb 0
+PlayerState_Bomb_Enter 0x0929cb70 f state 28 vtable +0x28: attaches the bomb to comboArrow's arrow while its comboTime runs, else places one (comboTime 1/6 s, comboBomb)
+PlayerState_Bomb_Update 0x0929c920 f state 28 vtable +0x18: kBow while a bomb's comboTime runs: a bomb arrow (+0x94 the slot, +0x90 into Bow)
+PlayerState_Bow_Enter 0x092a0fe0 f state 25 vtable +0x28: handoff kind = the arrow slot (bit 7: a free one)
+PlayerState_Dash_Enter 0x092adbe0 f state 9 vtable +0x28: handoff kind not 0: the shield dash (attackCols +0x1f8), else the sword's (+0x1c8)
+PlayerState_Warp_Enter 0x092ece30 f state 29 vtable +0x28: handoff kind not 0 warp_d_ed, else warp_ed
+PlayerState_SwordPoke_Enter 0x092e9980 f state 17 vtable +0x28: handoff kind's low byte when <= 2 into +0x90
+PlayerState_Hookshot_Ctor 0x092bf250 f state 26 (0x310): transitions +0x220 (select), +0x280 into jump
+NpcComponent_RaiseCondition0 0x08e4ebf0 f vtable +0x188: NpcComponent_EventForCondition with condition 0 (touch)
+NpcComponent_RaiseCondition1 0x08e4ec00 f vtable +0x190: condition 1
+NpcComponent_RaiseCondition2 0x08e4ec10 f vtable +0x198: condition 2 (talk)
+NpcComponent_RaiseCondition3 0x08e4ec20 f vtable +0x1a0: condition 3
+NpcComponent_RaiseCondition4 0x08e4ec30 f vtable +0x1a8: condition 4
+NpcComponent_RaiseCondition5 0x08e4ec40 f vtable +0x1b0: condition 5
+NpcComponent_OcarinaEvent 0x08e4ec50 f vtable +0x1b8 (component, u8 song 0-3): condition 6 + song (EquippedSong)
+NpcOcarinaReaction_Callback 0x08e64a70 f the OcarinaReaction lambda (vtable 0x0a0e0f98): component vtable +0x1b8 with the song
+Conditions_CheckRow 0x094a1c70 f (holder, StringView* row, actor) -> every condition of the Conditions.gsheet row holds (Conditions_Check each)
+ConditionsSheet_ptr 0x0a1c7b88 l Conditions.gsheet holder (made on first use)
+Player_SetSwimDepth 0x0925c770 f (player, PlayerSwimDepth): on a change offsets the damage collision's two shapes and the item sensor's shape by the depth's value (table 0x1703b90); Player +0x1ea8
+NpcComponent_OnTouch 0x08e5b400 f vtable +0x338 (component, toucher): outside events, condition 1 while Link dives (+0x1ea8 2), else condition 0
+NpcComponent_OnHit 0x08e5b890 f vtable +0x350 (component, attacker record*): outside events, by entry 0's attack byte +0xc: 0/3 condition 3, 4 condition 5, 5 condition 4
+LebRoom_RailCount 0x08def120 f vtable +0x30 (lebRoom)
+LebRoom_RailAt 0x08def130 f vtable +0x38 (lebRoom, u32 index) -> rail record (u16 count +0x2c, u8 open +0x2e, u8 interpolation +0x2f, u16 points +0x30)
+RailCursor_Init 0x08defda0 f (cursor, LebRoom sp*, rail*, u32): rail +0x2e 1 open (stays at the last point), 0 closed loop (back to point 0)
+RailCursor_Eval 0x08defe20 f (cursor): the position at the cursor; rail +0x2f 0 RailCursor_Segment, 1 0x08defbd0
+RailCursor_Step 0x08defec0 f (cursor): RailCursor_Eval, then the position by the step
+RailCursor_Segment 0x08defcf0 f (rail, LebRoom sp*, point i, point j): straight between two points
+RailFollower_Ctor 0x08f27ac0 f (..., obj, LebRoom sp*, actor sp*, u64 rail link index, ...): loop flag +0xe1 from rail +0x2e 0; called from NPC code
+PanelGrid_CellExtra 0x091deac0 f (grid, {id, col, row}*): bits 12-15 of the cell's word, 0 outside the grid; PanelPlay rooms keep it at +0x318
+PanelGrid_SetCell 0x091de950 f (grid, col, row, u32 word): the chamber editor's (0x09416080)
+PanelRoom_MakeExtraActor 0x091d3640 f (room): room +0x318 1 PanelFallGeneratorBomb, 2 PanelFallGeneratorRupee, 3 PanelFallGeneratorHeart, 4 PanelFallMasterManager, 6 TagShadowLink
+LevelEnvironment_Ctor 0x08cda9c0 f (env): LevelScene +0x510
+LevelEnvironment_Dtor 0x08cdb1a0 f (env)
+LevelEnvironment_Change 0x08cddfc0 f (env, name, duration, bool): ChangeEnvironment: looks the name up in +0x58, blends from +0x18 to +0x20
+LevelEnvironment_StepBlend 0x08cde010 f (env): blendFrame up to blendFrames; from takes to at the end, blending cleared
+MainCamera_Ctor 0x085b9c50 f (camera, ...): an Actor (0x7a0 bytes), MainCamera_{0}P of CameraSystem_Ctor; its event start and end (vtable +0xb0, +0xb8) do nothing
+MainCamera_vtable 0x0a05df90 l
+EventManager_DestroyCameras 0x08d206c0 f (manager): destroys the event cameras +0x188 and +0x198 and clears them; from EventManager_MakeCameras and the destructor
+EventManager_CancelAll 0x08d23270 f (manager): with a request queued, sets cancelAll (+0x1d8) and marks the front request cancelled (+0x80)
+PlayerGround_AddLowerLevelHole 0x09225ba0 f (player + 0x1630, entity sp*): inserts into Player::lowerLevelHoles (+0xe8 of this); AreaHoleLowerLevel's Link-enter code
+PlayerGround_RemoveLowerLevelHole 0x09226240 f (player + 0x1630, entity sp*): erases from Player::lowerLevelHoles; AreaHoleLowerLevel's leave code
+PlayerGround_Reset 0x09226550 f (player + 0x1630): clears +0x40/+0x48/+0x50 and both sets (lowerLevelHoles, slowAreas)
+ItemGet_MakeCarryHolder 0x0927e150 f (out sp, Player*, StringView* name, u8* itemId): ItemGetHolder_Make under Link, attached as component name
+PlayerState_Guard_OnAttackHit 0x092bf130 f Guard vtable +0x50 (state, player, u8 kind): while the sword charges, +0x290 = 1, +0x28c = (kind == 0)
+Player_PushCheck 0x092947f0 f (player, move*, ...) -> bool: move within 20 degrees of facing and a ray ahead hits a shape whose attribute bit 19 is clear: the push pose (walls and blocks alike)
+PhysicsWorld_Make 0x095ca880 f (out sp, desc*, u32* id): operator_new(0x2e0, 0x10) from the physics heap, PhysicsWorld_Ctor, shared pointer
+PhysicsWorld_StepTask 0x095d0eb0 f the world's completion task (+0xc8, vtable 0x0a155308): fetch results, resultsReady +0x1d8 = 1, signals +0x200
+Physics_UpdatePhase 0x08519730 f per world: lock +0x1e0, resultsReady 0, emit beforeStep +0x228, PxScene simulate with the step task
+ObjTree_OnSpeakTreeFlowchart 0x091b72b0 f closure: SpeakTree.bfevfl loaded: Tree +0x498 resource, +0x4a8 ResFlowchart, tree vtable +0x90
+TagRapidFlowGame_ConnectItems 0x0932e2b0 f finds each linked actor's ItemComponent and connects 0x0932f670 to its itemAdded
+TagRapidFlowGame_OnItemAdded 0x0932f670 f slot: marks the item's entry (actor +0xa8) collected in the rapids state (0x0a1bf110, +0x48 map, entry +0x24)
+LevelEnvironment_Load 0x08cdb510 f (env, scene sp*, archive sp*): archive (kodama/environment.kar), the zoneChanged/roomBlend slots, the environments
+LevelEnvironment_Finish 0x08cded30 f (env): the scene's Finish: slots off, fade reset, savedIntensities cleared, archive released
+LevelEnvironment_StashIntensity 0x08cdf5f0 f (f32 attenuation, env, u8 frames): StashSaveIntensity: savedIntensities from the render env's live lights, fade down
+LevelEnvironment_StepFade 0x08cdfd70 f (env): fadeFrame += fadeStep; saved lights' intensity = base x saved x lerp(attenuation, 1, fadeFrame / fadeFrames)
+LevelEnvironment_StashDepthOfField 0x08cdf450 f (env, frames): StashSaveDepthOfField: to = copy of from, its +0x170/+0x18c/+0x190 saved and zeroed, blend
+LevelEnvironment_PopDepthOfField 0x08cdf520 f (env, frames): StashPopDepthOfField: restores what StashDepthOfField saved, blend
+LevelEnvironment_SetLookAt 0x08cdc0b0 f (env, object, frames): lookAtPending = the node under object +0x1b8 (predicate 0x08cdc490); state 0 -> 2 (delay)
+LevelEnvironment_SwitchLookAt 0x08ce0510 f (env): lookAt takes lookAtPending and its blend starts (state 1); else both cleared, state 0
+Environment_StashSaveIntensity 0x08d02df0 f event action body (attenuation, duration) -> LevelEnvironment_StashIntensity
+Environment_StashPopIntensity 0x08d02fb0 f event action body (duration): with saved lights, fade from 0 up to the frames
+Environment_SetLookAtEnvironmentNonWait 0x08d02380 f event action body: the first object of the scene list (0x0851f730, +0x210) whose box holds the camera's +0x600: LevelEnvironment_SetLookAt, then ChangeEnvironment to its environment
+Environment_StashSaveDepthOfField 0x08d02ad0 f event action body (duration) -> LevelEnvironment_StashDepthOfField
+Environment_StashPopDepthOfField 0x08d02c60 f event action body (duration) -> LevelEnvironment_PopDepthOfField
+Physics_Init 0x0850f6a0 f (framework): physics heap memory (+0x5a8, 32 MB), the physics system (+0x5b0), worlds 0 and 1 from stack descs
+Physics_GetWorld 0x095ca790 f (physics, PhysicsWorldDesc*, u32 id) -> SharedPtr<PhysicsWorld>*: slot +0x38 + 16 x id, PhysicsWorld_Make when empty
+PhysicsWorld_Dtor 0x095d0ad0 f (world): controller manager, PxScene and CPU dispatcher released, signals, unknown1c8
+Physics_FilterPairWorld1 0x08d2d9d0 f world 1's filter shader: Physics_FilterPair's layer and group rule, pair flags 0x61c
+Physics_ControllerQueryPreFilter 0x08d2da60 f PxQueryFilterCallback::preFilter of the world's controllerQueryFilter: eTOUCH when the layer rule passes
+Physics_QueryPreFilter 0x08d2dbb0 f PxQueryFilterCallback::preFilter (vtable 0x0a0c6450): the object's +0x8 hit type when the layer rule passes
+Physics_ControllerFilter 0x08d2db00 f PxControllerFilterCallback::filter (a, b): the layer rule on the two controllers' shapes' filter data
+Physics_BlockFilter 0x0a19b1a8 l PhysicsScene::blockFilter of both worlds (vtable 0x0a0c6450, hit type 2 eBLOCK)
+Physics_TouchFilter 0x0a19b198 l PhysicsScene::touchFilter of both worlds (vtable 0x0a0c6450, hit type 1 eTOUCH)
+nvnMemoryPoolGetBufferAddress_ptr 0x0a1db760 l the main module's proc variable (GOT 0x0a198cc0 points at it, set at 0x096451b0); the driver's function returns NVNmemoryPool +0x40
+LookAt_Update 0x094a3dc0 f (controller, Vec4* target, s32 facing, Vec4 head position, f32 rate): look-at controller (vtable 0x1b693f8) step; PlayerLookAt passes &lookAt+0x20
+LookAt_Turn 0x094a3840 f (controller, s32 facing, s32 target angle, s32 max speed, f32 rate): turn (+0x10) and turnSpeed (+0x28); returns 1 when the target is beyond the limit
+LookAt_UpdateMatrices 0x094a2c50 f (controller, s32 facing): the two matrices (+0x40) from turn and pitch unless flag bit 1
+AttackColShapeTag_vtable 0x0a05eec8 l PhysicsShape tag of AttackColComp's shapes {+0x8 attack, the shape description's +0x50}, 0x10
+DamageColShapeTag_vtable 0x0a05f880 l PhysicsShape tag of DamageColComp's shapes {+0x8 defence, the shape description's +0x50}, 0x10
+CollisionShapeTag_vtable 0x0a079bd8 l PhysicsShape tag {+0x8 noDashCrash, +0x9 never read}, 0x10 (collision file maker, DeguZol, ObjRaft)
+HitPoint_Fill 0x085b7010 f (point*, attack side*, damage side*, contact point*): a hit's 0x70-byte point; attack and defence from the shapes' tags, else the sides' +0x30
+HitRecord_Add 0x085b8c60 f (record, attack side*, damage side*, contact points*): the entry of the two comps (or a new one) gets a point per contact point (HitPoint_Fill)
+AttackColComp_OnContact 0x085da7d0 f (attack comp, contact*): a damage comp's shape touched: HitRecord_Add into the comp's records
+PlayerState_Dash_OnContacts 0x092ae280 f state 9 vtable +0x38 (state, contacts*, ...): bonk check; skips heightfield and CollisionShapeTag::noDashCrash shapes
+CollisionComp_Make 0x08d2a4d0 f (out, owner, ?, collision file sp*, ...): a CollisionCom component; triangle-mesh shapes whose file entry +0x10 is 0 get a CollisionShapeTag
+BasicSound_GetRuntimeTypeInfo 0x095ec620 f vtable +0x0: the static type info
+BasicSound_Dtor 0x095eeb60 f vtable +0x8: lifecycle (+0xfc) 3
+BasicSound_Pause 0x095ed920 f (sound, bool pause, s32 frames, u32 mode): pauseFade (+0xcc), pauseState (+0x101), pauseMode (+0xf4)
+BasicSound_Update 0x095eda40 f ambient param callback, actor params, start when prepared, playFrames (+0x10c), fades; finalizes after a fade-out
+BasicSound_SetInitialVolume 0x095ee8b0 f (sound, f32 volume): +0x120, clamped at 0
+BasicSound_SetSurroundPan 0x095ee950 f (sound, f32): +0x158
+Frustum_TestSphere 0x09634090 f (frustum, {Vec4 center, f32 radius}) -> bool: false when wholly outside a plane
+Frustum_ClassifySphere 0x09634100 f (frustum, {Vec4 center, f32 radius}) -> -1 outside, 0 crossing, 1 inside
+Frustum_TestBox 0x09634180 f (frustum, {Vec4 min, Vec4 max}) -> bool: the planes, after a boxMin..boxMax overlap test while +0xe4
+SoundLoader_StartNext 0x085aba80 f the loader machine's state 0: the first request loads at once (+0x9c 0) or on the worker task (+0x9c 1)
+SoundLoader_LoadNow 0x085ac580 f (loader, StringView* group, u8 slot): loads the group into the slot's heap (state 2; undone while +0xf2)
+SoundLoader_ReleaseZoneSlots 0x085ad1b0 f clears slots 1-3: heap state 0, group, state and dropLoad
+SoundLoader_MarkPlayEnvSe 0x085ad220 f (first, last LoadRequest): sets playEnvSe (+0x9e) on every request for a zone slot
+UiManager_Init 0x093d1180 f (manager, ?, u32 size): heap = malloc(size) (Framework_Init: 0x1400000), the static at 0x0a1b17b0 over it, hudPass, factories, fonts
+UiManager_Shutdown 0x093d1710 f (manager): from Framework_Shutdown: removes every UI, releases fonts (+0x70), unused_10, archives, resource groups, frees heap
+SaveFile_Latest 0x094912b0 f u32(bool with file 3, bool current first): UiManager currentFile (+0xab70) when < 3 and asked, else the most recently saved file (guess name)
+DungeonDoorIcon_Update 0x0943b270 f vtable +0x70 of Dg_DgnDoor icons (vtable 0x0a130778): shown by iconSwitch (type 0) or open/shown switches; copies MapActorDesc rotation to +0xc8
+DungeonDoorIcon_SetTranslate 0x0943b3a0 f vtable +0x80: the translate moved 4 units back against rotation (+0xc8)
+DungeonWallIcon_Update 0x0943b840 f vtable +0x70 of Dg_DgnBombWall / Pd_DgnPassJoint icons (vtable 0x0a1308b8): root pane rotate z = rotation in degrees
+CaptureTexture_Ctor 0x09659d90 f nn::ui2d::CaptureTexture (vtable 0x0a188330, base DynamicRenderingTexture 0x096556d0)
+ui2d_Layout_CollectDynamicTextures 0x0965c450 f (layout, build result): fills Layout +0x58 from the build's lists +0x50 (front) and +0x40 (sorted by the texture's u8 +0x18)
+ui2d_Layout_DrawDynamicTextures 0x0965d460 f (layout, ...): the parts layouts' first, then each Layout +0x58 texture's virtual +0x28 (guess name)
+LookAt_UpdateEnemy 0x094a3b90 f (controller, ...): the look-at step of EnemyBossblin, Hinox, MasterStalfon, MoriblinSpear, MoriblinSword and Totakeke; calls LookAt_Turn and LookAt_UpdateMatrices
+Player_CheckUnusedTimer 0x0925bdb0 f (player) -> bool: no caller; true when the state's virtual +0x80 returns false or unused_1e84 > 0
+MainCamera_Setup 0x085ba0a0 f vtable +0x20: attaches the AudioListenerComponent at +0x788
+AudioListenerComponent_vtable 0x0a05e158 l type id 0x0a1b09f8 (0x58 bytes)
+AudioListenerComponent_Make 0x085bb970 f (out sp, ComponentArgs*): the 0x58-byte component
+AudioListenerComponent_IsA 0x085bbcf0 f vtable +0x68
+AudioListenerComponent_TypeId 0x085bbe30 f vtable +0x70
+AudioListenerComponent_Register 0x085bbe90 f vtable +0x78: AudioCamera_Register on the entity manager's +0x100 queue
+ObjLawn_vtable 0x0a10a460 l
+ObjLawn_Setup 0x090f10f0 f vtable +0x20: the states Idle (0x090f5960, ObjLawn_IdleUpdate) and Cut (0x090f62b0, 0x090f6830)
+ObjLawn_IdleUpdate 0x090f5e00 f within 2 to 10 of Link: a free EnvSePlayer insect emitter plays SE_AMB_FOREST_INSECT/2/3 at the lawn
+SoundLoader_ThreadFactory 0x085ab640 f the loader ThreadPool's: 0x085051b0(out, 0x1001, 0x10000, index)
+SoundLoader_WaitLoad 0x085abe40 f the loader machine's state 1: once the slot is loaded, the env SE, drops the request, state 0
+SoundLoader_Job 0x085aca30 f the async load job (lambda vtable 0x0a05cef0) on the loader's ThreadPool: SoundLoader_LoadNow
+AudioEffectObjects_Ctor 0x094a6650 f the static at 0x0a1b0798: EffectReverb +0x0, EffectI3dl2Reverb +0x98, EffectDelay +0x140
+AudioEffectObjects_ApplyReverb 0x094a6690 f (params*): the EffectReverb's parameters (kinds 1-2)
+AudioEffectObjects_ApplyI3dl2Reverb 0x094a67f0 f (params*): the EffectI3dl2Reverb's parameters (kinds 3-4)
+AudioEffectObjects_ApplyDelay 0x094a6950 f (params*): the EffectDelay's parameters (kinds 5-6)
+EffectReverb_vtable 0x0a158538 l nn::atk::EffectReverb (RTTI)
+EffectI3dl2Reverb_vtable 0x0a1584a8 l nn::atk::EffectI3dl2Reverb (RTTI)
+EffectDelay_vtable 0x0a158418 l nn::atk::EffectDelay (RTTI)
+BasicSound_SetPitch 0x095ee920 f (sound, f32): +0x124
+SeWobble_Step 0x085af460 f (PitchWobble*): steps value between min and max, calls apply; a wobbling SE's onUpdate2 (lambda 0x085af450)
+SeWobble_Apply 0x085af5a0 f PitchWobble::apply's lambda: BasicSound_SetPitch on the SE's sound
+NpcMarin_SingBgm 0x08eeaa60 f (marin): BGM_MARINE_SING at her node; noPositional on playing kind 4 BGMs unless BGM_MEVE, BGM_ANIMAL_VILLAGE or BGM_EVENT_RESCUE_BOWBOW(_INTRO) plays
+PanelDungeon_ThemeCleared 0x091e42a0 f (theme): the MapPieceTheme row's mClearFlag is set
+PanelDungeon_ThemeAvailable 0x091e4770 f (manager, theme): theme available (by its row; 0x30: every theme of manager +0x15e8 cleared) (guess name)
+PanelDungeon_CanAddStone 0x091e92d0 f (stone): the query CheckPanelAddStone: stone owned (PanelPieceBits), not yet a panel (PanelPieceBits2)
+PanelDungeon_ThemeSeen 0x091e7c70 f (manager, theme): save bits +0x50a8 (the theme list has shown it); true outside the sheet, false while not available
+PanelDungeon_SetThemeSeen 0x091e7da0 f (manager, theme): sets save bit +0x50a8 of an available theme
+PanelDungeon_ClearTheme 0x091e8490 f (theme): record +0x4600 byte 0 bit 0, mClearFlag set, reward bit +0x509a set when the theme has no mRewardItem
+PanelDungeon_RewardGet 0x091ea2f0 f the action RewardGetSequence: one MapPieceClearReward row (bits +0x50a0) or theme reward (bits +0x509a) per call
+PanelDungeon_AmiiboPanelGet 0x091eb460 f the action AmiiboPanelGetSequence: AddItemID(114, 1, 26 + touch count +0x5093), item-get Get<Amiibo>Panel
+PanelDungeon_ShadowLinkPanelGet 0x091eb770 f the action ShadowLinkPanelGetSequence: AddItemID(114, 1, 32), item-get 117 GetShadowLinkChip
+PanelDungeon_RupeePanelGet 0x091eb940 f the action RupeePanelGetSequence: item-get 117 GetEXRupee only
+PanelDungeon_ExEnemyPanelGet 0x091ebaa0 f the action ExEnemyPanelGetSequence: item-get 117 GetEXEnemy only
+PanelDungeon_NewTheme 0x091ebc00 f (manager): the query CheckNewTheme: an available theme of difficulty 1-3 without save bit +0x5094
+PanelDungeon_NewThemeEx 0x091ebed0 f (manager): the query CheckNewThemeEx: the same for difficulty 4
+PanelDungeon_ConfirmNewThemes 0x091ec250 f (manager): the action ConfirmedNewTheme: save bits +0x5094 of every available theme; PanelNotifyBits bit 1 for 0x30
+PanelDungeon_PanelSeen 0x091ec9e0 f (panel index): save bits +0x506c (the panel menu has shown it)
+PanelDungeon_SetPanelSeen 0x091eca90 f (panel index): sets save bit +0x506c
+ItemHolder_Ctor 0x091c52b0 f (node, ?, u8 item id, StringView* tailor): the item node ObjTreasureBox and ItemSecretSeashell make, 0x1c0 bytes
+ItemHolder_Update 0x091c68b0 f (node): moves +0x190 -> +0x1a0 over +0x1b4 s on an arc 4.5 high; model posed by ItemPose_Pair(+0x168) held pose
+ItemHolder_vtable 0x0a117f60 l the item node of ObjTreasureBox / ItemSecretSeashell (ItemHolder_Ctor)
+ItemActor_SameItem 0x08dbd480 f actor vtable +0x150 of the item base (a, b): same item id and same LEB parameter 0 index (int, else -1)
+Datasheet_BuildFieldMaps 0x094a9140 f (sheet, u32 struct field index, first, count): Sheet +0x88 entry: the struct's fields by name, recursing; from Datasheet_Create
+ActorBase_IsA 0x094ac1f0 f engine actor base vtable +0x68: its type id 0x1cab3c8, then Entity's
+ActorBase_TypeId 0x094ac2d0 f engine actor base vtable +0x70: 0x1cab3c8
+ReactionComp_TypeId 0x08633e50 f vtable +0x70: 0x1cab3f8
+Actor_OnEventStart 0x085227b0 f vtable +0xb0: eventStarted (Actor_RegisterEvents); tail-calls +0xc0 (Actor_SuspendUpdates)
+Actor_OnEventEnd 0x085227c0 f vtable +0xb8: eventEnded; tail-calls +0xc8 (Actor_ResumeUpdates)
+Actor_ZoneSuspendComponents 0x08522630 f vtable +0x98: Actor_ForEachComponent with closure 0x085256c0 (model, animation and TailorPlayer components)
+Actor_AfterSuspend 0x085231f0 f vtable +0x108: +0x98 while +0xa2 bit 4 (set by most enemy constructors)
+Phase_Controller 0x08519d80 f update phase 0x61a8: PadState_Update on each pad, then the controller
+TlsQueue_Post 0x08540c80 f (std::function*): onto the thread-local queue (TLS +0x18) that Gfx_FlushEntities drains
+TlsQueue_RunOne 0x094d75d0 f (queue): pops and calls one function; false when empty
+Graphics_RegisterCallback 0x09524aa0 f (system, id, std::function*, bool): into system +0x83c8 (0x40-byte entries)
+Graphics_EndFrame 0x09523820 f (system): waits for the GPU fence, then runs the registered callbacks (+0x83c8)
+EventActorMap_SetCharaLookups 0x08d143b0 f (map, name): the entry's action (+0x30) and query (+0x60) lookups, through EventChara_FindAction / EventChara_FindQuery
+EventChara_FindQuery 0x0861eca0 f the chara's own query lookup (+0x430) first, then the generic queries (CheckActorSwitch, CheckSameGrid, ...)
+NpcComponent_ShowOrWait 0x08e4be30 f component vtable +0x90: NpcComponent_Appear when readySignal fired and CheckPop holds, else hides the owner and posts the pop task (+0xc8)
+NpcComponent_PopTask 0x08e6c730 f the pop task's call: outside events (and pauses with +0x2a9) shows the NPC once CheckPop holds; with depopEnable also hides it again
+NpcComponent_Hide 0x08e4c1f0 f component vtable +0xa0: clears the owner's flags bit 0
+NpcComponent_DepopEnable 0x08e5bd60 f component vtable +0x370: the row's popConditions.depopEnable
+MagicPowderAttack 0x09c05954 l attack data of MagicPowderColComp: power 12, +0xc 5 (NPC condition 4), type 3 (HitPowder)
+DeguZol_IsDashAttack 0x087dc060 f (attack*): Link in his dash state (9) and the attack's type (+0xd) 5
+DeguZolPhase1_UpdateStretch 0x087dfb00 f (actor): stage 4 and +0x198a: +0x1984 eases toward +-1.5 by Link's facing; else 0
+DeguZolPhase1_Stretching_Update 0x087e5b30 f state 12 once +0x198a holds and |+0x1984| >= 1.3; state 10 without +0x198a
+ui2d_Layout_Finalize 0x0965ace0 f (layout, device): frees the dynamic texture table (+0x58); Layout_Dtor and ui2d_Pane_Finalize call it
+ui2d_Initialize 0x09658ac0 f (alloc fn, free fn, user data): ui2d's allocator (UiManager: 0x095e00d0, 0x095df920, the allocator at 0x0a1b1de0)
+ScalableFont_Initialize 0x09621ed0 f (font, InitializeArg*): TextureCache +0x10, font size +0x18, face +0x32; registers the alternate character
+TextureCache_RegisterGlyphs 0x096251b0 f (cache, u16* chars, count, font size, face, lock group, bool): registers each character up to a 0, returns how many were new
+HudHeart_Setup 0x09443df0 f (heart): the 17 animation handles at +0x160 + k*0x18: the 8 fills (names at 0x0a1311d8), Life4, Life0, In, Out, Normal, Caution, RevivalOn, RevivalOff, LifeUp
+MessageWindow_Close 0x093f50c0 f (window): to Closed; the request handle gets result 0xff, is signalled and dropped
+MessageWindow_DrawEndEnter 0x093f7120 f (window): result into the request handle's +0x60, signals and drops it
+MessageWindow_ClosingUpdate 0x093f73f0 f (window): once the close animation ends, the same as DrawEnd's enter
+LevelGrid_CellAt 0x08dec520 f (grid, u16* x out, u16* z out, out, const Vec4* pos): the 1.5-unit cell of level data +0x228 at pos (origin +0x80, size +0x90/+0x92); false outside
+nn_util_GenerateUuid 0x099364c0 f import stub of nn::util::GenerateUuid (GlobalSave_Reset's SaveId)
+ItemDrop_FindByKodamaKey 0x08da16e0 f (out row ref, int key): the ItemDrop.gsheet row whose mKodamaKey (+0x10) is key, else empty
+Item_SetTouchable 0x08dcb850 f (component, bool): the collision filter word (virtual +0x128) without bit 11 (layer 6) unless the bool
+NpRigidDynamic_vtable 0x0a1902a0 l physx::NpRigidDynamic: +0xb0 setGlobalPose, +0x150 addForce, +0x170 setRigidBodyFlag, +0x1c8 setLinearDamping, +0x1d8 setAngularDamping
+PhysicsBody_MakeShared 0x095cafc0 f (shared_ptr* out, PhysicsBody*): shared_ptr of a new body; sets its enable_shared_from_this self (+0x8)
+EventQuery_CheckRapidFlowRecord 0x0916c9e0 f the query CheckRapidFlowRecord: Inventory RapidsBestTime (+0xf0) != 0
+Player_SetOcarinaArea 0x0925db00 f (player, StringView* name, WeakPtr*): +0x1ef8, +0x1f20; only caller AreaOcarina_NotifyPlayer
+AreaOcarina_Setup 0x08582560 f vtable +0x20: installs the callbacks that lead to AreaOcarina_NotifyPlayer
+AreaOcarina_NotifyPlayer 0x08583d70 f (area, bool): Player_SetOcarinaArea with the area's LEB name when its +0xbc equals the bool
+PlayerClingers_Add 0x09229a90 f (clingers +0x18d0, actor sp*): attaches the actor to the next head locator (up to 6), inserts it by id (+0xa8)
+ZolRed_MiniZolClingEnter 0x08ca1940 f the MiniZolCling state's enter: the only caller of PlayerClingers_Add
+PlayerPutTarget_Set 0x0922a4d0 f (target +0x1960, actor sp*): position = the actor's spawnPos, valid, unless the actor is being destroyed
+Player_OnWaterEnter 0x0924f6e0 f the water event's enter slot (player, u32 attribute): inWaterArea = 1; attribute kind 7 with Flippers: Player_ClearClingers
+Player_OnWaterLeave 0x0924f630 f the water event's leave slot: inWaterArea = 0
+PlayerCarry_Begin 0x092a3200 f (state): carried and kCarrying; carryNoDrop = already a child of Framework actorSystem, else adds it there (not with actor +0x290); PlayerPutTarget_Set
+Player_DropCarriedBody 0x092387e0 f Player_DropCarried's tail: without carryNoDrop and actor +0x290 moves the actor into the level scene's +0x228 room root (destroys it without one)
+Player_ThrowCarried 0x092ebfd0 f (player, u8): the throw of the carried actor (aims at putTarget); carryNoDrop as Player_DropCarriedBody
+PlayerState_FallAbyss_Exit 0x092b5f00 f state 21 vtable +0x30: lowerLevelHoles empty: damage and respawn, else AreaHoleLowerLevel_StartEvent on the first entity
+ViewBlock_vtable 0x0a14bc60 l the renderer's View uniform block object (binder context +0xc0): its 0x400 bytes at +0x10, +0x0 view-projection, +0x190 projection, +0x1d0 nearZ, farZ, fovY, aspect, +0x1e0 render size
+EventCamera_Setup 0x08ce09f0 f vtable +0x20: shaker +0x2a8, locator +0x2b8, rig +0x2d0 whose output is the locator's state +0x150
+EventCamera_Task 0x08ce19f0 f lambda: CameraRig_Update of the rig +0x2d0 each frame while the camera is enabled and the rig not held (+0x51c)
+EventCamera_BlendTo 0x08ce46e0 f (rate, out task sp*, camera, CameraState* goal): CameraRig_BlendTo on its rig +0x2d0, a task that waits for it
+CameraState_Copy 0x085c5640 f (dst, src): camera state: +0x0 node sp, +0x14 mask (bit 0 distance, 1 fovY, 2 nearZ, 3 farZ, 4 aspect), +0x20 position, +0x30 rotation, +0x40 scale, +0x50 distance, fovY, nearZ, farZ, aspect
+CameraRig_Snap 0x085c5a80 f (rig): the output state's node or pose = the goal's
+CameraRig_SetOutput 0x085c5f30 f (rig, std::function*): the getter of the output state (+0x0); snaps when held (+0x24c), else updates once
+CameraRig_Update 0x085c6120 f (dt, rig): blends the output state toward the goal (+0x40) at the rate +0x240, lens fields too
+CameraRig_Reset 0x085c7af0 f (rig, CameraState* src): src into the output and the goal; rate +0x240 0, +0x24c 1 (held)
+CameraRig_BlendTo 0x085c7b80 f (rate, rig, CameraState* goal): goal into +0x40, rate +0x240, clears +0x24c; snaps when the output already equals it
+CameraSystem_SetSlotCamera 0x085c3da0 f (rate, out, system, id, sp* camera, priority): the slot's entry +0x10 + priority*0x10; a new top camera: CameraRig_BlendTo of the main camera's rig +0x2c0 to its +0x150
+CameraSystem_Update 0x085c2940 f task: per slot, the top camera's state +0x150 into the main camera's rig goal (+0x300), then CameraRig_Update of the rig +0x2c0 (output: the main camera's +0x510)
+LightCulling_Setup 0x094fbd50 f (env, width, height, mode): LightCulling_Init first, then per-buffer setup
+LightCulling_Init 0x094dea90 f (env, width, height, mode): mode at +0x90; tile size by mode from 0x9c07644 {0,16,32,64,80}; ceil(1920/size) x ceil(1080/size) tiles (+0x98, +0x9c, count +0xa0); LightIndexList +0xa8, LightIndexCounts +0xb8
+LightCulling_SetMode 0x094fc860 f (env, mode): LightCulling_Setup with the render size (Graphics +0x6e38/+0x6e3c, docked +0x6e40/+0x6e44); the game passes 3 (0x0851df10)
+LightIndexCounts_Init 0x094e9560 f (block, count, bufferCount): count u32 of 0, the GPU buffers, name "LightIndexCounts"

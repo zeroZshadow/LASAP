@@ -14,7 +14,8 @@ namespace Game::Ui {
     };
     FLAGS_ENUM(PaneFlag)
 
-    // An nn::ui2d pane (ui2d_Pane_vtable; 0xd8 bytes). Virtual +0x60: FindPaneByName(name, recursive).
+    // An nn::ui2d pane (ui2d_Pane_vtable; allocated as 0xe0 bytes, 16-aligned; this view stops at 0xd8, where TextBox's
+    // fields start). Virtual +0x60: FindPaneByName(name, recursive).
     struct Pane {
         const uintptr_t* vtable;
         ListNode link;             // 0x8: the pane's place in its parent's children
@@ -31,7 +32,7 @@ namespace Game::Ui {
         u8 flagsEx;                // 0x5c: bit 4 ready to draw (set by Calculate, cleared by the text setters)
         u8 pad_5d[0x3];
         u32 systemFlags;           // 0x60: a bit per system data entry type in extUserData
-        u8 pad_64[0xc];
+        u8 pad_64[0xc];            // alignment: globalMatrix is 16-aligned
         float globalMatrix[3][4];  // 0x70: computed by Calculate
         const float (*userMatrix)[4];  // 0xa0: with PaneFlag::UserMatrix
         const void* extUserData;   // 0xa8
@@ -81,7 +82,7 @@ namespace Game::Ui {
         u8 pad_158[0x8];
         Function onSetString;      // 0x160: called by every game setter; a scene layout's queues the glyphs
         u8 glyphsReady;            // 0x190: set once the font has drawn its glyphs
-        u8 field_191;              // 0x191: set before a game string is set; not read
+        u8 stringSet;              // 0x191: set before a game string is set; never read
         u8 notDrawn;               // 0x192: until the first DrawSelf
         u8 pad_193[0xd];
     };
@@ -107,6 +108,14 @@ namespace Game::Ui {
     };
     static_assert(offsetof(PaneHandle, pane) == 0x10 && sizeof(PaneHandle) == 0x18);
 
+    // A layout's nn::ui2d::detail::DynamicRenderingTexture objects (capture textures), collected by its parts build.
+    struct DynamicTextureTable {
+        s32 count;                 // the sorted entries after the front ones
+        s32 frontCount;
+        void** textures;           // 0x8: frontCount entries, then count sorted by the texture's u8 at +0x18
+    };
+    static_assert(sizeof(DynamicTextureTable) == 0x10);
+
     // The game's nn::ui2d layout (vtable 0x1c520c8; 0x78 bytes), which the UI manager animates and calculates each
     // frame while `calculate` is set and draws in the HUD pass, sorted by priority, while `draw` is set.
     struct Layout {
@@ -119,7 +128,7 @@ namespace Game::Ui {
         const void* extUserData;   // 0x38
         void* resources;           // 0x40: the archive's resource accessor
         ListNode parts;            // 0x48: the parts panes' layouts
-        void* field_58;            // 0x58: a table {s32, s32, void** entries} the parts build makes
+        DynamicTextureTable* dynamicTextures;  // 0x58: null without any
         SharedPtr<> archive;       // 0x60: the UI archive it was built from
         u8 calculate;              // 0x70
         u8 draw;                   // 0x71
@@ -222,7 +231,7 @@ namespace Game::Ui {
         u8 pad_c[0x4];
         FontHandle rubyFont;       // 0x10: ui/jpn_ruby.bffnt, Japanese only
         FontHandle pictogramFont;  // 0x28: ui/pictogram.bffnt
-        u8 pad_40[0xc8];           // zeroed, not read
+        u8 unused_40[0xc8];        // zeroed by the constructor, never read
         float scale[2];            // 0x108: 1, 1
         s32 colorIndex;            // 0x110: the text's colour: -1 the writer's, 0 color, n the message colour n
         u8 pad_114[0x4];
@@ -233,12 +242,12 @@ namespace Game::Ui {
 
     // The UI manager (the static Game::UiManager, UiManager_Ctor; 0xab80 bytes).
     struct Manager {
-        void* owned_0;             // freed by the destructor
-        u64 field_8;               // 0x8
-        SharedPtr<> sp_10[4];      // 0x10
+        void* heap;                // the UI heap's memory (UiManager_Init), freed by UiManager_Shutdown
+        u64 heapSize;              // 0x8: 0x1400000
+        SharedPtr<> unused_10[4];  // 0x10: never set; UiManager_Shutdown and the destructor release them
         SharedPtr<> gameArchivesLoad;   // 0x50: the ui/Game.arc set's resource group (UiManager_LoadGameArchives)
         SharedPtr<> startUpArchivesLoad;  // 0x60: the StartUp set's
-        Vector<SharedPtr<>> vector_70;  // 0x70
+        Vector<SharedPtr<>> fonts; // 0x70: the loaded font resources, each one's nn::font::Font at +0x80
         SharedPtr<> archives[8];   // 0x88: per archive set s, slots s, s + 2 and s + 4; slot 0 Game.arc, set once the
                                    // game's UI is loaded; 6 DgnTex.arc, 7 PanelTex.arc
         void* hudPass;             // 0x108
@@ -258,7 +267,7 @@ namespace Game::Ui {
         s32 glyphQueueIndex;       // 0xab38: the queue new boxes go to
         u8 pad_ab3c[0x4];
         List glyphQueues[2];       // 0xab40: GlyphNode
-        u8 field_ab70;             // 0xab70: 0xff, not read
+        u8 currentFile;            // 0xab70: the save file in use, 0xff none
         u8 pad_ab71[0xf];
     };
     static_assert(offsetof(Manager, archives) == 0x88 && offsetof(Manager, hudPass) == 0x108);
@@ -267,7 +276,8 @@ namespace Game::Ui {
     static_assert(offsetof(Manager, glyphWorkerState) == 0x28b4 && offsetof(Manager, lockGroups) == 0x2938);
     static_assert(offsetof(Manager, glyphQueueIndex) == 0xab38 && offsetof(Manager, glyphQueues) == 0xab40);
     static_assert(offsetof(Manager, gameArchivesLoad) == 0x50 && offsetof(Manager, glyphWorker) == 0x28b8);
-    static_assert(offsetof(Manager, field_ab70) == 0xab70 && sizeof(Manager) == 0xab80);
+    static_assert(offsetof(Manager, fonts) == 0x70 && offsetof(Manager, currentFile) == 0xab70);
+    static_assert(sizeof(Manager) == 0xab80);
 
     // A text box queued for its glyphs: no `count` for those queued without an owner.
     struct GlyphNode {

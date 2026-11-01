@@ -15,7 +15,7 @@ namespace Game {
     struct StateMachine {
         const uintptr_t* vtable;
         u32 framesInState;         // 0x8: cleared by a change, counted by the update
-        u8 field_c;                // 0xc: cleared by a change
+        u8 nextState;              // 0xc: set by a caller before a change, for a state object's exit; cleared by it
         u8 state;                  // 0xd: kNoState none
         u8 previous;               // 0xe
         u8 pad_f;

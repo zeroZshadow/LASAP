@@ -41,6 +41,17 @@ namespace Game {
         EntityFlag::Enabled | EntityFlag::ParentActive | EntityFlag::InZone | EntityFlag::Started;
     constexpr Flags<EntityFlag> kEntityActiveMask = kEntityActive | EntityFlag::DestroyRequested;
     constexpr Flags<EntityFlag> kEntityGone = EntityFlag::DestroyRequested | EntityFlag::Destroyed;
+    // Actor::classBits, ORed in by the class constructors (ACTORS.md, Actor fields). Bits 3 and 7-15 are the class's
+    // kind.
+    enum class ActorClassBit : u16 {
+        ZoneScoped = 1u << 0,      // suspended while Link is in another zone
+        GoneOnReload = 1u << 1,    // a keyless actor destroyed when its room reloads
+        NotAdopted = 1u << 2,      // NpcGhost: rooms never adopt it
+        Panel = 1u << 3,           // a Chamber Dungeon class; nothing reads it
+        Area = 1u << 7, Enemy = 1u << 8, Item = 1u << 9, PanelJoint = 1u << 10, Npc = 1u << 11,
+        Object = 1u << 12, PlayerProjectile = 1u << 13, Tag = 1u << 14, Camera = 1u << 15,
+    };
+    FLAGS_ENUM(ActorClassBit)
     // Entity virtuals, byte offsets for CallVirtual (ACTORS.md, Classes).
     namespace EntityVirtual {
         constexpr size_t kSetup = 0x20, kOnActiveChanged = 0x50, kRegister = 0x78;
@@ -113,7 +124,7 @@ namespace Game {
         u64 lebKey;                // 0x98: the LEB record's key
         u16 actorId;               // 0xa0
         u16 zoneState;             // 0xa2: bit 0 suspended
-        u16 classBits;             // 0xa4: bit 0 zone-scoped
+        Flags<ActorClassBit> classBits;  // 0xa4
         bool placed;               // 0xa6: Actor_PlaceAtSpawn
         u8 pad_a7;
         u32 serial;                // 0xa8: never 0
@@ -267,9 +278,9 @@ namespace Game {
         u16 switchIndices[4];      // 0x7c
         u8 removalGate;            // 0x84: e, the removal memory's gate without links
         u8 linkDecision;           // 0x85: k, read on each linked record
-        u8 b;                      // 0x86: not read by the room or the actor
+        u8 panelGate;              // 0x86: b, Chamber Dungeon enemies: made only in a panel of value 5
         u8 linkCount;              // 0x87: x
-        u8 linkedIdCount;          // 0x88: y
+        u8 linkedIdCount;          // 0x88: y, the records whose links name this one
         u8 railLinkCount;          // 0x89: z
         u8 pad_8a[0x6];
 

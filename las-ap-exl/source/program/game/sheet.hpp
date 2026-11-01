@@ -25,6 +25,14 @@ namespace Game {
     };
     static_assert(sizeof(SheetArray<int>) == 0x10);
 
+    // A condition of a sheet row (Conditions_Check, UI.md): its ConditionCategory and argument.
+    struct SheetCondition {
+        u32 category;
+        u8 pad_4[0x4];
+        SheetString parameter;     // 0x8
+    };
+    static_assert(sizeof(SheetCondition) == 0x18);
+
     // A sheet's data: the loaded .gsheet file, its pointers relocated (patcher/RandomizerCore/Tools/gsheet.py):
     // the header, the rows and the field descriptors (0x30 each) that follow.
     template<typename Row>
@@ -66,7 +74,7 @@ namespace Game {
         u64 dataSize;              // 0x78
         s32 keyField;              // 0x80: -1 without a key column
         u8 pad_84[0x4];
-        UnorderedMap map_88;       // 0x88: keyed by u32
+        UnorderedMap fieldsByStruct; // 0x88: struct field index (-1 the root) to its fields by name; never looked up
         UnorderedMap rowsById;     // 0xb0: id to row index (Datasheet_RowById)
         UnorderedMap rowsByKey;    // 0xd8: key string to row index (Datasheet_FindRow)
         const uintptr_t* vtable_100;  // 0x100: a virtual base's

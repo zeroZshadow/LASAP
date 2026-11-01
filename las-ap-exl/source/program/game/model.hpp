@@ -18,7 +18,7 @@ namespace Game {
     inline std::string_view ResNameOf(const u8* res) { return ResName(At<const u8*>(res, 0x8)); }
 
     // A model's memory pool (nn::gfx TMemoryPool<NVN>, MemoryPool_Initialize; 0x120 bytes): its blocks' GPU
-    // addresses are gpu + their offsets (gpu is inside the NVN pool: measured, not traced).
+    // addresses are gpu + their offsets (gpu: the NVN pool's buffer address, NVNmemoryPool +0x40).
     struct MemoryPool {
         void* nvnPool;             // nvnStorage's
         void* cpu;                 // 0x8: the memory the pool is made on
@@ -26,7 +26,7 @@ namespace Game {
         u64 gpu;                   // 0x50
         u8 nvnStorage_58[0xb8];    // 0x58
         u8 state;                  // 0x110: 1 initialized
-        u8 flags;                  // 0x111
+        u8 flags;                  // 0x111: bit 0 cleared by MemoryPool_Initialize
         u8 pad_112[0xe];
     };
     static_assert(offsetof(MemoryPool, cpu) == 0x8 && offsetof(MemoryPool, gpu) == 0x50);
@@ -74,12 +74,12 @@ namespace Game {
         u64 blockOffset;           // 0x38: its shader parameter block, in the pool
         void* blocks;              // 0x40: gfx buffers, 0x48 each
         void* srcParams;           // 0x48: a CPU copy of the FMAT's
-        void** textures;           // 0x50
-        void** samplers;           // 0x58
+        void** textures;           // 0x50: the FMAT's texture references (+0x28)
+        void** textureSlots;       // 0x58: per texture its descriptor slot, from the FMAT's (+0x90)
         u64 blockSize;             // 0x60: the copies are this rounded up to 0x100 apart
         void* userPtr;             // 0x68
         void* buffer;              // 0x70
-        u8 pad_78[0x8];            // no access found
+        void (*textureChanged)(MaterialObj*);  // 0x78: called by the texture pattern apply after it changes a texture
     };
     static_assert(offsetof(MaterialObj, blockCopies) == 0x20 && offsetof(MaterialObj, pool) == 0x30);
     static_assert(offsetof(MaterialObj, blockOffset) == 0x38 && offsetof(MaterialObj, srcParams) == 0x48);
@@ -136,8 +136,8 @@ namespace Game {
         u8 hasBillboardShape;      // 0x19
         u16 flags;                 // 0x1a: bit 0 block buffer set up
         u8 pad_1c[0x4];
-        void* field_20;            // 0x20: zeroed when made, no access found
-        void* field_28;            // 0x28: the same
+        void* unused_20;           // 0x20: zeroed when made; no access (scan, and poisoned in play 2026-10-31)
+        void* unused_28;           // 0x28: the same
         u16 shapeCount;            // 0x30
         u16 materialCount;         // 0x32
         u8 pad_34[0x4];
@@ -161,21 +161,21 @@ namespace Game {
     static_assert(offsetof(ModelObj, pool) == 0x68 && offsetof(ModelObj, lodCount) == 0x8c);
     static_assert(sizeof(ModelObj) == 0x90);
 
-    // How a shape draws (from its material): the render layer and the render passes it takes part in. The passes have
-    // no names in the binary; they are named by what selects them.
+    // How a shape draws, from its material's render info and shader assign: the render layer and the render passes it
+    // takes part in.
     struct ShapeRenderInfo {
         u32 materialIndex;
         u32 renderLayer;           // 0x4: bits 0-1 the pass filter; above 1 drawn back to front
-        u8 field_8[0x20];          // 0x8: from the material
-        u8 castShadow;             // 0x28: with ModelInstance::castShadow, pass 1 (likely the shadow map)
-        u8 optionEnable;           // 0x29
-        u8 mainPasses;             // 0x2a: passes 11 to 15, and the third shape binder
-        u8 passFlag2b;             // 0x2b: passes 16, 17
-        u8 water;                  // 0x2c: pass 10 and the water shape binder
-        u8 flag_2d;                // 0x2d: not read
+        s32 combinerColorParams[8];  // 0x8: the shader parameter index of combiner_constant_color0..7, -1 none
+        u8 castShadow;             // 0x28: with ModelInstance::castShadow, pass 1 (ShadowMapPass)
+        u8 receiveShadow;          // 0x29: with ModelInstance::receiveShadow, shadow_profile_mode
+        u8 underWater;             // 0x2a: passes 11 to 15, and the third shape binder
+        u8 waterReflection;        // 0x2b: passes 16, 17
+        u8 water;                  // 0x2c: pass 10 and the water binder
+        u8 vegetation;             // 0x2d: the vegetation depth shaders for binders [1] and [2]
         u8 pad_2e[0x2];
         s32 depthBias;             // 0x30
-        u32 cullMode;              // 0x34: 3 the pass's own
+        u32 cullMode;              // 0x34: culled faces 0 none, 1 front, 2 back; 3 the pass's own
     };
     static_assert(offsetof(ShapeRenderInfo, castShadow) == 0x28 && offsetof(ShapeRenderInfo, depthBias) == 0x30);
     static_assert(sizeof(ShapeRenderInfo) == 0x38);
@@ -195,9 +195,48 @@ namespace Game {
     static_assert(offsetof(Model, blockOffset) == 0x90 && offsetof(Model, shapeInfos) == 0xb8);
     static_assert(sizeof(Model) == 0xd8);
 
-    // A shape's shader selectors, one per shape binder (the third may be null).
+    // A shading model of a shader archive as the game binds it (ModelShader_vtable 0x1c34c30; 0x50 bytes), made by
+    // the archive's factory.
+    struct ModelShader {
+        const uintptr_t* vtable;
+        char name[0x20];           // 0x8: the archive's
+        u64 nameLength;            // 0x28
+        const u8* res;             // 0x30: ResShadingModel
+        const u8* shaderAssign;    // 0x38: the material's ResShaderAssign
+        void* obj;                 // 0x40: nn::g3d ShadingModelObj (0x88): the option block
+        u32 blockSize;             // 0x48: obj's block buffer
+        u32 bufferSize;            // 0x4c: obj's buffer
+    };
+    static_assert(offsetof(ModelShader, res) == 0x30 && sizeof(ModelShader) == 0x50);
+
+    // The bezel_pbr archives' shader (BezelShader_vtable 0x1c45700; 0x60 bytes).
+    struct BezelShader {
+        ModelShader base;
+        void* perObject;           // 0x50: owned, the PerObject uniform block it updates and binds
+        void (*perObjectDeleter)(void*);  // 0x58
+    };
+    static_assert(sizeof(BezelShader) == 0x60);
+
+    // A shading model and its option selector.
+    struct ShaderVariant {
+        SharedPtr<ModelShader> shader;
+        SharedPtr<> selector;      // 0x10: ShaderOptionSelector_vtable 0x1c457c0 or a subclass
+    };
+    static_assert(sizeof(ShaderVariant) == 0x20);
+
+    // A shape binder's shaders (ShaderRegistry_GetHolder; 0x50 bytes).
+    struct ShaderHolder {
+        u8 unused_0[0x8];          // no access (scan, and poisoned in play 2026-10-31)
+        ShaderVariant variants[2]; // 0x8: [1] empty when made
+        s32 current;               // 0x48: the variant in use
+        u8 initialized;            // 0x4c: a variant has both pointers
+        u8 pad_4d[0x3];
+    };
+    static_assert(offsetof(ShaderHolder, current) == 0x48 && sizeof(ShaderHolder) == 0x50);
+
+    // A shape's shader holders, one per shape binder (the third null without underWater).
     struct ShapeShaders {
-        void* shaders[3];
+        ShaderHolder* shaders[3];
     };
     static_assert(sizeof(ShapeShaders) == 0x18);
 
@@ -239,22 +278,29 @@ namespace Game {
     static_assert(offsetof(UniformBlock, words) == 0x18 && offsetof(UniformBlock, name) == 0x30);
     static_assert(sizeof(UniformBlock) == 0x48);
 
+    // A shader sampler and the material sampler bound to it (ShapeBinder::samplerTable).
+    struct SamplerBinding {
+        s32 programSampler;        // the shading model's sampler index
+        s32 materialSampler;       // the FMAT's sampler index assigned to it
+    };
+    static_assert(sizeof(SamplerBinding) == 0x8);
+
     // A shape's shader and uniform binder (ShapeBinder_Ctor, ShapeBinder_vtable 0x1c47250; 0xa0 bytes). The water,
     // first and second kinds (WaterShapeBinder_vtable, ShapeBinder1_vtable, ShapeBinder2_vtable) bind more textures.
     struct ShapeBinder {
         const uintptr_t* vtable;
-        Vector<void*> blocks;      // 0x8
-        Vector<UniformBlock*> uniformBlocks;  // 0x20: bound by name
+        Vector<UniformBlock*> uniformBlocks;  // 0x8: bound by name as uniform buffers
+        Vector<UniformBlock*> storageBlocks;  // 0x20: bound by name as storage buffers
         void** vertexStates;       // 0x38: the model data's
         u32 uploadedMask;          // 0x40: a bit per buffer
         u8 pad_44[0x4];
         Vector<void*> blockBuffers;  // 0x48: per buffer, 0x800 bytes
         u8 samplerTableBuilt;      // 0x60
         u8 pad_61[0x7];
-        Vector<u64> samplerTable;  // 0x68: per program sampler
+        Vector<SamplerBinding> samplerTable;  // 0x68: per shader sampler the material assigns
         s32 envSpecLocation;       // 0x80: _envSpec0's, -1 until looked up
         s32 envLocalSpecLocation;  // 0x84: _envLocalSpec0's
-        Vector<u8> blockLocations; // 0x88: {program, block, location} 0x18 each, a cache
+        Vector<u8> blockLocations; // 0x88: {program, block, the block's index in the program} 0x18 each, a cache
     };
     static_assert(offsetof(ShapeBinder, vertexStates) == 0x38 && offsetof(ShapeBinder, blockBuffers) == 0x48);
     static_assert(offsetof(ShapeBinder, envSpecLocation) == 0x80 && sizeof(ShapeBinder) == 0xa0);
@@ -281,7 +327,7 @@ namespace Game {
     struct ModelInstance {
         const uintptr_t* vtable;
         WeakPtr<> self;            // 0x8
-        u8 pad_18[0x8];
+        u8 unused_18[0x8];         // no access (scan, and poisoned in play 2026-10-31)
         u64 passMask;              // 0x20
         Vector<u32> passes;        // 0x28
         u64 layerMask;             // 0x40
@@ -305,20 +351,20 @@ namespace Game {
         s8 bufferIndex;            // 0x265
         u8 cullEnabled;            // 0x266
         u8 shapeCullMode;          // 0x267: 0 none, 1 per shape, 2 per mesh; the instanced draw culls records at 0
-        u8 castShadow;             // 0x268: with ShapeRenderInfo::castShadow, pass 1 (likely the shadow map)
-        u8 shapeOptionEnable;      // 0x269: a shader option of every shape
-        u8 passFlagA;              // 0x26a: passes 41, 42
-        u8 passFlagB;              // 0x26b: passes 18, 44
-        u8 translucentPassFlag;    // 0x26c: render layer 2's pass 22 instead of 20, 21
+        u8 castShadow;             // 0x268: with ShapeRenderInfo::castShadow, pass 1 (ShadowMapPass)
+        u8 receiveShadow;          // 0x269: with ShapeRenderInfo::receiveShadow, every shape's shadow_profile_mode
+        u8 decalReceive;           // 0x26a: passes 41, 42 (DecalReceiveZPre, DecalReceive)
+        u8 frontIgnore;            // 0x26b: passes 18, 44 (Base3DOpacityZPre, FrontIgnore)
+        u8 translucentZNone;       // 0x26c: render layer 2's pass 22 (Base3DTranslucentZNone) instead of 20, 21
         u8 skeletonDirty;          // 0x26d
         u8 transformDirty;         // 0x26e
-        u8 shaderOption26f;        // 0x26f: a shader option, set by the model components' setups
+        u8 ambientLighting;        // 0x26f: ambient_lighting_mode 4 (environment maps) when set, else 2
         u32 shaderDirtyMask;       // 0x270: a bit per buffer whose shader options are to push
         float depthBias;           // 0x274: added to every draw's
         u8 forcePositionUpdate;    // 0x278
         u8 culled;                 // 0x279
         u8 pad_27a[0x2];
-        u32 envIndex;              // 0x27c: a shader option, from the renderer's environment
+        u32 lightCullingMode;      // 0x27c: every shape's light_culling_mode, from the renderer's environment
         Signal changed;            // 0x280
         OrderedMap boneSignals;    // 0x2d8: bone index to an owned Signal (ModelInstance_ConnectBoneCallback)
         BoneCallback boneCallback; // 0x2f0: the skeleton's calcWorldCallback while boneSignals has any
@@ -343,13 +389,13 @@ namespace Game {
     static_assert(offsetof(ModelInstance, userParams) == 0x1d0 && offsetof(ModelInstance, shapeCullMode) == 0x267);
     static_assert(offsetof(ModelInstance, skeletonDirty) == 0x26d && offsetof(ModelInstance, shaderDirtyMask) == 0x270);
     static_assert(offsetof(ModelInstance, depthBias) == 0x274 && offsetof(ModelInstance, culled) == 0x279);
-    static_assert(offsetof(ModelInstance, envIndex) == 0x27c && offsetof(ModelInstance, changed) == 0x280);
+    static_assert(offsetof(ModelInstance, lightCullingMode) == 0x27c && offsetof(ModelInstance, changed) == 0x280);
     static_assert(offsetof(ModelInstance, boneSignals) == 0x2d8 && offsetof(ModelInstance, boneCallback) == 0x2f0);
     static_assert(offsetof(ModelInstance, calcOverride) == 0x310);
     static_assert(offsetof(ModelInstance, renderMode) == 0x370 && offsetof(ModelInstance, shapeVisible) == 0x378);
     static_assert(offsetof(ModelInstance, records) == 0x398 && sizeof(ModelInstance) == 0x3c0);
     namespace ModelInstanceVirtual {
-        constexpr size_t kCalc = 0x88, kDraw = 0x90, kInstanceCount = 0x98, kCalcModel = 0xc8;
+        constexpr size_t kCalc = 0x88, kDraw = 0x90, kInstanceCount = 0x98, kIsInstanced = 0xa0, kCalcModel = 0xc8;
     }
 
     // nn::gfx BlendState<NVN> (BlendState_Initialize).

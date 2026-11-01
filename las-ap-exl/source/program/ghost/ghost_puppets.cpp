@@ -14,6 +14,9 @@
 #include <cmath>
 #include <cstring>
 #include <string>
+#ifdef LASAP_TEST
+#include "test/test_impl.hpp"
+#endif
 
 namespace AP::Puppets {
     Puppet g_Puppets[kPuppets];
@@ -37,7 +40,7 @@ namespace {
     // Spawned through the actor factory (Actor_Create; scripts/re/ACTORS.md, Creation). Ghosts are NpcGhost actors
     // with an Npc row of their own: the NPC component's constructor looks its class's row up inside the factory call
     // (ACTORS.md, NPCs), so while the module's own spawn runs the key is APGhost, if the sheet has that row (the
-    // patcher adds it, ap_player_ghost.py; a missing row crashes).
+    // patcher adds it, ap_player_ghost.py; without the row the factory returns nothing).
     constexpr u16 kGhostActor = 0x179;
     using Game::Actors::kNpcRowSize;
     StrView g_GhostRow{"APGhost", 7};
@@ -382,6 +385,13 @@ namespace {
             if (g_SpawningGhost && rowKey != nullptr && rowKey->data == Game::str_NpcGhost.Ptr()) {
                 if (HasGhostRow()) rowKey = &g_GhostRow;
             }
+#ifdef LASAP_TEST
+            static StrView noSuchRow{"NoSuchRow", 9};
+            if (AP::Test::g_ProbeNoRow > 0) {  // DBG probe norow
+                AP::Test::g_ProbeNoRow--;
+                rowKey = &noSuchRow;
+            }
+#endif
             return Orig(self, args, rowKey, x3);
         }
     };

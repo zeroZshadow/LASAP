@@ -74,7 +74,7 @@ namespace Game::Actors {
         s32 expression;            // 0x120: the current one (FacialControl_SetExpression)
         u8 pad_124[0x4];
         Vector<s32> frames;        // 0x128: one per material animation slot
-        bool frozen;               // 0x140: Update does nothing while set
+        bool frozen;               // 0x140: Update does nothing while set; never set (the constructor's false)
         u8 pad_141[0xf];
     };
     static_assert(offsetof(FacialControl, priority) == 0x58 && offsetof(FacialControl, onChangeA) == 0x60);
@@ -124,22 +124,87 @@ namespace Game::Actors {
     static_assert(offsetof(GroundQueryCache, position) == 0x10 && offsetof(GroundQueryCache, valid) == 0x24);
     static_assert(sizeof(GroundQueryCache) == 0x30);
 
+    // A row of Npc.gsheet (field names the sheet's)
+    struct NpcEventTrigger {
+        s32 condition;             // NpcEventTriggerCondition (ACTORS.md, NPCs)
+        u8 pad_4[0x4];
+        SheetArray<SheetCondition> additionalConditions;  // 0x8
+        SheetString entryPoint;    // 0x18
+    };
+    static_assert(sizeof(NpcEventTrigger) == 0x28);
+    struct NpcLayoutCondition {
+        SheetCondition condition;
+        s32 layoutID;              // 0x18
+        u8 pad_1c[0x4];
+    };
+    static_assert(sizeof(NpcLayoutCondition) == 0x20);
+    struct NpcRow {
+        SheetString symbol;
+        struct {
+            SheetString path;      // 0x10
+            SheetString model;
+            SheetString idle, talk, walk, run;  // 0x30: animations
+            bool rootAnimEnabled;  // 0x70
+            SheetArray<NpcAnimSetting> animSettings;  // 0x78
+            SheetString drsb;      // 0x88
+            struct { bool enable; float offsetY; float limitDepth; } waterChannel;  // 0x98
+            SheetString facial;    // 0xa8: Facial.gsheet key
+            SheetString interestIK;  // 0xb8
+            struct { bool enable; bool autoTurn; float threshold; float reactionTime; float duration; } turn;  // 0xc8
+            s32 cull;              // 0xd8: CullMode
+        } graphics;
+        struct { SheetString eventAsset; SheetString actorName; } eventInfo;  // 0xe0
+        SheetArray<NpcEventTrigger> eventTriggers;  // 0x100
+        struct {
+            s32 type;              // 0x110: DoActionType; the interaction kind + 1 (PLAYER.md, toInteract)
+            float yOffset, xzDistance, yDistance, playerAngleRange, reactionAngleRange;
+        } doAction;
+        struct { float personalSpace; SheetString talkerLabel; } talk;  // 0x128
+        struct { s32 layoutID; s32 identifier; } actorArgs;  // 0x140: indices of the owner's LEB parameters
+        struct { SheetArray<SheetCondition> conditions; bool depopEnable; } popConditions;  // 0x148
+        SheetArray<NpcLayoutCondition> layoutConditions;  // 0x160
+        float lookAtOffsetY;       // 0x170
+        struct { s32 type; SheetArray<SheetString> parameters; } behavior;  // 0x178: NpcBehaviorType
+        struct { struct { float moveSpeed, turnSpeed; } walk, run; } movement;  // 0x190
+        struct {
+            s32 shape;             // 0x1a0
+            SheetString traits;    // 0x1a8: NpcPhysicsTraits.gsheet key
+            s32 component;         // 0x1b8: PhysicsComponentType
+            bool isStatic;
+            s32 filter;            // 0x1c0: CollisionFilter
+            s32 material;          // 0x1c4: CidMaterial
+            bool groundCheck;
+            Vec3 offset;           // 0x1cc
+            Vec3 rotation;         // 0x1d8
+            SheetArray<float> parameters;  // 0x1e8
+        } collision;
+        struct { bool enable; float sizeDiff; } damageCollision;  // 0x1f8
+        struct { bool enable; float distance; } ocarina;  // 0x200
+        SheetArray<SheetCondition> shellSensor;  // 0x208
+        s32 attribute;             // 0x218: bit 0 talking NPCs, bit 1 gimmicks, bit 2 drops and solid objects
+    };
+    static_assert(offsetof(NpcRow, graphics.waterChannel) == 0x98 && offsetof(NpcRow, graphics.cull) == 0xd8);
+    static_assert(offsetof(NpcRow, eventTriggers) == 0x100 && offsetof(NpcRow, talk.talkerLabel) == 0x130);
+    static_assert(offsetof(NpcRow, popConditions.depopEnable) == 0x158 && offsetof(NpcRow, behavior) == 0x178);
+    static_assert(offsetof(NpcRow, collision.isStatic) == 0x1bc && offsetof(NpcRow, collision.parameters) == 0x1e8);
+    static_assert(offsetof(NpcRow, attribute) == 0x218 && sizeof(NpcRow) == 0x220);
+
     // An NPC's component (NpcComponent_Ctor, vtable 0x1bdc570; 0x2e0 bytes): its Npc.gsheet row, its owner's LEB
     // parameters, the components it builds once its resources are loaded (each made by a virtual of its own, named by
     // that virtual's offset where the class is not known), and its resources.
     struct NpcComponent {
         Entity entity;
-        Actor* owner;              // 0x58: a shared_ptr; null unless the owner is an actor
+        Actor* owner;              // 0x58: a shared_ptr; null when the owner is not a game Actor
         void* ownerCtrl;           // 0x60
         SharedPtr<> parentNode;    // 0x68: the actor's root
         SharedPtr<> npcSheet;      // 0x78: keeps Npc.gsheet alive
-        const void* row;           // 0x88: the Npc.gsheet row (kNpcRowSize bytes); null destroys the component
+        const NpcRow* row;         // 0x88: null destroys the component
         s32 layoutId;              // 0x90: the owner's int LEB parameter the row's actorArgs.layoutID names
         u8 pad_94[0x4];
         FixedString<0x20> identifier;  // 0x98: the string LEB parameter the row's actorArgs.identifier names
         u32 eventSubA;             // 0xc0: the event manager's signal handles
         u32 eventSubB;             // 0xc4
-        SharedPtr<> task;          // 0xc8
+        SharedPtr<> task;          // 0xc8: the pop task (0x968730), which shows the NPC once its pop conditions hold
         SharedPtr<> model;         // 0xd8: the skeletal model component (virtual +0x200)
         void* animator;            // 0xe8: a shared_ptr (virtual +0x208): a SkeletalAnimation, or a LayeredAnimation
         void* animatorCtrl;        // 0xf0
@@ -167,7 +232,7 @@ namespace Game::Actors {
         UnorderedMap animSettingCache;  // 0x240: SharedString name to AnimSettingRef (NpcComponent_AnimSetting)
         SharedPtr<> animSettingSheet;  // 0x268: keeps Npc.gsheet alive for animSetting
         const NpcAnimSetting* animSetting;  // 0x278: the playing animation's (NpcComponent_PlayAnimation)
-        SharedPtr<> event_280;     // 0x280: an event of the flowchart
+        SharedPtr<> lastEvent;     // 0x280: the event NpcComponent_MakeEvent made last from the flowchart
         Vector<NpcTriggerLink> triggerLinks;  // 0x290: the event-trigger areas it is connected to
         bool triggersPending;      // 0x2a8: built before Start; Start connects the triggers
         bool popRejected;          // 0x2a9: the pop conditions failed, so the ready signal came without a build
@@ -188,7 +253,7 @@ namespace Game::Actors {
     static_assert(offsetof(NpcComponent, triggerLinks) == 0x290 && offsetof(NpcComponent, triggersPending) == 0x2a8);
     static_assert(offsetof(NpcComponent, collisionMaterial) == 0x2ac && offsetof(NpcComponent, groundCache) == 0x2b0);
     static_assert(sizeof(NpcComponent) == 0x2e0);
-    constexpr size_t kNpcRowSize = 0x220;
+    constexpr size_t kNpcRowSize = sizeof(NpcRow);
 
     // NpcGhost (NpcGhost_Ctor, vtable 0x1be37c0; 0x2d0 bytes), the actor the ghosts are. Its second base is the
     // companion interface Link takes along (NpcBowWow, NpcMarin, NpcGhost and NpcFlyingCucco share it: kind 1 to 4).

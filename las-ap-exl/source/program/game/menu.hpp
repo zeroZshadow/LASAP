@@ -87,7 +87,7 @@ namespace Game::Ui {
         SharedPtr<MenuPage> pages[3];  // 0x12f0
         u8 overworldZoom;          // 0x1320: kept from the overworld map's zoom index
         u8 dungeonZoom;            // 0x1321
-        u8 pad_1322[0x6];
+        u8 pad_1322[0x6];          // alignment: mapCursor is an 8-byte vector
         float mapCursor[2];        // 0x1328: the last map page's cursor
         u8 mapCursorSaved;         // 0x1330
         u8 pinType;                // 0x1331: the pin type selected in the map pages' pin bar
@@ -295,12 +295,12 @@ namespace Game::Ui {
         StateMachine<15> machine;  // 0x1260: Closed, Opening, FadeIn, Reading, TextFadeOut, KeyWaiting, PreSelecting,
                                    // Selecting, Selected, TimerWaiting, EventWaiting, ButtonWaiting, DrawEnd, FadeOut,
                                    // Closing
-        u8 pageEnd;                // 0x1600: 3 more pages follow
+        u8 pageEnd;                // 0x1600: the state at the page's end: 3 Reading, 5 KeyWaiting, 6 PreSelecting
         u8 resumeState;            // 0x1601: after TimerWaiting or EventWaiting
         u8 pad_1602[0x6];
         SharedPtr<> msbt;          // 0x1608: the open message's file
         s32 label;                 // 0x1618: its label index
-        u8 pad_161c[0x4];
+        u8 pad_161c[0x4];          // never accessed
         s32 page;                  // 0x1620
         u8 pad_1624[0x4];
         MessageString<0x180> pageText;  // 0x1628
@@ -324,7 +324,7 @@ namespace Game::Ui {
         s32 choiceCancel;          // 0x1cd0: the option B picks, -1 none
         s32 fadeIn;                // 0x1cd4
         s32 fadeOut;               // 0x1cd8: set, the page ends in FadeOut
-        u8 pad_1cdc[0x4];
+        u8 pad_1cdc[0x4];          // alignment: balloonOffset is an 8-byte vector
         float balloonOffset[2];    // 0x1ce0
         WaitCounter followWait;    // 0x1ce8
         // After KeyWaiting or PreSelecting starts, keyWait.count runs up to its limit (6 for a page, 10 before a

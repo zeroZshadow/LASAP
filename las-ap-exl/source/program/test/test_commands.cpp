@@ -350,7 +350,7 @@ namespace {
         s += " flowEvent=" + std::to_string(flow->event == event) +
              " flowSelf=" + std::to_string(flow->self.ptr == flow && flow->context.user == &flow->self);
         s += " chart=" + (flow->flowchart != nullptr ? Text(flow->flowchart->name) : std::string("-"));
-        s += " objs=" + std::to_string(flow->context.objCount) + " nodes=" + std::to_string(flow->context.nodeCount) +
+        s += " objs=" + std::to_string(flow->context.objs.size) + " nodes=" + std::to_string(flow->context.nodes.size) +
              " allocated=" + std::to_string(flow->context.allocatedNodes);
         s += " actors=";
         struct Node {
@@ -365,16 +365,16 @@ namespace {
                  (n->value.actionLookup.f != nullptr ? "a" : "") + (n->value.queryLookup.f != nullptr ? "q" : "") +
                  (n->value.bySubName.size != 0 ? "+" + std::to_string(n->value.bySubName.size) : "") + ",";
         }
-        if (flow->context.objCount > 0) {
+        if (flow->context.objs.size > 0) {
             const FlowchartObj& obj = flow->context.objs[0];
             s += " bindings=";
-            for (u32 b = 0; b < obj.bindingCount; b++) {
+            for (s32 b = 0; b < obj.bindings.size; b++) {
                 const ActorBinding& binding = obj.bindings[b];
                 u32 bound = 0;
-                for (u32 k = 0; k < binding.actionCount; k++) bound += binding.actions[k].handler != nullptr;
+                for (s32 k = 0; k < binding.actions.size; k++) bound += binding.actions[k].handler != nullptr;
                 s += Text(binding.actor != nullptr ? binding.actor->name : nullptr) + ":" +
                      (binding.userData != nullptr ? "c" : "-") + std::to_string(bound) + "/" +
-                     std::to_string(binding.actionCount) + ",";
+                     std::to_string(binding.actions.size) + ",";
             }
         }
         return s;
@@ -793,9 +793,16 @@ namespace {
         g_EnemyScale[i] = int(scale * 100.0f);
     }
 
+    bool ProbeCommand(const std::vector<std::string>& a, Game::Actor* (*findActor)(const char*));
+
     bool Command(const std::vector<std::string>& a) {
         if (a.size() < 2) return true;
         if (InputCommand(a) || TraceCommand(a) || Puppets::Command(a)) return true;
+        auto first = [](const char* prefix) -> Game::Actor* {
+            Game::Actor* found[kMaxKilled];
+            return FindActors(found, prefix) > 0 ? found[0] : nullptr;
+        };
+        if (ProbeCommand(a, first)) return true;
         return GameCommand(a);
     }
 

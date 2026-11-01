@@ -494,6 +494,7 @@ namespace {
         // Link's zone (actor +0xb0, the camera room he is in; ACTORS.md, Actor fields)
         SetField(18, player ? std::to_string(*reinterpret_cast<s32*>(reinterpret_cast<u8*>(fmwk->player) + 0xb0)) : "-");
         SampleWatches();
+        ProbeSample();
     }
 
     bool Holds(const std::string& cond) {
@@ -655,6 +656,7 @@ namespace {
         static_assert(kSmHookCount == 10);
         MainLoopPass::InstallAtPtr(Game::Addr(kMainLoopPass));
         InstallSpawnTrack();
+        InstallProbeHooks();
     }
 }
 #endif

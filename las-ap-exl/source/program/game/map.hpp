@@ -60,7 +60,7 @@ namespace Game::Map {
         Ui::Animation out;                  // 0x280
         Ui::TextHolder nameText;            // 0x298: T_MarkerName_00
         Ui::PaneHandle window;              // 0x2b0: W_window_00
-        Ui::PaneHandle field_2c8;           // 0x2c8: never set
+        Ui::PaneHandle unused_2c8;          // 0x2c8: never set; the destructor releases it
         u8 nameHidden;                      // 0x2e0: no name shown; set with nameHideRequest, the name goes away
         u8 nameHideRequest;                 // 0x2e1
         u8 pad_2e2[0x6];
@@ -84,8 +84,8 @@ namespace Game::Map {
         u8 shown;                           // 0xc4: the compass, or the shown switch and the room visited
         u8 hasMap;                          // 0xc5
         u8 hasCompass;                      // 0xc6
-        u8 field_c7;                        // 0xc7
-        u32 field_c8;                       // 0xc8
+        u8 pad_c7;
+        u32 rotation;                       // 0xc8: MapActorDesc::rotation, copied by the door and wall icons' update
         u8 visited;                         // 0xcc
         u8 pad_cd[0x3];
     };
@@ -98,7 +98,7 @@ namespace Game::Map {
         u16 actorId;
         u8 pad_2[0x2];
         float x, y, z;                      // 0x4
-        u32 field_10;                       // 0x10
+        u32 rotation;                       // 0x10: the actor's facing, a full turn 2^32
         u32 zoneId;                         // 0x14
         u32 areaId;                         // 0x18: Area::id
         u8 row;                             // 0x1c
@@ -109,16 +109,23 @@ namespace Game::Map {
         u8 openSwitchType;                  // 0x22
         u8 pad_23;
         u16 openSwitchIndex;                // 0x24
-        u8 field_26[0xa];                   // 0x26
+        u8 iconSwitchType;                  // 0x26: 0, a door icon shows only once the switch is set; 4 none
+        u8 pad_27;
+        u16 iconSwitchIndex;                // 0x28
+        u8 unusedSwitchType;                // 0x2a: never read; 4, or 2 for some stairs
+        u8 pad_2b;
+        u16 unusedSwitchIndex;              // 0x2c: never read; 0
+        u8 pad_2e[0x2];
     };
     static_assert(offsetof(MapActorDesc, x) == 0x4 && offsetof(MapActorDesc, z) == 0xc);
     static_assert(offsetof(MapActorDesc, areaId) == 0x18 && offsetof(MapActorDesc, shownSwitchIndex) == 0x20);
-    static_assert(offsetof(MapActorDesc, openSwitchIndex) == 0x24 && sizeof(MapActorDesc) == 0x30);
+    static_assert(offsetof(MapActorDesc, openSwitchIndex) == 0x24 && offsetof(MapActorDesc, iconSwitchIndex) == 0x28);
+    static_assert(offsetof(MapActorDesc, unusedSwitchIndex) == 0x2c && sizeof(MapActorDesc) == 0x30);
 
     // A level's area (Area_Ctor; 0xd0 bytes): the dungeon page's rooms.
     struct Area {
         const uintptr_t* vtable;
-        u8 pad_8[0x8];
+        u8 pad_8[0x8];                      // alignment: the game's vectors are 16-aligned
         Vec4 offset;                        // 0x10: the Chamber Dungeon's grid offset
         Vec4 min;                           // 0x20: the area's box
         Vec4 max;                           // 0x30
@@ -156,7 +163,7 @@ namespace Game::Map {
         u8 flags;                           // 0x1: bit 0 compass, 1 map, 2 stone beak, 3 nightmare key
         u8 pad_2[0x6];
         u64 visited;                        // 0x8: the visited rooms, bit column + 8 * row
-        u8 field_10[0x10];                  // 0x10
+        u8 unused_10[0x10];                 // 0x10: never read; cleared with the entry
     };
     static_assert(offsetof(DungeonItemsEntry, flags) == 0x1 && offsetof(DungeonItemsEntry, visited) == 0x8);
     static_assert(sizeof(DungeonItemsEntry) == 0x20);
@@ -228,12 +235,13 @@ namespace Game::Map {
         Ui::Animation on;                   // 0x90: Loop plays once it ends
         Ui::Animation loop;                 // 0xa8
         Ui::Animation off;                  // 0xc0
-        u8 field_d8;                        // 0xd8: zeroed when made, not read
+        u8 unused_d8;                       // 0xd8: zeroed when made, never read
         u8 pad_d9[0x7];
         Ui::PaneHandle cursorPane;          // 0xe0: W_Cursor_00
-        u8 pad_f8[0x8];
+        float width, height;                // 0xf8: W_Cursor_00's, set by the setup; never read
     };
-    static_assert(offsetof(MarkCursor, cursorPane) == 0xe0 && sizeof(MarkCursor) == 0x100);
+    static_assert(offsetof(MarkCursor, cursorPane) == 0xe0 && offsetof(MarkCursor, width) == 0xf8);
+    static_assert(sizeof(MarkCursor) == 0x100);
 
     // The maps' pin bar (L_MapMarkList_00, MapMarkList_vtable 0x1c2d9e8; 0xe98 bytes): the pin types and the pin count.
     struct MapMarkList {
@@ -335,7 +343,7 @@ namespace Game::Map {
         u8 previousPinType;                 // 0x2cd6
         u8 pad_2cd7;
         float zoomScale;                    // 0x2cd8
-        float zoomFrom;                     // 0x2cdc: the level the zoom started from (likely)
+        float zoomFrom;                     // 0x2cdc: the level the zoom started from
         float zoomProgress;                 // 0x2ce0: 0 to 1; scroll and cursorScale follow it
         float cursorScale;                  // 0x2ce4: the zoom's factor on the cursor's speed and the hover radius
         float zoomStep;                     // 0x2ce8
@@ -348,7 +356,7 @@ namespace Game::Map {
         float scrollTarget[2];              // 0x2d00
         float cursorSpeed;                  // 0x2d08: 4.25 while the stick is idle
         float zoomLevels[2];                // 0x2d0c: 1, 2
-        u8 pad_2d14[0x4];
+        u8 pad_2d14[0x4];                   // alignment: the cursor is an 8-byte vector
         float cursorX, cursorY;             // 0x2d18
         u8 linkSideView;                    // 0x2d20
         u8 floorCount;                      // 0x2d21
@@ -361,7 +369,7 @@ namespace Game::Map {
         u8 linkFloor;                       // 0x2d30
         u8 bossFloor;                       // 0x2d31
         u8 entranceFloor;                   // 0x2d32
-        u8 pad_2d33[0xd];
+        u8 pad_2d33[0xd];                   // never accessed
         u8 info;                            // 0x2d40: Y held: the dungeon's info, no hover
         u8 cursorRestored;                  // 0x2d41: from Navi::mapCursor, else put on Link's marker
         u8 extraIconMade;                   // 0x2d42
@@ -391,7 +399,7 @@ namespace Game::Map {
         StateMachine<17> machine;           // 0xf0: Deactive..Close, OpenMask
         UnorderedMap map_500;               // 0x500: only made and destroyed
         Ui::Animation mapNameIn;            // 0x528
-        Ui::Animation field_540;            // 0x540: never set
+        Ui::Animation unused_540;           // 0x540: never set; the destructor releases it
         Ui::Animation mapSymbol;            // 0x558
         Ui::Animation fldMaskOpen;          // 0x570
         Ui::Animation memoryIn;             // 0x588
@@ -443,13 +451,13 @@ namespace Game::Map {
         u8 zoomIndex;                       // 0x8178
         u8 previousZoomIndex;               // 0x8179
         u8 zoomBusy;                        // 0x817a
-        u8 pad_817b[0x5];
+        u8 pad_817b[0x5];                   // alignment: scrollStart is an 8-byte vector
         float scrollStart[2];               // 0x8180
         float scroll[2];                    // 0x8188
         float scrollTarget[2];              // 0x8190
         float cursorSpeed;                  // 0x8198: 4.25 to 9
         float zoomLevels[2];                // 0x819c: 1, 3
-        u8 pad_81a4[0x4];
+        u8 pad_81a4[0x4];                   // alignment: the cursor is an 8-byte vector
         float cursor[2];                    // 0x81a8
         float linkPos[2];                   // 0x81b0
         u8 linkHidden;                      // 0x81b8: Link is not in the overworld
@@ -458,7 +466,7 @@ namespace Game::Map {
         u32 memoryToClose;                  // 0x81bc
         u8 maskOpening;                     // 0x81c0: a field area's mask opens: Open goes on to OpenMask
         u8 cursorShown;                     // 0x81c1: the cursor's In played
-        u8 field_81c2;                      // 0x81c2: only zeroed
+        u8 unused_81c2;                     // 0x81c2: zeroed by the constructors, never read
         u8 pad_81c3[0xd];
     };
     static_assert(offsetof(OverworldMap, machine) == 0xf0 && offsetof(OverworldMap, map_500) == 0x500);
