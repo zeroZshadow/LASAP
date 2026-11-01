@@ -240,7 +240,9 @@ namespace AP::ListUi {
 
     std::string GuideCaption(int button) {
         if (g_Guide == nullptr || button < 0 || button > 3) return "";
-        return g_Guide->captions[button];
+        // a guide listing fewer captions leaves the rest null
+        const char* caption = g_Guide->captions[button];
+        return caption != nullptr ? caption : "";
     }
 
     int GuideIcon(int button) {
