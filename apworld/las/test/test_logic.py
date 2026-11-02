@@ -15,7 +15,7 @@ from .lasr_eval import LASREvaluator
 from ..items import ITEM_TABLE, LASR_TO_ITEM
 from ..lasr import ITEM_DEFS, ITEM_LOCATIONS, LOGIC
 from ..locations import LOCATION_NAMES
-from ..logic import parse
+from ..logic import make_rule, parse
 
 STEPS = ("generate_early", "create_regions", "create_items", "set_rules", "connect_entrances", "generate_basic")
 LASR_ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), *[os.pardir] * 3, "reference", "DEV-BUILD-LASR")
@@ -173,3 +173,40 @@ class TestIndirectConditions(unittest.TestCase):
             implicit = list(multiworld.get_spheres())
             with self.subTest(options=options):
                 self.assertEqual(explicit, implicit)
+
+
+class TestRefills(unittest.TestCase):
+    """Powder, bombs and arrows refill from bushes Link breaks and from the Ammo Ghost (lasr.REFILL_ALTERNATIVES), for
+    the item he holds; a refill never pays for itself. Without stealing, as stealing refills bombs and arrows at the
+    shop with no item."""
+
+    def state(self, ammo_ghost: bool, items):
+        world_type = AutoWorldRegister.world_types["Links Awakening Switch"]
+        world = setup_multiworld(world_type, STEPS, 90, {"ammo_ghost": ammo_ghost, "stealing": "never"}).worlds[1]
+        state = CollectionState(world.multiworld)
+        for item in items:
+            state.collect(world.create_item(LASR_TO_ITEM[item]), prevent_sweep=True)
+        return world, state
+
+    def holds(self, node: str, ammo_ghost: bool, items) -> bool:
+        world, state = self.state(ammo_ghost, items)
+        return make_rule(world.compiler.node_expr(node), world.player, world.node_regions)(state)
+
+    def test_refills(self) -> None:
+        for node, items, ammo_ghost, holds in (
+                ("powders", ["powder"], False, False),  # powder on bushes alone does not last
+                ("powders", ["powder"], True, True),
+                ("powders", ["powder", "sword"], False, True),
+                ("powders", ["sword"], True, False),
+                ("bombs", ["bomb"], False, False),
+                ("bombs", ["bomb"], True, True),
+                ("bombs", ["bomb", "powder"], False, False),  # neither lasts on bushes
+                ("shoot-arrows", ["bow"], False, False),
+                ("shoot-arrows", ["bow"], True, True)):
+            with self.subTest(node=node, items=items, ammo_ghost=ammo_ghost):
+                self.assertEqual(self.holds(node, ammo_ghost, items), holds)
+
+    def test_mad_batter(self) -> None:
+        """The Mad Batter in the woods takes the bracelet and powder, which the bushes the bracelet lifts refill."""
+        world, state = self.state(False, ["bracelet", "powder"])
+        self.assertTrue(world.get_location(LOCATION_NAMES["mad-batter-woods"]).can_reach(state))

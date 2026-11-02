@@ -57,8 +57,9 @@ struct PatchConfig {
     struct {
         std::string seed_hash;
         int port = 0;  // 0: AP::PORT
-        // The seashells the Wind Fish's Egg needs on a seashell hunt (AP::SEASHELL_GOAL_FLAG, ap_egg.cpp); 0: the
-        // instruments goal, where the egg needs the Ballad.
+        // The seashell hunt (AP::SEASHELL_GOAL_FLAG, ap_egg.cpp): the Wind Fish's Egg opens with seashells_required
+        // seashells, at once with none. Off: the instruments goal, where the egg needs the Ballad.
+        bool seashell_hunt = false;
         int seashells_required = 0;
     } archipelago;
 

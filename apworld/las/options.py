@@ -1,6 +1,6 @@
 import random
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 
 from Options import (Choice, DeathLink, DefaultOnToggle, NamedRange, OptionGroup, PerGameCommonOptions, Range,
                      StartInventoryPool, Toggle, Visibility)
@@ -209,10 +209,10 @@ class InstrumentsRequired(Range):
 
 
 class SeashellsRequired(Range):
-    """How many of the 50 secret seashells open the Wind Fish's Egg (goal seashell_hunt).
-    The sign at the foot of the egg's stairs tells the number."""
+    """How many of the 50 secret seashells open the Wind Fish's Egg (goal seashell_hunt); with 0 it opens when you
+    reach it. The sign at the foot of the egg's stairs tells the number."""
     display_name = "Seashells Required"
-    range_start = 1
+    range_start = 0
     range_end = 50
     default = 30
 
@@ -294,8 +294,8 @@ class ShuffledPowder(DefaultOnToggle):
 
 
 class AmmoGhost(DefaultOnToggle):
-    """A ghost in Tarin's house tops your bombs and arrows up to 15 when you talk to him. He shows up once you have
-    bombs or the bow."""
+    """A ghost in Tarin's house tops your bombs, arrows and magic powder up to 15 when you talk to him. He shows up once
+    you have bombs, the bow or the powder. The logic counts him as a refill."""
     display_name = "Ammo Ghost"
 
 
@@ -520,6 +520,6 @@ def goal_instruments(options: LASOptions) -> int:
     return 0 if options.goal == Goal.option_seashell_hunt else options.instruments_required.value
 
 
-def goal_seashells(options: LASOptions) -> int:
-    """The secret seashells the egg needs: none for the instruments goal."""
-    return options.seashells_required.value if options.goal == Goal.option_seashell_hunt else 0
+def goal_seashells(options: LASOptions) -> Optional[int]:
+    """The secret seashells the egg needs on a seashell hunt, 0 among them; None for the instruments goal."""
+    return options.seashells_required.value if options.goal == Goal.option_seashell_hunt else None

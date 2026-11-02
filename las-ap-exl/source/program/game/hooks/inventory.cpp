@@ -25,10 +25,12 @@ namespace {
                 return;
             }
 
-            // The ghost in Tarin's house: tops bombs or arrows up to count
-            if ((ID == ItemId::Bomb || ID == ItemId::Arrow) && index == AP::AMMO_REFILL_INDEX) {
+            // The ghost in Tarin's house: tops bombs, arrows or powder up to count
+            if ((ID == ItemId::Bomb || ID == ItemId::Arrow || ID == ItemId::MagicPowder) &&
+                index == AP::AMMO_REFILL_INDEX) {
                 auto* items = Game::Data::Inventory::Items();
-                int have = ID == ItemId::Bomb ? items->BombCount : items->ArrowCount;
+                int have = ID == ItemId::Bomb ? items->BombCount : ID == ItemId::Arrow ? items->ArrowCount
+                                                                                      : items->PowderCount;
                 if (have < count) Orig(ID, count - have, -1);
                 return;
             }

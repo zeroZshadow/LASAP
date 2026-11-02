@@ -31,7 +31,7 @@ namespace AP {
     // as SIGN.
     constexpr const char* SIGN_LABEL = "SBMountTamaranch";
     constexpr const char* SIGN_FLAG = "APSignRead";
-    // The egg's event checks this flag when seashells are required (patcher ap_goal.SEASHELL_FLAG). It is no save flag:
+    // The egg's event checks this flag on a seashell hunt (patcher ap_goal.SEASHELL_FLAG). It is no save flag:
     // the module answers it set while Link holds config.ini's [archipelago] seashells_required seashells.
     constexpr std::string_view SEASHELL_GOAL_FLAG = "APSeashellGoal";
     // Common.bfevfl entry the patcher adds: Link's item-get of the placeholder with RECEIVED_LABEL as its message
@@ -52,8 +52,8 @@ namespace AP {
     constexpr int MEDICINE_FLAG_BITS = 2;
     // Common.bfevfl entry the patcher adds for the warp menu: a choice between warping to Tarin's house and going on.
     constexpr const char* WARP_MENU_ENTRY = "APWarpMenu";
-    // Index the ghost in Tarin's house adds bombs and arrows with (patcher ap_ghost.py): the count is what Link's
-    // bombs or arrows are topped up to, not an amount to add.
+    // Index the ghost in Tarin's house adds bombs, arrows and powder with (patcher ap_ghost.py): the count is what
+    // Link's bombs, arrows or powder are topped up to, not an amount to add.
     constexpr int AMMO_REFILL_INDEX = 1000;
     // Location names the patcher writes next to config.ini.
     constexpr const char* NAMES_PATH = "sd:/config/lasr-exl/ap_names.txt";

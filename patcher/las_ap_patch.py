@@ -559,8 +559,9 @@ class APModsProcess(mod_generator.ModsProcess):
                  f"no_30fps_drops = {NO_30FPS_DROPS[self.settings.get('No 30 FPS Drops', 'On emulators')]}\n"
                  f"instant_pickups = {self.settings.get('Instant Pickups', False)}\n"
                  f"bouncy_items = {self.settings.get(ap_drop.BOUNCY_SETTING, False)}\n")
+        seashells = ap_goal.settings_seashells(self.settings)
         path.write_text(text + f"\n[archipelago]\nseed_hash = {self.seed_hash}\n"
-                        f"seashells_required = {self.settings.get('Seashells Required', 0)}\n")
+                        f"seashell_hunt = {seashells is not None}\nseashells_required = {seashells or 0}\n")
         # What each location holds, so the found text names it before the client connects (DESIGN.md)
         with open(self.config_dir / "ap_names.txt", "w", encoding="utf-8", newline="\n") as f:
             for local_id, (item, owner) in sorted(self.location_names.items()):
@@ -807,7 +808,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         ap_hints.add(proc.file_manager, proc.config_dir, hints)
     # all eight and no seashells for patches from before the options
     ap_goal.set_goal(proc.file_manager, patch["settings"].get("Instruments Required", 8),
-                     patch["settings"].get("Seashells Required", 0))
+                     ap_goal.settings_seashells(patch["settings"]))
     ap_save_name.set_default(proc.file_manager, patch.get("slot_name", ""))
     ap_ballad.add(args.romfs, proc.romfs_dir)
     map_tracker = patch["settings"].get("Map Tracker", False)  # off for patches from before the option

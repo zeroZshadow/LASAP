@@ -6,9 +6,9 @@ the instruments play, which song plays, how the scene fades and whether the egg 
 switch becomes a chain of `Inventory.HasItem` checks, one per instrument, that takes the switch's case 1 once the
 required number is held and its case 0 once that number can no longer be reached. For the seashell hunt each switch
 checks SEASHELL_FLAG instead, which the module answers as set once Link holds that many seashells (config.ini
-[archipelago] seashells_required); the instruments do not count.
+[archipelago] seashell_hunt and seashells_required); the instruments do not count.
 
-For the seashell hunt the module also opens the egg once Link holds the seashells (ap_egg.cpp), and the egg's door in
+For the seashell hunt the module also opens the egg once Link holds the seashells, at once with none (ap_egg.cpp), and the egg's door in
 EGG_ROOM leads to the end instead of into the egg: where the stairs after the fight with the Nightmare lead
 (Lv09WindFishsEgg.bfevfl, StairsUp's RequestLevelJump), the Wind Fish's ending.
 
@@ -42,16 +42,24 @@ ENDING_LEVEL = "Ending"
 ENDING_LOCATOR = "Lv09WindFishsEgg_05H"  # in Ending_13O
 
 
-def set_goal(files, count: int, seashells: int = 0) -> None:
-    """Opens the egg with `count` instruments, or with `seashells` secret seashells and no instruments, and says so on
-    the sign; with all instruments the event stays as it is. With seashells the egg's door leads to the ending."""
+def settings_seashells(settings) -> Optional[int]:
+    """The secret seashells a patch's settings take on a seashell hunt, None for the instruments goal. A patch without
+    the key Seashell Hunt is a hunt when it takes seashells."""
+    seashells = settings.get("Seashells Required", 0)
+    return seashells if settings.get("Seashell Hunt", seashells > 0) else None
+
+
+def set_goal(files, count: int, seashells: Optional[int] = None) -> None:
+    """Opens the egg with `count` instruments, or on a seashell hunt (`seashells` not None) with that many secret
+    seashells and no instruments, and says so on the sign; with all instruments the event stays as it is. On a hunt
+    the egg's door leads to the ending."""
     _sign(files, count, seashells)
-    if count >= len(INSTRUMENT_ITEM_TYPES) and not seashells:
+    if count >= len(INSTRUMENT_ITEM_TYPES) and seashells is None:
         return
     flow = files.readFile(EVENT_FILE)
     rewrite(flow.flowchart, count, seashells)
     files.writeFile(EVENT_FILE, flow)
-    if seashells:
+    if seashells is not None:
         room = files.readFile(f"{EGG_ROOM}.leb")
         egg_door(room).parameters[:2] = [ENDING_LEVEL.encode(), ENDING_LOCATOR.encode()]
         files.writeFile(f"{EGG_ROOM}.leb", room)
@@ -65,9 +73,11 @@ def egg_door(room):
     return doors[0]
 
 
-def sign_text(count: int, seashells: int = 0) -> str:
+def sign_text(count: int, seashells: Optional[int] = None) -> str:
     total = len(INSTRUMENT_ITEM_TYPES)
-    if seashells:
+    if seashells == 0:
+        needed = "no secret seashells"
+    elif seashells is not None:
         needed = f"{seashells} secret seashell{'s' if seashells > 1 else ''}"
     elif count >= total:
         needed = f"all {total} instruments"
@@ -78,7 +88,7 @@ def sign_text(count: int, seashells: int = 0) -> str:
     return f"The Wind Fish's Egg opens\nwith {needed}."
 
 
-def _sign(files, count: int, seashells: int = 0) -> None:
+def _sign(files, count: int, seashells: Optional[int] = None) -> None:
     """Adds the numbers below the sign's place name, in every language (in English)."""
     for relative_path, msbt in files.getAllTextFiles(SIGN_FILE):
         entry = msbt.getEntry(SIGN_KEY)
@@ -94,15 +104,16 @@ def _query(event) -> Optional[str]:
     return None if query is None else query.v.v
 
 
-def rewrite(chart, count: int, seashells: int = 0) -> None:
-    """Replaces each ALL_QUERY switch in the flowchart by HasItem checks that need `count` instruments or, with
-    `seashells`, by a check of SEASHELL_FLAG alone, with the switch's cases."""
+def rewrite(chart, count: int, seashells: Optional[int] = None) -> None:
+    """Replaces each ALL_QUERY switch in the flowchart by HasItem checks that need `count` instruments or, on a
+    seashell hunt (`seashells` not None), by a check of SEASHELL_FLAG alone, with the switch's cases."""
     switches = [event for event in chart.events if _query(event) == ALL_QUERY]
     assert len(switches) == SWITCHES, [event.name for event in switches]
-    actor, query = (FLAG_ACTOR, FLAG_QUERY) if seashells else (ACTOR, ITEM_QUERY)
+    hunt = seashells is not None
+    actor, query = (FLAG_ACTOR, FLAG_QUERY) if hunt else (ACTOR, ITEM_QUERY)
     event_tools.addActorQuery(event_tools.findActor(chart, actor), query)
     for switch in switches:
-        if seashells:
+        if hunt:
             _set_query(chart, switch, FLAG_ACTOR, FLAG_QUERY, {"symbol": SEASHELL_FLAG})
         else:
             cases = {value: case.v for value, case in switch.data.cases.items()}

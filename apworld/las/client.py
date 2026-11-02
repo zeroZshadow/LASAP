@@ -15,7 +15,7 @@ from .ghosts import DEFAULT_RELAY, GhostLink
 from .host_settings import PLAYER_SETTINGS, player_value
 from .install import InstallError, builtin_patcher_build, patch_and_install
 from .items import GAME, ITEM_GAME_INFO
-from .tracker import SIGN_KEY, LogicTracker, tracked_instruments
+from .tracker import SIGN_KEY, LogicTracker, tracked_instruments, tracked_seashells
 
 GAME_PORT = 43384
 PROTOCOL_VERSION = 2
@@ -315,7 +315,7 @@ class LASContext(CommonContext):
             logic["preset"], logic["tokens"], logic["vanilla"],
             [names[loc - LOCATION_BASE] for loc in sorted(self.server_locations)],
             self.slot_data.get("dungeon_entrances"), logic.get("optional", ()), instruments,
-            self.slot_data.get("seashells_required", 0)) if logic else None
+            tracked_seashells(self.slot_data)) if logic else None
         self.logic_tracker_instruments = instruments
         self.logic_starting = logic.get("starting", []) if logic else []
         self.in_logic = self.doors_open = None

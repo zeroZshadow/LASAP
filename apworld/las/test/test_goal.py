@@ -83,17 +83,19 @@ class TestSeashellsRequired(unittest.TestCase):
 
     def test_hunt_needs_that_many(self) -> None:
         world_type = AutoWorldRegister.world_types[GAME]
-        for required in (1, 30, 50):
+        for required in (0, 1, 30, 50):
             options = {"goal": "seashell_hunt", "seashells_required": required, "instruments_required": 8}
             multiworld = setup_multiworld(world_type, STEPS, 60 + required, options)
             with self.subTest(required=required):
                 slot_data = multiworld.worlds[1].fill_slot_data()
                 self.assertEqual((slot_data["instruments_required"], slot_data["seashells_required"]), (0, required))
                 settings = multiworld.worlds[1].patch_data()["settings"]
-                self.assertEqual((settings["Instruments Required"], settings["Seashells Required"]), (0, required))
+                self.assertEqual((settings["Instruments Required"], settings["Seashell Hunt"],
+                                  settings["Seashells Required"]), (0, True, required))
                 # the instruments are not needed
                 self.assertTrue(self.beatable(multiworld, required, ()))
-                self.assertFalse(self.beatable(multiworld, required - 1))
+                if required:
+                    self.assertFalse(self.beatable(multiworld, required - 1))
 
     def test_open_egg_is_the_goal(self) -> None:
         """With seashells the egg opens without the Ballad and its door leads to the ending: neither the ocarina, the
@@ -108,11 +110,16 @@ class TestSeashellsRequired(unittest.TestCase):
                 self.assertTrue(self.beatable(multiworld, 10, INSTRUMENTS[:2]))
 
     def test_instruments_goal_takes_no_seashells(self) -> None:
+        """The goal alone decides the hunt: the instruments goal takes no seashells, whatever Seashells Required."""
         world_type = AutoWorldRegister.world_types[GAME]
-        world = setup_multiworld(world_type, STEPS, 71, {"seashells_required": 40}).worlds[1]
-        self.assertEqual(world.fill_slot_data()["seashells_required"], 0)
-        self.assertEqual(world.patch_data()["settings"]["Seashells Required"], 0)
-        self.assertTrue(self.beatable(world.multiworld, 0))
+        for required in (0, 40):
+            world = setup_multiworld(world_type, STEPS, 71, {"seashells_required": required}).worlds[1]
+            with self.subTest(required=required):
+                self.assertEqual(world.fill_slot_data()["seashells_required"], 0)
+                settings = world.patch_data()["settings"]
+                self.assertEqual((settings["Seashell Hunt"], settings["Seashells Required"]), (False, 0))
+                self.assertTrue(self.beatable(world.multiworld, 0))
+                self.assertFalse(self.beatable(world.multiworld, 0, INSTRUMENTS[:7]))
 
     def test_mansion_follows_its_option(self) -> None:
         """The goal changes only what the egg takes: the Mansion's rewards are optional above seashell_mansion alone."""
@@ -131,6 +138,7 @@ class TestSeashellsRequired(unittest.TestCase):
         world_type = AutoWorldRegister.world_types[GAME]
         option_sets = ({"goal": "seashell_hunt"},
                        {"goal": "seashell_hunt", "seashells_required": 50, "chests": False, "free_gifts": False},
+                       {"goal": "seashell_hunt", "seashells_required": 0},
                        {"goal": "seashell_hunt", "instruments_required": 4, "seashell_mansion": 50,
                         "seashells": False})
         for seed, options in enumerate(option_sets):
@@ -244,16 +252,17 @@ class TestEggEvent(unittest.TestCase):
         the instruments."""
         original = self.read().flowchart
         names = {event.name for event in original.events}
-        for required in (0, len(INSTRUMENTS)):
+        for required, seashells_required in itertools.product((0, len(INSTRUMENTS)), (0, 30)):
             chart = self.read().flowchart
-            self.ap_goal.rewrite(chart, required, 30)
+            self.ap_goal.rewrite(chart, required, seashells_required)
             queries = [e.data.actor_query.v.v for e in chart.events if getattr(e.data, "actor_query", None) is not None]
             self.assertEqual(queries.count(self.ap_goal.FLAG_QUERY), self.ap_goal.SWITCHES)
             self.assertFalse({self.ap_goal.ALL_QUERY, self.ap_goal.ITEM_QUERY} & set(queries))
             self.assertEqual({e.name for e in chart.events}, names)
             for held in (set(), set(range(len(INSTRUMENTS)))):
                 for seashells in (False, True):
-                    with self.subTest(required=required, held=sorted(held), seashells=seashells):
+                    with self.subTest(required=required, seashells_required=seashells_required, held=sorted(held),
+                                      seashells=seashells):
                         self.assertEqual(self.visited(chart, held, required, seashells),
                                          self.visited(original, set(), 0, seashells))
 
@@ -277,12 +286,23 @@ class TestEggEvent(unittest.TestCase):
             def getAllTextFiles(name):
                 return []
 
-        self.ap_goal.set_goal(Files, 0, 3)
-        door = self.ap_goal.egg_door(self.leb.Room(Files.written[room_file.name].repack()))
-        self.assertEqual(door.parameters[:2], [b"Ending", b"Lv09WindFishsEgg_05H"])
+        for seashells in (0, 3):
+            Files.written.clear()
+            self.ap_goal.set_goal(Files, 0, seashells)
+            door = self.ap_goal.egg_door(self.leb.Room(Files.written[room_file.name].repack()))
+            self.assertEqual(door.parameters[:2], [b"Ending", b"Lv09WindFishsEgg_05H"])
         Files.written.clear()
-        self.ap_goal.set_goal(Files, 3, 0)
+        self.ap_goal.set_goal(Files, 3)
         self.assertNotIn(room_file.name, Files.written)
+
+    def test_settings_seashells(self) -> None:
+        """The patch's Seashell Hunt decides the hunt; a patch without it is a hunt when it takes seashells."""
+        for settings, seashells in (({"Seashell Hunt": True, "Seashells Required": 0}, 0),
+                                    ({"Seashell Hunt": True, "Seashells Required": 20}, 20),
+                                    ({"Seashell Hunt": False, "Seashells Required": 0}, None),
+                                    ({"Seashells Required": 20}, 20), ({"Seashells Required": 0}, None), ({}, None)):
+            with self.subTest(settings=settings):
+                self.assertEqual(self.ap_goal.settings_seashells(settings), seashells)
 
     def test_rewrite_writes(self) -> None:
         """The rewritten flowchart writes and reads back with the same checks."""
@@ -311,10 +331,10 @@ class TestEggEvent(unittest.TestCase):
             def writeTextFile(relative_path, name, msbt):
                 written[name] = msbt
 
-        for count, seashells, wording in ((0, 0, "with no instruments."), (1, 0, "with 1 instrument."),
-                                          (5, 0, "with 5 instruments."), (8, 0, "with all 8 instruments."),
+        for count, seashells, wording in ((0, None, "with no instruments."), (1, None, "with 1 instrument."),
+                                          (5, None, "with 5 instruments."), (8, None, "with all 8 instruments."),
                                           (0, 30, "with 30 secret seashells."), (0, 1, "with 1 secret seashell."),
-                                          (8, 50, "with 50 secret seashells.")):
+                                          (8, 50, "with 50 secret seashells."), (0, 0, "with no secret seashells.")):
             self.ap_goal._sign(Files, count, seashells)
             text = written[self.ap_goal.SIGN_FILE].getEntry(self.ap_goal.SIGN_KEY).message.text
             self.assertEqual(text, f"Mt. Tamaranch\nThe Wind Fish's Egg opens\n{wording}[1:4]")

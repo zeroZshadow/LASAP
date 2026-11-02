@@ -88,7 +88,7 @@ class LASWorld(World):
 
     compiler: LogicCompiler
     goal_instruments: int  # the instruments the egg's rule takes (compile_logic)
-    goal_seashells: int  # the secret seashells the egg's rule takes (compile_logic)
+    goal_seashells: Optional[int]  # the secret seashells the egg's rule takes, None for no hunt (compile_logic)
     shuffled: List[str]  # LASR item locations that are AP locations
     locked: List[str]  # AP locations the options leave unrandomized: they hold their default item, locked
     optional: List[str]  # AP locations of activities the options leave out: after the goal, excluded
@@ -501,7 +501,7 @@ class LASWorld(World):
             # False for a count left to chance: trackers show it once the player read the sign (SIGN_KEY)
             "instruments_known": self.options.instruments_required.known or
                                  self.options.goal == Goal.option_seashell_hunt,
-            "seashells_required": goal_seashells(self.options),
+            "seashells_required": goal_seashells(self.options) or 0,
             "death_link": bool(self.options.death_link.value),
             "location_count": len(self.shuffled),
             "settings": {key: settings[key] for key in lasr_settings.TRACKER_SETTINGS},

@@ -21,7 +21,7 @@ stays hidden in the client's map tracker, PopTracker and Universal Tracker until
 they count on all eight.
 
 With `goal: seashell_hunt` the egg needs `seashells_required` of the 50 secret seashells (30 by default) instead, and
-no instruments. The egg opens by itself, without the ocarina: once you have them and stand at the egg, you watch it break open. Its door then takes you straight to the
+no instruments; with 0 it opens as soon as you reach it. The egg opens by itself, without the ocarina: once you have them and stand at the egg, you watch it break open. Its door then takes you straight to the
 Wind Fish for the ending, past the maze and the Nightmare. The sign names the seashells too. The Seashell
 Mansion's rewards follow `seashell_mansion` as on any goal, so an item you need can wait at a reward above that number.
 
@@ -78,9 +78,9 @@ popup at the bottom right names the trap and its sender. On normal damage a trap
 
 ## Where do I get more bombs and arrows?
 
-With the Ammo Ghost option (on by default), a ghost waits in Tarin's house once you have bombs or the bow. Talk to him
-and he tops your bombs and arrows up to 15 (10 bombs become 15; more than 15 stay as they are), as often as you
-like. Together with the warp menu below, this keeps you from getting stuck without ammo.
+With the Ammo Ghost option (on by default), a ghost waits in Tarin's house once you have bombs, the bow or the magic
+powder. Talk to him and he tops your bombs, arrows and powder up to 15 (10 bombs become 15; more than 15 stay as they
+are), as often as you like. The logic counts him as a refill, as it counts cutting bushes. Together with the warp menu below, this keeps you from getting stuck without ammo.
 
 ## Where are my checks?
 

@@ -1,7 +1,7 @@
 """LASR (LAS Randomizer) data: logic, item pool and location categories, loaded from the bundled YAML files."""
 import copy
 import pkgutil
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import yaml
 
@@ -31,6 +31,15 @@ EXTRA_NODES: Dict[str, Dict[str, Any]] = {
 CONDITION_EDITS = {
     ("kill-flower", "condition-basic"): ("(bow-wow & !rooster)", "bow-wow"),
 }
+# - Refills of powder, bombs and arrows that LASR's logic leaves out, each an alternative to the node's condition-basic.
+#   A cut bush or a lifted rock (break-bush) drops from ItemDrop's Grass row, which Consumable Drops (always on) gives
+#   powder, bombs and arrows; the Ammo Ghost in Tarin's house (ammo-ghost, in Mabe) tops them up. Both give only what
+#   Link already has. break-bush also takes powder and bombs: the logic's fixed point never lets a refill pay for itself.
+REFILL_ALTERNATIVES = {
+    "powders": "powder & (break-bush | (ammo-ghost & mabe))",
+    "bombs": "bomb & (break-bush | (ammo-ghost & mabe))",
+    "shoot-arrows": "bow & (break-bush | (ammo-ghost & mabe))",
+}
 # logic.yml spells one vanilla content differently from items.yml.
 CONTENT_ALIASES = {"powders-capacity": "powder-capacity"}
 # The companions: LASR's followers become item locations holding their companion (kept, see lasr_settings), and the
@@ -46,6 +55,8 @@ def _fixed_logic() -> Dict[str, Dict[str, Any]]:
     for (node, key), (old, new) in CONDITION_EDITS.items():
         assert old in logic[node][key], (node, key)
         logic[node][key] = logic[node][key].replace(old, new)
+    for node, alternative in REFILL_ALTERNATIVES.items():
+        logic[node]["condition-basic"] = f"({logic[node]['condition-basic']}) | ({alternative})"
     for node, definition in EXTRA_NODES.items():
         assert node not in logic, node
         logic[node] = dict(definition)
@@ -99,21 +110,21 @@ GOAL_NODE = "kill-nightmare"
 
 
 def goal_logic(instruments_required: int, logic: Dict[str, Dict[str, Any]] = LOGIC,
-               seashells_required: int = 0) -> Dict[str, Dict[str, Any]]:
-    """The logic with the Wind Fish's egg opening at this many instruments, or with seashells at that many secret
-    seashells and no instruments. With seashells the egg opens by itself, without the Ballad, and its door leads to
-    the ending: the goal is the open egg."""
-    if instruments_required >= len(INSTRUMENTS) and not seashells_required:
+               seashells_required: Optional[int] = None) -> Dict[str, Dict[str, Any]]:
+    """The logic with the Wind Fish's egg opening at this many instruments, or on a seashell hunt (seashells not None)
+    at that many secret seashells and no instruments. On a hunt the egg opens by itself, without the Ballad, and its
+    door leads to the ending: the goal is the open egg."""
+    if instruments_required >= len(INSTRUMENTS) and seashells_required is None:
         return logic
     parts = [part.strip() for part in logic["egg"]["condition-basic"].split("&")]
     assert set(INSTRUMENTS) <= set(parts) and set(BALLAD) <= set(parts), parts
     parts = [part for part in parts if part not in INSTRUMENTS]
-    if seashells_required:
+    if seashells_required is not None:
         parts = [part for part in parts if part not in BALLAD] + [f"seashell:{seashells_required}"]
     else:
         parts.append(f"{INSTRUMENTS_TOKEN}:{instruments_required}")
     goal = {**logic, "egg": {**logic["egg"], "condition-basic": " & ".join(parts)}}
-    if seashells_required:
+    if seashells_required is not None:
         goal[GOAL_NODE] = {"type": logic[GOAL_NODE]["type"], "condition-basic": "egg"}
     return goal
 

@@ -1,0 +1,20 @@
+# The ghost in Tarin's house (Ammo Ghost option) shows up with the magic powder alone and tops it up to 15. Run after
+# newgame_file2 (a new game: no bombs, bow or powder) on a mod patched with the option on. Talks to him from one tile
+# south, facing up, as ammo_ghost does.
+# Changes the sandbox save's inventory. Screenshot: ghost_powder.
+check powder=0 bombbag=0 bow=0
+# The first powder gives 40; emptied, he has some to give.
+send DBG grant MagicPowder 1 -1 0
+expect OK.grant 5
+send DBG poke a0 00
+expect OK.poke 5
+warp Field 38.25 10.5 128.25
+warp MarinTarinHouse 7.5 0 10
+goto 5.5 0 8.5
+face up
+shot ghost_powder.png
+interact
+until textready 10
+dismiss 20
+check bombs=0 arrows=0 powder=15
+state

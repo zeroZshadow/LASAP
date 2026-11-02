@@ -9,13 +9,14 @@ it is received, not while the location could be reached, as the player may not k
 The slot data's "logic" entry carries what the rules depend on (LASWorld.fill_slot_data).
 """
 from collections import Counter
-from typing import Callable, Dict, Iterable, List, Mapping, Optional, Set, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Set, Tuple
 
 from BaseClasses import ItemClassification
 
 from .items import ITEM_TABLE, LASR_TO_ITEM
 from .lasr import COUNTED, DUNGEONS, INSTRUMENTS, LOGIC, dungeon_logic, goal_logic
 from .logic import LogicCompiler, make_rule
+from .options import Goal
 
 PLAYER = 1
 # Data storage key the client sets to true once the player has read the sign at the foot of the egg's stairs, which
@@ -27,6 +28,13 @@ def tracked_instruments(required: int, known: bool, sign_read: bool) -> int:
     """The instruments the trackers' rules take for the egg. A count left to chance (slot data "instruments_known"
     false) stays hidden until the player has read the sign: until then they take all eight."""
     return required if known or sign_read else len(INSTRUMENTS)
+
+
+def tracked_seashells(slot_data: Mapping[str, Any]) -> Optional[int]:
+    """The seashells the egg needs on a seashell hunt, from the slot data; None for the instruments goal."""
+    if slot_data.get("options", {}).get("goal") != Goal.option_seashell_hunt:
+        return None
+    return slot_data.get("seashells_required", 0)
 
 
 class _State:
@@ -49,11 +57,11 @@ def is_progression(item_name: str) -> bool:
 class LogicTracker:
     def __init__(self, preset: str, tokens: Mapping[str, bool], vanilla: Iterable[str], shuffled: Iterable[str],
                  dungeon_entrances: Optional[Mapping[str, str]] = None, optional: Iterable[str] = (),
-                 instruments_required: int = 8, seashells_required: int = 0):
+                 instruments_required: int = 8, seashells_required: Optional[int] = None):
         """`vanilla`: LASR locations that keep a progression item and are no AP locations; `shuffled`: the slot's
         LASR locations; `dungeon_entrances`: the slot data's, None for none shuffled; `optional`: the shuffled
         locations reached only after the goal, which opens with `instruments_required` instruments or, on a
-        seashell hunt (`seashells_required` above 0), with that many secret seashells."""
+        seashell hunt (`seashells_required` not None), with that many secret seashells."""
         logic = dungeon_logic(LOGIC, dict(dungeon_entrances)) if dungeon_entrances else LOGIC
         compiler = LogicCompiler(goal_logic(instruments_required, logic, seashells_required), preset, tokens,
                                  LASR_TO_ITEM, COUNTED)

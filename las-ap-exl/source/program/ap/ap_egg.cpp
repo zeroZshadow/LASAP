@@ -45,7 +45,7 @@ namespace {
 }
 
     void TickEgg() {
-        if (global_config.archipelago.seashells_required <= 0) return;
+        if (!global_config.archipelago.seashell_hunt) return;
         if (!PlayerReady() || !AtEgg() || !PlayerFree()) {
             // gone from the egg, or the requested opening has taken Link
             g_Requested = false;

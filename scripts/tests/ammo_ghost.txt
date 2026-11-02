@@ -1,8 +1,9 @@
-# The ghost in Tarin's house (Ammo Ghost option): not there without bombs or the bow; with bombs he tops them up to
-# 15, never past it; once the bow is found he tops up arrows too. Run after newgame_file2 (a new game: no bombs, no
+# The ghost in Tarin's house (Ammo Ghost option): not there without bombs, the bow or the powder; with bombs he tops
+# them up to 15, never past it; once the bow is found he tops up arrows too, and once the powder is found, powder. Run after newgame_file2 (a new game: no bombs, no
 # bow) on a mod patched with the option on. Talks to him from one tile south, facing up; Link walks through him, so
 # each talk starts from there.
 # Changes the sandbox save's inventory. Screenshots: ghost_none, ghost_bombs, ghost_talk, ghost_both.
+# ammo_ghost_powder checks that the powder alone brings him.
 check bombbag=0 bow=0
 warp Field 38.25 10.5 128.25
 warp MarinTarinHouse 7.5 0 10
@@ -60,4 +61,15 @@ until textready 10
 shot ghost_both.png
 dismiss 20
 check bombs=15 arrows=15
+# The powder (the first gives 40): he tops it up too, 0 to 15.
+send DBG grant MagicPowder 1 -1 0
+expect OK.grant 5
+send DBG poke a0 00
+expect OK.poke 5
+goto 5.5 0 8.5
+face up
+interact
+until textready 10
+dismiss 20
+check bombs=15 arrows=15 powder=15
 state

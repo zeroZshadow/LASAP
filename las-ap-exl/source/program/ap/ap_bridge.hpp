@@ -197,7 +197,7 @@ namespace AP::Bridge {
 
     // ---- The seashell hunt's egg (ap_egg.cpp) ----
 
-    // With seashells required: plays the Wind Fish's Egg's opening once Link stands at the egg holding them.
+    // On a seashell hunt: plays the Wind Fish's Egg's opening once Link stands at the egg holding the seashells.
     void TickEgg();
 
     // ---- The warp menu (ap_warp_menu.cpp) ----

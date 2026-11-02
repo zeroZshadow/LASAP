@@ -404,6 +404,7 @@ namespace {
             s += " flippers=" + std::to_string(items->ExtraItems.Flippers);
             s += " bombs=" + std::to_string(items->BombCount);
             s += " arrows=" + std::to_string(items->ArrowCount);
+            s += " powder=" + std::to_string(items->PowderCount);
             s += " bombbag=" + std::to_string(items->MainItems.Bomb);
             s += " bow=" + std::to_string(items->MainItems.Bow);
             s += " cello=" + std::to_string(items->ExtraItems.FullMoonCello);
