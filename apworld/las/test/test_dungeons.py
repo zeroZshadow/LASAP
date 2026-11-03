@@ -5,12 +5,14 @@ import unittest
 
 from . import LASTestBase
 from ..items import ITEM_TABLE
-from ..lasr import DUNGEONS, FACE_SHRINE_ROOM, ITEM_DEFS, LOGIC, dungeon_logic, shuffle_dungeons
+from ..lasr import (DUNGEONS, ENTERED_BY_DOOR, FACE_SHRINE_ROOM, ITEM_DEFS, LOGIC, door_entrance, door_logic,
+                    door_node, dungeon_logic, dungeon_region, shuffle_dungeons)
 from ..lasr_settings import logic_tokens
 from ..tracker import LogicTracker
 
 IDENTITY = {d: d for d in DUNGEONS}
 SWAP = {**IDENTITY, "tail-cave": "turtle-rock", "turtle-rock": "tail-cave"}
+SHRINE_SWAP = {**IDENTITY, "face-shrine": "key-cavern", "key-cavern": "face-shrine"}
 
 
 def conditions(node: dict) -> dict:
@@ -30,7 +32,7 @@ class TestDungeonLogic(unittest.TestCase):
 
     def test_face_shrine_door(self) -> None:
         """The Face Shrine's door is the outside part of its entrance room; its region (either entrance room) stays."""
-        logic = dungeon_logic(LOGIC, {**IDENTITY, "face-shrine": "key-cavern", "key-cavern": "face-shrine"})
+        logic = dungeon_logic(LOGIC, SHRINE_SWAP)
         self.assertEqual(logic["key-cavern"]["condition-basic"], "river & face-key & (hookshot | rooster)")
         self.assertEqual(logic["key-cavern"]["condition-hell"], LOGIC[FACE_SHRINE_ROOM]["condition-hell"])
         room = logic[FACE_SHRINE_ROOM]
@@ -51,17 +53,24 @@ class TestDungeonLogic(unittest.TestCase):
             self.assertLessEqual(changed, set(DUNGEONS) | {FACE_SHRINE_ROOM})
 
     def test_tracker_follows_the_doors(self) -> None:
-        """Through Tail Cave's door into Turtle Rock: Turtle Rock without the Ocarina, Tail Cave not without it."""
+        """Through Tail Cave's door into Turtle Rock: Turtle Rock and its top without the Ocarina, Tail Cave not
+        without it."""
         lasr = {data.lasr_name: name for name, data in ITEM_TABLE.items()}
         everything = [lasr[k] for k, v in ITEM_DEFS.items() if k in lasr for _ in range(v["quantity"])]
         items = [name for name in everything if name != lasr["ocarina"]]
         tokens = {"open-mabe": True, "free-book": True, "shuffled-bombs": True, "can-steal": True}
         d1 = [k for k in LOGIC if k.startswith("D1-") and LOGIC[k]["type"] == "item"]
-        d8 = [k for k in LOGIC if k.startswith("D8-") and LOGIC[k]["type"] == "item"]
+        d8 = [k for k in LOGIC if k.startswith("D8-") and LOGIC[k]["type"] == "item"] + ["above-turtle-rock"]
         vanilla = LogicTracker("basic", tokens, [], d1 + d8).in_logic(items)
         swapped = LogicTracker("basic", tokens, [], d1 + d8, SWAP).in_logic(items)
         self.assertTrue(set(d1) <= vanilla and not set(d8) & vanilla)
         self.assertTrue(set(d8) <= swapped and not set(d1) & swapped)
+
+    def test_turtle_rock_top(self) -> None:
+        """The top of Turtle Rock is a region of its own, reached from Turtle Rock's inside, with the heart piece."""
+        self.assertEqual(LOGIC["turtle-rock-top"], {"type": "region", "condition-basic": "D8-4C"})
+        self.assertEqual(LOGIC["above-turtle-rock"]["region"], "turtle-rock-top")
+        self.assertFalse(any(key.startswith("condition-") for key in LOGIC["above-turtle-rock"]))
 
     def test_tracker_doors(self) -> None:
         """Behind a reachable door: every check of the dungeon it leads into, in logic or not. With the Tail Key alone,
@@ -147,6 +156,35 @@ class TestDungeonLogic(unittest.TestCase):
         ])
 
 
+class TestDoorLogic(unittest.TestCase):
+    """The world's logic: each door a region holding the door's conditions, the regions doors lead into entered only
+    through a door's entrance (lasr.door_logic)."""
+
+    def test_doors(self) -> None:
+        logic = door_logic(LOGIC)
+        for dungeon in DUNGEONS:
+            self.assertEqual(logic[door_node(dungeon)]["type"], "region")
+        self.assertEqual(conditions(logic[door_node("tail-cave")]), conditions(LOGIC["tail-cave"]))
+        self.assertEqual(conditions(logic[door_node("face-shrine")]),
+                         conditions(dungeon_logic(LOGIC, SHRINE_SWAP)["key-cavern"]))
+        self.assertEqual(set(logic) - set(LOGIC), {door_node(dungeon) for dungeon in DUNGEONS})
+
+    def test_insides(self) -> None:
+        """No way into a dungeon but its door's entrance, and the Face Shrine's side room into its entrance room."""
+        logic = door_logic(LOGIC)
+        self.assertEqual(ENTERED_BY_DOOR, set(DUNGEONS) - {"face-shrine"})
+        for region in ENTERED_BY_DOOR:
+            self.assertEqual(conditions(logic[region]), {}, region)
+            self.assertEqual(logic[region]["type"], LOGIC[region]["type"])
+        room = conditions(logic[FACE_SHRINE_ROOM])
+        self.assertEqual(list(room), ["condition-basic"])
+        self.assertTrue(room["condition-basic"].startswith("D6-3A & "))
+        self.assertEqual(dungeon_region("face-shrine"), FACE_SHRINE_ROOM)
+        self.assertEqual(logic["face-shrine"], LOGIC["face-shrine"])
+        changed = {k for k in LOGIC if logic[k] != LOGIC[k]}
+        self.assertEqual(changed, set(ENTERED_BY_DOOR) | {FACE_SHRINE_ROOM})
+
+
 class TestShuffledDungeons(LASTestBase):
     options = {"shuffled_dungeons": True}
     seed = 7
@@ -160,7 +198,10 @@ class TestShuffledDungeons(LASTestBase):
         patch = self.world.patch_data()
         self.assertEqual(patch["dungeon_entrances"], entrances)
         self.assertIs(patch["settings"]["Shuffled Dungeons"], True)
-        self.assertEqual(self.world.compiler.logic, dungeon_logic(LOGIC, entrances))
+        for door, dungeon in entrances.items():
+            entrance = self.world.get_entrance(door_entrance(door))
+            self.assertEqual(entrance.parent_region.name, door_node(door))
+            self.assertEqual(entrance.connected_region.name, dungeon_region(dungeon))
         spoiler = io.StringIO()
         self.world.write_spoiler(spoiler)
         self.assertIn("Dungeon entrances", spoiler.getvalue())

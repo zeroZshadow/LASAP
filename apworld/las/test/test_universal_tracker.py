@@ -1,4 +1,5 @@
-"""Universal Tracker regenerates a slot from its slot data (interpret_slot_data) with the same locations and rules."""
+"""Universal Tracker regenerates a slot from its slot data (interpret_slot_data) with the same locations and rules, and
+connects the dungeon doors' entrances once the player has found them."""
 import json
 import random
 import unittest
@@ -9,6 +10,8 @@ from worlds.AutoWorld import AutoWorldRegister, call_all
 
 from .test_logic import OPTION_SETS, STEPS
 from ..items import GAME
+from ..lasr import DUNGEONS, door_entrance, dungeon_region, location_dungeon
+from ..locations import LASR_LOCATIONS
 
 OPTIONS = OPTION_SETS + [
     {"small_keys": "anywhere", "nightmare_keys": "anywhere", "dungeon_items": "own_dungeon",
@@ -19,11 +22,13 @@ OPTIONS = OPTION_SETS + [
 ]
 
 
-def regenerate(slot_data: dict, seed: int):
-    """What Universal Tracker does on connect: default options, another seed, the slot data passed through."""
+def regenerate(slot_data: dict, seed: int, deferred: str = "default"):
+    """What Universal Tracker does on connect: default options, another seed, the slot data passed through, its
+    enforce_deferred_entrances setting (on, default, off)."""
     world_type = AutoWorldRegister.world_types[GAME]
     multiworld = setup_multiworld(world_type, (), seed)
     multiworld.generation_is_fake = True
+    multiworld.enforce_deferred_connections = deferred
     multiworld.re_gen_passthrough = {GAME: world_type.interpret_slot_data(json.loads(json.dumps(slot_data)))}
     for step in STEPS:
         call_all(multiworld, step)
@@ -38,7 +43,7 @@ class TestUniversalTracker(unittest.TestCase):
         original = setup_multiworld(world_type, STEPS, seed, options)
         world = original.worlds[1]
         slot_data = world.fill_slot_data()
-        regen = regenerate(slot_data, seed + 1)
+        regen = regenerate(slot_data, seed + 1, "off")  # every door connected, as in the generation
         again = regen.worlds[1]
 
         self.assertEqual(again.fill_slot_data()["logic"]["tokens"], slot_data["logic"]["tokens"])
@@ -100,3 +105,54 @@ class TestUniversalTracker(unittest.TestCase):
         self.assertNotIn("start_inventory_from_pool", slot_data["options"])
         self.assertEqual(slot_data["options"]["instruments"], world.options.instruments.option_dungeon_rewards)
         self.assertEqual(slot_data["options"]["seashell_mansion"], 5)
+
+
+class TestDeferredDoors(unittest.TestCase):
+    """With shuffled dungeons Universal Tracker connects a door's entrance once the player has found the door
+    (DOORS_KEY), and the last door's once every other is found: until then the dungeon behind it is out of reach."""
+
+    def setUp(self) -> None:
+        world_type = AutoWorldRegister.world_types[GAME]
+        self.original = setup_multiworld(world_type, STEPS, 4200, {"shuffled_dungeons": True})
+        self.world = self.original.worlds[1]
+        self.slot_data = self.world.fill_slot_data()
+
+    def connected(self, world) -> dict:
+        entrances = {door: world.get_entrance(door_entrance(door)) for door in DUNGEONS}
+        return {door: entrance.connected_region.name for door, entrance in entrances.items()
+                if entrance.connected_region is not None}
+
+    def reached_dungeons(self, multiworld) -> set:
+        """The dungeons with a check in reach with every item."""
+        names = [item.name for item in self.original.itempool + self.world.get_pre_fill_items() if item.player == 1]
+        state = CollectionState(multiworld, True)
+        for name in names:
+            state.collect(multiworld.worlds[1].create_item(name), prevent_sweep=True)
+        state.sweep_for_advancements()
+        return {location_dungeon(LASR_LOCATIONS[loc.name]) for loc in multiworld.get_reachable_locations(state, 1)
+                if loc.name in LASR_LOCATIONS} - {-1}
+
+    def test_doors_wait_until_found(self) -> None:
+        regen = regenerate(self.slot_data, 4201)
+        again = regen.worlds[1]
+        entrances = self.slot_data["dungeon_entrances"]
+        self.assertEqual(self.connected(again), {})
+        self.assertEqual(self.reached_dungeons(regen), set())
+        door = DUNGEONS[0]
+        again.reconnect_found_entrances("las_doors_0_1", {door: entrances[door]})
+        self.assertEqual(self.connected(again), {door: dungeon_region(entrances[door])})
+        self.assertEqual(self.reached_dungeons(regen), {(DUNGEONS.index(entrances[door]) + 1) % len(DUNGEONS)})
+        # the last door leads into the one dungeon left
+        again.reconnect_found_entrances("las_doors_0_1", {door: entrances[door] for door in DUNGEONS[:-1]})
+        self.assertEqual(self.connected(again), self.connected(self.world))
+        self.assertEqual(self.reached_dungeons(regen), self.reached_dungeons(self.original))
+
+    def test_not_deferred(self) -> None:
+        """Every door is connected with Universal Tracker's enforce_deferred_entrances off, and with unshuffled
+        dungeons, whose doors lead where they always do."""
+        again = regenerate(self.slot_data, 4202, "off").worlds[1]
+        self.assertEqual(self.connected(again), self.connected(self.world))
+        world_type = AutoWorldRegister.world_types[GAME]
+        unshuffled = setup_multiworld(world_type, STEPS, 4203).worlds[1]
+        again = regenerate(unshuffled.fill_slot_data(), 4204).worlds[1]
+        self.assertEqual(self.connected(again), {door: dungeon_region(door) for door in DUNGEONS})

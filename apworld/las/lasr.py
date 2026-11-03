@@ -24,12 +24,20 @@ CATEGORIES: Dict[str, List[str]] = _load_yaml("locations.yml")
 #   is reached from the tile room (D6-5D); the raft-game chest is reached through the top-left exit.
 # - kill-flower's "bow-wow & !rooster" is order-dependent in LASR's fixed point and not monotone; followers can
 #   be swapped in-game, so it is reduced to "bow-wow".
+# - The top of Turtle Rock (Field_01A to Field_01C: the heart piece, side doors into Turtle Rock's rooms 03C and 03F,
+#   and the Tal Tal Mountain warp point) is a region of its own, turtle-rock-top, entered from Turtle Rock's D8-4C as
+#   LASR's heart piece condition has it, and the heart piece is in it. LASR has the heart piece in taltal-west-2.
 EXTRA_NODES: Dict[str, Dict[str, Any]] = {
     "D6-4D": {"type": "room", "condition-basic": "D6-5D"},
     "D6-2A": {"type": "room", "condition-basic": "D6-3A & hit-crystal-switch & bracelet:2"},
+    "turtle-rock-top": {"type": "region", "condition-basic": "D8-4C"},
 }
 CONDITION_EDITS = {
     ("kill-flower", "condition-basic"): ("(bow-wow & !rooster)", "bow-wow"),
+}
+# location -> (its region, the condition-basic the region's condition replaces)
+MOVED_LOCATIONS = {
+    "above-turtle-rock": ("turtle-rock-top", "D8-4C"),
 }
 # - Refills of powder, bombs and arrows that LASR's logic leaves out, each an alternative to the node's condition-basic.
 #   A cut bush or a lifted rock (break-bush) drops from ItemDrop's Grass row, which Consumable Drops (always on) gives
@@ -60,6 +68,10 @@ def _fixed_logic() -> Dict[str, Dict[str, Any]]:
     for node, definition in EXTRA_NODES.items():
         assert node not in logic, node
         logic[node] = dict(definition)
+    for location, (region, condition) in MOVED_LOCATIONS.items():
+        assert logic[location].pop("condition-basic") == condition, location
+        assert not any(key.startswith("condition-") for key in logic[location]), location
+        logic[location]["region"] = region
     for node, content in COMPANIONS.items():
         assert logic[node]["type"] == "follower" and logic[node]["content"] == content, node
         logic[node].update(type="item", subtype="companion")
@@ -171,6 +183,46 @@ def dungeon_logic(logic: Dict[str, Dict[str, Any]], entrances: Dict[str, str]) -
             node = logic[dungeon]
             shuffled[dungeon] = {**{k: v for k, v in node.items() if not k.startswith("condition-")}, **conditions}
     return shuffled
+
+
+def dungeon_name(dungeon: str) -> str:
+    """The game's name of a dungeon (DUNGEONS name): Tail Cave, ..., Color Dungeon."""
+    return DUNGEON_NAMES[(DUNGEONS.index(dungeon) + 1) % len(DUNGEONS)]
+
+
+def door_node(dungeon: str) -> str:
+    """The logic node of a dungeon's overworld door (door_logic)."""
+    return f"{dungeon}-door"
+
+
+def door_entrance(dungeon: str) -> str:
+    """The AP entrance through a dungeon's door, into the dungeon it leads into."""
+    return f"{dungeon_name(dungeon)} Entrance"
+
+
+def dungeon_region(dungeon: str) -> str:
+    """The region a door leads into: the dungeon's, or the Face Shrine's entrance room."""
+    return FACE_SHRINE_ROOM if dungeon == "face-shrine" else dungeon
+
+
+def door_logic(logic: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    """The logic with each dungeon's door a region of its own (door_node), holding the door's conditions, and the
+    regions doors lead into (dungeon_region) entered only through a door's entrance: they keep no conditions, but the
+    Face Shrine's entrance room keeps the way in from its side room. The same logic as dungeon_logic's for any map of
+    the doors, with the map in the entrances."""
+    doors = dict(logic)
+    for dungeon in DUNGEONS:
+        assert door_node(dungeon) not in logic, dungeon
+        doors[door_node(dungeon)] = {"type": "region", **_door(logic, dungeon)}
+        region = dungeon_region(dungeon)
+        inside = {"condition-basic": _FACE_SHRINE_INSIDE} if dungeon == "face-shrine" else {}
+        doors[region] = {**{k: v for k, v in logic[region].items() if not k.startswith("condition-")}, **inside}
+    return doors
+
+
+DOOR_LOGIC = door_logic(LOGIC)
+# Regions with no way in but a door's entrance
+ENTERED_BY_DOOR = frozenset(dungeon_region(dungeon) for dungeon in DUNGEONS) - {FACE_SHRINE_ROOM}
 
 
 def shuffle_dungeons(random) -> Dict[str, str]:

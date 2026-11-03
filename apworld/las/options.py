@@ -187,19 +187,12 @@ class Goal(Choice):
     default = 0
 
 
-class InstrumentsRequired(Range):
-    """How many of the eight instruments open the Wind Fish's Egg (goal instruments).
-    Starting instruments count toward it. The sign at the foot of the egg's stairs tells the number, so it can be left
-    to chance: random, random-low, random-high or random-range-<min>-<max>. A number left to chance stays hidden in the
-    trackers until you read the sign."""
-    display_name = "Instruments Required"
-    range_start = 0
-    range_end = 8
-    default = 8
+class SignCount(Range):
+    """A count the sign at the foot of the egg's stairs tells: `known` is false for a number left to chance."""
     known = True
 
     @classmethod
-    def from_any(cls, data: Any) -> "InstrumentsRequired":
+    def from_any(cls, data: Any) -> "SignCount":
         """As Range.from_any. Generate weights the YAML value first, so a "random..." text is the one mark of a number
         left to chance; a number picked by weight from several arrives as that number, and counts as known."""
         option = super().from_any(data)
@@ -208,9 +201,22 @@ class InstrumentsRequired(Range):
         return option
 
 
-class SeashellsRequired(Range):
+class InstrumentsRequired(SignCount):
+    """How many of the eight instruments open the Wind Fish's Egg (goal instruments).
+    Starting instruments count toward it. The sign at the foot of the egg's stairs tells the number, so it can be left
+    to chance: random, random-low, random-high or random-range-<min>-<max>. A number left to chance stays hidden in the
+    trackers until you read the sign."""
+    display_name = "Instruments Required"
+    range_start = 0
+    range_end = 8
+    default = 8
+
+
+class SeashellsRequired(SignCount):
     """How many of the 50 secret seashells open the Wind Fish's Egg (goal seashell_hunt); with 0 it opens when you
-    reach it. The sign at the foot of the egg's stairs tells the number."""
+    reach it. The sign at the foot of the egg's stairs tells the number, so it can be left to chance: random,
+    random-low, random-high or random-range-<min>-<max>. A number left to chance stays hidden in the trackers until you
+    read the sign."""
     display_name = "Seashells Required"
     range_start = 0
     range_end = 50

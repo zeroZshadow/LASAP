@@ -239,7 +239,7 @@ On the sandbox (Ryubing, game 1.0.0) with the test module.
 - Real hardware.
 - Stealing from the shop with Instant Pickups: the shopkeeper stops Link at the door unless he looks away, and no test times that. The shop's flows take their goods from Link (`RemoveGoods`) before each item-get, so a stolen item's find leaves nothing in his hands.
 - `APSignRead` through a save and a restart of the game (other added flags, `APRecv<n>`, last in the save the same way).
-- A hidden instrument count in Universal Tracker's window (`test_instruments_known.py` covers the world's side of it, the client's rules and the key).
+- Hidden counts and unfound dungeon doors in Universal Tracker's window (`test_sign_counts.py` and `test_universal_tracker.py` cover the world's side of them, the client's rules and the keys).
 - Easy Fishing in play: the line holding while Link reels against a hooked fish (with the setting off it snaps). Fishing is a manual test.
 - The jukebox by ear, the Ballad's tracks and loop seam included (the sandbox is muted; `jukebox` reads the BGM manager's state), and event songs playing over a chosen track in game (events' use of `StopAllBGM` and `PlayZoneBGM` is read from the RomFS event flows).
 - Player settings without a visible or textual effect in the sandbox: Music (the sandbox emulator is muted), Nice Hookshot, Blur Removal, Movement Speed while swimming. Damage None against fall and drown damage.

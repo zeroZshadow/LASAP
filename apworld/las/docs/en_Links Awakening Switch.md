@@ -22,7 +22,8 @@ they count on all eight.
 
 With `goal: seashell_hunt` the egg needs `seashells_required` of the 50 secret seashells (30 by default) instead, and
 no instruments; with 0 it opens as soon as you reach it. The egg opens by itself, without the ocarina: once you have them and stand at the egg, you watch it break open. Its door then takes you straight to the
-Wind Fish for the ending, past the maze and the Nightmare. The sign names the seashells too. The Seashell
+Wind Fish for the ending, past the maze and the Nightmare. The sign names the seashells too, so their number can be
+random as well, hidden in the trackers the same way until you have read the sign. The Seashell
 Mansion's rewards follow `seashell_mansion` as on any goal, so an item you need can wait at a reward above that number.
 
 ## What items and locations get shuffled?
@@ -47,7 +48,8 @@ world, only in other players' worlds, or give them at the start.
 
 With the Shuffled Dungeons option, each dungeon's entrance leads into a random dungeon, the Color Dungeon included,
 and that dungeon's exit leads back out of the same entrance. The dungeon markers on the overworld map move with them,
-and the logic follows each door. The spoiler log lists where each entrance leads.
+and the logic follows each door. The spoiler log lists where each entrance leads. The client's map tracker, PopTracker
+and Universal Tracker show where a door leads only once you have entered it, as the map does.
 
 ## What does the player start with?
 

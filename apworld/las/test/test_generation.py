@@ -30,8 +30,8 @@ class TestDefault(LASTestBase):
         call_all(self.multiworld, "post_fill")
         slot_data = self.world.fill_slot_data()
         self.assertEqual(set(slot_data), {"seed_hash", "goal", "instruments_required", "instruments_known",
-                                          "seashells_required", "death_link", "location_count", "settings", "logic",
-                                          "options", "starting_instruments", "dungeon_entrances"})
+                                          "seashells_required", "seashells_known", "death_link", "location_count",
+                                          "settings", "logic", "options", "starting_instruments", "dungeon_entrances"})
         self.assertEqual(slot_data["instruments_required"], 8)
         self.assertTrue(slot_data["instruments_known"])
         self.assertEqual(slot_data["seashells_required"], 0)

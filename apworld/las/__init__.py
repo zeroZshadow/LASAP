@@ -4,7 +4,7 @@ import secrets
 import threading
 import weakref
 from collections import Counter
-from typing import Any, ClassVar, Dict, List, Mapping, Optional, Set, TextIO
+from typing import Any, ClassVar, Dict, Iterable, List, Mapping, Optional, Set, TextIO
 
 from BaseClasses import CollectionState, Item, ItemClassification, Location, LocationProgressType, Region, Tutorial
 from Options import PerGameCommonOptions
@@ -18,14 +18,14 @@ from .host_settings import LASSettings
 
 from .ids import LOCATION_OFFSETS
 from .items import FILLER_ITEM, GAME, ITEM_GAME_INFO, ITEM_NAME_GROUPS, ITEM_TABLE, LASR_TO_ITEM, LASItem
-from .lasr import (CATEGORIES, COUNTED, DUNGEON_NAMES, DUNGEON_REWARD_LOCATIONS, DUNGEONS, INSTRUMENT_LOCATIONS,
-                   INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC, TRAPS, dungeon_logic, goal_logic, item_dungeon,
-                   location_dungeon, shuffle_dungeons)
+from .lasr import (CATEGORIES, COUNTED, DOOR_LOGIC, DUNGEON_REWARD_LOCATIONS, DUNGEONS, ENTERED_BY_DOOR,
+                   INSTRUMENT_LOCATIONS, INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC, TRAPS, door_entrance, door_node,
+                   dungeon_name, dungeon_region, goal_logic, item_dungeon, location_dungeon, shuffle_dungeons)
 from .locations import LASR_LOCATIONS, LOCATION_NAME_GROUPS, LOCATION_NAME_TO_ID, LOCATION_NAMES, LASLocation
 from .logic import LogicCompiler, make_rule, referenced_regions
 from .models import model_for
 from .options import OPTION_GROUPS, DungeonItemPlacement, Goal, LASOptions, goal_instruments, goal_seashells
-from .tracker import SIGN_KEY, tracked_instruments
+from .tracker import DOORS_KEY, SIGN_KEY, tracked_instruments, tracked_seashells
 from . import lasr_settings
 
 
@@ -97,11 +97,12 @@ class LASWorld(World):
     pre_fill_items: List[Item]
     replaced: Dict[str, str] = {}  # location -> the item it holds instead of its own (_replaced_by_starting_gear)
     restricted: Dict[str, Set[str]]  # AP item name -> LASR locations it must be placed in
-    dungeon_entrances: Dict[str, str]  # each dungeon's door -> the dungeon it leads into (lasr.dungeon_logic)
+    dungeon_entrances: Dict[str, str]  # each dungeon's door -> the dungeon it leads into (connect_entrances)
+    deferred: bool  # Universal Tracker: what the player finds in the game waits until it is found (generate_early)
 
     ut_can_gen_without_yaml = True  # Universal Tracker regenerates the slot from its slot data
-    # Universal Tracker watches this data storage key and passes its value to reconnect_found_entrances
-    found_entrances_datastorage_key = SIGN_KEY
+    # Universal Tracker watches these data storage keys and passes their values to reconnect_found_entrances
+    found_entrances_datastorage_key = (SIGN_KEY, DOORS_KEY)
 
     @staticmethod
     def interpret_slot_data(slot_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -123,11 +124,17 @@ class LASWorld(World):
         else:
             self.dungeon_entrances = {d: d for d in DUNGEONS}
         self.settings_tokens = lasr_settings.logic_tokens(options)
-        # Universal Tracker keeps a count left to chance hidden until the player reads the sign (tracked_instruments)
-        instruments = goal_instruments(options)
+        # Universal Tracker defers what the player finds in the game, unless its enforce_deferred_entrances is off: a
+        # count left to chance until the player reads the sign (tracked_instruments), the doors' entrances until the
+        # player finds them (connect_entrances)
+        mode = getattr(self.multiworld, "enforce_deferred_connections", "default")
+        self.deferred = bool(passthrough) and mode != "off"
+        instruments, seashells = goal_instruments(options), goal_seashells(options)
         if passthrough:
-            instruments = tracked_instruments(instruments, passthrough.get("instruments_known", True), False)
-        self.compile_logic(instruments)
+            sign_read = not self.deferred
+            instruments = tracked_instruments(instruments, passthrough.get("instruments_known", True), sign_read)
+            seashells = tracked_seashells(passthrough, sign_read)
+        self.compile_logic(instruments, seashells)
 
         if passthrough:
             self.starting_instruments = list(passthrough["starting_instruments"])
@@ -195,15 +202,21 @@ class LASWorld(World):
     def create_regions(self) -> None:
         menu = Region("Menu", self.player, self.multiworld)
         self.multiworld.regions.append(menu)
-        # LASR regions, rooms and the few nodes on reference cycles are AP regions entered from Menu
-        roots = self.shuffled + self.vanilla + ["kill-nightmare"] +             [k for k, v in LOGIC.items() if v["type"] == "region"]
+        # LASR regions, rooms and the few nodes on reference cycles are AP regions entered from Menu, but for the
+        # regions entered through a dungeon's door (lasr.door_logic), whose entrance connect_entrances connects
+        logic = self.compiler.logic
+        roots = self.shuffled + self.vanilla + ["kill-nightmare"] + \
+            [k for k, v in logic.items() if v["type"] == "region"]
         needed = set(self.compiler.dependencies(roots)) & self.compiler.region_nodes
         self.node_regions: Dict[str, Region] = {}
-        for name in LOGIC:
+        for name in logic:
             if name in needed:
                 region = self.node_regions[name] = Region(name, self.player, self.multiworld)
                 self.multiworld.regions.append(region)
-                menu.connect(region, f"To {name}")
+                if name not in ENTERED_BY_DOOR:
+                    menu.connect(region, f"To {name}")
+        for dungeon in DUNGEONS:
+            self.node_regions[door_node(dungeon)].create_exit(door_entrance(dungeon))
 
         for loc in self.shuffled:
             region = self.node_regions[LOGIC[loc]["region"]]
@@ -327,13 +340,34 @@ class LASWorld(World):
     def get_pre_fill_items(self) -> List[Item]:
         return self.pre_fill_items
 
+    def connect_entrances(self) -> None:
+        """Connects each dungeon door's entrance to the region of the dungeon it leads into. With shuffled dungeons
+        Universal Tracker connects a door's only once the player has found it (reconnect_found_entrances), as the map
+        names a dungeon only once it is entered (DESIGN.md, Shuffled dungeons)."""
+        if self.deferred and self.options.shuffled_dungeons:
+            return
+        self.connect_doors(DUNGEONS)
+
+    def connect_doors(self, doors: Iterable[str]) -> None:
+        """Connects these doors' entrances (dungeon_entrances' names; others are ignored), and the last door's once
+        every other is connected: where it leads is then known."""
+        entrances = {door: self.get_entrance(door_entrance(door)) for door in DUNGEONS}
+        for door in doors:
+            if door in entrances and entrances[door].connected_region is None:
+                entrances[door].connect(self.node_regions[dungeon_region(self.dungeon_entrances[door])])
+        hanging = [door for door, entrance in entrances.items() if entrance.connected_region is None]
+        if len(hanging) == 1:
+            self.connect_doors(hanging)
+
     # --- rules ---
 
     def set_rules(self) -> None:
         def rule(expr):
             return make_rule(expr, self.player, self.node_regions)
 
-        for name, region in self.node_regions.items():
+        for name in self.node_regions:
+            if name in ENTERED_BY_DOOR:
+                continue
             entrance = self.get_entrance(f"To {name}")
             expr = self.compiler.node_expr(name)
             entrance.access_rule = rule(expr)
@@ -468,20 +502,26 @@ class LASWorld(World):
     def seed_hash(self) -> str:
         return hashlib.sha256(f"{self.multiworld.seed_name}:{self.player}".encode()).hexdigest()[:8]
 
-    def compile_logic(self, instruments_required: int) -> None:
+    def compile_logic(self, instruments_required: int, seashells_required: Optional[int]) -> None:
         self.goal_instruments = instruments_required
-        self.goal_seashells = goal_seashells(self.options)
-        logic = goal_logic(instruments_required, dungeon_logic(LOGIC, self.dungeon_entrances), self.goal_seashells)
+        self.goal_seashells = seashells_required
+        logic = goal_logic(instruments_required, DOOR_LOGIC, seashells_required)
         self.compiler = LogicCompiler(logic, self.options.logic.current_key, self.settings_tokens, LASR_TO_ITEM,
                                       COUNTED)
 
     def reconnect_found_entrances(self, key: str, value: Any) -> None:
-        """Universal Tracker: the data storage key SIGN_KEY changed. Once the player has read the sign, the rules
-        take the slot's own count."""
-        required = goal_instruments(self.options)
-        if value and self.goal_instruments != required:
-            self.compile_logic(required)
-            self.set_rules()
+        """Universal Tracker: a data storage key of found_entrances_datastorage_key changed. Once the player has read
+        the sign (SIGN_KEY), the rules take the slot's own counts; the doors found (DOORS_KEY) connect their
+        entrances."""
+        if not self.deferred:
+            return
+        if key.startswith(SIGN_KEY.partition("{")[0]):
+            required = goal_instruments(self.options), goal_seashells(self.options)
+            if value and (self.goal_instruments, self.goal_seashells) != required:
+                self.compile_logic(*required)
+                self.set_rules()
+        elif key.startswith(DOORS_KEY.partition("{")[0]):
+            self.connect_doors(value or {})
 
     # One random secret per multiworld, in every LAS slot's patch file: the ghost relay groups that multiworld's LAS
     # players by it (DESIGN.md, Ghosts). Not in the slot data, which anyone who can log into a slot reads.
@@ -502,6 +542,8 @@ class LASWorld(World):
             "instruments_known": self.options.instruments_required.known or
                                  self.options.goal == Goal.option_seashell_hunt,
             "seashells_required": goal_seashells(self.options) or 0,
+            "seashells_known": self.options.seashells_required.known or
+                               self.options.goal != Goal.option_seashell_hunt,
             "death_link": bool(self.options.death_link.value),
             "location_count": len(self.shuffled),
             "settings": {key: settings[key] for key in lasr_settings.TRACKER_SETTINGS},
@@ -564,10 +606,9 @@ class LASWorld(World):
 
     def write_spoiler(self, spoiler_handle: TextIO) -> None:
         if any(door != dungeon for door, dungeon in self.dungeon_entrances.items()):
-            names = {d: DUNGEON_NAMES[(i + 1) % 9] for i, d in enumerate(DUNGEONS)}
             spoiler_handle.write(f"\n\nDungeon entrances ({self.multiworld.player_name[self.player]}):\n\n")
             for door, dungeon in self.dungeon_entrances.items():
-                spoiler_handle.write(f"{names[door]} entrance -> {names[dungeon]}\n")
+                spoiler_handle.write(f"{dungeon_name(door)} entrance -> {dungeon_name(dungeon)}\n")
         hints = self.in_game_hints()
         if hints:
             spoiler_handle.write(f"\n\nIn-game hints ({self.multiworld.player_name[self.player]}):\n\n")

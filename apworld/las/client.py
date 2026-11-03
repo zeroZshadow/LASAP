@@ -15,7 +15,7 @@ from .ghosts import DEFAULT_RELAY, GhostLink
 from .host_settings import PLAYER_SETTINGS, player_value
 from .install import InstallError, builtin_patcher_build, patch_and_install
 from .items import GAME, ITEM_GAME_INFO
-from .tracker import SIGN_KEY, LogicTracker, tracked_instruments, tracked_seashells
+from .tracker import DOORS_KEY, SIGN_KEY, LogicTracker, tracked_instruments, tracked_seashells
 
 GAME_PORT = 43384
 PROTOCOL_VERSION = 2
@@ -33,9 +33,6 @@ BUSY_STATUS = ("Another client is connected to the game. If another Links Awaken
                "close it.")
 # Data storage key holding the level the game shows (LASR level names: Field, Lv01TailCave, ...), for trackers
 LEVEL_KEY = "las_level_{team}_{slot}"
-# Data storage key holding the dungeon doors the player has found, {door: dungeon} by the slot data's dungeon_entrances
-# names, for trackers: entering a dungeon (the game's DUNGEON) finds the door that leads into it
-DOORS_KEY = "las_doors_{team}_{slot}"
 # DUNGEON's level numbers (Lv<nn>)
 DUNGEON_NUMBERS = {"1": "tail-cave", "2": "bottle-grotto", "3": "key-cavern", "4": "angler-tunnel", "5": "catfish-maw",
                    "6": "face-shrine", "7": "eagle-tower", "8": "turtle-rock", "10": "color-dungeon"}
@@ -217,7 +214,8 @@ class LASContext(CommonContext):
         self.doors_open: Optional[Set[int]] = None  # local ids last sent to the game as behind a reachable door
         self.logic_starting: List[str] = []  # the slot's starting items, which the server does not send
         self.slot_data: Dict[str, Any] = {}
-        self.logic_tracker_instruments = 8  # the instruments the map tracker's rules take for the egg
+        # the instruments and the seashells (None for no hunt) the map tracker's rules take for the egg
+        self.logic_tracker_goal: Tuple[int, Optional[int]] = (8, None)
         self.sign_seed: Optional[str] = None  # the seed whose game reported the sign at the egg's stairs read (SIGN)
         self.ghosts = GhostLink(self.send_game, self.refresh_patch_tab)
         self.ghost_relay_arg: Optional[str] = None  # --ghost-relay replaces las_options.ghost_relay
@@ -305,20 +303,24 @@ class LASContext(CommonContext):
             self.send_location_names()
 
     def make_logic_tracker(self) -> None:
-        """The slot's rules for the map tracker. A count of instruments left to chance stays hidden until the player
-        has read the sign (tracked_instruments)."""
+        """The slot's rules for the map tracker. A count of instruments or seashells left to chance stays hidden until
+        the player has read the sign (tracked_instruments, tracked_seashells)."""
         logic = self.slot_data.get("logic")
         names = {offset: loc for loc, offset in LOCATION_OFFSETS.items()}
-        instruments = tracked_instruments(self.slot_data.get("instruments_required", 8),
-                                          self.slot_data.get("instruments_known", True), self.sign_read)
+        goal = self.tracked_goal(self.sign_read)
         self.logic_tracker = LogicTracker(
             logic["preset"], logic["tokens"], logic["vanilla"],
             [names[loc - LOCATION_BASE] for loc in sorted(self.server_locations)],
-            self.slot_data.get("dungeon_entrances"), logic.get("optional", ()), instruments,
-            tracked_seashells(self.slot_data)) if logic else None
-        self.logic_tracker_instruments = instruments
+            self.slot_data.get("dungeon_entrances"), logic.get("optional", ()), *goal) if logic else None
+        self.logic_tracker_goal = goal
         self.logic_starting = logic.get("starting", []) if logic else []
         self.in_logic = self.doors_open = None
+
+    def tracked_goal(self, sign_read: bool) -> Tuple[int, Optional[int]]:
+        """The instruments and the seashells (None for no hunt) the map tracker's rules take for the egg."""
+        return (tracked_instruments(self.slot_data.get("instruments_required", 8),
+                                    self.slot_data.get("instruments_known", True), sign_read),
+                tracked_seashells(self.slot_data, sign_read))
 
     @property
     def sign_read(self) -> bool:
@@ -334,11 +336,9 @@ class LASContext(CommonContext):
         if seed_hash is None:
             return
         if self.sign_seed != seed_hash:
-            logger.info("The sign at the foot of the egg's stairs has been read: trackers show the instruments "
-                        "the egg needs.")
+            logger.info("The sign at the foot of the egg's stairs has been read: trackers show what the egg needs.")
         self.sign_seed = seed_hash
-        required = self.slot_data.get("instruments_required", 8)
-        if self.slot_data and self.sign_read and self.logic_tracker_instruments != required:
+        if self.slot_data and self.sign_read and self.logic_tracker_goal != self.tracked_goal(True):
             self.make_logic_tracker()
             self.send_logic()
 
@@ -586,7 +586,7 @@ class LASContext(CommonContext):
         if not doors:
             return
         self.doors_sent.update(doors.values())
-        await self.send_msgs([{"cmd": "Set", "key": DOORS_KEY.format(team=self.team, slot=self.slot), "default": {},
+        await self.send_msgs([{"cmd": "Set", "key": DOORS_KEY.format(team=self.team, player=self.slot), "default": {},
                                "want_reply": False, "operations": [{"operation": "update", "value": doors}]}])
 
     def set_game_status(self, level: str, text: str) -> None:

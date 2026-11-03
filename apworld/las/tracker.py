@@ -16,12 +16,16 @@ from BaseClasses import ItemClassification
 from .items import ITEM_TABLE, LASR_TO_ITEM
 from .lasr import COUNTED, DUNGEONS, INSTRUMENTS, LOGIC, dungeon_logic, goal_logic
 from .logic import LogicCompiler, make_rule
-from .options import Goal
+from .options import Goal, SeashellsRequired
 
 PLAYER = 1
 # Data storage key the client sets to true once the player has read the sign at the foot of the egg's stairs, which
 # names the instruments the egg needs (DESIGN.md, Goal). Formatted with the team and the slot.
 SIGN_KEY = "las_sign_{team}_{player}"
+# Data storage key holding the dungeon doors the player has found, {door: dungeon} by the slot data's dungeon_entrances
+# names: entering a dungeon (the game's DUNGEON) finds the door that leads into it. Formatted with the team and the
+# slot.
+DOORS_KEY = "las_doors_{team}_{player}"
 
 
 def tracked_instruments(required: int, known: bool, sign_read: bool) -> int:
@@ -30,11 +34,15 @@ def tracked_instruments(required: int, known: bool, sign_read: bool) -> int:
     return required if known or sign_read else len(INSTRUMENTS)
 
 
-def tracked_seashells(slot_data: Mapping[str, Any]) -> Optional[int]:
-    """The seashells the egg needs on a seashell hunt, from the slot data; None for the instruments goal."""
+def tracked_seashells(slot_data: Mapping[str, Any], sign_read: bool) -> Optional[int]:
+    """The seashells the egg needs on a seashell hunt, from the slot data; None for the instruments goal. A count left
+    to chance (slot data "seashells_known" false) stays hidden until the player has read the sign: until then they
+    take every secret seashell."""
     if slot_data.get("options", {}).get("goal") != Goal.option_seashell_hunt:
         return None
-    return slot_data.get("seashells_required", 0)
+    if slot_data.get("seashells_known", True) or sign_read:
+        return slot_data.get("seashells_required", 0)
+    return SeashellsRequired.range_end
 
 
 class _State:
