@@ -59,6 +59,7 @@ local function dump(tag)
         end
     end
     out(tag, "G", "INSTRUMENTS_HIDDEN", tostring(INSTRUMENTS_HIDDEN))
+    out(tag, "G", "SEASHELLS_HIDDEN", tostring(SEASHELLS_HIDDEN))
     out(tag, "END")
 end
 

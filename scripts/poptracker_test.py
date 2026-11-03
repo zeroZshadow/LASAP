@@ -529,14 +529,16 @@ def check_settings(dump: Dump, slot_data: dict) -> None:
     check("Goal stage", dump.item("goal_instruments")["stage"], slot_data["options"]["goal"])
 
 
-def check_instruments(dump: Dump, slot_data: dict, sign_read: bool) -> None:
-    hidden = slot_data["instruments_known"] is False and not sign_read
-    item = dump.item("instruments_required")
-    check("Instruments Required count", item["count"], 0 if hidden else slot_data["instruments_required"])
-    check("Instruments Required badge", item["badge"], "?" if hidden else "")
-    check("INSTRUMENTS_HIDDEN", dump.globals["INSTRUMENTS_HIDDEN"][0], str(hidden).lower())
-    # 0 for the instrument goal
-    check("Seashells Required count", dump.item("seashells_required")["count"], slot_data["seashells_required"])
+def check_counts(dump: Dump, slot_data: dict, sign_read: bool) -> None:
+    """Instruments Required and Seashells Required (0 for the instrument goal): a count left to chance shows "?" until
+    the sign is read."""
+    for name, code, hidden_global in (("Instruments", "instruments", "INSTRUMENTS_HIDDEN"),
+                                      ("Seashells", "seashells", "SEASHELLS_HIDDEN")):
+        hidden = slot_data[f"{code}_known"] is False and not sign_read
+        item = dump.item(f"{code}_required")
+        check(f"{name} Required count", item["count"], 0 if hidden else slot_data[f"{code}_required"])
+        check(f"{name} Required badge", item["badge"], "?" if hidden else "")
+        check(hidden_global, dump.globals[hidden_global][0], str(hidden).lower())
 
 
 def check_doors(dump: Dump, doors: dict) -> None:
@@ -555,7 +557,7 @@ def check_all(tracker: Tracker, pack: Pack, client: Client, sign_read: bool = Fa
               doors: dict | None = None):
     dump = tracker.barrier_dump(client)
     check_settings(dump, client.slot_data)
-    check_instruments(dump, client.slot_data, sign_read)
+    check_counts(dump, client.slot_data, sign_read)
     check_items(dump, pack, client.received)
     check_sections(dump, pack, client, marks)
     check_doors(dump, doors or {})
@@ -574,6 +576,7 @@ def step_manual(pack: Pack, tracker: Tracker, server: Server) -> None:
     check("Seashells Required", dump.item("seashells_required")["count"], 30)
     check("Completed Bridge", dump.item("completedbridge")["active"], False)
     check("INSTRUMENTS_HIDDEN", dump.globals["INSTRUMENTS_HIDDEN"][0], "false")
+    check("SEASHELLS_HIDDEN", dump.globals["SEASHELLS_HIDDEN"][0], "false")
     tracker.shot("manual_start")
     castle = next(loc for loc in pack.locations if loc.endswith("/Kanalet Castle") and loc.count("/") == 2)
     cases = [
@@ -857,14 +860,16 @@ def step_lean(pack: Pack, tracker: Tracker, server: Server) -> None:
 
 
 def step_shells(pack: Pack, tracker: Tracker, server: Server) -> None:
-    """Slot Shells, goal seashell_hunt, another seed: Seashells Required from the slot data, the egg open with that
-    many seashells and the bracelet (step manual: without the ocarina, the Ballad or instruments), and the open egg is
-    the goal; the Seashell Mansion's rewards follow the Seashell Mansion setting alone."""
+    """Slot Shells, goal seashell_hunt with a count left to chance, another seed: Seashells Required "?" until the sign
+    is read, then from the slot data; the egg open with that many seashells and the bracelet once the sign is read
+    (step manual: without the ocarina, the Ballad or instruments), and the open egg is the goal; the Seashell Mansion's
+    rewards follow the Seashell Mansion setting alone."""
     if not server.proc:
         server.start(fresh=True)
     client = Client("Shells")
     required = client.slot_data["seashells_required"]
     check("Shells goal (options, Goal.option_seashell_hunt)", client.slot_data["options"]["goal"], 1)
+    tracker.stop()  # step full leaves the tracker of slot Full open
     tracker.start("Shells")
     tracker.wait(r"^LASAPTEST READY", 30)
     check_all(tracker, pack, client)
@@ -872,18 +877,24 @@ def step_shells(pack: Pack, tracker: Tracker, server: Server) -> None:
     for n in (5, 15, 30, 40, 50):
         check(f"mansion_reward({n}) with {required} required", tracker.call("mansion_reward", n),
               str(n <= limit).lower())
+    # players/shells.yaml leaves the count to chance: the egg takes all 50 until the sign is read
+    check("Shells seashells_known", client.slot_data["seashells_known"], False)
     seashell = pack.item_id("seashell")
     give(server, client, pack, "bracelet")
     for _ in range(required - 1 - client.received.count(seashell)):
         give(server, client, pack, "seashell")
-    for want in ("false", "true"):
-        if want == "true":
+    for more, sign_read, want in ((0, False, "false"), (1, False, "false"), (0, True, "true")):
+        for _ in range(more):
             give(server, client, pack, "seashell")
-        dump = check_all(tracker, pack, client)
-        held = f"{client.received.count(seashell)} of {required} seashells"
+        if sign_read:
+            client.set(f"las_sign_{client.team}_{client.number}", True)
+        dump = check_all(tracker, pack, client, sign_read=sign_read)
+        held = f"{client.received.count(seashell)} of {required} seashells, sign {'read' if sign_read else 'unread'}"
         check(f"egg() with {held}", tracker.call("egg"), want)
         check(f"windfish() with {held}", tracker.call("windfish"), want)
         check(f"World/Egg with {held}", int(dump.locations["World/Egg"][0]), NORMAL if want == "true" else NONE)
+        if more:
+            tracker.shot("shells_hidden")
     tracker.shot("shells_egg_open")
     client.close()
     tracker.stop()
