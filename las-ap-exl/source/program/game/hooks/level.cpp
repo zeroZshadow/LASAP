@@ -9,12 +9,24 @@
 namespace {
     std::string g_CurrentLevel;
     u32 g_LoadCount = 0;
+    bool g_Jumping = false;
 
     HOOK_DEFINE_TRAMPOLINE(SetCurrentLevel) {
         static void Callback(Game::StrView* level, Game::StrView* locator, Game::Vec3* pos) {
             Orig(level, locator, pos);
             g_CurrentLevel.assign(level->data, level->size);
             g_LoadCount++;
+            g_Jumping = false;
+        }
+    };
+
+    // A jump to another point of the same level (Manbo's Mambo, a warp hole) tears the rooms down and loads them
+    // again under the same level name, with Link kept.
+    HOOK_DEFINE_TRAMPOLINE(LevelJump) {
+        static bool Callback(void* manager, Game::StrView* level, Game::StrView* locator, const void* offset) {
+            bool started = Orig(manager, level, locator, offset);
+            if (started) g_Jumping = true;
+            return started;
         }
     };
 
@@ -31,6 +43,7 @@ namespace {
 namespace LevelSystem {
     std::string GetCurrentLevel() { return g_CurrentLevel; }
     u32 LoadCount() { return g_LoadCount; }
+    bool Jumping() { return g_Jumping; }
 
     void LoadLevel(const char* level, Game::Vec3 pos) {
         Game::SetGameState(Game::GetFramework()->gameState, kReloadFromSave, false);
@@ -44,5 +57,6 @@ namespace LevelSystem {
 
     void Install() {
         SetCurrentLevel::InstallAtFuncPtr(Game::SetCurrentLevel.Ptr());
+        LevelJump::InstallAtFuncPtr(Game::LevelManager_LevelJump.Ptr());
     }
 }

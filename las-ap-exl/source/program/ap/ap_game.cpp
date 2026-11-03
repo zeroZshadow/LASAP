@@ -39,6 +39,8 @@ namespace {
     using Game::SharedPtr;
     using Game::StrView;
 
+    u32 g_LastLoad = 0; // LevelSystem::LoadCount when the settle time last started
+
     // Time to wait after a level change before granting items.
     constexpr u64 kSettleMs = 1500;
 
@@ -111,7 +113,8 @@ namespace {
 
     bool PlayerReady() {
         Game::Framework* fmwk = Game::GetFramework();
-        return fmwk != nullptr && fmwk->player != nullptr && !g_GameOver && NowMs() - g_LevelSince >= kSettleMs;
+        return fmwk != nullptr && fmwk->player != nullptr && !g_GameOver && !LevelSystem::Jumping() &&
+               NowMs() - g_LevelSince >= kSettleMs;
     }
 
     // TODO (TODO.md, PlayerFree during events): Link's state alone; true during a pickup event Instant Pickups keeps
@@ -304,6 +307,11 @@ namespace AP {
 
     void Tick() {
         std::string level = LevelSystem::GetCurrentLevel();
+        // a jump to another point of the same level (Manbo's Mambo, a warp hole) arrives under the same name
+        if (LevelSystem::LoadCount() != g_LastLoad) {
+            g_LastLoad = LevelSystem::LoadCount();
+            g_LevelSince = NowMs();
+        }
         if (level != g_LastLevel) {
             g_LastLevel = level;
             g_LevelSince = NowMs();

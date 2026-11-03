@@ -7,6 +7,8 @@ namespace LevelSystem {
     std::string GetCurrentLevel();
     // Counts SetCurrentLevel's calls: a level loading, from a warp or a save, has a number of its own
     u32 LoadCount();
+    // A level jump has started and its level has not arrived yet (SetCurrentLevel)
+    bool Jumping();
     // Reloads the save in that level at that position (SetGameState 4), with OpTalked and ShieldGet set so that Link
     // can pause and collect rupees there.
     void LoadLevel(const char* level, Game::Vec3 pos);

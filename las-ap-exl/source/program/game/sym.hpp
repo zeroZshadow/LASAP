@@ -408,6 +408,9 @@ namespace Game {
     inline constexpr Func<void(Data::ItemId, int, int)> Inventory_AddItemID{0x8d08e0};
     // (level, locator, position): the level the game loads; the save takes them
     inline constexpr Func<void(StrView*, StrView*, Vec3*)> SetCurrentLevel{0xdfa450};
+    // (level manager, level, locator, offset): every level change, a warp to a point of the same level too; false
+    // unless the manager runs a level (scripts/re/ACTORS.md, Level jump)
+    inline constexpr Func<bool(void*, StrView*, StrView*, const void*)> LevelManager_LevelJump{0x864d50};
     // (the framework's game state, state, bool): 4 reloads from the save, 1 quit, 5 ending
     inline constexpr Func<void(GameState*, u32, bool)> SetGameState{0x87b780};
     // The inventory (game/data/inventory.hpp)
