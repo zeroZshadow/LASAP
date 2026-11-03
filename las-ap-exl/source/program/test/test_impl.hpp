@@ -84,5 +84,7 @@ namespace AP::MapTracker {
     std::string ListField();
     std::string ListInfo(const std::vector<std::string>& args);
     std::string DotInfo(const std::vector<std::string>& args);
+    // DBG maphint: the hint strip, built on a page or not, shown or not, and its items.
+    std::string HintStripInfo();
 }
 #endif

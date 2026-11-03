@@ -33,6 +33,8 @@ namespace {
     bool g_HasLogic = false;
     // Dungeon locations whose dungeon's door is reachable for the items received (DOORS lines), for the map tracker.
     std::vector<u8> g_DoorOpen(kChecksBytes, 0);
+    // Locations holding a server hint not yet found (HINTED lines), for the map tracker.
+    std::vector<u8> g_Hinted(kChecksBytes, 0);
 
     // Flags of the save reported to the client by a line once they are set: once per connection, and all again on
     // SYNC.
@@ -167,6 +169,10 @@ namespace {
         NoteBits(a, g_DoorOpen);
     }
 
+    void NoteHinted(const std::vector<std::string>& a) {
+        NoteBits(a, g_Hinted);
+    }
+
     // "<n> <flag> <slot> <location id>" lines (patcher ap_hints.py)
     void LoadHints() {
         std::string text;
@@ -220,6 +226,10 @@ namespace AP {
 
     bool IsDoorOpen(LocationId location) {
         return Has(g_DoorOpen, location);
+    }
+
+    bool IsHinted(LocationId location) {
+        return Has(g_Hinted, location);
     }
 
     bool IsLocationChecked(LocationId location) {

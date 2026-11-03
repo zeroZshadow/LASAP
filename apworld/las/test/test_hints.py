@@ -231,3 +231,35 @@ class TestTextOnly(unittest.TestCase):
         world = filled(3, {"in_game_hints": "off"}).worlds[1]
         self.assertEqual(world.in_game_hints(), {})
         self.assertEqual(world.patch_data()["hints"], {})
+
+
+class TestClientHinted(unittest.TestCase):
+    def test_hinted_locations(self) -> None:
+        """The client tells the game which of the slot's locations hold a server hint not yet found (HINTED), for the
+        map tracker, again only when that changes."""
+        import asyncio
+        from ..client import LASContext
+        from ..ids import LOCATION_BASE
+
+        lines = []
+
+        class Writer:
+            def write(self, data: bytes) -> None:
+                lines.append(data.decode().rstrip("\n"))
+
+        def hint(location: int, finding: int = 1, found: bool = False) -> dict:
+            return {"receiving_player": 2, "finding_player": finding, "location": LOCATION_BASE + location,
+                    "item": 1, "found": found, "status": 0}
+
+        async def run() -> None:
+            ctx = LASContext(None, None, "127.0.0.1", 0)
+            ctx.slot, ctx.team, ctx.game_writer = 1, 0, Writer()  # type: ignore[assignment]
+            key = "_read_hints_0_1"
+            # another player's location, and a hint found, are left out
+            ctx.stored_data[key] = [hint(55), hint(7), hint(9, finding=2), hint(64, found=True)]
+            ctx.on_package("Retrieved", {"keys": {key: ctx.stored_data[key]}})
+            ctx.on_package("SetReply", {"key": key, "value": ctx.stored_data[key]})  # the same: nothing sent
+            ctx.stored_data[key] = [hint(55, found=True), hint(7)]
+            ctx.on_package("SetReply", {"key": key, "value": ctx.stored_data[key]})
+        asyncio.run(run())
+        self.assertEqual(lines, ["HINTED CLEAR", "HINTED 7 55", "HINTED CLEAR", "HINTED 7"])

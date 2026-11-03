@@ -40,6 +40,8 @@ namespace AP {
     bool IsInLogic(LocationId location);
     // A dungeon location whose dungeon's door is reachable for the items received, as the client reported (DOORS).
     bool IsDoorOpen(LocationId location);
+    // Holds a server hint not yet found, as the client reported (HINTED).
+    bool IsHinted(LocationId location);
     // The client is connected and logged into the slot (SERVER lines).
     bool IsServerConnected();
     void ApplyInjectedInput(nn::hid::NpadBaseState* state);

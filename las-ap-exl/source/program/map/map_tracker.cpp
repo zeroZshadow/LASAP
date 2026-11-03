@@ -39,8 +39,8 @@ namespace {
 
     constexpr const char* kTraversePrefix = "UI_FieldMapTraverse_";
     constexpr const char* kOpenPrefix = "UI_FieldMapOpen_";
-    // A logic or checks update arrived (DataChanged): the open map refreshes once a frame passes without one, as an
-    // update comes in several lines.
+    // A logic, checks or hints update arrived (DataChanged): the open map refreshes once a frame passes without one,
+    // as an update comes in several lines.
     bool g_MapDataChanged = false, g_MapDataChangedLately = false;
 }
 
@@ -251,6 +251,7 @@ namespace {
             RefreshOpenMap();
         }
         g_MapDataChangedLately = false;
+        UpdateHintStrip();
         u8 dungeon = *Game::LevelIndex;
         Map::DungeonItemsEntry** entries = *Game::DungeonItems_ptr;
         if (dungeon == 0xff || entries == nullptr || entries[dungeon] == nullptr) return;

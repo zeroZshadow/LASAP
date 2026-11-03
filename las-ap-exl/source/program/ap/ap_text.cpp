@@ -396,6 +396,14 @@ namespace AP {
         return g_LocationNames.count(location) != 0;
     }
 
+    std::string HintedItemText(LocationId location) {
+        const auto* names = NamesOf(location);
+        if (names == nullptr) return "";
+        const auto& [item, player] = *names;
+        return player.empty() ? Clip(item, kItemNameMax)
+                              : Clip(item, kItemNameMax) + " for " + Clip(player, kPlayerNameMax);
+    }
+
     void SetFoundLocation(LocationId location) {
         g_FoundLocation = location;
         g_FoundFresh = true;

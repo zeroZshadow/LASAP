@@ -356,7 +356,8 @@ namespace Game {
     inline constexpr Func<void(bool)> BuffMusic_Play{0xaf560};
 
     // ---- Maps ----
-    // The map pages and their parts (game/map.hpp). The overworld map page's destructor (page)
+    // The map pages and their parts (game/map.hpp). The overworld map page's setup and destructor (page)
+    inline constexpr Func<void(Map::OverworldMap*)> OverworldMap_Setup{0xe8f9d0};
     inline constexpr Func<void(Map::OverworldMap*)> OverworldMap_Dtor{0xe8e680};
     // The dungeon map page (UI 0xe): its setup and destructor (page); per room ShowCellFloor (page, cell, Area
     // shared_ptr*, UiDungeonArea row*) shows the room on the shown floor; KeyWait runs MoveCursor (page, move),

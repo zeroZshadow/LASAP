@@ -100,6 +100,26 @@ namespace AP::MapTracker {
     // An icon's count, "<to do>/<unchecked>", and its hover text.
     std::string CountText(Ids ids);
     std::string IconText(Ids ids, std::string_view name);
+    // A location holding a server hint not yet found, neither checked nor skipped, whose item has a name.
+    bool HintShown(LocationId id);
+    bool AnyHintShown(Ids ids);
+    // A group whose icon gets a ring and the hint strip: a hint shows there, and its name is not hidden (a shuffled
+    // dungeon's door would tell which dungeon holds the hinted location).
+    bool Ringed(size_t group);
+    // The items hinted at these locations, each as HintedItemText gives it.
+    std::vector<std::string> HintItems(Ids ids);
+    // A gold ring around an icon or dot with a hint shown: a map marker at the ring's SetMark frame, attached under
+    // parent before the icon's root pane (so it draws under the icon) at the icon's place.
+    Game::Shared<Map::MapMarker> MakeRing(Ui::LayoutWrapper* page, Ui::Pane* parent, Ui::Pane* icon);
+    // The ring's size (a single check's or a group's) and whether it shows; never shown when the assets lack its
+    // frame.
+    void ShowRing(Map::MapMarker* ring, bool single, bool shown);
+    // The open overworld page's rings, made after its setup for the groups with a hint shown then.
+    struct Ring {
+        size_t group;
+        Game::Shared<Map::MapMarker> marker;
+    };
+    extern std::vector<Ring> g_Rings;
     void InstallIconHooks();
 
     // ---- The check list (map_checklist.cpp) ----
@@ -107,6 +127,13 @@ namespace AP::MapTracker {
     // Gm_MapMarker's SetMark animation picks the marker's texture and size by frame: the game's markers, then the map
     // tracker's looks at a group's size (ap_map_icons.frame).
     constexpr int kGameMarkFrames = 7;  // ap_map_icons.GAME_FRAMES
+    // A colour tag in the text does not reach a text box of a layout: its colours are set instead.
+    constexpr u8 kInk[] = {0x0f, 0x07, 0x02, 0xff};      // dark brown on the paper (shows as 46 30 1e)
+    void SetTextColor(Ui::TextBox* box, const u8 (&color)[4]);
+    // A Gm_SystemOpUnit text of room for that many characters, hung under the page's root pane.
+    bool BuildText(L::Layout& layout, Ui::LayoutWrapper* page, Ui::Pane* root, u16 chars);
+    // The ring around a group's dot, then a single check's (ap_map_icons.ring_frame).
+    constexpr int kRingFrame = kGameMarkFrames + 2 * kLooks;
     struct Panel {
         Ui::LayoutWrapper* page = nullptr;  // the map page it hangs under
         int group = -1;             // the overworld icon's group, -1 for a dungeon dot
@@ -141,6 +168,25 @@ namespace AP::MapTracker {
     // Whether A opens the group's check list.
     bool Listable(int group);
 
+    // ---- The hint strip (map_hintstrip.cpp) ----
+
+    // A paper strip along the map's bottom edge naming the items hinted at the hovered icon or dot.
+    struct HintStrip {
+        Ui::LayoutWrapper* page = nullptr;  // the map page it hangs under
+        L::Layout back, label, items;
+        Ui::Pane* window = nullptr;         // the back's paper window
+        std::vector<std::string> hinted;    // the items hinted at the hovered icon or dot
+        size_t named = 0;                   // how many of them the text names, the others counted ("+3 more")
+        int settle = 0;                     // frames until the text, set anew, is measured
+        bool shown = false;
+    };
+    extern HintStrip g_HintStrip;
+    // Built with a page that has rings, dropped with it (only that page's: any page may be passed).
+    void BuildHintStrip(Ui::LayoutWrapper* page);
+    void DropHintStrip(Ui::LayoutWrapper* page);
+    // Once a tick: the strip shows while the page waits for buttons with a ringed icon or dot hovered.
+    void UpdateHintStrip();
+
     // ---- Dungeon dots (map_dots.cpp) ----
 
     // A dot on the open dungeon page: its marker and position under N_MapPosition_00, and whether its room is on the
@@ -148,6 +194,7 @@ namespace AP::MapTracker {
     struct DotMarker {
         size_t dot;
         Game::Shared<Map::MapMarker> marker;
+        Game::Shared<Map::MapMarker> ring;  // made when a hint showed at the page's setup (MakeRing)
         float x = 0, y = 0;
         bool onFloor = false;
     };

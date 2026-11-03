@@ -212,6 +212,7 @@ class LASContext(CommonContext):
         self.logic_tracker: Optional[LogicTracker] = None  # the slot's rules, for the map tracker
         self.in_logic: Optional[Set[int]] = None  # local ids last sent to the game as in logic
         self.doors_open: Optional[Set[int]] = None  # local ids last sent to the game as behind a reachable door
+        self.hinted: Optional[Set[int]] = None  # local ids last sent to the game as holding a hint not yet found
         self.logic_starting: List[str] = []  # the slot's starting items, which the server does not send
         self.slot_data: Dict[str, Any] = {}
         # the instruments and the seashells (None for no hunt) the map tracker's rules take for the egg
@@ -260,7 +261,10 @@ class LASContext(CommonContext):
         await self.send_connect()
 
     def on_package(self, cmd: str, args: dict) -> None:
+        if cmd in ("Retrieved", "SetReply"):
+            self.send_hints()  # CommonContext keeps the slot's hints in stored_data
         if cmd == "Connected":
+            self.hinted = None
             self.slot_seed_hash = args["slot_data"].get("seed_hash")
             self.notice_sent = False
             self.check_seed()
@@ -428,14 +432,29 @@ class LASContext(CommonContext):
         if ids == self.in_logic and door_ids == self.doors_open and not force:
             return
         self.in_logic, self.doors_open = ids, door_ids
-        self.send_game("DOORS CLEAR")
-        ordered = sorted(door_ids)
-        for i in range(0, len(ordered), 64):
-            self.send_game("DOORS " + " ".join(str(local_id) for local_id in ordered[i:i + 64]))
-        self.send_game("INLOGIC CLEAR")
+        self.send_id_lines("DOORS", door_ids)
+        self.send_id_lines("INLOGIC", ids)
+
+    def send_hints(self, force: bool = False) -> None:
+        """Tells the game which of the slot's locations hold a server hint not yet found, when that changed."""
+        if self.game_writer is None or not self.slot:
+            return
+        if self.slot_seed_hash and self.game_seed_hash and self.slot_seed_hash != self.game_seed_hash:
+            return
+        hints = self.stored_data.get(f"_read_hints_{self.team}_{self.slot}") or []
+        ids = {hint["location"] - LOCATION_BASE for hint in hints
+               if hint["finding_player"] == self.slot and not hint["found"] and hint["location"] >= LOCATION_BASE}
+        if ids == self.hinted and not force:
+            return
+        self.hinted = ids
+        self.send_id_lines("HINTED", ids)
+
+    def send_id_lines(self, command: str, ids: Set[int]) -> None:
+        """<command> CLEAR, then the local ids, 64 to a line."""
+        self.send_game(f"{command} CLEAR")
         ordered = sorted(ids)
         for i in range(0, len(ordered), 64):
-            self.send_game("INLOGIC " + " ".join(str(local_id) for local_id in ordered[i:i + 64]))
+            self.send_game(f"{command} " + " ".join(str(local_id) for local_id in ordered[i:i + 64]))
 
     def send_location_names(self) -> None:
         for local_id, names in sorted(self.scouted_names.items()):
@@ -521,6 +540,7 @@ class LASContext(CommonContext):
             self.send_location_names()
             self.send_checked(self.checked_locations)
             self.send_logic(force=True)
+            self.send_hints(force=True)
             self.send_game("SYNC")
             self.update_ghosts()
             self.ghosts.on_game_connected()

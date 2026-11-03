@@ -1,0 +1,69 @@
+# Server hints on the map tracker (DESIGN.md, Map tracker, Hints): run after newgame_file2 on a mod patched with Map
+# Tracker on. The game gets the lines the client sends: what locations hold (NAME: 55 this slot's Hookshot, 56 Alice's
+# Bow) and which hold a hint not yet found (HINTED). Mabe Shop's icon (locations 55, 56 and 64) gets a gold ring (DBG
+# map's rings=<shown>/<made>,<group>...); with the cursor on it the hint strip at the map's bottom edge names the
+# hinted items (DBG maphint), and its hover text stays the icon's name. Its check list shows each hinted item at its
+# row's end (DBG maplist: tags= a letter per row, h a hint's item; hint= the cursor row's) and hides the strip. A
+# hinted location once checked, or the hints cleared, shows no hint. A dungeon dot shows a hint the same way (DBG
+# mapdot's rings=<shown>/<made>). More hints than fit: the strip names some and counts the others. Screenshots
+# map_hints_strip, map_hints_list, map_hints_dot and map_hints_many.
+warp Field 51.75 10.5 117
+game NAME 55 Hookshot|
+game NAME 56 Bow|Alice
+game HINTED CLEAR
+game HINTED 55 56
+tapuntil 800 paused=1 when free 5
+until map:KeyWait 10
+send DBG map
+expect rings=1/1,(\d+)\sskipped=0\shover=\1/3/in\s.*name=3/3\sMabe\sShop$ 5
+poll MAPHINT\spage=field\sshown=1\sitems=Hookshot,\sBow\sfor\sAlice$ 5 DBG maphint
+shot map_hints_strip.png
+tap 1 2 2 when map:KeyWait
+await 5 mlist=\d+/0/0\s
+send DBG maplist
+expect MAPLIST.*looks=iii\stags=hh-.*hint=Hookshot\scount=3/3\sname=Shop\sSlot3\s1st\s 5
+poll MAPHINT.*shown=0 5 DBG maphint
+shot map_hints_list.png
+# Location 55 checked: its row and the strip drop its hint; the ring stays for 56.
+game CHECKED 55
+poll MAPLIST.*looks=cii\stags=-h-.*hint=-\scount=2/2 5 DBG maplist
+tap 2
+await 5 mlist=-
+poll rings=1/1,\d+\s.*name=2/2\sMabe\sShop$ 5 DBG map
+poll MAPHINT.*shown=1\sitems=Bow\sfor\sAlice$ 5 DBG maphint
+# The hints cleared: no ring, no strip.
+game HINTED CLEAR
+poll rings=0/1\s 5 DBG map
+poll MAPHINT.*shown=0 5 DBG maphint
+tapuntil 800 paused=0 when map:KeyWait 5
+free 10
+# Key Cavern: the basement's key and its owl statue (marker 10, dot 42: locations 196 and 205).
+game NAME 196 Hookshot|
+game HINTED 196
+warp Lv03KeyCavern 96.75 0 32.25
+tapuntil 800 paused=1 when free 5
+until dmap:KeyWait 10
+send DBG mapdot cursor 10
+expect hover=10/42/2.*rings=1/1\s.*text=2/2\sNorth\sBasement\sRoom\s\+1$ 5
+poll MAPHINT\spage=dungeon\sshown=1\sitems=Hookshot$ 5 DBG maphint
+shot map_hints_dot.png
+tapuntil 800 paused=0 when dmap:KeyWait 5
+free 10
+# Tail Cave's icon with nine hints: the strip names as many as fit and counts the others.
+game NAME 154 Full Moon Cello|
+game NAME 155 Heart Container|
+game NAME 156 Roc's Feather|
+game NAME 157 Nightmare Key (Tail Cave)|
+game NAME 158 Progressive Sword|Alice
+game NAME 159 Bombs|Bob
+game NAME 160 Piece of Heart|
+game NAME 161 Seashell|Charlotte
+game NAME 162 Magic Powder|
+game HINTED 154 155 156 157 158 159 160 161 162
+warp Field 58.5 9.0 152.25
+tapuntil 800 paused=1 when free 5
+until map:KeyWait 10
+poll MAPHINT\spage=field\sshown=1\sitems=Full\sMoon\sCello,\s.*\s\+\d\smore$ 5 DBG maphint
+shot map_hints_many.png
+tapuntil 800 paused=0 when map:KeyWait 5
+free 10

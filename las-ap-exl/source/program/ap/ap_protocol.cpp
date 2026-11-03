@@ -102,6 +102,9 @@ namespace {
         } else if (a[0] == "DOORS") {
             NoteDoors(a);
             AP::MapTracker::DataChanged();
+        } else if (a[0] == "HINTED") {
+            NoteHinted(a);
+            AP::MapTracker::DataChanged();
         } else if (a[0] == "SERVER" && a.size() >= 2) {
             SetServerConnected(a[1] == "1");
         } else if (a[0] == "NOTICE" && a.size() >= 2) {

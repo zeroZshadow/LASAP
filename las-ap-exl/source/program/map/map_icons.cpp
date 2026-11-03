@@ -1,16 +1,19 @@
 // The map tracker's overworld icons (DESIGN.md, Map tracker): their looks, hover texts and buttons.
 #include "ap/ap.hpp"
 #include "ap/ap_patcher.hpp"
+#include "ap/ap_text.hpp"
 #include "game/hooks/eventflags.hpp"
 #include "game/mem.hpp"
 #include "game/sym.hpp"
 #include "map/map_tracker_impl.hpp"
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 
 namespace AP::MapTracker {
     bool g_OutHidden = false;
     Map::OverworldMap* g_MarkerPage = nullptr;
+    std::vector<Ring> g_Rings;
 
 namespace {
     using Game::Ui::PlaySound;
@@ -32,6 +35,33 @@ namespace {
     }
 
     void SetMarkerVisible(Map::MapMarker* marker, bool visible) { Ui::SetVisible(MarkerPane(marker), visible); }
+
+    // Each ring shows while its group's icon does and a hint still shows there.
+    void ApplyRings() {
+        for (Ring& ring : g_Rings) {
+            bool shown = Ringed(ring.group) && LookShown(static_cast<int>(ring.group), GroupLook(ring.group));
+            ShowRing(ring.marker.get(), GroupIds(ring.group).size() == 1, shown);
+        }
+    }
+
+    // After the page's setup: a ring under the first marker of each group with a hint shown.
+    void MakeRings(Map::OverworldMap* page) {
+        g_Rings.clear();
+        Ui::Pane* pinRoot = page->mapPin.pane;
+        if (pinRoot == nullptr) return;
+        std::vector<bool> ringed(Groups().size(), false);
+        for (const Game::SharedPtr<Map::MapMarker>& sp : page->markers) {
+            Map::MapMarker* marker = MarkerOf(sp);
+            Look look;
+            int group = marker != nullptr ? MarkerIcon(marker, look) : -1;
+            if (group < 0 || static_cast<size_t>(group) >= ringed.size() || ringed[group] || !Ringed(group)) continue;
+            ringed[group] = true;
+            Game::Shared<Map::MapMarker> ring =
+                MakeRing(&page->page.wrapper, pinRoot, MarkerRoot(&marker->part.wrapper));
+            if (ring.get() != nullptr) g_Rings.push_back({static_cast<size_t>(group), std::move(ring)});
+        }
+        ApplyRings();
+    }
 
     // A on the overworld map: marks the hovered icon's location skipped, or not. False (the game takes the press)
     // unless the icon is one of a single unchecked location.
@@ -84,10 +114,23 @@ namespace {
         }
     };
 
+    HOOK_DEFINE_TRAMPOLINE(MapPageSetup) {
+        static void Callback(Map::OverworldMap* page) {
+            Orig(page);
+            if (!g_Enabled || page != g_MarkerPage) return;
+            MakeRings(page);
+            if (!g_Rings.empty()) BuildHintStrip(&page->page.wrapper);
+        }
+    };
+
     HOOK_DEFINE_TRAMPOLINE(MapPageDtor) {
         static void Callback(Map::OverworldMap* page) {
             if (&page->page.wrapper == g_Panel.page) DropList();
-            if (page == g_MarkerPage) g_MarkerPage = nullptr;
+            DropHintStrip(&page->page.wrapper);
+            if (page == g_MarkerPage) {
+                g_Rings.clear();
+                g_MarkerPage = nullptr;
+            }
             Orig(page);
         }
     };
@@ -202,6 +245,7 @@ namespace {
             int group = marker != nullptr ? MarkerIcon(marker, look) : -1;
             if (group >= 0) SetMarkerVisible(marker, LookShown(group, look));
         }
+        if (page == g_MarkerPage) ApplyRings();
     }
 
     Map::MapMarker* HoveredMarker(const Map::OverworldMap* page) {
@@ -234,6 +278,58 @@ namespace {
         return unchecked == 0 ? "" : std::to_string(todo) + "/" + std::to_string(unchecked);
     }
 
+    bool HintShown(LocationId id) {
+        return AP::IsHinted(id) && !Done(id) && !AP::HintedItemText(id).empty();
+    }
+
+    bool AnyHintShown(Ids ids) {
+        return std::any_of(ids.begin(), ids.end(), HintShown);
+    }
+
+    bool Ringed(size_t group) {
+        return !NameHidden(group) && AnyHintShown(GroupIds(group));
+    }
+
+    Game::Shared<Map::MapMarker> MakeRing(Ui::LayoutWrapper* page, Ui::Pane* parent, Ui::Pane* icon) {
+        // The icon's own pane among the parent's children: an overworld marker's root pane sits in the pane its
+        // layout was hung by. Its place is the panes' offsets up to the parent.
+        Game::Shared<Map::MapMarker> made;
+        Ui::Pane* sibling = icon;
+        float x = 0, y = 0;
+        for (; sibling != nullptr && sibling->parent != parent; sibling = sibling->parent) {
+            x += sibling->x;
+            y += sibling->y;
+        }
+        if (sibling == nullptr) return made;
+        x += sibling->x;
+        y += sibling->y;
+        Game::MapMarker_Make(made.Reset());
+        Map::MapMarker* ring = MarkerOf(made.View());
+        if (ring == nullptr) return made;
+        Game::MapMarker_SetupPart(ring);
+        Game::LayoutWrapper_AttachBefore(&ring->part.wrapper, page, parent, sibling);
+        Ui::MoveTo(MarkerRoot(&ring->part.wrapper), x, y);
+        return made;
+    }
+
+    void ShowRing(Map::MapMarker* ring, bool single, bool shown) {
+        if (ring == nullptr) return;
+        Ui::Animator* animator = ring->setMark.animator;
+        float frame = static_cast<float>(kRingFrame + (single ? 1 : 0));
+        bool framed = animator != nullptr && frame < Game::Animator_FrameCount(animator);
+        if (framed) animator->frame = frame;
+        Ui::SetVisible(MarkerRoot(&ring->part.wrapper), shown && framed);
+        Game::CallVirtual<void()>(ring, Map::MapMarkerVirtual::kUpdate);
+    }
+
+    std::vector<std::string> HintItems(Ids ids) {
+        std::vector<std::string> items;
+        for (LocationId id : ids) {
+            if (HintShown(id)) items.push_back(AP::HintedItemText(id));
+        }
+        return items;
+    }
+
     // Its name after its count when it has several locations and some are unchecked, or after
     // "Skipped: " when its one location is skipped.
     std::string IconText(Ids ids, std::string_view name) {
@@ -248,6 +344,7 @@ namespace {
         MemoryButton::InstallAtFuncPtr(Game::DungeonMap_MemoriesButton.Ptr());
         FieldMemoryButton::InstallAtPtr(Game::Addr(kFieldMemoryButton));
         FieldPinButton::InstallAtPtr(Game::Addr(kFieldPinButton));
+        MapPageSetup::InstallAtFuncPtr(Game::OverworldMap_Setup.Ptr());
         MapPageDtor::InstallAtFuncPtr(Game::OverworldMap_Dtor.Ptr());
     }
 }

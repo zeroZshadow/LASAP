@@ -107,6 +107,7 @@ class Pack:
         text = (path / "scripts" / "autotracking" / "item_mapping.lua").read_text(encoding="utf-8")
         for m in re.finditer(r'\[(\d+)\] = \{"([^"]+)", (?:"(\w+)"|(\d+))\},\s*-- (\S+)', text):
             self.item_map[int(m.group(1))] = (m.group(5), m.group(2), m.group(3) or int(m.group(4)))
+        self.item_images = {int(m.group(1)): m.group(2) for m in re.finditer(r'\[(\d+)\] = "([^"]+)",', text)}
 
     def _walk(self, nodes: list, parent: str) -> None:
         for node in nodes:
@@ -166,6 +167,11 @@ class Dump:
 
     def highlight(self, code: str) -> str:
         return self.sections[code][3]
+
+    def hint(self, code: str) -> tuple[str, str]:
+        """The name and icon of the section's hint item."""
+        name, icon = (self.sections[code] + ["", ""])[4:6]
+        return name, icon
 
     def find(self, suffix: str) -> str:
         found = [code for code in self.sections if code.endswith(suffix)]
@@ -346,6 +352,8 @@ class Client:
         if reply["cmd"] != "Connected":
             raise Fail(f"connect {slot}: {reply}")
         self.team, self.number, self.slot_data = reply["team"], reply["slot"], reply["slot_data"]
+        self.aliases = {p["slot"]: p["alias"] for p in reply["players"] if p["team"] == self.team}
+        self.games = {int(slot): info["game"] for slot, info in reply["slot_info"].items()}
         self.checked = set(reply["checked_locations"])
         self.slot_locations = self.checked | set(reply["missing_locations"])
 
@@ -469,26 +477,36 @@ def check_items(dump: Dump, pack: Pack, received: list) -> None:
 # A hint's status (HintStatus) -> the highlight of its location's sections (PopTracker's Highlight), highest first;
 # a found hint shows none
 HINT_HIGHLIGHTS = {30: "Priority", 0: "Unspecified", 10: "NoPriority", 20: "Avoid"}
+HINT_IMAGE = "images/items/owl.png"  # a hinted item without an image in the pack
 
 
-def hint_highlights(pack: Pack, client: Client) -> dict:
-    """The highlight of each section that the server's hints for the slot's own locations give it."""
+def hints_shown(pack: Pack, client: Client) -> dict:
+    """What the server's hints for the slot's own locations show on each section: the highlight of the highest
+    status, and its hint item's name (every item hinted there) and icon (the item of the highest status)."""
     rank = list(HINT_HIGHLIGHTS.values())
     want = {}
     for hint in client.get(f"_read_hints_{client.team}_{client.number}") or []:
-        name = HINT_HIGHLIGHTS.get(hint.get("status", 0))
-        if hint["found"] or hint["finding_player"] != client.number or not name:
+        highlight = HINT_HIGHLIGHTS.get(hint.get("status", 0))
+        if hint["found"] or hint["finding_player"] != client.number or not highlight:
             continue
+        player = hint["receiving_player"]
+        if client.games[player] != GAME:
+            raise Fail(f"hint for a {client.games[player]} item: the test knows only {GAME}'s item names")
+        name = client.item_names[hint["item"]] + ("" if player == client.number else f" for {client.aliases[player]}")
+        icon = pack.item_images.get(hint["item"], HINT_IMAGE)
         for code in pack.location_map.get(hint["location"], ("", []))[1]:
-            if code not in want or rank.index(name) < rank.index(want[code]):
-                want[code] = name
+            shown = want.setdefault(code, {"highlight": highlight, "names": [], "icon": icon})
+            shown["names"].append(name)
+            if rank.index(highlight) < rank.index(shown["highlight"]):
+                shown["highlight"], shown["icon"] = highlight, icon
     return want
 
 
 def check_sections(dump: Dump, pack: Pack, client: Client, marks: dict | None = None) -> None:
     """Every mapped section empties in proportion to its checked locations; one with none of the slot's locations
-    shows nothing to check; a section marked by hand keeps its mark; a hinted one shows the hint's highlight."""
-    highlights = hint_highlights(pack, client)
+    shows nothing to check; a section marked by hand keeps its mark; a hinted one shows the hint's highlight and its
+    hint item the items hinted there."""
+    hints = hints_shown(pack, client)
     total, checked = {}, {}
     for location_id, (_, codes) in pack.location_map.items():
         for code in codes:
@@ -501,7 +519,10 @@ def check_sections(dump: Dump, pack: Pack, client: Client, marks: dict | None = 
         if marks and code in marks:
             want = min(want, marks[code])
         check(f"{code} available", available, want)
-        check(f"{code} highlight", dump.highlight(code), highlights.get(code, "None"))
+        shown = hints.get(code)
+        check(f"{code} highlight", dump.highlight(code), shown["highlight"] if shown else "None")
+        check(f"{code} hint item", dump.hint(code),
+              ("Hint: " + ", ".join(shown["names"]), shown["icon"]) if shown else ("", ""))
 
 
 SETTING_TOGGLES = {"Heart Pieces": "s_hp", "Seashells": "s_ss", "Trade Quest": "s_tq", "Trendy Game": "trendy",
@@ -773,30 +794,38 @@ def step_full(pack: Pack, tracker: Tracker, server: Server) -> None:
         client.set(f"las_doors_{client.team}_{client.number}", {door: entrances[door]}, "update")
     check_all(tracker, pack, client, sign_read=True, doors=found_doors(client))
     # Hints for the slot's own locations, with the slot's own items (only those take any status): each highlights its
-    # section by status until it is found
+    # section by status until it is found, and its hint item shows the item. One more holds another player's item:
+    # its hint item names that player.
     hinted = hint_locations(pack, client, 3)
     for location_id, status in zip(hinted, (30, 20, 0)):
         client.hint(location_id, status)
+    client.hint(hint_locations(pack, client, 1, own=False)[0], 0)
     check_all(tracker, pack, client, sign_read=True, doors=found_doors(client))
     tracker.shot("full_hinted")
     client.check(hinted[0])
     dump = check_all(tracker, pack, client, sign_read=True, doors=found_doors(client))
     check("highlight of a hint found", dump.highlight(pack.location_map[hinted[0]][1][0]), "None")
+    check("hint item of a hint found", dump.hint(pack.location_map[hinted[0]][1][0]), ("", ""))
     client.close()
 
 
-def hint_locations(pack: Pack, client: Client, count: int) -> list:
-    """Unchecked locations of the slot that hold its own items, each with sections of its own."""
+def hint_locations(pack: Pack, client: Client, count: int, own: bool = True) -> list:
+    """Unchecked locations of the slot not hinted yet that hold its own items (or another player's), each with
+    sections of its own."""
     shared = {}
     for location_id, (_, codes) in pack.location_map.items():
         for code in codes:
             shared[code] = shared.get(code, 0) + (location_id in client.slot_locations)
     candidates = [i for i, (_, codes) in pack.location_map.items()
                   if i in client.slot_locations and i not in client.checked and all(shared[c] == 1 for c in codes)]
-    own = [item["location"] for item in client.scout(*candidates) if item["player"] == client.number]
-    if len(own) < count:
-        raise Fail(f"{len(own)} unchecked locations with {client.slot}'s own items")
-    return own[:count]
+    hinted = {hint["location"] for hint in client.get(f"_read_hints_{client.team}_{client.number}") or []
+              if hint["finding_player"] == client.number}
+    found = [item["location"] for item in client.scout(*candidates)
+             if (item["player"] == client.number) == own and item["location"] not in hinted]
+    if len(found) < count:
+        whose = f"{client.slot}'s own" if own else "other players'"
+        raise Fail(f"{len(found)} unchecked locations of {client.slot} with {whose} items")
+    return found[:count]
 
 
 def step_marks(pack: Pack, tracker: Tracker, server: Server) -> None:

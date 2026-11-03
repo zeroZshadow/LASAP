@@ -2,8 +2,8 @@
 -- pack's own scripts; it is not part of the pack. It prints the tracker's state as LASAPTEST lines (stdout, the log):
 --   LASAPTEST <tag> I <code> <increment> <active> <stage> <count> <badge>   an item, found by one of its codes
 --   LASAPTEST <tag> L <id> <accessibility>                             a location
---   LASAPTEST <tag> S <code> <available> <chests> <accessibility> <highlight>   a location section, its highlight by
---                                                                        name (Highlight's: None, Priority, ...)
+--   LASAPTEST <tag> S <code> <available> <chests> <accessibility> <highlight> <hint name> <hint icon>   a location
+--                       section, its highlight by name (Highlight's: None, Priority, ...), its hint item's name and icon
 --   LASAPTEST <tag> G <name> <value>                                   a global
 --   LASAPTEST <tag> END
 -- fields separated by tabs. Commands come from scripts/lasap_cmd.lua in the override folder, read every 0.1 s:
@@ -52,8 +52,10 @@ local function dump(tag)
         local obj = Tracker:FindObjectForCode(code)
         if obj then
             local ok, highlight = pcall(function() return obj.Highlight end)
+            local hint = Tracker:FindObjectForCode("hint:" .. (code:sub(2):gsub(",", "")))
             out(tag, "S", code, field(obj, "AvailableChestCount"), field(obj, "ChestCount"),
-                field(obj, "AccessibilityLevel"), ok and HIGHLIGHT_NAMES[highlight] or "-")
+                field(obj, "AccessibilityLevel"), ok and HIGHLIGHT_NAMES[highlight] or "-",
+                hint and field(hint, "Name") or "missing", hint and field(hint, "Icon") or "missing")
         else
             out(tag, "S", code, "missing")
         end

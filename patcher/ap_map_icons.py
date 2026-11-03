@@ -1,10 +1,11 @@
 """The map tracker's overworld icons (DESIGN.md, Map tracker): dots, green in logic, split diagonally into green and
-red partly in logic, red out of logic and grey with a tick once collected, in Game.arc.
+red partly in logic, red out of logic and grey with a tick once collected, and a gold ring around a dot that holds a
+hint, in Game.arc.
 
 The map's marker (Gm_MapMarker) shows the frame of its SetMark animation given by the icon row's mType. That
 animation picks one of the marker textures per frame, and sets the marker's size per frame. This adds a texture per
-look to the archive's textures and frames after the game's own: per look one at the size of a group of checks, then
-per look one at the size of a single check (frame()).
+look and the ring's to the archive's textures, and frames after the game's own: per look one at the size of a group
+of checks, then per look one at the size of a single check (frame()), then the ring around each (ring_frame()).
 
 Built once from a RomFS dump, as an asset (ap_assets.py)."""
 import io
@@ -27,6 +28,15 @@ TICK = (250, 246, 232)
 COLLECTED_ALPHA = 0.6
 GROUP_SIZE = 18.0   # marker size (layout units; the game's markers are 28 to 32)
 SINGLE_SIZE = 14.0
+RING_NAME = "MarkerApHint_00^w"
+RING_COLOR = (242, 194, 48)
+RING_INNER, RING_OUTER = 0.36, 0.49  # of the texture's width, its outline included
+RING_LINE = 0.03  # its outline, on the outside: the dot's outline is the inside's
+RING_OVERLAP = 0.96  # the ring's inside, of the dot's radius: no seam between them
+# The ring's marker size around a group's dot and a single check's: its inside on the dot's edge (the dot's radius is
+# half its marker size).
+RING_GROUP_SIZE = GROUP_SIZE / 2 * RING_OVERLAP / RING_INNER
+RING_SINGLE_SIZE = SINGLE_SIZE / 2 * RING_OVERLAP / RING_INNER
 TEXTURE_SIZE = 64
 SUPERSAMPLE = 4
 DOT_RADIUS = 0.42   # of the texture's width; the outline reaches the edge
@@ -36,6 +46,11 @@ OUTLINE_WIDTH = 0.08
 def frame(look: int, single: bool) -> int:
     """The SetMark frame (icon row mType) of a look, at the size of a single check or of a group."""
     return GAME_FRAMES + (len(NAMES) if single else 0) + look
+
+
+def ring_frame(single: bool) -> int:
+    """The SetMark frame of the ring around a group's dot or a single check's."""
+    return GAME_FRAMES + 2 * len(NAMES) + (1 if single else 0)
 
 
 # Textures
@@ -83,6 +98,29 @@ def _dot_pixels(look: int) -> bytes:
                 out += bytes(3)
             coverage = alpha / SUPERSAMPLE ** 2
             out.append(round(255 * coverage * (COLLECTED_ALPHA if look == 3 else 1.0)))
+    return bytes(out)
+
+
+def _ring_pixels() -> bytes:
+    """RGBA pixels of the ring: gold in a dark outline, empty inside, antialiased by supersampling."""
+    n = TEXTURE_SIZE
+    center = n / 2
+    inner, outer, line = RING_INNER * n, RING_OUTER * n, RING_LINE * n
+    out = bytearray()
+    for y in range(n):
+        for x in range(n):
+            rgb = [0.0, 0.0, 0.0]
+            alpha = 0.0
+            for sy in range(SUPERSAMPLE):
+                for sx in range(SUPERSAMPLE):
+                    d = math.hypot(x + (sx + 0.5) / SUPERSAMPLE - center, y + (sy + 0.5) / SUPERSAMPLE - center)
+                    if d < inner or d > outer:
+                        continue
+                    sample = OUTLINE if d > outer - line else RING_COLOR
+                    rgb = [c + s for c, s in zip(rgb, sample)]
+                    alpha += 1
+            out += bytes(round(c / alpha) for c in rgb) if alpha else bytes(3)
+            out.append(round(255 * alpha / SUPERSAMPLE ** 2))
     return bytes(out)
 
 
@@ -145,9 +183,10 @@ def _add_textures(data: bytes) -> bytes:
             [node[:3] for node in build_dictionary([t.name for t in bntx.textures])]:
         raise ValueError(f"{TEXTURES}: the name dictionary is not built as build_dictionary() builds it")
     template = next(t for t in bntx.textures if t.name == TEMPLATE)
-    for look, name in enumerate(NAMES):
+    made = [(name, _dot_pixels(look)) for look, name in enumerate(NAMES)] + [(RING_NAME, _ring_pixels())]
+    for name, pixels in made:
         texture = bntx.replace(copy.deepcopy(template), template.tileMode, True, False, False, False,
-                               _dds(_dot_pixels(look), TEXTURE_SIZE))
+                               _dds(pixels, TEXTURE_SIZE))
         if not texture:
             raise ValueError(f"cannot make texture {name}")
         entry = StringTable.Entry(bntx.header.endianness)
@@ -233,8 +272,9 @@ class _Animation:
 
 
 def _patch_animation(data: bytes) -> bytes:
-    """SetMark with a frame per look and size (frame()): the new textures, and the marker's size (pane size, targets
-    8 and 9 of the pane's FLPA tag) set to the game's last size until the new frames."""
+    """SetMark with a frame per look and size (frame()) and the rings (ring_frame()): the new textures, and the
+    marker's size (pane size, targets 8 and 9 of the pane's FLPA tag) set to the game's last size until the new
+    frames."""
     section = struct.unpack_from("<H", data, 6)[0]  # after the header
     while data[section:section + 4] != b"pai1":
         section += struct.unpack_from("<I", data, section + 4)[0]
@@ -242,18 +282,21 @@ def _patch_animation(data: bytes) -> bytes:
     if animation.frames != GAME_FRAMES or animation.write() != data[section:section + animation.size]:
         raise ValueError(f"{ANIMATION} is not the file of game version 1.0.0")
     first = len(animation.textures)
-    animation.textures += NAMES
-    animation.frames = frame(len(NAMES) - 1, True) + 1
+    animation.textures += NAMES + (RING_NAME,)
+    animation.frames = ring_frame(True) + 1
     for _, _, tags in animation.contents:
         for magic, targets in tags:
             for _, target, curve, keys in targets:
                 if magic == b"FLTP" and curve == 1:
                     keys += [struct.pack("<fHxx", frame(look, single), first + look)
                              for single in (False, True) for look in range(len(NAMES))]
+                    keys += [struct.pack("<fHxx", ring_frame(single), first + len(NAMES)) for single in (False, True)]
                 elif magic == b"FLPA" and target in (8, 9):
                     last = struct.unpack_from("<f", keys[-1], 4)[0]
                     for at, before, after in ((frame(0, False), last, GROUP_SIZE),
-                                              (frame(0, True), GROUP_SIZE, SINGLE_SIZE)):
+                                              (frame(0, True), GROUP_SIZE, SINGLE_SIZE),
+                                              (ring_frame(False), SINGLE_SIZE, RING_GROUP_SIZE),
+                                              (ring_frame(True), RING_GROUP_SIZE, RING_SINGLE_SIZE)):
                         keys += [struct.pack("<3f", at, before, 0.0), struct.pack("<3f", at, after, 0.0)]
     pai1 = animation.write()
     out = bytearray(data[:section] + pai1 + data[section + animation.size:])

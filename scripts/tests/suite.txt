@@ -18,6 +18,7 @@ instant_text tweaks.instant_text=True client: newgame_file2 instant_text map_liv
 ghosts ghost: boot_file1 ghost_net ghost_puppet jukebox_pane
 ghost_link ghost: boot_file1 ghost_link
 jukebox_ballad: newgame_file2 jukebox_ballad
+map_hints: newgame_file2 map_hints
 egg_jukebox: newgame_file2 egg_jukebox
 zol_trap: newgame_file2 zol_trap
 dungeon_found client: newgame_file2 dungeon_found

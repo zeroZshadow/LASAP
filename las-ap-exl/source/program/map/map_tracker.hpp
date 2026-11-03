@@ -21,7 +21,7 @@ namespace AP::MapTracker {
     std::string CaptionText();
     // 0 off, 1 on, 2 maps revealed without overworld icons (DBG map, for tests and screenshots)
     void SetMode(int mode);
-    // A logic (INLOGIC) or checks (CHECKED) update arrived: the open map refreshes (Tick).
+    // A logic (INLOGIC), checks (CHECKED) or hints (HINTED) update arrived: the open map refreshes (Tick).
     void DataChanged();
     // Every room of the current dungeon counts as visited, and the open map refreshes once a frame passes after an
     // update; once per tick.

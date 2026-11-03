@@ -11,6 +11,9 @@ namespace AP {
     // What a location holds: item name and, for another player's item, that player's name.
     void SetLocationName(LocationId location, const std::string& item, const std::string& player);
     bool HasLocationName(LocationId location);
+    // The item a hinted location holds, for the map tracker: "<item>", or "<item> for <player>" for another player's;
+    // the names clipped as in the found text. "" for a location with no name.
+    std::string HintedItemText(LocationId location);
 #ifdef LASAP_TEST
     // DBG text: the text features' counts.
     std::string TextState();

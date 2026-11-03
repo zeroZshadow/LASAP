@@ -6,9 +6,11 @@
 // - the list: Gm_MemoryList (ap_list.cpp); the header above the rows, the icon's name and its count, in two
 //   Gm_SystemOpUnit text boxes;
 // - per row the dot of the location's look, a Gm_MapMarker at a frame of its SetMark animation (ap_map_icons.py), and
-//   for a skipped location "skipped" after its name (Gm_SystemOpUnit, italic).
+//   a tag (Gm_SystemOpUnit): for a skipped location "skipped" after its name (italic), for a hinted one the item
+//   hinted there at the row's right end.
 // While it is open the game sees no buttons and no sticks (ListTakesPad); the list reads the pad itself.
 #include "ap/ap.hpp"
+#include "ap/ap_text.hpp"
 #include "game/sym.hpp"
 #include "game/time.hpp"
 #include "loggers.hpp"
@@ -42,7 +44,9 @@ namespace {
     constexpr int kFadeStep = 48;
     constexpr u16 kNameChars = 48;      // room in a row's text box: the longest location name and more
     constexpr float kNameWidth = 1000;  // a row's text box's width (338 in the file), so a long name does not wrap
-    constexpr float kTagGap = 10, kTagLower = -3;  // "skipped" after a name: the space between, how much lower
+    constexpr float kTagGap = 10, kTagLower = -3;  // a tag beside a name: the space between, how much lower
+    constexpr u16 kTagChars = 56;       // a hint's item and player names, as HintedItemText clips them
+    constexpr float kTagRoom = 0.5f;    // a hint's tag takes at most this much of a row; a longer one is narrowed
     constexpr float kNameSqueeze = 0.6f;  // a long name is narrowed to fit its row, down to this
 
     // The panel (layout units): its middle, its margins beside the rows and above and below them, the header's
@@ -50,12 +54,18 @@ namespace {
     constexpr float kPanelX = 0, kPanelY = -15, kPanelSide = 25, kPanelMargin = 18, kHeaderHeight = 52;
     constexpr float kHeaderScale = 1.1f, kDotX = -168, kDotScale = 1.4f, kNameRight = 180;
     constexpr float kTagScale = 0.72f, kTagSlant = 0.25f;
+    constexpr float kHintScale = 0.9f;  // a hint's item, larger than "skipped"
     constexpr int kPanelAlpha = 245, kDimAlpha = 150;
     constexpr int kDoneAlpha = 170;  // a checked or skipped location's name
 
-    // A colour tag in the text does not reach a text box of a layout: its colours are set instead.
-    constexpr u8 kInk[] = {0x0f, 0x07, 0x02, 0xff};   // the header's: dark brown on the paper (shows as 46 30 1e)
     constexpr u8 kGray[] = {0xb4, 0xb4, 0xb4, 0xff};  // "skipped": light grey (shows as d9)
+
+    enum class Tag { None, Skipped, Hint };
+
+    Tag RowTag(LocationId id) {
+        if (AP::IsLocationSkipped(id)) return Tag::Skipped;
+        return HintShown(id) ? Tag::Hint : Tag::None;
+    }
 
     Ids ListIds() { return g_Panel.ids; }
 
@@ -98,32 +108,27 @@ namespace {
             L::Row& row = list.rows[r];
             Ui::Pane* align = Ui::FindPane(row.part, "A_Item_00");
             L::Layout& tag = g_Panel.tags[r];
-            bool tagged = list.top + r < list.count && AP::IsLocationSkipped(ListIds()[list.top + r]);
+            Tag kind = list.top + r < list.count ? RowTag(ListIds()[list.top + r]) : Tag::None;
             float nameLeft, nameRight, tagLeft = 0, tagRight = 0;
-            if (tagged && !L::Span(tag.note, tagLeft, tagRight)) tagged = false;
-            Ui::SetAlpha(tag.root, tagged ? g_Panel.fade : 0);
+            if (kind != Tag::None && !L::Span(tag.note, tagLeft, tagRight)) kind = Tag::None;
+            Ui::SetAlpha(tag.root, kind != Tag::None ? g_Panel.fade : 0);
             if (align == nullptr || !L::Span(row.text, nameLeft, nameRight)) continue;
             // the name on the page: the list, the alignment pane, the text box in it (scaled about its origin)
             float origin = x + align->x + row.text.box->pane.x;
-            float tagWidth = tagged ? (tagRight - tagLeft) * kTagScale + kTagGap : 0;
+            float tagScale = kTagScale;
+            if (kind == Tag::Hint) {
+                tagScale = std::min(kHintScale, (kNameRight - kRowLeft) * kTagRoom / (tagRight - tagLeft));
+            }
+            Ui::ScaleTo(tag.root, tagScale);
+            float tagWidth = kind != Tag::None ? (tagRight - tagLeft) * tagScale + kTagGap : 0;
             float room = x + kNameRight - tagWidth - (origin + nameLeft);
             float scale = std::clamp(room / (nameRight - nameLeft), kNameSqueeze, 1.0f);
             Ui::ScaleTo(&row.text.box->pane, scale, 1.0f);
-            Ui::MoveTo(tag.root, origin + nameRight * scale + kTagGap - tagLeft * kTagScale, rowY + kTagLower);
+            // "skipped" after the name, a hint's item at the row's right end
+            float tagX = kind == Tag::Hint ? x + kNameRight - tagRight * tagScale
+                                           : origin + nameRight * scale + kTagGap - tagLeft * tagScale;
+            Ui::MoveTo(tag.root, tagX, rowY + kTagLower);
         }
-    }
-
-    void SetTextColor(Ui::TextBox* box, const u8 (&color)[4]) {
-        if (box == nullptr) return;
-        std::memcpy(box->colorTop, color, 4);
-        std::memcpy(box->colorBottom, color, 4);
-    }
-
-    bool BuildText(L::Layout& layout, Ui::LayoutWrapper* page, Ui::Pane* root, u16 chars) {
-        if (!L::Build(layout, kTextLayout, page, root)) return false;
-        Ui::TextBox* box = Ui::FindText(layout.root, "T_Operation_00");
-        if (box != nullptr && Ui::Allocate(box, chars)) L::Bind(layout.note, box);
-        return true;
     }
 
     void BuildList(Ui::LayoutWrapper* page, Ids ids, std::string_view heading, int group) {
@@ -139,7 +144,7 @@ namespace {
                   BuildText(g_Panel.title, page, root, 40) && BuildText(g_Panel.count, page, root, 12);
         for (int r = 0; ok && r < L::kRows; r++) {
             ok = L::Build(g_Panel.dots[r], kDotLayout, page, root) &&
-                 BuildText(g_Panel.tags[r], page, root, 16);
+                 BuildText(g_Panel.tags[r], page, root, kTagChars);
         }
         if (!ok) {
             DropList();
@@ -169,11 +174,6 @@ namespace {
             if (row.text.box != nullptr) row.text.box->pane.width = kNameWidth;
             Ui::ScaleTo(g_Panel.dots[r].root, kDotScale);
             g_Panel.marks[r] = Ui::GetAnimation(g_Panel.dots[r].wrapper, "SetMark");
-            L::Layout& tag = g_Panel.tags[r];
-            Ui::ScaleTo(tag.root, kTagScale);
-            if (tag.note.box != nullptr) tag.note.box->italicRatio = kTagSlant;
-            SetTextColor(tag.note.box, kGray);
-            L::SetText(tag.note, "skipped");
         }
         L::SetEntries(g_Panel.list, static_cast<int>(ids.size()), 0);
         FillList();
@@ -222,6 +222,19 @@ namespace {
     }
 }
 
+    void SetTextColor(Ui::TextBox* box, const u8 (&color)[4]) {
+        if (box == nullptr) return;
+        std::memcpy(box->colorTop, color, 4);
+        std::memcpy(box->colorBottom, color, 4);
+    }
+
+    bool BuildText(L::Layout& layout, Ui::LayoutWrapper* page, Ui::Pane* root, u16 chars) {
+        if (!L::Build(layout, kTextLayout, page, root)) return false;
+        Ui::TextBox* box = Ui::FindText(layout.root, "T_Operation_00");
+        if (box != nullptr && Ui::Allocate(box, chars)) L::Bind(layout.note, box);
+        return true;
+    }
+
     bool ListOpen() { return g_Panel.page != nullptr && !g_Panel.closing; }
 
     Map::MapCursor* FindCursor() { return reinterpret_cast<Map::MapCursor*>(Ui::FindUi(Map::kMapCursorUi)); }
@@ -256,7 +269,15 @@ namespace {
             int entry = list.top + r;
             bool shown = entry < list.count;
             Ui::SetVisible(g_Panel.dots[r].root, shown);
-            Ui::SetVisible(g_Panel.tags[r].root, shown && AP::IsLocationSkipped(ids[entry]));
+            L::Layout& tag = g_Panel.tags[r];
+            Tag kind = shown ? RowTag(ids[entry]) : Tag::None;
+            Ui::SetVisible(tag.root, kind != Tag::None);
+            if (kind != Tag::None) {
+                bool skipped = kind == Tag::Skipped;
+                if (tag.note.box != nullptr) tag.note.box->italicRatio = skipped ? kTagSlant : 0;
+                SetTextColor(tag.note.box, skipped ? kGray : kInk);
+                L::SetText(tag.note, skipped ? std::string("skipped") : AP::HintedItemText(ids[entry]));
+            }
             if (!shown) continue;
             LocationId id = ids[entry];
             L::Row& row = list.rows[r];

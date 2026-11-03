@@ -1,6 +1,7 @@
 // DBG map, maplist and mapdot (test build): the map tracker's state, its check list's and its dungeon dots'.
 #ifdef LASAP_TEST
 #include "ap/ap.hpp"
+#include "ap/ap_text.hpp"
 #include "game/time.hpp"
 #include "map/map_tracker_impl.hpp"
 #include "test/test_impl.hpp"
@@ -20,6 +21,18 @@ namespace {
     // The list's cost on the game thread, in system ticks (19.2 MHz): its last opening, and each frame's tick since
     // (sum, most, frames).
     u64 g_OpenTicks = 0, g_TickSum = 0, g_TickMost = 0, g_TickFrames = 0;
+
+    // The open overworld page's rings: shown/made, then the groups of those shown.
+    std::string RingsShown() {
+        std::string groups;
+        size_t shown = 0;
+        for (const Ring& ring : g_Rings) {
+            if (!MarkerRoot(&ring.marker->part.wrapper)->flags.Has(Ui::PaneFlag::Visible)) continue;
+            shown++;
+            groups += "," + std::to_string(ring.group);
+        }
+        return std::to_string(shown) + "/" + std::to_string(g_Rings.size()) + groups;
+    }
 
     std::string SkipState() {
         // The skipped locations of overworld icons, and the hovered icon: its group, locations and look, or -1. On
@@ -92,7 +105,7 @@ namespace {
                " server=" + (IsServerConnected() ? "1" : "0") +
                " hooks=" + std::to_string(g_FlagsCalls) + "," + std::to_string(g_IconCalls) + "," +
                std::to_string(g_DotsMade) + "," + std::to_string(g_ChestMatches) + " out=" +
-               (g_OutHidden ? "hidden" : "shown") + SkipState();
+               (g_OutHidden ? "hidden" : "shown") + " rings=" + RingsShown() + SkipState();
     }
 
     int HoverGroup() {
@@ -157,7 +170,21 @@ namespace {
                  std::to_string(std::lround(x)) + "," + std::to_string(std::lround(y));
         }
         s += " looks=" + (looks.empty() ? std::string("-") : looks);
+        size_t rings = 0, ringsShown = 0;
+        for (const auto& dm : g_DotMarkers) {
+            if (dm.ring.get() == nullptr) continue;
+            rings++;
+            ringsShown += MarkerRoot(&dm.ring->part.wrapper)->flags.Has(Ui::PaneFlag::Visible);
+        }
+        s += " rings=" + std::to_string(ringsShown) + "/" + std::to_string(rings);
         return s + " | text=" + LabelText(kDotGroup);
+    }
+
+    std::string HintStripInfo() {
+        const HintStrip& strip = g_HintStrip;
+        bool field = g_MarkerPage != nullptr && strip.page == &g_MarkerPage->page.wrapper;
+        std::string page = strip.page == nullptr ? "-" : field ? "field" : "dungeon";
+        return "MAPHINT page=" + page + " shown=" + (strip.shown ? "1" : "0") + " items=" + strip.items.note.value;
     }
 
     std::string ListInfo(const std::vector<std::string>& a) {
@@ -173,8 +200,13 @@ namespace {
         if (g_Panel.page == nullptr) return s + " open=0";
         Ids ids = g_Panel.ids;
         static const char kRowLooks[] = "ipoc";
-        std::string looks;
-        for (LocationId id : ids) looks += IsLocationSkipped(id) ? 's' : kRowLooks[RowLook(id)];
+        // looks= a letter per location; tags= its tag: s skipped, h a hint's item, - none
+        std::string looks, tags;
+        for (LocationId id : ids) {
+            looks += IsLocationSkipped(id) ? 's' : kRowLooks[RowLook(id)];
+            tags += IsLocationSkipped(id) ? 's' : HintShown(id) ? 'h' : '-';
+        }
+        LocationId at = ids[g_Panel.list.at];
         int texts = 0, drawn = 0;
         for (auto& row : g_Panel.list.rows) {
             if (row.text.box == nullptr) continue;
@@ -183,9 +215,10 @@ namespace {
         }
         s += " open=" + std::string(g_Panel.closing ? "closing" : "1") + " group=" + std::to_string(g_Panel.group) +
              " at=" + std::to_string(g_Panel.list.at) + " top=" + std::to_string(g_Panel.list.top) +
-             " looks=" + looks + " fade=" + std::to_string(g_Panel.fade) + " rows=" + std::to_string(texts) +
-             " drawn=" + std::to_string(drawn) + " count=" + g_Panel.count.note.value +
-             " name=" + CheckName(ids[g_Panel.list.at]) + " | title=" + g_Panel.title.note.value;
+             " looks=" + looks + " tags=" + tags + " fade=" + std::to_string(g_Panel.fade) +
+             " rows=" + std::to_string(texts) + " drawn=" + std::to_string(drawn) +
+             " hint=" + (HintShown(at) ? HintedItemText(at) : "-") + " count=" + g_Panel.count.note.value +
+             " name=" + CheckName(at) + " | title=" + g_Panel.title.note.value;
         return s;
     }
 }

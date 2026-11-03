@@ -564,6 +564,8 @@ namespace {
                      " free=" + std::to_string(mi.fordblks) + " size=" + std::to_string(exl::setting::HeapSize));
         } else if (cmd == "maplabel") {
             AP::Send("MAPLABEL " + MapTracker::LabelText(a.size() >= 3 ? atoi(a[2].c_str()) : MapTracker::HoverGroup()));
+        } else if (cmd == "maphint") {
+            AP::Send(MapTracker::HintStripInfo());
         } else if (cmd == "text") {
             AP::Send(a.size() >= 3 ? AP::SeenText(a[2]) : AP::TextState());
         } else if (cmd == "music") {

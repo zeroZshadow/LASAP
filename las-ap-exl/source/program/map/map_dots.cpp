@@ -87,8 +87,10 @@ namespace {
             Game::LayoutWrapper_AttachBefore(&marker->part.wrapper, &page->page.wrapper, pinRoot, pinOffset);
             float at[2] = {};
             Game::DungeonMap_PositionIcon(dot.x, 0, dot.z, page, at, &roomPtr);
-            Ui::MoveTo(MarkerRoot(&marker->part.wrapper), at[0], at[1]);
+            Ui::Pane* dotRoot = MarkerRoot(&marker->part.wrapper);
+            Ui::MoveTo(dotRoot, at[0], at[1]);
             DotMarker dm{d, std::move(made)};
+            if (AnyHintShown(IdsOf(dot.ids))) dm.ring = MakeRing(&page->page.wrapper, pinRoot, dotRoot);
             // under N_MapPosition_00, which moves after the setup (DotAt)
             dm.x = at[0] + pinRoot->x;
             dm.y = at[1] + pinRoot->y;
@@ -97,6 +99,9 @@ namespace {
         }
         g_DotsMade += static_cast<int>(g_DotMarkers.size());
         ApplyDots();
+        if (std::any_of(g_DotMarkers.begin(), g_DotMarkers.end(), [](const DotMarker& dm) { return dm.ring.get(); })) {
+            BuildHintStrip(&page->page.wrapper);
+        }
         Logging.Log("[AP] map: %zu dungeon dots, %zu without their room", g_DotMarkers.size(), missing);
     }
 
@@ -163,6 +168,7 @@ namespace {
     HOOK_DEFINE_TRAMPOLINE(DungeonPageDtor) {
         static void Callback(Map::DungeonMap* page) {
             if (&page->page.wrapper == g_Panel.page) DropList();
+            DropHintStrip(&page->page.wrapper);
             if (page == g_DungeonPage) DropDots();
             Orig(page);
         }
@@ -254,6 +260,7 @@ namespace {
             float frame = static_cast<float>(kGameMarkFrames + (ids.size() == 1 ? kLooks : 0) + look);
             if (animator != nullptr && frame < Game::Animator_FrameCount(animator)) animator->frame = frame;
             Ui::SetVisible(MarkerRoot(&dm.marker->part.wrapper), DotShown(dm));
+            ShowRing(dm.ring.get(), ids.size() == 1, DotShown(dm) && AnyHintShown(ids));
         }
     }
 
@@ -290,6 +297,7 @@ namespace {
     void UpdateDotHover(Map::DungeonMap* page) {
         for (auto& dm : g_DotMarkers) {
             Game::CallVirtual<void()>(dm.marker.get(), Map::MapMarkerVirtual::kUpdate);
+            if (dm.ring.get() != nullptr) Game::CallVirtual<void()>(dm.ring.get(), Map::MapMarkerVirtual::kUpdate);
         }
         int hovered = -1;
         Map::MapCursor* cursor = FindCursor();

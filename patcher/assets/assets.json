@@ -39,7 +39,7 @@
   "source": "region_common/ui/Game.arc",
   "source_sha256": "18ea6abf4b4504715aaa87197942743d1d1a15d677871f2ac5afdae08d065339",
   "patch": "Game.arc.bsdiff4",
-  "sha256": "1fbdcdde9e6b512b7a278b7cee8648084aa453af737b3911c9bd5bec68570119"
+  "sha256": "d2b39e8cd9461304306745ed6d31ab34b6807e48fed1310038f761d1f9c69cad"
  },
  "region_common/ui/StartUp.arc": {
   "source": "region_common/ui/StartUp.arc",
