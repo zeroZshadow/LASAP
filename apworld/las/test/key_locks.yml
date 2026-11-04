@@ -1,0 +1,154 @@
+# Each dungeon's small-key locks, by opened flag (the first switch of its ObjLockDoor or ObjLockBlock actors; a door
+# has an actor on each side): where Link opens it from (at) and the nodes and locations whose key requirement it stands
+# for (opens). routes are ways to a node that the logic does not count. key_logic.py has the semantics. The layouts
+# follow LADXR's dungeon logic (logic/dungeonN.py), whose key doors are its FOUND(KEYn, k) connections. accepted lists
+# the targets whose key count the logic keeps below the worst case on purpose, with the logic levels where it does;
+# test_key_logic.py checks they still are.
+
+D0:
+  locks:
+    # door 06E|07E: main room -> centre miniboss and the nine-switch puzzle (LADXR center_miniboss)
+    734: {at: "D0-8C & kill-goblin[heavy]", opens: [D0-6D, D0-owl-statue-nine-switches]}
+    # door 04G|05G: main room -> north-east miniboss and the nightmare key chest (LADXR ne_miniboss)
+    735: {at: "D0-8C & kill-goblin[heavy]", opens: [D0-northern-chest]}
+    # door 05B|05C: four-zol room -> switch room, the boss and the fairies (LADXR switch_room)
+    733: {at: "D0-6D & break-pot & hit-color-dungeon-switch", opens: [D0-fairy-1, D0-fairy-2, D0-clear]}
+
+D1:
+  locks:
+    # door 04C|05C: main room -> north room, north-west room and the feather room (LADXR north_room)
+    701: {at: D1-8D, opens: [D1-owl-statue-long-hallway, D1-owl-statue-spinies, D1-west-hallway]}
+    # door 06E|06F: main room -> east area, the miniboss and the boss (LADXR east_room)
+    702: {at: D1-8D, opens: [D1-6F]}
+    # key block 05E: -> the fenced walkway with the nightmare key chest (LADXR fenced_walkway)
+    737: {at: "D1-8D & (feather | (rooster & bad-pets))", opens: [D1-middle-ledge]}
+
+D2:
+  locks:
+    # door 07B|07C: entrance -> west of the torches (LADXR blade_room)
+    710: {at: D2-8C, opens: [D2-west-chest]}
+    # door 07D|08D: east of the torches -> the mimic room (compass chest)
+    711: {at: D2-7D, opens: [D2-single-shy-guy]}
+    # door 06G|07G: mimic and beetle area -> pushblock room, then the miniboss and the rest of the dungeon
+    712: {at: "D2-7D & hit-crystal-switch & (feather | (rooster & bad-pets))", opens: [D2-4C, D2-owl-statue-push-puzzle]}
+    # door 02B|02C: vacuum mouth area -> Boo Buddies room
+    705: {at: D2-4C, opens: [D2-boos]}
+    # door 02F|02G: enemy order room -> 20 pots room, towards the boss
+    706: {at: D2-2F, opens: [D2-4G]}
+
+D3:
+  locks:
+    # the basement crossroads (04G, below D3-4B's stairs) has a door on each side (LADXR after_a_stairs)
+    # door 03G|04G: north room, the basement-north key and the switch the two crystal chests need (LADXR north_4way)
+    714: {at: D3-4B, opens: [D3-3G, D3-basement-north, D3-owl-statue-basement-north, D3-hallway-4, D3-hallway-side-room]}
+    # door 04F|04G: west room, the basement-west key (LADXR west_4way)
+    715: {at: D3-4B, opens: [D3-basement-west]}
+    # door 04G|04H: the stairs up to the main area (LADXR before_b_stairs)
+    717: {at: D3-4B, opens: [D3-4C]}
+    # door 04G|05G: south room, the basement-south key (LADXR south_4way)
+    718: {at: D3-4B, opens: [D3-basement-south]}
+    # key blocks 02B, 02C, 03B, 03C: the row on the way to the boss (LADXR towards_boss1-3, before_c_passage)
+    738: {at: D3-4C, opens: [D3-8G]}
+    739: {at: D3-4C, opens: [D3-8G]}
+    740: {at: D3-4C, opens: [D3-8G]}
+    741: {at: D3-4C, opens: [D3-8G]}
+  # The west and south rooms take 4 keys, the main area's count. The worst case is 8: the stairs door and three key
+  # blocks take the first 4, the other crossroads doors the next 3. At 8 nearly every check in front of them would hold
+  # a Key Cavern key, so the logic takes the chance for more varied loot.
+  accepted:
+    D3-basement-west: [basic, advanced, glitched, hell]
+    D3-basement-south: [basic, advanced, glitched, hell]
+
+D4:
+  locks:
+    # door 07E|07F: compass room -> the statue room's water (LADXR spark_beetle_room -> west_statue_room, KEY4 1)
+    721: {at: "D4-8D & kill-zol-red[pit]", opens: [D4-small-island, D4-4E]}
+    # door 06F|07F: the statue room's north-east -> south of the crossroads (LADXR north_statue_room -> south_crossroads, KEY4 2)
+    720:
+      at: >-
+        (D4-8D & kill-zol-red[pit] & lock-721 & (feather | flippers | (rooster & bad-pets)))
+        | (D4-4E & lock-742 & (dash-jump | (rooster & bad-pets) | ((feather | boots | bombs | (shovel & sword)) & hookshot)))
+      opens: [D4-small-island, D4-4E]
+    # key block 04F: north of the crossroads -> before the miniboss (LADXR north_crossroads -> before_miniboss, KEY4 3)
+    742:
+      at: >-
+        (D4-8D & kill-zol-red[pit] & lock-721 & lock-720 & (feather | flippers | (rooster & bad-pets))
+        & (dash-jump | (rooster & bad-pets) | ((feather | boots | bombs | (shovel & sword)) & hookshot)))
+        | D4-4E
+      opens: [D4-4E]
+    # door 03E|04E (one actor, 04E): before the miniboss -> the miniboss, then the flippers room (LADXR miniboss_room, KEY4 5)
+    719: {at: D4-4E, opens: [D4-north-chest, D4-4C]}
+    # key block 05D: flying heart room -> the passage to the boss door (LADXR outside_b_passage_keyblock -> before_b_passage, KEY4 5)
+    743: {at: "D4-4C & flippers", opens: [D4-5B]}
+  routes:
+    # the tile puzzle's water area back to before the miniboss (LADXR before_miniboss <-> south_tile_puzzle)
+    D4-4E:
+      - "D4-4C & (feather | flippers)"
+    # south of the crossroads (the small island's room) from the north, past the pit, without the door 06F|07F
+    D4-small-island:
+      - >-
+        D4-4E & lock-742 & (dash-jump | (rooster & bad-pets) | ((feather | boots | bombs | (shovel & sword)) & hookshot))
+        & (flippers | (rooster & bad-pets) | (bomb-arrows & feather) | ((feather | boots | bombs | (shovel & sword)) & hookshot)
+        | (feather & bracelet))
+  # The small island takes 2 keys, the doors on its route. Glitched logic reaches D4-6C without a key, and from there the
+  # key blocks and the miniboss door can take keys first, so its worst case is all 5. Glitched also accepts the basic and
+  # advanced conditions, so raising the count would raise it for every logic level, where 2 is enough.
+  accepted:
+    D4-small-island: [glitched, hell]
+
+D5:
+  locks:
+    # door 07F|08F: entrance -> the crystal room and the rest of the dungeon (LADXR crystal_puddle_room)
+    723: {at: D5-8H, opens: [D5-7F]}
+    # key block 05E: -> Gohma (LADXR miniboss_room); from 3E's side through the 2D passage
+    745: {at: "(D5-7F & hookshot) | (D5-3E & feather & bracelet)", opens: [D5-3E]}
+    # key block 03E: -> the boss and the spark hallway (LADXR after_boss_keyblock)
+    744: {at: D5-3E, opens: [D5-instrument, D5-slime-eel, D5-5G]}
+
+D6:
+  locks:
+    # door 06F|07F: entrance -> before the miniboss (LADXR entrance -> before_miniboss, KEY6 1)
+    725: {at: D6-8D, opens: [D6-5D]}
+    # key block 05D: the floating tile room -> the flying bomb room (LADXR after_b_passage -> flying_bomb_room, KEY6 2)
+    746: {at: D6-5D, opens: [D6-4H]}
+    # key block 05G: the hookshot block -> the star ledge and the pot owl area (LADXR hookshot_block -> north_waterway_west_ledge, KEY6 3)
+    747: {at: "D6-4H & bombs & hookshot", opens: [D6-pot-chest, D6-owl-statue-canal]}
+
+D7:
+  locks:
+    # door 07D|08D: entrance -> the rest of the tower (LADXR before_a_stairs)
+    727: {at: D7-8B, opens: [D7-2D]}
+    # key block 04D: the key-locked ledge, which LADXR reaches by other routes too (keylock_ledge)
+    748: {at: D7-2D, opens: []}
+    # key block 02E (06E once the tower has fallen): the boss backdoor, a shortcut (LADXR boss_backdoor)
+    749: {at: D7-2D, opens: []}
+
+D8:
+  locks:
+    # key block 05E: the first lock past the entrance (LADXR pre_center_keyblock -> heart_vire, peahat_area)
+    753: {at: "D8-8D & feather", opens: [D8-4C, D8-northern-ledge, D8-gibdos, D8-owl-statue-below-gibdos, shoot-arrows, powders]}
+    # door 05F|05G: -> the blade room, the hidden arrow room, the gibdos and the slime corridor (LADXR before_g_passage)
+    732: {at: "(D8-8D & feather & lock-753) | (D8-4C & feather & hookshot)", opens: [D8-4C, D8-northern-ledge, D8-gibdos, D8-owl-statue-below-gibdos, shoot-arrows, powders]}
+    # door 03D|03E: slime corridor -> the north-west area (LADXR before_f_stairs)
+    730: {at: "D8-4C | (D8-8D & feather & kill-zol-green & lock-753 & lock-732)", opens: [D8-4C]}
+    # door 03A|03B (one actor): -> the cueball and the nightmare key (LADXR miniboss4_room)
+    729: {at: "D8-8D & feather & rod", opens: [D8-far-northwest]}
+    # key block 04F: dark east -> dark centre, a route nothing needs (LADXR dark_center)
+    752:
+      at: "(D8-8D & feather & bombs & lock-753 & lock-732) | (D8-8D & feather & bombs & shoot-arrows & lock-753) | (D8-4C & feather & bombs & kill-rope)"
+      opens: []
+    # key blocks 04D and 04E: dark west -> the torches, then the passage to Blaino (LADXR dark_center_torches, before_d_passage)
+    750:
+      at: "(D8-4C & feather & bombs) | (D8-8D & feather & bombs & shoot-arrows & lock-753) | (D8-8D & feather & bombs & kill-rope & lock-753 & lock-732 & lock-752)"
+      opens: [D8-far-northeast]
+    751:
+      at: "((D8-4C & feather & bombs) | (D8-8D & feather & bombs & shoot-arrows & lock-753) | (D8-8D & feather & bombs & kill-rope & lock-753 & lock-732 & lock-752)) & hookshot"
+      opens: [D8-far-northeast]
+  routes:
+    # through the dark rooms: the peahats to dark west, or dark east to dark centre to dark west (LADXR before_f_stairs)
+    D8-4C:
+      - "D8-8D & feather & bombs & shoot-arrows & lock-753"
+      - "D8-8D & feather & bombs & kill-rope & lock-753 & lock-732 & lock-752"
+    # the hidden arrow room from the gibdos' room (LADXR hidden_arrow_room <-> dodongo_area)
+    D8-owl-statue-below-gibdos:
+      - "D8-4C & kill-zol-green & stone-beak-D8"

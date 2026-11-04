@@ -27,6 +27,9 @@ CATEGORIES: Dict[str, List[str]] = _load_yaml("locations.yml")
 # - The top of Turtle Rock (Field_01A to Field_01C: the heart piece, side doors into Turtle Rock's rooms 03C and 03F,
 #   and the Tal Tal Mountain warp point) is a region of its own, turtle-rock-top, entered from Turtle Rock's D8-4C as
 #   LASR's heart piece condition has it, and the heart piece is in it. LASR has the heart piece in taltal-west-2.
+# - Key Cavern's north basement room and the two chests its switch opens hang off D3-4C (4 keys) in LASR, but are behind
+#   a door of the crossroads, which the stairs door and the key blocks can leave shut. With keys there the fill can make
+#   a dead end, which D3-3G (8 keys, as many as the dungeon has locks) rules out for them.
 EXTRA_NODES: Dict[str, Dict[str, Any]] = {
     "D6-4D": {"type": "room", "condition-basic": "D6-5D"},
     "D6-2A": {"type": "room", "condition-basic": "D6-3A & hit-crystal-switch & bracelet:2"},
@@ -39,6 +42,10 @@ CONDITION_EDITS = {
     ("kill-flower", "condition-basic"): ("(bow-wow & !rooster)", "bow-wow"),
     ("trendy-prize-5", "condition-basic"): ("sea-lilys-bell", "conch-horn & sea-lilys-bell"),
     ("trendy-prize-6", "condition-basic"): ("surf-harp", "conch-horn & sea-lilys-bell & surf-harp"),
+    ("D3-basement-north", "condition-basic"): ("D3-4C", "D3-3G"),
+    ("D3-owl-statue-basement-north", "condition-basic"): ("D3-4C", "D3-3G"),
+    ("D3-hallway-4", "condition-basic"): ("D3-4C", "D3-3G"),
+    ("D3-hallway-side-room", "condition-basic"): ("D3-4C", "D3-3G"),
 }
 # location -> (its region, the condition-basic the region's condition replaces)
 MOVED_LOCATIONS = {
