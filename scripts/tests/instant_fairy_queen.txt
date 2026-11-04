@@ -1,0 +1,27 @@
+# Instant Pickups at the Fairy Queen (DESIGN.md, Instant pickups): her two item-gets (D0-fairy-1, D0-fairy-2) come
+# one after the other, and her event waits for their popups, so both show and are gone while Link is still in her room,
+# before her goodbye and the whiteout that warps him out. B on each of her pages as soon as it takes one, as a
+# hurried player. Run after boot_file1 with config.ini [tweaks] instant_pickups = true; clears her flags.
+# Screenshots: instant_fairy_queen the second popup in her room.
+send DBG setflag FairyQueenFirstClear 0
+expect FLAG.FairyQueenFirstClear.0 5
+# The room's event box (37.5 42) starts her talk: Link walks up into it.
+warp Lv10ClothesDungeon 37.5 0 46.5
+guard anim=item_get_st
+hold 0 0 32767 until !free 5
+tapuntil 2 show=1 when textready 15
+await 3 popup=1
+# None of her pages takes a button until the second popup is gone: her event waits for it.
+guard textready
+await 5 popup=0
+await 3 popup=1
+check level=Lv10ClothesDungeon
+shot instant_fairy_queen.png
+await 5 popup=0
+guard off textready
+tapuntil 2 level=Field when textready 20
+guard off anim=item_get_st
+send DBG setflag FairyQueenFirstClear 0
+expect FLAG.FairyQueenFirstClear.0 5
+send DBG setflag Lv10DungeonClear 0
+expect FLAG.Lv10DungeonClear.0 5

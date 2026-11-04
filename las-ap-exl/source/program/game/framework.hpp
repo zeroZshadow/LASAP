@@ -275,6 +275,16 @@ namespace Game {
     static_assert(offsetof(Scheduler, mutex) == 0x70 && offsetof(Scheduler, taskAdded) == 0x98);
     static_assert(offsetof(Scheduler, flushing) == 0x148 && sizeof(Scheduler) == 0x150);
 
+    // Delay_Make's task for more than 0 seconds (scripts/re/FRAMEWORK.md, Scheduler): one block of 0x90 bytes from
+    // the control block on, which the out future's pair holds as its ctrl. Each scheduler update counts `left` down by
+    // FrameDelta (DelayTask_Update) and at 0 or less sets it to 0 and finishes the future.
+    struct DelayBlock {
+        u8 pad_0[0x78];
+        f32 left;      // 0x78: seconds left (the task's +0x60)
+        u8 cancelled;  // 0x7c (the task's +0x64)
+    };
+    static_assert(offsetof(DelayBlock, left) == 0x78 && offsetof(DelayBlock, cancelled) == 0x7c);
+
     // A queue of phases run in order of priority (PhaseQueue_Ctor; 0xf8 bytes): the frame step, the 14 update phases,
     // the 5 render phases.
     struct PhaseQueue {

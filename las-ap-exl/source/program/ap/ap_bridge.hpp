@@ -113,6 +113,7 @@ namespace AP::Bridge {
         ItemId id; std::string item; std::string sender;
         bool found = false; std::string toast; u64 at = 0;
         std::optional<ItemId> model;  // the item whose model the popup shows, when not this one's
+        u32 event = 0;                // a find: the event that gave it (EventSerial)
     };
     void QueueShow(const ItemShow& show);
     // A received trap waits like an item display, then plays its effect. location: the location that held it; none
@@ -129,6 +130,11 @@ namespace AP::Bridge {
     // Shows queued items one at a time, once the player is free and holds nothing.
     void TickItemGet();
     void InstallItemGetHooks();
+    // ---- Pickup events (ap_pickup_event.cpp) ----
+    // Counts the events Link's event start has seen: the running event's number.
+    u32 EventSerial();
+    // The running event started without Link (a pickup's event he moves on through).
+    bool LinkKeptOut();
     void InstallPickupEventHooks();
 #ifdef LASAP_TEST
     // STATE's " showq=<queued>[+1] shown=<item>"

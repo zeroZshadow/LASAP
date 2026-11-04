@@ -251,6 +251,14 @@ tag.
 
 `Scheduler_Update` (`0xfd1fb0`) is update phase 1's lambda (`0x174d0`): it raises `updateDepth` and goes through
 `byOrder`, removing a finished task, else running its virtual `+0x20` and removing it if it is now finished.
+
+**Delay task.** For more than 0 s, `Delay_Make` makes one block of 0x90 bytes (`DelayBlock` in `game/framework.hpp`):
+the control block (vtable `0x1bbcf68`), the task at `+0x18` (vtable `0x1bbcfe0`) and the future at `+0x80` (vtable
+`0x1bbd050`), which the out pair points to with the control block as its owner. The task holds a signal at its `+0x8`
+(open while not finished: its `+0x38` is nonzero), the seconds left `+0x60` and `cancelled` `+0x64`.
+`DelayTask_Update` (`0x7f4010`, task vtable `+0x20`) subtracts `FrameDelta` from the seconds left and, at 0 or less,
+sets them to 0 and emits the signal, which finishes the future; `DelayTask_Cancel` (`0x7f4050`, `+0x28`) sets
+`cancelled` and the seconds left to 0. Setting the seconds left to 0 ends the delay in the next update.
 `Framework_Shutdown` runs it once more, then `Scheduler_Clear`.
 
 **ThreadPool** (`game/stl.hpp`; `ThreadPool_Ctor` `0x8700 (pool, u64 threadCount, std::function* threadFactory)`,

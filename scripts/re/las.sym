@@ -479,6 +479,8 @@ LayeredAnimation_Make 0x08b7fa70 f (out, parent entity, StringView* name, smcSp*
 EventQuery_HasAllInstruments 0x08ce7240 f std::function body (vtable 0x0a0c5208, Inventory's query lookup 0x08d1d8fc): Inventory +0xac bits 7-14 all set (the eight instruments); only WindFishsEgg.bfevfl asks it
 CraneQuery_HasPrize 0x08ce7260 f event query HasPrize (prizeType, count): CranePrize_Has(type, count, -1)
 Delay_Make 0x08cf7c90 f (f32 seconds, out future): a task of that many seconds on Framework +0x60; a done future for seconds <= 0
+DelayTask_Update 0x08cf8010 f (task) vtable +0x20: while its signal (+0x8) is open, seconds left (+0x60) -= FrameDelta; at 0 or less sets it 0 and emits the signal (vtable +0x30)
+DelayTask_Cancel 0x08cf8050 f (task) vtable +0x28: once, sets cancelled (+0x64) and seconds left (+0x60) 0
 GameControl_RequestLevelJump 0x08d03160 f event action body (out, ctx): params level, locator, offsetX, offsetZ -> GameControl_SetLevelJump
 GameControl_RequestLevelJumpInCurrentLevel 0x08d032d0 f event action body: level = the save's level
 GameControl_RequestRestartWarp 0x08d03580 f event action body

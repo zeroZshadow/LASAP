@@ -36,6 +36,8 @@ namespace {
     // A find waits this long before it shows: the event that gave it adds the item after the item-get (LASR's order,
     // the game's own), and a location that keeps its vanilla item is named once the item is added.
     constexpr u64 kFoundSettleMs = 50;
+    // An item-get that waits for its find's popup (EarlierFind) ends after this long even if the popup never shows
+    constexpr float kFindWaitMaxSeconds = 12.0f;
     constexpr int kItemEventTries = 3;
 
     int g_ItemEventTry = 0;
@@ -49,6 +51,11 @@ namespace {
     std::deque<Show> g_ShowQueue;
     // What the current event or popup shows; none for DBG itemget's event, which is not retried
     std::optional<Show> g_Showing;
+    // An item-get's future that waits until the popup of the find it queued is gone (EarlierFind): Delay_Make's,
+    // ended early
+    Game::Shared<> g_FindWait;
+    u32 g_FindWaitEvent = 0;    // the event that gave that find, its latest
+    bool g_FindWaitShown = false;  // that find's popup started
 
     // The queue's front when it is an item
     const ItemShow* FrontItem() {
@@ -222,6 +229,35 @@ namespace {
         g_ItemEventShown = item;
     }
 
+    // A find of that event (EventSerial)
+    bool OfEvent(const Show& s, u32 event) {
+        const auto* item = std::get_if<ItemShow>(&s);
+        return item != nullptr && item->found && item->event == event;
+    }
+
+    bool FindQueued(u32 event) {
+        return std::any_of(g_ShowQueue.begin(), g_ShowQueue.end(), [event](const Show& s) { return OfEvent(s, event); });
+    }
+
+    // Instant Pickups: an earlier find of the running event still waits or shows. The event's next item-get then waits
+    // until its own find's popup is gone, so that an event that gives several items shows them one after another
+    // before it goes on (the Fairy Queen's two, before her whiteout). Not in an event Link moves on through, whose world stands still
+    // meanwhile.
+    bool EarlierFind() {
+        if (LinkKeptOut()) return false;
+        u32 event = EventSerial();
+        if (g_Showing && OfEvent(*g_Showing, event) && (AP::Popup::Busy() || !AP::ToastsIdle())) return true;
+        return FindQueued(event);
+    }
+
+    // Ends the waiting item-get's future: its delay task's time runs out in the next scheduler update
+    void EndFindWait() {
+        if (!g_FindWait) return;
+        static_cast<Game::DelayBlock*>(g_FindWait.View().ctrl)->left = 0.0f;
+        g_FindWait = {};
+        g_FindWaitShown = false;
+    }
+
     // Instant Pickups (DESIGN.md, Instant pickups): the item-get hook returns the game's ready future (Delay_Make(0)),
     // and the module does the item-get's fanfare, buffs' music and autosave in its place. The autosave is the one the
     // item's Items.gsheet row asks for, requested as the item-get does (scripts/re/ITEMS.md, Item-get, Autosave).
@@ -254,8 +290,17 @@ namespace {
                 entry.size--;
             }
             if (global_config.tweaks.instant_pickups && !received && !native) {
+                bool wait = EarlierFind();
                 InstantPickup(item);
-                Game::Delay_Make(0.0f, out);
+                if (!wait) {
+                    Game::Delay_Make(0.0f, out);
+                    return;
+                }
+                EndFindWait();
+                Game::Delay_Make(kFindWaitMaxSeconds, out);
+                g_FindWait = Game::Shared<>::Share(*out);
+                g_FindWaitEvent = EventSerial();
+                Logging.Log("[AP] instant pickup waits for its popup");
                 return;
             }
             if (native) messageEntry = &entry;
@@ -313,6 +358,7 @@ namespace {
             if (show.toast.empty()) show.toast = "You found an\nArchipelago item";
         }
         show.at = NowMs();
+        show.event = EventSerial();
         QueueFound(show);
     }
 
@@ -323,6 +369,7 @@ namespace {
     // With Instant Pickups, as popups; finds come first and show as soon as the popup is free, also during the event
     // that gave them.
     void TickItemGet() {
+        if (g_FindWaitShown && !AP::Popup::Busy()) EndFindWait();
         bool free = PlayerFree();
         if (free && !g_WasFree) g_FreeSince = NowMs();
         if (free) AP::ExpireFoundLocation();
@@ -339,6 +386,7 @@ namespace {
             g_Showing = show;
             g_ShowQueue.pop_front();
             ShowPopup(show);
+            if (g_FindWait && !FindQueued(g_FindWaitEvent)) g_FindWaitShown = true;
             return;
         }
         bool popup = global_config.tweaks.instant_pickups && FrontItem() != nullptr;

@@ -136,10 +136,12 @@ namespace {
     }
 
     bool g_KeptOut = false;  // the running event started without Link
+    u32 g_EventSerial = 0;
 
     HOOK_DEFINE_TRAMPOLINE(PlayerOnEventStart) {
         static void Callback(void* player) {
             g_KeptOut = false;
+            g_EventSerial++;
             const auto* link = static_cast<const Game::Actors::Player*>(player);
             if (global_config.tweaks.instant_pickups && MovesFreely(link)) {
                 const RunningEvent* event = Running(static_cast<const EventManager*>(*Game::EventManager_ptr));
@@ -164,6 +166,10 @@ namespace {
         }
     };
 }
+
+    u32 EventSerial() { return g_EventSerial; }
+
+    bool LinkKeptOut() { return g_KeptOut; }
 
     void InstallPickupEventHooks() {
         PlayerOnEventStart::InstallAtFuncPtr(Game::Player_OnEventStart.Ptr());
