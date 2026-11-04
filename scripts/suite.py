@@ -38,6 +38,7 @@ LOGS = SUITE / "logs"
 TIMES = SUITE / "times.json"
 TITLE = "01006BB00C6F0000"
 MODULE = ROOT / "patcher" / "exl-test" / "subsdk9"
+MODULE_SOURCE = ROOT / "las-ap-exl"
 NEWGAME = Path(emu.SANDBOX) / "save-newgame"
 GHOST_SECRET = "test"
 SCRIPT_TIMEOUT = 300
@@ -284,6 +285,16 @@ def base_config_hash() -> str:
     return next((l.partition("=")[2].strip() for l in config.splitlines() if l.startswith("seed_hash")), "?")
 
 
+def newer_source() -> str:
+    """A module source file newer than the test module (build_exl.sh has not run since it changed), or ""."""
+    sources = [f for f in MODULE_SOURCE.rglob("*") if f.is_file() and f.suffix in (".cpp", ".hpp", ".h", ".c")
+               and not {"build", "build-test", "out", "deploy"} & set(f.relative_to(MODULE_SOURCE).parts)]
+    newest = max(sources, key=lambda f: f.stat().st_mtime, default=None)
+    if newest is None or newest.stat().st_mtime <= MODULE.stat().st_mtime:
+        return ""
+    return newest.relative_to(ROOT).as_posix()
+
+
 def check_mod(path: Path) -> None:
     """Refuses a sandbox whose installed mod is not the suite's: the make_test_patch.py patch of suite.txt's `mod:`
     options, whose seed_hash (a hash of the patch) the mod's config.ini carries."""
@@ -314,6 +325,8 @@ def main() -> None:
     emu.check()
     if not MODULE.exists():
         raise SystemExit(f"no test module {MODULE}: run scripts/build_exl.sh")
+    if newer := newer_source():
+        raise SystemExit(f"the test module is older than {newer}: run scripts/build_exl.sh")
     groups = read_groups(TESTS / "suite.txt")
     if args.groups:
         unknown = set(args.groups) - {g.name for g in groups}

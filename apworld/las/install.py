@@ -32,8 +32,8 @@ PATCHER_PREFIX = f"{Path(__file__).parent.name}/patcher/"
 PATCHER_BUILD = PATCHER_PREFIX + "build.txt"
 SOURCE_PATCHER = Path(__file__).resolve().parent.parent.parent / "patcher"
 # Top-level modules of the patcher
-PATCHER_MODULES = {"las_ap_patch", "ap_assets", "ap_entrances", "ap_goal", "ap_hints", "ap_map", "ap_options",
-                   "ap_save_name", "ap_shuffles", "romfs_check", "seed_file"}
+PATCHER_MODULES = {"las_ap_patch", "ap_assets", "ap_bntx", "ap_chest_model", "ap_ghost_model", "ap_entrances", "ap_goal",
+                   "ap_hints", "ap_map", "ap_options", "ap_save_name", "ap_shuffles", "romfs_check", "seed_file"}
 _PATCHER_LOCK = threading.Lock()
 
 

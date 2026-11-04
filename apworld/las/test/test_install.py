@@ -290,6 +290,17 @@ class TestPatchWithoutBuild(LASTestBase):
             self.assertTrue((out / "atmosphere" / "contents" / TITLE_ID / "romfs" / "region_common").is_dir())
 
 
+@unittest.skipUnless((ROMFS / "region_common").is_dir(), "RomFS dump not found (LASAP_ROMFS)")
+class TestMadeAssets(unittest.TestCase):
+    def test_made_assets(self) -> None:
+        """The patcher makes the assets it has a recipe for (ap_assets.MADE) byte for byte as the build did (load
+        checks their SHA-256), with the asset build's modules blocked."""
+        result = run_without_excluded(
+            f"import ap_assets\nfrom pathlib import Path\n"
+            f"for path in ap_assets.MADE:\n    ap_assets.load(Path({str(ROMFS)!r}), path)")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+
 class TestPatchOtherLocations(TestPatchWithoutBuild):
     """The options that change which locations a seed has: the patch still has the assets' locations."""
     options = {"owl_statues": "all", "chests": False, "boss_drops": False, "instruments": "vanilla",

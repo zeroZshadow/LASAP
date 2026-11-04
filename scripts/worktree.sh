@@ -1,8 +1,8 @@
 #!/bin/bash
 # Work in a git worktree of this repository beside other sessions (TESTING.md, "Working in a worktree").
 #   worktree.sh setup      own Archipelago worktree (vendor/Archipelago, worlds/las -> this worktree's world) and the
-#                          built modules (patcher/exl, patcher/exl-test) and scripts/local_paths.json from the main
-#                          checkout
+#                          built modules (patcher/exl, patcher/exl-test, with their build times) and
+#                          scripts/local_paths.json from the main checkout
 #   worktree.sh test [args] the world's tests with pytest, on this worktree's world
 #   worktree.sh land <subject> [<line> [<line>]]
 #                          rebase this branch onto master, put it on master as one commit with that message, then
@@ -38,7 +38,7 @@ setup)
     for dir in exl exl-test; do
         if [ ! -e "$ROOT/patcher/$dir/subsdk9" ] && [ -e "$MAIN/patcher/$dir/subsdk9" ]; then
             mkdir -p "$ROOT/patcher/$dir"
-            cp "$MAIN/patcher/$dir/"* "$ROOT/patcher/$dir/"
+            cp -p "$MAIN/patcher/$dir/"* "$ROOT/patcher/$dir/"  # with their times: the staleness checks read them
         fi
     done
     echo "worktree ready: Archipelago at vendor/Archipelago, venvs at $MAIN/.venv-ap and $MAIN/.venv-lasr"

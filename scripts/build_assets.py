@@ -1,8 +1,9 @@
 """Builds patcher/assets: the mod's RomFS, the same for every seed, as patches against the RomFS, and what the seed's
 files take from the build (patcher/ap_assets.py). The mod is built from a patch with the locations the world gives
-every seed (make_test_patch.make) by LASR's mod generator with the patcher's edits (patcher/modbuild/mod.py), and the
-files only this build makes (the title screen and notice look, the Archipelago model, the chests, the map icons and
-the ghosts' model). Run with .venv-lasr after changing what the mod's files come from, and commit the result:
+every seed (make_test_patch.make) by LASR's mod generator with the patcher's edits (patcher/modbuild/mod.py), the
+files only this build makes (the title screen and notice look, the Archipelago model and the map icons) and the
+files the patcher makes itself (ap_assets.MADE: the ghosts' model and the chest textures). Run with .venv-lasr after
+changing what the mod's files come from, and commit the result:
   python scripts/build_assets.py [--romfs <RomFS folder>] [--check]
 --check builds and compares with the committed assets instead of writing them.
 """
@@ -23,15 +24,12 @@ from local_paths import local_path  # noqa: E402
 
 
 def own_files(romfs: Path) -> Dict[str, bytes]:
-    """The files of the mod only this build makes (they need oead's SARC, quicktex and Pillow)."""
-    import ap_chest
+    """The files of the mod only this build makes (they need oead's SARC, quicktex and Pillow), and those the patcher
+    makes itself."""
     import ap_map_icons
     import ap_model
-    import ap_player_ghost
     import ap_ui
-    from RandomizerCore.Randomizers.chests import CHEST_TEXTURES as LASR_CHEST_TEXTURES
-    from RandomizerCore.Tools.bntx_tools import (createChestBfresWithCustomTexturesIfMissing,
-                                                 createRandomizerTitleScreenArchive)
+    from RandomizerCore.Tools.bntx_tools import createRandomizerTitleScreenArchive
     from RandomizerCore.Tools.oead_tools import SARC
 
     built = {}
@@ -39,13 +37,9 @@ def own_files(romfs: Path) -> Dict[str, bytes]:
     createRandomizerTitleScreenArchive(sarc)  # LASR's title screen logo
     built[ap_assets.UI] = ap_ui.build(bytes(sarc.repack()))
     built[ap_assets.MODEL] = ap_model.build(str(romfs / ap_assets.SOURCES[ap_assets.MODEL]))
-    built[ap_assets.PLAYER_GHOST] = ap_player_ghost.build(str(romfs / ap_assets.SOURCES[ap_assets.PLAYER_GHOST]))
+    for path, make in ap_assets.MADE.items():  # the patcher makes these itself, the same way
+        built[path] = make((romfs / ap_assets.SOURCES[path]).read_bytes())
     built[ap_assets.GAME] = ap_map_icons.build((romfs / ap_assets.GAME).read_bytes())
-    with tempfile.TemporaryDirectory() as tmp:
-        createChestBfresWithCustomTexturesIfMissing(str(romfs / ap_assets.CHEST), tmp, LASR_CHEST_TEXTURES)
-        for path in ap_assets.LASR_CHESTS:
-            built[path] = (Path(tmp) / Path(path).name).read_bytes()
-    built[ap_assets.SEASHELL_CHEST] = ap_chest.build(str(romfs / ap_assets.CHEST))
     return built
 
 
@@ -83,7 +77,7 @@ def main() -> int:
         print(f"{len(built)} files, {len(differ)} differ from the committed assets")
         return 1 if differ else 0
     ap_assets.write(args.romfs, built, data)
-    size = sum(ap_assets.patch_path(path).stat().st_size for path in built)
+    size = sum(ap_assets.patch_path(path).stat().st_size for path in built if path not in ap_assets.MADE)
     print(f"{len(built)} files, {size} bytes of patches")
     return 0
 

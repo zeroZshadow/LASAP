@@ -30,9 +30,10 @@ GAME = "Links Awakening Switch"
 PREFIX = "las/patcher/"  # install.py PATCHER_PREFIX
 TESTS = "las/test/"  # the world's tests, which "Build APWorlds" packs and players do not need
 # Patcher files and folders, relative to patcher/
-PATCHER_FILES = ("las_ap_patch.py", "ap_assets.py", "ap_entrances.py", "ap_goal.py", "ap_hints.py", "ap_map.py",
-                 "ap_options.py", "ap_save_name.py", "ap_shuffles.py", "seed_file.py", "romfs_check.py",
-                 "map_positions.json", "version.txt", "LICENSE-LASR.txt", "data", "assets", "exl/subsdk9", "exl/main.npdm")
+PATCHER_FILES = ("las_ap_patch.py", "ap_assets.py", "ap_bntx.py", "ap_chest_model.py", "ap_ghost_model.py",
+                 "ap_entrances.py", "ap_goal.py", "ap_hints.py", "ap_map.py", "ap_options.py", "ap_save_name.py",
+                 "ap_shuffles.py", "seed_file.py", "romfs_check.py", "map_positions.json", "version.txt",
+                 "LICENSE-LASR.txt", "data", "assets", "exl/subsdk9", "exl/main.npdm")
 # What only the asset build imports (patcher/modbuild, LASR's code and its libraries); test_install.py patches with
 # these blocked. The patcher itself needs PyYAML and bsdiff4, which Archipelago has.
 BUILD_ONLY = ("modbuild", "RandomizerCore", "evfl", "lms", "oead")

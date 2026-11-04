@@ -1,8 +1,8 @@
-"""Sets up the multiplayer ghosts' model and rows (patcher/modbuild/ap_player_ghost.py) in the sandbox mod, as the patcher
-does, or takes them out again; for a mod deployed from an older patcher output.
+"""Sets up the multiplayer ghosts' model (patcher/ap_ghost_model.py) and rows (patcher/modbuild/ap_player_ghost.py) in
+the sandbox mod, as the patcher does, or takes them out again; for a mod deployed from an older patcher output.
 
-install: writes romfs/region_common/actor/PlayerGhost.bfres from the asset patch (patcher/assets) and the RomFS
-dump's Playerlink.bfres, and adds the rows APGhost to the deployed Npc.gsheet and Facial.gsheet (from the dump's when
+install: writes romfs/region_common/actor/PlayerGhost.bfres, made from the RomFS dump's Playerlink.bfres
+(ap_assets.load), and adds the rows APGhost to the deployed Npc.gsheet and Facial.gsheet (from the dump's when
 the mod has none), keeping each sheet as <sheet>.before-puppet.
 uninstall: removes the model and puts the kept sheets back.
 

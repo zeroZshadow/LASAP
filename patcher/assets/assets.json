@@ -432,22 +432,22 @@
  "region_common/actor/ObjTreasureBoxJunk.bfres": {
   "source": "region_common/actor/ObjTreasureBox.bfres",
   "source_sha256": "57b492c665c8e9e8d4dc24ad499543a570a392dd1aae4216df15819d31671a91",
-  "sha256": "4b7d43d78971c9c4790d070a1f6e21dc6e757b0501d8af0c99d405d53bc482e6"
+  "sha256": "f71a0400ba57eb272d6bd76b6ddc1f22620a8431bb129a34df856c4425d4999f"
  },
  "region_common/actor/ObjTreasureBoxKey.bfres": {
   "source": "region_common/actor/ObjTreasureBox.bfres",
   "source_sha256": "57b492c665c8e9e8d4dc24ad499543a570a392dd1aae4216df15819d31671a91",
-  "sha256": "d7975ad889af501ca8b3ee8421bb10f84e643ece270a46d2b144c58f0a0fe07a"
+  "sha256": "5ec96ffdc657c27ead0a95e284fcca0e9fed40106272ebc577105169f0e84b69"
  },
  "region_common/actor/ObjTreasureBoxLifeUpgrade.bfres": {
   "source": "region_common/actor/ObjTreasureBox.bfres",
   "source_sha256": "57b492c665c8e9e8d4dc24ad499543a570a392dd1aae4216df15819d31671a91",
-  "sha256": "1749ff53f277df884f9a9e6b8ef85949e76e6e127347b9f69855a00a1d447eb6"
+  "sha256": "26adda4980ec404752ec1395aca262b8642bc106805b1da01f6455e958834c4b"
  },
  "region_common/actor/ObjTreasureBoxSeashell.bfres": {
   "source": "region_common/actor/ObjTreasureBox.bfres",
   "source_sha256": "57b492c665c8e9e8d4dc24ad499543a570a392dd1aae4216df15819d31671a91",
-  "sha256": "d4a124cfb02b0ebb2502dfa3ddef061f21d8eca4a11ff0401751c6a0e7fec275"
+  "sha256": "11674516a961fde19de4ba16aed6d3a3b61c831aafc52ae701d634665de62b66"
  },
  "region_common/actor/PlayerGhost.bfres": {
   "source": "region_common/actor/Playerlink.bfres",
