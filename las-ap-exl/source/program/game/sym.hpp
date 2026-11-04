@@ -52,6 +52,9 @@ namespace Game {
     inline constexpr Global<UnorderedMap*> ActorRegistry_ptr{0x1cb2d00};
     // (out, key): the live actor with that LEB key, or null
     inline constexpr Func<void(SharedPtr<Actor>*, u64)> ActorRegistry_FindByKey{0x8f8200};
+    // (room, actor shared_ptr*): the actor becomes a child of the room's root, out of its old parent; +0xb4 the room's
+    // area id. False when the room owns it already.
+    inline constexpr Func<bool(void*, SharedPtr<>*)> Room_AdoptActor{0x2b8e0};
     // (out enemy, chest): the enemy a chest of $ENEMY lets out, made in the chest's room and zone above its lid
     inline constexpr Func<void(SharedPtr<Actor>*, Actor*)> ObjTreasureBox_PopEnemy{0xca9290};
     // The entity manager: its start task (manager, entity shared_ptr*)

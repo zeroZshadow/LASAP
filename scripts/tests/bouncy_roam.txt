@@ -1,0 +1,57 @@
+# Bouncy Items, a ball that leaves its chest's room (DESIGN.md, Bouncy Items, Rooms): the beach chest's ball
+# (Field_15F, chest 720119005CFF3742) goes west and north in hops while Link follows, joining each room it comes to; it
+# stays active around Link and lives on when the chest's room unloads. The chest's room loads again with the ball out:
+# the chest is made open and no second ball comes. Link leaves the ball's room behind: the ball is gone. The chest's room
+# loads again: the chest is closed and launches a new ball.
+# Run after boot_file1 on a mod patched with Bouncy Items, the beach chest not taken.
+guard hurt
+warp Field 86.25 6 173.25
+at 86.25 173.25
+face right
+interact
+until carry=1+free 3
+face left
+tap 1
+until carry=0 3
+goto 87.75 6 173.25
+face up
+guard off hurt
+interact
+poll OK.drop.*active=1 8 DBG drop
+send DBG drop at 70 8 175
+expect OK.drop 2
+poll OK.drop.*active=1.*room=level/Field/Field_15E 5 DBG drop
+goto 57 6 175.5
+send DBG drop at 58.5 10 152.25
+expect OK.drop 2
+poll OK.drop.*room=level/Field/Field_13D 5 DBG drop
+goto 54.75 9 160.5
+poll OK.drop.*active=1 5 DBG drop
+goto 38.25 10.5 129
+poll OK.actor.720119005CFF3742.0 10 DBG actor 720119005CFF3742
+send DBG drop
+expect OK.drop.*room=level/Field/Field_13D 2
+goto 54.75 9 160.5
+goto 86.25 6 173.25
+poll OK.actor.720119005CFF3742.1 10 DBG actor 720119005CFF3742
+poll OK.drop.*room=level/Field/Field_13D.*chest=1 5 DBG drop
+shot roam_chest_open.png
+goto 138.75 7.5 176.25
+poll OK.drop.- 10 DBG drop
+send DBG actor 720119005CFF3742
+expect OK.actor.720119005CFF3742.1 2
+goto 156.75 7.5 162.75
+poll OK.actor.720119005CFF3742.0 10 DBG actor 720119005CFF3742
+goto 138.75 7.5 176.25
+goto 86.25 6 173.25
+poll OK.actor.720119005CFF3742.1 10 DBG actor 720119005CFF3742
+face right
+interact
+until carry=1+free 3
+face left
+tap 1
+until carry=0 3
+goto 87.75 6 173.25
+face up
+interact
+poll OK.drop.-?[0-9] 8 DBG drop

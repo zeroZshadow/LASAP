@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-namespace Game { struct ActorParams; struct Framework; struct Node; struct Vec3; namespace Event { struct EventRequest; } }
+namespace Game { struct ActorParams; struct Framework; struct LebActorRecord; struct Node; struct Vec3; namespace Event { struct EventRequest; } }
 
 namespace AP::Bridge {
     using Game::Data::ItemId;
@@ -158,9 +158,16 @@ namespace AP::Bridge {
 
     // Adds ItemAPDrop to the actor table; before any room loads.
     void InstallDropActor();
+    // A room reads a roaming ball's LEB record (Bouncy Items) while that ball is live: true when the room must leave
+    // the record alone, as the ball stays where it is (DESIGN.md, Bouncy Items, Rooms). `leb` is the room's LEB.
+    bool DropStaysOut(void* leb, const Game::LebActorRecord* record);
 #ifdef LASAP_TEST
     // DBG drop: the drop actor that fell last (TESTING.md, Debug commands), " -" when it is gone
     std::string DropState();
+    // DBG drop launch <LEB key, hex>: that drop actor becomes the one DBG drop shows, and its switch 0 goes on (it pops)
+    bool DropLaunch(u64 key);
+    // DBG drop at <x> <y> <z>: the drop DBG drop shows, moved there at rest
+    bool DropAt(const Game::Vec3& at);
 #endif
 
     // ---- The models the locations show (ap_models.cpp) ----

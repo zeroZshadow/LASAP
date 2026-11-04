@@ -9,6 +9,10 @@
 #include "lib.hpp"
 #include <cstddef>
 
+namespace Game::Map {
+    struct Area;
+}
+
 namespace Game {
     // GameState::unused_c0's element.
     struct GameStateEntry {
@@ -50,7 +54,8 @@ namespace Game {
 
     // A loaded area's room (Room_Ctor; 0x250 bytes; ACTORS.md, Rooms): the container of its actors and its zone.
     struct Room {
-        u8 pad_0[0x1b8];
+        u8 pad_0[0x1a8];
+        SharedPtr<Map::Area> area; // 0x1a8
         SharedPtr<> root;          // 0x1b8: its actors' container, the owner the room's Actor_Create calls pass
         u8 pad_1c8[0x78];
         s32 zone;                  // 0x240
@@ -58,7 +63,7 @@ namespace Game {
         u8 aborted;                // 0x24a: a level jump
         u8 pad_24b[0x5];
     };
-    static_assert(offsetof(Room, root) == 0x1b8 && offsetof(Room, zone) == 0x240);
+    static_assert(offsetof(Room, area) == 0x1a8 && offsetof(Room, root) == 0x1b8 && offsetof(Room, zone) == 0x240);
     static_assert(offsetof(Room, aborted) == 0x24a && sizeof(Room) == 0x250);
 
     // The level's room manager (LevelScene::roomManager; a task named "Play"): a room per loaded area.

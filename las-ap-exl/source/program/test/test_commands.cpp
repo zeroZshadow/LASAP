@@ -772,6 +772,14 @@ namespace {
         } else if (cmd == "zols") {
             // DBG zols: where the last Zol Trap let out its enemies, the traps so far and its enemies still alive
             AP::Send("OK zols" + ZolTrapState());
+        } else if (cmd == "drop" && a.size() >= 4 && a[2] == "launch") {
+            // DBG drop launch <LEB key, hex>: that drop's switch 0 on, so it pops (ap_drop.cpp)
+            bool ok = DropLaunch(strtoull(a[3].c_str(), nullptr, 16));
+            AP::Send(ok ? "OK drop" + DropState() : "ERR drop launch");
+        } else if (cmd == "drop" && a.size() >= 6 && a[2] == "at") {
+            // DBG drop at <x> <y> <z>: the drop moved there, at rest (ap_drop.cpp)
+            Game::Vec3 at{strtof(a[3].c_str(), nullptr), strtof(a[4].c_str(), nullptr), strtof(a[5].c_str(), nullptr)};
+            AP::Send(DropAt(at) ? "OK drop" + DropState() : "ERR drop at");
         } else if (cmd == "drop") {
             // DBG drop: where the drop actor made last is (ap_drop.cpp)
             AP::Send("OK drop" + DropState());

@@ -17,6 +17,7 @@ Environment: LASAP_INSTANCE (a suite instance, emu.py; default 0, the sandbox), 
 the instance's e2e folder, the sandbox folder's e2e for the sandbox), LASAP_SLOT (default Link), LASAP_GAME_PORT
 (the game port, default the instance's, 43385 for the sandbox; the debug port is 100 above it).
 """
+import math
 import os
 import re
 import socket
@@ -35,6 +36,7 @@ GAME_PORT = int(os.environ.get("LASAP_GAME_PORT", str(emu.instance_port(emu.INST
 DEBUG_PORT = GAME_PORT + 100
 DROP_STILL = 0.05  # a drop actor's body at rest: each velocity component at most this (units a second)
 DROP_FLOATING = 0.5  # in water, where a ball (Bouncy Items) drifts and dips: each component at most this
+DROP_TOUCH = 0.35  # gotodrop: Link this far from the drop on his side, within its touch
 REPLY = re.compile(r"^(OK|ERR|DONE|FAIL|HELD|HOLDS|CHOICE|STATE|FLAG|UI|FRAME|POPFRAME|PEEK|RECV|MAP|TEXT|MUSIC|map=)")
 
 
@@ -528,11 +530,19 @@ def run(script: Path, trace: str | None = None) -> None:
             drop_rest(float(rest or 10), True)
         elif op == "gotodrop":
             # gotodrop [secs]: once the drop actor whose Fall ran last (DBG drop) is active and has come to rest, puts
-            # Link on it, which picks it up; no settling, as the pickup's event starts at once
+            # Link against it on his side, which picks it up (right on it, against a wall, the wall pushes him off); no
+            # settling, as the pickup's event starts at once
             at = drop_rest(float(rest or 10))
             if at is None:
                 raise SystemExit(f"the drop actor is gone; {state()}")
-            print(game().request(f"DBG pos {at[0]:.2f} {at[1]:.2f} {at[2]:.2f}", r"^OK pos"))
+            link = position(state())
+            x, z = at[0], at[2]
+            if link is not None:
+                away = math.hypot(link[0] - x, link[2] - z)
+                if away > DROP_TOUCH:
+                    x += (link[0] - x) / away * DROP_TOUCH
+                    z += (link[2] - z) / away * DROP_TOUCH
+            print(game().request(f"DBG pos {x:.2f} {at[1]:.2f} {z:.2f}", r"^OK pos"))
         elif op == "check":
             # check <regex>: stops the script unless the STATE line matches
             line = state()

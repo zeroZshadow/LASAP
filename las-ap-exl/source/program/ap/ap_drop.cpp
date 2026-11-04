@@ -12,6 +12,7 @@
 #include "game/event.hpp"
 #include "game/framework.hpp"
 #include "game/hooks/level.hpp"
+#include "game/map.hpp"
 #include "game/mem.hpp"
 #include "game/switch.hpp"
 #include "game/sym.hpp"
@@ -54,10 +55,16 @@ namespace {
     // The NPC component's body linear velocity setter (const Vec3*)
     constexpr size_t kSetVelocity = 0x290;
     // With Bouncy Items, the component's: the item update, which the drop's wraps, and in water the upward
-    // acceleration and the linear damping (scripts/re/ITEMS.md, Item actors, Physics, Water). The drop's lift is a
-    // little more than gravity, so it floats, and its damping more than the item base's, so it settles
-    constexpr size_t kItemUpdate = 0x3c8, kWaterLift = 0x400, kWaterDamping = 0x410;
-    constexpr float kLift = 12.0f, kDamping = 4.0f;
+    // acceleration and the linear damping (scripts/re/ITEMS.md, Item actors, Physics, Water). The water event probes
+    // the root plus its offset; the ball's probe is kProbeBelow under its root, so the ball rides on the drawn water.
+    // Its lift is a spring around kRestDepth, the probe's depth at rest: gravity there, less above, more below, never
+    // under 0. The item base adds the lift only deeper than kLiftBand below the surface; within the band the ball's
+    // update adds it (PhysX addForce as acceleration). Its damping in water lets it rebound once after a fall.
+    constexpr size_t kItemUpdate = 0x3c8, kWaterLift = 0x400, kWaterDamping = 0x410, kAddForce = 0x150;
+    constexpr u32 kAcceleration = 3;
+    constexpr float kProbeBelow = 0.3f, kRestDepth = 0.08f, kSpring = 60.0f, kLiftBand = 0.3f, kDamping = 8.0f;
+    // The chest's opened flag: its actor switch
+    constexpr int kChestOpened = 1;
     // A signal's virtual that connects a Function*
     constexpr size_t kSignalConnect = 0x20;
     // LebRoom virtual +0x28 (index): the room's LEB record of that index
@@ -191,7 +198,23 @@ namespace {
     // The launch the boss gave its item last (Enemy_DropItems' default before any)
     Game::Vec3 g_BossLaunch{0, 4, 0};
 
+    // The chests whose rooms read their balls' records while those balls were out, so these rooms made no drop
+    // (Room_OnLebActor) and a closed chest would launch nothing: their opened flags read as on (ChestOpened). With the
+    // level load each holds for.
+    struct OpenChest {
+        u64 chest;
+        u32 load;
+    };
+    constexpr int kOpenChests = 4;
+    OpenChest g_OpenChests[kOpenChests]{};
+
     bool Bouncy() { return global_config.Option("bouncy_items"); }
+
+    // A ball goes wherever its launch and bounces take it, other rooms too (DESIGN.md, Bouncy Items, Rooms); a drop that
+    // stands stays, and a key that falls again whenever Link enters its zone keeps its zone for that.
+    bool Roams(int motion) {
+        return Bouncy() && motion != AP::DROP_STANDS && motion != AP::DROP_PLACED && motion != AP::DROP_REFALLS;
+    }
 
     StrView RowKey() { return StrView{AP::DROP_ACTOR}; }
 
@@ -375,6 +398,14 @@ namespace {
         Game::CallVirtual<void(const Game::Vec3*)>(comp, kSetVelocity, &velocity);
     }
 
+    // The ball's water probe, kProbeBelow under its root, before each update's probe
+    void SetProbe(void* comp) {
+        Game::Actors::WaterEvent* water = WaterOf(comp);
+        if (water == nullptr) return;
+        water->hasOffset = true;
+        water->offset.y = -kProbeBelow;
+    }
+
     void* PhysxActor(void* comp) {
         Game::Actors::BodyCollision* collision = Item(comp)->npc.collision.get();
         return collision != nullptr && collision->body != nullptr ? collision->body->pxActor : nullptr;
@@ -434,6 +465,8 @@ namespace {
         if (actor == nullptr || actor->root == nullptr) return;
         TEST_ONLY(g_Last = {actor, actor->entity.self.ctrl};)
         int motion = Motion(*actor);
+        // Zone -1 keeps it active while Link is in another zone, so he can follow it.
+        if (Roams(motion)) actor->zone = -1;
         if (Boss(motion)) {
             const Game::Vec4& spawn = actor->spawnPos;
             Launch(comp, actor, {spawn.x, spawn.y, spawn.z}, g_BossLaunch);
@@ -461,7 +494,21 @@ namespace {
 
     // ---- The ball (Bouncy Items) ----
 
-    float WaterLift(void*) { return kLift; }
+    // The probe's depth below the surface while in water, else false
+    bool Depth(void* comp, float* depth) {
+        Actor* actor = Owner(comp);
+        Game::Actors::WaterEvent* water = WaterOf(comp);
+        if (actor == nullptr || actor->root == nullptr || water == nullptr || !water->inWater) return false;
+        *depth = water->surface - (actor->root->coords.pos.y + (water->hasOffset ? water->offset.y : 0));
+        return true;
+    }
+
+    float LiftAt(float depth) { return std::fmax(0.0f, -kGravity + kSpring * (depth - kRestDepth)); }
+
+    float WaterLift(void* comp) {
+        float depth;
+        return Depth(comp, &depth) ? LiftAt(depth) : -kGravity;
+    }
     float WaterDamping(void*) { return kDamping; }
 
     // The bounce off a wall PhysX left out: `was` the velocity at the last update, `now` this one's, `step` the time
@@ -482,13 +529,34 @@ namespace {
         Game::CallVirtual<void(const Game::Vec3*)>(comp, kSetVelocity, now);
     }
 
-    // The item update, then the ball's: its chest's opened flag off again, a wall's bounce, and the damping on the
+    // A roaming ball joins the room it is over, so that it stays active around Link wherever he follows it, and lives on
+    // when the room it came from unloads. Over no loaded room it stays in the one it has.
+    void JoinRoom(Actor* actor) {
+        Game::Framework* fmwk = Game::GetFramework();
+        if (Game::SceneOf(fmwk) != Game::Scene::Level) return;
+        Game::RoomManager* manager = static_cast<Game::LevelScene*>(fmwk->gameState->scene)->roomManager.get();
+        if (manager == nullptr) return;
+        const Game::Vec3& at = actor->root->coords.pos;
+        for (Game::Room* room : manager->rooms) {
+            if (room == nullptr || room->aborted || room->root.ptr == nullptr || room->area.ptr == nullptr) continue;
+            const Game::Map::Area& area = *room->area.ptr;
+            if (at.x < area.min.x || at.x >= area.max.x || at.z < area.min.z || at.z >= area.max.z) continue;
+            if (room->root.ptr == actor->entity.parent.ptr) return;
+            Shared<> self = Shared<>::Lock(actor->entity.self);
+            Game::Room_AdoptActor(room, self.Untyped());
+            return;
+        }
+    }
+
+    // The item update, then the ball's: its room, its chest's opened flag off again, a wall's bounce, and the damping on the
     // ground or in the air. The opened flag goes off at the first update after the launch, once no event runs: during
     // its event the chest, still opening, would close again with it off (DESIGN.md, Bouncy Items, Opened when taken).
     void ItemUpdate(void* comp) {
+        SetProbe(comp);
         g_ItemUpdate(comp);
         Ball& ball = BallOf(comp);
         Actor* actor = Owner(comp);
+        if (actor != nullptr && actor->root != nullptr && actor->zone == -1 && !actor->entity.Gone()) JoinRoom(actor);
         if (ball.opened && actor != nullptr) {
             SetSwitch(*actor, AP::DropSwitch::Opened, false);
             ball.opened = 0;
@@ -509,7 +577,15 @@ namespace {
             ball.touches = falling ? 0 : ball.touches < kTouching ? ball.touches + 1 : kTouching;
         }
         ball.velocity = now;
-        if (water) return;
+        if (water) {
+            Game::CallVirtual<void(float)>(px, kSetLinearDamping, kDamping);
+            float depth;
+            if (Depth(comp, &depth) && depth <= kLiftBand) {
+                Game::Vec3 lift{0, LiftAt(depth), 0};
+                Game::CallVirtual<void(const Game::Vec3*, u32, bool)>(px, kAddForce, &lift, kAcceleration, true);
+            }
+            return;
+        }
         ground = ball.touches >= kTouching;
         Game::CallVirtual<void(float)>(px, kSetAngularDamping, ground ? kSpinDampGround : kSpinDampAir);
         float drag = ground ? kDragGround : Game::CallVirtual<float()>(comp, kTraitsDrag);
@@ -877,9 +953,50 @@ namespace {
         }
     };
 
+    // A chest whose ball is out reads as opened, so it is made open; its saved flag stays off, so a save at that time
+    // does not keep it open for good.
+    HOOK_DEFINE_TRAMPOLINE(ChestOpened) {
+        static bool Callback(const Game::LebActorRecord* record, int slot) {
+            if (slot == kChestOpened && record != nullptr) {
+                for (const OpenChest& open : g_OpenChests) {
+                    if (open.chest == record->key && open.load == LevelSystem::LoadCount()) return true;
+                }
+            }
+            return Orig(record, slot);
+        }
+    };
+
+    void SetOpenChest(u64 chest, bool out) {
+        u32 load = LevelSystem::LoadCount();
+        OpenChest* slot = &g_OpenChests[0];
+        for (OpenChest& open : g_OpenChests) {
+            if (open.chest == chest) {
+                open = out ? OpenChest{chest, load} : OpenChest{};
+                return;
+            }
+            if (open.load != load) slot = &open;
+        }
+        if (out) *slot = {chest, load};
+    }
+
     template<typename F>
     uintptr_t Slot(F f) { return reinterpret_cast<uintptr_t>(f); }
 }
+
+    bool DropStaysOut(void* leb, const Game::LebActorRecord* record) {
+        int motion = static_cast<s32>(record->params[0].value);
+        if (record->actorId != AP::DROP_ACTOR_ID || !Roams(motion)) return false;
+        Shared<Actor> held;
+        Game::ActorRegistry_FindByKey(held.Reset(), record->key);
+        bool out = held && held->zone == -1;
+        if (motion == AP::DROP_CHEST && record->linkCount != 0) {
+            void* lebRoom = static_cast<SharedPtr<>*>(leb)->ptr;
+            auto* chest = Game::CallVirtual<const Game::LebActorRecord*(u32)>(lebRoom, kLebRoomRecord,
+                                                                              record->Links()[0].actorIndex);
+            if (chest != nullptr) SetOpenChest(chest->key, out);
+        }
+        return out;
+    }
 
     void InstallDropActor() {
         Game::ActorTableEntry& entry = Game::ActorTable.Ptr()[AP::DROP_ACTOR_ID];
@@ -906,6 +1023,7 @@ namespace {
             g_ComponentVtable[kItemUpdate / 8] = Slot(&ItemUpdate);
             g_ComponentVtable[kWaterLift / 8] = Slot(&WaterLift);
             g_ComponentVtable[kWaterDamping / 8] = Slot(&WaterDamping);
+            ChestOpened::InstallAtFuncPtr(Game::ActorSwitch_IsOn.Ptr());
         }
         SetCtrlVtable(g_ActorCtrlVtable, &ActorGone);
         SetCtrlVtable(g_ComponentCtrlVtable, &ComponentGone);
@@ -934,9 +1052,23 @@ namespace {
         const Game::Vec3& p = actor->root->coords.pos;
         void* comp = reinterpret_cast<ItemActor*>(actor)->component;
         Game::Actors::WaterEvent* water = comp != nullptr ? WaterOf(comp) : nullptr;
-        char text[160];
-        int n = snprintf(text, sizeof(text), " %.2f,%.2f,%.2f active=%d water=", p.x, p.y, p.z,
-                         actor->entity.Active() ? 1 : 0);
+        Shared<Actor> hold;
+        Actor* chest = Motion(*actor) == AP::DROP_CHEST ? LinkedActor(*actor, &hold) : nullptr;
+        const char* room = "-";
+        Game::Framework* fmwk = Game::GetFramework();
+        if (Game::SceneOf(fmwk) == Game::Scene::Level) {
+            Game::RoomManager* manager = static_cast<Game::LevelScene*>(fmwk->gameState->scene)->roomManager.get();
+            for (Game::Room* r : manager->rooms) {
+                if (r != nullptr && r->area.ptr != nullptr && r->root.ptr == actor->entity.parent.ptr) {
+                    room = r->area.ptr->path;
+                }
+            }
+        }
+        char text[300];
+        int n = snprintf(text, sizeof(text), " %.2f,%.2f,%.2f active=%d zone=%d flags=%x zs=%x room=%s chest=%d water=",
+                         p.x, p.y, p.z, actor->entity.Active() ? 1 : 0, actor->zone, actor->entity.flags.Raw(),
+                         actor->zoneState, room,
+                         chest != nullptr ? Game::ActorSwitch_IsOn(chest->record, kChestOpened) : -1);
         if (water != nullptr && water->inWater) {
             n += snprintf(text + n, sizeof(text) - n, "%.2f", water->surface);
         } else {
@@ -951,6 +1083,28 @@ namespace {
                      Game::CallVirtual<float()>(px, kGetAngularDamping));
         }
         return text;
+    }
+
+    bool DropLaunch(u64 key) {
+        Shared<Actor> held;
+        Game::ActorRegistry_FindByKey(held.Reset(), key);
+        Actor* actor = held.get();
+        if (actor == nullptr || actor->entity.Gone() ||
+            !Game::CallVirtual<bool(const void*)>(actor, kIsA, &g_ActorType)) {
+            return false;
+        }
+        g_Last = {actor, actor->entity.self.ctrl};
+        SetSwitch(*actor, AP::DropSwitch::Pop, true);
+        return true;
+    }
+
+    bool DropAt(const Game::Vec3& at) {
+        Actor* actor = g_Last.Peek();
+        if (actor == nullptr || actor->entity.Gone() || actor->root == nullptr) return false;
+        void* comp = reinterpret_cast<ItemActor*>(actor)->component;
+        if (comp == nullptr) return false;
+        Launch(comp, actor, at, {0, 0, 0});
+        return true;
     }
 #endif
 }

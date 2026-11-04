@@ -26,7 +26,7 @@ dungeon_found client: newgame_file2 dungeon_found
 jukebox_rapids: boot_file1 jukebox_rapids
 options_on options.open_mabe=True options.randomize_enemies=True options.classic_d2=True options.completed_bridge=True options.ammo_ghost=False: newgame_file2 option_rooms
 options_off: newgame_file2 option_rooms_off
-bouncy options.bouncy_items=True options.owl_dungeons=True: boot_file1 bouncy_chest owl_drop
+bouncy options.bouncy_items=True options.owl_dungeons=True: boot_file1 bouncy_chest owl_drop bouncy_roam
 ammo_ghost: newgame_file2 ammo_ghost
 ammo_ghost_powder: newgame_file2 ammo_ghost_powder
 buff_drops tweaks.no_guardian_acorn=True tweaks.no_piece_of_power=True: newgame_file2 buff_drops

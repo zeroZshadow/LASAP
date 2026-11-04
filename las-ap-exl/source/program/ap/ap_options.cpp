@@ -3,6 +3,7 @@
 // retype or move LEB actors (Room_OnLebActor; ACTORS.md, Rooms), and the sheets of some options take their values
 // when the game makes them (Datasheet_Create).
 #include "ap/ap_options.hpp"
+#include "ap/ap_bridge.hpp"
 #include "ap/ap_patcher.hpp"
 #include "config/config.hpp"
 #include "game/actor.hpp"
@@ -80,6 +81,7 @@ namespace {
         static void Callback(void* room, void* leb, Game::LebActorRecord* record) {
             if (record != nullptr) {
                 if (LaunchedDrop(record) && !global_config.Option("bouncy_items")) return;
+                if (AP::Bridge::DropStaysOut(leb, record)) return;
                 for (const ActorEdit& e : kActorEdits) {
                     if (e.key != record->key || global_config.Option(e.option) != e.when) continue;
                     if (e.edit == Edit::Skip) return;
