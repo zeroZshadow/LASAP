@@ -86,6 +86,51 @@ class TestDungeonLogic(unittest.TestCase):
         self.assertEqual(doors, set(d1))
         self.assertTrue(reachable < set(d1))
 
+    def test_tracker_waits_for_found_doors(self) -> None:
+        """A dungeon is in logic only once the door that leads into it is found, and so is what its inside reaches:
+        the Rapids' south island chest through the Face Shrine, the top of Turtle Rock. The door's own look (DOORS)
+        does not wait. The last door counts as found once the other eight are."""
+        lasr = {data.lasr_name: name for name, data in ITEM_TABLE.items()}
+        items = [lasr[k] for k, v in ITEM_DEFS.items() if k in lasr for _ in range(v["quantity"])]
+        tokens = {"open-mabe": True, "free-book": True, "shuffled-bombs": True, "can-steal": True}
+        d6 = [k for k in LOGIC if k.startswith("D6-") and LOGIC[k]["type"] == "item"] + ["rapids-south-island"]
+        d8 = [k for k in LOGIC if k.startswith("D8-") and LOGIC[k]["type"] == "item"] + ["above-turtle-rock"]
+        entrances = {**IDENTITY, "key-cavern": "face-shrine", "face-shrine": "turtle-rock",
+                     "turtle-rock": "key-cavern"}
+        tracker = LogicTracker("basic", tokens, [], d6 + d8, entrances)
+        others = [door for door in DUNGEONS if door not in ("key-cavern", "face-shrine", "turtle-rock")]
+        reachable, doors = tracker.sweep(items, others)
+        self.assertFalse(reachable & set(d6 + d8))
+        self.assertEqual(doors, set(d6 + d8) - {"rapids-south-island", "above-turtle-rock"})
+        reachable = tracker.in_logic(items, others + ["key-cavern"])
+        self.assertTrue(set(d6) <= reachable and not set(d8) & reachable)
+        reachable = tracker.in_logic(items, others + ["face-shrine"])
+        self.assertTrue(set(d8) <= reachable and not set(d6) & reachable)
+        self.assertTrue(set(d6 + d8) <= tracker.in_logic(items, others + ["key-cavern", "face-shrine"]))
+        self.assertEqual(tracker.in_logic(items), tracker.in_logic(items, DUNGEONS))
+
+    def test_client_found_doors(self) -> None:
+        """The client's found doors: those leading into the dungeons the game reports entered and those data storage
+        has; every door with dungeons not shuffled."""
+        import asyncio
+        from ..client import LASContext, PROTOCOL_VERSION
+
+        async def run() -> list:
+            ctx = LASContext(None, None, "127.0.0.1", 0)
+            ctx.slot, ctx.team = 1, 0
+            ctx.slot_data = {"dungeon_entrances": SWAP, "options": {"shuffled_dungeons": 1}}
+            found = [ctx.found_doors]
+            ctx.handle_game_line(f"HELLO {PROTOCOL_VERSION} aaaa")
+            ctx.handle_game_line("DUNGEON 8")
+            found.append(ctx.found_doors)
+            ctx.on_package("Retrieved", {"keys": {"las_sign_0_1": None, "las_doors_0_1": {"key-cavern": "key-cavern"}}})
+            found.append(ctx.found_doors)
+            ctx.slot_data = {"dungeon_entrances": SWAP, "options": {"shuffled_dungeons": 0}}
+            found.append(ctx.found_doors)
+            await asyncio.sleep(0)
+            return found
+        self.assertEqual(asyncio.run(run()), [set(), {"tail-cave"}, {"tail-cave", "key-cavern"}, None])
+
     def test_client_sends_doors(self) -> None:
         """The client sends the locations behind reachable doors (DOORS) before those in logic (INLOGIC)."""
         import asyncio

@@ -206,6 +206,7 @@ class LASContext(CommonContext):
         self.game_level: Optional[str] = None  # the level the game shows, from its LOG level lines
         self.game_dungeons: Set[str] = set()  # the dungeons the game reports entered (DUNGEON), LASR names
         self.doors_sent: Set[str] = set()  # the dungeons whose door was put in data storage since connecting
+        self.doors_stored: Set[str] = set()  # the doors data storage has as found (DOORS_KEY), from an earlier session
         self.last_item_sent = 0.0
         # Local location id -> "<item name>|<owner name, empty for our own items>", from LocationScouts.
         self.scouted_names: Dict[int, str] = {}
@@ -282,11 +283,12 @@ class LASContext(CommonContext):
             self.send_checked(self.checked_locations)
             self.slot_data = args["slot_data"]
             self.doors_sent.clear()
+            self.doors_stored.clear()
             asyncio.create_task(self.send_doors())
             self.make_logic_tracker()
             asyncio.create_task(self.send_sign_read())
-            # read in an earlier session: the game's save may have lost it (quit without saving)
-            asyncio.create_task(self.send_msgs([{"cmd": "Get", "keys": [self.sign_key]}]))
+            # read or found in an earlier session: the game's save may have lost it (quit without saving)
+            asyncio.create_task(self.send_msgs([{"cmd": "Get", "keys": [self.sign_key, self.doors_key]}]))
             self.send_logic()
             self.update_ghosts()
         elif cmd == "RoomUpdate":
@@ -295,8 +297,13 @@ class LASContext(CommonContext):
         elif cmd == "ReceivedItems":
             self.send_next_item()
             self.send_logic()
-        elif cmd == "Retrieved" and args.get("keys", {}).get(self.sign_key) is True:
-            self.on_sign_read(self.slot_seed_hash)
+        elif cmd == "Retrieved":
+            keys = args.get("keys", {})
+            if keys.get(self.sign_key) is True:
+                self.on_sign_read(self.slot_seed_hash)
+            if isinstance(keys.get(self.doors_key), dict):
+                self.doors_stored.update(keys[self.doors_key])
+                self.send_logic()
         elif cmd == "LocationInfo":
             for item in args["locations"]:
                 if item.location < LOCATION_BASE:
@@ -334,6 +341,21 @@ class LASContext(CommonContext):
     @property
     def sign_key(self) -> str:
         return SIGN_KEY.format(team=self.team, player=self.slot)
+
+    @property
+    def doors_key(self) -> str:
+        return DOORS_KEY.format(team=self.team, player=self.slot)
+
+    @property
+    def found_doors(self) -> Optional[Set[str]]:
+        """The dungeon doors the player has found in the slot's seed, by dungeon_entrances names: those leading into
+        the dungeons the game reports entered, and those data storage has; None with dungeons not shuffled."""
+        entrances = self.slot_data.get("dungeon_entrances") or {}
+        shuffled = self.slot_data.get("options", {}).get("shuffled_dungeons",
+                                                         any(door != inside for door, inside in entrances.items()))
+        if not shuffled:
+            return None
+        return self.doors_stored | {door for door, inside in entrances.items() if inside in self.game_dungeons}
 
     def on_sign_read(self, seed_hash: Optional[str]) -> None:
         """The player has read the sign at the egg's stairs in this seed: the game says so, or data storage does."""
@@ -426,7 +448,7 @@ class LASContext(CommonContext):
             return
         names = list(self.logic_starting) + [self.item_names.lookup_in_game(item.item, self.game)
                                              for item in self.items_received]
-        reachable, doors = self.logic_tracker.sweep(names)
+        reachable, doors = self.logic_tracker.sweep(names, self.found_doors)
         ids = {LOCATION_OFFSETS[loc] for loc in reachable}
         door_ids = {LOCATION_OFFSETS[loc] for loc in doors}
         if ids == self.in_logic and door_ids == self.doors_open and not force:
@@ -569,6 +591,7 @@ class LASContext(CommonContext):
             # the player entered a dungeon: the game showed its name, as on the map
             self.game_dungeons.add(DUNGEON_NUMBERS[parts[1]])
             asyncio.create_task(self.send_doors())
+            self.send_logic()
         elif cmd == "SIGN":
             # the player read the sign naming the instruments the egg needs
             self.on_sign_read(self.game_seed_hash)
