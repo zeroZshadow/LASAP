@@ -1,164 +1,84 @@
-"""Builds the Link's Awakening (Switch) mod for one Archipelago slot.
+"""Makes the Link's Awakening (Switch) mod for one Archipelago slot.
 
 python las_ap_patch.py <patch.aplas> --romfs <romfs dump> --out <output dir> [--settings <JSON object>]
 
-Runs LASR's mod generator (RandomizerCore, MIT) on the placements from the AP patch file
-(format in DESIGN.md). Every location holding "ap-item" gives the Archipelago placeholder,
-whose AddItemID index is the location's local id; the exlaunch module reports it as a check.
---settings overrides the player settings (PLAYER_SETTINGS) the patch file carries.
+The mod's RomFS is the same for every seed: the assets (ap_assets.py), which scripts/build_assets.py builds with LASR's
+mod generator (RandomizerCore, MIT; patcher/modbuild) and the patcher applies to the player's RomFS dump. Every
+location holding "ap-item" gives the Archipelago placeholder, whose AddItemID index is the location's local id; the
+exlaunch module reports it as a check. What a seed changes goes to config.ini and the seed file, which the module reads
+(format in DESIGN.md). --settings overrides the player settings (PLAYER_SETTINGS) the patch file carries.
 """
 import argparse
-import copy
-import hashlib
+import configparser
+import io
 import json
 import random
+import shutil
 import sys
 import zipfile
-import zlib
 from pathlib import Path
 from typing import List, Optional
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-import lasr_qt  # noqa: E402
-
-lasr_qt.install()
-# LASR looks for its data, resources and module next to its entry script, or elsewhere when it runs frozen
-# (PyInstaller). The patcher keeps them next to this file in both cases, where the frozen patcher has them too.
-from RandomizerCore.Paths import randomizer_paths  # noqa: E402
-
-randomizer_paths.IS_RUNNING_FROM_SOURCE = True
-randomizer_paths.ROOT_PATH = HERE
-randomizer_paths.SETTINGS_PATH = HERE / "settings.txt"
-randomizer_paths.LOGS_PATH = HERE / "log.txt"
-randomizer_paths.EXL_PATH = HERE / "exl"
-randomizer_paths.DATA_PATH = HERE / "RandomizerCore" / "Data"
-randomizer_paths.RESOURCE_PATH = HERE / "RandomizerUI" / "Resources"
-randomizer_paths.VERSION_PATH = HERE / "version.txt"
-
-import evfl  # noqa: E402
 import yaml  # noqa: E402
-from RandomizerCore import mod_generator  # noqa: E402
-from RandomizerCore.Fixes.Datasheets.fishing import FishingDatasheetFixes  # noqa: E402
-from RandomizerCore.Fixes.Datasheets.item_drop import ItemDropDatasheetFixes  # noqa: E402
-from RandomizerCore.Fixes.Datasheets.items import ItemsDatasheetFixes  # noqa: E402
-from RandomizerCore.Fixes.Events import player_start  # noqa: E402
-from RandomizerCore.Helpers.file_manager import FileManager  # noqa: E402
-from RandomizerCore.Helpers.flag_manager import FlagManager  # noqa: E402
-from RandomizerCore.Helpers.item_get_manager import ItemGetManager  # noqa: E402
-from RandomizerCore.Randomizers import chests as lasr_chests  # noqa: E402
-from RandomizerCore.Randomizers.boss_drops import BossDropRandomizer  # noqa: E402
-from RandomizerCore.Randomizers.chests import ChestRandomizer  # noqa: E402
-from RandomizerCore.Randomizers.free_gifts import FreeGiftsRandomizer  # noqa: E402
-from RandomizerCore.Randomizers.instruments import InstrumentRandomizer  # noqa: E402
-from RandomizerCore.Randomizers.keysanity import Keysanity  # noqa: E402
-from RandomizerCore.Randomizers.rupees import BlueRupeeRandomizer  # noqa: E402
-from RandomizerCore.Randomizers.shop import TEXT_TO_CHANGE as SHOP_TEXT  # noqa: E402
-from RandomizerCore.Tools import event_tools  # noqa: E402
-from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct  # noqa: E402
 import ap_assets  # noqa: E402
-import ap_ballad  # noqa: E402
-import ap_chest  # noqa: E402
-import ap_deathlink  # noqa: E402
-import ap_drop  # noqa: E402
-import ap_ghost  # noqa: E402
-import ap_player_ghost  # noqa: E402
-import ap_hints  # noqa: E402
-import ap_goal  # noqa: E402
 import ap_entrances  # noqa: E402
+import ap_goal  # noqa: E402
+import ap_hints  # noqa: E402
 import ap_map  # noqa: E402
-import ap_model  # noqa: E402
+import ap_options  # noqa: E402
 import ap_save_name  # noqa: E402
+import ap_shuffles  # noqa: E402
 import romfs_check  # noqa: E402
+import seed_file  # noqa: E402
+
+DATA_DIR = HERE / "data"  # LASR's items.yml and logic.yml (its RandomizerCore/Data)
+EXL_DIR = HERE / "exl"  # the exlaunch module (scripts/build_exl.sh)
+GAME_DIR = Path("atmosphere", "contents", "01006BB00C6F0000")  # the mod's RomFS and exefs, in the SD card's layout
+CONFIG_DIR = Path("config", "lasr-exl")
 
 PATCH_FORMAT = 1
 PLACEHOLDER_KEY = "ArchipelagoItem"
-PLACEHOLDER_ITEM_ID = 71  # must match AP::PLACEHOLDER_ITEM_ID in the exlaunch module
-# Item ids of the model variants: the item-get picks its model by id. Neither the game nor LASR uses these (LASR's
-# Dampe and shop dummies take 63-70, its traps 127-131 and its trade items 200-202), and the module counts them as the
-# placeholder (AP::IsPlaceholderItem). Item ids are a byte; the item-get treats all of these like the placeholder.
-VARIANT_ITEM_IDS = [*range(PLACEHOLDER_ITEM_ID + 1, 100), 103, 107, 109, 118, 119, *range(132, 200), *range(203, 256)]
-RECV_FLAG_BITS = 16
-# Secret Medicines received while Link holds one wait in a count of these flags (AP::MEDICINE_FLAG)
-MEDICINE_FLAG = "APMedicine"
-MEDICINE_FLAG_BITS = 2
-PLACEHOLDER_TEXT = "You found an [COLOR_SKYBLUE]Archipelago item[COLOR_WHITE]!"
-# The exlaunch module replaces both texts at runtime with the item and player names (AP::FOUND_LABEL, AP::RECEIVED_LABEL).
-RECEIVED_KEY = "APReceived"
-RECEIVED_TEXT = "You got an [COLOR_PINK]Archipelago item[COLOR_WHITE]!"
-# The module plays a received item's item-get as this Common.bfevfl event, so the game locks the controls and returns
-# the camera when it ends. The module swaps the placeholder and message for the received item (AP::ITEM_EVENT_ENTRY).
-ITEM_EVENT_ENTRY = "APItemGet"
-# Received traps play LASR's trap effects as the Common.bfevfl events AP<trap key> (AP::TRAP_EVENT_PREFIX).
-TRAP_EVENT_PREFIX = "AP"
-TRAP_EVENT_KEYS = ("ZapTrap", "DrownTrap", "SquishTrap", "DeathballTrap", "QuakeTrap")
-# An item-get whose message entry starts with this plays as the game's own also with Instant Pickups; the module drops
-# the mark (AP::NATIVE_ITEM_GET_MARK). The instruments' pedestals have it: their whiteout and warp follow at once.
-NATIVE_ITEM_GET_MARK = "!"
-# Holding Minus opens this Common.bfevfl event (AP::WARP_MENU_ENTRY): a choice to warp home, to the start point outside
-# Tarin's door that leaving the house uses (Field_11C, ExitOut). B picks the bottom choice, so Continue is there.
-WARP_MENU_ENTRY = "APWarpMenu"
-WARP_MENU_KEY = "APWarpMenu"
-WARP_MENU_TEXT = "Return to Tarin's house?[CHOICE_TOP]Warp home[CHOICE_BOTTOM]Continue"
-WARP_MENU_STYLE_FROM = "CheckShieldBook"  # a vanilla yes/no prompt in System.msbt
-WARP_HOME = {"level": "Field", "locator": "Field_11C", "offsetX": 0.0, "offsetZ": 0.0}
-ITEM_TEXT_STYLE_FROM = "GetHookShot"  # System.msbt entry whose window style the AP texts use
-PLACEHOLDER_NAME_KEY = "ItemName_ArchipelagoItem"
-PLACEHOLDER_NAME = "Archipelago Item"
-NAME_MAX = 46  # characters on the shop dialog's first line
-# Shop slots show the item's name on the price tag; each AP item there gets its own name entry in UI.msbt.
-SHOP_LOCATIONS = tuple(SHOP_TEXT)
-
-# The placeholder shows the Archipelago model (ap_model.py), built from the Seashell Sensor's.
-PLACEHOLDER_SOURCE_NPC = "ItemShellRader"
-PLACEHOLDER_DEF = {
-    "type": "junk",
-    "quantity": 0,
-    "item-key": PLACEHOLDER_KEY,
-    "model-path": ap_model.FILE_NAME,
-    "model-name": ap_model.MODEL_NAME,
-    "npc-key": "ItemArchipelago",
-    "message": f"UI:{PLACEHOLDER_NAME_KEY}",
-    "chest-type": "junk",
-}
-
-# A room with a chest whose item key has 32 characters or more crashes the game as it loads (std::length_error).
-# Longer variant keys are cut short and end in a hash of the item key, which keeps them unique.
-VARIANT_KEY_MAX = 31
-
-
-def variant_key(item_key: str) -> str:
-    """The placeholder variant's item key for a model: ArchipelagoItem_<item key>, at most VARIANT_KEY_MAX long."""
-    key = f"{PLACEHOLDER_KEY}_{item_key}"
-    if len(key) <= VARIANT_KEY_MAX:
-        return key
-    return key[:VARIANT_KEY_MAX - 4] + f"{zlib.crc32(item_key.encode()) & 0xFFFF:04x}"
-
-# Item kinds whose in-game index LASR takes from logic.yml for vanilla placements.
-INDEXED_ITEMS = ("seashell", "heart-piece", "heart-container", "bottle", "golden-leaf", "chamber-stone")
-# Items counted by inventory bits, as the module names them in ap_indices.txt (AP::INDICES_PATH): kind letter per item
+# The model each AP location shows, which the module picks at runtime (the seed file's models; DESIGN.md, Item
+# models). A location's actors name MODEL_TOKEN and its local id as their model file and model name, the same in every
+# seed.
+MODEL_TOKEN = "ap:"  # AP::MODEL_TOKEN
+# LASR's Items.gsheet rows that stand in for a location's item (Fixes/Datasheets/items.py): Dampe's rewards, the
+# shop's goods and the items NPCs show before they give them. The module shows the location's model for their ids.
+STAND_IN_ROWS = {"Dampe1": "dampe-page-1", "DampeHeart": "dampe-heart-challenge", "Dampe2": "dampe-page-2",
+                 "DampeBottle": "dampe-bottle-challenge", "DampeFinal": "dampe-final",
+                 "ShopShovel": "shop-slot3-1st", "ShopBow": "shop-slot3-2nd", "ShopHeart": "shop-slot6",
+                 "FishNecklace": "bay-fisherman", "SyrupPowder": "syrup", "WalrusShell": "walrus"}
+# LASR's sunken seashells, which it makes heart piece actors (Randomizers/seashells.py, randomizeStaticShells)
+SUNKEN_SHELLS = ("kanalet-moat-north", "taltal-sunken")
+HEART_MODELS = ("HeartPiece", "HeartContainer")  # the models LASR shows unshrunk at heart piece places
+# Items counted by inventory bits, as the module names them in the seed file's indices: kind letter per item
 INDEX_KINDS = {"seashell": "S", "heart-piece": "H", "golden-leaf": "L", "heart-container": "C", "bottle": "B",
                "chamber-stone": "P"}
-# The chamber stones the Items page counts (PanelStone's mItemMenuCount), the 14 found outside the Chamber Dungeon
-CHAMBER_STONE_BITS = (3, 4, 8, 10, 11, 12, 13, 20, 21, 22, 23, 24, 25, 26)
-# Item key -> kind and the bits the module gives received ones (AP::GrantItem: kHeartPieceBits, kSeashellBits,
-# kHeartContainerBits, kChamberStoneBits)
-INDEX_BITS = {"Seashell": ("S", range(50)), "HeartPiece": ("H", range(32)), "GoldenLeaf": ("L", range(5)),
-              "HeartContainer": ("C", range(9)), "Bottle": ("B", range(3)),
-              "PanelDungeonPiece": ("P", CHAMBER_STONE_BITS)}
-INDICES_FILE = "ap_indices.txt"
-VANILLA_FILE = "ap_vanilla.txt"
-# The item-get holds an item up in a pose the game picks by item id (AP::POSES_PATH); ids it has no pose for, the
-# variants' and LASR's Dampe rewards', get a default one. Each line: an item id and the id whose pose it takes.
-POSES_FILE = "ap_poses.txt"
-# LASR's Items.gsheet rows of Dampe's rewards (Fixes/Datasheets/items.py) -> their location
-DAMPE_ROWS = {"Dampe1": "dampe-page-1", "DampeHeart": "dampe-heart-challenge", "Dampe2": "dampe-page-2",
-              "DampeBottle": "dampe-bottle-challenge", "DampeFinal": "dampe-final"}
 # The companions' locations and the flag their joining sets
 COMPANION_FLAGS = {"moblin-cave": "BowWowJoin", "rooster-statue": "RoosterFoundFlag"}
-ROOSTER_EVENT_FILE = "RoosterBones.bfevfl"
 DUNGEON_ITEM_PREFIXES = ("compass", "map", "stone", "key", "nightmare")
+# What a new save starts with (the seed file's start; DESIGN.md, Start state): "I <item key> <dungeon index>" (-1 for none) per
+# starting item, "R <rupees>", "F <flag>" per flag. The module grants the items once and sets START_ITEMS_FLAG, and
+# sets the flags the first time Link stands outside Tarin's house while START_MARKER is unset, as LASR's start event
+# does on his first exit. Both must match the module's.
+START_ITEMS_FLAG = "APStartItems"
+START_MARKER = "FirstClear"
+# The flags LASR's start event sets for these settings
+START_SETTING_FLAGS = {
+    "Open Kanalet": ("GateOpen_Switch_KanaletCastle_01B",),
+    "Completed Bridge": ("StickDrop",),  # the bridge's; Kiki uses another flag (trade_quest.py)
+    "Open Mamu": ("MamuMazeClear",),
+    "Randomize Enemies": ("AppearStairsFld10N", "AppearStairsFld11O"),  # the stairs under the Armos statues
+    "Fast Stalfos": ("DoorOpen_Btl1_L05_05F", "DoorOpen_Btl2_L05_04H", "DoorOpen_Btl3_L05_01F"),
+}  # and Boss Cutscenes: LASR's boss flags (ap_assets.data's boss_flags)
+# LASR's Start With settings -> the kind of dungeon item (items.yml: <kind>-D<n>) each dungeon starts with
+START_WITH_KINDS = {"Dungeon Maps": "map", "Compasses": "compass", "Stone Beaks": "stone-beak",
+                    "Small Keys": "key", "Nightmare Keys": "nightmare-key"}
+# A second copy of these starting items is their upgrade
+START_UPGRADES = {"SwordLv1": "SwordLv2", "Shield": "MirrorShield", "PowerBraceletLv1": "PowerBraceletLv2"}
 # Visual and audio settings: the player picks them when patching (--settings), over the values the patch file
 # carries. Their default and, for choices, the values allowed. Settings that change how the game plays are options in
 # the patch file only, so a seed plays the same for everyone (races).
@@ -176,396 +96,12 @@ PLAYER_CHOICES = {"Music": ("Vanilla", "Shuffled", "Removed"), "No 30 FPS Drops"
 NO_30FPS_DROPS = {"On emulators": "emulator", "Always": "true", "Never": "false"}
 # Walking and swimming speed with Movement Speed on: LASR's single speed (dashing stays at 1.0)
 MOVEMENT_SPEED = 1.2
-# ItemDrop.gsheet rows of the two buffs; the settings empty them, for drops that name them. The buffs after a run of
-# kills come from the game's code, which the module skips (config.ini [tweaks]).
-BUFF_DROPS = {"Disable Guardian Acorn": "GuardianAcorn", "Disable Piece of Power": "PowerPiece"}
-# The bosses: their BossItemDrop event drops their ItemDrop.gsheet row (BOSS_DROP_ROWS), a heart container, the Angler
-# Key, the Face Key or the hookshot. Their item comes as the game's does, the drop actor in its place (ap_drop.py),
-# holding the location's item (without Boss Drops its vanilla one): LASR's methods for them keep their music without
-# LASR's item-get, which skips BossItemDrop (Armos Knight's, which also leads its flowchart past it, is las_ap_patch's
-# own), and the rows keep the item LASR takes out of them.
-BOSS_METHODS = ("moldormChanges", "genieChanges", "slimeEyeChanges", "anglerChanges", "slimeEelChanges",
-                "facadeChanges", "eagleChanges", "hotheadChanges", "lanmolaChanges", "masterStalfosChanges")
-BOSS_DROP_ROWS = {**{f"HeartContainer{i}": "HeartContainer" for i in range(8)},
-                  "AnglerKey": "AnglerKey", "FaceKey": "FaceKey", "HookShot": "HookShot"}
-# Items.gsheet instrument rows -> their jingle: the instrument's own song, which the pedestal's whiteout plays in the
-# game (MusicalInstrument.bfevfl's PlayAndWaitMusicalInstrument), in place of the fanfare all eight share
-# (BGM_FANFARE_INST_GET). Every item-get and find of an instrument plays it.
-INSTRUMENT_JINGLES = {"FullMoonCello": "BGM_INST_VIOLIN", "ConchHorn": "BGM_INST_HORN", "SeaLilysBell": "BGM_INST_BELL",
-                      "SurfHarp": "BGM_INST_HARP", "WindMarimba": "BGM_INST_MARIMBA",
-                      "CoralTriangle": "BGM_INST_TRIANGLE", "EveningCalmOrgan": "BGM_INST_ORGAN",
-                      "ThunderDrum": "BGM_INST_DRUM"}
-# Easy Fishing: FishingSpot.gsheet weights of the deep spot (row mId 4, spot 2) by fish kind, Ol' Baron (kind 4) as
-# likely as the other fish there (vanilla [0, 25, 0, 0, 5, 0]). The line holds through the module (config.ini [tweaks]).
-EASY_FISHING_SPOT = (4, [0, 15, 0, 0, 15, 0])
 
 
-def _add_ap_flags(self) -> None:
-    _original_add_custom_flags(self)
-    for i in range(RECV_FLAG_BITS):
-        self.addFlag(f"APRecv{i}")
-    for i in range(MEDICINE_FLAG_BITS):
-        self.addFlag(f"{MEDICINE_FLAG}{i}")
-    self.addFlag(ap_ghost.BOW_FLAG)
-    self.addFlag(ap_goal.SIGN_FLAG)
-    for flag in ap_deathlink.FLAGS:
-        self.addFlag(flag)
-    for flag in ap_hints.FLAGS:
-        self.addFlag(flag)
-    for flag in ap_drop.FLAGS:
-        self.addFlag(flag)
-
-
-def _add_placeholder_row(self, sheet) -> None:
-    """The placeholder and its model variants: rows with the placeholder's item id that differ in their model."""
-    _original_make_item_changes(self, sheet)
-    # LASR empties the tunics' npcKey (vanilla's rows show the ocarina), so their item-get holds up nothing and shows
-    # no glow; they hold up the model LASR shows for them in the world.
-    for item in sheet["values"]:
-        if item["symbol"] in TUNIC_NPC_KEYS:
-            item["npcKey"] = TUNIC_NPC_KEYS[item["symbol"]]
-        if item["symbol"] in INSTRUMENT_JINGLES:
-            item["jingle"] = INSTRUMENT_JINGLES[item["symbol"]]
-    # Parsed up front: appending to the sheet invalidates references to its rows.
-    rows = {str(item["symbol"]): parseStruct(item) for item in sheet["values"]}
-    taken = {row["itemID"] for row in rows.values()} & {PLACEHOLDER_ITEM_ID, *VARIANT_ITEM_IDS}
-    if taken:
-        raise ValueError(f"Items.gsheet already uses the placeholder's item ids {sorted(taken)}")
-    variants = [(PLACEHOLDER_KEY, PLACEHOLDER_DEF["npc-key"], PLACEHOLDER_ITEM_ID)]
-    pose_ids = {key: row["itemID"] for key, row in rows.items()}  # item key -> the id whose pose it shows
-    # The most used models get ids first; variants past the free ids keep the placeholder's id, and so its model in
-    # the item-get.
-    used = sorted(VARIANTS.items(), key=lambda v: (-VARIANT_USES[v[0]], v[0]))
-    for i, (key, (item_key, npc_key)) in enumerate(used):
-        item_id = VARIANT_ITEM_IDS[i] if i < len(VARIANT_ITEM_IDS) else PLACEHOLDER_ITEM_ID
-        variants.append((key, rows.get(item_key, {}).get("npcKey") or npc_key, item_id))
-        if item_id != PLACEHOLDER_ITEM_ID and item_key in rows:
-            pose_ids[key] = rows[item_key]["itemID"]
-            POSE_IDS[item_id] = rows[item_key]["itemID"]
-    for symbol, loc in DAMPE_ROWS.items():
-        placed = self.parent.item_defs.get(self.parent.placements.get(loc, ""), {}).get("item-key")
-        if symbol in rows and placed in pose_ids:
-            POSE_IDS[rows[symbol]["itemID"]] = pose_ids[placed]
-    for key, npc_key, item_id in variants:
-        row = copy.deepcopy(rows["SmallKey"])
-        row["symbol"] = key
-        row["itemID"] = item_id
-        row["gettingFlag"] = ""
-        row["npcKey"] = npc_key
-        sheet["values"].append(dictToStruct(row))
-
-
-def _add_placeholder_text_event(self) -> None:
-    _original_add_text_events(self)
-    flow = self.parent.file_manager.readFile("Item.bfevfl")
-    for key in [PLACEHOLDER_KEY, *sorted(VARIANTS)]:
-        event_tools.addEntryPoint(flow.flowchart, key)
-        event_tools.createActionChain(flow.flowchart, key, [
-            ("Dialog", "Show", {"message": f"Place:{PLACEHOLDER_KEY}"})
-        ])
-    # The module starts received items' item-get with this entry point as its message entry.
-    event_tools.addEntryPoint(flow.flowchart, RECEIVED_KEY)
-    event_tools.createActionChain(flow.flowchart, RECEIVED_KEY, [
-        ("Dialog", "Show", {"message": f"System:{RECEIVED_KEY}"})
-    ])
-    self.parent.file_manager.writeFile("Item.bfevfl", flow)
-    common = self.parent.file_manager.readFile("Common.bfevfl")
-    event_tools.addEntryPoint(common.flowchart, ITEM_EVENT_ENTRY)
-    event_tools.createActionChain(common.flowchart, ITEM_EVENT_ENTRY, [
-        ("Link", "GenericItemGetSequenceByKey", {"itemKey": PLACEHOLDER_KEY, "keepCarry": False,
-                                                 "messageEntry": RECEIVED_KEY}),
-    ])
-    for key in TRAP_EVENT_KEYS:
-        entry = TRAP_EVENT_PREFIX + key
-        event_tools.addEntryPoint(common.flowchart, entry)
-        self.parent.item_get_manager.getWithAnimation(common.flowchart, key, -1, entry)
-    warp = event_tools.createActionEvent(common.flowchart, "GameControl", "RequestLevelJump", dict(WARP_HOME))
-    choice = event_tools.createSwitchEvent(common.flowchart, "Dialog", "GetLastResult", {}, {0: warp})
-    event_tools.addEntryPoint(common.flowchart, WARP_MENU_ENTRY)
-    event_tools.createActionChain(common.flowchart, WARP_MENU_ENTRY, [
-        ("Dialog", "Show", {"message": f"System:{WARP_MENU_KEY}"}),
-    ], choice)
-    ap_deathlink.patch_game_over(common.flowchart)
-    self.parent.file_manager.writeFile("Common.bfevfl", common)
-
-
-def _add_placeholder_text(self) -> None:
-    _original_create_text(self)
-    files = self.parent.file_manager
-    # Our texts use the window style of native item texts; added entries otherwise copy the file's first entry.
-    styles = {path: msbt.getEntry(ITEM_TEXT_STYLE_FROM).style_index for path, msbt in files.getAllTextFiles("System.msbt")}
-    for relative_path, msbt in files.getAllTextFiles("Place.msbt"):
-        msbt.addEntry(PLACEHOLDER_KEY, PLACEHOLDER_TEXT)
-        entry = msbt.getEntry(PLACEHOLDER_KEY)
-        entry.message.text += "[1:4]"  # wait for input, as LASR's keysanity text does
-        entry.style_index = styles[relative_path]
-        files.writeTextFile(relative_path, "Place.msbt", msbt)
-    for relative_path, msbt in files.getAllTextFiles("System.msbt"):
-        msbt.addEntry(RECEIVED_KEY, RECEIVED_TEXT)
-        entry = msbt.getEntry(RECEIVED_KEY)
-        entry.message.text += "[1:4]"
-        entry.style_index = styles[relative_path]
-        msbt.addEntry(WARP_MENU_KEY, WARP_MENU_TEXT)
-        msbt.getEntry(WARP_MENU_KEY).style_index = msbt.getEntry(WARP_MENU_STYLE_FROM).style_index
-        files.writeTextFile(relative_path, "System.msbt", msbt)
-    for relative_path, msbt in files.getAllTextFiles("UI.msbt"):
-        msbt.addEntry(PLACEHOLDER_NAME_KEY, PLACEHOLDER_NAME)
-        for key in sorted(VARIANTS):
-            msbt.addEntry(f"ItemName_{key}", PLACEHOLDER_NAME)
-        for key, name in SHOP_NAMES.items():
-            msbt.addEntry(key, name)
-        files.writeTextFile(relative_path, "UI.msbt", msbt)
-
-
-def _placeholder_get_first(self, flowchart, item, index, before=None, after=None):
-    """The placeholder is added before its item-get, unlike LASR's other items: the module learns the location
-    from the AddItemID call and names the item in the text that follows."""
-    if not item.startswith(PLACEHOLDER_KEY):
-        return _original_get_with_animation(self, flowchart, item, index, before, after)
-    return event_tools.createActionChain(flowchart, before, [
-        ("Inventory", "AddItemByKey", {"itemKey": PLACEHOLDER_KEY, "count": 1, "index": index, "autoEquip": False}),
-        ("Link", "GenericItemGetSequenceByKey", {"itemKey": item, "keepCarry": False,
-                                                 "messageEntry": PLACEHOLDER_KEY}),
-    ], after)
-
-
-def _chest_placeholder_branch(self) -> None:
-    """Vanilla chests play the item-get before adding the item; chests with the placeholder add it first."""
-    _original_write_chest_event(self)
-    if not self.parent.thread_active:
-        return
-    files = self.parent.file_manager
-    flow = files.readFile("TreasureBox.bfevfl")
-    chart = flow.flowchart
-    open_next = event_tools.findEvent(chart, "Event32").data.nxt.v.name  # LASR's item switch chain
-    auto_save = event_tools.findEvent(chart, "Event40").data.nxt.v.name  # LASR's RequestAutoSave
-    ap_get = event_tools.createActionChain(chart, None, [
-        ("Inventory", "AddItemByKey", {"itemKey": PLACEHOLDER_KEY, "count": 1,
-                                       "index": evfl.common.Argument("itemIndex"), "autoEquip": False}),
-        ("Link", "GenericItemGetSequenceByKey", {"itemKey": evfl.common.Argument("itemKey"), "keepCarry": False,
-                                                 "messageEntry": PLACEHOLDER_KEY}),
-    ], auto_save)
-    ap_check = open_next
-    for key in [PLACEHOLDER_KEY, *sorted(VARIANTS)]:
-        ap_check = event_tools.createSwitchEvent(chart, "FlowControl", "CompareString",
-            {"value1": "itemKey", "value2": key}, {0: ap_get, 1: ap_check})
-    event_tools.insertEventAfter(chart, "Event32", ap_check)
-    event_tools.insertEventAfter(chart, "Event28", ap_check)
-    files.writeFile("TreasureBox.bfevfl", flow)
-
-
-def _no_keysanity_branch(self, flowchart, item, before, after):
-    """LASR's chests and Seashell Mansion presents send a dungeon item on to the dungeon its index names through a
-    FlowControl.CompareInt switch, which needs LASR's CompareInt rewrite (the module leaves it out):
-    without it the Chamber Dungeon's chests, whose keys have no index, would give them to another dungeon. Every
-    shuffled dungeon item is an Archipelago item, so these flows keep the game's own add, and the module's AddItemID
-    hook puts an item with an index into that dungeon and one without into the dungeon Link is in."""
-    return before
-
-
-def _native_instrument_get(self, flowchart, room, room_data, destination=None):
-    """The instrument pedestal's item-gets (any item, progressive ones on both branches) keep the game's item-get. The
-    music stops before it, as in the game (MusicalInstrument.bfevfl), so the item's jingle plays alone; LASR's whiteout
-    after it lets the jingle play on (its StopAllBGM is in a chain its fork cuts off) until the warp out."""
-    _original_change_instrument(self, flowchart, room, room_data, destination)
-    first = event_tools.findEntryPoint(flowchart, room).main_event.v.name
-    event_tools.createActionChain(flowchart, room, [("Audio", "StopAllBGM", {"duration": 1.0})], first)
-    mark_native_item_gets(flowchart, room)
-
-
-def mark_native_item_gets(chart, entry) -> None:
-    """Marks every Link item-get reachable from an entry point (NATIVE_ITEM_GET_MARK)."""
-    todo = [event_tools.findEntryPoint(chart, entry).main_event.v]
-    seen = set()
-    while todo:
-        event = todo.pop()
-        if event is None or event.name in seen:
-            continue
-        seen.add(event.name)
-        data = event.data
-        if isinstance(data, evfl.event.ActionEvent) and data.actor.v.identifier.name == "Link" and \
-                data.actor_action.v.v in ("GenericItemGetSequenceByKey", "GenericItemGetSequence"):
-            entry_param = data.params.data.get("messageEntry", "")
-            if isinstance(entry_param, str) and not entry_param.startswith(NATIVE_ITEM_GET_MARK):
-                data.params.data["messageEntry"] = NATIVE_ITEM_GET_MARK + entry_param
-        if getattr(data, "nxt", None) is not None:
-            todo.append(data.nxt.v)
-        if isinstance(data, evfl.event.SwitchEvent):
-            todo.extend(case.v for case in data.cases.values())
-        if isinstance(data, evfl.event.ForkEvent):
-            todo.extend(fork.v for fork in data.forks)
-            todo.append(data.join.v)
-
-
-def _starting_index(self, item, index):
-    """LASR adds starting items with index -1, which counts for none of the inventory bits that make up the count of
-    indexed items (heart containers, heart pieces, seashells, golden leaves, bottles). They take the bits a received
-    item would (STARTING_BITS)."""
-    if index == -1 and STARTING_BITS.get(item):
-        index = STARTING_BITS[item].pop(0)
-    return _original_get_without_animation(self, item, index)
-
-
-def _drop_buffs(self, sheet, settings) -> None:
-    """Disabled Guardian Acorns and Pieces of Power drop nothing, as LASR does for the drops it removes; the bosses drop
-    their item again (BOSS_DROP_ROWS)."""
-    _original_item_drop_changes(self, sheet, settings)
-    keys = {BUFF_DROPS[k] for k in BUFF_DROPS if settings.get(k)}
-    for row in sheet["values"]:
-        if row["mKey"] in keys:
-            row["mLotTable"][0]["mType"] = ""
-        if row["mKey"] in BOSS_DROP_ROWS:
-            row["mLotTable"][0]["mType"] = BOSS_DROP_ROWS[row["mKey"]]
-
-
-def _armos_knight_changes(self) -> None:
-    """LASR's Armos Knight changes without its item-get and the doors opening before it: its music."""
-    flow = self.parent.file_manager.readFile("DeguArmos.bfevfl")
-    for event in ("Event4", "Event23"):
-        event_tools.setEventSong(flow.flowchart, event,
-                                 self.parent.music_randomizer.songs_dict["BGM_DUNGEON_BOSS_MIDDLE"])
-    self.parent.file_manager.writeFile("DeguArmos.bfevfl", flow)
-
-
-def _boss(changes):
-    """LASR's changes of a boss (BOSS_METHODS) without its item-get."""
-    def without_item_get(self) -> None:
-        manager = self.parent.item_get_manager
-        manager.get = lambda *args, **kwargs: None
-        try:
-            changes(self)
-        finally:
-            del manager.get
-    return without_item_get
-
-
-def _fishing_spots(self, mod_generator) -> None:
-    """With Easy Fishing, Ol' Baron bites more often in the deep spot."""
-    _original_fishing_fixes(self, mod_generator)
-    if not mod_generator.settings.get("Easy Fishing") or not mod_generator.thread_active:
-        return
-    sheet = mod_generator.file_manager.readFile("FishingSpot.gsheet")
-    row_id, weights = EASY_FISHING_SPOT
-    for row in sheet["values"]:
-        if row["mId"] == row_id:
-            row["mWeightTbl"] = list(weights)
-    mod_generator.file_manager.writeFile("FishingSpot.gsheet", sheet)
-
-
-def _write_file(self, file_name: str, data) -> None:
-    """The Archipelago model gets an Npc entry, which the item-get shows. The small key's flowchart stays the game's:
-    LASR's edits are its stand-ins' entries, and every stand-in is a drop actor, with a flowchart of its own (ap_drop)."""
-    if file_name == ap_drop.SMALL_KEY_EVENT:
-        return
-    # Once: the sheet is written again after LASR's run (ap_ghost).
-    if file_name == "Npc.gsheet" and not any(row["symbol"] == PLACEHOLDER_DEF["npc-key"] for row in data["values"]):
-        # Parsed before appending: appending to the sheet invalidates references to its rows.
-        source = next(parseStruct(row) for row in data["values"] if row["symbol"] == PLACEHOLDER_SOURCE_NPC)
-        source["symbol"] = PLACEHOLDER_DEF["npc-key"]
-        source["graphics"]["path"] = ap_model.FILE_NAME
-        source["graphics"]["model"] = ap_model.MODEL_NAME
-        data["values"].append(dictToStruct(source))
-    _original_write_file(self, file_name, data)
-
-
-# UI.msbt entry -> shop name, filled from the patch file's location_names before the mod is built.
-SHOP_NAMES: dict = {}
-# Placeholder item keys that show another item's model: key -> (that item's key, its npc key in items.yml).
-VARIANTS: dict = {}
-VARIANT_USES: dict = {}  # key -> number of locations showing it
-POSE_IDS: dict = {}  # item id -> the item id whose item-get pose it takes (POSES_FILE)
-# Items.gsheet tunic rows -> the npc key their item-get holds up (items.yml's npc-key; the green tunic has none)
-TUNIC_NPC_KEYS = {"ClothesRed": "NpcSkeletalGuardRed", "ClothesBlue": "NpcSkeletalGuardBlue"}
-# Indexed item key -> inventory bits for the starting items, lowest first (starting_bits)
-STARTING_BITS: dict = {}
-
-_original_get_with_animation = ItemGetManager.getWithAnimation
-_original_write_file = FileManager.writeFile
-FileManager.writeFile = _write_file
-_original_write_chest_event = ChestRandomizer.writeChestEvent
-ItemGetManager.getWithAnimation = _placeholder_get_first
-ChestRandomizer.writeChestEvent = _chest_placeholder_branch
-_original_change_instrument = InstrumentRandomizer.changeInstrument
-InstrumentRandomizer.changeInstrument = _native_instrument_get
-_original_add_custom_flags = FlagManager.addCustomFlags
-_original_make_item_changes = ItemsDatasheetFixes.makeItemChanges
-_original_add_text_events = Keysanity.addTextEvents
-_original_create_text = Keysanity.createText
-_original_get_without_animation = ItemGetManager.getWithoutAnimation
-ItemGetManager.getWithoutAnimation = _starting_index
-ItemGetManager.getKeysanityItem = _no_keysanity_branch
-_original_item_drop_changes = ItemDropDatasheetFixes.makeDatasheetChanges
-ItemDropDatasheetFixes.makeDatasheetChanges = _drop_buffs
-for _name in BOSS_METHODS:
-    setattr(BossDropRandomizer, _name, _boss(getattr(BossDropRandomizer, _name)))
-BossDropRandomizer.armosKnightChanges = _armos_knight_changes
-# The ghost's reward is a drop at its grave (ap_drop.GHOST_DROP), in place of LASR's item-get after the grave's event
-FreeGiftsRandomizer.ghostRewardChanges = lambda self: None
-# LASR gives that item in the owl's talk at the grave, which shows once the farewell turned Ghost4_Clear on, and so
-# leaves its watched flag out of the owl cutscenes it sets watched at the start: with the drop the owl stays away too
-player_start.START_FLAGS = (*player_start.START_FLAGS, "EighthClear")
-# The Color Dungeon's blue rupees are drops where they stand (ap_drop.BLUE_RUPEES), with Blue Rupees on or off, in
-# place of LASR's SinkingSword actors
-BlueRupeeRandomizer.__init__ = lambda self, mod_generator: None
-_original_fishing_fixes = FishingDatasheetFixes.__init__
-FishingDatasheetFixes.__init__ = _fishing_spots
-FlagManager.addCustomFlags = _add_ap_flags
-ItemsDatasheetFixes.makeItemChanges = _add_placeholder_row
-Keysanity.addTextEvents = _add_placeholder_text_event
-Keysanity.createText = _add_placeholder_text
-
-
-def _chest_textures(chest_bfres: str, folder: str, textures) -> None:
-    """LASR's chest textures ("Texture + Size") and the seashell chest come from the assets, into the folder LASR
-    copies them from."""
-    romfs = Path(chest_bfres).parents[2]
-    Path(folder).mkdir(parents=True, exist_ok=True)
-    for path in ap_assets.CHEST_TEXTURES:
-        (Path(folder) / Path(path).name).write_bytes(ap_assets.load(romfs, path))
-
-
-# The title screen and the chest textures are the same for every seed: assets (ap_assets.py), not built here.
-mod_generator.TitleScreenFixes = lambda proc: None
-lasr_chests.createChestBfresWithCustomTexturesIfMissing = _chest_textures
-# Chests holding a seashell are blue (ap_chest.py); LASR's items.yml gives seashells no chest-type.
-lasr_chests.CHEST_TEXTURES[ap_chest.CHEST_TYPE] = ap_chest.FILE_NAME
-
-
-class APModsProcess(mod_generator.ModsProcess):
-    def __init__(self, *args, seed_hash: str, location_names: dict, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.seed_hash = seed_hash
-        self.location_names = location_names
-        self.failed = None
-        self.error.connect(self._on_error)
-
-    def _on_error(self, message: str) -> None:
-        self.failed = message
-
-    def makeConfig(self) -> None:
-        super().makeConfig()
-        # LASR writes full_direction and speed; the module reads full_360 and a speed per kind of movement.
-        speed = MOVEMENT_SPEED if self.settings["Movement Speed"] else 1.0
-        path = self.config_dir / "config.ini"
-        text = path.read_text()
-        text = text.replace("full_direction = ", f"full_360 = {self.settings['360 Movement']}\n"
-                            f"walk_speed = {speed}\nswim_speed = {speed}\nfull_direction = ", 1)
-        # Settings LASR lists but never implemented; the module does them.
-        text += (f"\n[tweaks]\ninstant_text = {self.settings.get('Instant Text', False)}\n"
-                 f"no_low_health_beep = {self.settings.get('Disable Low Health Beep', False)}\n"
-                 f"no_guardian_acorn = {self.settings.get('Disable Guardian Acorn', False)}\n"
-                 f"no_piece_of_power = {self.settings.get('Disable Piece of Power', False)}\n"
-                 f"easy_fishing = {self.settings.get('Easy Fishing', False)}\n"
-                 f"no_30fps_drops = {NO_30FPS_DROPS[self.settings.get('No 30 FPS Drops', 'On emulators')]}\n"
-                 f"instant_pickups = {self.settings.get('Instant Pickups', False)}\n"
-                 f"bouncy_items = {self.settings.get(ap_drop.BOUNCY_SETTING, False)}\n")
-        seashells = ap_goal.settings_seashells(self.settings)
-        path.write_text(text + f"\n[archipelago]\nseed_hash = {self.seed_hash}\n"
-                        f"seashell_hunt = {seashells is not None}\nseashells_required = {seashells or 0}\n")
-        # What each location holds, so the found text names it before the client connects (DESIGN.md)
-        with open(self.config_dir / "ap_names.txt", "w", encoding="utf-8", newline="\n") as f:
-            for local_id, (item, owner) in sorted(self.location_names.items()):
-                f.write(f"{local_id} {clean_name(item)}|{clean_name(owner)}\n")
+def name_lines(location_names: dict) -> List[str]:
+    """What each location holds, so the found text names it before the client connects (DESIGN.md)."""
+    return [f"{local_id} {clean_name(item)}|{clean_name(owner)}"
+            for local_id, (item, owner) in sorted(location_names.items())]
 
 
 def clean_name(text: str) -> str:
@@ -599,45 +135,21 @@ def player_settings(text: str) -> dict:
 
 
 def load_yaml(name: str):
-    with open(HERE / "RandomizerCore" / "Data" / name, "r") as f:
+    with open(DATA_DIR / name, "r") as f:
         return yaml.safe_load(f)
 
 
-def build_placements(patch: dict, logic: dict) -> dict:
-    """Converts the AP patch file into the placements dict LASR's ModsProcess expects."""
-    settings = dict(patch["settings"])
-    settings.setdefault("Excluded Locations", [])
-    settings["Starting Gear"] = list(patch["starting_items"])
-
-    placements = {
-        "settings": settings,
-        "force-junk": [],
-        "force-vanilla": [loc for loc, item in patch["placements"].items() if item != "ap-item"],
-        "starting-items": list(patch["starting_items"]),
-        "dungeon-entrances": dict(patch["dungeon_entrances"]),
-        "indexes": {},
-        "moblin-cave": "bow-wow",
-        "rooster-statue": "rooster",
-    }
-    for loc, item in patch["placements"].items():
-        placements[loc] = item
-        if item == "ap-item":
-            placements["indexes"][loc] = int(patch["location_ids"][loc])
-            placements[loc] = location_item(loc)
-        elif item in INDEXED_ITEMS and "index" in logic.get(loc, {}):
-            placements["indexes"][loc] = logic[loc]["index"]
-        elif item.startswith(DUNGEON_ITEM_PREFIXES) and item[-1].isdigit():
-            placements["indexes"][loc] = dungeon_index(int(item[-1]))
-    return placements
+def dungeon_item(item: str) -> Optional[tuple]:
+    """A dungeon item's kind and the game's index of its dungeon, from LASR's `<kind>-D<number>` (D1 0 to D8 7, the
+    Color Dungeon D0 9), as LASR's shuffler gives dungeon items; the module's AddItemID hook adds a dungeon item with
+    an index to that dungeon. None for other items."""
+    kind, _, number = item.rpartition("-D")
+    if not number.isdigit() or not kind.startswith(DUNGEON_ITEM_PREFIXES):
+        return None
+    return kind, 9 if number == "0" else int(number) - 1
 
 
-def dungeon_index(number: int) -> int:
-    """The game's index of LASR's dungeon number (D1 0 to D8 7, the Color Dungeon D0 9), as LASR's shuffler gives
-    dungeon items; the module's AddItemID hook adds a dungeon item with an index to that dungeon."""
-    return 9 if number == 0 else number - 1
-
-
-def write_indices(config_dir: Path, logic: dict, patch: dict) -> None:
+def index_lines(logic: dict, patch: dict) -> List[str]:
     """One line per seashell, heart piece, golden leaf, heart container, bottle and chamber stone location: its kind, its
     vanilla inventory bit and the local id of the location when it holds the placeholder, else -1. A location that keeps its
     vanilla item sets its bit when collected, so the module gives received items other bits; the Memories map marks
@@ -648,21 +160,58 @@ def write_indices(config_dir: Path, logic: dict, patch: dict) -> None:
         if kind and entry.get("type") == "item" and "index" in entry:
             placeholder = patch["placements"].get(loc) == "ap-item"
             lines.append(f"{kind} {entry['index']} {int(patch['location_ids'][loc]) if placeholder else -1}")
-    (config_dir / INDICES_FILE).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+    return lines
 
 
-def starting_bits(logic: dict, patch: dict) -> dict:
-    """Per indexed item key, the inventory bits no vanilla source of the seed sets (see write_indices), lowest first:
-    the bits the module gives received items, which the starting items take first."""
-    vanilla = {kind: set() for kind, _ in INDEX_BITS.values()}
-    for loc, entry in logic.items():
-        kind = INDEX_KINDS.get(entry.get("content"))
-        if kind and entry.get("type") == "item" and "index" in entry and patch["placements"].get(loc) != "ap-item":
-            vanilla[kind].add(entry["index"])
-    return {key: [i for i in bits if i not in vanilla[kind]] for key, (kind, bits) in INDEX_BITS.items()}
+def start_lines(item_defs: dict, patch: dict) -> List[str]:
+    """The start's lines: the patch's starting items, every dungeon's item of each Start With kind (the world leaves
+    keys out of the starting items for them, and gives the other kinds both ways), the rupees and the flags. A dungeon
+    item counts for its own dungeon; the module gives indexed items the bits received ones take."""
+    settings = patch["settings"]
+    kinds = [kind for setting, kind in START_WITH_KINDS.items() if settings.get(setting) == "Start With"]
+    kind_of = lambda item: (dungeon_item(item) or (None,))[0]  # noqa: E731
+    items = [item for item in patch["starting_items"] if kind_of(item) not in kinds]
+    items += [item for item, item_def in item_defs.items() if kind_of(item) in kinds
+              for _ in range(item_def.get("quantity", 1))]
+    lines, given = [], []
+    for item in items:
+        key = item_defs[item]["item-key"]
+        if key in START_UPGRADES and key in given:
+            key = START_UPGRADES[key]
+        given.append(key)
+        lines.append(f"I {key} {dungeon_item(item)[1] if dungeon_item(item) else -1}")
+    if settings.get("Rupees", 0) > 0:
+        lines.append(f"R {settings['Rupees']}")
+    data = ap_assets.data()
+    setting_flags = {**START_SETTING_FLAGS, "Boss Cutscenes": data["boss_flags"]}
+    flags = [*data["start_flags"], *(flag for setting, names in setting_flags.items() if settings.get(setting)
+                                     for flag in names)]
+    # START_MARKER last: the module sets them in this order, and a save holds all of them once it is set
+    lines += [f"F {flag}" for flag in flags if flag != START_MARKER] + [f"F {START_MARKER}"]
+    return lines
 
 
-def write_vanilla(config_dir: Path, logic: dict, item_defs: dict, patch: dict) -> None:
+def marker_lines(patch: dict) -> List[str]:
+    """The markers' lines: the map markers of the doors of shuffled dungeons."""
+    shuffled = patch["settings"].get("Shuffled Dungeons", False)
+    return ap_entrances.markers(patch["dungeon_entrances"]) if shuffled else []
+
+
+def jump_lines(patch: dict) -> List[str]:
+    """The jumps' lines: the doors of shuffled dungeons and, on a seashell hunt, the egg's door."""
+    shuffled = patch["settings"].get("Shuffled Dungeons", False)
+    return ((ap_entrances.jumps(patch["dungeon_entrances"]) if shuffled else []) +
+            ap_goal.jumps(ap_goal.settings_seashells(patch["settings"])))
+
+
+def shop_lines(patch: dict) -> List[str]:
+    """Shop slots show the item's name on the price tag and in the buy dialog (System.msbt): the module writes it there.
+    Each line: the slot's two labels (LASR's, ap_assets.data's shop_text) and its location's local id."""
+    return [f"{tag} {buy} {int(patch['location_ids'][loc])}"
+            for loc, (tag, buy) in ap_assets.data()["shop_text"].items() if loc in patch["location_ids"]]
+
+
+def kept_lines(logic: dict, item_defs: dict, patch: dict) -> List[str]:
     """One line per AP location that keeps its vanilla item. The Trendy Game's prizes: the item's key, its index (-1
     for none) and the location's local id; the module sends the check when the game adds that item. The companions:
     `F`, the flag their joining sets and the local id; the module sends the check once the flag is set."""
@@ -673,73 +222,125 @@ def write_vanilla(config_dir: Path, logic: dict, item_defs: dict, patch: dict) -
             lines.append(f"F {COMPANION_FLAGS[loc]} {int(local_id)}")
         elif item != "ap-item":
             lines.append(f"{item_defs[item]['item-key']} {logic[loc].get('index', -1)} {int(local_id)}")
-    (config_dir / VANILLA_FILE).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+    return lines
 
 
-def write_poses(config_dir: Path) -> None:
-    """One line per item id that shows another item's model: the id and that item's id, whose item-get pose it takes."""
-    lines = [f"{item_id} {pose_id}" for item_id, pose_id in sorted(POSE_IDS.items())]
-    (config_dir / POSES_FILE).write_text("".join(line + "\n" for line in lines), encoding="utf-8", newline="\n")
+def model_token(local_id) -> str:
+    """What a location's actors name as their model file and model name."""
+    return f"{MODEL_TOKEN}{int(local_id)}"
 
 
-def add_rooster_flag(files) -> None:
-    """Reviving the rooster (RoosterBones.bfevfl, FlyingCucco's Join) sets no flag; it sets RoosterFoundFlag (added by
-    LASR's flag manager) right after."""
-    flow = files.readFile(ROOSTER_EVENT_FILE)
-    chart = flow.flowchart
-    joins = [event for event in chart.events if getattr(event.data, "actor", None) is not None
-             and event.data.actor.v.identifier.name == "FlyingCucco" and str(event.data.actor_action.v) == "Join"]
-    assert len(joins) == 1, joins
-    after = joins[0].data.nxt.v.name if joins[0].data.nxt.v is not None else None
-    flag = event_tools.createActionEvent(chart, "EventFlags", "SetFlag",
-                                         {"symbol": COMPANION_FLAGS["rooster-statue"], "value": True}, after)
-    event_tools.insertEventAfter(chart, joins[0].name, flag)
-    files.writeFile(ROOSTER_EVENT_FILE, flow)
+def shown_models(patch: dict, item_defs: dict) -> dict:
+    """The AP locations whose item shows its own model (`location_models`) -> that item's definition; the others show
+    the Archipelago model."""
+    shown = {}
+    for loc, name in patch.get("location_models", {}).items():
+        model = item_defs.get(name, {})
+        if (loc in patch["location_ids"] and patch["placements"].get(loc) == "ap-item" and model.get("model-path")
+                and not model["item-key"].startswith("$")):
+            shown[loc] = model
+    return shown
 
 
-def location_item(loc: str) -> str:
-    return f"ap-item:{loc}"
+def ground_transform(loc: str, model_name: str) -> tuple:
+    """How LASR places an item actor that shows `model_name` at `loc`, against how it places one that shows the token,
+    which it treats as any other model: (scale factor, yaw in degrees or None, rise)."""
+    data = ap_assets.data()
+    heart_place = loc in data["heart_rooms"] or loc in SUNKEN_SHELLS
+    sunken = loc in data["heart_sunken"] or loc in SUNKEN_SHELLS
+    shrunk = 0.75 if sunken else 0.55  # LASR's scale at a heart piece place for a model that is not a heart
+    factor, rise = 1.0, 0.0
+    if heart_place and model_name in HEART_MODELS:
+        factor, rise = 1 / shrunk, (-0.25 if sunken else 0.0)
+    if model_name in data["model_sizes"]:
+        # a sunken seashell's scale becomes the size, a heart piece's is multiplied by it, the others' start at 1
+        factor = data["model_sizes"][model_name] / (shrunk if loc in SUNKEN_SHELLS else 1.0)
+    return factor, data["model_rotations"].get(model_name), rise
 
 
-def shop_name(names: list) -> str:
-    """The price tag's name: the item and its owner in at most NAME_MAX characters; a long item name is cut short."""
-    item, owner = names
-    suffix = f" for {owner[:16]}" if owner else ""
-    room = NAME_MAX - len(suffix)
-    if len(item) > room:
-        item = item[:room - 1].rstrip() + "…"
-    return item + suffix
-
-
-def add_location_items(patch: dict, item_defs: dict) -> None:
-    """Gives every AP location its own item definition: the model of the item it holds (`location_models`),
-    shown by the location and by the item-get, its chest's size and texture (`location_chests`, for LASR's
-    "Chest Types"), and in the shop a price tag naming the item."""
-    names = patch.get("location_names", {})
-    models = patch.get("location_models", {})
-    chests = patch.get("location_chests", {})
-    for loc, item in patch["placements"].items():
-        if item != "ap-item":
+def model_lines(patch: dict, item_defs: dict) -> List[str]:
+    """The models' lines: `M <local id> <item id> <model file> <model name>` per location whose item shows its own
+    model (item id -1 where the item-get has no model for it: it holds up the Archipelago model), `S <local id> <scale
+    factor> <yaw or -> <rise>` where LASR would place its actors otherwise than the token's, `I <row key> <item id>
+    <local id>` per stand-in row of an AP location, and `C <local id> <size> <chest file>` per chest location whose
+    chest is not the plain one (`location_chests`: its item's type and chest-type). Items.gsheet's rows and LASR's
+    chests come from the mod's build (ap_assets.data)."""
+    data = ap_assets.data()
+    item_rows, chests = data["item_rows"], data["chests"]
+    ids = patch["location_ids"]
+    lines = []
+    for loc, (item_type, chest_type) in patch.get("location_chests", {}).items():
+        if loc not in chests["rooms"] or loc not in ids or patch["placements"].get(loc) != "ap-item":
             continue
-        item_def = dict(PLACEHOLDER_DEF)
-        model = item_defs.get(models.get(loc, ""), {})
-        if model.get("model-path") and not model["item-key"].startswith("$"):
-            key = variant_key(model["item-key"])
-            VARIANTS[key] = (model["item-key"], model["npc-key"])
-            VARIANT_USES[key] = VARIANT_USES.get(key, 0) + 1
-            item_def.update({"item-key": key, "model-path": model["model-path"], "model-name": model["model-name"],
-                             "npc-key": model["npc-key"]})
-        if loc in chests:
-            item_def["type"], chest_type = chests[loc]
-            if chest_type:
-                item_def["chest-type"] = chest_type
-            else:
-                item_def.pop("chest-type", None)
-        if loc in SHOP_LOCATIONS and loc in names:
-            key = f"ItemName_AP_{loc}"
-            SHOP_NAMES[key] = shop_name(names[loc]).replace("[", "(").replace("]", ")")
-            item_def["message"] = f"UI:{key}"
-        item_defs[location_item(loc)] = item_def
+        size, model = chest_look(patch["settings"], item_type, chest_type, chests)
+        if (size, model) != (1.0, chests["files"]["default"]):
+            lines.append(f"C {int(ids[loc])} {size:.4f} {model}")
+    for loc, model in shown_models(patch, item_defs).items():
+        item_id, npc_key = item_rows.get(model["item-key"], (-1, ""))
+        lines.append(f"M {int(ids[loc])} {item_id if npc_key else -1} {model['model-path']} {model['model-name']}")
+        scale, yaw, rise = ground_transform(loc, model["model-name"])
+        if (scale, yaw, rise) != (1.0, None, 0.0):
+            lines.append(f"S {int(ids[loc])} {scale:.4f} {'-' if yaw is None else f'{yaw:.1f}'} {rise:.4f}")
+    for key, loc in STAND_IN_ROWS.items():
+        if key in item_rows and loc in ids and patch["placements"].get(loc) == "ap-item":
+            lines.append(f"I {key} {item_rows[key][0]} {int(ids[loc])}")
+    return lines
+
+
+def chest_look(settings: dict, item_type: str, chest_type: Optional[str], chests: dict) -> tuple:
+    """How LASR's "Chest Types" shows a chest holding an item of this type and chest-type: (size, model file).
+    `chests`: LASR's chest sizes by item type ("sizes") and model files by chest-type ("files")."""
+    mode = settings.get("Chest Types", "Default")
+    if mode == "Default":
+        return 1.0, chests["files"]["default"]
+    sizes = dict(chests["sizes"])
+    if not settings.get("Seashells Important", True):
+        sizes["seashell"] = sizes["junk"]
+    if not settings.get("Trade Important", True):
+        sizes["trade"] = sizes["junk"]
+    return sizes[item_type], chests["files"][(mode == "Texture + Size" and chest_type) or "default"]
+
+
+def patch_shape(patch: dict) -> dict:
+    """What the mod's files depend on in a patch: per location its local id (None for none) and what it holds, the
+    placeholder ("ap-item") for an AP location without its vanilla item and for a removed one (removed_location_ids)."""
+    shape = {loc: [None, item] for loc, item in patch["placements"].items()}
+    for loc, local_id in {**patch.get("removed_location_ids", {}), **patch["location_ids"]}.items():
+        shape.setdefault(loc, [None, "ap-item"])[0] = int(local_id)
+    return shape
+
+
+def config_text(settings: dict, seed_hash: str, slot_name: str) -> str:
+    """config.ini: LASR's sections, with full_360 and a speed per kind of movement as the module reads them, then the
+    module's own sections."""
+    speed = MOVEMENT_SPEED if settings["Movement Speed"] else 1.0
+    config = configparser.ConfigParser()
+    config["movement"] = {"full_360": settings["360 Movement"], "walk_speed": speed, "swim_speed": speed}
+    config["nice_items"] = {"bombs": settings["Nice Bombs"], "hookshot": settings["Nice Hookshot"],
+                            "rod": settings["Nice Magic Rod"]}
+    config["blur_removal"] = {"enabled": settings["Blur Removal"]}
+    config["damage"] = {"mode": settings["Damage"]}
+    config["randomizer"] = {"enabled": True, "free_book": settings["Free Book"], "stealing": settings["Stealing"],
+                            "enemies": settings["Randomize Enemies"], "enemy_sizes": settings["Randomize Enemy Sizes"]}
+    text = io.StringIO()
+    config.write(text)
+    # Settings LASR lists but never implemented; the module does them.
+    text.write(f"\n[tweaks]\ninstant_text = {settings.get('Instant Text', False)}\n"
+               f"no_low_health_beep = {settings.get('Disable Low Health Beep', False)}\n"
+               f"no_guardian_acorn = {settings.get('Disable Guardian Acorn', False)}\n"
+               f"no_piece_of_power = {settings.get('Disable Piece of Power', False)}\n"
+               f"easy_fishing = {settings.get('Easy Fishing', False)}\n"
+               f"no_30fps_drops = {NO_30FPS_DROPS[settings.get('No 30 FPS Drops', 'On emulators')]}\n"
+               f"instant_pickups = {settings.get('Instant Pickups', False)}\n")
+    text.write(ap_options.config_lines(settings))
+    seashells = ap_goal.settings_seashells(settings)
+    # The goal's numbers: what the egg takes and its sign says, all eight instruments and no seashells for patches
+    # from before the options; save_name is a new save's name (DESIGN.md, Goal, In-game text).
+    text.write(f"\n[archipelago]\nseed_hash = {seed_hash}\n"
+               f"seashell_hunt = {seashells is not None}\nseashells_required = {seashells or 0}\n"
+               f"instruments_required = {settings.get('Instruments Required', 8)}\n"
+               f"save_name = {ap_save_name.save_name(slot_name)}\n")
+    return text.getvalue()
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -763,69 +364,54 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not (args.romfs / "region_common" / "event" / "PlayerStart.bfevfl").exists():
         print(f"{args.romfs} is not a Link's Awakening RomFS dump")
         return 1
-    problem = romfs_check.problem(args.romfs,
-                                  romfs_check.sources(json.loads(ap_assets.MANIFEST.read_text(encoding="utf-8"))))
+    problem = romfs_check.problem(args.romfs, romfs_check.sources(ap_assets.manifest()))
     if problem:
         print(problem)
         return 1
-    if not (HERE / "exl" / "subsdk9").exists():
+    if not (EXL_DIR / "subsdk9").exists():
         print("patcher/exl/subsdk9 is missing; build the exlaunch module first (scripts/build_exl.sh)")
+        return 1
+    if patch_shape(patch) != ap_assets.data()["shape"]:
+        print("The patch's locations are not those of the mod this patcher makes: patch it with the patcher of the "
+              "world version that made it.")
         return 1
 
     item_defs = load_yaml("items.yml")["Item_Pool"]
-    item_defs["seashell"]["chest-type"] = ap_chest.CHEST_TYPE
-    item_defs["ap-item"] = dict(PLACEHOLDER_DEF)
-    add_location_items(patch, item_defs)
     logic = load_yaml("logic.yml")
-
-    placements = build_placements(patch, logic)
-    hints = patch.get("hints", {})
-    ap_hints.prepare(hints)
-    STARTING_BITS.update(starting_bits(logic, patch))
     seed = patch["seed_name"] + str(patch["player"])
-    rng = random.Random(int(hashlib.sha256(seed.encode()).hexdigest()[:16], 16))
-
-    proc = APModsProcess(placements, args.romfs, args.out, item_defs, seed, rng.getstate(),
-                         seed_hash=patch["seed_hash"],
-                         location_names={patch["location_ids"][loc]: names
-                                         for loc, names in patch.get("location_names", {}).items()
-                                         if loc in patch["location_ids"]})
-    proc.run()
-    if proc.failed:
-        print(proc.failed)
-        return 1
-    write_indices(proc.config_dir, logic, patch)
-    write_vanilla(proc.config_dir, logic, item_defs, patch)
-    write_poses(proc.config_dir)
-    if patch["settings"].get("Shuffled Dungeons"):
-        ap_entrances.add(proc.file_manager, patch["dungeon_entrances"])
-    if "rooster-statue" in patch["location_ids"]:
-        add_rooster_flag(proc.file_manager)
-    ap_player_ghost.add(proc.file_manager)  # from NpcGhost's row before the Ammo Ghost rewrites it
-    if patch["settings"].get("Ammo Ghost", True):  # the option's default, also for patches without it
-        ap_ghost.add(proc.file_manager)
-    if hints:
-        ap_hints.add(proc.file_manager, proc.config_dir, hints)
-    # all eight and no seashells for patches from before the options
-    ap_goal.set_goal(proc.file_manager, patch["settings"].get("Instruments Required", 8),
-                     ap_goal.settings_seashells(patch["settings"]))
-    ap_save_name.set_default(proc.file_manager, patch.get("slot_name", ""))
-    ap_ballad.add(args.romfs, proc.romfs_dir)
-    map_tracker = patch["settings"].get("Map Tracker", False)  # off for patches from before the option
-    if map_tracker:
+    location_names = {patch["location_ids"][loc]: names for loc, names in patch.get("location_names", {}).items()
+                      if loc in patch["location_ids"]}
+    sections = {
+        "names": name_lines(location_names),
+        "indices": index_lines(logic, patch),
+        "kept": kept_lines(logic, item_defs, patch),
+        "models": model_lines(patch, item_defs),
+        "start": start_lines(item_defs, patch),
+        "shop": shop_lines(patch),
+        "jumps": jump_lines(patch),
+        "markers": marker_lines(patch),
+        "shuffles": ap_shuffles.lines(patch["settings"], random.Random(f"{seed} shuffles")),
+        "hints": ap_hints.lines(patch.get("hints", {})),
+    }
+    if patch["settings"].get("Map Tracker", False):  # off for patches from before the option
         # the activities the options leave out stay off the map, as in PopTracker
         optional = set(patch.get("optional_locations", ()))
-        ap_map.add(proc.file_manager, proc.config_dir,
-                   {loc: i for loc, i in patch["location_ids"].items() if loc not in optional}, PLACEHOLDER_KEY,
-                   patch["settings"].get("Shuffled Dungeons", False))
-    drops = ap_drop.add(proc)  # after the map, which finds the AP chests by the item that Bouncy Items replaces
+        sections["map"] = ap_map.lines({loc: i for loc, i in patch["location_ids"].items() if loc not in optional},
+                                       patch["dungeon_entrances"] if patch["settings"].get("Shuffled Dungeons") else None)
+    game = args.out / GAME_DIR
     try:
-        for path in (ap_assets.MODEL, ap_assets.PLAYER_GHOST, ap_assets.UI) + ((ap_assets.GAME,) if map_tracker else ()):
-            ap_assets.install(args.romfs, proc.romfs_dir, path)
+        ap_assets.install_all(args.romfs, game / "romfs")
     except ap_assets.AssetError as e:
         print(e)
         return 1
-    ap_drop.write_drops(drops, [proc.romfs_dir, args.romfs], proc.config_dir)  # the AP model is the mod's
+    (game / "exefs").mkdir(parents=True, exist_ok=True)
+    for name in ("main.npdm", "subsdk9"):
+        shutil.copy(EXL_DIR / name, game / "exefs")
+    config_dir = args.out / CONFIG_DIR
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "config.ini").write_text(config_text(patch["settings"], patch["seed_hash"],
+                                                       patch.get("slot_name", "")), encoding="utf-8")
+    seed_file.write(config_dir, sections)
     print(f"Mod written to {args.out}")
     return 0
 

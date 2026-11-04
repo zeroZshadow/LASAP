@@ -1,5 +1,5 @@
 """This machine's folders and files, which stay out of the repo: scripts/local_paths.json (gitignored; the keys are in
-scripts/local_paths.example.json, TESTING.md, Requirements). An environment variable named for a key comes first.
+scripts/local_paths.example.json, TESTING.md, Requirements). The environment variable of a key (ENV) comes first.
 
 python local_paths.py <key>   prints the value, for shell scripts
 """
@@ -9,10 +9,12 @@ import sys
 from pathlib import Path
 
 FILE = Path(__file__).resolve().with_name("local_paths.json")
+ENV = {"romfs": "LASAP_ROMFS", "re": "LASAP_RE"}  # key -> the environment variable that comes before it
 
 
-def lookup(key: str, env: str = "") -> str:
-    """The value of key (env first), or "" when neither has it."""
+def lookup(key: str) -> str:
+    """The value of key (its environment variable first), or "" when neither has it."""
+    env = ENV.get(key, "")
     if env and os.environ.get(env):
         return os.environ[env]
     try:
@@ -21,10 +23,11 @@ def lookup(key: str, env: str = "") -> str:
         return ""
 
 
-def local_path(key: str, env: str = "") -> Path:
-    """The path key names (env first); stops with a message naming the key when it is not set."""
-    value = lookup(key, env)
+def local_path(key: str) -> Path:
+    """The path key names (its environment variable first); stops with a message naming the key when it is not set."""
+    value = lookup(key)
     if not value:
+        env = ENV.get(key)
         raise SystemExit(f'{FILE} needs "{key}"' + (f" (or {env})" if env else "") + " (TESTING.md, Requirements)")
     return Path(value)
 

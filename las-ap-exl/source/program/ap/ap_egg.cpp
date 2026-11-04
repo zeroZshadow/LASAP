@@ -1,13 +1,17 @@
-// The seashell hunt's egg (DESIGN.md, Goal): the Wind Fish's Egg opens once Link holds the seashells the goal takes,
-// without instruments or the Ballad: the game's opening plays when he is at the egg with them, on the seashell that
-// completes them there or when he gets there later.
+// The goal's egg (DESIGN.md, Goal). The egg's event asks Inventory.HasAllInstruments where it checks the
+// instruments: the module answers whether Link holds what the goal takes (config.ini [archipelago]). On a seashell
+// hunt the Wind Fish's Egg also opens once Link holds the seashells, without instruments or the Ballad: the game's
+// opening plays when he is at the egg with them, on the seashell that completes them there or when he gets there
+// later.
 #include "ap/ap.hpp"
 #include "ap/ap_bridge.hpp"
 #include "config/config.hpp"
 #include "game/actors/player.hpp"
+#include "game/data/inventory.hpp"
 #include "game/framework.hpp"
 #include "game/hooks/eventflags.hpp"
 #include "game/sym.hpp"
+#include "hooks.hpp"
 #include "loggers.hpp"
 
 namespace AP::Bridge {
@@ -42,7 +46,28 @@ namespace {
         Game::ActorRegistry_FindByKey(egg.Reset(), kEggKey);
         return static_cast<bool>(egg);
     }
+
+    int InstrumentsHeld() {
+        auto* items = Game::Data::Inventory::Items();
+        if (items == nullptr) return 0;
+        const auto& bits = items->ExtraItems;
+        return bits.FullMoonCello + bits.ConchHorn + bits.SeaLilysBell + bits.SurfHarp + bits.WindMarimba +
+               bits.CoralTriangle + bits.EveningCalmOrgan + bits.ThunderDrum;
+    }
+
+    // Each of the four switches of the egg's song (whether the instruments play, which song, how the scene fades,
+    // whether the egg opens) takes its "all instruments" case once Link holds what the goal takes.
+    HOOK_DEFINE_REPLACE(HasAllInstruments) {
+        static bool Callback(void*) {
+            const auto& ap = global_config.archipelago;
+            return ap.seashell_hunt ? AP::GoalSeashellsHeld() : InstrumentsHeld() >= ap.instruments_required;
+        }
+    };
 }
+
+    void InstallEggHooks() {
+        HasAllInstruments::InstallAtFuncPtr(Game::EventQuery_HasAllInstruments.Ptr());
+    }
 
     void TickEgg() {
         if (!global_config.archipelago.seashell_hunt) return;

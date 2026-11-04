@@ -7,6 +7,7 @@
 #include "game/framework.hpp"
 #include "game/sym.hpp"
 #include "lib.hpp"
+#include "test_only.hpp"
 #include <cstring>
 
 namespace AP::Bridge {
@@ -110,9 +111,7 @@ namespace {
         Shared<Game::Actor> enemy;
         Game::Actor_Create(enemy.Reset(), &room->root, &params);
         if (!enemy) return false;
-#ifdef LASAP_TEST
-        KeepSpawned(slot, enemy);
-#endif
+        TEST_ONLY(KeepSpawned(slot, enemy);)
         return true;
     }
 
@@ -124,10 +123,8 @@ namespace {
         const Game::Vec3& c = chest->root->coords.pos;
         const Game::Vec3& l = link.root->coords.pos;
         if (!SpawnZol(chest->zone, {(c.x + l.x) / 2, l.y + kAboveFloor, (c.z + l.z) / 2}, 0)) return false;
-#ifdef LASAP_TEST
-        g_From = "chest";
-        for (size_t i = 1; i < kKept; i++) g_Zols[i] = {};
-#endif
+        TEST_ONLY(g_From = "chest";)
+        TEST_ONLY(for (size_t i = 1; i < kKept; i++) g_Zols[i] = {};)
         return true;
     }
 
@@ -139,9 +136,7 @@ namespace {
         for (size_t i = 0; i < kKept; i++) {
             made += SpawnZol(link.zone, {at.x + kBesideLink[i], at.y + kAboveFloor, at.z}, i);
         }
-#ifdef LASAP_TEST
-        if (made > 0) g_From = "link";
-#endif
+        TEST_ONLY(if (made > 0) g_From = "link";)
         return made;
     }
 }

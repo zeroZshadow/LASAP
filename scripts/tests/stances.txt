@@ -1,0 +1,18 @@
+# How actors with a location's token stand (DESIGN.md, Item models), from scripts/tests/seed/stances.txt, which gives
+# beach-chest (11) a chest at size 1.2 and an S line (half size, turned 90 degrees), pond-island's bush drop (76) an S
+# line (35%) and ukuku-cave-west-loose's heart piece (84) one (half size, turned 90 degrees). The chest takes its size
+# alone, the drop keeps its own size and the heart piece, an item actor, takes its S line: rot is the quaternion's y
+# and w, 0.707,0.707 a turn of 90 degrees. The drop is made once Link cuts the bush (as island_bush, clearing the
+# location's got flag). Run after boot_file1.
+guard hurt
+warp Field 86.25 6 173.25
+poll OK.actor.720119005CFF3742.1.id=[0-9a-f]+.x=87.75.z=171.75.scale=1.200.rot=0.000,1.000 5 DBG actor 720119005CFF3742
+send DBG setflag PondIslandBushGet 0
+warp Field 99.75 9.75 126.75
+at 99.75 126.75
+face up
+tap 2 2 2 when free
+poll OK.drop.-?[0-9] 6 DBG drop
+poll OK.actor.6A0070005D0CD1CB.1.id=a7.x=99.75.z=125.25.scale=1.000. 5 DBG actor 6A0070005D0CD1CB
+warp UkukuCave01 7.5 0 10.5
+poll OK.actor.A10012005CED1B3D.1.id=[0-9a-f]+.x=12.75.z=9.75.scale=0.[0-9]+.rot=0.707,0.707 5 DBG actor A10012005CED1B3D

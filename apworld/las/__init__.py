@@ -584,6 +584,8 @@ class LASWorld(World):
             "starting_items": starting,
             "placements": {loc: placements[loc] for loc in ITEM_LOCATIONS if loc in placements},
             "location_ids": {loc: LOCATION_OFFSETS[loc] for loc in self.shuffled},
+            # the owl statues the options leave out: the mod gives their gifts too, which the module turns off
+            "removed_location_ids": {loc: LOCATION_OFFSETS[loc] for loc in self.removed},
             "optional_locations": self.optional,
             "location_names": self.placed_names(),
             "location_models": self.placed_models(),

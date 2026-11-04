@@ -210,7 +210,7 @@ first field points at the controller): `+0x10` the pad (virtual `+0x10` returns 
 | `0xfa6130` `Datasheet_RowById` | `(sheet, s32 id, row size)`: the row whose `mId` is id (a hash map); rows at `*(sheet+0x70)+0x20`, count `+0x28` |
 | `0xf9d320` `Datasheet_RowAt` | `(out {sheet sp, count, row}, sheet, index)` |
 | `0xf9d260` `Datasheet_FindRowShared` | `(out {sheet sp, count, row}, sheet, StringView* key)`: by the key column (`Datasheet_FindRow`) |
-| `0xf9de10` `Conditions_Check` | `(conditions, u32 type, StringView* arg, actor)`; an argument's leading `!` negates, `$N` takes the actor's LEB parameter N (`0xf9e420`): 0 true, 1 event flag, 2 an Items.gsheet key with an optional `:index` (`Inventory_HasItem(id, 1, index)`), 3 companion (`None`, `BowWow`, `Marin`, `Ghost`, `FlyingCucco` against Inventory `+0x9d`), 4-7 the actor's LEB parameter 0-3 equals the argument, 8 the actor's switch 0-3 on, 9 a Conditions.gsheet row (`Conditions_CheckRow` `0xf9dc70`: every condition of the row), 10 `ShopPanelStocks` (Chamber Dungeon panels in stock), 11 an Items.gsheet key's obtained bit (`Inventory_HasObtained`); the sheets' condition arrays are `{u32 type, string}` elements of 0x18 bytes |
+| `0xf9de10` `Conditions_Check` | `(conditions, u32 type, StringView* arg, actor)`; an argument's leading `!` negates, `$N` takes the actor's LEB parameter N (`0xf9e420`): 0 true, 1 event flag (`EventFlags_Check` `0xdfa920` by name, `0xf9def8`), 2 an Items.gsheet key with an optional `:index` (`Inventory_HasItem(id, 1, index)`), 3 companion (`None`, `BowWow`, `Marin`, `Ghost`, `FlyingCucco` against Inventory `+0x9d`), 4-7 the actor's LEB parameter 0-3 equals the argument, 8 the actor's switch 0-3 on, 9 a Conditions.gsheet row (`Conditions_CheckRow` `0xf9dc70`: every condition of the row), 10 `ShopPanelStocks` (Chamber Dungeon panels in stock), 11 an Items.gsheet key's obtained bit (`Inventory_HasObtained`); the sheets' condition arrays are `{u32 type, string}` elements of 0x18 bytes |
 
 A loaded sheet (`Sheet` in `game/sheet.hpp`; `Datasheet_Create` `0xfa64f0`, a make_shared of 0x110 bytes,
 `Datasheet_vtable` `0x1c30d40`) is a resource (`Resource_Ctor` `0xfb8e40`; virtual bases with vtables at `+0x100`
@@ -221,7 +221,7 @@ and `dataSize`, `keyField` (-1 without a key column, when `Datasheet_RowById` an
 `Datasheet_Create`, recursing into struct fields; no code looks it up), `rowsById` (id to row index) and `rowsByKey`
 (key string to row index).
 
-`UiDatasheets_Load` (`0x867f34`) loads the UI sheets into holders of shared pointers:
+`UiDatasheets_Load` (`0x867f40`, at boot) loads the UI sheets into holders of shared pointers; each global holds a pointer to its holder. The maps' holder takes its six sheets in `0xf9cfb0` (returning to `0x86835c`, where the module swaps the dungeon markers' rows: DESIGN.md, Shuffled dungeons):
 
 | Holder | Sheets |
 |---|---|

@@ -1,31 +1,29 @@
 """Map tracker (DESIGN.md, Map tracker): the pause map shows where the slot's unchecked locations are.
 
-Overworld: four UiFieldMapIcons rows per spot holding checks (a group of nearby locations), one per look: in logic,
-partly in logic, out of logic and collected, with the marker frames of ap_map_icons.py (smaller for a single check).
-The module lists a group's locations by their short names (its check list).
-Each dungeon also gets a group with all of its checks, next to the game's marker of its entrance. The map shows a row's
-icon while the event flag in the row is set and names it with Place:<label>; flag and label are APMap<mark><group>,
-which the module answers from ap_map.txt (map_tracker.cpp): the group's look shows, named by group_name().
+Overworld: four UiFieldMapIcons rows per spot of checks (a group of nearby locations), one per look: in logic,
+partly in logic, out of logic and collected, with the marker frames of ap_map_icons.py. Each dungeon door also gets a
+group, next to the game's marker of the door, with the checks of the dungeon behind it. The groups are those of every
+location, the same in every seed; the seed file's map gives each the slot's locations in it. The map shows a row's icon while
+the event flag in the row is set and names it with Place:<label>; flag and label are APMap<mark><group>, which the
+module answers from the seed file's map (map_tracker.cpp): the group's look shows, named by group_name(), at the size of one
+check or of several. The module lists a group's locations by their short names (its check list).
 
-Dungeons: the module puts a dot of the same looks on the dungeon map per spot holding checks (ap_map.txt M lines) and
+Dungeons: the module puts a dot of the same looks on the dungeon map per spot holding checks (the map's M lines) and
 hides the game's chest icons of the slot's chests (C lines); it names the hovered dot with Place:APMapDot.
 
-Positions come from map_positions.json (scripts/map_positions.py).
+Positions come from map_positions.json (scripts/map_positions.py). modbuild/ap_map_edits.py adds the rows and texts.
 """
 import json
 import math
 import os
 import re
 from pathlib import Path
+from typing import Mapping, Optional
 
-import ap_map_icons
-from RandomizerCore.Randomizers.chests import CHEST_ROOMS
-from RandomizerCore.Randomizers.data import DUNGEON_MAP_ICONS
-from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct
+import ap_assets
 
 HERE = Path(__file__).resolve().parent
 POSITIONS = HERE / "map_positions.json"
-FILE_NAME = "ap_map.txt"  # next to config.ini; AP::MAP_PATH in the module
 FLAG_PREFIX = "APMap"  # AP::MAP_FLAG_PREFIX in the module
 # The mark after the prefix per look: in logic, partly in logic, out of logic, collected (AP::MAP_LOOK_MARKS)
 LOOKS = ("", "P", "X", "C")
@@ -43,7 +41,6 @@ ENTRANCE_OFFSET = 2.5  # x distance from the game's dungeon marker, so both show
 # With shuffled dungeons a dungeon's icon has this name until the dungeon's marker flag is set, which the game sets
 # the first time it shows the dungeon's name on entering it (LocationName.gsheet)
 HIDDEN_DUNGEON = "Unknown dungeon"
-MARKER_FLAGS = dict(DUNGEON_MAP_ICONS.values())  # the game's dungeon marker label -> its show flag
 NAME_WIDTH = 30  # the name of an icon of several checks fits the hover box's line after its count ("22/22 ")
 
 
@@ -51,13 +48,11 @@ def load_positions() -> dict:
     return json.loads(POSITIONS.read_text(encoding="utf-8"))
 
 
-def overworld_groups(positions: dict, location_ids: dict) -> list:
-    """[(x, z, y, [lasr location, ...])]: the slot's overworld checks, each joined to the first spot near it (by x
-    and z)."""
+def overworld_groups(positions: dict) -> list:
+    """[(x, z, y, [lasr location, ...])]: every overworld location, each joined to the first spot near it (by x and
+    z), in name order."""
     groups = []
-    for loc in sorted(location_ids, key=lambda loc: int(location_ids[loc])):
-        if loc not in positions["overworld"]:
-            continue
+    for loc in sorted(positions["overworld"]):
         x, z, y = positions["overworld"][loc]
         for group in groups:
             if math.dist((group[0], group[1]), (x, z)) < GROUP_DISTANCE:
@@ -83,16 +78,11 @@ def dungeon_dots(positions: dict, location_ids: dict) -> list:
     return dots
 
 
-def entrance_groups(files, location_ids: dict) -> list:
-    """[(x, z, y, [lasr location, ...])]: per dungeon, all of the slot's checks in it, next to its entrance."""
-    rows = {str(row["mNameLabel"]): row for row in map(parseStruct, files.readFile("UiFieldMapIcons.gsheet")["values"])}
-    groups = []
-    for prefix, label in DUNGEON_MARKERS.items():
-        locs = sorted((loc for loc in location_ids if loc.startswith(prefix + "-")), key=lambda l: int(location_ids[l]))
-        if locs:
-            row = rows[label]
-            groups.append((row["mPosX"] + ENTRANCE_OFFSET, row["mPosZ"], row["mPosY"], locs))
-    return groups
+def door_checks(location_ids: dict, door: str, entrances: Optional[Mapping[str, str]] = None) -> list:
+    """The slot's checks in the dungeon behind a door (`entrances`, door: the dungeon behind it; None: its own)."""
+    behind = ap_assets.data()["dungeon_map_icons"][(entrances or {}).get(door, door)][0]
+    prefix = next(prefix for prefix, label in DUNGEON_MARKERS.items() if label == behind)
+    return [loc for loc in location_ids if loc.startswith(prefix + "-")]
 
 
 def short_name(name: str) -> str:
@@ -127,73 +117,33 @@ def hidden_until(locs: list, shuffled_dungeons: bool):
     """The flag until which an overworld icon's name is HIDDEN_DUNGEON: with shuffled dungeons, that of a dungeon's
     icon, which would tell which dungeon its door leads into."""
     dungeon = re.match(r"(D\d)-", locs[0])
-    return MARKER_FLAGS[DUNGEON_MARKERS[dungeon.group(1)]] if dungeon and shuffled_dungeons else None
+    marker_flags = dict(ap_assets.data()["dungeon_map_icons"].values())  # the game's marker label -> its show flag
+    return marker_flags[DUNGEON_MARKERS[dungeon.group(1)]] if dungeon and shuffled_dungeons else None
 
 
-def add(files, config_dir: Path, location_ids: dict, placeholder_key: str, shuffled_dungeons: bool = False) -> None:
+def lines(location_ids: dict, entrances: Optional[Mapping[str, str]] = None) -> list:
+    """The seed file's map, which turns the tracker on. `entrances`: the patch's dungeon_entrances with shuffled
+    dungeons, else None. The doors' places and the dungeon chests come from the mod's build (ap_assets.data)."""
+    shuffled_dungeons = entrances is not None
     positions = load_positions()
-    overworld = overworld_groups(positions, location_ids) + entrance_groups(files, location_ids)
+    spots = overworld_groups(positions)
+    data = ap_assets.data()
+    doors = data["map_doors"]
+    by_id = lambda loc: int(location_ids[loc])  # noqa: E731
+    # the slot's checks of each group, in local id order; a group without any shows no icon
+    overworld = [sorted((loc for loc in locs if loc in location_ids), key=by_id) for *_, locs in spots]
+    overworld += [sorted(door_checks(location_ids, door, entrances), key=by_id) for *_, door in doors]
+    shown = [(g, locs) for g, locs in enumerate(overworld) if locs]
     dots = dungeon_dots(positions, location_ids)
-    _field_icons(files, overworld)
-    names = [group_name(positions, locs) for *_, locs in overworld]
-    hidden = [hidden_until(locs, shuffled_dungeons) for *_, locs in overworld]
-    _text(files, [HIDDEN_DUNGEON if flag else name for name, flag in zip(names, hidden)])
-    lines = [f"C {level} {x:.3f} {z:.3f} {local_id}"
-             for level, x, z, local_id in _dungeon_chests(files, positions, location_ids, placeholder_key)]
-    for g, (*_, locs) in enumerate(overworld):
+    lines = [f"C {level} {x:.3f} {z:.3f} {int(location_ids[loc])}"
+             for loc, level, x, z in data["map_chests"] if loc in location_ids]
+    for g, locs in shown:
         lines.append(f"O {g} " + " ".join(str(location_ids[loc]) for loc in locs))
     for d, (room, x, z, locs) in enumerate(dots):
         lines.append(f"M {d} {room} {x:.3f} {z:.3f} " + " ".join(str(location_ids[loc]) for loc in locs))
-    lines += [f"G {g} {name}" for g, name in enumerate(names)]
+    lines += [f"G {g} {group_name(positions, locs)}" for g, locs in shown]
     lines += [f"MG {d} {dot_name(positions, locs)}" for d, (*_, locs) in enumerate(dots)]
-    lines += [f"H {g} {flag} {HIDDEN_DUNGEON}" for g, flag in enumerate(hidden) if flag]
+    lines += [f"H {g} {flag} {HIDDEN_DUNGEON}" for g, locs in shown if (flag := hidden_until(locs, shuffled_dungeons))]
     lines += [f"N {location_ids[loc]} {short_name(positions['names'][loc])}"
-              for loc in sorted({loc for *_, locs in overworld + dots for loc in locs})]
-    (config_dir / FILE_NAME).write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
-
-
-def _field_icons(files, groups: list) -> None:
-    sheet = files.readFile("UiFieldMapIcons.gsheet")
-    # Parsed up front: appending to the sheet invalidates references to its rows.
-    rows = [parseStruct(row) for row in sheet["values"]]
-    next_id = max(row["mId"] for row in rows) + 1
-    for g, (x, z, y, locs) in enumerate(groups):
-        for look, mark in enumerate(LOOKS):
-            name = f"{FLAG_PREFIX}{mark}{g}"
-            row = dict(rows[0])
-            row.update({"mId": next_id + len(LOOKS) * g + look, "mNameLabel": name,
-                        "mType": ap_map_icons.frame(look, len(locs) == 1),
-                        "mFirstShowFlagName": name, "mPosX": float(x), "mPosY": float(y), "mPosZ": float(z),
-                        "mArg00": ""})
-            sheet["values"].append(dictToStruct(row))
-    files.writeFile("UiFieldMapIcons.gsheet", sheet)
-
-
-def _dungeon_chests(files, positions: dict, location_ids: dict, placeholder_key: str) -> list:
-    """[(level, x, z, local id)]: the chests of the slot's dungeon locations, found by the placeholder (or a model
-    variant of it) with the location's index; in each room of the location (Eagle's Tower before and after its
-    collapse)."""
-    chests = []
-    for loc, room_name in CHEST_ROOMS.items():
-        if loc not in location_ids or not room_name.startswith("Lv"):
-            continue
-        local_id = int(location_ids[loc])
-        rooms = {room_name} | {room for room, *_ in positions["dungeon"].get(loc, ())}
-        for room in sorted(rooms):
-            for actor in files.readFile(f"{room}.leb").actors:
-                key = actor.parameters[1]
-                if (actor.type == CHEST_ACTOR and isinstance(key, bytes) and key.startswith(placeholder_key.encode())
-                        and actor.parameters[2] == local_id):
-                    chests.append((room.split("_")[0], actor.posX, actor.posZ, local_id))
-    return chests
-
-
-def _text(files, names: list) -> None:
-    """Place.msbt entries for the icons' names, the module adds the group's count to them; and the dungeon dots'
-    entry, whose text the module gives."""
-    for relative_path, msbt in files.getAllTextFiles("Place.msbt"):
-        for g, name in enumerate(names):
-            for mark in LOOKS:
-                msbt.addEntry(f"{FLAG_PREFIX}{mark}{g}", name)
-        msbt.addEntry(DOT_LABEL, "")
-        files.writeTextFile(relative_path, "Place.msbt", msbt)
+              for loc in sorted({loc for _, locs in shown for loc in locs} | {loc for *_, locs in dots for loc in locs})]
+    return lines

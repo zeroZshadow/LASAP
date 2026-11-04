@@ -20,7 +20,6 @@ namespace {
         if (config.randomizer.enabled) {
             Fishing::Install();
             Seashells::Install();
-            EventPatcher::Install();
         }
         if (config.randomizer.enemies || config.randomizer.enemy_sizes) Enemies::Install();
         Controls::Install();

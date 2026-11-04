@@ -33,7 +33,7 @@ namespace Game {
     };
     static_assert(sizeof(SheetCondition) == 0x18);
 
-    // A sheet's data: the loaded .gsheet file, its pointers relocated (patcher/RandomizerCore/Tools/gsheet.py):
+    // A sheet's data: the loaded .gsheet file, its pointers relocated (patcher/modbuild/RandomizerCore/Tools/gsheet.py):
     // the header, the rows and the field descriptors (0x30 each) that follow.
     template<typename Row>
     struct SheetData {

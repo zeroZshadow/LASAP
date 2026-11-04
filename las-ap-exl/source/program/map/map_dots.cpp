@@ -10,6 +10,7 @@
 #include "game/sym.hpp"
 #include "loggers.hpp"
 #include "map/map_tracker_impl.hpp"
+#include "test_only.hpp"
 #include <algorithm>
 #include <cmath>
 
@@ -71,7 +72,7 @@ namespace {
         size_t missing = 0;
         for (size_t d = 0; d < Dots().size(); d++) {
             const Dot& dot = Dots()[d];
-            std::string_view dotRoom = TextOf(dot.room);
+            std::string_view dotRoom = dot.room;
             if (dotRoom.compare(0, level.size(), level) != 0) continue;
             const auto* room = FindRoom(dotRoom);
             if (room == nullptr) {
@@ -90,7 +91,7 @@ namespace {
             Ui::Pane* dotRoot = MarkerRoot(&marker->part.wrapper);
             Ui::MoveTo(dotRoot, at[0], at[1]);
             DotMarker dm{d, std::move(made)};
-            if (AnyHintShown(IdsOf(dot.ids))) dm.ring = MakeRing(&page->page.wrapper, pinRoot, dotRoot);
+            if (AnyHintShown(dot.ids)) dm.ring = MakeRing(&page->page.wrapper, pinRoot, dotRoot);
             // under N_MapPosition_00, which moves after the setup (DotAt)
             dm.x = at[0] + pinRoot->x;
             dm.y = at[1] + pinRoot->y;
@@ -109,7 +110,7 @@ namespace {
     // of KeyWait).
     void ShowRoomDots(const std::string& name, bool onFloor) {
         for (auto& dm : g_DotMarkers) {
-            if (TextOf(Dots()[dm.dot].room) == name) dm.onFloor = onFloor;
+            if (Dots()[dm.dot].room == name) dm.onFloor = onFloor;
         }
         ApplyDots();
     }
@@ -147,7 +148,7 @@ namespace {
             // set-shown keeps).
             std::string level = LevelSystem::GetCurrentLevel();
             for (const Chest& chest : Chests()) {
-                if (TextOf(chest.level) == level && std::fabs(chest.x - actor->x) < 0.01f && std::fabs(chest.z - actor->z) < 0.01f) {
+                if (chest.level == level && std::fabs(chest.x - actor->x) < 0.01f && std::fabs(chest.z - actor->z) < 0.01f) {
                     g_ChestMatches++;
                     icon->shown = 0;
                     Ui::SetVisible(MarkerRoot(&icon->part.wrapper), false);
@@ -226,14 +227,12 @@ namespace {
                 TickList(&page->page.wrapper);
                 return false;
             }
-    #ifdef LASAP_TEST
-            if (TestDotPressed()) pressed = true;
-    #endif
+            TEST_ONLY(if (TestDotPressed()) pressed = true;)
             const Dot* dot = HoveredDot();
             if (!pressed || dot == nullptr || page->hoveredPin != nullptr) return pressed;
-            Ids ids = IdsOf(dot->ids);
+            Ids ids = dot->ids;
             if (ids.size() > 1) {
-                OpenList(&page->page.wrapper, ids, TextOf(dot->name), -1);
+                OpenList(&page->page.wrapper, ids, dot->name, -1);
             } else if (Skippable(ids)) {
                 AP::SetLocationSkipped(ids[0], !AP::IsLocationSkipped(ids[0]));
                 ApplyDots();

@@ -8,6 +8,7 @@
 #include "ap/ap_popup.hpp"
 #include "game/model.hpp"
 #include "game/sym.hpp"
+#include "test_only.hpp"
 #include <atomic>
 
 namespace AP::Popup {
@@ -37,9 +38,7 @@ namespace {
         Held items[kHeldMax];
     };
     Pending g_Pending[8];
-#ifdef LASAP_TEST
-    std::atomic<u32> g_HeldBy[64];   // DBG popdraw: items held per pass id
-#endif
+    TEST_ONLY(std::atomic<u32> g_HeldBy[64];)  // DBG popdraw: items held per pass id
 
     void BuildState(Game::DepthStencilState* state, void* device, u8 func) {
         Game::DepthStencilStateInfo info;
@@ -87,9 +86,7 @@ namespace {
                 Pending* p = PendingOf(context, false);
                 if (p != nullptr && p->depth > 0 && p->count < kHeldMax) {
                     p->items[p->count++] = {item, context[kContextPass]};
-#ifdef LASAP_TEST
-                    g_HeldBy[context[kContextPass] & 63].fetch_add(1, std::memory_order_relaxed);
-#endif
+                    TEST_ONLY(g_HeldBy[context[kContextPass] & 63].fetch_add(1, std::memory_order_relaxed);)
                     return 0;
                 }
             }

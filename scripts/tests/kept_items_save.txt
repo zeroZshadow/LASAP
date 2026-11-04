@@ -1,7 +1,7 @@
 # The server's item for a Trendy Game prize follows the save (DESIGN.md, Item model): a save without the prize (an
 # older one, another file, a !collect) gets it with the location's own index, and a save with it gets nothing more.
 # On a default seed Trendy Prize 3 (local id 134) is seashell 42 and Trendy Prize 1 (local id 132) the Yoshi Doll, as
-# `ap_vanilla.txt` lists them. Run after newgame_file2 with no LAS client connected: `game` sends the ITEM lines.
+# The seed file's kept lists them. Run after newgame_file2 with no LAS client connected: `game` sends the ITEM lines.
 guard hurt
 free 10
 check recv=0\s

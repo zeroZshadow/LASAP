@@ -14,7 +14,7 @@ namespace {
     HOOK_DEFINE_TRAMPOLINE(Inventory_AddItemID) {
         static void Callback(ItemId ID, int count, int index) {
             // Archipelago placeholder: the index is the location's local id
-            if (AP::IsPlaceholderItem(ID)) {
+            if (ID == AP::PLACEHOLDER_ITEM_ID) {
                 AP::OnPlaceholderCollected(AP::LocationId{index});
                 return;
             }
@@ -134,92 +134,6 @@ namespace {
 }
 
 namespace Inventory {
-    const std::unordered_map<ItemId, std::string> kItemNames = {
-        {ItemId::SwordLv1, "SwordLv1"},
-        {ItemId::SwordLv2, "SwordLv2"},
-        {ItemId::Shield, "Shield"},
-        {ItemId::MirrorShield, "MirrorShield"},
-        {ItemId::Bomb, "Bomb"},
-        {ItemId::Bow, "Bow"},
-        {ItemId::HookShot, "HookShot"},
-        {ItemId::Boomerang, "Boomerang"},
-        {ItemId::MagicRod, "MagicRod"},
-        {ItemId::Shovel, "Shovel"},
-        {ItemId::SleepyMushroom, "SleepyMushroom"},
-        {ItemId::MagicPowder, "MagicPowder"},
-        {ItemId::RocsFeather, "RocsFeather"},
-        {ItemId::PowerBraceletLv1, "PowerBraceletLv1"},
-        {ItemId::PowerBraceletLv2, "PowerBraceletLv2"},
-        {ItemId::PegasusBoots, "PegasusBoots"},
-        {ItemId::Ocarina, "Ocarina"},
-        {ItemId::ClothesGreen, "ClothesGreen"},
-        {ItemId::ClothesRed, "ClothesRed"},
-        {ItemId::ClothesBlue, "ClothesBlue"},
-        {ItemId::Flippers, "Flippers"},
-        {ItemId::SecretMedicine, "SecretMedicine"},
-        {ItemId::Seashell, "Seashell"},
-        {ItemId::GoldenLeaf, "GoldenLeaf"},
-        {ItemId::TailKey, "TailKey"},
-        {ItemId::SlimeKey, "SlimeKey"},
-        {ItemId::AnglerKey, "AnglerKey"},
-        {ItemId::FaceKey, "FaceKey"},
-        {ItemId::BirdKey, "BirdKey"},
-        {ItemId::YoshiDoll, "YoshiDoll"},
-        {ItemId::Ribbon, "Ribbon"},
-        {ItemId::DogFood, "DogFood"},
-        {ItemId::Bananas, "Bananas"},
-        {ItemId::Stick, "Stick"},
-        {ItemId::Honeycomb, "Honeycomb"},
-        {ItemId::Pineapple, "Pineapple"},
-        {ItemId::Hibiscus, "Hibiscus"},
-        {ItemId::Letter, "Letter"},
-        {ItemId::Broom, "Broom"},
-        {ItemId::FishingHook, "FishingHook"},
-        {ItemId::PinkBra, "PinkBra"},
-        {ItemId::MermaidsScale, "MermaidsScale"},
-        {ItemId::MagnifyingLens, "MagnifyingLens"},
-        {ItemId::Compass, "Compass"},
-        {ItemId::DungeonMap, "DungeonMap"},
-        {ItemId::StoneBeak, "StoneBeak"},
-        {ItemId::SmallKey, "SmallKey"},
-        {ItemId::NightmareKey, "NightmareKey"},
-        {ItemId::FullMoonCello, "FullMoonCello"},
-        {ItemId::ConchHorn, "ConchHorn"},
-        {ItemId::SeaLilysBell, "SeaLilysBell"},
-        {ItemId::SurfHarp, "SurfHarp"},
-        {ItemId::WindMarimba, "WindMarimba"},
-        {ItemId::CoralTriangle, "CoralTriangle"},
-        {ItemId::EveningCalmOrgan, "EveningCalmOrgan"},
-        {ItemId::ThunderDrum, "ThunderDrum"},
-        {ItemId::HeartPiece, "HeartPiece"},
-        {ItemId::HeartContainer, "HeartContainer"},
-        {ItemId::Arrow, "Arrow"},
-        {ItemId::Apple, "Apple"},
-        {ItemId::GreenApple, "GreenApple"},
-        {ItemId::Heart, "Heart"},
-        {ItemId::Rupee1, "Rupee1"},
-        {ItemId::Rupee5, "Rupee5"},
-        {ItemId::Rupee20, "Rupee20"},
-        {ItemId::Rupee50, "Rupee50"},
-        {ItemId::Rupee100, "Rupee100"},
-        {ItemId::Rupee300, "Rupee300"},
-        {ItemId::Fairy, "Fairy"},
-        {ItemId::DefenceUp, "DefenceUp"},
-        {ItemId::PowerUp, "PowerUp"},
-        {ItemId::Bottle, "Bottle"},
-        {ItemId::PanelDungeonPiece, "PanelDungeonPiece"},
-        {ItemId::PanelDungeonPieceSet, "PanelDungeonPieceSet"},
-        {ItemId::ShellRader, "ShellRader"},
-        {ItemId::PanelDungeonPlusChip, "PanelDungeonPlusChip"},
-        {ItemId::SongWindFish, "Song_WindFish"},
-        {ItemId::SongMambo, "Song_Mambo"},
-        {ItemId::SongSoul, "Song_Soul"},
-        {ItemId::MagicPowderMaxUp, "MagicPowder_MaxUp"},
-        {ItemId::BombMaxUp, "Bomb_MaxUp"},
-        {ItemId::ArrowMaxUp, "Arrow_MaxUp"},
-        {ItemId::BottleFairy, "BottleFairy"}
-    };
-
     void AddItemID(ItemId id, int count, int index) { Inventory_AddItemID::Callback(id, count, index); }
 
     void Install() {

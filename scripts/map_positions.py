@@ -28,7 +28,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "patcher"))
+sys.path.insert(0, str(ROOT / "patcher" / "modbuild"))
 sys.path.insert(0, str(ROOT / "vendor" / "Archipelago"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from RandomizerCore.Tools.leb import Room  # noqa: E402
@@ -39,7 +39,7 @@ from local_paths import local_path  # noqa: E402
 
 OUT = ROOT / "patcher" / "map_positions.json"
 IDS = json.loads((ROOT / "apworld" / "las" / "data" / "ids.json").read_text(encoding="utf-8"))
-RANDOMIZERS = ROOT / "patcher" / "RandomizerCore" / "Randomizers"
+RANDOMIZERS = ROOT / "patcher" / "modbuild" / "RandomizerCore" / "Randomizers"
 ROOM_W, ROOM_H = 15.0, 12.0  # a room (screen) in world units; room <row><col> spans x 15·col.., z 12·(row - 1)..
 
 # Checks in buildings without a room table: the level whose overworld door marks them.
@@ -288,7 +288,7 @@ def main() -> None:
     parser.add_argument("--romfs", type=Path)
     args = parser.parse_args()
     args.pack = args.pack or local_path("lasr_brooty")
-    args.romfs = args.romfs or local_path("romfs", "LASAP_ROMFS")
+    args.romfs = args.romfs or local_path("romfs")
 
     level = Level(args.romfs)
     rooms = {**room_tables(), **DUNGEON_ROOMS}

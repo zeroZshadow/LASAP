@@ -1,0 +1,51 @@
+# The options' room actors (ap_options.cpp, kActorEdits; DESIGN.md, Options) with Open Mabe, Randomize Enemies,
+# Classic D2 and Completed Bridge on and Ammo Ghost off: the grass north of Mabe (Field_10A) and the Armos over the
+# stairs (Field_10N) are not made, the rock before Bottle Grotto (Field_03E) is a swamp flower (EnemyMonea, 0x0e), Kiki and
+# the stick (Field_08L) stand aside, and the ghost in Tarin's house stays away with bombs. Kiki's row asks KikiGone
+# with the option on (patcher ap_option_edits.npc_rows): he leaves once it is set. Each room's check of a missing actor
+# asks first for one beside it, so the room is loaded. Run after newgame_file2; option_rooms_off checks the same with
+# the options as the mod has them. Resets KikiGone; gives bombs.
+guard hurt
+warp Field 9.75 12.75 113.25
+loaded 20
+poll OK.actor.624AF4005CD29205.1 5 DBG actor 624AF4005CD29205
+send DBG actor 624A97005CD29205
+expect OK.actor.624A97005CD29205.0 5
+warp Field 200.25 7.5 110.25
+loaded 20
+poll OK.actor.610253005BA1C308.1 5 DBG actor 610253005BA1C308
+send DBG actor 610250005BA1C308
+expect OK.actor.610250005BA1C308.0 5
+warp Field 66.75 13.13 31.5
+loaded 20
+poll OK.actor.6A0012005D0C5FB9.1.id=e. 5 DBG actor 6A0012005D0C5FB9
+shot option_d2.png
+send DBG setflag KikiGone 0
+expect FLAG.KikiGone.0 5
+warp Field 171.75 7.5 97.5
+loaded 20
+poll OK.actor.75000D005CF52527.1 5 DBG actor 75000D005CF52527
+poll OK.actor.750014005CF52527.1.id=[0-9a-f]+.x=173.25.z=91.00 5 DBG actor 750014005CF52527
+poll OK.actor.750013005CF52527.1.id=[0-9a-f]+.x=173.22.z=91.8[56] 5 DBG actor 750013005CF52527
+shot option_kiki.png
+send DBG setflag KikiGone 1
+expect FLAG.KikiGone.1 5
+warp Field 9.75 12.75 113.25
+warp Field 171.75 7.5 97.5
+loaded 20
+poll OK.actor.75000D005CF52527.1 5 DBG actor 75000D005CF52527
+send DBG actor 750014005CF52527
+expect OK.actor.750014005CF52527.0 5
+send DBG setflag KikiGone 0
+expect FLAG.KikiGone.0 5
+send DBG grant Bomb 1 -1 0
+expect OK.grant 5
+warp Field 38.25 10.5 128.25
+warp MarinTarinHouse 7.5 0 10
+loaded 20
+send DBG actor 6D0040005CEDEAC0
+expect OK.actor.6D0040005CEDEAC0.0 5
+send DBG flag APOpt.open_mabe
+expect FLAG.APOpt.open_mabe.1 5
+send DBG flag APIf|ammo_ghost|0|true|0|false
+expect FLAG.APIf.ammo_ghost.0.true.0.false.0 5

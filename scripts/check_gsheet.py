@@ -1,4 +1,4 @@
-"""Checks the pure-Python datasheet module (patcher/RandomizerCore/Tools/gsheet.py) against oead: both must parse the
+"""Checks the pure-Python datasheet module (patcher/modbuild/RandomizerCore/Tools/gsheet.py) against oead: both must parse the
 same values and write the same bytes, for every datasheet of the RomFS and any extra .gsheet files given.
 
 Run with .venv-lasr (patcher/requirements-assets.txt has oead):
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import oead
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "patcher"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "patcher" / "modbuild"))
 from RandomizerCore.Tools import gsheet  # noqa: E402
 from local_paths import local_path  # noqa: E402
 
@@ -28,7 +28,7 @@ def main() -> int:
     parser.add_argument("files", nargs="*", type=Path)
     parser.add_argument("--romfs", type=Path)
     args = parser.parse_args()
-    args.romfs = args.romfs or local_path("romfs", "LASAP_ROMFS")
+    args.romfs = args.romfs or local_path("romfs")
     files = sorted((args.romfs / "region_common" / "datasheets").glob("*.gsheet")) + args.files
     failed = 0
     for path in files:

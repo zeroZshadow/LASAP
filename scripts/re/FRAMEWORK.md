@@ -148,6 +148,7 @@ fresh boot to a level (2026-10-23, `screens`).
   not `fadeEnd`, then the look-at blend. A string switch in its code (`0x7d9690`..) names screen effects (Mist,
   HotAir, SandCloud, VignetteTop, WindFishsEgg). The `Environment` event actor's actions (`Environment_FindAction`
   `0x8168ac`; each std::function's call is its vtable `+0x30`) work on it:
+  - Every environment is found by name in `+0x58` (`LevelEnvironment_Find` `0x7d86c0 (map, const char* name, u64 length)`): by `LevelEnvironment_Change` and by the `roomBlend` slot (`0x7d8620`), which takes the names of room A's and room B's zone data (`+0xf0`, length `+0x110`; the LVB zone's environment) and changes to A's alone or blends the two.
   - `ChangeEnvironment`, `ChangeEnvironmentNonWait`: `0x7fe1a0 (name, duration)` → `0x7d9fc0`, which also resets the
     fade and clears `savedIntensities`.
   - `StashSaveIntensity` (`0x7fedf0 (attenuation, duration)` → `0x7db5f0`) saves every live light slot and starts the

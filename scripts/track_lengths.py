@@ -4,7 +4,7 @@ A BGM label leads through the sound archive (region_common/audio/Richard.bfsar: 
 file infos) to its stream file (region_common/audio/stream/*.bfstm), whose stream info holds the sample rate, the
 loop flag, the loop start and the end. A track plays through once at its end; a looping track then repeats its loop
 until at least MIN_SECONDS have passed, so a short loop is heard a few times before the Jukebox moves on. The Ballad
-of the Wind Fish's length is its looping copy's, which the patcher makes (patcher/ap_ballad.py).
+of the Wind Fish's length is its looping copy's, which the patcher makes (patcher/modbuild/ap_ballad.py).
 
 Run with any Python 3: python track_lengths.py [--romfs <RomFS folder>] [--check]
 --check only reports entries whose length differs from the RomFS's.
@@ -95,7 +95,7 @@ def main() -> None:
     parser.add_argument("--romfs")
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    romfs = Path(args.romfs or local_path("romfs", "LASAP_ROMFS"))
+    romfs = Path(args.romfs or local_path("romfs"))
     paths = stream_paths(romfs)
     text = HEADER.read_bytes().decode("utf-8")
     missing, changed = [], []

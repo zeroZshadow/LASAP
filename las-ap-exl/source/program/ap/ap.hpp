@@ -5,8 +5,10 @@
 #include "game/data/item_id.hpp"
 #include "lib.hpp"
 #include "nn/hid.h"
+#include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace AP {
     using Game::Data::ItemId;
@@ -27,9 +29,6 @@ namespace AP {
     void OnSignRead();
     // Link holds the seashells the seashell hunt takes (config.ini's [archipelago] seashells_required).
     bool GoalSeashellsHeld();
-    // The flags the module answers for the goal (SEASHELL_GOAL_FLAG, GoalSeashellsHeld): true with value set, false for
-    // other flags.
-    bool GoalFlag(std::string_view name, bool& value);
     // Checked in this game or, as the client reported, on the server.
     bool IsLocationChecked(LocationId location);
     // Marked as skipped on the map by the player (map tracker); saved per seed, never reported.
@@ -44,6 +43,10 @@ namespace AP {
     bool IsHinted(LocationId location);
     // The client is connected and logged into the slot (SERVER lines).
     bool IsServerConnected();
+    // Where a level jump from level `from` to that level and locator leads instead (the seed file's jumps; ap_jumps.cpp): a
+    // shuffled dungeon's door, exit or warp, or the seashell hunt's egg door. None: where it was going.
+    std::optional<std::pair<std::string_view, std::string_view>> LeadJump(std::string_view from, std::string_view level,
+                                                                          std::string_view locator);
     void ApplyInjectedInput(nn::hid::NpadBaseState* state);
     void Log(const std::string& text);
     std::string HelloLine();

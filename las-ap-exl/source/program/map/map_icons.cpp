@@ -36,6 +36,14 @@ namespace {
 
     void SetMarkerVisible(Map::MapMarker* marker, bool visible) { Ui::SetVisible(MarkerPane(marker), visible); }
 
+    // Its look at the size of one check or of several: the rows, the same in every seed, have a group's.
+    void FitFrame(Map::MapMarker* marker, int group, Look look) {
+        Ui::Animator* animator = marker->setMark.animator;
+        if (animator == nullptr || static_cast<size_t>(group) >= Groups().size()) return;
+        float frame = static_cast<float>(kGameMarkFrames + (GroupIds(group).size() == 1 ? kLooks : 0) + look);
+        if (frame < Game::Animator_FrameCount(animator)) animator->frame = frame;
+    }
+
     // Each ring shows while its group's icon does and a hint still shows there.
     void ApplyRings() {
         for (Ring& ring : g_Rings) {
@@ -83,7 +91,9 @@ namespace {
             auto* marker = reinterpret_cast<Map::MapMarker*>(ctx->X[26]);
             Look look;
             int group = MarkerIcon(marker, look);
-            if (group >= 0 && !LookShown(group, look)) SetMarkerVisible(marker, false);
+            if (group < 0) return;
+            FitFrame(marker, group, look);
+            if (!LookShown(group, look)) SetMarkerVisible(marker, false);
         }
     };
 
@@ -171,8 +181,8 @@ namespace {
     }
 
     bool NameHidden(size_t group) {
-        Ref flag = Groups()[group].hiddenFlag;
-        return flag.size > 0 && !EventFlags::CheckFlag(TextOf(flag));
+        std::string_view flag = Groups()[group].hiddenFlag;
+        return !flag.empty() && !EventFlags::CheckFlag(flag);
     }
 
     // While its name is hidden the look is its door's, in logic or out of logic, as its checks' look would tell which
@@ -243,7 +253,9 @@ namespace {
             Map::MapMarker* marker = MarkerOf(sp);
             Look look;
             int group = marker != nullptr ? MarkerIcon(marker, look) : -1;
-            if (group >= 0) SetMarkerVisible(marker, LookShown(group, look));
+            if (group < 0) continue;
+            FitFrame(marker, group, look);
+            SetMarkerVisible(marker, LookShown(group, look));
         }
         if (page == g_MarkerPage) ApplyRings();
     }

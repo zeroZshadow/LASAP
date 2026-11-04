@@ -173,7 +173,7 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Shuffled Powder": bool(o.shuffled_powder),
         "Ammo Ghost": bool(o.ammo_ghost),  # read by the AP patcher (ap_ghost.py), not by LASR
         "Map Tracker": bool(o.map_tracker),  # read by the AP patcher (ap_map.py), not by LASR
-        # read by the AP patcher (ap_goal.py), not by LASR; Seashells Required 0 without the hunt
+        # read by the AP patcher (config.ini for the module), not by LASR; Seashells Required 0 without the hunt
         "Instruments Required": goal_instruments(o),
         "Seashell Hunt": goal_seashells(o) is not None,
         "Seashells Required": goal_seashells(o) or 0,

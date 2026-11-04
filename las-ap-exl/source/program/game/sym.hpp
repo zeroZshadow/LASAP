@@ -23,7 +23,7 @@ namespace Game {
                    struct Manager; struct Navi; struct NaviGuide; struct MenuPage; struct GmSystem;
                    struct MessageWindow; struct MessageText; }
     namespace Map { struct OverworldMap; struct DungeonMap; struct MapMarker; struct MapCursor; struct DungeonMapIcon;
-                    struct MapActorDesc; struct UiDungeonAreaRow; struct DungeonItemsEntry; }
+                    struct MapActorDesc; struct UiDungeonAreaRow; struct DungeonItemsEntry; struct MapSheets; }
     namespace Audio { struct Sound; struct BgmInstance; struct BgmManager; }
 
     // ---- Framework ----
@@ -92,6 +92,12 @@ namespace Game {
     inline constexpr Global<const char> str_NpcGhost{0x16ebdf4};
     // (sheet, key*, row size): the row, or null
     inline constexpr Func<void*(void*, StrView*, u64)> Datasheet_FindRow{0xfa6370};
+    // (x0 unused, load info*) -> the sheet: every sheet the game loads
+    inline constexpr Func<Shared<>(void*, const void*)> Datasheet_Create{0xfa64f0};
+    // (x0 unused but by type 9, type, argument*, actor or null) -> whether the condition holds (UI.md, Datasheets)
+    inline constexpr Func<bool(void*, u32, StrView*, void*)> Conditions_Check{0xf9de10};
+    // (room, LEB sp*, record*): queues the record's actor unless it is present (ACTORS.md, Rooms); Room vtable +0x20
+    inline constexpr Func<void(void*, void*, LebActorRecord*)> Room_OnLebActor{0x8e4da0};
     // (component, args, row key*, ?)
     inline constexpr Func<void*(void*, void*, StrView*, void*)> NpcComponent_Ctor{0x943e90};
     // (component, name*, mode, blend seconds, frame): virtual, overridden by NpcAnimation_PlayByName2
@@ -104,6 +110,9 @@ namespace Game {
         NpcComponent_MakeAnimator{0x94b310};
     // (out shared_ptr, NPC component, name*, at once)
     inline constexpr Func<void(SharedPtr<>*, void*, StrView*, bool)> NpcComponent_PlayMaterialAnimation{0x9c1b30};
+    // (out view, component, row string*): "$N" the owner's string LEB parameter N, else the string (ITEMS.md, Row
+    // strings)
+    inline constexpr Func<void(StrView*, Actors::NpcComponent*, const StrView*)> NpcComponent_ResolveParam{0x95af30};
     // Link's kind of animation player: (out, entity, name*, model component shared_ptr*, int* layers); null when the
     // name is longer than 30 or the entity has a component of that name
     inline constexpr Func<void(SharedPtr<LayeredAnimation>*, void*, StrView*, SharedPtr<>*, int*)>
@@ -155,6 +164,9 @@ namespace Game {
         ItemModel_Make{0x8d3670};
     // (task): the item-get's model; the task's +0x8 is the item-get's holder
     inline constexpr Func<void(u8*)> ItemGet_ModelTask{0x8d41c0};
+    // (out node, ComponentArgs*, item id): the item-get's item node, whose model and pose take the id (ITEMS.md, Item
+    // node)
+    inline constexpr Func<void(SharedPtr<>*, void*, u8)> ItemGetHolder_Make{0xd7a4f0};
     // (out, resource holder, model name)
     inline constexpr Func<void(void*, void*, const char*)> ModelResource_Get{0x1046190};
     // An item's pose under the item-get's item node: position, rotation (degrees about x, y, z) and scale
@@ -214,9 +226,6 @@ namespace Game {
     inline constexpr Global<BitTable> PanelPieceBits{0x1cc1208};
 
     // ---- Events and resources ----
-    // (args, name): an event action's int argument by name; the event action CompareInt (action)
-    inline constexpr Func<int(void*, StrView*)> EventFlow_ParseInt{0x109f790};
-    inline constexpr Func<int(long*)> FlowControl_CompareInt{0x804960};
     inline constexpr Global<void*> ResourceManager_ptr{0x1cc6db8};
     inline constexpr Global<void*> EventManager_ptr{0x1cb24d8};
     // (out handle, manager, path*)
@@ -303,6 +312,8 @@ namespace Game {
     struct MsbtText { void* owner; void* ctrl; const char* text; s64 length; };
     inline constexpr Func<void(MessageRef*, void*, const char*, size_t)> Msbt_FindLabel{0x10aaf40};
     inline constexpr Func<void(MsbtText*, void*, s32)> Msbt_GetText{0x10aa5a0};
+    // (environment map +0x58, name, length): the level's environment of that name, null when none (FRAMEWORK.md)
+    inline constexpr Func<void*(void*, const char*, u64)> LevelEnvironment_Find{0x7d86c0};
     // The autosave popup (Ld_ThrobberSave, "Now Saving"): Show (auto) None/Out -> InAuto (0.5 s) or In; its state
     // machine's ChangeState (machine, state).
     inline constexpr Func<void(bool)> ThrobberSave_Show{0xf895c0};
@@ -414,8 +425,13 @@ namespace Game {
     inline constexpr Func<bool(void*, StrView*, StrView*, const void*)> LevelManager_LevelJump{0x864d50};
     // (the framework's game state, state, bool): 4 reloads from the save, 1 quit, 5 ending
     inline constexpr Func<void(GameState*, u32, bool)> SetGameState{0x87b780};
+    // The maps' sheets (game/map.hpp)
+    inline constexpr Global<Map::MapSheets*> MapSheets_ptr{0x1cc3a18};
     // The inventory (game/data/inventory.hpp)
     inline constexpr Global<Data::Inventory::InventoryItems*> Inventory_ptr{0x1cc1368};
+    // The event query Inventory.HasAllInstruments (std::function body, the functor unused): the eight instruments'
+    // bits of Inventory +0xac all set. Only WindFishsEgg.bfevfl asks it.
+    inline constexpr Func<bool(void*)> EventQuery_HasAllInstruments{0x7e3240};
     // The current dungeon (8 the Chamber Dungeon, 0xff outside dungeons), which dungeon items count for
     inline constexpr Global<u8> LevelIndex{0x1cc13c8};
     // Per dungeon a pointer to its entry (game/map.hpp)

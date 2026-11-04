@@ -2,6 +2,7 @@
 // The pause menu's maps (scripts/re/UI.md, "Overworld map", "Dungeon map"): their pages, markers, cursor and icons.
 #include "game/actor.hpp"
 #include "game/menu.hpp"
+#include "game/sheet.hpp"
 #include "game/state_machine.hpp"
 #include "game/stl.hpp"
 #include "game/ui.hpp"
@@ -24,6 +25,12 @@ namespace Game::Map {
     static_assert(offsetof(UiFieldMapIconsRow, nameLabel) == 0x8 && offsetof(UiFieldMapIconsRow, type) == 0x18);
     static_assert(offsetof(UiFieldMapIconsRow, showFlag) == 0x20 && offsetof(UiFieldMapIconsRow, pos) == 0x30);
     static_assert(sizeof(UiFieldMapIconsRow) == 0x50);
+
+    // The overworld and dungeon maps' sheets (holder *0x1cc3a18, filled by UiDatasheets_Load at boot; UI.md,
+    // Datasheets): UiFieldMapIcons first.
+    struct MapSheets {
+        SharedPtr<Sheet<UiFieldMapIconsRow>> fieldMapIcons;
+    };
 
     // A map marker (Gm_MapMarker, MapMarker_Make, vtable 0x1c2cfa8; 0x250 bytes), a part of its own: the overworld's
     // icons, and the dots the module adds to the dungeon page. Its update (virtual kUpdate) runs its machine.

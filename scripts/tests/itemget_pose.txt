@@ -1,34 +1,41 @@
-# The item-get holds the placeholder's model variants up in their item's pose (DESIGN.md, Showing received items):
-# a heart piece found at an AP location at the heart piece's size, not the default pose of ids the game has none
-# for. Needs the suite's mod (suite.txt), whose --models give the variants ids 72 (HeartPiece), 73 (MagnifyingLens),
-# 74 (Seashell) and 75 (SwordLv1). Each check reads the held model's scale (DBG heldpose item=) once the item's text
-# waits for a button; the popup (DBG popmodel) shows at the item-get's scale (popup=).
+# The item-get holds a found placeholder up as its location's item, in that item's pose (DESIGN.md, Item models): a
+# heart piece found at an AP location at the heart piece's size, not the placeholder's default pose. Needs the suite's
+# mod (suite.txt), whose --models show a heart piece at woods-north-cave-loose (local id 145), the sword at
+# ukuku-cave-west-loose (84) and a seashell at graveyard-cave (33). DBG collect adds a location's placeholder, as its
+# flows do before its item-get. Each check reads the held model's scale (DBG heldpose item=) once the item's text
+# waits for a button; the popup of a find (DBG pickup) shows at the item-get's scale (popup=).
 free 30
 send DBG itemget 58 HeartPiece
 until textready 10
 send DBG heldpose
 expect HELDPOSE.*\sitem=1\.700\s
 dismiss 15
-send DBG itemget 72 HeartPiece
+send DBG collect 145
+send DBG itemget 71 ArchipelagoItem
 until textready 10
 send DBG heldpose
 expect HELDPOSE.*\sitem=1\.700\s
 dismiss 15
-send DBG itemget 75 SwordLv1
+send DBG collect 84
+send DBG itemget 71 ArchipelagoItem
 until textready 10
 send DBG heldpose
 expect HELDPOSE.*\sitem=1\.600\s
 dismiss 15
-send DBG itemget 74 Seashell
+send DBG collect 33
+send DBG itemget 71 ArchipelagoItem
 until textready 10
 send DBG heldpose
 expect HELDPOSE.*\sitem=0\.900\s
 dismiss 15
-# The placeholder itself keeps the default pose its model is sized for
+# A location without a model of its own keeps the placeholder's default pose, which its model is sized for
+send DBG collect 1
 send DBG itemget 71 ArchipelagoItem
 until textready 10
 send DBG heldpose
 expect HELDPOSE.*\sitem=1\.000\s
 dismiss 15
-send DBG popmodel 72
+send DBG collect 145
+send DBG pickup 71
+expect OK.pickup 5
 poll HELDPOSE.*\spopup=1\.700\s 5 DBG heldpose

@@ -3,11 +3,10 @@
 // and the Memories map's seashell and heart piece marks, each set once its source is done.
 #include "ap/ap.hpp"
 #include "ap/ap_patcher.hpp"
-#include "config/file_handler.hpp"
+#include "config/seed_file.hpp"
 #include "game/addr.hpp"
 #include "loggers.hpp"
 #include <map>
-#include <sstream>
 #include <string>
 
 namespace {
@@ -45,22 +44,15 @@ HOOK_DEFINE_INLINE(ShellMarkerTest) {
 
 namespace AP {
     void LoadIndices() {
-        // "<kind> <bit> <local id or -1>" lines (patcher las_ap_patch.write_indices)
-        std::string text;
-        if (R_FAILED(FileHandler::ReadFile(INDICES_PATH, text))) {
-            Logging.Log("[AP] no item indices file");
-            return;
-        }
-        std::stringstream lines(text);
-        std::string line;
-        while (std::getline(lines, line)) {
-            std::stringstream ss(line);
-            char kind;
-            int index, local_id;
-            if (!(ss >> kind >> index >> local_id) || index < 0 || index >= 64) continue;
-            if (local_id < 0) g_Kinds[kind].vanilla |= 1ULL << index;
-            else g_Kinds[kind].shuffled[index] = AP::LocationId{local_id};
-        }
+        // The seed file's indices: "<kind> <bit> <local id or -1>" lines (patcher las_ap_patch.index_lines)
+        SeedFile::ForEach("indices", [](Fields& f) {
+            std::string_view kind = f.Str();
+            auto index = f.Num<int>();
+            auto location = f.Num<int>();
+            if (kind.size() != 1 || !index || !location || *index < 0 || *index >= 64) return;
+            if (*location < 0) g_Kinds[kind[0]].vanilla |= 1ULL << *index;
+            else g_Kinds[kind[0]].shuffled[*index] = AP::LocationId{*location};
+        });
         HeartMarkerTest::InstallAtPtr(Game::Addr(kHeartMarkerTest));
         ShellMarkerTest::InstallAtPtr(Game::Addr(kShellMarkerTest));
     }

@@ -2,6 +2,7 @@
 // Pickups' fanfares. The BGM manager: scripts/re/FRAMEWORK.md, Audio.
 #include "music/music.hpp"
 #include "music/music_tracks.hpp"
+#include "ap/ap_shuffles.hpp"
 #include "ap/ap_text.hpp"
 #include "game/audio.hpp"
 #include "game/data/inventory.hpp"
@@ -10,9 +11,11 @@
 #include "game/time.hpp"
 #include "loggers.hpp"
 #include "nn/fs.hpp"
+#include "test_only.hpp"
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -349,9 +352,7 @@ namespace {
             // the ensemble that gave way is held as if it played
             g_Held = true;
             g_HeldPlayer = fmwk != nullptr ? fmwk->player : nullptr;
-#ifdef LASAP_TEST
-            Record("hold yielded");
-#endif
+            TEST_ONLY(Record("hold yielded");)
             return;
         }
         u32 fadeOut = instance->handle.fadeOutFrames;
@@ -359,9 +360,7 @@ namespace {
         g_HoldSkipped = false;
         stop();
         g_HoldSound = nullptr;
-#ifdef LASAP_TEST
-        Record(std::string("hold ") + (g_HoldSkipped ? "kept" : "missed"));
-#endif
+        TEST_ONLY(Record(std::string("hold ") + (g_HoldSkipped ? "kept" : "missed"));)
         if (!g_HoldSkipped) return;
         instance->handle.fadeOutFrames = fadeOut;
         g_Held = true;
@@ -370,9 +369,7 @@ namespace {
 
     // The held track stops after all.
     void StopHeld() {
-#ifdef LASAP_TEST
-        Record(std::string("held stop") + (g_Carried ? " carried" : ""));
-#endif
+        TEST_ONLY(Record(std::string("held stop") + (g_Carried ? " carried" : ""));)
         g_Held = g_Carried = false;
         g_Yielded = false;
         BgmManager* manager = Manager();
@@ -400,9 +397,7 @@ namespace {
         instance->kind = BgmKind::Zone;
         instance->volume = volume;
         if (instance->handle.sound != nullptr) Game::Sound_SetVolume(instance->handle.sound, kTakeOverFrames, volume);
-#ifdef LASAP_TEST
-        Record("take over");
-#endif
+        TEST_ONLY(Record("take over");)
     }
 
     // Another request for the ensemble (the egg's): the Jukebox's copy stops (a fading track does not keep the game
@@ -502,9 +497,7 @@ namespace {
         Game::Sound_Stop(sound, kYieldFrames);
         g_Yielded = true;
         if (!fits) newcomer->startDelay = std::max(newcomer->startDelay, kYieldFrames + kFreeFrames);
-#ifdef LASAP_TEST
-        Record(std::string("yield ") + std::string(newcomer->handle.name.View()));
-#endif
+        TEST_ONLY(Record(std::string("yield ") + std::string(newcomer->handle.name.View()));)
     }
 
     // Each tick: the ensemble waits for room, is seen starting, and comes back after giving way.
@@ -524,9 +517,7 @@ namespace {
                 Game::Sound_SetVolume(playing->handle.sound, kResumeFadeFrames, g_ResumeVolume);
                 g_Resumed = nullptr;
                 g_Yielded = false;
-#ifdef LASAP_TEST
-                Record("resume " + std::to_string(playing->startOffset));
-#endif
+                TEST_ONLY(Record("resume " + std::to_string(playing->startOffset));)
             } else {
                 g_EpochMs = Game::NowMs();
             }
@@ -560,17 +551,13 @@ namespace {
         return g_Wanted[instance - manager->bgm.instances];
     }
 
-#ifdef LASAP_TEST
-    char g_StreamOpen[256] = {};  // the last stream file opened (DBG music)
-#endif
+    TEST_ONLY(char g_StreamOpen[256] = {};)  // the last stream file opened (DBG music)
 }
 
 HOOK_DEFINE_TRAMPOLINE(FsOpenFile) {
     static Result Callback(nn::fs::FileHandle* handle, const char* path, int mode) {
         size_t length = path != nullptr ? strlen(path) : 0, tail = strlen(kEnsembleFile);
-#ifdef LASAP_TEST
-        if (path != nullptr && strstr(path, "/stream/") != nullptr) snprintf(g_StreamOpen, sizeof(g_StreamOpen), "%s", path);
-#endif
+        TEST_ONLY(if (path != nullptr && strstr(path, "/stream/") != nullptr) snprintf(g_StreamOpen, sizeof(g_StreamOpen), "%s", path);)
         if (!g_LoopFile || length < tail || length >= 256 || strcmp(path + length - tail, kEnsembleFile) != 0) {
             return Orig(handle, path, mode);
         }
@@ -578,19 +565,29 @@ HOOK_DEFINE_TRAMPOLINE(FsOpenFile) {
         memcpy(looped, path, length + 1);
         memcpy(strstr(looped + length - tail, kEnsembleName), kLoopName, strlen(kLoopName));
         Result result = Orig(handle, looped, mode);
-#ifdef LASAP_TEST
-        if (R_SUCCEEDED(result)) snprintf(g_StreamOpen, sizeof(g_StreamOpen), "%s", looped);
-#endif
+        TEST_ONLY(if (R_SUCCEEDED(result)) snprintf(g_StreamOpen, sizeof(g_StreamOpen), "%s", looped);)
         return R_SUCCEEDED(result) ? result : Orig(handle, path, mode);  // a mod without the copy
     }
 };
 
+namespace {
+    // The track a request of the game's plays with shuffled music (ap_shuffles.cpp), viewed in `out`; else `name`.
+    StrView* Shuffled(StrView* name, StrView& out) {
+        std::optional<std::string_view> track = name != nullptr ? AP::Shuffles::Track(name->View()) : std::nullopt;
+        if (!track) return name;
+        out = StrView(track->empty() ? std::string_view("") : *track);
+        return &out;
+    }
+}
+
 HOOK_DEFINE_TRAMPOLINE(BgmManagerPlay) {
-    static BgmInstance* Callback(float volume, BgmManager* manager, StrView* name, bool b2, bool b3, bool force) {
+    static BgmInstance* Callback(float volume, BgmManager* manager, StrView* asked, bool b2, bool b3, bool force) {
         uintptr_t ret = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
         StrView chosen{g_Track, g_TrackLen};
-        bool swap = g_TrackLen > 0 && IsZoneCall(ret, name) &&
-                    (g_Changing || name == nullptr || !KeepsMusic(manager, name->View()));
+        StrView shuffled;
+        StrView* name = Shuffled(asked, shuffled);
+        bool swap = g_TrackLen > 0 && IsZoneCall(ret, asked) &&
+                    (g_Changing || name == nullptr || name->size == 0 || !KeepsMusic(manager, name->View()));
         if (swap && chosen.View() == kEnsemble) {
             g_LoopFile = true;
         } else if (name != nullptr && name->View() == kEnsemble) {
@@ -619,7 +616,9 @@ HOOK_DEFINE_TRAMPOLINE(BgmManagerPlay) {
 };
 
 HOOK_DEFINE_TRAMPOLINE(BgmManagerStop) {
-    static void Callback(StrView* name, u32 frames) {
+    static void Callback(StrView* asked, u32 frames) {
+        StrView shuffled;
+        StrView* name = Shuffled(asked, shuffled);
 #ifdef LASAP_TEST
         uintptr_t ret = reinterpret_cast<uintptr_t>(__builtin_return_address(0)) - Game::Base();
         char entry[120];
@@ -633,7 +632,9 @@ HOOK_DEFINE_TRAMPOLINE(BgmManagerStop) {
 };
 
 HOOK_DEFINE_TRAMPOLINE(BgmSetVolume) {
-    static void Callback(float volume, StrView* name, u32 frames) {
+    static void Callback(float volume, StrView* asked, u32 frames) {
+        StrView shuffled;
+        StrView* name = Shuffled(asked, shuffled);
         const BgmManager* manager = Manager();
         if (NamesChosen(name) && manager != nullptr && name->View() != manager->zoneTrack.View()) return;
         Orig(volume, name, frames);

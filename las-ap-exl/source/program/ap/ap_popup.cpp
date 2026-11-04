@@ -8,6 +8,7 @@
 #include "game/math.hpp"
 #include "game/model.hpp"
 #include "game/time.hpp"
+#include "test_only.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -132,9 +133,7 @@ namespace {
         float grow = shown < kGrowMs ? (float)shown / kGrowMs
                      : shown + kGrowMs > kShowMs ? (float)(kShowMs - std::min(shown, kShowMs)) / kGrowMs : 1.0f;
         float rise = shown < kGrowMs ? (float)shown / kGrowMs : 1.0f;
-#ifdef LASAP_TEST
-        const Game::Vec4& r = parent->coords.rotate;
-#endif
+        TEST_ONLY(const Game::Vec4& r = parent->coords.rotate;)
         float sway = kSwayDeg * sinf(2.0f * Game::kPi * (float)(shown % kSwayMs) / kSwayMs);
 #ifdef LASAP_TEST
         if (g_NoSway) sway = 0.0f;
@@ -173,7 +172,7 @@ namespace AP::Popup {
         SharedPtr<> parent{player->modelComp, player->modelCompCtrl};
         if (!owner || parent.ptr == nullptr) return false;
         Game::StrView name{kName, sizeof(kName) - 1};
-        // The item-get's size (its pose by item id, the variants' that of their item); an NPC model's fix sets its
+        // The item-get's size (its pose by item id); an NPC model's fix sets its
         // own (Fit)
         const Game::ItemPose* pose = Game::ItemPose_ItemGet(static_cast<u8>(item), false);
         g_Scale = pose != nullptr ? pose->scale[0] : 1.0f;

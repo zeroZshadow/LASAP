@@ -1,4 +1,4 @@
-"""Sets up the multiplayer ghosts' model and rows (patcher/ap_player_ghost.py) in the sandbox mod, as the patcher
+"""Sets up the multiplayer ghosts' model and rows (patcher/modbuild/ap_player_ghost.py) in the sandbox mod, as the patcher
 does, or takes them out again; for a mod deployed from an older patcher output.
 
 install: writes romfs/region_common/actor/PlayerGhost.bfres from the asset patch (patcher/assets) and the RomFS
@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "patcher"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "patcher" / "modbuild"))
 import ap_assets  # noqa: E402
 import ap_player_ghost  # noqa: E402
 from RandomizerCore.Tools.oead_tools import readSheet, writeSheet  # noqa: E402
@@ -32,7 +33,7 @@ def main() -> int:
     parser.add_argument("--romfs", type=Path)
     parser.add_argument("--contents", type=Path)
     args = parser.parse_args()
-    args.romfs = args.romfs or local_path("romfs", "LASAP_ROMFS")
+    args.romfs = args.romfs or local_path("romfs")
     args.contents = args.contents or local_path("sandbox") / CONTENTS
     model_path = args.contents / "romfs" / "region_common" / "actor" / "PlayerGhost.bfres"
     sheets = args.contents / "romfs" / "region_common" / "datasheets"

@@ -52,7 +52,7 @@ namespace {
         if (g_DungeonPage != nullptr && strip.page == &g_DungeonPage->page.wrapper &&
             g_DungeonPage->machine.state == Map::kKeyWait) {
             const Dot* dot = HoveredDot();
-            if (dot != nullptr && AnyHintShown(IdsOf(dot->ids))) return IdsOf(dot->ids);
+            if (dot != nullptr && AnyHintShown(dot->ids)) return dot->ids;
         }
         return {};
     }

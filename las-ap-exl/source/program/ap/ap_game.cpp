@@ -6,10 +6,13 @@
 #include "ap/ap_bridge.hpp"
 #include "ap/ap_list.hpp"
 #include "ap/ap_net.hpp"
+#include "ap/ap_options.hpp"
 #include "ap/ap_patcher.hpp"
 #include "ap/ap_popup.hpp"
+#include "ap/ap_shuffles.hpp"
 #include "ap/ap_text.hpp"
 #include "config/config.hpp"
+#include "config/seed_file.hpp"
 #include "game/data/inventory.hpp"
 #include "game/framework.hpp"
 #include "game/hooks/eventflags.hpp"
@@ -24,6 +27,7 @@
 #include "map/map_tracker.hpp"
 #include "music/music.hpp"
 #include "music/music_jukebox.hpp"
+#include "test_only.hpp"
 #ifdef LASAP_TEST
 #include "test/test.hpp"
 #endif
@@ -237,26 +241,33 @@ namespace AP {
 
     void Init(const std::string& seed_hash, int port) {
         if (!seed_hash.empty()) g_SeedHash = seed_hash;
+        SeedFile::Load();
         InstallTextHooks();
         Puppets::InstallHooks();
         Music::InstallHooks();
         InstallItemGetHooks();
         InstallPickupEventHooks();
-        InstallItemPoseHooks();
+        InstallEggHooks();
+        InstallModelHooks();
+        Options::InstallHooks();
+        Shuffles::Install();
         InstallDropActor();
         InstallHeldModelHooks();
         Popup::InstallHooks();
         LoadLocationNames();
+        LoadShopSlots();
+        LoadHintTexts();
         MapTracker::Load();
         LoadIndices();
         LoadKept();
+        LoadStart();
+        LoadJumps();
+        LoadMarkers();
         LoadHints();
         ListUi::InstallHooks();
         JukeboxPane::InstallHooks();
         FileLoad::InstallAtFuncPtr(Game::FileOperate20_StartLoad.Ptr());
-#ifdef LASAP_TEST
-        Test::InstallHooks();
-#endif
+        TEST_ONLY(Test::InstallHooks();)
         StartNetwork(port > 0 ? port : PORT);
     }
 
@@ -295,12 +306,6 @@ namespace AP {
                __builtin_popcountll(items->Seashells) >= global_config.archipelago.seashells_required;
     }
 
-    bool GoalFlag(std::string_view name, bool& value) {
-        if (name != AP::SEASHELL_GOAL_FLAG) return false;
-        value = GoalSeashellsHeld();
-        return true;
-    }
-
     bool IsServerConnected() {
         return g_ServerConnected;
     }
@@ -326,9 +331,12 @@ namespace AP {
             g_SaveRecvReported = false;
             g_FoundSinceLoad.clear();
             Music::Choose("off");  // a save loads with the Jukebox off
-        } else if (!g_SaveRecvReported && PlayerReady() && g_LevelSince > g_SaveLoadAt) {
-            g_SaveRecvReported = true;
-            Send("RECV " + std::to_string(GetRecvCount()));
+        } else {
+            TickStart();  // a new save's starting items before the received ones
+            if (!g_SaveRecvReported && PlayerReady() && g_LevelSince > g_SaveLoadAt) {
+                g_SaveRecvReported = true;
+                Send("RECV " + std::to_string(GetRecvCount()));
+            }
         }
         if (fmwk == nullptr || fmwk->player == nullptr) {
             g_LevelSince = NowMs();
@@ -377,16 +385,12 @@ namespace AP {
         JukeboxPane::Tick(PlayerFree() && g_LastLevel != kCraneGameLevel && g_LastLevel != "FishingPond");
         MapTracker::Tick();
         Music::Tick(PlayerFree());
-#ifdef LASAP_TEST
-        Test::Tick();
-#endif
+        TEST_ONLY(Test::Tick();)
         PumpLines();
     }
 
     void ApplyInjectedInput(nn::hid::NpadBaseState* state) {
-#ifdef LASAP_TEST
-        Test::ApplyInput(state);
-#endif
+        TEST_ONLY(Test::ApplyInput(state);)
         ListUi::OnPad(state->mButtons._storage[0]);
         if (MapTracker::ListTakesPad(state)) {
             // A Minus held as the list opened is let go: not a tap once released, nor the warp menu.

@@ -4,6 +4,7 @@
 #include "ap/ap_bridge.hpp"
 #include "ap/ap_net.hpp"
 #include "ap/ap_popup.hpp"
+#include "ap/ap_shuffles.hpp"
 #include "ap/ap_text.hpp"
 #include "game/actor.hpp"
 #include "game/data/inventory.hpp"
@@ -318,6 +319,23 @@ namespace {
         return s + " dlevel=" + std::to_string(*Game::LevelIndex);
     }
 
+    // DBG mapmarker <label>: the UiFieldMapIcons rows named so, as the game has them in memory: each one's position (x,z)
+    // and show flag
+    std::string MarkerRows(const std::string& label) {
+        Game::Map::MapSheets* sheets = Game::MapSheets_ptr.Get();
+        auto* sheet = sheets != nullptr ? sheets->fieldMapIcons.ptr : nullptr;
+        if (sheet == nullptr || sheet->data == nullptr) return "MAPMARKER " + label + " none";
+        std::string s = "MAPMARKER " + label;
+        for (u32 i = 0; i < sheet->data->count; i++) {
+            const Game::Map::UiFieldMapIconsRow& row = sheet->data->rows[i];
+            if (row.nameLabel.View() != label) continue;
+            char buf[64];
+            std::snprintf(buf, sizeof(buf), " at=%.2f,%.2f flag=", row.pos[0], row.pos[2]);
+            s += buf + std::string(row.showFlag.View());
+        }
+        return s;
+    }
+
     // A flowchart string or a map key as text
     std::string Text(const Game::Event::ResString* s) { return s != nullptr ? std::string(s->data, s->size) : "-"; }
 
@@ -562,6 +580,8 @@ namespace {
             struct mallinfo mi = mallinfo();
             AP::Send("OK heap arena=" + std::to_string(mi.arena) + " used=" + std::to_string(mi.uordblks) +
                      " free=" + std::to_string(mi.fordblks) + " size=" + std::to_string(exl::setting::HeapSize));
+        } else if (cmd == "mapmarker" && a.size() >= 3) {
+            AP::Send(MarkerRows(a[2]));
         } else if (cmd == "maplabel") {
             AP::Send("MAPLABEL " + MapTracker::LabelText(a.size() >= 3 ? atoi(a[2].c_str()) : MapTracker::HoverGroup()));
         } else if (cmd == "maphint") {
@@ -573,6 +593,9 @@ namespace {
             // Jukebox page does
             if (a.size() >= 3) AP::Music::Choose(a[2]);
             AP::Send("MUSIC" + AP::Music::StateField() + " " + AP::Music::LogText());
+        } else if (cmd == "shuffles") {
+            // DBG shuffles: what the seed file's shuffles swap, the last environment swapped and the last message looked up
+            AP::Send(AP::Shuffles::State());
         } else if (cmd == "jukebox") {
             // DBG jukebox: the Jukebox page's state
             AP::Send(AP::JukeboxPane::Info());
@@ -753,11 +776,18 @@ namespace {
             // DBG drop: where the drop actor made last is (ap_drop.cpp)
             AP::Send("OK drop" + DropState());
         } else if (cmd == "actor" && a.size() >= 3) {
-            // DBG actor <LEB key, hex>: 1 while the room's actor of that key is live (made, not gone), else 0
+            // DBG actor <LEB key, hex>: 1 while the room's actor of that key is live (made, not gone), with its
+            // actor id, spawn place, scale (x) and rotation (the quaternion's y and w), else 0
             Game::Shared<Game::Actor> held;
             Game::ActorRegistry_FindByKey(held.Reset(), strtoull(a[2].c_str(), nullptr, 16));
             bool live = held && !held->entity.Gone();
-            AP::Send("OK actor " + a[2] + " " + (live ? "1" : "0"));
+            char where[128] = "";
+            if (live) {
+                std::snprintf(where, sizeof(where), " id=%x x=%.2f z=%.2f scale=%.3f rot=%.3f,%.3f", held->actorId,
+                              held->spawnPos.x, held->spawnPos.z, held->spawnScale.x, held->spawnRot.y,
+                              held->spawnRot.t);
+            }
+            AP::Send("OK actor " + a[2] + " " + (live ? "1" : "0") + where);
         } else if (cmd == "event") {
             // DBG event: the event manager and the running event (EventLine)
             AP::Send("OK event" + EventLine());

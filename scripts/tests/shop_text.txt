@@ -1,0 +1,43 @@
+# The shop's AP slots name their item on the price tag and in the buy dialog (DESIGN.md, In-game text): the module
+# writes the location's item and owner as the first line, a long item name cut short with "…" so that both fit in 46
+# characters. Run after newgame_file2 on a mod whose shop slots are AP locations (the suite's). NAME lines name the
+# shovel's slot (local id 55) and the heart piece's (64).
+# Screenshot: shop_text the buy dialog.
+guard hurt
+game NAME 55 Progressive Sword With A Very Long Name That Will Not Fit|Archipelago Player 7
+game NAME 64 Hookshot|
+warp Field 51.75 10.5 117
+hold 0 0 32767 until level=Shop 5
+inlevel 20
+level Shop
+free 10
+# The shovel's slot, third from the left on the counter: lifting it shows its price tag.
+goto 6.75 0 6
+at 6.75 6
+face up
+interact
+until carry=1+event=0 5
+send DBG text PriceTagScoop
+expect said=Progressive.Sword.With.A\S+.for.Archipelago.Play.200.Rupees 5
+# A at the shopkeeper asks whether to buy it.
+goto 9.75 0 7.5
+face right
+tap 1
+await 10 msg=Selecting
+send DBG text BuyScoop
+expect said=Progressive.Sword.With.A\S+.for.Archipelago.Play.200.rupeesBuyNo.way! 5
+shot shop_text.png
+# No: the shovel goes back on the counter.
+choose 1
+free 10
+check carry=0
+# The heart piece's slot, at the right end: its own item's name, no owner.
+goto 11.25 0 6
+at 11.25 6
+face up
+interact
+until carry=1+event=0 5
+send DBG text PriceTagHeartPeace
+expect said=Hookshot.200.Rupees 5
+tap 1
+until carry=0+event=0 5

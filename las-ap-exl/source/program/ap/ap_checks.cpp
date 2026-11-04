@@ -5,14 +5,13 @@
 #include "ap/ap_bridge.hpp"
 #include "ap/ap_net.hpp"
 #include "ap/ap_patcher.hpp"
-#include "config/file_handler.hpp"
+#include "config/seed_file.hpp"
 #include "game/hooks/eventflags.hpp"
 #include "game/time.hpp"
 #include "nn/fs.hpp"
 #include <algorithm>
 #include <optional>
 #include <cstdlib>
-#include <sstream>
 
 namespace AP::Bridge {
 namespace {
@@ -39,8 +38,8 @@ namespace {
     // Flags of the save reported to the client by a line once they are set: once per connection, and all again on
     // SYNC.
     struct ReportedFlag { std::string flag; std::string line; bool reported; };
-    // In-game hints the client makes server hints of (HINTS_PATH): the flag reading the hint sets, reported as
-    // HINT <slot> <location id>.
+    // In-game hints the client makes server hints of (the seed file's hints): the flag showing the hint sets (APHint<n>),
+    // reported as HINT <slot> <location id>.
     std::vector<ReportedFlag> g_Hints;
     // The dungeons entered: the flag the game sets the first time it shows a dungeon's name on entering it, which also
     // shows its name on the map (map tracker), reported as DUNGEON <n> by the dungeon's level number (Lv<nn>). The
@@ -145,45 +144,51 @@ namespace {
         if (onLine > 0) AP::Send(line);
     }
 
-    void NoteServerChecks(const std::vector<std::string>& a) {
-        for (size_t i = 1; i < a.size(); i++) {
-            int id = atoi(a[i].c_str());
-            if (id >= 0 && id < (int)(kChecksBytes * 8)) g_ServerChecks[id / 8] |= (1 << (id % 8));
+    // The line's ids, up to the first field that is not one, into bits.
+    void SetBits(Fields& f, std::vector<u8>& bits) {
+        while (std::optional<int> id = f.Num<int>()) {
+            if (*id >= 0 && *id < (int)(kChecksBytes * 8)) bits[*id / 8] |= (1 << (*id % 8));
         }
     }
 
-    void NoteBits(const std::vector<std::string>& a, std::vector<u8>& bits) {
-        if (a.size() >= 2 && a[1] == "CLEAR") std::fill(bits.begin(), bits.end(), 0);
-        for (size_t i = 1; i < a.size(); i++) {
-            int id = atoi(a[i].c_str());
-            if (a[i] != "CLEAR" && id >= 0 && id < (int)(kChecksBytes * 8)) bits[id / 8] |= (1 << (id % 8));
+    // A first field CLEAR empties the bits before the ids are set; whether it did.
+    bool NoteBits(Fields& f, std::vector<u8>& bits) {
+        Fields rest = f;
+        bool clear = rest.Str() == "CLEAR";
+        if (clear) {
+            std::fill(bits.begin(), bits.end(), 0);
+            f = rest;
         }
+        SetBits(f, bits);
+        return clear;
     }
 
-    void NoteInLogic(const std::vector<std::string>& a) {
-        if (a.size() >= 2 && a[1] == "CLEAR") g_HasLogic = true;
-        NoteBits(a, g_InLogic);
+    void NoteServerChecks(Fields& f) {
+        SetBits(f, g_ServerChecks);
     }
 
-    void NoteDoors(const std::vector<std::string>& a) {
-        NoteBits(a, g_DoorOpen);
+    void NoteInLogic(Fields& f) {
+        if (NoteBits(f, g_InLogic)) g_HasLogic = true;
     }
 
-    void NoteHinted(const std::vector<std::string>& a) {
-        NoteBits(a, g_Hinted);
+    void NoteDoors(Fields& f) {
+        NoteBits(f, g_DoorOpen);
     }
 
-    // "<n> <flag> <slot> <location id>" lines (patcher ap_hints.py)
+    void NoteHinted(Fields& f) {
+        NoteBits(f, g_Hinted);
+    }
+
+    // The seed file's hints' "S <n> <slot> <location id>" lines: reading source n's hint makes a server hint of that
+    // location (patcher ap_hints.py); showing the hint sets the flag (ap_text.cpp).
     void LoadHints() {
-        std::string text;
-        if (R_FAILED(FileHandler::ReadFile(AP::HINTS_PATH, text))) return;
-        std::stringstream lines(text);
-        std::string line;
-        while (std::getline(lines, line)) {
-            std::stringstream ss(line);
-            std::string n, flag, slot, location;
-            if (ss >> n >> flag >> slot >> location) g_Hints.push_back({flag, "HINT " + slot + " " + location, false});
-        }
+        SeedFile::ForEach("hints", [](Fields& f) {
+            if (f.Str() != "S") return;
+            std::string_view n = f.Str(), slot = f.Str(), location = f.Str();
+            if (location.empty()) return;
+            std::string line = "HINT " + std::string(slot) + " " + std::string(location);
+            g_Hints.push_back({std::string(AP::HINT_PREFIX) + std::string(n), std::move(line), false});
+        });
         Logging.Log("[AP] hints: %zu", g_Hints.size());
     }
 

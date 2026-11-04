@@ -1,6 +1,5 @@
 """The instruments or seashells the Wind Fish's egg needs: the logic (goal, instruments_required,
-seashells_required) and the patcher's rewrite of the egg's event (patcher/ap_goal.py)."""
-import itertools
+seashells_required) and the egg's event, whose instrument checks the module answers (patcher/ap_goal.py)."""
 import os
 import sys
 import unittest
@@ -161,21 +160,21 @@ class TestSeashellsRequired(unittest.TestCase):
 
 @unittest.skipUnless(EGG_EVENT.exists(), "RomFS dump not found (LASAP_ROMFS)")
 class TestEggEvent(unittest.TestCase):
-    """The rewritten event takes each of the four switches' cases as the original does when all instruments means
-    "at least the required number"."""
+    """The module answers the egg's HasAllInstruments with the goal (ap_egg.cpp): the egg's event asks it at its four
+    switches, no other event asks it, and its answer alone decides whether the egg opens."""
 
     @classmethod
     def setUpClass(cls) -> None:
         saved = list(sys.path)
         sys.path.insert(0, str(PATCHER))
+        sys.path.insert(0, str(PATCHER / "modbuild"))
         try:
             import evfl
             import ap_goal
             from RandomizerCore.Tools import leb
-            from RandomizerCore.Tools.text_tools import TextFile
         finally:
             sys.path[:] = saved
-        cls.evfl, cls.ap_goal, cls.leb, cls.TextFile = evfl, ap_goal, leb, TextFile
+        cls.evfl, cls.ap_goal, cls.leb = evfl, ap_goal, leb
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -188,9 +187,8 @@ class TestEggEvent(unittest.TestCase):
         flow.read(EGG_EVENT.read_bytes())
         return flow
 
-    def visited(self, chart, held: set, required: int, seashells: bool = True) -> set:
-        """The events of the orchestra that run with these instruments (indices into INSTRUMENTS) and, by
-        `seashells`, the seashells the egg needs; subflows are not followed."""
+    def visited(self, chart, answer: bool) -> set:
+        """The events of the orchestra that run with this answer to the query; subflows are not followed."""
         from evfl.event import ActionEvent, ForkEvent, JoinEvent, SubFlowEvent, SwitchEvent
         entry = next(ep for ep in chart.entry_points if ep.name == "orchestra")
         seen = set()
@@ -207,93 +205,41 @@ class TestEggEvent(unittest.TestCase):
                 stack.extend(fork.v for fork in data.forks)
                 stack.append(data.join.v)
             elif isinstance(data, SwitchEvent):
-                query = data.actor_query.v.v
-                if query == self.ap_goal.ALL_QUERY:
-                    value = len(held) >= required and seashells
-                elif query == self.ap_goal.ITEM_QUERY:
-                    item_type = data.params.data["itemType"]
-                    self.assertEqual(data.params.data["count"], 1)
-                    value = self.ap_goal.INSTRUMENT_ITEM_TYPES.index(item_type) in held
-                elif query == self.ap_goal.FLAG_QUERY:
-                    self.assertEqual(data.params.data["symbol"], self.ap_goal.SEASHELL_FLAG)
-                    value = seashells
-                else:
-                    self.fail(f"unexpected query {query} at {event.name}")
-                case = data.cases.get(int(value))
+                self.assertEqual(data.actor_query.v.v, self.ap_goal.ALL_QUERY, event.name)
+                case = data.cases.get(int(answer))
                 stack.append(case.v if case is not None else None)
         return seen
 
-    def test_rewrite_matches_count(self) -> None:
-        original = self.read().flowchart
-        names = {event.name for event in original.events}
-        sets = [set(c) for n in range(len(INSTRUMENTS) + 1) for c in itertools.combinations(range(len(INSTRUMENTS)), n)]
-        self.assertEqual(len(sets), 256)
-        for required in range(len(INSTRUMENTS)):
-            chart = self.read().flowchart
-            self.ap_goal.rewrite(chart, required)
-            self.assertFalse([e.name for e in chart.events
-                              if getattr(e.data, "actor_query", None) is not None
-                              and e.data.actor_query.v.v == self.ap_goal.ALL_QUERY])
-            for held in sets:
-                with self.subTest(required=required, held=sorted(held)):
-                    self.assertEqual(self.visited(chart, held, required) & names,
-                                     self.visited(original, held, required))
-        # the egg opens (the entry `oepn`) exactly with enough instruments
+    def test_answer_opens_the_egg(self) -> None:
         chart = self.read().flowchart
-        self.ap_goal.rewrite(chart, 3)
-        opened = [len(held) for held in sets if any(
-            getattr(e.data, "entry_point_name", None) == "oepn" for e in chart.events
-            if e.name in self.visited(chart, held, 3))]
-        self.assertEqual(min(opened), 3)
-        self.assertEqual(len(opened), sum(1 for held in sets if len(held) >= 3))
+        switches = [e.name for e in chart.events if getattr(e.data, "actor_query", None) is not None
+                    and e.data.actor_query.v.v == self.ap_goal.ALL_QUERY]
+        self.assertEqual(len(switches), self.ap_goal.SWITCHES)
+        for answer in (False, True):
+            opens = any(getattr(e.data, "entry_point_name", None) == "oepn" for e in chart.events
+                        if e.name in self.visited(chart, answer))
+            self.assertEqual(opens, answer)
 
-    def test_rewrite_with_seashells(self) -> None:
-        """With seashells required, each switch checks the seashell flag alone and takes its case 1 with it, whatever
-        the instruments."""
-        original = self.read().flowchart
-        names = {event.name for event in original.events}
-        for required, seashells_required in itertools.product((0, len(INSTRUMENTS)), (0, 30)):
-            chart = self.read().flowchart
-            self.ap_goal.rewrite(chart, required, seashells_required)
-            queries = [e.data.actor_query.v.v for e in chart.events if getattr(e.data, "actor_query", None) is not None]
-            self.assertEqual(queries.count(self.ap_goal.FLAG_QUERY), self.ap_goal.SWITCHES)
-            self.assertFalse({self.ap_goal.ALL_QUERY, self.ap_goal.ITEM_QUERY} & set(queries))
-            self.assertEqual({e.name for e in chart.events}, names)
-            for held in (set(), set(range(len(INSTRUMENTS)))):
-                for seashells in (False, True):
-                    with self.subTest(required=required, seashells_required=seashells_required, held=sorted(held),
-                                      seashells=seashells):
-                        self.assertEqual(self.visited(chart, held, required, seashells),
-                                         self.visited(original, set(), 0, seashells))
+    def test_only_the_egg_asks(self) -> None:
+        asking = []
+        for path in sorted(EGG_EVENT.parent.glob("*.bfevfl")):
+            flow = self.evfl.EventFlow()
+            flow.read(path.read_bytes())
+            if any(getattr(e.data, "actor_query", None) is not None and e.data.actor_query.v.v == self.ap_goal.ALL_QUERY
+                   for e in flow.flowchart.events):
+                asking.append(path.name)
+        self.assertEqual(asking, [self.ap_goal.EVENT_FILE])
 
     def test_door_leads_to_ending(self) -> None:
-        """With seashells the egg's door leads where the stairs after the Nightmare lead; without, it stays."""
-        room_file = ROMFS / "region_common" / "level" / "Field" / f"{self.ap_goal.EGG_ROOM}.leb"
-        test = self
-
-        class Files:
-            written = {}
-
-            @staticmethod
-            def readFile(name):
-                return test.read() if name == test.ap_goal.EVENT_FILE else test.leb.Room(room_file.read_bytes())
-
-            @staticmethod
-            def writeFile(name, data):
-                Files.written[name] = data
-
-            @staticmethod
-            def getAllTextFiles(name):
-                return []
-
+        """With seashells the module leads the egg's door where the stairs after the Nightmare lead; the room keeps
+        the door, and without seashells nothing is led."""
+        room = self.leb.Room((ROMFS / "region_common" / "level" / "Field" / "Field_01G.leb").read_bytes())
+        doors = [a.parameters[:2] for a in room.actors if a.type == 0x190 and a.parameters[0] == b"Lv09WindFishsEgg"]
+        self.assertEqual(doors, [[b"Lv09WindFishsEgg", self.ap_goal.EGG_LOCATOR.encode()]])
         for seashells in (0, 3):
-            Files.written.clear()
-            self.ap_goal.set_goal(Files, 0, seashells)
-            door = self.ap_goal.egg_door(self.leb.Room(Files.written[room_file.name].repack()))
-            self.assertEqual(door.parameters[:2], [b"Ending", b"Lv09WindFishsEgg_05H"])
-        Files.written.clear()
-        self.ap_goal.set_goal(Files, 3)
-        self.assertNotIn(room_file.name, Files.written)
+            self.assertEqual(self.ap_goal.jumps(seashells),
+                             ["Field Lv09WindFishsEgg Lv09WindFishsEgg_08D Ending Lv09WindFishsEgg_05H"])
+        self.assertEqual(self.ap_goal.jumps(None), [])
 
     def test_settings_seashells(self) -> None:
         """The patch's Seashell Hunt decides the hunt; a patch without it is a hunt when it takes seashells."""
@@ -303,41 +249,3 @@ class TestEggEvent(unittest.TestCase):
                                     ({"Seashells Required": 20}, 20), ({"Seashells Required": 0}, None), ({}, None)):
             with self.subTest(settings=settings):
                 self.assertEqual(self.ap_goal.settings_seashells(settings), seashells)
-
-    def test_rewrite_writes(self) -> None:
-        """The rewritten flowchart writes and reads back with the same checks."""
-        import io
-        flow = self.read()
-        self.ap_goal.rewrite(flow.flowchart, 5)
-        stream = io.BytesIO()
-        flow.write(stream)
-        again = self.evfl.EventFlow()
-        again.read(stream.getvalue())
-        held = {0, 2, 4, 6, 7}
-        self.assertEqual(self.visited(again.flowchart, held, 5), self.visited(flow.flowchart, held, 5))
-        self.assertNotEqual(self.visited(again.flowchart, held - {7}, 5), self.visited(again.flowchart, held, 5))
-
-    def test_sign_names_the_count(self) -> None:
-        """The sign below the egg keeps its place name and adds the count, within a text box (3 lines of 42)."""
-        path = ROMFS / "regionUS" / "USen" / "message"
-        written = {}
-
-        class Files:
-            @staticmethod
-            def getAllTextFiles(name):
-                return [(path, self.TextFile(path / name))]
-
-            @staticmethod
-            def writeTextFile(relative_path, name, msbt):
-                written[name] = msbt
-
-        for count, seashells, wording in ((0, None, "with no instruments."), (1, None, "with 1 instrument."),
-                                          (5, None, "with 5 instruments."), (8, None, "with all 8 instruments."),
-                                          (0, 30, "with 30 secret seashells."), (0, 1, "with 1 secret seashell."),
-                                          (8, 50, "with 50 secret seashells."), (0, 0, "with no secret seashells.")):
-            self.ap_goal._sign(Files, count, seashells)
-            text = written[self.ap_goal.SIGN_FILE].getEntry(self.ap_goal.SIGN_KEY).message.text
-            self.assertEqual(text, f"Mt. Tamaranch\nThe Wind Fish's Egg opens\n{wording}[1:4]")
-            lines = text[:-len("[1:4]")].split("\n")
-            self.assertLessEqual(len(lines), 3)
-            self.assertLessEqual(max(map(len, lines)), 42)

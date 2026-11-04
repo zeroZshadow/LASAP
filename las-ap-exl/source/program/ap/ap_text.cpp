@@ -1,20 +1,26 @@
-// In-game text for Archipelago items, and the toasts (DESIGN.md, In-game text). Hooks: the MSBT label lookup, to
-// learn which (file, index) pairs are ours, and the text getter, to hand out our text for them; the Seashell
-// Mansion's present as it pops, for its location; the autosave popup's state, for the toasts.
+// In-game text for Archipelago items, the seed's texts in vanilla messages (the save name, the egg's sign, the shop's
+// price tags, the in-game hints) and the toasts (DESIGN.md, In-game text). Hooks: the MSBT label lookup, to learn which (file, index)
+// pairs are ours, and the text getter, to hand out our text for them; the Seashell Mansion's present as it pops, for
+// its location; the autosave popup's state, for the toasts.
 #include "ap/ap_text.hpp"
 #include "ap/ap.hpp"
 #include "ap/ap_list.hpp"
 #include "ap/ap_patcher.hpp"
-#include "config/file_handler.hpp"
+#include "ap/ap_shuffles.hpp"
+#include "config/config.hpp"
+#include "config/seed_file.hpp"
+#include "game/hooks/eventflags.hpp"
 #include "game/menu.hpp"
 #include "game/sym.hpp"
 #include "loggers.hpp"
 #include "map/map_tracker.hpp"
+#include "test_only.hpp"
 #include <cstdlib>
 #include <cstring>
 #include <deque>
 #include <map>
 #include <string>
+#include <vector>
 
 namespace {
     using Game::MessageRef;
@@ -43,14 +49,38 @@ namespace {
     std::string g_Toast;
     char g_ToastBuf[256];
 
-    enum class Kind { None, Found, Received, Saving, MapCaption, MapPlace, MapPin, MapZoom, Sign };
+    enum class Kind {
+        None, Found, Received, Saving, MapCaption, MapPlace, MapPin, MapZoom, Sign, SaveName, PriceTag, Buy, Hint,
+        BookPrompt
+    };
     constexpr const char* kMapCaptionLabel = "MapCaptionMemory";  // the map's X button: memories
     constexpr const char* kMapPlaceLabel = "MapCaptionPlace";     // Y: hide markers
     constexpr const char* kMapPinLabel = "MapCaptionPin";         // A: pin
     constexpr const char* kMapZoomLabel = "MapCaptionZoom";       // R: zoom
-    struct Slot { void* msbt; s32 index; Kind kind; };
-    Slot g_Slots[16];
+    constexpr const char* kSaveNameLabel = "NameEntry_Default";   // a new file's name entry: "Link"
+    // location: the AP location a price tag or buy dialog names; source: the hint source of a hint or book question
+    struct Slot { void* msbt; s32 index; Kind kind; AP::LocationId location; int source; };
+    constexpr int kSlots = 96;
+    Slot g_Slots[kSlots];
     int g_SlotCount = 0;
+
+    // The shop's AP slots (the seed file's shop)
+    struct ShopSlot { std::string_view tag, buy; AP::LocationId location; };  // in the seed file
+    std::vector<ShopSlot> g_ShopSlots;
+    char g_SignText[256];
+    char g_ShopText[512];
+
+    // The seed's in-game hints (the seed file's hints) by source: its hint's pages (lines joined by '\n'); for a book, its
+    // question's label and volume number
+    struct HintSource {
+        std::vector<std::string> pages;
+        std::string_view prompt;
+        int volume = 0;
+        bool Book() const { return !prompt.empty(); }
+    };
+    std::map<int, HintSource> g_HintSources;
+    char g_HintText[1024];
+    char g_PromptText[512];
     int g_FindCalls = 0, g_GetCalls = 0;
 
     // Place.msbt labels of the map tracker's icons: (msbt, index) -> icon group
@@ -72,7 +102,8 @@ namespace {
     const std::string kColorItem("\x0e\x00\x00\x03\x00\x04\x00\xd9\x45\x6d\xff", 11);   // as in native item texts
     const std::string kColorPlayer("\x0e\x00\x00\x03\x00\x04\x00\x62\xcf\xff\xff", 11); // sky blue
     const std::string kColorWhite("\x0e\x00\x00\x03\x00\x04\x00\xed\xed\xed\xff", 11);
-    const std::string kWaitInput("\x0e\x01\x00\x04\x00\x00\x00", 7);
+    const std::string kWaitInput(AP::WAIT_INPUT);
+    const std::string kNewPage("\x0e\x00\x00\x04\x00\x00\x00", 7);  // after kWaitInput: the next text box
     const std::string kHidIcon("\x0e\x01\x00\x01\x00\x01\x00", 7);  // and one byte: the HidIcon, the button it draws
     constexpr size_t kItemNameMax = 32;
     constexpr size_t kPlayerNameMax = 16;
@@ -86,24 +117,34 @@ namespace {
         return s.substr(0, n) + "...";
     }
 
-    size_t Store(char* buf, size_t cap, const std::string& text) {
-        size_t n = std::min(text.size(), cap - 1);
+    // Hands out the text in a buffer of its own kind, at most its size. The game still reads a fetched text after
+    // other messages were fetched (a std::string shared by all of them crashed the Jukebox page and the map's check
+    // list), so each kind keeps its buffer, whose memory never moves.
+    template<size_t N>
+    void HandOut(MsbtText* out, char (&buf)[N], const std::string& text) {
+        size_t n = std::min(text.size(), N - 1);
         std::memcpy(buf, text.data(), n);
         buf[n] = '\0';
-        return n;
+        out->text = buf;
+        out->length = static_cast<s64>(n);
+    }
+
+    const Slot* SlotOf(void* msbt, s32 index) {
+        for (int i = 0; i < g_SlotCount; i++) {
+            if (g_Slots[i].msbt == msbt && g_Slots[i].index == index) return &g_Slots[i];
+        }
+        return nullptr;
     }
 
     Kind KindOf(void* msbt, s32 index) {
-        for (int i = 0; i < g_SlotCount; i++) {
-            if (g_Slots[i].msbt == msbt && g_Slots[i].index == index) return g_Slots[i].kind;
-        }
-        return Kind::None;
+        const Slot* slot = SlotOf(msbt, index);
+        return slot != nullptr ? slot->kind : Kind::None;
     }
 
-    void Remember(void* msbt, s32 index, Kind kind) {
+    void Remember(void* msbt, s32 index, Kind kind, AP::LocationId location = {}, int source = -1) {
         if (index < 0 || KindOf(msbt, index) != Kind::None) return;
-        if (g_SlotCount == 16) g_SlotCount = 0;  // message files are reloaded on language change
-        g_Slots[g_SlotCount++] = Slot{msbt, index, kind};
+        if (g_SlotCount == kSlots) g_SlotCount = 0;  // message files are reloaded on language change
+        g_Slots[g_SlotCount++] = Slot{msbt, index, kind, location, source};
     }
 
     bool LabelIs(const char* label, size_t len, const char* name) {
@@ -164,15 +205,153 @@ namespace {
         return location ? AP::ToString(*location) : "-1";
     }
 #endif
+
+    // Where the tag at i ends (0x0E, group, type, parameter size (u16 each), parameters; 0x0F, group, type: a tag's
+    // end), or i + 1 for a character.
+    s64 Next(const char* text, s64 length, s64 i) {
+        u8 c = static_cast<u8>(text[i]);
+        if (c == 0x0e && i + 7 <= length) {
+            return i + 7 + static_cast<u8>(text[i + 5]) + (static_cast<u8>(text[i + 6]) << 8);
+        }
+        if (c == 0x0f && i + 5 <= length) return i + 5;
+        return i + 1;
+    }
+
+    bool TagAt(const char* text, s64 length, s64 i, const std::string& tag) {
+        return i >= 0 && i + static_cast<s64>(tag.size()) <= length && std::memcmp(text + i, tag.data(), tag.size()) == 0;
+    }
+
+    // The egg's sign: the numbers the egg takes (config.ini [archipelago]), under the place name.
+    std::string SignLine() {
+        const auto& ap = global_config.archipelago;
+        constexpr int kInstruments = 8;
+        int n = ap.seashell_hunt ? ap.seashells_required : ap.instruments_required;
+        std::string needed;
+        if (ap.seashell_hunt) {
+            needed = n == 0 ? "no secret seashells" : std::to_string(n) + " secret seashell" + (n > 1 ? "s" : "");
+        } else if (n >= kInstruments) {
+            needed = "all " + std::to_string(kInstruments) + " instruments";
+        } else if (n == 0) {
+            needed = "no instruments";
+        } else {
+            needed = std::to_string(n) + " instrument" + (n > 1 ? "s" : "");
+        }
+        return "The Wind Fish's Egg opens\nwith " + needed + ".";
+    }
+
+    // Characters (UTF-8 sequences) in s
+    size_t Characters(const std::string& s) {
+        size_t n = 0;
+        for (char c : s) n += (static_cast<u8>(c) & 0xc0) != 0x80;
+        return n;
+    }
+
+    // The first `max` characters of s
+    std::string FirstCharacters(const std::string& s, size_t max) {
+        size_t i = 0, n = 0;
+        while (i < s.size() && (n < max || (static_cast<u8>(s[i]) & 0xc0) == 0x80)) {
+            n += (static_cast<u8>(s[i]) & 0xc0) != 0x80;
+            i++;
+        }
+        return s.substr(0, i);
+    }
+
+    // A shop slot's name: the item and its owner in kShopNameMax characters, a long item name cut short with "…"; the
+    // placeholder's name while the location has none.
+    std::string ShopName(LocationId location) {
+        constexpr size_t kShopNameMax = 46;  // characters on the buy dialog's first line
+        const auto* names = NamesOf(location);
+        if (names == nullptr) return "Archipelago Item";
+        std::string item = names->first;
+        std::string suffix = names->second.empty() ? "" : " for " + FirstCharacters(names->second, kPlayerNameMax);
+        size_t room = kShopNameMax - Characters(suffix);
+        if (Characters(item) > room) {
+            item = FirstCharacters(item, room - 1);
+            while (!item.empty() && item.back() == ' ') item.pop_back();
+            item += "…";
+        }
+        return item + suffix;
+    }
+
+    // A hint's message: its pages, each waiting for input before the next box; an owl statue's in the owls' sky blue.
+    std::string HintText(const HintSource& hint) {
+        std::string text;
+        for (const std::string& page : hint.pages) {
+            if (!text.empty()) text += kWaitInput + kNewPage;
+            text += hint.Book() ? page : kColorPlayer + page + kColorWhite;
+        }
+        return text + kWaitInput;
+    }
+
+    // The source of a hint label (HINT_PREFIX and its number) that has a hint, else -1
+    int HintSourceOf(const char* label, size_t len) {
+        size_t prefix = AP::HINT_PREFIX.size();
+        if (len <= prefix || std::memcmp(label, AP::HINT_PREFIX.data(), prefix) != 0) return -1;
+        int n = 0;
+        for (size_t i = prefix; i < len; i++) {
+            if (label[i] < '0' || label[i] > '9') return -1;
+            n = n * 10 + (label[i] - '0');
+        }
+        return g_HintSources.count(n) ? n : -1;
+    }
+
+    // The message with `line` as its first line
+    std::string WithFirstLine(const char* text, s64 length, const std::string& line) {
+        s64 end = 0;
+        while (end < length && text[end] != '\n') end = Next(text, length, end);
+        end = std::min(end, length);
+        return line + std::string(text + end, length - end);
+    }
+
+    // A buy dialog's first line holds the item and its price ("Deluxe shovel: 200 rupees!"): the name, then the price
+    // (from the item colour's tag to the white's end) and the choice, as on the price tag.
+    std::string BuyText(const char* text, s64 length, const std::string& name) {
+        s64 price = -1, priced = -1, choice = -1;
+        for (s64 i = 0; i < length; i = Next(text, length, i)) {
+            if (price < 0 && TagAt(text, length, i, kColorItem)) price = i;
+            else if (price >= 0 && priced < 0 && TagAt(text, length, i, kColorWhite)) priced = Next(text, length, i);
+            // the choice: group 1, type 7
+            if (choice < 0 && static_cast<u8>(text[i]) == 0x0e && i + 7 <= length && text[i + 1] == 1 &&
+                text[i + 2] == 0 && text[i + 3] == 7 && text[i + 4] == 0) {
+                choice = i;
+            }
+        }
+        if (priced < 0 || choice < priced) return WithFirstLine(text, length, name);
+        return name + "\n" + std::string(text + price, priced - price) + std::string(text + choice, length - choice);
+    }
 }
 
 HOOK_DEFINE_TRAMPOLINE(MsbtFindLabel) {
+    // A shop slot's price tag or buy dialog
+    static bool FindShopSlot(void* msbt, s32 index, const char* label, size_t len) {
+        for (const ShopSlot& slot : g_ShopSlots) {
+            if (LabelIs(label, len, slot.tag.data())) Remember(msbt, index, Kind::PriceTag, slot.location);
+            else if (LabelIs(label, len, slot.buy.data())) Remember(msbt, index, Kind::Buy, slot.location);
+            else continue;
+            return true;
+        }
+        return false;
+    }
+
+    // A hint's message, or a book's question, of a source with a hint
+    static bool FindHint(void* msbt, s32 index, const char* label, size_t len) {
+        int source = HintSourceOf(label, len);
+        if (source >= 0) {
+            Remember(msbt, index, Kind::Hint, {}, source);
+            return true;
+        }
+        for (const auto& [n, hint] : g_HintSources) {
+            if (hint.prompt.empty() || !LabelIs(label, len, hint.prompt.data())) continue;
+            Remember(msbt, index, Kind::BookPrompt, {}, n);
+            return true;
+        }
+        return false;
+    }
+
     static void Callback(MessageRef* out, void* msbt, const char* label, size_t len) {
         Orig(out, msbt, label, len);
         g_FindCalls++;
-#ifdef LASAP_TEST
-        SeeLabel(msbt, out->index, label, len);
-#endif
+        TEST_ONLY(SeeLabel(msbt, out->index, label, len);)
         int group = AP::MapTracker::LabelGroup(std::string_view(label, len));
         if (group >= 0) {
             if (out->index >= 0) g_MapLabels[{msbt, out->index}] = group;
@@ -188,7 +367,8 @@ HOOK_DEFINE_TRAMPOLINE(MsbtFindLabel) {
         else if (LabelIs(label, len, kMapPinLabel)) Remember(msbt, out->index, Kind::MapPin);
         else if (LabelIs(label, len, kMapZoomLabel)) Remember(msbt, out->index, Kind::MapZoom);
         else if (LabelIs(label, len, AP::SIGN_LABEL)) Remember(msbt, out->index, Kind::Sign);
-        else return;
+        else if (LabelIs(label, len, kSaveNameLabel)) Remember(msbt, out->index, Kind::SaveName);
+        else if (!FindShopSlot(msbt, out->index, label, len) && !FindHint(msbt, out->index, label, len)) return;
         Logging.Log("[AP] text label %.*s index %d", static_cast<int>(len), label, out->index);
     }
 };
@@ -197,10 +377,9 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
     static void Callback(MsbtText* out, void* msbt, s32 index) {
         Orig(out, msbt, index);
         g_GetCalls++;
+        AP::Shuffles::FixText(out, msbt, index);
         Resolve(out, msbt, index);
-#ifdef LASAP_TEST
-        SeeText(msbt, index, out->text, out->length);
-#endif
+        TEST_ONLY(SeeText(msbt, index, out->text, out->length);)
     }
 
     // Hands out our text for the messages that are ours.
@@ -209,16 +388,12 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
         auto map = g_MapLabels.find({msbt, index});
         if (map != g_MapLabels.end()) {
             std::string text = AP::MapTracker::LabelText(map->second);
-#ifdef LASAP_TEST
-            AP::MapTracker::NoteText(text);
-#endif
-            if (!text.empty()) {
-                out->length = Store(g_MapText, sizeof(g_MapText), text);
-                out->text = g_MapText;
-            }
+            TEST_ONLY(AP::MapTracker::NoteText(text);)
+            if (!text.empty()) HandOut(out, g_MapText, text);
             return;
         }
-        Kind kind = KindOf(msbt, index);
+        const Slot* slot = SlotOf(msbt, index);
+        Kind kind = slot != nullptr ? slot->kind : Kind::None;
         switch (kind) {
             case Kind::Found: {
                 const auto* names = NamesOf(FoundOrPresent());
@@ -228,27 +403,23 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
                     ? "You found your " + kColorItem + Clip(item, kItemNameMax) + kColorWhite + "!"
                     : "You found " + kColorItem + Clip(item, kItemNameMax) + kColorWhite + "\nfor " +
                       kColorPlayer + Clip(player, kPlayerNameMax) + kColorWhite + "!";
-                out->length = Store(g_FoundText, sizeof(g_FoundText), t + kWaitInput);
-                out->text = g_FoundText;
+                HandOut(out, g_FoundText, t + kWaitInput);
                 break;
             }
             case Kind::Received: {
                 std::string t = "You got " + kColorItem + Clip(g_RecvItem, kItemNameMax) + kColorWhite;
                 t += g_RecvSender.empty() ? std::string("!")
                                           : "\nfrom " + kColorPlayer + Clip(g_RecvSender, kPlayerNameMax) + kColorWhite + "!";
-                out->length = Store(g_RecvText, sizeof(g_RecvText), t + kWaitInput);
-                out->text = g_RecvText;
+                HandOut(out, g_RecvText, t + kWaitInput);
                 break;
             }
             case Kind::Saving:
                 if (g_PaneText != nullptr) {
-                    out->length = Store(g_PaneBuf, sizeof(g_PaneBuf), *g_PaneText);
-                    out->text = g_PaneBuf;
+                    HandOut(out, g_PaneBuf, *g_PaneText);
                     return;
                 }
                 if (!g_ToastText) return;
-                out->length = Store(g_ToastBuf, sizeof(g_ToastBuf), g_Toast);
-                out->text = g_ToastBuf;
+                HandOut(out, g_ToastBuf, g_Toast);
                 break;
             case Kind::MapCaption:
             case Kind::MapPlace:
@@ -268,13 +439,45 @@ HOOK_DEFINE_TRAMPOLINE(MsbtGetText) {
                 tags = std::min(tags, out->length);
                 int icon = AP::ListUi::GuideIcon(button);
                 std::string head = icon >= 0 ? kHidIcon + static_cast<char>(icon) : std::string(out->text, tags);
-                out->length = Store(g_CaptionText, sizeof(g_CaptionText), head + text);
-                out->text = g_CaptionText;
+                HandOut(out, g_CaptionText, head + text);
                 break;
             }
-            case Kind::Sign:
+            case Kind::Sign: {
                 AP::OnSignRead();
+                // the place name, then the numbers, before the wait for input it ends with
+                s64 end = out->length;
+                s64 wait = end - static_cast<s64>(kWaitInput.size());
+                if (TagAt(out->text, out->length, wait, kWaitInput)) end = wait;
+                HandOut(out, g_SignText, std::string(out->text, end) + "\n" + SignLine() + kWaitInput);
                 break;
+            }
+            case Kind::SaveName: {
+                const std::string& name = global_config.archipelago.save_name;
+                if (name.empty()) return;
+                out->text = name.c_str();
+                out->length = static_cast<s64>(name.size());
+                break;
+            }
+            case Kind::PriceTag:
+                HandOut(out, g_ShopText, WithFirstLine(out->text, out->length, ShopName(slot->location)));
+                break;
+            case Kind::Buy:
+                HandOut(out, g_ShopText, BuyText(out->text, out->length, ShopName(slot->location)));
+                break;
+            case Kind::Hint: {
+                // showing it sets its flag, which the save keeps; those of server hints are reported (ap_checks.cpp)
+                std::string flag = std::string(AP::HINT_PREFIX) + std::to_string(slot->source);
+                EventFlags::SetFlag(flag, true);
+                HandOut(out, g_HintText, HintText(g_HintSources[slot->source]));
+                break;
+            }
+            case Kind::BookPrompt: {
+                // the book's title, its first line, names the volume
+                const HintSource& hint = g_HintSources[slot->source];
+                std::string title = "\"Koholint Lost and Found, Volume " + std::to_string(hint.volume) + "\"";
+                HandOut(out, g_PromptText, WithFirstLine(out->text, out->length, title));
+                break;
+            }
             case Kind::None:
                 break;
         }
@@ -313,10 +516,7 @@ HOOK_DEFINE_INLINE(MansionPopBox) {
     static void Callback(exl::hook::nx64::InlineCtx* ctx) {
         auto* key = reinterpret_cast<const Game::StrView*>(ctx->X[3]);
         int index = static_cast<int>(ctx->X[4]);
-        size_t len = std::strlen(AP::PLACEHOLDER_KEY);
-        // The placeholder's key, or a model variant of it (ArchipelagoItem_<item key>).
-        if (key != nullptr && key->data != nullptr && key->size >= len &&
-            std::memcmp(key->data, AP::PLACEHOLDER_KEY, len) == 0) {
+        if (key != nullptr && key->data != nullptr && key->View() == AP::PLACEHOLDER_KEY) {
             g_PresentLocation = LocationId{index};
             Logging.Log("[AP] present holds location %d", index);
         }
@@ -379,6 +579,12 @@ namespace AP {
         g_LocationNames[location] = {item, player};
     }
 
+    std::pair<std::string, std::string> SplitNames(std::string_view names) {
+        size_t bar = names.find('|');
+        if (bar == std::string_view::npos) return {std::string(names), ""};
+        return {std::string(names.substr(0, bar)), std::string(names.substr(bar + 1))};
+    }
+
 #ifdef LASAP_TEST
     std::string TextState() {
         return "TEXT names=" + std::to_string(g_LocationNames.size()) + " slots=" + std::to_string(g_SlotCount) +
@@ -414,6 +620,10 @@ namespace AP {
         g_FoundFresh = false;
     }
 
+    std::optional<LocationId> LastFoundLocation() { return g_FoundLocation; }
+
+    std::optional<LocationId> FoundOrPresentLocation() { return FoundOrPresent(); }
+
     std::string ReceivedToast(const std::string& item, const std::string& sender) {
         std::string from = sender.empty() ? "" : "\nfrom " + Clip(sender, kPlayerNameMax);
         return "You got " + Clip(item, kItemNameMax) + from;
@@ -438,30 +648,50 @@ namespace AP {
         g_RecvSender = sender;
     }
 
+    // The seed file's shop: "<price tag label> <buy dialog label> <local id>" lines, the shop's AP slots, System.msbt
+    // labels whose first line the module makes the location's item name (patcher las_ap_patch.shop_lines)
+    void LoadShopSlots() {
+        SeedFile::ForEach("shop", [](Fields& f) {
+            std::string_view tag = f.Str(), buy = f.Str();
+            if (auto location = f.Num<AP::LocationId>()) g_ShopSlots.push_back({tag, buy, *location});
+        });
+        Logging.Log("[AP] shop slots: %zu", g_ShopSlots.size());
+    }
+
+    // The seed file's hints, per source n (its place in ap_hints.SOURCES): "L <n> <text>" its hint's next line, "P
+    // <n>" a new page, "B <n> <label> <volume>" for a book its question (System:<label>) naming that volume (patcher
+    // ap_hints.py)
+    void LoadHintTexts() {
+        SeedFile::ForEach("hints", [](Fields& f) {
+            std::string_view kind = f.Str();
+            auto n = f.Num<int>();
+            if (!n || *n < 0 || (kind != "L" && kind != "P" && kind != "B")) return;
+            HintSource& source = g_HintSources[*n];
+            if (kind == "L") {
+                if (source.pages.empty()) source.pages.emplace_back();
+                if (!source.pages.back().empty()) source.pages.back() += '\n';
+                source.pages.back() += f.Rest();
+            } else if (kind == "P") {
+                source.pages.emplace_back();
+            } else {
+                source.prompt = f.Str();
+                source.volume = f.Num<int>().value_or(0);
+            }
+        });
+        Logging.Log("[AP] hint texts: %zu", g_HintSources.size());
+    }
+
     void LoadLocationNames() {
-        // Written by the patcher: one "<local id> <item name>|<player name, empty for an own item>" per line, so
-        // found items are named before the client connects. NAME lines from the client replace them.
-        std::string text;
-        if (R_FAILED(FileHandler::ReadFile(NAMES_PATH, text))) {
-            Logging.Log("[AP] no location names file");
-            return;
-        }
-        size_t start = 0;
+        // The seed file's names: "<local id> <item name>|<player name, empty for an own item>" lines, so found items
+        // are named before the client connects. NAME lines from the client replace them.
         int count = 0;
-        while (start < text.size()) {
-            size_t end = text.find('\n', start);
-            if (end == std::string::npos) end = text.size();
-            std::string line = text.substr(start, end - start);
-            start = end + 1;
-            if (!line.empty() && line.back() == '\r') line.pop_back();
-            size_t space = line.find(' ');
-            if (space == std::string::npos) continue;
-            std::string names = line.substr(space + 1);
-            size_t bar = names.find('|');
-            SetLocationName(LocationId{atoi(line.substr(0, space).c_str())}, names.substr(0, bar),
-                            bar == std::string::npos ? "" : names.substr(bar + 1));
+        SeedFile::ForEach("names", [&count](Fields& f) {
+            auto location = f.Num<LocationId>();
+            if (!location) return;
+            auto [item, player] = SplitNames(f.Rest());
+            SetLocationName(*location, item, player);
             count++;
-        }
+        });
         Logging.Log("[AP] location names: %d", count);
     }
 }

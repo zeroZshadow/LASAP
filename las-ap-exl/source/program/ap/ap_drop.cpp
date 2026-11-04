@@ -3,8 +3,8 @@
 // 0 says how it appears (AP::DropMotion). With Bouncy Items (DESIGN.md, Bouncy Items) it is a ball.
 #include "ap/ap_bridge.hpp"
 #include "ap/ap_patcher.hpp"
+#include "ap/drop_bounds.hpp"
 #include "config/config.hpp"
-#include "config/file_handler.hpp"
 #include "game/actor.hpp"
 #include "game/actors/item.hpp"
 #include "game/actors/tree.hpp"
@@ -17,11 +17,11 @@
 #include "game/sym.hpp"
 #include "loggers.hpp"
 #include "lib.hpp"
+#include "test_only.hpp"
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
-#include <sstream>
 #include <string>
 #include <utility>
 
@@ -71,11 +71,11 @@ namespace {
         return item == ItemId::HookShot || item == ItemId::AnglerKey || item == ItemId::FaceKey ||
                item == ItemId::HeartContainer;
     }
-    // Its model takes the item pose pair the item constructor stores (DESIGN.md, Drop actor, Model; DROPS_PATH): all
+    // Its model takes the item pose pair the item constructor stores (DESIGN.md, Drop actor, Model; drop_bounds.hpp): all
     // kPoses poses (the pair, and the side view's pair after it) are the drop's one pose. A ball's (Bouncy Items) puts
-    // the model's centre, or without a line its origin, on the ball's centre, the sphere's radius above the root.
+    // the model's centre, or without bounds its origin, on the ball's centre, the sphere's radius above the root.
     constexpr float kBallCentre = 0.3f, kModelScale = 1.1f, kModelRadius = 0.6f;
-    constexpr size_t kMaxDrops = 256, kPoses = 4;
+    constexpr size_t kPoses = 4;
     constexpr u32 kLebInt = 3;
     // Out of the ground, as a bush's, rock's or pot's own seashell: the game's default drop start and launch for a
     // single item (scripts/re/ITEMS.md, Item actors, Seashell drops)
@@ -165,22 +165,16 @@ namespace {
     // The type ids of the drop's actor and component: their addresses
     u8 g_ActorType, g_ComponentType;
     void (*g_ItemUpdate)(void*) = nullptr;  // the item base's, which the ball's wraps
-    // Each drop's model poses (the pair and the side view's), by its LEB key
-    struct DropModel {
-        u64 key;
-        Game::ItemPose poses[kPoses];
-    };
-    DropModel g_Models[kMaxDrops]{};
-    size_t g_ModelCount = 0;
+    // Each model's poses (the pair and the side view's), by its place in DropBounds::kBounds, and those of a model
+    // without bounds
+    Game::ItemPose g_Poses[std::size(AP::DropBounds::kBounds)][kPoses]{};
     Game::ItemPose g_DefaultPoses[kPoses]{};
     // A PxVec3 a PhysX getter returns: its copy constructor is not trivial, so it comes back through x8
     struct PxVec3 {
         float x = 0, y = 0, z = 0;
         ~PxVec3() {}
     };
-#ifdef LASAP_TEST
-    Game::Weak<Actor> g_Last;  // the drop actor that fell last
-#endif
+    TEST_ONLY(Game::Weak<Actor> g_Last;)  // the drop actor that fell last
     // The boss drop actors made, a level's at once (Catfish's Maw has Master Stalfos's and the Slime Eel's), and the
     // one made last
     constexpr int kBossSlots = 4;
@@ -197,47 +191,36 @@ namespace {
     // The launch the boss gave its item last (Enemy_DropItems' default before any)
     Game::Vec3 g_BossLaunch{0, 4, 0};
 
-    bool Bouncy() { return global_config.tweaks.bouncy_items; }
+    bool Bouncy() { return global_config.Option("bouncy_items"); }
 
     StrView RowKey() { return StrView{AP::DROP_ACTOR}; }
 
-    void SetPoses(Game::ItemPose* poses, const float centre[3], float radius) {
-        float s = std::fmin(kModelScale, kModelRadius / radius);
-        float lift = Bouncy() ? kBallCentre : s * radius;
-        poses[0] = {{-s * centre[0], lift - s * centre[1], -s * centre[2]}, {0, 0, 0}, {s, s, s}};
+    void SetPoses(Game::ItemPose* poses, const AP::DropBounds::Bounds& b) {
+        float s = std::fmin(kModelScale, kModelRadius / b.radius);
+        float lift = Bouncy() ? kBallCentre : s * b.radius;
+        poses[0] = {{-s * b.x, lift - s * b.y, -s * b.z}, {0, 0, 0}, {s, s, s}};
         std::fill(poses + 1, poses + kPoses, poses[0]);
     }
 
-    // "<LEB key> <centre x> <y> <z> <radius>" lines (patcher ap_drop.write_drops)
-    void LoadDrops() {
+    void MakePoses() {
         float lift = Bouncy() ? kBallCentre : 0;
         g_DefaultPoses[0] = {{0, lift, 0}, {0, 0, 0}, {kModelScale, kModelScale, kModelScale}};
         std::fill(g_DefaultPoses + 1, g_DefaultPoses + kPoses, g_DefaultPoses[0]);
-        std::string text;
-        if (R_FAILED(FileHandler::ReadFile(AP::DROPS_PATH, text))) return;
-        std::stringstream lines(text);
-        std::string line;
-        while (std::getline(lines, line)) {
-            std::stringstream ss(line);
-            u64 key;
-            float centre[3], radius;
-            if (g_ModelCount >= kMaxDrops || !(ss >> key >> centre[0] >> centre[1] >> centre[2] >> radius) ||
-                !(radius > 0)) {
-                continue;
-            }
-            DropModel& model = g_Models[g_ModelCount++];
-            model.key = key;
-            SetPoses(model.poses, centre, radius);
+        for (size_t i = 0; i < std::size(AP::DropBounds::kBounds); i++) {
+            SetPoses(g_Poses[i], AP::DropBounds::kBounds[i]);
         }
-        Logging.Log("[AP] drop models: %zu", g_ModelCount);
     }
 
-    const Game::ItemPose* PosesOf(u64 key) {
-        for (size_t i = 0; i < g_ModelCount; i++) {
-            if (g_Models[i].key == key) return g_Models[i].poses;
+    // The poses of the model the drop shows: its location's item's, or the Archipelago model's
+    const Game::ItemPose* PosesOf(const Game::ActorParams& params) {
+        if (auto model = AP::Bridge::TokenModel(params)) {
+            for (size_t i = 0; i < std::size(AP::DropBounds::kBounds); i++) {
+                const AP::DropBounds::Bounds& b = AP::DropBounds::kBounds[i];
+                if (b.file == model->first && b.name == model->second) return g_Poses[i];
+            }
         }
         Logging.Log("[AP] drop %016llx: no model bounds, its model's origin on the root",
-                    static_cast<unsigned long long>(key));
+                    static_cast<unsigned long long>(params.lebKey));
         return g_DefaultPoses;
     }
 
@@ -449,9 +432,7 @@ namespace {
         if (!Item(comp)->bodyReady) return;
         Actor* actor = Owner(comp);
         if (actor == nullptr || actor->root == nullptr) return;
-#ifdef LASAP_TEST
-        g_Last = {actor, actor->entity.self.ctrl};
-#endif
+        TEST_ONLY(g_Last = {actor, actor->entity.self.ctrl};)
         int motion = Motion(*actor);
         if (Boss(motion)) {
             const Game::Vec4& spawn = actor->spawnPos;
@@ -764,7 +745,7 @@ namespace {
         mem->ctrl.vtable = g_ActorCtrlVtable;  // shared and weak owners - 1: 0
         auto* actor = reinterpret_cast<Actor*>(&mem->actor);
         StrView key = RowKey();
-        Game::ItemActor_Ctor(actor, &args, &key, kItemId, 1, PosesOf(params->lebKey));
+        Game::ItemActor_Ctor(actor, &args, &key, kItemId, 1, PosesOf(*params));
         actor->entity.vtable = g_ActorVtable;
         if (actor->entity.self.ctrl == nullptr) {
             actor->entity.self = {actor, mem};
@@ -936,7 +917,7 @@ namespace {
         g_ActionsVtable[kFuncClone] = Slot(&ActionsClone);
         g_ActionsVtable[kFuncCloneInto] = Slot(&ActionsCloneInto);
         g_ActionsVtable[kFuncCall] = Slot(&Act);
-        LoadDrops();
+        MakePoses();
         ItemCreate::InstallAtFuncPtr(Game::ItemActor_Create.Ptr());
         // Its resources (model, tailor, flowchart) come from its Npc row, as an item class's
         entry = Game::ActorTableEntry{};

@@ -21,36 +21,32 @@ namespace AP::MapTracker {
 
     // ---- What the patcher's map file gives (map_tracker.cpp) ----
 
-    // Read once at boot and never changed, the map file's data is in static storage: its texts in one character
-    // buffer (each terminated) and its local ids in one flat array, which the groups, dots, chests and check names
-    // refer to by offset and length (Ref).
+    // Read once at boot and never changed: the texts are views into the seed file (each terminated), the local ids
+    // views into one flat array.
     using AP::LocationId;
     using Ids = std::span<const LocationId>;
-    struct Ref {
-        u16 at = 0, size = 0;
-    };
     // An overworld group (O line): its locations, its name (G line), and the flag until which it has another name (H
-    // line; a shuffled dungeon's: which dungeon is behind its door), none when the flag's size is 0.
+    // line; a shuffled dungeon's: which dungeon is behind its door), none when the flag is empty.
     struct Group {
-        Ref ids, name, hiddenFlag, hiddenName;
+        Ids ids;
+        std::string_view name, hiddenFlag, hiddenName;
     };
     // A dungeon dot (M line): its room ("Lv01TailCave_05F"), its world position and checks, and its name (MG line).
     struct Dot {
-        Ref room;
+        std::string_view room;
         float x = 0, z = 0;
-        Ref ids, name;
+        Ids ids;
+        std::string_view name;
     };
     // A dungeon chest of the slot's (C line): its level ("Lv01TailCave"), its world position and its location.
     struct Chest {
-        Ref level;
+        std::string_view level;
         float x = 0, z = 0;
         LocationId id{};
     };
     extern bool g_Loaded;
     extern bool g_Enabled;      // loaded and not switched off for a test (DBG map 0)
     extern bool g_IconsHidden;  // revealed maps without overworld icons, for screenshots (DBG map 2)
-    Ids IdsOf(Ref ref);
-    std::string_view TextOf(Ref ref);
     std::span<const Group> Groups();
     std::span<const Dot> Dots();
     std::span<const Chest> Chests();

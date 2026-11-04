@@ -6,6 +6,7 @@
 #include "game/model.hpp"
 #include "game/sym.hpp"
 #include "game/time.hpp"
+#include "test_only.hpp"
 #include <cstring>
 
 #ifdef LASAP_TEST
@@ -23,7 +24,7 @@ namespace {
     // NPC model stands on its feet there. For these models the component gets the ocarina's place, the fix's angle
     // (from upright in the item's frame, facing the camera) and the scale that gives the model the ocarina's size, and
     // the model's root bone moves by -center, putting its middle on the origin.
-    // `radius` and `center` (model units) are the model's bind-pose bounds (patcher/model_bounds.py): its box centre
+    // `radius` and `center` (model units) are the model's bind-pose bounds (scripts/model_bounds.py): its box centre
     // and the radius around it, all vertices in model space. `angle` turns the model about its centre (degrees in
     // the item's frame: x pitch, y yaw, z roll, applied roll first).
     struct HeldModelFix { const char* model; float radius; Game::Vec3 center; Game::Vec3 angle; };
@@ -114,9 +115,7 @@ namespace {
 
     HOOK_DEFINE_TRAMPOLINE(NodeMarkDirty) {
         static void Callback(Game::Node* node) {
-#ifdef LASAP_TEST
-            AP::Test::ProbeMarkDirty(node);
-#endif
+            TEST_ONLY(AP::Test::ProbeMarkDirty(node);)
             if (node != nullptr && node == g_HeldModel.View().ptr) {
                 if (g_HeldModel.Alive()) PlaceHeldModel();
                 else DropHeldModel();

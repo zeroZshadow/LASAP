@@ -1,39 +1,52 @@
-"""Shuffled dungeons: the Color Dungeon's other ways out lead out of the door that leads into it.
+"""Shuffled dungeons: each dungeon's overworld door leads into the dungeon the patch maps it to, and that dungeon's
+ways out lead out of that door (DESIGN.md, Shuffled dungeons).
 
-LASR's EntranceRandomizer moves each dungeon's door and exit, the map's dungeon markers, the instrument warps and the
-Fairy Queen's warp after her gifts (FreeGiftsRandomizer, Event37). The Fairy Queen's room also has stairs out, and her
-flow other warps; in the game all of them go to the Color Dungeon's own door (Field_08H)."""
+The module leads the level jumps (`jumps`; the seed file's jumps): a jump from the overworld to a dungeon's entrance
+goes to the entrance of the dungeon behind that door, and a jump from a dungeon to the outside of its own door (its
+exit, its instrument's warp, the Fairy Queen's warps and her room's loading zone) goes to the outside of the door that
+leads into it. The rooms and flowcharts keep their vanilla targets. The module also swaps the overworld map's dungeon
+markers (`markers`; the seed file's markers)."""
 import re
-from typing import Mapping, Optional
+from typing import List, Mapping
 
-from RandomizerCore.Randomizers.data import DUNGEON_ENTRANCES
-from RandomizerCore.Tools import event_tools
+import ap_assets
 
-FAIRY_ROOM = "Lv10ClothesDungeon_04C"
-FAIRY_FLOW = "FairyQueen.bfevfl"
-FAIRY_WARPS = ("Event22", "Event26", "Event37", "Event42")  # GameControl RequestLevelJump to Field_08H
+FIELD = "Field"
 
 
-def color_dungeon_exit(entrances: Mapping[str, str]) -> Optional[str]:
-    """The locator outside the door that leads into the Color Dungeon, None for its own."""
-    door = next(door for door, dungeon in entrances.items() if dungeon == "color-dungeon")
-    if door == "color-dungeon":
-        return None
-    _, _, field_room, suffix, _ = DUNGEON_ENTRANCES[door]
+def level_of(locator: str) -> str:
+    """The level of a locator named after its room (Lv01TailCave_08D, Field_03L_a)."""
+    return re.match(r"(.+)_\d\d[A-Z]", locator).group(1)
+
+
+def entrance(dungeon: str) -> str:
+    """The locator inside a dungeon where its door leads."""
+    room, suffix, _, _, _ = ap_assets.data()["dungeon_entrances"][dungeon]
+    return room + suffix
+
+
+def outside(door: str) -> str:
+    """The locator outside a dungeon's door, where its exit leads."""
+    _, _, field_room, suffix, _ = ap_assets.data()["dungeon_entrances"][door]
     return field_room + suffix
 
 
-def add(files, entrances: Mapping[str, str]) -> None:
-    locator = color_dungeon_exit(entrances)
-    if locator is None:
-        return
-    level = re.match(r"(.+)_\d\d[A-Z]", locator).group(1)
-    room = files.readFile(f"{FAIRY_ROOM}.leb")
-    room.setLoadingZoneTarget(locator, 0)
-    files.writeFile(f"{FAIRY_ROOM}.leb", room)
-    flow = files.readFile(FAIRY_FLOW)
-    for name in FAIRY_WARPS:
-        params = event_tools.findEvent(flow.flowchart, name).data.params.data
-        params["level"] = level
-        params["locator"] = locator
-    files.writeFile(FAIRY_FLOW, flow)
+def jumps(entrances: Mapping[str, str]) -> List[str]:
+    """The jumps' lines: per door that leads into another dungeon, its jump in and that dungeon's jumps out."""
+    lines = []
+    for door, dungeon in entrances.items():
+        if door == dungeon:
+            continue
+        lines.append(f"{FIELD} {level_of(entrance(door))} {entrance(door)} {level_of(entrance(dungeon))} "
+                     f"{entrance(dungeon)}")
+        lines.append(f"{level_of(entrance(dungeon))} {FIELD} {outside(dungeon)} {FIELD} {outside(door)}")
+    return lines
+
+
+def markers(entrances: Mapping[str, str]) -> List[str]:
+    """The markers' lines: per door that leads into another dungeon, its map marker's label, then the label and show
+    flag of the dungeon's, which the module gives the door's marker: it names the dungeon behind the door and shows
+    once that dungeon is entered."""
+    icons = ap_assets.data()["dungeon_map_icons"]
+    return [f"{icons[door][0]} {' '.join(icons[dungeon])}"
+            for door, dungeon in entrances.items() if door != dungeon]

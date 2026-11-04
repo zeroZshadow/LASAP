@@ -5,8 +5,9 @@ python suite.py [-j <instances>] [--no-world] [<group> ...]
 
 Each group runs on a suite instance (emu.py, LASAP_INSTANCE 1 and up): a copy of the sandbox's data folder with the
 mod the sandbox has installed (deploy_mod.sh), which must be suite.txt's (its mod: line), this checkout's test
-module (patcher/exl-test, build_exl.sh) and the group's config.ini changes, from the new-game snapshot's saves, in a
-fresh emulator, with a fresh client session when the group needs one. The sandbox itself is left as it is.
+module (patcher/exl-test, build_exl.sh), the group's config.ini changes and seed file sections (scripts/tests/seed),
+from the new-game snapshot's saves, in a fresh emulator, with a fresh client session when the group needs one. The sandbox
+itself is left as it is.
 Instances run their groups side by side, the longest first (by the last run's times). Logs go to the sandbox folder's
 suite/logs.
 """
@@ -26,8 +27,12 @@ from pathlib import Path
 
 import emu
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "patcher"))
+import seed_file  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 TESTS = ROOT / "scripts" / "tests"
+SEED_SECTIONS = TESTS / "seed"  # files of seed file sections, which replace the mod's
 SUITE = Path(emu.SANDBOX) / "suite"
 LOGS = SUITE / "logs"
 TIMES = SUITE / "times.json"
@@ -44,11 +49,13 @@ class Group:
     name: str
     scripts: list[str]
     config: dict[tuple[str, str], str] = field(default_factory=dict)
+    files: list[str] = field(default_factory=list)  # in SEED_SECTIONS
     session: str = ""   # "", "client" or "ghost"
 
 
 def read_groups(path: Path) -> list[Group]:
-    """suite.txt: one group per line, `<name> [<section>.<key>=<value> ...] [client|ghost]: <script> ...`."""
+    """suite.txt: one group per line, `<name> [<section>.<key>=<value> ...] [<seed sections>.txt ...] [client|ghost]:
+    <script> ...`."""
     groups = []
     for raw in path.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
@@ -60,6 +67,8 @@ def read_groups(path: Path) -> list[Group]:
         for opt in opts:
             if opt in ("client", "ghost"):
                 group.session = opt
+            elif opt.endswith(".txt"):
+                group.files.append(opt)
             else:
                 key, _, value = opt.partition("=")
                 section, _, option = key.partition(".")
@@ -121,11 +130,20 @@ class Instance:
                        stdout=subprocess.DEVNULL)
 
     def reset(self, base_config: str, group: Group) -> None:
-        """The group's config.ini, the new-game snapshot's saves, no checks file and empty session files."""
+        """The installed config folder with the group's config.ini and seed file sections, the new-game snapshot's
+        saves, no checks file and empty session files."""
         config = set_option(base_config, "archipelago", "port", str(self.port))
         for (section, option), value in group.config.items():
             config = set_option(config, section, option, value)
-        (self.data / "sdcard/config/lasr-exl/config.ini").write_text(config, encoding="utf-8")
+        folder = self.data / "sdcard/config/lasr-exl"
+        shutil.rmtree(folder, ignore_errors=True)
+        shutil.copytree(Path(emu.SANDBOX) / "ryujinx/sdcard/config/lasr-exl", folder)
+        (folder / "config.ini").write_text(config, encoding="utf-8")
+        if group.files:
+            sections = seed_file.read(folder)
+            for name in group.files:
+                sections.update(seed_file.read_text((SEED_SECTIONS / name).read_text(encoding="utf-8")))
+            seed_file.write(folder, sections)
         save = self.data / "bis/user/save"
         shutil.rmtree(save, ignore_errors=True)
         shutil.copytree(NEWGAME, save)
@@ -306,6 +324,9 @@ def main() -> None:
         for name in g.scripts:
             if not script_path(name).exists():
                 raise SystemExit(f"group {g.name}: no script {script_path(name)}")
+        for name in g.files:
+            if not (SEED_SECTIONS / name).exists():
+                raise SystemExit(f"group {g.name}: no seed sections {SEED_SECTIONS / name}")
     check_mod(TESTS / "suite.txt")
     print(f"test module built {time.strftime('%Y-%m-%d %H:%M', time.localtime(MODULE.stat().st_mtime))}; mod "
           f"{base_config_hash()}", flush=True)

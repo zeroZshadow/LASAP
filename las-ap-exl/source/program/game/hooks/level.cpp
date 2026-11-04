@@ -1,4 +1,5 @@
 #include "game/hooks/level.hpp"
+#include "ap/ap.hpp"
 #include "game/data/inventory.hpp"
 #include "game/framework.hpp"
 #include "game/hooks/eventflags.hpp"
@@ -21,9 +22,18 @@ namespace {
     };
 
     // A jump to another point of the same level (Manbo's Mambo, a warp hole) tears the rooms down and loads them
-    // again under the same level name, with Link kept.
+    // again under the same level name, with Link kept. A jump the seed leads elsewhere goes there (AP::LeadJump).
     HOOK_DEFINE_TRAMPOLINE(LevelJump) {
         static bool Callback(void* manager, Game::StrView* level, Game::StrView* locator, const void* offset) {
+            Game::StrView ledLevel, ledLocator;
+            if (level != nullptr && locator != nullptr) {
+                if (auto led = AP::LeadJump(g_CurrentLevel, level->View(), locator->View())) {
+                    ledLevel = Game::StrView(led->first);
+                    ledLocator = Game::StrView(led->second);
+                    level = &ledLevel;
+                    locator = &ledLocator;
+                }
+            }
             bool started = Orig(manager, level, locator, offset);
             if (started) g_Jumping = true;
             return started;

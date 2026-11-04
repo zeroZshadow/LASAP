@@ -19,5 +19,5 @@ def romfs() -> Path:
         spec = importlib.util.spec_from_file_location("local_paths", LOCAL_PATHS)
         local_paths = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(local_paths)
-        value = local_paths.lookup("romfs", "LASAP_ROMFS")
+        value = local_paths.lookup("romfs")
     return Path(value) if value else LOCAL_PATHS.with_name("<no RomFS configured>")

@@ -57,8 +57,8 @@ class TestDefault(LASTestBase):
             self.assertEqual(container.player_name, self.multiworld.player_name[self.player])
 
         self.assertEqual(set(patch), {"format", "seed_name", "player", "slot_name", "seed_hash", "settings",
-                                      "starting_items", "placements", "location_ids", "optional_locations",
-                                      "location_names", "location_models", "location_chests", "dungeon_entrances", "hints",
+                                      "starting_items", "placements", "location_ids", "removed_location_ids",
+                                      "optional_locations", "location_names", "location_models", "location_chests", "dungeon_entrances", "hints",
                                       "ghost_secret", "ghost_relay"})
         self.assertLessEqual(set(patch["location_models"]), set(patch["location_ids"]))
         self.assertEqual(patch["format"], 1)
@@ -211,11 +211,12 @@ class TestVanillaHeavy(LASTestBase):
         tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], self.world.shuffled,
                                optional=logic["optional"])
         doll = LASR_TO_ITEM[LOGIC["trendy-prize-1"]["content"]]
-        # every other item of the slot: the pool's, the starting ones and the other locked locations'
+        # every other item of the slot: the starting ones, the pool's and those placed before the fill (the locked
+        # locations', the dungeon items, the opener)
         items = [item.name for item in self.multiworld.precollected_items[self.player]]
-        items += [item.name for item in self.multiworld.itempool + self.world.get_pre_fill_items()
-                  if item.player == self.player]
-        items += [self.multiworld.get_location(LOCATION_NAMES[loc], self.player).item.name for loc in logic["locked"]]
+        items += [item.name for item in self.multiworld.itempool if item.player == self.player]
+        items += [location.item.name for location in self.multiworld.get_locations(self.player)
+                  if location.item is not None and location.item.player == self.player]
         items = [name for name in items if name != doll]
         before = tracker.in_logic(items)
         self.assertIn("trendy-prize-1", before)

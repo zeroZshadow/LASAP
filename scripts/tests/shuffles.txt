@@ -1,0 +1,40 @@
+# The player's shuffles (ap_shuffles.cpp; DESIGN.md, Options) from scripts/tests/seed/shuffles.txt. The zone's
+# music starts on a door, not on a warp: out of Tarin's house Mabe's BGM_MEVE plays as BGM_FIELD_NORMAL; the
+# Jukebox's BGM_MEVE plays as chosen, and the zone's track comes back after it; the Woods Crossing Cave's BGM_CAVE is
+# removed, so it is silent. The field's lighting is the cemetery's. Martha's Bay owl statue says a Chamber Dungeon
+# explanation (System:PanelExplanation1_1), with the wait for input that text lacks added: it stays until dismissed. Run after
+# boot_file1 (the suite's mod: no hints). Screenshots: shuffle_mabe, shuffle_owl.
+send DBG shuffles
+expect SHUFFLES.tracks=2.environments=2.messages=1 5
+send DBG music off
+await 10 music=-
+warp MarinTarinHouse 6.85 0 3.83
+hold 0 0 -32767 until level=Field 10
+loaded 20
+await 10 music=- zonebgm=\S+ bgm=\S*BGM_FIELD_NORMAL:1
+send DBG music
+expect play\sBGM_FIELD_NORMAL\s 5
+send DBG shuffles
+expect environment=\S+->Cemetery 5
+shot shuffle_mabe.png
+send DBG music BGM_MEVE
+await 10 music=BGM_MEVE zonebgm=\S+ bgm=BGM_MEVE:1
+send DBG music off
+await 10 music=- zonebgm=\S+ bgm=\S*BGM_FIELD_NORMAL:1
+# South of the cave's east door (Field_07C), north into it.
+warp Field 41.25 12.75 79.5
+send DBG enemies kill
+expect OK 5
+hold 0 0 32767 until level=MysteriousWoodsCave01 10
+loaded 20
+send DBG music
+expect play\s\s\S+\s000\s-\s*$ 5
+check music=- zonebgm=\S+ bgm=-
+warp Field 156.75 7.5 162.75
+face up
+interact
+until textready 10
+send DBG shuffles
+expect message=Hint:APHint4->System:PanelExplanation1_1$ 5
+shot shuffle_owl.png
+dismiss 30

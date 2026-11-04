@@ -1,0 +1,40 @@
+# In-game hints off (DESIGN.md, In-game hints): owl statues and a library book show their own messages, which hold
+# the vanilla texts, and set no flag. Run after newgame_file2 on a mod patched without hints or Owl Gifts (the suite's).
+# Martha's Bay owl: its message APHint4 says the statue's riddle.
+warp Field 156.75 7.5 162.75
+face up
+interact
+until textready 10
+send DBG text APHint4
+expect said=SECRETS\sARE\sLIKE\sWATER\sWHEN\sIT\sCOMES\sTO\sBRIDGES\. 5
+dismiss 30
+send DBG flag APHint4
+expect FLAG.APHint4.0
+# The library's shield book: its own question, then its own text in APHint33.
+warp Library 12.76 0 5.74
+face up
+interact
+until msg:Selecting 10
+send DBG text CheckShieldBook
+expect said="How\sto\sHandle\sYour\sShield\sLike\sa\sPro!" 5
+choose 0
+until textready 10
+send DBG text APHint33
+expect said="If\syou\shold 5
+dismiss 30
+send DBG flag APHint33
+expect FLAG.APHint33.0
+# Color Dungeon 06C, with its beak: one of the three statues that shared an entry point, now with its own (without
+# Owl Gifts the patcher makes it), says their common text in APHint30.
+warp Lv10ClothesDungeon 35.25 0 62.25
+send DBG grant StoneBeak 1 9 0
+expect OK.grant 5
+goto 35.25 0 62.25
+face up
+interact
+until textready 10
+send DBG text APHint30
+expect said=Try\sif\syou\sdare:\smake\severy\stile\ssquare\. 5
+dismiss 30
+send DBG flag APHint30
+expect FLAG.APHint30.0

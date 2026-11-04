@@ -44,25 +44,17 @@ class TestChecklist(unittest.TestCase):
         options = {"romfs_folder": str(self.romfs)}
         result = checklist.check("", options)  # region_common/event/PlayerStart.bfevfl alone
         self.assertEqual(result.checks["romfs_folder"].level, checklist.ERROR)
-        self.assertIn("The RomFS dump is incomplete: it lacks region_common/audio/ and ",
-                      result.checks["romfs_folder"].text)
+        sources = sorted(install._romfs_sources)  # the assets' source files, filled by the first check
+        self.assertIn(f"The RomFS dump is incomplete: it lacks {sources[0]} and ", result.checks["romfs_folder"].text)
 
-        for folder in ("audio", "datasheets", "event", "level", "ui"):
-            (self.romfs / "region_common" / folder).mkdir(exist_ok=True)
-            (self.romfs / "region_common" / folder / "file").write_bytes(b"")
-        for region, language in (("regionCN", "CNch"), ("regionEU", "EUen"), ("regionJP", "JPja"), ("regionKR", "KRkr"),
-                                 ("regionTW", "TWch"), ("regionUS", "USen")):
-            (self.romfs / region / language / "message").mkdir(parents=True)
-            for name in ("Hint", "Npc", "Place", "Scenario", "SubEvent", "System", "Talker", "Telephone", "UI"):
-                (self.romfs / region / language / "message" / f"{name}.msbt").write_bytes(b"")
-        (self.romfs / "regionCN" / "CNch" / "message" / "Place.msbt").unlink()
-        result = checklist.check("", options)
-        self.assertIn("it lacks regionCN/CNch/message/Place.msbt and ", result.checks["romfs_folder"].text)
-
-        (self.romfs / "regionCN" / "CNch" / "message" / "Place.msbt").write_bytes(b"")
-        for source in install._romfs_sources:  # filled by the first check
+        for source in sources[1:]:
             (self.romfs / source).parent.mkdir(parents=True, exist_ok=True)
             (self.romfs / source).write_bytes(b"not 1.0.0")
+        result = checklist.check("", options)
+        self.assertIn(f"it lacks {sources[0]}. ", result.checks["romfs_folder"].text)
+
+        (self.romfs / sources[0]).parent.mkdir(parents=True, exist_ok=True)
+        (self.romfs / sources[0]).write_bytes(b"not 1.0.0")
         result = checklist.check("", options)
         self.assertIn("The RomFS dump is not of game version 1.0.0", result.checks["romfs_folder"].text)
 

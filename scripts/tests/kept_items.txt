@@ -1,7 +1,7 @@
 # The Trendy Game's prizes that the seed does not shuffle keep their vanilla item and are AP locations (DESIGN.md,
 # Item model): the module reports one when the game adds its item, and does not grant the server's copy again. On a
 # default seed these are Trendy Prize 1 (the Yoshi Doll) and Trendy Prizes 3 and 6 (seashells 42 and 43), as
-# `ap_vanilla.txt` lists them. Run after newgame_file2 with the client connected to a server that has sent no items
+# The seed file's kept lists them. Run after newgame_file2 with the client connected to a server that has sent no items
 # yet. DBG give adds an item as the game does (through the AddItemID hook).
 guard hurt
 expect HELLO 30

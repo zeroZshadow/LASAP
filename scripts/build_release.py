@@ -4,12 +4,11 @@ Run with .venv-lasr after scripts/build_exl.sh (it also needs .venv-ap and vendo
   python scripts/build_release.py
 Writes build/release/LASAP-<world version>/: las.apworld, "Links Awakening Switch.yaml", the setup guide and, with
 .venv-relay, LASGhostRelay.exe (build_relay.py).
-The world carries the patcher as las/patcher/: its sources, LASR's data, the assets, the game module, and the pure
-Python libraries it needs in lib/. It leaves out the world's tests. The client runs it in its own process when no patcher command is set
+The world carries the patcher as las/patcher/: its sources, LASR's data, the assets and the game module; the asset
+build (patcher/modbuild) stays out. It leaves out the world's tests. The client runs it in its own process when no patcher command is set
 (apworld/las/install.py).
 """
 import hashlib
-import importlib
 import json
 import os
 import re
@@ -31,21 +30,17 @@ GAME = "Links Awakening Switch"
 PREFIX = "las/patcher/"  # install.py PATCHER_PREFIX
 TESTS = "las/test/"  # the world's tests, which "Build APWorlds" packs and players do not need
 # Patcher files and folders, relative to patcher/
-PATCHER_FILES = ("las_ap_patch.py", "ap_assets.py", "ap_ballad.py", "ap_chest.py", "ap_deathlink.py", "ap_drop.py", "ap_entrances.py", "ap_ghost.py",
-                 "ap_goal.py", "ap_hints.py", "ap_map.py", "ap_map_icons.py", "ap_model.py", "ap_player_ghost.py",
-                 "ap_save_name.py", "ap_ui.py", "romfs_check.py", "lasr_qt.py", "map_positions.json", "model_bounds.py", "version.txt",
-                 "LICENSE-LASR.txt", "RandomizerCore", "RandomizerUI/Resources/Info", "RandomizerUI/Resources/Menu",
-                 "RandomizerUI/Resources/Theme", "assets", "exl/subsdk9", "exl/main.npdm")
-# Folders of PATCHER_FILES the patch never uses: the BNTX editor (GPLv3) only builds the assets (ap_assets.py), and
-# nothing uses the exefs editor. test_install.py patches with both blocked.
-PATCHER_EXCLUDED = ("RandomizerCore/Tools/bntx_editor", "RandomizerCore/Tools/exefs_editor")
-# Libraries for lib/: import name -> distribution name (for its license)
-LIBRARIES = {"evfl": "evfl", "lms": "pylibms", "appdirs": "appdirs"}
+PATCHER_FILES = ("las_ap_patch.py", "ap_assets.py", "ap_entrances.py", "ap_goal.py", "ap_hints.py", "ap_map.py",
+                 "ap_options.py", "ap_save_name.py", "ap_shuffles.py", "seed_file.py", "romfs_check.py",
+                 "map_positions.json", "version.txt", "LICENSE-LASR.txt", "data", "assets", "exl/subsdk9", "exl/main.npdm")
+# What only the asset build imports (patcher/modbuild, LASR's code and its libraries); test_install.py patches with
+# these blocked. The patcher itself needs PyYAML and bsdiff4, which Archipelago has.
+BUILD_ONLY = ("modbuild", "RandomizerCore", "evfl", "lms", "oead")
 MODULE_LICENSE = ROOT / "las-ap-exl" / "LICENSE"
 
 
 def patcher_files() -> dict:
-    """Archive name -> file for the patcher and its libraries."""
+    """Archive name -> file for the patcher."""
     files = {}
     for entry in PATCHER_FILES:
         path = PATCHER / entry
@@ -53,22 +48,9 @@ def patcher_files() -> dict:
             sys.exit(f"patcher/{entry} is missing" + (" (scripts/build_exl.sh)" if entry.startswith("exl") else ""))
         for file in ([path] if path.is_file() else sorted(path.rglob("*"))):
             name = file.relative_to(PATCHER).as_posix()
-            if file.is_file() and "__pycache__" not in file.parts and not name.startswith(PATCHER_EXCLUDED):
+            if file.is_file() and "__pycache__" not in file.parts:
                 files[PREFIX + name] = file
     files[PREFIX + "licenses/LICENSE-las-ap-exl.txt"] = MODULE_LICENSE
-    site = Path(str(importlib.import_module("yaml").__file__)).parent.parent
-    for name, dist in LIBRARIES.items():
-        module = Path(str(importlib.import_module(name).__file__))
-        if module.name == "__init__.py":
-            for file in sorted(module.parent.rglob("*")):
-                if file.is_file() and "__pycache__" not in file.parts:
-                    files[PREFIX + "lib/" + file.relative_to(module.parent.parent).as_posix()] = file
-        else:
-            files[PREFIX + "lib/" + module.name] = module
-        licenses = [p for info in site.glob(f"{dist}-*.dist-info") for p in info.rglob("LICENSE*") if p.is_file()]
-        if not licenses:
-            sys.exit(f"no license file found for {dist}")
-        files[PREFIX + f"lib/licenses/{dist}.txt"] = licenses[0]
     return files
 
 

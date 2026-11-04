@@ -1,4 +1,4 @@
-"""The Jukebox page's track list (music_tracks.hpp) and the Ballad's looping stream (patcher/ap_ballad.py)."""
+"""The Jukebox page's track list (music_tracks.hpp) and the Ballad's looping stream (patcher/modbuild/ap_ballad.py)."""
 import ast
 import re
 import struct
@@ -11,7 +11,7 @@ from . import romfs
 ROOT = Path(__file__).resolve().parents[3]
 ROMFS = romfs()
 ENSEMBLE = ROMFS / "region_common" / "audio" / "stream" / "BGM_ENSEMBLE_INST.bfstm"
-PATCHER_MUSIC = ROOT / "patcher" / "RandomizerCore" / "Randomizers" / "music.py"
+PATCHER_TRACKS = ROOT / "patcher" / "modbuild" / "RandomizerCore" / "Randomizers" / "data.py"
 TRACK_NAMES = ROOT / "las-ap-exl" / "source" / "program" / "music" / "music_tracks.hpp"
 # tracks the Jukebox plays that the music randomizer does not shuffle, after the patcher's
 JUKEBOX_ONLY = ("BGM_ENSEMBLE_INST",)
@@ -19,8 +19,8 @@ ENTRY = re.compile(r'\{\s*"(BGM_\w+)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\
 
 
 def patcher_tracks() -> tuple:
-    """The looping BGM tracks, as the patcher's music randomizer shuffles them (BGM_TRACKS)."""
-    tree = ast.parse(PATCHER_MUSIC.read_text(encoding="utf-8"))
+    """The looping BGM tracks, as Music Shuffled shuffles them (BGM_TRACKS, ap_shuffles.music_lines)."""
+    tree = ast.parse(PATCHER_TRACKS.read_text(encoding="utf-8"))
     return next(ast.literal_eval(node.value) for node in tree.body if isinstance(node, ast.Assign)
                 and any(getattr(t, "id", None) == "BGM_TRACKS" for t in node.targets))
 
@@ -58,7 +58,7 @@ class TestBalladLoop(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         saved = list(sys.path)
-        sys.path.insert(0, str(ROOT / "patcher"))
+        sys.path.insert(0, str(ROOT / "patcher" / "modbuild"))
         try:
             import ap_ballad
         finally:

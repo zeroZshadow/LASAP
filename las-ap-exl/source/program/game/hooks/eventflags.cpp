@@ -1,5 +1,6 @@
 #include "game/hooks/eventflags.hpp"
 #include "ap/ap.hpp"
+#include "ap/ap_options.hpp"
 #include "game/sym.hpp"
 #include "hooks.hpp"
 #include "map/map_tracker.hpp"
@@ -9,7 +10,7 @@ namespace {
         static bool Callback(void** flags, Game::StrView* name) {
             bool value;
             if (AP::MapTracker::Flag(name->View(), value)) return value;
-            if (AP::GoalFlag(name->View(), value)) return value;
+            if (std::optional<bool> option = AP::Options::Flag(name->View())) return *option;
             return Orig(flags, name);
         }
     };

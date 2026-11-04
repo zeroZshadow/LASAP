@@ -1,0 +1,3586 @@
+{
+ "item_rows": {
+  "SwordLv1": [
+   0,
+   "ItemSwordLv1"
+  ],
+  "SwordLv2": [
+   1,
+   "ItemSwordLv2"
+  ],
+  "Shield": [
+   2,
+   "ItemShield"
+  ],
+  "MirrorShield": [
+   3,
+   "ItemMirrorShield"
+  ],
+  "Bomb": [
+   4,
+   "ItemBomb"
+  ],
+  "Bow": [
+   5,
+   "ItemBow"
+  ],
+  "HookShot": [
+   6,
+   "ItemHookShot"
+  ],
+  "Boomerang": [
+   7,
+   "ItemBoomerang"
+  ],
+  "MagicRod": [
+   8,
+   "ItemMagicRod"
+  ],
+  "Shovel": [
+   9,
+   "ItemShovel"
+  ],
+  "SleepyMushroom": [
+   10,
+   "ItemSleepyMushroom"
+  ],
+  "MagicPowder": [
+   11,
+   "ItemMagicPowder"
+  ],
+  "RocsFeather": [
+   12,
+   "ItemRocsFeather"
+  ],
+  "PowerBraceletLv1": [
+   13,
+   "ItemPowerBraceletLv1"
+  ],
+  "PowerBraceletLv2": [
+   14,
+   "ItemPowerBraceletLv2"
+  ],
+  "PegasusBoots": [
+   15,
+   "ItemPegasusBoots"
+  ],
+  "Ocarina": [
+   16,
+   "ItemOcarina"
+  ],
+  "ClothesGreen": [
+   17,
+   ""
+  ],
+  "ClothesRed": [
+   18,
+   "NpcSkeletalGuardRed"
+  ],
+  "ClothesBlue": [
+   19,
+   "NpcSkeletalGuardBlue"
+  ],
+  "Flippers": [
+   20,
+   "ItemFlippers"
+  ],
+  "SecretMedicine": [
+   21,
+   "ItemSecretMedicine"
+  ],
+  "Seashell": [
+   22,
+   "ItemSecretSeashell"
+  ],
+  "GoldenLeaf": [
+   23,
+   "ItemGoldenLeaf"
+  ],
+  "TailKey": [
+   24,
+   "ItemTailKey"
+  ],
+  "SlimeKey": [
+   25,
+   "PatchSlimeKey"
+  ],
+  "AnglerKey": [
+   26,
+   "ItemAnglerKey"
+  ],
+  "FaceKey": [
+   27,
+   "ItemFaceKey"
+  ],
+  "BirdKey": [
+   28,
+   "ItemBirdKey"
+  ],
+  "YoshiDoll": [
+   29,
+   "ItemYoshiDoll"
+  ],
+  "Ribbon": [
+   30,
+   "ItemRibbon"
+  ],
+  "DogFood": [
+   31,
+   "ItemDogFood"
+  ],
+  "Bananas": [
+   32,
+   "ItemBananas"
+  ],
+  "Stick": [
+   33,
+   "PatchStick"
+  ],
+  "Honeycomb": [
+   34,
+   "PatchHoneycomb"
+  ],
+  "Pineapple": [
+   35,
+   "ItemPineapple"
+  ],
+  "Hibiscus": [
+   36,
+   "ItemHibiscus"
+  ],
+  "Letter": [
+   37,
+   "ItemLetter"
+  ],
+  "Broom": [
+   38,
+   "ItemBroom"
+  ],
+  "FishingHook": [
+   39,
+   "ItemFishingHook"
+  ],
+  "PinkBra": [
+   40,
+   "ItemPinkBra"
+  ],
+  "MermaidsScale": [
+   42,
+   "ItemMermaidsScale"
+  ],
+  "MagnifyingLens": [
+   43,
+   "ItemMagnifyingLens"
+  ],
+  "Compass": [
+   44,
+   "ItemCompass"
+  ],
+  "DungeonMap": [
+   45,
+   "ItemDungeonMap"
+  ],
+  "StoneBeak": [
+   47,
+   "ItemStoneBeak"
+  ],
+  "SmallKey": [
+   48,
+   "PatchSmallKey"
+  ],
+  "NightmareKey": [
+   49,
+   "ItemNightmareKey"
+  ],
+  "FullMoonCello": [
+   50,
+   "ItemFullMoonCello"
+  ],
+  "ConchHorn": [
+   51,
+   "ItemConchHorn"
+  ],
+  "SeaLilysBell": [
+   52,
+   "ItemSeaLilysBell"
+  ],
+  "SurfHarp": [
+   53,
+   "ItemSurfHarp"
+  ],
+  "WindMarimba": [
+   54,
+   "ItemWindMarimba"
+  ],
+  "CoralTriangle": [
+   55,
+   "ItemCoralTriangle"
+  ],
+  "EveningCalmOrgan": [
+   56,
+   "ItemEveningCalmOrgan"
+  ],
+  "ThunderDrum": [
+   57,
+   "ItemThunderDrum"
+  ],
+  "HeartPiece": [
+   58,
+   "PatchHeartPiece"
+  ],
+  "HeartContainer": [
+   59,
+   "ItemHeartContainer"
+  ],
+  "Arrow": [
+   60,
+   "ItemArrow"
+  ],
+  "Heart": [
+   100,
+   "ItemRecoveryHeart"
+  ],
+  "Rupee1": [
+   101,
+   "ItemRupeeGreen"
+  ],
+  "Rupee5": [
+   102,
+   "ItemRupeeBlue"
+  ],
+  "Rupee20": [
+   104,
+   "ItemRupeeRed"
+  ],
+  "Rupee50": [
+   105,
+   "ItemRupeePurple"
+  ],
+  "Rupee100": [
+   106,
+   "ItemRupeeSilver"
+  ],
+  "Rupee300": [
+   108,
+   "ItemRupeeGold"
+  ],
+  "Fairy": [
+   110,
+   "ItemFairy"
+  ],
+  "DefenceUp": [
+   111,
+   "ItemGuardianAcorn"
+  ],
+  "PowerUp": [
+   112,
+   "ItemPowerPiece"
+  ],
+  "Apple": [
+   61,
+   "ItemApple"
+  ],
+  "GreenApple": [
+   62,
+   "ItemGreenApple"
+  ],
+  "Bottle": [
+   113,
+   "ItemBottle"
+  ],
+  "Song_WindFish": [
+   120,
+   "NpcMarin"
+  ],
+  "Song_Mambo": [
+   121,
+   "NpcManboTamegoro"
+  ],
+  "Song_Soul": [
+   122,
+   "NpcMamu"
+  ],
+  "MagicPowder_MaxUp": [
+   123,
+   "ItemMagicPowder"
+  ],
+  "Bomb_MaxUp": [
+   124,
+   "ItemBomb"
+  ],
+  "Arrow_MaxUp": [
+   125,
+   "ItemArrow"
+  ],
+  "PanelDungeonPiece": [
+   114,
+   "ItemPanelDungeonPiece"
+  ],
+  "PanelDungeonPieceSet": [
+   115,
+   "ItemPanelDungeonPieceSet"
+  ],
+  "ShellRader": [
+   116,
+   "ItemShellRader"
+  ],
+  "BottleFairy": [
+   126,
+   "ItemBottleFairy"
+  ],
+  "PanelDungeonPlusChip": [
+   117,
+   "ItemPanelDungeonPlusChip"
+  ],
+  "Dampe1": [
+   63,
+   "ItemArchipelago"
+  ],
+  "DampeHeart": [
+   64,
+   "ItemArchipelago"
+  ],
+  "Dampe2": [
+   65,
+   "ItemArchipelago"
+  ],
+  "DampeBottle": [
+   66,
+   "ItemArchipelago"
+  ],
+  "DampeFinal": [
+   67,
+   "ItemArchipelago"
+  ],
+  "ShopShovel": [
+   68,
+   "ItemArchipelago"
+  ],
+  "ShopBow": [
+   69,
+   "ItemArchipelago"
+  ],
+  "ShopHeart": [
+   70,
+   "ItemArchipelago"
+  ],
+  "ZapTrap": [
+   127,
+   "NpcToolShopkeeper"
+  ],
+  "DrownTrap": [
+   128,
+   "NpcToolShopkeeper"
+  ],
+  "SquishTrap": [
+   129,
+   "NpcToolShopkeeper"
+  ],
+  "DeathballTrap": [
+   130,
+   "NpcToolShopkeeper"
+  ],
+  "QuakeTrap": [
+   131,
+   "NpcToolShopkeeper"
+  ],
+  "FishNecklace": [
+   200,
+   "FishNecklace"
+  ],
+  "SyrupPowder": [
+   201,
+   "SyrupPowder"
+  ],
+  "WalrusShell": [
+   202,
+   "WalrusShell"
+  ]
+ },
+ "chests": {
+  "rooms": [
+   "beach-chest",
+   "taltal-entrance-chest",
+   "taltal-east-left-chest",
+   "dream-shrine-right",
+   "armos-cave",
+   "goponga-cave-left",
+   "goponga-cave-right",
+   "ukuku-cave-west-chest",
+   "ukuku-cave-east-chest",
+   "kanalet-south-cave",
+   "rapids-middle-island",
+   "rapids-south-island",
+   "swamp-chest",
+   "taltal-left-ascent-cave",
+   "taltal-ledge-chest",
+   "taltal-5-chest-puzzle",
+   "taltal-west-chest",
+   "villa-cave",
+   "woods-crossing-cave-chest",
+   "woods-north-cave-chest",
+   "woods-south-chest",
+   "woods-north-chest",
+   "D1-west-hallway",
+   "D1-middle-ledge",
+   "D1-3-of-a-kind",
+   "D1-bomb-room",
+   "D1-middle-kill-chest",
+   "D1-spark-chest",
+   "D1-button-chest",
+   "D1-stalfos-chest",
+   "D1-4-zols-chest",
+   "D2-boos",
+   "D2-long-room-west",
+   "D2-long-room-east",
+   "D2-vacuum-mouth-room",
+   "D2-kill-puzzle",
+   "D2-west-chest",
+   "D2-entrance-chest",
+   "D2-single-shy-guy",
+   "D2-peg-circle",
+   "D2-button-chest",
+   "D3-north-chest",
+   "D3-central-ledge",
+   "D3-central-chest",
+   "D3-east-ledge",
+   "D3-hallway-4",
+   "D3-hallway-3",
+   "D3-hallway-2",
+   "D3-hallway-side-room",
+   "D3-hallway-1",
+   "D3-vacuum-mouth",
+   "D4-north-chest",
+   "D4-east-side-north",
+   "D4-east-side-south",
+   "D4-west-ledge",
+   "D4-east-of-puzzle",
+   "D4-south-of-puzzle",
+   "D4-central-room",
+   "D4-small-island",
+   "D4-ledge-north",
+   "D4-statues-chest",
+   "D4-lobby",
+   "D4-crystals",
+   "D5-past-master-stalfos-3",
+   "D5-water-tunnel",
+   "D5-right-side-north",
+   "D5-right-side-middle",
+   "D5-right-side-east",
+   "D5-past-master-stalfos-1",
+   "D5-west-chest",
+   "D5-helmasaurs",
+   "D5-west-stairs-chest",
+   "D5-near-entrance",
+   "D6-far-northwest",
+   "D6-far-northeast",
+   "D6-statue-line-north",
+   "D6-statue-line-south",
+   "D6-pot-chest",
+   "D6-canal",
+   "D6-3-wizzrobes",
+   "D6-gated-hallway-north",
+   "D6-gated-hallway-south",
+   "D6-southwest-chest",
+   "D6-wizzrobes-ledge",
+   "D7-1f-west",
+   "D7-west-ledge",
+   "D7-east-ledge",
+   "D7-3ofakind-north",
+   "D7-2f-horseheads",
+   "D7-3ofakind-south",
+   "D7-blue-pegs-chest",
+   "D7-3f-horseheads",
+   "D7-grim-creeper",
+   "D8-far-northwest",
+   "D8-far-northeast",
+   "D8-left-exit-chest",
+   "D8-dodongos",
+   "D8-northern-ledge",
+   "D8-beamos-chest",
+   "D8-torches",
+   "D8-west-roomba",
+   "D8-surrounded-by-blocks",
+   "D8-sparks-chest",
+   "D8-east-of-pots",
+   "D8-far-southwest",
+   "D8-far-southeast",
+   "D0-northern-chest",
+   "D0-zol-pots",
+   "D0-south-orbs",
+   "D0-west-color-puzzle",
+   "D0-putters"
+  ],
+  "sizes": {
+   "important": 1.2,
+   "important-health": 1.2,
+   "trade": 1.2,
+   "seashell": 1.2,
+   "good": 0.8,
+   "junk": 0.8
+  },
+  "files": {
+   "default": "ObjTreasureBox.bfres",
+   "junk": "ObjTreasureBoxJunk.bfres",
+   "life-upgrade": "ObjTreasureBoxLifeUpgrade.bfres",
+   "key": "ObjTreasureBoxKey.bfres",
+   "seashell": "ObjTreasureBoxSeashell.bfres"
+  }
+ },
+ "heart_rooms": [
+  "animal-village-northwest",
+  "animal-village-cave",
+  "taltal-entrance-blocks",
+  "north-wasteland",
+  "desert-cave",
+  "graveyard-cave",
+  "mabe-well",
+  "ukuku-cave-west-loose",
+  "ukuku-cave-east-loose",
+  "bay-passage-sunken",
+  "river-crossing-cave",
+  "rapids-west-island",
+  "rapids-ascent-cave",
+  "kanalet-moat-south",
+  "south-bay-sunken",
+  "taltal-crossing-cave",
+  "taltal-east-drop",
+  "taltal-west-escape",
+  "above-turtle-rock",
+  "pothole-north",
+  "woods-crossing-cave-loose",
+  "woods-north-cave-loose",
+  "diamond-island"
+ ],
+ "heart_sunken": [
+  "taltal-east-drop",
+  "south-bay-sunken",
+  "bay-passage-sunken",
+  "river-crossing-cave",
+  "kanalet-moat-south"
+ ],
+ "model_sizes": {
+  "Marin": 0.65,
+  "ManboTamegoro": 0.35,
+  "Mamu": 0.25
+ },
+ "model_rotations": {
+  "SinkingSword": 180.0
+ },
+ "shop_text": {
+  "shop-slot3-1st": [
+   "PriceTagScoop",
+   "BuyScoop"
+  ],
+  "shop-slot3-2nd": [
+   "PriceTagBow",
+   "BuyBow"
+  ],
+  "shop-slot6": [
+   "PriceTagHeartPeace",
+   "BuyHeartPeace"
+  ]
+ },
+ "start_flags": [
+  "FirstClear",
+  "SecondClear",
+  "ThirdClear",
+  "FourthClear",
+  "FifthClear",
+  "SixthClear",
+  "SeventhClear",
+  "NinthClear",
+  "TenthClear",
+  "EleventhClear",
+  "TwelveClear",
+  "ThirteenClear",
+  "FourteenClear",
+  "FiveteenClear",
+  "WalrusAwaked",
+  "MarinRescueClear",
+  "SwordGet",
+  "UI_FieldMapTraverse_MabeVillage",
+  "EighthClear"
+ ],
+ "boss_flags": [
+  "Lv1BossDemoClear",
+  "Lv2BossDemoClear",
+  "Lv3BossDemoClear",
+  "Lv4BossDemoClear",
+  "Lv5BossDemoClear",
+  "Lv05BrokeWall1",
+  "Lv05BrokeWall2",
+  "Lv05BrokeWall3",
+  "Lv05BrokeWall4",
+  "Lv05BrokeFloor",
+  "Lv6BossDemoClear",
+  "Lv7BossDemoClear",
+  "Lv8BossDemoClear",
+  "Lv9BossDemoClear",
+  "ShadowBattle",
+  "LanmolaDemoClear",
+  "GrimCreeperDemoClear",
+  "StoneHinoxDemoClear",
+  "GiantBuzzBlobDemoClear",
+  "EvilOrbDemoClear",
+  "DeguArmosDemoClear",
+  "LanemoraDemoClear"
+ ],
+ "dungeon_entrances": {
+  "tail-cave": [
+   "Lv01TailCave_08D",
+   "",
+   "Field_14D",
+   "",
+   0
+  ],
+  "bottle-grotto": [
+   "Lv02BottleGrotto_08C",
+   "",
+   "Field_03E",
+   "",
+   0
+  ],
+  "key-cavern": [
+   "Lv03KeyCavern_08B",
+   "",
+   "Field_12F",
+   "",
+   0
+  ],
+  "angler-tunnel": [
+   "Lv04AnglersTunnel_08D",
+   "",
+   "Field_03L",
+   "_a",
+   1
+  ],
+  "catfish-maw": [
+   "Lv05CatfishsMaw_08H",
+   "",
+   "Field_14J",
+   "_b",
+   0
+  ],
+  "face-shrine": [
+   "Lv06FaceShrine_08D",
+   "",
+   "Field_09M",
+   "",
+   0
+  ],
+  "eagle-tower": [
+   "Lv07EagleTower_08B",
+   "_b",
+   "Field_01O",
+   "",
+   0
+  ],
+  "turtle-rock": [
+   "Lv08TurtleRock_08D",
+   "_b",
+   "Field_02A",
+   "",
+   0
+  ],
+  "color-dungeon": [
+   "Lv10ClothesDungeon_08C",
+   "",
+   "Field_08H",
+   "",
+   0
+  ]
+ },
+ "dungeon_map_icons": {
+  "tail-cave": [
+   "Lv1Dungeon_map",
+   "UI_FieldMapIcon_Lv01Dungeon"
+  ],
+  "bottle-grotto": [
+   "Lv2Dungeon_map",
+   "UI_FieldMapIcon_Lv02Dungeon"
+  ],
+  "key-cavern": [
+   "Lv3Dungeon_map",
+   "UI_FieldMapIcon_Lv03Dungeon"
+  ],
+  "angler-tunnel": [
+   "Lv4Dungeon_map",
+   "UI_FieldMapIcon_Lv04Dungeon"
+  ],
+  "catfish-maw": [
+   "Lv5Dungeon_map",
+   "UI_FieldMapIcon_Lv05Dungeon"
+  ],
+  "face-shrine": [
+   "Lv6Dungeon_map",
+   "UI_FieldMapIcon_Lv06Dungeon"
+  ],
+  "eagle-tower": [
+   "Lv7Dungeon_map",
+   "UI_FieldMapIcon_Lv07Dungeon"
+  ],
+  "turtle-rock": [
+   "Lv8Dungeon_map",
+   "UI_FieldMapIcon_Lv08Dungeon"
+  ],
+  "color-dungeon": [
+   "ClothesDungeon_map",
+   "UI_FieldMapIcon_Lv10Dungeon"
+  ]
+ },
+ "map_doors": [
+  [
+   57.25,
+   152.25,
+   9.0,
+   "tail-cave"
+  ],
+  [
+   67.75,
+   20.25,
+   13.125,
+   "bottle-grotto"
+  ],
+  [
+   87.25,
+   127.69999694824219,
+   9.0,
+   "key-cavern"
+  ],
+  [
+   174.25,
+   18.75,
+   12.0,
+   "angler-tunnel"
+  ],
+  [
+   145.75,
+   154.68800354003906,
+   6.75,
+   "catfish-maw"
+  ],
+  [
+   187.75,
+   95.25,
+   11.25,
+   "face-shrine"
+  ],
+  [
+   221.0,
+   6.75,
+   26.25,
+   "eagle-tower"
+  ],
+  [
+   10.75,
+   9.375,
+   24.75,
+   "turtle-rock"
+  ],
+  [
+   118.75,
+   80.25,
+   14.25,
+   "color-dungeon"
+  ]
+ ],
+ "map_chests": [
+  [
+   "D1-west-hallway",
+   "Lv01TailCave",
+   6.75,
+   51.75
+  ],
+  [
+   "D1-middle-ledge",
+   "Lv01TailCave",
+   51.75,
+   50.25
+  ],
+  [
+   "D1-3-of-a-kind",
+   "Lv01TailCave",
+   87.75,
+   51.75
+  ],
+  [
+   "D1-bomb-room",
+   "Lv01TailCave",
+   21.75,
+   65.25
+  ],
+  [
+   "D1-middle-kill-chest",
+   "Lv01TailCave",
+   45.0,
+   63.75
+  ],
+  [
+   "D1-spark-chest",
+   "Lv01TailCave",
+   51.75,
+   63.75
+  ],
+  [
+   "D1-button-chest",
+   "Lv01TailCave",
+   57.75,
+   74.25
+  ],
+  [
+   "D1-stalfos-chest",
+   "Lv01TailCave",
+   72.75,
+   77.25
+  ],
+  [
+   "D1-4-zols-chest",
+   "Lv01TailCave",
+   20.25,
+   89.25
+  ],
+  [
+   "D2-boos",
+   "Lv02BottleGrotto",
+   27.75,
+   15.75
+  ],
+  [
+   "D2-long-room-west",
+   "Lv02BottleGrotto",
+   41.25,
+   15.75
+  ],
+  [
+   "D2-long-room-east",
+   "Lv02BottleGrotto",
+   56.25,
+   15.75
+  ],
+  [
+   "D2-vacuum-mouth-room",
+   "Lv02BottleGrotto",
+   33.75,
+   27.75
+  ],
+  [
+   "D2-kill-puzzle",
+   "Lv02BottleGrotto",
+   87.75,
+   27.75
+  ],
+  [
+   "D2-west-chest",
+   "Lv02BottleGrotto",
+   21.75,
+   63.75
+  ],
+  [
+   "D2-entrance-chest",
+   "Lv02BottleGrotto",
+   32.25,
+   87.75
+  ],
+  [
+   "D2-single-shy-guy",
+   "Lv02BottleGrotto",
+   57.75,
+   87.75
+  ],
+  [
+   "D2-peg-circle",
+   "Lv02BottleGrotto",
+   65.25,
+   90.75
+  ],
+  [
+   "D2-button-chest",
+   "Lv02BottleGrotto",
+   87.75,
+   87.75
+  ],
+  [
+   "D3-north-chest",
+   "Lv03KeyCavern",
+   36.75,
+   3.75
+  ],
+  [
+   "D3-central-ledge",
+   "Lv03KeyCavern",
+   12.75,
+   15.75
+  ],
+  [
+   "D3-central-chest",
+   "Lv03KeyCavern",
+   36.75,
+   15.75
+  ],
+  [
+   "D3-east-ledge",
+   "Lv03KeyCavern",
+   57.75,
+   14.25
+  ],
+  [
+   "D3-hallway-4",
+   "Lv03KeyCavern",
+   20.25,
+   41.25
+  ],
+  [
+   "D3-hallway-3",
+   "Lv03KeyCavern",
+   27.75,
+   51.75
+  ],
+  [
+   "D3-hallway-2",
+   "Lv03KeyCavern",
+   27.75,
+   62.25
+  ],
+  [
+   "D3-hallway-side-room",
+   "Lv03KeyCavern",
+   38.25,
+   65.25
+  ],
+  [
+   "D3-hallway-1",
+   "Lv03KeyCavern",
+   27.75,
+   75.75
+  ],
+  [
+   "D3-vacuum-mouth",
+   "Lv03KeyCavern",
+   42.75,
+   87.75
+  ],
+  [
+   "D4-north-chest",
+   "Lv04AnglersTunnel",
+   51.75,
+   15.75
+  ],
+  [
+   "D4-east-side-north",
+   "Lv04AnglersTunnel",
+   98.25,
+   27.75
+  ],
+  [
+   "D4-east-side-south",
+   "Lv04AnglersTunnel",
+   101.25,
+   53.25
+  ],
+  [
+   "D4-west-ledge",
+   "Lv04AnglersTunnel",
+   33.75,
+   74.25
+  ],
+  [
+   "D4-east-of-puzzle",
+   "Lv04AnglersTunnel",
+   48.75,
+   39.75
+  ],
+  [
+   "D4-south-of-puzzle",
+   "Lv04AnglersTunnel",
+   39.75,
+   53.25
+  ],
+  [
+   "D4-central-room",
+   "Lv04AnglersTunnel",
+   54.75,
+   53.25
+  ],
+  [
+   "D4-small-island",
+   "Lv04AnglersTunnel",
+   78.75,
+   65.25
+  ],
+  [
+   "D4-ledge-north",
+   "Lv04AnglersTunnel",
+   77.4000015258789,
+   44.25
+  ],
+  [
+   "D4-statues-chest",
+   "Lv04AnglersTunnel",
+   81.75,
+   75.75
+  ],
+  [
+   "D4-lobby",
+   "Lv04AnglersTunnel",
+   69.75,
+   78.75
+  ],
+  [
+   "D4-crystals",
+   "Lv04AnglersTunnel",
+   66.75,
+   90.75
+  ],
+  [
+   "D5-past-master-stalfos-3",
+   "Lv05CatfishsMaw",
+   66.75,
+   3.75
+  ],
+  [
+   "D5-water-tunnel",
+   "Lv05CatfishsMaw",
+   63.75,
+   15.75
+  ],
+  [
+   "D5-right-side-north",
+   "Lv05CatfishsMaw",
+   102.75,
+   14.25
+  ],
+  [
+   "D5-right-side-middle",
+   "Lv05CatfishsMaw",
+   101.25,
+   26.25
+  ],
+  [
+   "D5-right-side-east",
+   "Lv05CatfishsMaw",
+   117.75,
+   29.25
+  ],
+  [
+   "D5-past-master-stalfos-1",
+   "Lv05CatfishsMaw",
+   93.75,
+   51.75
+  ],
+  [
+   "D5-west-chest",
+   "Lv05CatfishsMaw",
+   35.25,
+   63.75
+  ],
+  [
+   "D5-helmasaurs",
+   "Lv05CatfishsMaw",
+   57.75,
+   75.75
+  ],
+  [
+   "D5-west-stairs-chest",
+   "Lv05CatfishsMaw",
+   71.25,
+   87.75
+  ],
+  [
+   "D5-near-entrance",
+   "Lv05CatfishsMaw",
+   101.25,
+   86.25
+  ],
+  [
+   "D6-far-northwest",
+   "Lv06FaceShrine",
+   11.25,
+   15.75
+  ],
+  [
+   "D6-far-northeast",
+   "Lv06FaceShrine",
+   108.75,
+   15.75
+  ],
+  [
+   "D6-statue-line-north",
+   "Lv06FaceShrine",
+   20.25,
+   30.75
+  ],
+  [
+   "D6-statue-line-south",
+   "Lv06FaceShrine",
+   20.25,
+   38.25
+  ],
+  [
+   "D6-pot-chest",
+   "Lv06FaceShrine",
+   99.75,
+   27.75
+  ],
+  [
+   "D6-canal",
+   "Lv06FaceShrine",
+   99.75,
+   38.25
+  ],
+  [
+   "D6-3-wizzrobes",
+   "Lv06FaceShrine",
+   12.75,
+   51.75
+  ],
+  [
+   "D6-gated-hallway-north",
+   "Lv06FaceShrine",
+   41.25,
+   63.75
+  ],
+  [
+   "D6-gated-hallway-south",
+   "Lv06FaceShrine",
+   41.25,
+   77.25
+  ],
+  [
+   "D6-southwest-chest",
+   "Lv06FaceShrine",
+   18.0,
+   74.25
+  ],
+  [
+   "D6-wizzrobes-ledge",
+   "Lv06FaceShrine",
+   102.75,
+   80.25
+  ],
+  [
+   "D7-1f-west",
+   "Lv07EagleTower",
+   8.25,
+   99.75
+  ],
+  [
+   "D7-west-ledge",
+   "Lv07EagleTower",
+   2.25,
+   74.25
+  ],
+  [
+   "D7-east-ledge",
+   "Lv07EagleTower",
+   57.75,
+   74.25
+  ],
+  [
+   "D7-3ofakind-north",
+   "Lv07EagleTower",
+   27.75,
+   3.75
+  ],
+  [
+   "D7-2f-horseheads",
+   "Lv07EagleTower",
+   42.75,
+   3.75
+  ],
+  [
+   "D7-3ofakind-south",
+   "Lv07EagleTower",
+   27.75,
+   39.75
+  ],
+  [
+   "D7-blue-pegs-chest",
+   "Lv07EagleTower",
+   50.25,
+   27.75
+  ],
+  [
+   "D7-3f-horseheads",
+   "Lv07EagleTower",
+   132.75,
+   3.75
+  ],
+  [
+   "D7-3f-horseheads",
+   "Lv07EagleTower",
+   132.75,
+   75.75
+  ],
+  [
+   "D7-grim-creeper",
+   "Lv07EagleTower",
+   147.75,
+   15.75
+  ],
+  [
+   "D7-grim-creeper",
+   "Lv07EagleTower",
+   147.75,
+   87.75
+  ],
+  [
+   "D8-far-northwest",
+   "Lv08TurtleRock",
+   12.75,
+   15.75
+  ],
+  [
+   "D8-far-northeast",
+   "Lv08TurtleRock",
+   110.25,
+   14.25
+  ],
+  [
+   "D8-left-exit-chest",
+   "Lv08TurtleRock",
+   42.75,
+   26.25
+  ],
+  [
+   "D8-dodongos",
+   "Lv08TurtleRock",
+   86.25,
+   26.25
+  ],
+  [
+   "D8-northern-ledge",
+   "Lv08TurtleRock",
+   65.25,
+   13.5
+  ],
+  [
+   "D8-beamos-chest",
+   "Lv08TurtleRock",
+   24.75,
+   41.25
+  ],
+  [
+   "D8-torches",
+   "Lv08TurtleRock",
+   27.75,
+   51.75
+  ],
+  [
+   "D8-west-roomba",
+   "Lv08TurtleRock",
+   27.75,
+   63.75
+  ],
+  [
+   "D8-surrounded-by-blocks",
+   "Lv08TurtleRock",
+   50.25,
+   63.75
+  ],
+  [
+   "D8-sparks-chest",
+   "Lv08TurtleRock",
+   24.75,
+   75.75
+  ],
+  [
+   "D8-east-of-pots",
+   "Lv08TurtleRock",
+   81.75,
+   78.75
+  ],
+  [
+   "D8-far-southwest",
+   "Lv08TurtleRock",
+   6.75,
+   90.0
+  ],
+  [
+   "D8-far-southeast",
+   "Lv08TurtleRock",
+   117.75,
+   87.75
+  ],
+  [
+   "D0-northern-chest",
+   "Lv10ClothesDungeon",
+   81.75,
+   38.25
+  ],
+  [
+   "D0-zol-pots",
+   "Lv10ClothesDungeon",
+   57.75,
+   51.75
+  ],
+  [
+   "D0-south-orbs",
+   "Lv10ClothesDungeon",
+   87.75,
+   75.75
+  ],
+  [
+   "D0-west-color-puzzle",
+   "Lv10ClothesDungeon",
+   57.75,
+   75.75
+  ],
+  [
+   "D0-putters",
+   "Lv10ClothesDungeon",
+   63.75,
+   92.25
+  ]
+ ],
+ "bgm_tracks": [
+  "BGM_DUNGEON_LV6_FACE",
+  "BGM_DUNGEON_LV4_ANGLER",
+  "BGM_CHICKEN_HURT",
+  "BGM_GHOST_HOUSE",
+  "BGM_ANIMAL_VILLAGE",
+  "BGM_DUNGEON_LV1_TAIL",
+  "BGM_DUNGEON_2D_SIDEVIEW",
+  "BGM_DUGEON_CASTLE",
+  "BGM_DUNGEON_LV3_KEY",
+  "BGM_CAVE",
+  "BGM_TARUTARU",
+  "BGM_HOUSE",
+  "BGM_MEVE",
+  "BGM_FISHINGMAN",
+  "BGM_DUNGEON_LV2_POT",
+  "BGM_STRANGE_FOREST",
+  "BGM_DUNGEON_HOLY_EGG",
+  "BGM_SEASHELL_HOUSE",
+  "BGM_TELEPHONE",
+  "BGM_DANPEI",
+  "BGM_SHOP",
+  "BGM_GAME_SHOP",
+  "BGM_GOAT_HOUSE",
+  "BGM_DREAMSHRINE",
+  "BGM_WRIGHT",
+  "BGM_GAME_SHOP_FOR_POND",
+  "BGM_RICHARD",
+  "BGM_EVENT_RESCUE_BOWBOW",
+  "BGM_DUNGEON_LV10_CLOTH",
+  "BGM_PLACE_OF_FACE_KEY",
+  "BGM_DUNGEON_LV5_CATFISH",
+  "BGM_FAIRY",
+  "BGM_DUNGEON_LV7_TOWER",
+  "BGM_DUNGEON_LV8_TURTLE",
+  "BGM_FIELD_NORMAL",
+  "BGM_FIELD_MARINE_NORMAL",
+  "BGM_LASTBOSS_APPEAR",
+  "BGM_LASTBOSS_BATTLE",
+  "BGM_MARINE_NAME",
+  "BGM_MINIGAME_FISHING",
+  "BGM_PANEL_DUNG_BEGINNER",
+  "BGM_PANEL_DUNG_DIFFICULT",
+  "BGM_PANEL_DUNG_MEDIUM",
+  "BGM_PANEL_EDIT_MODE",
+  "BGM_NAME_INPUT",
+  "BGM_DUNGEON_BOSS",
+  "BGM_DUNGEON_BOSS_MIDDLE",
+  "BGM_DUNGEON_LV8_ENT_BATTLE",
+  "BGM_EVENT_MARINE_IN_BEACH",
+  "BGM_EVENT_RESCUE_BOWBOW_INTRO",
+  "BGM_FIELD_FIRST",
+  "BGM_FIELD_NORMAL_INTRO",
+  "BGM_GAME_OF_RAFT",
+  "BGM_PANEL_SHADOW_LINK",
+  "BGM_RAFTING_TIMEATTACK",
+  "BGM_RICHARD_230",
+  "BGM_STRANGE_FOREST_MARINE",
+  "BGM_TARUTARU2_AFTER_THE_RESCUE",
+  "BGM_TARUTARU_MARINE",
+  "BGM_TOTAKEKE_SONG",
+  "BGM_ZELDA_NAME",
+  "BGM_PANEL_RESULT",
+  "BGM_DUNGEON_LV7_BOSS",
+  "BGM_HOUSE_FIRST",
+  "BGM_MADBATTER",
+  "BGM_EVENT_DATE",
+  "BGM_LASTBOSS_WIN",
+  "BGM_OWL",
+  "BGM_OWL_LAST",
+  "BGM_DEMO_AFTER_LASTBOSS"
+ ],
+ "environments": [
+  [
+   "AncientRuins",
+   "AncientRuins2",
+   "AncientRuinsDark",
+   "Banana",
+   "Bear",
+   "BedRoom",
+   "Cemetery",
+   "Christine",
+   "Crane",
+   "Cucco",
+   "Default",
+   "Desert",
+   "Dog",
+   "DreamShrine",
+   "DrWright",
+   "DungeonSmall",
+   "DungeonSmallTalTal",
+   "DungeonSmallUnderground",
+   "DungeonSmallWater",
+   "DungeonSmallWaterDark",
+   "Event1",
+   "Event2",
+   "EventEnding",
+   "EventStairs",
+   "Fairy",
+   "Field",
+   "FieldAncientRuins",
+   "FieldBowWow",
+   "FieldKanalet",
+   "FishingBoat",
+   "FishingPond",
+   "Ghost",
+   "Goponga",
+   "GreatFairy",
+   "HolyEgg",
+   "ItemGet",
+   "KanaletCastle",
+   "Library",
+   "Lv01Altar",
+   "Lv01Base",
+   "Lv02Altar",
+   "Lv02Base",
+   "Lv02Dark",
+   "Lv02DoorOpen",
+   "Lv02Teresa",
+   "Lv03Altar",
+   "Lv03Base",
+   "Lv04Altar",
+   "Lv04Base",
+   "Lv05Altar",
+   "Lv05Base",
+   "Lv06Altar",
+   "Lv06Base",
+   "Lv06Dark",
+   "Lv07Altar",
+   "Lv07Base",
+   "Lv08Altar",
+   "Lv08Base",
+   "Lv08Base2",
+   "Lv08Dark",
+   "Lv08Treasurebox",
+   "Lv09Base",
+   "Lv09Base2",
+   "Lv09Base3",
+   "Lv09BaseDark",
+   "Lv10Base",
+   "Lv11Base",
+   "Madam",
+   "MadBattersWell",
+   "Magic",
+   "MagicDark",
+   "MagicField",
+   "MamuCave",
+   "MamuCaveDark",
+   "MarinTarin",
+   "MoriblinCave",
+   "MysteriousForest",
+   "Photo",
+   "Quaduplet",
+   "Rabbit",
+   "RapidFlow",
+   "RapidsRide",
+   "Richard",
+   "Schule",
+   "Seashell",
+   "Shop",
+   "TalTalMountain",
+   "TelBox",
+   "ToronboShores",
+   "Tracy",
+   "Ulrira",
+   "Underwater",
+   "Zora"
+  ],
+  [
+   "Angler",
+   "KanaletCastleEnter",
+   "Lv01Side",
+   "Lv02Side",
+   "Lv02Side2",
+   "Lv03Side",
+   "Lv04Side",
+   "Lv04Side2",
+   "Lv04Side3",
+   "Lv05Side",
+   "Lv05Side2",
+   "Lv06Side",
+   "Lv07Side",
+   "Lv08Side",
+   "Lv08Side2",
+   "Lv08Side3",
+   "MamboCave"
+  ]
+ ],
+ "texts": {
+  "talkers": {
+   "Talker:NpcMarin": "Marin",
+   "Talker:NpcTarin": "Tarin",
+   "Talker:NpcMadamMeowMeow": "m MeowMeow",
+   "Talker:NpcSmallBowWow": "ChowChow",
+   "Talker:NpcRibbonBowWow": "CiaoCiao",
+   "Talker:NpcGrandmaUlrira": "ndma Yahoo",
+   "Talker:NpcGrandpaUlrira": "Man Ulrira",
+   "Talker:NpcToolShopkeeper": "Shopkeeper",
+   "Talker:NpcGameShopOwner": "y Gamester",
+   "Talker:NpcFisherman": "Fisherman",
+   "Talker:NpcPapahl": "Papahl",
+   "Talker:NpcQuadrupletsMother": "Mamasha",
+   "Talker:NpcQuadrupletBoyA": "Joonya",
+   "Talker:NpcQuadrupletBoyB": "Kidoh",
+   "Talker:NpcQuadrupletBoyC": "Suhni",
+   "Talker:NpcQuadrupletBoyD": "Lattie",
+   "Talker:NpcOwl": "Owl",
+   "Talker:NpcSale": "Sale",
+   "Talker:NpcRaccoon": "Raccoon",
+   "Talker:NpcGreatFairy": "reat Fairy",
+   "Talker:NpcSyrup": "Witch",
+   "Talker:NpcDrWrite": "Mr. Write",
+   "Talker:NpcCrazyTracy": "Tracy",
+   "Talker:NpcMadBatter": "Li'l Devil",
+   "Talker:NpcRichard": "Richard",
+   "Talker:NpcKiki": "the Monkey",
+   "Talker:NpcSkeletalGuardBlue": "Gar",
+   "Talker:NpcSkeletalGuardRed": "Dion",
+   "Talker:NpcFairyQueen": "airy Queen",
+   "Talker:NpcChefBear": "Chef Bear",
+   "Talker:NpcChristine": "Christine",
+   "Talker:NpcSchuleDonavitch": " Donavitch",
+   "Talker:NpcHippoModel": "ippo Model",
+   "Talker:NpcRabbit": "Rabbit",
+   "Talker:NpcWalrus": "Walrus",
+   "Talker:NpcManboTamegoro": "Manbo",
+   "Talker:NpcGhost": "Ghost",
+   "Talker:NpcMermaidMartha": "Mermaid",
+   "Talker:NpcRaftShopMan": "Shop Owner",
+   "Talker:NpcMamu": "Mamu",
+   "Talker:NpcSecretZora": "Zora",
+   "Talker:NpcGoriya": "Goriya",
+   "Talker:NpcCuccoKeeper": "use Keeper",
+   "Talker:NpcWindFish": "Wind Fish",
+   "Talker:NpcDanpei": "Damp\u00e9",
+   "Talker:NpcGrandpaUlriraUlriratelep": "???",
+   "Talker:NpcGrandpaUlriratelep": "Man Ulrira",
+   "Talker:ObjDesertBone": "???",
+   "Talker:EnemyDeguTail": "Moldorm",
+   "Talker:EnemyPotDemonKing": "Genie",
+   "Talker:EnemyDeguZol": "Slime Eye",
+   "Talker:EnemyDonPawn": "hit Beetle",
+   "Talker:EnemyAngler": "ngler Fish",
+   "Talker:EnemyHooker": "Slime Eel",
+   "Talker:EnemyMatFace": "Facade",
+   "Talker:EnemyAlbatoss": "Evil Eagle",
+   "Talker:EnemyDeguFlame": "Hot Head"
+  },
+  "dialogue": {
+   "Hint:WestTalTalStoneOwl": "D-FF][1:4]",
+   "Hint:PotholeStoneOwl": "D-FF][1:4]",
+   "Hint:UkukuStoneOwl": "D-FF][1:4]",
+   "Hint:TalTalHeightStoneOwl": "D-FF][1:4]",
+   "Hint:MarthaStoneOwl": "D-FF][1:4]",
+   "Hint:YarnaStoneOwl": "D-FF][1:4]",
+   "Hint:FaceStoneOwl": "D-FF][1:4]",
+   "Hint:EastTalTalStoneOwl": "D-FF][1:4]",
+   "Hint:RapidsRideStoneOwl": "D-FF][1:4]",
+   "Hint:NoBeakStoneOwl": "D-FF][1:4]",
+   "Hint:Lv1StoneOwl1": "D-FF][1:4]",
+   "Hint:Lv1StoneOwl2": "D-FF][1:4]",
+   "Hint:Lv2StoneOwl1": "D-FF][1:4]",
+   "Hint:Lv2StoneOwl2": "D-FF][1:4]",
+   "Hint:Lv2StoneOwl3": "D-FF][1:4]",
+   "Hint:Panel_Pod04C": "D-FF][1:4]",
+   "Hint:Lv3StoneOwl1": "D-FF][1:4]",
+   "Hint:Lv3StoneOwl2": "D-FF][1:4]",
+   "Hint:Lv3StoneOwl3": "D-FF][1:4]",
+   "Hint:Lv4StoneOwl": "D-FF][1:4]",
+   "Hint:Lv5StoneOwl1": "D-FF][1:4]",
+   "Hint:Lv5StoneOwl2": "D-FF][1:4]",
+   "Hint:Lv6StoneOwl1": "D-FF][1:4]",
+   "Hint:Lv6StoneOwl2": "D-FF][1:4]",
+   "Hint:Lv6StoneOwl3": "D-FF][1:4]",
+   "Hint:Lv7StoneOwl1": "D-FF][1:4]",
+   "Hint:Lv7StoneOwl2": "D-FF][1:4]",
+   "Hint:Lv7StoneOwl3": "D-FF][1:4]",
+   "Hint:Lv8StoneOwl1": "D-FF][1:4]",
+   "Hint:Lv8StoneOwl2": "D-FF][1:4]",
+   "Hint:Lv8StoneOwl3": "D-FF][1:4]",
+   "Hint:ColorDungeonStoneOwl": "D-FF][1:4]",
+   "Npc:MarinAfterOpening": ", OK?[1:4]",
+   "Npc:MarinLetter": "1:16][1:4]",
+   "Npc:MarineAnimalVillage": "song?[1:4]",
+   "Npc:MarinReturnAnimalVillage": "true?[1:4]",
+   "Npc:TarinNoneShield": "l ya![1:4]",
+   "Npc:TarinInForest": "me...[1:4]",
+   "Npc:TarinAfterRaccoon": "zz...[1:4]",
+   "Npc:TarinCheckDresser": "ing?![1:4]",
+   "Npc:TarinAfterWarashibe": "oney![1:4]",
+   "Npc:MadamTalk": "coat![1:4]",
+   "Npc:MadamBeforeLv2": "anks![1:4]",
+   "Npc:WantRibbon1": "sory.[1:4]",
+   "Npc:Cancan": " YIP![1:4]",
+   "Npc:Yahoo": "you?![1:4]",
+   "Npc:YahooBeforeLv2": "weep![1:4]",
+   "Npc:YahooAfterWarashibe": "perb![1:4]",
+   "Npc:Ulrira": "e...[1:4]\n",
+   "Npc:Ulrira_2": "on...[1:4]",
+   "Npc:Papahl": "hear?[1:4]",
+   "Npc:EattingPapahl": " now![1:4]",
+   "Npc:PapahlAfterWarashibe": "gain![1:4]",
+   "Npc:PapahlRightAfterWarashibe": "aver![1:4]",
+   "Npc:4childMamaAfterWarashibe": "es...[1:4]",
+   "Npc:WantYosshi1": " mom.[1:4]",
+   "Npc:WantYosshi2": " one.[1:4]",
+   "Npc:WantYosshi3": "-FF].[1:4]",
+   "Npc:WeathercockChlid1": "k me![1:4]",
+   "Npc:WeathercockChlid2": " her?[1:4]",
+   "Npc:DreamshrineChild1": " kid![1:4]",
+   "Npc:DreamshrineChild2": " kid![1:4]",
+   "Npc:DreamshrineChild3": " kid![1:4]",
+   "Npc:MabeGreenChild1": "at...[1:4]",
+   "Npc:MabeGreenChild2": "it...[1:4]",
+   "Npc:MabeRedChild1": " kid![1:4]",
+   "Npc:MabeRedChild2": "er...[1:4]",
+   "Npc:Fox": "iiip![1:4]",
+   "Npc:SaleAfterEatCan": "ummy![1:4]",
+   "Npc:SaleAfterWarashibe": "y it![1:4]",
+   "Npc:WitchNoneNeboketa": "icks![1:4]",
+   "Npc:NoRupee50MagicPowder": "ther.[1:4]",
+   "Npc:WriteAfterWarashibe": " now![1:4]",
+   "Npc:RichardGoldLeaf0": "home.[1:4]",
+   "Npc:RichardGoldLeaf1": "aves![1:4]",
+   "Npc:RichardCompGoldLeaf": "back![1:4]",
+   "Npc:BearAfterWarashibe": "lage![1:4]",
+   "Npc:BearWithMarin": "ry...[1:4]",
+   "Npc:ChristineAfterWarashibe": "sing![1:4]",
+   "Npc:ChristineLetter": "anks.[1:4]",
+   "Npc:Schule": " not?[1:4]",
+   "Npc:Rabbit1BeforeMarin": " way![1:4]",
+   "Npc:Rabbit1ReturnMarin": "ue...[1:4]",
+   "Npc:Rabbit2BeforeMarin": "arin![1:4]",
+   "Npc:Rabbit2ReturnMarin": "st...[1:4]",
+   "Npc:Rabbit3BeforeMarin": "true?[1:4]",
+   "Npc:Rabbit3ReturnMarin": "am...[1:4]",
+   "Npc:Rabbit4BeforeMarin": "ight.[1:4]",
+   "Npc:Rabbit4ReturnMarin": "know![1:4]",
+   "Npc:RabbitComeMarin": "arin![1:4]",
+   "Npc:Animals": "song![1:4]",
+   "Npc:GhostGrave": "h*...[1:4]",
+   "Npc:FisherAfterWarashibe": "next![1:4]",
+   "Npc:MermaidAfterWarashibe": "true?[1:4]",
+   "Npc:Hippo": "away![1:4]",
+   "Npc:Zora1": "shut.[1:4]",
+   "Npc:Zora2": ", OK?[1:4]",
+   "Npc:Zora3": "e me.[1:4]",
+   "Npc:Zora4": "e me.[1:4]",
+   "Npc:CuccoKeeper": "luck![1:4]",
+   "Npc:CuccoKeeperWithCocco": "luck![1:4]",
+   "Npc:CuccoKeeperAttack1": " you![1:4]",
+   "Npc:CuccoKeeperAttack2": " off![1:4]",
+   "Npc:CuccoKeeperAttack4": "coop![1:4]",
+   "Npc:BadBoomerangGoriya": "else?[1:4]",
+   "Npc:Nomos1": " say![1:4]",
+   "Npc:Nomos2": "hits![1:4]",
+   "Npc:Nomos3": "LL-Y![1:4]",
+   "Npc:Nomos4": "head![1:4]",
+   "Npc:TalkingTree": "D-FF][1:4]",
+   "Npc:TalkingTree2": "here![1:4]",
+   "Npc:TalkingDesertScull": " Bye![1:4]",
+   "Npc:DanpeiPanelClosed": "g up.[1:4]",
+   "Npc:DanpeiGreeting": "come.[1:4]",
+   "Npc:DanpeiFirstContact1": "hing.[1:4]",
+   "Npc:DanpeiFirstContact2": " you.[1:4]",
+   "Npc:DanpeiNewPanel1": "t it.[1:4]",
+   "Npc:DanpeiNewPanel1_2": "tale.[1:4]",
+   "Npc:DanpeiNewPanel2": "uick.[1:4]",
+   "Npc:DanpeiFirstStone": " 'em.[1:4]",
+   "Npc:DanpeiNewTheme3": "t it.[1:4]",
+   "Npc:DanpeiReward": "ange.[1:4]",
+   "Npc:DanpeiRewardRupee": "over.[1:4]",
+   "Npc:DanpeiDataMax": "eons.[1:4]",
+   "Npc:DanpeiNoBenefit": "rted.[1:4]",
+   "Npc:DanpeiBenefitGotten": "iibo.[1:4]",
+   "Npc:DanpeiBenefitGotAllPanel": "mber.[1:4]",
+   "Npc:DanpeiBenefitComplete1": "eady.[1:4]",
+   "Npc:DanpeiBenefitCancel": "deal.[1:4]",
+   "Npc:DanpeiFree": "want.[1:4]",
+   "Npc:DanpeiEX": " you?[1:4]",
+   "Npc:DanpeiComplete": "k of.[1:4]",
+   "Scenario:Lv1FirstMarin1": "lief![1:4]",
+   "Scenario:Lv1FirstMarin2": "ng...[1:4]",
+   "Scenario:Lv1FirstMarin3": "elda?[1:4]",
+   "Scenario:Lv1FirstMarin4": "-FF]![1:4]",
+   "Scenario:Lv1FirstTarin1": "er...[1:4]",
+   "Scenario:Lv1FirstTarin2": "ield![1:4]",
+   "Scenario:Lv1Owl1_1": "Hoot![1:4]",
+   "Scenario:Lv1Owl2_1": "Hoot![1:4]",
+   "Scenario:Lv1Raccoon1": "er...[1:4]",
+   "Scenario:Lv1Raccoon2": " heh![1:4]",
+   "Scenario:WitchHaveNeboketake": "will![1:4]",
+   "Scenario:WitchUsePowder": "rs...[1:4]",
+   "Scenario:TarinAfterRaccoon": " fun![1:4]",
+   "Scenario:Lv1Owl3_1": "ooot![1:4]",
+   "Scenario:Lv1BossMoldorm": "IDER![1:6]",
+   "Scenario:Lv1Clear": "-07-00-00]",
+   "Scenario:Lv1Clear_Memory": "ms...[1:4]",
+   "Scenario:Lv2Owl1_1": "deed![1:4]",
+   "Scenario:Lv2ChildHappening1": "ious![1:4]",
+   "Scenario:Lv2ChildHappening2": "lage![1:4]",
+   "Scenario:Lv2ChildHappening3": "-FF]![1:4]",
+   "Scenario:Lv2ChildHappening4": "se...[1:4]",
+   "Scenario:Lv2ChildHappening5": "-FF]![1:4]",
+   "Scenario:Lv2ChildHappening6": " ahh![1:4]",
+   "Scenario:Lv2ChildHappening7": "ened![1:4]",
+   "Scenario:Lv2ChildHappening8": "ious![1:4]",
+   "Scenario:Lv2ChildHappening9": " ahh![1:4]",
+   "Scenario:Lv2MadamHappening": "-FF]![1:4]",
+   "Scenario:Lv2FirstMoblinCave": " him![1:4]",
+   "Scenario:Lv2MiniBossKingMoblin": " you![1:4]",
+   "Scenario:Lv2Owl2_1": "-FF]![1:4]",
+   "Scenario:Lv2BossGenie": "O HO![1:6]",
+   "Scenario:Lv2BossHint1": "hing![1:4]",
+   "Scenario:Lv2BossHint2": "-FF]![1:4]",
+   "Scenario:Lv2BossBreakPot": " mad![1:4]",
+   "Scenario:Lv2Clear": "-07-00-00]",
+   "Scenario:Lv2Clear_Memory": "ng...[1:4]",
+   "Scenario:Lv3ReturnBowwow1": "ow...[1:4]",
+   "Scenario:Lv3ReturnBowwow2": "OOCH![1:4]",
+   "Scenario:Lv3ReturnBowwow3": "Meow![1:4]",
+   "Scenario:Lv3ReturnBowwow4": "...[1:4]",
+   "Scenario:Lv3ReturnBowwow5": "ucky![1:4]",
+   "Scenario:Lv3QuestRichardForMemory": "fled.[1:4]",
+   "Scenario:Lv3YesRichard": "luck![1:4]",
+   "Scenario:Lv3NoRichard": "here![1:4]",
+   "Scenario:Lv3CompGoldLeaf": "rd...[1:4]",
+   "Scenario:Lv3CompGoldLeaf_NoQuest": "ight?[1:4]",
+   "Scenario:Lv3ClearRichard": "ward![1:4]",
+   "Scenario:Lv3BossSlimeEye": "NYAH![1:4]",
+   "Scenario:Lv3Clear": "-07-00-00]",
+   "Scenario:Lv3Clear_Memory": "ll...[1:4]",
+   "Scenario:Lv4Owl1_1": "hoot![1:4]",
+   "Scenario:Lv4QuestMarinBeach1": "lace.[1:4]",
+   "Scenario:Lv4NoMarinBeach": "le...[1:4]",
+   "Scenario:Lv4MarinBeach1": "from?[1:4]",
+   "Scenario:Lv4MarinBeach2": " sea.[1:4]",
+   "Scenario:Lv4MarinBeachPalm": "re...[1:4]",
+   "Scenario:Lv4MarinBeach3": "...[1:4]",
+   "Scenario:Lv4MarinBeach4": "ge...[1:4]",
+   "Scenario:Lv4MarinBeach5": ". ...[1:4]",
+   "Scenario:Lv4MarinBeach6": "ople![1:4]",
+   "Scenario:Lv4MarinBeach7": "ue...[1:4]",
+   "Scenario:Lv4YesMarinBeach1": "ou...[1:4]",
+   "Scenario:Lv4YesMarinBeach2": "a ha![1:4]",
+   "Scenario:Lv4NoMarinBeach4": "ime?![1:4]",
+   "Scenario:Lv4MarinBeach11": "s go![1:4]",
+   "Scenario:Lv4WalrusNoMarin": "E]...[1:4]",
+   "Scenario:Lv4WalrusWithMarin": "0D]?![1:4]",
+   "Scenario:Lv4NoQuestWalrus": "more![1:4]",
+   "Scenario:Lv4YesQuestWalrus": "tart![1:4]",
+   "Scenario:Lv4ClearQuestWalrus1": "a ha![1:4]",
+   "Scenario:Lv4ClearQuestWalrus2": ", OK?[1:4]",
+   "Scenario:Lv4MiniBossLanmola": " way![1:4]",
+   "Scenario:Lv4Owl2_1": "goal![1:4]",
+   "Scenario:StudyMarinSong": "sing?[1:4]",
+   "Scenario:NoMarinSong": "rite![1:4]",
+   "Scenario:YesMarinSong": "mind![1:4]",
+   "Scenario:Lv4BossAngler": "GLUB![1:6]",
+   "Scenario:Lv4Clear": "-07-00-00]",
+   "Scenario:Lv4Clear_Memory": "ay...[1:4]",
+   "Scenario:NoManboSong": "loop![1:4]",
+   "Scenario:YesManboSong": "loop![1:4]",
+   "Scenario:NoneOcarinaManbo": "glub![1:4]",
+   "Scenario:Lv5GhostGoHouse1": "-07-00-00]",
+   "Scenario:Lv5GhostGoHouse2": "-07-00-00]",
+   "Scenario:Lv5GhostNoDungeon": "here![1:4]",
+   "Scenario:Lv5GhostNearHouse": "se...[1:4]",
+   "Scenario:Lv5GhostHouse1": "ed...[1:4]",
+   "Scenario:Lv5GhostHouse2": "oo...[1:4]",
+   "Scenario:Lv5GhostHouse3": "ve...[1:4]",
+   "Scenario:Lv5GhostGoGrave": "-0B-00-00]",
+   "Scenario:Lv5GhostByebye": "ye...[1:4]",
+   "Scenario:Lv5Owl1_1": "Hoot![1:4]",
+   "Scenario:Lv5MiniBoss1": "here![1:4]",
+   "Scenario:Lv5MiniBossLetter": "1:16][1:4]",
+   "Scenario:Lv5MiniBoss2": "hat?![1:4]",
+   "Scenario:Lv5MiniBoss3": "know![1:4]",
+   "Scenario:Lv5MiniBoss4": "o it![1:4]",
+   "Scenario:Lv5BossSlimeEel1": "F]...[1:6]",
+   "Scenario:Lv5BossSlimeEel2": " you![1:6]",
+   "Scenario:Lv5BossClear": "-HEH![1:4]",
+   "Scenario:Lv5Clear": "-07-00-00]",
+   "Scenario:Lv5Clear_Memory": "ne...[1:4]",
+   "Scenario:Lv6Owl1": "re...[1:4]",
+   "Scenario:Lv6ShrineStone": "re...[1:4]",
+   "Scenario:Lv6RadShrineStone": "RUTH![1:4]",
+   "Scenario:Lv6RadShrineStone2": "sion?[1:4]",
+   "Scenario:Lv6Owl2_1": "er...[1:4]",
+   "Scenario:Lv6BossFacade1": "is...[1:6]",
+   "Scenario:Lv6BossFacade2": "in...[1:6]",
+   "Scenario:Lv6BossClear": "HING![1:4]",
+   "Scenario:Lv6Clear": "-07-00-00]",
+   "Scenario:Lv6Clear_Memory": "ns...[1:4]",
+   "Scenario:Lv7Owl1": "Hoot![1:4]",
+   "Scenario:Lv7Owl2": "less.[1:4]",
+   "Scenario:NoneOcarinaMamu": "bbit![1:4]",
+   "Scenario:NoMamuSong": "free![1:4]",
+   "Scenario:NoMoneyMamuSong": "free![1:4]",
+   "Scenario:YesMamuSong": "roak![1:4]",
+   "Scenario:Lv7MiniBossCreeper": "face![1:4]",
+   "Scenario:Lv7MiniBossReplay": "tuff![1:4]",
+   "Scenario:Lv7MiniBossClear": " you![1:4]",
+   "Scenario:Lv7BossEvilEagle1": "back![1:6]",
+   "Scenario:Lv7BossEvilEagle2": "born![1:6]",
+   "Scenario:Lv7BossClear": "am...[1:4]",
+   "Scenario:Lv7Clear": "-07-00-00]",
+   "Scenario:Lv7Clear_Memory": "ds...[1:4]",
+   "Scenario:Lv8MarinHappening1": "HELP![1:4]",
+   "Scenario:Lv8MarinHappening2": "1:3]![1:4]",
+   "Scenario:Lv8MarinHappening3": "here![1:4]",
+   "Scenario:Lv8MarinHappening4": "ghts![1:4]",
+   "Scenario:Lv8MarinRescue1": "rise![1:4]",
+   "Scenario:Lv8MarinRescue2": " you![1:4]",
+   "Scenario:Lv8MarinRescue3": "3]...[1:4]",
+   "Scenario:Lv8MarinRescue4": "ut...[1:4]",
+   "Scenario:Lv8MarinRescue5": "NNNN![1:4]",
+   "Scenario:Lv8MarinRescue6": "rin?![1:4]",
+   "Scenario:Lv8MarinRescue7": "a go![1:4]",
+   "Scenario:Lv8Owl1_1": "Hoot![1:4]",
+   "Scenario:Lv8BossHotHead": "-FF]![1:4]",
+   "Scenario:Lv8BossClear": "am...[1:4]",
+   "Scenario:Lv8Clear": "-07-00-00]",
+   "Scenario:Lv8Clear_Memory": "alls![1:4]",
+   "Scenario:LastOwl1_1": "land![1:4]",
+   "Scenario:LastOwl2": "Hoot![1:4]",
+   "Scenario:LastBossShadow1": "es...[1:4]",
+   "Scenario:LastBossShadow2": "ssly![1:4]",
+   "Scenario:LastBossShadow3": "lans![1:4]",
+   "Scenario:LastBossShadow4": "t us![1:4]",
+   "Scenario:LastBossShadow5": "mble![1:4]",
+   "Scenario:LastBossClear1": "ar...[1:4]",
+   "Scenario:LastBossClear2": "ld...[1:4]",
+   "Scenario:LastBossClear3": "ld...[1:4]",
+   "Scenario:EDOwl1": " you![1:4]",
+   "Scenario:EDOwl2": "Hoot![1:4]",
+   "Scenario:EDOwl3": "ares![1:4]",
+   "Scenario:EDOwl4": "ower![1:4]",
+   "Scenario:EDOwl5": ". ...[1:4]",
+   "Scenario:EDOwl6": "it...[1:4]",
+   "Scenario:EDOwl7": "ld...[1:4]",
+   "Scenario:EDOwl8": "avoc.[1:4]",
+   "Scenario:EDOwl9": "nd...[1:4]",
+   "Scenario:EDOwl10": "rage.[1:4]",
+   "Scenario:EDOwl11": "ares.[1:4]",
+   "Scenario:EDOwl12": "]...[1:4]\n",
+   "Scenario:EDOwl13": "soon.[1:4]",
+   "Scenario:EDOwl14": "Hoot![1:4]",
+   "Scenario:EDKazenoSakana1": "ER...[1:4]",
+   "Scenario:EDKazenoSakana2": "ED...[1:4]",
+   "Scenario:EDKazenoSakana3": ". ...[1:4]",
+   "Scenario:EDKazenoSakana4": "NE...[1:4]",
+   "Scenario:EDKazenoSakana5": "AL...[1:4]",
+   "Scenario:EDKazenoSakana6": "THER![1:4]",
+   "Scenario:EDKazenoSakana7": "NING![1:4]",
+   "Scenario:Instrument_Shortage": "-07-00-00]",
+   "SubEvent:MarinSing1": "-FF].[1:4]",
+   "SubEvent:FairySpring": "ax...[1:4]",
+   "SubEvent:FairySpring2": "o on.[1:4]",
+   "SubEvent:MarinSing2": "-FF]![1:4]",
+   "SubEvent:BlueSkalGuard1": "uard![1:4]",
+   "SubEvent:RedSkalGuard2": "here.[1:4]",
+   "SubEvent:BlueSkalGuard3": "some.[1:4]",
+   "SubEvent:RedSkalGuard4": " now.[1:4]",
+   "SubEvent:CheckBlueGuard": "u go![1:4]",
+   "SubEvent:BadBlueGuard": "need.[1:4]",
+   "SubEvent:NoBlueGuard": "here.[1:4]",
+   "SubEvent:MoneyBlueGuard": "reen.[1:4]",
+   "SubEvent:BattleBossBlob": "r me![1:4]",
+   "SubEvent:AttackBossBlob": "else![1:4]",
+   "SubEvent:BattleStoneHinox": "home![1:4]",
+   "SubEvent:BattleEvilOrb": "safe.[1:6]",
+   "SubEvent:RevivalEvilOrb": "over.[1:4]",
+   "SubEvent:PinchEvilOrb": "time.[1:4]",
+   "SubEvent:QuestGrandFairy1": "olor.[1:4]",
+   "SubEvent:QuestGrandFairy7": "olor.[1:4]",
+   "SubEvent:QuestGrandFairy8": "well.[1:4]",
+   "SubEvent:AnswerGrandFairy_00": "eyes.[1:4]",
+   "SubEvent:ByebyeGrandFairy": "side.[1:4]",
+   "SubEvent:ExplanationFishing": "uddy![1:4]",
+   "SubEvent:FishingSmallfish": "that![1:4]",
+   "SubEvent:FishingBigfish": "nker![1:4]",
+   "SubEvent:FishingMoreBigFish": "m in![1:4]",
+   "SubEvent:FishingMegaFish": "pper![1:4]",
+   "SubEvent:FishingRupee5": "-FF].[1:4]",
+   "SubEvent:FishingRupee15": "easy![1:4]",
+   "SubEvent:FishingRupee20": "-FF]![1:4]",
+   "SubEvent:FishingRupee40": "ound?[1:4]",
+   "SubEvent:FishingRupee100": "that![1:4]",
+   "SubEvent:SmallFish": "ight![1:4]",
+   "SubEvent:BigFish": "er...[1:4]",
+   "SubEvent:PukuPuku": "ters?[1:4]",
+   "SubEvent:Geso": "ound![1:4]",
+   "SubEvent:Master": "d it![1:4]",
+   "SubEvent:FishingFirst50": "-FF]![1:4]",
+   "SubEvent:FishingFirst100": "-FF]![1:4]",
+   "SubEvent:FishingFirst150": "-FF]![1:4]",
+   "SubEvent:FishingBottle": "ater![1:4]",
+   "SubEvent:FishingCutString": "away![1:4]",
+   "SubEvent:FishingCutBottle": "uddy![1:4]",
+   "SubEvent:NoFishing": "ttle![1:4]",
+   "SubEvent:FishingCancel": "want.[1:4]",
+   "SubEvent:FishingNoMoney": "uddy.[1:4]",
+   "SubEvent:SBFishingTime": "nches[1:4]",
+   "SubEvent:NoMemory": " try![1:4]",
+   "SubEvent:CountDown3": "3",
+   "SubEvent:CountDown2": "2",
+   "SubEvent:CountDown1": "1",
+   "SubEvent:CountStart": "TART![1:4]",
+   "SubEvent:GreetingTracy": "u up![1:4]",
+   "SubEvent:Service7RupeeDrag": "-FF]![1:4]",
+   "SubEvent:TakeDrag": " guy![1:4]",
+   "SubEvent:TracyRecovery": "full![1:4]",
+   "SubEvent:NoMoneyDrag": "cash![1:4]",
+   "SubEvent:AwakeMadBatter": "ady?![1:4]",
+   "SubEvent:ByebyeMadBatter": "gain![1:4]",
+   "SubEvent:40CompShell": "ower.[1:4]",
+   "SubEvent:PerfectShell1": "took.[1:4]",
+   "SubEvent:PerfectShell2": "roam.[1:4]",
+   "SubEvent:PerfectShell3": "shed.[1:4]",
+   "SubEvent:SuccessDorobou": "self?[1:4]",
+   "SubEvent:MarinFall1": "rise![1:4]",
+   "SubEvent:MarinFall2": "1:3]?[1:4]",
+   "SubEvent:MarinaAttackCocco1": "that![1:4]",
+   "SubEvent:MarinAttackCocco2": "n it.[1:4]",
+   "SubEvent:MarinBreakPot1": "1:3]![1:4]",
+   "SubEvent:MarinBreakPot2": "rong?[1:4]",
+   "SubEvent:MarinOcarinaHetakuso": "od...[1:4]",
+   "SubEvent:MarinOcarinaHetakuso2": "gs...[1:4]",
+   "SubEvent:WantPlayGameMarin1": "his?![1:4]",
+   "SubEvent:AngryGameCreek": "here![1:4]",
+   "SubEvent:MarinDigHole": "-07-00-00]",
+   "SubEvent:MarinCheckDresser": "wers?[1:4]",
+   "SubEvent:MarineAwaitDungeon": "1:3]![1:4]",
+   "SubEvent:MarineWorry1": "hurt?[1:4]",
+   "SubEvent:MarineWorry2": "back![1:4]",
+   "SubEvent:MarineWorry3": "less![1:4]",
+   "SubEvent:MarineWorry4": "ally![1:4]",
+   "SubEvent:TeaseChild": " kid![1:4]",
+   "SubEvent:MarinCapeDate1": "1:3].[1:4]",
+   "SubEvent:MarinCapeDate2": "...[1:4]",
+   "SubEvent:MarinCapeDate3": "lace.[1:4]",
+   "SubEvent:MarinCapeDate4": "hing?[1:4]",
+   "SubEvent:BowwowDigHole": "-07-00-00]",
+   "SubEvent:RichardHateBowwow1": "here![1:4]",
+   "SubEvent:RichardHateBowwow2": "dbye![1:4]",
+   "SubEvent:MermaidNearDive": "back![1:4]",
+   "SubEvent:AngryHippo1": "rait![1:4]",
+   "SubEvent:AngryHippo2": "t it![1:4]",
+   "SubEvent:NoneYahooGranma": "hone![1:4]",
+   "SubEvent:ShellMansionFirst1": "word![1:4]",
+   "SubEvent:ShellMansionFirst2": "form![1:4]",
+   "SubEvent:NoCompShell": "ells.[1:4]",
+   "SubEvent:LifeLikeSteal": " it?![1:4]",
+   "SubEvent:KiKiVSBowwow": "ttle![1:4]",
+   "SubEvent:SleepingTarin": "e*...[1:4]",
+   "SubEvent:TarinEatBanana": "some![1:4]",
+   "SubEvent:Worry4childMama": "ving![1:4]",
+   "SubEvent:FlyingCoccoKeeper": "test![1:4]",
+   "SubEvent:MarinAfterBridge": "cret![1:4]",
+   "SubEvent:MarinAfterBridge2": " you![1:4]",
+   "SubEvent:DanpeiPanelLead1": "here.[1:4]",
+   "SubEvent:DanpeiPanelLead2": ", OK?[1:4]",
+   "SubEvent:DanpeiPanelLeadClear1": "hack.[1:4]",
+   "SubEvent:DanpeiPanelLeadClear2": "hack.[1:4]",
+   "SubEvent:DanpeiPanelLeadClear3": "hack.[1:4]",
+   "System:TouchBossDoor": "-FF].[1:4]",
+   "System:TouchNormalDoor": "-FF].[1:4]",
+   "System:SecretMedicine2": "back.[1:4]",
+   "System:PriceTagBow": "D-FF][1:6]",
+   "System:PriceTagArrow": "D-FF][1:6]",
+   "System:PriceTagScoop": "D-FF][1:6]",
+   "System:PriceTagHeart": "D-FF][1:6]",
+   "System:PriceTagShield": "D-FF][1:6]",
+   "System:PriceTagBomb": "D-FF][1:6]",
+   "System:PriceTagPanelPeace": "D-FF][1:6]",
+   "System:PriceTagHeartPeace": "D-FF][1:6]",
+   "System:OpenKanaletGate": " now![1:4]",
+   "System:TakeMagicPowder": " 05].[1:4]",
+   "System:CheckCanCam": "]\"...[1:4]",
+   "System:Checkkuribo": "]\"...[1:4]",
+   "System:Checktogezo": "]\"...[1:4]",
+   "System:Checkteresa": "]\"...[1:4]",
+   "System:Checkpukupuku": "]\"...[1:4]",
+   "System:CheckGeso": "]\"...[1:4]",
+   "System:CheckHeiho": "]\"...[1:4]",
+   "System:CheckPakkun": "]\"...[1:4]",
+   "System:CheckSanbo": "]\"...[1:4]",
+   "System:CheckBowwow": "]\"...[1:4]",
+   "System:SeeCanCam": "ence.[1:4]",
+   "System:Seekuribo": "rows![1:4]",
+   "System:Seetogezo": "harp.[1:4]",
+   "System:Seeteresa": "ling?[1:4]",
+   "System:Seepukupuku": "aint![1:4]",
+   "System:SeeGeso": "oday.[1:4]",
+   "System:SeeHeiho": "side?[1:4]",
+   "System:SeePakkun": "with?[1:4]",
+   "System:SeeSanbo": "head![1:4]",
+   "System:SeeBowwow": "till.[1:4]",
+   "System:AddHeartContainer": " too![1:4]",
+   "System:TouchIceBlock": "cold![1:4]",
+   "System:TouchBombRock": "it...[1:4]",
+   "System:TouchAttackRock": "acle.[1:4]",
+   "System:TouchKeyBlock": " key![1:4]",
+   "System:TouchLiftRock": "ds...[1:4]",
+   "System:TouchLiftHeavyObject": "it...[1:4]",
+   "System:TouchWeathercock": "inch.[1:4]",
+   "System:NotSongOcarina": "it...[1:4]",
+   "System:CheckBookshelf": "? OK.[1:4]",
+   "System:CheckDresser": " out![1:4]",
+   "System:CheckShelf": "hest![1:4]",
+   "System:CheckGhostShelf": "le...[1:4]",
+   "System:CheckMermaidFigure": "ng...[1:4]",
+   "System:CheckMermaidFigure2": "CHULE[1:4]",
+   "System:ReadShieldBook": "ams!\"[1:4]",
+   "System:ReadItemSelect": "you!\"[1:4]",
+   "System:ReadMapandMemo": "ient![1:4]",
+   "System:ReadTurnAttack": "his?\"[1:4]",
+   "System:ReadWarpRule": "t...\"[1:4]",
+   "System:ReadLiftBomb": "hat?\"[1:4]",
+   "System:BadSecretBook": "lens![1:4]",
+   "System:CheckSecretBook1": "ts...[1:4]",
+   "System:TouchTailKeyhole": "FF].\"[1:4]",
+   "System:TouchSlimeKeyhole": "FF].\"[1:4]",
+   "System:TouchAnglerKeyhole": "FF].\"[1:4]",
+   "System:TouchBirdKeyhole": "FF].\"[1:4]",
+   "System:TouchFaceKeyhole": "FF].\"[1:4]",
+   "System:LockColorDungeon": "rds.\"[1:4]",
+   "System:ReadColorPower": " see![1:4]",
+   "System:PanelTheme1_1": "anging 101",
+   "System:PanelTheme1_2": "the Basics",
+   "System:PanelTheme1_3": "age Across",
+   "System:PanelTheme1_4": "our Hearts",
+   "System:PanelTheme2_1": "Key Hunter",
+   "System:PanelTheme2_2": "ombs Away!",
+   "System:PanelTheme2_3": "sure Vault",
+   "System:PanelTheme2_4": "ay Central",
+   "System:PanelTheme3_1": " Decisions",
+   "System:PanelTheme3_2": "t Shortage",
+   "System:PanelTheme3_3": "thed Sword",
+   "System:PanelTheme3_4": "king Clock",
+   "System:PanelTheme4_1": "ng a Sword",
+   "System:PanelTheme4_2": "g a Shield",
+   "System:PanelTheme4_3": "s > Swords",
+   "System:PanelTheme4_4": "ngeon Song",
+   "System:PanelTheme4_5": " the Hinox",
+   "System:PanelTheme4_6": "Square One",
+   "System:PanelTheme4_7": "ed a Hand?",
+   "System:PanelTheme4_8": "Zig-Zaggy",
+   "System:PanelTheme4_9": "but Stairs",
+   "System:PanelTheme4_10": "sure Hoard",
+   "System:PanelTheme4_11": "rrangement",
+   "System:PanelTheme4_12": "reme Shape",
+   "System:PanelExplanation1_1": "s nowhere.",
+   "System:PanelExplanation1_2": "utta keys.",
+   "System:PanelExplanation1_3": "f the two.",
+   "System:PanelExplanation1_4": "airs, now.",
+   "System:PanelExplanation2_1": "e dungeon.",
+   "System:PanelExplanation2_2": "re it out.",
+   "System:PanelExplanation2_3": "ap, right?",
+   "System:PanelExplanation2_4": "t you got.",
+   "System:PanelExplanation3_1": "n' to you.",
+   "System:PanelExplanation3_2": " monsters.",
+   "System:PanelExplanation3_3": " warn you.",
+   "System:PanelExplanation3_4": " asked me.",
+   "System:PanelExplanation4_1": "somethin'.",
+   "System:PanelExplanation4_2": "ame on it.",
+   "System:PanelExplanation4_3": "l be fine.",
+   "System:PanelExplanation4_4": "'t play...",
+   "System:PanelExplanation4_5": "ur hearts.",
+   "System:PanelExplanation4_6": "u'd think.",
+   "System:PanelExplanation4_7": "pful hand.",
+   "System:PanelExplanation4_8": "\nnow, huh?",
+   "System:PanelExplanation4_9": "the knees.",
+   "System:PanelExplanation4_10": "re's Lair.",
+   "System:PanelExplanation4_11": " before...",
+   "System:PanelExplanation4_12": "e too, OK?",
+   "System:PanelExplanationFree": "imit here.",
+   "System:PanelElement_Start": "Entrance",
+   "System:PanelElement_Boss": "are's Lair",
+   "System:PanelElement_Treasure": "ure Chests",
+   "System:PanelElement_Lock": "ocked Door",
+   "System:PanelElement_Block": "eable Tile",
+   "System:PanelElement_Fill": "Empty Tile",
+   "System:PzlTutorial_First_1": " 27].[1:4]",
+   "System:PzlTutorial_First_2": " 11].[1:4]",
+   "System:PzlTutorial_Completion_1": "geon.[1:4]",
+   "System:PzlTutorial_Completion_2": "fore.[1:4]",
+   "System:PzlTutorial_DoorAndKey_1": "need.[1:4]",
+   "System:PzlTutorial_DoorAndKey_2": "lock.[1:4]",
+   "System:PzlTutorial_TreasureBox": " 'em.[1:4]",
+   "System:PzlTutorial_Stairs_1": "k up.[1:4]",
+   "System:PzlTutorial_Stairs_2": "ther.[1:4]",
+   "System:PzlTutorial_EXpanel": "ttle.[1:4]",
+   "System:PzlTutorial_DoorRule_1": "p to.[1:4]",
+   "System:PzlTutorial_DoorRule_2": "u go.[1:4]",
+   "System:PzlTutorial_Second": "eons.[1:4]",
+   "System:PzlTutorial_Designation": "ants.[1:4]",
+   "System:PzlTutorial_Ycheck": "l is.[1:4]",
+   "System:AdvTutorial_First_1": "here.[1:4]",
+   "System:AdvTutorial_First_2": "reen.[1:4]",
+   "System:AdvTutorial_Knockout_1": "tart.[1:4]",
+   "System:AdvTutorial_Knockout_2": "roke.[1:4]",
+   "System:AdvTutorial_Timeover_1": "tart.[1:4]",
+   "System:AdvTutorial_Timeover_2": "time.[1:4]",
+   "System:AdvTutorial_Next": "Next",
+   "System:AdvTutorial_Confirm": "OK",
+   "System:AdvTimeOver": " you.[1:4]",
+   "System:AdvDeadEnd": "e up.[1:4]",
+   "System:WarpPedestalActivate": "does![1:4]",
+   "System:WarpPointActivate": "look![1:4]",
+   "Telephone:TelephoneFirst1": "call![1:4]",
+   "Telephone:TelephoneFirst2": "0-33][1:4]",
+   "Telephone:TelephoneFirst3": "0-33][1:4]",
+   "Telephone:TelephoneLv1Clear1": "0-34][1:4]",
+   "Telephone:TelephoneLv1Clear2": "0-34][1:4]",
+   "Telephone:TelephoneBowwow1": "0-33][1:4]",
+   "Telephone:TelephoneBowwow2": "0-33][1:4]",
+   "Telephone:TelephoneLv2Clear1": "0-34][1:4]",
+   "Telephone:TelephoneLv2Clear2": "0-34][1:4]",
+   "Telephone:TelephoneTurnBowwow1": "0-33][1:4]",
+   "Telephone:TelephoneTurnBowwow2": "0-33][1:4]",
+   "Telephone:TelephoneRichardMeet1": "0-33][1:4]",
+   "Telephone:TelephoneRichardMeet2": "0-33][1:4]",
+   "Telephone:TelephonGoldLeafCrow1": "0-34][1:4]",
+   "Telephone:TelephonGoldLeafCrow2": "0-34][1:4]",
+   "Telephone:TelephonGoldLeafBomb1": "0-33][1:4]",
+   "Telephone:TelephonGoldLeafBomb2": "0-33][1:4]",
+   "Telephone:TelephonGoldLeafSoldier1": "0-33][1:4]",
+   "Telephone:TelephonGoldLeafSoldier2": "0-33][1:4]",
+   "Telephone:TelephonGoldLeafSoldier3": "0-33][1:4]",
+   "Telephone:TelephonGoldLeafSoldier4": "0-33][1:4]",
+   "Telephone:TelephonGoldLeafSoldier5": "0-33][1:4]",
+   "Telephone:TelephonGoldLeafSoldier6": "0-33][1:4]",
+   "Telephone:TelephonGoldLeafScoop1": "0-33][1:4]",
+   "Telephone:TelephonGoldLeafScoop2": "0-33][1:4]",
+   "Telephone:TelephoneLv3Clear1": "0-33][1:4]",
+   "Telephone:TelephoneLv3Clear2": "0-33][1:4]",
+   "Telephone:TelephoneLv4Clear1": "0-34][1:4]",
+   "Telephone:TelephoneLv4Clear2": "0-34][1:4]",
+   "Telephone:TelephoneFishhook1": "0-34][1:4]",
+   "Telephone:TelephoneFishhook2": "0-34][1:4]",
+   "Telephone:TelephoneGhostClear1": "0-33][1:4]",
+   "Telephone:TelephoneGhostClear2": "0-33][1:4]",
+   "Telephone:TelephoneMermaid1": "0-34][1:4]",
+   "Telephone:TelephoneMermaid2": "0-34][1:4]",
+   "Telephone:TelephoneLv51": "0-33][1:4]",
+   "Telephone:TelephoneLv52": "0-33][1:4]",
+   "Telephone:TelephoneYahooGrandma1": "0-33][1:4]",
+   "Telephone:TelephoneYahooGrandma2": "0-33][1:4]",
+   "Telephone:TelephoneLv6Clear1": "0-33][1:4]",
+   "Telephone:TelephoneLv6Clear2": "0-33][1:4]",
+   "Telephone:TelephoneLv7Clear1": "0-33][1:4]",
+   "Telephone:TelephoneLv7Clear2": "0-33][1:4]",
+   "Telephone:TelephoneLv8Clear1": "0-34][1:4]",
+   "Telephone:TelephoneLv8Clear2": "0-34][1:4]",
+   "Telephone:TelephoneLv8Play1": "0-33][1:4]",
+   "Telephone:TelephoneLv8Play2": "0-33][1:4]",
+   "Telephone:TelephoneBreakEgg1": "0-33][1:4]",
+   "Telephone:TelephoneBreakEgg2": "0-33][1:4]",
+   "Telephone:TelephoneUlriraHouse": "ICK!\"[1:4]",
+   "Telephone:TelephoneUlriraHouse2": "er...[1:4]"
+  }
+ },
+ "shape": {
+  "sale": [
+   1,
+   "ap-item"
+  ],
+  "south-bay-dig": [
+   2,
+   "ap-item"
+  ],
+  "mermaid-cave": [
+   3,
+   "ap-item"
+  ],
+  "animal-village-northwest": [
+   4,
+   "ap-item"
+  ],
+  "animal-village-cave": [
+   5,
+   "ap-item"
+  ],
+  "christine-trade": [
+   6,
+   "ap-item"
+  ],
+  "christine-grateful": [
+   7,
+   "ap-item"
+  ],
+  "invisible-zora": [
+   8,
+   "ap-item"
+  ],
+  "chef-bear": [
+   9,
+   "ap-item"
+  ],
+  "grandma-yahoo": [
+   10,
+   "ap-item"
+  ],
+  "beach-chest": [
+   11,
+   "ap-item"
+  ],
+  "beach-dig": [
+   12,
+   "ap-item"
+  ],
+  "washed-up": [
+   13,
+   "ap-item"
+  ],
+  "goriya-trader": [
+   14,
+   "ap-item"
+  ],
+  "dampe-page-1": [
+   15,
+   "ap-item"
+  ],
+  "dampe-heart-challenge": [
+   16,
+   "ap-item"
+  ],
+  "dampe-page-2": [
+   17,
+   "ap-item"
+  ],
+  "dampe-bottle-challenge": [
+   18,
+   "ap-item"
+  ],
+  "dampe-final": [
+   19,
+   "ap-item"
+  ],
+  "taltal-entrance-blocks": [
+   20,
+   "ap-item"
+  ],
+  "taltal-entrance-chest": [
+   21,
+   "ap-item"
+  ],
+  "taltal-east-left-chest": [
+   22,
+   "ap-item"
+  ],
+  "wasteland-dig": [
+   23,
+   "ap-item"
+  ],
+  "north-wasteland": [
+   24,
+   "ap-item"
+  ],
+  "north-of-moblin-cave": [
+   25,
+   "ap-item"
+  ],
+  "lanmola": [
+   26,
+   "ap-item"
+  ],
+  "desert-cave": [
+   27,
+   "ap-item"
+  ],
+  "walrus": [
+   28,
+   "ap-item"
+  ],
+  "desert-dig": [
+   29,
+   "ap-item"
+  ],
+  "desert-south": [
+   30,
+   "ap-item"
+  ],
+  "ghost-reward": [
+   31,
+   "ap-item"
+  ],
+  "ghost-grave-dig": [
+   32,
+   "ap-item"
+  ],
+  "graveyard-cave": [
+   33,
+   "ap-item"
+  ],
+  "ghost-house-pot": [
+   34,
+   "ap-item"
+  ],
+  "taltal-heights-hole": [
+   35,
+   "ap-item"
+  ],
+  "kanalet-crow": [
+   36,
+   "ap-item"
+  ],
+  "kanalet-mad-bomber": [
+   37,
+   "ap-item"
+  ],
+  "kanalet-kill-room": [
+   38,
+   "ap-item"
+  ],
+  "kanalet-bombed-guard": [
+   39,
+   "ap-item"
+  ],
+  "kanalet-final-guard": [
+   40,
+   "ap-item"
+  ],
+  "dream-shrine-right": [
+   41,
+   "ap-item"
+  ],
+  "dream-shrine-left": [
+   42,
+   "ap-item"
+  ],
+  "mabe-bushes": [
+   43,
+   "ap-item"
+  ],
+  "doghouse-dig": [
+   44,
+   "ap-item"
+  ],
+  "mabe-well": [
+   45,
+   "ap-item"
+  ],
+  "fishing-orange": [
+   46,
+   "ap-item"
+  ],
+  "fishing-50": [
+   47,
+   "ap-item"
+  ],
+  "fishing-100": [
+   48,
+   "ap-item"
+  ],
+  "fishing-150": [
+   49,
+   "ap-item"
+  ],
+  "fishing-cheep-cheep": [
+   50,
+   "ap-item"
+  ],
+  "fishing-ol-baron": [
+   51,
+   "ap-item"
+  ],
+  "fishing-loose": [
+   52,
+   "ap-item"
+  ],
+  "tarin": [
+   53,
+   "ap-item"
+  ],
+  "marin": [
+   54,
+   "ap-item"
+  ],
+  "shop-slot3-1st": [
+   55,
+   "ap-item"
+  ],
+  "shop-slot3-2nd": [
+   56,
+   "ap-item"
+  ],
+  "shop-slot5-1st": [
+   null,
+   "chamber-stone"
+  ],
+  "shop-slot5-2nd": [
+   null,
+   "chamber-stone"
+  ],
+  "shop-slot5-3rd": [
+   null,
+   "chamber-stone"
+  ],
+  "shop-slot5-4th": [
+   null,
+   "chamber-stone"
+  ],
+  "shop-slot5-5th": [
+   null,
+   "chamber-stone"
+  ],
+  "shop-slot5-6th": [
+   null,
+   "chamber-stone"
+  ],
+  "shop-slot5-7th": [
+   null,
+   "chamber-stone"
+  ],
+  "shop-slot6": [
+   64,
+   "ap-item"
+  ],
+  "mamasha": [
+   65,
+   "ap-item"
+  ],
+  "ciao-ciao": [
+   66,
+   "ap-item"
+  ],
+  "tail-cave-bonk-tree": [
+   67,
+   "ap-item"
+  ],
+  "beach-bonk-tree": [
+   68,
+   "ap-item"
+  ],
+  "armos-cave": [
+   69,
+   "ap-item"
+  ],
+  "rock-maze": [
+   70,
+   "ap-item"
+  ],
+  "armos-knight": [
+   71,
+   "ap-item"
+  ],
+  "goponga-cave-left": [
+   72,
+   "ap-item"
+  ],
+  "goponga-cave-right": [
+   73,
+   "ap-item"
+  ],
+  "goponga-west-dig": [
+   74,
+   "ap-item"
+  ],
+  "mr-write": [
+   75,
+   "ap-item"
+  ],
+  "pond-island": [
+   76,
+   "ap-item"
+  ],
+  "southwest-bay-bush": [
+   77,
+   "ap-item"
+  ],
+  "beside-seashell-mansion": [
+   78,
+   "ap-item"
+  ],
+  "small-coast-island": [
+   79,
+   "ap-item"
+  ],
+  "above-cave-dig": [
+   80,
+   "ap-item"
+  ],
+  "above-d3": [
+   81,
+   "ap-item"
+  ],
+  "under-skull-rock": [
+   82,
+   "ap-item"
+  ],
+  "ukuku-cave-west-chest": [
+   83,
+   "ap-item"
+  ],
+  "ukuku-cave-west-loose": [
+   84,
+   "ap-item"
+  ],
+  "ukuku-cave-east-chest": [
+   85,
+   "ap-item"
+  ],
+  "ukuku-cave-east-loose": [
+   86,
+   "ap-item"
+  ],
+  "mad-batter-bay": [
+   87,
+   "ap-item"
+  ],
+  "bay-passage-sunken": [
+   88,
+   "ap-item"
+  ],
+  "river-crossing-cave": [
+   89,
+   "ap-item"
+  ],
+  "kiki": [
+   90,
+   "ap-item"
+  ],
+  "tarin-ukuku": [
+   91,
+   "ap-item"
+  ],
+  "kanalet-south-cave": [
+   92,
+   "ap-item"
+  ],
+  "plains-rock-maze": [
+   93,
+   "ap-item"
+  ],
+  "ukuku-bonk-tree": [
+   94,
+   "ap-item"
+  ],
+  "5-seashell-reward": [
+   95,
+   "ap-item"
+  ],
+  "15-seashell-reward": [
+   96,
+   "ap-item"
+  ],
+  "30-seashell-reward": [
+   97,
+   "ap-item"
+  ],
+  "40-seashell-reward": [
+   98,
+   "ap-item"
+  ],
+  "50-seashell-reward": [
+   99,
+   "ap-item"
+  ],
+  "rapids-west-island": [
+   100,
+   "ap-item"
+  ],
+  "rapids-middle-island": [
+   101,
+   "ap-item"
+  ],
+  "rapids-east-island": [
+   102,
+   "ap-item"
+  ],
+  "rapids-south-island": [
+   103,
+   "ap-item"
+  ],
+  "rapids-race-45": [
+   104,
+   "ap-item"
+  ],
+  "rapids-race-35": [
+   105,
+   "ap-item"
+  ],
+  "rapids-race-30": [
+   106,
+   "ap-item"
+  ],
+  "rapids-ascent-cave": [
+   107,
+   "ap-item"
+  ],
+  "mermaid-martha": [
+   108,
+   "ap-item"
+  ],
+  "bay-fisherman": [
+   109,
+   "ap-item"
+  ],
+  "kanalet-moat-north": [
+   110,
+   "ap-item"
+  ],
+  "kanalet-moat-south": [
+   111,
+   "ap-item"
+  ],
+  "south-bay-sunken": [
+   112,
+   "ap-item"
+  ],
+  "mamu": [
+   113,
+   "ap-item"
+  ],
+  "swamp-chest": [
+   114,
+   "ap-item"
+  ],
+  "taltal-left-ascent-cave": [
+   115,
+   "ap-item"
+  ],
+  "papahl": [
+   116,
+   "ap-item"
+  ],
+  "taltal-bomb-hole": [
+   117,
+   "ap-item"
+  ],
+  "taltal-rooster-cave": [
+   118,
+   "ap-item"
+  ],
+  "taltal-crossing-cave": [
+   119,
+   "ap-item"
+  ],
+  "taltal-east-bridge": [
+   120,
+   "ap-item"
+  ],
+  "taltal-sunken": [
+   121,
+   "ap-item"
+  ],
+  "taltal-ledge-chest": [
+   122,
+   "ap-item"
+  ],
+  "taltal-5-chest-puzzle": [
+   123,
+   "ap-item"
+  ],
+  "manbo": [
+   124,
+   "ap-item"
+  ],
+  "taltal-east-drop": [
+   125,
+   "ap-item"
+  ],
+  "taltal-west-chest": [
+   126,
+   "ap-item"
+  ],
+  "mad-batter-taltal": [
+   127,
+   "ap-item"
+  ],
+  "taltal-west-rock": [
+   128,
+   "ap-item"
+  ],
+  "taltal-west-escape": [
+   129,
+   "ap-item"
+  ],
+  "taltal-west-dig": [
+   130,
+   "ap-item"
+  ],
+  "above-turtle-rock": [
+   131,
+   "ap-item"
+  ],
+  "trendy-prize-1": [
+   132,
+   "yoshi-doll"
+  ],
+  "trendy-prize-2": [
+   133,
+   "heart-piece"
+  ],
+  "trendy-prize-3": [
+   134,
+   "seashell"
+  ],
+  "trendy-prize-4": [
+   135,
+   "chamber-stone"
+  ],
+  "trendy-prize-5": [
+   136,
+   "heart-piece"
+  ],
+  "trendy-prize-6": [
+   137,
+   "seashell"
+  ],
+  "trendy-prize-final": [
+   138,
+   "chamber-stone"
+  ],
+  "villa-cave": [
+   139,
+   "ap-item"
+  ],
+  "pothole-north": [
+   140,
+   "ap-item"
+  ],
+  "pothole-final": [
+   141,
+   "ap-item"
+  ],
+  "woods-crossing-cave-chest": [
+   142,
+   "ap-item"
+  ],
+  "woods-crossing-cave-loose": [
+   143,
+   "ap-item"
+  ],
+  "woods-north-cave-chest": [
+   144,
+   "ap-item"
+  ],
+  "woods-north-cave-loose": [
+   145,
+   "ap-item"
+  ],
+  "mad-batter-woods": [
+   146,
+   "ap-item"
+  ],
+  "woods-south-chest": [
+   147,
+   "ap-item"
+  ],
+  "woods-north-chest": [
+   148,
+   "ap-item"
+  ],
+  "woods-west-dig": [
+   149,
+   "ap-item"
+  ],
+  "woods-east-dig": [
+   150,
+   "ap-item"
+  ],
+  "woods-loose": [
+   151,
+   "ap-item"
+  ],
+  "diamond-island": [
+   152,
+   "ap-item"
+  ],
+  "syrup": [
+   153,
+   "ap-item"
+  ],
+  "D1-instrument": [
+   154,
+   "ap-item"
+  ],
+  "D1-moldorm": [
+   155,
+   "ap-item"
+  ],
+  "D1-west-hallway": [
+   156,
+   "ap-item"
+  ],
+  "D1-middle-ledge": [
+   157,
+   "ap-item"
+  ],
+  "D1-3-of-a-kind": [
+   158,
+   "ap-item"
+  ],
+  "D1-bomb-room": [
+   159,
+   "ap-item"
+  ],
+  "D1-middle-kill-chest": [
+   160,
+   "ap-item"
+  ],
+  "D1-spark-chest": [
+   161,
+   "ap-item"
+  ],
+  "D1-button-chest": [
+   162,
+   "ap-item"
+  ],
+  "D1-stalfos-chest": [
+   163,
+   "ap-item"
+  ],
+  "D1-4-zols-chest": [
+   164,
+   "ap-item"
+  ],
+  "D1-beetles": [
+   165,
+   "ap-item"
+  ],
+  "D2-instrument": [
+   169,
+   "ap-item"
+  ],
+  "D2-genie": [
+   170,
+   "ap-item"
+  ],
+  "D2-boos": [
+   171,
+   "ap-item"
+  ],
+  "D2-long-room-west": [
+   172,
+   "ap-item"
+  ],
+  "D2-long-room-east": [
+   173,
+   "ap-item"
+  ],
+  "D2-vacuum-mouth-room": [
+   174,
+   "ap-item"
+  ],
+  "D2-kill-puzzle": [
+   175,
+   "ap-item"
+  ],
+  "D2-west-chest": [
+   176,
+   "ap-item"
+  ],
+  "D2-double-stalfos": [
+   177,
+   "ap-item"
+  ],
+  "D2-double-shy-guys": [
+   178,
+   "ap-item"
+  ],
+  "D2-entrance-chest": [
+   179,
+   "ap-item"
+  ],
+  "D2-single-shy-guy": [
+   180,
+   "ap-item"
+  ],
+  "D2-peg-circle": [
+   181,
+   "ap-item"
+  ],
+  "D2-button-chest": [
+   182,
+   "ap-item"
+  ],
+  "D3-instrument": [
+   186,
+   "ap-item"
+  ],
+  "D3-slime-eye": [
+   187,
+   "ap-item"
+  ],
+  "D3-pre-boss": [
+   188,
+   "ap-item"
+  ],
+  "D3-triple-bombites": [
+   189,
+   "ap-item"
+  ],
+  "D3-north-chest": [
+   190,
+   "ap-item"
+  ],
+  "D3-central-ledge": [
+   191,
+   "ap-item"
+  ],
+  "D3-central-chest": [
+   192,
+   "ap-item"
+  ],
+  "D3-east-ledge": [
+   193,
+   "ap-item"
+  ],
+  "D3-pairodds": [
+   194,
+   "ap-item"
+  ],
+  "D3-five-zols": [
+   195,
+   "ap-item"
+  ],
+  "D3-basement-north": [
+   196,
+   "ap-item"
+  ],
+  "D3-basement-west": [
+   197,
+   "ap-item"
+  ],
+  "D3-basement-south": [
+   198,
+   "ap-item"
+  ],
+  "D3-hallway-4": [
+   199,
+   "ap-item"
+  ],
+  "D3-hallway-3": [
+   200,
+   "ap-item"
+  ],
+  "D3-hallway-2": [
+   201,
+   "ap-item"
+  ],
+  "D3-hallway-side-room": [
+   202,
+   "ap-item"
+  ],
+  "D3-hallway-1": [
+   203,
+   "ap-item"
+  ],
+  "D3-vacuum-mouth": [
+   204,
+   "ap-item"
+  ],
+  "D4-instrument": [
+   208,
+   "ap-item"
+  ],
+  "D4-angler": [
+   209,
+   "ap-item"
+  ],
+  "D4-north-chest": [
+   210,
+   "ap-item"
+  ],
+  "D4-east-side-north": [
+   211,
+   "ap-item"
+  ],
+  "D4-east-side-south": [
+   212,
+   "ap-item"
+  ],
+  "D4-west-ledge": [
+   213,
+   "ap-item"
+  ],
+  "D4-east-of-puzzle": [
+   214,
+   "ap-item"
+  ],
+  "D4-south-of-puzzle": [
+   215,
+   "ap-item"
+  ],
+  "D4-sunken-item": [
+   216,
+   "ap-item"
+  ],
+  "D4-central-room": [
+   217,
+   "ap-item"
+  ],
+  "D4-small-island": [
+   218,
+   "ap-item"
+  ],
+  "D4-ledge-north": [
+   219,
+   "ap-item"
+  ],
+  "D4-statues-chest": [
+   220,
+   "ap-item"
+  ],
+  "D4-lobby": [
+   221,
+   "ap-item"
+  ],
+  "D4-crystals": [
+   222,
+   "ap-item"
+  ],
+  "D5-instrument": [
+   224,
+   "ap-item"
+  ],
+  "D5-slime-eel": [
+   225,
+   "ap-item"
+  ],
+  "D5-master-stalfos": [
+   226,
+   "ap-item"
+  ],
+  "D5-crystal-blocks": [
+   227,
+   "ap-item"
+  ],
+  "D5-past-master-stalfos-3": [
+   228,
+   "ap-item"
+  ],
+  "D5-water-tunnel": [
+   229,
+   "ap-item"
+  ],
+  "D5-right-side-north": [
+   230,
+   "ap-item"
+  ],
+  "D5-right-side-middle": [
+   231,
+   "ap-item"
+  ],
+  "D5-right-side-east": [
+   232,
+   "ap-item"
+  ],
+  "D5-past-master-stalfos-1": [
+   233,
+   "ap-item"
+  ],
+  "D5-west-chest": [
+   234,
+   "ap-item"
+  ],
+  "D5-helmasaurs": [
+   235,
+   "ap-item"
+  ],
+  "D5-west-stairs-chest": [
+   236,
+   "ap-item"
+  ],
+  "D5-near-entrance": [
+   237,
+   "ap-item"
+  ],
+  "D6-instrument": [
+   240,
+   "ap-item"
+  ],
+  "D6-facade": [
+   241,
+   "ap-item"
+  ],
+  "D6-far-northwest": [
+   242,
+   "ap-item"
+  ],
+  "D6-far-northeast": [
+   243,
+   "ap-item"
+  ],
+  "D6-statue-line-north": [
+   244,
+   "ap-item"
+  ],
+  "D6-statue-line-south": [
+   245,
+   "ap-item"
+  ],
+  "D6-wizzrobe-pegs": [
+   246,
+   "ap-item"
+  ],
+  "D6-pot-chest": [
+   247,
+   "ap-item"
+  ],
+  "D6-canal": [
+   248,
+   "ap-item"
+  ],
+  "D6-3-wizzrobes": [
+   249,
+   "ap-item"
+  ],
+  "D6-tile-room": [
+   250,
+   "ap-item"
+  ],
+  "D6-gated-hallway-north": [
+   251,
+   "ap-item"
+  ],
+  "D6-gated-hallway-south": [
+   252,
+   "ap-item"
+  ],
+  "D6-southwest-chest": [
+   253,
+   "ap-item"
+  ],
+  "D6-wizzrobes-ledge": [
+   254,
+   "ap-item"
+  ],
+  "D7-instrument": [
+   258,
+   "ap-item"
+  ],
+  "D7-eagle": [
+   259,
+   "ap-item"
+  ],
+  "D7-like-likes": [
+   260,
+   "ap-item"
+  ],
+  "D7-1f-west": [
+   261,
+   "ap-item"
+  ],
+  "D7-west-ledge": [
+   262,
+   "ap-item"
+  ],
+  "D7-east-ledge": [
+   263,
+   "ap-item"
+  ],
+  "D7-3ofakind-north": [
+   264,
+   "ap-item"
+  ],
+  "D7-2f-horseheads": [
+   265,
+   "ap-item"
+  ],
+  "D7-hinox": [
+   266,
+   "ap-item"
+  ],
+  "D7-3ofakind-south": [
+   267,
+   "ap-item"
+  ],
+  "D7-blue-pegs-chest": [
+   268,
+   "ap-item"
+  ],
+  "D7-3f-horseheads": [
+   269,
+   "ap-item"
+  ],
+  "D7-grim-creeper": [
+   270,
+   "ap-item"
+  ],
+  "D8-instrument": [
+   274,
+   "ap-item"
+  ],
+  "D8-hothead": [
+   275,
+   "ap-item"
+  ],
+  "D8-far-northwest": [
+   276,
+   "ap-item"
+  ],
+  "D8-far-northeast": [
+   277,
+   "ap-item"
+  ],
+  "D8-left-exit-chest": [
+   278,
+   "ap-item"
+  ],
+  "D8-dodongos": [
+   279,
+   "ap-item"
+  ],
+  "D8-northern-ledge": [
+   280,
+   "ap-item"
+  ],
+  "D8-gibdos": [
+   281,
+   "ap-item"
+  ],
+  "D8-beamos-chest": [
+   282,
+   "ap-item"
+  ],
+  "D8-statue": [
+   283,
+   "ap-item"
+  ],
+  "D8-torches": [
+   284,
+   "ap-item"
+  ],
+  "D8-west-vire": [
+   285,
+   "ap-item"
+  ],
+  "D8-west-roomba": [
+   286,
+   "ap-item"
+  ],
+  "D8-surrounded-by-blocks": [
+   287,
+   "ap-item"
+  ],
+  "D8-sparks-chest": [
+   288,
+   "ap-item"
+  ],
+  "D8-east-of-pots": [
+   289,
+   "ap-item"
+  ],
+  "D8-east-roomba": [
+   290,
+   "ap-item"
+  ],
+  "D8-far-southwest": [
+   291,
+   "ap-item"
+  ],
+  "D8-far-southeast": [
+   292,
+   "ap-item"
+  ],
+  "D0-northern-chest": [
+   296,
+   "ap-item"
+  ],
+  "D0-zol-pots": [
+   297,
+   "ap-item"
+  ],
+  "D0-north-orbs": [
+   298,
+   "ap-item"
+  ],
+  "D0-south-orbs": [
+   299,
+   "ap-item"
+  ],
+  "D0-east-color-puzzle": [
+   300,
+   "ap-item"
+  ],
+  "D0-west-color-puzzle": [
+   301,
+   "ap-item"
+  ],
+  "D0-putters": [
+   302,
+   "ap-item"
+  ],
+  "D0-fairy-1": [
+   303,
+   "ap-item"
+  ],
+  "D0-fairy-2": [
+   304,
+   "ap-item"
+  ],
+  "D0-rupee-1": [
+   308,
+   "ap-item"
+  ],
+  "D0-rupee-2": [
+   309,
+   "ap-item"
+  ],
+  "D0-rupee-3": [
+   310,
+   "ap-item"
+  ],
+  "D0-rupee-4": [
+   311,
+   "ap-item"
+  ],
+  "D0-rupee-5": [
+   312,
+   "ap-item"
+  ],
+  "D0-rupee-6": [
+   313,
+   "ap-item"
+  ],
+  "D0-rupee-7": [
+   314,
+   "ap-item"
+  ],
+  "D0-rupee-8": [
+   315,
+   "ap-item"
+  ],
+  "D0-rupee-9": [
+   316,
+   "ap-item"
+  ],
+  "D0-rupee-10": [
+   317,
+   "ap-item"
+  ],
+  "D0-rupee-11": [
+   318,
+   "ap-item"
+  ],
+  "D0-rupee-12": [
+   319,
+   "ap-item"
+  ],
+  "D0-rupee-13": [
+   320,
+   "ap-item"
+  ],
+  "D0-rupee-14": [
+   321,
+   "ap-item"
+  ],
+  "D0-rupee-15": [
+   322,
+   "ap-item"
+  ],
+  "D0-rupee-16": [
+   323,
+   "ap-item"
+  ],
+  "D0-rupee-17": [
+   324,
+   "ap-item"
+  ],
+  "D0-rupee-18": [
+   325,
+   "ap-item"
+  ],
+  "D0-rupee-19": [
+   326,
+   "ap-item"
+  ],
+  "D0-rupee-20": [
+   327,
+   "ap-item"
+  ],
+  "D0-rupee-21": [
+   328,
+   "ap-item"
+  ],
+  "D0-rupee-22": [
+   329,
+   "ap-item"
+  ],
+  "D0-rupee-23": [
+   330,
+   "ap-item"
+  ],
+  "D0-rupee-24": [
+   331,
+   "ap-item"
+  ],
+  "D0-rupee-25": [
+   332,
+   "ap-item"
+  ],
+  "D0-rupee-26": [
+   333,
+   "ap-item"
+  ],
+  "D0-rupee-27": [
+   334,
+   "ap-item"
+  ],
+  "D0-rupee-28": [
+   335,
+   "ap-item"
+  ],
+  "moblin-cave": [
+   345,
+   "bow-wow"
+  ],
+  "rooster-statue": [
+   346,
+   "rooster"
+  ],
+  "D1-owl-statue-long-hallway": [
+   166,
+   "ap-item"
+  ],
+  "D1-owl-statue-spinies": [
+   167,
+   "ap-item"
+  ],
+  "D1-owl-statue-3-of-a-kind": [
+   168,
+   "ap-item"
+  ],
+  "D2-owl-statue-first-switch": [
+   183,
+   "ap-item"
+  ],
+  "D2-owl-statue-push-puzzle": [
+   184,
+   "ap-item"
+  ],
+  "D2-owl-statue-past-hinox": [
+   185,
+   "ap-item"
+  ],
+  "D3-owl-statue-basement-north": [
+   205,
+   "ap-item"
+  ],
+  "D3-owl-statue-arrow": [
+   206,
+   "ap-item"
+  ],
+  "D3-owl-statue-northwest": [
+   207,
+   "ap-item"
+  ],
+  "D4-owl-statue": [
+   223,
+   "ap-item"
+  ],
+  "D5-owl-statue-triple-stalfos": [
+   238,
+   "ap-item"
+  ],
+  "D5-owl-statue-before-slime-eel": [
+   239,
+   "ap-item"
+  ],
+  "D6-owl-statue-ledge": [
+   255,
+   "ap-item"
+  ],
+  "D6-owl-statue-southeast": [
+   256,
+   "ap-item"
+  ],
+  "D6-owl-statue-canal": [
+   257,
+   "ap-item"
+  ],
+  "D7-owl-statue-ball": [
+   271,
+   "ap-item"
+  ],
+  "D7-owl-statue-kirbys": [
+   272,
+   "ap-item"
+  ],
+  "D7-owl-statue-hookshot-chest": [
+   273,
+   "ap-item"
+  ],
+  "D8-owl-statue-above-smasher": [
+   293,
+   "ap-item"
+  ],
+  "D8-owl-statue-below-gibdos": [
+   294,
+   "ap-item"
+  ],
+  "D8-owl-statue-eye-statue": [
+   295,
+   "ap-item"
+  ],
+  "D0-owl-statue-nine-switches": [
+   305,
+   "ap-item"
+  ],
+  "D0-owl-statue-first-switches": [
+   306,
+   "ap-item"
+  ],
+  "D0-owl-statue-before-mini-boss": [
+   307,
+   "ap-item"
+  ],
+  "owl-statue-below-D8": [
+   336,
+   "ap-item"
+  ],
+  "owl-statue-moblin-cave": [
+   337,
+   "ap-item"
+  ],
+  "owl-statue-pothole": [
+   338,
+   "ap-item"
+  ],
+  "owl-statue-above-cave": [
+   339,
+   "ap-item"
+  ],
+  "owl-statue-south-bay": [
+   340,
+   "ap-item"
+  ],
+  "owl-statue-desert": [
+   341,
+   "ap-item"
+  ],
+  "owl-statue-maze": [
+   342,
+   "ap-item"
+  ],
+  "owl-statue-rapids": [
+   343,
+   "ap-item"
+  ],
+  "owl-statue-taltal-east": [
+   344,
+   "ap-item"
+  ]
+ }
+}

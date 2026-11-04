@@ -1,0 +1,54 @@
+# The start state (DESIGN.md, Start state): a new game gets its starting items while Link wakes up and its start flags
+# once he stands outside Tarin's house, each once. Run like newgame_file2 (after reset_saves.sh newgame, from a fresh
+# boot) on a mod patched from
+#   make_test_patch.py <out.aplas> --starting sword,sword,shield,heart-piece,heart-piece,seashell,key-D2,full-moon-cello
+#     --settings '{"Small Keys": "Start With", "Open Kanalet": true, "Rupees": 250}'
+# (key-D2 stands for the world's copy of a Start With key, which the patcher leaves to the setting).
+# Screenshot: newgame_start the Field outside the house.
+connect 90
+tapuntil 1 screen=title when title:Deactive 30
+tapuntil c0 title:GameStart when title:WaitLR+unlocked 20
+select 1
+tapuntil 1 files:DataSelectConfirm when files:DataSelectKeyWait
+tapuntil 1 files:GameStart when files:DataSelectConfirm
+inlevel 60
+level MarinTarinHouse
+# In bed: two swords (the second the upgrade), the shield, two heart pieces and a seashell on the first free bits, the
+# Full Moon Cello, every dungeon's small keys (D1-D8, the Chamber Dungeon's slot, the Color Dungeon), the rupees.
+await 15 rupees=250 shells=1 hp=3 .*sword=1/1 shield=1/0 .*cello=1
+check dkeys=3\.\d+,5\.\d+,9\.\d+,5\.\d+,3\.\d+,3\.\d+,3\.\d+,7\.\d+,[^,]+,3\.\d+
+send DBG flag APStartItems
+expect FLAG.APStartItems.1 5
+# The flags wait while Link is in the house.
+send DBG flag FirstClear
+expect FLAG.FirstClear.0 5
+send DBG flag WalrusAwaked
+expect FLAG.WalrusAwaked.0 5
+dismiss 90
+level MarinTarinHouse
+check rupees=250
+send DBG flag FirstClear
+expect FLAG.FirstClear.0 5
+# A save past the wake-up talk (OpTalked) without APStartItems, as an older mod's start event left it, has its items:
+# it gets the flag alone.
+send DBG setflag APStartItems 0
+poll FLAG.APStartItems.1 5 DBG flag APStartItems
+check rupees=250 shells=1 hp=3 .*sword=1/1 shield=1/0 .*cello=1
+# Outside: the start flags and the setting's, and nothing given twice.
+warp Field 38.25 10.5 128.25
+poll FLAG.FirstClear.1 5 DBG flag FirstClear
+send DBG flag WalrusAwaked
+expect FLAG.WalrusAwaked.1 5
+send DBG flag EighthClear
+expect FLAG.EighthClear.1 5
+send DBG flag GateOpen_Switch_KanaletCastle_01B
+expect FLAG.GateOpen_Switch_KanaletCastle_01B.1 5
+send DBG flag Lv1BossDemoClear
+expect FLAG.Lv1BossDemoClear.1 5
+check rupees=250 shells=1 hp=3 .*sword=1/1 shield=1/0 .*cello=1
+check dkeys=3\.\d+,5\.\d+,9\.\d+,5\.\d+,3\.\d+,3\.\d+,3\.\d+,7\.\d+,[^,]+,3\.\d+
+shot newgame_start.png
+# Back in the house nothing comes again.
+warp MarinTarinHouse 6.85 0 3.83
+wait 2
+check rupees=250 shells=1 hp=3 .*sword=1/1 shield=1/0 .*cello=1

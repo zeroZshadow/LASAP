@@ -1,6 +1,7 @@
 # Picks up the free-standing item on the grass island among the holes (diamond-island, Field_05E, a heart piece
 # actor at 66.75 13.5 54.75). Link stands one cell south of it and walks up into it until its item-get takes him.
 # Warps straight there: hops from Mabe cross the holes, and a hop above one drops Link in again on every respawn.
+# Run after newgame_file2 (the sandbox's file 1 has the location checked).
 # Screenshots: diamond_1 below the item, diamond_2 the item-get.
 guard hurt
 warp Field 66.75 13.5 56.25

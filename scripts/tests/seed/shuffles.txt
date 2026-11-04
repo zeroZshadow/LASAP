@@ -1,0 +1,6 @@
+[shuffles]
+M BGM_MEVE BGM_FIELD_NORMAL
+M BGM_CAVE -
+E Field Cemetery
+E MysteriousForest Cemetery
+T Hint:APHint4 System:PanelExplanation1_1 +

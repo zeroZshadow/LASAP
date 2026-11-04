@@ -20,7 +20,7 @@ class TestGameOverFlow(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         saved = list(sys.path)
-        sys.path.insert(0, str(PATCHER))
+        sys.path.insert(0, str(PATCHER / "modbuild"))
         try:
             import evfl
             import ap_deathlink

@@ -1,29 +1,92 @@
-"""Builds patcher/assets: the files the mod changes the same way for every seed, as patches against the RomFS
-(patcher/ap_assets.py). Run with .venv-lasr after changing ap_ui.py, ap_model.py, ap_chest.py or LASR's title screen
-or chest textures, and commit the result:
-  python scripts/build_assets.py [--romfs <RomFS folder>]
+"""Builds patcher/assets: the mod's RomFS, the same for every seed, as patches against the RomFS, and what the seed's
+files take from the build (patcher/ap_assets.py). The mod is built from a patch with the locations the world gives
+every seed (make_test_patch.make) by LASR's mod generator with the patcher's edits (patcher/modbuild/mod.py), and the
+files only this build makes (the title screen and notice look, the Archipelago model, the chests, the map icons and
+the ghosts' model). Run with .venv-lasr after changing what the mod's files come from, and commit the result:
+  python scripts/build_assets.py [--romfs <RomFS folder>] [--check]
+--check builds and compares with the committed assets instead of writing them.
 """
 import argparse
+import json
 import sys
+import tempfile
 from pathlib import Path
+from typing import Dict
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "patcher"))
-import las_ap_patch  # noqa: E402,F401  (LASR's paths and the Qt stand-in)
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "patcher" / "modbuild"))
+import mod  # noqa: E402  (LASR and the patcher on the path)
 import ap_assets  # noqa: E402
+import las_ap_patch  # noqa: E402
+import make_test_patch  # noqa: E402
 from local_paths import local_path  # noqa: E402
 
 
-def main() -> None:
+def own_files(romfs: Path) -> Dict[str, bytes]:
+    """The files of the mod only this build makes (they need oead's SARC, quicktex and Pillow)."""
+    import ap_chest
+    import ap_map_icons
+    import ap_model
+    import ap_player_ghost
+    import ap_ui
+    from RandomizerCore.Randomizers.chests import CHEST_TEXTURES as LASR_CHEST_TEXTURES
+    from RandomizerCore.Tools.bntx_tools import (createChestBfresWithCustomTexturesIfMissing,
+                                                 createRandomizerTitleScreenArchive)
+    from RandomizerCore.Tools.oead_tools import SARC
+
+    built = {}
+    sarc = SARC(str(romfs / ap_assets.UI))
+    createRandomizerTitleScreenArchive(sarc)  # LASR's title screen logo
+    built[ap_assets.UI] = ap_ui.build(bytes(sarc.repack()))
+    built[ap_assets.MODEL] = ap_model.build(str(romfs / ap_assets.SOURCES[ap_assets.MODEL]))
+    built[ap_assets.PLAYER_GHOST] = ap_player_ghost.build(str(romfs / ap_assets.SOURCES[ap_assets.PLAYER_GHOST]))
+    built[ap_assets.GAME] = ap_map_icons.build((romfs / ap_assets.GAME).read_bytes())
+    with tempfile.TemporaryDirectory() as tmp:
+        createChestBfresWithCustomTexturesIfMissing(str(romfs / ap_assets.CHEST), tmp, LASR_CHEST_TEXTURES)
+        for path in ap_assets.LASR_CHESTS:
+            built[path] = (Path(tmp) / Path(path).name).read_bytes()
+    built[ap_assets.SEASHELL_CHEST] = ap_chest.build(str(romfs / ap_assets.CHEST))
+    return built
+
+
+def build(romfs: Path) -> tuple:
+    """The mod's files that differ from the RomFS's, by RomFS path, and the build's data (ap_assets.data)."""
+    patch = make_test_patch.make()
+    with tempfile.TemporaryDirectory() as tmp:
+        data = mod.build(romfs, Path(tmp), patch)
+        out = Path(tmp) / las_ap_patch.GAME_DIR / "romfs"
+        built = {path.relative_to(out).as_posix(): path.read_bytes() for path in out.rglob("*") if path.is_file()}
+    built.update(own_files(romfs))
+    data["shape"] = las_ap_patch.patch_shape(patch)
+    # LASR writes back some files it reads unchanged; the game reads those from its own RomFS
+    return {path: content for path, content in built.items()
+            if not (romfs / path).is_file() or (romfs / path).read_bytes() != content}, json.loads(json.dumps(data))
+
+
+def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--romfs", type=Path)
+    parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    args.romfs = args.romfs or local_path("romfs", "LASAP_ROMFS")
-    built = ap_assets.build(args.romfs)
-    ap_assets.write(args.romfs, built)
-    for path in sorted(built):
-        patch = ap_assets.ASSET_DIR / (Path(path).name + ".bsdiff4")
-        print(f"{path}: {len(built[path])} bytes, patch {patch.stat().st_size} bytes")
+    args.romfs = args.romfs or local_path("romfs")
+    built, data = build(args.romfs)
+    if args.check:
+        files = ap_assets.manifest()
+        differ = sorted(path for path in set(built) | set(files)
+                        if path not in built or path not in files
+                        or ap_assets._sha256(built[path]) != files[path]["sha256"])
+        for path in differ:
+            print(f"differs: {path}")
+        if data != ap_assets.data():
+            print(f"differs: {ap_assets.DATA.name}")
+            differ.append(ap_assets.DATA.name)
+        print(f"{len(built)} files, {len(differ)} differ from the committed assets")
+        return 1 if differ else 0
+    ap_assets.write(args.romfs, built, data)
+    size = sum(ap_assets.patch_path(path).stat().st_size for path in built)
+    print(f"{len(built)} files, {size} bytes of patches")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

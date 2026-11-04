@@ -5,6 +5,7 @@
 #include "ap/ap.hpp"
 #include "ap/ap_net.hpp"
 #include "ap/ap_text.hpp"
+#include "config/fields.hpp"
 #include "game/actors/player.hpp"
 #include "game/animation.hpp"
 #include "game/data/inventory.hpp"
@@ -13,6 +14,7 @@
 #include "game/math.hpp"
 #include "game/model.hpp"
 #include "game/time.hpp"
+#include "test_only.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -75,20 +77,6 @@ namespace {
     using Game::NowMs;
     using AP::GhostNet::GhostFlag;
 
-    std::vector<std::string> Split(const std::string& line, size_t max) {
-        std::vector<std::string> out;
-        size_t pos = 0;
-        while (pos < line.size() && out.size() < max) {
-            size_t start = line.find_first_not_of(' ', pos);
-            if (start == std::string::npos) break;
-            size_t end = line.find(' ', start);
-            if (end == std::string::npos || out.size() + 1 == max) end = line.size();
-            out.push_back(line.substr(start, end - start));
-            pos = end;
-        }
-        return out;
-    }
-
     // PlayerAnimation.gsheet's row of an anim id (key + 1), or nullptr. The sheet: **PlayerAnimationSheet_ptr (a
     // shared_ptr).
     const PlayerAnimRow* AnimRow(int anim) {
@@ -126,10 +114,8 @@ namespace {
         if (anim != g_Anim.anim || row != g_AnimRow ||
             (anim != 0 && frame + 0.5f < prevFrame && row->policy != Game::Actors::kPlayerAnimLoops)) {
             if (anim != 0) g_Anim.starts++;
-#ifdef LASAP_TEST
-            const char* name = anim != 0 ? row->fileName.data : nullptr;
-            if (name != nullptr && g_StartLog.size() < 60) g_StartLog.push_back(std::string(name) + "@" + std::to_string(FrameNow()));
-#endif
+            TEST_ONLY(const char* name = anim != 0 ? row->fileName.data : nullptr;)
+            TEST_ONLY(if (name != nullptr && g_StartLog.size() < 60) g_StartLog.push_back(std::string(name) + "@" + std::to_string(FrameNow()));)
         }
         g_AnimRow = row;
         g_Anim.anim = anim;
@@ -292,58 +278,69 @@ namespace AP::GhostNet {
     }
 
     void Handle(const std::string& line) {
-        auto a = Split(line, 18);
-        if (a[0] == "GHOSTS" && a.size() >= 2) {
+        Fields f(line);
+        std::string_view cmd = f.Str();
+        if (cmd == "GHOSTS") {
             // GHOSTS 1|0: whether the client relays positions; with 0 no ghost shows
-            g_Wanted = a[1] == "1";
+            std::string_view on = f.Str();
+            if (on.empty()) return;
+            g_Wanted = on == "1";
             g_SentAny = false;
             if (!g_Wanted) {
                 for (auto& ghost : g_Ghosts) ghost.active = false;
             }
             return;
         }
-        if (a[0] == "GHOSTNAMES" && a.size() >= 2) {
+        if (cmd == "GHOSTNAMES") {
             // GHOSTNAMES 1|0: whether name tags show over the ghosts
-            g_Names = a[1] == "1";
+            std::string_view on = f.Str();
+            if (!on.empty()) g_Names = on == "1";
             return;
         }
-        if (a[0] != "GHOST" || a.size() < 3) return;
-        int n = atoi(a[1].c_str());
-        if (n < 0 || n >= SLOTS) return;
-        Ghost& ghost = g_Ghosts[n];
+        if (cmd != "GHOST") return;
+        std::optional<int> n = f.Num<int>();
+        std::string_view level = f.Str();
+        if (!n || *n < 0 || *n >= SLOTS || level.empty()) return;
+        Ghost& ghost = g_Ghosts[*n];
         g_GhostLines++;
-        if (a[2] == "off") {
+        if (level == "off") {
             // GHOST <n> off: that player left this area or the run
             ghost.active = false;
             return;
         }
-        if (a.size() < 18) return;
         // GHOST <n> <level> <x> <y> <z> <yaw> <anim> <anim frame> <upper anim> <flags> <time> <shapes> <tunic> <eye>
         // <mouth> <ear> <slot name>; time is the sender's clock (ms, 16 bits): unwrapped against the slot's previous
         // line, a new timeline after an off
-        u16 time = static_cast<u16>(strtoul(a[11].c_str(), nullptr, 10));
+        std::optional<float> x = f.Num<float>(), y = f.Num<float>(), z = f.Num<float>(), yaw = f.Num<float>();
+        std::optional<int> anim = f.Num<int>(), animFrame = f.Num<int>(), upperAnim = f.Num<int>(), flags = f.Num<int>();
+        std::optional<u32> time = f.Num<u32>(), shapes = f.Num<u32>();
+        std::optional<int> tunic = f.Num<int>(), eye = f.Num<int>(), mouth = f.Num<int>(), ear = f.Num<int>();
+        std::string_view name = f.Rest();
+        if (!x || !y || !z || !yaw || !anim || !animFrame || !upperAnim || !flags || !time || !shapes || !tunic || !eye ||
+            !mouth || !ear || name.empty())
+            return;
         if (ghost.active && ghost.frames > 0) {
-            ghost.timeMs += static_cast<s16>(static_cast<u16>(time - static_cast<u16>(ghost.timeMs)));
+            ghost.timeMs += static_cast<s16>(static_cast<u16>(static_cast<u16>(*time) - static_cast<u16>(ghost.timeMs)));
         } else {
-            ghost.timeMs = 0x10000 + time;
+            ghost.timeMs = 0x10000 + static_cast<u16>(*time);
             ghost.timelineFrom = ghost.frames;
         }
         ghost.active = true;
-        ghost.level = a[2];
-        ghost.x = strtof(a[3].c_str(), nullptr);
-        ghost.y = strtof(a[4].c_str(), nullptr);
-        ghost.z = strtof(a[5].c_str(), nullptr);
-        ghost.yaw = strtof(a[6].c_str(), nullptr);
-        ghost.anim = atoi(a[7].c_str());
-        ghost.animFrame = atoi(a[8].c_str());
-        ghost.upperAnim = atoi(a[9].c_str());
-        ghost.flags = Flags<GhostFlag>::FromRaw(atoi(a[10].c_str()));
-        ghost.look.shapes = static_cast<u32>(strtoul(a[12].c_str(), nullptr, 10));
-        ghost.look.tunic = atoi(a[13].c_str());
-        ghost.look.eye = atoi(a[14].c_str());
-        ghost.look.mouth = atoi(a[15].c_str());
-        ghost.look.ear = atoi(a[16].c_str());
-        ghost.name = a[17];
+        ghost.level = level;
+        ghost.x = *x;
+        ghost.y = *y;
+        ghost.z = *z;
+        ghost.yaw = *yaw;
+        ghost.anim = *anim;
+        ghost.animFrame = *animFrame;
+        ghost.upperAnim = *upperAnim;
+        ghost.flags = Flags<GhostFlag>::FromRaw(*flags);
+        ghost.look.shapes = *shapes;
+        ghost.look.tunic = *tunic;
+        ghost.look.eye = *eye;
+        ghost.look.mouth = *mouth;
+        ghost.look.ear = *ear;
+        ghost.name = name;
         ghost.receivedMs = NowMs();
 #ifdef LASAP_TEST
         if (ghost.flags.Has(GhostFlag::Started) && g_StartLog.size() < 60) {

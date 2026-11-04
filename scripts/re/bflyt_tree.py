@@ -48,7 +48,7 @@ def main() -> None:
     parser.add_argument("--romfs", type=Path)
     parser.add_argument("--list", action="store_true")
     args = parser.parse_args()
-    args.romfs = args.romfs or local_path("romfs", "LASAP_ROMFS")
+    args.romfs = args.romfs or local_path("romfs")
     sarc = oead.Sarc((args.romfs / "region_common" / "ui" / args.arc).read_bytes())
     if args.list or not args.layout:
         for f in sorted(f.name for f in sarc.get_files() if f.name.endswith((".bflyt", ".bflan"))):

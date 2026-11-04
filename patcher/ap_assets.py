@@ -1,19 +1,23 @@
-"""Files the mod changes the same way for every seed: the title screen and the notice look (StartUp.arc), the
-Archipelago item model, LASR's chest textures and the seashell chest, the map tracker's icons (Game.arc) and the multiplayer ghosts' model. Building them takes native packages (oead's SARC, quicktex,
-Pillow), so scripts/build_assets.py builds them once from a RomFS dump and stores each as a binary patch (bsdiff4)
-against the RomFS file it comes from. The patcher only applies these patches to the player's dump.
+"""The mod's RomFS, the same for every seed (DESIGN.md, Assets): every file the mod changes or adds, built once from a
+RomFS dump by scripts/build_assets.py (LASR's mod generator and the patcher's edits, patcher/modbuild) and stored as a
+binary patch (bsdiff4) against the RomFS file it comes from, or against nothing for a file of its own. The patcher only
+applies these patches to the player's dump.
 
-assets/assets.json maps each file's RomFS path to its patch, its source file and both files' SHA-256."""
+assets/assets.json maps each file's RomFS path to its source file and both files' SHA-256; its patch is
+assets/files/<path>.bsdiff4. assets/build.json holds what the seed's files take from the build (`data`): LASR's tables,
+the mod's Items.gsheet rows, the map tracker's places, the messages Randomize Text shuffles, and the shape of the
+patch the mod is built for (las_ap_patch.patch_shape)."""
 import hashlib
 import json
-import tempfile
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 import bsdiff4
 
 ASSET_DIR = Path(__file__).resolve().parent / "assets"
 MANIFEST = ASSET_DIR / "assets.json"
+DATA = ASSET_DIR / "build.json"
+PATCHES = ASSET_DIR / "files"
 UI = "region_common/ui/StartUp.arc"
 GAME = "region_common/ui/Game.arc"  # ap_map_icons.ARCHIVE
 ACTOR = "region_common/actor"
@@ -23,8 +27,13 @@ CHEST = f"{ACTOR}/ObjTreasureBox.bfres"
 LASR_CHESTS = tuple(f"{ACTOR}/ObjTreasureBox{kind}.bfres" for kind in ("Junk", "Key", "LifeUpgrade"))
 SEASHELL_CHEST = f"{ACTOR}/ObjTreasureBoxSeashell.bfres"  # ap_chest.FILE_NAME
 CHEST_TEXTURES = LASR_CHESTS + (SEASHELL_CHEST,)
-SOURCES = {UI: UI, GAME: GAME, MODEL: f"{ACTOR}/ItemShellRader.bfres", PLAYER_GHOST: f"{ACTOR}/Playerlink.bfres",
-           **{path: CHEST for path in CHEST_TEXTURES}}
+BALLAD_LOOP = "region_common/audio/stream/BGM_ENSEMBLE_LOOP.bfstm"  # ap_ballad.LOOPED
+# The files the mod adds that come from another RomFS file; the others it adds come from nothing
+SOURCES = {MODEL: f"{ACTOR}/ItemShellRader.bfres", PLAYER_GHOST: f"{ACTOR}/Playerlink.bfres",
+           **{path: CHEST for path in CHEST_TEXTURES},
+           BALLAD_LOOP: "region_common/audio/stream/BGM_ENSEMBLE_INST.bfstm"}
+
+_cache: Dict[Path, dict] = {}
 
 
 class AssetError(Exception):
@@ -35,52 +44,46 @@ def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def build(romfs: Path) -> Dict[str, bytes]:
-    """Every asset, built from the RomFS dump with LASR's and the patcher's own code (needs the native packages)."""
-    import ap_chest
-    import ap_map_icons
-    import ap_model
-    import ap_player_ghost
-    import ap_ui
-    from RandomizerCore.Randomizers.chests import CHEST_TEXTURES as LASR_CHEST_TEXTURES
-    from RandomizerCore.Tools.bntx_tools import (createChestBfresWithCustomTexturesIfMissing,
-                                                 createRandomizerTitleScreenArchive)
-    from RandomizerCore.Tools.oead_tools import SARC
-
-    built = {}
-    sarc = SARC(str(romfs / UI))
-    createRandomizerTitleScreenArchive(sarc)  # LASR's title screen logo
-    built[UI] = ap_ui.build(bytes(sarc.repack()))
-    built[MODEL] = ap_model.build(str(romfs / SOURCES[MODEL]))
-    built[PLAYER_GHOST] = ap_player_ghost.build(str(romfs / SOURCES[PLAYER_GHOST]))
-    built[GAME] = ap_map_icons.build((romfs / GAME).read_bytes())
-    with tempfile.TemporaryDirectory() as tmp:
-        # LASR's own chests: it counts them, and las_ap_patch adds the seashell chest to its table
-        lasr_chests = {kind: name for kind, name in LASR_CHEST_TEXTURES.items() if name != ap_chest.FILE_NAME}
-        createChestBfresWithCustomTexturesIfMissing(str(romfs / CHEST), tmp, lasr_chests)
-        for path in LASR_CHESTS:
-            built[path] = (Path(tmp) / Path(path).name).read_bytes()
-    built[SEASHELL_CHEST] = ap_chest.build(str(romfs / CHEST))
-    return built
+def _json(path: Path) -> dict:
+    if path not in _cache:
+        _cache[path] = json.loads(path.read_text(encoding="utf-8"))
+    return _cache[path]
 
 
-def write(romfs: Path, built: Dict[str, bytes]) -> None:
-    """Stores the assets as patches against the RomFS files they come from."""
-    ASSET_DIR.mkdir(exist_ok=True)
-    for old in ASSET_DIR.glob("*.bsdiff4"):
+def manifest() -> dict:
+    return _json(MANIFEST)
+
+
+def data() -> dict:
+    return _json(DATA)
+
+
+def patch_path(path: str) -> Path:
+    return PATCHES / f"{path}.bsdiff4"
+
+
+def write(romfs: Path, built: Dict[str, bytes], build_data: dict) -> None:
+    """Stores the mod's files as patches against the RomFS files they come from, and the build's data."""
+    for old in PATCHES.rglob("*.bsdiff4"):
         old.unlink()
-    manifest = {}
-    for path, data in sorted(built.items()):
-        source = (romfs / SOURCES[path]).read_bytes()
-        patch = Path(path).name + ".bsdiff4"
-        (ASSET_DIR / patch).write_bytes(bsdiff4.diff(source, data))
-        manifest[path] = {"source": SOURCES[path], "source_sha256": _sha256(source), "patch": patch,
-                          "sha256": _sha256(data)}
-    MANIFEST.write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
+    files = {}
+    for path, content in sorted(built.items()):
+        source = SOURCES.get(path, path)
+        old = (romfs / source).read_bytes() if (romfs / source).is_file() else None
+        target = patch_path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(bsdiff4.diff(old or b"", content))
+        files[path] = {"source": source if old is not None else None,
+                       "source_sha256": _sha256(old) if old is not None else None, "sha256": _sha256(content)}
+    MANIFEST.write_text(json.dumps(files, indent=1) + "\n", encoding="utf-8")
+    DATA.write_text(json.dumps(build_data, indent=1) + "\n", encoding="utf-8")
+    _cache.clear()
 
 
-def _source(romfs: Path, entry: Dict[str, str]) -> bytes:
+def _source(romfs: Path, entry: Dict[str, Optional[str]]) -> bytes:
     """The RomFS file an asset comes from; AssetError unless it is the file of game version 1.0.0."""
+    if entry["source"] is None:
+        return b""
     try:
         source = (romfs / entry["source"]).read_bytes()
     except OSError:
@@ -93,15 +96,20 @@ def _source(romfs: Path, entry: Dict[str, str]) -> bytes:
 
 def load(romfs: Path, path: str) -> bytes:
     """One asset, patched from the player's RomFS dump; checked against the build's checksums."""
-    entry = json.loads(MANIFEST.read_text(encoding="utf-8"))[path]
-    source = _source(romfs, entry)
-    data = bsdiff4.patch(source, (ASSET_DIR / entry["patch"]).read_bytes())
-    if _sha256(data) != entry["sha256"]:
+    entry = manifest()[path]
+    content = bsdiff4.patch(_source(romfs, entry), patch_path(path).read_bytes())
+    if _sha256(content) != entry["sha256"]:
         raise AssetError(f"Patching {path} gave a different file than the release build.")
-    return data
+    return content
 
 
 def install(romfs: Path, out_romfs: Path, path: str) -> None:
     target = out_romfs / path
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(load(romfs, path))
+
+
+def install_all(romfs: Path, out_romfs: Path) -> None:
+    """The mod's RomFS: every asset."""
+    for path in manifest():
+        install(romfs, out_romfs, path)

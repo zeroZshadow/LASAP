@@ -2,6 +2,8 @@
 // The module's settings: sd:/config/lasr-exl/config.ini, which the patcher writes (DESIGN.md).
 #include "lib.hpp"
 #include <string>
+#include <string_view>
+#include <vector>
 
 enum class DamageMode { Normal, Ohko, None };
 enum class Stealing { Normal, Always, Never };
@@ -51,20 +53,28 @@ struct PatchConfig {
         bool easy_fishing = false;
         FpsDrops no_30fps_drops = FpsDrops::Emulator;
         bool instant_pickups = false;  // items Link finds and items from the server show as a popup, not an item-get
-        bool bouncy_items = false;  // the drop actor is a ball, launched at random (ap_drop.cpp; Bouncy Items)
     } tweaks;
 
     struct {
         std::string seed_hash;
         int port = 0;  // 0: AP::PORT
-        // The seashell hunt (AP::SEASHELL_GOAL_FLAG, ap_egg.cpp): the Wind Fish's Egg opens with seashells_required
-        // seashells, at once with none. Off: the instruments goal, where the egg needs the Ballad.
+        // The seashell hunt (ap_egg.cpp): the Wind Fish's Egg opens with seashells_required seashells, at once with
+        // none. Off: the instruments goal, where the egg needs the Ballad.
         bool seashell_hunt = false;
         int seashells_required = 0;
+        // The instruments the egg needs on the instruments goal (ap_egg.cpp), as the sign at its stairs says
+        // (ap_text.cpp)
+        int instruments_required = 8;
+        // A new save's name (ap_text.cpp), as the game takes it; empty: the game's "Link"
+        std::string save_name;
     } archipelago;
 
-    // Reads config.ini: [section] lines, then key = value lines (case and spaces ignored); ; and # start comments. A
-    // blank line ends the section.
+    // The options the RomFS holds both ways, which the module picks (ap_options.cpp): those set true in [options].
+    std::vector<std::string> options;
+    bool Option(std::string_view name) const;
+
+    // Reads config.ini: [section] lines, then key = value lines (case and spaces ignored, but in save_name's value,
+    // which only loses its spaces at either end); ; and # start comments. A blank line ends the section.
     void parse(const std::string& text);
 };
 

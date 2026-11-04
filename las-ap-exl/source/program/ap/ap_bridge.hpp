@@ -2,6 +2,7 @@
 // The bridge's game side in parts, shared by its files (ap_game.cpp and the files named below) and by the test build's
 // DBG commands (test_commands.cpp).
 #include "ap/location_id.hpp"
+#include "config/fields.hpp"
 #include "game/data/item_id.hpp"
 #include "game/stl.hpp"
 #include "lib.hpp"
@@ -11,7 +12,7 @@
 #include <string>
 #include <vector>
 
-namespace Game { struct Framework; struct Node; struct Vec3; namespace Event { struct EventRequest; } }
+namespace Game { struct ActorParams; struct Framework; struct Node; struct Vec3; namespace Event { struct EventRequest; } }
 
 namespace AP::Bridge {
     using Game::Data::ItemId;
@@ -67,7 +68,7 @@ namespace AP::Bridge {
     int GetRecvCount();
     void SetRecvCount(int n);
     // The item of an Items.gsheet key; none for an unknown key.
-    std::optional<ItemId> ItemIdFromKey(const std::string& key);
+    std::optional<ItemId> ItemIdFromKey(std::string_view key);
     bool IsTrapKey(const std::string& key);
     // The chamber stones owned (PanelPieceBits), bit i for stone i.
     u64 ChamberStoneBits();
@@ -78,9 +79,9 @@ namespace AP::Bridge {
     // Secret Medicines waiting (AP::MEDICINE_FLAG), given one at a time once Link has none.
     int GetMedicineWaiting();
     void TickMedicine();
-    // AP locations that keep their vanilla item (VANILLA_PATH): the game adds the item with this id and index (-1:
+    // AP locations that keep their vanilla item (the seed file's kept): the game adds the item with this id and index (-1:
     // any) when the location is collected, or, for a companion, sets this flag (no item).
-    struct KeptLocation { std::optional<ItemId> item; int index; LocationId location; std::string flag; };
+    struct KeptLocation { std::optional<ItemId> item; int index; LocationId location; std::string_view flag; };
     const KeptLocation* FindKept(LocationId location);
     // The server's item for a location that keeps its vanilla item; the item to show, if any.
     std::optional<ItemId> GrantKept(const KeptLocation& kept);
@@ -90,6 +91,19 @@ namespace AP::Bridge {
     // Reports a companion once the flag its joining sets is set.
     void TickKeptFlags();
 
+    // ---- Level jumps led elsewhere (ap_jumps.cpp) ----
+
+    void LoadJumps();
+    // The overworld map's dungeon markers that follow shuffled doors (the seed file's markers), read at boot, before the game
+    // loads the map's sheets, whose rows it swaps then.
+    void LoadMarkers();
+
+    // ---- The start state (ap_start.cpp) ----
+
+    void LoadStart();
+    // Gives a new save its starting items, and sets its start flags once Link has left Tarin's house.
+    void TickStart();
+
     // ---- Item-gets and popups (ap_itemget.cpp) ----
 
     // A received item waiting to be shown; with a sender, it shows "You got <item> from <sender>!".
@@ -98,6 +112,7 @@ namespace AP::Bridge {
     struct ItemShow {
         ItemId id; std::string item; std::string sender;
         bool found = false; std::string toast; u64 at = 0;
+        std::optional<ItemId> model;  // the item whose model the popup shows, when not this one's
     };
     void QueueShow(const ItemShow& show);
     // A received trap waits like an item display, then plays its effect. location: the location that held it; none
@@ -142,9 +157,15 @@ namespace AP::Bridge {
     std::string DropState();
 #endif
 
-    // ---- The pose of items held up in item-gets (ap_item_pose.cpp) ----
+    // ---- The models the locations show (ap_models.cpp) ----
 
-    void InstallItemPoseHooks();
+    void InstallModelHooks();
+    // The model an actor with a location's token among its LEB parameters shows (model file, model name): the location's
+    // item's, else the Archipelago model's; none without a token.
+    std::optional<std::pair<std::string_view, std::string_view>> TokenModel(const Game::ActorParams& params);
+    // The item whose model and pose a held-up item shows: the location's item for the placeholder just found and for
+    // LASR's rows that stand in for a location's item, else the item itself.
+    ItemId ShownItem(ItemId item);
 
     // ---- NPC models held up in item-gets (ap_held_model.cpp) ----
 
@@ -171,11 +192,12 @@ namespace AP::Bridge {
     // locations in logic for the items received; DOORS CLEAR, then DOORS <local id>...: the dungeon locations whose
     // dungeon's door is reachable for them; HINTED CLEAR, then HINTED <local id>...: the locations holding a server
     // hint not yet found.
-    void NoteServerChecks(const std::vector<std::string>& a);
-    void NoteInLogic(const std::vector<std::string>& a);
-    void NoteDoors(const std::vector<std::string>& a);
-    void NoteHinted(const std::vector<std::string>& a);
-    // In-game hints the client makes server hints of (HINTS_PATH).
+    // f holds the ids, after the line's command.
+    void NoteServerChecks(Fields& f);
+    void NoteInLogic(Fields& f);
+    void NoteDoors(Fields& f);
+    void NoteHinted(Fields& f);
+    // In-game hints the client makes server hints of (the seed file's hints).
     void LoadHints();
     // Sends HINT and DUNGEON for the hints read and the dungeons entered and not yet reported on this connection, or
     // for all.
@@ -197,8 +219,10 @@ namespace AP::Bridge {
     // Once per tick: lines that wait for a loaded save, then the new ones.
     void PumpLines();
 
-    // ---- The seashell hunt's egg (ap_egg.cpp) ----
+    // ---- The goal's egg (ap_egg.cpp) ----
 
+    // The egg's instrument checks answer the goal (Inventory.HasAllInstruments).
+    void InstallEggHooks();
     // On a seashell hunt: plays the Wind Fish's Egg's opening once Link stands at the egg holding the seashells.
     void TickEgg();
 

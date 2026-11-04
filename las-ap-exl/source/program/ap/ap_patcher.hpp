@@ -11,14 +11,9 @@ namespace AP {
     // Its AddItemID index is the location's local id.
     constexpr ItemId PLACEHOLDER_ITEM_ID{71};
     constexpr const char* PLACEHOLDER_KEY = "ArchipelagoItem";
-    // Model variants of the placeholder (ArchipelagoItem_<item key>) take item ids that neither the game nor LASR
-    // uses (LASR's Dampe and shop dummies take 63-70, its traps 127-131 and its trade items 200-202); the item-get
-    // picks its model by id. They count as the placeholder too. Must match VARIANT_ITEM_IDS in the patcher.
-    constexpr bool IsPlaceholderItem(ItemId item) {
-        int id = static_cast<int>(item);
-        return (id >= static_cast<int>(PLACEHOLDER_ITEM_ID) && id <= 99) || id == 103 || id == 107 || id == 109 ||
-               id == 118 || id == 119 || (id >= 132 && id <= 199) || (id >= 203 && id <= 255);
-    }
+    // The Archipelago model, which the placeholder shows (patcher ap_model.py: FILE_NAME, MODEL_NAME)
+    constexpr const char* PLACEHOLDER_MODEL_FILE = "ItemArchipelago.bfres";
+    constexpr const char* PLACEHOLDER_MODEL_NAME = "ShellRader";
     // The game's TCP port; config.ini can set another ([archipelago] port), e.g. for a second modded game on one PC.
     constexpr int PORT = 43384;
     constexpr int PROTOCOL_VERSION = 2;
@@ -31,9 +26,6 @@ namespace AP {
     // as SIGN.
     constexpr const char* SIGN_LABEL = "SBMountTamaranch";
     constexpr const char* SIGN_FLAG = "APSignRead";
-    // The egg's event checks this flag on a seashell hunt (patcher ap_goal.SEASHELL_FLAG). It is no save flag:
-    // the module answers it set while Link holds config.ini's [archipelago] seashells_required seashells.
-    constexpr std::string_view SEASHELL_GOAL_FLAG = "APSeashellGoal";
     // Common.bfevfl entry the patcher adds: Link's item-get of the placeholder with RECEIVED_LABEL as its message
     // entry. Received items play as this event; the module swaps in the received item and its text.
     constexpr const char* ITEM_EVENT_ENTRY = "APItemGet";
@@ -55,24 +47,22 @@ namespace AP {
     // Index the ghost in Tarin's house adds bombs, arrows and powder with (patcher ap_ghost.py): the count is what
     // Link's bombs, arrows or powder are topped up to, not an amount to add.
     constexpr int AMMO_REFILL_INDEX = 1000;
-    // Location names the patcher writes next to config.ini.
-    constexpr const char* NAMES_PATH = "sd:/config/lasr-exl/ap_names.txt";
-    // Per seashell, heart piece, golden leaf, heart container, bottle and chamber stone source: its bit and its
-    // location (ap_indices.cpp).
-    constexpr const char* INDICES_PATH = "sd:/config/lasr-exl/ap_indices.txt";
-    // AP locations that keep their vanilla item: "<item key> <index> <local id>" lines (the Trendy Game's prizes) and
-    // "F <flag> <local id>" lines (the companions).
-    constexpr const char* VANILLA_PATH = "sd:/config/lasr-exl/ap_vanilla.txt";
-    // Item ids that show another item's model (the placeholder's variants, LASR's Dampe rewards): "<item id> <the
-    // item's id>" lines; the item-get holds them up in that item's pose (ap_item_pose.cpp).
-    constexpr const char* POSES_PATH = "sd:/config/lasr-exl/ap_poses.txt";
-    // Per drop actor, its model's bounds: "<LEB key> <centre x> <y> <z> <radius>" lines (patcher ap_drop.py,
-    // write_drops; ap_drop.cpp); the patcher's checks want one for every drop actor.
-    constexpr const char* DROPS_PATH = "sd:/config/lasr-exl/ap_drops.txt";
-    // In-game hints that become server hints when read: "<n> <flag> <slot> <location id>" lines (patcher ap_hints.py).
-    constexpr const char* HINTS_PATH = "sd:/config/lasr-exl/ap_hints.txt";
-    // The map tracker's icons, written by the patcher when the option is on (map_tracker.cpp).
-    constexpr const char* MAP_PATH = "sd:/config/lasr-exl/ap_map.txt";
+    // The seed file next to config.ini (patcher seed_file.py; config/seed_file.hpp): the per-seed tables, one section
+    // each, whose lines the loaders name (DESIGN.md, Seed file).
+    constexpr const char* SEED_PATH = "sd:/config/lasr-exl/ap_seed.txt";
+    // A location's actors name this and its local id as their model file and model name (patcher MODEL_TOKEN).
+    constexpr std::string_view MODEL_TOKEN = "ap:";
+    // A location's chests name this and its local id as their model file (patcher CHEST_TOKEN); without a C line
+    // they are the plain chest.
+    constexpr std::string_view CHEST_TOKEN = "apchest:";
+    constexpr const char* PLAIN_CHEST_FILE = "ObjTreasureBox.bfres";
+    // Set once the starting items are given (patcher: START_ITEMS_FLAG). The start flags are set while START_MARKER is
+    // unset, which is one of them (patcher: START_MARKER).
+    constexpr const char* START_ITEMS_FLAG = "APStartItems";
+    constexpr const char* START_MARKER = "FirstClear";
+    // Message label (Hint.msbt for owl statues, System.msbt for books) and event flag of source n: the prefix and n.
+    // Must match the patcher (ap_hints.FLAG_PREFIX).
+    constexpr std::string_view HINT_PREFIX = "APHint";
     // Event flag and Place.msbt label of an overworld icon: the prefix and the icon's group. Must match the patcher.
     constexpr const char* MAP_FLAG_PREFIX = "APMap";
     // The Place.msbt entry the dungeon map's dots are named with (patcher ap_map.DOT_LABEL)

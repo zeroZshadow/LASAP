@@ -14,6 +14,13 @@ namespace {
         return s;
     }
 
+    // Without spaces at either end.
+    std::string Trimmed(const std::string& s) {
+        size_t start = s.find_first_not_of(" \t");
+        if (start == std::string::npos) return "";
+        return s.substr(start, s.find_last_not_of(" \t") - start + 1);
+    }
+
     void ParseMovement(PatchConfig& config, const std::string& key, const std::string& value) {
         Logging.Log("%s | %s", key.c_str(), value.c_str());
         auto& movement = config.movement;
@@ -61,8 +68,11 @@ namespace {
             tweaks.no_30fps_drops = on ? FpsDrops::On : value == "emulator" ? FpsDrops::Emulator : FpsDrops::Off;
         }
         else if (key == "instant_pickups" && on) tweaks.instant_pickups = true;
-        else if (key == "bouncy_items" && on) tweaks.bouncy_items = true;
     }
+}
+
+bool PatchConfig::Option(std::string_view name) const {
+    return std::find(options.begin(), options.end(), name) != options.end();
 }
 
 void PatchConfig::parse(const std::string& text) {
@@ -88,11 +98,14 @@ void PatchConfig::parse(const std::string& text) {
         else if (section == "damage") ParseDamage(*this, key, value);
         else if (section == "randomizer") ParseRandomizer(*this, key, value);
         else if (section == "tweaks") ParseTweaks(*this, key, value);
+        else if (section == "options" && on) options.push_back(key);
         else if (section == "archipelago") {
             if (key == "seed_hash") archipelago.seed_hash = value;
             else if (key == "port") archipelago.port = std::atoi(value.c_str());
             else if (key == "seashell_hunt") archipelago.seashell_hunt = on;
             else if (key == "seashells_required") archipelago.seashells_required = std::atoi(value.c_str());
+            else if (key == "instruments_required") archipelago.instruments_required = std::atoi(value.c_str());
+            else if (key == "save_name") archipelago.save_name = Trimmed(line.substr(eq + 1));
         }
     }
 }

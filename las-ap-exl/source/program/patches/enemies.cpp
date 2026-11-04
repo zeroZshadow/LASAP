@@ -3,6 +3,7 @@
 #include "game/addr.hpp"
 #include "game/hooks/level.hpp"
 #include "hooks.hpp"
+#include "test_only.hpp"
 #ifdef LASAP_TEST
 #include "test/test.hpp"
 #endif
@@ -174,9 +175,7 @@ namespace {
     void RandomizeEnemy(Game::LebActorRecord* record) {
         std::vector<u16> vec = getValidEnemies(record->actorId);
         if (vec.size() > 1) {
-#ifdef LASAP_TEST
-            u16 vanilla_id = record->actorId;
-#endif
+            TEST_ONLY(u16 vanilla_id = record->actorId;)
             if (!isRequiredKill(record->key)) {
                 u16 new_enemy;
                 do {
@@ -196,10 +195,8 @@ namespace {
                 float scale_factor = exl::util::GetRandomF32(0.5f, 1.5f);
                 record->scale = {scale_factor, scale_factor, scale_factor};
             }
-#ifdef LASAP_TEST
-            AP::Test::OnEnemy(vanilla_id, record->actorId,
-                              global_config.randomizer.enemy_sizes ? record->scale.x : 0.0f);
-#endif
+            TEST_ONLY(AP::Test::OnEnemy(vanilla_id, record->actorId,
+                                        global_config.randomizer.enemy_sizes ? record->scale.x : 0.0f);)
         }
     }
 

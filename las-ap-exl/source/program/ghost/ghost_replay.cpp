@@ -14,6 +14,7 @@
 // up) plays too, so the same animation started again is not missed.
 #include "game/math.hpp"
 #include "ghost/ghost_puppets_impl.hpp"
+#include "test_only.hpp"
 #include <algorithm>
 #include <cmath>
 
@@ -179,9 +180,7 @@ namespace {
         float fade = tr.shownFrames > 0 && dt > 0 ? static_cast<float>(std::exp(-dt / kCorrectMs)) : 0;
         tr.error = Game::Vec3{tr.error.x * fade, tr.error.y * fade, tr.error.z * fade};
         if (std::fabs(tr.error.x) + std::fabs(tr.error.y) + std::fabs(tr.error.z) > kCorrectMax) {
-#ifdef LASAP_TEST
-            p.stats.snaps++;
-#endif
+            TEST_ONLY(p.stats.snaps++;)
             tr.error = Game::Vec3{};
         }
         Game::Vec3 pos{r.pos.x + tr.error.x, r.pos.y + tr.error.y, r.pos.z + tr.error.z};

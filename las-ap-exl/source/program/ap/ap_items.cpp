@@ -3,13 +3,12 @@
 #include "ap/ap.hpp"
 #include "ap/ap_bridge.hpp"
 #include "ap/ap_patcher.hpp"
-#include "config/file_handler.hpp"
+#include "config/seed_file.hpp"
 #include "game/data/inventory.hpp"
 #include "game/hooks/eventflags.hpp"
 #include "game/hooks/inventory.hpp"
 #include "game/sym.hpp"
 #include "game/time.hpp"
-#include <sstream>
 
 namespace AP::Bridge {
 namespace {
@@ -95,9 +94,9 @@ namespace {
         }
     }
 
-    std::optional<ItemId> ItemIdFromKey(const std::string& key) {
-        for (const auto& [id, name] : Inventory::kItemNames) {
-            if (name == key) return id;
+    std::optional<ItemId> ItemIdFromKey(std::string_view key) {
+        for (const Game::Data::ItemKey& item : Game::Data::kItemKeys) {
+            if (item.key == key) return item.id;
         }
         return std::nullopt;
     }
@@ -221,31 +220,27 @@ namespace {
         return g_KeptAddedItem == item && g_KeptAddedAt >= since ? g_KeptAddedLocation : std::nullopt;
     }
 
-    // "<item key> <index> <local id>" and "F <flag> <local id>" lines (patcher las_ap_patch.write_vanilla)
+    // The seed file's kept locations: "<item key> <index> <local id>" lines (the Trendy Game's prizes) and "F <flag>
+    // <local id>" lines (the companions; patcher las_ap_patch.kept_lines)
     void LoadKept() {
-        std::string text;
-        if (R_FAILED(FileHandler::ReadFile(AP::VANILLA_PATH, text))) return;
-        std::stringstream lines(text);
-        std::string line;
-        while (std::getline(lines, line)) {
-            std::stringstream ss(line);
-            std::string key;
-            if (line.starts_with("F ")) {
-                std::string flag;
-                LocationId location{};
-                if (ss >> key >> flag >> location) g_Kept.push_back({std::nullopt, -1, location, flag});
-                continue;
+        SeedFile::ForEach("kept", [](Fields& f) {
+            std::string_view key = f.Str();
+            if (key == "F") {
+                std::string_view flag = f.Str();
+                auto location = f.Num<LocationId>();
+                if (location) g_Kept.push_back({std::nullopt, -1, *location, flag});
+                return;
             }
-            int index;
-            LocationId location{};
-            if (!(ss >> key >> index >> location)) continue;
+            auto index = f.Num<int>();
+            auto location = f.Num<LocationId>();
+            if (!index || !location) return;
             std::optional<ItemId> item = ItemIdFromKey(key);
             if (!item) {
-                AP::Log("unknown kept item " + key);
-                continue;
+                AP::Log("unknown kept item " + std::string(key));
+                return;
             }
-            g_Kept.push_back({item, index, location, ""});
-        }
+            g_Kept.push_back({item, *index, *location, {}});
+        });
         Logging.Log("[AP] kept locations: %zu", g_Kept.size());
     }
 
@@ -253,7 +248,7 @@ namespace {
         if (!PlayerReady() || NowMs() - g_KeptFlagsPolled < kKeptFlagPollMs) return;
         g_KeptFlagsPolled = NowMs();
         for (const auto& kept : g_Kept) {
-            if (!kept.flag.empty() && !CollectedHere(kept.location) && EventFlags::CheckFlag(kept.flag.c_str())) {
+            if (!kept.flag.empty() && !CollectedHere(kept.location) && EventFlags::CheckFlag(kept.flag)) {
                 RecordCheck(kept.location);
             }
         }

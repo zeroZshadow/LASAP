@@ -40,7 +40,7 @@ namespace {
         static const char* const kLookNames[kLooks] = {"in", "partly", "out", "collected"};
         size_t skipped = 0;
         for (const Group& group : Groups()) {
-            for (LocationId id : IdsOf(group.ids)) skipped += IsLocationSkipped(id) ? 1 : 0;
+            for (LocationId id : group.ids) skipped += IsLocationSkipped(id) ? 1 : 0;
         }
         std::string drawn;
         if (g_MarkerPage != nullptr) {
@@ -94,9 +94,14 @@ namespace {
     }
 
     std::string State() {
+        // the groups that show an icon: those with locations
         size_t looks[kLooks] = {};
-        size_t groups = Groups().size();
-        for (size_t group = 0; group < groups; group++) looks[GroupLook(group)]++;
+        size_t groups = 0;
+        for (size_t group = 0; group < Groups().size(); group++) {
+            if (GroupIds(group).empty()) continue;
+            looks[GroupLook(group)]++;
+            groups++;
+        }
         size_t open = groups - looks[Collected];
         return "map=" + std::string(g_Enabled ? "1" : "0") + " icons=" + std::to_string(open) + "/" +
                std::to_string(groups) + " looks=" + std::to_string(looks[InLogic]) + "," +
@@ -139,7 +144,7 @@ namespace {
         size_t shown = 0, inRoom = 0;
         for (const auto& dm : g_DotMarkers) {
             const Dot& dot = Dots()[dm.dot];
-            auto room = g_Rooms.find(TextOf(dot.room));
+            auto room = g_Rooms.find(dot.room);
             if (room != g_Rooms.end()) {
                 const Map::Area* area = room->second.first;
                 inRoom += dot.x >= area->min.x && dot.x <= area->max.x && dot.z >= area->min.z && dot.z <= area->max.z;

@@ -33,7 +33,7 @@ Playable on Ryujinx and Eden on Windows. Linux, macOS and a Switch are untested,
 | Part | Where | What it does |
 |---|---|---|
 | Archipelago world | `apworld/las` | Items, locations, LASR's logic as AP rules, options; writes an `.aplas` patch per slot |
-| Patcher | `patcher/las_ap_patch.py` | Turns an `.aplas` plus your RomFS dump into an Atmosphère/emulator mod (LASR's mod generator) |
+| Patcher | `patcher/las_ap_patch.py` | Turns an `.aplas` plus your RomFS dump into an Atmosphère/emulator mod (its files built with LASR's mod generator, `patcher/modbuild`) |
 | Game module | `las-ap-exl` | exlaunch code in the game: reports checks, applies received items, talks TCP on port 43384 |
 | Client | `apworld/las/client.py` | Patches and installs the mod from an `.aplas`, connects the AP server and the game |
 
@@ -80,8 +80,8 @@ To build locally:
 
 ## Licenses
 
-- This project's own code (`apworld/las` but `data/`, `patcher/*.py`, `scripts`, `docker`): GPL-2.0-or-later, see [LICENSE](LICENSE).
+- This project's own code (`apworld/las` but `data/`, `patcher/*.py`, `patcher/modbuild/*.py`, `scripts`, `docker`): GPL-2.0-or-later, see [LICENSE](LICENSE).
 - `las-ap-exl`: GPL-2.0, from exlaunch and Owen-Splat's fork; the socket code follows open-dread-rando-exlaunch.
-- `patcher/RandomizerCore` and `apworld/las/data`: MIT, from LASR (see the LICENSE files in those folders). The bntx editor (`RandomizerCore/Tools/bntx_editor`) is GPLv3; only the asset build (`scripts/build_assets.py`) uses it, and the release leaves it out.
+- `patcher/modbuild/RandomizerCore`, `patcher/data` and `apworld/las/data`: MIT, from LASR (see `patcher/LICENSE-LASR.txt` and the LICENSE files in those folders). The bntx editor (`RandomizerCore/Tools/bntx_editor`) is GPLv3; only the asset build (`scripts/build_assets.py`) uses it, and the release leaves the asset build out.
 
 Link's Awakening is © Nintendo. This project is not affiliated with Nintendo and contains no game files.

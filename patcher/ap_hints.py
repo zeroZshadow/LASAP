@@ -1,22 +1,16 @@
 """In-game hints (DESIGN.md, In-game hints): owl statues and library books say the patch's `hints`.
 
-Each source shows its own message, Hint:APHint<n> for owl statues and System:APHint<n> for books (n: the source's
-place in SOURCES), with the window style of the text it replaces. A hint that names a location (server mode) sets the
-event flag APHint<n> after its text; ap_hints.txt tells the module which location each flag hints.
+In every patch each source shows its own message (modbuild/ap_hint_edits.py), Hint:APHint<n> for owl statues and System:APHint<n> for
+books (n: the source's place in SOURCES): a copy of the text it replaces, with its window style. The module shows the
+seed's hint in it instead and sets the event flag APHint<n> (FLAGS), from the seed file's hints (`lines`), which also names the
+location a server hint makes, and names a book with a hint in its question.
 
 Owl statues that share their text get their own: the Tail Cave statue in room 04B (which shares 05F's entry) and the
 three Color Dungeon statues get entries of their own, as LASR's Owl Gifts give them (owls.py), each with its own copy
 of the statue's events. With Owl Gifts on, the gift follows the hint."""
-from pathlib import Path
-
-from RandomizerCore.Tools import event_tools
-
-FILE_NAME = "ap_hints.txt"  # next to config.ini; AP::HINTS_PATH in the module
-FLAG_PREFIX = "APHint"  # flag and message label prefix
+FLAG_PREFIX = "APHint"  # flag and message label prefix; AP::HINT_PREFIX
 LINE_WIDTH = 42  # characters per line
 PAGE_LINES = 3  # lines per text box
-PAGE_BREAK = "[1:4][0:4]"  # wait for input, then a new box
-OWL_COLOR, WHITE = "[0:3 62-CF-FF-FF]", "[0:3 ED-ED-ED-FF]"  # the owl statues' own colors
 
 FIELD_FLOW, DUNGEON_FLOW, BOOK_FLOW = "FieldOwlStatue.bfevfl", "DungeonOwlStatue.bfevfl", "Book.bfevfl"
 # Overworld owl statues: their message (Hint.msbt) in FieldOwlStatue.bfevfl
@@ -76,7 +70,8 @@ BOOKS = {
     "book-Blue2": "ReadWarpRule",
     "book-Red1": "ReadLiftBomb",
 }
-# The books' question before they are read (System.msbt) gets a title that fits a hint, numbered in BOOKS' order.
+# The books' question before they are read (System.msbt): the module names a book with a hint "Koholint Lost and
+# Found, Volume <n>" in its first line, numbered in BOOKS' order.
 BOOK_PROMPTS = {
     "book-Blue4": "CheckShieldBook",
     "book-Green1": "CheckItemSelect",
@@ -85,15 +80,16 @@ BOOK_PROMPTS = {
     "book-Blue2": "CheckWarpRule",
     "book-Red1": "CheckLiftBomb",
 }
-BOOK_PROMPT = '"Koholint Lost and Found, Volume {}"\n\nRead this book?[1:7][0:4]Yes[0:4][1:9]No'
 SOURCES = (*FIELD_OWLS, *DUNGEON_OWLS, *BOOKS)  # flag and label numbers, in this order
 BEAK_ITEM_TYPE = 63  # Inventory.HasItem itemType of the dungeon's stone beak
 
-FLAGS: list = []  # the flags of the hints with a location, added to GlobalFlags by las_ap_patch
 
 
 def label(source: str) -> str:
     return f"{FLAG_PREFIX}{SOURCES.index(source)}"
+
+
+FLAGS = [label(source) for source in SOURCES]  # set when the source's hint shows; added to GlobalFlags by modbuild/mod.py
 
 
 def clean(text: str) -> str:
@@ -128,144 +124,20 @@ def wrap(text: str) -> list:
     return [lines[i:i + PAGE_LINES] for i in range(0, len(lines), PAGE_LINES)]
 
 
-def message(text: str, owl: bool) -> str:
-    """The MSBT text: pages broken by PAGE_BREAK, owl statues' text in their color, ending with a wait for input."""
-    start, end = (OWL_COLOR, WHITE) if owl else ("", "")
-    return PAGE_BREAK.join(start + "\n".join(page) + end for page in wrap(text)) + "[1:4]"
-
-
-def prepare(hints: dict) -> None:
-    """Before LASR runs: the flags it adds to GlobalFlags."""
-    FLAGS[:] = [label(source) for source in SOURCES if "location" in hints.get(source, {})]
-
-
-def add(files, config_dir: Path, hints: dict) -> None:
-    hints = {source: hint for source, hint in hints.items() if source in SOURCES}
-    flags = {source: label(source) for source, hint in hints.items() if "location" in hint}
-    _field_owls(files, hints, flags)
-    _dungeon_owls(files, hints, flags)
-    _books(files, hints, flags)
-    _text(files, "Hint.msbt", {source: hint for source, hint in hints.items() if source not in BOOKS}, owl=True)
-    _text(files, "System.msbt", {source: hint for source, hint in hints.items() if source in BOOKS}, owl=False)
-    lines = [f"{SOURCES.index(source)} {flag} {int(hints[source]['player'])} {int(hints[source]['location'])}"
-             for source, flag in flags.items()]
-    path = config_dir / FILE_NAME
-    if lines:
-        path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
-    else:
-        path.unlink(missing_ok=True)
-
-
-def _message_event(chart, message_name: str):
-    found = [e for e in chart.events if e.data.__class__.__name__ == "ActionEvent"
-             and e.data.params is not None and e.data.params.data.get("message") == message_name]
-    assert len(found) == 1, (message_name, [e.name for e in found])
-    return found[0]
-
-
-def _fork_of(chart, event):
-    """The fork with the event as a branch."""
-    forks = [e for e in chart.events if e.data.__class__.__name__ == "ForkEvent"
-             and any(f.v is event for f in e.data.forks)]
-    assert len(forks) == 1, event.name
-    return forks[0]
-
-
-def _insert_after(chart, event, new_name: str) -> None:
-    """Puts the new event (without a next one) between the event and the one after it."""
-    following = event.data.nxt.v
-    if following is not None:
-        event_tools.insertEventAfter(chart, new_name, following.name)
-    event_tools.insertEventAfter(chart, event.name, new_name)
-
-
-def _set_flag(chart, flag: str, after=None) -> str:
-    return event_tools.createActionEvent(chart, "EventFlags", "SetFlag", {"symbol": flag, "value": True}, after)
-
-
-def _in_place(chart, source: str, old: str, new: str, flags: dict, past=()) -> None:
-    """Shows the new message instead of the old one and sets the hint's flag after the message's fork, and after a
-    subflow there to one of `past`."""
-    event = _message_event(chart, old)
-    event.data.params.data["message"] = new
-    anchor = _fork_of(chart, event).data.join.v
-    following = anchor.data.nxt.v
-    if following is not None and getattr(following.data, "entry_point_name", None) in past:
-        anchor = following
-    if source in flags:
-        _insert_after(chart, anchor, _set_flag(chart, flags[source]))
-
-
-def _field_owls(files, hints: dict, flags: dict) -> None:
-    flow = files.readFile(FIELD_FLOW)
-    for source, old in FIELD_OWLS.items():
-        if source in hints:
-            _in_place(flow.flowchart, source, f"Hint:{old}", f"Hint:{label(source)}", flags)
-    files.writeFile(FIELD_FLOW, flow)
-
-
-def _dungeon_owls(files, hints: dict, flags: dict) -> None:
-    flow = files.readFile(DUNGEON_FLOW)
-    chart = flow.flowchart
-    for source, old in DUNGEON_OWLS.items():
-        if source not in hints:
+def lines(hints: dict) -> list:
+    """The seed file's hints, per source with a hint: `B <n> <question label> <volume>` for a book,
+    `L <n> <text>` per line and `P <n>` before each further page, `S <n> <slot> <location id>` for a server hint."""
+    out = []
+    for n, source in enumerate(SOURCES):
+        hint = hints.get(source)
+        if hint is None:
             continue
-        new = f"Hint:{label(source)}"
-        entry, room, shared = OWN_ENTRIES.get(source, (None, None, None))
-        entry_point = event_tools.findEntryPoint(chart, entry) if entry else None
-        if entry_point is not None and getattr(entry_point.main_event.v.data, "entry_point_name", None):
-            # LASR's Owl Gifts: the entry runs the shared events as a subflow, then the gift
-            gift = entry_point.main_event.v.data.nxt.v
-            event_tools.insertEventAfter(chart, entry, _owl_events(chart, new, flags.get(source),
-                                                                   gift.name if gift else None))
-        elif entry and entry_point is None:
-            event_tools.addEntryPoint(chart, entry)
-            event_tools.insertEventAfter(chart, entry, _owl_events(chart, new, flags.get(source), None))
-            _own_entry(files, room, shared, entry)
-        else:
-            _in_place(chart, source, f"Hint:{old}", new, flags, past=("Beak_ed",))
-    files.writeFile(DUNGEON_FLOW, flow)
-
-
-def _owl_events(chart, message_name: str, flag, after) -> str:
-    """A dungeon owl statue's events, as the game's: without the beak NoBeak, else the beak's start, the message and
-    its end; then the flag and `after`."""
-    if flag:
-        after = _set_flag(chart, flag, after)
-    beak_end = event_tools.createSubFlowEvent(chart, "", "Beak_ed", {}, after)
-    branches = [
-        event_tools.createSubFlowEvent(chart, "", "Beak_st", {}),
-        event_tools.createActionEvent(chart, "DungeonOwlStatue", "Examine", {"message": message_name}),
-        event_tools.createActionEvent(chart, "Link", "PlayAnimation", {"name": "wait", "blendTime": 0.1}),
-    ]
-    fork, _ = event_tools.createForkEvent(chart, None, branches, beak_end)
-    no_beak = event_tools.createSubFlowEvent(chart, "", "examine_NoBeak", {})
-    return event_tools.createSwitchEvent(chart, "Inventory", "HasItem", {"itemType": BEAK_ITEM_TYPE, "count": 1},
-                                         {0: no_beak, 1: fork})
-
-
-def _own_entry(files, room: str, shared: str, entry: str) -> None:
-    data = files.readFile(f"{room}.leb")
-    statues = [a for a in data.actors if a.parameters and a.parameters[0] in (shared.encode(), entry.encode())]
-    assert len(statues) == 1, (room, len(statues))
-    statues[0].parameters[0] = entry.encode()
-    files.writeFile(f"{room}.leb", data)
-
-
-def _books(files, hints: dict, flags: dict) -> None:
-    flow = files.readFile(BOOK_FLOW)
-    for source, old in BOOKS.items():
-        if source in hints:
-            _in_place(flow.flowchart, source, f"System:{old}", f"System:{label(source)}", flags)
-    files.writeFile(BOOK_FLOW, flow)
-
-
-def _text(files, file_name: str, hints: dict, owl: bool) -> None:
-    style_from = {**FIELD_OWLS, **DUNGEON_OWLS, **BOOKS}
-    for relative_path, msbt in files.getAllTextFiles(file_name):
-        for source, hint in hints.items():
-            msbt.addEntry(label(source), message(hint["text"], owl))
-            msbt.getEntry(label(source)).style_index = msbt.getEntry(style_from[source]).style_index
-            if source in BOOK_PROMPTS:
-                msbt.addEntry(BOOK_PROMPTS[source], BOOK_PROMPT.format(list(BOOKS).index(source) + 1))
-        files.writeTextFile(relative_path, file_name, msbt)
+        if source in BOOK_PROMPTS:
+            out.append(f"B {n} {BOOK_PROMPTS[source]} {list(BOOKS).index(source) + 1}")
+        for page, text in enumerate(wrap(hint["text"])):
+            if page:
+                out.append(f"P {n}")
+            out += [f"L {n} {line}" for line in text]
+        if "location" in hint:
+            out.append(f"S {n} {int(hint['player'])} {int(hint['location'])}")
+    return out

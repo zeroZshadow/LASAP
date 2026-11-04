@@ -18,6 +18,7 @@
 #include "game/time.hpp"
 #include "test/test.hpp"
 #include "nn/os.hpp"
+#include "test_only.hpp"
 #include <algorithm>
 #include <atomic>
 #include <cstdlib>
@@ -174,9 +175,7 @@ namespace {
 
             if (!SendPending()) return;
             if (NowMs() - lastHeard >= kKeepAliveMs) return;
-#ifdef LASAP_TEST
-            AP::Test::NetPoll();
-#endif
+            TEST_ONLY(AP::Test::NetPoll();)
         }
     }
 
@@ -186,9 +185,7 @@ namespace {
             Logging.Log("[AP] socket init failed");
             return;
         }
-#ifdef LASAP_TEST
-        AP::Test::NetStart(g_Port + AP::Test::PORT_OFFSET);
-#endif
+        TEST_ONLY(AP::Test::NetStart(g_Port + AP::Test::PORT_OFFSET);)
 
         while (true) {
             if (g_Server < 0) {
@@ -198,9 +195,7 @@ namespace {
                 }
                 Logging.Log("[AP] listening on %d", g_Port);
             }
-#ifdef LASAP_TEST
-            AP::Test::NetPoll();
-#endif
+            TEST_ONLY(AP::Test::NetPoll();)
             // Accept only once a client waits: a thread blocked in Accept keeps emulators from closing the game.
             pollfd waiting{g_Server, POLLIN, 0};
             if (nn::socket::Poll(&waiting, 1, kAcceptPollMs) <= 0 || !(waiting.revents & POLLIN)) continue;
@@ -261,9 +256,7 @@ namespace AP {
     }
 
     void Send(const std::string& line) {
-#ifdef LASAP_TEST
-        if (AP::Test::Capture(line)) return;  // a reply to a debug client
-#endif
+        TEST_ONLY(if (AP::Test::Capture(line)) return;)  // a reply to a debug client
         if (!g_Connected.load()) return;
         Lock();
         Enqueue(line + "\n");

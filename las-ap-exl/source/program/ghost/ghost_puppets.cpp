@@ -10,6 +10,7 @@
 #include "game/sym.hpp"
 #include "game/time.hpp"
 #include "ghost/ghost_nametag.hpp"
+#include "test_only.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -117,9 +118,7 @@ namespace {
         if (model == p.model) return;
         ClearSpan(IndexOf(p));
         p.model = model;
-#ifdef LASAP_TEST
-        if (model != nullptr && p.animLog.size() < 40) p.animLog.push_back("model@" + std::to_string(g_LastFrame));
-#endif
+        TEST_ONLY(if (model != nullptr && p.animLog.size() < 40) p.animLog.push_back("model@" + std::to_string(g_LastFrame));)
         p.tunic = -1;
         p.tunicAnim = nullptr;
         p.upper = -1;
@@ -248,9 +247,7 @@ namespace {
         if (Alive(p)) {
             Place(p, pos, nullptr);
             p.shown = true;
-#ifdef LASAP_TEST
-            p.shownAt = frame;
-#endif
+            TEST_ONLY(p.shownAt = frame;)
             return true;
         }
         auto* player = GetPlayer();
@@ -295,9 +292,7 @@ namespace {
         Forget(p);
         p.actor = out;
         out = {};  // the actor system's reference keeps it
-#ifdef LASAP_TEST
-        p.animLog.clear();
-#endif
+        TEST_ONLY(p.animLog.clear();)
         if (!Alive(p)) {
             err = "the actor system did not keep the actor";
             Forget(p);
@@ -305,9 +300,7 @@ namespace {
             return false;
         }
         p.shown = true;
-#ifdef LASAP_TEST
-        p.shownAt = frame;
-#endif
+        TEST_ONLY(p.shownAt = frame;)
         return true;
     }
 
@@ -426,9 +419,7 @@ namespace {
         NpcComponentCtor::InstallAtFuncPtr(Game::NpcComponent_Ctor.Ptr());
         MakeAnimator::InstallAtFuncPtr(Game::NpcComponent_MakeAnimator.Ptr());
         InstallDitherHooks();
-#ifdef LASAP_TEST
-        TestInstallHooks();
-#endif
+        TEST_ONLY(TestInstallHooks();)
     }
 
     void TickPuppets();
@@ -457,9 +448,7 @@ namespace {
             SettleCrowd();
             AP::NameTag::DropAll();
             InstDropAll(false);
-#ifdef LASAP_TEST
-            TestLevelLoad();
-#endif
+            TEST_ONLY(TestLevelLoad();)
             return;
         }
         u32 frame = fmwk->frameCount;
@@ -474,24 +463,18 @@ namespace {
             if (p.actor.Holds() && !Alive(p)) Forget(p);
             if (p.actor.Holds()) RefreshModel(p);
         }
-#ifdef LASAP_TEST
-        TestFrameStart(player);
-#endif
+        TEST_ONLY(TestFrameStart(player);)
         std::string level = LevelSystem::GetCurrentLevel();
         u64 now = NowMs();
         double nowFine = NowMsFine();
         for (int n = 0; n < kGhosts; n++) DriveGhost(n, level, frame, now, nowFine);
-#ifdef LASAP_TEST
-        TestGhostsDriven(frame, now, nowFine);
-#endif
+        TEST_ONLY(TestGhostsDriven(frame, now, nowFine);)
         Rank(player, frame, now);
         for (auto& p : g_Puppets) {
             if (Alive(p)) Update(p);
         }
         InstTick();
-#ifdef LASAP_TEST
-        TestFrameEnd(frame, fmwk->paused);
-#endif
+        TEST_ONLY(TestFrameEnd(frame, fmwk->paused);)
         // the name over the head of each ghost drawn whole, once its body draws (each tag's text costs draws too; the
         // crowd limits count them)
         for (int n = 0; n < kGhosts; n++) {

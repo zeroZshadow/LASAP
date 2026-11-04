@@ -41,8 +41,9 @@ def build_release_value(name: str):
 
 
 def run_without_excluded(code: str) -> subprocess.CompletedProcess:
-    """Runs code in a new Python with the patcher's source on its path and PATCHER_EXCLUDED's folders blocked."""
-    excluded = [folder.replace("/", ".") for folder in build_release_value("PATCHER_EXCLUDED")]
+    """Runs code in a new Python with the patcher's source on its path and the asset build's modules blocked
+    (build_release.py's BUILD_ONLY)."""
+    excluded = list(build_release_value("BUILD_ONLY"))
     prelude = WITHOUT_EXCLUDED.format(excluded=excluded, patcher=str(install.SOURCE_PATCHER))
     return subprocess.run([sys.executable, "-c", prelude + code], capture_output=True, text=True, encoding="utf-8",
                           errors="replace")
@@ -58,7 +59,7 @@ for part in ("romfs", "exefs"):
     (game / part / "file").write_text(patch.read_text())
 (out / "config" / "lasr-exl").mkdir(parents=True)
 (out / "config" / "lasr-exl" / "config.ini").write_text("[archipelago]\\nseed_hash = " + patch.read_text() + "\\n")
-(out / "config" / "lasr-exl" / "ap_names.txt").write_text("1 Bow|")
+(out / "config" / "lasr-exl" / "ap_seed.txt").write_text("[names]\\n1 Bow|\\n")
 print("Mod written")
 """
 
@@ -116,20 +117,14 @@ class TestInstall(unittest.TestCase):
         self.assertTrue(self.run_install("aaaa0001", force=True))
 
         (mods / "romfs" / "stale").write_text("old seed")
+        (self.sd / CONFIG_PATH).with_name("ap_map.txt").write_text("an earlier patcher's file")
         self.assertTrue(self.run_install("bbbb0002"))
         self.assertEqual(installed_seed(self.sd, mods), "bbbb0002")
         self.assertEqual((mods / "exefs" / "file").read_text(), "bbbb0002")
         self.assertFalse((mods / "romfs" / "stale").exists())
         self.assertTrue((self.sd / CONFIG_PATH).exists())
-        self.assertTrue((self.sd / CONFIG_PATH).with_name("ap_names.txt").exists())
-
-    def test_removes_stale_map(self) -> None:
-        # The map tracker's file of a seed with the option does not stay for a seed without it.
-        self.assertTrue(self.run_install("aaaa0001"))
-        stale = (self.sd / CONFIG_PATH).with_name("ap_map.txt")
-        stale.write_text("O 0 1")
-        self.assertTrue(self.run_install("bbbb0002"))
-        self.assertFalse(stale.exists())
+        self.assertTrue((self.sd / CONFIG_PATH).with_name("ap_seed.txt").exists())
+        self.assertFalse((self.sd / CONFIG_PATH).with_name("ap_map.txt").exists())
 
     def test_errors(self) -> None:
         self.command = ""
@@ -168,7 +163,7 @@ class TestInstall(unittest.TestCase):
             path = root / f"las {build}.apworld"
             with zipfile.ZipFile(path, "w") as zf:
                 zf.writestr(install.PATCHER_BUILD, build)
-                zf.writestr(install.PATCHER_PREFIX + "RandomizerCore/Data/items.yml", build)
+                zf.writestr(install.PATCHER_PREFIX + "data/items.yml", build)
             return path
 
         with mock.patch.object(Utils.cache_path, "cached_path", str(root / "cache"), create=True):
@@ -176,11 +171,11 @@ class TestInstall(unittest.TestCase):
                 self.assertTrue(install.builtin_patcher_available())
                 first = install.builtin_patcher_dir(self.lines.append)
                 self.assertEqual(install.builtin_patcher_dir(self.lines.append), first)
-            self.assertEqual((first / "RandomizerCore" / "Data" / "items.yml").read_text(), "1")
+            self.assertEqual((first / "data" / "items.yml").read_text(), "1")
             self.assertEqual(sum("Unpacking" in line for line in self.lines), 1)
             with mock.patch.object(install, "_world_archive", return_value=world("2")):
                 second = install.builtin_patcher_dir(self.lines.append)
-            self.assertEqual((second / "RandomizerCore" / "Data" / "items.yml").read_text(), "2")
+            self.assertEqual((second / "data" / "items.yml").read_text(), "2")
             self.assertFalse(first.exists())
 
     def test_newer_world_reinstalls(self) -> None:
@@ -263,14 +258,10 @@ class TestInstall(unittest.TestCase):
                 self.assertIn(module.name, files)
                 self.assertIn(module.stem, install.PATCHER_MODULES)
 
-    def test_patcher_without_excluded_folders(self) -> None:
-        """The patcher loads without the folders the release leaves out (build_release.py's PATCHER_EXCLUDED)."""
+    def test_patcher_without_build(self) -> None:
+        """The patcher loads without the asset build's modules (build_release.py's BUILD_ONLY)."""
         if not (install.SOURCE_PATCHER / "las_ap_patch.py").is_file():
             self.skipTest("no patcher source")
-        if importlib.util.find_spec("evfl") is None:
-            self.skipTest("the patcher's libraries are not installed (patcher/requirements.txt)")
-        for folder in build_release_value("PATCHER_EXCLUDED"):
-            self.assertTrue((install.SOURCE_PATCHER / folder).is_dir(), folder)  # a moved folder would ship again
         result = run_without_excluded("import las_ap_patch")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
@@ -282,8 +273,9 @@ class TestInstall(unittest.TestCase):
 
 @unittest.skipUnless((ROMFS / "region_common").is_dir(), "RomFS dump not found (LASAP_ROMFS)")
 @unittest.skipUnless((install.SOURCE_PATCHER / "exl" / "subsdk9").is_file(), "no module build (scripts/build_exl.sh)")
-class TestPatchWithoutExcluded(LASTestBase):
-    """A default seed's patch, with the folders the release leaves out blocked."""
+class TestPatchWithoutBuild(LASTestBase):
+    """A default seed's patch, with the asset build's modules blocked. The patcher refuses a patch whose locations are
+    not those of the assets' build (las_ap_patch.patch_shape), so this also checks the world's against it."""
 
     def test_patch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -296,6 +288,12 @@ class TestPatchWithoutExcluded(LASTestBase):
             self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
             self.assertTrue((out / "atmosphere" / "contents" / TITLE_ID / "exefs" / "subsdk9").is_file())
             self.assertTrue((out / "atmosphere" / "contents" / TITLE_ID / "romfs" / "region_common").is_dir())
+
+
+class TestPatchOtherLocations(TestPatchWithoutBuild):
+    """The options that change which locations a seed has: the patch still has the assets' locations."""
+    options = {"owl_statues": "all", "chests": False, "boss_drops": False, "instruments": "vanilla",
+               "shuffled_dungeons": True, "seashell_mansion": 5}
 
 
 class TestEmulators(unittest.TestCase):

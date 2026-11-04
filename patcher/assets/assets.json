@@ -1,50 +1,2347 @@
 {
+ "regionCN/CNch/message/Hint.msbt": {
+  "source": "regionCN/CNch/message/Hint.msbt",
+  "source_sha256": "24d299c6ab1d4564989840221a310bfcfc342b0306ff0e365ede32ac7ff73210",
+  "sha256": "cc09254dd078662d9a2e7b7bfca4cbf7f9b41511acb7dc346e7be97a23dc72cd"
+ },
+ "regionCN/CNch/message/Place.msbt": {
+  "source": "regionCN/CNch/message/Place.msbt",
+  "source_sha256": "ed5bce0e19f3b79b682bf352901b20c528a6d88b66d5e7022ffa3005b2e3cc40",
+  "sha256": "16702948a21bcd8c98122a10691923dc92f1d2b92e4ab8568a98a8d03b33e8c8"
+ },
+ "regionCN/CNch/message/Scenario.msbt": {
+  "source": "regionCN/CNch/message/Scenario.msbt",
+  "source_sha256": "0e5ce047d7bde41697158bb9713f9be23f5103b980d0dd93fffee753621c4a23",
+  "sha256": "2239224a9f1fe11ab3b4a2bed9bb2100da7efc4f0b0fd36852d43668f509b41a"
+ },
+ "regionCN/CNch/message/System.msbt": {
+  "source": "regionCN/CNch/message/System.msbt",
+  "source_sha256": "416512145fcfeae263f01af19a855deab1e2e5d04ba5e2643d1de10abf8801e5",
+  "sha256": "9979b32f1b88697f8910a1e021e9a7bc282a3a743dd284aa5e6442a62cdb9f0d"
+ },
+ "regionCN/CNch/message/UI.msbt": {
+  "source": "regionCN/CNch/message/UI.msbt",
+  "source_sha256": "cfe29eb7124ec167aeb865f0a944cf214a2fe4dbe1f25d083883dfc4c8b6ee6f",
+  "sha256": "da1d9ec819a8ce30d23878b1aa62124ed5059a480be4611124aee663274ebbdd"
+ },
+ "regionCN/CNch_Validation/message/Hint.msbt": {
+  "source": "regionCN/CNch_Validation/message/Hint.msbt",
+  "source_sha256": "24d299c6ab1d4564989840221a310bfcfc342b0306ff0e365ede32ac7ff73210",
+  "sha256": "cc09254dd078662d9a2e7b7bfca4cbf7f9b41511acb7dc346e7be97a23dc72cd"
+ },
+ "regionCN/CNch_Validation/message/Place.msbt": {
+  "source": "regionCN/CNch_Validation/message/Place.msbt",
+  "source_sha256": "ed5bce0e19f3b79b682bf352901b20c528a6d88b66d5e7022ffa3005b2e3cc40",
+  "sha256": "16702948a21bcd8c98122a10691923dc92f1d2b92e4ab8568a98a8d03b33e8c8"
+ },
+ "regionCN/CNch_Validation/message/Scenario.msbt": {
+  "source": "regionCN/CNch_Validation/message/Scenario.msbt",
+  "source_sha256": "0e5ce047d7bde41697158bb9713f9be23f5103b980d0dd93fffee753621c4a23",
+  "sha256": "2239224a9f1fe11ab3b4a2bed9bb2100da7efc4f0b0fd36852d43668f509b41a"
+ },
+ "regionCN/CNch_Validation/message/System.msbt": {
+  "source": "regionCN/CNch_Validation/message/System.msbt",
+  "source_sha256": "416512145fcfeae263f01af19a855deab1e2e5d04ba5e2643d1de10abf8801e5",
+  "sha256": "9979b32f1b88697f8910a1e021e9a7bc282a3a743dd284aa5e6442a62cdb9f0d"
+ },
+ "regionCN/CNch_Validation/message/UI.msbt": {
+  "source": "regionCN/CNch_Validation/message/UI.msbt",
+  "source_sha256": "cfe29eb7124ec167aeb865f0a944cf214a2fe4dbe1f25d083883dfc4c8b6ee6f",
+  "sha256": "da1d9ec819a8ce30d23878b1aa62124ed5059a480be4611124aee663274ebbdd"
+ },
+ "regionEU/EUde/message/Hint.msbt": {
+  "source": "regionEU/EUde/message/Hint.msbt",
+  "source_sha256": "1196cfac9b7dc43608606961dad6665773ce83bc76ff6c4a12925fd0352a8047",
+  "sha256": "782416270c1ae5c3d5f72bd9ac39a0f6a3fe4ee0b6d09b2998f610970589ea14"
+ },
+ "regionEU/EUde/message/Place.msbt": {
+  "source": "regionEU/EUde/message/Place.msbt",
+  "source_sha256": "86371b80417a6e4e6535d5edebee6abb02bef3a08db20de025c14dbe6829a6f8",
+  "sha256": "c8c8e6fda2e7b7859950f99dc625b2156f1bedf88b229a6198cc1dfc51366651"
+ },
+ "regionEU/EUde/message/Scenario.msbt": {
+  "source": "regionEU/EUde/message/Scenario.msbt",
+  "source_sha256": "e90217cedcfc6bf52af4257f44a555654a50429fba12656dcf069491394b9d91",
+  "sha256": "42bba1c28cacb8351d75f9d2442e80f66284a8722238c97e568e4a7f355d64a2"
+ },
+ "regionEU/EUde/message/System.msbt": {
+  "source": "regionEU/EUde/message/System.msbt",
+  "source_sha256": "1768b4adc96f8b2bfdfe7d95ec9b09e09998891fc667061f1d478d37e78c1b72",
+  "sha256": "68d1cbd624c8950f75cc591adb4db2623872e5cc58c6243623a0e4236a839b6e"
+ },
+ "regionEU/EUde/message/UI.msbt": {
+  "source": "regionEU/EUde/message/UI.msbt",
+  "source_sha256": "04c1f1bad1f9528dac311ef218418e45b62ea0aa220c4afa3dd3500b3f2bae01",
+  "sha256": "78415e15b0c94f0d7e3bb4e83f5c057de14c9fc5c3bc7b2088c8632d38562b69"
+ },
+ "regionEU/EUen/message/Hint.msbt": {
+  "source": "regionEU/EUen/message/Hint.msbt",
+  "source_sha256": "00b849ce20d3b121f9e69f82c4f40b34240075ffb4821e60ac999b85374f1f43",
+  "sha256": "9c04527d8449c305b430edba119281d73c8ec43ad506fe212b5f50c781fed9a9"
+ },
+ "regionEU/EUen/message/Place.msbt": {
+  "source": "regionEU/EUen/message/Place.msbt",
+  "source_sha256": "5db8fbb46e57841164bd37f95c077293d269602be599ce8698f655c6883b9a69",
+  "sha256": "34f440f35ffcd247cb11519f62e7e2b4cd3d2d83bec59a43008a5c26020d54d9"
+ },
+ "regionEU/EUen/message/Scenario.msbt": {
+  "source": "regionEU/EUen/message/Scenario.msbt",
+  "source_sha256": "05ead1a872b525f14edc2c746ceda3403e2a2e8c9488cef5b3158fb091ce8e2a",
+  "sha256": "aae1ec57ff03dd0bb9ff7fbf1cdeec1a747870e5ce3a670a0af06125322ceec1"
+ },
+ "regionEU/EUen/message/System.msbt": {
+  "source": "regionEU/EUen/message/System.msbt",
+  "source_sha256": "bf80a5f5d14c32d9cdc555d258b299f22feb5a99a6abbf493d56d6e89505d378",
+  "sha256": "e65ec27ceb892b274953ca0106f6d38fcab9163a5abbde8a27d336b6527ba8e8"
+ },
+ "regionEU/EUen/message/UI.msbt": {
+  "source": "regionEU/EUen/message/UI.msbt",
+  "source_sha256": "db6942d0873285ef2b7c0efb306694829a387d50c75de7ccae21cfcfa61b65e4",
+  "sha256": "85508e3e0d1bb7aacfee539c09f9aba4f4135ef160c91ddbec7601453bba0ea8"
+ },
+ "regionEU/EUes/message/Hint.msbt": {
+  "source": "regionEU/EUes/message/Hint.msbt",
+  "source_sha256": "fd6aaf4e1af9ad0a85022d51a117b60d10d968a55fcb84786d2f78e89399defe",
+  "sha256": "dc163356302fbf7e302c183c4c88a364d02ca618431e72d9d746f2336811b224"
+ },
+ "regionEU/EUes/message/Place.msbt": {
+  "source": "regionEU/EUes/message/Place.msbt",
+  "source_sha256": "a53bc81cfb5ac6fb422a9fe5ca56ba4b2ff26a6f5e264f941d5e96bc23433c3a",
+  "sha256": "23e2511f9ddb3656502eb42e9e1acddda44adb4dac8b1f991ddf784c59006621"
+ },
+ "regionEU/EUes/message/Scenario.msbt": {
+  "source": "regionEU/EUes/message/Scenario.msbt",
+  "source_sha256": "9b5e2f6f6ed1effdc723f7006e9bd55b9b18ac9ca978036f8c47c1a51f01655f",
+  "sha256": "95933f7b687d1245417a2c833d7b4d34fe42b0e5ba3c22f35996101c188b50f9"
+ },
+ "regionEU/EUes/message/System.msbt": {
+  "source": "regionEU/EUes/message/System.msbt",
+  "source_sha256": "47834c2d23ca1c185abcbac3b46ce1f3d0d79a0520b0bd12f538d555f3f77e7f",
+  "sha256": "b56830c477f47c8744f0147b828f7854d64ea9273f3a4cbc2d562a9f9428f544"
+ },
+ "regionEU/EUes/message/UI.msbt": {
+  "source": "regionEU/EUes/message/UI.msbt",
+  "source_sha256": "7cece88ffe92f84216a37eab2cbd6a584fc4721b7b1e946c3dc38bc6f331b5dc",
+  "sha256": "31444e807890e8c42fb38a7c1fd6f849a3d2235b23c15fba8f744a603e6d2584"
+ },
+ "regionEU/EUfr/message/Hint.msbt": {
+  "source": "regionEU/EUfr/message/Hint.msbt",
+  "source_sha256": "ba62e325cce0e3ee4a537d6122c8653af7f35f6a6672ad98e1f11fd35d6c38c9",
+  "sha256": "bdeb5160397364a4efa090fea308644197d170f96f466a5102cca699f83d9079"
+ },
+ "regionEU/EUfr/message/Place.msbt": {
+  "source": "regionEU/EUfr/message/Place.msbt",
+  "source_sha256": "587d8ff1cae17c8ec24b472a0211c65f2d4640d2112a40b3d16e8f8a1667d2f0",
+  "sha256": "2ab7a22c3fcea21af83268a248bc699a9f5cff85e784bb762009bf8124eddcd2"
+ },
+ "regionEU/EUfr/message/Scenario.msbt": {
+  "source": "regionEU/EUfr/message/Scenario.msbt",
+  "source_sha256": "988c5cfa15c104b88aee6ddf73634fd5e0895f900a5d57ee75a88eb69ffaa74c",
+  "sha256": "3b984ac80d957bccdc37e08582306544bd895af8d43f6f5c36aed5b5d230626b"
+ },
+ "regionEU/EUfr/message/System.msbt": {
+  "source": "regionEU/EUfr/message/System.msbt",
+  "source_sha256": "19e7f26ffb351aa8a5a1f7486d965f2b64bbc7315a4ee04f8dcba959c774b685",
+  "sha256": "f1618ce61a5834eb9d6c275e925be6f6d9336eebf3b2e1ac92ef6b3199f84015"
+ },
+ "regionEU/EUfr/message/UI.msbt": {
+  "source": "regionEU/EUfr/message/UI.msbt",
+  "source_sha256": "549b484b1789d85d089d2c160f336690fde0ad03b3795c03617545d6aa45f2c4",
+  "sha256": "c70f02fb191d3db96168ce63589f5d4c2820cb6a73e7691ac344ccc9e6844854"
+ },
+ "regionEU/EUit/message/Hint.msbt": {
+  "source": "regionEU/EUit/message/Hint.msbt",
+  "source_sha256": "c27fe231628e9a0b15bef3f01793db419517c1d32b2d684c177cdcea81202077",
+  "sha256": "234ab2f41806b950dde0095d7e9a524883e6529050729df4764d9d6e22ebe3f3"
+ },
+ "regionEU/EUit/message/Place.msbt": {
+  "source": "regionEU/EUit/message/Place.msbt",
+  "source_sha256": "4abba6e8c5d05a83da0d9f7068e98e5e96ca6600ced0c601b624f3d9b6c5e43a",
+  "sha256": "1576e7888408eda605447e2b88b092c40bfad2da6fd1ee231bcfb60aa09ab7f4"
+ },
+ "regionEU/EUit/message/Scenario.msbt": {
+  "source": "regionEU/EUit/message/Scenario.msbt",
+  "source_sha256": "76e7c8ddada4d5818124f6860795ad215ce08635525b6c1be8bab4c59509b1e5",
+  "sha256": "bb55992d7ca64e6b611e2f2d19fd84ab262c18a1ae8ced8e9a239b06aa73644b"
+ },
+ "regionEU/EUit/message/System.msbt": {
+  "source": "regionEU/EUit/message/System.msbt",
+  "source_sha256": "0f5a615d7c2afd0ec72b24484d5c17a87f71cc8ab1d595e3602fae1177ab8ae4",
+  "sha256": "8aa8b1d80a9795195c873a41ca3fb7440687682e1e18d08331c036c6941865fd"
+ },
+ "regionEU/EUit/message/UI.msbt": {
+  "source": "regionEU/EUit/message/UI.msbt",
+  "source_sha256": "ccad2185b67ef8d7e3ed3ecaadf14a7477451ab6565fd5ed4b7e6420d374a346",
+  "sha256": "b70b109ff71f358876c5312c6be26a90aefa51e35f8b7a7b28f344978ef0d4aa"
+ },
+ "regionEU/EUnl/message/Hint.msbt": {
+  "source": "regionEU/EUnl/message/Hint.msbt",
+  "source_sha256": "7051d649d1cdd5f3723023426d1997d38aa6bc175ce8d85962e47b72c6d627ba",
+  "sha256": "b8316e5eaac95a24c482056b8825dea1c2c057700c54d38adf8744b3738ab73a"
+ },
+ "regionEU/EUnl/message/Place.msbt": {
+  "source": "regionEU/EUnl/message/Place.msbt",
+  "source_sha256": "ca1974728550993c34da929a46e351bfccaa5f54217d65ee9cb9e48cc439d713",
+  "sha256": "f26d4aa244a97e5c6349df83b114d7ecbde96c0972ed9ae5e38659e37dff0b23"
+ },
+ "regionEU/EUnl/message/Scenario.msbt": {
+  "source": "regionEU/EUnl/message/Scenario.msbt",
+  "source_sha256": "a06c11fb5e88b3921f74bd79697016b42961e7eab7ccc9ab1d2e1717debb3d92",
+  "sha256": "43e12a42c540de4f975cfe9239de47f499e55d500b041f89986ac6064e480458"
+ },
+ "regionEU/EUnl/message/System.msbt": {
+  "source": "regionEU/EUnl/message/System.msbt",
+  "source_sha256": "c589a9e8534dfb6da69ba8ca98b28a60f8aaca116f43a236fbc53a49f0a64060",
+  "sha256": "fb8215c331093d25e699ae81b2c737b6b012ba9bcfd2b6b0f5c9f74df54dac91"
+ },
+ "regionEU/EUnl/message/UI.msbt": {
+  "source": "regionEU/EUnl/message/UI.msbt",
+  "source_sha256": "41d40405019c1417efc6282c7e55baa3fbcf01977a26373680b5685a7002bf51",
+  "sha256": "dc78353aa5c159ac6a82ad3059d8d61f03ed94a521075f434290bd352c5f5ecf"
+ },
+ "regionEU/EUru/message/Hint.msbt": {
+  "source": "regionEU/EUru/message/Hint.msbt",
+  "source_sha256": "8b5f1471a54c9dc5c882d1e6157526bd464291c0c0d97c34e26f380c8a11c7ba",
+  "sha256": "49ae4dbd7d5eef2f84482bb7219bd3433ee134e62491c84529c9a2f4eaed6eec"
+ },
+ "regionEU/EUru/message/Place.msbt": {
+  "source": "regionEU/EUru/message/Place.msbt",
+  "source_sha256": "09e6fb479536dffccbfdeba3bfa7a0ebd22ec7d32301f7775336b099ffe80c42",
+  "sha256": "606bcd68bcd6c7268c0df4e19c2eaa38d48b073b9fab5733d55a57c99cb8f701"
+ },
+ "regionEU/EUru/message/Scenario.msbt": {
+  "source": "regionEU/EUru/message/Scenario.msbt",
+  "source_sha256": "774a43add7a6d7b1789774a04878f62d016ce63e9c39851eed1250b524cb36af",
+  "sha256": "66f85fc678deff3cd97e3f7df2eae963d8749f6325a303d83658c3661c512527"
+ },
+ "regionEU/EUru/message/System.msbt": {
+  "source": "regionEU/EUru/message/System.msbt",
+  "source_sha256": "058bedeec85f7106fdb7687a374857f6cf4bed4baf0941c5ffe9e7637f599e1e",
+  "sha256": "1260c6a3c6b3604ff9a4d809d8798c1f1e07e6859a2c1de7991705efa6146d3c"
+ },
+ "regionEU/EUru/message/UI.msbt": {
+  "source": "regionEU/EUru/message/UI.msbt",
+  "source_sha256": "87b7d23e2d3a89e2713af7d5d3d342ee2a24677969b582be57d728aae825f6d8",
+  "sha256": "1c2d8b73d863ebfd43e0cd10e6ddc3f1ea9f35b7a245d7e997b2eeb506f7ace7"
+ },
+ "regionJP/JPja/message/Hint.msbt": {
+  "source": "regionJP/JPja/message/Hint.msbt",
+  "source_sha256": "7aea029e900cfb449e621fa434f9dd041ff41b870d51d7575cd216201554341d",
+  "sha256": "f5ee2f21308c71d9bbc01aae22cb4bc45336837df0478c38bffb1af49ab230f0"
+ },
+ "regionJP/JPja/message/Place.msbt": {
+  "source": "regionJP/JPja/message/Place.msbt",
+  "source_sha256": "e62ca125603152d9ea4cc2b8b4e5dc39fbe8ac84f01406d7c559359dca46a490",
+  "sha256": "bac19ea6f4c224411d714fb811570100dd678869524ca20f7ab51e70a4a370b0"
+ },
+ "regionJP/JPja/message/Scenario.msbt": {
+  "source": "regionJP/JPja/message/Scenario.msbt",
+  "source_sha256": "0a7c0bfc25d82b752188762424e38ca1b953259a9695fb9d840750b4d3df098d",
+  "sha256": "bdd099a20a28dc8feb77c48453a43a1bc3510f779875ef50a7d5a2212b19cd77"
+ },
+ "regionJP/JPja/message/System.msbt": {
+  "source": "regionJP/JPja/message/System.msbt",
+  "source_sha256": "94fc651c4980310e34a1f0f012c5cd9821cf283ab72a355cc844261880fd02e3",
+  "sha256": "f318c1fae7ef46133ba60bab3ba067f7da0fdc2a2f711cba34a0e26a1eace9f7"
+ },
+ "regionJP/JPja/message/UI.msbt": {
+  "source": "regionJP/JPja/message/UI.msbt",
+  "source_sha256": "d35e3ad8bfb4b14f221e1b1fdba16bb36b571572cd564589683572178753200d",
+  "sha256": "7ab0748d07be19289de938ba1e4cf516ad85d493585178ffe611be99c1cc5ecd"
+ },
+ "regionKR/KRkr/message/Hint.msbt": {
+  "source": "regionKR/KRkr/message/Hint.msbt",
+  "source_sha256": "4356f00872db3bdbfb8ba17878cba6c049fa2831e21d611ac0f340cfb4ff1520",
+  "sha256": "648c0ae5ca29d9356eb9c029dbc488f3fb2e5a1215564c3bdb5e63067c8235c7"
+ },
+ "regionKR/KRkr/message/Place.msbt": {
+  "source": "regionKR/KRkr/message/Place.msbt",
+  "source_sha256": "9d779a1ec94270fdfec141c2c6c7a9df2c189412620f4e0d5e3efd22f3bc66d0",
+  "sha256": "369ccb9fbfed113dd72643d24aa0bb426e3a33f45f0727e3af82d017343ca0b3"
+ },
+ "regionKR/KRkr/message/Scenario.msbt": {
+  "source": "regionKR/KRkr/message/Scenario.msbt",
+  "source_sha256": "086e80593a15f323477e58b6c15817463283c786bde5520f3fffe07835cdd817",
+  "sha256": "ddf916e608488cc316e521799579e3ce854595ed830307a9fae5566c4e74474b"
+ },
+ "regionKR/KRkr/message/System.msbt": {
+  "source": "regionKR/KRkr/message/System.msbt",
+  "source_sha256": "78d1d811389ad81773cbc1b129c35ec6d5b4da937a4bd0bdae0c88980b6fce0f",
+  "sha256": "28acf857a9752a74e0545e97be516b80cccbfed7db13aef09e73af61df9703cc"
+ },
+ "regionKR/KRkr/message/UI.msbt": {
+  "source": "regionKR/KRkr/message/UI.msbt",
+  "source_sha256": "5c0ffb004bfacadfe11056497981831165aed2afce05e2eac4bed7eab3913847",
+  "sha256": "3ca14523b3fa9588d6af646b492c8cd221a4774d18a952591bcb55aa015265a0"
+ },
+ "regionTW/TWch/message/Hint.msbt": {
+  "source": "regionTW/TWch/message/Hint.msbt",
+  "source_sha256": "88aa2e24d2cdad1903ddbd24bb275bef29a273cd5df5757f0ab6aa91a8c8f712",
+  "sha256": "e8f400215e12ebcd09f47fca67bbf76d32936db1c14137c5833116d93c6e0862"
+ },
+ "regionTW/TWch/message/Place.msbt": {
+  "source": "regionTW/TWch/message/Place.msbt",
+  "source_sha256": "eaa1b862042987bef1663d5f937848930a554a3fd848e172f0fa47416337dfeb",
+  "sha256": "47680ddeb80e6a7a84af516bf7a72566d41221f2b8ecdf8195485ec55bff4aa6"
+ },
+ "regionTW/TWch/message/Scenario.msbt": {
+  "source": "regionTW/TWch/message/Scenario.msbt",
+  "source_sha256": "86db9e93bcc856a323b5b513bcd93a22aa92806782034720caf7f6b064887d50",
+  "sha256": "2268013f820611c28ee859f32a1f4797995312007c9ac44fb5d941c05879fead"
+ },
+ "regionTW/TWch/message/System.msbt": {
+  "source": "regionTW/TWch/message/System.msbt",
+  "source_sha256": "0b1b80b7bda85b53c0710b515f5b3c75790717821edc9759f47867f3435cd09e",
+  "sha256": "18adb8c7ac491cf9453bb565b39cc836006c4826e3cb9b770227633c6e56e685"
+ },
+ "regionTW/TWch/message/UI.msbt": {
+  "source": "regionTW/TWch/message/UI.msbt",
+  "source_sha256": "e85e2b09803ab096297b698f5f588f2a53e3afc93cd39d10eb6811ad40afbc34",
+  "sha256": "073319f60b98cda4dba56c7e722f1f421a66691a562426250cb439116526c89f"
+ },
+ "regionTW/TWch_Validation/message/Hint.msbt": {
+  "source": "regionTW/TWch_Validation/message/Hint.msbt",
+  "source_sha256": "88aa2e24d2cdad1903ddbd24bb275bef29a273cd5df5757f0ab6aa91a8c8f712",
+  "sha256": "e8f400215e12ebcd09f47fca67bbf76d32936db1c14137c5833116d93c6e0862"
+ },
+ "regionTW/TWch_Validation/message/Place.msbt": {
+  "source": "regionTW/TWch_Validation/message/Place.msbt",
+  "source_sha256": "eaa1b862042987bef1663d5f937848930a554a3fd848e172f0fa47416337dfeb",
+  "sha256": "47680ddeb80e6a7a84af516bf7a72566d41221f2b8ecdf8195485ec55bff4aa6"
+ },
+ "regionTW/TWch_Validation/message/Scenario.msbt": {
+  "source": "regionTW/TWch_Validation/message/Scenario.msbt",
+  "source_sha256": "a6376dbec63d8c559c397d4d891bc945a4a99b9ec7dacd0a52abf67f298ef21b",
+  "sha256": "bef223962b2b0d17634c6940e86117866f55b0c94e377254f47fa7f609be2aa8"
+ },
+ "regionTW/TWch_Validation/message/System.msbt": {
+  "source": "regionTW/TWch_Validation/message/System.msbt",
+  "source_sha256": "f4d5e3efd293e0ce0c4d9aa32f6361ce95c9c6c2a655dd93e87b937b43431139",
+  "sha256": "2af36ca57f1cf9dcd46ce39b0c5a00f2dc88bb886cad0bf397963cca4ccc80c1"
+ },
+ "regionTW/TWch_Validation/message/UI.msbt": {
+  "source": "regionTW/TWch_Validation/message/UI.msbt",
+  "source_sha256": "56411d9a5578514d88388eaf837383dddcc8c6687d15083e2b5ca43fc1a06680",
+  "sha256": "56215f87d19853e248d82f5a20917b535b88cc9881ef3340b2e8181bc3e63dc5"
+ },
+ "regionUS/USen/message/Hint.msbt": {
+  "source": "regionUS/USen/message/Hint.msbt",
+  "source_sha256": "00b849ce20d3b121f9e69f82c4f40b34240075ffb4821e60ac999b85374f1f43",
+  "sha256": "9c04527d8449c305b430edba119281d73c8ec43ad506fe212b5f50c781fed9a9"
+ },
+ "regionUS/USen/message/Place.msbt": {
+  "source": "regionUS/USen/message/Place.msbt",
+  "source_sha256": "5db8fbb46e57841164bd37f95c077293d269602be599ce8698f655c6883b9a69",
+  "sha256": "34f440f35ffcd247cb11519f62e7e2b4cd3d2d83bec59a43008a5c26020d54d9"
+ },
+ "regionUS/USen/message/Scenario.msbt": {
+  "source": "regionUS/USen/message/Scenario.msbt",
+  "source_sha256": "05ead1a872b525f14edc2c746ceda3403e2a2e8c9488cef5b3158fb091ce8e2a",
+  "sha256": "aae1ec57ff03dd0bb9ff7fbf1cdeec1a747870e5ce3a670a0af06125322ceec1"
+ },
+ "regionUS/USen/message/System.msbt": {
+  "source": "regionUS/USen/message/System.msbt",
+  "source_sha256": "bf80a5f5d14c32d9cdc555d258b299f22feb5a99a6abbf493d56d6e89505d378",
+  "sha256": "e65ec27ceb892b274953ca0106f6d38fcab9163a5abbde8a27d336b6527ba8e8"
+ },
+ "regionUS/USen/message/UI.msbt": {
+  "source": "regionUS/USen/message/UI.msbt",
+  "source_sha256": "0b29f12b9ce81d4fe9511f576f117a6eecab60f3e9839475c6b631e3b260b3db",
+  "sha256": "38b18dbef39ba020587cac0217500c4c35e02335090d9154304ec4e3b25c0622"
+ },
+ "regionUS/USes/message/Hint.msbt": {
+  "source": "regionUS/USes/message/Hint.msbt",
+  "source_sha256": "e259c68526bc7d3458548259e8a95286c7aade911b4c929d80ac2df445000094",
+  "sha256": "5f3efc40f5d118522f6d34fdf65dc23f7e7fe7542cb4139e04277e3ab7739bfe"
+ },
+ "regionUS/USes/message/Place.msbt": {
+  "source": "regionUS/USes/message/Place.msbt",
+  "source_sha256": "6f64f69d8ccb31b4fb364b292dfdbe11e9901ffebf0f474606ea917a71ff23dc",
+  "sha256": "f9208802461aa5604915f737ddd4ee6f7de08c71a08b3ddc1dd0241ecf1f1cc5"
+ },
+ "regionUS/USes/message/Scenario.msbt": {
+  "source": "regionUS/USes/message/Scenario.msbt",
+  "source_sha256": "8c9a2c909e33dc8e4a32677662b14cab3bdaf40e56bf5f003c2ad1882e9b3fb5",
+  "sha256": "ecf5e0c7b006623b549b8cea96622b1b1d82441cbc2bc0b3083f69df99bd9135"
+ },
+ "regionUS/USes/message/System.msbt": {
+  "source": "regionUS/USes/message/System.msbt",
+  "source_sha256": "0d86852c83cd9515133fbd99d2d4f0b0bbabda0a0683cb5a3743921732e3b239",
+  "sha256": "c005b1f1914788be017ed349b7d3669cb6922a300361eebcff3bd29bf324abaf"
+ },
+ "regionUS/USes/message/UI.msbt": {
+  "source": "regionUS/USes/message/UI.msbt",
+  "source_sha256": "f7c8f646cbbd89a17a6e868818f50f05bac047812b2b61afd4cc9cf3909e7250",
+  "sha256": "6cf049d9ae342e35b9ab5cdef5a0fa0c6152356ab5365f329c059caa29595856"
+ },
+ "regionUS/USes_Validation/message/Hint.msbt": {
+  "source": "regionUS/USes_Validation/message/Hint.msbt",
+  "source_sha256": "b5d9bef8578ad9f60bef1865b2505569ca34391bb0d687f813bb955a578bc038",
+  "sha256": "a105513fc06a6a2f852e1f1dcb4b3298831d011bc9ba43acc0101fee688aeccb"
+ },
+ "regionUS/USes_Validation/message/Place.msbt": {
+  "source": "regionUS/USes_Validation/message/Place.msbt",
+  "source_sha256": "6f64f69d8ccb31b4fb364b292dfdbe11e9901ffebf0f474606ea917a71ff23dc",
+  "sha256": "f9208802461aa5604915f737ddd4ee6f7de08c71a08b3ddc1dd0241ecf1f1cc5"
+ },
+ "regionUS/USes_Validation/message/Scenario.msbt": {
+  "source": "regionUS/USes_Validation/message/Scenario.msbt",
+  "source_sha256": "c8097c3de0b52f7e9157a82f1d28d8cc212d5dbe9f99c549be0b9199af0c0f3f",
+  "sha256": "7bc1d1bcdbf17059b29783143be460d71aaa1cf2cf67b59102d7939f7c4f6797"
+ },
+ "regionUS/USes_Validation/message/System.msbt": {
+  "source": "regionUS/USes_Validation/message/System.msbt",
+  "source_sha256": "be2f0690482a7086178936a825905a96691fa310f94a00c2be4321a22095a7eb",
+  "sha256": "8f5ac26fc828e34a07caac8fb3b9dadea233260a74ad5c8e7fd65be4905643ce"
+ },
+ "regionUS/USes_Validation/message/UI.msbt": {
+  "source": "regionUS/USes_Validation/message/UI.msbt",
+  "source_sha256": "de46d4da9dc7d88723e52a1fc63031ccc985f973f53bc7ef5866dba3744a8e28",
+  "sha256": "1b765ae25dc36770dab8e65d7e4df53b7d30013e12dd531fdae940c94464715f"
+ },
+ "regionUS/USfr/message/Hint.msbt": {
+  "source": "regionUS/USfr/message/Hint.msbt",
+  "source_sha256": "3799dc25f76228e7bf219d27ebe290020ae460016dcc404a4cd89db01d2ee983",
+  "sha256": "a87c828d6d988b163f3d886e5fa43e3e180da3b8eb413cf07091cca0d6e3043d"
+ },
+ "regionUS/USfr/message/Place.msbt": {
+  "source": "regionUS/USfr/message/Place.msbt",
+  "source_sha256": "fd49d271743c557a2cdf0d92afe06d6c77ac2006714682034144710cd7ff98d0",
+  "sha256": "3829a6e776facfd7e67861351d6cee8ff73f5cc4b73c17d05d1902fcc7cad90e"
+ },
+ "regionUS/USfr/message/Scenario.msbt": {
+  "source": "regionUS/USfr/message/Scenario.msbt",
+  "source_sha256": "02fda28896c4d6fa972d87e939b4c2e084cba1258f762b55257a7b1022bab7c9",
+  "sha256": "67afc83564a090346a39af6d635a7abeaa4102e686087d3e437a1e82f1d14f98"
+ },
+ "regionUS/USfr/message/System.msbt": {
+  "source": "regionUS/USfr/message/System.msbt",
+  "source_sha256": "600e9f9f81d66cd75d2a0cd9ffb1e922d88a98311dda770ad9f9c9af35eb2fc2",
+  "sha256": "7078da011cd54c7e4f9341d344321616242a926c28f33aeec694b5f264ade36b"
+ },
+ "regionUS/USfr/message/UI.msbt": {
+  "source": "regionUS/USfr/message/UI.msbt",
+  "source_sha256": "c582bfd1affcbb6ec3db8872454be70d1e2c61b2cffe7e05c2e01e09b5d9a1cd",
+  "sha256": "f7864513cf1e7725a64b8e511bcdcfda41392682e434c44115b2fc98b6e2c25c"
+ },
  "region_common/actor/ItemArchipelago.bfres": {
   "source": "region_common/actor/ItemShellRader.bfres",
   "source_sha256": "a07e66cc3334e7e5f8f918930f65e87db440898fee0318a953ceee656423d3d3",
-  "patch": "ItemArchipelago.bfres.bsdiff4",
   "sha256": "11017086f0af9dfc93c2e9fa3fe0eb784709d43fa63d79c4e30e039e545de1d5"
  },
  "region_common/actor/ObjTreasureBoxJunk.bfres": {
   "source": "region_common/actor/ObjTreasureBox.bfres",
   "source_sha256": "57b492c665c8e9e8d4dc24ad499543a570a392dd1aae4216df15819d31671a91",
-  "patch": "ObjTreasureBoxJunk.bfres.bsdiff4",
   "sha256": "4b7d43d78971c9c4790d070a1f6e21dc6e757b0501d8af0c99d405d53bc482e6"
  },
  "region_common/actor/ObjTreasureBoxKey.bfres": {
   "source": "region_common/actor/ObjTreasureBox.bfres",
   "source_sha256": "57b492c665c8e9e8d4dc24ad499543a570a392dd1aae4216df15819d31671a91",
-  "patch": "ObjTreasureBoxKey.bfres.bsdiff4",
   "sha256": "d7975ad889af501ca8b3ee8421bb10f84e643ece270a46d2b144c58f0a0fe07a"
  },
  "region_common/actor/ObjTreasureBoxLifeUpgrade.bfres": {
   "source": "region_common/actor/ObjTreasureBox.bfres",
   "source_sha256": "57b492c665c8e9e8d4dc24ad499543a570a392dd1aae4216df15819d31671a91",
-  "patch": "ObjTreasureBoxLifeUpgrade.bfres.bsdiff4",
   "sha256": "1749ff53f277df884f9a9e6b8ef85949e76e6e127347b9f69855a00a1d447eb6"
  },
  "region_common/actor/ObjTreasureBoxSeashell.bfres": {
   "source": "region_common/actor/ObjTreasureBox.bfres",
   "source_sha256": "57b492c665c8e9e8d4dc24ad499543a570a392dd1aae4216df15819d31671a91",
-  "patch": "ObjTreasureBoxSeashell.bfres.bsdiff4",
   "sha256": "d4a124cfb02b0ebb2502dfa3ddef061f21d8eca4a11ff0401751c6a0e7fec275"
  },
  "region_common/actor/PlayerGhost.bfres": {
   "source": "region_common/actor/Playerlink.bfres",
   "source_sha256": "812cfae3d46878032e9f5f9f6ac8b50ce75f33364af07e2890d7a3ed22e40b53",
-  "patch": "PlayerGhost.bfres.bsdiff4",
   "sha256": "23a27d580158d4a44aea16819be217a88a66219df7db21fb50501324eccdde5a"
+ },
+ "region_common/audio/stream/BGM_ENSEMBLE_LOOP.bfstm": {
+  "source": "region_common/audio/stream/BGM_ENSEMBLE_INST.bfstm",
+  "source_sha256": "8a5cef277f80458d365ece468eb18f1bde9a48b4cb92aa1d1143e097b984602a",
+  "sha256": "f92d6e15db3639814e7772cd6b66b3d01bc06e3dc5e66e18c45f5f52cf0f6696"
+ },
+ "region_common/datasheets/Conditions.gsheet": {
+  "source": "region_common/datasheets/Conditions.gsheet",
+  "source_sha256": "10b0f05c3b0040c504f99e9307dd596afe75557e443a213fa33ee0ba6ef43d5a",
+  "sha256": "bd74a7fee3140d1d25ccab95d5c2faa5ec04916e5fb6ed7fa0cb28f81f44f6d2"
+ },
+ "region_common/datasheets/CranePrize.gsheet": {
+  "source": "region_common/datasheets/CranePrize.gsheet",
+  "source_sha256": "ea958748ec140802ee85a57cabc5e1168b6e0e6d46eef7226bffb96c9e1b7371",
+  "sha256": "fe6a9474351ae3bd267d2bf344f2bd7c1e45589758d8fced1c6255491e49edcd"
+ },
+ "region_common/datasheets/CranePrizeFeaturedPrizeGroup1.gsheet": {
+  "source": "region_common/datasheets/CranePrizeFeaturedPrizeGroup1.gsheet",
+  "source_sha256": "f830f9a6d444b5f567c6431c978441e704585d7588a43bfea7ef2d8e79165d76",
+  "sha256": "392529ecbde1b500637b9fb8c904b794339ed5d16ddd08dbbb22a666a7f1c71c"
+ },
+ "region_common/datasheets/Facial.gsheet": {
+  "source": "region_common/datasheets/Facial.gsheet",
+  "source_sha256": "ab853d989e865d9a3ddad7984ba48399d391e8e3411eb4e376742fb6183d45d6",
+  "sha256": "c4de5dfc06a38381a45cbef872c03d29bb489fc8a80a3a987755eb435a808ce0"
+ },
+ "region_common/datasheets/GlobalFlags.gsheet": {
+  "source": "region_common/datasheets/GlobalFlags.gsheet",
+  "source_sha256": "2cb6c50cf66c072c13c601b06118da4ae39f8446d89991faa61ab6d5ec1791c4",
+  "sha256": "6a94d090a2603dc47ac70c9e01cb4a691e726780cd1cc802105d5711237f4676"
+ },
+ "region_common/datasheets/ItemDrop.gsheet": {
+  "source": "region_common/datasheets/ItemDrop.gsheet",
+  "source_sha256": "bdf2f3c92c6be486e07bf7da07e354154be172262071f072105a0c3f4a75ee63",
+  "sha256": "679b8ff8a84476e4d94ad35095461aeab13e7ff98c651eb8b0e24a95283d7e10"
+ },
+ "region_common/datasheets/Items.gsheet": {
+  "source": "region_common/datasheets/Items.gsheet",
+  "source_sha256": "e0014c3376725282ac8c70036f303b5738dd5557a396d276afc3e5547bc78e0b",
+  "sha256": "881e318d41844df2bdc15a0f397e8d769a2aa9c258810d137a42fc7223b00603"
+ },
+ "region_common/datasheets/MapPieceClearReward.gsheet": {
+  "source": "region_common/datasheets/MapPieceClearReward.gsheet",
+  "source_sha256": "61c00d28551164571242a79401879b7e1126bec81ac73c5c21b054cb51a06d29",
+  "sha256": "3384d92a7a784b3e7680df0ad7916024be5f7369c8563170d75d17f4dfd85e47"
+ },
+ "region_common/datasheets/MapPieceTheme.gsheet": {
+  "source": "region_common/datasheets/MapPieceTheme.gsheet",
+  "source_sha256": "ded3b3473bfd5bb288c4168c51bb09d61a0d6bb76b29427529b87771af5ba130",
+  "sha256": "2aa72560791570735e445b80b5da5457eee43f29a5c885ac3cf71f3ef3e3bfed"
+ },
+ "region_common/datasheets/Npc.gsheet": {
+  "source": "region_common/datasheets/Npc.gsheet",
+  "source_sha256": "39dc9855aa050bc6f0fb4acd6dea7ea09dfe143e2fe26762ee46d9cd1895741e",
+  "sha256": "39a9f5a9a67a0f124cb39baf29435524938814795afa8d9040fede79240fc69f"
+ },
+ "region_common/datasheets/NpcPhysicsTraits.gsheet": {
+  "source": "region_common/datasheets/NpcPhysicsTraits.gsheet",
+  "source_sha256": "6b3c78bd5e0363fd120bd4e0f92f07c040fa490b523b86d71cf81960b3843a17",
+  "sha256": "43946611550544c275e94b46a926fe7b3e0f869eda7b315ece493a07463c6fe9"
+ },
+ "region_common/datasheets/ShopItem.gsheet": {
+  "source": "region_common/datasheets/ShopItem.gsheet",
+  "source_sha256": "1b1cb27ea756ab4941cc5c1b8f5adeec1a0aa9796d471573d167e37e708e7c93",
+  "sha256": "d46672d49d6f92245f4cf8ce4e1d78447793d0304f746849dc269a70cfd048aa"
+ },
+ "region_common/datasheets/UiFieldMapIcons.gsheet": {
+  "source": "region_common/datasheets/UiFieldMapIcons.gsheet",
+  "source_sha256": "8ef6134e987d60fd20f01357fc6f835d56e4bf4fc999707efa12ec1fd57fab87",
+  "sha256": "ad8cbb65cdb70aae509db0cf5d56060fba13c8144302b6d1a4ae8c41db70a657"
+ },
+ "region_common/event/APDrop.bfevfl": {
+  "source": null,
+  "source_sha256": null,
+  "sha256": "842d7400b5780302fb7cc99c2f47888ec4eba95dadbe01934c9861361781ac20"
+ },
+ "region_common/event/Book.bfevfl": {
+  "source": "region_common/event/Book.bfevfl",
+  "source_sha256": "a5d9e12944617e3aaa858f212749559bf88dd3dd537381529f92fc179cd7665a",
+  "sha256": "9cfed075a9db1e40d6728cf16388cedd33001b845e7f0aa1a95ebbdaa07868ee"
+ },
+ "region_common/event/ChefBear.bfevfl": {
+  "source": "region_common/event/ChefBear.bfevfl",
+  "source_sha256": "147df84b30888f2fc97c95970c501c5cd9d104e26e6790ccc78a1aaba7f3c59b",
+  "sha256": "8804c5aa2d782e31417e0e2a1c8276c9720226fb37d57423d4a5506376d39c69"
+ },
+ "region_common/event/Christine.bfevfl": {
+  "source": "region_common/event/Christine.bfevfl",
+  "source_sha256": "0874231a0f33d7239345c119ded2514f84139dc184f219e7968feced00c412bb",
+  "sha256": "ee01ac18575a46d39c5e8a4fb992d8d6f3a1c3dddf0d5c3e877b73e1402b69a0"
+ },
+ "region_common/event/Common.bfevfl": {
+  "source": "region_common/event/Common.bfevfl",
+  "source_sha256": "9661205f1d397647dd0f76c0f52aafc9089ccfb324efe463305b6c55a0f50d79",
+  "sha256": "3a4ba2a698f9285dfbee38e818f96417274ff939787ec93aa69ea7058321e45f"
+ },
+ "region_common/event/Danpei.bfevfl": {
+  "source": "region_common/event/Danpei.bfevfl",
+  "source_sha256": "731b68736d99255207601c76cfad12c26be9df1205ed17066065fb3d514fcc7e",
+  "sha256": "433cdd2fdcd48549828ca237328a0de8ba0152cec068bf40f8062dcd639e326a"
+ },
+ "region_common/event/DrWrite.bfevfl": {
+  "source": "region_common/event/DrWrite.bfevfl",
+  "source_sha256": "88ed821e5a9efbb0bbd13a66330d360c10422c664e2a63b8dc1a0884c6c866ff",
+  "sha256": "322476818273ab331f785466b893d3e3a132969a56fbe89e1028b74e4204725a"
+ },
+ "region_common/event/DungeonOwlStatue.bfevfl": {
+  "source": "region_common/event/DungeonOwlStatue.bfevfl",
+  "source_sha256": "c1a2220f6bbeb93c8e48f6ab79f5a295c2ce1444831716ad650c01c67ed27d64",
+  "sha256": "378e310115d935e0644627b6ab366c7607ee9f997c00abf07967a977bbfeeb8d"
+ },
+ "region_common/event/FairyQueen.bfevfl": {
+  "source": "region_common/event/FairyQueen.bfevfl",
+  "source_sha256": "d2bd074b3b18f1f726e74baef5eaa62e30bc9142d81fd254c16a6813146ca7e0",
+  "sha256": "da422e8b9ae5c3d296c529bd60449c44acb05a8e825561a5e6bef069e6dbe2a6"
+ },
+ "region_common/event/FieldOwlStatue.bfevfl": {
+  "source": "region_common/event/FieldOwlStatue.bfevfl",
+  "source_sha256": "b33e7c9a69c4fb4b97b1da724518c59a6cac36dcc5edc172aa8fdc7f5f53233f",
+  "sha256": "9dd37989935ea4e1d3da485b3fb66769581433a05e2907715e7a47d97faee732"
+ },
+ "region_common/event/Fisherman.bfevfl": {
+  "source": "region_common/event/Fisherman.bfevfl",
+  "source_sha256": "cd1c263c8220d3f7e573d684c1d57c99903b136cb24048259bad4475fbc93fd9",
+  "sha256": "8ea7b53a9356171870e31e7c56174fa3ddc16be08075e8231a5f31aaabc4bb81"
+ },
+ "region_common/event/GameShopOwner.bfevfl": {
+  "source": "region_common/event/GameShopOwner.bfevfl",
+  "source_sha256": "1e602a3d2c809ec12429f5a36caad363d2486a36fcdbc9f59e822a525c941916",
+  "sha256": "a1bc608cf18ef2871fe3300dc4312b2d6786be5626aca6de7d5afc436a48cde2"
+ },
+ "region_common/event/Ghost.bfevfl": {
+  "source": "region_common/event/Ghost.bfevfl",
+  "source_sha256": "d9267163bce517f1bd9062f5b0f394760268b42fc431f9c069290f029c9ccd1f",
+  "sha256": "b90b82574cd81884dfed8bc5e62b348bebe6ba6931361e85415fa0726db4c7b8"
+ },
+ "region_common/event/Goriya.bfevfl": {
+  "source": "region_common/event/Goriya.bfevfl",
+  "source_sha256": "ecf2bb72de7359c072b779ce8acc36ece70efd12908a244560ffeaefd494d7c4",
+  "sha256": "e23fe82eecf9ace26bb6542e184b28c2a07d97106d84bb6af961edf2b0042da9"
+ },
+ "region_common/event/GrandmaUlrira.bfevfl": {
+  "source": "region_common/event/GrandmaUlrira.bfevfl",
+  "source_sha256": "e5ab771a9e8744e31cda1212c901bc134fb668c841c22d0a7a00bc4438f8e78b",
+  "sha256": "e7fe1aed3e2b2e42c6448279275c7a3364fa952fd950b183a699c50fd52921f4"
+ },
+ "region_common/event/Item.bfevfl": {
+  "source": "region_common/event/Item.bfevfl",
+  "source_sha256": "2ecfa2d151d053e1e4194bbe47c946fa6124555baa0d2cd900447d4cfb9bccd0",
+  "sha256": "a973c133241c4cc798a0c02b870847aa32338e93653a740a8c078637533a69ed"
+ },
+ "region_common/event/Kiki.bfevfl": {
+  "source": "region_common/event/Kiki.bfevfl",
+  "source_sha256": "09dc6f793f1efd2337d836689d3eff94a6abed88da784100a63809cfb7fc8912",
+  "sha256": "86982bffee07b6b14a4a17383e6cc522a9b3d544cfdc229ebe2b5c307536f0c1"
+ },
+ "region_common/event/MadBatter.bfevfl": {
+  "source": "region_common/event/MadBatter.bfevfl",
+  "source_sha256": "3f22fc5d3a2d40cec44f736203ce0c50b5d28e8e90bc14da7f3255f374009f5e",
+  "sha256": "acc153889e1877d28727038c0ede241e94bedcb01854959abf2dc780419c68dd"
+ },
+ "region_common/event/MadamMeowMeow.bfevfl": {
+  "source": "region_common/event/MadamMeowMeow.bfevfl",
+  "source_sha256": "dd9d6cfeec9fcebaefa7bc5c5e711c664d485ebd425b4b94dcb1bf8da8c18bd1",
+  "sha256": "bcbfc65c429240291c7a1013dcf52b7d4c1e985452d478f0f36491c64e9ed61b"
+ },
+ "region_common/event/Mamu.bfevfl": {
+  "source": "region_common/event/Mamu.bfevfl",
+  "source_sha256": "4044f96cfde18ad2b2597aa28b63bc1b0499c97b9f4fa1c63dfc1a6f2628ae9e",
+  "sha256": "638e642d4d2e4fde32e3612155fc82e044e8240f0b5c8098a7158ecbbc9cef86"
+ },
+ "region_common/event/ManboTamegoro.bfevfl": {
+  "source": "region_common/event/ManboTamegoro.bfevfl",
+  "source_sha256": "d1488a83464843a16d17e93bf3877951bfbbc4b6dd76584a3860177442bf6b4f",
+  "sha256": "a70355d463d28165beb23f80d1fe11c00993d88be90b3e7cd164a86f31fc4ee2"
+ },
+ "region_common/event/Marin.bfevfl": {
+  "source": "region_common/event/Marin.bfevfl",
+  "source_sha256": "fb78f1c1bb2a1aae33de5adfef86d20687fb6037301d3fed5b73debf5319429e",
+  "sha256": "da10ddcddc5f19834eb89f8cfbbbdb980867770dbcdc3a4d8d64fd8c088366b5"
+ },
+ "region_common/event/MarthaStatue.bfevfl": {
+  "source": "region_common/event/MarthaStatue.bfevfl",
+  "source_sha256": "064998dc6b456d508aed6834b245821328fba92ac4eff8cfdac7c73a7e260469",
+  "sha256": "a6bda0b9abe0cc369cf8fe28224b9e6e5808db377a7ca77b01ebd1d0902da6a7"
+ },
+ "region_common/event/MarthasBayFisherman.bfevfl": {
+  "source": "region_common/event/MarthasBayFisherman.bfevfl",
+  "source_sha256": "752ac52e52447b3265e0a1756013b75f2d69ccc046f1d65aeb3f2aff596fda5e",
+  "sha256": "3af52fa59f6786253fbbec9f6594815d5390bafaaa64a7b01399ffc0580efcdc"
+ },
+ "region_common/event/MermaidMartha.bfevfl": {
+  "source": "region_common/event/MermaidMartha.bfevfl",
+  "source_sha256": "c46bef4be93d1a437f25b1da1afc25a1621fe0e33ed5a2617e9c31f9884baf8c",
+  "sha256": "e2b2aec80daa88ad0961e43ef861022d9fc3963f9108b196e34fb09423e60b1f"
+ },
+ "region_common/event/Papahl.bfevfl": {
+  "source": "region_common/event/Papahl.bfevfl",
+  "source_sha256": "dab43bc8b799cd7d7a51bcd6de7d578d863506bdb67f7ef384e7375312b8b695",
+  "sha256": "2a50e6ce93bee5351c32ab0ced0459f1172298375feb7964dafb71fbd5bd01b8"
+ },
+ "region_common/event/PlayerStart.bfevfl": {
+  "source": "region_common/event/PlayerStart.bfevfl",
+  "source_sha256": "39a69abcd372498b016d50315a41e857fec48ed1736359651b573c699d5d70af",
+  "sha256": "2b78d92780ebb068ec6eac0811dbdcb20b6aeb5f7ae9c75d4a7ced527c095a70"
+ },
+ "region_common/event/PrizeCommon.bfevfl": {
+  "source": "region_common/event/PrizeCommon.bfevfl",
+  "source_sha256": "3f39d78ecd5aa9d9d5054782c34dd8eee38d17e26aa83ad5da9b4eb58bb5c2d7",
+  "sha256": "b75aa4062a2559fb4bd1f2da994c0897b67285cf0d2efa6b767fb71261104961"
+ },
+ "region_common/event/QuadrupletsMother.bfevfl": {
+  "source": "region_common/event/QuadrupletsMother.bfevfl",
+  "source_sha256": "344ef2f021f6d6ae10f1816afdbd6aaf0dc63423a32f9ebf87c792f0716e313a",
+  "sha256": "3b20613d9b253153fcabc6658a023c86d48587376e0ce5bae956be7b987a74b9"
+ },
+ "region_common/event/RaftShopMan.bfevfl": {
+  "source": "region_common/event/RaftShopMan.bfevfl",
+  "source_sha256": "132ce0739aee939e42f32cb0191061b46da1d2ede0eb18a8304db14561e93ffb",
+  "sha256": "cf07307e11f770d7a96f5d2c57db2c7e1fa1d8010e4ebaacf0d36b65ef40404d"
+ },
+ "region_common/event/RibbonBowWow.bfevfl": {
+  "source": "region_common/event/RibbonBowWow.bfevfl",
+  "source_sha256": "d99b05c7b77632c859e09547bb18725739b60d0a9e95cf049b0ee6051ef0368b",
+  "sha256": "39be397448efa23a5fdaf742e576d656a9ff6ec7cefed228d45e09a795c4f367"
+ },
+ "region_common/event/RoosterBones.bfevfl": {
+  "source": "region_common/event/RoosterBones.bfevfl",
+  "source_sha256": "2b766ba9c2720e94991e460006d74dba0500c743e004000e26f07dd78797bab7",
+  "sha256": "3db7a392b989aba7779766ef73315a20e43f84d5eb7b11a26819fda6bc15a310"
+ },
+ "region_common/event/Sale.bfevfl": {
+  "source": "region_common/event/Sale.bfevfl",
+  "source_sha256": "0ffbb5fc876644019abfc791e8b6db186ee131816ed92f9a7fb3a6503f4cce3e",
+  "sha256": "76e8fcfe6242ff2ebc7fd7f3e8433216eee71cb9b24c28175dbd2a706f91092b"
+ },
+ "region_common/event/SecretZora.bfevfl": {
+  "source": "region_common/event/SecretZora.bfevfl",
+  "source_sha256": "5cafeb26032386e41226077e61c89576268ff4401bb8ef60edc890e4e310fddc",
+  "sha256": "34584156fec41cf8916697967450e46844bf5bc784a3e415a719274b6eaef34e"
+ },
+ "region_common/event/ShellMansionMaster.bfevfl": {
+  "source": "region_common/event/ShellMansionMaster.bfevfl",
+  "source_sha256": "1f60e4169bf51f374a3ce60d2046d94599e8a5a8b4704866cd0adcf2e7892566",
+  "sha256": "4eefbd2c5ccdb5217db50310f8a6297095d9de3f9d8595056b9297225e51ac9a"
+ },
+ "region_common/event/ShellMansionPresent.bfevfl": {
+  "source": "region_common/event/ShellMansionPresent.bfevfl",
+  "source_sha256": "5fb8ca1dca9280117eb05849d2cd3552d9e1995d813344944d6851fc5ec32de5",
+  "sha256": "21c4a405f73f37fea27d6428fb6826dfe8d339456e47eed558c113cedbe4b055"
+ },
+ "region_common/event/SinkingSword.bfevfl": {
+  "source": "region_common/event/SinkingSword.bfevfl",
+  "source_sha256": "bcec801f41bf86824f80f006832cfd773be337b026516ecc8bb5a66bdc6401c9",
+  "sha256": "498c597badc922462a0bd0c920fbda2f2c6f50d5e60eafe1f0da7f90c5f49c3c"
+ },
+ "region_common/event/SkeletalGuardBlue.bfevfl": {
+  "source": "region_common/event/SkeletalGuardBlue.bfevfl",
+  "source_sha256": "556d902353daa6d0ac4ac250b6f15fda1f527628764bc8c1f7522a0571061f49",
+  "sha256": "dc4e14cb1883b8bacb04bc7c74f5c9b30dbe46fed7f964ab6b7bdff1da2c0658"
+ },
+ "region_common/event/Syrup.bfevfl": {
+  "source": "region_common/event/Syrup.bfevfl",
+  "source_sha256": "43b12043d274946608c29f65dc198a382c984551503353ad1ccb7b3ae95f11dd",
+  "sha256": "7f57251e0c212a030ec05b0d26d30fd0ae6228651296d30ad3728e9bf1576c86"
+ },
+ "region_common/event/Tarin.bfevfl": {
+  "source": "region_common/event/Tarin.bfevfl",
+  "source_sha256": "95b42cf2e12500108dda0d2b3a13e5438f9626b3f76dacdd9bcfc30c075abb5b",
+  "sha256": "14872dc5a80d6fb303a51f6b3a84fb3e0e87ae1d0b6be60b235c9adf36701a4b"
+ },
+ "region_common/event/Telephone.bfevfl": {
+  "source": "region_common/event/Telephone.bfevfl",
+  "source_sha256": "6e3164a5db53b7b2913d4284b9ed6f6becbcd6b7b2a08b38f06e216f162831ab",
+  "sha256": "30be84cafd79f77b5b0c7779a7a26395ac17c26ee133949d8f228f075c9c7436"
+ },
+ "region_common/event/ToolShopkeeper.bfevfl": {
+  "source": "region_common/event/ToolShopkeeper.bfevfl",
+  "source_sha256": "684edab84b4b48f7767c3f18f69d638b3bf2a1b15c94b8118d8d4c438cdd7423",
+  "sha256": "f378560953ff0aa94e3acc05a07c3a57eb5bd7eaec37efae63d2d6e7852cd600"
+ },
+ "region_common/event/TreasureBox.bfevfl": {
+  "source": "region_common/event/TreasureBox.bfevfl",
+  "source_sha256": "96a6a38edcc5cb59d5a4bb8f6cb14a541ce0062ee7d959e6a15034d3ce2c2d63",
+  "sha256": "f8905f1febe6f4f23df08a3ba33c04f1030de5ea041ffba0f6e9ce2a7aed9c16"
+ },
+ "region_common/event/Walrus.bfevfl": {
+  "source": "region_common/event/Walrus.bfevfl",
+  "source_sha256": "6831a17e32972f4f1d126eae35582c103791fb695921bb51e3848bb99d9cdb68",
+  "sha256": "46d144eaca0a91797e4a85e18202d6b2f0e1a6164df9fcc437bb367e0fb5b412"
+ },
+ "region_common/event/WindFishsEgg.bfevfl": {
+  "source": "region_common/event/WindFishsEgg.bfevfl",
+  "source_sha256": "900267f916d4b501bc266a25c0c08a9d391136ef8de5d2e3c344ae5b26416637",
+  "sha256": "a6ba75d3ed7807c2cfe45f1b533ab7352dc62ab7e84676c4eb7177e01e29df29"
+ },
+ "region_common/level/AnimalVillageCave/AnimalVillageCave_01A.leb": {
+  "source": "region_common/level/AnimalVillageCave/AnimalVillageCave_01A.leb",
+  "source_sha256": "9c532e7e2d80d8b8e85692b119e2a5d49cc05707f693484182fe5a19abdba611",
+  "sha256": "889f7bfcf1e33906668e14c68840d085e921b1893b7a085789590e23d9a6a0aa"
+ },
+ "region_common/level/AnimalVillageEnter/AnimalVillageEnter_01B.leb": {
+  "source": "region_common/level/AnimalVillageEnter/AnimalVillageEnter_01B.leb",
+  "source_sha256": "cfc1b71ff59cb6025480ee59d22a0e09f786d6ef83726a102930621f32aa827d",
+  "sha256": "2ba78a1fc3484c2b5d63cea5f22eaad84889c9c3e0471e3e3cb0c99d2aa9cfcd"
+ },
+ "region_common/level/ArmosShrine/ArmosShrine_02A.leb": {
+  "source": "region_common/level/ArmosShrine/ArmosShrine_02A.leb",
+  "source_sha256": "e0e74f3495db831e41f6203fdd2b381eeb300f82f517a601c6e2d06012e91ee1",
+  "sha256": "af35cd571b957735d3ae0a00c7b6f49d91d655742c7e44fbf79f99618ed88f13"
+ },
+ "region_common/level/ArmosShrineCave/ArmosShrineCave_01A.leb": {
+  "source": "region_common/level/ArmosShrineCave/ArmosShrineCave_01A.leb",
+  "source_sha256": "5ede56d16a9bf9ec7eefed4608d18f1668e7f545439c4ca523e2aded114dd235",
+  "sha256": "59da4a51a2d98e0e5f2cd7e72ac0b7e57fb1ec62e6313b9c8bee8a1660f6af40"
+ },
+ "region_common/level/DogHouse/DogHouse_01A.leb": {
+  "source": "region_common/level/DogHouse/DogHouse_01A.leb",
+  "source_sha256": "7b1200b9403506199c40175493ca9948b8f6886d6da8e49ee2f8119ec3975814",
+  "sha256": "5f531d7547acb1cde07e622884342aa9c5848dfa1707e058d2941e510a7efa88"
+ },
+ "region_common/level/DreamShrine/DreamShrine_01A.leb": {
+  "source": "region_common/level/DreamShrine/DreamShrine_01A.leb",
+  "source_sha256": "dac50b121c7678290b5ab2dff0fb57f443fe9131a690342d141cd5d6eae31751",
+  "sha256": "790a21874a713648a4025f5833a88a8bfbddc969657707acdd73e439e515a87d"
+ },
+ "region_common/level/DreamShrine/DreamShrine_01B.leb": {
+  "source": "region_common/level/DreamShrine/DreamShrine_01B.leb",
+  "source_sha256": "113adfa62679b85aed0db5872733fb909eafe6d55f315f007e306502322a743f",
+  "sha256": "fd3c1c3634e2da7fdd4d25ad9278550d60f74a03c303f9693d78c360b29a46e1"
+ },
+ "region_common/level/EagleKeyCave/EagleKeyCave_01A.leb": {
+  "source": "region_common/level/EagleKeyCave/EagleKeyCave_01A.leb",
+  "source_sha256": "7890c2c69cd02673ded3eb32cac645e3c2c2968764b73f148967264152c04064",
+  "sha256": "76e363eb232a1257020fc689e14ca8cc87ec493beab7a7b60854219e07531170"
+ },
+ "region_common/level/EagleTowerExit/EagleTowerExit_01A.leb": {
+  "source": "region_common/level/EagleTowerExit/EagleTowerExit_01A.leb",
+  "source_sha256": "790ad3aac15b6760aef0ff292a842f1d71c407a2531fba402bc030d0343827d8",
+  "sha256": "e66c8e39186effdac07d0be2585f7083c8d60f86e82f4031f1953a4b54c1ef4d"
+ },
+ "region_common/level/Field/Field_01A.leb": {
+  "source": "region_common/level/Field/Field_01A.leb",
+  "source_sha256": "a71af828fd8d82b2b5e038145648e9fa2af064dce6d521b95087539448e64d24",
+  "sha256": "707bfaa83419eac916f8f7165b20785e29928283e4f25cb107cddce03172fb4e"
+ },
+ "region_common/level/Field/Field_01M.leb": {
+  "source": "region_common/level/Field/Field_01M.leb",
+  "source_sha256": "9b79dee3c50618cd44e390af03deb34c55a94573cfdde9da6a260585761afcd2",
+  "sha256": "29f9179dc6451d8b6c25bcc0f952d401e556a160dfcfce6dd874089c178b3714"
+ },
+ "region_common/level/Field/Field_02B.leb": {
+  "source": "region_common/level/Field/Field_02B.leb",
+  "source_sha256": "fb19168d70cae669c2db9ec8dd33fd836cb9744b138bfa258be3bdb7267c5d86",
+  "sha256": "71d1835e7da3fc17245b85795f2f71a7f7e40662bf07f627f604aa8fd5b9a4c1"
+ },
+ "region_common/level/Field/Field_02C.leb": {
+  "source": "region_common/level/Field/Field_02C.leb",
+  "source_sha256": "5853ff6e93af588dbfdd1bc0cec813c8d6dac251182237ffacccff0ad8de9c57",
+  "sha256": "1791c4482dc136c9da63e9f64c87f1229f5e8f920f3dc35fe80c138b33c85c01"
+ },
+ "region_common/level/Field/Field_02E.leb": {
+  "source": "region_common/level/Field/Field_02E.leb",
+  "source_sha256": "3f58ffe747ba0eff491fc3c185cd05977cf4e7d277c02a77b556506c9f3ef9fa",
+  "sha256": "0dd880bae10d4d71e3dca287fbb79d4868af7420d844174e938e0a81b3245ed0"
+ },
+ "region_common/level/Field/Field_02F.leb": {
+  "source": "region_common/level/Field/Field_02F.leb",
+  "source_sha256": "87be01f63ca6dceabb5de8abb35eb5f20f32acad98d48462a807cff0a63cc35e",
+  "sha256": "b779b5d4e0a74d8773d6a1e71870b62ce15898523dd7eb1676d0cc2f032b4bc6"
+ },
+ "region_common/level/Field/Field_02I.leb": {
+  "source": "region_common/level/Field/Field_02I.leb",
+  "source_sha256": "fef3e314e3a7de3e35bed38d0f3d2e3caa19e5f2316a346478de69136842dc8f",
+  "sha256": "df9a90e801f9b2f379701470ed4caaddf2eb948d270fd63d3409e119d4dc2f19"
+ },
+ "region_common/level/Field/Field_02J.leb": {
+  "source": "region_common/level/Field/Field_02J.leb",
+  "source_sha256": "134acf5c53b6db1efb7b421ef6de0f5bc5c0bb11f8998d61abd4dab94c2f2de4",
+  "sha256": "2968bbc0927c18144e9604d344d9e5243fbbc902b297462c910e9bb38d17ad3b"
+ },
+ "region_common/level/Field/Field_02M.leb": {
+  "source": "region_common/level/Field/Field_02M.leb",
+  "source_sha256": "100792b70c1f009a14beba5c9c86489774651152f16a7cecaff12ef51bcab235",
+  "sha256": "750f82eded2bd7e10cbf405ec5c54e861b757f1ba6d0f98d0b7fdb87882d5082"
+ },
+ "region_common/level/Field/Field_02N.leb": {
+  "source": "region_common/level/Field/Field_02N.leb",
+  "source_sha256": "8394e073bf3bba6e057096921f4952ff1ccab5d46933a7003435eaae0d31a4e9",
+  "sha256": "a9a85f9ab4252ab771a471b9249f809ae6dc6dd26201a6e75455744a701c782a"
+ },
+ "region_common/level/Field/Field_02O.leb": {
+  "source": "region_common/level/Field/Field_02O.leb",
+  "source_sha256": "c48406b8e26ec4766a928a1c5174329d7a86cb11b0418f218ce38354e87aacb2",
+  "sha256": "35555f54c062af75415c42260c5bf923fc9b57690cc7099f3ebf0681190c00ab"
+ },
+ "region_common/level/Field/Field_03B.leb": {
+  "source": "region_common/level/Field/Field_03B.leb",
+  "source_sha256": "1cb853564c03abf30d429960cfed8c2b1e74545b6120c98571364052348289a7",
+  "sha256": "59f991913558eb098dc4c98c3babdc62ee1db51c670a327299b36df386890b5e"
+ },
+ "region_common/level/Field/Field_03F.leb": {
+  "source": "region_common/level/Field/Field_03F.leb",
+  "source_sha256": "48945da94ea7cd644a2ee8c903cdd820ac3fa12f489ff5bf26b073f8a1a3477e",
+  "sha256": "cb02f243dd35e0468094cf0c4c86db809659b464e0eff1c91aecf5e64dae050f"
+ },
+ "region_common/level/Field/Field_03K.leb": {
+  "source": "region_common/level/Field/Field_03K.leb",
+  "source_sha256": "2ce281ba10daca4cd079c95eeaa92f93c645b1feac753ee073a0984dc85c930f",
+  "sha256": "8d8a26ff40f132d9070083fceeb64ff465c74f15815c923b2f908cf161e4e7e5"
+ },
+ "region_common/level/Field/Field_03N.leb": {
+  "source": "region_common/level/Field/Field_03N.leb",
+  "source_sha256": "41fe4600897a787af8c913c25fc060ddc52f8f7e2b1275b2e55f7c0db0c699b1",
+  "sha256": "30028cf59819a1d09d3be7984db90d6abd5dca88887057a9022a421f084216ab"
+ },
+ "region_common/level/Field/Field_03O.leb": {
+  "source": "region_common/level/Field/Field_03O.leb",
+  "source_sha256": "f1a05fc0cbf0b3a3e9b9fdbb0d3c0771784b190e80b20ef4d9d7899b916d660e",
+  "sha256": "bc1a87fa9f27c7a363ab9db35eb259f648a4c3bb13038a07c1fceb82adbbd5fb"
+ },
+ "region_common/level/Field/Field_04E.leb": {
+  "source": "region_common/level/Field/Field_04E.leb",
+  "source_sha256": "24188c754a05b65b5fba002c4c722bfb7994cf932e4e63f589ef34b78a917996",
+  "sha256": "db7763570772e64adc08cce18402aae098be1dd127a33fa79e050db227dbf6b9"
+ },
+ "region_common/level/Field/Field_04F.leb": {
+  "source": "region_common/level/Field/Field_04F.leb",
+  "source_sha256": "2d8cedc3d31eb3bff1cfaa2eb2e5c160bfb180333a2b2cc8e0cc1d85359696f1",
+  "sha256": "718d6bce71ec57867999878a98ea84fe4e5b25a3cb265973965fd82959b0c0a3"
+ },
+ "region_common/level/Field/Field_04I.leb": {
+  "source": "region_common/level/Field/Field_04I.leb",
+  "source_sha256": "4671423040b89cd1134a268960b6aaad5fc20559721cfefcccd18a782939f3d5",
+  "sha256": "4ecbcc8cb4d02deebf961abba449ed87117ccf656ec40b0af5c4d8e781945f37"
+ },
+ "region_common/level/Field/Field_05A.leb": {
+  "source": "region_common/level/Field/Field_05A.leb",
+  "source_sha256": "9752668a036f9e4b7d5390231830280b357e9538d10a9632f767a579330861f9",
+  "sha256": "36725136f6cb3ee72832d680a7cdfaa04432d9053c41cacd0d8c42d98418c3e1"
+ },
+ "region_common/level/Field/Field_05B.leb": {
+  "source": "region_common/level/Field/Field_05B.leb",
+  "source_sha256": "cacead81865b01c11fa8b4f2b8536e2506ad958db978660a119963ada01113f8",
+  "sha256": "d464a2c7e0f38dbe500dcdfe062eac6b3279696bd7468a2e42fd1c81293e9f3e"
+ },
+ "region_common/level/Field/Field_05E.leb": {
+  "source": "region_common/level/Field/Field_05E.leb",
+  "source_sha256": "cbc2ad7f0e60cdc96f2c4c6f574051ba13f4ea350ea3024041da01710c7a999b",
+  "sha256": "ebd9edcbdde68d5ded213c676664f7e6d0cb27e1ebde6434e5ea36b0326d957f"
+ },
+ "region_common/level/Field/Field_05H.leb": {
+  "source": "region_common/level/Field/Field_05H.leb",
+  "source_sha256": "d5e652b93c2be30033c91f70f2ec0faa1d8952bcdd05640dd1d0854e3ac74a02",
+  "sha256": "13b4b0e24cadd4d3aff862d70b214a278f1f48d8ae0fecb7d3478d720934b526"
+ },
+ "region_common/level/Field/Field_06A.leb": {
+  "source": "region_common/level/Field/Field_06A.leb",
+  "source_sha256": "0ba33bd9f26b9d6cbba5aa55e45ed135861d2a71c0cf89199e655c8e25201957",
+  "sha256": "91ed47d386faa6d39104b532b7f54e81faa27cfaf16994b78e5ee46f3ae7af06"
+ },
+ "region_common/level/Field/Field_06C.leb": {
+  "source": "region_common/level/Field/Field_06C.leb",
+  "source_sha256": "bf3d435f331c1c7b0b8257dfd443871140d2147e31cbc3471979842e1ff973a6",
+  "sha256": "227148fe8faf7387d80f2845d566f2f9fe8412f952e41c45f5831bd73d540d35"
+ },
+ "region_common/level/Field/Field_06I.leb": {
+  "source": "region_common/level/Field/Field_06I.leb",
+  "source_sha256": "c5b71ebd2749a95bb71fd9701159f582cc9c148cdc2297882c7112223187f8a0",
+  "sha256": "2221acb602f3f7d21e0ebd084ee1067fe623e92e0f808c63af6f3fe968b20c1f"
+ },
+ "region_common/level/Field/Field_06K.leb": {
+  "source": "region_common/level/Field/Field_06K.leb",
+  "source_sha256": "39b46c9770d5b7e0fdcb5c0a4c0effb6ca8b205e9b84ab0716292c84f2959fea",
+  "sha256": "dcf9c8b9352b8de11eb63397f343067cfe4c3f9cffd9b8236e75a9819c4d6f9a"
+ },
+ "region_common/level/Field/Field_06M.leb": {
+  "source": "region_common/level/Field/Field_06M.leb",
+  "source_sha256": "b003a0ba4f12c147e913048dfdc2995eb489ec1f3ad598fdefafde1973eab903",
+  "sha256": "d364d66d6b634192f9f2566afb53c6792751bc17568a911ce6d05c09f2ad9d73"
+ },
+ "region_common/level/Field/Field_06N.leb": {
+  "source": "region_common/level/Field/Field_06N.leb",
+  "source_sha256": "4a85b7161031706e58e71789cd1827ec64c217899f2444b6be5a74efa1308521",
+  "sha256": "6dbe17b418527db412b9eb7560276eaa1d8f0e15719719f0de7d9ccc7ef62003"
+ },
+ "region_common/level/Field/Field_06O.leb": {
+  "source": "region_common/level/Field/Field_06O.leb",
+  "source_sha256": "982394f62a3a58832e2b896b9be0333e9189a7678cab045ca92f3f50cacd7e69",
+  "sha256": "db0790ae2cb2c7a95759d72a6bf8c344d881a849dbc383b1145e9c203af409e3"
+ },
+ "region_common/level/Field/Field_07E.leb": {
+  "source": "region_common/level/Field/Field_07E.leb",
+  "source_sha256": "7699d4b3b3512b375be92ea447eb7be3f37ed0863e0db6963f1f67619cb6dc63",
+  "sha256": "d294b649588ac34787fdd25fbedb5f4078a0b1a1d70ffca67d158bbed08a77ab"
+ },
+ "region_common/level/Field/Field_07M.leb": {
+  "source": "region_common/level/Field/Field_07M.leb",
+  "source_sha256": "24f1458d6ec24c5f12bb86b122d1e541120b4a8b259c4c369322358f8ff10bf6",
+  "sha256": "c1d4add12f0c8fa3c14308f6cc3dba119bbf217d461120881657f16c2e9acc8e"
+ },
+ "region_common/level/Field/Field_08B.leb": {
+  "source": "region_common/level/Field/Field_08B.leb",
+  "source_sha256": "5ce2c80d576e6bc468ec24cbcf7f57a13ce2a324781b3b209e8eb5c3cbfb9cc2",
+  "sha256": "bfa784dbfe0b0686cc9943ed2c67ccea5da3052e56ef8b50dacd1586d6f61d22"
+ },
+ "region_common/level/Field/Field_08E.leb": {
+  "source": "region_common/level/Field/Field_08E.leb",
+  "source_sha256": "dd135ed4b2f1e122b7dfd78679f05b2e1c4475ddbfc7a278c9c139e45bb9cb6a",
+  "sha256": "a8526724228bfdc5c6a721f1726d7411ef19d7e9e7953a63f81d46d04942be87"
+ },
+ "region_common/level/Field/Field_08J.leb": {
+  "source": "region_common/level/Field/Field_08J.leb",
+  "source_sha256": "9b30dbdf901a59fce7482ad889a67f30e1abaf056303f0c3afa56379af9563ae",
+  "sha256": "ba838a4847914d88e9f83bba5516146e9e8d105e67c69a09c56b0c67d0c8be9c"
+ },
+ "region_common/level/Field/Field_08L.leb": {
+  "source": "region_common/level/Field/Field_08L.leb",
+  "source_sha256": "2ff94cb94e77999edbaeb6fa6d6f74c1376fef4021f76e7395f3cc03cf23b496",
+  "sha256": "b34c6b5ea3cb53efb03819266b621e8f70409eb82fd6668d1f508252309e8c8a"
+ },
+ "region_common/level/Field/Field_09H.leb": {
+  "source": "region_common/level/Field/Field_09H.leb",
+  "source_sha256": "aada85c404cbd01b8e3fe9ff44e819e4129706fdf2ec073f4ec5a2eb24157556",
+  "sha256": "6490567c96e9ccd51e34e6cca0bd8e4e767347af467722732cfd9ac40936a6eb"
+ },
+ "region_common/level/Field/Field_09L.leb": {
+  "source": "region_common/level/Field/Field_09L.leb",
+  "source_sha256": "f7d67cfc19bf457026be54832ceba1b0bc249b8cde5645292bb6d1167a95011a",
+  "sha256": "bf0123c2366b77f9c10b5d3ce24b78623ac223b5a1a554537dc7ed901727ccd0"
+ },
+ "region_common/level/Field/Field_09N.leb": {
+  "source": "region_common/level/Field/Field_09N.leb",
+  "source_sha256": "0886de399c4d863475ccec0c362869d57f69fbd3efabb7170a4897221ec191b1",
+  "sha256": "dafd124c18570c98d0ae0a852cb29d003ef3c8846fd47c3390e96bc3f2246b22"
+ },
+ "region_common/level/Field/Field_09O.leb": {
+  "source": "region_common/level/Field/Field_09O.leb",
+  "source_sha256": "5f531e39a441d04f48525b90444764f069d7afe848fdd02198fe0e5a22b79842",
+  "sha256": "0653bd0f2e3fe3b33de3fbffec5646e686f7b797adf6b2e8575c17bfa20b802a"
+ },
+ "region_common/level/Field/Field_09P.leb": {
+  "source": "region_common/level/Field/Field_09P.leb",
+  "source_sha256": "f1f45b2f3bbc44e2cb0ac2cd4f1445fb3c18232052ee110646f5ec7d5821edf3",
+  "sha256": "afcb4da1ec2444f8e032f5bf97717d90e965835ec45cb1ff667b57ca03770be9"
+ },
+ "region_common/level/Field/Field_10H.leb": {
+  "source": "region_common/level/Field/Field_10H.leb",
+  "source_sha256": "8715dd7e5935f3bd37e29617ad66064668ff3bbecd79e8af7a2bfb6fbcac2cd5",
+  "sha256": "b57ca9a8ca4b88428d3a042e3cee27de9725eb6638a583b55f2e51ff4f337444"
+ },
+ "region_common/level/Field/Field_10P.leb": {
+  "source": "region_common/level/Field/Field_10P.leb",
+  "source_sha256": "0ca5b4566a6ed24ba8d4c9adefebfaa7589e5c7fe586de8ce5244c7588280742",
+  "sha256": "a25fb7a3432e5186882a2782ff4a3829d2c76197d244d1a934126e23c445e386"
+ },
+ "region_common/level/Field/Field_11D.leb": {
+  "source": "region_common/level/Field/Field_11D.leb",
+  "source_sha256": "5492c286c3517d91670ce21782bb5952ebeb5fffe01ee620179d752d9426f81e",
+  "sha256": "b39a58877fd4a8f85dd6a334bac184212f29d4e8e16bf5b1cc8acd51df0ba330"
+ },
+ "region_common/level/Field/Field_11E.leb": {
+  "source": "region_common/level/Field/Field_11E.leb",
+  "source_sha256": "b4ec7944e15c9593686568f19699b80fbf47abbbef899243e2e20eff67f78412",
+  "sha256": "6c1fee1d55e8ef63e31cb433846e3f5717964de87bb0b171c9cba84e9217660b"
+ },
+ "region_common/level/Field/Field_11F.leb": {
+  "source": "region_common/level/Field/Field_11F.leb",
+  "source_sha256": "e32b58e5901ca7d20fc8eb88f7669c26ff98f1dab3ba8340b54ea05469d6df2d",
+  "sha256": "b5449a5e8606eeca81bbfee1292aba4d9f35f34f277f74977eaf931db442f19c"
+ },
+ "region_common/level/Field/Field_11G.leb": {
+  "source": "region_common/level/Field/Field_11G.leb",
+  "source_sha256": "867560c9cdf0ca3f74cf0df9d665b79d84240c9ecac8e9580c1393fe36f95bb4",
+  "sha256": "bb90c3a3b4e20845f2699d44d2a008dce160285703eaf4681480a80b5a2fc0e8"
+ },
+ "region_common/level/Field/Field_11I.leb": {
+  "source": "region_common/level/Field/Field_11I.leb",
+  "source_sha256": "19ac57beaf79ddaad9822336c7184395be537d433c2e212a555a92553a667d67",
+  "sha256": "b9dc658dea034e978a97cc34a526dc81c8ef9c471b471d53af8fce388164e880"
+ },
+ "region_common/level/Field/Field_12A.leb": {
+  "source": "region_common/level/Field/Field_12A.leb",
+  "source_sha256": "60fe0c3daeea69b4752433dba94c11f51fec469e6363514ced1aa1bfac42db82",
+  "sha256": "32424f775de6da180d15675f3e864acca69310dfa90c6352836966709295a572"
+ },
+ "region_common/level/Field/Field_12H.leb": {
+  "source": "region_common/level/Field/Field_12H.leb",
+  "source_sha256": "bc5673d61013de6d7af2b8a3059407bffcec5f3ee0c4754a021e44840d021ee6",
+  "sha256": "cab9f6c90105b8624e34d60552cdc5a569e317641b891675d56b5dd1cb36f25b"
+ },
+ "region_common/level/Field/Field_12J.leb": {
+  "source": "region_common/level/Field/Field_12J.leb",
+  "source_sha256": "c6511e6caaa1cb0bf988016162c082f97fbd132e2c6cd5ccec410e28d69b27f6",
+  "sha256": "1fac027d8a2a7c67e9c366014dfd66cd2fd95f984161b481be786f752dc1e4a7"
+ },
+ "region_common/level/Field/Field_13G.leb": {
+  "source": "region_common/level/Field/Field_13G.leb",
+  "source_sha256": "0ad7b8e2d5f8ff38a0c7ccce8878fef808650360348214297d2daa3a81ddd162",
+  "sha256": "38661a5b3ee9c7ab0d8a9de3b0565717f048f09f65aa6c5ef226f10c9050c1b9"
+ },
+ "region_common/level/Field/Field_13L.leb": {
+  "source": "region_common/level/Field/Field_13L.leb",
+  "source_sha256": "4dfd6c733045512c4e71b8263a6f1a2a895386eac101d300bb55390856fd0360",
+  "sha256": "279821f8f03a8f2a731378983aa268871566641456d2a6ad227fa760e9fd47ae"
+ },
+ "region_common/level/Field/Field_13O.leb": {
+  "source": "region_common/level/Field/Field_13O.leb",
+  "source_sha256": "00c1982f54558dbdee9116111969863dd08982e7c82cb2af1dbadb1ed377fecd",
+  "sha256": "6e5539d441bf95ea2fc6d16186d053b9d3c1f2a33707acf1cf49b0fece14f5fc"
+ },
+ "region_common/level/Field/Field_13P.leb": {
+  "source": "region_common/level/Field/Field_13P.leb",
+  "source_sha256": "027dd0a050b02be9b583e8d9a6f0152c948dcca2f887d4e014ecc560f53b591a",
+  "sha256": "20871af2185435198b3805a37a0ed0913e9d71f05382e30d28e65da016dd1b57"
+ },
+ "region_common/level/Field/Field_14C.leb": {
+  "source": "region_common/level/Field/Field_14C.leb",
+  "source_sha256": "21c22a5a894556a38577305cf075dd4ade60ee8b3ff6a1af5924c0039bc303e3",
+  "sha256": "9ce2d5e145feacd9c5a7a9fff73791c9ce36833ba75f2ffc1a5e187dad4106c1"
+ },
+ "region_common/level/Field/Field_14J.leb": {
+  "source": "region_common/level/Field/Field_14J.leb",
+  "source_sha256": "28e66ce11365a9012ecc6ac123e0ad4abb684f680c900f1c6ee3547bbe696495",
+  "sha256": "5e5caec03e2cea5148a72575dc69d8830af2161626419cb258b938e6395363d6"
+ },
+ "region_common/level/Field/Field_14K.leb": {
+  "source": "region_common/level/Field/Field_14K.leb",
+  "source_sha256": "635a7ceb2fe4cd32ee213425c66d8266db18de5e76bfbd2c7514f8b5237a58af",
+  "sha256": "ecb83045c6c4fc06d436b423f4f0620b7f51bc2574d7646880400bffb146bf3b"
+ },
+ "region_common/level/Field/Field_15A.leb": {
+  "source": "region_common/level/Field/Field_15A.leb",
+  "source_sha256": "992cd58f3e9e8c8461fc33596e39d429290dd2997b89960e51084978d52e5c55",
+  "sha256": "9c3da6463094c8be0c4ae508e8b34297fdb0fe130b98377dc164e394b9dd4dc5"
+ },
+ "region_common/level/Field/Field_15F.leb": {
+  "source": "region_common/level/Field/Field_15F.leb",
+  "source_sha256": "7e5d22b3761728bbd27ee669330149fa310179e21d63bb2a249432fb8c756e8f",
+  "sha256": "5e9d579eec1de5c33d09ea33c982a4506589b5d2844ca330ab53541399724eeb"
+ },
+ "region_common/level/Field/Field_15J.leb": {
+  "source": "region_common/level/Field/Field_15J.leb",
+  "source_sha256": "ecaa0a9bd9e83e1a5f9c7a33672dce14e2d32d17f4f0457c0a943a8e12f36bab",
+  "sha256": "acf0aae8625d5415cd18620bc753aaa9e1b87dc676f17874147fe4785781cc20"
+ },
+ "region_common/level/Field/Field_15K.leb": {
+  "source": "region_common/level/Field/Field_15K.leb",
+  "source_sha256": "4d3efdcb4cdec2f6e12f68695cb280dc720c719241c5f5791de4cf4e23a4195a",
+  "sha256": "bcc49e36331a33cdc40dd534b39a75d5229dfc45c7a1ef1d9b4aaf2cd07d4f97"
+ },
+ "region_common/level/Field/Field_16C.leb": {
+  "source": "region_common/level/Field/Field_16C.leb",
+  "source_sha256": "28869bf881f64f8cbbde14fbdbaf131f19157ae0d37d658ff653a4d28a723292",
+  "sha256": "938ccaef29578bc237048cb4c9607742b9d208b221586d5629a5503c3d679a65"
+ },
+ "region_common/level/Field/Field_16F.leb": {
+  "source": "region_common/level/Field/Field_16F.leb",
+  "source_sha256": "8a3b046d606e8eaa4537b5a3ffe1d28ce3610ddce4db18443a5870d84a5b756f",
+  "sha256": "6f134a8b99d128db6cbbbb67540f44da96e1a66b9410c3e7deac6f5b7059ead0"
+ },
+ "region_common/level/Field/Field_16I.leb": {
+  "source": "region_common/level/Field/Field_16I.leb",
+  "source_sha256": "d4859c00110619f06d94ea1e5dd1d99af74bca9f8d55f5833e2c49dafed3c1ef",
+  "sha256": "ee5d4fcb3a5bf321b83ff0f7994ea102bd436e0dbdbc0873880d575e6d346bad"
+ },
+ "region_common/level/Field/Field_16P.leb": {
+  "source": "region_common/level/Field/Field_16P.leb",
+  "source_sha256": "4629936087327726273ac5e39b4b47deee1ad1d1ede58550286c612347531285",
+  "sha256": "34424001853f85733880afc0fbe1576e88e6a3125ad44775ee1dd160da40b908"
+ },
+ "region_common/level/GhostHouse/GhostHouse_01A.leb": {
+  "source": "region_common/level/GhostHouse/GhostHouse_01A.leb",
+  "source_sha256": "8a6da7e4fd2006342b6b707b93f8fbb12c3c5f6c064cded1a5ff4fe62f24cda8",
+  "sha256": "16eff46f4ac94c8a881a19632011f3f62847e7bcb481a63ebdb61d35f99082f8"
+ },
+ "region_common/level/GopongaCave/GopongaCave_01A.leb": {
+  "source": "region_common/level/GopongaCave/GopongaCave_01A.leb",
+  "source_sha256": "f6173c69c9c1c569f35e3041d3fd55bc9a29a83607d42c5457810d7d8ef29237",
+  "sha256": "13d136c744f926f5191b4aa7bb24aff4cd902478057278247ce02d3556006b6a"
+ },
+ "region_common/level/GopongaCave/GopongaCave_01B.leb": {
+  "source": "region_common/level/GopongaCave/GopongaCave_01B.leb",
+  "source_sha256": "662a956e91cd327d4288975730f28992df09e11d160267eb2e7680ad16c261cb",
+  "sha256": "4c6352c4fede1ed8bd948ee47b8b8d8a371a12d361ee1c33b8849fbcc9bad6f1"
+ },
+ "region_common/level/KanaletCastle/KanaletCastle_01C.leb": {
+  "source": "region_common/level/KanaletCastle/KanaletCastle_01C.leb",
+  "source_sha256": "f2367d92c869768630ec51cd5edf8ef815402b9ddca78ad5fba2593353fdf76a",
+  "sha256": "a56f598896f942ca21f225c5b05dd5d865efb7b139571b50e2e112744e2bac14"
+ },
+ "region_common/level/KanaletCastle/KanaletCastle_01D.leb": {
+  "source": "region_common/level/KanaletCastle/KanaletCastle_01D.leb",
+  "source_sha256": "cb7d9379e54059882dc43a30cba3340503d9d2118af4a1ee52ea8ac8ade9096e",
+  "sha256": "bd97b9e4cd722f7a93d59862f46c3928b57d32d55d5742b2087c844f3a05e55b"
+ },
+ "region_common/level/KanaletCastle/KanaletCastle_02A.leb": {
+  "source": "region_common/level/KanaletCastle/KanaletCastle_02A.leb",
+  "source_sha256": "d99cca0efa29da0e3aa7a188599d46696e710b2d821bf7a55fea5574d2498a8b",
+  "sha256": "1633d3f5d60bafd12985f84ded7b4f46b56f82f65bb32991880571384130e04c"
+ },
+ "region_common/level/KanaletCastleSouthCave/KanaletCastleSouthCave_01A.leb": {
+  "source": "region_common/level/KanaletCastleSouthCave/KanaletCastleSouthCave_01A.leb",
+  "source_sha256": "1c8e01b66038d0544797a368e18b237f9cbae7a95eb14b4ad958c2ad36b18c95",
+  "sha256": "99f721f4b8180d75edc3ea6fdabc27cdd9c91d9b8f8b6e45cc26a2c0627253a0"
+ },
+ "region_common/level/LanmolaCave/LanmolaCave_01A.leb": {
+  "source": "region_common/level/LanmolaCave/LanmolaCave_01A.leb",
+  "source_sha256": "6a9222b456bb058fbc3848edff40e01ab80e817c075390394347fb230937cd49",
+  "sha256": "38a9b846ba341ec59d91a38f770ac96ae2f860a608fd4419314dcc376c61ffe3"
+ },
+ "region_common/level/LanmolaCave/LanmolaCave_02A.leb": {
+  "source": "region_common/level/LanmolaCave/LanmolaCave_02A.leb",
+  "source_sha256": "41f820fd8f38a42dab947a17766db72254a91473d3fd2b12a79d20bd62111a23",
+  "sha256": "31910227433ba47c3e84182bb5d75a33c4cc702f41d20a4994d45b7ab2886bad"
+ },
+ "region_common/level/Lv01TailCave/Lv01TailCave_03G.leb": {
+  "source": "region_common/level/Lv01TailCave/Lv01TailCave_03G.leb",
+  "source_sha256": "f23293ceaa025b4c423cca6fb2e796ddb60ef74e250ba14197e7865a3eb86489",
+  "sha256": "fa5c00ce2ce89ed94d7465d71dff231e7e13c6d81ba3af5ebb50fbe8c2f8dbb6"
+ },
+ "region_common/level/Lv01TailCave/Lv01TailCave_04B.leb": {
+  "source": "region_common/level/Lv01TailCave/Lv01TailCave_04B.leb",
+  "source_sha256": "efacb90a5080d151e228d0ac8bfaef6cfba208141f8042c24ee5bbcf84e33b4a",
+  "sha256": "3e742dfd3e3c502ebcc1e314ccf7cc355a90ef1cf6ac0f9cb9d11c4f0751e9fc"
+ },
+ "region_common/level/Lv01TailCave/Lv01TailCave_04C.leb": {
+  "source": "region_common/level/Lv01TailCave/Lv01TailCave_04C.leb",
+  "source_sha256": "01e602e3b59662258443e70e63c4d577c4aec180fecc426944217985b05f8887",
+  "sha256": "e08712f96ec8d83bbeca737ed512f0d73154874fbd06cbc00f8d5984277dc953"
+ },
+ "region_common/level/Lv01TailCave/Lv01TailCave_04G.leb": {
+  "source": "region_common/level/Lv01TailCave/Lv01TailCave_04G.leb",
+  "source_sha256": "1de75772c89cb1bc56fb4c7dbb213b166d4a4d4587127281450a0f8fc255f3dd",
+  "sha256": "ccff1db183805d42d11bcef7aeaf61c06f0ed89c2bc123226e5059d3f2d9cd1c"
+ },
+ "region_common/level/Lv01TailCave/Lv01TailCave_05A.leb": {
+  "source": "region_common/level/Lv01TailCave/Lv01TailCave_05A.leb",
+  "source_sha256": "3e041bae0b6d2504c5d50dca4c7aaf831b790af6d5c58398fe0b868e65f9bcc0",
+  "sha256": "8cb48019c8e2d9ca45a6d8c65b6a90bf5e84e83b2b9f2badfc48ec96ef9738d0"
+ },
+ "region_common/level/Lv01TailCave/Lv01TailCave_05D.leb": {
+  "source": "region_common/level/Lv01TailCave/Lv01TailCave_05D.leb",
+  "source_sha256": "0550fb2bb3cca70961f031b618214897ad9b88d69e26d48b34b1e94b12bc15ae",
+  "sha256": "53a5322cdcca5f6afd8c0ed12a074994f16c287f9d4bc068bdf4382d4b077de4"
+ },
+ "region_common/level/Lv01TailCave/Lv01TailCave_05F.leb": {
+  "source": "region_common/level/Lv01TailCave/Lv01TailCave_05F.leb",
+  "source_sha256": "3f4a92a929f28505926a260d056e9a8a02d0e4aa50d2fbe818e3535029915182",
+  "sha256": "64cb35176e7aa8b295b96fdc638f2d6d4aafcc95ff502bb23b0e7ede17354422"
+ },
+ "region_common/level/Lv01TailCave/Lv01TailCave_06B.leb": {
+  "source": "region_common/level/Lv01TailCave/Lv01TailCave_06B.leb",
+  "source_sha256": "477069fb63e0b1b39098096721e8688a4d9fd0c526fba325c70889de04a0f7dc",
+  "sha256": "346c54b038a253c28f343baa4cb057e27d2b12904545ce919ab0315be31ad161"
+ },
+ "region_common/level/Lv01TailCave/Lv01TailCave_06C.leb": {
+  "source": "region_common/level/Lv01TailCave/Lv01TailCave_06C.leb",
+  "source_sha256": "81412f809582825e41a2fd584702076016b211d1f876f1947b5f7f6be3e0725d",
+  "sha256": "8c192c76729fc223790b03358c33385cf56e5031a2167a2117e85f24e78495fe"
+ },
+ "region_common/level/Lv01TailCave/Lv01TailCave_06D.leb": {
+  "source": "region_common/level/Lv01TailCave/Lv01TailCave_06D.leb",
+  "source_sha256": "e890e32abe301ec895e5e15a94e1615320c07be4ce75f7941f3d928a91221311",
+  "sha256": "c6294f0e965927e01a6beb490e579e7f87ee6baee20510ff41c45324397e4493"
+ },
+ "region_common/level/Lv01TailCave/Lv01TailCave_07D.leb": {
+  "source": "region_common/level/Lv01TailCave/Lv01TailCave_07D.leb",
+  "source_sha256": "f275393e37eae324d0f33e8789d0c29069f035fbbd5da0d5566b180cddcb6bbb",
+  "sha256": "ee5f26d4ea0b9bd5cf9b8788829a5d55bb873e628f2880ed98c286cdd0f6809b"
+ },
+ "region_common/level/Lv01TailCave/Lv01TailCave_07E.leb": {
+  "source": "region_common/level/Lv01TailCave/Lv01TailCave_07E.leb",
+  "source_sha256": "e63c4aae099fcc084ba2b223bbf25dc17f01c03c4deb0e705515a35eaadf7239",
+  "sha256": "3281d0984010db638340ea3112dd3da580c93312154f29910e00d43737c49048"
+ },
+ "region_common/level/Lv01TailCave/Lv01TailCave_08B.leb": {
+  "source": "region_common/level/Lv01TailCave/Lv01TailCave_08B.leb",
+  "source_sha256": "071c8847e2c4afa5474527a8920376cef696bd7fb50aa41d4f784490bf235a5c",
+  "sha256": "b46847c2f2b3ad81a4e37285fbfa1de1ab68b1694126ed390897fe83e48533c1"
+ },
+ "region_common/level/Lv01TailCave/Lv01TailCave_08C.leb": {
+  "source": "region_common/level/Lv01TailCave/Lv01TailCave_08C.leb",
+  "source_sha256": "cc4dd5c00779983763fe7c6db0da7cd3212683e859c4f88b965173547f47d9c1",
+  "sha256": "37f76b92036c1e00670746f6a7064cfe68f9b78a2ca201df0f010c17ec869a5a"
+ },
+ "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_02B.leb": {
+  "source": "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_02B.leb",
+  "source_sha256": "77824e01b1386c30ea111bd78ce5a96923fe8052795011a244579d39c43b401b",
+  "sha256": "33d21c5fee0b0ef930bd62f71d03b0e38e25a1ab397546cce68530344a00d931"
+ },
+ "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_02C.leb": {
+  "source": "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_02C.leb",
+  "source_sha256": "2a75c65da3f9b98b7dc94516db303cb3c93aecabdf457e94493005445fd71302",
+  "sha256": "e2e8c375a85cbd7e147a88633a2a2df6d5341a7c27e17b36318c04a038edbcf4"
+ },
+ "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_02D.leb": {
+  "source": "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_02D.leb",
+  "source_sha256": "cbac263ce27cf1654372a193fa4a36fbd7afc5fcd854f8d810adeb105656b14d",
+  "sha256": "2ca29561adb99701d9810d0bc062aead7c8b5860bde95d30426f3753d1fe4109"
+ },
+ "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_03C.leb": {
+  "source": "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_03C.leb",
+  "source_sha256": "47363839c394a75182d77cce3976b03b5896175a2f9cd38f997cdc1d38d568d2",
+  "sha256": "8a74e1bf296458a6cf3af1ac823a09e20acee870cefca33e05becc8da1f754ac"
+ },
+ "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_03F.leb": {
+  "source": "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_03F.leb",
+  "source_sha256": "9e1399c3931eadf40bd7e69c95ff8339de5e2b1ed88958c9525304f88578080c",
+  "sha256": "0e06b3566cce24b2eb0735c8f60840357455ec6395c183c36db31007b4a87b14"
+ },
+ "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_04C.leb": {
+  "source": "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_04C.leb",
+  "source_sha256": "da9703ada8a0724528a3755b1a6ec6bcabeaf5fb5223c9495d80a20b501a4bfd",
+  "sha256": "2b268e9e5eb4197935d1773be8f4de52b775739546c98176fcb64318ed01a06b"
+ },
+ "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_04F.leb": {
+  "source": "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_04F.leb",
+  "source_sha256": "9941002d350c492a8224899ae46e8c799254ca488d145f6e6cee3b4338527765",
+  "sha256": "09a29a72dbe28786698cc427ffc47c06c8d3f64586ae61256c3175d73212d278"
+ },
+ "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_04G.leb": {
+  "source": "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_04G.leb",
+  "source_sha256": "a4a7690ea501cbc86dc12cb2838f948fefa91db23ac7956c7184dc58452bb97e",
+  "sha256": "a207fc489a898b92316b7014cadd562be01e3b718876db91d5bf569afdc8d906"
+ },
+ "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_06B.leb": {
+  "source": "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_06B.leb",
+  "source_sha256": "c2aaf54447f5ff5bf1b899df41e5eb0e171d86cfbb0beb4c86d79b50abbf41ce",
+  "sha256": "2397abe6399f949567f414eb47294b257eef33d1c6458b8d51ccfdc389de4544"
+ },
+ "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_06G.leb": {
+  "source": "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_06G.leb",
+  "source_sha256": "432e1759758ab0d535677922c2c6aef1d81c19156187c52cb0597100e9098a55",
+  "sha256": "7e400b740c91834179e21347d8e0c19918b8758d54d48a7a4734d599b259d07a"
+ },
+ "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_07D.leb": {
+  "source": "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_07D.leb",
+  "source_sha256": "30c62ef62f7a6f9bd2ccb9cfc317325a59d41623d51a1dbd64f68b41082a2b7b",
+  "sha256": "e521e30b7ab2ad8a537b511f3589504a04fa1d7fea315bfafdc554c4ab76d584"
+ },
+ "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_07E.leb": {
+  "source": "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_07E.leb",
+  "source_sha256": "7fafe07c51dd927b8854fd2308eb6b11a07f6ccc0109b0a71a2787fa7db00cd8",
+  "sha256": "ddf216e5228c64aa41e34bca73c6ebc491009601b07cd38c523f6ae508c3baa5"
+ },
+ "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_07F.leb": {
+  "source": "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_07F.leb",
+  "source_sha256": "923ef04a5d6ee8fd697215bd7f8783b58754f5f3ead44feb1e9b7b0dbeccd623",
+  "sha256": "6e320a77d9f6ad78fb850004c70a72d4958f65524af583fea526dac68b425caa"
+ },
+ "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_08C.leb": {
+  "source": "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_08C.leb",
+  "source_sha256": "66bfcaef3583b92c8ea67ab2f16017fd8abc2ac4fa392da0143b0820578a36b4",
+  "sha256": "3ccb3cb573c35119816965ca0baba85b815b33ef8d467c2e89d7162e93b098f0"
+ },
+ "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_08D.leb": {
+  "source": "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_08D.leb",
+  "source_sha256": "3b0d21098282ff0c593d3d053e977080ae8d72db9db1dc15939ee24ba219ba66",
+  "sha256": "a97e38cf06205c82387eb0072ecb98e7f773961e9bc2edd246f13e1907b0a239"
+ },
+ "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_08E.leb": {
+  "source": "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_08E.leb",
+  "source_sha256": "2f138ca5fc70f58f074a10a80c9962f4d7b1ed16fdd1791a615da4dfb5227fcd",
+  "sha256": "e811f4d12e44a469fc6eb80f89571be01b3e225b1dc2033943357abd969faa74"
+ },
+ "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_08F.leb": {
+  "source": "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_08F.leb",
+  "source_sha256": "b202d170c30af5f7bdbec5f0350e94498b9f9fa89262afc88a4f85e80c18371f",
+  "sha256": "a487d36e2be2f9ad8ae25e16f3bfe6131f1dfc2f9983a005c5f0616d99b51b54"
+ },
+ "region_common/level/Lv03KeyCavern/Lv03KeyCavern_01A.leb": {
+  "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_01A.leb",
+  "source_sha256": "3ab29d1392631fe5181b6947a194f6add748b958a6d6459fb593a4593e650a8c",
+  "sha256": "e12dc420b9e86634cd8867cc09bb52bcb1dde943c2f6d618a8a3c4097fc7cba3"
+ },
+ "region_common/level/Lv03KeyCavern/Lv03KeyCavern_01B.leb": {
+  "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_01B.leb",
+  "source_sha256": "27e89d340c6eadb92edc5429899504156fc5d1b059c048830f7d767fe7fb5b13",
+  "sha256": "193c26eaa7f1b3638ee7291bfd612e0cf333a217d439a84759a095793f491dd8"
+ },
+ "region_common/level/Lv03KeyCavern/Lv03KeyCavern_01C.leb": {
+  "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_01C.leb",
+  "source_sha256": "6ab5fbd8c779e1fb30e574fe94376b01fbe7e5bbe1aad7ade6473e29a3094fca",
+  "sha256": "15d707a9af7a734d39ac73650d46492b791355bd51bf5649693a10e934f1ca01"
+ },
+ "region_common/level/Lv03KeyCavern/Lv03KeyCavern_02A.leb": {
+  "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_02A.leb",
+  "source_sha256": "961343a8a07dcace4fac79c199306d283f9dead18907726f8f7283279f69820e",
+  "sha256": "5d62e9f78a3cc921e8bef7c4ae99e00229b3e361e7061c6d98b0920b64b94a09"
+ },
+ "region_common/level/Lv03KeyCavern/Lv03KeyCavern_02C.leb": {
+  "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_02C.leb",
+  "source_sha256": "338e16d0ea24c80a251739896c93b99385a277ecb3d9a730422f1194dc37182a",
+  "sha256": "3c5afa711f602d67a6a279326f1ca828136ff1c3a4df56ffa13f0ade7e470b94"
+ },
+ "region_common/level/Lv03KeyCavern/Lv03KeyCavern_02D.leb": {
+  "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_02D.leb",
+  "source_sha256": "4b766175fcce73963df597f73655752d88c7462b6bda6b43f3f8eb73c65618a8",
+  "sha256": "57ec141185db802d6d8204a8559b4a21f53f8f6800d866874f6651105601cf16"
+ },
+ "region_common/level/Lv03KeyCavern/Lv03KeyCavern_03A.leb": {
+  "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_03A.leb",
+  "source_sha256": "1e13d33c2ea991bf07630faac82a0d84bc7952021b578802b2e35f0bb0405877",
+  "sha256": "27a20c9a631d33de1f9d7cc6d8a1e924e60e9343ab4aff70da4a21b4ff2807bb"
+ },
+ "region_common/level/Lv03KeyCavern/Lv03KeyCavern_03G.leb": {
+  "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_03G.leb",
+  "source_sha256": "ae82657cf51a228fa86d449f77d7cc1b455345a043643e9f4dd41b964ea63d8b",
+  "sha256": "a78562642deb6f23ac6acf058387f2e535b4745279a54faec23cb1a19612be54"
+ },
+ "region_common/level/Lv03KeyCavern/Lv03KeyCavern_04B.leb": {
+  "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_04B.leb",
+  "source_sha256": "5db0faffcd8bc894357a4fbf8089ffa55672a6c22dc8869be1bcb8c652f0b376",
+  "sha256": "61880daf3b2d5e8566b2fb120127f0febe03ef3440afe9840d2b0e19547cf0e3"
+ },
+ "region_common/level/Lv03KeyCavern/Lv03KeyCavern_04C.leb": {
+  "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_04C.leb",
+  "source_sha256": "049cdc2a96840edbf6044909d60d4a95709bcb11ec5d16f26d3a2fb63e00712e",
+  "sha256": "70a9ae5eaadabd543c94d3ce7a27cf40b8c3e1c050d4964fe4ffdd4e2c735847"
+ },
+ "region_common/level/Lv03KeyCavern/Lv03KeyCavern_04F.leb": {
+  "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_04F.leb",
+  "source_sha256": "091dd5815bd4b406067aea5579b4c61848e76b0a4ead55bff22304ee5ede7096",
+  "sha256": "87ca27bec710d753461195c7dcaba17cee5c899a478f5b27453de7c95cb58d6d"
+ },
+ "region_common/level/Lv03KeyCavern/Lv03KeyCavern_05B.leb": {
+  "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_05B.leb",
+  "source_sha256": "273a25116b5ddf02859a55c38678b41598ce93711a82d072fb7ad5a561c9ba61",
+  "sha256": "069b15c312aa9de2dd1cfa7f1e986c8e7fc1dd490076aa2232974da5bdbfaf03"
+ },
+ "region_common/level/Lv03KeyCavern/Lv03KeyCavern_05G.leb": {
+  "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_05G.leb",
+  "source_sha256": "35d24bf308a337efa17c4b100e89afcd18eb1812395fe0a88264fdb1f03e4efd",
+  "sha256": "8c13b56fa6e4d9a6dcdd23488f5875006e12f06d38a4979f461f358a5545aabd"
+ },
+ "region_common/level/Lv03KeyCavern/Lv03KeyCavern_06B.leb": {
+  "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_06B.leb",
+  "source_sha256": "4e3ee4458901231b5f592d436408d3ecb0308e0bfe8fd9dcde6c36fd42f53c56",
+  "sha256": "dbe4618d7fefa0d58dc975be2bae88c08f9e7ffaac82f7d6d1486a226613b22b"
+ },
+ "region_common/level/Lv03KeyCavern/Lv03KeyCavern_06C.leb": {
+  "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_06C.leb",
+  "source_sha256": "9a03bb651ba701f0c2029e7dbbc387442fe2195966b7af49af6cbfadc4634151",
+  "sha256": "d303eec827fd4494d1459e88bd7bd82dc7867d0e3568cd12df30a2c43eddd806"
+ },
+ "region_common/level/Lv03KeyCavern/Lv03KeyCavern_06G.leb": {
+  "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_06G.leb",
+  "source_sha256": "f83e7908f2802076866b037c5eb34a427dfe5b249dbff15429e1f3bf02263cae",
+  "sha256": "cb99c1c7f8c86d4439f19251fb04885c8c5919e2b60604810047001480a40b33"
+ },
+ "region_common/level/Lv03KeyCavern/Lv03KeyCavern_07B.leb": {
+  "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_07B.leb",
+  "source_sha256": "f3507f2c35ba079ce651a177f7f7a7a74c9e87994652e2ea002f9a4161f2e2c4",
+  "sha256": "fe57857cd3b7456dcfc57312f6fbb5eb9a2d3710067a51e5665842a1d89a7f70"
+ },
+ "region_common/level/Lv03KeyCavern/Lv03KeyCavern_07G.leb": {
+  "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_07G.leb",
+  "source_sha256": "95581c368959b4b620e2f5888a32b2c3c1c2efcc106272c964f932a6d248175c",
+  "sha256": "4757809db80a43a46e2559ca751c4abf0d2d3611d7f9e9c7a49c2e9966f72c95"
+ },
+ "region_common/level/Lv03KeyCavern/Lv03KeyCavern_08C.leb": {
+  "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_08C.leb",
+  "source_sha256": "73982e04a95332981d4cf20a4a13bb1e9e9d82493c900342f8c202fe3f32780f",
+  "sha256": "d3279cf2cba88a2b30975b5f07ff8b73c886ea85bdf4a6c2433fbe516ab1e8d1"
+ },
+ "region_common/level/Lv03KeyCavern/Lv03KeyCavern_08G.leb": {
+  "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_08G.leb",
+  "source_sha256": "5970a903856285f4281b9acf5de1591486e4f9ab558d473f2132b7a526e97013",
+  "sha256": "527025ddc97ecfdae53009a8a05c02721fdcc42480d287888d7f23392d1fe2ca"
+ },
+ "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_02D.leb": {
+  "source": "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_02D.leb",
+  "source_sha256": "b202a46f115325f0c87f59b436736911f00f9512563d8b76371376e97cf925e4",
+  "sha256": "02599734688379fb1baa88fcfdf4db0d6f3e8d5a307125805e802311cd08b7e1"
+ },
+ "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_03B.leb": {
+  "source": "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_03B.leb",
+  "source_sha256": "e9567b53bd9e725553340e591ce9982a9e0c75876fb7bf8599cecfcc9da67e03",
+  "sha256": "a1f2ce3602673be620d41a7e032768945a5a40595eee46f563e08aaafed7a1bf"
+ },
+ "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_03G.leb": {
+  "source": "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_03G.leb",
+  "source_sha256": "3ceb4e558191d618cd4cd03b37c7d2c16117d1ccb865511bb8e292e05446b52f",
+  "sha256": "797d6aebfbf42db49f63d3845313b53104cca4e0718f4f7c47e78f29efc5b1ee"
+ },
+ "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_04AL.leb": {
+  "source": "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_04AL.leb",
+  "source_sha256": "3d0ccba0eaf49ae1e209cbf6bd96b9ec69490aafb1ab37262259010457ead5c6",
+  "sha256": "509b4c923d811e43e74c883f8b628d43a2d634978b38f381639ddb761727de30"
+ },
+ "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_04D.leb": {
+  "source": "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_04D.leb",
+  "source_sha256": "2e0982753202b564f22010b2ed6c6cd93bd791447bef249b5374b779d0bc9aec",
+  "sha256": "7d6bbea82f156cf930873a2caf902c293e3e8c2d0e3ed84f8bb5f4c771b989a7"
+ },
+ "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_04E.leb": {
+  "source": "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_04E.leb",
+  "source_sha256": "2958b1839f8f60239aea635b1d72782494bae43a4771cb04f692d9bcef92a675",
+  "sha256": "d04a218dc9485a7893271c0070e21ed5adb7a974b611c6614fa382603eb1a44e"
+ },
+ "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_04F.leb": {
+  "source": "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_04F.leb",
+  "source_sha256": "dbea67b97cb989223730db787bb1a86050b386d0b3e24d0014d3dc0dd3d8e140",
+  "sha256": "85fcfa69b04e80f6de94c04764a7b123b76e6098bfb5400048472fdd8cad3962"
+ },
+ "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_05C.leb": {
+  "source": "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_05C.leb",
+  "source_sha256": "a6e9dec507a29f7dd079dcf3b3bc1e988e7993936b8869887e63020dc2c9074e",
+  "sha256": "5ec1be08833a5541935b109586f3896e62ec75db4e911baaaa78bc0987f15c17"
+ },
+ "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_05D.leb": {
+  "source": "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_05D.leb",
+  "source_sha256": "66d5b4403e9d24212d2da35ef7be36501d8bb60c5f78027989ed8a2f98559bd2",
+  "sha256": "1914d48cf7b6741ca88038e705b1b58cf9929b740b238fcce2b19d4d86e69398"
+ },
+ "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_05E.leb": {
+  "source": "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_05E.leb",
+  "source_sha256": "bfb525dc984fb4f3c13a7f8a7bee8ff31c83296caa660e1200313752134bcb7c",
+  "sha256": "cdf7bd97195d1c4feec1df3fe8a45076a1bfdae407c0d53ca26add94bfacbd8d"
+ },
+ "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_05G.leb": {
+  "source": "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_05G.leb",
+  "source_sha256": "794ee241247d5a5afd7771b8ffe5773a1d54656de48b83a3d108e2d98d334eaa",
+  "sha256": "a42b502acb3734de6932fc7277b620559dd1a776fa9055c1977f3699dace53a8"
+ },
+ "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_06A.leb": {
+  "source": "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_06A.leb",
+  "source_sha256": "92f0bb5915596a17e2eeb0b1bc8a0b873384fdda22da9f58b7f6398a3736856e",
+  "sha256": "34a58bc723c81a7d2279e287e1bb4e3c98d615b2975f86a2b383f74c729744ed"
+ },
+ "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_06F.leb": {
+  "source": "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_06F.leb",
+  "source_sha256": "67e3a08792dc1c1138cd9077304293f2c550bf4ece0cac0a4cfb1bdcefbecd23",
+  "sha256": "227d0babf55fb6813c43550b6ac461a2a1d2e591aa370479e36b154084e9a3de"
+ },
+ "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_07C.leb": {
+  "source": "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_07C.leb",
+  "source_sha256": "f5fdc313e2ceb5f5d49f4f77159d6e51335527bb8401482a5a9a5eb157fd30b5",
+  "sha256": "7fd300544399a115fde782b382029651af4b83cbeab3edb96940cede9ce19b0a"
+ },
+ "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_07E.leb": {
+  "source": "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_07E.leb",
+  "source_sha256": "092e058e0c99d129d949a70d5885f595433a63d828ee03e2bc4d0b1810d5b20e",
+  "sha256": "14e1fec89ceb4f1a280ed8aea178632d9a762458342cb28f43394e60a942a2f0"
+ },
+ "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_07F.leb": {
+  "source": "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_07F.leb",
+  "source_sha256": "fd422eb6911d52b50347dbd06bfe634534a3951dc1db370ea81ab7718c13b3ea",
+  "sha256": "99c6ce726999d190a9b78f7a7e84362f392bbb7801b766522e398258b589bc21"
+ },
+ "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_08E.leb": {
+  "source": "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_08E.leb",
+  "source_sha256": "300be79026ac0d8f82ef77718e17e6dad7c64f3e40a08675bec8852c2b6a1c93",
+  "sha256": "179d78c6221b6f37e7af05e59f8ec73bd839aebdc4799ae033cdcadb0d3ac9e2"
+ },
+ "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_01B.leb": {
+  "source": "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_01B.leb",
+  "source_sha256": "b150f3d8cacef222a41e11852a468b4750dcba94dac70f97eb33a1b0cf8c9ff9",
+  "sha256": "da8a172be4b8fa78a444ba62ba74998a410e6199dfb1a00b9d2f65d203c577b7"
+ },
+ "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_01C.leb": {
+  "source": "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_01C.leb",
+  "source_sha256": "ce13b831b2a9a61d18b936a99b0a3c7512f13dfefb15486bc1382a2b1f5afc9e",
+  "sha256": "424831451511521149a36f1ce22f310a04603330821dc2a0e9245b059ec686de"
+ },
+ "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_01D.leb": {
+  "source": "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_01D.leb",
+  "source_sha256": "66e7b50b0e7528831cc97866b49ba0c742d898a86223ffb52e4dacf62088cc4c",
+  "sha256": "f2412ec130f6521d4550b5a662cd0ec47527f0336e3175207ae4e1497cc419b8"
+ },
+ "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_01E.leb": {
+  "source": "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_01E.leb",
+  "source_sha256": "ba88a752db8e1441898226e0665c89f3532b8f28fd43f5abf00d6a2671756705",
+  "sha256": "842af1a2df9f3dabf0f8c46710f88264fc4b3a5780ea2875adc91c362fc4af9d"
+ },
+ "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_02D.leb": {
+  "source": "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_02D.leb",
+  "source_sha256": "17b8164998d81f5801abdc99f07fc3513721063690b22a331155e6d8d84c8d86",
+  "sha256": "8cda960040e893994f103da941efdb06209e6fc9c26a04373d471f0a9478e58e"
+ },
+ "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_02E.leb": {
+  "source": "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_02E.leb",
+  "source_sha256": "62847cf2fd5057de71617dfaf8c1f68b661eecb672d094fcce9e4100b233d813",
+  "sha256": "0deadd7e49dcc3466db9e356da527507a43c9c1ee3533a2bc6af95e53a7a60a3"
+ },
+ "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_02G.leb": {
+  "source": "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_02G.leb",
+  "source_sha256": "e70845473b5312fab39e9b5cb7c14965e3122b5cb1f6852ff262c3d9e4065021",
+  "sha256": "a07e1853d31f5eea32409274178e8797b2a8048c44a4959c2d43d2c0f3fad68e"
+ },
+ "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_03C.leb": {
+  "source": "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_03C.leb",
+  "source_sha256": "0a9fe48594478d8009e4717a61383a41af330f463ca440a6a403f275f2a6289d",
+  "sha256": "dc3c3cf21629d93c0db172649436ffffb6b3515e14dce3e2572966309d0be3d4"
+ },
+ "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_03G.leb": {
+  "source": "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_03G.leb",
+  "source_sha256": "f3faba5dce8b7af25cf55b9e0e4522f70070b78f668eb884a352b5e3590b2637",
+  "sha256": "bd64ea262ddd86bb9040fdc1349c3c28614d81d5adf3a49c5626fbc79e5a4adc"
+ },
+ "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_03H.leb": {
+  "source": "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_03H.leb",
+  "source_sha256": "cc655ce53af10b48fb909af735b5eaaef7afeb24072032dc35b8d216d425d190",
+  "sha256": "8221d748b1e154334b6c4f4d9cd11a24de4b51aac77a811d9b9835c283d1956a"
+ },
+ "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_05G.leb": {
+  "source": "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_05G.leb",
+  "source_sha256": "6efeae4dd04f13b88a447ea59cc00a1a17bc7a2d7e253453671096c71680edd1",
+  "sha256": "8a925e0ac3bb98851580c87b161267269f95ec50ddd331028789de9c7b129383"
+ },
+ "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_06C.leb": {
+  "source": "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_06C.leb",
+  "source_sha256": "62e703ab8714141fdb68e993701391391582b99d46305b2204b6a679a16da267",
+  "sha256": "17518aa69a876b38898fbe916aee657a455c878c254f51eba90c0281182a558c"
+ },
+ "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_06F.leb": {
+  "source": "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_06F.leb",
+  "source_sha256": "e8d612f92cba761e55c8402cbcc170e6caad3717aef58855d4c8bd2bb025213a",
+  "sha256": "dd33953f3da3b0eff69e00650e46cb2853afaa1782d5be4a471a204870a7b2fe"
+ },
+ "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_07D.leb": {
+  "source": "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_07D.leb",
+  "source_sha256": "5f598df188e7a5ee298fa47e6e02a27771dab1b648344741133d6b8099ee515b",
+  "sha256": "c4e2b8e1d74d09329410796ba33c03b563ab47fa6d64ab66f9b58de83f563c62"
+ },
+ "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_08E.leb": {
+  "source": "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_08E.leb",
+  "source_sha256": "dc56bae605dd70d5ad1748f16bb9f3c98fbbdb463a427cc06d4b7e69f7e0f827",
+  "sha256": "11832cf728b88bba2f38c36de26102e27ba204fd72247d8eabff67352af11202"
+ },
+ "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_08G.leb": {
+  "source": "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_08G.leb",
+  "source_sha256": "ac9bcda9904abc28274ca7bd0adc53e9c50db567c19c1bc28d7a9d682c30a00e",
+  "sha256": "7ad41a0c7c81595cd4678b6d57d354c8c45e0b9b080cc120d7a69766f6f5022c"
+ },
+ "region_common/level/Lv06FaceShrine/Lv06FaceShrine_02A.leb": {
+  "source": "region_common/level/Lv06FaceShrine/Lv06FaceShrine_02A.leb",
+  "source_sha256": "9f6e7a80a5b0e449c1ec2defda3af15deef1cdbee2356c5ce4032bb543a36748",
+  "sha256": "80efffe0cd205aac51cff3d709a41d3f928415837d02e54e73a235eccb51c99e"
+ },
+ "region_common/level/Lv06FaceShrine/Lv06FaceShrine_02H.leb": {
+  "source": "region_common/level/Lv06FaceShrine/Lv06FaceShrine_02H.leb",
+  "source_sha256": "1928a5b4acd01005d05e55812e004e6d558a0456fc5b0d171c7e2752f55513cc",
+  "sha256": "914e802424d148ba42e911a539eebb7cbd5d92adef7431d0f8b0d690d0266b58"
+ },
+ "region_common/level/Lv06FaceShrine/Lv06FaceShrine_03B.leb": {
+  "source": "region_common/level/Lv06FaceShrine/Lv06FaceShrine_03B.leb",
+  "source_sha256": "7af3acfbd96be9372c9a6a0191055af0f16931675056a069424cbd03d4bfa9ea",
+  "sha256": "c8ab30ca88c9779197d049ecafcecb16078e669d579b588e8cb1d734437be4a5"
+ },
+ "region_common/level/Lv06FaceShrine/Lv06FaceShrine_03D.leb": {
+  "source": "region_common/level/Lv06FaceShrine/Lv06FaceShrine_03D.leb",
+  "source_sha256": "4828a4dcc0f9b6f44e0e04d004156d834a408182ac854b8d292c0808cc062a8d",
+  "sha256": "ce76fc237e75f48f70235db447ac38284b905a820ae3e107e30e4f1e6bab6bc7"
+ },
+ "region_common/level/Lv06FaceShrine/Lv06FaceShrine_03E.leb": {
+  "source": "region_common/level/Lv06FaceShrine/Lv06FaceShrine_03E.leb",
+  "source_sha256": "b769784a5b3d1c69aa56de746bd77e6dfcd4777cbb4c779b760d21b174b686c7",
+  "sha256": "088b16d692c552a2ba74af61c34f57dea60fec1feeac7f79f576d1437ad07dd6"
+ },
+ "region_common/level/Lv06FaceShrine/Lv06FaceShrine_03G.leb": {
+  "source": "region_common/level/Lv06FaceShrine/Lv06FaceShrine_03G.leb",
+  "source_sha256": "2d500213949d61a3b12ddc889b214ee52b81c7487a37c9bfbbd4444b5bd1b4ec",
+  "sha256": "9549304d4e08e47f3a38e1f6b679009c226dc08be01b0ef4bafeca49778e2007"
+ },
+ "region_common/level/Lv06FaceShrine/Lv06FaceShrine_04B.leb": {
+  "source": "region_common/level/Lv06FaceShrine/Lv06FaceShrine_04B.leb",
+  "source_sha256": "c3342de06a7a11857be3631fd0a5f081efdf7fc8ff24a40ade5c22a6852ad0d4",
+  "sha256": "418f26cbeaf4c830fc4092b6316ac54fb85aac3a17d769ffd7b55ca0f5d6dd09"
+ },
+ "region_common/level/Lv06FaceShrine/Lv06FaceShrine_04D.leb": {
+  "source": "region_common/level/Lv06FaceShrine/Lv06FaceShrine_04D.leb",
+  "source_sha256": "d3da8e79d5ef478d0f6ff51d5ef2f60f50b9ebdacea740bb293ef107544f8be5",
+  "sha256": "370dfa765ef835f14f42cf9e72abc2b4ba98d9e43d4d3c93d84c0bf8c0e9b168"
+ },
+ "region_common/level/Lv06FaceShrine/Lv06FaceShrine_04E.leb": {
+  "source": "region_common/level/Lv06FaceShrine/Lv06FaceShrine_04E.leb",
+  "source_sha256": "9828724e4d8c9d44fd59e12b4e561f266acc8eb0a1f8367932e36ed29907f607",
+  "sha256": "9b2b96836c30618cc1ca6a8e0494757d391c7bc0026c85571b3d62e43d5936ac"
+ },
+ "region_common/level/Lv06FaceShrine/Lv06FaceShrine_04G.leb": {
+  "source": "region_common/level/Lv06FaceShrine/Lv06FaceShrine_04G.leb",
+  "source_sha256": "5af3ae46f0844efe4e7d40137da6ec0b6f5cb2a9f57810d7d8d9198c224b0b11",
+  "sha256": "4b56b6472b00d1c53fc812b4200a8d599766f36b366352255b46894db7adf5b7"
+ },
+ "region_common/level/Lv06FaceShrine/Lv06FaceShrine_05A.leb": {
+  "source": "region_common/level/Lv06FaceShrine/Lv06FaceShrine_05A.leb",
+  "source_sha256": "ea84115f35de77ef077e0e5375ca0ff6704d2c423a9add0c591361c43c6a590e",
+  "sha256": "c2b17db65942d8b8eb7c825055141419dcd15fb3471142aa12937a1c512a0e02"
+ },
+ "region_common/level/Lv06FaceShrine/Lv06FaceShrine_05D.leb": {
+  "source": "region_common/level/Lv06FaceShrine/Lv06FaceShrine_05D.leb",
+  "source_sha256": "64a35a0e6e9367b288ab8e4cc18f340244aa74d78c09d1781a648015fadf1a9a",
+  "sha256": "226ffabdcae052d676118ff4f86b0395af40f569b40d44aaa30983d7e4d8d0fc"
+ },
+ "region_common/level/Lv06FaceShrine/Lv06FaceShrine_06C.leb": {
+  "source": "region_common/level/Lv06FaceShrine/Lv06FaceShrine_06C.leb",
+  "source_sha256": "4df472201e77f54d428787d1041fc8a115a8d6c37c5f32dff3e87487119e0c04",
+  "sha256": "76eb9d9196e672f4d2767333f3bdb6d831e86eb96463d08ad072df9de6461d42"
+ },
+ "region_common/level/Lv06FaceShrine/Lv06FaceShrine_07B.leb": {
+  "source": "region_common/level/Lv06FaceShrine/Lv06FaceShrine_07B.leb",
+  "source_sha256": "095d664350a1634b605386b9fd5eccbf51c5fe54a6a8e4f6376891dc9999f214",
+  "sha256": "51bd7522ca8b7b1dde44c31864e74fdefb5bd088f27ec0b52c1f9d7c7fc40ada"
+ },
+ "region_common/level/Lv06FaceShrine/Lv06FaceShrine_07C.leb": {
+  "source": "region_common/level/Lv06FaceShrine/Lv06FaceShrine_07C.leb",
+  "source_sha256": "c5c82c902e129bea5540e5f7e551cacc172f7e5d4ca3db3f528c43e8fe45352b",
+  "sha256": "5264c2da9f628249aa1846387c9c5d8b993c6b0ff526ad906ee9fcc6b8d79141"
+ },
+ "region_common/level/Lv06FaceShrine/Lv06FaceShrine_07G.leb": {
+  "source": "region_common/level/Lv06FaceShrine/Lv06FaceShrine_07G.leb",
+  "source_sha256": "5bdb2756fe030da91d00a3375d24fcb38bca89f4447e837f1be138aa96cf47c2",
+  "sha256": "f708e8c1919a023fc4e48eb88d40013e88b958a905d674a185142ddb6da86959"
+ },
+ "region_common/level/Lv06FaceShrine/Lv06FaceShrine_08G.leb": {
+  "source": "region_common/level/Lv06FaceShrine/Lv06FaceShrine_08G.leb",
+  "source_sha256": "51c3dd00346c95f1df0cade8990aec79a5766ded0995ad708c6bdafa1f598200",
+  "sha256": "c9f789c21cc2ae3a13057a1e80aa414be02b9296df19dc130f0b814b3159ecff"
+ },
+ "region_common/level/Lv07EagleTower/Lv07EagleTower_01B.leb": {
+  "source": "region_common/level/Lv07EagleTower/Lv07EagleTower_01B.leb",
+  "source_sha256": "0298e6ac57d98c7228acd557e309244aeae9babefc835e9e2b0334edf2191fa8",
+  "sha256": "31f58db402e2f071ac6f60d1691e0d40bb64acc23acaa3c6e6e09711f9069811"
+ },
+ "region_common/level/Lv07EagleTower/Lv07EagleTower_01C.leb": {
+  "source": "region_common/level/Lv07EagleTower/Lv07EagleTower_01C.leb",
+  "source_sha256": "85c29b1bbffa5a8ca1a4d57718f8097e1c3a71a50cb252308200892b0dc90527",
+  "sha256": "b9da56e862c5dff94ec5ef30bf35afbfa4742b65aa89c891d7f4884152ee7d03"
+ },
+ "region_common/level/Lv07EagleTower/Lv07EagleTower_01G.leb": {
+  "source": "region_common/level/Lv07EagleTower/Lv07EagleTower_01G.leb",
+  "source_sha256": "7c78ce90d0d965d6fb8e0e31531423d6af7b8c32fd9bd64f523a5f0998ca14f4",
+  "sha256": "de9cf81456b3125f87c1766ef55e3518df71f20d961442dfc71463d8c373d556"
+ },
+ "region_common/level/Lv07EagleTower/Lv07EagleTower_02D.leb": {
+  "source": "region_common/level/Lv07EagleTower/Lv07EagleTower_02D.leb",
+  "source_sha256": "bf568871bafed9aefbac00f2c2d260f6951aa1eb651b168b4d6628529570d98a",
+  "sha256": "55c08a70784faa52c206140192116d4883ba4ea40300ceaa753f77779446c2de"
+ },
+ "region_common/level/Lv07EagleTower/Lv07EagleTower_02G.leb": {
+  "source": "region_common/level/Lv07EagleTower/Lv07EagleTower_02G.leb",
+  "source_sha256": "9dd12d3c033cf3d40135e528320991375452e66adeebba5c637ce7640b50a05b",
+  "sha256": "ed3c93d1fc13234b12bded227c7ab176b3455a4ba8342b607bba919b371fb890"
+ },
+ "region_common/level/Lv07EagleTower/Lv07EagleTower_02H.leb": {
+  "source": "region_common/level/Lv07EagleTower/Lv07EagleTower_02H.leb",
+  "source_sha256": "5db72bd228b412d3bbd59bfd2d35f4af8184081457f12c6c825ef003cb0e385c",
+  "sha256": "8518fb58b22c840453fc344720dedc3f17f09f07b6bd68a4723c1a4ebf8e8deb"
+ },
+ "region_common/level/Lv07EagleTower/Lv07EagleTower_03D.leb": {
+  "source": "region_common/level/Lv07EagleTower/Lv07EagleTower_03D.leb",
+  "source_sha256": "5a701a2fc9cb6bebd5301a4d1047330a930ee5c5413873a877ab1a1eeed9fa3d",
+  "sha256": "14529a610753a0249e4d59a84aa4e3a3ad30983e0576338fb79eb39140762525"
+ },
+ "region_common/level/Lv07EagleTower/Lv07EagleTower_04A.leb": {
+  "source": "region_common/level/Lv07EagleTower/Lv07EagleTower_04A.leb",
+  "source_sha256": "8cbae7bb694a9c392cdb171625fd46c662153b4ef2af50fa94a6987b3002f89f",
+  "sha256": "c5f86dcbd819846f06f99283894a517564ad42ec1f5d374cb28cbbeb4da3d5ee"
+ },
+ "region_common/level/Lv07EagleTower/Lv07EagleTower_04B.leb": {
+  "source": "region_common/level/Lv07EagleTower/Lv07EagleTower_04B.leb",
+  "source_sha256": "d6152fbda4ae43be8ce3efbe8196a8d6081721722f84c5e5ddf5b2281a67a601",
+  "sha256": "a64a0d78e8be61f2e5b57642a6667caa60a37d1a7e9ebdaa333a391c603316de"
+ },
+ "region_common/level/Lv07EagleTower/Lv07EagleTower_05A.leb": {
+  "source": "region_common/level/Lv07EagleTower/Lv07EagleTower_05A.leb",
+  "source_sha256": "74c7cf201b1b07a5d7b864ee1a7be85f068e97892c87946a46b7c77bdf8ee995",
+  "sha256": "3f9c43a10a94e796199336908f394df9bbcb8b48b32681b6b42f373ac43cec6c"
+ },
+ "region_common/level/Lv07EagleTower/Lv07EagleTower_05D.leb": {
+  "source": "region_common/level/Lv07EagleTower/Lv07EagleTower_05D.leb",
+  "source_sha256": "f71518940bf400908d219ebeb65af6424b428b857a2bc4adf1a5e2fccdc5b780",
+  "sha256": "1b7f6787923c292232a6e273b37a2dd6c36e4232ff9fd4ba7d71f2eb5bc9d865"
+ },
+ "region_common/level/Lv07EagleTower/Lv07EagleTower_05G.leb": {
+  "source": "region_common/level/Lv07EagleTower/Lv07EagleTower_05G.leb",
+  "source_sha256": "2b24bb09d944d2bdb9080018ad000b44942e0f4c51c7dab2cb11a4a35bd646bd",
+  "sha256": "27a13b4494f066c54f4444de146bb18f78144cc1f1d2d1630b36c7cba37cfe81"
+ },
+ "region_common/level/Lv07EagleTower/Lv07EagleTower_05HL.leb": {
+  "source": "region_common/level/Lv07EagleTower/Lv07EagleTower_05HL.leb",
+  "source_sha256": "7794a6ac56dce2fd80569740332ad2007345c9a93b7e98cd6584e717fedd71af",
+  "sha256": "40bdcb9a9bb2bdd4f6ffc4f76981c4f664049a64222b741be14d9a0c6f3f6ec4"
+ },
+ "region_common/level/Lv07EagleTower/Lv07EagleTower_06H.leb": {
+  "source": "region_common/level/Lv07EagleTower/Lv07EagleTower_06H.leb",
+  "source_sha256": "4b27289d117fac656432b88a0371770ecf33da89691685859afcc7cf0714fcc2",
+  "sha256": "6b12de300bdd822bc83bcaf7eb4fea7ac385ad0592437dbc79bce962adcbd47e"
+ },
+ "region_common/level/Lv07EagleTower/Lv07EagleTower_07A.leb": {
+  "source": "region_common/level/Lv07EagleTower/Lv07EagleTower_07A.leb",
+  "source_sha256": "8372e54a23c52b99c1162f9bb25d7aedef9d39bdefb440ffcc66962ef5ef0536",
+  "sha256": "7239ac172b4b47b61bad70036f341c5dd8c4f7ca3c7df56cad4a1439852778e9"
+ },
+ "region_common/level/Lv07EagleTower/Lv07EagleTower_08D.leb": {
+  "source": "region_common/level/Lv07EagleTower/Lv07EagleTower_08D.leb",
+  "source_sha256": "db0211e65ccdfc9188a0622d6ae08f01a5002ddc2f610a6e2ffc2c48f8168a15",
+  "sha256": "467f6d602fa55881eb7a77b6d953200fe84131962cdd5e9435cb62ec1724ce97"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_01D.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_01D.leb",
+  "source_sha256": "9399ffa04c0cf804e3164cfb72c6bd2de4336dfa01d525c0ce33e4eb793d44e1",
+  "sha256": "578163313e46de8d061a0351113e3de5207f87469b4f5d64c9bd1c3d066289d1"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_02A.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_02A.leb",
+  "source_sha256": "7865c24edc8357acb71ebf4e544a0b328065b837fd039be9f38a83e1cd150c4c",
+  "sha256": "9f3cc6fb513563a494c8d616dc91a8981ed92563480caec3b9c650dc4057957c"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_02D.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_02D.leb",
+  "source_sha256": "32e514606ed418484d65d9b005e3e7e7a7444a7f69ce6c0e9ce4d1fbef6026e1",
+  "sha256": "c3194040325bb2ed15079c9daec6e6ad5a549c6ab96ff315571085ab5677ce59"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_02E.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_02E.leb",
+  "source_sha256": "09108bfd5801b1a99b8a8f7db3a1b4eeee348c333d82af892786f032a5f4916f",
+  "sha256": "0f501946fa6e1d4c3acd6708605bbafb8a5348464db6269fc11ec50b3ce4911a"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_02H.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_02H.leb",
+  "source_sha256": "ad966eee616901260f1465e282dd98994eb164249ef5445357ef73835f74fc5b",
+  "sha256": "ded4cdd0af61966edb8ffcc6e12918debed703fc3950833472c13024e892c11c"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_03C.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_03C.leb",
+  "source_sha256": "7e72826747daa9e54355ad22503b7f682ce3b1ca8bc77f04a37a519d42b5eb27",
+  "sha256": "b2ba2636532076b52337ccd7bbf47756c9e53c365f321e289ec74b98542cbafc"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_03F.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_03F.leb",
+  "source_sha256": "f13bf59dfc2532c9697898658788ad7c6b85707b64dcdaa4d877cc49790d124f",
+  "sha256": "9d4e65c8f4e29d8326455f7da91ba930a102582efce6550ec63e17ee9b36f86d"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_03G.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_03G.leb",
+  "source_sha256": "df00736918ac74095b48f6529f9f1b34fc55f6012550034c9e3001b86b62b3cc",
+  "sha256": "cc25183b17806e5e7ce7376b96d43dd11a22d3b22e9ae90c1b85979e1b3a85a4"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_04B.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_04B.leb",
+  "source_sha256": "535bd49703d74d3c2ec5368832640923db5987d821c71e871c8e7184f20a05f1",
+  "sha256": "b4f65d2ecca10be22ab2dd64e58ef9836b83eb88401f2a8a2f5349e9c0901734"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_04C.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_04C.leb",
+  "source_sha256": "8324d2e5771dd78fbd52399f10302a15b04c165e3c70027091dae6ecb36fcff5",
+  "sha256": "409e25635807560e0f6ff4e18102d41f585b1e06a8692b5df7477a5ea9209ac3"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_04G.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_04G.leb",
+  "source_sha256": "3d9b537437b8e7dce33fcfd8ae46d897923666dccc911cc634de9bc8c9baa1ff",
+  "sha256": "aee8b35f2ffde7d6360c8409d6cba4a944f3f46da5db25904a78b193f6a8094d"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_05B.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_05B.leb",
+  "source_sha256": "2b3967eb8188c112e46d13b567acacd94548702cc5c4074c2442365845d896df",
+  "sha256": "703519ae2911162b1a836b4fd4ffef04f1f751b945474f2e082ed3051c7f0cdb"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_06A.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_06A.leb",
+  "source_sha256": "a023ec197acf011cc158cd0d8d7aa49fbd58b35ca3685e6f6c3875739edf5b32",
+  "sha256": "aa800e3bd8144049bcf288ecff29e8cadb2d5370caed36f301000ff449b07558"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_06B.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_06B.leb",
+  "source_sha256": "97b443c89b214cd942f8a470ad5c76e7c47cba777d4b357eafca20dddc33cd15",
+  "sha256": "60df3a7b202fbe4b13a76656a884ac8beb23347a2e0432d6a216ae31401c95c7"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_06D.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_06D.leb",
+  "source_sha256": "c96255fee48a0aaafd51515a980b7278d99edafdf7b5e96fb82418cd8a021fc6",
+  "sha256": "e83f927c23c6dddd7ad1b065db47bfac6d789bf248a9a0495c46581638afbf56"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_06H.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_06H.leb",
+  "source_sha256": "6f513af84acad153df6bf1f3d732f3f0e87257aff60f63d5b7832811f90d887f",
+  "sha256": "36926207ac502d7ae7dce049dd2a9718ff01b61d6ccfb506b25f6f99e70ca0f8"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_07B.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_07B.leb",
+  "source_sha256": "66e642a0be3943cf6c301fa5ff043ac16df12089152c2379a15e751f2560ab07",
+  "sha256": "74368c029282a9041e794d460ca13d4e3549f53c44d0eb0572d4972e8c32505c"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_07F.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_07F.leb",
+  "source_sha256": "7210fc288292ff46001676df0788b96c876aefc934fc3196e59c625e9f0c91a7",
+  "sha256": "48e41c3af3e82d1de46e660fa26d27b3a23d07edf263952075b0b747b299aa9b"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_07G.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_07G.leb",
+  "source_sha256": "27780294eb90e07694cc8428d27d9993570c178c4c63a3fad0eba34e3bc719cb",
+  "sha256": "b0a137bcdb5dd5ba9b5a71f9a339c5d5db6093612f803ad4fea7f5cba644e891"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_08A.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_08A.leb",
+  "source_sha256": "6ad115ba11966c5f3c12eef3bceeeeecc0abb0051cde61c97520eeb21c604aab",
+  "sha256": "f4cbbb24a7e3a81430f4ba0d0a2b2ddcd9c19dcc6f776f9a2982fcbf9f3e6215"
+ },
+ "region_common/level/Lv08TurtleRock/Lv08TurtleRock_08H.leb": {
+  "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_08H.leb",
+  "source_sha256": "b545c58c17a80ba17533d3297f3feebd6638d90b200f649f8f0ac0f48608d16d",
+  "sha256": "5c743847152cfbaf31e97d1e14329937a3ab81f289a6f10dba37060d563d5d90"
+ },
+ "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_04F.leb": {
+  "source": "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_04F.leb",
+  "source_sha256": "55c62ebaa953aa34576023389dbefb718b36c02ebef4787ae2660ec54360e0a0",
+  "sha256": "341192bf0ed46a2546966e95b66821b0aa74f4caee5872e4327bbdd52a3432ed"
+ },
+ "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_05D.leb": {
+  "source": "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_05D.leb",
+  "source_sha256": "361bb4a960368632b15e608832a5845bd3b8e9f88dc8bf6749001552084368ab",
+  "sha256": "16ae5b2d357bb909d870638b78c5844ac3f4f94133048ac713c1413673ea7509"
+ },
+ "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_05E.leb": {
+  "source": "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_05E.leb",
+  "source_sha256": "8b7c8739575c09f6907827082a8b5de24631eec410fa7b7e953fe9ef4ad2c34c",
+  "sha256": "56dce551a2ff02f36b1e089c7be1105ab540217181ae73920802fe51c705f0e6"
+ },
+ "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_05F.leb": {
+  "source": "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_05F.leb",
+  "source_sha256": "6e25559b18a01e70cead9674c0c8a4ab98956a3d435b764b651199d35d9f47de",
+  "sha256": "89351b89a631ea8c657df998a220983b8938ffffb2a46d33afac0678a53a757d"
+ },
+ "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_06C.leb": {
+  "source": "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_06C.leb",
+  "source_sha256": "ee1edb3303c1c16f78b26255ee32adb6079bf3a17b01b5f67f8e31c5e3627d57",
+  "sha256": "cc67fe360be6f1d8dee05f494ee928bf346baa8d14d45257247ac72b13c23716"
+ },
+ "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_07D.leb": {
+  "source": "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_07D.leb",
+  "source_sha256": "201b1f1b182ff3789f3df21b66c8e4e3dbd975ca9c0ff8df12d1c5332ce09ec4",
+  "sha256": "20fcc186d5cadaba64f75d5e5a4377f572da2e58ca7af3377a49b4fd993d8c36"
+ },
+ "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_07F.leb": {
+  "source": "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_07F.leb",
+  "source_sha256": "217c20389b42c0f2c8670d250ea6d8f176628bbf8535d628a3d17a5c5420e3b1",
+  "sha256": "7b19f610aa671b5cea7eb24c5f01b9aff007a11dc4537e803d4fc309a81a1ab8"
+ },
+ "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_08D.leb": {
+  "source": "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_08D.leb",
+  "source_sha256": "add3e79a5930ce4e3b33199d495feba16cd75e34fb23137662d2764ebec1ee28",
+  "sha256": "198894b5f558a628fe0960c9ffe677feba7f7dc0b8a5206301296897bd6f33f4"
+ },
+ "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_08E.leb": {
+  "source": "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_08E.leb",
+  "source_sha256": "a3742a6951ddb8d964edd89f4fa919926066fe9b458538264f1c22b7e408795e",
+  "sha256": "d6b1a543a5255b6bc898eae742cd0b8478939f18f9251ded737d632710ee7056"
+ },
+ "region_common/level/MadBattersWell01/MadBattersWell01_01A.leb": {
+  "source": "region_common/level/MadBattersWell01/MadBattersWell01_01A.leb",
+  "source_sha256": "4cab0d30813356b244f830f4eba3b510c864e893e726fcd2dc24ede7fa609d37",
+  "sha256": "b6807bc527b7309baaef90eeb75c92eca104effc8fd4d22f159f588d4fb72391"
+ },
+ "region_common/level/MadBattersWell02/MadBattersWell02_01A.leb": {
+  "source": "region_common/level/MadBattersWell02/MadBattersWell02_01A.leb",
+  "source_sha256": "fa83a0227a2cef7e3787457c299c70d476f237455824dc5e4805dc4e32fdf26a",
+  "sha256": "cadc58973c8fc5f9fc1770707b0280eef0552024eef2acf7af87a72dc50324a4"
+ },
+ "region_common/level/MadBattersWell03/MadBattersWell03_01A.leb": {
+  "source": "region_common/level/MadBattersWell03/MadBattersWell03_01A.leb",
+  "source_sha256": "380bcb3bc703660199227445050bca48db6410178d473806812158a96f9810da",
+  "sha256": "86664efab90f97f477ac717cdcf70b885c61e03807579dfd62e56b7c7f702e63"
+ },
+ "region_common/level/MadBattersWellEnter/MadBattersWellEnter_01B.leb": {
+  "source": "region_common/level/MadBattersWellEnter/MadBattersWellEnter_01B.leb",
+  "source_sha256": "dbba59149a2325e6bf155cd71a49167b171a142a5e8943f907e9fdf393592133",
+  "sha256": "a4182e851bf516ed35e3d2e35a76bcdda1a40e5533b86f96b97a6f2d39717272"
+ },
+ "region_common/level/MarinTarinHouse/MarinTarinHouse_01A.leb": {
+  "source": "region_common/level/MarinTarinHouse/MarinTarinHouse_01A.leb",
+  "source_sha256": "19635f8a2471170155b4cc663562b0a6ca1a4302f5ff25c51bae13f6910ab25a",
+  "sha256": "6a6b8b72678bfb0712cde944728bcd9140bacb97af1906d567a8f82c13c87ae1"
+ },
+ "region_common/level/MermaidStatue/MermaidStatue_01A.leb": {
+  "source": "region_common/level/MermaidStatue/MermaidStatue_01A.leb",
+  "source_sha256": "85adf1d193514d48b4664c9b5111bd378f006456d8334c00adedd87f55094e09",
+  "sha256": "9b230445efd23b8d580e8659d6addf808bacd923b3412efd3132290524b0cd57"
+ },
+ "region_common/level/MysteriousWoodsCave01/MysteriousWoodsCave01_01A.leb": {
+  "source": "region_common/level/MysteriousWoodsCave01/MysteriousWoodsCave01_01A.leb",
+  "source_sha256": "960b9ce298f27fed9e4ee37bbfbfb300ddd7bb79682df5e44af4d573ac1b2f30",
+  "sha256": "7b3906271910af229809b318fcb49afe9f42fe9260f79f665d53d9fd752152ad"
+ },
+ "region_common/level/MysteriousWoodsCave01/MysteriousWoodsCave01_02B.leb": {
+  "source": "region_common/level/MysteriousWoodsCave01/MysteriousWoodsCave01_02B.leb",
+  "source_sha256": "911e92a265b90a717875a516e5ed5ddb5f519fce5f2a7337ed7fbff62258af87",
+  "sha256": "0974a73e94025bf0f38431ec679447cb5a6b6b6681447bd3270051de3a2cbc0c"
+ },
+ "region_common/level/MysteriousWoodsCave02/MysteriousWoodsCave02_01A.leb": {
+  "source": "region_common/level/MysteriousWoodsCave02/MysteriousWoodsCave02_01A.leb",
+  "source_sha256": "35a50e8a77f47bd5988898dcfe6be9de292a16511c62fd39c97b237a7ce49bd4",
+  "sha256": "c5f878039c5ca6ecdf3827f79fff139e1c4264ff48ff2960cea884ad6c3e03e9"
+ },
+ "region_common/level/PanelLv01TailCave/PanelLv01TailCave_05A.leb": {
+  "source": "region_common/level/PanelLv01TailCave/PanelLv01TailCave_05A.leb",
+  "source_sha256": "c63094f51a4f3ec092fe812fc399cb52dd831b48685aa9bceb42a7f257fbc6aa",
+  "sha256": "834d9c5f831cdca08ce4dd99d2a5f0a2999eaff01c80c7e3aeae347d3e50bd50"
+ },
+ "region_common/level/PanelLv01TailCave/PanelLv01TailCave_05F.leb": {
+  "source": "region_common/level/PanelLv01TailCave/PanelLv01TailCave_05F.leb",
+  "source_sha256": "6d22309bb40511b7d9bd58ad12ab78d29c4108dcce57ff061c68646bf861df9b",
+  "sha256": "ce83d03a78fef1c04eec3e4ef2d3d320079b0c99364824ac1a88eef6a527d278"
+ },
+ "region_common/level/PanelLv01TailCave/PanelLv01TailCave_06B.leb": {
+  "source": "region_common/level/PanelLv01TailCave/PanelLv01TailCave_06B.leb",
+  "source_sha256": "8071b433e7fcd18def773cced57ec81a0e851f64090e01de83d611d73ab4e94f",
+  "sha256": "33f77c2b33a3969ff1075e9075d8f56b49fba6db71c8375814b2205d60a2fa94"
+ },
+ "region_common/level/PanelLv01TailCave/PanelLv01TailCave_07D.leb": {
+  "source": "region_common/level/PanelLv01TailCave/PanelLv01TailCave_07D.leb",
+  "source_sha256": "774ab9b0844a366ec97cf3c594c88c845b7eb657ed6541e49b1e7841abe85658",
+  "sha256": "59cb7f0cc4f9a6f64f6f54493537dceb79e9308a1ed9df63bf0bca11c6d8b575"
+ },
+ "region_common/level/PanelLv01TailCave/PanelLv01TailCave_07E.leb": {
+  "source": "region_common/level/PanelLv01TailCave/PanelLv01TailCave_07E.leb",
+  "source_sha256": "f75f834c4fd0919e1bbf980d12f266f764eec6d6efbbbde114a290a72b16a4cf",
+  "sha256": "fe677bae3aaeafd5432b1d46bd5e8b9a5d552b5637ebb014a080ec729be23683"
+ },
+ "region_common/level/PanelLv01TailCave/PanelLv01TailCave_08B.leb": {
+  "source": "region_common/level/PanelLv01TailCave/PanelLv01TailCave_08B.leb",
+  "source_sha256": "29b70cb4addaaa0d3279cff5cb12f4b5718c7e08f2ce72e9fc9fc8c1c774121c",
+  "sha256": "b7e488fff368fe629b5b54e4b10638b13213767303a6d866643b5b4b89d0baba"
+ },
+ "region_common/level/PanelLv01TailCave/PanelLv01TailCave_08C.leb": {
+  "source": "region_common/level/PanelLv01TailCave/PanelLv01TailCave_08C.leb",
+  "source_sha256": "45a8f1a88089a1bc10142a0460d439db69452d00f37e745e6238ca3c14f4da24",
+  "sha256": "4a1e0f70646dcb6a9725362ee800a33b13972e06451fabddc5575dc1d37e8dae"
+ },
+ "region_common/level/PanelLv02BottleGrotto/PanelLv02BottleGrotto_02B.leb": {
+  "source": "region_common/level/PanelLv02BottleGrotto/PanelLv02BottleGrotto_02B.leb",
+  "source_sha256": "2b30cebdd6f02a2401f344848cf4fa419152628013fb1eaf996c1213e4211a56",
+  "sha256": "b9dd0d84a471ab091a5e8b49cb926c2dbf991c4f3e2c57fd8cc95050f7805396"
+ },
+ "region_common/level/PanelLv02BottleGrotto/PanelLv02BottleGrotto_03C.leb": {
+  "source": "region_common/level/PanelLv02BottleGrotto/PanelLv02BottleGrotto_03C.leb",
+  "source_sha256": "db94f3c401b6646681e0c0bd34f41e6c8612fc7ea11adb03ac1f4da203ff9e30",
+  "sha256": "949ed503105d647d8ed0311b64d669585974c1c8f6709a992469bde69d32b8fd"
+ },
+ "region_common/level/PanelLv02BottleGrotto/PanelLv02BottleGrotto_03F.leb": {
+  "source": "region_common/level/PanelLv02BottleGrotto/PanelLv02BottleGrotto_03F.leb",
+  "source_sha256": "feb88c1005bc56d57e872d1544d5acbe03cd3bd68dc8a5d71af225c836f5ae98",
+  "sha256": "fe234097d0b7a0a41cc4185fb1e17b26f227ca1256a898a8d0a07b916391ef60"
+ },
+ "region_common/level/PanelLv02BottleGrotto/PanelLv02BottleGrotto_06B.leb": {
+  "source": "region_common/level/PanelLv02BottleGrotto/PanelLv02BottleGrotto_06B.leb",
+  "source_sha256": "c4d7f02d707ef739ef2fe687d7a616c974a4b5bc51db6f063b53802d45206b65",
+  "sha256": "a8bb407b5b385731e94039a315ed025fc15412c83ef251245bea9dd5a618c819"
+ },
+ "region_common/level/PanelLv02BottleGrotto/PanelLv02BottleGrotto_07D.leb": {
+  "source": "region_common/level/PanelLv02BottleGrotto/PanelLv02BottleGrotto_07D.leb",
+  "source_sha256": "147fbd431eeb01e946679e98fe338857d5f7b9fa0b02be6140def6448359089a",
+  "sha256": "94a80f8cf2ae639e0aa48de3740953307947f16e0c050d110c5e7e0e1fa3bfbc"
+ },
+ "region_common/level/PanelLv02BottleGrotto/PanelLv02BottleGrotto_08D.leb": {
+  "source": "region_common/level/PanelLv02BottleGrotto/PanelLv02BottleGrotto_08D.leb",
+  "source_sha256": "19eef76ac873df7e7f4a925092a64d8bd7111568d1eb9976bda5a720b2a57f01",
+  "sha256": "9f95ddfcc83c629f89418fa8ad75f47cdee92c934c2e71b5c13a2441d5a620aa"
+ },
+ "region_common/level/PanelLv02BottleGrotto/PanelLv02BottleGrotto_08F.leb": {
+  "source": "region_common/level/PanelLv02BottleGrotto/PanelLv02BottleGrotto_08F.leb",
+  "source_sha256": "9ffa0350d3c5a4f7913e32e4410298bd51bd84661fb98412a7d7e8ac209e97b9",
+  "sha256": "e645670c445f2433c93974b52db8fece04c593f398276520c38acfa3b922adab"
+ },
+ "region_common/level/PanelLv03KeyCavern/PanelLv03KeyCavern_03G.leb": {
+  "source": "region_common/level/PanelLv03KeyCavern/PanelLv03KeyCavern_03G.leb",
+  "source_sha256": "497fbfcc5b29ec3e9b0064b53e52493aeb01e2567017a3abae92d28d4be1d3fe",
+  "sha256": "919e189fec21737a0bf1b9cf90399af77abf14e949e2ecfaa935758671212e9b"
+ },
+ "region_common/level/PanelLv03KeyCavern/PanelLv03KeyCavern_04C.leb": {
+  "source": "region_common/level/PanelLv03KeyCavern/PanelLv03KeyCavern_04C.leb",
+  "source_sha256": "3e50650978260fce012f855c9e897f792caec56bfc2bb2f673733e0e2d3e262f",
+  "sha256": "6f56affa8ddde1a9da009ec480d242a962e99b6f562a33e1fbd3d2d5d1b501bb"
+ },
+ "region_common/level/PanelLv03KeyCavern/PanelLv03KeyCavern_04D.leb": {
+  "source": "region_common/level/PanelLv03KeyCavern/PanelLv03KeyCavern_04D.leb",
+  "source_sha256": "2f1b9af253c3cb3280f61f3232496b4e7d82a41ab1540dbda7ef01e17b5555b0",
+  "sha256": "4654acdec903106829d1dc634d209039e91214954f5f55092a05816436a6a8ba"
+ },
+ "region_common/level/PanelLv03KeyCavern/PanelLv03KeyCavern_04F.leb": {
+  "source": "region_common/level/PanelLv03KeyCavern/PanelLv03KeyCavern_04F.leb",
+  "source_sha256": "e899be554090060dbbf2a27f82aaf5675322965df73eafb0a1e2cad89d142df8",
+  "sha256": "1aee7bf3a0231f872b024a8c52999656921d7e384a58e2c679efee2d4bb106e8"
+ },
+ "region_common/level/PanelLv03KeyCavern/PanelLv03KeyCavern_04H.leb": {
+  "source": "region_common/level/PanelLv03KeyCavern/PanelLv03KeyCavern_04H.leb",
+  "source_sha256": "b6971a26f7ff5f4c3b4445d5c9ab8db0b482dba996c8f33e44dc894e9e02986c",
+  "sha256": "287c6219a8a28d0ce0416990fd83dbf1137afe7bda4f4af9c51d2bc8cee711f4"
+ },
+ "region_common/level/PanelLv03KeyCavern/PanelLv03KeyCavern_05G.leb": {
+  "source": "region_common/level/PanelLv03KeyCavern/PanelLv03KeyCavern_05G.leb",
+  "source_sha256": "b4be2a14cba4fb7caf08e562ccbebe139b7bb01f9298232453c3ca308e6a595f",
+  "sha256": "07959c5f8d2b13db14069c6b01ecade9adf07f31f04ce9309be047831075513e"
+ },
+ "region_common/level/PanelLv03KeyCavern/PanelLv03KeyCavern_06C.leb": {
+  "source": "region_common/level/PanelLv03KeyCavern/PanelLv03KeyCavern_06C.leb",
+  "source_sha256": "04278763df59f87b8fed4b2776b2d60c52b74f78632c7f4b4b1fa2dd8c03f962",
+  "sha256": "7a185e9cd305155d3866cba0d2a55d11c138e6c0d7ef3d304108548cb690a3d9"
+ },
+ "region_common/level/PanelLv03KeyCavern/PanelLv03KeyCavern_08C.leb": {
+  "source": "region_common/level/PanelLv03KeyCavern/PanelLv03KeyCavern_08C.leb",
+  "source_sha256": "8c1a7c62160e6e83cd0432df46594fd29780ff71c8858b435621ab8e4903caa6",
+  "sha256": "bd3d58d2e74a811dee1652ee4a85cb7eee03257717fc79cb8b99dc5a82ed3ac2"
+ },
+ "region_common/level/PanelLv03KeyCavern/PanelLv03KeyCavern_08G.leb": {
+  "source": "region_common/level/PanelLv03KeyCavern/PanelLv03KeyCavern_08G.leb",
+  "source_sha256": "bfe7b0ff9b70e32851b59f9e23748d1cba46f4a646544947be2ea0c6f00d2608",
+  "sha256": "cbe7c0a3c7b54ea9a045656b0dee5eda3625320350d3405c4b7f0b5054f15b02"
+ },
+ "region_common/level/PanelLv04AnglersTunnel/PanelLv04AnglersTunnel_02D.leb": {
+  "source": "region_common/level/PanelLv04AnglersTunnel/PanelLv04AnglersTunnel_02D.leb",
+  "source_sha256": "b64cc74ffa31d4810321aa8d901fd782b5086958b01c4b44320fc96fffe10bff",
+  "sha256": "d58f0ec63ce97dbc6d1002b4387e8d152ed50e2198f1cc1387bfcafc64b04953"
+ },
+ "region_common/level/PanelLv04AnglersTunnel/PanelLv04AnglersTunnel_03G.leb": {
+  "source": "region_common/level/PanelLv04AnglersTunnel/PanelLv04AnglersTunnel_03G.leb",
+  "source_sha256": "e64934c455a0693dc2567a471bf82bead6e61b5cab7a15c0330b33a3e5780483",
+  "sha256": "5dc3e8d596f6540a905404716ec5aff0a198b7931fbf6c78c18244f28c0ec76b"
+ },
+ "region_common/level/PanelLv04AnglersTunnel/PanelLv04AnglersTunnel_08E.leb": {
+  "source": "region_common/level/PanelLv04AnglersTunnel/PanelLv04AnglersTunnel_08E.leb",
+  "source_sha256": "ac0730ca876e6b7fd50a27759dd24a73b3f384424d59e4a445e461e8b340a97e",
+  "sha256": "6dc40fd474b13693f9c258926e2ace7a43989d6d0b2ba87e7afc0d2d594c269b"
+ },
+ "region_common/level/PanelLv05CatfishsMaw/PanelLv05CatfishsMaw_01C.leb": {
+  "source": "region_common/level/PanelLv05CatfishsMaw/PanelLv05CatfishsMaw_01C.leb",
+  "source_sha256": "f8c94a9dd3a7767029734a51b61cd99f5a0e2110d5b61497ac5f8ab4781dab27",
+  "sha256": "73418dcd9a25f77728587f5f62be7d9649f6f80a2eb9cac5e9a85aab8565c61d"
+ },
+ "region_common/level/PanelLv05CatfishsMaw/PanelLv05CatfishsMaw_01E.leb": {
+  "source": "region_common/level/PanelLv05CatfishsMaw/PanelLv05CatfishsMaw_01E.leb",
+  "source_sha256": "036cb143578ba389179aa7dcd2a30b21fafbd028399195e5520efaf48ea1a089",
+  "sha256": "dfe8d5daca43d42f9a07eb71434aa6830ff32bacf98cca310ccdb9c5a0de3ad0"
+ },
+ "region_common/level/PanelLv05CatfishsMaw/PanelLv05CatfishsMaw_05G.leb": {
+  "source": "region_common/level/PanelLv05CatfishsMaw/PanelLv05CatfishsMaw_05G.leb",
+  "source_sha256": "1334023ecbaa13f9b8b9a354292b0f23d77a139fd39b154cd1cd0095ec3a1d27",
+  "sha256": "4d5a8df945cb4446ef7d477a92f7c33566597583eb59a6b78673091c5a8daddd"
+ },
+ "region_common/level/PanelLv05CatfishsMaw/PanelLv05CatfishsMaw_07D.leb": {
+  "source": "region_common/level/PanelLv05CatfishsMaw/PanelLv05CatfishsMaw_07D.leb",
+  "source_sha256": "7aba57ef6c0b9070c2be603b02b024650561cb911036b0d763db87bf2ab582ca",
+  "sha256": "922b1095b288b95dae8c8f20273ebac1928a71a844c976c141cbba44bb20efc0"
+ },
+ "region_common/level/PanelLv05CatfishsMaw/PanelLv05CatfishsMaw_08E.leb": {
+  "source": "region_common/level/PanelLv05CatfishsMaw/PanelLv05CatfishsMaw_08E.leb",
+  "source_sha256": "23d129f6b460f8af91d2f55eab1e05a202e95dfb9d868b5ff5b12f714842fe88",
+  "sha256": "e6f9bf89de900f83b050c7249b594c172a1d044c3106d5653a3e9699cb3b0eb8"
+ },
+ "region_common/level/PanelLv06FaceShrine/PanelLv06FaceShrine_02A.leb": {
+  "source": "region_common/level/PanelLv06FaceShrine/PanelLv06FaceShrine_02A.leb",
+  "source_sha256": "e4c0942a605c5b01a5b41bcb1dcae6b75f0e0f11dad9508ee1bf64fc631c8d48",
+  "sha256": "89abc8a2e43505b40ea879358dbe1842edd3cc83b18734486f02b70ed7add01a"
+ },
+ "region_common/level/PanelLv06FaceShrine/PanelLv06FaceShrine_02D.leb": {
+  "source": "region_common/level/PanelLv06FaceShrine/PanelLv06FaceShrine_02D.leb",
+  "source_sha256": "36d9d58db8d2a073f5319e4adf8c6f665ecd13dcf3a5d2973e4f231824af0abb",
+  "sha256": "2f46e24be4e7b108961fa54721beca47d7cfd788b0a13fbaadf4f223157ea8e3"
+ },
+ "region_common/level/PanelLv06FaceShrine/PanelLv06FaceShrine_02H.leb": {
+  "source": "region_common/level/PanelLv06FaceShrine/PanelLv06FaceShrine_02H.leb",
+  "source_sha256": "d9f4df2a5f25b8f7a9699141459ebb9aed4a38efbaefdd99ad5cebabf456a59d",
+  "sha256": "41d0e28b427b63a36900819063e531191723c2a40a60fdf0f99cf9b70c782840"
+ },
+ "region_common/level/PanelLv06FaceShrine/PanelLv06FaceShrine_05A.leb": {
+  "source": "region_common/level/PanelLv06FaceShrine/PanelLv06FaceShrine_05A.leb",
+  "source_sha256": "c9b179e1ecf5a466409675aaa6cfbd9a01017385f844aa7a24bb29bd070888e5",
+  "sha256": "dd3935e711d924fb96a43b7d2f2110373c43ef86ee75bf8eeb3f63fc97aeb1aa"
+ },
+ "region_common/level/PanelLv06FaceShrine/PanelLv06FaceShrine_05H.leb": {
+  "source": "region_common/level/PanelLv06FaceShrine/PanelLv06FaceShrine_05H.leb",
+  "source_sha256": "0e145638c9dabdd87ab9e41c09609d5273c26956baca68b421c6af2311a36ad4",
+  "sha256": "2c568efed3b9a555f0cd6e76625b0a49f3b63f981dc1f1786b0143f9dffa591e"
+ },
+ "region_common/level/PanelLv06FaceShrine/PanelLv06FaceShrine_07B.leb": {
+  "source": "region_common/level/PanelLv06FaceShrine/PanelLv06FaceShrine_07B.leb",
+  "source_sha256": "78671303ea381baee700a110245982bc352e77c179177130f1ffd290716271db",
+  "sha256": "99c10b397a4bac28612c74d7c4594cba4fb0a12837f1e85520228b445d8758c7"
+ },
+ "region_common/level/PanelLv07EagleTower/PanelLv07EagleTower_01B.leb": {
+  "source": "region_common/level/PanelLv07EagleTower/PanelLv07EagleTower_01B.leb",
+  "source_sha256": "0750f01aaa27fea90a88b73daa0e78a9978e53aea12d42bdf5c8585ff25cef80",
+  "sha256": "c86e246549541f4a8cb719a75a4e019ad54b1d982fe8722a8bf64399ef795362"
+ },
+ "region_common/level/PanelLv07EagleTower/PanelLv07EagleTower_01C.leb": {
+  "source": "region_common/level/PanelLv07EagleTower/PanelLv07EagleTower_01C.leb",
+  "source_sha256": "799fdce3aac486e2cea1e89aa18d447985ae7d46687fe9ed94fab3b8f78ba3e0",
+  "sha256": "fc2a81d08ce40b50d77ddf872aaecbcbd3d5d524b067dd1372f61c7b654a396b"
+ },
+ "region_common/level/PanelLv07EagleTower/PanelLv07EagleTower_02D.leb": {
+  "source": "region_common/level/PanelLv07EagleTower/PanelLv07EagleTower_02D.leb",
+  "source_sha256": "6f8c62746018320ce527f806019dbacdcb828287f057ea42d76c0990fcc4aa96",
+  "sha256": "6b23d520165dc868640cd200a16f27a9632536bc13e3794ede948f639860da85"
+ },
+ "region_common/level/PanelLv07EagleTower/PanelLv07EagleTower_04A.leb": {
+  "source": "region_common/level/PanelLv07EagleTower/PanelLv07EagleTower_04A.leb",
+  "source_sha256": "5103d893694271f2137fe9e7b83e54f0adfc0a95cb78ccf829902b7f210f26d1",
+  "sha256": "2dc49cff7757ac00fd00df3b810130a3c108373c644c32219dce4f15fdbf034c"
+ },
+ "region_common/level/PanelLv07EagleTower/PanelLv07EagleTower_05G.leb": {
+  "source": "region_common/level/PanelLv07EagleTower/PanelLv07EagleTower_05G.leb",
+  "source_sha256": "38457d7b7cec5b3b9d9dc2628e432f6336bffa3c80bd5268f4c4688863a8363a",
+  "sha256": "32b3ae3f57b660ba6bf5902535a5fdf057e4fb895abda9c97c2c9ad747ca0563"
+ },
+ "region_common/level/PanelLv07EagleTower/PanelLv07EagleTower_06H.leb": {
+  "source": "region_common/level/PanelLv07EagleTower/PanelLv07EagleTower_06H.leb",
+  "source_sha256": "6eac7884788139df70f56c6dcc0c8d25b6666e437bac1771f5feba8944184e10",
+  "sha256": "83a6a6323d5e34c602dc487a914ebfe14870db8f92576451ea9d2d23595613ce"
+ },
+ "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_02A.leb": {
+  "source": "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_02A.leb",
+  "source_sha256": "cbb7fe39f6ead403bd98805b4e9a972a78f9294559695715948f4730770833a8",
+  "sha256": "0788d5d5ef2b88310d8582ca44d4d71b27e9c4be84fc0dbd30587329806131b6"
+ },
+ "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_03F.leb": {
+  "source": "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_03F.leb",
+  "source_sha256": "05e893082e61c37e24b5e0209d95e17c0f3e9a90b23441f938bf92875e855051",
+  "sha256": "f751d95a007d2a8cd5f14a712c8d913410e971a7fb6de8c978a88f7d399ff921"
+ },
+ "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_03G.leb": {
+  "source": "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_03G.leb",
+  "source_sha256": "9d707c7f5e3b912b73b5c2ad26edb1cf3faaac44f523da37159a0572371891be",
+  "sha256": "47897779fd650c0d5d29823b37031fda5f79643283a1d29ce5fbc11bbc24c2ea"
+ },
+ "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_03H.leb": {
+  "source": "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_03H.leb",
+  "source_sha256": "d5396ffc6d3c3bf3452032e555c5c861dd98447ed6f0e47e134c42da7e46d21b",
+  "sha256": "cd5f1b3d23bd8dc36b60c0263bf41b0e00828a65c9d3f494d71892e69e523c0e"
+ },
+ "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_04A.leb": {
+  "source": "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_04A.leb",
+  "source_sha256": "1b2e3f8cb5b25d0e4d1d3ae158ea031d02b3848122e8ed58beb4ceb298808662",
+  "sha256": "9e5df3ba909b357e58f0ca4b210bb76fde2a38872784c992fba93a28a187a811"
+ },
+ "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_04C.leb": {
+  "source": "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_04C.leb",
+  "source_sha256": "ea1f0ceb663e47e6c42ccc14a27cb1a17c626f0151303a55f0617138589ff95f",
+  "sha256": "c912b756741cb6a96c598806c405b1095fa79fde94c9270970464d518cd0a2f6"
+ },
+ "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_04H.leb": {
+  "source": "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_04H.leb",
+  "source_sha256": "deb21291e86e8a3cd0c930de9091e7feb5ca63b812a80669eb30ab68213ed95a",
+  "sha256": "f53a4495adf6ce3116e897ca899efdafb272fe318ee1d2ba276756479f5d93a3"
+ },
+ "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_05H.leb": {
+  "source": "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_05H.leb",
+  "source_sha256": "4517460a28a8518103104f9edcb8832171728b43d2a30afcefb0f6cd892e404e",
+  "sha256": "713e810b6edc627860953e9a044bbcd78cb68f34c63170a9b8ca2da2c7742783"
+ },
+ "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_06A.leb": {
+  "source": "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_06A.leb",
+  "source_sha256": "42bcd6d0c8b6eeaceb866886caa78c755c8cee799ba44df9ab3a5d0459870cfd",
+  "sha256": "63ad17923c39b99392843fbb08bb44c575a16a032db5cdab0261c84e6bfdc28b"
+ },
+ "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_06B.leb": {
+  "source": "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_06B.leb",
+  "source_sha256": "316daa576cdf0e7c225c0470b0646911ff2be762d68ae9ea83a32958c4717ec3",
+  "sha256": "338a7fc266e88ed924143896cd244e52359ee227df2d270f2d94011533ab5a0c"
+ },
+ "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_07B.leb": {
+  "source": "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_07B.leb",
+  "source_sha256": "32a3944af414104113801869d6a798efa9276dc7188e1d30a73c92e093417055",
+  "sha256": "1120f361bc432e69f9385918e12548102a26fe96af762c9b29d47155b2eeea52"
+ },
+ "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_07F.leb": {
+  "source": "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_07F.leb",
+  "source_sha256": "2daa6050be9243da8d18eed06890d9fd917cf7050009b1c424c15deb8ea733be",
+  "sha256": "2a2db11e10689aa5a436e53f69c603bc0110ba616d74a2cef4fb337b5493de35"
+ },
+ "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_07G.leb": {
+  "source": "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_07G.leb",
+  "source_sha256": "d246e476acc36c54a676fd7bdb5308c390aec0fb2fd0d3d804e0246f8750362d",
+  "sha256": "ef18bf0fa2e3057b46733ea3c587529e2c93e718b6101f8e418ca052d95e559d"
+ },
+ "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_08A.leb": {
+  "source": "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_08A.leb",
+  "source_sha256": "b495703aab395c9d70bcc260414a0cfd75617aff9d33bb1f506df1d7b5a0fb9a",
+  "sha256": "954da357718d84ac9a6b5a182896aaaa53d08e61c01c4d239ed44d7b2d01038a"
+ },
+ "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_08H.leb": {
+  "source": "region_common/level/PanelLv08TurtleRock/PanelLv08TurtleRock_08H.leb",
+  "source_sha256": "86531aa48da764a90ae58bea64dff18c4d74b114eb4ef83555770f81b5383f68",
+  "sha256": "45162a21fa63aa1125c09744338220195e5cdd0a9530d71143a5651ec8701fad"
+ },
+ "region_common/level/PanelLv10ClothesDungeon/PanelLv10ClothesDungeon_04F.leb": {
+  "source": "region_common/level/PanelLv10ClothesDungeon/PanelLv10ClothesDungeon_04F.leb",
+  "source_sha256": "06f95d3ab080c9e28a558527bd8add67dd938b79981166106303c51745b96d56",
+  "sha256": "c575562cf07c937edb6d85e89fa6da29fddf497ed0b148dc98956e986f7f6e1a"
+ },
+ "region_common/level/PanelLv10ClothesDungeon/PanelLv10ClothesDungeon_05D.leb": {
+  "source": "region_common/level/PanelLv10ClothesDungeon/PanelLv10ClothesDungeon_05D.leb",
+  "source_sha256": "2a2e0e2a2afcb523bf7f63b18db26856baf7ff493f801f491c67cff5f2b19c97",
+  "sha256": "b17b3a1b96004d23011e83b439790b32f113ad1597084c19ec1bee94765fd16f"
+ },
+ "region_common/level/PanelLv10ClothesDungeon/PanelLv10ClothesDungeon_05E.leb": {
+  "source": "region_common/level/PanelLv10ClothesDungeon/PanelLv10ClothesDungeon_05E.leb",
+  "source_sha256": "a508d42c6fc016c6e447cd62271f02ac9f782aa6e2c14876b4616688e7c705f7",
+  "sha256": "aa3dbbf1df70ff491001b93ad4bae79e883b2e805428afacf6227db7baf72608"
+ },
+ "region_common/level/PanelLv10ClothesDungeon/PanelLv10ClothesDungeon_05F.leb": {
+  "source": "region_common/level/PanelLv10ClothesDungeon/PanelLv10ClothesDungeon_05F.leb",
+  "source_sha256": "b85917d23d8237e23a423c358b669bdc669476965e30f75efe60353d3a747903",
+  "sha256": "8702d3d42a9cec8f47b817c7b2bf009db895f913d4a6eb1ed4e2030d3e121f76"
+ },
+ "region_common/level/PanelLv10ClothesDungeon/PanelLv10ClothesDungeon_07D.leb": {
+  "source": "region_common/level/PanelLv10ClothesDungeon/PanelLv10ClothesDungeon_07D.leb",
+  "source_sha256": "01ad280b91443fe4d6c116d40e44acd1d67fbf03f8e3f196a4f2e5160d684118",
+  "sha256": "1b249239d03b8389501114be505589070a09cd54c2026dde1c5e8e09cbb180d2"
+ },
+ "region_common/level/PanelLv10ClothesDungeon/PanelLv10ClothesDungeon_07F.leb": {
+  "source": "region_common/level/PanelLv10ClothesDungeon/PanelLv10ClothesDungeon_07F.leb",
+  "source_sha256": "6d2d268a8f9b422c4c47110bdb0e752a8ade21b2d893eced1d74391675ea5ca3",
+  "sha256": "b2867f711eebaa5b616faa16b626484f2034dee853af3e066387bec03c4d3ee7"
+ },
+ "region_common/level/PanelLv10ClothesDungeon/PanelLv10ClothesDungeon_08E.leb": {
+  "source": "region_common/level/PanelLv10ClothesDungeon/PanelLv10ClothesDungeon_08E.leb",
+  "source_sha256": "0eeaec9985b79cd9f577087e6679d87ea9b7c7bd8b0bfc151c547b13d062407d",
+  "sha256": "625cfbae87c6de71e60c10189e837f7e906e9d913bc29a6ddf2be070ff447c36"
+ },
+ "region_common/level/RapidsRideExit/RapidsRideExit_01A.leb": {
+  "source": "region_common/level/RapidsRideExit/RapidsRideExit_01A.leb",
+  "source_sha256": "5cfe2cfe20a5ec391fbbffa7e7aaa4de8afcfa952958ea17db66bcc808b882dc",
+  "sha256": "06f4fade0291aadc416df99e53e182d5972d9e97d5b75fa5ccc18f9ee87cba2a"
+ },
+ "region_common/level/RichardCave/RichardCave_01A.leb": {
+  "source": "region_common/level/RichardCave/RichardCave_01A.leb",
+  "source_sha256": "417266fd097c941921ea87c922b2961dad93bff6557ac8db5ea568cc3e223802",
+  "sha256": "c38b38f862f35a961a33396418637d792ebdd7fc566d2c0ed16f9b6935e115e8"
+ },
+ "region_common/level/Tamaranch02/Tamaranch02_01B.leb": {
+  "source": "region_common/level/Tamaranch02/Tamaranch02_01B.leb",
+  "source_sha256": "c6d170512eb6884e3ea41b4ee9a349f133d1f216d6c0858d7173aaaf04cc51cc",
+  "sha256": "a6a1fe72bcfd4d51293450422ecb084a1c0c544cd76966bcb9d2d88253b2ad81"
+ },
+ "region_common/level/Tamaranch04/Tamaranch04_02C.leb": {
+  "source": "region_common/level/Tamaranch04/Tamaranch04_02C.leb",
+  "source_sha256": "de7ee3d22b6d9159ca396bf9b78f7c8757f84b4f6c3036bb303cecf8c047d7cb",
+  "sha256": "0d1188881ea570446dfb044fd138d4b3f8c9e2b675cbcb3b395d63083036a015"
+ },
+ "region_common/level/Tamaranch04/Tamaranch04_02D.leb": {
+  "source": "region_common/level/Tamaranch04/Tamaranch04_02D.leb",
+  "source_sha256": "f5e82fc1221cfc554aeacf839adfb6cfc66538e1de61c568e5bca9cc710e970a",
+  "sha256": "af5c08ab95afe5f7c56f255ef221e1f7c009527d4288cde4b969976b691505fb"
+ },
+ "region_common/level/Tamaranch04/Tamaranch04_03B.leb": {
+  "source": "region_common/level/Tamaranch04/Tamaranch04_03B.leb",
+  "source_sha256": "26636a447b0978d51d01bebc82d9fba6fd7fb6fd64fcd3054bb44d68d46c6806",
+  "sha256": "0bcb7e68595bd1a80aaf5bc812c1319e03509af2688242a15a02bfd8c85637a3"
+ },
+ "region_common/level/Tamaranch05/Tamaranch05_04A.leb": {
+  "source": "region_common/level/Tamaranch05/Tamaranch05_04A.leb",
+  "source_sha256": "f67b51bf88c835deb2baabb4acb49095513d0b370c51102ec5f40fd9a6e17f23",
+  "sha256": "59abe8519091502b2f0cd83dd88d0bf7f1d8f5705f3913ede87e0a74b5c9ca89"
+ },
+ "region_common/level/TownWell/TownWell_01A.leb": {
+  "source": "region_common/level/TownWell/TownWell_01A.leb",
+  "source_sha256": "1f5a9a8a8645e37752dae9f00c823cce64b603d60a66444f720bcb3b4e2a853b",
+  "sha256": "61c68332f16010537dca2aedc6ff13e4b9cb0422eb09b8405784ac4193fa4150"
+ },
+ "region_common/level/UkukuCave01/UkukuCave01_01A.leb": {
+  "source": "region_common/level/UkukuCave01/UkukuCave01_01A.leb",
+  "source_sha256": "f233d8a69ac3ee0d34056cd996ab86faed74608c935b020ef328f0561d0dd74f",
+  "sha256": "d46ab83296d4223db8d385daf20cef137ae58ded9d2c8b3367578d9a9e4c70f9"
+ },
+ "region_common/level/UkukuCave02/UkukuCave02_01B.leb": {
+  "source": "region_common/level/UkukuCave02/UkukuCave02_01B.leb",
+  "source_sha256": "083c58094fa665eed96edd5897f940f6255f354fba736d8eaf7c0f3046848f97",
+  "sha256": "111fa48119e7ae18bcd3f0ae38e50a059c20762af96c9cf1d5c53cbc6ef26f20"
+ },
+ "region_common/level/UkukuCave02/UkukuCave02_02A.leb": {
+  "source": "region_common/level/UkukuCave02/UkukuCave02_02A.leb",
+  "source_sha256": "9d117654c9441c0443797c7315844962018a159f5327cc340c818008bd183f0a",
+  "sha256": "5c6226340ad3937ca57608db2bc940d258208bade1a5e172e9926238dab699b8"
+ },
+ "region_common/level/UnderGrave/UnderGrave_01B.leb": {
+  "source": "region_common/level/UnderGrave/UnderGrave_01B.leb",
+  "source_sha256": "e6b0fafd1d4ef64ad96efd695c710f6365d98e1291087060848479cbd0ef00c9",
+  "sha256": "c4a32bed03a40f72f0694bc766647a532f2149ed71bb60370410ff2b6863342e"
  },
  "region_common/ui/Game.arc": {
   "source": "region_common/ui/Game.arc",
   "source_sha256": "18ea6abf4b4504715aaa87197942743d1d1a15d677871f2ac5afdae08d065339",
-  "patch": "Game.arc.bsdiff4",
   "sha256": "d2b39e8cd9461304306745ed6d31ab34b6807e48fed1310038f761d1f9c69cad"
  },
  "region_common/ui/StartUp.arc": {
   "source": "region_common/ui/StartUp.arc",
   "source_sha256": "9af42d950e386e3fcc17f39bff5e7a0dd355bad33840fd16957db0300d6eecb1",
-  "patch": "StartUp.arc.bsdiff4",
   "sha256": "401121b72b34f4a34797f1cfa9acba3c723ca199dcf6293d58e4a285be2c2b10"
  }
 }

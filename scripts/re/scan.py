@@ -25,7 +25,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from local_paths import local_path  # noqa: E402
 
-DUMP = os.environ.get("LASAP_DUMP") or local_path("re", "LASAP_RE") / "main.bin"
+DUMP = os.environ.get("LASAP_DUMP") or local_path("re") / "main.bin"
 BASE = int(os.environ.get("LASAP_BASE", "0x8504000"), 16)
 TEXT_END = 0x1434000
 ACTOR_TABLE, ACTOR_COUNT, ACTOR_ENTRY = 0x1bcc898, 0x275, 0x58

@@ -13,7 +13,7 @@ import re
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "patcher"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "patcher" / "modbuild"))
 from RandomizerCore.Tools.leb import Room  # noqa: E402
 from local_paths import local_path  # noqa: E402
 
@@ -29,9 +29,9 @@ def main() -> None:
     args = parser.parse_args()
 
     area = args.room.split("_")[0]
-    path = Path(args.romfs or local_path("romfs", "LASAP_ROMFS")) / "region_common" / "level" / area / f"{args.room}.leb"
+    path = Path(args.romfs or local_path("romfs")) / "region_common" / "level" / area / f"{args.room}.leb"
     if not path.exists():  # rooms the mod does not change are only in the base RomFS
-        path = local_path("romfs", "LASAP_ROMFS") / "region_common" / "level" / area / f"{args.room}.leb"
+        path = local_path("romfs") / "region_common" / "level" / area / f"{args.room}.leb"
     room = Room(path.read_bytes())
     rx = re.compile(args.pattern, re.I)
     actors = [a for a in room.actors if rx.search(a.name.decode("utf-8", "replace"))]

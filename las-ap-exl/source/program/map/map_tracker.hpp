@@ -7,7 +7,7 @@
 #include <string_view>
 
 namespace AP::MapTracker {
-    // Reads the patcher's map file (MAP_PATH) and, when there is one, installs the tracker's hooks.
+    // Reads the seed file's map and, when there is one, installs the tracker's hooks.
     void Load();
     // Answers the map tracker's event flags; false for any other flag.
     bool Flag(std::string_view name, bool& value);

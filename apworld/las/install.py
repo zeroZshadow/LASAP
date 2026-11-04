@@ -19,9 +19,6 @@ from .emulators import TITLE_ID
 from .host_settings import PLAYER_DEFAULTS
 
 CONFIG_PATH = Path("config", "lasr-exl", "config.ini")
-# Config files the patcher writes only for some options (the map tracker's icons, the server hints); an install
-# without one removes it.
-OPTIONAL_CONFIG = ("ap_map.txt", "ap_hints.txt")
 # Next to the config: the build of the built-in patcher that wrote the installed mod, so a newer world reinstalls it.
 BUILD_PATH = CONFIG_PATH.with_name("patcher_build.txt")
 # Next to the config: the player settings the installed mod was patched with; the patch's defaults when missing.
@@ -34,11 +31,9 @@ CURRENT, OUTDATED, OTHER_SEED, NONE, CHANGED = "current", "outdated", "other see
 PATCHER_PREFIX = f"{Path(__file__).parent.name}/patcher/"
 PATCHER_BUILD = PATCHER_PREFIX + "build.txt"
 SOURCE_PATCHER = Path(__file__).resolve().parent.parent.parent / "patcher"
-# Top-level modules of the patcher and the libraries it carries (patcher/lib)
-PATCHER_MODULES = {"las_ap_patch", "ap_assets", "ap_ballad", "ap_chest", "ap_deathlink", "ap_drop", "ap_entrances", "ap_ghost", "ap_goal",
-                   "ap_hints", "ap_map", "ap_map_icons", "ap_model", "ap_player_ghost", "ap_save_name", "ap_ui", "lasr_qt",
-                   "romfs_check", "model_bounds",
-                   "RandomizerCore", "evfl", "lms", "appdirs", "PySide6"}
+# Top-level modules of the patcher
+PATCHER_MODULES = {"las_ap_patch", "ap_assets", "ap_entrances", "ap_goal", "ap_hints", "ap_map", "ap_options",
+                   "ap_save_name", "ap_shuffles", "romfs_check", "seed_file"}
 _PATCHER_LOCK = threading.Lock()
 
 
@@ -238,7 +233,7 @@ def run_builtin_patcher(patch_file: Path, romfs: Path, out: Path, log: Callable[
     with _PATCHER_LOCK:
         saved_path = list(sys.path)
         _forget_patcher_modules()
-        sys.path[:0] = [str(root / "lib"), str(root)]
+        sys.path.insert(0, str(root))
         saved_streams = sys.stdout, sys.stderr
         sys.stdout = _ThreadOutput(saved_streams[0], log)
         sys.stderr = _ThreadOutput(saved_streams[1], log)
@@ -317,18 +312,20 @@ def install(out: Path, sd_card: Path, mods: Path, build: Optional[str] = None,
         if (mods / part).exists():
             shutil.rmtree(mods / part)
         shutil.copytree(built / part, mods / part)
-    # the config folder (config.ini, the location names), config.ini last as it names the installed seed
+    # the config folder (config.ini, the seed file), config.ini last as it names the installed seed; it holds the
+    # installed mod's files only, so a file an earlier patcher wrote goes
     config_dir = (sd_card / CONFIG_PATH).parent
     config_dir.mkdir(parents=True, exist_ok=True)
+    keep = {f.name for f in (out / CONFIG_PATH).parent.iterdir() if f.is_file()} | {BUILD_PATH.name, SETTINGS_PATH.name}
+    for file in config_dir.iterdir():
+        if file.is_file() and file.name not in keep:
+            file.unlink()
     if build is None:
         (sd_card / BUILD_PATH).unlink(missing_ok=True)
     else:
         (sd_card / BUILD_PATH).write_text(build + "\n", encoding="utf-8")
     (sd_card / SETTINGS_PATH).write_text(json.dumps({**PLAYER_DEFAULTS, **(settings or {})}) + "\n",
                                          encoding="utf-8")
-    for name in OPTIONAL_CONFIG:
-        if not ((out / CONFIG_PATH).parent / name).exists():
-            (config_dir / name).unlink(missing_ok=True)
     for file in sorted((out / CONFIG_PATH).parent.iterdir(), key=lambda f: f.name == CONFIG_PATH.name):
         if file.is_file():
             shutil.copyfile(file, config_dir / file.name)

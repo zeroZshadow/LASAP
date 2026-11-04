@@ -2,7 +2,7 @@
 # in the tower: 1F 5, 2F 7, 3F 2, 4F 2, and 2 in the rooms of its collapsed top). Each floor shows its own dots, each
 # in its room's box (inroom=, the box the page places them by: the tower's rooms sit east and south of their names'
 # rows and columns); the 3F chests' dots show in their rooms before the collapse, and once the pillars are broken
-# (TowerPillarBrokenAll) on 3F, in the collapsed top's rooms, with the 4F rooms. Dot order (ap_map.txt): 02G 03G 08D
+# (TowerPillarBrokenAll) on 3F, in the collapsed top's rooms, with the 4F rooms. Dot order (the seed file's map): 02G 03G 08D
 # 07A 05A 05D 01B 01C 04A 04B 03D 01G 05G 02H 06H 02D 05D 04B. Screenshots map_d7_1f to map_d7_4f and
 # map_d7_collapsed_3f, in the sandbox folder.
 warp Lv07EagleTower 22.5 0 114

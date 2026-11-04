@@ -14,9 +14,7 @@
 #include "test/test.hpp"
 #endif
 #include <algorithm>
-#include <cstdlib>
 #include <deque>
-#include <sstream>
 
 namespace AP::Bridge {
     std::set<LocationId> g_FoundSinceLoad;
@@ -30,96 +28,87 @@ namespace {
         if (g_Deferred.size() >= 64) g_Deferred.pop_front();
         g_Deferred.push_back(line);
     }
-
-    std::vector<std::string> Split(const std::string& line) {
-        std::vector<std::string> parts;
-        std::stringstream ss(line);
-        std::string p;
-        while (ss >> p) parts.push_back(p);
-        return parts;
-    }
-
-    // The text after the first n space-separated fields of a line.
-    std::string RestAfter(const std::string& line, int n) {
-        size_t pos = 0;
-        for (int i = 0; i < n && pos != std::string::npos; i++) {
-            pos = line.find_first_not_of(' ', pos);
-            pos = pos == std::string::npos ? pos : line.find(' ', pos);
-        }
-        return pos == std::string::npos ? "" : line.substr(pos + 1);
-    }
 }
 
     bool HandleLine(const std::string& line) {
-        auto a = Split(line);
-        if (a.empty()) return true;
-        if (a[0] == "ITEM" && a.size() >= 5) {
+        Fields f(line);
+        std::string_view cmd = f.Str();
+        if (cmd.empty()) return true;
+        if (cmd == "ITEM") {
             if (!PlayerReady()) return false;
-            int n = atoi(a[1].c_str());
+            // ITEM <n> <key> <count> <dungeon> [<location> <item name>|<sender>]
+            // -1: another player's item, or one from no location
+            std::optional<int> n = f.Num<int>();
+            std::string key(f.Str());
+            std::optional<int> count = f.Num<int>(), dungeon = f.Num<int>(), from = f.Num<int>();
+            if (!n || key.empty() || !count || !dungeon) {
+                AP::Send("ERR malformed ITEM");
+                return true;
+            }
             int have = GetRecvCount();
-            if (n == have + 1) {
-                // ITEM <n> <key> <count> <dungeon> [<location> <item name>|<sender>]
-                // -1: another player's item, or one from no location
+            if (*n == have + 1) {
                 std::optional<LocationId> location;
-                if (a.size() >= 6 && atoi(a[5].c_str()) >= 0) location = LocationId{atoi(a[5].c_str())};
+                if (from && *from >= 0) location = LocationId{*from};
                 const KeptLocation* kept = location ? FindKept(*location) : nullptr;
-                std::optional<ItemId> id =
-                    kept ? GrantKept(*kept) : GrantItem(a[2], atoi(a[3].c_str()), atoi(a[4].c_str()));
-                std::string names = RestAfter(line, 6);
-                size_t bar = names.find('|');
-                std::string item = bar == std::string::npos ? names : names.substr(0, bar);
-                std::string sender = bar == std::string::npos ? "" : names.substr(bar + 1);
+                std::optional<ItemId> id = kept ? GrantKept(*kept) : GrantItem(key, *count, *dungeon);
+                auto [item, sender] = AP::SplitNames(f.Rest());
                 // An own item found in this save since it loaded was named by the found text already.
                 bool namedWhenFound = sender.empty() && location && g_FoundSinceLoad.count(*location) != 0 &&
                                       AP::HasLocationName(*location);
-                if (IsTrapKey(a[2])) QueueTrap(a[2], item, sender, sender.empty() ? location : std::nullopt);
+                if (IsTrapKey(key)) QueueTrap(key, item, sender, sender.empty() ? location : std::nullopt);
                 else if (id && !namedWhenFound) QueueShow(ItemShow{*id, item, sender});
-                SetRecvCount(n);
-                have = n;
+                SetRecvCount(*n);
+                have = *n;
             }
             AP::Send("RECV " + std::to_string(have));
-        } else if (a[0] == "SYNC") {
+        } else if (cmd == "SYNC") {
             if (!PlayerReady()) return false;
             AP::Send("RECV " + std::to_string(GetRecvCount()));
             SendAllChecks();
             if (EventFlags::CheckFlag(kGoalFlag) || LevelSystem::GetCurrentLevel() == kGoalLevel) AP::Send("GOAL");
             if (EventFlags::CheckFlag(AP::SIGN_FLAG)) AP::Send("SIGN");
             ReportFlags(true);
-        } else if (a[0] == "DEATH") {
-            return ReceiveDeath(RestAfter(line, 1));
-        } else if (a[0] == "NAME" && a.size() >= 2) {
+        } else if (cmd == "DEATH") {
+            return ReceiveDeath(std::string(f.Rest()));
+        } else if (cmd == "NAME") {
             // NAME <local id> <item name>|<player name, empty for an own item>
-            std::string names = RestAfter(line, 2);
-            size_t bar = names.find('|');
-            AP::SetLocationName(LocationId{atoi(a[1].c_str())}, names.substr(0, bar),
-                                bar == std::string::npos ? "" : names.substr(bar + 1));
-        } else if (a[0] == "CHECKED") {
-            NoteServerChecks(a);
+            std::optional<int> location = f.Num<int>();
+            if (!location) {
+                AP::Send("ERR malformed NAME");
+                return true;
+            }
+            auto [item, player] = AP::SplitNames(f.Rest());
+            AP::SetLocationName(LocationId{*location}, item, player);
+        } else if (cmd == "CHECKED") {
+            NoteServerChecks(f);
             AP::MapTracker::DataChanged();
-        } else if (a[0] == "INLOGIC") {
-            NoteInLogic(a);
+        } else if (cmd == "INLOGIC") {
+            NoteInLogic(f);
             AP::MapTracker::DataChanged();
-        } else if (a[0] == "DOORS") {
-            NoteDoors(a);
+        } else if (cmd == "DOORS") {
+            NoteDoors(f);
             AP::MapTracker::DataChanged();
-        } else if (a[0] == "HINTED") {
-            NoteHinted(a);
+        } else if (cmd == "HINTED") {
+            NoteHinted(f);
             AP::MapTracker::DataChanged();
-        } else if (a[0] == "SERVER" && a.size() >= 2) {
-            SetServerConnected(a[1] == "1");
-        } else if (a[0] == "NOTICE" && a.size() >= 2) {
+        } else if (cmd == "SERVER") {
+            SetServerConnected(f.Str() == "1");
+        } else if (cmd == "NOTICE") {
             // NOTICE <text>: a toast in the autosave popup; '|' starts a new line
-            QueueNotice(RestAfter(line, 1));
-        } else if (a[0] == "GHOST" || a[0] == "GHOSTS" || a[0] == "GHOSTNAMES") {
+            std::string_view text = f.Rest();
+            if (!text.empty()) QueueNotice(std::string(text));
+        } else if (cmd == "GHOST" || cmd == "GHOSTS" || cmd == "GHOSTNAMES") {
             AP::GhostNet::HandleLine(line);
-        } else if (a[0] == "MSG") {
-            Logging.Log("[AP] %s", line.c_str() + 4);
+        } else if (cmd == "MSG") {
+            Logging.Log("[AP] %s", std::string(f.Rest()).c_str());
 #ifdef LASAP_TEST
-        } else if (a[0] == "DBG") {
+        } else if (cmd == "DBG") {
+            std::vector<std::string> a{std::string(cmd)};
+            for (std::string_view field = f.Str(); !field.empty(); field = f.Str()) a.emplace_back(field);
             return AP::Test::Command(a);
 #endif
         } else {
-            AP::Send("ERR unknown command " + a[0]);
+            AP::Send("ERR unknown command " + std::string(cmd));
         }
         return true;
     }

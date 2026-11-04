@@ -145,8 +145,8 @@ namespace {
         for (const auto& n : kItemNames) {
             if (n.id == item) return n.name;
         }
-        auto it = Inventory::kItemNames.find(item);
-        return it != Inventory::kItemNames.end() ? it->second : ItemText(item);
+        std::string_view key = Game::Data::KeyOf(item);
+        return !key.empty() ? std::string(key) : ItemText(item);
     }
 
     // Instant Pickups: a find shows before the received items that wait, after the finds before it.
@@ -213,12 +213,12 @@ namespace {
             if (item >= ItemId::FullMoonCello && item <= ItemId::ThunderDrum) AP::Music::Fanfare(item);
             std::string name = show.item;
             if (name.empty()) {
-                auto it = Inventory::kItemNames.find(item);
-                name = it != Inventory::kItemNames.end() ? it->second : ItemText(item);
+                std::string_view key = Game::Data::KeyOf(item);
+                name = !key.empty() ? std::string(key) : ItemText(item);
             }
             AP::QueueToast(AP::ReceivedToast(name, show.sender));
         }
-        if (!AP::Popup::Show(item)) AP::Log("popup " + ItemText(item) + " could not be made");
+        if (!AP::Popup::Show(show.model.value_or(item))) AP::Log("popup " + ItemText(item) + " could not be made");
         g_ItemEventShown = item;
     }
 
@@ -307,7 +307,8 @@ namespace {
         ItemShow show{item, "", ""};
         show.found = true;
         // the placeholder's location is known now (its flows add it first); a vanilla item is added after
-        if (AP::IsPlaceholderItem(item)) {
+        if (item == AP::PLACEHOLDER_ITEM_ID) {
+            show.model = ShownItem(item);
             show.toast = AP::FoundToast();
             if (show.toast.empty()) show.toast = "You found an\nArchipelago item";
         }
