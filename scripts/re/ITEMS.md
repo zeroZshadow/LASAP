@@ -10,7 +10,7 @@ After every add, also those that change nothing, AddItemID sets the item's bit i
 
 Inventory fields by name are in the module's `game/data/inventory.hpp` (`InventoryItems`; Saved data below).
 
-`CranePrize_Has` (`0x148b10 (prize row, count, index)`) is the Trendy Game's own check by `CranePrize.gsheet` row (8 heart piece, 9 seashell, `0xa`–`0x13` figurines, `0x14` chamber stone bits); it skips a featured prize already owned. The item actors do not use it.
+`CranePrize_Has` (`0x148b10 (prize row, count, index)`) is the Trendy Game's own check by `CranePrize.gsheet` row (8 heart piece, 9 seashell, `0xa`–`0x13` figurines, `0x14` chamber stone bits); it skips a featured prize already owned (CRANE.md, Prize selection). The item actors do not use it.
 
 | Id | Item | AddItemID | HasItem |
 |---|---|---|---|

@@ -616,6 +616,23 @@ def step_manual(pack: Pack, tracker: Tracker, server: Server) -> None:
         dump = tracker.dump()
         check(f"{castle} with {have or 'nothing'}", int(dump.locations[castle][0]), want)
     tracker.commands(*[f"set {c} Active false" for c in codes])
+    # The Trendy Game offers prizes 4 to 6 in order: each takes the instruments of the prizes before it
+    prizes = [f"@World/Mabe Village/Trendy Store/Trendy Prize {n}" for n in (4, 5, 6)]
+    cases = [
+        (["harp"], ()),
+        (["bell", "harp"], ()),
+        (["conch", "harp"], (4,)),
+        (["conch", "bell"], (4, 5)),
+        (["conch", "bell", "harp"], (4, 5, 6)),
+    ]
+    codes = ["conch", "bell", "harp"]
+    tracker.commands("set trendy Active true", "set sword Active true")
+    for have, want in cases:
+        tracker.commands(*[f"set {c} Active {'true' if c in have else 'false'}" for c in codes])
+        dump = tracker.dump()
+        check(f"Trendy Prizes 4-6 with {have}",
+              tuple(n for n, s in zip((4, 5, 6), prizes) if dump.section(s)[2] == NORMAL), want)
+    tracker.commands(*[f"set {c} Active false" for c in codes + ["trendy", "sword"]])
     # Open Mabe opens the prairie without the bracelet, also for the pins past it (Key Cavern's door with Dungeon ER)
     cases = [
         ("Key Cavern Entrance", ["flippers", "slime"], NONE),

@@ -32,8 +32,13 @@ EXTRA_NODES: Dict[str, Dict[str, Any]] = {
     "D6-2A": {"type": "room", "condition-basic": "D6-3A & hit-crystal-switch & bracelet:2"},
     "turtle-rock-top": {"type": "region", "condition-basic": "D8-4C"},
 }
+# - The Trendy Game offers trendy-prize-2 to 6 one at a time, in that order (scripts/re/CRANE.md, Prize selection):
+#   it stops at the first one not won, and shows nothing of them while that one's instrument is missing. So prize 5
+#   also takes prize 4's Conch Horn, and prize 6 the Conch Horn and prize 5's Sea Lily's Bell.
 CONDITION_EDITS = {
     ("kill-flower", "condition-basic"): ("(bow-wow & !rooster)", "bow-wow"),
+    ("trendy-prize-5", "condition-basic"): ("sea-lilys-bell", "conch-horn & sea-lilys-bell"),
+    ("trendy-prize-6", "condition-basic"): ("surf-harp", "conch-horn & sea-lilys-bell & surf-harp"),
 }
 # location -> (its region, the condition-basic the region's condition replaces)
 MOVED_LOCATIONS = {

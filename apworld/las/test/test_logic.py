@@ -212,3 +212,27 @@ class TestRefills(unittest.TestCase):
         """The Mad Batter in the woods takes the bracelet and powder, which the bushes the bracelet lifts refill."""
         world, state = self.state(False, ["bracelet", "powder"])
         self.assertTrue(world.get_location(LOCATION_NAMES["mad-batter-woods"]).can_reach(state))
+
+
+class TestTrendyPrizes(unittest.TestCase):
+    """The Trendy Game offers prizes 2 to 6 in order, so a prize takes the instruments of the prizes before it
+    (lasr.CONDITION_EDITS)."""
+
+    def test_order(self) -> None:
+        world_type = AutoWorldRegister.world_types["Links Awakening Switch"]
+        world = setup_multiworld(world_type, STEPS, 91, {}).worlds[1]
+        prizes = ("trendy-prize-4", "trendy-prize-5", "trendy-prize-6")
+        for instruments, reached in (
+                ([], ()),
+                (["surf-harp"], ()),
+                (["sea-lilys-bell", "surf-harp"], ()),
+                (["conch-horn"], ("trendy-prize-4",)),
+                (["conch-horn", "surf-harp"], ("trendy-prize-4",)),
+                (["conch-horn", "sea-lilys-bell"], ("trendy-prize-4", "trendy-prize-5")),
+                (["conch-horn", "sea-lilys-bell", "surf-harp"], prizes)):
+            state = CollectionState(world.multiworld)
+            for item in ["sword"] + instruments:
+                state.collect(world.create_item(LASR_TO_ITEM[item]), prevent_sweep=True)
+            with self.subTest(instruments=instruments):
+                self.assertEqual(tuple(p for p in prizes if world.get_location(LOCATION_NAMES[p]).can_reach(state)),
+                                 reached)

@@ -49,9 +49,34 @@ TaskQueue_Add 0x085361e0 f (queue, key*, std::function*, u32 priority): one task
 Resource_TakeFlowchart 0x085419f0 f (out, handle*)
 Resource_Wait 0x08541c20 f (handle*)
 AreaCraneGame_Setup 0x08553b40 f loads actor/AreaCraneGame.bfres, builds the featured prizes
+AreaCraneGame_Register 0x08554580 f vtable +0x78: per-frame task (EntityManager +0x100, lambda 0x08554a20) -> AreaCraneGame_Update
+AreaCraneGame_Update 0x08554a60 f per frame: prizes leaving the GameAreaComp box -> won (+0x470), outside (+0x488), CranePrize_SetOutsideArea; LEB switch 0 while one lies outside; state machine
+AreaCraneGame_CountWon 0x08555cf0 f (this, prize sp*) -> true when the prize joins the won list +0x470 for the first time
+AreaCraneGame_RunState 0x08555fb0 f (machine +0x2b0): state 0 when none, the state's update, frame count +0x8
 CraneGame_BuildFeaturedPrizes 0x08557f30 f (this): CraneGame_NextFeaturedPrize for groups 0 and 1
-CraneGame_NextFeaturedPrize 0x08558ac0 f (out, group): first featured row not owned (CranePrize_Has with layout itemIndex) whose conditions hold
+AreaCraneGame_InitUpdate 0x08558260 f Init: finds ObjCrane (+0x420) and ObjGameBeltConveyor (+0x430) among the room's children, then Sleep
+AreaCraneGame_SleepEnter 0x085583a0 f clears Link +0x1b8c bit 4
+AreaCraneGame_SleepExit 0x085584a0 f Link +0x1ea9 = 3 (no input), +0x1b8c bit 4
+AreaCraneGame_CraneActiveEnter 0x085585b0 f +0x4a4 (prizes won this play) = 0
+AreaCraneGame_CraneActiveUpdate 0x085585c0 f Judging once ObjCrane +0x2bd is clear
+AreaCraneGame_JudgingEnter 0x08558620 f timer +0x4a0 = 0
+AreaCraneGame_JudgingUpdate 0x08558630 f after 0.1 s Sleep, unless ObjGameBeltConveyor +0x2b8 is set and under 4 s
+AreaCraneGame_FindCraneAndBelt 0x085587b0 f Init's child visitor: actor id 0x144 -> +0x420, 0x1ca -> +0x430
+CraneGame_NextFeaturedPrize 0x08558ac0 f (out, group): skips rows owned (CranePrize_Has with the layout itemIndex); the first row not owned if its conditions hold, else none
+CraneGame_FillPlaces 0x08558e50 f (this, u8 prize[], s32 itemIndex[], placeType, featured vector*): featured first (first claimant wins), then non-featured rows (+0x8c clear) in sheet order whose layout conditions hold
+AreaCraneGame_SpawnRailPrize 0x085591f0 f (this, place, u8 prize type, s32 itemIndex): place type 1; CranePrize (LEB params type, itemIndex) under the room, AreaCraneGame_PlaceOnRail on its ready signal, +0x440 kind 0
+AreaCraneGame_SpawnFloorPrize 0x08559860 f (this, place, u8 prize type, s32 itemIndex): place type 2; as SpawnRailPrize with AreaCraneGame_PlaceOnFloor, +0x440 kind 1
+AreaCraneGame_PlaceOnFloor 0x0855a360 f (this, prize sp*, place): link +0x100[place]'s ObjMovingFloorCrane position (0xc15710) + CranePrizeParams +0x8 in y; CranePrize_SetInsideArea; velocities zero
+AreaCraneGame_PlaceOnRail 0x0855ae20 f (this, prize sp*, place): rail link +0x118[place]'s point + CranePrizeParams +0x8 in y; CranePrize_SetInsideArea; velocities zero
+CranePrizeLayout_ConditionsHold 0x0855b3e0 f (layout*): every condition holds (Conditions_Check, no actor)
+AreaCraneGame_OnResourceLoaded 0x0855bc20 f closure: AreaCraneGame.bfres into +0x410, AreaCraneGame_MakeAirWall, DeferredInit ready
 Resource_TakeModel 0x0855bd50 f (out sp, handle*): Resource_Wait and the bfres type check
+AreaCraneGame_MakeAirWall 0x0855bf80 f ItemAirWallComp (+0x400) from CraneGame.cidb, filter 0x4001
+AreaCraneGame_StartPlay 0x0855d0b0 f (area): ObjCrane_StartPlay on +0x420, area state 2
+AreaCraneGame_StartMarinPlay 0x0855d1a0 f (area, target sp*): finds Marin, ObjCrane_StartMarinPlay, area state 2
+AreaCraneGame_HookedPrizeCount 0x0855d580 f (area): live prizes in the crane's arm list (+0x6d0..+0x6d8)
+AreaCraneGame_ResetRemainPrizes 0x0855d700 f event action ResetRemainPrizes: each placed prize (+0x458) back onto its place
+AreaCraneGame_MoveHookedInArmsPrizes 0x0855d840 f event action MoveHookedInArmsPrizes: ObjCrane +0x6d0 prizes to (3.5, 2k+2+offset, 7.0), outside the game area
 AreaHoleLowerLevel_StartEvent 0x085767f0 f probably AreaHoleLowerLevel: Area.bfevfl event, default entry FallToLowerLevel, params levelName, locator, offsetX, offsetZ
 AreaLevelOpen_Factory 0x08576e90 f actor table factory for id 0x190
 AreaLevelOpen_StartEvent 0x08579ac0 f (out, actor): Area.bfevfl entry from LEB param 2 (default DefaultLevelOpen), params levelName/locator from LEB params 0/1
@@ -281,6 +306,8 @@ Player_Move 0x0925b260 f knockback, kind-6 pull, playerCollision Move; moveDelta
 Player_SetHolder 0x0925c8f0 f (player, WeakPtr*): +0x19c0, flags bit 8
 Player_AimShield 0x0925d1f0 f shieldAngle +0x1ad0, shieldArmMatrix +0x1f40
 EventAction_AddDeadCounter 0x09272650 f lambda (module vtable 0x1c19df8, slot +0x30): SaveHeader +0x4 += 1 up to 0xffff
+Player_PrizeGetSequenceByKey 0x09273c70 f Link's event action PrizeGetSequenceByKey (prizeKey): CranePrize_TypeByKey, CranePrize_GetMessage, Player_PrizeGetSequence
+Player_PrizeGetSequence 0x09273d10 f (out, player, u8 type, message view*): item-get info with the row's isAutoSave, CarryModel holder, ItemGet_BuildSteps
 StateTransition_Check 0x09291480 f vtable +0x20: all conditions true
 StateTransition_AddCondition 0x092915d0 f vector<function> push_back
 SelectTransition_Check 0x09291840 f vtable +0x20: state = select(arg) when all conditions hold
@@ -428,6 +455,22 @@ BuffMusic_Play 0x085b3560 f (bool): BGM_NUTS_INTRO, kind 3; the item-get calls i
 EventAction_PlayAnimation2 0x085f7bb0 f virtual +0x30 on the actor's root component
 EventAction_PlayAnimation 0x0861d0c0 f
 SkeletalModelComponent_Make 0x08646660 f (out, owner, StringView* name, rootSp*, resource, ...)
+CranePrize_ApplyPhysicsTraits 0x08647c30 f (prize): CranePrizePhysicsTraits row: mass, damping, materials (friction combine multiply), angular axis locks
+CranePrize_SetInsideArea 0x086489e0 f collision filter 0x18040c9; with canGetButInsideGameArea 0x18048c9 and CranePrize_ConnectInsideContacts
+CranePrize_ConnectInsideContacts 0x08648b20 f body +0x470 -> CranePrize_OnContactInside, +0x628 -> CranePrize_OnTouchInside (handles +0x380, +0x384)
+CranePrize_OnTouchInside 0x0864a250 f (closure, other): Link -> CranePrize_RequestGet
+CranePrize_IsPlayer 0x0864a400 f (collider) -> its actor is Player (type id 0x0a1af520)
+CranePrize_RequestGet 0x0864a4f0 f once (+0x388): PrizeCommon entry get with prizeKey = symbol, itemCount = getCount, itemIndex = +0xc4
+CranePrize_OnContactInside 0x0864b070 f (closure, other, contact): Link -> RequestGet; else landing SE seInsideGameArea by impulse (CranePrizeParams +0x0, +0x4)
+CranePrize_SetOutsideArea 0x0864b430 f collision filter 0x218048c9, CranePrize_ConnectOutsideContacts
+CranePrize_ConnectOutsideContacts 0x0864b4e0 f body +0x470 -> CranePrize_OnContactOutside, +0x628 -> CranePrize_OnTouchOutside
+CranePrize_OnTouchOutside 0x0864b8a0 f (closure, other): Link -> CranePrize_RequestGet
+CranePrize_OnContactOutside 0x0864bc00 f (closure, other, contact): Link -> RequestGet; else landing SE seOutsideGameArea by impulse
+CranePrizeSheets_Set 0x0864c240 f (holder, CranePrize, PhysicsTraits, Group1, Group2 sp*) into +0x0/+0x10/+0x20/+0x30
+CranePrizeSheet_Row 0x0864c410 f (out, sheet, index): CranePrize row at out +0x10
+CranePrizePhysicsTraits_Find 0x0864c4c0 f (out, sheets, StringView* symbol): CranePrizePhysicsTraits row
+CranePrizeFeatured_Row 0x0864c5e0 f (out, group sheet, index): featured row at out +0x10 (+0x4 cranePrizeId, +0x8 layoutIndex)
+CranePrize_GetMessage 0x0864c690 f (out view, u8 type): row messageEntry; HeartPieceComplete for a heart piece completing a container
 CranePrize_TypeByKey 0x0864c820 f (StringView* key) -> CranePrize row index, 0xff when missing
 CranePrize_Add 0x0864c9c0 f (u8 prizeType, count, index): AddItemID per prize; figurines 0xa-0x13 set inventory +0xe8 bits directly
 CranePrize_AddPanelPiece 0x0864cb08 l tail of CranePrize_Add for type 0x14: AddItemID(114, count, index)
@@ -482,6 +525,44 @@ ItemPose_ItemGet 0x08dd6f50 f (u8 itemId, bool sideView) -> ItemPose*: the secon
 ItemGetHolder_Make 0x0927e4f0 f (out sp, parent node, u8 itemId): the item-get's item node (0x1e0, vtable 0x0a0c8e38, item id +0x1c1), whose vtable +0xa8 (0x08d88b10) is ItemPose_ItemGet(+0x1c1, side view)
 ItemModel_Make 0x08dd7670 f (out holder, owner sp*, StringView* name, root node sp*, u8 itemId): loads the item's model and posts ItemGet_ModelTask, which makes the component (disabled) into holder +0x18; the item-get and the NPCs that hold items use it
 ShopItemSheet_Load 0x08f4eb60 f (object x0, out sp x8): loads datasheets/ShopItem.gsheet into the object's +0x2e0 (resource) and +0x2f0 (sheet) and returns the sheet
+ObjCrane_Factory 0x08fd9380 f actor 0x144 factory: 0x08fd94c0 (checks, Register, Setup, start, AddChild) -> make_shared 0x720 -> ObjCrane_Ctor
+ObjCrane_Ctor 0x08fd9ac0 f Actor_Ctor, vtable ObjCrane_vtable, StateMachine<12> at +0x2b0, class bits 0x1001
+ObjCrane_Setup 0x08fd9ff0 f vtable +0x20: CraneRootComp (kinematic), BodyComp (50 kg, no gravity), slider joint [-2.2, 0] m, four ArmComp hinges [0, 0.5767] rad, model Crane, bone callbacks, state Sleep
+ObjCrane_OnDestroyed 0x08fdbed0 f vtable +0x38: stops the loop SE +0x690, event handles, zone unsubscribe, registry erase
+ObjCrane_Register 0x08fdc070 f vtable +0x78: posts the update task (lambda 0x0a0fc6c8) on the update queue
+ObjCrane_Update 0x08fdc550 f per frame: machine update, per-frame drive +0x5e0, skeletal instance dirty, clears contact flag +0x6f1
+ObjCraneSM_Update 0x08fdc5e0 f (sm +0x2b0): state 0xff -> ChangeState 0, run the state's update, framesInState++
+ObjCrane_ChangeState 0x08fdc630 f (sm = crane+0x2b0, u8 state)
+ObjCrane_SetArmDrive 0x08fdcdb0 f (f32 v, f32 force, crane): each arm hinge drive velocity -v, force limit force
+ObjCrane_DescentUpdate 0x08fdd5f0 f state 4 update: stops at slider -2.2 m, body contact, an arm hinge force >= 20, or 5 s
+ObjCrane_ReleaseCloseUpdate 0x08fde060 f state 11 update: after 1.5 s a sphere overlap (r 0.6 at body - 0.6 y) fills +0x6d0 with CranePrize actors; Sleep (retry only while +0x6ec < 0)
+ObjCrane_OpenArms 0x08fded30 f (crane): each arm hinge drive velocity +5, force limit 100
+CraneReturnMover_Make 0x08fdee60 f (out sp, crane sp*, lambdas*): 0x310 block; accel 7, top speed 1.9; states Sleep, ReturnVertical, ReturnHorizontal
+CraneMover_Ctor 0x08fdf0c0 f (mover, crane sp*, 3 std::function*): base of the crane movers: crane weak +0x8, axis mover +0x20, lambdas +0x160/+0x190/+0x1c0
+CraneAxisMover_Update 0x08fdf640 f (sm = axis+0x10)
+CraneAxisMover_ChangeState 0x08fdf690 f (sm = axis+0x10, u8 state)
+CraneAxisMover_Ctor 0x08fdfd50 f (axis, crane sp*): StateMachine<3> at +0x10 (Sleep, Move, Brake); target +0x120, accel +0x130, top speed +0x134, speed +0x138
+CraneAxisMover_Move 0x08fdfe80 f Move update: accelerate to top speed, step the crane root toward the target, Brake within the stopping distance
+CraneAxisMover_Brake 0x08fe0050 f Brake update: decelerate, Sleep at the target or zero speed
+ObjCrane_StartPlay 0x08fe2e60 f (crane): +0x6ec 0, +0x6f0 0, player mover at +0x6a0, gripped target cleared, state Preparation
+CranePlayerMover_Make 0x08fe3050 f (out sp, crane sp*, lambdas*): 0x3d0 block; accel 7, top speed 3; states Sleep, AwaitButtonPressed, AdjustHorizontal, AwaitHorizontalReleased, AdjustVertical, AwaitVerticalReleased
+CranePlayerMover_AwaitButtonPressed 0x08fe3320 f state 1 update: both axes used -> Sleep; a fresh press of an unused axis -> 2 or 4; hint UI:CraneOperation after 1 s
+CranePlayerMover_AdjustHorizontalEnter 0x08fe3a30 f target spawn x + 8.0, current z; Move; MOVE1 lambda
+CranePlayerMover_AdjustVerticalEnter 0x08fe3c60 f target current x, spawn z - 2.73; Move; MOVE2 lambda
+Crane_VerticalHeld 0x08fe4040 f the pad's held buttons & 0x804 (X or D-pad Up)
+Crane_HorizontalHeld 0x08fe4200 f the pad's held buttons & 0x201 (A or D-pad Right)
+ObjCrane_StartMarinPlay 0x08fe4970 f (crane, target sp*, Marin*): +0x6f0 1, Marin mover aimed at the target, target gripped at +0x6b0, Marin MarinPlayCrane, light on, state Preparation
+CraneMarinMover_Make 0x08fe4c40 f (out sp, crane sp*, lambdas*): 0x3e0 block; accel 7, top speed 3; states Sleep, PressHorizontal, AdjustHorizontal, PressVertical, AdjustVertical, ReleaseButtons
+ObjCraneFence_Ctor 0x08fe6190 f Actor_Ctor, vtable, StateMachine at +0x2b0 (Deactive, Active), class bits 0x1001
+ObjCraneFence_Setup 0x08fe6490 f static box FenceComp (0.1, 2.25, 1.5) centred (0, 2.25, 0), model CraneFence, SeComp, state Deactive
+ObjCraneFence_Reset 0x08fe7470 f +0x3b0 0, model local y 0
+ObjCraneFence_ActiveEnter 0x08fe75c0 f filter 0x4801 (prizes and Link), global pose re-set
+ObjCraneFence_DeactiveEnter 0x08fe7750 f filter 0x4001 (prizes only), global pose re-set
+ObjCraneFence_Pop 0x08fe7970 f +0x3b0 1 (Active), +0x3b1 1, SE_MAP_CRANE_FENCE_ON
+ObjCraneFence_Depop 0x08fe79c0 f +0x3b0 0 (Deactive), +0x3b1 1, SE_MAP_CRANE_FENCE_OFF
+ObjCraneGameButton_Factory 0x08fe7a10 f actor table factory for id 0x145
+CraneGameButton_StartManualPlay 0x08fec380 f action StartManualPlay body: GameShopOwner_StartPlay while the owner's switch 0 (paid) is on
+CraneGameButton_MakeEventChara 0x08fec7f0 f (out sp, args): the button's EventChara, name CraneGameButton
 ItemGet_ModelTask 0x08dd81c0 f (task*): the item-get's model: the item's Npc row, ModelResource_Get, the component ItemModel on its node
 ItemGet_PlayFanfare 0x08dd9700 f (u8 itemId): the Items.gsheet row's sound (+0x58): an SE ('@' first) or a BGM jingle
 ItemGet_RowAutoSave 0x08dd9ad0 f (item id) -> bool: whether the item's Items.gsheet row asks for an autosave (ItemRow_AutoSave)
@@ -555,6 +636,8 @@ Player_ItemGetSequence 0x0927d5d0 f (shared_ptr* out, Player*, int itemId, bool 
 ItemGet_FanfareFuture 0x0927e820 f (out future, u8* itemId): plays the fanfare, then a task polled until ItemGet_FanfareDone
 ItemGet_FanfareDone 0x0927ef30 f (wait closure): true once the event manager has no event, the wait was cancelled, or the fanfare stopped; hooked by the module to be true
 EventAction_ItemGetByType 0x0927f670 f Link.GenericItemGetSequence body (out, ctx): param itemType -> Player_ItemGetSequence
+EventAction_AddRupee 0x09280590 f Link.AddRupee body (amount): Inventory +0x80 + amount, clamped 0..9999
+EventQuery_CheckRupee 0x09281f70 f Link.CheckRupee body (amount): amount <= Inventory +0x80
 PartsVisibility_AddShape 0x09290a80 f (parts, group, name)
 PartsVisibility_AddShapes 0x09290ec0 f (parts, group, vector of names)
 PartsVisibility_SetGroup 0x09291240 f (parts, group, bool)
@@ -751,6 +834,9 @@ EyeBlinkControl_vtable 0x0a061f18 l 0xc0-byte component, FacialControl +0xc0
 LipSync_vtable 0x0a062650 l 0x100-byte component, FacialControl +0xd0
 OcarinaReaction_vtable 0x0a0627e8 l
 WaterEvent_vtable 0x0a0633b8 l
+CranePrizeGetHolder_vtable 0x0a063748 l the prize's item-get holder (type at +0x1c1): pose +0xa8 (CranePrizeParams +0xc), +0xb0 (+0x30), +0xb8 tailor/ItemGet.drsb
+CranePrize_vtable 0x0a0639e8 l base Actor slots only; type id 0x0a1af5f0
+CranePrizeParams 0x0a063e08 l 21 pointers by prize type to 0x54-byte blocks: landing SE impulse, place height +0x8, two get poses at +0xc and +0x30
 EnemyOctorok_vtable 0x0a09b418 l
 InstancedModelCtrl_vtable 0x0a0a0f50 l control block of FieldTip's InstancedModel (shared-from-this)
 EndingScene_vtable 0x0a0c6550 l the ending's scene ("Ending")
@@ -770,6 +856,13 @@ NpcFlyingCucco_vtable2 0x0a0e5440 l companion interface (kind 4, FlyingCucco) at
 NpcGhost_vtable 0x0a0e77c0 l vtable
 NpcGhostComponent_vtable 0x0a0e7ad8 l vtable
 NpcMarin_vtable2 0x0a0eaba0 l companion interface (kind 2) at actor +0x2a8
+ObjCrane_vtable 0x0a0fc518 l ObjCrane; +0x20 Setup, +0x38 OnDestroyed, +0x78 Register
+ObjCraneSM_vtable 0x0a0fc650 l ObjCrane's StateMachine<12> (+0x2b0): Sleep, Preparation, Adjust, CatchOpen, Descent, WaitALittleAfterDescent, CatchClose, Ascent, ReturnToHome, WaitALittleAtHome, ReleaseOpen, ReleaseClose
+CraneReturnMover_vtable 0x0a0fc9d0 l same slots as CranePlayerMover_vtable; +0x28..+0x40 return 0
+CranePlayerMover_vtable 0x0a0fccb8 l +0x10 start, +0x18 update, +0x20 done, +0x28/+0x30 axis unused, +0x38/+0x40 axis button held
+CraneMarinMover_vtable 0x0a0fcd78 l same slots as CranePlayerMover_vtable
+ObjCraneFence_vtable 0x0a0fce38 l actor id 0x218
+ObjGameBeltConveyor_vtable 0x0a1065a8 l actor id 0x1ca; no update task
 ObjTreasureBox_vtable 0x0a116020 l
 PanelShadowLink_vtable 0x0a11a730 l vtable
 Player_vtable 0x0a11bb70 l vtable
@@ -891,6 +984,8 @@ Guide_Clear 0x0945bae0 f hides the guide's slot panes; the kept kinds stay
 Navi_SetTitles 0x093f1ec0 f (navi, index 0-4): MessageText_SetLabel of +0x2d0 T_Navih1_00, +0x2e8 T_NaviBack_00, +0x300 T_NaviNext_00 with UI:SubScreenTitleMap/Item/System/Memory; 3 does nothing, 4 the map's Memories
 UiManager_Find 0x08d4ae20 f (out handle, UI manager, id): the UI in the manager's list (+0x950) whose virtual +0x60 returns id; handle +0x18 the UI, +0x20 its count; typed copies 0x7e2310, 0xe85cc0, 0xeebb00
 UiManager_FindHud 0x08ce6310 f UiManager_Find typed for the HUD (id 0): +0x61dc the page index the pause menu opens on, +0x3b0 the button guide
+EventAction_SetWarashibeItem 0x08ce6a10 f Inventory.SetWarashibeItem body (itemType): 0 empties trade slot +0x9a; 1-12, 14, 15 AddItemID(28 + n)
+EventQuery_HasItem 0x08ce6b10 f Inventory.HasItem body (itemType, count): the event item enum; 0x1e-0x29 trade slot +0x9a 1-12, 0x2b/0x2c 13/14
 UiManager_FindPage 0x093efb00 f (out handle, id): UiManager_Find on the static UI manager, typed for pause-menu pages
 UiManager_Request 0x093ddb30 f (out, UI manager, id): the pending request for id (list +0x968) or a new one; UiManager_Update builds the UI
 UiManager_Remove 0x093de0e0 f (UI manager, id): queues id for removal (+0x998) and destroys that UI
@@ -1129,6 +1224,8 @@ MapPinStore_FieldPosition 0x093e2030 f position of a field pin: section + slot *
 MapPinSection_ptr 0x0a1c5370 l the save section of the map pins: field positions +0x0 (30 vec2), dungeon positions +0xf0 (9 sets of 20 vec2), field codes +0x690 (30 u8), dungeon codes +0x6ae (9 sets of 20 u8), +0x763 u8 the seashell sensor on (the Items page toggles it)
 Interaction_Target 0x085ecd90 f (out sp): the current interaction target; its +0x1a0 the prompt kind (guess)
 CmHud_ChangeState 0x08cf7380 f (machine at HUD +0x80, state): None 0, Wait 1, Open 2, InGame 3, CraneIn 4, CraneOut 5, WaitEndCrane 6, FishingStart 7, FishingUpdate 8, FishingEnd 9, Close 10
+EventAction_PlayCraneOutAnim 0x08cf7500 f Hud.PlayCraneOutAnim body: CmHud state 5 CraneOut
+EventAction_SetOpenMenuEnable 0x08cf7a80 f Hud.SetOpenMenuEnable body (enable): HUD +0x64c9
 Player_CanInteract 0x09296480 f bool(player): the HUD shows the interact prompt only then (guess)
 CmHud_Ctor 0x093a75c0 f the HUD's constructor
 HudRupee_ChangeState 0x093ad780 f the rupee part's machine (part +0x90) (guess)
@@ -1169,6 +1266,25 @@ PlayReport_Submit 0x092f82d0 f (report) (guess)
 PanelDungeon_NewStone 0x091e9120 f bool: PanelNotifyBits bit 0; the query CheckNewPanelStone
 PanelDungeon_ProcessStones 0x091e93f0 f the action ProcessDungeonAndPanelStone: AddItemID(115, 1, d) for each dungeon d whose instrument is owned (set 9 with Lv10DungeonClear), the owned sets and stones into the second tables, clears PanelNotifyBits 0, 2, 3
 DanpeiAction_ProcessDungeonAndPanelStone 0x08e8d250 f std::function body (vtable 0x0a0e4150): PanelDungeon_ProcessStones
+NpcGameShopOwner_Factory 0x08eb8d10 f actor table factory for id 0x153
+GameShopOwner_Init 0x08eb9880 f (owner): grip machine +0x2f0 (None, Idle, Gripped, Fall, Land, End), NPC component +0x2a8 ("Npc")
+GameShopOwner_Update 0x08eba560 f (owner) per frame: play state +0x2e8 1/2 and AreaCraneGame state 1 -> entry SecondPlay / Angry, state 3
+GameShopOwner_CloseCraneUi 0x08eba8f0 f the Gm_CraneGame UI (0x14) machine to 3
+GameShopOwner_GripChangeState 0x08ebac20 f (machine +0x2f0, state): None 0, Idle 1, Gripped 2, Fall 3, Land 4, End 5
+GameShopOwner_FindQuery 0x08ebd9c0 f query lookup: CheckPrizeEmpty, CheckPrizeHookedInArms
+GameShopOwnerQuery_CheckPrizeHookedInArms 0x08ebdc30 f query CheckPrizeHookedInArms body: GameShopOwner_HasHookedPrizes
+GameShopOwner_LockSelf 0x08ebdc80 f (out sp, owner): the owner from its weak self (+0x48/+0x50), null unless NpcGameShopOwner
+GameShopOwner_HasHookedPrizes 0x08ebdd90 f (owner): AreaCraneGame_HookedPrizeCount > 0
+GameShopOwnerQuery_CheckPrizeEmpty 0x08ebdef0 f query CheckPrizeEmpty body: GameShopOwner_RemainingPrizes > 0 (true while prizes remain)
+GameShopOwner_RemainingPrizes 0x08ebdf40 f (owner): AreaCraneGame +0x488 count + +0x458 count - +0x470 count
+GameShopOwner_FindAction 0x08ebe0b0 f action lookup: PopCraneFence, DepopCraneFence, ApplyCraneCamera, ResumeCamera, ResetRemainPrizes, MoveHookedInArmsPrizes
+GameShopOwner_MoveHookedInArmsPrizes 0x08ebe6c0 f (owner): the crane's arm prizes (+0x6d0) to (3.5, 2+2k+offset, 7.0), velocity 0
+GameShopOwner_ResetRemainPrizes 0x08ebe880 f AreaCraneGame list +0x458: kind 1 -> 0x0855a360, kind 0 -> 0x0855ae20
+GameShopOwner_ResumeCamera 0x08ebea40 f Link +0x318 camera back (23.5, -0.785 rad), count +0x50a down
+GameShopOwner_ApplyCraneCamera 0x08ebede0 f Link +0x318 crane camera (15.1, -0.829 rad), count +0x50a up
+GameShopOwner_DepopCraneFence 0x08ebf130 f (owner): ObjCraneFence_Depop on the linked fence
+GameShopOwner_FindFence 0x08ebf1c0 f (out sp, owner): the first linked actor that is an ObjCraneFence
+GameShopOwner_PopCraneFence 0x08ebf540 f (owner): ObjCraneFence_Pop on the linked fence
 DanpeiQuery_CheckNewPanelStone 0x08e8c1d0 f std::function body (vtable 0x0a0e3e80): PanelDungeon_NewStone
 Animator_FrameCount 0x09650840 f (animator): its frame count
 PanelDungeon_ItemLock 0x091e51e0 f (manager, kind): whether an item is greyed out in the Chamber Dungeon (guess)
@@ -1228,6 +1344,8 @@ WarpUI_Show 0x08cecec0 f event action WarpUI.Show: UiManager_Request(WarpUI_Choo
 UiManager_FindWarpMap 0x08cedeb0 f (out lock handle, id): UiManager_Find typed for the WarpMap class (ids 7, 9)
 WarpUI_JumpToSelectedLocation 0x08cee4c0 f event action: field: GameControl_SetLevelJump(Field, row.mLocator); elsewhere locator OcarinaWarpPoint (Chamber Dungeon: the save's level)
 WarpUI_GetResult 0x08ceef30 f event query: 1 when the warp UI is done (+0x62fa) and its result index >= 0
+EventAction_ShowRupee 0x08cf65b0 f Hud.ShowRupee body (visible): HUD +0x61cc/+0x61cd/+0x4769, refreshes L_Rupee_00
+EventAction_PlayCraneInAnim 0x08cf7200 f Hud.PlayCraneInAnim body: CmHud state 4 CraneIn
 WarpPointSheet_Set 0x08d296f0 f (holder, sheet sp*): fills WarpPointSheet_ptr
 WarpPointSheet_RowByIndex 0x08d29970 f (out {sheet sp, count, row}, holder, mIndex)
 LinkAction_AddWarpPoint 0x0926db70 f event action Link.AddWarpPoint body: param key -> WarpPoint_Activate
@@ -1317,6 +1435,7 @@ Framework_Delete 0x0851fcf0 f Framework_ptr's deleter (+0x8 of the pointer slot)
 Actor_MakeNode 0x08524d10 f (out sp, actor, StringView* name, sp<Node>* parent): a 0x150-byte Node component, attached under the parent or as the root
 DeferredInit_Make 0x0853f920 f (out sp, actor, StringView* name): a 0x60-byte component
 StateMachine_Dtor 0x085539a0 f destroys the onChange std::function (+0x10)
+AreaCraneGame_Dtor 0x085539f0 f vtable +0x10
 BgmPlayer_Ctor 0x0859df90 f 8 BgmInstance (0x130) at +0x10; vectors +0x990 free, +0x9a8 starting, +0x9c0 playing
 BgmInstance_Dtor 0x0859e400 f vtable 0x0a05ccf0 +0x0
 BgmManager_IsPlaying 0x0859fa40 f (StringView* name) -> bool: a starting or playing instance with that track id
@@ -1639,6 +1758,9 @@ AreaShellDropper_DropLaunch 0x08589920 f (dropper, item...): virtual +0x140: lau
 ObjGrass_DropItem 0x090aa3e0 f (grass, bool): a cut bush's drop: the ItemDrop key its LEB parameter names, else ItemDrop row 17 (Grass), through Enemy_DropItemsDefault
 ObjRock_DropItem 0x0914db10 f (rock, bool): a lifted rock's drop, as the bush's
 ObjPot_DropItem 0x0902ee50 f ObjDungeonPot's drop: its LEB parameter, else the ItemDrop row its +0x578 names; skips ids 0x109 and 0x1eb, checks a switch for ObjHousePot (0xeb); LASR hooks its start
+ObjGameBeltConveyor_Setup 0x09099ea0 f static box FloorComp (1.5, 0.035, 0.75), friction 0, filter 0x81025081, SE_MAP_CRANE_BELT_MOVE; slots on contactPersists and controller hit
+ObjGameBeltConveyor_OnPlayerHit 0x0909a9a0 f (slot, contact*): the controller's CharCtrlComp pendingMove.z += FrameDelta (1 m/s toward +z)
+ObjGameBeltConveyor_OnContact 0x0909abb0 f (belt, body sp*, PhysicsContact*): impulse at the contact points driving vz to +1 m/s, capped at 0.5*|g|*dt per step
 Enemy_DropItemsDefault 0x08d9f7e0 f (actor, ...): Enemy_DropItems with the default callbacks (DropCallbacks_InitDefault)
 DropCallbacks_InitDefault 0x08d9dd10 f the default drop callbacks: +0x30 the start (Drop_DefaultStart), +0x60 the launch (Drop_DefaultLaunch)
 Drop_DefaultStart 0x08d9df40 f (actor, id, index, count): the root's world position + (0, 0.5, 0); with count >= 2 also 0.5 out at angle 2 pi index / count
@@ -1683,6 +1805,7 @@ EventAction_ChannelTime 0x08610120 f PlayTailorOtherChannelEx's step (channel, t
 AttackColComp_Ctor 0x085d2cf0 f (comp, ...): attack collision comp, 0xf140 bytes; hit records at +0x2f0; std::function +0xf100
 AttackColComp_vtable 0x0a05eef8 l
 AttackColComp_Make 0x08547220 f (out sp*, actor, StringView* name, ...): makes and attaches an AttackColComp (DeguArmos:AttkColCom2)
+AreaCraneGame_Factory 0x08552ff0 f actor table factory for id 0x209
 AttackCol_Vector 0x086cf110 f (attack comp): its +0xf100 std::function's Vec4, else a constant (guess: the push direction)
 DamageReaction_Apply 0x08cd2520 f (state, node, record, entry, ...): the Damage reaction's start; reads the entry's attack comp (+0x0) through AttackCol_Vector
 HitEntry_Matches 0x085b8270 f (entry, ptr0, ptr10): both entry weak pointers alive and equal
@@ -1750,6 +1873,8 @@ Player_FindAction 0x0926e3e0 f Link's action lookup (lambda 0x0a11c228 at chara 
 Actor_FindComponentIf 0x094ad920 f (out sp, actor, std::function<bool(sp*)>*): Actor_ForEachComponent until the predicate holds
 FindComponent_EventChara 0x08602420 f (out sp, actor, std::function predicate*): the predicate and IsA(EventChara), then the result's type checked
 FindComponent_DeferredInit 0x08556000 f (out sp, actor, std::function predicate*): Actor_Create's, for its ready task
+AreaCraneGame_ChangeState 0x08556a30 f (machine +0x2b0, state): Init 0, Sleep 1, CraneActive 2, Judging 3; states {enter, update, exit} at +0x48 + 0x30*state
+BoxCollision_Make 0x08557640 f (out sp, actor, StringView* name, parent sp*, world*, Vec4* halfExtents, bool* static): 0x320-byte box BodyCollision, shape flags 0xb; static -> PxRigidStatic, else dynamic
 Component_IsA 0x094af7c0 f component vtable +0x68 (component, type id): its own id 0x0a1af328 or Entity's 0x0a1af338
 Component_TypeId 0x094af8a0 f component vtable +0x70: the address of its type object static
 EventChara_IsA 0x085f6930 f EventChara vtable +0x68
@@ -1786,11 +1911,14 @@ NpcChara_LookTarget 0x08600400 f EventChara +0x460 of an NPC: the held node's wo
 DeferredInit_OnLoaded 0x08541850 f lambda (vtable 0x0a056360) {actor weak, resource handle, component}: the flowchart into actor +0x2c8 and ready (+0x58), or Entity_Destroy without one
 EventChara_vtable 0x0a060208 l EventChara component (0x520 bytes)
 DeferredInit_vtable 0x0a056408 l DeferredInit component (0x60 bytes): +0x58 ready
+AreaCraneGame_vtable 0x0a056d68 l base Actor slots only
 TailorPlayerComponent_vtable 0x0a12a068 l the tailor player component; type id 0x0a1af308
 TypeId_Entity 0x0a1af338 l Entity's type object static: its address is the type id; holds vtable 0x0a054908 (isA: equal)
 TypeId_Component 0x0a1af328 l Component's type object static; holds vtable 0x0a0551f8 (isA: equal, else Entity's)
 TypeId_EventChara 0x0a1b0cf8 l EventChara's type object static; holds 0x0a0551e0, the isA of every direct Component subclass (identical code folding)
 TypeId_DeferredInit 0x0a1af4e0 l DeferredInit's type object static
+TypeId_ObjCrane 0x0a1af5b0 l ObjCrane's type object static
+TypeId_CranePrize 0x0a1af5f0 l CranePrize's type object static; ObjCrane's release check keeps actors of this type
 TypeId_TailorPlayer 0x0a1af308 l the tailor player component's type object static
 PhaseQueue_Add 0x08512120 f (queue, u32* id, std::function* phase, s32 priority) -> bool: false when the id is in phases; inserts now, or queues op 0 in pending while running
 PhaseQueue_Insert 0x085128e0 f (queue, u32* id, std::function* phase, s32 priority): the phase node (0x60) into the priority's group, making the group node (0x50) when new
@@ -1864,6 +1992,8 @@ BodyCollision_AddToScene 0x095c0bf0 f (collision) -> bool: with +0x180 the PxAgg
 BodyCollision_SetKinematic 0x095c1430 f (collision, bool): dynamic body only: PxRigidBody setRigidBodyFlag(eKINEMATIC), body +0x678; turning it off wakes a body in a scene (+0x248 wakeUp)
 BodyCollision_SetGravity 0x095c1590 f (collision, bool on): dynamic body only: PxActor setActorFlag(eDISABLE_GRAVITY, !on)
 PhysicsBody_Ctor 0x095c6720 f (body, PxRigidActor*): actor ref +0x18, shapes' wrappers +0x28 (count +0x20), userData sp +0x448, six signals +0x460..+0x618
+PhysicsBody_SetMassAndCom 0x095c8310 f (collision, f32 mass, Vec3* com): PxRigidBodyExt::setMassAndUpdateInertia
+PhysicsBody_AddImpulseAtPos 0x095c83a0 f (collision, Vec4* impulse, Vec3* pos): PxRigidBodyExt::addForceAtPos, mode impulse, wake
 PhysicsBody_vtable 0x0a154e48 l a collision's body, base; +0x0 IsA
 PhysicsBody_MakeDynamic 0x095cac00 f guess: (out, physics*, desc*): a PxRigidDynamic (createRigidDynamic, vtable +0xb8) and its 0x680-byte body (vtable 0x0a154f88): +0x670 the actor, +0x678 kinematic
 DynamicBody_vtable 0x0a154f88 l the dynamic body (0x680 bytes): PxRigidDynamic at +0x670
@@ -1873,6 +2003,18 @@ WaterEvent_Dtor 0x0863f720 f
 WaterEvent_Leave 0x0863f980 f vtable +0x48: when +0x151: clears it, emits +0xb0 with true
 WaterEvent_Update 0x08640100 f the water event's task (closure call): probes at WaterEvent_ProbePoint; on a change of +0x151 emits +0xb0 (left) or +0x58 (surface +0x154, kind +0x158 from the std::function +0x110)
 WaterEvent_ProbePoint 0x08640730 f (water event) -> Vec4: the owner's root world position, plus +0x140 when +0x150
+CranePrize_Factory 0x08643290 f actor table factory for id 0x213
+CranePrize_Ctor 0x086439d0 f Actor_Ctor, ready signal +0x2c0, class bits 0x200
+CranePrize_Setup 0x08643ce0 f vtable +0x20: row of LEB parameter 0 (+0xbc), else destroyed; loads Prize{symbol}.bfres and PrizeCommon.bfevfl
+CranePrize_OnDestroyed 0x08644960 f vtable +0x38
+CranePrize_LoadModel 0x08644f10 f (out handle, symbol, length): actor/Prize{0}.bfres
+CranePrize_LoadFlowchart 0x08644ff0 f (out handle): event/PrizeCommon.bfevfl
+CranePrize_OnLoaded 0x086453f0 f closure: model +0x360, flowchart +0x370, the components, DeferredInit ready, emits the ready signal +0x2c0
+CranePrize_MakeCollision 0x086455f0 f CollisionComp (+0x320) from <symbol>.cidb scaled by modelScale (default 0.5 without), physics traits and centerOfGravity
+CranePrize_MakeModel 0x08645fd0 f SkeletalModelComp (+0x330), model symbol, scale modelScale
+CranePrize_MakeSe 0x08646290 f SeComp (+0x340)
+CranePrize_MakeEventChara 0x08646410 f EventCharaComp "Item" (+0x350)
+CranePrize_MakeShellBeacon 0x086464f0 f ShellBeaconComp for prize type 9 (SecretSeashell) only
 ObjTree_Make 0x091ad9b0 f the actor table's factory of ObjTree (0xbb): ActorName_Make, then 0x091adae0 (operator_new(0x560), the 0x540-byte actor at +0x20)
 ObjTree_vtable 0x0a116a78 l ObjTree (and the other tree actors): +0x20 Setup, +0x28 MakeApples
 ObjTree_Dtor 0x091ae220 f
@@ -1943,6 +2085,7 @@ PlayerCollisionBehavior_Controller 0x095bb6f0 f (x8 flags*, this, userData): Sli
 PlayerCollision_Init 0x095bb9b0 f vtable +0x20: connects to the body's hit signals (+0x80, +0xd8 owners), behavior.owner = this
 PlayerCollision_Move 0x095bc050 f vtable +0xd0: CharCtrlComp_Move without the sync to the node; velocity from force/frameForce, wall normals, slope
 CharCtrl_CreateController 0x095ccdb0 f (?, desc): PhysX 3.4 PxController from CharCtrlComp's desc; callbacks object {hit report, behaviour, desc +0x48}
+PrismaticJoint_Make 0x095cd8a0 f (out sp, PxPhysics*, actor a, Transform* frameA, actor b, Transform* frameB): PxPrismaticJointCreate
 CctHitReport_vtable 0x0a153a98 l PxUserControllerHitReport of the callbacks object: onShapeHit, onControllerHit, onObstacleHit (nothing)
 CctBehavior_vtable 0x0a153ad0 l PxControllerBehaviorCallback of the callbacks object (+0x8); forwards to the desc's behaviour object (+0x10)
 CctHitReport_OnShapeHit 0x095b4970 f PxControllerShapeHit -> PlayerContact on the body's +0x70 signal (false) and the PhysicsBody's +0x618 (true)
@@ -1976,6 +2119,10 @@ Environment_ChangeEnvironmentNonWait 0x08d021a0 f event action body (name, durat
 NpcComponent_OnRequestFinished 0x08e6ada0 f (component): from NpcComponent_MakeEvent's finished functor (0x08e6ad90); vtable +0x380 with its event's (+0x280) return value and false, or 0 and true once destroyed or without an event
 NpcComponent_OnEventResult 0x08e5bd70 f vtable +0x380 (component, s32 return value, bool destroyed): empty; every NPC class keeps it
 GameShopOwner_OnEventFinished 0x08ebf840 f (functor): its component's event return value 0, 1, 2 -> 0x08ebf980, 0x08ebfae0, 0x08ebfcb0
+GameShopOwner_EndPlay 0x08ebf980 f (owner) return value 0: minigame 0, ResumeCamera unless Marin's play, state 0, grip None
+GameShopOwner_StartPlay 0x08ebfae0 f (owner) return value 1 and StartManualPlay: AreaCraneGame_StartPlay, state 1, crane camera, minigame 1, opens Gm_CraneGame
+GameShopOwner_StartMarinPlay 0x08ebfcb0 f (owner) return value 2: AreaCraneGame_StartMarinPlay, state 2, grip Idle, minigame 1
+GameShopOwner_OpenCraneUi 0x08ebfe70 f UiManager_Request(0x14), Gm_CraneGame
 FishingManager_OnEventFinished 0x0931fbc0 f (functor {manager, event}): FishingManager_OnEventResult with the event's return value
 FishingManager_OnEventResult 0x0931fbd0 f (manager, s32 value): 2 (EndFishing) level jump to Field, Field_09B; 3-5 (lure1jump..lure3jump) FishingLure type 0-2
 EventCamera_OnActivated 0x08ce0e30 f vtable +0x40: takes the CameraSystem slot of its id (+0x2a4, 0x50 bytes each) with 1.0; +0x520 = 0.058
@@ -1996,6 +2143,7 @@ BodyCollision_SetName 0x095bf6a0 f vtable +0x80 (collision, const char*): name +
 BodyCollision_Name 0x095bf890 f vtable +0x88 (x8 out {data, length}, collision): name +0x1a0
 BodyCollision_ConnectWorld 0x095c0f30 f (collision): slot on the world's stepped (owner +0x290) into +0x1b4; the slot calls the collision's vtable +0xd0
 BodyCollision_MakeBodyFromResource 0x095c1f20 f (collision, resource sp*, x2, x3): a body from the resource's first shape entry (0x10c8960), body +0x438 the collision, shapeSource +0x160 the resource
+PrismaticJoint_EnableLimit 0x095c5450 f (joint): setPrismaticJointFlag(eLIMIT_ENABLED, true)
 SharedString_MakeCopy 0x091c53c0 f (out SharedString, const char* data, u64 length): as SharedString_Make
 Physics_ShapeAttribute 0x08d29a20 f (u32* out, shape wrapper sp*, u32 triangle): the u32 the shape's material's userData points at; a triangle mesh's material by triangle
 Collision_SetFilter 0x08580240 f (collision sp*, CollisionFilterDesc*, u32 group): cast by type id 0x0a1af3b8, then CollisionFilter_Apply
@@ -2079,6 +2227,7 @@ LevelEnvironment_Dtor 0x08cdb1a0 f (env)
 LevelEnvironment_Find 0x08cdc6c0 f (map env+0x58, const char* name, u64 length): the environment of that name, null when none
 LevelEnvironment_OnRoomBlend 0x08cdc620 f roomBlend slot (slot, room A data sp*, room B data sp*, f32* blend): the rooms' environments by name (data +0xf0, length +0x110), LevelEnvironment_Change or the blend
 EventQuery_CheckFlag 0x08ce53c0 f the EventFlags actor's CheckFlag query body -> EventFlags_Check
+EventAction_AddPrizeByKey 0x08ce5c70 f Inventory.AddPrizeByKey body: CranePrize_Add(CranePrize_TypeByKey(prizeKey), count, index)
 LevelEnvironment_Change 0x08cddfc0 f (env, name, duration, bool): ChangeEnvironment: looks the name up in +0x58, blends from +0x18 to +0x20
 LevelEnvironment_StepBlend 0x08cde010 f (env): blendFrame up to blendFrames; from takes to at the end, blending cleared
 MainCamera_Ctor 0x085b9c50 f (camera, ...): an Actor (0x7a0 bytes), MainCamera_{0}P of CameraSystem_Ctor; its event start and end (vtable +0xb0, +0xb8) do nothing
@@ -2162,8 +2311,15 @@ AudioListenerComponent_IsA 0x085bbcf0 f vtable +0x68
 AudioListenerComponent_TypeId 0x085bbe30 f vtable +0x70
 AudioListenerComponent_Register 0x085bbe90 f vtable +0x78: AudioCamera_Register on the entity manager's +0x100 queue
 ObjLawn_vtable 0x0a10a460 l
+ObjMovingFloorCrane_vtable 0x0a10d190 l actor id 0x1fb
 ObjLawn_Setup 0x090f10f0 f vtable +0x20: the states Idle (0x090f5960, ObjLawn_IdleUpdate) and Cut (0x090f62b0, 0x090f6830)
 ObjLawn_IdleUpdate 0x090f5e00 f within 2 to 10 of Link: a free EnvSePlayer insect emitter plays SE_AMB_FOREST_INSECT/2/3 at the lawn
+ObjMovingFloorCrane_Ctor 0x09116fc0 f Actor_Ctor, vtable, StateMachine at +0x2b0 (2 states), class bits 0x1001
+ObjMovingFloorCrane_Setup 0x09117350 f RootComp (static), FloorComp (dynamic, mass 10, no rotation, gravity off, 5 boxes, filter 0x4082), prismatic joint along x limited to +-1.5, model, state 0
+ObjMovingFloorCrane_Update 0x091186b0 f state machine update, then the drive std::function at +0x3c0
+ObjMovingFloorCrane_ChangeState 0x09118760 f (sm, state): 0 MoveToRight, 1 MoveToLeft
+ObjMovingFloorCrane_DriveLeft 0x09119180 f drive lambda: x velocity change toward -0.8 m/s, at most 10*dt
+ObjMovingFloorCrane_DriveRight 0x09119480 f drive lambda: x velocity change toward +0.8 m/s, at most 10*dt (addForce mode 2)
 SoundLoader_ThreadFactory 0x085ab640 f the loader ThreadPool's: 0x085051b0(out, 0x1001, 0x10000, index)
 SoundLoader_WaitLoad 0x085abe40 f the loader machine's state 1: once the slot is loaded, the env SE, drops the request, state 0
 SoundLoader_Job 0x085aca30 f the async load job (lambda vtable 0x0a05cef0) on the loader's ThreadPool: SoundLoader_LoadNow
@@ -2178,6 +2334,11 @@ BasicSound_SetPitch 0x095ee920 f (sound, f32): +0x124
 SeWobble_Step 0x085af460 f (PitchWobble*): steps value between min and max, calls apply; a wobbling SE's onUpdate2 (lambda 0x085af450)
 SeWobble_Apply 0x085af5a0 f PitchWobble::apply's lambda: BasicSound_SetPitch on the SE's sound
 NpcMarin_SingBgm 0x08eeaa60 f (marin): BGM_MARINE_SING at her node; noPositional on playing kind 4 BGMs unless BGM_MEVE, BGM_ANIMAL_VILLAGE or BGM_EVENT_RESCUE_BOWBOW(_INTRO) plays
+Marin_EndPlayCraneGame 0x08ef95d0 f action EndPlayCraneGameEvent: the held button's +0x43c..+0x43e 0
+Marin_PressCraneBoth 0x08ef98d0 f action PressCraneBothButtons: operation_lp_c, button +0x43d/+0x43e 1
+Marin_PressCraneRight 0x08ef9b90 f action PressCraneRightButton: operation_lp_r, button +0x43d 1, +0x43e 0
+Marin_PressCraneLeft 0x08ef9e50 f action PressCraneLeftButton: operation_lp_l, button +0x43d 0, +0x43e 1
+Marin_StartPlayCrane 0x08efafc0 f (Marin): her entry MarinPlayCrane
 PanelDungeon_ThemeCleared 0x091e42a0 f (theme): the MapPieceTheme row's mClearFlag is set
 PanelDungeon_ThemeAvailable 0x091e4770 f (manager, theme): theme available (by its row; 0x30: every theme of manager +0x15e8 cleared) (guess name)
 PanelDungeon_CanAddStone 0x091e92d0 f (stone): the query CheckPanelAddStone: stone owned (PanelPieceBits), not yet a panel (PanelPieceBits2)
