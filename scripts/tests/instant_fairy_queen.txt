@@ -1,7 +1,7 @@
 # Instant Pickups at the Fairy Queen (DESIGN.md, Instant pickups): her two item-gets (D0-fairy-1, D0-fairy-2) come
 # one after the other, and her event waits for their popups, so both show and are gone while Link is still in her room,
 # before her goodbye and the whiteout that warps him out. B on each of her pages as soon as it takes one, as a
-# hurried player. Run after boot_file1 with config.ini [tweaks] instant_pickups = true; clears her flags.
+# hurried player. Run after boot_file1 with config.ini [tweaks] instant_pickups = everything; clears her flags.
 # Screenshots: instant_fairy_queen the second popup in her room.
 send DBG setflag FairyQueenFirstClear 0
 expect FLAG.FairyQueenFirstClear.0 5

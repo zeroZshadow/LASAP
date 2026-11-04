@@ -1,6 +1,6 @@
 # Each instrument's fanfare is its own song (DESIGN.md, Instrument songs): a received instrument's item-get and a find
 # (DBG pickup). Then Tail Cave's pedestal (Lv01TailCave_03G, 97.5 2.0 27.75), whose location shows the Full Moon Cello:
-# its item-get and found text, then the whiteout and the warp out. Run after newgame_file2 with Instant Pickups off, on
+# its item-get and found text, then the whiteout and the warp out. Run after newgame_file2 with Instant Pickups disabled, on
 # a mod from make_test_patch.py --models D1-instrument=full-moon-cello --names "D1-instrument=Full Moon Cello". A
 # received instrument's text closes by itself.
 guard hurt

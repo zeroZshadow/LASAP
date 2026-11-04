@@ -35,6 +35,7 @@ _STEALING = {0: "Standard", 1: "Always", 2: "Never"}
 _TRAPS = {0: "None", 3: "Few", 999: "Trapsanity"}  # other counts are "Many"; LASR only tells "None" from the rest
 _DAMAGE = {0: "None", 1: "Normal", 2: "OHKO"}
 _CHEST_TYPES = {0: "Default", 1: "Size", 2: "Texture + Size"}
+_INSTANT_PICKUPS = {0: "Disabled", 1: "Incoming", 2: "Everything"}
 SEASHELL_CHEST = "seashell"  # the patcher's blue chest texture for seashells (ap_chest.CHEST_TYPE)
 
 
@@ -192,6 +193,7 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Movement Speed": bool(o.movement_speed),
         "360 Movement": bool(o.movement_360),
         "Instant Text": bool(o.instant_text),  # done by the module; LASR never implemented it
+        "Instant Pickups": _INSTANT_PICKUPS[o.instant_pickups.value],  # done by the module; not a LASR setting
         "Disable Guardian Acorn": bool(o.disable_guardian_acorn),
         "Disable Piece of Power": bool(o.disable_piece_of_power),
         "Easy Fishing": bool(o.easy_fishing),  # done by the module and the fishing spots; not a LASR setting
@@ -202,7 +204,6 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Blur Removal": False,
         "Disable Low Health Beep": False,  # done by the module; LASR never implemented it
         "No 30 FPS Drops": "On emulators",  # done by the module; not a LASR setting
-        "Instant Pickups": False,  # done by the module; not a LASR setting
         # not implemented by LASR
         "Randomize Sound Effects": False,
         "Rupees": o.starting_rupees.value,

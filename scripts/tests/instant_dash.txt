@@ -1,7 +1,7 @@
 # Instant Pickups while dashing: the free-standing item in the desert's cave (desert-cave, LanmolaCave_01A, an item
 # actor at 7.5 0.08 3.75). Link gets the Pegasus Boots and dashes east (L) across the cave's open floor through the
 # item. He dashes on through its event to the east wall (event 9 when the find is queued, never the demoEvent state,
-# 22), and the popup and toast follow. Run after newgame_file2 on a mod patched with Instant Pickups.
+# 22), and the popup and toast follow. Run after newgame_file2 on a mod patched with Instant Pickups on Everything.
 # Screenshots: instant_dash the popup at the wall.
 guard hurt
 send DBG give 15 1 0

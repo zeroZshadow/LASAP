@@ -1,4 +1,4 @@
-# Instant Pickups (a mod patched with it, or config.ini [tweaks] instant_pickups = true): opens beach-chest as
+# Instant Pickups on Everything (a mod patched with it, or config.ini [tweaks] instant_pickups = everything): opens beach-chest as
 # beach_chest does. Link plays no item-get: the item's model shows above his head with its fanfare, the toast names
 # the find, and he is free again while the model shows. Run after boot_file1 on a save where the chest is closed.
 # Screenshots: instant_1 the popup after the chest.

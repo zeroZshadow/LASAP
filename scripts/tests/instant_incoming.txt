@@ -1,0 +1,38 @@
+# Instant Pickups on Incoming (config.ini [tweaks] instant_pickups = incoming): a received item shows as a popup, its
+# toast names it and no event starts; Link's own find plays the game's item-get with its text, also while that popup
+# still shows, and queues no popup of its own. Opens beach-chest as beach_chest does. Run after boot_file1 on a save
+# where the chest is closed.
+# Screenshots: incoming_received the popup, incoming_find the item-get.
+guard hurt
+send DBG grant PowerBraceletLv1 1 -1 0
+expect OK.grant 5
+warp Field 86.25 6 173.25
+at 86.25 173.25
+face right
+interact
+until carry=1+free 3
+face left
+tap 1
+until carry=0 3
+goto 87.75 6 173.25
+at 87.75 173.25
+face up
+guard event=22
+send DBG grant Seashell 1 -1
+expect OK.grant 5
+await 3 popup=1
+await 3 shown=22(\s|$)
+send DBG text SystemSaving
+expect said=You\sgot\sSeashell 5
+shot incoming_received.png
+guard off event=22
+# The location's item may be a trap.
+guard off hurt
+check popup=1
+interact
+until textready 10
+shot incoming_find.png
+dismiss 20
+await 5 popup=0
+until free 10
+check showq=0(\s|$)

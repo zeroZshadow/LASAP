@@ -3,6 +3,7 @@ game: Links Awakening Switch
 Links Awakening Switch:
   logic: basic
   traps: none
+  instant_pickups: everything
   plando_items:
     # Received from the other player (server /send_location): a long item name from a long player name
     - items:

@@ -26,7 +26,6 @@ PLAYER_SETTINGS = (
     PlayerSetting("no_low_health_beep", "Disable Low Health Beep", "No low-health beep", False),
     PlayerSetting("no_30fps_drops", "No 30 FPS Drops", "No drops to 30 fps", "On emulators",
                   ("On emulators", "Always", "Never")),
-    PlayerSetting("instant_pickups", "Instant Pickups", "Instant pickups", False),
 )
 PLAYER_DEFAULTS = {s.lasr: s.default for s in PLAYER_SETTINGS}
 
@@ -134,18 +133,12 @@ class LASSettings(settings.Group):
         Always or Never.
         """
 
-    class InstantPickups(settings.Bool):
-        """Items show as a popup instead of an item-get, those Link finds (with their fanfare) and those from the
-        server: the item's model above his head and the popup at the bottom right names it; play goes on. Off
-        (default): Link holds each item up and its text shows. The instruments' pedestals keep the item-get."""
-
     blur_removal: Union[BlurRemoval, bool] = False
     music: Music = Music("Vanilla")
     randomize_text: Union[RandomizeText, bool] = False
     randomize_environments: Union[RandomizeEnvironments, bool] = False
     no_low_health_beep: Union[NoLowHealthBeep, bool] = False
     no_30fps_drops: No30FpsDrops = No30FpsDrops("On emulators")
-    instant_pickups: Union[InstantPickups, bool] = False
 
     def player_settings(self) -> Dict[str, Any]:
         """The player settings under LASR's names, as the patcher takes them."""

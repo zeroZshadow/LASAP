@@ -1,6 +1,6 @@
 # Instant Pickups in the shop: buying the item in the Mabe shop's third counter slot (the shovel's location). The
 # shopkeeper takes the item out of Link's hands as he pays, so the item-get that follows his thanks is a find: its
-# popup shows and Link plays no item-get. Run after newgame_file2 on a mod patched with Instant Pickups; the script
+# popup shows and Link plays no item-get. Run after newgame_file2 on a mod patched with Instant Pickups on Everything; the script
 # gives Link 999 rupees.
 # Screenshots: instant_shop the popup.
 guard hurt

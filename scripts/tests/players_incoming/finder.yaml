@@ -1,0 +1,10 @@
+name: Wandering Walrus
+game: ChecksFinder
+ChecksFinder:
+  plando_items:
+    # Found by Link in the beach chest: another player's item, with a 16-character player name
+    - items:
+        Map Width: 1
+      locations:
+        - Toronbo Shores - Beach Chest
+      world: Link

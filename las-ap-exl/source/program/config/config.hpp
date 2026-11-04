@@ -9,6 +9,8 @@ enum class DamageMode { Normal, Ohko, None };
 enum class Stealing { Normal, Always, Never };
 // No 30 FPS Drops: on emulators only, always or never.
 enum class FpsDrops { Emulator, On, Off };
+// Instant Pickups: which items show as a popup, not an item-get: none, those from the server, those and Link's finds.
+enum class InstantPickups { Disabled, Incoming, Everything };
 
 struct PatchConfig {
     struct {
@@ -52,7 +54,7 @@ struct PatchConfig {
         bool no_piece_of_power = false;
         bool easy_fishing = false;
         FpsDrops no_30fps_drops = FpsDrops::Emulator;
-        bool instant_pickups = false;  // items Link finds and items from the server show as a popup, not an item-get
+        InstantPickups instant_pickups = InstantPickups::Disabled;
     } tweaks;
 
     struct {

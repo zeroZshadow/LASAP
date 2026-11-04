@@ -1,6 +1,6 @@
 # Instant Pickups and the buffs: the first Guardian Acorn in a new game, whose pickup plays an item-get with its text,
 # gives the buff at once: no text, its music (BGM_NUTS_INTRO) starts, no popup. Run after newgame_file2 on a mod
-# patched with Instant Pickups. The drop is forced as in buff_drops (KillCountNoDamage, inventory a5, one short of
+# patched with Instant Pickups on Everything. The drop is forced as in buff_drops (KillCountNoDamage, inventory a5, one short of
 # 14), then Link walks onto it.
 guard msg:Reading
 send DBG grant SwordLv1 1 -1 0

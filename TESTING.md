@@ -242,7 +242,7 @@ On the sandbox (Ryubing, game 1.0.0) with the test module.
 - The Kanalet bombed guard's golden leaf.
 - The Slime Eye's fight played with the boots: `slime_eye_drop` starts its fall and its split through the boss's own state changes (`DBG slimeeye`).
 - Real hardware.
-- Stealing from the shop with Instant Pickups: the shopkeeper stops Link at the door unless he looks away, and no test times that. The shop's flows take their goods from Link (`RemoveGoods`) before each item-get, so a stolen item's find leaves nothing in his hands.
+- Stealing from the shop with Instant Pickups on Everything: the shopkeeper stops Link at the door unless he looks away, and no test times that. The shop's flows take their goods from Link (`RemoveGoods`) before each item-get, so a stolen item's find leaves nothing in his hands.
 - `APSignRead` through a save and a restart of the game (other added flags, `APRecv<n>`, last in the save the same way).
 - Hidden counts and unfound dungeon doors in Universal Tracker's window (`test_sign_counts.py` and `test_universal_tracker.py` cover the world's side of them, the client's rules and the keys).
 - Easy Fishing in play: the line holding while Link reels against a hooked fish (with the setting off it snaps). Fishing is a manual test.

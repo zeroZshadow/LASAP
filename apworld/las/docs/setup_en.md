@@ -60,6 +60,10 @@ What changes how the game plays is in your options file (group "Gameplay"), the 
 damage Link takes, walking and swimming 20% faster, 360° movement, skipping the song cutscenes, text that shows a
 page at once, a hookshot that grabs any surface, no Guardian Acorns or Pieces of Power, and easy fishing.
 
+Instant Pickups (`instant_pickups` in the same group) shows items as a popup while you keep playing, instead of Link
+holding them up with their text. `disabled` (the default) shows no popups, `incoming` only for items that reach you
+over Archipelago, and `everything` for the items you find too.
+
 To start with more hearts, add Heart Containers to `start_inventory_from_pool` in your options file, e.g.
 `Heart Container: 2` for five hearts.
 

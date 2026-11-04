@@ -1,5 +1,5 @@
 // Item-gets (DESIGN.md, Showing received items; Instant pickups): received items shown one at a time as the item
-// event, traps as their effect, and with Instant Pickups found and received items as popups.
+// event, traps as their effect, and with Instant Pickups received items and, on Everything, found ones as popups.
 #include "ap/ap.hpp"
 #include "ap/ap_bridge.hpp"
 #include "ap/ap_patcher.hpp"
@@ -275,8 +275,8 @@ namespace {
 
     // The item-get (Player_ItemGetSequence; scripts/re/ITEMS.md, Item-get): it only displays, the inventory is changed
     // separately. The item event's item-get shows the placeholder with RECEIVED_LABEL as message entry; the requested
-    // item and its message take their place. With Instant Pickups any other item-get is a find, unless its entry has
-    // the native mark.
+    // item and its message take their place. With Instant Pickups on Everything any other item-get is a find, unless
+    // its entry has the native mark.
     HOOK_DEFINE_TRAMPOLINE(ItemGetSequence) {
         static void Callback(SharedPtr<>* out, void* player, ItemId item, bool keepCarry, StrView* messageEntry) {
             g_ItemGetAt = NowMs();
@@ -289,7 +289,7 @@ namespace {
                 entry.data++;
                 entry.size--;
             }
-            if (global_config.tweaks.instant_pickups && !received && !native) {
+            if (global_config.tweaks.instant_pickups == InstantPickups::Everything && !received && !native) {
                 bool wait = EarlierFind();
                 InstantPickup(item);
                 if (!wait) {
@@ -366,8 +366,8 @@ namespace {
 
     bool ItemDisplayPending() { return !g_ShowQueue.empty() || g_ItemEvent != ItemEvent::None; }
 
-    // With Instant Pickups, as popups; finds come first and show as soon as the popup is free, also during the event
-    // that gave them.
+    // With Instant Pickups, as popups; finds (Everything) come first and show as soon as the popup is free, also during
+    // the event that gave them.
     void TickItemGet() {
         if (g_FindWaitShown && !AP::Popup::Busy()) EndFindWait();
         bool free = PlayerFree();
@@ -389,7 +389,7 @@ namespace {
             if (g_FindWait && !FindQueued(g_FindWaitEvent)) g_FindWaitShown = true;
             return;
         }
-        bool popup = global_config.tweaks.instant_pickups && FrontItem() != nullptr;
+        bool popup = global_config.tweaks.instant_pickups != InstantPickups::Disabled && FrontItem() != nullptr;
         if (popup && (AP::Popup::Busy() || !AP::ToastsIdle())) return;
         // An item-get right after the last item event's end follows it sooner than after other events
         u64 settle = popup ? kPopupSettleMs : g_FreeSince - g_ItemEventEnded < 100 ? kNextItemGetMs : kFreeSettleMs;

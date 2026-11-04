@@ -397,6 +397,18 @@ class InstantText(Toggle):
     display_name = "Instant Text"
 
 
+class InstantPickups(Choice):
+    """Which items show as a popup instead of Link holding them up with their text: the item's model above his head
+    and a notice at the bottom right, while play goes on.
+    disabled: none. incoming: those that reach you over Archipelago, not those you find. everything: those too; only
+    the instruments' pedestals keep the normal animation."""
+    display_name = "Instant Pickups"
+    option_disabled = 0
+    option_incoming = 1
+    option_everything = 2
+    default = 0
+
+
 class NiceHookshot(Toggle):
     """The hookshot grabs onto any surface. The logic does not count on it."""
     display_name = "Nice Hookshot"
@@ -495,6 +507,7 @@ class LASOptions(PerGameCommonOptions):
     movement_360: Movement360
     skip_song_cutscenes: SkipSongCutscenes
     instant_text: InstantText
+    instant_pickups: InstantPickups
     nice_hookshot: NiceHookshot
     disable_guardian_acorn: DisableGuardianAcorn
     disable_piece_of_power: DisablePieceOfPower
@@ -515,8 +528,8 @@ OPTION_GROUPS = [
     OptionGroup("World", [OpenMabe, OpenKanalet, OpenMamu, CompletedBridge, ClassicD2, ShuffledDungeons, FreeBook,
                           FastFishing, FastStalfos, ShuffledBombs, ShuffledPowder, AmmoGhost, MapTracker, InGameHints,
                           HintDistribution, Stealing, ChestAppearance]),
-    OptionGroup("Gameplay", [Damage, MovementSpeed, Movement360, SkipSongCutscenes, InstantText, NiceHookshot,
-                             DisableGuardianAcorn, DisablePieceOfPower, EasyFishing, RandomizeEnemies,
+    OptionGroup("Gameplay", [Damage, MovementSpeed, Movement360, SkipSongCutscenes, InstantText, InstantPickups,
+                             NiceHookshot, DisableGuardianAcorn, DisablePieceOfPower, EasyFishing, RandomizeEnemies,
                              RandomizeEnemySizes, BouncyItems]),
 ]
 

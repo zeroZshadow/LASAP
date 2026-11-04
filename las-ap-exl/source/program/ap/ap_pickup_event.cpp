@@ -1,7 +1,7 @@
-// Instant Pickups: Link keeps moving through a pickup's event (DESIGN.md, Instant pickups; scripts/re/EVENTS.md, What
-// an event's start does to the actors). A pickup's flow only gives the item: its Link actions are item-gets, which
-// Instant Pickups makes instant. When Link moves freely as such an event starts, the hooks leave him out of it: no
-// event state, no suspension.
+// Instant Pickups on Everything: Link keeps moving through a pickup's event (DESIGN.md, Instant pickups;
+// scripts/re/EVENTS.md, What an event's start does to the actors). A pickup's flow only gives the item: its Link
+// actions are item-gets, which that mode makes instant. When Link moves freely as such an event starts, the hooks
+// leave him out of it: no event state, no suspension.
 #include "ap/ap_bridge.hpp"
 #include "ap/ap_patcher.hpp"
 #include "config/config.hpp"
@@ -143,7 +143,7 @@ namespace {
             g_KeptOut = false;
             g_EventSerial++;
             const auto* link = static_cast<const Game::Actors::Player*>(player);
-            if (global_config.tweaks.instant_pickups && MovesFreely(link)) {
+            if (global_config.tweaks.instant_pickups == InstantPickups::Everything && MovesFreely(link)) {
                 const RunningEvent* event = Running(static_cast<const EventManager*>(*Game::EventManager_ptr));
                 if (PickupFlow(event)) {
                     Logging.Log("[AP] pickup event %.*s: Link moves on", static_cast<int>(event->entry.length),

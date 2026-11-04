@@ -107,8 +107,8 @@ namespace AP::Bridge {
     // ---- Item-gets and popups (ap_itemget.cpp) ----
 
     // A received item waiting to be shown; with a sender, it shows "You got <item> from <sender>!".
-    // With Instant Pickups, an item Link found (found): it shows as a popup with that toast ("" to name it when it
-    // shows), queued at that time.
+    // With Instant Pickups on Everything, an item Link found (found): it shows as a popup with that toast ("" to name
+    // it when it shows), queued at that time.
     struct ItemShow {
         ItemId id; std::string item; std::string sender;
         bool found = false; std::string toast; u64 at = 0;

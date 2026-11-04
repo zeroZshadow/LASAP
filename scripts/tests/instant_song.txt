@@ -1,6 +1,6 @@
 # Instant Pickups with a song: the popup shows the song's NPC model (Marin for the Ballad), sized and turned by the
 # held-model fixes as in the item-get, and the toast names the song. Run after boot_file1 on a save where the beach
-# chest is closed, on a mod patched with Instant Pickups whose beach chest holds the Ballad
+# chest is closed, on a mod patched with Instant Pickups on Everything whose beach chest holds the Ballad
 # (make_test_patch.py --models beach-chest=song-ballad --names "beach-chest=Ballad of the Wind Fish").
 # Screenshots: instant_song the popup.
 guard hurt

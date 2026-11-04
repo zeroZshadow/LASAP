@@ -1,6 +1,6 @@
 # The Jukebox's Ballad through a stolen item's exit and straight back in (DESIGN.md, Music): the item's fanfare makes
 # the ensemble give way, and it comes back while the shop loads, once the level has its rooms. Run after
-# newgame_file2 on a mod patched with Instant Pickups; it gives Link the Surf Harp and the Coral Triangle (raw adds)
+# newgame_file2 on a mod patched with Instant Pickups on Everything; it gives Link the Surf Harp and the Coral Triangle (raw adds)
 # and sets the steal flags instead of stealing. DBG music's log shows the yield and the resume.
 guard hurt
 send DBG give 53 1 -1

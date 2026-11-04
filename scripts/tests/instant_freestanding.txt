@@ -1,7 +1,7 @@
 # Instant Pickups with a free-standing item: the heart piece on the grass island among the holes (diamond-island,
 # Field_05E, an item actor at 66.75 13.5 54.75), as diamond_island. Link walks up into it from one cell south; its
 # popup shows with no item-get, and he is free again while it shows. Run after newgame_file2 (the sandbox's file 1 has
-# the location checked) on a mod patched with Instant Pickups.
+# the location checked) on a mod patched with Instant Pickups on Everything.
 # Screenshots: instant_freestanding the popup.
 guard hurt
 warp Field 66.75 13.5 56.25

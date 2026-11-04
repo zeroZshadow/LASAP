@@ -89,7 +89,6 @@ PLAYER_SETTINGS = {
     "Randomize Environments": False,
     "Disable Low Health Beep": False,
     "No 30 FPS Drops": "On emulators",
-    "Instant Pickups": False,
 }
 PLAYER_CHOICES = {"Music": ("Vanilla", "Shuffled", "Removed"), "No 30 FPS Drops": ("On emulators", "Always", "Never")}
 # No 30 FPS Drops as config.ini [tweaks] no_30fps_drops: the module finds out whether it runs on an emulator
@@ -331,7 +330,7 @@ def config_text(settings: dict, seed_hash: str, slot_name: str) -> str:
                f"no_piece_of_power = {settings.get('Disable Piece of Power', False)}\n"
                f"easy_fishing = {settings.get('Easy Fishing', False)}\n"
                f"no_30fps_drops = {NO_30FPS_DROPS[settings.get('No 30 FPS Drops', 'On emulators')]}\n"
-               f"instant_pickups = {settings.get('Instant Pickups', False)}\n")
+               f"instant_pickups = {settings.get('Instant Pickups', 'Disabled')}\n")
     text.write(ap_options.config_lines(settings))
     seashells = ap_goal.settings_seashells(settings)
     # The goal's numbers: what the egg takes and its sign says, all eight instruments and no seashells for patches

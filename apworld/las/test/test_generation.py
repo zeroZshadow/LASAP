@@ -510,17 +510,17 @@ class TestGameplayOptions(LASTestBase):
     settings are the visual and audio ones."""
     options = {"damage": "ohko", "movement_speed": False, "movement_360": True, "skip_song_cutscenes": True,
                "instant_text": True, "nice_hookshot": True, "disable_guardian_acorn": True,
-               "disable_piece_of_power": True, "easy_fishing": False}
+               "disable_piece_of_power": True, "easy_fishing": False, "instant_pickups": "incoming"}
 
     def test_patch_settings(self) -> None:
         from ..host_settings import PLAYER_DEFAULTS
         settings = self.world.patch_data()["settings"]
         self.assertEqual({k: settings[k] for k in ("Damage", "Movement Speed", "360 Movement", "Song Cutscenes",
                                                    "Instant Text", "Nice Hookshot", "Disable Guardian Acorn",
-                                                   "Disable Piece of Power", "Easy Fishing")},
+                                                   "Disable Piece of Power", "Easy Fishing", "Instant Pickups")},
                          {"Damage": "OHKO", "Movement Speed": False, "360 Movement": True, "Song Cutscenes": True,
                           "Instant Text": True, "Nice Hookshot": True, "Disable Guardian Acorn": True,
-                          "Disable Piece of Power": True, "Easy Fishing": False})
+                          "Disable Piece of Power": True, "Easy Fishing": False, "Instant Pickups": "Incoming"})
         self.assertFalse(set(PLAYER_DEFAULTS) & {"Damage", "Movement Speed", "360 Movement", "Song Cutscenes",
                                                  "Instant Text", "Nice Hookshot", "Disable Guardian Acorn",
-                                                 "Disable Piece of Power", "Easy Fishing"})
+                                                 "Disable Piece of Power", "Easy Fishing", "Instant Pickups"})
