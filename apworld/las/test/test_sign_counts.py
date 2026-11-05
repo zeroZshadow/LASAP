@@ -127,7 +127,7 @@ class TestClient(unittest.TestCase):
                 await asyncio.sleep(0)
                 seen.append(ctx.logic_tracker_goal)
             gets = [msg for msg in sent if msg["cmd"] == "Get"]
-            self.assertEqual(gets, [{"cmd": "Get", "keys": ["las_sign_0_1"]}])
+            self.assertEqual(gets, [{"cmd": "Get", "keys": ["las_sign_0_1", "las_doors_0_1"]}])
             return [msg for msg in sent if msg["cmd"] == "Set" and msg["key"].startswith("las_sign")], seen
         return asyncio.run(run())
 
