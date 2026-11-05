@@ -306,9 +306,9 @@ class AmmoGhost(DefaultOnToggle):
 
 
 class MapTracker(DefaultOnToggle):
-    """The pause map shows where your unchecked locations are: an icon on the overworld map for each spot (hover it
-    for the locations' names), and in dungeons the chests and a chest icon for each room with other checks. The
-    whole overworld map and all dungeon rooms are revealed from the start."""
+    """The pause map marks your checks with a dot for each spot, on the overworld and in dungeons, colored by whether
+    your items reach them. Hover a dot for its name; A skips its check or lists the spot's checks. The whole overworld
+    map and all dungeon rooms are revealed from the start."""
     display_name = "Map Tracker"
 
 

@@ -1,9 +1,7 @@
-# exlaunch
-A framework for injecting C/C++ code into Nintendo Switch applications/applet/sysmodules.
+# las-ap-exl
 
-> [!NOTE]
-> This project is a work in progress. If you have issues, reach out to `shad0w0.` on Discord.
+The game module of [LAS Archipelago](../README.md), derived from [exlaunch](https://github.com/shadowninja108/exlaunch) through [Owen-Splat's fork](https://github.com/Owen-Splat/exlaunch). Build it with `scripts/build_exl.sh`. See [DESIGN.md](../DESIGN.md) for its source layout and protocol.
 
-# Credit
-- Atmosphère: A great reference and guide.
-- oss-rtld: Included for (pending) interop with rtld in applications (License [here](https://github.com/shadowninja108/exlaunch/blob/main/source/lib/reloc/rtld/LICENSE.txt)).
+Report problems to this project, not to exlaunch.
+
+exlaunch credits Atmosphère as a reference, and includes oss-rtld ([license](source/rtld/LICENSE.txt)).

@@ -7,56 +7,43 @@ config file.
 
 ## What does randomization do to this game?
 
-Items Link normally finds on Koholint Island are shuffled into the multiworld. The logic is that of the
-[LAS Randomizer](https://github.com/Owen-Splat/LAS-Randomizer), so the game can always be finished, though areas may be
-needed in a different order than in the original game. The world needs the 2019 Switch release, game version 1.0.0.
+The items Link finds on Koholint Island are shuffled into the multiworld, using the logic of the [LAS
+Randomizer](https://github.com/Owen-Splat/LAS-Randomizer). The world needs the 2019 Switch release at version 1.0.0.
 
 ## What is the goal?
 
-Wake the Wind Fish: play the Ballad of the Wind Fish at the egg on Mt. Tamaranch, then beat the Nightmare inside.
-The egg opens with `instruments_required` of the eight instruments (all eight by default); instruments you start
-with count toward it. The sign at the foot of the egg's stairs tells how many, so the number can be random
-(`random`, or `random-range-3-6` for a number from 3 to 6). A random number
-stays hidden in the client's map tracker, PopTracker and Universal Tracker until you have read the sign; until then
-they count on all eight.
+Wake the Wind Fish: play the Ballad at the egg on Mt. Tamaranch with `instruments_required` instruments (all eight by
+default), then beat the Nightmare inside.
 
-With `goal: seashell_hunt` the egg needs `seashells_required` of the 50 secret seashells (30 by default) instead, and
-no instruments; with 0 it opens as soon as you reach it. The egg opens by itself, without the ocarina: once you have them and stand at the egg, you watch it break open. Its door then takes you straight to the
-Wind Fish for the ending, past the maze and the Nightmare. The sign names the seashells too, so their number can be
-random as well, hidden in the trackers the same way until you have read the sign. The Seashell
-Mansion's rewards follow `seashell_mansion` as on any goal, so an item you need can wait at a reward above that number.
+With `goal: seashell_hunt`, stand at the egg with `seashells_required` secret seashells (30 by default). It opens by
+itself, and its door leads straight to the ending.
+
+Either number can be left to chance (`random`, `random-range-3-6`). The sign at the foot of the egg's stairs tells it,
+and trackers hide it until you have read the sign.
 
 ## What items and locations get shuffled?
 
-Chests, free gifts, golden leaves, heart pieces, seashells, the shop, boss drops and other item locations, each category
-with its own option. The trade quest, Dampé, the Rapids Ride (its race and the items on its islands), fishing, blue
-rupees, owl statues and the Seashell Mansion rewards can be added.
+Chests, free gifts, golden leaves, heart pieces, seashells, the shop, boss drops and a few standing items, each with its
+own option. You can add the trade quest, Dampé, the Rapids Ride, fishing, the Color Dungeon's blue rupees, owl statues
+and Seashell Mansion rewards.
 
-An activity left out (the trade quest, Dampé, the Rapids Ride, fishing, the Color Dungeon's blue rupees, the Seashell Mansion rewards above
-`seashell_mansion` or above the seashells the goal takes) is optional: its rewards are checks holding only junk and traps, yours or another player's,
-and they are in logic only after the goal. Skip them, or do them for completion. With nearly every category off there
-is not enough junk for all of them: some then hold your own items, which the goal never needs.
+An activity you leave out is optional: its rewards hold only junk and traps, and are in logic only after the goal. Any
+other category you leave out keeps its items in place, but each spot is still a check. The Trendy Game's prizes are
+never shuffled.
 
-Any other category left unshuffled keeps its items in their places. Each spot is still a check: the server's hints can
-name it, and the item arrives from the server when you pick it up. The Trendy Game's prizes are never
-shuffled; its Yoshi Doll, which starts the trade quest, is a check. Saving Bow-Wow and reviving the rooster are checks too. Small keys, nightmare keys, maps, compasses, stone beaks and instruments can stay in their own
-dungeon or go anywhere. Small keys (`small_keys`), nightmare keys (`nightmare_keys`) and maps, compasses and stone beaks
-(`dungeon_items`) each have their own option, which can also put them in any of your dungeons, anywhere in your own
-world, only in other players' worlds, or give them at the start.
+`small_keys`, `nightmare_keys`, `dungeon_items` (maps, compasses and stone beaks) and `instruments` set where those
+items can be placed.
 
 ## Can dungeon entrances be shuffled?
 
-With the Shuffled Dungeons option, each dungeon's entrance leads into a random dungeon, the Color Dungeon included,
-and that dungeon's exit leads back out of the same entrance. The dungeon markers on the overworld map move with them,
-and the logic follows each door. The spoiler log lists where each entrance leads. The client's map tracker, PopTracker
-and Universal Tracker show where a door leads only once you have entered it, as the map does.
+Yes, with Shuffled Dungeons. Each entrance leads into a random dungeon, and its exit leads back out the same way.
+Trackers show where a door leads only after you have been through it.
 
 ## What does the player start with?
 
-By default, a sword, a shield, the ocarina with Manbo's Mambo, and 100 rupees, as in the original randomizer. The
-`start_inventory_from_pool` option lists the starting items (they leave the item pool) and `starting_rupees` sets the
-rupees. With `dungeon_items: start_with`, the player also starts with every dungeon's map, compass and stone beak, and
-with `small_keys` or `nightmare_keys` set to `start_with`, with every dungeon's keys of that kind.
+By default, a sword, a shield, the ocarina with Manbo's Mambo, 100 rupees, and every dungeon's map, compass and stone
+beak. Change this with `start_inventory_from_pool` and `starting_rupees`. `Heart Container: 2` starts you with five
+hearts.
 
 ## Which items can be in another player's world?
 
@@ -64,60 +51,83 @@ Any shuffled item, including dungeon items and instruments when their options al
 
 ## What does another world's item look like in Link's Awakening?
 
-A location shows the model of the item it holds. Items from other games show a Link's Awakening model when their name
-matches one (any shield shows the shield, any bomb bag the bombs); other items show the Archipelago logo as six colored
-balls. Picking one up names the item and whose it is.
-
-With `chest_appearance`, a chest's size, and optionally its texture, shows what it holds, as in the original
-randomizer; with textures, chests holding a seashell are blue. Another player's item counts as important when it is
-progression.
+A matching Link's Awakening model if its name has one (any shield shows the shield), otherwise the Archipelago logo as
+six colored balls. Picking it up names the item and its owner. With `chest_appearance`, a chest's size and texture show
+what it holds.
 
 ## When the player receives an item, what happens?
 
-Link holds the item up with its usual item text, naming the player who sent it. Items arriving during a cutscene or a
-menu wait until Link is free. A trap plays its effect from the original randomizer (a shock, a squish, ...), and a small
-popup at the bottom right names the trap and its sender. On normal damage a trap never takes the last quarter heart.
+Link holds it up and its text names the sender, once he is free. With Instant Pickups, items show as a popup while you
+keep playing: `incoming` for received items, `everything` for your finds too.
+
+A trap plays its effect and names its sender. On normal damage it never takes your last quarter heart.
 
 ## Where do I get more bombs and arrows?
 
-With the Ammo Ghost option (on by default), a ghost waits in Tarin's house once you have bombs, the bow or the magic
-powder. Talk to him and he tops your bombs, arrows and powder up to 15 (10 bombs become 15; more than 15 stay as they
-are), as often as you like. The logic counts him as a refill, as it counts cutting bushes. Together with the warp menu below, this keeps you from getting stuck without ammo.
+With the Ammo Ghost option (on by default), a ghost in Tarin's house tops your bombs, arrows and powder up to 15. He
+shows up once you have one of them.
 
 ## Where are my checks?
 
-With the Map Tracker option (on by default), the map in the pause menu shows them. The whole overworld map is
-revealed from the start, and a dot marks each spot with checks, a larger one where there are several: green when
-the items you have reach all of its checks you have not done, half green and half red for some of them, red for
-none yet, grey with a tick once they are all done. Optional checks count as reached only once the goal is. A dot beside each dungeon's entrance does the same for the checks
-inside. Hover a dot to see its name; for a spot with several checks left, it starts with how many of them are in
-logic, as in "3/7 Fishing Hole" or "9/15 D1 Tail Cave". With Shuffled Dungeons a dungeon's dot sits at the door that leads
-into it and shows just "Unknown dungeon", without the count, until you have been inside. Only checks your options shuffle get a dot. X on the map hides or shows the red dots (it
-replaces Memories while the Map Tracker option is on). "Offline" next to X means the client is not connected to the
-server: the colours are then those of the last connection, or all green before the first one. In dungeons the map shows every room and the chests (open once checked, also when a server command checked
-them), and a chest icon in each room with other checks (key drops, owl statues, the boss) opens once they are done. The dungeon map, compass and stone beak are still items to
-find: the side panel shows the ones you have.
+With the Map Tracker option (on by default), the pause map marks each spot with a dot:
+
+- Green: your items reach all its remaining checks.
+- Half green, half red: some of them.
+- Red: none yet.
+- Grey with a tick: done.
+- Gold ring: a server hint names a check there.
+
+| Button | Action |
+|---|---|
+| Cursor on a dot | Shows its name and, for several checks, how many are in logic ("3/7 Fishing Hole"), plus any hinted items |
+| A on a dot | Skips its one check, or lists its several checks to skip from. Skips stay on your map only |
+| X | Hides or shows red dots |
+
+"Offline" next to X means the client is not connected, so the colors may be out of date. With Shuffled Dungeons, a
+door's dot reads "Unknown dungeon" until you have been inside.
 
 ## How do I get back to the start?
 
-Hold Minus for a second: a menu asks "Return to Tarin's house?". Warp home takes Link to Mabe Village, walking out
-of Tarin's house; Continue (or B) closes the menu. A short press of Minus still opens the map. The menu does not open during a
-cutscene, while Link holds something, or in the Wind Fish's Egg, the Chamber Dungeons, the fishing pond and the trendy
-game.
+Hold Minus for a second, then choose Warp home to return to Mabe Village. This does not work during a cutscene, while
+Link holds something, or in the Wind Fish's Egg, Chamber Dungeons, fishing pond, Trendy Game or ending.
+
+## How do the in-game hints work?
+
+Owl statues and library books give hints about your items (option In-Game Hints). Dungeon owl statues need that
+dungeon's stone beak. With `server` (the default), hints that name a location also show in the server's hint list, at no
+hint point cost. Hint Distribution picks the mix:
+
+- `precise`: the location of one of your progression items.
+- `balanced` (default): long checks, areas you need, areas nobody needs, areas holding your items, and precise hints.
+- `vague`: mostly areas, with few precise hints.
+
+## Will I see the other players?
+
+Yes. The other Link's Awakening players in your multiworld show as see-through Links when they are in your area. They
+can't touch anything. No setup is needed.
+
+## What is the Jukebox?
+
+A pause menu page after System that plays the game's music in place of the area's own.
+
+| Button | Action |
+|---|---|
+| A | Plays the track, or stops it if it is playing |
+| X / Y | Shuffle / Repeat one |
+| ZR | Mutes all music |
+| D-pad Left / Right, in play | Changes the track |
+
+Loading a save turns it off.
 
 ## Which options change how the game plays?
 
-The group "Gameplay": the damage Link takes (none, normal or one hit kills), walking and swimming 20% faster (on by
-default), 360° movement, skipping the song cutscenes, text that shows a page at once, a hookshot that grabs any
-surface (the logic does not count on it), no Guardian Acorns or Pieces of Power, easy fishing: the line never
-breaks and Ol' Baron bites more often (on by default), and random enemies and enemy sizes, which change each time a
-room loads (enemies you must defeat to go on keep their kind). They are options rather than client settings so that a seed
-plays the same for everyone in it. How the game looks and sounds (blur, music, shuffled dialogue and lighting, the
-low-health beep) is set in the client.
+The group "Gameplay": damage (none, normal or one hit kills), 20% faster walking and swimming (on by default), 360°
+movement, skipped song cutscenes, instant text, Instant Pickups, a hookshot that grabs any surface, no Guardian Acorns
+or Pieces of Power, easy fishing (on by default), and random enemies and enemy sizes.
+
+These are options so that a seed plays the same for everyone. How the game looks and sounds is set in the client.
 
 ## How does DeathLink work?
 
-With the DeathLink option on, Link's deaths reach the other DeathLink players, and theirs kill Link. A death that
-Tracy's Secret Medicine saves sends nothing. A death from another player waits until Link is free (not in a cutscene, a
-conversation, an item display or a menu), shows who caused it, and kills him even with the Secret Medicine, which he
-keeps. Deaths that arrive before a save is loaded are ignored.
+Link's deaths reach the other DeathLink players, and theirs kill Link once he is free. Tracy's Secret Medicine revives
+him from either and is used up, and a death it saves you from sends nothing.

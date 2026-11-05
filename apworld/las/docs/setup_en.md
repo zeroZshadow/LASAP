@@ -3,13 +3,10 @@
 ## Required software
 
 - [Archipelago](https://github.com/ArchipelagoMW/Archipelago/releases) 0.6.8 or newer.
-- The Legend of Zelda: Link's Awakening (2019), game version 1.0.0, on a Switch emulator. Ryujinx and Eden are
-  tested; other yuzu-based emulators should work the same way. A Switch with Atmosphère is untested.
-- The game's update turned off, if you installed it: in Ryujinx, right-click the game, Manage Title Updates, and
-  choose No Update; in Eden, right-click the game, Properties, Add-Ons, and untick Update.
-- A RomFS dump of the game, made with the update turned off. In Ryujinx: right-click the game, then Extract Data,
-  RomFS.
-- Nothing else: the world carries the patcher and runs it inside the client.
+- The Legend of Zelda: Link's Awakening (2019) at game version 1.0.0, on Ryujinx, Eden or another yuzu-based emulator.
+- The game's update turned off. In Ryujinx: right-click the game, Manage Title Updates, No Update. In Eden: right-click
+  the game, Properties, Add-Ons, untick Update.
+- A RomFS dump of the game, made with the update off.
 
 ## Installing the world
 
@@ -17,158 +14,110 @@ Double-click `las.apworld`, or copy it into Archipelago's `custom_worlds` folder
 
 ## Joining a multiworld game
 
-1. Get your `.aplas` patch file: on the website it is on the room page, from a local generation it is in the zip.
-2. Open it: double-click it, drag it onto the Archipelago Launcher, or use the Launcher's "Open Patch". The Links
-   Awakening Switch Client opens on its Patch tab.
-3. The first time, the Patch tab walks you through four steps. Each says what to do:
-   1. **Patch file**: the file you opened. Leave "Open .aplas patch files in this client when I double-click them"
-      ticked: Archipelago's installer only sets this up for the games it ships with.
-   2. **Where you play**: an emulator on this computer, or a Nintendo Switch.
-   3. **Your emulator**: choose its program, Ryujinx or Eden (or another yuzu-based emulator). The client finds its
-      SD card, mod folder and the game in its game list.
-      **Your Switch**: put the Switch's SD card in this computer and choose it (the client lists the drives, and marks
-      those with Atmosphère), and enter the Switch's IP address (on the Switch: System Settings, Internet, Connection
-      Status).
-   4. **Game files**: the RomFS dump.
-      - Ryujinx: right-click Link's Awakening, Extract Data, RomFS, and pick a folder. Choose that folder.
-      - Yuzu-based emulators: right-click Link's Awakening, Dump RomFS. The client finds the dump by itself.
-      - A Switch: dump the RomFS with a dump tool such as nxdumptool and copy it to this computer.
-      With an emulator, the game file is optional: when the client does not find the game in the emulator's game
-      list, Play opens the emulator and you start the game there.
-4. Press **Play** (with a Switch: **Install to SD card**). The client patches the game and installs the mod; the
-   Patch tab shows each step. With an emulator it then starts the emulator with the game. With a Switch, put the SD
-   card back and start the game; the client connects to it by itself.
-   It connects to the server the patch names (patches from the website name their room) as your slot; otherwise,
-   enter the address in the top bar.
-5. Start a new save file; its name starts as your slot name (cut to 8 characters). Items arrive once the save is
-   loaded. Once the client is connected to both the game and the server, a small popup at the bottom right says
-   "Archipelago connected as <slot>". The game also says when it loses the client.
+1. Get your `.aplas` patch file, from the website's room page or the local generation's zip.
+2. Open it by double-clicking it, dragging it onto the Archipelago Launcher, or using the Launcher's "Open Patch". The
+   client opens on its Patch tab.
+3. The first time, the Patch tab walks you through four steps:
+   1. **Patch file**: leave "Open .aplas patch files in this client when I double-click them" ticked.
+   2. **Where do you play?**: an emulator on this computer, or a Nintendo Switch.
+   3. **Your emulator**: choose its program. The client finds the rest.
 
-The client remembers its settings. Opening the next seed's patch file shows it in the Patch tab with "New seed"; Play
-installs it and starts the game without further questions. Play also reinstalls the mod after an update of the world.
-"Reinstall the mod without starting" installs the current seed again without starting the game. Below Play, Setup,
-Look and sound, Ghosts and Advanced each open their settings; Setup's Change links go back to a setup step.
+      **Your Switch**: put its SD card in this computer and choose it, then enter the Switch's IP address (System
+      Settings, Internet, Connection Status).
+   4. **Game files**: the RomFS dump.
+      - Ryujinx: right-click the game, Extract Data, RomFS, pick a folder, then choose that folder in the client.
+      - Yuzu-based emulators: right-click the game, Dump RomFS. The client finds it.
+      - A Switch: dump it with a tool such as nxdumptool and copy it to this computer.
+4. Press **Play** (with a Switch: **Install to SD card**). The client patches the game, installs the mod and starts the
+   emulator. With a Switch, put the SD card back and start the game.
+5. If the client is not connected to the server, enter the room's address in the top bar.
+6. Start a new save file. Items arrive once it is loaded, and a popup says "Archipelago connected as \<slot\>".
+
+For the next seed, open its patch file and press Play. "Reinstall the mod without starting" installs the current seed
+again.
 
 ### Look and sound
 
-The Patch tab's "Look and sound" settings change how your own game looks and sounds, for every seed: no blur at the
-screen's edges, the music (Vanilla, Shuffled or Removed), shuffled dialogue, shuffled room lighting and no beep at low
-health. After a change, Play reinstalls the mod; restart the game to see it. They change nothing for the other
-players.
+These Patch tab settings apply to your game only, for every seed. After a change, press Play and restart the game.
 
-What changes how the game plays is in your options file (group "Gameplay"), the same for everyone in a seed: the
-damage Link takes, walking and swimming 20% faster, 360° movement, skipping the song cutscenes, text that shows a
-page at once, a hookshot that grabs any surface, no Guardian Acorns or Pieces of Power, and easy fishing.
-
-Instant Pickups (`instant_pickups` in the same group) shows items as a popup while you keep playing, instead of Link
-holding them up with their text. `disabled` (the default) shows no popups, `incoming` only for items that reach you
-over Archipelago, and `everything` for the items you find too.
-
-To start with more hearts, add Heart Containers to `start_inventory_from_pool` in your options file, e.g.
-`Heart Container: 2` for five hearts.
+- No blur at the screen's edges
+- Music: Vanilla, Shuffled or Removed
+- Shuffle the dialogue
+- Shuffle the rooms' lighting
+- No low-health beep
+- No drops to 30 fps: On emulators (default), Always or Never
 
 ### Advanced settings
 
-The Patch tab's advanced settings are for setups the client cannot find by itself. Under each, "In use" shows the
-folder or address the client uses, also when the setting is empty.
+These are for setups the client cannot find by itself. "In use" shows the current value, even when the setting is empty.
+They are saved in `host.yaml` under `las_options`.
 
 | Setting | When to set it |
 |---|---|
-| SD card folder | An emulator the client does not know, or a Ryujinx data folder used with `--root-data-dir` (choose its `sdcard` folder; the client then starts Ryujinx with that data folder). For a Switch, the setup sets it |
-| Mod folder | Mods go somewhere other than the emulator's default: `<SD card>/atmosphere/contents/01006BB00C6F0000` for Ryujinx and a Switch, `<data folder>/load/01006BB00C6F0000/Archipelago` for yuzu-based emulators |
-| Patcher command | Leave it empty: the client uses the patcher the world carries. Set it only to run another patcher program (see the repository's README) |
-| Game address | The Switch's IP address when the game runs on a Switch (the setup sets it); `127.0.0.1` for an emulator on this computer |
-
-The settings are saved in `host.yaml` under `las_options`; `platform` holds where you play. Changing where you play
-clears the SD card and mod folders, which belong to the other one.
-
-## In-game hints
-
-Owl statues and the library's books give hints about your items (option In-Game Hints). Dungeon owl statues need that
-dungeon's stone beak. Hint Distribution sets which kinds they give:
-
-- `precise`: each names the location, in your world or another player's, of one of your progression items.
-- `balanced` (default): a mix. Some name what a long check holds (the trade quest's end, the 40 and 50 seashell rewards,
-  the rapids race's best time, Ol' Baron, Dampe's last challenge), some an area (an overworld region or a dungeon)
-  holding something you need to wake the Wind Fish, some an area holding nothing anyone needs, some the area holding
-  one of your items; the rest are precise.
-- `vague`: mostly areas, with few precise hints.
-
-With the default setting `server`, a hint you read that names a location also shows in the server's hint list, as
-`!hint` would, without costing hint points. Hints read while the client is not connected reach the server once it is.
+| SD card folder | An unknown emulator, or a Ryujinx `--root-data-dir` folder (choose its `sdcard` folder) |
+| Mod folder | Mods go somewhere other than `<SD card>/atmosphere/contents/01006BB00C6F0000` (Ryujinx, Switch) or `<data folder>/load/01006BB00C6F0000/Archipelago` (yuzu-based) |
+| Patcher command | Only to run another patcher program |
+| Game address | The Switch's IP address, or `127.0.0.1` for an emulator on this computer |
 
 ## Ghosts
 
-The other Links Awakening Switch players of your multiworld show as see-through Links when they are where you are: in
-the same house, cave or dungeon, or near you in the overworld. They show with their slot name over their heads, their tunic and the items they hold.
-They can't touch you or anything else. Ghosts travel through a ghost relay, not the Archipelago server, and only
-players of the same generation see each other, unless the relay runs with `--nogroups`: then everyone on it does.
+Other Link's Awakening players in your multiworld show as see-through Links where you are. They can't touch anything.
+Ghosts are on by default and use `wss://ghosts.zerozshadow.com`. If that relay is down, the game plays as usual.
 
-- Ghosts are on by default and use the default relay, `wss://ghosts.zerozshadow.com`; nobody has to set anything. When
-  that relay can't be reached, the Patch tab says so and the client keeps trying in the background; the game plays as
-  usual.
-- For another relay, each player enters it in the Patch tab's Ghosts settings, "Ghost relay" (`host:port`, `password@host:port` for a
-  relay with a password, or a `wss://` address for a relay behind a tunnel), or with `/ghostrelay <address>` in the
-  client. `/ghostrelay` shows the relay in use; `/ghostrelay default` goes back to the default relay.
-- The person who generates can also set `ghost_relay` under `las_options` in `host.yaml` before generating: every patch
-  file then carries it, and it applies to players whose "Ghost relay" field is empty.
-- "Show ghosts" in the Patch tab's Ghosts settings, or `/ghosts off` in the client, turns them off. The Patch tab's
-  Ghosts line shows the relay status.
+The Patch tab's Ghosts settings have matching client commands:
 
-To run a relay on Windows, double-click `LASGhostRelay.exe` (it comes with the release; it needs no Python). It
-asks for a password (press Enter for none: then anyone who knows the address can use your relay), listens on TCP port
-43390, has your router forward that port while it runs (if the router allows NAT-PMP or UPnP) and prints the address
-players enter; close its window to stop it. Windows may ask once whether it may use the network: allow it. On other
-systems run `python3 ghost_relay.py --forward` (`las.apworld` is a zip holding `las/ghost_relay.py`; it needs only
-Python), with `--password <password>` for a password. Both take `--port` for another port and `--help` for the rest.
-With a password, players enter the relay as `password@host:port`.
-Every player must be able to reach the relay: when the router does not forward the port, forward TCP 43390 on the
-router by hand, run the relay on a server, or have all players join one VPN (for example Tailscale) and use its
-address. A relay behind a Cloudflare Tunnel needs no forwarded port: players enter the tunnel's address as
-`wss://<hostname>` (`password@wss://<hostname>` with a password).
+| Setting | Command |
+|---|---|
+| Show ghosts | `/ghosts on\|off` |
+| Show their slot names over their heads (also Up on the D-pad) | `/ghostnames on\|off` |
+| Ghost relay: `host:port`, `password@host:port` or `wss://<hostname>` | `/ghostrelay <address>` or `/ghostrelay default` |
+
+Each player sets their own relay. A generating host can also set `ghost_relay` under `las_options` in `host.yaml`, which
+applies to players who have emptied the field.
+
+### Running your own relay
+
+On Windows, double-click `LASGhostRelay.exe` from the release. It asks for a password (Enter for none), listens on TCP
+port 43390, asks your router to forward the port, and prints the address players enter. Close its window to stop it.
+
+On other systems, run `python3 ghost_relay.py --forward`. `las.apworld` is a zip that holds `las/ghost_relay.py`.
+
+Every player must be able to reach the relay. If the router does not forward the port, forward TCP 43390 by hand, run
+the relay on a server, or use a VPN such as Tailscale. `docs/ghost-relay.md` in the repository covers the options,
+proxies and services.
 
 ## Troubleshooting
 
-- **The client says the game runs another seed.** The installed mod belongs to another slot or seed. Open this slot's
-  patch file, press Play, then restart the game.
-- **Another Link's Awakening mod is installed.** The emulator would load it together with this one. Delete the folder
-  the Patch tab names.
-- **Patching failed.** The Patch tab says why, and the Archipelago tab shows the patcher's output. "The RomFS dump is
-  not of game version 1.0.0": turn the game's update off (Required software) and dump the RomFS again.
-- **The Patch tab says the RomFS dump is incomplete.** The folder lacks files of the game: it holds the update's RomFS
-  alone, or a copy that did not finish. Dump the RomFS of the game again with the update turned off, and choose the
-  folder holding `region_common` and the six `region` folders.
-- **The emulator changed nothing.** Mods load when the game starts: close the game and start it again.
-- **The game shows "Archipelago client not connected".** Start the client; the game connects when it runs. The
-  Patch tab shows the game connection.
-- **The game shows "Archipelago server not connected".** The client runs but is not in your slot: enter the room's
-  address at the top of the client and press Connect. Until then the map shows every check as reachable ("Offline"
-  on the map).
-- **The client never connects to the game.** The game listens on TCP port 43384: run one modded game at a time, and
-  turn the emulator's airplane mode off if it has one. Check the game address, and on a Switch, that the console and
-  the computer are on the same network.
-- **The Patch tab says another client is connected to the game.** The game talks to one client at a time: close the
-  other Links Awakening Switch Client window. Right after a client closes, the game takes a few seconds to notice.
+- **The client says the game runs another seed.** Open this slot's patch file, press Play, then restart the game.
+- **Another Link's Awakening mod is installed.** Delete the folder the Patch tab names.
+- **Patching failed.** The Patch tab says why, and the Archipelago tab has the patcher's output. For "The RomFS dump is
+  not of game version 1.0.0", turn the update off and dump the RomFS again.
+- **The RomFS dump is incomplete.** Dump it again with the update off, and choose the folder holding `region_common` and
+  the six `region` folders.
+- **The emulator changed nothing.** Mods load when the game starts, so restart the game.
+- **The game shows "Archipelago client not connected".** Start the client.
+- **The game shows "Archipelago server not connected".** Enter the room's address at the top of the client and press
+  Connect.
+- **The client never connects to the game.** The game listens on TCP port 43384. Run one modded game at a time and turn
+  off the emulator's airplane mode. On a Switch, check the game address and that both devices share a network.
+- **Another client is connected to the game.** Close the other client window. The game takes a few seconds to notice.
 
 ## Known issues
 
-- Some checks have not been played yet and may not reach the server: the owl statues' gifts (option Owl Statues), the
-  golden leaf of the guard Link bombs in Kanalet Castle, Dampé's rewards (Dampe), the fishing pond's rewards
-  (Fishing), the Rapids Ride (Rapids) and the Armos Knight's drop. If one gives nothing or the server does not mark it
-  checked, report it.
-- The option Easy Fishing (on by default) has not been fished with yet. If the line still breaks or a fish behaves
-  oddly, report it; `easy_fishing: false` in your options file turns it off.
-- The option Nice Hookshot and the settings Music and Blur Removal are not confirmed in play.
-- Windows only so far: Linux and macOS are untested, and so is a Switch.
+- Tested on Windows emulators only. Linux, macOS and a Switch are untested.
+- Dampé's rewards have not been played yet and may not reach the server.
+- Easy Fishing (on by default), Nice Hookshot, Music and blur removal have not been confirmed in play.
+- A received Heart Container or fourth Piece of Heart can leave the health display a heart short until your health fills
+  into it or the level reloads.
 
 ## Reporting a problem
 
-Tell the person who gave you the world, with:
+Open an [issue on GitHub](https://github.com/zeroZshadow/LASAP/issues), or tell the person who gave you the world.
+Include:
 
-- what happened, what you expected, and where (the area, or the check's name from the map or the server);
-- your slot name and the seed: the top of the Patch tab names both;
-- the client's log: the newest `LASClient` file in Archipelago's `logs` folder (the Launcher's "Browse Files" opens
-  Archipelago's folder);
-- your emulator and its version, and the look and sound settings you changed in the Patch tab;
-- a screenshot or a short video of anything you see in the game;
-- after a crash, the emulator's newest log file as well (Ryujinx: File, Open Logs Folder).
+- what happened and where
+- your slot name and seed, from the top of the Patch tab
+- the newest `LASClient` file in Archipelago's `logs` folder
+- your emulator and version, and any look and sound settings you changed
+- a screenshot or short video, if it shows in the game
+- after a crash, the emulator's newest log (Ryujinx: File, Open Logs Folder)
