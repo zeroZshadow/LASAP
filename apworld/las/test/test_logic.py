@@ -236,3 +236,33 @@ class TestTrendyPrizes(unittest.TestCase):
             with self.subTest(instruments=instruments):
                 self.assertEqual(tuple(p for p in prizes if world.get_location(LOCATION_NAMES[p]).can_reach(state)),
                                  reached)
+
+
+class TestSwampSideOfWoods(unittest.TestCase):
+    """The Woods North chest and the Woods West dig are on the swamp's side of the woods (lasr.CONDITION_EDITS): the
+    bracelet reaches them through the wasteland, and the way past Tarin takes breaking bushes and powder, the feather or
+    the rooster. The dig also takes the shovel."""
+
+    def test_ways_in(self) -> None:
+        world_type = AutoWorldRegister.world_types["Links Awakening Switch"]
+        world = setup_multiworld(world_type, STEPS, 92, {"stealing": "never"}).worlds[1]
+        chest = world.get_location(LOCATION_NAMES["woods-north-chest"])
+        dig = world.get_location(LOCATION_NAMES["woods-west-dig"])
+        for items, chest_reached, dig_reached in (
+                ([], False, False),
+                (["shovel"], False, False),
+                (["sword"], False, False),
+                (["feather"], False, False),
+                (["sword", "shovel"], False, False),
+                (["bracelet"], True, False),
+                (["bracelet", "shovel"], True, True),
+                (["sword", "feather"], True, False),
+                (["sword", "feather", "shovel"], True, True),
+                (["sword", "rooster"], True, False),
+                (["sword", "rooster", "shovel"], True, True)):
+            state = CollectionState(world.multiworld)
+            for item in items:
+                state.collect(world.create_item(LASR_TO_ITEM[item]), prevent_sweep=True)
+            with self.subTest(items=items):
+                self.assertEqual(chest.can_reach(state), chest_reached)
+                self.assertEqual(dig.can_reach(state), dig_reached)

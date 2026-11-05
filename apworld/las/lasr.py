@@ -38,7 +38,12 @@ EXTRA_NODES: Dict[str, Dict[str, Any]] = {
 # - The Trendy Game offers trendy-prize-2 to 6 one at a time, in that order (scripts/re/CRANE.md, Prize selection):
 #   it stops at the first one not won, and shows nothing of them while that one's instrument is missing. So prize 5
 #   also takes prize 4's Conch Horn, and prize 6 the Conch Horn and prize 5's Sea Lily's Bell.
+# - The Woods North chest and the Woods West dig next to it stand on the swamp's side of the woods, as the chest does in
+#   LADXR. LASR's chest condition only has the way past Tarin from the woods, not the swamp reached through the
+#   wasteland with the bracelet, and its dig condition has no way there at all.
 CONDITION_EDITS = {
+    ("woods-north-chest", "condition-basic"): ("(powders | rooster | feather)", "swamp"),
+    ("woods-west-dig", "condition-basic"): ("shovel", "swamp & shovel"),
     ("kill-flower", "condition-basic"): ("(bow-wow & !rooster)", "bow-wow"),
     ("trendy-prize-5", "condition-basic"): ("sea-lilys-bell", "conch-horn & sea-lilys-bell"),
     ("trendy-prize-6", "condition-basic"): ("surf-harp", "conch-horn & sea-lilys-bell & surf-harp"),
