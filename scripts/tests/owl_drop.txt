@@ -12,7 +12,7 @@ face up
 interact
 until textready 10
 dismiss 30
-poll OK.drop.-?[0-9] 8 DBG drop
+poll OK.drop.*spin=[1-9] 8 DBG drop
 shot owl_ball_out.png
 # out of the ball's way, beside the statue
 goto 33.75 0 62.25

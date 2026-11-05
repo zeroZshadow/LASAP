@@ -90,6 +90,7 @@ namespace AP {
     };
     // A drop's switches (patcher: ap_drop, the pops; DROP_OPENED). Pop lets it appear: a chest's or owl statue's
     // launch flag, a falling drop's pop event's, the boss's global flag. Got is set by taking it, and its row lays out
-    // no drop once it is on. Opened, a chest's drop's only, holds its chest's opened flag, which taking the drop sets.
+    // no drop once it is on. Opened, a chest's drop's only, holds its chest's opened flag, which goes off when the
+    // chest's room loads with no ball out and the item not taken.
     enum class DropSwitch { Pop = 0, Got = 1, Opened = 2 };
 }

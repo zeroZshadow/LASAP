@@ -1,0 +1,77 @@
+# Bouncy Items: a chest stays open whatever else is picked up while its ball is out (DESIGN.md, Bouncy Items, Opened when
+# taken). Woods North Cave: the chest (woods-north-cave-chest) opened, then the free-standing item taken. The Goponga
+# Swamp cave's two chests (goponga-cave-left, 01A; goponga-cave-right, 01B) opened, the left one's ball taken: both
+# stay open, and after the level loads anew the taken one is open and the other closed, launching its ball again.
+# Run after boot_file1 on a mod with Bouncy Items and Instant Pickups on Everything, these locations not taken.
+# The opened flags stand for the chests' looks: the chest closes on an event that finds its flag off.
+# Screenshots: two_chests_cave, two_chests_taken, two_chests_again.
+send DBG setflag TBOX_OPEN_MysteriousWC02_01A 0
+send DBG setflag WoodsNorthCaveHeartGet 0
+warp MysteriousWoodsCave02 12.75 0 3.75
+face up
+interact
+poll OK.drop.*spin=[1-9] 8 DBG drop
+free 8
+send DBG pos 2.25 0.08 3.75
+expect OK.pos 2
+poll FLAG.WoodsNorthCaveHeartGet.1 6 DBG flag WoodsNorthCaveHeartGet
+send DBG flag TBOX_OPEN_MysteriousWC02_01A
+expect FLAG.TBOX_OPEN_MysteriousWC02_01A.1 3
+shot two_chests_cave.png
+send DBG setflag TBOX_OPEN_GopongaCave_01A 0
+send DBG setflag TBOX_OPEN_GopongaCave_01B 0
+warp Field 138.75 7.5 179.25
+warp GopongaCave 11.25 0 3.75
+send DBG enemies kill
+expect OK 5
+face up
+interact
+poll OK.drop.1[0-9]\. 8 DBG drop
+free 8
+send DBG drop at 11.25 0.5 6.5
+expect OK.drop 2
+# The right chest stands behind a skull, lifted from the side.
+goto 23.25 1.5 5.25
+send DBG enemies kill
+expect OK 5
+face right
+interact
+until carry=1+free 3
+face left
+tap 1
+until carry=0 3
+goto 24.75 1.5 5.25
+face up
+interact
+poll OK.drop.2[0-9]\. 8 DBG drop
+free 8
+send DBG drop at 21.75 1 8.25
+expect OK.drop 2
+send DBG drop launch A10028005CED15A9
+expect OK.drop 2
+send DBG drop at 24.75 1.9 5.25
+expect OK.drop 2
+poll FLAG.TBOX_OPEN_GopongaCave_01A.1 10 DBG flag TBOX_OPEN_GopongaCave_01A
+free 8
+send DBG flag TBOX_OPEN_GopongaCave_01B
+expect FLAG.TBOX_OPEN_GopongaCave_01B.1 3
+shot two_chests_taken.png
+warp Field 138.75 7.5 179.25
+warp GopongaCave 23.25 1.5 5.25
+send DBG flag TBOX_OPEN_GopongaCave_01A
+expect FLAG.TBOX_OPEN_GopongaCave_01A.1 3
+send DBG flag TBOX_OPEN_GopongaCave_01B
+expect FLAG.TBOX_OPEN_GopongaCave_01B.0 3
+send DBG enemies kill
+expect OK 5
+face right
+interact
+until carry=1+free 3
+face left
+tap 1
+until carry=0 3
+goto 24.75 1.5 5.25
+face up
+interact
+poll OK.drop.2[0-9]\. 8 DBG drop
+shot two_chests_again.png

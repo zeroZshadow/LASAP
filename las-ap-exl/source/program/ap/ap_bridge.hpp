@@ -158,8 +158,9 @@ namespace AP::Bridge {
 
     // Adds ItemAPDrop to the actor table; before any room loads.
     void InstallDropActor();
-    // A room reads a roaming ball's LEB record (Bouncy Items) while that ball is live: true when the room must leave
-    // the record alone, as the ball stays where it is (DESIGN.md, Bouncy Items, Rooms). `leb` is the room's LEB.
+    // A room reads a drop's LEB record: true when the room must leave the record alone, as its roaming ball (Bouncy
+    // Items) is live and stays where it is (DESIGN.md, Bouncy Items, Rooms). With none, a chest's drop closes its chest
+    // unless the item was taken (Opened when taken). `leb` is the room's LEB.
     bool DropStaysOut(void* leb, const Game::LebActorRecord* record);
 #ifdef LASAP_TEST
     // DBG drop: the drop actor that fell last (TESTING.md, Debug commands), " -" when it is gone

@@ -221,6 +221,8 @@ and `dataSize`, `keyField` (-1 without a key column, when `Datasheet_RowById` an
 `Datasheet_Create`, recursing into struct fields; no code looks it up), `rowsById` (id to row index) and `rowsByKey`
 (key string to row index).
 
+`Npc.gsheet` is made anew at each level load, on the same rows: an edit in place carries over to the next load (measured 2026-11-05: a swap of two rows undid itself on every second load).
+
 `UiDatasheets_Load` (`0x867f40`, at boot) loads the UI sheets into holders of shared pointers; each global holds a pointer to its holder. The maps' holder takes its six sheets in `0xf9cfb0` (returning to `0x86835c`, where the module swaps the dungeon markers' rows: DESIGN.md, Shuffled dungeons):
 
 | Holder | Sheets |

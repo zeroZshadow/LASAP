@@ -63,8 +63,8 @@ namespace {
     constexpr size_t kItemUpdate = 0x3c8, kWaterLift = 0x400, kWaterDamping = 0x410, kAddForce = 0x150;
     constexpr u32 kAcceleration = 3;
     constexpr float kProbeBelow = 0.3f, kRestDepth = 0.08f, kSpring = 60.0f, kLiftBand = 0.3f, kDamping = 8.0f;
-    // The chest's opened flag: its actor switch
-    constexpr int kChestOpened = 1;
+    // A chest's LEB parameter with its location's local id
+    constexpr size_t kChestLocation = 2;
     // A signal's virtual that connects a Function*
     constexpr size_t kSignalConnect = 0x20;
     // LebRoom virtual +0x28 (index): the room's LEB record of that index
@@ -134,7 +134,6 @@ namespace {
         Game::Vec3 velocity;       // at its last update
         u64 tick;                  // of its last update, 0 before the first
         u8 touches;                // updates in a row it touched the ground
-        u8 opened;                 // out of its chest, whose opened flag is still to go off
     };
     // The drop's NPC component: the item component's, then the ball's
     struct DropComponent {
@@ -150,8 +149,9 @@ namespace {
     };
     static_assert(offsetof(ActorBlock, actor) == 0x20 && sizeof(ActorBlock) == 0x340);
 #ifdef LASAP_TEST
-    // The PhysX actor's getAngularDamping
+    // The PhysX actor's getAngularDamping; the chest's opened flag, its actor switch
     constexpr size_t kGetAngularDamping = 0x1e0;
+    constexpr int kChestOpened = 1;
 #endif
 
     // libc++ std::function's callable (__func, the game built without RTTI): its vtable's slots
@@ -197,16 +197,6 @@ namespace {
     } g_Heart;
     // The launch the boss gave its item last (Enemy_DropItems' default before any)
     Game::Vec3 g_BossLaunch{0, 4, 0};
-
-    // The chests whose rooms read their balls' records while those balls were out, so these rooms made no drop
-    // (Room_OnLebActor) and a closed chest would launch nothing: their opened flags read as on (ChestOpened). With the
-    // level load each holds for.
-    struct OpenChest {
-        u64 chest;
-        u32 load;
-    };
-    constexpr int kOpenChests = 4;
-    OpenChest g_OpenChests[kOpenChests]{};
 
     bool Bouncy() { return global_config.Option("bouncy_items"); }
 
@@ -446,7 +436,6 @@ namespace {
             Game::Vec3 velocity = LaunchVelocity(arc.speed, arc.start, to);
             Launch(comp, actor, arc.start, velocity);
             reinterpret_cast<ItemActor*>(actor)->touchDelay = out / std::hypot(velocity.x, velocity.z);
-            BallOf(comp).opened = motion == AP::DROP_CHEST;
         } else {
             float angle = exl::util::GetRandomF32(0, kTwoPi), out = exl::util::GetRandomF32(kSpeedOutMin, kSpeedOutMax);
             Launch(comp, actor, {spawn.x, spawn.y + kRise, spawn.z},
@@ -548,19 +537,13 @@ namespace {
         }
     }
 
-    // The item update, then the ball's: its room, its chest's opened flag off again, a wall's bounce, and the damping on the
-    // ground or in the air. The opened flag goes off at the first update after the launch, once no event runs: during
-    // its event the chest, still opening, would close again with it off (DESIGN.md, Bouncy Items, Opened when taken).
+    // The item update, then the ball's: its room, a wall's bounce, and the damping on the ground or in the air.
     void ItemUpdate(void* comp) {
         SetProbe(comp);
         g_ItemUpdate(comp);
         Ball& ball = BallOf(comp);
         Actor* actor = Owner(comp);
         if (actor != nullptr && actor->root != nullptr && actor->zone == -1 && !actor->entity.Gone()) JoinRoom(actor);
-        if (ball.opened && actor != nullptr) {
-            SetSwitch(*actor, AP::DropSwitch::Opened, false);
-            ball.opened = 0;
-        }
         void* px = PhysxActor(comp);
         if (px == nullptr) return;
         u64 tick = svcGetSystemTick();
@@ -953,32 +936,6 @@ namespace {
         }
     };
 
-    // A chest whose ball is out reads as opened, so it is made open; its saved flag stays off, so a save at that time
-    // does not keep it open for good.
-    HOOK_DEFINE_TRAMPOLINE(ChestOpened) {
-        static bool Callback(const Game::LebActorRecord* record, int slot) {
-            if (slot == kChestOpened && record != nullptr) {
-                for (const OpenChest& open : g_OpenChests) {
-                    if (open.chest == record->key && open.load == LevelSystem::LoadCount()) return true;
-                }
-            }
-            return Orig(record, slot);
-        }
-    };
-
-    void SetOpenChest(u64 chest, bool out) {
-        u32 load = LevelSystem::LoadCount();
-        OpenChest* slot = &g_OpenChests[0];
-        for (OpenChest& open : g_OpenChests) {
-            if (open.chest == chest) {
-                open = out ? OpenChest{chest, load} : OpenChest{};
-                return;
-            }
-            if (open.load != load) slot = &open;
-        }
-        if (out) *slot = {chest, load};
-    }
-
     template<typename F>
     uintptr_t Slot(F f) { return reinterpret_cast<uintptr_t>(f); }
 }
@@ -988,14 +945,17 @@ namespace {
         if (record->actorId != AP::DROP_ACTOR_ID || !Roams(motion)) return false;
         Shared<Actor> held;
         Game::ActorRegistry_FindByKey(held.Reset(), record->key);
-        bool out = held && held->zone == -1;
+        if (held && held->zone == -1 && !held->entity.Gone()) return true;
+        // No ball out: a chest whose item was not taken is closed, however its opened flag came to be on
         if (motion == AP::DROP_CHEST && record->linkCount != 0) {
             void* lebRoom = static_cast<SharedPtr<>*>(leb)->ptr;
             auto* chest = Game::CallVirtual<const Game::LebActorRecord*(u32)>(lebRoom, kLebRoomRecord,
                                                                               record->Links()[0].actorIndex);
-            if (chest != nullptr) SetOpenChest(chest->key, out);
+            if (chest != nullptr && !CollectedHere(static_cast<LocationId>(chest->params[kChestLocation].value))) {
+                Game::ActorSwitch_Set(record, std::to_underlying(AP::DropSwitch::Opened), false);
+            }
         }
-        return out;
+        return false;
     }
 
     void InstallDropActor() {
@@ -1023,7 +983,6 @@ namespace {
             g_ComponentVtable[kItemUpdate / 8] = Slot(&ItemUpdate);
             g_ComponentVtable[kWaterLift / 8] = Slot(&WaterLift);
             g_ComponentVtable[kWaterDamping / 8] = Slot(&WaterDamping);
-            ChestOpened::InstallAtFuncPtr(Game::ActorSwitch_IsOn.Ptr());
         }
         SetCtrlVtable(g_ActorCtrlVtable, &ActorGone);
         SetCtrlVtable(g_ComponentCtrlVtable, &ComponentGone);

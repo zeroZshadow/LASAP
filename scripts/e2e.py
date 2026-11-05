@@ -225,10 +225,14 @@ def settle(x: float, z: float, seconds: float = 10) -> str:
         time.sleep(0.1)
 
 
+DROP_TAKEN = (0.0, 0.0, 0.0)  # what drop_rest returns for a ball Link took as it landed
+
+
 def drop_rest(seconds: float, show: bool = False) -> tuple[float, float, float] | None:
     """Polls DBG drop every 0.2 s until the drop actor is active, its body still and where it was at the poll before
     (returned), or gone once it was there (None); stops the script when neither happens within `seconds`. A bouncing
-    item can stand at the top of two bounces in a row. Floating, still allows DROP_FLOATING."""
+    item can stand at the top of two bounces in a row. Floating, still allows DROP_FLOATING. A ball that lands on Link
+    is taken on its way: its take event turns off its enabled flag (entity flags bit 0), and this returns DROP_TAKEN."""
     end = time.time() + seconds
     last = seen = None
     while True:
@@ -236,6 +240,9 @@ def drop_rest(seconds: float, show: bool = False) -> tuple[float, float, float] 
         if show and reply != seen:
             print(reply)
         seen = reply
+        taken = re.search(r" flags=([0-9a-f]+) ", reply)
+        if taken and not int(taken.group(1), 16) & 1:
+            return DROP_TAKEN
         m = re.search(r"OK drop ([-\d.]+),([-\d.]+),([-\d.]+) active=1", reply)
         at = tuple(float(v) for v in m.groups()) if m else None
         v = re.search(r" v=([-\d.]+),([-\d.]+),([-\d.]+)", reply)
@@ -535,6 +542,8 @@ def run(script: Path, trace: str | None = None) -> None:
             at = drop_rest(float(rest or 10))
             if at is None:
                 raise SystemExit(f"the drop actor is gone; {state()}")
+            if at is DROP_TAKEN:
+                continue
             link = position(state())
             x, z = at[0], at[2]
             if link is not None:

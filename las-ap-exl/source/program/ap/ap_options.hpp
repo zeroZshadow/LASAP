@@ -11,6 +11,7 @@ namespace AP::Options {
     std::optional<bool> Flag(std::string_view name);
     // The room hook that leaves out, retypes or moves LEB actors by the options.
     void InstallHooks();
-    // A sheet the game makes (Datasheet_Create): the rows the options change.
+    // A sheet the game makes (Datasheet_Create): the rows the options change. It runs at each make, on rows that may
+    // hold an earlier make's edit (scripts/re/UI.md, Datasheets), so an edit must give the same rows when run again.
     void EditSheet(std::string_view name, void* sheet);
 }

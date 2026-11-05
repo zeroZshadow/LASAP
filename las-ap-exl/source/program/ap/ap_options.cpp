@@ -124,10 +124,11 @@ namespace {
     };
     static_assert(sizeof(DropRow) == 0x40);
 
-    // Bouncy Items: the drop's row (AP::DROP_ACTOR) takes the ball's (patcher ap_drop.BALL_ROW), its name kept: the
-    // sheet's rows by key give the row's index
+    // Bouncy Items: the drop's row (AP::DROP_ACTOR) takes the values of the ball's (patcher ap_drop.BALL_ROW), its name
+    // kept: the sheet's rows by key give the row's index. Each level load makes the sheet again on rows that kept this
+    // edit (scripts/re/UI.md, Datasheets), so it copies: a swap would undo itself on every second load.
     constexpr std::string_view kBallRow = "ItemAPDropBall";
-    void SwapDropRows(void* made) {
+    void UseBallRow(void* made) {
         const auto* data = static_cast<Game::Sheet<Game::SheetString>*>(made)->data;
         if (data == nullptr) return;
         auto* rows = reinterpret_cast<u8*>(const_cast<Game::SheetString*>(data->rows));
@@ -140,7 +141,7 @@ namespace {
         }
         if (drop == nullptr || ball == nullptr) return;
         constexpr size_t kSymbol = sizeof(Game::SheetString);  // the row's first field
-        for (size_t i = kSymbol; i < data->rowSize; i++) std::swap(drop[i], ball[i]);
+        std::memcpy(drop + kSymbol, ball + kSymbol, data->rowSize - kSymbol);
         Logging.Log("[AP] options: the drop is a ball");
     }
 
@@ -192,7 +193,7 @@ namespace AP::Options {
                 std::memcpy(const_cast<s32*>(row.weights.data), kEasyFishingWeights, sizeof(kEasyFishingWeights));
             });
         } else if (name == "Npc" && global_config.Option("bouncy_items")) {
-            SwapDropRows(sheet);
+            UseBallRow(sheet);
         } else if (name == "ItemDrop" && (tweaks.no_guardian_acorn || tweaks.no_piece_of_power)) {
             // A disabled buff drops nothing, as LASR does for the drops it removes
             ForRows<DropRow>(sheet, [&](DropRow& row) {

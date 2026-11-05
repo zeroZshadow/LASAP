@@ -142,10 +142,10 @@ BLUE_RUPEES = [f"D0-rupee-{n}" for n in range(1, 29)]
 # Bouncy Items, chests: a drop actor in front of each AP chest, linked to it. The chest holds DROP_CHEST_KEY, for which
 # TreasureBox.bfevfl plays no item-get but turns its switch LAUNCHED_SWITCH on (a level flag of its own, not saved),
 # the drop's switch 0: the ball pops out. The chest's opened flag (its switch 1, saved), which opening it set, is the
-# drop's switch DROP_OPENED: the ball turns it off again once the chest's event is over (ap_drop.cpp, ItemUpdate), and
-# taking it on, so the chest is closed when its room loads again while its ball was not taken; until then it stays
-# open. Each of the five chests of FIVE_CHESTS, which LASR all gives the location's item, has a drop, and their switch
-# 1 is a got flag of their own (GOT_FLAG), which taking one sets: the puzzle closes the chests again when Link leaves.
+# drop's switch DROP_OPENED: it stays on while the ball is out, and goes off when the chest's room loads with no ball
+# out and the item not taken (ap_drop.cpp, DropStaysOut), so the chest is closed again. Each of the five chests of
+# FIVE_CHESTS, which LASR all gives the location's item, has a drop, and their switch 1 is a got flag of their own
+# (GOT_FLAG), which taking one sets: the puzzle closes the chests again when Link leaves.
 # Left out: the two Eagle's Tower chests whose room is copied for the tower's collapse.
 CHEST_ACTOR = 0xF7
 CHEST_OPENED = 1
