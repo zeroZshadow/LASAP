@@ -59,10 +59,9 @@ def _fix(old: str, new: str) -> str:
 
 
 def text_pools(texts) -> dict:
-    """The messages Randomize Text shuffles, for the build (ap_assets.data): the Talker names and the dialogue, each
-    `<file>:<label>` with its end. texts(name) gives a message file's texts by label."""
-    return {"talkers": {f"Talker:{label}": text[-TAIL:] for label, text in texts("Talker").items()
-                        if not _kept(label)},
+    """The messages Randomize Text shuffles, for the build (ap_assets.data), each `<file>:<label>`: the Talker names and
+    the dialogue, the latter with its end for _fix. texts(name) gives a message file's texts by label."""
+    return {"talkers": [f"Talker:{label}" for label in texts("Talker") if not _kept(label)],
             "dialogue": {f"{name}:{label}": text[-TAIL:] for name in DIALOGUE for label, text in texts(name).items()
                          if _valid(label, text)}}
 
@@ -71,12 +70,15 @@ def text_lines(rng) -> list:
     pools = ap_assets.data()["texts"]
     holds = {key: end for key, end in pools["dialogue"].items() if end.endswith(HOLD)}
     rest = {key: end for key, end in pools["dialogue"].items() if key not in holds}
-    lines = []
-    for pool, fixed in ((pools["talkers"], False), (rest, True), (holds, True)):
-        keys = list(pool)
+
+    def swaps(keys: list) -> zip:
         donors = list(keys)
         rng.shuffle(donors)
-        lines += [f"T {key} {donor} {_fix(pool[key], pool[donor]) if fixed else '='}" for key, donor in zip(keys, donors)]
+        return zip(keys, donors)
+
+    lines = [f"T {key} {donor} =" for key, donor in swaps(pools["talkers"])]
+    for pool in (rest, holds):
+        lines += [f"T {key} {donor} {_fix(pool[key], pool[donor])}" for key, donor in swaps(list(pool))]
     return lines
 
 
