@@ -2,8 +2,10 @@
 import io
 import random
 import unittest
+from unittest import mock
 
 from . import LASTestBase
+from .. import LASWorld
 from ..items import ITEM_TABLE
 from ..lasr import (DUNGEONS, ENTERED_BY_DOOR, FACE_SHRINE_ROOM, ITEM_DEFS, LOGIC, door_entrance, door_logic,
                     door_node, dungeon_logic, dungeon_region, shuffle_dungeons)
@@ -251,6 +253,37 @@ class TestShuffledDungeons(LASTestBase):
         self.world.write_spoiler(spoiler)
         self.assertIn("Dungeon entrances", spoiler.getvalue())
         self.assertIn("Tail Cave entrance -> ", spoiler.getvalue())
+
+
+class TestDoorDeadlock(LASTestBase):
+    """With Boss Drops and Free Gifts off the Hookshot stays in Catfish's Maw and the Rooster at the weathervane: behind
+    a door that needs one of them, Catfish's Maw and much of the island stay out of reach."""
+    options = {"shuffled_dungeons": True, "boss_drops": False, "free_gifts": False}
+    run_default_tests = False
+    seed = 1
+    STUCK = {**IDENTITY, "eagle-tower": "catfish-maw", "catfish-maw": "eagle-tower"}
+
+    def test_stuck_map_rolls_again(self) -> None:
+        with mock.patch(f"{LASWorld.__module__}.shuffle_dungeons", side_effect=[self.STUCK, self.STUCK, SWAP]):
+            self.world_setup(self.seed)
+        self.assertEqual(self.world.dungeon_entrances, SWAP)
+        for door, dungeon in SWAP.items():
+            entrance = self.world.get_entrance(door_entrance(door))
+            self.assertEqual(entrance.connected_region.name, dungeon_region(dungeon))
+            self.assertEqual(entrance.connected_region.entrances.count(entrance), 1)
+
+    def test_every_seed_reaches_everything(self) -> None:
+        for seed in range(30):
+            self.world_setup(seed)
+            self.assertTrue(self.world._doors_reachable(), seed)
+            into_catfish = next(d for d, target in self.world.dungeon_entrances.items() if target == "catfish-maw")
+            self.assertNotIn(into_catfish, ("eagle-tower", "face-shrine", "turtle-rock"), seed)
+
+    def test_stuck_map_is_seen(self) -> None:
+        with mock.patch.object(LASWorld, "_settle_doors"), mock.patch.object(LASWorld, "pre_fill"), \
+                mock.patch(f"{LASWorld.__module__}.shuffle_dungeons", return_value=self.STUCK):
+            self.world_setup(self.seed)
+        self.assertFalse(self.world._doors_reachable())
 
 
 class TestUnshuffledDungeons(LASTestBase):

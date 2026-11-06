@@ -117,7 +117,8 @@ class SeashellMansion(Choice):
 
 class DungeonItemPlacement(Choice):
     """own_dungeon: inside their own dungeon. any_dungeon: inside any of your dungeons, the Color Dungeon included.
-    own_world: anywhere in your world. different_world: in other players' worlds (anywhere when you play alone).
+    own_world: anywhere in your world. different_world: in other players' worlds as far as those have room, a world with
+    minimal accessibility counting as none; the rest, and all of them when you play alone, anywhere.
     anywhere: anywhere in the multiworld. start_with: given at the start."""
     option_own_dungeon = 0
     option_anywhere = 1
@@ -131,7 +132,8 @@ class DungeonItemPlacement(Choice):
 class SmallKeys(DungeonItemPlacement):
     """Where small keys are placed.
     own_dungeon: inside their own dungeon. any_dungeon: inside any of your dungeons, the Color Dungeon included.
-    own_world: anywhere in your world. different_world: in other players' worlds (anywhere when you play alone).
+    own_world: anywhere in your world. different_world: in other players' worlds as far as those have room, a world with
+    minimal accessibility counting as none; the rest, and all of them when you play alone, anywhere.
     anywhere: anywhere in the multiworld. start_with: given at the start."""
     display_name = "Small Keys"
 
@@ -139,7 +141,8 @@ class SmallKeys(DungeonItemPlacement):
 class NightmareKeys(DungeonItemPlacement):
     """Where nightmare keys are placed.
     own_dungeon: inside their own dungeon. any_dungeon: inside any of your dungeons, the Color Dungeon included.
-    own_world: anywhere in your world. different_world: in other players' worlds (anywhere when you play alone).
+    own_world: anywhere in your world. different_world: in other players' worlds as far as those have room, a world with
+    minimal accessibility counting as none; the rest, and all of them when you play alone, anywhere.
     anywhere: anywhere in the multiworld. start_with: given at the start."""
     display_name = "Nightmare Keys"
 
@@ -147,7 +150,8 @@ class NightmareKeys(DungeonItemPlacement):
 class DungeonItems(DungeonItemPlacement):
     """Where dungeon maps, compasses and stone beaks are placed.
     own_dungeon: inside their own dungeon. any_dungeon: inside any of your dungeons, the Color Dungeon included.
-    own_world: anywhere in your world. different_world: in other players' worlds (anywhere when you play alone).
+    own_world: anywhere in your world. different_world: in other players' worlds as far as those have room, a world with
+    minimal accessibility counting as none; the rest, and all of them when you play alone, anywhere.
     anywhere: anywhere in the multiworld. start_with: given at the start."""
     display_name = "Maps, Compasses and Stone Beaks"
     default = 2

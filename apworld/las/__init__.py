@@ -7,7 +7,7 @@ from collections import Counter
 from typing import Any, ClassVar, Dict, Iterable, List, Mapping, Optional, Set, TextIO
 
 from BaseClasses import CollectionState, Item, ItemClassification, Location, LocationProgressType, Region, Tutorial
-from Options import PerGameCommonOptions
+from Options import Accessibility, PerGameCommonOptions
 from Fill import fill_restrictive
 from worlds.AutoWorld import WebWorld, World
 from worlds.LauncherComponents import Component, SuffixIdentifier, Type, components, launch as launch_component
@@ -62,6 +62,7 @@ PATCH_FORMAT = 1
 EARLY_LOCATIONS_WANTED = 10
 PRE_FILL_ATTEMPTS = 10
 PROGRESSION_CHECKS = 3
+DOOR_MAP_ATTEMPTS = 100
 # the items traps replace, in this order; logic never needs them (rupees it needs come from farming)
 JUNK = ("rupee-50", "rupee-20", "rupee-5", "rupee-100", "chamber-stone", "rupee-300")
 # the options in the slot data ("options"), from which Universal Tracker regenerates the slot
@@ -141,6 +142,7 @@ class LASWorld(World):
         else:
             self.starting_instruments = self.random.sample(INSTRUMENTS, options.starting_instruments.value)
         self.starting_items = list(self.starting_instruments)
+        self.different_world: Set[str] = set()
         for kind, placement in self.dungeon_item_placements().items():
             items = [item for item in ITEM_DEFS if item_dungeon(item) >= 0 and item[:-3] == kind]
             if placement == placement.option_start_with:
@@ -149,6 +151,7 @@ class LASWorld(World):
             elif placement == placement.option_own_world:
                 options.local_items.value |= {LASR_TO_ITEM[item] for item in items}
             elif placement == placement.option_different_world:
+                self.different_world |= {LASR_TO_ITEM[item] for item in items}
                 options.non_local_items.value |= {LASR_TO_ITEM[item] for item in items}
 
         removed = lasr_settings.removed_locations(options)
@@ -347,6 +350,34 @@ class LASWorld(World):
         if self.deferred and self.options.shuffled_dungeons:
             return
         self.connect_doors(DUNGEONS)
+        if self.options.shuffled_dungeons and not getattr(self.multiworld, "re_gen_passthrough", {}).get(GAME):
+            self._settle_doors()
+
+    def _settle_doors(self) -> None:
+        """Rolls the doors again until every location of this slot is reachable with all its items. A map can put items
+        behind the doors they open, which no fill can place around: with Boss Drops and Free Gifts off, the Hookshot
+        stays in Catfish's Maw and the Rooster at the weathervane, so Catfish's Maw must not be behind a door that needs
+        one of them."""
+        for _ in range(DOOR_MAP_ATTEMPTS):
+            if self._doors_reachable():
+                return
+            for door in DUNGEONS:
+                entrance = self.get_entrance(door_entrance(door))
+                entrance.connected_region.entrances.remove(entrance)
+                entrance.connected_region = None
+            self.dungeon_entrances = shuffle_dungeons(self.random)
+            self.connect_doors(DUNGEONS)
+
+    def _doors_reachable(self) -> bool:
+        """Whether every location of this slot is reachable with all its items. It reads this slot's locations only,
+        as another slot's doors may not be connected yet."""
+        state = CollectionState(self.multiworld)
+        for item in self.multiworld.itempool + self.pre_fill_items:
+            if item.player == self.player:
+                state.collect(item, prevent_sweep=True)
+        locations = self.multiworld.get_locations(self.player)
+        state.sweep_for_advancements(locations)
+        return all(location.can_reach(state) for location in locations)
 
     def connect_doors(self, doors: Iterable[str]) -> None:
         """Connects these doors' entrances (dungeon_entrances' names; others are ignored), and the last door's once
@@ -361,7 +392,33 @@ class LASWorld(World):
 
     # --- rules ---
 
+    def _fit_different_world(self) -> None:
+        """Lets the items placed in a different world stay non-local only as far as other players' worlds have room for
+        them, as they fit nowhere else; the others are placed anywhere. A slot with minimal accessibility has no room to
+        count on: the fill may lock its locations away after it placed items there. Before Archipelago's locality rules,
+        which read non_local_items. Alone, Archipelago has already emptied non_local_items."""
+        if self.multiworld.players == 1:
+            return
+        count = Counter(item.name for item in self.multiworld.itempool
+                        if item.player == self.player and item.name in self.different_world)
+        room = sum(1 for player in self.multiworld.player_ids
+                   if player != self.player
+                   and self.multiworld.worlds[player].options.accessibility != Accessibility.option_minimal
+                   for location in self.multiworld.get_unfilled_locations(player)
+                   if location.progress_type != LocationProgressType.EXCLUDED)
+        if sum(count.values()) <= room:
+            return
+        names = sorted(count)
+        self.random.shuffle(names)
+        for name in names:
+            if count[name] <= room:
+                room -= count[name]
+            else:
+                self.options.non_local_items.value.discard(name)
+
     def set_rules(self) -> None:
+        self._fit_different_world()
+
         def rule(expr):
             return make_rule(expr, self.player, self.node_regions)
 
@@ -440,6 +497,29 @@ class LASWorld(World):
                     location.item.location = None
                     location.item = None
                     location.locked = False
+
+    def fill_hook(self, progitempool: List[Item], usefulitempool: List[Item], filleritempool: List[Item],
+                  fill_locations: List[Location]) -> None:
+        """Gives the different_world items their place before other items fill it (_fit_different_world counted room
+        for them, and a small world has little). The fill takes progression from the end of the pool, so these go last.
+        The others would come after all progression: they are placed now, in locations of other players."""
+        non_local = self.different_world & self.options.non_local_items.value
+        if not non_local:
+            return
+        def ours(item: Item) -> bool:
+            return item.player == self.player and item.name in non_local
+        progitempool.sort(key=ours)
+        spots = [location for location in fill_locations if location.player != self.player]
+        self.random.shuffle(spots)
+        state = self.multiworld.state
+        for pool in (usefulitempool, filleritempool):  # useful items first, as they fit fewer locations
+            for item in [item for item in pool if ours(item)]:
+                location = next((spot for spot in spots if spot.can_fill(state, item, check_access=False)), None)
+                if location is not None:
+                    self.multiworld.push_item(location, item, collect=False)
+                    spots.remove(location)
+                    fill_locations.remove(location)
+                    pool.remove(item)
 
     def _place_opener(self) -> None:
         """Very few locations are reachable with nothing (Tarin and a few loose items). Like LASR's Tarin rule, one of

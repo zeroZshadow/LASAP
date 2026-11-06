@@ -331,6 +331,52 @@ class TestKeysInMultiworld(unittest.TestCase):
                     self.assertNotEqual(location.player, location.item.player, (seed, location))
 
 
+class TestDifferentWorldRoom(unittest.TestCase):
+    """different_world items stay non-local only as far as other players' worlds can hold them; the fill could not place
+    the rest, and that would stop the whole multiworld's generation."""
+
+    @staticmethod
+    def multiworld(game, seed, **options):
+        """A LAS slot beside a slot of the game, with the options for both."""
+        from test.general import setup_multiworld
+        from .. import LASWorld
+        return setup_multiworld([LASWorld, game], seed=seed, options=options)
+
+    def test_small_world_takes_what_fits(self) -> None:
+        """ChecksFinder's 25 locations cannot hold the 27 maps, compasses and stone beaks."""
+        from Fill import distribute_items_restrictive
+        from worlds.checksfinder import ChecksFinderWorld
+        from worlds.generic.Rules import locality_rules
+        for seed in range(10):
+            multiworld = self.multiworld(ChecksFinderWorld, seed, dungeon_items="different_world")
+            world = multiworld.worlds[1]
+            kept = world.options.non_local_items.value
+            self.assertEqual(len(world.different_world), 27)
+            self.assertEqual(len(kept & world.different_world), 25)
+            locality_rules(multiworld)
+            distribute_items_restrictive(multiworld)
+            for location in multiworld.get_filled_locations(1):
+                self.assertFalse(location.item.player == 1 and location.item.name in kept, (seed, location))
+
+    def test_room_for_all_keeps_all(self) -> None:
+        from worlds.checksfinder import ChecksFinderWorld
+        from ..items import ITEM_NAME_GROUPS
+        world = self.multiworld(ChecksFinderWorld, 0, nightmare_keys="different_world").worlds[1]
+        self.assertLessEqual(ITEM_NAME_GROUPS["Nightmare Keys"], world.options.non_local_items.value)
+
+    def test_minimal_world_has_no_room(self) -> None:
+        """The fill may lock a minimal slot's locations away after placing items there."""
+        from .. import LASWorld
+        multiworld = self.multiworld(LASWorld, 0, accessibility="minimal", small_keys="different_world")
+        self.assertFalse(multiworld.worlds[1].options.non_local_items.value)
+        self.assertFalse(multiworld.worlds[2].options.non_local_items.value)
+
+    def test_yaml_non_local_items_stay(self) -> None:
+        from .. import LASWorld
+        multiworld = self.multiworld(LASWorld, 0, accessibility="minimal", non_local_items={"Hookshot"})
+        self.assertEqual(multiworld.worlds[1].options.non_local_items.value, {"Hookshot"})
+
+
 class TestFewLocations(unittest.TestCase):
     """Every location category off, dungeon items in their own dungeons, no starting gear: nearly all locations are in
     dungeons, and only Tarin's is reachable at the start."""
