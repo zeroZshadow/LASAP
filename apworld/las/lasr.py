@@ -1,5 +1,4 @@
 """LASR (LAS Randomizer) data: logic, item pool and location categories, loaded from the bundled YAML files."""
-import copy
 import pkgutil
 from typing import Any, Dict, List, Optional
 
@@ -12,93 +11,15 @@ def _load_yaml(name: str) -> Any:
     return yaml.load(pkgutil.get_data(__name__, f"data/{name}"), Loader=_Loader)
 
 
-# Raw data, exactly as shipped by LASR.
-RAW_LOGIC: Dict[str, Dict[str, Any]] = _load_yaml("logic.yml")
+LOGIC: Dict[str, Dict[str, Any]] = _load_yaml("logic.yml")
 _items_yml = _load_yaml("items.yml")
 ITEM_DEFS: Dict[str, Dict[str, Any]] = _items_yml["Item_Pool"]
 CATEGORIES: Dict[str, List[str]] = _load_yaml("locations.yml")
 
-# Fixes applied on top of LASR's logic.yml. The world and the logic cross-check both use the fixed data.
-# - D6-4D and D6-2A are referenced but never defined, which makes the Face Shrine boss/instrument and the
-#   rapids south island chest unreachable. They are defined after LADXR's Face Shrine layout: the boss door
-#   is reached from the tile room (D6-5D); the raft-game chest is reached through the top-left exit.
-# - kill-flower's "bow-wow & !rooster" is order-dependent in LASR's fixed point and not monotone; followers can
-#   be swapped in-game, so it is reduced to "bow-wow".
-# - The top of Turtle Rock (Field_01A to Field_01C: the heart piece, side doors into Turtle Rock's rooms 03C and 03F,
-#   and the Tal Tal Mountain warp point) is a region of its own, turtle-rock-top, entered from Turtle Rock's D8-4C as
-#   LASR's heart piece condition has it, and the heart piece is in it. LASR has the heart piece in taltal-west-2.
-# - Key Cavern's north basement room and the two chests its switch opens hang off D3-4C (4 keys) in LASR, but are behind
-#   a door of the crossroads, which the stairs door and the key blocks can leave shut. With keys there the fill can make
-#   a dead end, which D3-3G (8 keys, as many as the dungeon has locks) rules out for them.
-EXTRA_NODES: Dict[str, Dict[str, Any]] = {
-    "D6-4D": {"type": "room", "condition-basic": "D6-5D"},
-    "D6-2A": {"type": "room", "condition-basic": "D6-3A & hit-crystal-switch & bracelet:2"},
-    "turtle-rock-top": {"type": "region", "condition-basic": "D8-4C"},
-}
-# - The Trendy Game offers trendy-prize-2 to 6 one at a time, in that order (scripts/re/CRANE.md, Prize selection):
-#   it stops at the first one not won, and shows nothing of them while that one's instrument is missing. So prize 5
-#   also takes prize 4's Conch Horn, and prize 6 the Conch Horn and prize 5's Sea Lily's Bell.
-# - The Woods North chest and the Woods West dig next to it stand on the swamp's side of the woods, as the chest does in
-#   LADXR. LASR's chest condition only has the way past Tarin from the woods, not the swamp reached through the
-#   wasteland with the bracelet, and its dig condition has no way there at all.
-CONDITION_EDITS = {
-    ("woods-north-chest", "condition-basic"): ("(powders | rooster | feather)", "swamp"),
-    ("woods-west-dig", "condition-basic"): ("shovel", "swamp & shovel"),
-    ("kill-flower", "condition-basic"): ("(bow-wow & !rooster)", "bow-wow"),
-    ("trendy-prize-5", "condition-basic"): ("sea-lilys-bell", "conch-horn & sea-lilys-bell"),
-    ("trendy-prize-6", "condition-basic"): ("surf-harp", "conch-horn & sea-lilys-bell & surf-harp"),
-    ("D3-basement-north", "condition-basic"): ("D3-4C", "D3-3G"),
-    ("D3-owl-statue-basement-north", "condition-basic"): ("D3-4C", "D3-3G"),
-    ("D3-hallway-4", "condition-basic"): ("D3-4C", "D3-3G"),
-    ("D3-hallway-side-room", "condition-basic"): ("D3-4C", "D3-3G"),
-}
-# location -> (its region, the condition-basic the region's condition replaces)
-MOVED_LOCATIONS = {
-    "above-turtle-rock": ("turtle-rock-top", "D8-4C"),
-}
-# - Refills of powder, bombs and arrows that LASR's logic leaves out, each an alternative to the node's condition-basic.
-#   A cut bush or a lifted rock (break-bush) drops from ItemDrop's Grass row, which Consumable Drops (always on) gives
-#   powder, bombs and arrows; the Ammo Ghost in Tarin's house (ammo-ghost, in Mabe) tops them up. Both give only what
-#   Link already has. break-bush also takes powder and bombs: the logic's fixed point never lets a refill pay for itself.
-REFILL_ALTERNATIVES = {
-    "powders": "powder & (break-bush | (ammo-ghost & mabe))",
-    "bombs": "bomb & (break-bush | (ammo-ghost & mabe))",
-    "shoot-arrows": "bow & (break-bush | (ammo-ghost & mabe))",
-}
-# logic.yml spells one vanilla content differently from items.yml.
-CONTENT_ALIASES = {"powders-capacity": "powder-capacity"}
-# The companions: LASR's followers become item locations holding their companion (kept, see lasr_settings), and the
-# companions items the logic counts.
-COMPANIONS = {"moblin-cave": "bow-wow", "rooster-statue": "rooster"}
+# The companions the logic's companion locations hold, which items.yml does not have.
 COMPANION_ITEMS = {"bow-wow": {"type": "important", "quantity": 1, "item-key": "None"},
                    "rooster": {"type": "important", "quantity": 1, "item-key": "None"}}
 ITEM_DEFS.update(COMPANION_ITEMS)
-
-
-def _fixed_logic() -> Dict[str, Dict[str, Any]]:
-    logic = copy.deepcopy(RAW_LOGIC)
-    for (node, key), (old, new) in CONDITION_EDITS.items():
-        assert old in logic[node][key], (node, key)
-        logic[node][key] = logic[node][key].replace(old, new)
-    for node, alternative in REFILL_ALTERNATIVES.items():
-        logic[node]["condition-basic"] = f"({logic[node]['condition-basic']}) | ({alternative})"
-    for node, definition in EXTRA_NODES.items():
-        assert node not in logic, node
-        logic[node] = dict(definition)
-    for location, (region, condition) in MOVED_LOCATIONS.items():
-        assert logic[location].pop("condition-basic") == condition, location
-        assert not any(key.startswith("condition-") for key in logic[location]), location
-        logic[location]["region"] = region
-    for node, content in COMPANIONS.items():
-        assert logic[node]["type"] == "follower" and logic[node]["content"] == content, node
-        logic[node].update(type="item", subtype="companion")
-    for definition in logic.values():
-        if "content" in definition:
-            definition["content"] = CONTENT_ALIASES.get(definition["content"], definition["content"])
-    return logic
-
-
-LOGIC: Dict[str, Dict[str, Any]] = _fixed_logic()
 
 ITEM_LOCATIONS: List[str] = [k for k, v in LOGIC.items() if v["type"] == "item"]
 

@@ -2,7 +2,7 @@
 import re
 from typing import Any, Dict, Iterable, List, Optional, Set
 
-from .lasr import CATEGORIES, COMPANIONS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC
+from .lasr import CATEGORIES, ITEM_DEFS, ITEM_LOCATIONS, LOGIC
 from .options import LASOptions, goal_instruments, goal_seashells
 
 # Option attribute -> LASR location category it toggles.
@@ -83,7 +83,7 @@ def fixed_locations() -> Set[str]:
 def kept_locations() -> Set[str]:
     """Locations the patcher cannot put the placeholder at: the Trendy Game's prizes and the companions. They are never
     randomized; the module reports them when the game adds their item or sets their flag."""
-    return set(CATEGORIES["Trendy_Rewards"]) | set(COMPANIONS)
+    return set(CATEGORIES["Trendy_Rewards"]) | {k for k in ITEM_LOCATIONS if LOGIC[k]["subtype"] == "companion"}
 
 
 def optional_locations(options: LASOptions) -> Set[str]:
@@ -218,14 +218,19 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
     return settings
 
 
+def setting_token(setting: str) -> str:
+    """A setting's logic token as LASR's shuffler derives it: lower-cased with dashes."""
+    return re.sub(" ", "-", setting).lower()
+
+
 def logic_tokens(options: LASOptions) -> Dict[str, bool]:
-    """Settings tokens as LASR's shuffler derives them: every enabled boolean setting, lower-cased with dashes.
+    """Settings tokens as LASR's shuffler derives them: every enabled boolean setting.
 
     Tokens that are also logic node or item names are dropped: in LASR, enabling "Rapids" puts the rapids region
     into the starting access by accident.
     """
     settings = lasr_settings(options)
-    tokens = {re.sub(" ", "-", k).lower(): True for k, v in settings.items() if v is True}
+    tokens = {setting_token(k): True for k, v in settings.items() if v is True}
     if settings["Stealing"] in ("Always", "Standard"):
         tokens["can-steal"] = True
     if settings["Stealing"] == "Standard":

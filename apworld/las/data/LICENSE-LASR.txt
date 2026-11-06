@@ -1,6 +1,7 @@
-The files logic.yml, items.yml and locations.yml in this directory are copied unmodified from
-LAS Randomizer (https://github.com/Owen-Splat/DEV-BUILD-LASR, RandomizerCore/Data), which is
-distributed under the MIT License reproduced below.
+The files logic.yml, items.yml and locations.yml in this directory come from LAS Randomizer
+(https://github.com/Owen-Splat/LAS-Randomizer, branch dev, RandomizerCore/Data), which is distributed
+under the MIT License reproduced below. items.yml and locations.yml are unmodified. logic.yml is
+modified by this project; its header names the upstream commit it was last synced with.
 
 MIT License
 

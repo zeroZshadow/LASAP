@@ -51,7 +51,6 @@ SETTINGS = {
     "Seashells Important": True, "Trade Important": True,
 }
 
-COMPANIONS = ("moblin-cave", "rooster-statue")  # LASR's followers, which the world makes item locations
 DUNGEONS = ("tail-cave", "bottle-grotto", "key-cavern", "angler-tunnel", "catfish-maw", "face-shrine",
             "eagle-tower", "turtle-rock", "color-dungeon")
 
@@ -67,7 +66,7 @@ def make(seed_hash=None, slot: str = "Tester", settings: dict = None, dungeons: 
     settings = {**SETTINGS, **(settings or {})}
     vanilla = {k for k, v in logic.items() if v.get("type") == "item" and v.get("subtype") == "shop"
                and k not in categories.get("Shop_Items", [])}
-    kept = set(categories["Trendy_Rewards"]) | set(COMPANIONS)
+    kept = set(categories["Trendy_Rewards"]) | {k for k, v in logic.items() if v.get("subtype") == "companion"}
     removed = set()
     if settings["Owl Gifts"] not in ("Overworld", "All"):
         removed |= set(categories["Overworld_Owl_Statues"])
@@ -76,7 +75,7 @@ def make(seed_hash=None, slot: str = "Tester", settings: dict = None, dungeons: 
 
     placements, location_ids, removed_ids = {}, {}, {}
     for loc, d in logic.items():
-        if d.get("type") != "item" and loc not in COMPANIONS:
+        if d.get("type") != "item":
             continue
         if loc in removed:
             removed_ids[loc] = ids[loc]

@@ -1,5 +1,11 @@
 ---
 
+# LAS Randomizer's logic (https://github.com/Owen-Splat/LAS-Randomizer, RandomizerCore/Data/logic.yml) with this
+# project's changes. patcher/data/logic.yml is a copy of this file.
+# Upstream commit last synced: 067553b0670d8d56f2caf54e2e8b458a6157aacb
+# To take upstream's changes, review the diff from that commit to the branch dev in upstream's repository, apply what
+# fits here, copy the file to patcher/data and update the commit.
+
 # a few things will have glitched logic filled in. glitched logic is far from complete but I want a few things to have it to test how the shuffler makes use of the logic
 
 # Items
@@ -1010,9 +1016,8 @@ above-turtle-rock:
   subtype: standing
   content: heart-piece
   index: 11
-  region: taltal-west-2
+  region: turtle-rock-top
   spoiler-region: taltal-mountains-west
-  condition-basic: D8-4C
 trendy-prize-1:
   type: item
   subtype: standing
@@ -1044,6 +1049,9 @@ trendy-prize-4:
   region: trendy
   spoiler-region: mabe-village
   condition-basic: can-farm-rupees & conch-horn # (conch-horn | fast-trendy)
+# The Trendy Game offers prizes 2 to 6 one at a time, in that order (scripts/re/CRANE.md, Prize selection): it stops
+# at the first one not won, and shows nothing of them while that one's instrument is missing. So prize 5 also takes
+# prize 4's Conch Horn, and prize 6 the Conch Horn and prize 5's Sea Lily's Bell.
 trendy-prize-5:
   type: item
   subtype: standing
@@ -1051,7 +1059,7 @@ trendy-prize-5:
   index: 26
   region: trendy
   spoiler-region: mabe-village
-  condition-basic: can-farm-rupees & sea-lilys-bell # (sea-lilys-bell | fast-trendy)
+  condition-basic: can-farm-rupees & conch-horn & sea-lilys-bell # (sea-lilys-bell | fast-trendy)
 trendy-prize-6:
   type: item
   subtype: standing
@@ -1059,7 +1067,7 @@ trendy-prize-6:
   index: 43
   region: trendy
   spoiler-region: mabe-village
-  condition-basic: can-farm-rupees & surf-harp # (surf-harp | fast-trendy)
+  condition-basic: can-farm-rupees & conch-horn & sea-lilys-bell & surf-harp # (surf-harp | fast-trendy)
 trendy-prize-final:
   type: item
   subtype: npc
@@ -1125,7 +1133,7 @@ woods-north-cave-loose:
 mad-batter-woods:
   type: item
   subtype: npc
-  content: powders-capacity
+  content: powder-capacity
   region: woods
   spoiler-region: mysterious-woods
   condition-basic: bracelet & powders
@@ -1138,13 +1146,14 @@ woods-south-chest:
   spoiler-region: mysterious-woods
   condition-basic: bracelet
   condition-hell: mabe & swamp & feather
+# The Woods North chest and the Woods West dig stand on the swamp's side of the woods, as the chest does in LADXR.
 woods-north-chest:
   type: item
   subtype: chest
   content: tail-key
   region: woods
   spoiler-region: mysterious-woods
-  condition-basic: (powders | rooster | feather) & break-bush
+  condition-basic: swamp & break-bush
   condition-advanced: hookshot & (sword | shovel | boots) & break-bush
 woods-west-dig:
   type: item
@@ -1153,7 +1162,7 @@ woods-west-dig:
   index: 26
   region: woods
   spoiler-region: mysterious-woods
-  condition-basic: shovel
+  condition-basic: swamp & shovel
 woods-east-dig:
   type: item
   subtype: dig
@@ -1486,13 +1495,17 @@ D3-five-zols:
   region: key-cavern
   spoiler-region: key-cavern
   condition-basic: D3-4C & kill-zol-green
+# Key Cavern's north basement room, its owl statue and the two chests its switch opens (D3-hallway-4,
+# D3-hallway-side-room) are behind a door of the crossroads, which the stairs door and the key blocks can leave shut.
+# At D3-4C (4 keys) the fill can make a dead end with keys there, which D3-3G (8 keys, as many as the dungeon has
+# locks) rules out.
 D3-basement-north:
   type: item
   subtype: drop
   content: key-D3
   region: key-cavern
   spoiler-region: key-cavern
-  condition-basic: D3-4C & kill-stalfos-spear & kill-stalfos
+  condition-basic: D3-3G & kill-stalfos-spear & kill-stalfos
 D3-basement-west:
   type: item
   subtype: drop
@@ -1513,7 +1526,7 @@ D3-hallway-4:
   content: stone-beak-D3
   region: key-cavern
   spoiler-region: key-cavern
-  condition-basic: D3-4C & hit-crystal-switch
+  condition-basic: D3-3G & hit-crystal-switch
 D3-hallway-3:
   type: item
   subtype: chest
@@ -1534,7 +1547,7 @@ D3-hallway-side-room:
   content: map-D3
   region: key-cavern
   spoiler-region: key-cavern
-  condition-basic: D3-4C & kill-zol-green & hit-crystal-switch
+  condition-basic: D3-3G & kill-zol-green & hit-crystal-switch
 D3-hallway-1:
   type: item
   subtype: chest
@@ -1555,7 +1568,7 @@ D3-owl-statue-basement-north:
   content: rupee-20
   region: key-cavern
   spoiler-region: key-cavern
-  condition-basic: D3-4C & stone-beak-D3
+  condition-basic: D3-3G & stone-beak-D3
 D3-owl-statue-arrow:
   type: item
   subtype: dungeon-statue
@@ -2549,19 +2562,21 @@ owl-statue-taltal-east:
   region: taltal-east-2
   spoiler-region: taltal-mountains-east
 
-# Followers
+# Companions: item locations that keep their companion (lasr_settings.kept_locations)
 moblin-cave:
-  type: follower
+  type: item
   content: bow-wow
   region: wasteland
   spoiler-region: taltal-heights
   condition-basic: kill-moblin-shield & kill-moblin-spear & kill-king-moblin & full-moon-cello
+  subtype: companion
 rooster-statue:
-  type: follower
+  type: item
   content: rooster
   region: mabe
   spoiler-region: mabe-village
   condition-basic: bracelet:2 & song-soul & ocarina
+  subtype: companion
 
 # Regions
 angler-tunnel:
@@ -2874,15 +2889,19 @@ D0-clear:
 bomb-arrows:
   type: interaction
   condition-basic: bombs & shoot-arrows
+# powders, bombs and shoot-arrows also refill by the item Link holds: a cut bush or a lifted rock (break-bush) drops
+# from ItemDrop's Grass row, which Consumable Drops (always on) gives powder, bombs and arrows; the Ammo Ghost in
+# Tarin's house (ammo-ghost, in Mabe) tops them up. Both give only what Link already has. break-bush also takes powder
+# and bombs: the logic's fixed point never lets a refill pay for itself.
 bombs:
   type: interaction
-  condition-basic: ((mabe & boots) | (can-shop & bomb) | (break-pot & (kanalet-inside | (D0-8C & ((can-farm-rupees & reduced-farming & powders) | (kill-goblin[heavy] & break-pot))) | key-cavern | D6-8D)) | (rapids & (feather | boomerang)) | (angler-tunnel & (sword | feather | boomerang))) & (bomb | !shuffled-bombs)
+  condition-basic: (((mabe & boots) | (can-shop & bomb) | (break-pot & (kanalet-inside | (D0-8C & ((can-farm-rupees & reduced-farming & powders) | (kill-goblin[heavy] & break-pot))) | key-cavern | D6-8D)) | (rapids & (feather | boomerang)) | (angler-tunnel & (sword | feather | boomerang))) & (bomb | !shuffled-bombs)) | (bomb & (break-bush | (ammo-ghost & mabe)))
 powders:
   type: interaction
-  condition-basic: ((color-dungeon & (can-farm-rupees | break-pot)) | (D2-7D & feather & hit-crystal-switch) | (D8-8D & kill-vire & feather & break-pot) | (D8-4C & feather & hookshot) | (D8-8D & feather & key-D8:2) | (rapids & (feather | boomerang))) & (powder | !shuffled-powder)
+  condition-basic: (((color-dungeon & (can-farm-rupees | break-pot)) | (D2-7D & feather & hit-crystal-switch) | (D8-8D & kill-vire & feather & break-pot) | (D8-4C & feather & hookshot) | (D8-8D & feather & key-D8:2) | (rapids & (feather | boomerang))) & (powder | !shuffled-powder)) | (powder & (break-bush | (ammo-ghost & mabe)))
 shoot-arrows:
   type: interaction
-  condition-basic: bow & (can-shop | (armos-maze & break-pot) | (D5-7F & kill-helmasaur & feather) | (D6-8D & break-pot) | (D8-4C & (feather | break-pot)) | (D8-8D & feather & key-D8:2) | arrow-capacity)
+  condition-basic: (bow & (can-shop | (armos-maze & break-pot) | (D5-7F & kill-helmasaur & feather) | (D6-8D & break-pot) | (D8-4C & (feather | break-pot)) | (D8-8D & feather & key-D8:2) | arrow-capacity)) | (bow & (break-bush | (ammo-ghost & mabe)))
 can-shop:
   type: interaction
   condition-basic: can-farm-rupees | can-steal & (sword | !stealing-needs-sword)
@@ -2958,9 +2977,11 @@ kill-darknut-spear:
 kill-darknut-flail:
   type: enemy
   condition-basic: sword | shoot-arrows | bombs | rod | boomerang
+# Followers can be swapped in-game, so Bow-Wow does it with the rooster held too; a !rooster here would be
+# order-dependent in the logic's fixed point and not monotone.
 kill-flower:
   type: enemy
-  condition-basic: (hookshot & (sword | powders | shoot-arrows | bombs)) | rod | boomerang | (bow-wow & !rooster)
+  condition-basic: (hookshot & (sword | powders | shoot-arrows | bombs)) | rod | boomerang | bow-wow
 kill-big-flower:
   type: enemy
   condition-basic: (hookshot & (sword | shoot-arrows | bombs)) | rod | boomerang | bow-wow
@@ -3203,4 +3224,17 @@ hootshotless-sign-maze:
 coyote-airclimb:
   type: trick
   condition-basic: sword & feather & (shield | pegasus-boots)
+# Face Shrine rooms, after LADXR's layout: the boss door is reached from the tile room (D6-5D), the raft-game chest
+# through the top-left exit.
+D6-4D:
+  type: room
+  condition-basic: D6-5D
+D6-2A:
+  type: room
+  condition-basic: D6-3A & hit-crystal-switch & bracelet:2
+# The top of Turtle Rock (Field_01A to Field_01C: the heart piece, side doors into Turtle Rock's rooms 03C and 03F, and
+# the Tal Tal Mountain warp point), entered from Turtle Rock.
+turtle-rock-top:
+  type: region
+  condition-basic: D8-4C
 ...

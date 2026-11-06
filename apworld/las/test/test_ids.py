@@ -4,7 +4,7 @@ import unittest
 
 from ..ids import ITEM_BASE, ITEM_OFFSETS, LOCATION_BASE, LOCATION_OFFSETS
 from ..items import ITEM_GAME_INFO, ITEM_TABLE
-from ..lasr import ITEM_DEFS, RAW_LOGIC
+from ..lasr import ITEM_DEFS, ITEM_LOCATIONS
 from ..locations import LOCATION_NAME_TO_ID, LOCATION_NAMES
 
 GEN_IDS = pathlib.Path(__file__).resolve().parents[2] / "tools" / "gen_ids.py"
@@ -17,8 +17,7 @@ PINNED_LOCATIONS = {"sale": 1, "tarin": 53, "D1-instrument": 154, "D0-rupee-28":
 class TestIds(unittest.TestCase):
     def test_every_name_has_an_offset(self) -> None:
         self.assertEqual(set(ITEM_DEFS) - set(ITEM_OFFSETS), set())
-        item_locations = {k for k, v in RAW_LOGIC.items() if v["type"] == "item"}
-        self.assertEqual(item_locations - set(LOCATION_OFFSETS), set())
+        self.assertEqual(set(ITEM_LOCATIONS) - set(LOCATION_OFFSETS), set())
 
     def test_offsets_unique_and_in_range(self) -> None:
         for table in (ITEM_OFFSETS, LOCATION_OFFSETS):

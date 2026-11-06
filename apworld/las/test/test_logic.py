@@ -178,7 +178,7 @@ class TestIndirectConditions(unittest.TestCase):
 
 
 class TestRefills(unittest.TestCase):
-    """Powder, bombs and arrows refill from bushes Link breaks and from the Ammo Ghost (lasr.REFILL_ALTERNATIVES), for
+    """Powder, bombs and arrows refill from bushes Link breaks and from the Ammo Ghost (logic.yml), for
     the item he holds; a refill never pays for itself. Without stealing, as stealing refills bombs and arrows at the
     shop with no item."""
 
@@ -216,7 +216,7 @@ class TestRefills(unittest.TestCase):
 
 class TestTrendyPrizes(unittest.TestCase):
     """The Trendy Game offers prizes 2 to 6 in order, so a prize takes the instruments of the prizes before it
-    (lasr.CONDITION_EDITS)."""
+    (logic.yml)."""
 
     def test_order(self) -> None:
         world_type = AutoWorldRegister.world_types["Links Awakening Switch"]
@@ -239,7 +239,7 @@ class TestTrendyPrizes(unittest.TestCase):
 
 
 class TestSwampSideOfWoods(unittest.TestCase):
-    """The Woods North chest and the Woods West dig are on the swamp's side of the woods (lasr.CONDITION_EDITS): the
+    """The Woods North chest and the Woods West dig are on the swamp's side of the woods (logic.yml): the
     bracelet reaches them through the wasteland, and the way past Tarin takes breaking bushes and powder, the feather or
     the rooster. The dig also takes the shovel."""
 

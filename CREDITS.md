@@ -1,6 +1,6 @@
 # Credits
 
-- **[LAS Randomizer](https://github.com/Owen-Splat/LAS-Randomizer)** by Owen-Splat: the mod generator, logic and item and location data. The game module grew from [Owen-Splat's fork of exlaunch](https://github.com/Owen-Splat/exlaunch).
+- **[LAS Randomizer](https://github.com/Owen-Splat/LAS-Randomizer)** by Owen-Splat: the mod generator, and the item and location data and the logic that `logic.yml` is based on. The game module grew from [Owen-Splat's fork of exlaunch](https://github.com/Owen-Splat/exlaunch).
 - **[LAS-Randomizer original](https://github.com/la-switch/LAS-Randomizer)** by Glan9: the randomizer Owen-Splat's version is built on.
 - **[exlaunch](https://github.com/shadowninja108/exlaunch)** by shadowninja108: the game module's framework.
 - **[Archipelago](https://github.com/ArchipelagoMW/Archipelago)** by the Archipelago team: the multiworld framework, server and client.
