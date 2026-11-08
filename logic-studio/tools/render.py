@@ -158,9 +158,6 @@ def level_picture(rooms, opened):
                 d.polygon([(px + PX // 2, py + 1), (px + PX - 2, py + PX // 2), (px + PX // 2, py + PX - 2), (px + 1, py + PX // 2)], fill=colour, outline=line)
             else:
                 d.rectangle([px + 2, py + 2, px + PX - 3, py + PX - 3], fill=colour, outline=line)
-    for r in rooms:
-        ox, oz = round((r["x"] - x0) / TILE), round((r["z"] - z0) / TILE)
-        d.rectangle([ox * PX, oz * PX, (ox + r["w"]) * PX - 1, (oz + r["h"]) * PX - 1], outline=(255, 255, 255))
     return img, (x0, z0)
 
 
