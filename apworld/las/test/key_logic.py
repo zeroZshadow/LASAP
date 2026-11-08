@@ -5,6 +5,8 @@ from (`at`) and the logic nodes and locations its key requirement stands for (`o
 those locks open: each key token of the node is replaced by its locks, and a node without a key token of its own needs
 them on top of its condition. `routes` adds ways to a node that the logic does not count, in the game's terms only.
 `at` and the routes are conditions in the logic's grammar, in which `lock-<flag>` holds once that lock is open.
+A two-way way with a key token also reads it on the way back, where Link has come through that door: in the game's terms
+it holds there.
 
 A player who spends keys as badly as possible opens any lock they can reach, in any order. The logic is sound when,
 whatever they opened, everything the logic gives them with that many keys is still reachable:
@@ -16,7 +18,7 @@ and every item and setting but one or two (a missing item can close the route th
 import itertools
 from typing import Dict, FrozenSet, Iterable, List, Mapping, NamedTuple, Set, Tuple
 
-from ..lasr import COUNTED, ITEM_DEFS, location_dungeon
+from ..lasr import COUNTED, ITEM_DEFS, _load_yaml, location_dungeon
 from ..logic import condition_keys, node_tokens, parse
 
 
@@ -36,6 +38,7 @@ class KeyLogicCheck:
         self.total_keys = ITEM_DEFS[self.key]["quantity"]
         self.locks = {flag: dict(lock) for flag, lock in model["locks"].items()}
         self.routes: Mapping[str, List[str]] = model.get("routes") or {}
+        self.way_back = self._way_back_nodes()
         self.node_locks: Dict[str, FrozenSet[int]] = {}
         for flag, lock in self.locks.items():
             for name in lock.get("opens") or ():
@@ -54,6 +57,16 @@ class KeyLogicCheck:
         self.dynamic = self._dynamic()
         self.static = [name for name in self.nodes if name not in self.dynamic]
         self.dynamic_order = [name for name in self.nodes if name in self.dynamic]
+
+    def _way_back_nodes(self) -> FrozenSet[str]:
+        """Nodes whose key token belongs to a way back: logic.yml writes a two-way way under the zone it leaves from."""
+        found = set()
+        for name, node in _load_yaml("logic.yml").items():
+            for value in (node.get("connections") or {}).values():
+                rules = value.values() if isinstance(value, Mapping) else (value,)
+                if any(self.key in node_tokens(parse(str(rule))) for rule in rules):
+                    found.add(name)
+        return frozenset(found)
 
     # --- compiling ---
 
@@ -104,6 +117,8 @@ class KeyLogicCheck:
             if not game:
                 return f"(K >= {count})"
             locks = self.node_locks.get(owner, frozenset())
+            if not locks and owner in self.way_back:
+                return "True"
             assert locks, f"{owner}: {name} stands for no lock in key_locks.yml"
             return f"(O >= {set(locks)!r})"
         if name in ITEM_DEFS:

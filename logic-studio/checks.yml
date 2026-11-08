@@ -1,0 +1,348 @@
+# Every check: where it is in the game (level, room, x, y, z, exact; written by python logic-studio/tools/build.py)
+# and what it holds (content, and index where the game numbers it; kept by hand). Export writes these into logic.yml.
+sale: {level: BananaHouse, room: BananaHouse_01A, x: 7.5, z: 6.0, exact: false, content: bananas}
+south-bay-dig: {level: Field, room: Field_14K, x: 155.25, z: 161.25, exact: true, content: seashell, index: 15}
+mermaid-cave: {level: MermaidStatue, room: null, x: 7.5, z: 6.0, exact: false, content: magnifying-lens}
+animal-village-northwest: {level: Field, room: Field_13L, x: 179.25, z: 146.25, exact: true, content: heart-piece, index: 16}
+animal-village-cave: {level: AnimalVillageCave, room: AnimalVillageCave_01A, x: 3.75, y: 1.575, z: 2.25, exact: true, content: heart-piece, index: 8}
+christine-trade: {level: ChristineHouse, room: ChristineHouse_01A, x: 7.5, z: 6.0, exact: false, content: letter}
+christine-grateful: {level: ChristineHouse, room: ChristineHouse_01A, x: 7.5, z: 6.0, exact: false, content: seashell, index: 35}
+invisible-zora: {level: HiddenZoraHouse, room: HiddenZoraHouse_01A, x: 7.5, z: 6.0, exact: false, content: seashell, index: 36}
+chef-bear: {level: BearHouse, room: BearHouse_01A, x: 7.5, z: 6.0, exact: false, content: pineapple}
+grandma-yahoo: {level: Field, room: Field_13N, x: 204.75, z: 150.75, exact: true, content: fishing-hook}
+beach-chest: {level: Field, room: Field_15F, x: 87.75, z: 171.75, exact: true, content: rupee-50}
+beach-dig: {level: Field, room: Field_16F, x: 75.75, z: 186.75, exact: true, content: seashell, index: 10}
+washed-up: {level: Field, room: Field_16C, x: 36.16, z: 188.05, exact: true, content: sword}
+goriya-trader: {level: BoomerangCave, room: BoomerangCave_01A, x: 7.5, z: 6.0, exact: false, content: boomerang}
+dampe-page-1: {level: DanpeiHouse, room: DanpeiHouse_01A, x: 7.5, z: 6.0, exact: false, content: seashell, index: 48}
+dampe-heart-challenge: {level: DanpeiHouse, room: DanpeiHouse_01A, x: 7.5, z: 6.0, exact: false, content: heart-piece, index: 30}
+dampe-page-2: {level: DanpeiHouse, room: DanpeiHouse_01A, x: 7.5, z: 6.0, exact: false, content: heart-piece, index: 31}
+dampe-bottle-challenge: {level: DanpeiHouse, room: DanpeiHouse_01A, x: 7.5, z: 6.0, exact: false, content: bottle, index: 2}
+dampe-final: {level: DanpeiHouse, room: DanpeiHouse_01A, x: 7.5, z: 6.0, exact: false, content: heart-container, index: 8}
+taltal-entrance-blocks: {level: Tamaranch04, room: Tamaranch04_03B, x: 27.75, y: 0.075, z: 45.75, exact: true, content: heart-piece, index: 13}
+taltal-entrance-chest: {level: Tamaranch04, room: Tamaranch04_02D, x: 57.75, y: 0.0, z: 15.75, exact: true, content: rupee-50}
+taltal-east-left-chest: {level: Field, room: Field_02I, x: 126.75, z: 17.25, exact: true, content: rupee-50}
+wasteland-dig: {level: Field, room: Field_05H, x: 116.25, z: 59.25, exact: true, content: seashell, index: 28}
+north-wasteland: {level: Field, room: Field_05H, x: 113.25, z: 50.25, exact: true, content: heart-piece, index: 12}
+north-of-moblin-cave: {level: Field, room: Field_03F, x: 83.25, z: 29.25, exact: true, content: seashell, index: 32}
+lanmola: {level: Field, room: Field_13O, x: 217.5, z: 150.0, exact: true, content: angler-key}
+desert-cave: {level: LanmolaCave, room: LanmolaCave_01A, x: 7.5, y: 0.075, z: 3.75, exact: true, content: heart-piece, index: 5}
+walrus: {level: Field, room: Field_16N, x: 208.5, z: 186.0, exact: true, content: seashell, index: 39}
+desert-dig: {level: Field, room: Field_13P, x: 230.25, z: 150.75, exact: true, content: seashell, index: 34}
+desert-south: {level: Field, room: Field_16P, x: 233.25, z: 188.25, exact: true, content: seashell, index: 16}
+ghost-reward: {level: Field, room: Field_07E, x: 63.75, z: 80.25, exact: true, content: bottle, index: 0}
+ghost-grave-dig: {level: Field, room: Field_08E, x: 69.75, z: 89.25, exact: true, content: seashell, index: 4}
+graveyard-cave: {level: UnderGrave, room: UnderGrave_01B, x: 24.75, y: 0.251, z: 2.25, exact: true, content: heart-piece, index: 9}
+ghost-house-pot: {level: GhostHouse, room: GhostHouse_01A, x: 12.0, y: 0.0, z: 8.25, exact: true, content: seashell, index: 20}
+taltal-heights-hole: {level: Field, room: Field_03N, x: 196.5, z: 34.5, exact: true, content: seashell, index: 29}
+kanalet-crow: {level: Field, room: Field_06I, x: 128.25, z: 68.25, exact: true, content: golden-leaf, index: 1}
+kanalet-mad-bomber: {level: Field, room: Field_06K, x: 158.25, z: 66.75, exact: true, content: golden-leaf, index: 0}
+kanalet-kill-room: {level: KanaletCastle, room: KanaletCastle_02A, x: 7.5, y: -0.003, z: 15.75, exact: true, content: golden-leaf, index: 2}
+kanalet-bombed-guard: {level: KanaletCastle, room: KanaletCastle_01C, x: 63.75, y: 0.475, z: 8.25, exact: true, content: golden-leaf, index: 3}
+kanalet-final-guard: {level: KanaletCastle, room: KanaletCastle_01D, x: 82.5, z: 6.0, exact: false, content: golden-leaf, index: 4}
+dream-shrine-right: {level: DreamShrine, room: DreamShrine_01B, x: 18.0, y: 3.0, z: 9.75, exact: true, content: rupee-100}
+dream-shrine-left: {level: BedRoom, room: BedRoom_01A, x: 7.5, z: 6.0, exact: false, content: ocarina}
+mabe-bushes: {level: Field, room: Field_11D, x: 53.25, z: 125.25, exact: true, content: seashell, index: 0}
+doghouse-dig: {level: DogHouse, room: DogHouse_01A, x: 12.0, z: 6.0, exact: false, content: seashell, index: 1}
+mabe-well: {level: TownWell, room: TownWell_01A, x: 6.75, y: -0.3, z: 6.75, exact: true, content: heart-piece, index: 0}
+fishing-orange: {level: Field, room: Field_09B, x: 23.25, z: 102.75, exact: true, content: heart-piece, index: 1}
+fishing-50: {level: Field, room: Field_09B, x: 23.25, z: 102.75, exact: true, content: heart-piece, index: 27}
+fishing-100: {level: Field, room: Field_09B, x: 23.25, z: 102.75, exact: true, content: seashell, index: 45}
+fishing-150: {level: Field, room: Field_09B, x: 23.25, z: 102.75, exact: true, content: chamber-stone, index: 11}
+fishing-cheep-cheep: {level: Field, room: Field_09B, x: 23.25, z: 102.75, exact: true, content: seashell, index: 44}
+fishing-ol-baron: {level: Field, room: Field_09B, x: 23.25, z: 102.75, exact: true, content: chamber-stone, index: 12}
+fishing-loose: {level: Field, room: Field_09B, x: 23.25, z: 102.75, exact: true, content: bottle, index: 1}
+tarin: {level: MarinTarinHouse, room: MarinTarinHouse_01A, x: 7.5, z: 6.0, exact: false, content: shield}
+marin: {level: Field, room: Field_10C, x: 40.14, z: 116.58, exact: true, content: song-ballad}
+shop-slot3-1st: {level: Shop, room: Shop_01A, x: 7.5, z: 6.0, exact: false, content: shovel}
+shop-slot3-2nd: {level: Shop, room: Shop_01A, x: 7.5, z: 6.0, exact: false, content: bow}
+shop-slot5-1st: {level: Shop, room: Shop_01A, x: 7.5, z: 6.0, exact: false, content: chamber-stone, index: 25}
+shop-slot5-2nd: {level: Shop, room: Shop_01A, x: 7.5, z: 6.0, exact: false, content: chamber-stone, index: 26}
+shop-slot5-3rd: {level: Shop, room: Shop_01A, x: 7.5, z: 6.0, exact: false, content: chamber-stone, index: 10}
+shop-slot5-4th: {level: Shop, room: Shop_01A, x: 7.5, z: 6.0, exact: false, content: chamber-stone, index: 20}
+shop-slot5-5th: {level: Shop, room: Shop_01A, x: 7.5, z: 6.0, exact: false, content: chamber-stone, index: 21}
+shop-slot5-6th: {level: Shop, room: Shop_01A, x: 7.5, z: 6.0, exact: false, content: chamber-stone, index: 22}
+shop-slot5-7th: {level: Shop, room: Shop_01A, x: 7.5, z: 6.0, exact: false, content: chamber-stone, index: 23}
+shop-slot6: {level: Shop, room: Shop_01A, x: 7.5, z: 6.0, exact: false, content: heart-piece, index: 24}
+mamasha: {level: QuadupletHouse, room: QuadupletHouse_01A, x: 10.5, z: 6.0, exact: false, content: ribbon}
+ciao-ciao: {level: MadamHouse, room: MadamHouse_01A, x: 7.5, z: 6.0, exact: false, content: dog-food}
+tail-cave-bonk-tree: {level: Field, room: Field_14C, x: 36.0, z: 163.5, exact: true, content: seashell, index: 13}
+beach-bonk-tree: {level: Field, room: Field_15A, x: 15.0, z: 178.5, exact: true, content: seashell, index: 49}
+armos-cave: {level: ArmosShrineCave, room: ArmosShrineCave_01A, x: 6.75, y: 0.0, z: 5.25, exact: true, content: seashell, index: 17}
+rock-maze: {level: Field, room: Field_09P, x: 227.25, z: 104.25, exact: true, content: seashell, index: 33}
+armos-knight: {level: ArmosShrine, room: null, x: 7.5, z: 6.0, exact: false, content: face-key}
+goponga-cave-left: {level: GopongaCave, room: GopongaCave_01A, x: 11.25, y: 0.0, z: 2.25, exact: true, content: rupee-20}
+goponga-cave-right: {level: GopongaCave, room: GopongaCave_01B, x: 24.75, y: 1.5, z: 3.75, exact: true, content: rupee-50}
+goponga-west-dig: {level: Field, room: Field_03B, x: 26.25, z: 32.25, exact: true, content: seashell, index: 27}
+mr-write: {level: DrWrightHouse, room: DrWrightHouse_01A, x: 7.5, z: 6.179999828338623, exact: false, content: broom}
+pond-island: {level: Field, room: Field_11G, x: 99.75, z: 125.25, exact: true, content: seashell, index: 18}
+southwest-bay-bush: {level: Field, room: Field_15J, x: 138.75, z: 177.75, exact: true, content: seashell, index: 11}
+beside-seashell-mansion: {level: Field, room: Field_09L, x: 171.75, z: 102.75, exact: true, content: seashell, index: 9}
+small-coast-island: {level: Field, room: Field_16I, x: 126.75, z: 185.25, exact: true, content: seashell, index: 19}
+above-cave-dig: {level: Field, room: Field_11I, x: 125.25, z: 128.25, exact: true, content: seashell, index: 7}
+above-d3: {level: Field, room: Field_11F, x: 83.25, z: 126.75, exact: true, content: seashell, index: 6}
+under-skull-rock: {level: Field, room: Field_10H, x: 113.25, z: 116.25, exact: true, content: seashell, index: 30}
+ukuku-cave-west-chest: {level: UkukuCave01, room: UkukuCave01_01A, x: 6.75, y: 0.0, z: 3.75, exact: false, content: rupee-50}
+ukuku-cave-west-loose: {level: UkukuCave01, room: UkukuCave01_01A, x: 6.75, y: 0.0, z: 3.75, exact: false, content: heart-piece, index: 14}
+ukuku-cave-east-chest: {level: UkukuCave02, room: UkukuCave02_02A, x: 12.75, y: 0.0, z: 18.75, exact: true, content: rupee-50}
+ukuku-cave-east-loose: {level: UkukuCave02, room: UkukuCave02_01B, x: 23.25, y: 0.075, z: 6.75, exact: true, content: heart-piece, index: 4}
+mad-batter-bay: {level: MadBattersWell01, room: MadBattersWell01_01A, x: 7.5, z: 6.0, exact: false, content: bomb-capacity}
+bay-passage-sunken: {level: MadBattersWellEnter, room: MadBattersWellEnter_01B, x: 18.0, y: -2.25, z: 9.0, exact: true, content: heart-piece, index: 23}
+river-crossing-cave: {level: AnimalVillageEnter, room: AnimalVillageEnter_01B, x: 18.75, y: -2.175, z: 7.5, exact: true, content: heart-piece, index: 18}
+kiki: {level: Field, room: Field_09L, x: 174.43, z: 99.57, exact: true, content: stick}
+tarin-ukuku: {level: Field, room: Field_09H, x: 113.55, z: 102.85, exact: true, content: honeycomb}
+kanalet-south-cave: {level: KanaletCastleSouthCave, room: KanaletCastleSouthCave_01A, x: 6.75, y: 0.0, z: 3.75, exact: true, content: seashell, index: 24}
+plains-rock-maze: {level: Field, room: Field_12J, x: 141.75, z: 137.25, exact: true, content: seashell, index: 8}
+ukuku-bonk-tree: {level: Field, room: Field_11E, x: 70.5, z: 124.5, exact: true, content: seashell, index: 14}
+5-seashell-reward: {level: SeashellHouse, room: SeashellHouse_01A, x: 7.5, z: 0.0, exact: false, content: heart-piece, index: 22}
+15-seashell-reward: {level: SeashellHouse, room: SeashellHouse_01A, x: 7.5, z: 0.0, exact: false, content: shell-sensor}
+30-seashell-reward: {level: SeashellHouse, room: SeashellHouse_01A, x: 7.5, z: 0.0, exact: false, content: chamber-stone, index: 4}
+40-seashell-reward: {level: SeashellHouse, room: SeashellHouse_01A, x: 7.5, z: 0.0, exact: false, content: sword}
+50-seashell-reward: {level: SeashellHouse, room: SeashellHouse_01A, x: 7.5, z: 0.0, exact: false, content: chamber-stone, index: 13}
+rapids-west-island: {level: Field, room: Field_06M, x: 187.5, z: 61.5, exact: true, content: heart-piece, index: 28}
+rapids-middle-island: {level: Field, room: Field_06N, x: 204.75, z: 60.75, exact: true, content: rupee-20}
+rapids-east-island: {level: Field, room: Field_06O, x: 215.25, z: 66.75, exact: true, content: seashell, index: 46}
+rapids-south-island: {level: Field, room: Field_07M, x: 185.25, z: 75.75, exact: true, content: seashell, index: 23}
+rapids-race-45: {level: RapidsRideTicket, room: RapidsRideTicket_01A, x: 7.5, z: 6.0, exact: false, content: heart-piece, index: 29}
+rapids-race-35: {level: RapidsRideTicket, room: RapidsRideTicket_01A, x: 7.5, z: 6.0, exact: false, content: seashell, index: 47}
+rapids-race-30: {level: RapidsRideTicket, room: RapidsRideTicket_01A, x: 7.5, z: 6.0, exact: false, content: chamber-stone, index: 8}
+rapids-ascent-cave: {level: RapidsRideExit, room: RapidsRideExit_01A, x: 11.25, y: 1.575, z: 5.25, exact: true, content: heart-piece, index: 20}
+mermaid-martha: {level: Field, room: Field_13J, x: 149.25, z: 149.25, exact: true, content: mermaid-scale}
+bay-fisherman: {level: Field, room: Field_15K, x: 160.11, z: 170.27, exact: true, content: necklace}
+kanalet-moat-north: {level: Field, room: Field_04I, x: 128.25, z: 38.25, exact: true, content: seashell, index: 38}
+kanalet-moat-south: {level: Field, room: Field_08J, x: 135.75, z: 87.75, exact: true, content: heart-piece, index: 6}
+south-bay-sunken: {level: Field, room: Field_15J, x: 144.75, z: 177.75, exact: true, content: heart-piece, index: 17}
+mamu: {level: MamuCave, room: MamuCave_01A, x: 7.5, z: 6.0, exact: false, content: song-soul}
+swamp-chest: {level: Field, room: Field_04E, x: 62.25, z: 38.25, exact: true, content: rupee-50}
+taltal-left-ascent-cave: {level: Tamaranch02, room: Tamaranch02_01B, x: 50.25, y: 0.0, z: 8.25, exact: true, content: zol-trap}
+papahl: {level: Field, room: Field_02J, x: 143.25, z: 20.25, exact: true, content: hibiscus}
+taltal-bomb-hole: {level: Field, room: Field_02J, x: 148.5, z: 13.5, exact: true, content: seashell, index: 31}
+taltal-rooster-cave: {level: Field, room: Field_01K, x: 161.77, z: 11.13, exact: true, content: bird-key}
+taltal-crossing-cave: {level: Tamaranch04, room: Tamaranch04_02C, x: 35.25, y: 0.075, z: 17.25, exact: true, content: heart-piece, index: 10}
+taltal-east-bridge: {level: Field, room: Field_01M, x: 192.75, z: 11.25, exact: true, content: seashell, index: 21}
+taltal-sunken: {level: Field, room: Field_02M, x: 189.75, z: 23.25, exact: true, content: seashell, index: 37}
+taltal-ledge-chest: {level: Field, room: Field_02N, x: 203.25, z: 21.75, exact: true, content: seashell, index: 22}
+taltal-5-chest-puzzle: {level: Tamaranch05, room: Tamaranch05_04A, x: 5.25, y: 0.0, z: 62.25, exact: false, content: rupee-100}
+manbo: {level: MamboCave, room: MamboCave_01A, x: 6.5, z: 0.0, exact: false, content: song-mambo}
+taltal-east-drop: {level: EagleTowerExit, room: EagleTowerExit_01A, x: 9.0, y: -2.175, z: 6.75, exact: true, content: heart-piece, index: 7}
+taltal-west-chest: {level: Field, room: Field_02E, x: 68.25, z: 12.75, exact: true, content: rupee-50}
+mad-batter-taltal: {level: MadBattersWell03, room: MadBattersWell03_01A, x: 7.5, z: 6.0, exact: false, content: arrow-capacity}
+taltal-west-rock: {level: Field, room: Field_02F, x: 84.75, z: 12.75, exact: true, content: seashell, index: 40}
+taltal-west-escape: {level: Field, room: Field_03B, x: 27.75, z: 24.75, exact: true, content: heart-piece, index: 21}
+taltal-west-dig: {level: Field, room: Field_02C, x: 41.25, z: 20.25, exact: true, content: seashell, index: 41}
+above-turtle-rock: {level: Field, room: Field_01A, x: 6.75, z: 8.25, exact: true, content: heart-piece, index: 11}
+trendy-prize-1: {level: CraneGame, room: CraneGame_01A, x: 7.510000228881836, z: 3.0, exact: false, content: yoshi-doll}
+trendy-prize-2: {level: CraneGame, room: CraneGame_01A, x: 7.510000228881836, z: 3.0, exact: false, content: heart-piece, index: 25}
+trendy-prize-3: {level: CraneGame, room: CraneGame_01A, x: 7.510000228881836, z: 3.0, exact: false, content: seashell, index: 42}
+trendy-prize-4: {level: CraneGame, room: CraneGame_01A, x: 7.510000228881836, z: 3.0, exact: false, content: chamber-stone, index: 3}
+trendy-prize-5: {level: CraneGame, room: CraneGame_01A, x: 7.510000228881836, z: 3.0, exact: false, content: heart-piece, index: 26}
+trendy-prize-6: {level: CraneGame, room: CraneGame_01A, x: 7.510000228881836, z: 3.0, exact: false, content: seashell, index: 43}
+trendy-prize-final: {level: CraneGame, room: CraneGame_01A, x: 7.510000228881836, z: 3.0, exact: false, content: chamber-stone, index: 24}
+villa-cave: {level: RichardCave, room: RichardCave_01A, x: 3.75, y: 0.0, z: 3.75, exact: true, content: seashell, index: 12}
+pothole-north: {level: Field, room: Field_12H, x: 111.75, z: 141.75, exact: true, content: heart-piece, index: 15}
+pothole-final: {level: Field, room: Field_13G, x: 101.25, z: 147.75, exact: true, content: slime-key}
+woods-crossing-cave-chest: {level: MysteriousWoodsCave01, room: MysteriousWoodsCave01_02B, x: 21.75, y: 0.0, z: 17.25, exact: true, content: rupee-50}
+woods-crossing-cave-loose: {level: MysteriousWoodsCave01, room: MysteriousWoodsCave01_01A, x: 5.25, y: 0.075, z: 5.25, exact: true, content: heart-piece, index: 3}
+woods-north-cave-chest: {level: MysteriousWoodsCave02, room: MysteriousWoodsCave02_01A, x: 12.75, y: 0.0, z: 2.25, exact: false, content: rupee-50}
+woods-north-cave-loose: {level: MysteriousWoodsCave02, room: MysteriousWoodsCave02_01A, x: 12.75, y: 0.0, z: 2.25, exact: false, content: heart-piece, index: 19}
+mad-batter-woods: {level: MadBattersWell02, room: MadBattersWell02_01A, x: 7.5, z: 6.0, exact: false, content: powder-capacity}
+woods-south-chest: {level: Field, room: Field_08B, x: 21.75, z: 92.25, exact: true, content: seashell, index: 3}
+woods-north-chest: {level: Field, room: Field_05B, x: 21.75, z: 53.25, exact: true, content: tail-key}
+woods-west-dig: {level: Field, room: Field_05A, x: 6.75, z: 50.25, exact: true, content: seashell, index: 26}
+woods-east-dig: {level: Field, room: Field_06C, x: 36.75, z: 66.75, exact: true, content: seashell, index: 5}
+woods-loose: {level: Field, room: Field_06A, x: 3.75, z: 65.25, exact: true, content: mushroom}
+diamond-island: {level: Field, room: Field_05E, x: 66.75, z: 54.75, exact: true, content: heart-piece, index: 2}
+syrup: {level: MagicPowderHouse, room: MagicPowderHouse_01A, x: 7.5, z: 6.0, exact: false, content: powder}
+D1-instrument: {level: Lv01TailCave, room: Lv01TailCave_03G, x: 97.5, z: 27.75, exact: true, content: full-moon-cello}
+D1-moldorm: {level: Lv01TailCave, room: Lv01TailCave_04G, x: 93.75, z: 39.0, exact: true, content: heart-container, index: 0}
+D1-west-hallway: {level: Lv01TailCave, room: Lv01TailCave_05A, x: 6.75, z: 51.75, exact: true, content: feather}
+D1-middle-ledge: {level: Lv01TailCave, room: Lv01TailCave_05D, x: 51.75, z: 50.25, exact: true, content: nightmare-key-D1}
+D1-3-of-a-kind: {level: Lv01TailCave, room: Lv01TailCave_05F, x: 87.75, z: 51.75, exact: true, content: stone-beak-D1}
+D1-bomb-room: {level: Lv01TailCave, room: Lv01TailCave_06B, x: 21.75, z: 65.25, exact: true, content: seashell, index: 2}
+D1-middle-kill-chest: {level: Lv01TailCave, room: Lv01TailCave_06C, x: 45.0, z: 63.75, exact: true, content: rupee-20}
+D1-spark-chest: {level: Lv01TailCave, room: Lv01TailCave_06D, x: 51.75, z: 63.75, exact: true, content: key-D1}
+D1-button-chest: {level: Lv01TailCave, room: Lv01TailCave_07D, x: 57.75, z: 74.25, exact: true, content: key-D1}
+D1-stalfos-chest: {level: Lv01TailCave, room: Lv01TailCave_07E, x: 72.75, z: 77.25, exact: true, content: map-D1}
+D1-4-zols-chest: {level: Lv01TailCave, room: Lv01TailCave_08B, x: 20.25, z: 89.25, exact: true, content: compass-D1}
+D1-beetles: {level: Lv01TailCave, room: Lv01TailCave_08C, x: 33.75, z: 89.25, exact: true, content: key-D1}
+D1-owl-statue-long-hallway: {level: Lv01TailCave, room: Lv01TailCave_04C, x: 35.25, z: 36.75, exact: true, content: rupee-20}
+D1-owl-statue-spinies: {level: Lv01TailCave, room: Lv01TailCave_04B, x: 23.25, z: 36.75, exact: true, content: rupee-20}
+D1-owl-statue-3-of-a-kind: {level: Lv01TailCave, room: Lv01TailCave_05F, x: 83.25, z: 48.75, exact: true, content: rupee-20}
+D2-instrument: {level: Lv02BottleGrotto, room: Lv02BottleGrotto_04F, x: 82.5, z: 39.75, exact: true, content: conch-horn}
+D2-genie: {level: Lv02BottleGrotto, room: Lv02BottleGrotto_04G, x: 93.75, z: 39.0, exact: true, content: heart-container, index: 1}
+D2-boos: {level: Lv02BottleGrotto, room: Lv02BottleGrotto_02B, x: 27.75, z: 15.75, exact: true, content: bracelet}
+D2-long-room-west: {level: Lv02BottleGrotto, room: Lv02BottleGrotto_02C, x: 41.25, z: 15.75, exact: true, content: rupee-20}
+D2-long-room-east: {level: Lv02BottleGrotto, room: Lv02BottleGrotto_02D, x: 56.25, z: 15.75, exact: true, content: key-D2}
+D2-vacuum-mouth-room: {level: Lv02BottleGrotto, room: Lv02BottleGrotto_03C, x: 33.75, z: 27.75, exact: true, content: map-D2}
+D2-kill-puzzle: {level: Lv02BottleGrotto, room: Lv02BottleGrotto_03F, x: 87.75, z: 27.75, exact: true, content: nightmare-key-D2}
+D2-west-chest: {level: Lv02BottleGrotto, room: Lv02BottleGrotto_06B, x: 21.75, z: 63.75, exact: true, content: stone-beak-D2}
+D2-double-stalfos: {level: Lv02BottleGrotto, room: Lv02BottleGrotto_07D, x: 48.75, z: 77.25, exact: true, content: key-D2}
+D2-double-shy-guys: {level: Lv02BottleGrotto, room: Lv02BottleGrotto_07F, x: 78.75, z: 77.25, exact: true, content: key-D2}
+D2-entrance-chest: {level: Lv02BottleGrotto, room: Lv02BottleGrotto_08C, x: 32.25, z: 87.75, exact: true, content: rupee-50}
+D2-single-shy-guy: {level: Lv02BottleGrotto, room: Lv02BottleGrotto_08D, x: 57.75, z: 87.75, exact: true, content: compass-D2}
+D2-peg-circle: {level: Lv02BottleGrotto, room: Lv02BottleGrotto_08E, x: 65.25, z: 90.75, exact: true, content: key-D2}
+D2-button-chest: {level: Lv02BottleGrotto, room: Lv02BottleGrotto_08F, x: 87.75, z: 87.75, exact: true, content: key-D2}
+D2-owl-statue-first-switch: {level: Lv02BottleGrotto, room: Lv02BottleGrotto_07E, x: 66.75, z: 72.75, exact: true, content: rupee-20}
+D2-owl-statue-push-puzzle: {level: Lv02BottleGrotto, room: Lv02BottleGrotto_06G, x: 93.75, z: 60.75, exact: true, content: rupee-20}
+D2-owl-statue-past-hinox: {level: Lv02BottleGrotto, room: Lv02BottleGrotto_04C, x: 38.25, z: 36.75, exact: true, content: rupee-20}
+D3-instrument: {level: Lv03KeyCavern, room: Lv03KeyCavern_06G, x: 97.5, z: 63.75, exact: true, content: sea-lilys-bell}
+D3-slime-eye: {level: Lv03KeyCavern, room: Lv03KeyCavern_07G, x: 93.75, z: 75.0, exact: true, content: heart-container, index: 2}
+D3-pre-boss: {level: Lv03KeyCavern, room: Lv03KeyCavern_08G, x: 93.75, z: 89.25, exact: true, content: key-D3}
+D3-triple-bombites: {level: Lv03KeyCavern, room: Lv03KeyCavern_01B, x: 18.75, z: 5.25, exact: true, content: key-D3}
+D3-north-chest: {level: Lv03KeyCavern, room: Lv03KeyCavern_01C, x: 36.75, z: 3.75, exact: true, content: compass-D3}
+D3-central-ledge: {level: Lv03KeyCavern, room: Lv03KeyCavern_02A, x: 12.75, z: 15.75, exact: true, content: rupee-50}
+D3-central-chest: {level: Lv03KeyCavern, room: Lv03KeyCavern_02C, x: 36.75, z: 15.75, exact: true, content: boots}
+D3-east-ledge: {level: Lv03KeyCavern, room: Lv03KeyCavern_02D, x: 57.75, z: 14.25, exact: true, content: nightmare-key-D3}
+D3-pairodds: {level: Lv03KeyCavern, room: Lv03KeyCavern_03A, x: 3.75, z: 29.25, exact: true, content: key-D3}
+D3-five-zols: {level: Lv03KeyCavern, room: Lv03KeyCavern_04C, x: 33.75, z: 41.25, exact: true, content: key-D3}
+D3-basement-north: {level: Lv03KeyCavern, room: Lv03KeyCavern_03G, x: 93.75, z: 29.25, exact: true, content: key-D3}
+D3-basement-west: {level: Lv03KeyCavern, room: Lv03KeyCavern_04F, x: 78.75, z: 41.25, exact: true, content: key-D3}
+D3-basement-south: {level: Lv03KeyCavern, room: Lv03KeyCavern_05G, x: 93.75, z: 53.25, exact: true, content: key-D3}
+D3-hallway-4: {level: Lv03KeyCavern, room: Lv03KeyCavern_04B, x: 20.25, z: 41.25, exact: true, content: stone-beak-D3}
+D3-hallway-3: {level: Lv03KeyCavern, room: Lv03KeyCavern_05B, x: 27.75, z: 51.75, exact: true, content: rupee-300}
+D3-hallway-2: {level: Lv03KeyCavern, room: Lv03KeyCavern_06B, x: 27.75, z: 62.25, exact: true, content: zol-trap}
+D3-hallway-side-room: {level: Lv03KeyCavern, room: Lv03KeyCavern_06C, x: 38.25, z: 65.25, exact: true, content: map-D3}
+D3-hallway-1: {level: Lv03KeyCavern, room: Lv03KeyCavern_07B, x: 27.75, z: 75.75, exact: true, content: key-D3}
+D3-vacuum-mouth: {level: Lv03KeyCavern, room: Lv03KeyCavern_08C, x: 42.75, z: 87.75, exact: true, content: key-D3}
+D3-owl-statue-basement-north: {level: Lv03KeyCavern, room: Lv03KeyCavern_03G, x: 95.25, z: 29.25, exact: true, content: rupee-20}
+D3-owl-statue-arrow: {level: Lv03KeyCavern, room: Lv03KeyCavern_02D, x: 50.25, z: 12.75, exact: true, content: rupee-20}
+D3-owl-statue-northwest: {level: Lv03KeyCavern, room: Lv03KeyCavern_01A, x: 6.75, z: 0.75, exact: true, content: rupee-20}
+D4-instrument: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_03B, x: 22.5, z: 27.75, exact: true, content: surf-harp}
+D4-angler: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_04B, x: 18.75, z: 39.0, exact: true, content: heart-container, index: 3}
+D4-north-chest: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_02D, x: 51.75, z: 15.75, exact: true, content: flippers}
+D4-east-side-north: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_03G, x: 98.25, z: 27.75, exact: true, content: key-D4}
+D4-east-side-south: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_05G, x: 101.25, z: 53.25, exact: true, content: key-D4}
+D4-west-ledge: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_07C, x: 33.75, z: 74.25, exact: true, content: nightmare-key-D4}
+D4-east-of-puzzle: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_04D, x: 48.75, z: 39.75, exact: true, content: key-D4}
+D4-south-of-puzzle: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_05C, x: 39.75, z: 53.25, exact: true, content: zol-trap}
+D4-sunken-item: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_04E, x: 65.25, z: 41.25, exact: true, content: key-D4}
+D4-central-room: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_05D, x: 54.75, z: 53.25, exact: true, content: rupee-50}
+D4-small-island: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_06F, x: 78.75, z: 65.25, exact: true, content: rupee-50}
+D4-ledge-north: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_04F, x: 77.4, z: 44.25, exact: true, content: map-D4}
+D4-statues-chest: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_07F, x: 81.75, z: 75.75, exact: true, content: stone-beak-D4}
+D4-lobby: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_07E, x: 69.75, z: 78.75, exact: true, content: compass-D4}
+D4-crystals: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_08E, x: 66.75, z: 90.75, exact: true, content: key-D4}
+D4-owl-statue: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_05E, x: 65.25, z: 54.75, exact: true, content: rupee-20}
+D5-instrument: {level: Lv05CatfishsMaw, room: Lv05CatfishsMaw_01D, x: 52.5, z: 3.75, exact: true, content: wind-marimba}
+D5-slime-eel: {level: Lv05CatfishsMaw, room: Lv05CatfishsMaw_02D, x: 48.75, z: 15.0, exact: true, content: heart-container, index: 4}
+D5-master-stalfos: {level: Lv05CatfishsMaw, room: Lv05CatfishsMaw_01B, x: 21.75, z: 5.25, exact: true, content: hookshot}
+D5-crystal-blocks: {level: Lv05CatfishsMaw, room: Lv05CatfishsMaw_01C, x: 33.75, z: 3.75, exact: true, content: key-D5}
+D5-past-master-stalfos-3: {level: Lv05CatfishsMaw, room: Lv05CatfishsMaw_01E, x: 66.75, z: 3.75, exact: true, content: map-D5}
+D5-water-tunnel: {level: Lv05CatfishsMaw, room: Lv05CatfishsMaw_02E, x: 63.75, z: 15.75, exact: true, content: nightmare-key-D5}
+D5-right-side-north: {level: Lv05CatfishsMaw, room: Lv05CatfishsMaw_02G, x: 102.75, z: 14.25, exact: true, content: rupee-50}
+D5-right-side-middle: {level: Lv05CatfishsMaw, room: Lv05CatfishsMaw_03G, x: 101.25, z: 26.25, exact: true, content: rupee-50}
+D5-right-side-east: {level: Lv05CatfishsMaw, room: Lv05CatfishsMaw_03H, x: 117.75, z: 29.25, exact: true, content: key-D5}
+D5-past-master-stalfos-1: {level: Lv05CatfishsMaw, room: Lv05CatfishsMaw_05G, x: 93.75, z: 51.75, exact: true, content: stalfos-note}
+D5-west-chest: {level: Lv05CatfishsMaw, room: Lv05CatfishsMaw_06C, x: 35.25, z: 63.75, exact: true, content: key-D5}
+D5-helmasaurs: {level: Lv05CatfishsMaw, room: Lv05CatfishsMaw_07D, x: 57.75, z: 75.75, exact: true, content: stone-beak-D5}
+D5-west-stairs-chest: {level: Lv05CatfishsMaw, room: Lv05CatfishsMaw_08E, x: 71.25, z: 87.75, exact: true, content: compass-D5}
+D5-near-entrance: {level: Lv05CatfishsMaw, room: Lv05CatfishsMaw_08G, x: 101.25, z: 86.25, exact: true, content: rupee-100}
+D5-owl-statue-triple-stalfos: {level: Lv05CatfishsMaw, room: Lv05CatfishsMaw_06F, x: 86.25, z: 60.75, exact: true, content: rupee-20}
+D5-owl-statue-before-slime-eel: {level: Lv05CatfishsMaw, room: Lv05CatfishsMaw_03C, x: 38.25, z: 24.75, exact: true, content: rupee-20}
+D6-instrument: {level: Lv06FaceShrine, room: Lv06FaceShrine_03E, x: 67.5, z: 27.75, exact: true, content: coral-triangle}
+D6-facade: {level: Lv06FaceShrine, room: Lv06FaceShrine_04E, x: 63.75, z: 39.0, exact: true, content: heart-container, index: 5}
+D6-far-northwest: {level: Lv06FaceShrine, room: Lv06FaceShrine_02A, x: 11.25, z: 15.75, exact: true, content: rupee-100}
+D6-far-northeast: {level: Lv06FaceShrine, room: Lv06FaceShrine_02H, x: 108.75, z: 15.75, exact: true, content: rupee-300}
+D6-statue-line-north: {level: Lv06FaceShrine, room: Lv06FaceShrine_03B, x: 20.25, z: 30.75, exact: true, content: compass-D6}
+D6-statue-line-south: {level: Lv06FaceShrine, room: Lv06FaceShrine_04B, x: 20.25, z: 38.25, exact: true, content: stone-beak-D6}
+D6-wizzrobe-pegs: {level: Lv06FaceShrine, room: Lv06FaceShrine_03D, x: 50.25, z: 29.25, exact: true, content: key-D6}
+D6-pot-chest: {level: Lv06FaceShrine, room: Lv06FaceShrine_03G, x: 99.75, z: 27.75, exact: true, content: nightmare-key-D6}
+D6-canal: {level: Lv06FaceShrine, room: Lv06FaceShrine_04G, x: 99.75, z: 38.25, exact: true, content: key-D6}
+D6-3-wizzrobes: {level: Lv06FaceShrine, room: Lv06FaceShrine_05A, x: 12.75, z: 51.75, exact: true, content: map-D6}
+D6-tile-room: {level: Lv06FaceShrine, room: Lv06FaceShrine_05D, x: 48.75, z: 53.25, exact: true, content: key-D6}
+D6-gated-hallway-north: {level: Lv06FaceShrine, room: Lv06FaceShrine_06C, x: 41.25, z: 63.75, exact: true, content: rupee-100}
+D6-gated-hallway-south: {level: Lv06FaceShrine, room: Lv06FaceShrine_07C, x: 41.25, z: 77.25, exact: true, content: rupee-50}
+D6-southwest-chest: {level: Lv06FaceShrine, room: Lv06FaceShrine_07B, x: 18.0, z: 74.25, exact: true, content: bracelet}
+D6-wizzrobes-ledge: {level: Lv06FaceShrine, room: Lv06FaceShrine_07G, x: 102.75, z: 80.25, exact: true, content: medicine}
+D6-owl-statue-ledge: {level: Lv06FaceShrine, room: Lv06FaceShrine_04D, x: 53.25, z: 44.25, exact: true, content: rupee-20}
+D6-owl-statue-southeast: {level: Lv06FaceShrine, room: Lv06FaceShrine_08G, x: 92.25, z: 84.75, exact: true, content: rupee-20}
+D6-owl-statue-canal: {level: Lv06FaceShrine, room: Lv06FaceShrine_03G, x: 96.75, z: 24.75, exact: true, content: rupee-20}
+D7-instrument: {level: Lv07EagleTower, room: Lv07EagleTower_02G, x: 127.5, z: 15.75, exact: true, content: evening-calm-organ}
+D7-eagle: {level: Lv07EagleTower, room: Lv07EagleTower_03G, x: 123.75, z: 27.0, exact: true, content: heart-container, index: 6}
+D7-like-likes: {level: Lv07EagleTower, room: Lv07EagleTower_08D, x: 48.75, z: 113.25, exact: true, content: key-D7}
+D7-1f-west: {level: Lv07EagleTower, room: Lv07EagleTower_07A, x: 8.25, z: 99.75, exact: true, content: stone-beak-D7}
+D7-west-ledge: {level: Lv07EagleTower, room: Lv07EagleTower_05A, x: 2.25, z: 74.25, exact: true, content: seashell, index: 25}
+D7-east-ledge: {level: Lv07EagleTower, room: Lv07EagleTower_05D, x: 57.75, z: 74.25, exact: true, content: key-D7}
+D7-3ofakind-north: {level: Lv07EagleTower, room: Lv07EagleTower_01B, x: 27.75, z: 3.75, exact: true, content: compass-D7}
+D7-2f-horseheads: {level: Lv07EagleTower, room: Lv07EagleTower_01C, x: 42.75, z: 3.75, exact: true, content: map-D7}
+D7-hinox: {level: Lv07EagleTower, room: Lv07EagleTower_04A, x: 3.75, z: 41.25, exact: true, content: key-D7}
+D7-3ofakind-south: {level: Lv07EagleTower, room: Lv07EagleTower_04B, x: 27.75, z: 39.75, exact: true, content: bomb}
+D7-blue-pegs-chest: {level: Lv07EagleTower, room: Lv07EagleTower_03D, x: 50.25, z: 27.75, exact: true, content: shield}
+D7-3f-horseheads: {level: Lv07EagleTower, room: Lv07EagleTower_01G, x: 132.75, z: 3.75, exact: true, content: medicine}
+D7-grim-creeper: {level: Lv07EagleTower, room: Lv07EagleTower_02H, x: 147.75, z: 15.75, exact: true, content: nightmare-key-D7}
+D7-owl-statue-ball: {level: Lv07EagleTower, room: Lv07EagleTower_02D, x: 47.25, z: 12.75, exact: true, content: rupee-20}
+D7-owl-statue-kirbys: {level: Lv07EagleTower, room: Lv07EagleTower_05D, x: 51.75, z: 75.75, exact: true, content: rupee-20}
+D7-owl-statue-hookshot-chest: {level: Lv07EagleTower, room: Lv07EagleTower_04B, x: 17.25, z: 36.75, exact: true, content: rupee-20}
+D8-instrument: {level: Lv08TurtleRock, room: Lv08TurtleRock_01D, x: 52.5, z: 3.75, exact: true, content: thunder-drum}
+D8-hothead: {level: Lv08TurtleRock, room: Lv08TurtleRock_02D, x: 48.75, z: 15.0, exact: true, content: heart-container, index: 7}
+D8-far-northwest: {level: Lv08TurtleRock, room: Lv08TurtleRock_02A, x: 12.75, z: 15.75, exact: true, content: nightmare-key-D8}
+D8-far-northeast: {level: Lv08TurtleRock, room: Lv08TurtleRock_02H, x: 110.25, z: 14.25, exact: true, content: rod}
+D8-left-exit-chest: {level: Lv08TurtleRock, room: Lv08TurtleRock_03C, x: 42.75, z: 26.25, exact: true, content: rupee-50}
+D8-dodongos: {level: Lv08TurtleRock, room: Lv08TurtleRock_03F, x: 86.25, z: 26.25, exact: true, content: key-D8}
+D8-northern-ledge: {level: Lv08TurtleRock, room: Lv08TurtleRock_02E, x: 65.25, z: 13.5, exact: true, content: medicine}
+D8-gibdos: {level: Lv08TurtleRock, room: Lv08TurtleRock_03G, x: 97.5, z: 33.75, exact: true, content: key-D8}
+D8-beamos-chest: {level: Lv08TurtleRock, room: Lv08TurtleRock_04B, x: 24.75, z: 41.25, exact: true, content: key-D8}
+D8-statue: {level: Lv08TurtleRock, room: Lv08TurtleRock_04C, x: 33.75, z: 41.25, exact: true, content: key-D8}
+D8-torches: {level: Lv08TurtleRock, room: Lv08TurtleRock_05B, x: 27.75, z: 51.75, exact: true, content: key-D8}
+D8-west-vire: {level: Lv08TurtleRock, room: Lv08TurtleRock_06A, x: 3.75, z: 65.25, exact: true, content: key-D8}
+D8-west-roomba: {level: Lv08TurtleRock, room: Lv08TurtleRock_06B, x: 27.75, z: 63.75, exact: true, content: rupee-20}
+D8-surrounded-by-blocks: {level: Lv08TurtleRock, room: Lv08TurtleRock_06D, x: 50.25, z: 63.75, exact: true, content: map-D8}
+D8-sparks-chest: {level: Lv08TurtleRock, room: Lv08TurtleRock_07B, x: 24.75, z: 75.75, exact: true, content: rupee-50}
+D8-east-of-pots: {level: Lv08TurtleRock, room: Lv08TurtleRock_07F, x: 81.75, z: 78.75, exact: true, content: zol-trap}
+D8-east-roomba: {level: Lv08TurtleRock, room: Lv08TurtleRock_07G, x: 92.25, z: 77.25, exact: true, content: key-D8}
+D8-far-southwest: {level: Lv08TurtleRock, room: Lv08TurtleRock_08A, x: 6.75, z: 90.0, exact: true, content: compass-D8}
+D8-far-southeast: {level: Lv08TurtleRock, room: Lv08TurtleRock_08H, x: 117.75, z: 87.75, exact: true, content: stone-beak-D8}
+D8-owl-statue-above-smasher: {level: Lv08TurtleRock, room: Lv08TurtleRock_06H, x: 107.25, z: 67.88, exact: true, content: rupee-20}
+D8-owl-statue-below-gibdos: {level: Lv08TurtleRock, room: Lv08TurtleRock_04G, x: 101.25, z: 36.75, exact: true, content: rupee-20}
+D8-owl-statue-eye-statue: {level: Lv08TurtleRock, room: Lv08TurtleRock_04C, x: 40.5, z: 36.75, exact: true, content: rupee-20}
+D0-northern-chest: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_04F, x: 81.75, z: 38.25, exact: true, content: nightmare-key-D0}
+D0-zol-pots: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_05D, x: 57.75, z: 51.75, exact: true, content: map-D0}
+D0-north-orbs: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_05E, x: 66.75, z: 53.25, exact: true, content: key-D0}
+D0-south-orbs: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_07F, x: 87.75, z: 75.75, exact: true, content: stone-beak-D0}
+D0-east-color-puzzle: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_05F, x: 83.25, z: 53.25, exact: true, content: key-D0}
+D0-west-color-puzzle: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_07D, x: 57.75, z: 75.75, exact: true, content: compass-D0}
+D0-putters: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08E, x: 63.75, z: 92.25, exact: true, content: key-D0}
+D0-fairy-1: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_04C, x: 37.5, z: 39.75, exact: true, content: red-tunic}
+D0-fairy-2: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_04C, x: 37.5, z: 39.75, exact: true, content: blue-tunic}
+D0-owl-statue-nine-switches: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_06C, x: 35.25, z: 60.75, exact: true, content: rupee-20}
+D0-owl-statue-first-switches: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_07D, x: 53.25, z: 72.75, exact: true, content: rupee-20}
+D0-owl-statue-before-mini-boss: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_05F, x: 81.75, z: 48.75, exact: true, content: rupee-20}
+D0-rupee-1: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-2: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-3: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-4: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-5: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-6: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-7: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-8: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-9: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-10: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-11: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-12: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-13: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-14: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-15: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-16: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-17: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-18: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-19: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-20: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-21: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-22: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-23: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-24: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-25: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-26: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-27: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+D0-rupee-28: {level: Lv10ClothesDungeon, room: Lv10ClothesDungeon_08D, x: 48.75, z: 87.0, exact: true, content: rupee-5}
+owl-statue-below-D8: {level: Field, room: Field_02B, x: 17.25, z: 23.25, exact: true, content: rupee-20}
+owl-statue-moblin-cave: {level: Field, room: Field_04F, x: 80.25, z: 44.25, exact: true, content: rupee-20}
+owl-statue-pothole: {level: Field, room: Field_13G, x: 101.25, z: 146.25, exact: true, content: rupee-20}
+owl-statue-above-cave: {level: Field, room: Field_11I, x: 126.75, z: 126.75, exact: true, content: rupee-20}
+owl-statue-south-bay: {level: Field, room: Field_14K, x: 156.75, z: 161.25, exact: true, content: rupee-20}
+owl-statue-desert: {level: Field, room: Field_13P, x: 230.25, z: 146.25, exact: true, content: rupee-20}
+owl-statue-maze: {level: Field, room: Field_09P, x: 236.25, z: 101.25, exact: true, content: rupee-20}
+owl-statue-rapids: {level: Field, room: Field_06N, x: 201.75, z: 60.75, exact: true, content: rupee-20}
+owl-statue-taltal-east: {level: Field, room: Field_02O, x: 212.25, z: 20.25, exact: true, content: rupee-20}
+moblin-cave: {level: MoriblinCave, room: null, x: 7.5, z: 6.0, exact: false, content: bow-wow}
+rooster-statue: {level: FlyingCuccoCave, room: null, x: 7.5, z: 6.0, exact: false, content: rooster}

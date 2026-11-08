@@ -64,9 +64,9 @@ def make(seed_hash=None, slot: str = "Tester", settings: dict = None, dungeons: 
     ids = json.load(open(DATA / "ids.json"))["locations"]
 
     settings = {**SETTINGS, **(settings or {})}
-    vanilla = {k for k, v in logic.items() if v.get("type") == "item" and v.get("subtype") == "shop"
-               and k not in categories.get("Shop_Items", [])}
-    kept = set(categories["Trendy_Rewards"]) | {k for k, v in logic.items() if v.get("subtype") == "companion"}
+    # As the world has them (lasr.SHOP_LOCATIONS, COMPANION_LOCATIONS): the shop slots LASR keeps, and the companions
+    vanilla = {k for k, v in logic.items() if v.get("type") == "item" and k.startswith("shop-slot") and k not in categories.get("Shop_Items", [])}
+    kept = set(categories["Trendy_Rewards"]) | {"moblin-cave", "rooster-statue"}
     removed = set()
     if settings["Owl Gifts"] not in ("Overworld", "All"):
         removed |= set(categories["Overworld_Owl_Statues"])

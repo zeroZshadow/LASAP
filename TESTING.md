@@ -57,6 +57,7 @@ How to build, run and observe the LAS mod without manual play. Scripts live in `
 | `map_positions.py [<pack>] [--romfs dir]` | Writes `patcher/map_positions.json` (DESIGN.md, Map tracker) from the RomFS rooms and the PopTracker pack's pins, in `.venv-ap`. Prints the pin fit's error |
 | `poptracker_map.py <pack>` | Writes the Archipelago id tables (`scripts/autotracking/*_mapping.lua`) of the LASR PopTracker pack (Br00ty/lasr_brooty) and checks them against the pack, in `.venv-lasr` |
 | `poptracker_test.py <pack> [--variant var_itemsonly] [manual\|full\|marks\|lean\|shells ...]` | Tests the pack's auto-tracking in the sandbox PopTracker against a local MultiServer (port 38297), with the newest seed in the PopTracker folder's `out` (slots Full, Lean and Shells from its `players` folder, Shells' `seashells_required` a `random-range`). The test hook `poptracker_test.lua` goes into PopTracker's `user-override` folder, never into the pack. Screenshots go to its `shots`. In `.venv-ap` |
+| Logic Studio | The logic as maps and graphs, simulated with the real world: a tool in its own repository, run on this game's `logic-studio/` (`logic-studio/README.md`) |
 | `re/scan.py str\|strs\|xref\|xstr\|callers\|dis\|func\|ptr\|sms\|actors` | Static queries on a memory dump of the game (see "Reverse engineering") |
 | `re/decomp.sh <out.c> <hex offset>[:<hex word>]...` | Decompiles functions of the dump with Ghidra headless, named from `re/las.sym` (see "Reverse engineering") |
 

@@ -14,8 +14,8 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Set, 
 from BaseClasses import ItemClassification
 
 from .items import ITEM_TABLE, LASR_TO_ITEM
-from .lasr import (COUNTED, DOOR_LOGIC, DUNGEONS, ENTERED_BY_DOOR, INSTRUMENTS, LOGIC, door_node, dungeon_region,
-                   goal_logic)
+from .lasr import (COUNTED, DOOR_LOGIC, DUNGEONS, ENTERED_BY_DOOR, INSTRUMENTS, LOGIC, door_node, dungeon_of,
+                   dungeon_region, goal_logic)
 from .logic import LogicCompiler, make_rule
 from .options import Goal, SeashellsRequired
 
@@ -97,7 +97,7 @@ class LogicTracker:
             return False
 
         # (region, its rule, the door that leads into it or None): a region a door leads into is entered through that
-        # door's region; all but the Face Shrine's entrance room have no other way in
+        # door's region and has no other way in
         led = {dungeon_region(inside): door for door, inside in entrances.items()}
         self.entrances = [(self.regions[name], never if name in ENTERED_BY_DOOR else rule(name), led.get(name))
                           for name in logic if name in needed]
@@ -112,10 +112,10 @@ class LogicTracker:
         self.events: List[Tuple[str, _Region, Callable, str]] = [
             (loc, self.regions[LOGIC[loc]["region"]], rule(loc), LASR_TO_ITEM[LOGIC[loc]["content"]])
             for loc in vanilla]
-        # each shuffled dungeon location's door: the one that leads into its dungeon
+        # each shuffled dungeon location's door: the one that leads into its dungeon, by the location's name
         door_into = {inside: door for door, inside in entrances.items()}
-        self.location_doors = {loc: self.regions[door_node(door_into[LOGIC[loc]["region"]])]
-                               for loc in self.shuffled if LOGIC[loc]["region"] in DUNGEONS}
+        self.location_doors = {loc: self.regions[door_node(door_into[dungeon_of(loc)])]
+                               for loc in self.shuffled if dungeon_of(loc)}
 
     def in_logic(self, item_names: Iterable[str], found_doors: Optional[Iterable[str]] = None) -> Set[str]:
         """The shuffled locations reachable with these items (AP item names, starting items included) through the

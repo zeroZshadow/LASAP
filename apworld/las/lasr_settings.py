@@ -2,7 +2,8 @@
 import re
 from typing import Any, Dict, Iterable, List, Optional, Set
 
-from .lasr import CATEGORIES, ITEM_DEFS, ITEM_LOCATIONS, LOGIC
+from .lasr import CATEGORIES, COMPANION_LOCATIONS, ITEM_DEFS, LOGIC, SHOP_LOCATIONS
+from .logic import SPEC
 from .options import LASOptions, goal_instruments, goal_seashells
 
 # Option attribute -> LASR location category it toggles.
@@ -77,13 +78,13 @@ def removed_locations(options: LASOptions) -> Set[str]:
 def fixed_locations() -> Set[str]:
     """Locations that keep their vanilla content and are no AP locations: the shop slots LASR does not shuffle (those
     not in Shop_Items)."""
-    return {k for k in ITEM_LOCATIONS if LOGIC[k]["subtype"] == "shop" and k not in CATEGORIES["Shop_Items"]}
+    return set(SHOP_LOCATIONS) - set(CATEGORIES["Shop_Items"])
 
 
 def kept_locations() -> Set[str]:
     """Locations the patcher cannot put the placeholder at: the Trendy Game's prizes and the companions. They are never
     randomized; the module reports them when the game adds their item or sets their flag."""
-    return set(CATEGORIES["Trendy_Rewards"]) | {k for k in ITEM_LOCATIONS if LOGIC[k]["subtype"] == "companion"}
+    return set(CATEGORIES["Trendy_Rewards"]) | set(COMPANION_LOCATIONS)
 
 
 def optional_locations(options: LASOptions) -> Set[str]:
@@ -235,4 +236,11 @@ def logic_tokens(options: LASOptions) -> Dict[str, bool]:
         tokens["can-steal"] = True
     if settings["Stealing"] == "Standard":
         tokens["stealing-needs-sword"] = True
-    return {k: v for k, v in tokens.items() if k not in LOGIC and k not in ITEM_DEFS}
+    tokens = {k: v for k, v in tokens.items() if k not in LOGIC and k not in ITEM_DEFS}
+    unlisted = set(tokens) - set(SPEC["options"])
+    if unlisted:
+        raise ValueError(f"data/logic_spec.yml lists no option {', '.join(sorted(unlisted))}")
+    on = set(tokens) & set(SPEC["always-off"])
+    if on:
+        raise ValueError(f"data/logic_spec.yml lists {', '.join(sorted(on))} as always off")
+    return tokens

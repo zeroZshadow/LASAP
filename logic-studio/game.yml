@@ -1,0 +1,13 @@
+# Link's Awakening for Logic Studio: where its data is and where an export goes. Paths are relative to this file.
+spec: ../apworld/las/data/logic_spec.yml  # what the logic must have: names, levels, items, options, grammar
+doors: ../apworld/las/data/doors.yml  # which door leads to which
+checks: checks.yml  # every check: its place (game tooling) and what it holds (by hand)
+places: places.json  # levels, rooms, teleports, door marks, and where the pictures go
+maps: maps  # a picture of each level's top-down rooms and of each side-view room
+names: ../apworld/las/data/location_names.json  # each check's name in the game
+locations: ../apworld/las/data/ids.json  # `locations`: every check the world knows
+export: [../apworld/las/data/logic.yml, ../patcher/data/logic.yml]  # kept the same; the world reads the first
+simulator: tools/simulator.py  # answers what holds with the real world (DATA.md has the protocol)
+tests: tools/world_tests.py  # lists and runs the world's tests the Tests panel shows
+world: ../apworld/las  # the world's Python Logic Studio still reads (DATA.md)
+sources: [../apworld/las, ../patcher]  # code and data that write node names a rename does not reach

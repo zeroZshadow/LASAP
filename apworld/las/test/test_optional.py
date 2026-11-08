@@ -10,7 +10,7 @@ from worlds.AutoWorld import AutoWorldRegister, call_all
 from . import LASTestBase
 from .. import GOAL_EVENT
 from ..items import GAME, ITEM_TABLE, LASR_TO_ITEM
-from ..lasr import CATEGORIES, LOGIC
+from ..lasr import CATEGORIES, SHOP_LOCATIONS
 from ..lasr_settings import CATEGORY_OPTIONS, MANSION_THRESHOLDS, OPTIONAL_CATEGORIES, optional_locations
 from ..locations import LOCATION_NAMES
 
@@ -166,7 +166,7 @@ class TestOtherCategoriesUnchanged(LASTestBase):
         self.assertFalse(others & set(self.world.optional))
         self.assertLessEqual(set(self.world.optional), ACTIVITIES)
         for loc in others:
-            if loc in self.world.removed or LOGIC[loc]["subtype"] == "shop" and loc not in CATEGORIES["Shop_Items"]:
+            if loc in self.world.removed or loc in SHOP_LOCATIONS and loc not in CATEGORIES["Shop_Items"]:
                 continue
             self.assertIn(loc, self.world.locked)
         self.assertIn("D2-genie", self.world.locked)  # a boss's heart container

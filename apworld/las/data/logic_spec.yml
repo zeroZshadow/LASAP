@@ -1,0 +1,69 @@
+# What this world's logic.yml must have, read by the world and by Logic Studio.
+
+# The zone the game starts in: always reached.
+start: tarin-house
+
+# The node whose rule the goal options rewrite (the Wind Fish's egg), and the node that is the goal.
+egg: egg
+goal: kill-nightmare
+
+# The rule grammar: names, `name:N` counts, `!`, `&`, `|` and brackets. `!` binds tightest, then `&`, then `|`.
+grammar:
+  name: '[a-zA-Z0-9\-\[\]]+'  # an item, node, option or counted group; an enemy's variant in brackets: kill-x[pit]
+  count: ':'
+  not: '!'
+  and: '&'
+  or: '|'
+  open: '('
+  close: ')'
+
+# The logic levels, in order: each counts every level before it.
+levels: [basic, advanced, glitched, hell]
+
+# Each dungeon by its shuffle name, Tail Cave to Turtle Rock and then the Color Dungeon, and the zone its door leads
+# into. Dungeon shuffle swaps rules between these zones by name.
+dungeons:
+  tail-cave: tail-cave
+  bottle-grotto: bottle-grotto
+  key-cavern: key-cavern
+  angler-tunnel: angler-tunnel
+  catfish-maw: catfish-maw
+  face-shrine: face-shrine-front
+  eagle-tower: eagle-tower
+  turtle-rock: turtle-rock
+  color-dungeon: color-dungeon
+
+# Every item a rule may name, the companions included. items.yml holds their pool data.
+items: [sword, shield, bracelet, boots, flippers, feather, shovel, hookshot, bow, rod, boomerang, ocarina,
+  song-ballad, song-mambo, song-soul, yoshi-doll, ribbon, dog-food, bananas, stick, honeycomb, pineapple, hibiscus,
+  letter, broom, fishing-hook, necklace, mermaid-scale, magnifying-lens, golden-leaf, mushroom, tail-key,
+  slime-key, angler-key, face-key, bird-key, full-moon-cello, conch-horn, sea-lilys-bell, surf-harp, wind-marimba,
+  coral-triangle, evening-calm-organ, thunder-drum, seashell, bottle, heart-container, bomb-capacity,
+  arrow-capacity, powder-capacity, shell-sensor, medicine, red-tunic, blue-tunic, rupee-300, heart-piece, rupee-50,
+  rupee-100, chamber-stone, rupee-20, rupee-5, zol-trap, zap-trap, drown-trap, squish-trap, deathball-trap,
+  quake-trap, bomb, powder, stalfos-note, key-D1, nightmare-key-D1, stone-beak-D1, compass-D1, map-D1, key-D2,
+  nightmare-key-D2, stone-beak-D2, compass-D2, map-D2, key-D3, nightmare-key-D3, stone-beak-D3, compass-D3, map-D3,
+  key-D4, nightmare-key-D4, stone-beak-D4, compass-D4, map-D4, key-D5, nightmare-key-D5, stone-beak-D5, compass-D5,
+  map-D5, key-D6, nightmare-key-D6, stone-beak-D6, compass-D6, map-D6, key-D7, nightmare-key-D7, stone-beak-D7,
+  compass-D7, map-D7, key-D8, nightmare-key-D8, stone-beak-D8, compass-D8, map-D8, key-D0, nightmare-key-D0,
+  stone-beak-D0, compass-D0, map-D0, bow-wow, rooster]
+
+# Every option a rule may name; the world sets each one per slot.
+options: [360-movement, ammo-ghost, bad-pets, blue-rupees, blur-removal, boss-cutscenes, boss-drops, bouncy-items,
+  can-steal, chest-animations, chests, classic-d2, companions, completed-bridge, consumable-drops,
+  create-spoiler-log, dampe, disable-guardian-acorn, disable-low-health-beep, disable-piece-of-power, easy-fishing,
+  fast-fishing, fast-stalfos, fishing, free-book, free-gifts, golden-leaves, heart-pieces, instant-text,
+  item-get-animations, key-animations, map-tracker, miscellaneous, movement-speed, nice-bombs, nice-hookshot,
+  nice-magic-rod, open-kanalet, open-mabe, open-mamu, race-mode, randomize-enemies, randomize-enemy-sizes,
+  randomize-environments, randomize-sound-effects, randomize-text, seashell-hunt, seashells, seashells-important,
+  shop, shuffled-bombs, shuffled-dungeons, shuffled-powder, song-cutscenes, stealing-needs-sword, trade-important,
+  trade-quest, trendy-game, unrandomizer-mode]
+
+# The options the world always leaves off: a rule never holds through one of them.
+always-off: [bad-pets, blur-removal, companions, create-spoiler-log, disable-low-health-beep, item-get-animations, race-mode,
+  randomize-environments, randomize-sound-effects, randomize-text, trendy-game, unrandomizer-mode]
+
+# A counted group: `name:N` holds with N different items of it.
+counted:
+  instruments: [full-moon-cello, conch-horn, sea-lilys-bell, surf-harp, wind-marimba, coral-triangle,
+    evening-calm-organ, thunder-drum]

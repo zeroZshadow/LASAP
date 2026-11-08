@@ -8,7 +8,7 @@ from worlds.AutoWorld import call_all
 from . import LASTestBase
 from ..container import LASContainer
 from ..ids import LOCATION_OFFSETS
-from ..lasr import CATEGORIES, ITEM_DEFS, ITEM_LOCATIONS, LOGIC
+from ..lasr import CATEGORIES, ITEM_DEFS, ITEM_LOCATIONS, LOGIC, SHOP_LOCATIONS
 from ..locations import LOCATION_NAMES
 
 
@@ -418,7 +418,7 @@ class TestOpener(unittest.TestCase):
             multiworld = setup_multiworld(LASWorld, seed=seed, options=self.options)
             (location,) = opener_locations(multiworld)
             self.assertTrue(location.item.advancement, seed)
-            self.assertNotEqual(LOGIC[LASR_LOCATIONS[location.name]]["subtype"], "shop", seed)
+            self.assertNotIn(LASR_LOCATIONS[location.name], SHOP_LOCATIONS, seed)
             names.add(location.item.name)
         self.assertGreater(len(names), 1)
 

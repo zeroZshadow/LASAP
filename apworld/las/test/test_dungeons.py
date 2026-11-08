@@ -7,8 +7,8 @@ from unittest import mock
 from . import LASTestBase
 from .. import LASWorld
 from ..items import ITEM_TABLE
-from ..lasr import (DUNGEONS, ENTERED_BY_DOOR, FACE_SHRINE_ROOM, ITEM_DEFS, LOGIC, door_entrance, door_logic,
-                    door_node, dungeon_logic, dungeon_region, shuffle_dungeons)
+from ..lasr import (DUNGEONS, ENTERED_BY_DOOR, FACE_SHRINE_FRONT, ITEM_DEFS, LOGIC, door_entrance, door_logic,
+                    door_node, dungeon_logic, dungeon_of, dungeon_region, shuffle_dungeons)
 from ..lasr_settings import logic_tokens
 from ..tracker import LogicTracker
 
@@ -22,6 +22,13 @@ def conditions(node: dict) -> dict:
 
 
 class TestDungeonLogic(unittest.TestCase):
+    def test_a_locations_dungeon_is_in_its_name(self) -> None:
+        self.assertEqual(dungeon_of("D1-moldorm"), "tail-cave")
+        self.assertEqual(dungeon_of("D8-instrument"), "turtle-rock")
+        self.assertEqual(dungeon_of("D0-fairy-1"), "color-dungeon")
+        self.assertIsNone(dungeon_of("goriya-trader"))
+        self.assertIsNone(dungeon_of("above-turtle-rock"))
+
     def test_unshuffled_is_lasr_logic(self) -> None:
         self.assertIs(dungeon_logic(LOGIC, IDENTITY), LOGIC)
 
@@ -33,15 +40,15 @@ class TestDungeonLogic(unittest.TestCase):
         self.assertEqual(logic["turtle-rock"]["type"], "region")
 
     def test_face_shrine_door(self) -> None:
-        """The Face Shrine's door is the outside part of its entrance room; its region (either entrance room) stays."""
+        """The Face Shrine's door leads into the region in front of its entrance room; its region (either entrance
+        room) and the rooms stay."""
         logic = dungeon_logic(LOGIC, SHRINE_SWAP)
         self.assertEqual(logic["key-cavern"]["condition-basic"], "river & face-key & (hookshot | rooster)")
-        self.assertEqual(logic["key-cavern"]["condition-hell"], LOGIC[FACE_SHRINE_ROOM]["condition-hell"])
-        room = logic[FACE_SHRINE_ROOM]
-        self.assertTrue(room["condition-basic"].startswith(f"({LOGIC['key-cavern']['condition-basic']}) | (D6-3A"))
-        self.assertEqual(room["condition-glitched"], LOGIC["key-cavern"]["condition-glitched"])
-        self.assertNotIn("condition-hell", room)
-        self.assertEqual(logic["face-shrine"], LOGIC["face-shrine"])
+        self.assertEqual(conditions(logic["key-cavern"]), conditions(LOGIC[FACE_SHRINE_FRONT]))
+        self.assertEqual(conditions(logic[FACE_SHRINE_FRONT]), conditions(LOGIC["key-cavern"]))
+        self.assertIn(FACE_SHRINE_FRONT, LOGIC["D6-8D"]["condition-basic"])
+        for name in ("face-shrine", "D6-8D", "D6-3A"):
+            self.assertEqual(logic[name], LOGIC[name], name)
 
     def test_every_map_keeps_the_conditions(self) -> None:
         """Each door's conditions end up behind exactly one door, for any map."""
@@ -52,7 +59,7 @@ class TestDungeonLogic(unittest.TestCase):
             logic = dungeon_logic(LOGIC, entrances)
             self.assertEqual(set(logic), set(LOGIC))
             changed = {k for k in LOGIC if logic[k] != LOGIC[k]}
-            self.assertLessEqual(changed, set(DUNGEONS) | {FACE_SHRINE_ROOM})
+            self.assertLessEqual(changed, set(ENTERED_BY_DOOR))
 
     def test_tracker_follows_the_doors(self) -> None:
         """Through Tail Cave's door into Turtle Rock: Turtle Rock and its top without the Ocarina, Tail Cave not
@@ -217,19 +224,16 @@ class TestDoorLogic(unittest.TestCase):
         self.assertEqual(set(logic) - set(LOGIC), {door_node(dungeon) for dungeon in DUNGEONS})
 
     def test_insides(self) -> None:
-        """No way into a dungeon but its door's entrance, and the Face Shrine's side room into its entrance room."""
+        """No way into the region a door leads into but the door's entrance."""
         logic = door_logic(LOGIC)
-        self.assertEqual(ENTERED_BY_DOOR, set(DUNGEONS) - {"face-shrine"})
+        self.assertEqual(ENTERED_BY_DOOR, set(DUNGEONS) - {"face-shrine"} | {FACE_SHRINE_FRONT})
         for region in ENTERED_BY_DOOR:
             self.assertEqual(conditions(logic[region]), {}, region)
             self.assertEqual(logic[region]["type"], LOGIC[region]["type"])
-        room = conditions(logic[FACE_SHRINE_ROOM])
-        self.assertEqual(list(room), ["condition-basic"])
-        self.assertTrue(room["condition-basic"].startswith("D6-3A & "))
-        self.assertEqual(dungeon_region("face-shrine"), FACE_SHRINE_ROOM)
+        self.assertEqual(dungeon_region("face-shrine"), FACE_SHRINE_FRONT)
         self.assertEqual(logic["face-shrine"], LOGIC["face-shrine"])
         changed = {k for k in LOGIC if logic[k] != LOGIC[k]}
-        self.assertEqual(changed, set(ENTERED_BY_DOOR) | {FACE_SHRINE_ROOM})
+        self.assertEqual(changed, set(ENTERED_BY_DOOR))
 
 
 class TestShuffledDungeons(LASTestBase):

@@ -1,7 +1,7 @@
 """Compiles LASR condition strings (logic.yml) into CollectionState rules.
 
-Grammar: names, ``&``, ``|``, ``!``, parentheses, and ``name:N`` counts. Precedence follows the Python LASR
-rewrites conditions into: ``!`` > ``&`` > ``|``.
+Grammar (data/logic_spec.yml): names, ``&``, ``|``, ``!``, parentheses, and ``name:N`` counts. Precedence follows the
+Python LASR rewrites conditions into: ``!`` > ``&`` > ``|``.
 
 Name resolution matches LASR's shuffler (``checkAccess``/``canReachLocation``):
 - items from items.yml count copies (``sword:2``);
@@ -14,12 +14,30 @@ anything else is undefined and never holds.
 Nodes use condition-basic (or True when absent) OR the higher-preset conditions the preset enables; enemies only
 ever use condition-basic, as in LASR.
 """
+import pkgutil
 import re
 from functools import lru_cache
-from typing import Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple, Union
+from pathlib import Path
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple, Union
 
-PRESETS = ("basic", "advanced", "glitched", "hell")
-_TOKEN = re.compile(r"\s*(?:([a-zA-Z0-9\-\[\]]+)(?::(\d+))?|([&|!()]))")
+import yaml
+
+
+
+def _spec() -> Dict[str, Any]:
+    """data/logic_spec.yml: the names and levels logic.yml must have. Read as package data; from the file beside this
+    module when it is loaded on its own (Logic Studio)."""
+    package = __name__.rpartition(".")[0]
+    raw = pkgutil.get_data(package, "data/logic_spec.yml") if package else (Path(__file__).parent / "data" / "logic_spec.yml").read_bytes()
+    return yaml.safe_load(raw)
+
+
+SPEC = _spec()
+PRESETS = tuple(SPEC["levels"])
+GRAMMAR = SPEC["grammar"]
+_NOT, _AND, _OR, _OPEN, _CLOSE = (GRAMMAR[k] for k in ("not", "and", "or", "open", "close"))
+_TOKEN = re.compile(rf"\s*(?:({GRAMMAR['name']})(?:{re.escape(GRAMMAR['count'])}(\d+))?|"
+                    rf"({'|'.join(re.escape(op) for op in (_AND, _OR, _NOT, _OPEN, _CLOSE))}))")
 
 Node = Tuple  # ("or", [..]) | ("and", [..]) | ("not", node) | ("tok", name, count)
 
@@ -48,7 +66,7 @@ def parse(condition: str) -> Node:
     def parse_or() -> Node:
         nonlocal index
         parts = [parse_and()]
-        while peek() == "|":
+        while peek() == _OR:
             index += 1
             parts.append(parse_and())
         return parts[0] if len(parts) == 1 else ("or", parts)
@@ -56,20 +74,20 @@ def parse(condition: str) -> Node:
     def parse_and() -> Node:
         nonlocal index
         parts = [parse_not()]
-        while peek() == "&":
+        while peek() == _AND:
             index += 1
             parts.append(parse_not())
         return parts[0] if len(parts) == 1 else ("and", parts)
 
     def parse_not() -> Node:
         nonlocal index
-        if peek() == "!":
+        if peek() == _NOT:
             index += 1
             return ("not", parse_not())
-        if peek() == "(":
+        if peek() == _OPEN:
             index += 1
             inner = parse_or()
-            if peek() != ")":
+            if peek() != _CLOSE:
                 raise ValueError(f"missing ')' in {condition!r}")
             index += 1
             return inner
@@ -107,6 +125,117 @@ def referenced_tokens(logic: Mapping[str, Mapping]) -> Set[str]:
             if key.startswith("condition-") and value:
                 tokens.update(node_tokens(parse(str(value))))
     return tokens
+
+
+# Routes. logic.yml writes how zones (regions and rooms) join under the zone a way leaves from: `connections` (two-way),
+# `one-way`, and `doors` (a door of this zone: where it leads is in doors.yml, its rule applies from this side). A rule is
+# plain text for Basic, or a map from level to text; `always` says it has no requirements. lower_routes gives each zone
+# the condition-* keys the compiler reads, which name the zones a way comes from.
+START = SPEC["start"]  # always holds; a way back into it changes nothing
+ALWAYS = "always"
+NEVER = "never-holds"  # no such name, so it never holds (LogicCompiler.token)
+PLACES = ("region", "room")
+ROUTE_KEYS = ("connections", "one-way", "doors")
+
+
+def _route_levels(value: object, where: str) -> Dict[str, str]:
+    """A rule by level. Empty is refused: `always` says there are no requirements."""
+    levels = value if isinstance(value, Mapping) else {"basic": value}
+    if not levels:
+        raise ValueError(f"{where}: no rule, write {ALWAYS}")
+    found = {}
+    for level, text in levels.items():
+        if text is None or text == "":
+            raise ValueError(f"{where}: no rule, write {ALWAYS}")
+        text = str(text)
+        if text != ALWAYS and ALWAYS in node_tokens(parse(text)):
+            raise ValueError(f"{where}: {ALWAYS} stands alone: {text!r}")
+        found[str(level)] = text
+    return found
+
+
+def _route_edges(logic: Mapping[str, Mapping], doors: Mapping[str, Mapping],
+                 house_exit: Optional[str]) -> List[Tuple[str, str, Dict[str, str]]]:
+    """Every way between zones as (from, to, rule by level). With house_exit, the start's doors lead to that zone."""
+    edges = []
+    written: Set[Tuple[str, str]] = set()
+    door_zone: Dict[str, str] = {}
+    door_rule: Dict[str, Dict[str, str]] = {}
+    for name, node in logic.items():
+        for key in ROUTE_KEYS:
+            if key in node and node["type"] not in PLACES:
+                raise ValueError(f"{name}: only a region or a room has {key}")
+        for key in ("connections", "one-way"):
+            for target, value in (node.get(key) or {}).items():
+                where = f"{name} {key} {target}"
+                if logic.get(target, {}).get("type") not in PLACES:
+                    raise ValueError(f"{where}: no such zone")
+                if key == "connections" and ((name, target) in written or (target, name) in written):
+                    raise ValueError(f"{where}: written twice")
+                if key == "connections":
+                    written.add((name, target))
+                rule = _route_levels(value, where)
+                edges.append((name, target, rule))
+                if key == "connections":
+                    edges.append((target, name, rule))
+        for door, value in (node.get("doors") or {}).items():
+            if door in door_zone:
+                raise ValueError(f"{door}: door of both {door_zone[door]} and {name}")
+            door_zone[door] = name
+            door_rule[door] = _route_levels(value, f"{name} door {door}")
+    leads = {}
+    for door, other in doors["pairs"].items():
+        leads[door], leads[other] = other, door
+    leads.update(doors["one-way"])
+    landings = set(leads) | set(leads.values())
+    for door, zone in door_zone.items():
+        if door not in landings:
+            raise ValueError(f"{zone} door {door}: not in doors.yml")
+        if door not in leads:  # only a place to land
+            continue
+        target = house_exit if house_exit and zone == START else door_zone.get(leads[door])
+        if target and target != zone:
+            edges.append((zone, target, door_rule[door]))
+    return edges
+
+
+def lower_routes(logic: Mapping[str, Mapping], doors: Mapping[str, Mapping],
+                 house_exit: Optional[str] = None) -> Dict[str, Dict]:
+    """The logic with each zone's ways in as its condition-* keys, the routes gone. Other nodes stay as they are."""
+    incoming: Dict[str, Dict[str, List[str]]] = {}
+    for source, target, rule in _route_edges(logic, doors, house_exit):
+        levels = incoming.setdefault(target, {})
+        for level, text in rule.items():
+            if text == ALWAYS:
+                part = source
+            elif parse(text)[0] == "or":
+                part = f"{source} & ({text})"
+            else:
+                part = f"{source} & {text}"
+            levels.setdefault(level, []).append(part)
+    lowered = {}
+    for name, node in logic.items():
+        if node["type"] not in PLACES:
+            lowered[name] = node
+            continue
+        own = [key for key in node if key.startswith("condition-")]
+        if own:
+            raise ValueError(f"{name}: a zone's rules go on its routes, not {own[0]}")
+        lowered[name] = {key: value for key, value in node.items() if key not in ROUTE_KEYS}
+        if name == START:
+            continue
+        levels = incoming.get(name, {})
+        lowered[name]["condition-basic"] = _join_ways(levels.get("basic")) or NEVER
+        for level, parts in levels.items():
+            if level != "basic":
+                lowered[name][f"condition-{level}"] = _join_ways(parts)
+    return lowered
+
+
+def _join_ways(parts: Optional[List[str]]) -> str:
+    if not parts:
+        return ""
+    return parts[0] if len(parts) == 1 else " | ".join(f"({part})" for part in parts)
 
 
 Expr = Union[bool, str]  # constant, or Python source over `c` (the player's prog_items counter)

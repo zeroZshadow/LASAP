@@ -19,8 +19,8 @@ from .host_settings import LASSettings
 from .ids import LOCATION_OFFSETS
 from .items import FILLER_ITEM, GAME, ITEM_GAME_INFO, ITEM_NAME_GROUPS, ITEM_TABLE, LASR_TO_ITEM, LASItem
 from .lasr import (CATEGORIES, COUNTED, DOOR_LOGIC, DUNGEON_REWARD_LOCATIONS, DUNGEONS, ENTERED_BY_DOOR,
-                   INSTRUMENT_LOCATIONS, INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC, TRAPS, door_entrance, door_node,
-                   dungeon_name, dungeon_region, goal_logic, item_dungeon, location_dungeon, shuffle_dungeons)
+                   INSTRUMENT_LOCATIONS, INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC, SHOP_LOCATIONS, TRAPS, door_entrance,
+                   door_node, dungeon_name, dungeon_region, goal_logic, item_dungeon, location_dungeon, shuffle_dungeons)
 from .locations import LASR_LOCATIONS, LOCATION_NAME_GROUPS, LOCATION_NAME_TO_ID, LOCATION_NAMES, LASLocation
 from .logic import LogicCompiler, make_rule, referenced_regions
 from .models import model_for
@@ -550,7 +550,7 @@ class LASWorld(World):
         name = self.random.choice(sorted(name for name, count in reach.items() if count >= wanted))
         item = next(item for item in pool if item.name == name)
         spots = [loc for loc in start if loc.can_fill(state, item, check_access=False)]
-        spots = [loc for loc in spots if LOGIC[LASR_LOCATIONS[loc.name]]["subtype"] != "shop"] or spots
+        spots = [loc for loc in spots if LASR_LOCATIONS[loc.name] not in SHOP_LOCATIONS] or spots
         if spots:  # this copy: list.remove would take the first equal item, the same name and player
             del self.multiworld.itempool[next(i for i, other in enumerate(self.multiworld.itempool) if other is item)]
             self.random.choice(spots).place_locked_item(item)
