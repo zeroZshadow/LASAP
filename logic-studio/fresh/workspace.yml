@@ -1,0 +1,771 @@
+sale:
+  type: item
+south-bay-dig:
+  type: item
+mermaid-cave:
+  type: item
+animal-village-northwest:
+  type: item
+animal-village-cave:
+  type: item
+christine-trade:
+  type: item
+christine-grateful:
+  type: item
+invisible-zora:
+  type: item
+chef-bear:
+  type: item
+grandma-yahoo:
+  type: item
+beach-chest:
+  type: item
+beach-dig:
+  type: item
+washed-up:
+  type: item
+goriya-trader:
+  type: item
+dampe-page-1:
+  type: item
+dampe-heart-challenge:
+  type: item
+dampe-page-2:
+  type: item
+dampe-bottle-challenge:
+  type: item
+dampe-final:
+  type: item
+taltal-entrance-blocks:
+  type: item
+taltal-entrance-chest:
+  type: item
+taltal-east-left-chest:
+  type: item
+wasteland-dig:
+  type: item
+north-wasteland:
+  type: item
+north-of-moblin-cave:
+  type: item
+lanmola:
+  type: item
+desert-cave:
+  type: item
+walrus:
+  type: item
+desert-dig:
+  type: item
+desert-south:
+  type: item
+ghost-reward:
+  type: item
+ghost-grave-dig:
+  type: item
+graveyard-cave:
+  type: item
+ghost-house-pot:
+  type: item
+taltal-heights-hole:
+  type: item
+kanalet-crow:
+  type: item
+kanalet-mad-bomber:
+  type: item
+kanalet-kill-room:
+  type: item
+kanalet-bombed-guard:
+  type: item
+kanalet-final-guard:
+  type: item
+dream-shrine-right:
+  type: item
+dream-shrine-left:
+  type: item
+mabe-bushes:
+  type: item
+  condition-basic: break-bush
+doghouse-dig:
+  type: item
+  condition-basic: shovel
+mabe-well:
+  type: item
+fishing-orange:
+  type: item
+  condition-basic: can-farm-rupees
+fishing-50:
+  type: item
+  condition-basic: can-farm-rupees
+fishing-100:
+  type: item
+  condition-basic: can-farm-rupees & (wind-marimba | coral-triangle | fast-fishing)
+fishing-150:
+  type: item
+  condition-basic: can-farm-rupees & (coral-triangle | fast-fishing)
+fishing-cheep-cheep:
+  type: item
+  condition-basic: can-farm-rupees & (surf-harp | fast-fishing)
+fishing-ol-baron:
+  type: item
+  condition-basic: can-farm-rupees & (coral-triangle | fast-fishing)
+fishing-loose:
+  type: item
+  condition-basic: can-farm-rupees
+tarin:
+  type: item
+marin:
+  type: item
+  condition-basic: ocarina
+shop-slot3-1st:
+  type: item
+  condition-basic: can-shop
+shop-slot3-2nd:
+  type: item
+  condition-basic: can-shop
+shop-slot5-1st:
+  type: item
+  condition-basic: can-shop
+shop-slot5-2nd:
+  type: item
+  condition-basic: can-shop
+shop-slot5-3rd:
+  type: item
+  condition-basic: can-shop
+shop-slot5-4th:
+  type: item
+  condition-basic: can-shop
+shop-slot5-5th:
+  type: item
+  condition-basic: can-shop
+shop-slot5-6th:
+  type: item
+  condition-basic: can-shop
+shop-slot5-7th:
+  type: item
+  condition-basic: can-shop
+shop-slot6:
+  type: item
+  condition-basic: can-shop
+mamasha:
+  type: item
+  condition-basic: yoshi-doll
+ciao-ciao:
+  type: item
+  condition-basic: ribbon
+tail-cave-bonk-tree:
+  type: item
+  condition-basic: boots
+beach-bonk-tree:
+  type: item
+armos-cave:
+  type: item
+rock-maze:
+  type: item
+armos-knight:
+  type: item
+goponga-cave-left:
+  type: item
+goponga-cave-right:
+  type: item
+goponga-west-dig:
+  type: item
+mr-write:
+  type: item
+pond-island:
+  type: item
+southwest-bay-bush:
+  type: item
+beside-seashell-mansion:
+  type: item
+small-coast-island:
+  type: item
+above-cave-dig:
+  type: item
+above-d3:
+  type: item
+under-skull-rock:
+  type: item
+ukuku-cave-west-chest:
+  type: item
+ukuku-cave-west-loose:
+  type: item
+ukuku-cave-east-chest:
+  type: item
+ukuku-cave-east-loose:
+  type: item
+mad-batter-bay:
+  type: item
+bay-passage-sunken:
+  type: item
+river-crossing-cave:
+  type: item
+kiki:
+  type: item
+tarin-ukuku:
+  type: item
+kanalet-south-cave:
+  type: item
+plains-rock-maze:
+  type: item
+ukuku-bonk-tree:
+  type: item
+5-seashell-reward:
+  type: item
+15-seashell-reward:
+  type: item
+30-seashell-reward:
+  type: item
+40-seashell-reward:
+  type: item
+50-seashell-reward:
+  type: item
+rapids-west-island:
+  type: item
+rapids-middle-island:
+  type: item
+rapids-east-island:
+  type: item
+rapids-south-island:
+  type: item
+rapids-race-45:
+  type: item
+rapids-race-35:
+  type: item
+rapids-race-30:
+  type: item
+rapids-ascent-cave:
+  type: item
+mermaid-martha:
+  type: item
+bay-fisherman:
+  type: item
+kanalet-moat-north:
+  type: item
+kanalet-moat-south:
+  type: item
+south-bay-sunken:
+  type: item
+mamu:
+  type: item
+swamp-chest:
+  type: item
+taltal-left-ascent-cave:
+  type: item
+papahl:
+  type: item
+taltal-bomb-hole:
+  type: item
+taltal-rooster-cave:
+  type: item
+taltal-crossing-cave:
+  type: item
+taltal-east-bridge:
+  type: item
+taltal-sunken:
+  type: item
+taltal-ledge-chest:
+  type: item
+taltal-5-chest-puzzle:
+  type: item
+manbo:
+  type: item
+taltal-east-drop:
+  type: item
+taltal-west-chest:
+  type: item
+mad-batter-taltal:
+  type: item
+taltal-west-rock:
+  type: item
+taltal-west-escape:
+  type: item
+taltal-west-dig:
+  type: item
+above-turtle-rock:
+  type: item
+trendy-prize-1:
+  type: item
+trendy-prize-2:
+  type: item
+trendy-prize-3:
+  type: item
+trendy-prize-4:
+  type: item
+trendy-prize-5:
+  type: item
+trendy-prize-6:
+  type: item
+trendy-prize-final:
+  type: item
+villa-cave:
+  type: item
+pothole-north:
+  type: item
+pothole-final:
+  type: item
+woods-crossing-cave-chest:
+  type: item
+woods-crossing-cave-loose:
+  type: item
+woods-north-cave-chest:
+  type: item
+woods-north-cave-loose:
+  type: item
+mad-batter-woods:
+  type: item
+woods-south-chest:
+  type: item
+woods-north-chest:
+  type: item
+woods-west-dig:
+  type: item
+woods-east-dig:
+  type: item
+woods-loose:
+  type: item
+diamond-island:
+  type: item
+syrup:
+  type: item
+D1-instrument:
+  type: item
+D1-moldorm:
+  type: item
+D1-west-hallway:
+  type: item
+D1-middle-ledge:
+  type: item
+D1-3-of-a-kind:
+  type: item
+D1-bomb-room:
+  type: item
+D1-middle-kill-chest:
+  type: item
+D1-spark-chest:
+  type: item
+D1-button-chest:
+  type: item
+D1-stalfos-chest:
+  type: item
+D1-4-zols-chest:
+  type: item
+D1-beetles:
+  type: item
+D1-owl-statue-long-hallway:
+  type: item
+D1-owl-statue-spinies:
+  type: item
+D1-owl-statue-3-of-a-kind:
+  type: item
+D2-instrument:
+  type: item
+D2-genie:
+  type: item
+D2-boos:
+  type: item
+D2-long-room-west:
+  type: item
+D2-long-room-east:
+  type: item
+D2-vacuum-mouth-room:
+  type: item
+D2-kill-puzzle:
+  type: item
+D2-west-chest:
+  type: item
+D2-double-stalfos:
+  type: item
+D2-double-shy-guys:
+  type: item
+D2-entrance-chest:
+  type: item
+D2-single-shy-guy:
+  type: item
+D2-peg-circle:
+  type: item
+D2-button-chest:
+  type: item
+D2-owl-statue-first-switch:
+  type: item
+D2-owl-statue-push-puzzle:
+  type: item
+D2-owl-statue-past-hinox:
+  type: item
+D3-instrument:
+  type: item
+D3-slime-eye:
+  type: item
+D3-pre-boss:
+  type: item
+D3-triple-bombites:
+  type: item
+D3-north-chest:
+  type: item
+D3-central-ledge:
+  type: item
+D3-central-chest:
+  type: item
+D3-east-ledge:
+  type: item
+D3-pairodds:
+  type: item
+D3-five-zols:
+  type: item
+D3-basement-north:
+  type: item
+D3-basement-west:
+  type: item
+D3-basement-south:
+  type: item
+D3-hallway-4:
+  type: item
+D3-hallway-3:
+  type: item
+D3-hallway-2:
+  type: item
+D3-hallway-side-room:
+  type: item
+D3-hallway-1:
+  type: item
+D3-vacuum-mouth:
+  type: item
+D3-owl-statue-basement-north:
+  type: item
+D3-owl-statue-arrow:
+  type: item
+D3-owl-statue-northwest:
+  type: item
+D4-instrument:
+  type: item
+D4-angler:
+  type: item
+D4-north-chest:
+  type: item
+D4-east-side-north:
+  type: item
+D4-east-side-south:
+  type: item
+D4-west-ledge:
+  type: item
+D4-east-of-puzzle:
+  type: item
+D4-south-of-puzzle:
+  type: item
+D4-sunken-item:
+  type: item
+D4-central-room:
+  type: item
+D4-small-island:
+  type: item
+D4-ledge-north:
+  type: item
+D4-statues-chest:
+  type: item
+D4-lobby:
+  type: item
+D4-crystals:
+  type: item
+D4-owl-statue:
+  type: item
+D5-instrument:
+  type: item
+D5-slime-eel:
+  type: item
+D5-master-stalfos:
+  type: item
+D5-crystal-blocks:
+  type: item
+D5-past-master-stalfos-3:
+  type: item
+D5-water-tunnel:
+  type: item
+D5-right-side-north:
+  type: item
+D5-right-side-middle:
+  type: item
+D5-right-side-east:
+  type: item
+D5-past-master-stalfos-1:
+  type: item
+D5-west-chest:
+  type: item
+D5-helmasaurs:
+  type: item
+D5-west-stairs-chest:
+  type: item
+D5-near-entrance:
+  type: item
+D5-owl-statue-triple-stalfos:
+  type: item
+D5-owl-statue-before-slime-eel:
+  type: item
+D6-instrument:
+  type: item
+D6-facade:
+  type: item
+D6-far-northwest:
+  type: item
+D6-far-northeast:
+  type: item
+D6-statue-line-north:
+  type: item
+D6-statue-line-south:
+  type: item
+D6-wizzrobe-pegs:
+  type: item
+D6-pot-chest:
+  type: item
+D6-canal:
+  type: item
+D6-3-wizzrobes:
+  type: item
+D6-tile-room:
+  type: item
+D6-gated-hallway-north:
+  type: item
+D6-gated-hallway-south:
+  type: item
+D6-southwest-chest:
+  type: item
+D6-wizzrobes-ledge:
+  type: item
+D6-owl-statue-ledge:
+  type: item
+D6-owl-statue-southeast:
+  type: item
+D6-owl-statue-canal:
+  type: item
+D7-instrument:
+  type: item
+D7-eagle:
+  type: item
+D7-like-likes:
+  type: item
+D7-1f-west:
+  type: item
+D7-west-ledge:
+  type: item
+D7-east-ledge:
+  type: item
+D7-3ofakind-north:
+  type: item
+D7-2f-horseheads:
+  type: item
+D7-hinox:
+  type: item
+D7-3ofakind-south:
+  type: item
+D7-blue-pegs-chest:
+  type: item
+D7-3f-horseheads:
+  type: item
+D7-grim-creeper:
+  type: item
+D7-owl-statue-ball:
+  type: item
+D7-owl-statue-kirbys:
+  type: item
+D7-owl-statue-hookshot-chest:
+  type: item
+D8-instrument:
+  type: item
+D8-hothead:
+  type: item
+D8-far-northwest:
+  type: item
+D8-far-northeast:
+  type: item
+D8-left-exit-chest:
+  type: item
+D8-dodongos:
+  type: item
+D8-northern-ledge:
+  type: item
+D8-gibdos:
+  type: item
+D8-beamos-chest:
+  type: item
+D8-statue:
+  type: item
+D8-torches:
+  type: item
+D8-west-vire:
+  type: item
+D8-west-roomba:
+  type: item
+D8-surrounded-by-blocks:
+  type: item
+D8-sparks-chest:
+  type: item
+D8-east-of-pots:
+  type: item
+D8-east-roomba:
+  type: item
+D8-far-southwest:
+  type: item
+D8-far-southeast:
+  type: item
+D8-owl-statue-above-smasher:
+  type: item
+D8-owl-statue-below-gibdos:
+  type: item
+D8-owl-statue-eye-statue:
+  type: item
+D0-northern-chest:
+  type: item
+D0-zol-pots:
+  type: item
+D0-north-orbs:
+  type: item
+D0-south-orbs:
+  type: item
+D0-east-color-puzzle:
+  type: item
+D0-west-color-puzzle:
+  type: item
+D0-putters:
+  type: item
+D0-fairy-1:
+  type: item
+D0-fairy-2:
+  type: item
+D0-owl-statue-nine-switches:
+  type: item
+D0-owl-statue-first-switches:
+  type: item
+D0-owl-statue-before-mini-boss:
+  type: item
+D0-rupee-1:
+  type: item
+D0-rupee-2:
+  type: item
+D0-rupee-3:
+  type: item
+D0-rupee-4:
+  type: item
+D0-rupee-5:
+  type: item
+D0-rupee-6:
+  type: item
+D0-rupee-7:
+  type: item
+D0-rupee-8:
+  type: item
+D0-rupee-9:
+  type: item
+D0-rupee-10:
+  type: item
+D0-rupee-11:
+  type: item
+D0-rupee-12:
+  type: item
+D0-rupee-13:
+  type: item
+D0-rupee-14:
+  type: item
+D0-rupee-15:
+  type: item
+D0-rupee-16:
+  type: item
+D0-rupee-17:
+  type: item
+D0-rupee-18:
+  type: item
+D0-rupee-19:
+  type: item
+D0-rupee-20:
+  type: item
+D0-rupee-21:
+  type: item
+D0-rupee-22:
+  type: item
+D0-rupee-23:
+  type: item
+D0-rupee-24:
+  type: item
+D0-rupee-25:
+  type: item
+D0-rupee-26:
+  type: item
+D0-rupee-27:
+  type: item
+D0-rupee-28:
+  type: item
+owl-statue-below-D8:
+  type: item
+owl-statue-moblin-cave:
+  type: item
+owl-statue-pothole:
+  type: item
+owl-statue-above-cave:
+  type: item
+owl-statue-south-bay:
+  type: item
+owl-statue-desert:
+  type: item
+owl-statue-maze:
+  type: item
+owl-statue-rapids:
+  type: item
+owl-statue-taltal-east:
+  type: item
+moblin-cave:
+  type: item
+rooster-statue:
+  type: item
+  condition-basic: bracelet:2 & song-soul & ocarina
+mabe:
+  type: region
+  connections:
+    trendy-porch: break-bush
+    dream-shrine-porch: bracelet
+    mabe-well-porch: break-bush
+trendy-porch:
+  type: region
+dream-shrine-porch:
+  type: region
+tail-cave:
+  type: region
+bottle-grotto:
+  type: region
+key-cavern:
+  type: region
+angler-tunnel:
+  type: region
+catfish-maw:
+  type: region
+face-shrine-front:
+  type: region
+eagle-tower:
+  type: region
+turtle-rock:
+  type: region
+color-dungeon:
+  type: region
+rapids:
+  type: region
+tarin-house:
+  type: region
+mabe-well-porch:
+  type: region
+break-bush:
+  type: interaction
+  condition-basic: sword | powders | bracelet | bombs | rod | boomerang
+can-farm-rupees:
+  type: interaction
+  condition-basic: bracelet | sword | rod | boomerang | shovel
+bombs:
+  type: interaction
+  condition-basic: bomb & (break-bush | (ammo-ghost & mabe))
+powders:
+  type: interaction
+  condition-basic: powder & (break-bush | (ammo-ghost & mabe))
+can-shop:
+  type: interaction
+  condition-basic: can-farm-rupees | can-steal & (sword | !stealing-needs-sword)
+Field_14D:
+  type: door
+  condition-basic: tail-key
+kill-nightmare:
+  type: enemy
+  condition-basic: never-holds
