@@ -28,7 +28,8 @@ SOLID = ("ObjGrass", "ObjRock", "ObjFieldCrac", "ObjGrave", "ObjCactus", "ObjTre
 # Actors left out of the level files: meshes, lights and camera setup that no view draws
 SKIP_ACTORS = ("MapStatic", "MapKinematic", "MapFixture", "TagCamera", "TagChangeEnv", "TagLight", "TagTailorPla", "TagHolocaust", "TagSwitchLight", "TagActivateC",
                "AreaCameraOf", "AreaAmbience", "AreaWarterFlow", "AreaBeltConv")
-ITEM_ACTORS = ("ObjTreasureBox", "ItemHeartPiece", "ItemSeashell", "ItemGoldenLeaf", "ItemSmallKey", "ItemHeartContainer")
+ITEM_ACTORS = ("ObjTreasureBox", "ItemHeartPiece", "ItemSeashell", "ItemSecretSe", "ItemGoldenLeaf", "ItemSmallKey", "ItemHeartContainer")
+CHECK_NPCS = {"ciao-ciao": "NpcRibbonBow"}  # a check an NPC gives, by the actor standing in its level
 ITEM_PARAMS = ("Seashell", "GoldenLeaf", "HeartPiece", "SmallKey")
 # Overworld checks found by what they hold: actors whose first parameter is the check's index, and actors of which the overworld has one
 INDEXED_ITEMS = {"ItemSecretSe": "seashell", "ItemHeartPiece": "heart-piece"}
@@ -297,6 +298,9 @@ def place_checks(levels, room_index, report, facts):
             rooms = [r for r in levels[level] if "flags" in r]
             first = rooms[0]
             checks[name] = {"level": level, "room": first["name"] if len(rooms) == 1 else None, "x": first["x"] + first["w"] * TILE / 2, "z": first["z"] + first["h"] * TILE / 2, "exact": False}
+            npc = next((a for a in first["actors"] if a["kind"] == CHECK_NPCS.get(name)), None)
+            if npc:
+                checks[name].update(x=npc["x"], y=npc["y"], z=npc["z"], exact=True)
             if len(rooms) > 1:
                 report["checks_level_only"].append(name)
         else:

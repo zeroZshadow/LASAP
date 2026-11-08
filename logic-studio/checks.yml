@@ -43,7 +43,7 @@ kanalet-final-guard: {level: KanaletCastle, room: KanaletCastle_01D, x: 82.5, z:
 dream-shrine-right: {level: DreamShrine, room: DreamShrine_01B, x: 18.0, y: 3.0, z: 9.75, exact: true, content: rupee-100}
 dream-shrine-left: {level: BedRoom, room: BedRoom_01A, x: 7.5, z: 6.0, exact: false, content: ocarina}
 mabe-bushes: {level: Field, room: Field_11D, x: 53.25, z: 125.25, exact: true, content: seashell, index: 0}
-doghouse-dig: {level: DogHouse, room: DogHouse_01A, x: 12.0, z: 6.0, exact: false, content: seashell, index: 1}
+doghouse-dig: {level: DogHouse, room: DogHouse_01A, x: 17.25, y: 0.0, z: 6.75, exact: true, content: seashell, index: 1}
 mabe-well: {level: TownWell, room: TownWell_01A, x: 6.75, y: -0.3, z: 6.75, exact: true, content: heart-piece, index: 0}
 fishing-orange: {level: Field, room: Field_09B, x: 23.25, z: 102.75, exact: true, content: heart-piece, index: 1}
 fishing-50: {level: Field, room: Field_09B, x: 23.25, z: 102.75, exact: true, content: heart-piece, index: 27}
@@ -65,7 +65,7 @@ shop-slot5-6th: {level: Shop, room: Shop_01A, x: 7.5, z: 6.0, exact: false, cont
 shop-slot5-7th: {level: Shop, room: Shop_01A, x: 7.5, z: 6.0, exact: false, content: chamber-stone, index: 23}
 shop-slot6: {level: Shop, room: Shop_01A, x: 7.5, z: 6.0, exact: false, content: heart-piece, index: 24}
 mamasha: {level: QuadupletHouse, room: QuadupletHouse_01A, x: 10.5, z: 6.0, exact: false, content: ribbon}
-ciao-ciao: {level: MadamHouse, room: MadamHouse_01A, x: 7.5, z: 6.0, exact: false, content: dog-food}
+ciao-ciao: {level: DogHouse, room: DogHouse_01A, x: 14.25, y: 0.0, z: 6.0, exact: true, content: dog-food}
 tail-cave-bonk-tree: {level: Field, room: Field_14C, x: 36.0, z: 163.5, exact: true, content: seashell, index: 13}
 beach-bonk-tree: {level: Field, room: Field_15A, x: 15.0, z: 178.5, exact: true, content: seashell, index: 49}
 armos-cave: {level: ArmosShrineCave, room: ArmosShrineCave_01A, x: 6.75, y: 0.0, z: 5.25, exact: true, content: seashell, index: 17}

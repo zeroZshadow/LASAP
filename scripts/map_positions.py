@@ -46,7 +46,7 @@ ROOM_W, ROOM_H = 15.0, 12.0  # a room (screen) in world units; room <row><col> s
 DOOR_LEVELS = {
     "sale": "BananaHouse", "mermaid-cave": "MermaidStatue", "christine-trade": "ChristineHouse",
     "christine-grateful": "ChristineHouse", "invisible-zora": "HiddenZoraHouse", "chef-bear": "BearHouse",
-    "goriya-trader": "BoomerangCave", "tarin": "MarinTarinHouse", "mamasha": "QuadupletHouse", "ciao-ciao": "MadamHouse",
+    "goriya-trader": "BoomerangCave", "tarin": "MarinTarinHouse", "mamasha": "QuadupletHouse", "ciao-ciao": "DogHouse",
     "armos-knight": "ArmosShrine", "mr-write": "DrWrightHouse", "mad-batter-bay": "MadBattersWell01",
     "mad-batter-woods": "MadBattersWell02", "mad-batter-taltal": "MadBattersWell03", "mamu": "MamuCave",
     "manbo": "MamboCave", "syrup": "MagicPowderHouse", "dream-shrine-left": "BedRoom", "moblin-cave": "MoriblinCave",
