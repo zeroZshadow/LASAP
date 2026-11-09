@@ -6,11 +6,11 @@ HEAD = ("# Where the game's doors lead: names only. Generated: python logic-stud
 
 def table(teleports):
     """A door's name is the spot its partner lands on, so names come in pairs; a door with no partner goes by its room.
-    The overworld's door comes first in a pair."""
+    The overworld's door comes first in a pair; two doors inside go by their ids."""
     by_id = {t["id"]: t for t in teleports}
     pairs, one_way, named = {}, {}, {}
     for t in teleports:
-        if not t["entrance"]:
+        if not t["door"]:
             continue
         name = by_id[t["companion"]]["to"] if t["companion"] else t["room"]
         if name in named:
@@ -18,7 +18,7 @@ def table(teleports):
         named[name] = t["id"]
         if not t["companion"]:
             one_way[t["room"]] = t["to"]
-        elif t["level"] == FIELD:
+        elif t["level"] == FIELD or (by_id[t["companion"]]["level"] != FIELD and t["id"] < t["companion"]):
             pairs[by_id[t["companion"]]["to"]] = t["to"]
     return {"pairs": dict(sorted(pairs.items())), "one-way": dict(sorted(one_way.items()))}
 

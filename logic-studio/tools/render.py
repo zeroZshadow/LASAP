@@ -5,7 +5,7 @@ in a doorway is a mark: where it is, the rooms it joins, a letter and a name.
 """
 import io
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw
 
 TILE = 1.5  # world units a tile
 PX = 16  # pixels a tile
@@ -25,6 +25,8 @@ COLOURS = {"Floor": "#b2be82", "Wall": "#24282c", "Wall edge": "#14181b", "Deep 
            "Sign": "#b8905a", "Chest": "#e0b030", "Door": "#b5794a", "Block": "#7d4f24"}
 RGB = {name: hexrgb(value) for name, value in COLOURS.items()}
 SIDE_BACK, SIDE_WALL = (40, 51, 58), (15, 20, 23)
+SURFACE = 3  # pixels of floor drawn on a room model's solid
+DECOR = ("grass", "kazari")  # in the name of a room model's shape that decorates
 # What an actor is drawn as; walkable grass (ObjLawn) is ground
 MARKED = {"ObjGrass": "Bush", "ObjTree": "Tree", "ObjCactus": "Tree", "ObjRock": "Rock", "ObjGrave": "Rock", "ObjFieldCrac": "Cracked rock",
           "ObjSignboard": "Sign", "ObjTreasureBox": "Chest", "ObjSquareBlock": "Block"}
@@ -53,7 +55,7 @@ def tiles_of(rooms):
 
 def doors(rooms):
     """(tiles a door opens as {(room name, tile index)}, the marks). A door actor on a room's edge opens its tiles and the
-    ones across the edge; a doorway with no actor is two solid tiles across rooms that both carry the doorway bit."""
+    ones across the edge; a doorway with no actor is two solid tiles across rooms that both carry the doorway bit, with no open floor beside them along the seam."""
     rooms = top_rooms(rooms)
     tiles = tiles_of(rooms)
     opened, marks = set(), {}
@@ -84,6 +86,11 @@ def doors(rooms):
                     for key in ((tx, tz), (tx + dx, tz + dz)):
                         if key in tiles:
                             opened.add((tiles[key][0]["name"], tiles[key][1]))
+    def open_across(x, z, dx, dz):
+        """Floor on both sides of the seam at this tile."""
+        here, there = tiles.get((x, z)), tiles.get((x + dx, z + dz))
+        return here and there and not (here[2] | there[2]) & SOLID
+
     bare = {}
     for (x, z), (room, i, f) in tiles.items():
         for dx, dz in ((1, 0), (0, 1)):
@@ -91,6 +98,8 @@ def doors(rooms):
             if not there or there[0] is room or not f & there[2] & DOORWAY or not (f | there[2]) & SOLID:
                 continue
             if (room["name"], i) in opened or (there[0]["name"], there[1]) in opened:
+                continue
+            if open_across(x + dz, z + dx, dx, dz) or open_across(x - dz, z - dx, dx, dz):
                 continue
             door = bare.setdefault((room["name"], there[0]["name"]), {"rooms": [room["name"], there[0]["name"]], "x": 0.0, "z": 0.0, "tiles": []})
             door["x"] += (x + (1 if dx else 0.5)) * TILE
@@ -189,8 +198,9 @@ def level_picture(rooms, opened):
     return img, (x0, z0)
 
 
-def side_picture(room):
-    """A side-view room: each column's floor at its height, and the surfaces chained above it."""
+def side_picture(room, wall=SIDE_WALL):
+    """A side-view room: each column's floor at its height, and the surfaces chained above it. `wall` is what a solid column
+    is drawn as."""
     h = SIDE_TILES * PX
     img = Image.new("RGB", (room["w"] * PX, h), SIDE_BACK)
     d = ImageDraw.Draw(img)
@@ -202,7 +212,7 @@ def side_picture(room):
     for c in range(room["w"]):
         f, x = room["flags"][c], c * PX
         if f & SOLID:
-            d.rectangle([x, 0, x + PX - 1, h - 1], fill=SIDE_WALL)
+            d.rectangle([x, 0, x + PX - 1, h - 1], fill=wall)
             continue
         if f & DEEP:
             d.rectangle([x, 0, x + PX - 1, h - 1], fill=RGB["Deep water"] if f & WATER else RGB["Hole"])
@@ -215,6 +225,40 @@ def side_picture(room):
             d.rectangle([x, y_of(link[1]), x + PX - 1, y_of(link[1]) + max(3, round(k * 0.5)) - 1], fill=SIDE_WALL if link[0] & SOLID else RGB["Floor"])
             nxt, guard = link[2], guard + 1
     return img
+
+
+def terrain(shapes, origin):
+    """The faces of a room's model in front of the plane side-view rooms are played on, moved to where the room stands: a
+    list of [(x, y)] * 3. Only shapes that reach the plane count, the rest being background; plants and ornaments hide nothing."""
+    plane = 0.001
+    ox, oy, oz = origin
+    faces = []
+    for name, triangles in shapes:
+        if any(word in name for word in DECOR) or not any(min(p[2] for p in t) + oz < plane < max(p[2] for p in t) + oz for t in triangles):
+            continue
+        for a, b, c in triangles:
+            if min(a[2], b[2], c[2]) + oz > -plane and (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]) > 0:
+                faces.append([(p[0] + ox, p[1] + oy) for p in (a, b, c)])
+    return faces
+
+
+def has_terrain(room, faces):
+    """Whether a model shows anything in this room. By a face's middle: a neighbour's faces can reach over the seam."""
+    return any(room["x"] <= sum(x for x, _ in face) / 3 <= room["x"] + room["w"] * TILE for face in faces)
+
+
+def draw_terrain(img, room, faces):
+    """A room model's faces over a side-view picture, as the game's tiles draw theirs: solid, with floor on top. The model's
+    art, not the game's collision."""
+    k = PX / TILE
+    solid = Image.new("L", img.size, 0)
+    d = ImageDraw.Draw(solid)
+    for face in faces:
+        d.polygon([((x - room["x"]) * k, img.height - y * k) for x, y in face], fill=255)
+    img.paste(SIDE_WALL, mask=solid)
+    below = Image.new("L", img.size, 255)
+    below.paste(solid, (0, SURFACE))
+    img.paste(RGB["Floor"], mask=ImageChops.subtract(solid, below))
 
 
 def png(img):

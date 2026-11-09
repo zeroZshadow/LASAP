@@ -116,11 +116,83 @@ pairs:
   Field_16E: BoomerangCave_01A
   Field_16G: GhostHouse_01A
   Field_16J: MadBattersWellEnter_02B
+  KanaletCastle_01A: KanaletCastle_01C
+  Lv01TailCave_01F: Lv01TailCave_07A
+  Lv01TailCave_01G: Lv01TailCave_04B
+  Lv01TailCave_02G: Lv01TailCave_05G
+  Lv01TailCave_06G_Warp: Lv01TailCave_08D_Warp
+  Lv02BottleGrotto_02G: Lv02BottleGrotto_04E
+  Lv02BottleGrotto_03F: Lv02BottleGrotto_05E
+  Lv02BottleGrotto_04B_Warp: Lv02BottleGrotto_08C_Warp
+  Lv02BottleGrotto_04C: Lv02BottleGrotto_05D
+  Lv02BottleGrotto_04D: Lv02BottleGrotto_05G
+  Lv02BottleGrotto_05B: Lv02BottleGrotto_06D
+  Lv02BottleGrotto_06E: Lv02BottleGrotto_06G
+  Lv03KeyCavern_01F: Lv03KeyCavern_03C
+  Lv03KeyCavern_01G: Lv03KeyCavern_08H
+  Lv03KeyCavern_02B_Warp: Lv03KeyCavern_08B_Warp
+  Lv03KeyCavern_04B: Lv03KeyCavern_04G
+  Lv03KeyCavern_04C: Lv03KeyCavern_04H
+  Lv04AnglersTunnel_03E_Warp: Lv04AnglersTunnel_08D_Warp
+  Lv04AnglersTunnel_04AU: Lv04AnglersTunnel_04B
+  Lv04AnglersTunnel_04C: Lv04AnglersTunnel_07B
+  Lv04AnglersTunnel_04F: Lv04AnglersTunnel_06B
+  Lv04AnglersTunnel_05C: Lv04AnglersTunnel_08A
+  Lv04AnglersTunnel_05D: Lv04AnglersTunnel_08B
+  Lv04AnglersTunnel_06C: Lv04AnglersTunnel_07A
+  Lv05CatfishsMaw_01C: Lv05CatfishsMaw_08A
+  Lv05CatfishsMaw_02E: Lv05CatfishsMaw_05A
+  Lv05CatfishsMaw_03B: Lv05CatfishsMaw_07A
+  Lv05CatfishsMaw_03E: Lv05CatfishsMaw_06A
+  Lv05CatfishsMaw_03F: Lv05CatfishsMaw_05B
+  Lv05CatfishsMaw_05D_Warp: Lv05CatfishsMaw_08H_Warp
+  Lv05CatfishsMaw_05E: Lv05CatfishsMaw_06B
+  Lv05CatfishsMaw_05G: Lv05CatfishsMaw_07B
+  Lv05CatfishsMaw_08B: Lv05CatfishsMaw_08E
+  Lv06FaceShrine_01A: Lv06FaceShrine_08B
+  Lv06FaceShrine_01B: Lv06FaceShrine_05C
+  Lv06FaceShrine_01C: Lv06FaceShrine_05D
+  Lv06FaceShrine_01D: Lv06FaceShrine_04F
+  Lv06FaceShrine_01E: Lv06FaceShrine_04B
+  Lv06FaceShrine_01F: Lv06FaceShrine_04H
+  Lv06FaceShrine_05F_Warp: Lv06FaceShrine_08D_Warp
+  Lv07EagleTower_01B: Lv07EagleTower_05B
+  Lv07EagleTower_01C: Lv07EagleTower_05C
+  Lv07EagleTower_03A: Lv07EagleTower_07A
+  Lv07EagleTower_03D: Lv07EagleTower_07D_b
+  Lv07EagleTower_03G: Lv07EagleTower_02HL
+  Lv07EagleTower_04C: Lv07EagleTower_08G
+  Lv07EagleTower_07H_Warp: Lv07EagleTower_08B_Warp
+  Lv08TurtleRock_01A: Lv08TurtleRock_03B
+  Lv08TurtleRock_01B: Lv08TurtleRock_06E
+  Lv08TurtleRock_01E: Lv08TurtleRock_02F
+  Lv08TurtleRock_01G: Lv08TurtleRock_03D
+  Lv08TurtleRock_01H: Lv08TurtleRock_06F
+  Lv08TurtleRock_02B: Lv08TurtleRock_04E
+  Lv08TurtleRock_02C: Lv08TurtleRock_02H
+  Lv08TurtleRock_02G: Lv08TurtleRock_05G
+  Lv08TurtleRock_03H_Warp: Lv08TurtleRock_08D_Warp
+  Lv08TurtleRock_05D: Lv08TurtleRock_08F
+  Lv08TurtleRock_06H: Lv08TurtleRock_08C
+  Lv08TurtleRock_08B: Lv08TurtleRock_08E
+  Lv08TurtleRock_08G: Lv08TurtleRock_08H
+  Lv10ClothesDungeon_04B_Warp: Lv10ClothesDungeon_08C_Warp
+  MarthaUkuku_01C: MarthaUkuku_02A
+  RichardCave_01A: RichardCave_01C
+  RichardCave_02A: RichardHouse_01A_a
+  Tamaranch01_02B: Tamaranch01_03A
+  Tamaranch02_01A: Tamaranch02_01B
+  Tamaranch03_01A: Tamaranch03_03B
+  Tamaranch04_01A: Tamaranch04_04C
+  Tamaranch04_02C: Tamaranch04_05C
+  Tamaranch04_03B: Tamaranch04_05B
+  Tamaranch05_01A: Tamaranch05_03A
 one-way:
   EagleKeyCave_01A: Field_01K_d
   EagleKeyCave_01B: Field_01K_d
   EagleKeyCave_02A: Field_01K_d
   EagleKeyCave_02B: Field_01K_d
   Field_02O: EagleTowerExit_01A_a
+  Lv07EagleTower_03H: Lv07EagleTower_08B_Warp
   Lv09WindFishsEgg_08C: Field_01G
   Lv10ClothesDungeon_04C: Field_08H

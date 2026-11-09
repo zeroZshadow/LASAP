@@ -88,7 +88,8 @@ def models(r: Reader):
     return out
 
 
-def bounds(path: str, want: str = "", per_shape: bool = False):
+def bounds(path: str, want: str = "", per_shape: bool = False, starts=None):
+    """The model's box, centre, radii and points. With `starts`, adds each shape's offset and first point to that list."""
     r = Reader(Path(path).read_bytes())
     found = models(r)
     name, model = next(((n, o) for n, o in found if not want or n == want), (None, None))
@@ -155,6 +156,8 @@ def bounds(path: str, want: str = "", per_shape: bool = False):
         if skin == 1 and ifmt is None:
             raise SystemExit(f"{path}: shape {shape_name} is rigid-skinned without bone indices (_i0)")
         slo, shi = [math.inf] * 3, [-math.inf] * 3
+        if starts is not None:
+            starts.append((shape, len(points)))
         for v in range(r.u32(fvtx + 0x50)):
             p = read_attr(r, offsets[buf] + v * stride + off, fmt)[:3]
             if skin == 0:
@@ -172,7 +175,23 @@ def bounds(path: str, want: str = "", per_shape: bool = False):
     center = tuple((lo[i] + hi[i]) / 2 for i in range(3))
     root_radius = max(math.dist(p, (0, 0, 0)) for p in points)
     radius = max(math.dist(p, center) for p in points)
-    return {"model": name, "min": lo, "max": hi, "center": center, "root_radius": root_radius, "radius": radius}
+    return {"model": name, "min": lo, "max": hi, "center": center, "root_radius": root_radius, "radius": radius, "points": points}
+
+
+def shapes(path: str):
+    """[(shape name, triangles)] of the file's first model in model space, from each shape's first mesh. BFRES 9: the mesh
+    array at FSHP +0x18; a mesh's index buffer offset +0x20, format +0x28 (0 u8, 1 u16, 2 u32), count +0x2C."""
+    starts = []
+    points = bounds(path, starts=starts)["points"]
+    r = Reader(Path(path).read_bytes())
+    block = r.u64(r.u64(0xB0) + 8)
+    found = []
+    for shape, first in starts:
+        mesh = r.u64(shape + 0x18)
+        count = r.u32(mesh + 0x2C)
+        ids = struct.unpack_from(f"<{count}{'BHI'[r.u32(mesh + 0x28)]}", r.d, block + r.u32(mesh + 0x20))
+        found.append((r.string(r.u64(shape + 8)), [tuple(points[first + i] for i in ids[n:n + 3]) for n in range(0, count - 2, 3)]))
+    return found
 
 
 def main() -> None:

@@ -31,7 +31,7 @@ def test_doors_yml_is_what_the_teleports_give():
 
 
 def test_two_doors_with_one_name_stop_the_build():
-    door = {"room": "Room", "level": "Cave", "entrance": True, "companion": None}
+    door = {"room": "Room", "level": "Cave", "entrance": True, "door": True, "companion": None}
     with pytest.raises(ValueError, match="Two doors named Room"):
         doors.table([{**door, "id": "Room/1", "to": "Field_A"}, {**door, "id": "Room/2", "to": "Field_B"}])
 

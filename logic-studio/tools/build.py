@@ -17,6 +17,7 @@ sys.path.insert(0, str(HERE))
 import checks  # noqa: E402
 import doors  # noqa: E402
 import extract  # noqa: E402
+import model_bounds  # noqa: E402  (on the path through extract)
 import render  # noqa: E402
 
 MANIFEST = HERE.parent / "game.yml"
@@ -67,6 +68,13 @@ def write_if_changed(path, data):
         path.write_bytes(data)
 
 
+def side_terrain(rooms):
+    """What a level's side-view room models show on the plane Link plays on."""
+    folder = Path(extract.lookup("romfs")) / "region_common" / "map"
+    placed = [(folder / f"{room['name']}.bfres", room["origin"]) for room in rooms if room["side"] and "origin" in room]
+    return [face for file, origin in placed if file.exists() for face in render.terrain(model_bounds.shapes(str(file)), origin)]
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", help="print the totals and findings, write nothing")
@@ -91,9 +99,14 @@ def main():
             img, (x, z) = render.level_picture(rooms, opened)
             files[f"{name}.png"] = render.png(img)
             pictures[name] = {"file": f"{name}.png", "x": x, "z": z}
+        terrain = side_terrain(drawn)  # one room's model can hold its neighbours' terrain, so a level's models are read together
         for room in drawn:
             if room["side"]:
-                files[f"{room['name']}.png"] = render.png(render.side_picture(room))
+                modelled = render.has_terrain(room, terrain)
+                img = render.side_picture(room, wall=render.SIDE_BACK if modelled else render.SIDE_WALL)  # the model says what is solid
+                if modelled:
+                    render.draw_terrain(img, room, terrain)
+                files[f"{room['name']}.png"] = render.png(img)
                 pictures[room["name"]] = {"file": f"{room['name']}.png"}
     cells = [re.fullmatch(r"Field_(\d+)([A-Z])", room["name"]) for room in layout[extract.FIELD]]
     overworld = {"level": extract.FIELD, "columns": sorted({m[2] for m in cells if m}), "rows": sorted({m[1] for m in cells if m})}

@@ -18,6 +18,7 @@ invisible-zora:
   type: item
 chef-bear:
   type: item
+  condition-basic: honeycomb
 grandma-yahoo:
   type: item
   condition-basic: broom
@@ -43,6 +44,7 @@ dampe-final:
   type: item
 taltal-entrance-blocks:
   type: item
+  condition-basic: break-crystal
 taltal-entrance-chest:
   type: item
 taltal-east-left-chest:
@@ -184,8 +186,10 @@ armos-knight:
   type: item
 goponga-cave-left:
   type: item
+  condition-basic: feather | rooster | hookshot
 goponga-cave-right:
   type: item
+  condition-basic: bracelet
 goponga-west-dig:
   type: item
   condition-basic: break-bush & shovel
@@ -226,6 +230,7 @@ bay-passage-sunken:
   type: item
 river-crossing-cave:
   type: item
+  condition-basic: flippers
 kiki:
   type: item
   condition-basic: bananas
@@ -242,14 +247,19 @@ ukuku-bonk-tree:
   condition-basic: boots
 5-seashell-reward:
   type: item
+  condition-basic: seashell:5
 15-seashell-reward:
   type: item
+  condition-basic: seashell:15
 30-seashell-reward:
   type: item
+  condition-basic: seashell:30
 40-seashell-reward:
   type: item
+  condition-basic: seashell:40
 50-seashell-reward:
   type: item
+  condition-basic: seashell:50
 rapids-west-island:
   type: item
   condition-basic: hookshot
@@ -297,6 +307,7 @@ taltal-rooster-cave:
   type: item
 taltal-crossing-cave:
   type: item
+  condition-basic: bombs
 taltal-east-bridge:
   type: item
   condition-basic: (feather | rooster) & bracelet
@@ -349,14 +360,17 @@ pothole-final:
   condition-basic: break-bush & shovel
 woods-crossing-cave-chest:
   type: item
+  condition-basic: break-crystal
 woods-crossing-cave-loose:
   type: item
+  condition-basic: bracelet
 woods-north-cave-chest:
   type: item
 woods-north-cave-loose:
   type: item
 mad-batter-woods:
   type: item
+  condition-basic: powders
 woods-south-chest:
   type: item
   condition-basic: bracelet
@@ -376,370 +390,549 @@ diamond-island:
   condition-basic: feather | rooster | hookshot
 syrup:
   type: item
+  condition-basic: mushroom
 D1-instrument:
   type: item
 D1-moldorm:
   type: item
+  condition-basic: kill-moldorm
 D1-west-hallway:
   type: item
+  condition-basic: kill-spiny[pit]
 D1-middle-ledge:
   type: item
 D1-3-of-a-kind:
   type: item
+  condition-basic: kill-3-of-a-kind
 D1-bomb-room:
   type: item
+  condition-basic: D1-8D & bombs
 D1-middle-kill-chest:
   type: item
+  condition-basic: D1-8D & (shield | kill-minimoldorm)
 D1-spark-chest:
   type: item
+  condition-basic: D1-8D
 D1-button-chest:
   type: item
 D1-stalfos-chest:
   type: item
+  condition-basic: kill-keese & kill-stalfos[pit]
 D1-4-zols-chest:
   type: item
 D1-beetles:
   type: item
+  condition-basic: kill-hardhat-beetle[pit]
 D1-owl-statue-long-hallway:
   type: item
+  condition-basic: stone-beak-D1
 D1-owl-statue-spinies:
   type: item
+  condition-basic: stone-beak-D1
 D1-owl-statue-3-of-a-kind:
   type: item
+  condition-basic: stone-beak-D1
 D2-instrument:
   type: item
+  condition-basic: D2-4G & kill-genie
 D2-genie:
   type: item
+  condition-basic: D2-4G & kill-genie
 D2-boos:
   type: item
+  condition-basic: D2-4C & key-D2:5 & (powders | rod | shoot-arrows | sword:2)
 D2-long-room-west:
   type: item
+  condition-basic: D2-4C
 D2-long-room-east:
   type: item
+  condition-basic: D2-4C & break-pot & hit-crystal-switch
 D2-vacuum-mouth-room:
   type: item
+  condition-basic: D2-4C
 D2-kill-puzzle:
   type: item
+  condition-basic: D2-2F & kill-stalfos-spear[heavy] & kill-pols-voice[heavy] & kill-keese[heavy]
 D2-west-chest:
   type: item
+  condition-basic: D2-8C & key-D2:5 & (feather | (rooster & bad-pets) | hookshot) & kill-keese
 D2-double-stalfos:
   type: item
+  condition-basic: D2-7D & kill-stalfos
 D2-double-shy-guys:
   type: item
+  condition-basic: D2-7D & (feather | (rooster & bad-pets)) & hit-crystal-switch & kill-shy-guy
 D2-entrance-chest:
   type: item
+  condition-basic: D2-8C & break-pot
 D2-single-shy-guy:
   type: item
+  condition-basic: D2-7D & key-D2:5 & kill-shy-guy
 D2-peg-circle:
   type: item
+  condition-basic: D2-7D & hit-crystal-switch
 D2-button-chest:
   type: item
+  condition-basic: D2-7D & (feather | (rooster & bad-pets)) & hit-crystal-switch
 D2-owl-statue-first-switch:
   type: item
+  condition-basic: D2-7D & stone-beak-D2
 D2-owl-statue-push-puzzle:
   type: item
+  condition-basic: D2-7D & (feather | (rooster & bad-pets)) & hit-crystal-switch & key-D2:3 & stone-beak-D2
 D2-owl-statue-past-hinox:
   type: item
+  condition-basic: D2-4C & stone-beak-D2
 D3-instrument:
   type: item
+  condition-basic: D3-8G & nightmare-key-D3 & kill-slime-eye
 D3-slime-eye:
   type: item
+  condition-basic: D3-8G & nightmare-key-D3 & kill-slime-eye
 D3-pre-boss:
   type: item
+  condition-basic: D3-8G & kill-keese
 D3-triple-bombites:
   type: item
+  condition-basic: D3-4C & bombs & kill-zol-green & kill-bombite-green & kill-bombite-red
 D3-north-chest:
   type: item
+  condition-basic: D3-4C & bombs & kill-bombite-green & kill-zol-green
 D3-central-ledge:
   type: item
+  condition-basic: D3-4C & kill-zol-red & kill-stalfos
 D3-central-chest:
   type: item
+  condition-basic: D3-4C & kill-dodongo
 D3-east-ledge:
   type: item
+  condition-basic: D3-4C & bombs & (dash-jump | (rooster & bad-pets))
 D3-pairodds:
   type: item
+  condition-basic: D3-4C & kill-zol-red & kill-zol-green & kill-pairodd
 D3-five-zols:
   type: item
+  condition-basic: D3-4C & kill-zol-green
 D3-basement-north:
   type: item
+  condition-basic: D3-3G & kill-stalfos-spear & kill-stalfos
 D3-basement-west:
   type: item
+  condition-basic: D3-4C & kill-zol-green & kill-pairodd & (feather | (rooster & bad-pets))
 D3-basement-south:
   type: item
+  condition-basic: D3-4C & kill-zol-green & kill-pairodd & kill-stalfos-spear
 D3-hallway-4:
   type: item
+  condition-basic: D3-3G & hit-crystal-switch
 D3-hallway-3:
   type: item
+  condition-basic: D3-7B & boots & kill-zol-red & kill-stalfos
 D3-hallway-2:
   type: item
+  condition-basic: D3-7B & kill-zol-green
 D3-hallway-side-room:
   type: item
+  condition-basic: D3-3G & kill-zol-green & hit-crystal-switch
 D3-hallway-1:
   type: item
+  condition-basic: D3-7B & (sword | powders | bombs | shoot-arrows | hookshot | rod | boomerang)
 D3-vacuum-mouth:
   type: item
+  condition-basic: D3-8B & (boots | hookshot | (rooster & bad-pets))
 D3-owl-statue-basement-north:
   type: item
+  condition-basic: D3-3G & stone-beak-D3
 D3-owl-statue-arrow:
   type: item
+  condition-basic: D3-4C & stone-beak-D3
 D3-owl-statue-northwest:
   type: item
+  condition-basic: D3-4C & kill-zol-red & kill-stalfos & stone-beak-D3
 D4-instrument:
   type: item
+  condition-basic: D4-5B & nightmare-key-D4 & kill-angler & flippers
 D4-angler:
   type: item
+  condition-basic: D4-5B & nightmare-key-D4 & kill-angler & flippers
 D4-north-chest:
   type: item
+  condition-basic: D4-4E & (flippers | (key-D4:5 & kill-cueball))
 D4-east-side-north:
   type: item
+  condition-basic: D4-5G & bombs
 D4-east-side-south:
   type: item
+  condition-basic: D4-5G & bombs
 D4-west-ledge:
   type: item
+  condition-basic: D4-6C
 D4-east-of-puzzle:
   type: item
+  condition-basic: D4-4C
 D4-south-of-puzzle:
   type: item
+  condition-basic: D4-4C
 D4-sunken-item:
   type: item
+  condition-basic: D4-4E & kill-zol-red & flippers
 D4-central-room:
   type: item
+  condition-basic: D4-4E & (flippers | hookshot | (rooster & bad-pets))
 D4-small-island:
   type: item
+  condition-basic: D4-8D & key-D4:2 & kill-spiny & kill-zol-red & (flippers | (rooster & bad-pets))
 D4-ledge-north:
   type: item
+  condition-basic: D4-8D
 D4-statues-chest:
   type: item
+  condition-basic: D4-8D
 D4-lobby:
   type: item
+  condition-basic: D4-8D & kill-zol-red[pit]
 D4-crystals:
   type: item
+  condition-basic: D4-8D & kill-spiny & kill-zol-red & break-crystal & kill-water-tektite
 D4-owl-statue:
   type: item
+  condition-basic: D4-4E & stone-beak-D4
 D5-instrument:
   type: item
+  condition-basic: D5-3E & key-D5:3 & nightmare-key-D5 & hookshot & kill-slime-eel
 D5-slime-eel:
   type: item
+  condition-basic: D5-3E & key-D5:3 & nightmare-key-D5 & hookshot & kill-slime-eel
 D5-master-stalfos:
   type: item
+  condition-basic: D5-8H & D5-5G & feather & kill-master-stalfos & break-crystal & kill-keese & kill-helmasaur
 D5-crystal-blocks:
   type: item
+  condition-basic: D5-8H & break-crystal & feather & kill-keese & kill-helmasaur
 D5-past-master-stalfos-3:
   type: item
+  condition-basic: D5-5G & break-pot & kill-zol-green & (feather | (rooster & bad-pets) | hookshot)
 D5-water-tunnel:
   type: item
+  condition-basic: D5-5G & flippers & (hookshot | (rooster & bad-pets))
 D5-right-side-north:
   type: item
+  condition-basic: D5-5G & (hookshot | (rooster & bad-pets))
 D5-right-side-middle:
   type: item
+  condition-basic: D5-5G & (hookshot | dash-jump | (rooster & bad-pets))
 D5-right-side-east:
   type: item
+  condition-basic: D5-5G & (hookshot | (rooster & bad-pets))
 D5-past-master-stalfos-1:
   type: item
+  condition-basic: D5-5G
 D5-west-chest:
   type: item
+  condition-basic: D5-7F & kill-helmasaur & (hookshot | (rooster & bad-pets))
 D5-helmasaurs:
   type: item
+  condition-basic: D5-7F & kill-helmasaur
 D5-west-stairs-chest:
   type: item
+  condition-basic: D5-8H & kill-keese & kill-helmasaur
 D5-near-entrance:
   type: item
+  condition-basic: D5-8H & (hookshot | (rooster & bad-pets))
 D5-owl-statue-triple-stalfos:
   type: item
+  condition-basic: D5-7F & stone-beak-D5
 D5-owl-statue-before-slime-eel:
   type: item
+  condition-basic: D5-5G & feather & stone-beak-D5
 D6-instrument:
   type: item
+  condition-basic: D6-4D & kill-wizzrobe[pit] & nightmare-key-D6 & kill-facade
 D6-facade:
   type: item
+  condition-basic: D6-4D & kill-wizzrobe[pit] & nightmare-key-D6 & kill-facade
 D6-far-northwest:
   type: item
+  condition-basic: D6-3A & hit-crystal-switch & bracelet:2
 D6-far-northeast:
   type: item
+  condition-basic: D6-4H & kill-pols-voice & break-pot
 D6-statue-line-north:
   type: item
+  condition-basic: D6-3A
 D6-statue-line-south:
   type: item
+  condition-basic: D6-8D & (bracelet:2 | shoot-arrows | rod | bombs | boomerang | hookshot)
 D6-wizzrobe-pegs:
   type: item
+  condition-basic: D6-3A & kill-wizzrobe
 D6-pot-chest:
   type: item
+  condition-basic: D6-4H & bombs & hookshot & bracelet & key-D6:3
 D6-canal:
   type: item
+  condition-basic: (D6-4H & bombs) | (D6-8D & bracelet:2 & kill-wizzrobe)
 D6-3-wizzrobes:
   type: item
+  condition-basic: D6-8D & kill-wizzrobe
 D6-tile-room:
   type: item
+  condition-basic: D6-5D
 D6-gated-hallway-north:
   type: item
+  condition-basic: D6-8D & bracelet:2
 D6-gated-hallway-south:
   type: item
+  condition-basic: D6-8D & (bracelet:2 | kill-wizzrobe)
 D6-southwest-chest:
   type: item
+  condition-basic: D6-8D & bombs & feather
 D6-wizzrobes-ledge:
   type: item
+  condition-basic: D6-8D & bracelet:2 & kill-wizzrobe & feather
 D6-owl-statue-ledge:
   type: item
+  condition-basic: D6-8D & stone-beak-D6
 D6-owl-statue-southeast:
   type: item
+  condition-basic: D6-8D & bracelet:2 & kill-wizzrobe & stone-beak-D6
 D6-owl-statue-canal:
   type: item
+  condition-basic: D6-4H & bombs & hookshot & bracelet & key-D6:3 & stone-beak-D6
 D7-instrument:
   type: item
+  condition-basic: D7-2F & hookshot & kill-evil-eagle
 D7-eagle:
   type: item
+  condition-basic: D7-2F & hookshot & kill-evil-eagle
 D7-like-likes:
   type: item
+  condition-basic: D7-8B & kill-like-like
 D7-1f-west:
   type: item
+  condition-basic: D7-2D
 D7-west-ledge:
   type: item
+  condition-basic: D7-2D & hit-crystal-switch
 D7-east-ledge:
   type: item
+  condition-basic: D7-2D & hit-crystal-switch
 D7-3ofakind-north:
   type: item
+  condition-basic: D7-2D & kill-3-of-a-kind & (feather | hit-crystal-switch)
 D7-2f-horseheads:
   type: item
+  condition-basic: D7-2D
 D7-hinox:
   type: item
+  condition-basic: D7-2D & hit-crystal-switch & kill-hinox
 D7-3ofakind-south:
   type: item
+  condition-basic: D7-2D & hit-crystal-switch & bombs & kill-3-of-a-kind & (hookshot | (rooster & bad-pets))
 D7-blue-pegs-chest:
   type: item
+  condition-basic: D7-2D & hit-crystal-switch
 D7-3f-horseheads:
   type: item
+  condition-basic: D7-2F
 D7-grim-creeper:
   type: item
+  condition-basic: D7-2D & hit-crystal-switch & kill-battle-bat
 D7-owl-statue-ball:
   type: item
+  condition-basic: D7-2D & stone-beak-D7
 D7-owl-statue-kirbys:
   type: item
+  condition-basic: D7-2D & stone-beak-D7
 D7-owl-statue-hookshot-chest:
   type: item
+  condition-basic: D7-2D & hit-crystal-switch & bombs & stone-beak-D7
 D8-instrument:
   type: item
+  condition-basic: D8-8D & feather & rod & nightmare-key-D8 & kill-hothead
 D8-hothead:
   type: item
+  condition-basic: D8-8D & feather & rod & nightmare-key-D8 & kill-hothead
 D8-far-northwest:
   type: item
+  condition-basic: D8-8D & key-D8:7 & feather & rod & kill-cueball
 D8-far-northeast:
   type: item
+  condition-basic: D8-8D & key-D8:7 & feather & bombs & hookshot & kill-blaino
 D8-left-exit-chest:
   type: item
+  condition-basic: (D8-4C & kill-vire & kill-rope & hookshot) | (D8-8D & rod & feather & hookshot)
 D8-dodongos:
   type: item
+  condition-basic: D8-4C & bombs
 D8-northern-ledge:
   type: item
+  condition-basic: (D8-4C & feather & hookshot) | (D8-8D & feather & hookshot & kill-zol-green & key-D8:2)
 D8-gibdos:
   type: item
+  condition-basic: (D8-4C & kill-gibdo) | (D8-8D & feather & kill-zol-green & kill-gibdo & key-D8:2)
 D8-beamos-chest:
   type: item
+  condition-basic: D8-4C
 D8-statue:
   type: item
+  condition-basic: D8-4C & shoot-arrows
 D8-torches:
   type: item
+  condition-basic: D8-6B & rod
 D8-west-vire:
   type: item
+  condition-basic: D8-6B & kill-rolling-bones & kill-vire
 D8-west-roomba:
   type: item
+  condition-basic: D8-6B
 D8-surrounded-by-blocks:
   type: item
+  condition-basic: D8-8D & feather
 D8-sparks-chest:
   type: item
+  condition-basic: D8-6B & (feather | hookshot | (rooster & bad-pets))
 D8-east-of-pots:
   type: item
+  condition-basic: D8-8D & (feather | (break-pot & kill-vire))
 D8-east-roomba:
   type: item
+  condition-basic: D8-8D & feather & (break-pot | (rooster & bad-pets))
 D8-far-southwest:
   type: item
+  condition-basic: D8-6B & kill-rolling-bones
 D8-far-southeast:
   type: item
+  condition-basic: D8-8D & feather & (break-pot | (rooster & bad-pets))
 D8-owl-statue-above-smasher:
   type: item
+  condition-basic: D8-8D & feather & (break-pot | (rooster & bad-pets)) & stone-beak-D8
 D8-owl-statue-below-gibdos:
   type: item
+  condition-basic: D8-8D & feather & key-D8:2 & stone-beak-D8
 D8-owl-statue-eye-statue:
   type: item
+  condition-basic: D8-4C & stone-beak-D8
 D0-northern-chest:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & key-D0:3 & kill-blob-boss
 D0-zol-pots:
   type: item
+  condition-basic: D0-6D & kill-zol-red[heavy] & kill-zol-green[heavy] & break-pot
 D0-north-orbs:
   type: item
+  condition-basic: D0-6D & kill-orb & break-pot
 D0-south-orbs:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & kill-orb
 D0-east-color-puzzle:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & hit-color-dungeon-switch
 D0-west-color-puzzle:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & hit-color-dungeon-switch
 D0-putters:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy]
 D0-fairy-1:
   type: item
+  condition-basic: D0-6D & nightmare-key-D0 & key-D0:3 & hit-color-dungeon-switch & break-pot
 D0-fairy-2:
   type: item
+  condition-basic: D0-6D & nightmare-key-D0 & key-D0:3 & hit-color-dungeon-switch & break-pot
 D0-owl-statue-nine-switches:
   type: item
+  condition-basic: D0-6D & key-D0:2 & stone-beak-D0 & break-pot
 D0-owl-statue-first-switches:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & stone-beak-D0
 D0-owl-statue-before-mini-boss:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & stone-beak-D0
 D0-rupee-1:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-2:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-3:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-4:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-5:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-6:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-7:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-8:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-9:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-10:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-11:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-12:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-13:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-14:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-15:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-16:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-17:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-18:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-19:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-20:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-21:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-22:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-23:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-24:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-25:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-26:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-27:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 D0-rupee-28:
   type: item
+  condition-basic: D0-8C & kill-goblin[heavy] & bombs
 owl-statue-below-D8:
   type: item
 owl-statue-moblin-cave:
@@ -887,12 +1080,9 @@ prairie:
   connections:
     graveyard-east: bracelet
     frog-maze: hookshot | rooster
-    river: flippers
+    river: cross-water
     animal-village: rooster | hookshot
-    kanalet-hookshot-island: rooster | (hookshot & (flippers | (ocarina & song-mambo)))
-    rapids-south-fairy: rooster
-    rapids-cave-porch: rooster
-    face-dungeon-cave-porch: rooster & kill-armos
+    kanalet-hookshot-island: rooster | hookshot
     kanalet-porch: open-kanalet | (kanalet & break-bush)
     kanalet-east: bananas | completed-bridge | cross-water
   one-way:
@@ -902,7 +1092,7 @@ frog-maze:
 pothole-field:
   type: region
   one-way:
-    prairie: feather | rooster
+    prairie: (feather | rooster) & break-bush
 slime-dungeon-porch:
   type: region
   one-way:
@@ -910,10 +1100,10 @@ slime-dungeon-porch:
 river:
   type: region
   connections:
-    animal-village: flippers
-    rapids-south-fairy: flippers
-    face-dungeon-cave-porch: flippers & kill-armos
-    kanalet-east: flippers
+    animal-village: cross-water
+    rapids-south-fairy: cross-water
+    face-dungeon-cave-porch: cross-water & kill-armos
+    kanalet-east: cross-water
 catfish-dungeon-porch:
   type: region
 ancient-ruins:
@@ -935,7 +1125,7 @@ prairie-hill:
 kanalet-hookshot-island:
   type: region
   one-way:
-    river: flippers
+    river: cross-water
 marthas-bay-bushland:
   type: region
   one-way:
@@ -952,17 +1142,17 @@ rapids-south-fairy:
   type: region
   connections:
     rapids-south: bracelet
-    rapids-river: flippers
-  one-way:
-    rapids-cave-porch: cross-water
+    rapids-river: cross-water
 face-dungeon-porch:
   type: region
   one-way:
-    river: flippers
+    river: cross-water
 face-dungeon-cave-porch:
   type: region
 rapids-cave-porch:
   type: region
+  one-way:
+    rapids-river: cross-water
 kanalet-east:
   type: region
 kanalet:
@@ -1002,12 +1192,8 @@ taltal-central:
     goponga-central: always
 richard-house:
   type: region
-  connections:
-    richard-cave-left: golden-leaf:5
 richard-cave-left:
   type: region
-  connections:
-    richard-cave-right: always
 richard-cave-right:
   type: region
 taltal-east0-cave-porch:
@@ -1086,6 +1272,151 @@ rapids-river:
   type: region
   one-way:
     rapids-cave-porch: always
+    rapids-south-fairy: always
+lv-01-tail-cave:
+  type: region
+  one-way:
+    D1-8D: always
+lv-02-bottle-grotto:
+  type: region
+  one-way:
+    D2-8C: always
+lv-03-key-cavern:
+  type: region
+  one-way:
+    D3-8B: always
+lv-04-anglers-tunnel:
+  type: region
+  one-way:
+    D4-8D: always
+lv-05-catfishs-maw:
+  type: region
+  one-way:
+    D5-8H: always
+lv-06-face-shrine:
+  type: region
+  one-way:
+    D6-8D: always
+lv-07-eagle-tower:
+  type: region
+  one-way:
+    D7-8B: always
+lv-08-turtle-rock:
+  type: region
+  one-way:
+    D8-8D: always
+lv-10-clothes-dungeon:
+  type: region
+  one-way:
+    D0-8C: always
+Tamaranch04a-drop:
+  type: region
+Tamaranch04a:
+  type: region
+  one-way:
+    Tamaranch04a-drop: always
+Tamaranch04b-left:
+  type: region
+  connections:
+    Tamaranch04b-right: rooster | break-obstacle
+  one-way:
+    Tamaranch04b-mid: rooster | hookshot
+Tamaranch04b-right:
+  type: region
+Tamaranch04b-mid:
+  type: region
+  one-way:
+    Tamaranch04b-left: rooster
+Tamaranch04c-left:
+  type: region
+  one-way:
+    Tamaranch04c-right: break-crystal
+Tamaranch04c-right:
+  type: region
+  one-way:
+    Tamaranch04c-left: always
+Tamaranch04d-left:
+  type: region
+Tamaranch04d-right:
+  type: region
+  connections:
+    Tamaranch04d-left: rooster
+Tamaranch04e:
+  type: region
+anglers-tunnel-exit-left:
+  type: region
+  one-way:
+    anglers-tunnel-exit-right: feather | rooster
+anglers-tunnel-exit-right:
+  type: region
+animal-village-enter-left:
+  type: region
+  connections:
+    animal-village-enter-right: break-obstacle
+animal-village-enter-right:
+  type: region
+face-shrine-enter-left:
+  type: region
+  connections:
+    face-shrine-enter-right: hookshot | rooster
+face-shrine-enter-right:
+  type: region
+kanalet-castle-a:
+  type: region
+kanalet-castle-b:
+  type: region
+kanalet-castle-c:
+  type: region
+D1-a:
+  type: region
+  one-way:
+    D1-b: kill-hardhat-beetle[pit]
+    D1-c: always
+    D1-d: always
+D1-b:
+  type: region
+D1-c:
+  type: region
+  one-way:
+    D1-a: kill-keese
+D1-d:
+  type: region
+  connections:
+    D1-h: key-D1:3 & feather
+    D1-f: key-D1:3
+    D1-i: key-D1:3
+  one-way:
+    D1-c: break-crystal
+D1-e:
+  type: region
+D1-f:
+  type: region
+D1-g:
+  type: region
+D1-2d-a:
+  type: region
+D1-2d-b:
+  type: region
+D1-h:
+  type: region
+D1-i:
+  type: region
+  connections:
+    D1-j: feather & kill-rolling-bones
+D1-j:
+  type: region
+  connections:
+    D1-k: kill-rolling-bones
+D1-k:
+  type: region
+  one-way:
+    D1-l: nightmare-key-D1
+D1-l:
+  type: region
+  one-way:
+    D1-m: kill-moldorm
+D1-m:
+  type: region
 break-bush:
   type: interaction
   condition-basic: sword | powders | bracelet | bombs | rod | boomerang
@@ -1097,19 +1428,37 @@ bombs:
   condition-basic: bomb & (break-bush | (ammo-ghost & mabe))
 powders:
   type: interaction
-  condition-basic: powder & (break-bush | (ammo-ghost & mabe))
+  condition-basic: powder & (break-bush | ammo-ghost)
 can-shop:
   type: interaction
   condition-basic: can-farm-rupees | can-steal & (sword | !stealing-needs-sword)
 shoot-arrows:
   type: interaction
-  condition-basic: bow & (can-shop | arrow-capacity | break-bush | (ammo-ghost & mabe))
+  condition-basic: bow & (can-shop | arrow-capacity | break-bush | ammo-ghost)
 cross-water:
   type: interaction
   condition-basic: flippers | rooster
 egg:
   type: interaction
   condition-basic: taltal-central & ocarina & song-ballad & full-moon-cello & conch-horn & sea-lilys-bell & surf-harp & wind-marimba & coral-triangle & evening-calm-organ & thunder-drum
+dash-jump:
+  type: interaction
+  condition-basic: feather & boots
+break-obstacle:
+  type: interaction
+  condition-basic: boots & (sword | shield)
+hit-crystal-switch:
+  type: interaction
+  condition-basic: sword | shoot-arrows | bombs | hookshot | boomerang | rod
+break-pot:
+  type: interaction
+  condition-basic: bracelet | bombs | sword:2
+break-crystal:
+  type: interaction
+  condition-basic: sword | bombs
+hit-color-dungeon-switch:
+  type: interaction
+  condition-basic: sword | shoot-arrows | bombs | hookshot | boomerang | rod
 Field_14D:
   type: door
   condition-basic: tail-key
@@ -1158,6 +1507,152 @@ kill-dethl:
 kill-turtle-rock:
   type: enemy
   condition-basic: bombs
+kill-goblin:
+  type: enemy
+  condition-basic: sword | powders | shoot-arrows | bombs | rod | boomerang
+  condition-heavy: bracelet
+kill-stone-hinox:
+  type: enemy
+  condition-basic: (sword | shoot-arrows | bombs | rod | boomerang) & feather
+kill-vire:
+  type: enemy
+  condition-basic: sword | powders | shoot-arrows | bombs | rod | boomerang
+kill-rope:
+  type: enemy
+  condition-basic: sword | powders | shoot-arrows | bombs | rod | boomerang
+  condition-heavy: bracelet
+kill-hinox:
+  type: enemy
+  condition-basic: sword | shoot-arrows | bombs | rod | boomerang
+kill-zol-green:
+  type: enemy
+  condition-basic: sword | powders | shoot-arrows | bombs | rod | boomerang
+  condition-heavy: bracelet
+kill-3-of-a-kind:
+  type: enemy
+  condition-basic: sword | shield | shoot-arrows | hookshot | rod | boomerang
+kill-stalfos-yellow:
+  type: enemy
+  condition-basic: sword | shoot-arrows | bombs | boomerang
+kill-stalfos-red:
+  type: enemy
+  condition-basic: sword | shoot-arrows | bombs | boomerang | shield:2
+  condition-pit: powders | hookshot | rod | bottle | shovel
+kill-master-stalfos:
+  type: enemy
+  condition-basic: (sword | boomerang) & bombs
+kill-gohma:
+  type: enemy
+  condition-basic: shoot-arrows | (hookshot & (sword | bombs | rod | boomerang))
+kill-star:
+  type: enemy
+  condition-basic: sword | powders | shoot-arrows | bombs | rod | boomerang
+kill-spiny:
+  type: enemy
+  condition-basic: shield & (sword | powders | shoot-arrows | bombs | rod | boomerang)
+  condition-pit: shield
+kill-zol-red:
+  type: enemy
+  condition-basic: sword | powders | shoot-arrows | bombs | rod | boomerang
+  condition-heavy: bracelet
+  condition-pit: shield
+kill-cueball:
+  type: enemy
+  condition-basic: sword | shoot-arrows | bombs | boomerang
+kill-pairodd:
+  type: enemy
+  condition-basic: sword | shoot-arrows | bombs | rod | boomerang
+kill-pols-voice:
+  type: enemy
+  condition-basic: shoot-arrows | bombs | rod | (ocarina & song-ballad)
+  condition-heavy: bracelet
+kill-rolling-bones:
+  type: enemy
+  condition-basic: sword | shoot-arrows | bombs | rod | boomerang
+kill-hothead:
+  type: enemy
+  condition-basic: rod
+kill-gibdo:
+  type: enemy
+  condition-basic: sword | shoot-arrows | bombs | boomerang
+kill-blaino:
+  type: enemy
+  condition-basic: sword
+kill-like-like:
+  type: enemy
+  condition-basic: sword | powders | shoot-arrows | bombs | rod | boomerang
+kill-evil-eagle:
+  type: enemy
+  condition-basic: sword | shoot-arrows | bombs | rod | boomerang
+kill-battle-bat:
+  type: enemy
+  condition-basic: sword | shoot-arrows | bombs | rod | boomerang
+kill-wizzrobe:
+  type: enemy
+  condition-basic: shoot-arrows | bombs | rod | boomerang
+  condition-pit: hookshot | boomerang | sword | shield
+kill-facade:
+  type: enemy
+  condition-basic: bombs
+kill-keese:
+  type: enemy
+  condition-basic: sword | powders | shoot-arrows | bombs | rod | boomerang
+  condition-heavy: bracelet
+kill-helmasaur:
+  type: enemy
+  condition-basic: sword | powders | shoot-arrows | bombs | rod | boomerang
+  condition-heavy: bracelet
+kill-slime-eel:
+  type: enemy
+  condition-basic: hookshot & (sword | shoot-arrows | bombs | rod | boomerang)
+kill-angler:
+  type: enemy
+  condition-basic: sword
+kill-water-tektite:
+  type: enemy
+  condition-basic: sword | powders | shoot-arrows | bombs | rod | boomerang
+kill-bombite-green:
+  type: enemy
+  condition-basic: sword | shield | shoot-arrows | bombs | rod
+kill-bombite-red:
+  type: enemy
+  condition-basic: sword | powders | shoot-arrows | bombs | hookshot | rod | boomerang
+kill-slime-eye:
+  type: enemy
+  condition-basic: sword & boots
+kill-stalfos:
+  type: enemy
+  condition-basic: sword | shoot-arrows | bombs | boomerang
+  condition-pit: powders | hookshot | rod | bottle | shovel
+kill-dodongo:
+  type: enemy
+  condition-basic: bombs
+kill-stalfos-spear:
+  type: enemy
+  condition-basic: sword | powders | shoot-arrows | bombs | rod | boomerang | shield:2
+  condition-heavy: bracelet
+kill-shy-guy:
+  type: enemy
+  condition-basic: sword | shoot-arrows | bombs | rod | boomerang
+kill-genie:
+  type: enemy
+  condition-basic: (sword | shoot-arrows | bombs | rod | boomerang) & bracelet
+kill-moldorm:
+  type: enemy
+  condition-basic: sword | shoot-arrows | bombs | rod | boomerang
+kill-minimoldorm:
+  type: enemy
+  condition-basic: sword | powders | shoot-arrows | bombs | rod | boomerang
+kill-hardhat-beetle:
+  type: enemy
+  condition-basic: bombs
+  condition-pit: sword | shield | hookshot | boomerang
+kill-orb:
+  type: enemy
+  condition-basic: sword | hookshot | shoot-arrows | bombs | rod | boomerang
+kill-blob-boss:
+  type: enemy
+  condition-basic: powders & sword
 Field_16E:
   type: door
   condition-basic: bombs
@@ -1209,3 +1704,163 @@ Field_02A:
 Field_01E:
   type: door
   condition-basic: bracelet
+D1-6F:
+  type: room
+D1-8D:
+  type: room
+  connections:
+    D1-6F: key-D1:3
+D2-2F:
+  type: room
+  connections:
+    D2-4G: key-D2:5 & nightmare-key-D2 & break-pot & kill-zol-red[heavy] & kill-pols-voice[heavy] & (bracelet | (boots & feather))
+D2-4C:
+  type: room
+  connections:
+    D2-2F: break-pot & (feather | (rooster & bad-pets))
+D2-4G:
+  type: room
+D2-7D:
+  type: room
+  one-way:
+    D2-4C: key-D2:3 & hit-crystal-switch & kill-hinox & (feather | (rooster & bad-pets))
+D2-8C:
+  type: room
+  connections:
+    D2-7D: rod | powders
+D3-8B:
+  type: room
+  connections:
+    D3-7B: bracelet
+D3-7B:
+  type: room
+  connections:
+    D3-4B: break-obstacle | kill-zol-green
+D3-4B:
+  type: room
+  connections:
+    D3-3G: key-D3:8
+    D3-4C: key-D3:4
+D3-4C:
+  type: room
+  connections:
+    D3-8G: key-D3:8 & dash-jump & kill-pairodd
+D3-3G:
+  type: room
+D3-8G:
+  type: room
+D4-4C:
+  type: room
+  one-way:
+    D4-6C: D4-4E & flippers & feather
+D4-4E:
+  type: room
+  one-way:
+    D4-4C: flippers | feather | (rooster & bad-pets) | (key-D4:5 & kill-cueball & kill-zol-red)
+    D4-5B: flippers & key-D4:5
+D4-5B:
+  type: room
+D4-5G:
+  type: room
+D4-6C:
+  type: room
+  one-way:
+    D4-4C: always
+D4-8D:
+  type: room
+  connections:
+    D4-4E: key-D4:3 & kill-spiny & kill-zol-red & (dash-jump | (rooster & bad-pets))
+    D4-5G: dash-jump | (rooster & bad-pets)
+D5-3E:
+  type: room
+  one-way:
+    D5-5G: key-D5:3 & hookshot & feather & kill-star
+D5-5G:
+  type: room
+  one-way:
+    D5-3E: feather & kill-star
+D5-7F:
+  type: room
+  connections:
+    D5-3E: kill-gohma & hookshot & feather & key-D5:3
+    D5-5G: kill-stalfos-yellow & kill-stalfos-red & (kill-master-stalfos | fast-stalfos)
+D5-8H:
+  type: room
+  connections:
+    D5-7F: key-D5
+D6-3A:
+  type: room
+  one-way:
+    D6-8D: (ocarina & song-mambo) | bombs | shoot-arrows | boomerang | rod
+D6-4H:
+  type: room
+D6-5D:
+  type: room
+  connections:
+    D6-4D: always
+    D6-4H: key-D6:2 & bracelet:2 & feather
+D6-8D:
+  type: room
+  connections:
+    D6-5D: key-D6 & bombs & bracelet:2 & feather
+  one-way:
+    D6-3A: bracelet & (bracelet:2 | shoot-arrows | rod | bombs | boomerang | hookshot)
+D6-4D:
+  type: room
+D7-2F:
+  type: room
+D7-2D:
+  type: room
+  connections:
+    D7-2F: kill-3-of-a-kind & bombs & nightmare-key-D7 & (hookshot | (rooster & bad-pets))
+D7-8B:
+  type: room
+  connections:
+    D7-2D: key-D7
+D8-4C:
+  type: room
+  one-way:
+    D8-6B: always
+D8-6B:
+  type: room
+D8-8D:
+  type: room
+  connections:
+    D8-4C: feather & (rod | (key-D8:3 & kill-zol-green))
+    D8-6B: kill-vire & kill-rope & kill-hinox
+D0-8C:
+  type: room
+  connections:
+    D0-6D: kill-goblin[heavy] & key-D0:2 & kill-stone-hinox
+D0-6D:
+  type: room
+RichardHouse_01A_a:
+  type: door
+  condition-basic: golden-leaf:5
+RichardCave_02A:
+  type: door
+  condition-basic: golden-leaf:5
+CatfishsMawEnter_01A:
+  type: door
+  condition-basic: flippers
+Field_14J_a:
+  type: door
+  condition-basic: flippers
+FishingBoat_01A:
+  type: door
+  condition-basic: flippers
+Field_15K:
+  type: door
+  condition-basic: flippers
+MadBattersWell02_01A:
+  type: door
+  condition-basic: bracelet
+Lv01TailCave_01G:
+  type: door
+  condition-basic: kill-spiny
+Lv01TailCave_06G_Warp:
+  type: door
+  condition-basic: kill-rolling-bones
+Lv01TailCave_08D_Warp:
+  type: door
+  condition-basic: D1-j

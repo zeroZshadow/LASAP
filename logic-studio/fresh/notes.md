@@ -8,6 +8,8 @@
 
 From `logic-studio/workspace.yml`, for the overworld zones built so far.
 
+Dungeons: the Advanced and Glitched rules on dungeon checks, rooms and enemies move as they are.
+
 Move as they are:
 
 | Rule | Level | Goes on |

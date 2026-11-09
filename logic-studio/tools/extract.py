@@ -37,7 +37,7 @@ INDEXED_ITEMS = {"ItemSecretSe": "seashell", "ItemHeartPiece": "heart-piece"}
 SINGLE_ITEMS = {"ItemSlimeKey": "slime-key", "ItemSleepyMu": "mushroom"}
 # A teleport's kind by actor: where its target's level and locator sit in the parameters
 TELEPORTS = {"AreaLevelOpen": (0, 1), "AreaHoleLowe": (0, 1), "AreaUpstairs": (None, 0), "AreaDownstairs": (None, 0),
-             "PanelDownsta": (None, 0), "PanelWallDow": (None, 0)}
+             "PanelDownsta": (None, 0), "PanelWallDow": (None, 0), "ObjDungeonWa": (None, 0)}
 INSTRUMENTS = ("ItemFullMoon", "ItemConchHorn", "ItemSeaLilys", "ItemSurfHarp", "ItemWindMari", "ItemCoralTri", "ItemEveningC", "ItemThunderD")
 FLOW_JUMPS = {("GameControl", "RequestLevelJump"), ("GameControl", "RequestWarp"), ("GameControl", "RequestRestartWarp"),
               ("GameControl", "RequestLevelJumpInCurrentLevel"), ("WarpUI", "JumpToSelectedLocation")}
@@ -98,6 +98,8 @@ def read_levels(level_dir):
                     entry["links"] = [tile_record(chain, i * 16) for i in range(len(chain) // 16)]
             for actor in room.actors:
                 kind = ACTOR_KEY.sub("", text(actor.name))
+                if kind == "MapStatic":
+                    entry["origin"] = actor.posX, actor.posY, actor.posZ  # where the room's model stands
                 entry["actors"].append({"kind": kind, "x": round(actor.posX, 3), "y": round(actor.posY, 3), "z": round(actor.posZ, 3), "params": [text(p) for p in actor.parameters],
                                         "switches": [list(s) for s in actor.switches if s[0] != 4]})
             rooms.append(entry)
@@ -383,7 +385,7 @@ def floors(sheet_dir):
 
 
 def other_teleports(levels, points, starts, jumps):
-    """Warps and moves that are not entrances: warp holes, Mambo points, dungeon warps, ocarina spots, instrument warps, rapids, the module's warp menu."""
+    """Warps and moves that are not entrances: warp holes, Mambo points, ocarina spots, instrument warps, rapids, the module's warp menu."""
     found = []
 
     def landing_at(level, locator):
@@ -406,8 +408,6 @@ def other_teleports(levels, points, starts, jumps):
                 elif k == "ObjWarpManbo":
                     point = by_index.get(ps[0])
                     add(k, level, room, a, FIELD, point["locator"] if point else None, f"WarpPoint {ps[0]}")
-                elif k == "ObjDungeonWa":
-                    add(k, level, room, a, level, ps[0])
                 elif k in INSTRUMENTS and ps and ps[0] == FIELD:
                     add(k, level, room, a, FIELD, ps[1])
                 elif k in ("AreaRapidFlow", "TagRapidFlow"):
@@ -451,7 +451,7 @@ def interior_groups(teleports, levels):
 
             for t in by_level[level]:
                 land = t["landing"]
-                if t["to_level"] == level and land:
+                if t["to_level"] == level and land and not t["warp"]:  # a warp pad needs activating: it joins nothing by walking
                     here, there = spot(t["room"], t["x"], t["z"]), spot(land["room"], land["x"], land["z"])
                     if here and there:
                         parent[find(here)] = find(there)
@@ -502,6 +502,8 @@ def build(facts):
         land = t["landing"]
         t["to_area"] = area_at(t["to_level"], land["room"], land["x"], land["z"]) if land else None
         t["entrance"] = (t["level"] == FIELD) != (t["to_level"] == FIELD) and level_kind(t["level"]) != "panel" and level_kind(t["to_level"]) != "panel"
+        t["warp"] = t["kind"] == "ObjDungeonWa"
+        t["door"] = t["entrance"] or ((bool(t["companion"]) or t["warp"]) and level_kind(t["level"]) != "panel" and level_kind(t["to_level"]) != "panel")
 
     entrances = [t for t in teleports if t["entrance"]]
     report["no_companion"] = [{"id": t["id"], "room": t["room"], "kind": t["kind"], "to": t["to"]} for t in entrances if not t["companion"]]
