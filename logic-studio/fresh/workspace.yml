@@ -335,6 +335,7 @@ trendy-prize-final:
   type: item
 villa-cave:
   type: item
+  condition-basic: feather | rooster | hookshot
 pothole-north:
   type: item
   condition-basic: ((rooster | feather) & (boomerang | rod)) | (feather & sword)
@@ -988,6 +989,16 @@ taltal-central:
     taltal-heights: bracelet
   one-way:
     goponga-central: always
+richard-house:
+  type: region
+  connections:
+    richard-cave-left: golden-leaf:5
+richard-cave-left:
+  type: region
+  connections:
+    richard-cave-right: always
+richard-cave-right:
+  type: region
 break-bush:
   type: interaction
   condition-basic: sword | powders | bracelet | bombs | rod | boomerang
@@ -1017,7 +1028,7 @@ Field_14D:
   condition-basic: tail-key
 kill-nightmare:
   type: enemy
-  condition-basic: never-holds
+  condition-basic: egg & (magnifying-lens | free-book) & kill-nightmare-zol & kill-nightmare-agahnim & kill-nightmare-moldorm & kill-nightmare-ganon & kill-nightmare-lanmola & kill-dethl
 kill-urchin:
   type: enemy
   condition-basic: sword | powders | shoot-arrows | bombs | rod | boomerang
@@ -1039,6 +1050,24 @@ kill-crow:
 kill-mad-bomber:
   type: enemy
   condition-basic: sword | shoot-arrows | bombs | rod | boomerang
+kill-nightmare-zol:
+  type: enemy
+  condition-basic: powders
+kill-nightmare-agahnim:
+  type: enemy
+  condition-basic: sword | bottle
+kill-nightmare-moldorm:
+  type: enemy
+  condition-basic: sword | shoot-arrows | bombs | rod | boomerang
+kill-nightmare-ganon:
+  type: enemy
+  condition-basic: sword
+kill-nightmare-lanmola:
+  type: enemy
+  condition-basic: sword | shoot-arrows | bombs | rod | boomerang
+kill-dethl:
+  type: enemy
+  condition-basic: shoot-arrows | rod | boomerang
 Field_16E:
   type: door
   condition-basic: bombs

@@ -1,6 +1,8 @@
 # Logic rebuild notes
 
 - `pothole-north`: the Basic rule `((rooster | feather) & (boomerang | rod)) | (feather & sword)` doesn't feel right. To review.
+- Entrance shuffle: the passage between `RichardHouse_01A` and `RichardCave_02A` (`richard-house` <> `richard-cave`, `golden-leaf:5`) cannot be shuffled, on either side.
+- Entrance shuffle: `RichardCave_01B` <> `Field_13G` (`pothole-field`) cannot be shuffled: falling into the holes at `pothole-field` always lands in `RichardCave_01B` or `RichardCave_01C`.
 
 ## Higher levels to bring over
 
