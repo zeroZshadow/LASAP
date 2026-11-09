@@ -322,8 +322,9 @@ class Worker:
         items = {name: {"quantity": max(self.ap["item_defs"].get(name, {}).get("quantity", 1), read[name])} for name in sorted(read)}
         hints = self.ap["options"].type_hints
         tokens = {token.replace("_", "-") for token in hints}
-        return {"items": items, "defaults": sorted(defaults), "option_tokens": sorted(tokens | {"can-steal", "stealing-needs-sword"}), "presets": list(self.ap["presets"]),
-                "start": EXIT}
+        spec = self.ap["lasr"].SPEC
+        return {"items": items, "unread_items": sorted(set(spec["items"]) - set(items)), "all_options": sorted(spec["options"]), "defaults": sorted(defaults),
+                "option_tokens": sorted(tokens | {"can-steal", "stealing-needs-sword"}), "presets": list(self.ap["presets"]), "start": EXIT}
 
 
 def main():

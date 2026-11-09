@@ -8,6 +8,14 @@ names: ../apworld/las/data/location_names.json  # each check's name in the game
 locations: ../apworld/las/data/ids.json  # `locations`: every check the world knows
 export: [../apworld/las/data/logic.yml, ../patcher/data/logic.yml]  # kept the same; the world reads the first
 simulator: tools/simulator.py  # answers what holds with the real world (DATA.md has the protocol)
+simulator_hidden_items: ["*-trap", "rupee-*", "compass-*", "map-*", stalfos-note, heart-container, heart-piece, medicine]  # never needed by logic: left out of the Simulator's menu while no rule reads them
+simulator_hidden_options:  # switches for the generator, not logic: left out of the Simulator's menu while no rule reads them
+  [360-movement, blue-rupees, blur-removal, boss-cutscenes, boss-drops, bouncy-items, chest-animations, chests, companions, consumable-drops,
+   create-spoiler-log, dampe, disable-guardian-acorn, disable-low-health-beep, disable-piece-of-power, easy-fishing, fishing, free-gifts,
+   golden-leaves, heart-pieces, instant-text, item-get-animations, key-animations, map-tracker, miscellaneous, movement-speed, nice-bombs,
+   nice-hookshot, nice-magic-rod, race-mode, randomize-enemies, randomize-enemy-sizes, randomize-environments, randomize-sound-effects,
+   randomize-text, seashell-hunt, seashells, seashells-important, shop, shuffled-dungeons, song-cutscenes, trade-important, trade-quest,
+   trendy-game, unrandomizer-mode]
 tests: tools/world_tests.py  # lists and runs the world's tests the Tests panel shows
 world: ../apworld/las  # the world's Python Logic Studio still reads (DATA.md)
 sources: [../apworld/las, ../patcher]  # code and data that write node names a rename does not reach
