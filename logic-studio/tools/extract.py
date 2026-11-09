@@ -408,8 +408,6 @@ def other_teleports(levels, points, starts, jumps):
                     add(k, level, room, a, FIELD, point["locator"] if point else None, f"WarpPoint {ps[0]}")
                 elif k == "ObjDungeonWa":
                     add(k, level, room, a, level, ps[0])
-                elif k == "AreaOcarina":
-                    add(k, level, room, a, note=" ".join(str(p) for p in ps if p))
                 elif k in INSTRUMENTS and ps and ps[0] == FIELD:
                     add(k, level, room, a, FIELD, ps[1])
                 elif k in ("AreaRapidFlow", "TagRapidFlow"):
