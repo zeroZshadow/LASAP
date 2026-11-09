@@ -29,7 +29,8 @@ SOLID = ("ObjGrass", "ObjRock", "ObjFieldCrac", "ObjGrave", "ObjCactus", "ObjTre
 SKIP_ACTORS = ("MapStatic", "MapKinematic", "MapFixture", "TagCamera", "TagChangeEnv", "TagLight", "TagTailorPla", "TagHolocaust", "TagSwitchLight", "TagActivateC",
                "AreaCameraOf", "AreaAmbience", "AreaWarterFlow", "AreaBeltConv")
 ITEM_ACTORS = ("ObjTreasureBox", "ItemHeartPiece", "ItemSeashell", "ItemSecretSe", "ItemGoldenLeaf", "ItemSmallKey", "ItemHeartContainer")
-CHECK_NPCS = {"ciao-ciao": "NpcRibbonBow"}  # a check an NPC gives, by the actor standing in its level
+# Checks that stand on one actor, where the rooms LASR and DOOR_LEVELS give do not say (DOOR_LEVELS names the door the map marks)
+CHECK_ACTORS = {"ciao-ciao": ("DogHouse_01A", "NpcRibbonBow"), "dream-shrine-left": ("DreamShrine_01A", "ItemOcarina"), "bay-fisherman": ("FishingBoat_01A", "NpcMarthasBa")}
 ITEM_PARAMS = ("Seashell", "GoldenLeaf", "HeartPiece", "SmallKey")
 # Overworld checks found by what they hold: actors whose first parameter is the check's index, and actors of which the overworld has one
 INDEXED_ITEMS = {"ItemSecretSe": "seashell", "ItemHeartPiece": "heart-piece"}
@@ -40,6 +41,8 @@ TELEPORTS = {"AreaLevelOpen": (0, 1), "AreaHoleLowe": (0, 1), "AreaUpstairs": (N
 INSTRUMENTS = ("ItemFullMoon", "ItemConchHorn", "ItemSeaLilys", "ItemSurfHarp", "ItemWindMari", "ItemCoralTri", "ItemEveningC", "ItemThunderD")
 FLOW_JUMPS = {("GameControl", "RequestLevelJump"), ("GameControl", "RequestWarp"), ("GameControl", "RequestRestartWarp"),
               ("GameControl", "RequestLevelJumpInCurrentLevel"), ("WarpUI", "JumpToSelectedLocation")}
+# Actors that move Link by running a flow, by room and kind: the flow holding the jump
+EVENT_JUMPS = {("BedRoom_01A", "ObjBed2"): "Bed"}
 # Kinds that may move Link, seen in the room files, that the extractor does not follow
 NOT_FOLLOWED = ("AreaEagleTower", "AreaReturnAb", "ObjLv9Stair", "ObjColorHole", "AreaBasement", "TagAreaEvent")
 COMPANION_REACH = 6.0  # world units: how far from a landing a teleport back may be
@@ -285,6 +288,11 @@ def place_checks(levels, room_index, report, facts):
         room, x, z = places[0]
         checks[name] = {"level": room.rsplit("_", 1)[0], "room": room, "x": x, "z": z, "exact": True}
     for name, (x, z, _) in positions["overworld"].items():
+        if name in CHECK_ACTORS:
+            room, kind = CHECK_ACTORS[name]
+            actor = next(a for a in room_index[room]["actors"] if a["kind"] == kind)
+            checks[name] = {"level": room.rsplit("_", 1)[0], "room": room, "x": actor["x"], "y": actor["y"], "z": actor["z"], "exact": True}
+            continue
         room = tables.get(name)
         level = door_levels.get(name)
         if room and not room.startswith(FIELD) and room in room_index:
@@ -298,9 +306,6 @@ def place_checks(levels, room_index, report, facts):
             rooms = [r for r in levels[level] if "flags" in r]
             first = rooms[0]
             checks[name] = {"level": level, "room": first["name"] if len(rooms) == 1 else None, "x": first["x"] + first["w"] * TILE / 2, "z": first["z"] + first["h"] * TILE / 2, "exact": False}
-            npc = next((a for a in first["actors"] if a["kind"] == CHECK_NPCS.get(name)), None)
-            if npc:
-                checks[name].update(x=npc["x"], y=npc["y"], z=npc["z"], exact=True)
             if len(rooms) > 1:
                 report["checks_level_only"].append(name)
         else:
@@ -377,8 +382,8 @@ def floors(sheet_dir):
     return {dict(row)["mLeaName"]: dict(row)["mFloor"] for row in readSheet(str(sheet_dir / "UiDungeonArea.gsheet"))["values"]}
 
 
-def other_teleports(levels, points, starts):
-    """Warps and moves that are not entrances: warp holes, Mambo points, dungeon warps, ocarina spots, instrument warps, rapids, raft, the module's warp menu."""
+def other_teleports(levels, points, starts, jumps):
+    """Warps and moves that are not entrances: warp holes, Mambo points, dungeon warps, ocarina spots, instrument warps, rapids, the module's warp menu."""
     found = []
 
     def landing_at(level, locator):
@@ -407,8 +412,12 @@ def other_teleports(levels, points, starts):
                     add(k, level, room, a, note=" ".join(str(p) for p in ps if p))
                 elif k in INSTRUMENTS and ps and ps[0] == FIELD:
                     add(k, level, room, a, FIELD, ps[1])
-                elif k in ("AreaRapidFlow", "TagRapidFlow", "ObjRaft"):
+                elif k in ("AreaRapidFlow", "TagRapidFlow"):
                     add(k, level, room, a)
+                elif (room["name"], k) in EVENT_JUMPS:
+                    jump = next(j for j in jumps if j["flow"] == EVENT_JUMPS[room["name"], k] and j["literal"])
+                    add(k, level, room, a, jump["level"], jump["to"], f"{jump['flow']}/{jump['event']}")
+                    found[-1]["back"] = jump.get("back")
     home = eval_constants(ROOT / "patcher" / "modbuild" / "mod.py", {"WARP_HOME"}).get("WARP_HOME")
     if home:
         found.append({"kind": "WARP_HOME", "level": None, "room": None, "x": None, "y": None, "z": None, "to_level": home["level"], "to": home["locator"], "note": "Module", "gate": [],
@@ -501,7 +510,7 @@ def build(facts):
     jumps = read_flow_jumps(common / "event", starts, report)
     pair_flow_jumps(teleports, jumps)
     points = warp_points(common / "datasheets", starts, report)
-    warps = other_teleports(levels, points, starts)
+    warps = other_teleports(levels, points, starts, jumps)
     flags = global_flags(common / "datasheets", [x["gate"] for x in teleports + warps])
     checks = place_checks(levels, room_index, report, facts)
     for name, entry in checks.items():

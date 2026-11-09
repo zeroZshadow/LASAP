@@ -8,10 +8,14 @@ def table(teleports):
     """A door's name is the spot its partner lands on, so names come in pairs; a door with no partner goes by its room.
     The overworld's door comes first in a pair."""
     by_id = {t["id"]: t for t in teleports}
-    pairs, one_way = {}, {}
+    pairs, one_way, named = {}, {}, {}
     for t in teleports:
         if not t["entrance"]:
             continue
+        name = by_id[t["companion"]]["to"] if t["companion"] else t["room"]
+        if name in named:
+            raise ValueError(f"Two doors named {name}: {named[name]} and {t['id']}")
+        named[name] = t["id"]
         if not t["companion"]:
             one_way[t["room"]] = t["to"]
         elif t["level"] == FIELD:

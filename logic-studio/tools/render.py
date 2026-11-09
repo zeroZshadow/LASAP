@@ -11,6 +11,8 @@ TILE = 1.5  # world units a tile
 PX = 16  # pixels a tile
 SIDE_TILES = 8  # tiles a side-view room is drawn tall
 DEEP, SOLID, NORTH, EAST, SOUTH, WEST, DIG, WATER, DOORWAY = 1, 2, 8, 32, 128, 512, 1 << 16, 1 << 18, 1 << 19
+FLOOR_TYPE = DOORWAY | 1 << 20  # on floor tiles, and on the solid tiles of a flight of stairs; not on walls
+STAIR_STEP = 1.2  # the most a flight climbs a tile, in world units
 
 
 def hexrgb(text):
@@ -110,6 +112,28 @@ def doors(rooms):
     return opened, found
 
 
+def stairs(rooms):
+    """{(room name, tile index)}: solid tiles the game leaves to the model to walk on, drawn as ground. They have floor flags,
+    and their heights climb steadily from a walkable tile to the walkable tile across them."""
+    tiles = tiles_of(rooms)
+    found = set()
+    for dx, dz in ((0, 1), (1, 0)):
+        for (x, z), start in tiles.items():
+            if start[2] & SOLID:
+                continue
+            run, at = [], (x + dx, z + dz)
+            while at in tiles and tiles[at][2] & SOLID and tiles[at][2] & FLOOR_TYPE == FLOOR_TYPE:
+                run.append(tiles[at])
+                at = (at[0] + dx, at[1] + dz)
+            if not run or at not in tiles or tiles[at][2] & SOLID:
+                continue
+            heights = [t[0]["elevation"][t[1]] for t in (start, *run, tiles[at])]
+            steps = [b - a for a, b in zip(heights, heights[1:])]
+            if all(0 < s <= STAIR_STEP for s in steps) or all(-STAIR_STEP <= s < 0 for s in steps):
+                found.update((t[0]["name"], t[1]) for t in run)
+    return found
+
+
 def ground(f, elevation):
     if f & DEEP:
         return RGB["Deep water"] if f & WATER else RGB["Hole"]
@@ -127,10 +151,14 @@ def level_picture(rooms, opened):
     img = Image.new("RGBA", (w * PX, h * PX), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     edge, thick = RGB["Wall edge"], 2
+    flights = stairs(rooms)
     for r in rooms:
         ox, oz = round((r["x"] - x0) / TILE), round((r["z"] - z0) / TILE)
         for i, f in enumerate(r["flags"]):
             px, py = (ox + i % r["w"]) * PX, (oz + i // r["w"]) * PX
+            if (r["name"], i) in flights:
+                d.rectangle([px, py, px + PX - 1, py + PX - 1], fill=ground(f, r["elevation"][i]))
+                continue
             if f & SOLID:
                 d.rectangle([px, py, px + PX - 1, py + PX - 1], fill=RGB["Door"] if (r["name"], i) in opened else RGB["Wall"])
                 continue

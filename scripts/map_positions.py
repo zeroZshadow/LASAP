@@ -70,9 +70,9 @@ SPOT_NAMES = {
     **{loc: "Ukuku East Cave" for loc in ("ukuku-cave-east-chest", "ukuku-cave-east-loose")},
     **{f"trendy-prize-{n}": "Trendy Game" for n in (1, 2, 3, 4, 5, 6, "final")},
 }
-# Checks at an NPC or statue outside: its actor's name prefix.
+# Checks at an NPC or statue outside: its actor's name prefix. Kiki's has the id, as his helper monkeys are NpcKiki too.
 ACTOR_PREFIXES = {
-    "walrus": "NpcWalrus", "kiki": "NpcKiki", "papahl": "NpcPapahl", "tarin-ukuku": "NpcTarin", "marin": "NpcMarin",
+    "walrus": "NpcWalrus", "kiki": "NpcKiki-750014", "papahl": "NpcPapahl", "tarin-ukuku": "NpcTarin", "marin": "NpcMarin",
     "mermaid-martha": "NpcMermaidMa", "lanmola": "EnemyLanmola", "ghost-reward": "ObjGhostsGrave",
     "grandma-yahoo": "NpcGrandmaUl",
     **{f"fishing-{part}": "NpcFisherman" for part in ("orange", "50", "100", "150", "cheep-cheep", "ol-baron", "loose")},

@@ -30,6 +30,12 @@ def test_doors_yml_is_what_the_teleports_give():
     assert DOORS.read_text(encoding="utf-8") == doors.text(doors.table(teleports))
 
 
+def test_two_doors_with_one_name_stop_the_build():
+    door = {"room": "Room", "level": "Cave", "entrance": True, "companion": None}
+    with pytest.raises(ValueError, match="Two doors named Room"):
+        doors.table([{**door, "id": "Room/1", "to": "Field_A"}, {**door, "id": "Room/2", "to": "Field_B"}])
+
+
 def test_every_picture_is_placed_and_there():
     pictures = json.loads(PLACES.read_text(encoding="utf-8"))["pictures"]
     assert {entry["file"] for entry in pictures.values()} == {path.name for path in MAPS.glob("*.png")}
@@ -64,3 +70,16 @@ def test_an_overworld_check_stands_on_its_own_actor(extracted, name, room, kind,
     actors = next(r for r in levels["Field"] if r["name"] == room)["actors"]
     assert check["room"] == room
     assert any(a["kind"] == kind and (first is None or first in a["params"]) and (a["x"], a["z"]) == (check["x"], check["z"]) for a in actors)
+
+
+def test_stairs_are_floor_flagged_solid_tiles_that_climb_steadily():
+    import render
+    solid_floor, wall, floor = render.SOLID | render.FLOOR_TYPE, render.SOLID, render.FLOOR_TYPE
+
+    def column(flags, heights):
+        return [{"name": "A", "x": 0, "z": 0, "w": 1, "h": len(flags), "flags": flags, "elevation": heights}]
+
+    assert render.stairs(column([floor, solid_floor, solid_floor, floor], [10.5, 9.94, 8.81, 8.25])) == {("A", 1), ("A", 2)}
+    assert not render.stairs(column([floor, wall, floor], [10.0, 9.5, 9.0]))  # a wall
+    assert not render.stairs(column([floor, solid_floor, floor], [25.0, 22.5, 22.0]))  # a drop
+    assert not render.stairs(column([floor, solid_floor, floor], [9.0, 11.0, 9.0]))  # no climb across it

@@ -41,7 +41,7 @@ kanalet-kill-room: {level: KanaletCastle, room: KanaletCastle_02A, x: 7.5, y: -0
 kanalet-bombed-guard: {level: KanaletCastle, room: KanaletCastle_01C, x: 63.75, y: 0.475, z: 8.25, exact: true, content: golden-leaf, index: 3}
 kanalet-final-guard: {level: KanaletCastle, room: KanaletCastle_01D, x: 82.5, z: 6.0, exact: false, content: golden-leaf, index: 4}
 dream-shrine-right: {level: DreamShrine, room: DreamShrine_01B, x: 18.0, y: 3.0, z: 9.75, exact: true, content: rupee-100}
-dream-shrine-left: {level: BedRoom, room: BedRoom_01A, x: 7.5, z: 6.0, exact: false, content: ocarina}
+dream-shrine-left: {level: DreamShrine, room: DreamShrine_01A, x: 12.0, y: 4.3, z: 9.75, exact: true, content: ocarina}
 mabe-bushes: {level: Field, room: Field_11D, x: 53.25, z: 125.25, exact: true, content: seashell, index: 0}
 doghouse-dig: {level: DogHouse, room: DogHouse_01A, x: 17.25, y: 0.0, z: 6.75, exact: true, content: seashell, index: 1}
 mabe-well: {level: TownWell, room: TownWell_01A, x: 6.75, y: -0.3, z: 6.75, exact: true, content: heart-piece, index: 0}
@@ -89,7 +89,7 @@ ukuku-cave-east-loose: {level: UkukuCave02, room: UkukuCave02_01B, x: 23.25, y: 
 mad-batter-bay: {level: MadBattersWell01, room: MadBattersWell01_01A, x: 7.5, z: 6.0, exact: false, content: bomb-capacity}
 bay-passage-sunken: {level: MadBattersWellEnter, room: MadBattersWellEnter_01B, x: 18.0, y: -2.25, z: 9.0, exact: true, content: heart-piece, index: 23}
 river-crossing-cave: {level: AnimalVillageEnter, room: AnimalVillageEnter_01B, x: 18.75, y: -2.175, z: 7.5, exact: true, content: heart-piece, index: 18}
-kiki: {level: Field, room: Field_09L, x: 174.43, z: 99.57, exact: true, content: stick}
+kiki: {level: Field, room: Field_08L, x: 171.75, z: 91.0, exact: true, content: stick}
 tarin-ukuku: {level: Field, room: Field_09H, x: 113.55, z: 102.85, exact: true, content: honeycomb}
 kanalet-south-cave: {level: KanaletCastleSouthCave, room: KanaletCastleSouthCave_01A, x: 6.75, y: 0.0, z: 3.75, exact: true, content: seashell, index: 24}
 plains-rock-maze: {level: Field, room: Field_12J, x: 141.75, z: 137.25, exact: true, content: seashell, index: 8}
@@ -108,7 +108,7 @@ rapids-race-35: {level: RapidsRideTicket, room: RapidsRideTicket_01A, x: 7.5, z:
 rapids-race-30: {level: RapidsRideTicket, room: RapidsRideTicket_01A, x: 7.5, z: 6.0, exact: false, content: chamber-stone, index: 8}
 rapids-ascent-cave: {level: RapidsRideExit, room: RapidsRideExit_01A, x: 11.25, y: 1.575, z: 5.25, exact: true, content: heart-piece, index: 20}
 mermaid-martha: {level: Field, room: Field_13J, x: 149.25, z: 149.25, exact: true, content: mermaid-scale}
-bay-fisherman: {level: Field, room: Field_15K, x: 160.11, z: 170.27, exact: true, content: necklace}
+bay-fisherman: {level: FishingBoat, room: FishingBoat_01A, x: 7.115, y: 6.44, z: 0.0, exact: true, content: necklace}
 kanalet-moat-north: {level: Field, room: Field_04I, x: 128.25, z: 38.25, exact: true, content: seashell, index: 38}
 kanalet-moat-south: {level: Field, room: Field_08J, x: 135.75, z: 87.75, exact: true, content: heart-piece, index: 6}
 south-bay-sunken: {level: Field, room: Field_15J, x: 144.75, z: 177.75, exact: true, content: heart-piece, index: 17}

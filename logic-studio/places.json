@@ -623,6 +623,7 @@
 {"id":"UnderGrave_01B/AreaLevelOpen/481","kind":"AreaLevelOpen","level":"UnderGrave","room":"UnderGrave_01B","x":20.25,"y":0.0,"z":2.25,"to_level":"Field","to":"Field_08G","gate":[[2,1]],"event":"DefaultUpStairsLvJump","landing":{"room":"Field_08G","x":99.75,"y":13.5,"z":89.25},"companion":"Field_08G/AreaLevelOpen/92","from_area":3,"to_area":40,"entrance":true,"back_jump":null,"drop":false}
 ],
 "warps": [
+{"kind":"ObjBed2","level":"BedRoom","room":"BedRoom_01A","x":9.0,"y":1.5,"z":6.0,"to_level":"DreamShrine","to":"DreamShrine_02A","note":"Bed/Event9","gate":[],"landing":{"room":"DreamShrine_02A","x":7.5,"y":0.0,"z":22.4},"back":"DreamShrine_02A/AreaLevelOpen/18","on_map":true},
 {"kind":"AreaWarpHole","level":"Field","room":"Field_01B","x":24.75,"y":27.0,"z":11.25,"to_level":null,"to":null,"note":"Warp menu","gate":[],"landing":null,"on_map":true},
 {"kind":"AreaOcarina","level":"Field","room":"Field_01G","x":98.25,"y":33.15,"z":7.5,"to_level":null,"to":null,"note":"1 orchestra_Start TurtleRock","gate":[[1,288]],"landing":null,"on_map":true},
 {"kind":"AreaOcarina","level":"Field","room":"Field_02A","x":8.25,"y":23.95,"z":19.5,"to_level":null,"to":null,"note":"3 TurtleRockStart EnemyTurtleRock","gate":[[1,289]],"landing":null,"on_map":true},
@@ -630,7 +631,6 @@
 {"kind":"ObjWarpManbo","level":"Field","room":"Field_02P","x":234.75,"y":18.75,"z":21.75,"to_level":"Field","to":"Warp_TalTalMtEastEast","note":"WarpPoint 7","gate":[],"landing":{"room":"Field_02P","x":234.75,"y":18.75,"z":21.75},"on_map":true},
 {"kind":"ObjWarpManbo","level":"Field","room":"Field_03H","x":107.25,"y":14.25,"z":32.25,"to_level":"Field","to":"Warp_DanpeiHouse","note":"WarpPoint 5","gate":[],"landing":{"room":"Field_03H","x":107.25,"y":14.25,"z":32.25},"on_map":true},
 {"kind":"AreaWarpHole","level":"Field","room":"Field_03M","x":189.75,"y":13.5,"z":32.25,"to_level":null,"to":null,"note":"Warp menu","gate":[],"landing":null,"on_map":true},
-{"kind":"ObjRaft","level":"Field","room":"Field_04P","x":230.6,"y":11.6,"z":45.75,"to_level":null,"to":null,"note":"","gate":[],"landing":null,"on_map":true},
 {"kind":"ObjWarpManbo","level":"Field","room":"Field_05F","x":81.0,"y":12.75,"z":57.0,"to_level":"Field","to":"Warp_MambogaPond","note":"WarpPoint 4","gate":[],"landing":{"room":"Field_05F","x":81.0,"y":12.75,"z":57.0},"on_map":true},
 {"kind":"TagRapidFlow","level":"Field","room":"Field_05M","x":186.0,"y":13.683,"z":54.0,"to_level":null,"to":null,"note":"","gate":[],"landing":null,"on_map":false},
 {"kind":"AreaRapidFlow","level":"Field","room":"Field_05M","x":185.25,"y":10.5,"z":49.5,"to_level":null,"to":null,"note":"","gate":[],"landing":null,"on_map":false},
