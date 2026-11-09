@@ -252,10 +252,12 @@ ukuku-bonk-tree:
   type: item
 rapids-west-island:
   type: item
+  condition-basic: hookshot
 rapids-middle-island:
   type: item
 rapids-east-island:
   type: item
+  condition-basic: hookshot & shovel
 rapids-south-island:
   type: item
 rapids-race-45:
@@ -297,6 +299,7 @@ taltal-crossing-cave:
   type: item
 taltal-east-bridge:
   type: item
+  condition-basic: (feather | rooster) & bracelet
 taltal-sunken:
   type: item
 taltal-ledge-chest:
@@ -313,10 +316,12 @@ mad-batter-taltal:
   type: item
 taltal-west-rock:
   type: item
+  condition-basic: bracelet
 taltal-west-escape:
   type: item
 taltal-west-dig:
   type: item
+  condition-basic: shovel
 above-turtle-rock:
   type: item
 trendy-prize-1:
@@ -792,6 +797,8 @@ color-dungeon:
   type: region
 rapids:
   type: region
+  one-way:
+    rapids-river: always
 tarin-house:
   type: region
 mabe-well-porch:
@@ -852,6 +859,7 @@ swamp:
   type: region
   connections:
     bottle-grotto-porch: kill-flower | (bracelet & !classic-d2)
+    taltal-central: bracelet
 bottle-grotto-porch:
   type: region
 goponga-central:
@@ -904,7 +912,6 @@ river:
   connections:
     animal-village: flippers
     rapids-south-fairy: flippers
-    rapids-cave-porch: flippers
     face-dungeon-cave-porch: flippers & kill-armos
     kanalet-east: flippers
 catfish-dungeon-porch:
@@ -945,6 +952,9 @@ rapids-south-fairy:
   type: region
   connections:
     rapids-south: bracelet
+    rapids-river: flippers
+  one-way:
+    rapids-cave-porch: cross-water
 face-dungeon-porch:
   type: region
   one-way:
@@ -970,6 +980,7 @@ rapids-porch:
   one-way:
     taltal-waters: flippers
     taltal-heights: rooster
+    rapids: can-farm-rupees
 taltal-heights:
   type: region
   connections:
@@ -999,6 +1010,82 @@ richard-cave-left:
     richard-cave-right: always
 richard-cave-right:
   type: region
+taltal-east0-cave-porch:
+  type: region
+  connections:
+    taltal-central: bracelet
+taltal-east0-left:
+  type: region
+taltal-east0-right:
+  type: region
+  connections:
+    taltal-waterfall: angler-key
+taltal-east0-right-top:
+  type: region
+  one-way:
+    taltal-east0-right: always
+taltal-waterfall:
+  type: region
+  connections:
+    taltal-east1-left: cross-water & angler-key
+  one-way:
+    anglers-dungeon-porch: always
+taltal-east1-left:
+  type: region
+  connections:
+    taltal-east1-right: cross-water
+    taltal-east1-top: cross-water
+taltal-east1-right:
+  type: region
+taltal-east1-top:
+  type: region
+  connections:
+    taltal-east0-bridge: rooster | hookshot
+taltal-east0-bridge:
+  type: region
+  one-way:
+    taltal-central: always
+taltal-east2-5chest-yard:
+  type: region
+taltal-east2-left:
+  type: region
+  one-way:
+    eagle-dungeon-drop: always
+taltal-east2-center:
+  type: region
+taltal-east2-right:
+  type: region
+eagle-dungeon-porch:
+  type: region
+  one-way:
+    eagle-dungeon-drop: always
+eagle-dungeon-drop:
+  type: region
+taltal-west0:
+  type: region
+  one-way:
+    taltal-west1: always
+taltal-west1:
+  type: region
+  one-way:
+    goponga-west: always
+taltal-west2:
+  type: region
+  connections:
+    turtle-dungeon-porch: always
+  one-way:
+    taltal-west1: always
+    goponga-west: always
+turtle-dungeon-porch:
+  type: region
+turtle-dungeon-top:
+  type: region
+face-dungeon-top:
+  type: region
+rapids-river:
+  type: region
+  one-way:
+    rapids-cave-porch: always
 break-bush:
   type: interaction
   condition-basic: sword | powders | bracelet | bombs | rod | boomerang
@@ -1068,6 +1155,9 @@ kill-nightmare-lanmola:
 kill-dethl:
   type: enemy
   condition-basic: shoot-arrows | rod | boomerang
+kill-turtle-rock:
+  type: enemy
+  condition-basic: bombs
 Field_16E:
   type: door
   condition-basic: bombs
@@ -1110,3 +1200,12 @@ Field_05K:
 Field_01G:
   type: door
   condition-basic: egg
+Field_01O:
+  type: door
+  condition-basic: bird-key & bracelet
+Field_02A:
+  type: door
+  condition-basic: ocarina & song-soul & kill-turtle-rock
+Field_01E:
+  type: door
+  condition-basic: bracelet
