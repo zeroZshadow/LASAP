@@ -406,13 +406,11 @@ D1-3-of-a-kind:
   condition-basic: kill-3-of-a-kind
 D1-bomb-room:
   type: item
-  condition-basic: D1-8D & bombs
 D1-middle-kill-chest:
   type: item
-  condition-basic: D1-8D & (shield | kill-minimoldorm)
+  condition-basic: kill-minimoldorm[pit]
 D1-spark-chest:
   type: item
-  condition-basic: D1-8D
 D1-button-chest:
   type: item
 D1-stalfos-chest:
@@ -1273,10 +1271,6 @@ rapids-river:
   one-way:
     rapids-cave-porch: always
     rapids-south-fairy: always
-lv-01-tail-cave:
-  type: region
-  one-way:
-    D1-8D: always
 lv-02-bottle-grotto:
   type: region
   one-way:
@@ -1385,6 +1379,7 @@ D1-d:
     D1-h: key-D1:3 & feather
     D1-f: key-D1:3
     D1-i: key-D1:3
+    D1-e: bombs
   one-way:
     D1-c: break-crystal
 D1-e:
@@ -1589,7 +1584,7 @@ kill-battle-bat:
   condition-basic: sword | shoot-arrows | bombs | rod | boomerang
 kill-wizzrobe:
   type: enemy
-  condition-basic: shoot-arrows | bombs | rod | boomerang
+  condition-basic: shoot-arrows | bombs | rod | boomerang | shield:2
   condition-pit: hookshot | boomerang | sword | shield
 kill-facade:
   type: enemy
@@ -1643,6 +1638,7 @@ kill-moldorm:
 kill-minimoldorm:
   type: enemy
   condition-basic: sword | powders | shoot-arrows | bombs | rod | boomerang
+  condition-pit: shield
 kill-hardhat-beetle:
   type: enemy
   condition-basic: bombs
@@ -1704,12 +1700,6 @@ Field_02A:
 Field_01E:
   type: door
   condition-basic: bracelet
-D1-6F:
-  type: room
-D1-8D:
-  type: room
-  connections:
-    D1-6F: key-D1:3
 D2-2F:
   type: room
   connections:
@@ -1855,12 +1845,12 @@ Field_15K:
 MadBattersWell02_01A:
   type: door
   condition-basic: bracelet
-Lv01TailCave_01G:
-  type: door
-  condition-basic: kill-spiny
 Lv01TailCave_06G_Warp:
   type: door
   condition-basic: kill-rolling-bones
 Lv01TailCave_08D_Warp:
   type: door
   condition-basic: D1-j
+Lv01TailCave_01G:
+  type: door
+  condition-basic: kill-spiny[pit]

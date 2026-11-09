@@ -20,6 +20,9 @@ grammar:
 # The logic levels, in order: each counts every level before it.
 levels: [basic, advanced, glitched, hell]
 
+# An enemy's other rules, written condition-pit and read as kill-x[pit] at every level.
+variants: [pit, heavy]
+
 # Each dungeon by its shuffle name, Tail Cave to Turtle Rock and then the Color Dungeon, and the zone its door leads
 # into. Dungeon shuffle swaps rules between these zones by name.
 dungeons:
