@@ -2,10 +2,12 @@ sale:
   type: item
 south-bay-dig:
   type: item
+  condition-basic: shovel
 mermaid-cave:
   type: item
 animal-village-northwest:
   type: item
+  condition-basic: break-bush
 animal-village-cave:
   type: item
 christine-trade:
@@ -18,10 +20,13 @@ chef-bear:
   type: item
 grandma-yahoo:
   type: item
+  condition-basic: broom
 beach-chest:
   type: item
+  condition-basic: bracelet
 beach-dig:
   type: item
+  condition-basic: shovel
 washed-up:
   type: item
 goriya-trader:
@@ -44,34 +49,46 @@ taltal-east-left-chest:
   type: item
 wasteland-dig:
   type: item
+  condition-basic: shovel
 north-wasteland:
   type: item
+  condition-basic: feather | hookshot | rooster
 north-of-moblin-cave:
   type: item
+  condition-basic: bracelet
 lanmola:
   type: item
+  condition-basic: kill-lanmola
 desert-cave:
   type: item
 walrus:
   type: item
+  condition-basic: ocarina & song-ballad
 desert-dig:
   type: item
+  condition-basic: shovel
 desert-south:
   type: item
+  condition-basic: bracelet
 ghost-reward:
   type: item
+  condition-basic: surf-harp
 ghost-grave-dig:
   type: item
+  condition-basic: shovel & break-bush
 graveyard-cave:
   type: item
 ghost-house-pot:
   type: item
 taltal-heights-hole:
   type: item
+  condition-basic: bombs
 kanalet-crow:
   type: item
+  condition-basic: kill-crow & (bombs | bracelet)
 kanalet-mad-bomber:
   type: item
+  condition-basic: kill-mad-bomber
 kanalet-kill-room:
   type: item
 kanalet-bombed-guard:
@@ -157,10 +174,12 @@ tail-cave-bonk-tree:
   condition-basic: boots
 beach-bonk-tree:
   type: item
+  condition-basic: boots
 armos-cave:
   type: item
 rock-maze:
   type: item
+  condition-basic: bracelet
 armos-knight:
   type: item
 goponga-cave-left:
@@ -169,22 +188,30 @@ goponga-cave-right:
   type: item
 goponga-west-dig:
   type: item
+  condition-basic: break-bush & shovel
 mr-write:
   type: item
 pond-island:
   type: item
+  condition-basic: break-bush & cross-water
 southwest-bay-bush:
   type: item
+  condition-basic: break-bush
 beside-seashell-mansion:
   type: item
+  condition-basic: break-bush
 small-coast-island:
   type: item
+  condition-basic: break-bush & cross-water
 above-cave-dig:
   type: item
+  condition-basic: shovel
 above-d3:
   type: item
+  condition-basic: shovel
 under-skull-rock:
   type: item
+  condition-basic: bombs & shovel
 ukuku-cave-west-chest:
   type: item
 ukuku-cave-west-loose:
@@ -201,14 +228,18 @@ river-crossing-cave:
   type: item
 kiki:
   type: item
+  condition-basic: bananas
 tarin-ukuku:
   type: item
+  condition-basic: stick
 kanalet-south-cave:
   type: item
 plains-rock-maze:
   type: item
+  condition-basic: bracelet
 ukuku-bonk-tree:
   type: item
+  condition-basic: boots
 5-seashell-reward:
   type: item
 15-seashell-reward:
@@ -237,18 +268,23 @@ rapids-ascent-cave:
   type: item
 mermaid-martha:
   type: item
+  condition-basic: flippers & necklace
 bay-fisherman:
   type: item
 kanalet-moat-north:
   type: item
+  condition-basic: flippers
 kanalet-moat-south:
   type: item
+  condition-basic: flippers
 south-bay-sunken:
   type: item
+  condition-basic: flippers
 mamu:
   type: item
 swamp-chest:
   type: item
+  condition-basic: kill-big-flower
 taltal-left-ascent-cave:
   type: item
 papahl:
@@ -301,8 +337,10 @@ villa-cave:
   type: item
 pothole-north:
   type: item
+  condition-basic: ((rooster | feather) & (boomerang | rod)) | (feather & sword)
 pothole-final:
   type: item
+  condition-basic: break-bush & shovel
 woods-crossing-cave-chest:
   type: item
 woods-crossing-cave-loose:
@@ -315,16 +353,21 @@ mad-batter-woods:
   type: item
 woods-south-chest:
   type: item
+  condition-basic: bracelet
 woods-north-chest:
   type: item
+  condition-basic: break-bush
 woods-west-dig:
   type: item
+  condition-basic: shovel
 woods-east-dig:
   type: item
+  condition-basic: shovel
 woods-loose:
   type: item
 diamond-island:
   type: item
+  condition-basic: feather | rooster | hookshot
 syrup:
   type: item
 D1-instrument:
@@ -697,6 +740,7 @@ owl-statue-moblin-cave:
   type: item
 owl-statue-pothole:
   type: item
+  condition-basic: break-bush
 owl-statue-above-cave:
   type: item
 owl-statue-south-bay:
@@ -720,6 +764,9 @@ mabe:
     trendy-porch: break-bush
     dream-shrine-porch: bracelet
     mabe-well-porch: break-bush
+    beach-left: always
+    woods: open-mabe | break-bush
+    prairie: open-mabe | bracelet
 trendy-porch:
   type: region
 dream-shrine-porch:
@@ -748,6 +795,199 @@ tarin-house:
   type: region
 mabe-well-porch:
   type: region
+bed-room:
+  type: region
+  connections:
+    dream-shrine: always
+beach-left:
+  type: region
+  connections:
+    banana-house-porch: break-bush
+    beach-right: open-mabe | kill-urchin | shield
+banana-house-porch:
+  type: region
+  one-way:
+    beach-right: always
+beach-right:
+  type: region
+  connections:
+    banana-house-porch: break-bush
+    ghost-house-yard: bracelet
+ghost-house-yard:
+  type: region
+  connections:
+    marthas-bay-land: rooster | (boots & feather)
+woods:
+  type: region
+  connections:
+    woods-racoon: powders | feather | rooster
+    woods-cave-porch: bracelet
+    goponga-central: feather | rooster
+    graveyard-west: bracelet
+    tracy-yard: bracelet
+    graveyard-east: feather | rooster
+  one-way:
+    goponga-central: hookshot
+woods-west:
+  type: region
+  connections:
+    woods-north: feather | rooster
+woods-racoon:
+  type: region
+  connections:
+    woods-north: break-bush
+  one-way:
+    woods: always
+woods-north:
+  type: region
+  connections:
+    swamp: always
+    goponga-west: feather | rooster | hookshot
+woods-cave-porch:
+  type: region
+goponga-west:
+  type: region
+swamp:
+  type: region
+  connections:
+    bottle-grotto-porch: kill-flower | (bracelet & !classic-d2)
+bottle-grotto-porch:
+  type: region
+goponga-central:
+  type: region
+  connections:
+    swamp: bracelet
+  one-way:
+    taltal-central: bracelet
+graveyard-west:
+  type: region
+  connections:
+    graveyard-cave-porch: bracelet
+graveyard-cave-porch:
+  type: region
+graveyard-east:
+  type: region
+  connections:
+    goponga-central: always
+tracy-yard:
+  type: region
+  connections:
+    graveyard-east: bracelet
+prairie:
+  type: region
+  connections:
+    graveyard-east: bracelet
+    frog-maze: hookshot | rooster
+    river: flippers
+    animal-village: rooster | hookshot
+    kanalet-hookshot-island: rooster | (hookshot & (flippers | (ocarina & song-mambo)))
+    rapids-south-fairy: rooster
+    rapids-cave-porch: rooster
+    face-dungeon-cave-porch: rooster & kill-armos
+    kanalet-porch: open-kanalet | (kanalet & break-bush)
+    kanalet-east: bananas | completed-bridge | cross-water
+  one-way:
+    slime-dungeon-porch: feather | cross-water
+frog-maze:
+  type: region
+pothole-field:
+  type: region
+  one-way:
+    prairie: feather | rooster
+slime-dungeon-porch:
+  type: region
+  one-way:
+    prairie: always
+river:
+  type: region
+  connections:
+    animal-village: flippers
+    rapids-south-fairy: flippers
+    rapids-cave-porch: flippers
+    face-dungeon-cave-porch: flippers & kill-armos
+    kanalet-east: flippers
+catfish-dungeon-porch:
+  type: region
+ancient-ruins:
+  type: region
+animal-village:
+  type: region
+  connections:
+    mermaid-statue-land: hookshot
+    desert: break-bush
+    rapids-south: bracelet
+desert:
+  type: region
+marthas-bay-land:
+  type: region
+  one-way:
+    marthas-bay-bushland: ((rooster | feather) & (boomerang | rod)) | (feather & sword)
+prairie-hill:
+  type: region
+kanalet-hookshot-island:
+  type: region
+  one-way:
+    river: flippers
+marthas-bay-bushland:
+  type: region
+  one-way:
+    marthas-bay-land: (feather | rooster) & break-bush
+marthas-bat-porch:
+  type: region
+mermaid-statue-land:
+  type: region
+rapids-south:
+  type: region
+  connections:
+    ancient-ruins: bracelet
+rapids-south-fairy:
+  type: region
+  connections:
+    rapids-south: bracelet
+face-dungeon-porch:
+  type: region
+  one-way:
+    river: flippers
+face-dungeon-cave-porch:
+  type: region
+rapids-cave-porch:
+  type: region
+kanalet-east:
+  type: region
+kanalet:
+  type: region
+kanalet-top:
+  type: region
+  one-way:
+    kanalet: always
+kanalet-porch:
+  type: region
+  connections:
+    kanalet: break-bush
+rapids-porch:
+  type: region
+  one-way:
+    taltal-waters: flippers
+    taltal-heights: rooster
+taltal-heights:
+  type: region
+  connections:
+    rapids-porch: hookshot
+anglers-dungeon-porch:
+  type: region
+  connections:
+    taltal-waters: flippers
+    taltal-heights: cross-water
+taltal-waters:
+  type: region
+  connections:
+    taltal-heights: flippers
+taltal-central:
+  type: region
+  connections:
+    taltal-heights: bracelet
+  one-way:
+    goponga-central: always
 break-bush:
   type: interaction
   condition-basic: sword | powders | bracelet | bombs | rod | boomerang
@@ -763,9 +1003,81 @@ powders:
 can-shop:
   type: interaction
   condition-basic: can-farm-rupees | can-steal & (sword | !stealing-needs-sword)
+shoot-arrows:
+  type: interaction
+  condition-basic: bow & (can-shop | arrow-capacity | break-bush | (ammo-ghost & mabe))
+cross-water:
+  type: interaction
+  condition-basic: flippers | rooster
+egg:
+  type: interaction
+  condition-basic: taltal-central & ocarina & song-ballad & full-moon-cello & conch-horn & sea-lilys-bell & surf-harp & wind-marimba & coral-triangle & evening-calm-organ & thunder-drum
 Field_14D:
   type: door
   condition-basic: tail-key
 kill-nightmare:
   type: enemy
   condition-basic: never-holds
+kill-urchin:
+  type: enemy
+  condition-basic: sword | powders | shoot-arrows | bombs | rod | boomerang
+kill-big-flower:
+  type: enemy
+  condition-basic: (hookshot & (sword | shoot-arrows | bombs)) | rod | boomerang | bow-wow
+kill-flower:
+  type: enemy
+  condition-basic: (hookshot & (sword | powders | shoot-arrows | bombs)) | rod | boomerang | bow-wow
+kill-lanmola:
+  type: enemy
+  condition-basic: sword | shoot-arrows | bombs | rod | boomerang
+kill-armos:
+  type: enemy
+  condition-basic: sword | shoot-arrows | bombs | rod | boomerang | hookshot | shield
+kill-crow:
+  type: enemy
+  condition-basic: sword | shoot-arrows | bombs | rod | boomerang
+kill-mad-bomber:
+  type: enemy
+  condition-basic: sword | shoot-arrows | bombs | rod | boomerang
+Field_16E:
+  type: door
+  condition-basic: bombs
+Field_08H:
+  type: door
+  condition-basic: bracelet
+Field_11K:
+  type: door
+  condition-basic: break-bush
+Field_12F:
+  type: door
+  condition-basic: slime-key & prairie
+Field_02D:
+  type: door
+  condition-basic: bombs
+Field_02P_b:
+  type: door
+  condition-basic: bombs
+Field_09H:
+  type: door
+  condition-basic: bombs
+Field_09G:
+  type: door
+  condition-basic: bombs
+Field_09N:
+  type: door
+  condition-basic: bombs
+Field_13N_c:
+  type: door
+  condition-basic: bombs
+Field_09M:
+  type: door
+  condition-basic: face-key
+Field_11O:
+  type: door
+  condition-basic: kill-armos
+Field_05K:
+  type: door
+  condition-basic: break-bush
+Field_01G:
+  type: door
+  condition-basic: egg
