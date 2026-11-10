@@ -22,6 +22,7 @@ locks:  # door marks that are locks: the item that opens them and whether openin
   L: {item: "key-{scope}", spent: true}
   N: {item: "nightmare-key-{scope}", spent: false}
 lock_scopes: {Lv01TailCave: D1, Lv02BottleGrotto: D2, Lv03KeyCavern: D3, Lv04AnglersTunnel: D4, Lv05CatfishsMaw: D5, Lv06FaceShrine: D6, Lv07EagleTower: D7, Lv08TurtleRock: D8, Lv10ClothesDungeon: D0}
+zone_prefixes: {Lv01TailCave: D1, Lv02BottleGrotto: D2, Lv03KeyCavern: D3, Lv04AnglersTunnel: D4, Lv05CatfishsMaw: D5, Lv06FaceShrine: D6, Lv07EagleTower: D7, Lv08TurtleRock: D8, Lv10ClothesDungeon: D0}  # what a zone painted new is named from: D1-a; other levels use their own zone name
 room_versions:  # rooms that are one place stored twice: Eagle's Tower's top floor, before and after it falls; its centre rooms differ and are separate rooms
   - [Lv07EagleTower_05F, Lv07EagleTower_01F]
   - [Lv07EagleTower_05G, Lv07EagleTower_01G]
