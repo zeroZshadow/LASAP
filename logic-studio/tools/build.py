@@ -8,6 +8,7 @@ import argparse
 import json
 import re
 import sys
+from collections import Counter, defaultdict
 from pathlib import Path
 
 import yaml
@@ -34,6 +35,44 @@ FINDINGS = {"target_not_found": "Teleport target not found", "no_companion": "En
 def paths():
     manifest = yaml.safe_load(MANIFEST.read_text(encoding="utf-8"))
     return tuple((MANIFEST.parent / manifest[key]).resolve() for key in ("checks", "places", "maps", "doors"))
+
+
+def room_versions():
+    """Room -> the first of the rooms the manifest lists as one with it."""
+    manifest = yaml.safe_load(MANIFEST.read_text(encoding="utf-8"))
+    return {room: rooms[0] for rooms in manifest.get("room_versions") or () for room in rooms}
+
+
+def same_marks(marks):
+    """Locks that share a save flag are one lock: a mark's `same` when the flag is on more than one of a level's marks. Every id is unique."""
+    used = Counter(m["flag"] for m in marks if m["flag"] is not None)
+    for m in marks:
+        flag = m.pop("flag")
+        if used[flag] > 1:
+            m["same"] = f"flag-{flag}"
+    ids = Counter(m["id"] for m in marks)
+    if max(ids.values()) > 1:
+        raise SystemExit(f"Two door marks with one id: {[key for key, n in ids.items() if n > 1]}")
+
+
+def same_doors(teleports, levels, versions):
+    """Doors at one place in the versions of a room are one door: they share a `same`."""
+    rooms = {room["name"]: room for rs in levels.values() for room in rs}
+    places = defaultdict(list)
+    for t in teleports:
+        if t["door"] and t["room"] in versions:
+            places[(versions[t["room"]], t["x"] - rooms[t["room"]]["x"], t["z"] - rooms[t["room"]]["z"])].append(t)
+    for (room, x, z), found in places.items():
+        if len(found) > 1:
+            for t in found:
+                t["same"] = f"{room}-door-{x:g}-{z:g}"
+
+
+def add_same(index, levels):
+    """What the versions of a room share, on the extracted data: the doors' `same` and the checks' `also`."""
+    versions = room_versions()
+    same_doors(index["teleports"], levels, versions)
+    checks.add_versions(index["checks"], levels, versions)
 
 
 def item_pool():
@@ -84,6 +123,7 @@ def main():
     levels, index, report = extract.build({name: fields for name, (fields, _) in entries.items()})
     items = item_pool()
     keys = {items[fields['content']]['item-key'] for fields, _ in entries.values() if 'index' in fields and fields.get('content') in items}
+    add_same(index, levels)
     entries, differ = checks.merged(entries, index.pop("checks"), levels, keys)
     kinds = {level["name"]: level["kind"] for level in index["levels"]}
     layout, pictures, marks, files = {}, {}, {}, {}
@@ -94,6 +134,7 @@ def main():
         layout[name] = [{k: r[k] for k in ROOM_FIELDS if k in r} for r in drawn]
         opened, found = render.doors(rooms) if name != extract.FIELD else (set(), [])
         if found:
+            same_marks(found)
             marks[name] = found
         if render.top_rooms(rooms):
             img, (x, z) = render.level_picture(rooms, opened)

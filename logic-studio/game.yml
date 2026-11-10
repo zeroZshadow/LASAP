@@ -17,5 +17,19 @@ simulator_hidden_options:  # switches for the generator, not logic: left out of 
    randomize-text, seashell-hunt, seashells, seashells-important, shop, shuffled-dungeons, song-cutscenes, trade-important, trade-quest,
    trendy-game, unrandomizer-mode]
 tests: tools/world_tests.py  # lists and runs the world's tests the Tests panel shows
+locks:  # door marks that are locks: the item that opens them and whether opening one spends it
+  K: {item: "key-{scope}", spent: true}
+  L: {item: "key-{scope}", spent: true}
+  N: {item: "nightmare-key-{scope}", spent: false}
+lock_scopes: {Lv01TailCave: D1, Lv02BottleGrotto: D2, Lv03KeyCavern: D3, Lv04AnglersTunnel: D4, Lv05CatfishsMaw: D5, Lv06FaceShrine: D6, Lv07EagleTower: D7, Lv08TurtleRock: D8, Lv10ClothesDungeon: D0}
+room_versions:  # rooms that are one place stored twice: Eagle's Tower's top floor, before and after it falls; its centre rooms differ and are separate rooms
+  - [Lv07EagleTower_05F, Lv07EagleTower_01F]
+  - [Lv07EagleTower_05G, Lv07EagleTower_01G]
+  - [Lv07EagleTower_06E, Lv07EagleTower_02E]
+  - [Lv07EagleTower_06H, Lv07EagleTower_02H]
+  - [Lv07EagleTower_07E, Lv07EagleTower_03E]
+  - [Lv07EagleTower_07H, Lv07EagleTower_03H]
+  - [Lv07EagleTower_08F, Lv07EagleTower_04F]
+  - [Lv07EagleTower_08G, Lv07EagleTower_04G]
 world: ../apworld/las  # the world's Python Logic Studio still reads (DATA.md)
 sources: [../apworld/las, ../patcher]  # code and data that write node names a rename does not reach

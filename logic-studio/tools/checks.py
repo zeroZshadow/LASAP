@@ -5,7 +5,7 @@ import re
 
 import yaml
 
-PLACE = ("level", "room", "x", "y", "z", "exact")
+PLACE = ("level", "room", "x", "y", "z", "exact", "also")
 FACTS = ("content", "index")
 HEAD = ("# Every check: where it is in the game (level, room, x, y, z, exact; written by python logic-studio/tools/build.py)",
         "# and what it holds (content, and index where the game numbers it; kept by hand). Export writes these into logic.yml.")
@@ -32,6 +32,8 @@ def scalar(value):
         return "true" if value else "false"
     if isinstance(value, (int, float)):
         return repr(value)
+    if isinstance(value, list):
+        return "[" + ", ".join(scalar(part) for part in value) + "]"
     text = str(value)
     plain = yaml.safe_load(f"k: {text}") == {"k": text} and not any(c in text for c in ",{}[]:#")
     return text if plain else '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
@@ -61,6 +63,21 @@ def actor_index(actor, indexed_keys):
         if match:
             return int(match[1])
     return None
+
+
+def add_versions(places, levels, versions):
+    """Each check's other places: the same actor at the same spot in the other versions of its room. `versions` is room -> the first of its versions."""
+    rooms = {room["name"]: room for rs in levels.values() for room in rs}
+    for place in places.values():
+        room = rooms.get(place.get("room"))
+        if not room or not place.get("exact") or place["room"] not in versions:
+            continue
+        kinds = {a["kind"] for a in room["actors"] if (a["x"], a["z"]) == (place["x"], place["z"])}
+        for other, first in versions.items():
+            if first == versions[place["room"]] and other != place["room"]:
+                x, z = place["x"] + rooms[other]["x"] - room["x"], place["z"] + rooms[other]["z"] - room["z"]
+                if any(a["kind"] in kinds and (a["x"], a["z"]) == (x, z) for a in rooms[other]["actors"]):
+                    place.setdefault("also", []).append([other, x, z])
 
 
 def merged(entries, places, levels, indexed_keys):

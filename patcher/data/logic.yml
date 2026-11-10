@@ -2355,7 +2355,7 @@ shoot-arrows:
   condition-basic: bow & (can-shop | (break-pot & (armos-maze | D6-8D)) | (feather & ((D5-7F & kill-helmasaur) | (D8-8D & key-D8:2))) | (D8-4C & (feather | break-pot)) | arrow-capacity | break-bush | (ammo-ghost & mabe))
 can-shop:
   type: interaction
-  condition-basic: can-farm-rupees | (can-steal & (sword | !stealing-needs-sword))
+  condition-basic: can-farm-rupees | can-steal & (sword | !stealing-needs-sword)
 can-farm-rupees:
   type: interaction
   condition-basic: bracelet | sword | rod | boomerang | shovel # | kill-octorok: removed because it sucks + enemy rando is a thing now
@@ -2524,7 +2524,7 @@ kill-water-tektite:
 kill-wizzrobe:
   type: enemy
   condition-basic: shoot-arrows | bombs | rod | boomerang
-  condition-pit: hookshot | boomerang | sword | shield
+  condition-pit: hookshot | sword | shield
 kill-zol-green:
   type: enemy
   condition-basic: sword | powders | shoot-arrows | bombs | rod | boomerang

@@ -268,8 +268,8 @@ D7-2f-horseheads: {level: Lv07EagleTower, room: Lv07EagleTower_01C, x: 42.75, z:
 D7-hinox: {level: Lv07EagleTower, room: Lv07EagleTower_04A, x: 3.75, z: 41.25, exact: true, content: key-D7}
 D7-3ofakind-south: {level: Lv07EagleTower, room: Lv07EagleTower_04B, x: 27.75, z: 39.75, exact: true, content: bomb}
 D7-blue-pegs-chest: {level: Lv07EagleTower, room: Lv07EagleTower_03D, x: 50.25, z: 27.75, exact: true, content: shield}
-D7-3f-horseheads: {level: Lv07EagleTower, room: Lv07EagleTower_01G, x: 132.75, z: 3.75, exact: true, content: medicine}
-D7-grim-creeper: {level: Lv07EagleTower, room: Lv07EagleTower_02H, x: 147.75, z: 15.75, exact: true, content: nightmare-key-D7}
+D7-3f-horseheads: {level: Lv07EagleTower, room: Lv07EagleTower_01G, x: 132.75, z: 3.75, exact: true, also: [[Lv07EagleTower_05G, 132.75, 75.75]], content: medicine}
+D7-grim-creeper: {level: Lv07EagleTower, room: Lv07EagleTower_02H, x: 147.75, z: 15.75, exact: true, also: [[Lv07EagleTower_06H, 147.75, 87.75]], content: nightmare-key-D7}
 D7-owl-statue-ball: {level: Lv07EagleTower, room: Lv07EagleTower_02D, x: 47.25, z: 12.75, exact: true, content: rupee-20}
 D7-owl-statue-kirbys: {level: Lv07EagleTower, room: Lv07EagleTower_05D, x: 51.75, z: 75.75, exact: true, content: rupee-20}
 D7-owl-statue-hookshot-chest: {level: Lv07EagleTower, room: Lv07EagleTower_04B, x: 17.25, z: 36.75, exact: true, content: rupee-20}

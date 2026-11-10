@@ -53,6 +53,9 @@ def tiles_of(rooms):
     return found
 
 
+LOCK_KINDS = ("ObjLockDoor", "ObjLockBlock", "ObjBossDoor")  # opened once for good: the save flag they share says which lock they are
+
+
 def doors(rooms):
     """(tiles a door opens as {(room name, tile index)}, the marks). A door actor on a room's edge opens its tiles and the
     ones across the edge; a doorway with no actor is two solid tiles across rooms that both carry the doorway bit, with no open floor beside them along the seam."""
@@ -60,10 +63,10 @@ def doors(rooms):
     tiles = tiles_of(rooms)
     opened, marks = set(), {}
 
-    def mark(kind, x, z, room, inward=(0, 0)):
+    def mark(kind, x, z, room, inward=(0, 0), flag=None):
         key = (kind, round(x, 2), round(z, 2))
         if key not in marks:
-            marks[key] = {"kind": kind, "x": x, "z": z, "rooms": [], "inward": list(inward)}
+            marks[key] = {"kind": kind, "x": x, "z": z, "rooms": [], "inward": list(inward), "flag": flag}
         marks[key]["rooms"].append(room)
 
     for r in rooms:
@@ -77,7 +80,7 @@ def doors(rooms):
                 dx, dz = (0, -1) if row == 0 else (0, 1) if row == r["h"] - 1 else (-1, 0) if col == 0 else (1, 0) if col == r["w"] - 1 else (0, 0)
             x = r["x"] + (r["w"] * TILE if dx > 0 else 0) if dx else a["x"]
             z = r["z"] + (r["h"] * TILE if dz > 0 else 0) if dz else a["z"]
-            mark(a["kind"], x, z, r["name"], (-dx, -dz))
+            mark(a["kind"], x, z, r["name"], (-dx, -dz), next((s[1] for s in a["switches"] if s[0] == 1), None) if a["kind"] in LOCK_KINDS else None)
             if not dx and not dz:
                 continue
             for sx in (-0.3, 0.3):
@@ -114,9 +117,12 @@ def doors(rooms):
     spot = {}
     for m in found:
         spot.setdefault((round(m["x"], 2), round(m["z"], 2)), []).append(m)
+    by_name = {r["name"]: r for r in rooms}
     for m in found:
         letter, name = DOORS[m["kind"]]
-        m.update(letter=letter, name=name, apart=len(spot[(round(m["x"], 2), round(m["z"], 2))]) > 1, x=round(m["x"], 3), z=round(m["z"], 3))
+        room = by_name[m["rooms"][0]]
+        tile = min(max(int((m["z"] - room["z"]) // TILE), 0), room["h"] - 1) * room["w"] + min(max(int((m["x"] - room["x"]) // TILE), 0), room["w"] - 1)
+        m.update(letter=letter, name=name, apart=len(spot[(round(m["x"], 2), round(m["z"], 2))]) > 1, x=round(m["x"], 3), z=round(m["z"], 3), id=f"{room['name']}-{tile}")
         del m["kind"]
     return opened, found
 

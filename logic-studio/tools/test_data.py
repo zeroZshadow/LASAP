@@ -22,7 +22,9 @@ def extracted():
     if not lookup("romfs"):
         pytest.skip('scripts/local_paths.json has no "romfs"')
     import extract
-    return extract.build({name: fields for name, (fields, _) in checks.read(CHECKS).items()})
+    found = extract.build({name: fields for name, (fields, _) in checks.read(CHECKS).items()})
+    build.add_same(found[1], found[0])
+    return found
 
 
 def test_doors_yml_is_what_the_teleports_give():
