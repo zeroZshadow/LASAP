@@ -30,7 +30,8 @@ SKIP_ACTORS = ("MapStatic", "MapKinematic", "MapFixture", "TagCamera", "TagChang
                "AreaCameraOf", "AreaAmbience", "AreaWarterFlow", "AreaBeltConv")
 ITEM_ACTORS = ("ObjTreasureBox", "ItemHeartPiece", "ItemSeashell", "ItemSecretSe", "ItemGoldenLeaf", "ItemSmallKey", "ItemHeartContainer")
 # Checks that stand on one actor, where the rooms LASR and DOOR_LEVELS give do not say (DOOR_LEVELS names the door the map marks)
-CHECK_ACTORS = {"ciao-ciao": ("DogHouse_01A", "NpcRibbonBow"), "dream-shrine-left": ("DreamShrine_01A", "ItemOcarina"), "bay-fisherman": ("FishingBoat_01A", "NpcMarthasBa")}
+CHECK_ACTORS = {"ciao-ciao": ("DogHouse_01A", "NpcRibbonBow"), "dream-shrine-left": ("DreamShrine_01A", "ItemOcarina"), "bay-fisherman": ("FishingBoat_01A", "NpcMarthasBa"),
+                "taltal-rooster-cave": ("EagleKeyCave_01A", "ItemBirdKey")}
 ITEM_PARAMS = ("Seashell", "GoldenLeaf", "HeartPiece", "SmallKey")
 # Overworld checks found by what they hold: actors whose first parameter is the check's index, and actors of which the overworld has one
 INDEXED_ITEMS = {"ItemSecretSe": "seashell", "ItemHeartPiece": "heart-piece"}
@@ -277,6 +278,15 @@ def field_items(rooms):
     return found
 
 
+def holds(actor, node):
+    """Whether an actor holds a check's item: by the item's number where the game numbers it, otherwise by its name."""
+    content, index = node.get("content"), node.get("index")
+    for kind, item in INDEXED_ITEMS.items():
+        if actor["kind"].startswith(kind):
+            return item == content and actor["params"][:1] == [index]
+    return any(isinstance(p, str) and p.lower() == (content or "").replace("-", "") for p in actor["params"])
+
+
 def place_checks(levels, room_index, report, facts):
     """Each check's real place. map_positions.json puts interior checks at their door, so those take their room from LASR's
     tables or map_positions' level table, and their position from the item actor there. Its overworld points are what the game's
@@ -300,6 +310,7 @@ def place_checks(levels, room_index, report, facts):
         if room and not room.startswith(FIELD) and room in room_index:
             data = room_index[room]
             items = [a for a in data["actors"] if a["kind"].startswith(ITEM_ACTORS) or (a["params"] and isinstance(a["params"][0], str) and a["params"][0].startswith(ITEM_PARAMS))]
+            items = [a for a in items if holds(a, facts.get(name, {}))] or items  # a room can hold several checks
             if items:
                 checks[name] = {"level": room.rsplit("_", 1)[0], "room": room, "x": items[0]["x"], "y": items[0]["y"], "z": items[0]["z"], "exact": len(items) == 1}
             else:

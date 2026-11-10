@@ -42,6 +42,8 @@ def import_world(logic_file):
         pkgutil.get_data = get_data
     os.chdir(AP)
     sys.path.insert(0, str(AP))
+    os.environ["AP_TEST_WORLDS"] = "las"  # AP loads only this world, not every game's; it reads this only under a test runner
+    import unittest  # noqa: F401
     logging.disable(logging.CRITICAL)
     from BaseClasses import CollectionState
     from Fill import FillError, distribute_items_restrictive

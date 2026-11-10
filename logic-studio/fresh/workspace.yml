@@ -80,6 +80,8 @@ ghost-grave-dig:
   condition-basic: shovel & break-bush
 graveyard-cave:
   type: item
+  condition-basic: rooster | (bombs & (hookshot | (boots & feather)))
+  condition-advanced: feather
 ghost-house-pot:
   type: item
 taltal-heights-hole:
@@ -228,6 +230,7 @@ mad-batter-bay:
   type: item
 bay-passage-sunken:
   type: item
+  condition-basic: flippers
 river-crossing-cave:
   type: item
   condition-basic: flippers
@@ -278,6 +281,7 @@ rapids-race-30:
   type: item
 rapids-ascent-cave:
   type: item
+  condition-basic: hookshot
 mermaid-martha:
   type: item
   condition-basic: flippers & necklace
@@ -305,6 +309,7 @@ taltal-bomb-hole:
   type: item
 taltal-rooster-cave:
   type: item
+  condition-basic: rooster
 taltal-crossing-cave:
   type: item
   condition-basic: bombs
@@ -366,8 +371,11 @@ woods-crossing-cave-loose:
   condition-basic: bracelet
 woods-north-cave-chest:
   type: item
+  condition-basic: rooster | hookshot | (boots & feather)
+  condition-advanced: feather
 woods-north-cave-loose:
   type: item
+  condition-basic: hookshot | rooster
 mad-batter-woods:
   type: item
   condition-basic: powders
@@ -1203,7 +1211,7 @@ taltal-east0-left:
 taltal-east0-right:
   type: region
   connections:
-    taltal-waterfall: angler-key
+    taltal-waterfall: angler-key & taltal-heights
 taltal-east0-right-top:
   type: region
   one-way:
@@ -1234,7 +1242,7 @@ taltal-east2-5chest-yard:
 taltal-east2-left:
   type: region
   one-way:
-    eagle-dungeon-drop: always
+    eagle-dungeon-drop: flippers
 taltal-east2-center:
   type: region
 taltal-east2-right:
@@ -1242,7 +1250,8 @@ taltal-east2-right:
 eagle-dungeon-porch:
   type: region
   one-way:
-    eagle-dungeon-drop: always
+    eagle-dungeon-drop: flippers
+    taltal-east2-center: always
 eagle-dungeon-drop:
   type: region
 taltal-west0:
@@ -1412,6 +1421,90 @@ D1-l:
     D1-m: kill-moldorm
 D1-m:
   type: region
+kanalet-castle-enter-left:
+  type: region
+  one-way:
+    kanalet-castle-enter-right: always
+kanalet-castle-enter-right:
+  type: region
+  one-way:
+    kanalet-castle-enter-left: feather
+mad-batters-well-enter-left:
+  type: region
+mad-batters-well-enter-right:
+  type: region
+  connections:
+    mad-batters-well-enter-left: cross-water
+martha-ukuku-a:
+  type: region
+  connections:
+    martha-ukuku-b: bombs & (feather | rooster)
+martha-ukuku-b:
+  type: region
+martha-ukuku-c:
+  type: region
+  one-way:
+    martha-ukuku-d: feather | rooster
+martha-ukuku-d:
+  type: region
+  one-way:
+    martha-ukuku-c: always
+rapids-ride-exit-a:
+  type: region
+  connections:
+    rapids-ride-exit-b: cross-water
+rapids-ride-exit-b:
+  type: region
+  one-way:
+    rapids-ride-exit-c: always
+rapids-ride-exit-c:
+  type: region
+tamaranch-01-a:
+  type: region
+tamaranch-01-b:
+  type: region
+tamaranch-01-c:
+  type: region
+  connections:
+    tamaranch-01-d: feather | rooster
+tamaranch-01-d:
+  type: region
+  one-way:
+    tamaranch-01-e: rooster | hookshot
+tamaranch-01-e:
+  type: region
+  one-way:
+    tamaranch-01-d: rooster
+tamaranch-02-1:
+  type: region
+tamaranch-02-b:
+  type: region
+tamaranch-03-a:
+  type: region
+tamaranch-03-b:
+  type: region
+tamaranch-05-a:
+  type: region
+  connections:
+    tamaranch-05-b: bombs
+tamaranch-05-b:
+  type: region
+tamaranch-05-c:
+  type: region
+turtle-rock-enter-a:
+  type: region
+  one-way:
+    turtle-rock-enter-b: shield:2
+turtle-rock-enter-b:
+  type: region
+  one-way:
+    turtle-rock-enter-a: always
+under-grave-a:
+  type: region
+under-grave-b:
+  type: region
+  connections:
+    under-grave-a: feather | rooster
 break-bush:
   type: interaction
   condition-basic: sword | powders | bracelet | bombs | rod | boomerang
@@ -1827,9 +1920,6 @@ D0-6D:
 RichardHouse_01A_a:
   type: door
   condition-basic: golden-leaf:5
-RichardCave_02A:
-  type: door
-  condition-basic: golden-leaf:5
 CatfishsMawEnter_01A:
   type: door
   condition-basic: flippers
@@ -1854,3 +1944,12 @@ Lv01TailCave_08D_Warp:
 Lv01TailCave_01G:
   type: door
   condition-basic: kill-spiny[pit]
+RichardCave_02A:
+  type: door
+  condition-basic: golden-leaf:5
+RichardHouse_01A_b:
+  type: door
+  condition-basic: golden-leaf:5
+Field_14G:
+  type: door
+  condition-basic: golden-leaf:5

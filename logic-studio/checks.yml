@@ -82,8 +82,8 @@ small-coast-island: {level: Field, room: Field_16I, x: 126.75, z: 185.25, exact:
 above-cave-dig: {level: Field, room: Field_11I, x: 125.25, z: 128.25, exact: true, content: seashell, index: 7}
 above-d3: {level: Field, room: Field_11F, x: 83.25, z: 126.75, exact: true, content: seashell, index: 6}
 under-skull-rock: {level: Field, room: Field_10H, x: 113.25, z: 116.25, exact: true, content: seashell, index: 30}
-ukuku-cave-west-chest: {level: UkukuCave01, room: UkukuCave01_01A, x: 6.75, y: 0.0, z: 3.75, exact: false, content: rupee-50}
-ukuku-cave-west-loose: {level: UkukuCave01, room: UkukuCave01_01A, x: 6.75, y: 0.0, z: 3.75, exact: false, content: heart-piece, index: 14}
+ukuku-cave-west-chest: {level: UkukuCave01, room: UkukuCave01_01A, x: 6.75, y: 0.0, z: 3.75, exact: true, content: rupee-50}
+ukuku-cave-west-loose: {level: UkukuCave01, room: UkukuCave01_01A, x: 12.75, y: 0.075, z: 9.75, exact: true, content: heart-piece, index: 14}
 ukuku-cave-east-chest: {level: UkukuCave02, room: UkukuCave02_02A, x: 12.75, y: 0.0, z: 18.75, exact: true, content: rupee-50}
 ukuku-cave-east-loose: {level: UkukuCave02, room: UkukuCave02_01B, x: 23.25, y: 0.075, z: 6.75, exact: true, content: heart-piece, index: 4}
 mad-batter-bay: {level: MadBattersWell01, room: MadBattersWell01_01A, x: 7.5, z: 6.0, exact: false, content: bomb-capacity}
@@ -117,7 +117,7 @@ swamp-chest: {level: Field, room: Field_04E, x: 62.25, z: 38.25, exact: true, co
 taltal-left-ascent-cave: {level: Tamaranch02, room: Tamaranch02_01B, x: 50.25, y: 0.0, z: 8.25, exact: true, content: zol-trap}
 papahl: {level: Field, room: Field_02J, x: 143.25, z: 20.25, exact: true, content: hibiscus}
 taltal-bomb-hole: {level: Field, room: Field_02J, x: 148.5, z: 13.5, exact: true, content: seashell, index: 31}
-taltal-rooster-cave: {level: Field, room: Field_01K, x: 161.77, z: 11.13, exact: true, content: bird-key}
+taltal-rooster-cave: {level: EagleKeyCave, room: EagleKeyCave_01A, x: 7.5, y: 1.89, z: 3.0, exact: true, content: bird-key}
 taltal-crossing-cave: {level: Tamaranch04, room: Tamaranch04_02C, x: 35.25, y: 0.075, z: 17.25, exact: true, content: heart-piece, index: 10}
 taltal-east-bridge: {level: Field, room: Field_01M, x: 192.75, z: 11.25, exact: true, content: seashell, index: 21}
 taltal-sunken: {level: Field, room: Field_02M, x: 189.75, z: 23.25, exact: true, content: seashell, index: 37}
@@ -143,8 +143,8 @@ pothole-north: {level: Field, room: Field_12H, x: 111.75, z: 141.75, exact: true
 pothole-final: {level: Field, room: Field_13G, x: 101.25, z: 147.75, exact: true, content: slime-key}
 woods-crossing-cave-chest: {level: MysteriousWoodsCave01, room: MysteriousWoodsCave01_02B, x: 21.75, y: 0.0, z: 17.25, exact: true, content: rupee-50}
 woods-crossing-cave-loose: {level: MysteriousWoodsCave01, room: MysteriousWoodsCave01_01A, x: 5.25, y: 0.075, z: 5.25, exact: true, content: heart-piece, index: 3}
-woods-north-cave-chest: {level: MysteriousWoodsCave02, room: MysteriousWoodsCave02_01A, x: 12.75, y: 0.0, z: 2.25, exact: false, content: rupee-50}
-woods-north-cave-loose: {level: MysteriousWoodsCave02, room: MysteriousWoodsCave02_01A, x: 12.75, y: 0.0, z: 2.25, exact: false, content: heart-piece, index: 19}
+woods-north-cave-chest: {level: MysteriousWoodsCave02, room: MysteriousWoodsCave02_01A, x: 12.75, y: 0.0, z: 2.25, exact: true, content: rupee-50}
+woods-north-cave-loose: {level: MysteriousWoodsCave02, room: MysteriousWoodsCave02_01A, x: 2.25, y: 0.075, z: 3.75, exact: true, content: heart-piece, index: 19}
 mad-batter-woods: {level: MadBattersWell02, room: MadBattersWell02_01A, x: 7.5, z: 6.0, exact: false, content: powder-capacity}
 woods-south-chest: {level: Field, room: Field_08B, x: 21.75, z: 92.25, exact: true, content: seashell, index: 3}
 woods-north-chest: {level: Field, room: Field_05B, x: 21.75, z: 53.25, exact: true, content: tail-key}
