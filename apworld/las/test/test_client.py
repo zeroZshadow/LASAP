@@ -20,6 +20,26 @@ class TestTrackerVersion(unittest.TestCase):
         self.assertGreaterEqual(tracker_version("v0.3.10"), TRACKER_MIN_VERSION)
 
 
+class TestTrackerItems(unittest.TestCase):
+    def test_starting_items_reach_universal_tracker(self) -> None:
+        """Universal Tracker takes the slot's starting items, which the server sends only at items_handling 0b111,
+        before the items received."""
+        from .. import client
+        from ..items import ITEM_TABLE
+        if not client.TRACKER_LOADED:
+            self.skipTest("Universal Tracker not installed")
+        from NetUtils import NetworkItem
+
+        async def run() -> list:
+            ctx = client.LASContext(None, None, "127.0.0.1", 0)
+            ctx.logic_starting = ["Stone Beak (Face Shrine)", "Compass (Face Shrine)"]
+            ctx.items_received = [NetworkItem(ITEM_TABLE["Hookshot"].code, 1234, 1, 1)]
+            return [item.item for item in ctx.tracker_items_received]
+
+        self.assertEqual(asyncio.run(run()), [ITEM_TABLE[name].code for name in
+                                              ("Stone Beak (Face Shrine)", "Compass (Face Shrine)", "Hookshot")])
+
+
 class TestHintLines(unittest.TestCase):
     def run_lines(self, server_version: Version, lines) -> list:
         from ..client import LASContext

@@ -13,6 +13,11 @@ Run with .venv-ap: python scripts/ut_map.py [<PopTracker pack folder>]
   affine fit from the exact overworld checks' world coordinates (checks.yml) to their pack pins. Its section is named
   after the door's AP entrance (Entrances); a dungeon's own door also carries its dungeon's (lasr.door_entrance,
   Shuffled dungeons). UT shows what the slot has: the server's locations, the world's entrances.
+- A dungeon's doors from the overworld (doors.yml's dungeon and dungeon-other groups): a pin on its map where Link
+  lands inside (places.json). Its sections: the inside door's entrance (Shuffled dungeons everything); on a dungeon's
+  own door every dungeon's door entrance, which the client hides on the maps of the dungeons it is not known to lead
+  into (LASContext.load_map); on another door the world's way from the zone outside it to the zone inside
+  (logic.yml), "<zone> -> <zone>".
 - items.json: the items of ut_map.ITEM_SECTIONS and DUNGEON_SECTIONS that ap_tracker_map.ITEM_ICONS has an icon for,
   under their AP names; a progressive item has one icon per level.
 """
@@ -30,7 +35,7 @@ sys.path.insert(0, str(ROOT / "vendor" / "Archipelago"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(ROOT / "patcher"))
 from worlds.las.items import LASR_TO_ITEM  # noqa: E402
-from worlds.las.lasr import DOORS, DUNGEON_DOORS, door_entrance  # noqa: E402
+from worlds.las.lasr import DOORS, DUNGEON_DOORS, DUNGEONS, WRITTEN_LOGIC, door_entrance  # noqa: E402
 from worlds.las.locations import display_name  # noqa: E402
 from worlds.las.ut_map import DUNGEON_SECTIONS, ITEM_SECTIONS, MAPS  # noqa: E402
 import ap_tracker_map  # noqa: E402
@@ -41,6 +46,7 @@ OUT = ROOT / "apworld" / "las" / "tracker"
 STUDIO = ROOT / "logic-studio"
 DUNGEON_NUMBERS = (*range(1, 9), 0)  # MAPS[1:]'s dungeons
 DOOR_GROUPS = ("dungeon", "connector", "single")  # doors.yml's groups an entrance shuffle moves
+DUNGEON_DOOR_GROUPS = ("dungeon", "dungeon-other")  # doors.yml's groups of doors into a dungeon
 # A pack pin (x, y) -> ap_tracker_map's island in texture pixels: scale, then x and y offsets
 PACK_TO_ISLAND = (1.5, -45.0, -41.0)
 # Pin sizes in image pixels: the island's checks, its doors (smaller, so that a check's pin at its door shows) and a
@@ -55,6 +61,38 @@ def door_spots() -> dict:
     by_id = {t["id"]: t for t in teleports}
     return {by_id[t["companion"]]["to"]: (t["x"], t["z"], t["y"]) for t in teleports
             if t["level"] == "Field" and t["door"] and t["companion"]}
+
+
+def landings() -> dict:
+    """Overworld door name -> (room, x, z): where Link lands inside the door, in the level's coordinates."""
+    teleports = json.loads((STUDIO / "places.json").read_text(encoding="utf-8"))["teleports"]
+    by_id = {t["id"]: t for t in teleports}
+    return {by_id[t["companion"]]["to"]: (t["landing"]["room"], t["landing"]["x"], t["landing"]["z"])
+            for t in teleports if t["level"] == "Field" and t["door"] and t["companion"] and t["landing"]}
+
+
+def zone_of(door: str) -> str:
+    """The logic zone that lists a door (logic.yml)."""
+    (zone,) = [name for name, node in WRITTEN_LOGIC.items() if door in (node.get("doors") or {})]
+    return zone
+
+
+def dungeon_doors(dungeon_maps: dict) -> list:
+    """Each door into a dungeon's level: a pin on the dungeon's map where Link lands inside."""
+    spots, origins = landings(), room_origins()
+    pins = []
+    for door in (door for group in DUNGEON_DOOR_GROUPS for door in DOORS["groups"][group]):
+        inside = DOORS["pairs"][door]
+        room, x, z = spots[door]
+        sections = [{"name": inside}]
+        if door in DOORS["groups"]["dungeon"]:
+            sections += [{"name": door_entrance(dungeon)} for dungeon in DUNGEONS]
+        else:
+            sections.append({"name": f"{zone_of(door)} -> {zone_of(inside)}"})
+        x, y = in_dungeon(room, x, z, origins)
+        pins.append({"name": inside, "sections": sections,
+                     "map_locations": [{"map": dungeon_maps[room.partition("_")[0]], "x": x, "y": y, "size": DOOR_PIN}]})
+    return pins
 
 
 def world_to_pin(pins: dict):
@@ -83,11 +121,21 @@ def on_island(x: float, y: float):
     return round((x * scale + dx) / ap_tracker_map.STEP), round((y * scale + dy) / ap_tracker_map.STEP)
 
 
-def in_dungeon(check: dict):
-    """A check's place on its dungeon's image (ap_tracker_map's grid of rooms), from its level coordinates."""
+def room_origins() -> dict:
+    """Room name -> (x, z): its top left in its level's coordinates (places.json layout)."""
+    layout = json.loads((STUDIO / "places.json").read_text(encoding="utf-8"))["layout"]
+    return {room["name"]: (room["x"], room["z"]) for rooms in layout.values() for room in rooms}
+
+
+def in_dungeon(room: str, x: float, z: float, origins: dict):
+    """A place on its dungeon's image (ap_tracker_map's grid of rooms): its room's cell, which the room's name gives
+    as the image does, and its place in the room. Eagle's Tower's floors lie apart in its level's coordinates."""
     (gx, gy), (rw, rh), (uw, uh) = ap_tracker_map.GRID_ORIGIN, ap_tracker_map.ROOM_PIXELS, ap_tracker_map.ROOM_UNITS
     step = ap_tracker_map.STEP
-    return round((gx + check["x"] / uw * rw) / step), round((gy + check["z"] / uh * rh) / step)
+    row, column = re.search(r"_(\d\d)([A-H])", room).groups()
+    ox, oz = origins[room]
+    cx, cz = (ord(column) - ord("A")) * uw + x - ox, (int(row) - 1) * uh + z - oz
+    return round((gx + cx / uw * rw) / step), round((gy + cz / uh * rh) / step)
 
 
 def maps_json() -> list:
@@ -103,6 +151,7 @@ def locations_json(pack: Path) -> list:
     codes = poptracker_map.location_codes(poptracker_map.pack_sections(pack))
     checks = yaml.safe_load((STUDIO / "checks.yml").read_text(encoding="utf-8"))
     dungeon_maps = {ap_tracker_map.LEVELS[n]: name for name, n in zip(MAPS[1:], DUNGEON_NUMBERS)}
+    origins = room_origins()
     spots = {}  # (map, x, y) -> {"name": a place's name, "sections": [...]}
     unplaced = []
     for lasr in sorted(codes, key=lambda loc: poptracker_map.IDS["locations"][loc]):
@@ -111,7 +160,8 @@ def locations_json(pack: Path) -> list:
         if re.match(r"D\d-", lasr):
             check = checks.get(lasr, {})
             if check.get("level") in dungeon_maps and "x" in check:
-                places.append((dungeon_maps[check["level"]], *in_dungeon(check), check["room"].rpartition("_")[2]))
+                places.append((dungeon_maps[check["level"]], *in_dungeon(check["room"], check["x"], check["z"], origins),
+                               check["room"].rpartition("_")[2]))
         else:
             for code in codes[lasr]:
                 for m, x, y in pins.get(code, ()):
@@ -136,8 +186,11 @@ def locations_json(pack: Path) -> list:
                           "map_locations": [{"map": MAPS[0], "x": x, "y": y, "size": DOOR_PIN}]})
     checks = [{"name": spot["name"], "sections": spot["sections"], "map_locations": [{"map": m, "x": x, "y": y}]}
               for (m, x, y), spot in spots.items()]
-    print(f"{sum(len(s['sections']) for s in checks)} location sections at {len(checks)} pins, {len(entrances)} doors")
-    return [{"name": "Locations", "children": checks}, {"name": "Doors", "children": entrances}]
+    inside = dungeon_doors(dungeon_maps)
+    print(f"{sum(len(s['sections']) for s in checks)} location sections at {len(checks)} pins, {len(entrances)} doors, "
+          f"{len(inside)} dungeon doors")
+    return [{"name": "Locations", "children": checks}, {"name": "Doors", "children": entrances},
+            {"name": "Dungeon doors", "children": inside}]
 
 
 def items_json() -> list:

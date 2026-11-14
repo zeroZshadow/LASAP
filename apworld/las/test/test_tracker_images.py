@@ -2,6 +2,7 @@
 it draws and writes the images."""
 import struct
 import sys
+import tempfile
 import unittest
 import zlib
 from pathlib import Path
@@ -108,6 +109,16 @@ class TestTrackerImages(unittest.TestCase):
         self.assertEqual(struct.unpack(">2I5B", chunks[b"IHDR"]), (3, 2, 8, 6, 0, 0, 0))
         self.assertEqual(zlib.decompress(chunks[b"IDAT"]), b"\0" + rgba[:12] + b"\0" + rgba[12:])
         self.assertIn(b"IEND", chunks)
+
+    def test_level_cells(self) -> None:
+        """The cells a level has a room of that name in, by its rooms' files: not a room in two variants (L, U)."""
+        with tempfile.TemporaryDirectory() as romfs:
+            level = Path(romfs, self.images.LEVEL, "Lv04AnglersTunnel")
+            level.mkdir(parents=True)
+            for name in ("Lv04AnglersTunnel.lvb", "Lv04AnglersTunnel_02D.leb", "Lv04AnglersTunnel_04AL.leb",
+                         "Lv04AnglersTunnel_04AU.leb", "Lv04AnglersTunnel_02D_x.leb", "Lv04Other_03C.leb", "Lv04AnglersTunnel_05E.leb"):
+                (level / name).write_bytes(b"")
+            self.assertEqual(self.images.level_cells(Path(romfs), "Lv04AnglersTunnel"), {"02D", "05E"})
 
 
 # (block, block width, block height, RGBA) from the game's textures, RGBA by texture2ddecoder

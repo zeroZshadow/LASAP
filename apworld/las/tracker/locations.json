@@ -2712,8 +2712,8 @@
     "map_locations": [
      {
       "map": "D4 - Angler's Tunnel",
-      "x": 795,
-      "y": 4
+      "x": 75,
+      "y": 204
      }
     ]
    },
@@ -2817,8 +2817,8 @@
     "map_locations": [
      {
       "map": "D4 - Angler's Tunnel",
-      "x": 995,
-      "y": 4
+      "x": 35,
+      "y": 332
      }
     ]
    },
@@ -3447,7 +3447,7 @@
     "map_locations": [
      {
       "map": "D7 - Eagle's Tower",
-      "x": 687,
+      "x": 527,
       "y": 88
      }
     ]
@@ -3462,8 +3462,8 @@
     "map_locations": [
      {
       "map": "D7 - Eagle's Tower",
-      "x": 911,
-      "y": 4
+      "x": 607,
+      "y": 268
      }
     ]
    },
@@ -3478,7 +3478,7 @@
      {
       "map": "D7 - Eagle's Tower",
       "x": 267,
-      "y": 608
+      "y": 480
      }
     ]
    },
@@ -3493,7 +3493,7 @@
      {
       "map": "D7 - Eagle's Tower",
       "x": 51,
-      "y": 536
+      "y": 408
      }
     ]
    },
@@ -3508,7 +3508,7 @@
      {
       "map": "D7 - Eagle's Tower",
       "x": 19,
-      "y": 400
+      "y": 272
      }
     ]
    },
@@ -3523,7 +3523,7 @@
      {
       "map": "D7 - Eagle's Tower",
       "x": 315,
-      "y": 400
+      "y": 272
      }
     ]
    },
@@ -3612,7 +3612,7 @@
     "map_locations": [
      {
       "map": "D7 - Eagle's Tower",
-      "x": 715,
+      "x": 555,
       "y": 24
      }
     ]
@@ -3627,7 +3627,7 @@
     "map_locations": [
      {
       "map": "D7 - Eagle's Tower",
-      "x": 795,
+      "x": 635,
       "y": 88
      }
     ]
@@ -3658,7 +3658,7 @@
      {
       "map": "D7 - Eagle's Tower",
       "x": 283,
-      "y": 408
+      "y": 280
      }
     ]
    },
@@ -5417,38 +5417,6 @@
     ]
    },
    {
-    "name": "Field_04H",
-    "sections": [
-     {
-      "name": "Field_04H"
-     }
-    ],
-    "map_locations": [
-     {
-      "map": "Koholint Island",
-      "x": 961,
-      "y": 337,
-      "size": 12
-     }
-    ]
-   },
-   {
-    "name": "Field_04P",
-    "sections": [
-     {
-      "name": "Field_04P"
-     }
-    ],
-    "map_locations": [
-     {
-      "map": "Koholint Island",
-      "x": 1923,
-      "y": 330,
-      "size": 12
-     }
-    ]
-   },
-   {
     "name": "Field_05C",
     "sections": [
      {
@@ -6148,6 +6116,455 @@
       "map": "Koholint Island",
       "x": 865,
       "y": 1065,
+      "size": 12
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "Dungeon doors",
+  "children": [
+   {
+    "name": "Lv07EagleTower_08B_b",
+    "sections": [
+     {
+      "name": "Lv07EagleTower_08B_b"
+     },
+     {
+      "name": "Tail Cave Entrance"
+     },
+     {
+      "name": "Bottle Grotto Entrance"
+     },
+     {
+      "name": "Key Cavern Entrance"
+     },
+     {
+      "name": "Angler's Tunnel Entrance"
+     },
+     {
+      "name": "Catfish's Maw Entrance"
+     },
+     {
+      "name": "Face Shrine Entrance"
+     },
+     {
+      "name": "Eagle's Tower Entrance"
+     },
+     {
+      "name": "Turtle Rock Entrance"
+     },
+     {
+      "name": "Color Dungeon Entrance"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D7 - Eagle's Tower",
+      "x": 127,
+      "y": 508,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Lv08TurtleRock_08D_b",
+    "sections": [
+     {
+      "name": "Lv08TurtleRock_08D_b"
+     },
+     {
+      "name": "Tail Cave Entrance"
+     },
+     {
+      "name": "Bottle Grotto Entrance"
+     },
+     {
+      "name": "Key Cavern Entrance"
+     },
+     {
+      "name": "Angler's Tunnel Entrance"
+     },
+     {
+      "name": "Catfish's Maw Entrance"
+     },
+     {
+      "name": "Face Shrine Entrance"
+     },
+     {
+      "name": "Eagle's Tower Entrance"
+     },
+     {
+      "name": "Turtle Rock Entrance"
+     },
+     {
+      "name": "Color Dungeon Entrance"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 287,
+      "y": 508,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Lv02BottleGrotto_08C",
+    "sections": [
+     {
+      "name": "Lv02BottleGrotto_08C"
+     },
+     {
+      "name": "Tail Cave Entrance"
+     },
+     {
+      "name": "Bottle Grotto Entrance"
+     },
+     {
+      "name": "Key Cavern Entrance"
+     },
+     {
+      "name": "Angler's Tunnel Entrance"
+     },
+     {
+      "name": "Catfish's Maw Entrance"
+     },
+     {
+      "name": "Face Shrine Entrance"
+     },
+     {
+      "name": "Eagle's Tower Entrance"
+     },
+     {
+      "name": "Turtle Rock Entrance"
+     },
+     {
+      "name": "Color Dungeon Entrance"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D2 - Bottle Grotto",
+      "x": 207,
+      "y": 508,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Lv04AnglersTunnel_08D",
+    "sections": [
+     {
+      "name": "Lv04AnglersTunnel_08D"
+     },
+     {
+      "name": "Tail Cave Entrance"
+     },
+     {
+      "name": "Bottle Grotto Entrance"
+     },
+     {
+      "name": "Key Cavern Entrance"
+     },
+     {
+      "name": "Angler's Tunnel Entrance"
+     },
+     {
+      "name": "Catfish's Maw Entrance"
+     },
+     {
+      "name": "Face Shrine Entrance"
+     },
+     {
+      "name": "Eagle's Tower Entrance"
+     },
+     {
+      "name": "Turtle Rock Entrance"
+     },
+     {
+      "name": "Color Dungeon Entrance"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D4 - Angler's Tunnel",
+      "x": 287,
+      "y": 504,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Lv10ClothesDungeon_08C",
+    "sections": [
+     {
+      "name": "Lv10ClothesDungeon_08C"
+     },
+     {
+      "name": "Tail Cave Entrance"
+     },
+     {
+      "name": "Bottle Grotto Entrance"
+     },
+     {
+      "name": "Key Cavern Entrance"
+     },
+     {
+      "name": "Angler's Tunnel Entrance"
+     },
+     {
+      "name": "Catfish's Maw Entrance"
+     },
+     {
+      "name": "Face Shrine Entrance"
+     },
+     {
+      "name": "Eagle's Tower Entrance"
+     },
+     {
+      "name": "Turtle Rock Entrance"
+     },
+     {
+      "name": "Color Dungeon Entrance"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D0 - Color Dungeon",
+      "x": 211,
+      "y": 496,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Lv06FaceShrine_08D",
+    "sections": [
+     {
+      "name": "Lv06FaceShrine_08D"
+     },
+     {
+      "name": "Tail Cave Entrance"
+     },
+     {
+      "name": "Bottle Grotto Entrance"
+     },
+     {
+      "name": "Key Cavern Entrance"
+     },
+     {
+      "name": "Angler's Tunnel Entrance"
+     },
+     {
+      "name": "Catfish's Maw Entrance"
+     },
+     {
+      "name": "Face Shrine Entrance"
+     },
+     {
+      "name": "Eagle's Tower Entrance"
+     },
+     {
+      "name": "Turtle Rock Entrance"
+     },
+     {
+      "name": "Color Dungeon Entrance"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D6 - Face Shrine",
+      "x": 287,
+      "y": 508,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Lv03KeyCavern_08B",
+    "sections": [
+     {
+      "name": "Lv03KeyCavern_08B"
+     },
+     {
+      "name": "Tail Cave Entrance"
+     },
+     {
+      "name": "Bottle Grotto Entrance"
+     },
+     {
+      "name": "Key Cavern Entrance"
+     },
+     {
+      "name": "Angler's Tunnel Entrance"
+     },
+     {
+      "name": "Catfish's Maw Entrance"
+     },
+     {
+      "name": "Face Shrine Entrance"
+     },
+     {
+      "name": "Eagle's Tower Entrance"
+     },
+     {
+      "name": "Turtle Rock Entrance"
+     },
+     {
+      "name": "Color Dungeon Entrance"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 127,
+      "y": 507,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Lv01TailCave_08D",
+    "sections": [
+     {
+      "name": "Lv01TailCave_08D"
+     },
+     {
+      "name": "Tail Cave Entrance"
+     },
+     {
+      "name": "Bottle Grotto Entrance"
+     },
+     {
+      "name": "Key Cavern Entrance"
+     },
+     {
+      "name": "Angler's Tunnel Entrance"
+     },
+     {
+      "name": "Catfish's Maw Entrance"
+     },
+     {
+      "name": "Face Shrine Entrance"
+     },
+     {
+      "name": "Eagle's Tower Entrance"
+     },
+     {
+      "name": "Turtle Rock Entrance"
+     },
+     {
+      "name": "Color Dungeon Entrance"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D1 - Tail Cave",
+      "x": 287,
+      "y": 504,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Lv05CatfishsMaw_08H",
+    "sections": [
+     {
+      "name": "Lv05CatfishsMaw_08H"
+     },
+     {
+      "name": "Tail Cave Entrance"
+     },
+     {
+      "name": "Bottle Grotto Entrance"
+     },
+     {
+      "name": "Key Cavern Entrance"
+     },
+     {
+      "name": "Angler's Tunnel Entrance"
+     },
+     {
+      "name": "Catfish's Maw Entrance"
+     },
+     {
+      "name": "Face Shrine Entrance"
+     },
+     {
+      "name": "Eagle's Tower Entrance"
+     },
+     {
+      "name": "Turtle Rock Entrance"
+     },
+     {
+      "name": "Color Dungeon Entrance"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D5 - Catfish's Maw",
+      "x": 607,
+      "y": 504,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Lv08TurtleRock_03C",
+    "sections": [
+     {
+      "name": "Lv08TurtleRock_03C"
+     },
+     {
+      "name": "turtle-dungeon-top -> D8.ao"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 211,
+      "y": 140,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Lv08TurtleRock_03F",
+    "sections": [
+     {
+      "name": "Lv08TurtleRock_03F"
+     },
+     {
+      "name": "turtle-dungeon-top -> D8.k"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 451,
+      "y": 140,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Lv06FaceShrine_02A",
+    "sections": [
+     {
+      "name": "Lv06FaceShrine_02A"
+     },
+     {
+      "name": "face-dungeon-top -> D6.a"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D6 - Face Shrine",
+      "x": 67,
+      "y": 73,
       "size": 12
      }
     ]

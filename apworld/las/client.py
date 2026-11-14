@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import Utils
 from CommonClient import ClientCommandProcessor, CommonContext, get_base_parser, gui_enabled, logger, server_loop
 from MultiServer import mark_raw
-from NetUtils import ClientStatus, HintStatus
+from NetUtils import ClientStatus, HintStatus, NetworkItem
 
 from .container import LASContainer
 from .ids import LOCATION_BASE, LOCATION_OFFSETS
@@ -16,11 +16,11 @@ from . import checklist, emulators, ghost_relay
 from .ghosts import DEFAULT_RELAY, GhostLink
 from .host_settings import PLAYER_SETTINGS, player_value
 from .install import InstallError, builtin_patcher_build, patch_and_install, tracker_images
-from .items import GAME, ITEM_GAME_INFO
+from .items import GAME, ITEM_GAME_INFO, ITEM_TABLE
 from .options import ShuffledDungeons
 from .tracker import (DOORS_KEY, ENTRANCES_KEY, LEVEL_KEY, SIGN_KEY, LogicTracker, door_pool, found_entrance,
-                      tracked_instruments, tracked_seashells)
-from .ut_map import DOOR_STEPS, door_out
+                      known_doors, tracked_instruments, tracked_seashells)
+from .ut_map import DOOR_STEPS, door_out, hidden_door_entrances
 
 GAME_PORT = 43384
 PROTOCOL_VERSION = 2
@@ -312,6 +312,8 @@ class LASContext(ClientContext):
         await self.send_connect()
 
     def on_package(self, cmd: str, args: dict) -> None:
+        if cmd == "Connected":  # before Universal Tracker's sweep, which takes them (tracker_items_received)
+            self.logic_starting = (args["slot_data"].get("logic") or {}).get("starting", [])
         if TRACKER_LOADED:
             self.tracker_package(cmd, args)
         if cmd in ("Retrieved", "SetReply"):
@@ -423,14 +425,23 @@ class LASContext(ClientContext):
             if keys:
                 asyncio.create_task(self.send_msgs([{"cmd": "Get", "keys": list(keys)}]))
 
+    @property
+    def tracker_items_received(self) -> List[NetworkItem]:
+        """Universal Tracker's items: the slot's starting items, which UT leaves out of the world it generates and the
+        server sends only to clients that ask for them (items_handling), then the items received."""
+        starting = [NetworkItem(ITEM_TABLE[name].code, -2, 0) for name in self.logic_starting if name in ITEM_TABLE]
+        return starting + super().tracker_items_received
+
     def load_map(self, map_id) -> None:
         """Universal Tracker's map, without the doors' pins while its Entrances box is off: the world's
-        ut_map_page_hidden_entrances, which it reads on loading a map, then lists every entrance."""
+        ut_map_page_hidden_entrances, which it reads on loading a map, then lists every entrance. A dungeon's map
+        shows only the dungeon door entrance known to lead into it (ut_map.hidden_door_entrances)."""
         world = self.tracker_core.get_current_world()
         if world is not None:
             names = [] if self.tracker_doors_shown else list(
                 self.tracker_core.multiworld.regions.entrance_cache[self.tracker_core.player_id])
-            world.ut_map_page_hidden_entrances = {m["name"]: names for m in self.maps or ()}
+            doors = hidden_door_entrances(self.slot_data.get("dungeon_entrances"), known_doors(self.found_doors))
+            world.ut_map_page_hidden_entrances = {m["name"]: names + doors.get(m["name"], []) for m in self.maps or ()}
         super().load_map(map_id)
         self.draw_route()
 

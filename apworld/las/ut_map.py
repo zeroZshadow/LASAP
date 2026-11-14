@@ -8,7 +8,7 @@ DUNGEON_SECTIONS, those the slot's item pool has, with the game's icons.
 A way /get_logical_path finds is the doors Link goes through (DOOR_STEPS, LASWorld.explain_path); the client draws it
 from door pin to door pin and on to the check's pin."""
 import re
-from typing import Any, Dict
+from typing import Any, Dict, Iterable, List, Mapping, Optional
 
 from .items import LASR_TO_ITEM
 from .lasr import DOORS, DUNGEON_NAMES, DUNGEONS, door_entrance
@@ -20,6 +20,21 @@ OVERWORLD_MAP = "Koholint Island"
 def dungeon_label(number: int) -> str:
     """A dungeon's name on the map tab, its maps and its item section: "D1 - Tail Cave"."""
     return f"D{number} - {DUNGEON_NAMES[number]}"
+
+
+def dungeon_map(dungeon: str) -> str:
+    """A dungeon's map, by its DUNGEONS name."""
+    return dungeon_label((DUNGEONS.index(dungeon) + 1) % len(DUNGEONS))
+
+
+def hidden_door_entrances(dungeon_entrances: Optional[Mapping[str, str]], known: Iterable[str]) -> Dict[str, List[str]]:
+    """Each dungeon map's dungeon door entrances to hide. A dungeon's own door pin inside carries every dungeon door's
+    entrance (scripts/ut_map.py): its map shows only that of the door known (tracker.known_doors) to lead into it.
+    `dungeon_entrances`: the slot data's, None for dungeons not shuffled."""
+    leads = dict(dungeon_entrances) if dungeon_entrances else {door: door for door in DUNGEONS}
+    known = set(known)
+    return {dungeon_map(dungeon): [door_entrance(door) for door in DUNGEONS
+                                   if not (door in known and leads[door] == dungeon)] for dungeon in DUNGEONS}
 
 
 # The pack's maps, in its order: the overworld's, then the dungeons' d1 ... d8 and d0
@@ -39,13 +54,13 @@ def map_index(level: Any) -> int:
 ITEM_SECTIONS = (
     ("Items", ("sword", "shield", "bracelet", "boots", "flippers", "feather", "bomb", "shovel", "ocarina", "hookshot",
                "bow", "rod", "boomerang", "powder", "mushroom", "bottle", "red-tunic", "blue-tunic", "seashell",
-               "medicine"), 6),
-    ("Songs", ("song-ballad", "song-mambo", "song-soul"), 6),
+               "medicine"), 5),
+    ("Songs", ("song-ballad", "song-mambo", "song-soul"), 5),
     ("Instruments", ("full-moon-cello", "conch-horn", "sea-lilys-bell", "surf-harp", "wind-marimba", "coral-triangle",
                      "evening-calm-organ", "thunder-drum"), 4),
-    ("Keys", ("tail-key", "slime-key", "angler-key", "face-key", "bird-key"), 6),
+    ("Keys", ("tail-key", "slime-key", "angler-key", "face-key", "bird-key"), 5),
     ("Trade", ("yoshi-doll", "ribbon", "dog-food", "bananas", "stick", "honeycomb", "pineapple", "hibiscus", "letter",
-               "broom", "fishing-hook", "necklace", "mermaid-scale", "magnifying-lens"), 6),
+               "broom", "fishing-hook", "necklace", "mermaid-scale", "magnifying-lens"), 5),
 )
 # Right of the map, a section per dungeon: its small keys, nightmare key and stone beak. The pack has no icons for maps
 # and compasses.

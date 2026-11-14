@@ -9,6 +9,9 @@ JSON (scripts/ut_map.py) names these files and places its pins by this module's 
   area, in the same material: Gm_FldChip.bflyt), which cuts out the area, and the island's torn edge with it.
 - A dungeon: its rooms' map textures (Lv<NN><Name>_<row><column> in DgnTex.arc, ROOM_PIXELS each) on the game's map
   grid (DgnMapGrid_00), the first room's top left at GRID_ORIGIN. A room is ROOM_UNITS of the level's world units.
+  DgnTex.arc also has textures for cells the level has no room in (Face Shrine's 02C to 02F) and for rooms in two
+  variants (<row><column>L and U: side views, Eagle's Tower's 05E), which the map does not show: a texture is drawn
+  only when the level has a room of its name (level_cells), as the game's UiDungeonArea datasheet lists them.
 - Both at half size (STEP): ASTC decodes only the texels kept (ap_astc), the slow part, spread over processes.
 - The item icons (ITEM_ICONS) at full size, from Game.arc, trimmed to what they draw (trim): Universal Tracker fits
   an icon to its cell, and the game's icons sit in margins of different sizes.
@@ -27,8 +30,9 @@ import ap_astc
 import ap_bntx
 
 # Bump when the images change, so clients build them again
-MAP_VERSION = 2
+MAP_VERSION = 4
 UI = Path("region_common", "ui")
+LEVEL = Path("region_common", "level")
 STEP = 2  # the maps' scale: texture pixels per image pixel
 ISLAND_PIECES = 23
 ISLAND_ORIGIN = (-2048, -1063)  # the island canvas's top left, in texture pixels from the layout's centre
@@ -117,6 +121,12 @@ def pane_centres(layout: bytes, prefix: str) -> Dict[str, Tuple[float, float]]:
                 centres[name] = struct.unpack_from("<2f", layout, pos + 44)
         pos += size
     return centres
+
+
+def level_cells(romfs: Path, level: str) -> set:
+    """The map cells ("02C") the level has a room of that name in: its rooms' files, <level>_<row><column>.leb."""
+    return {m[1] for f in (romfs / LEVEL / level).iterdir()
+            if (m := re.fullmatch(re.escape(level) + r"_(\d\d[A-H])\.leb", f.name))}
 
 
 def textures(archive: Dict[str, bytes]) -> Dict[str, ap_bntx.Texture]:
@@ -261,9 +271,10 @@ def build(romfs: Path, out: Path, processes: Optional[int] = None, path_entry: O
     jobs.append(astc_job(grid, STEP))
     places.append(("grid", 0, 0))
     for number, level in LEVELS.items():
+        cells = level_cells(romfs, level)
         for name, room in rooms.items():
-            m = re.fullmatch(level + r"_(\d\d)([A-H])(U?)", name)
-            if m:
+            m = re.fullmatch(level + r"_(\d\d)([A-H])", name)
+            if m and m[1] + m[2] in cells:
                 jobs.append(astc_job(room, STEP))
                 places.append((dungeon_image(number), GRID_ORIGIN[0] + (ord(m[2]) - 65) * ROOM_PIXELS[0],
                                GRID_ORIGIN[1] + (int(m[1]) - 1) * ROOM_PIXELS[1]))

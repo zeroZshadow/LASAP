@@ -2,6 +2,7 @@ import ast
 import importlib.util
 import os
 import plistlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -257,6 +258,18 @@ class TestInstall(unittest.TestCase):
             with self.subTest(module=module.name):
                 self.assertIn(module.name, files)
                 self.assertIn(module.stem, install.PATCHER_MODULES)
+
+    def test_patcher_data_ships(self) -> None:
+        """Every data file the patcher loads (las_ap_patch.load_yaml) is in the release (build_release.py's
+        PATCHER_DATA), and from source it reads the world's."""
+        source = install.SOURCE_PATCHER / "las_ap_patch.py"
+        if not source.is_file():
+            self.skipTest("no patcher source")
+        loaded = set(re.findall(r'load_yaml\("([^"]+)"\)', source.read_text(encoding="utf-8")))
+        self.assertTrue(loaded)
+        self.assertLessEqual(loaded, set(build_release_value("PATCHER_DATA")))
+        result = run_without_excluded("import las_ap_patch; print(las_ap_patch.DATA_DIR)")
+        self.assertEqual(Path(result.stdout.strip()), Path(__file__).resolve().parents[1] / "data", result.stderr)
 
     def test_patcher_without_build(self) -> None:
         """The patcher loads without the asset build's modules (build_release.py's BUILD_ONLY)."""

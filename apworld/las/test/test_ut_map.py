@@ -10,7 +10,7 @@ from worlds.AutoWorld import AutoWorldRegister
 from .test_logic import STEPS
 from ..items import GAME
 from ..lasr import DOORS, DUNGEONS, door_entrance
-from ..ut_map import MAPS, TRACKER_WORLD, map_index
+from ..ut_map import MAPS, TRACKER_WORLD, dungeon_map, hidden_door_entrances, map_index
 
 TRACKER = Path(__file__).resolve().parent.parent / TRACKER_WORLD["map_page_folder"]
 
@@ -58,6 +58,38 @@ class TestUTMap(unittest.TestCase):
                 entrances = {e.name for e in world.multiworld.get_entrances(1)}
                 self.assertLessEqual(set(world.door_pool), doors & entrances)
                 self.assertLessEqual(dungeon_entrances & entrances, doors)
+
+    def test_dungeon_doors_are_on_their_dungeons_maps(self) -> None:
+        """A pin inside each door into a dungeon's level, on that dungeon's map."""
+        pins = group("Dungeon doors")
+        self.assertEqual({pin["name"] for pin in pins},
+                         {DOORS["pairs"][door] for g in ("dungeon", "dungeon-other") for door in DOORS["groups"][g]})
+        for pin in pins:
+            (spot,) = pin["map_locations"]
+            self.assertEqual(spot["map"], MAPS[map_index(pin["name"].partition("_")[0])], pin["name"])
+
+    def test_dungeon_doors_are_the_worlds_entrances(self) -> None:
+        """Every dungeon door pin shows: one of its sections is an entrance of the world, with or without shuffled
+        doors."""
+        world_type = AutoWorldRegister.world_types[GAME]
+        for seed, options in enumerate(({}, {"shuffled_dungeons": True},
+                                        {"entrances": "everything", "shuffled_dungeons": "everything"})):
+            with self.subTest(options=options):
+                world = setup_multiworld(world_type, STEPS, 4400 + seed, options).worlds[1]
+                entrances = {e.name for e in world.multiworld.get_entrances(1)}
+                for pin in group("Dungeon doors"):
+                    self.assertTrue({s["name"] for s in pin["sections"]} & entrances, pin["name"])
+
+    def test_a_dungeon_map_shows_the_door_known_to_lead_into_it(self) -> None:
+        every = {door_entrance(door) for door in DUNGEONS}
+        hidden = hidden_door_entrances(None, DUNGEONS)
+        for dungeon in DUNGEONS:
+            self.assertEqual(every - set(hidden[dungeon_map(dungeon)]), {door_entrance(dungeon)})
+        leads = dict(zip(DUNGEONS, DUNGEONS[1:] + DUNGEONS[:1]))
+        hidden = hidden_door_entrances(leads, [DUNGEONS[0]])
+        self.assertEqual(every - set(hidden[dungeon_map(DUNGEONS[1])]), {door_entrance(DUNGEONS[0])})
+        for dungeon in DUNGEONS[2:] + DUNGEONS[:1]:
+            self.assertEqual(set(hidden[dungeon_map(dungeon)]), every, dungeon)
 
     def test_the_map_follows_the_level(self) -> None:
         self.assertEqual(MAPS[map_index("Field")], MAPS[0])

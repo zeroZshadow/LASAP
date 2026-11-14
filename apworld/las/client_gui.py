@@ -809,6 +809,52 @@ class PatchPanel(ScrollView):
 
 # Universal Tracker's item panels: the room around and between their icons, and above and below a section's name
 ITEM_GRID_PADDING, ITEM_GRID_SPACING, ITEM_HEADER_PADDING = 2, 2, 1
+ITEM_PANELS_KEY = "tracker_folded_panels"  # Archipelago's persistent storage, under "las": {"left"/"right": folded}
+PANEL_SIDES = {"item_tracker_left": "left", "item_tracker_right": "right"}
+# A panel's handle: its chevron points the way a click moves the panel's edge, by side and whether it is folded
+HANDLE_ICONS = {("left", False): "chevron-left", ("left", True): "chevron-right",
+                ("right", False): "chevron-right", ("right", True): "chevron-left"}
+
+
+class ItemPanels:
+    """The map page's item panels: the width each one's sections take, which are folded, their handles, and each
+    one's scroll view and the row it stands in."""
+
+    def __init__(self) -> None:
+        self.widths: Dict[str, float] = {}
+        self.folded: Dict[str, bool] = dict(Utils.persistent_load().get("las", {}).get(ITEM_PANELS_KEY, {}))
+        self.handles: Dict[str, Any] = {}
+        self.places: Dict[str, Tuple[Any, Any]] = {}
+
+
+def item_panels(page) -> ItemPanels:
+    panels = getattr(page, "las_item_panels", None)
+    if panels is None:
+        panels = page.las_item_panels = ItemPanels()
+    return panels
+
+
+def show_panel(page, side: str) -> None:
+    """A panel at its sections' width, or out of its row while folded (at no width its icons still draw); its handle
+    only while it has sections."""
+    panels = item_panels(page)
+    groups = page.ids.get(f"item_tracker_{side}")
+    width = panels.widths.get(side, 0)
+    folded = panels.folded.get(side, False) and bool(width)
+    if groups is not None and width:
+        groups.parent.width = width
+    handle = panels.handles.get(side)
+    if side in panels.places:
+        scroll, row = panels.places[side]
+        if folded and scroll.parent is row:
+            row.remove_widget(scroll)
+        elif not folded and scroll.parent is None:  # beside its handle: a BoxLayout lays its children out last first
+            at = row.children.index(handle)
+            row.add_widget(scroll, index=at + 1 if side == "left" else at)
+    if handle is not None:
+        handle.icon = HANDLE_ICONS[side, folded]
+        handle.opacity, handle.disabled = (1, False) if width else (0, True)
+        handle.width = dp(24) if width else 0
 
 
 def tighten_item_grids(page, tracker_world) -> None:
@@ -850,6 +896,33 @@ def tighten(page, layout_id: str, layout_configs, vert: bool) -> None:
         widest = max(widest, container.width)
     if vert and widest:
         groups.parent.width = widest
+        if layout_id in PANEL_SIDES:
+            item_panels(page).widths[PANEL_SIDES[layout_id]] = widest
+            show_panel(page, PANEL_SIDES[layout_id])
+
+
+def add_panel_handles(page) -> None:
+    """A chevron on the map's side of each item panel folds the panel away, giving the map its room, and opens it
+    again; Archipelago's persistent storage keeps which are folded. A panel without sections has none."""
+    from kivymd.uix.button import MDIconButton
+    panels = item_panels(page)
+    for side in PANEL_SIDES.values():
+        scroll = page.ids[f"item_tracker_{side}"].parent
+        row = scroll.parent
+        handle = MDIconButton(icon=HANDLE_ICONS[side, False], style="standard", size_hint=(None, None),
+                              size=(dp(24), dp(48)), pos_hint={"center_y": 0.5})
+
+        def toggle(_: Any, side: str = side) -> None:
+            panels.folded[side] = not panels.folded.get(side, False)
+            Utils.persistent_store("las", ITEM_PANELS_KEY, dict(panels.folded))
+            show_panel(page, side)
+
+        handle.bind(on_release=toggle)
+        at = row.children.index(scroll)  # a BoxLayout lays its children out last first
+        row.add_widget(handle, index=at if side == "left" else at + 1)
+        panels.handles[side] = handle
+        panels.places[side] = (scroll, row)
+        show_panel(page, side)
 
 
 def fix_map_view(page) -> None:
@@ -919,9 +992,17 @@ def add_route_search(page, ctx) -> None:
     """A field in a row below the map's checkboxes, with Universal Tracker's Clear Path beside it. As it is typed in, a
     menu below it suggests the locations in logic whose names hold the text; picking one, or Enter when one matches,
     gets its route (LASContext.route_to)."""
-    from kivymd.uix.textfield import MDTextFieldHintText
-    field = ConnectBarTextInput(size_hint_x=None, width=dp(260), pos_hint={"center_y": 0.5})
-    field.add_widget(MDTextFieldHintText(text="Route to a check"))
+    from kivy.uix.relativelayout import RelativeLayout
+    field = ConnectBarTextInput(size_hint_x=None, width=dp(260), pos_hint={"x": 0, "center_y": 0.5})
+    # a label over the empty field: KivyMD's hint widget rests where a taller field has its text, on this one's border
+    hint = label("Route to a check", 14, Palette().muted, one_line=True, pos_hint={"x": 0.05, "center_y": 0.5})
+    holder = RelativeLayout(size_hint=(None, None), size=(dp(260), dp(30)), pos_hint={"center_y": 0.5})
+    holder.add_widget(field)
+    holder.add_widget(hint)
+    field.bind(text=lambda *_: show_hint(), focus=lambda *_: show_hint())
+
+    def show_hint() -> None:
+        hint.opacity = 0 if field.text or field.focus else 1
     shown: Dict[str, Any] = {"menu": None, "picked": None}
 
     def matches(text: str) -> List[str]:
@@ -967,8 +1048,7 @@ def add_route_search(page, ctx) -> None:
     field.bind(text=lambda *_: suggest_soon())
     field.bind(on_text_validate=search)
     header = page.ids.auto_tab_checkitem.__self__.parent
-    below = MDBoxLayout(field, size_hint=(None, None), padding=(dp(12), dp(14), dp(12), dp(8)),
-                        spacing=dp(16))  # room above for the field's hint, which rises over its text
+    below = MDBoxLayout(holder, size_hint=(None, None), padding=(dp(12), dp(4), dp(12), dp(8)), spacing=dp(16))
     clear = next((w for w in header.children if isinstance(w, MDButton)
                   and any(getattr(c, "text", "") == "Clear Path" for c in w.children)), None)
     if clear is not None:  # else it stays where Universal Tracker put it
@@ -1005,6 +1085,7 @@ def make_manager(base):
             if title == "Map Page":
                 try:  # Universal Tracker's widgets as its supported versions have them; without these, its own look
                     tighten_item_grids(content, getattr(self.ctx, "tracker_world", None))
+                    add_panel_handles(content)
                     fix_map_view(content)
                     add_doors_box(content, self.ctx)
                     add_route_search(content, self.ctx)

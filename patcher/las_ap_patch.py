@@ -34,7 +34,9 @@ import ap_shuffles  # noqa: E402
 import romfs_check  # noqa: E402
 import seed_file  # noqa: E402
 
-DATA_DIR = HERE / "data"  # copies of apworld/las/data's items.yml, locations.yml and logic.yml
+# The world's items.yml and logic.yml: the release packs them as the patcher's data folder (build_release.py's
+# PATCHER_DATA); from source, the world's own folder
+DATA_DIR = HERE / "data" if (HERE / "data").is_dir() else HERE.parent / "apworld" / "las" / "data"
 EXL_DIR = HERE / "exl"  # the exlaunch module (scripts/build_exl.sh)
 GAME_DIR = Path("atmosphere", "contents", "01006BB00C6F0000")  # the mod's RomFS and exefs, in the SD card's layout
 CONFIG_DIR = Path("config", "lasr-exl")

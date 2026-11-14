@@ -33,7 +33,10 @@ TESTS = "las/test/"  # the world's tests, which "Build APWorlds" packs and playe
 PATCHER_FILES = ("las_ap_patch.py", "ap_assets.py", "ap_astc.py", "ap_bntx.py", "ap_chest_model.py", "ap_ghost_model.py",
                  "ap_entrances.py", "ap_goal.py", "ap_hints.py", "ap_map.py", "ap_options.py", "ap_save_name.py",
                  "ap_shuffles.py", "ap_tracker_map.py", "seed_file.py", "romfs_check.py", "map_positions.json", "version.txt",
-                 "LICENSE-LASR.txt", "data", "assets", "exl/subsdk9", "exl/main.npdm")
+                 "LICENSE-LASR.txt", "assets", "exl/subsdk9", "exl/main.npdm")
+# The world's data files the patcher reads, packed as its data folder (las_ap_patch.DATA_DIR)
+WORLD_DATA = ROOT / "apworld" / "las" / "data"
+PATCHER_DATA = ("items.yml", "logic.yml")
 # What only the asset build imports (patcher/modbuild, LASR's code and its libraries); test_install.py patches with
 # these blocked. The patcher itself needs PyYAML and bsdiff4, which Archipelago has.
 BUILD_ONLY = ("modbuild", "RandomizerCore", "evfl", "lms", "oead")
@@ -51,6 +54,8 @@ def patcher_files() -> dict:
             name = file.relative_to(PATCHER).as_posix()
             if file.is_file() and "__pycache__" not in file.parts:
                 files[PREFIX + name] = file
+    for name in PATCHER_DATA:
+        files[PREFIX + "data/" + name] = WORLD_DATA / name
     files[PREFIX + "licenses/LICENSE-las-ap-exl.txt"] = MODULE_LICENSE
     return files
 

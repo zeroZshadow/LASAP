@@ -85,6 +85,6 @@ Run the patcher alone:
 
 - Own code (`apworld/las` except `data/`, `patcher/*.py`, `patcher/modbuild/*.py`, `scripts`, `docker`): GPL-2.0-or-later, see [LICENSE](LICENSE).
 - `las-ap-exl`: GPL-2.0, from exlaunch and Owen-Splat's fork. The socket code follows open-dread-rando-exlaunch.
-- `patcher/modbuild/RandomizerCore`, `patcher/data` and `apworld/las/data`: MIT, from LASR (see `patcher/LICENSE-LASR.txt` and the LICENSE files in those folders). The bntx editor (`RandomizerCore/Tools/bntx_editor`) is GPLv3 and is used only by the asset build, which the release leaves out.
+- `patcher/modbuild/RandomizerCore` and `apworld/las/data`: MIT, from LASR (see `patcher/LICENSE-LASR.txt` and the LICENSE files in those folders). The bntx editor (`RandomizerCore/Tools/bntx_editor`) is GPLv3 and is used only by the asset build, which the release leaves out.
 
 Link's Awakening is © Nintendo. This project is not affiliated with Nintendo and contains no game files.
