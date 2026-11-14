@@ -430,7 +430,7 @@ paint:
     rapids-river: 1-2=0-3 3=3-9
     rapids-south: 4=0-1 5=1-7,9 6-7=0,2,4-5,7,9
   Field_09P:
-    ancient-ruins: 3-7=6-7
+    field.rapids-south-east: 3-7=6-7
     rapids-cave-porch: 0-1=0
     rapids-river: 0-2=2-4 3=0-4 4-7=3-4
     rapids-south: 5-7=0-1
@@ -472,11 +472,12 @@ paint:
     rapids-south: 0=9 2-3=9
     river: 0-2=0,7 3=0-7
   Field_10O:
-    ancient-ruins: 4-5=9
     animal-village: 5=0-2
+    field.rapids-south-east: 4-5=9
     rapids-south: 0=0-5,7-9 1=7-8 2=0,2-9 3=0-4,7-8 4=4-8 5=3-8
   Field_10P:
-    ancient-ruins: 0-1=6-7 2=3-7 3=3-5 4-5=0-6 6-7=3
+    ancient-ruins: 6-7=3
+    field.rapids-south-east: 0-1=6-7 2=3-7 3=3-5 4-5=0-6
     rapids-river: 0=3-4
     rapids-south: 0=0-1 1=1 2=0-1
   Field_11A:

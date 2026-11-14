@@ -1744,7 +1744,7 @@ owl-statue-desert:
 owl-statue-maze:
   type: item
   content: rupee-20
-  region: ancient-ruins
+  region: field.rapids-south-east
 owl-statue-rapids:
   type: item
   content: rupee-20
@@ -1775,7 +1775,7 @@ mabe:
   doors:
     Field_09C_a: always
     Field_09C_b: always
-    Field_10C: always
+    Field_10C: bracelet:2
     Field_10D: always
     Field_11B_a: always
     Field_11B_b: always
@@ -2031,7 +2031,7 @@ mermaid-statue-land:
 rapids-south:
   type: region
   connections:
-    ancient-ruins: bracelet
+    field.rapids-south-east: bracelet
 rapids-south-fairy:
   type: region
   connections:
@@ -3977,6 +3977,10 @@ D8.2d-l:
     D8.2d-k: rod
   doors:
     Lv08TurtleRock_01A: always
+field.rapids-south-east:
+  type: region
+  connections:
+    ancient-ruins: kill-zol-green & kill-armos
 break-bush:
   type: interaction
   condition-basic: sword | powders | bracelet | bombs | rod | boomerang

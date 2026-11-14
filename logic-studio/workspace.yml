@@ -1121,7 +1121,7 @@ mermaid-statue-land:
 rapids-south:
   type: region
   connections:
-    ancient-ruins: bracelet
+    field.rapids-south-east: bracelet
 rapids-south-fairy:
   type: region
   connections:
@@ -2530,6 +2530,10 @@ D8.2d-l:
   type: region
   one-way:
     D8.2d-k: rod
+field.rapids-south-east:
+  type: region
+  connections:
+    ancient-ruins: kill-zol-green & kill-armos
 break-bush:
   type: interaction
   condition-basic: sword | powders | bracelet | bombs | rod | boomerang
@@ -3001,5 +3005,8 @@ Lv08TurtleRock_05G:
   type: door
   condition-basic: break-pot
 Lv06FaceShrine_04F:
+  type: door
+  condition-basic: bracelet:2
+Field_10C:
   type: door
   condition-basic: bracelet:2
