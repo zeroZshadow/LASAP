@@ -2990,7 +2990,7 @@ D6.q:
 D6.r:
   type: region
   one-way:
-    D6.ab: always
+    D6.ab: bracelet:2
 D6.s:
   type: region
 D6.t:
@@ -4091,7 +4091,7 @@ kill-crow:
   condition-basic: sword | shoot-arrows | bombs | rod | boomerang
 kill-mad-bomber:
   type: enemy
-  condition-basic: sword | shoot-arrows | bombs | rod | boomerang
+  condition-basic: sword | shoot-arrows | rod | boomerang
 kill-nightmare-zol:
   type: enemy
   condition-basic: powders
