@@ -1,7 +1,5 @@
 # Logic rebuild notes
 
-- `pothole-north`: the Basic rule `((rooster | feather) & (boomerang | rod)) | (feather & sword)` doesn't feel right. To review.
-- `D4-central-room`: in logic with `hookshot` and `feather` but no `flippers`, which leaves the player in `D4.k` until the warp menu. Move it to Advanced if that comes up too often.
 - Entrance shuffle: the passage between `RichardHouse_01A` and `RichardCave_02A` (`richard-house` <> `richard-cave`, `golden-leaf:5`) cannot be shuffled, on either side.
 - Entrance shuffle: `RichardCave_01B` <> `Field_13G` (`pothole-field`) cannot be shuffled: falling into the holes at `pothole-field` always lands in `RichardCave_01B` or `RichardCave_01C`.
 
