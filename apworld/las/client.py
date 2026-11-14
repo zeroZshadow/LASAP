@@ -79,8 +79,9 @@ class LASCommandProcessor(ClientCommands):
         @mark_raw
         def _cmd_get_logical_path(self, dest_name: str = "") -> None:
             """Finds a logical expected path to a particular location or region by name"""
-            self.ctx.route_target = dest_name.strip() or None  # the Tracker tab's route ends at its pin
+            self.ctx.start_route(dest_name)
             super()._cmd_get_logical_path(dest_name)
+            self.ctx.draw_route()
 
     def _cmd_las(self) -> None:
         """Show the connection state to the game."""
@@ -442,10 +443,30 @@ class LASContext(ClientContext):
         return tracker_state
 
     def route_to(self, location: str) -> None:
-        """The Tracker tab's search: Universal Tracker's /get_logical_path to a location."""
+        """The Tracker tab's search: Universal Tracker's /get_logical_path to a location, which race mode turns off as
+        UT's command does."""
+        if self.stored_data.get("_read_race_mode"):
+            logger.info("Logical Path is disabled during Race Mode")
+            return
         from worlds.tracker.TrackerClient import get_logical_path
-        self.route_target = location
+        self.start_route(location)
         get_logical_path(self, location)
+        self.draw_route()
+
+    def start_route(self, text: str) -> None:
+        """Before /get_logical_path: no route, so that one it cannot find leaves none, and the location the route ends
+        at (route_points), the one UT takes the name for when it matches it to locations, regions and entrances."""
+        self.logical_path_entrances.clear()
+        self.route_target = None
+        multiworld, player = self.tracker_core.multiworld, self.tracker_core.player_id
+        if multiworld is None or player is None or not text.strip():
+            return
+        regions = multiworld.regions
+        locations = set(regions.location_cache[player])
+        names = locations | set(regions.region_cache[player]) | set(regions.entrance_cache[player])
+        name, usable, _ = Utils.get_intended_text(text, names)
+        if usable and name in locations:
+            self.route_target = name
 
     def route_points(self, map_name: str) -> List[Tuple[float, float]]:
         """The way /get_logical_path found, on a map: the pins of the doors it goes through, in order (a door Link
@@ -480,11 +501,14 @@ class LASContext(ClientContext):
             points.append(min(ends, key=lambda p: (p[0] - last[0]) ** 2 + (p[1] - last[1]) ** 2))
         return points
 
+    def clear_path(self) -> None:
+        """Universal Tracker's Clear Path: no route, so none drawn."""
+        self.route_target = None
+        super().clear_path()
+
     def draw_route(self) -> None:
         if self.ui is None or self.map_page is None or self.map_id is None:
             return
-        if not self.logical_path_entrances:
-            self.route_target = None
         from .client_gui import draw_route
         draw_route(self.map_page, self.route_points(self.maps[self.map_id]["name"]), self.ui.loc_size)
 

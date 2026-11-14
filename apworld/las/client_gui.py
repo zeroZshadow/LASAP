@@ -889,6 +889,7 @@ def add_doors_box(page, ctx) -> None:
 
 ROUTE_COLOR = (0.19, 0.25, 1.0, 0.85)  # Universal Tracker's path blue (its "hinted" colour)
 ROUTE_WIDTH = 0.25  # the route's line, in pin sizes
+ROUTE_SUGGESTIONS = 12  # the search field's menu shows at most this many locations
 
 
 class RouteLine(Widget):
@@ -915,35 +916,73 @@ def draw_route(page, points: List[Tuple[float, float]], pin_size: float) -> None
 
 
 def add_route_search(page, ctx) -> None:
-    """A field beside the map's buttons: a location in logic (part of its name: a menu of those that match) gets its
-    route (LASContext.route_to)."""
+    """A field in a row below the map's checkboxes, with Universal Tracker's Clear Path beside it. As it is typed in, a
+    menu below it suggests the locations in logic whose names hold the text; picking one, or Enter when one matches,
+    gets its route (LASContext.route_to)."""
     from kivymd.uix.textfield import MDTextFieldHintText
     field = ConnectBarTextInput(size_hint_x=None, width=dp(260), pos_hint={"center_y": 0.5})
     field.add_widget(MDTextFieldHintText(text="Route to a check"))
+    shown: Dict[str, Any] = {"menu": None, "picked": None}
+
+    def matches(text: str) -> List[str]:
+        return [name for name in ctx.tracker_in_logic if text in name.lower()]
+
+    def close() -> None:
+        menu, shown["menu"] = shown["menu"], None
+        if menu is not None:
+            menu.dismiss()
+
+    def pick(name: str) -> None:
+        close()
+        shown["picked"] = name
+        field.text = name
+        ctx.route_to(name)
+
+    def suggest(*_: Any) -> None:
+        text = field.text.strip().lower()
+        found = matches(text) if text and field.text != shown["picked"] else []
+        if not found:
+            close()
+            return
+        items = [{"text": name, "on_release": lambda n=name: pick(n)} for name in found[:ROUTE_SUGGESTIONS]]
+        menu = shown["menu"]
+        if menu is None:  # the field keeps the keyboard; a touch outside the menu closes it
+            menu = shown["menu"] = MDDropdownMenu(caller=field, items=items, position="bottom", width=dp(420))
+            menu.bind(on_dismiss=lambda *_: shown.update(menu=None) if shown["menu"] is menu else None)
+            menu.open()
+        else:  # the open menu with the new items, sized and placed as open() does, without its animation
+            menu.items = items
+            menu.set_menu_properties()
+            menu.height = menu.target_height
+            menu.set_menu_pos()
 
     def search(*_: Any) -> None:
         text = field.text.strip().lower()
-        if not text:
-            return
-        found = [name for name in ctx.tracker_in_logic if text in name.lower()]
+        found = matches(text) if text else []
         exact = [name for name in found if name.lower() == text]
         if len(found) == 1 or exact:
-            ctx.route_to((exact or found)[0])
-            return
-        items = [{"text": name, "on_release": lambda n=name: pick(n)} for name in found[:20]] or \
-            [{"text": "No check in logic matches"}]
-        menu = MDDropdownMenu(caller=field, items=items, position="bottom", width=dp(420))
+            pick((exact or found)[0])
 
-        def pick(name: str) -> None:
-            menu.dismiss()
-            field.text = name
-            ctx.route_to(name)
-
-        menu.open()
-
+    suggest_soon = Clock.create_trigger(suggest, 0.15)
+    field.bind(text=lambda *_: suggest_soon())
     field.bind(on_text_validate=search)
-    row = page.ids.auto_tab_checkitem.__self__.parent
-    row.add_widget(field)
+    header = page.ids.auto_tab_checkitem.__self__.parent
+    below = MDBoxLayout(field, size_hint=(None, None), padding=(dp(12), dp(14), dp(12), dp(8)),
+                        spacing=dp(16))  # room above for the field's hint, which rises over its text
+    clear = next((w for w in header.children if isinstance(w, MDButton)
+                  and any(getattr(c, "text", "") == "Clear Path" for c in w.children)), None)
+    if clear is not None:  # else it stays where Universal Tracker put it
+        header.remove_widget(clear)
+        below.add_widget(clear)
+    below.bind(minimum_size=below.setter("size"))
+    box = header.parent
+
+    def align(*_: Any) -> None:  # under the checkboxes: at the header's left, which centres itself
+        below.pos_hint = {"x": (header.x - box.x) / box.width if box.width else 0}
+
+    header.bind(pos=align, size=align)
+    box.bind(pos=align, size=align)
+    box.add_widget(below, index=box.children.index(header))
 
 
 def make_manager(base):
