@@ -1,0 +1,36 @@
+# Entrances and stealing: the Library's door (Field_12A) leads into the shop and the shop's door (Field_10D) into the
+# Library, so the shop's way out leads out of the Library's door, whose arrival entry is not ExitOutShop. Leaving
+# with a stolen item still gives it and clears StealSuccess (ap_jumps.cpp, TickStolenGoods), and the shopkeeper lets
+# Link back in. Sets the steal flags instead of stealing. Run after boot_file1 on a mod from make_test_patch.py
+# --entrances '{"Field_12A": "Shop_01A", "Field_10D": "Library_01A"}'.
+guard hurt
+send DBG setflag ScoopGet 0
+expect FLAG.ScoopGet.0 5
+# the Library's door, north of Link, into the shop
+warp Field 5.25 10.5 137.5
+hold 0 0 32767 until level=Shop 10
+inlevel 20
+level Shop
+free 10
+send DBG setflag ShopShovelSteal 1
+expect FLAG.ShopShovelSteal.1 5
+send DBG setflag StealSuccess 1
+expect FLAG.StealSuccess.1 5
+# its way out, south of Link, out of the Library's door: the stolen item's get plays there
+hold 0 0 -32767 until level=Field 10
+loaded 20
+at 5.25 136.5 2
+dismiss 20
+poll FLAG.StealSuccess.0 10 DBG flag StealSuccess
+send DBG flag ShopShovelSteal
+expect FLAG.ShopShovelSteal.0 5
+send DBG flag ScoopGet
+expect FLAG.ScoopGet.1 5
+free 20
+# back in: no punishment, Link stands free in the shop
+hold 0 0 32767 until level=Shop 10
+inlevel 20
+level Shop
+free 15
+wait 3
+free 5

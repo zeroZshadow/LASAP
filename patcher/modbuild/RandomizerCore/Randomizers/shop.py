@@ -1,5 +1,7 @@
 import RandomizerCore.Tools.event_tools as event_tools
 
+# PlayerStart.bfevfl entry that gives the stolen items and clears StealSuccess (AP::STOLEN_GOODS_ENTRY)
+STOLEN_GOODS_ENTRY = 'APStolenGoods'
 
 class ShopRandomizer:
     def __init__(self, mod_generator) -> None:
@@ -107,6 +109,10 @@ class ShopRandomizer:
 
         # Insert our events before the nag message over stealing, no event after so it is fully removed
         event_tools.insertEventAfter(flow.flowchart, 'Event771', check_shovel)
+        # The same chain as its own entry: the module plays it when Link leaves the shop with StealSuccess set and
+        # lands somewhere other than Field_10D, whose ExitOutShop does not run then (AP::STOLEN_GOODS_ENTRY)
+        event_tools.addEntryPoint(flow.flowchart, STOLEN_GOODS_ENTRY)
+        event_tools.insertEventAfter(flow.flowchart, STOLEN_GOODS_ENTRY, check_shovel)
 
         self.parent.file_manager.writeFile('PlayerStart.bfevfl', flow)
 

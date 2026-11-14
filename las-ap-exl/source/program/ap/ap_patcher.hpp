@@ -44,6 +44,9 @@ namespace AP {
     constexpr int MEDICINE_FLAG_BITS = 2;
     // Common.bfevfl entry the patcher adds for the warp menu: a choice between warping to Tarin's house and going on.
     constexpr const char* WARP_MENU_ENTRY = "APWarpMenu";
+    // PlayerStart.bfevfl entry the patcher adds with ExitOutShop's stealing chain (patcher shop.STOLEN_GOODS_ENTRY):
+    // it gives the stolen items and clears StealSuccess.
+    constexpr const char* STOLEN_GOODS_ENTRY = "APStolenGoods";
     // Index the ghost in Tarin's house adds bombs, arrows and powder with (patcher ap_ghost.py): the count is what
     // Link's bombs, arrows or powder are topped up to, not an amount to add.
     constexpr int AMMO_REFILL_INDEX = 1000;

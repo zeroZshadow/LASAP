@@ -196,6 +196,11 @@ The eight telephone boxes are eight levels. **Covered.** Fable: confirmed (it fo
   `BoomerangCave_01A`, `HiddenZoraHouse_01A`, `Field_16F` (`MarinJoin`), the Marin date levels, the `_Marin` dungeon
   exits, `Opening` (the intro). With a shuffle they happen at the spot, whatever door led there: BowWow goes home when
   Link leaves through Madam's door. **Covered** for the module; the logic follows the spots. Fable: confirmed.
+- Stealing is the exception: leaving the shop with an item sets `StealSuccess` and the item's steal flag, and
+  `ExitOutShop` gives the item and clears `StealSuccess` (LASR's chain). A led shop exit lands on another door's entry,
+  and `EntranceIn_Tool` punishes Link while `StealSuccess` is set. The patcher copies the chain into the `PlayerStart` entry
+  `APStolenGoods`, which the module requests once Link is free outside the shop with `StealSuccess` set
+  (`TickStolenGoods`). **Covered.**
 
 ## Blocked landings
 

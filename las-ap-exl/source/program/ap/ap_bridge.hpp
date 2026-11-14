@@ -97,6 +97,9 @@ namespace AP::Bridge {
     // The overworld map's dungeon markers that follow shuffled doors (the seed file's markers), read at boot, before the game
     // loads the map's sheets, whose rows it swaps then.
     void LoadMarkers();
+    // Gives the shop's stolen items once Link stands free outside the shop with StealSuccess still set: a shop exit
+    // led elsewhere misses Field_10D's ExitOutShop, which gives them.
+    void TickStolenGoods();
 
     // ---- The start state (ap_start.cpp) ----
 

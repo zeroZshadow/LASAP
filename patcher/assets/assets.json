@@ -657,7 +657,7 @@
  "region_common/event/PlayerStart.bfevfl": {
   "source": "region_common/event/PlayerStart.bfevfl",
   "source_sha256": "39a69abcd372498b016d50315a41e857fec48ed1736359651b573c699d5d70af",
-  "sha256": "2b78d92780ebb068ec6eac0811dbdcb20b6aeb5f7ae9c75d4a7ced527c095a70"
+  "sha256": "78432300a126dd7feabfcbe72b2adfb2cc2995809196fd220a486ee1ed060af6"
  },
  "region_common/event/PrizeCommon.bfevfl": {
   "source": "region_common/event/PrizeCommon.bfevfl",

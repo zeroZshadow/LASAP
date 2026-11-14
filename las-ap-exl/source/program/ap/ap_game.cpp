@@ -380,6 +380,7 @@ namespace AP {
         Popup::Tick();
         TickWarpMenu();
         TickEgg();
+        TickStolenGoods();
         TickMedicine();
         // the d-pad changes the music in free play, not where a minigame may steer with it
         JukeboxPane::Tick(PlayerFree() && g_LastLevel != kCraneGameLevel && g_LastLevel != "FishingPond");

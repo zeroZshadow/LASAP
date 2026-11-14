@@ -5,7 +5,8 @@
 // something covers, the flag that opens it (scripts/re/ENTRANCES.md, Blocked landings). The overworld map's dungeon markers
 // follow the doors (the seed file's markers): once the game loaded the map's sheets, each door's row takes the label and show
 // flag of the dungeon behind it. The jumps between the overworld and other levels go to the client as DOOR lines, from
-// which it learns the shuffled doors the player has gone through (DESIGN.md, Entrances, Doors gone through).
+// which it learns the shuffled doors the player has gone through (DESIGN.md, Entrances, Doors gone through). The shop's
+// stolen items, which the shop door's arrival entry gives, come wherever its exit leads.
 #include "ap/ap.hpp"
 #include "ap/ap_bridge.hpp"
 #include "ap/ap_net.hpp"
@@ -30,6 +31,16 @@ namespace {
     // The DOOR lines of the jumps between the overworld and other levels since the game started, each once
     std::vector<std::string> g_DoorJumps;
     constexpr std::string_view kOverworld = "Field";
+
+    // Stealing (scripts/re/ENTRANCES.md, Doors, companions and arrival events): leaving the shop with an item sets
+    // StealSuccess, and Field_10D's arrival entry ExitOutShop gives the item and clears it. A shop exit led elsewhere
+    // lands on another door's entry, so the patcher's copy of that chain plays once Link stands free outside the
+    // shop; with StealSuccess left set the shopkeeper punishes him on the way back in.
+    constexpr const char* kShopLevel = "Shop";
+    constexpr const char* kStealFlag = "StealSuccess";
+    constexpr const char* kPlayerStartEvent = "event/PlayerStart.bfevfl";
+    // The chain is requested and has not taken Link yet: no second request until it has, or until he is in the shop.
+    bool g_StolenGoodsRequested = false;
 
     // In UiDatasheets_Load, once the maps' holder took its sheets (0xf9cfb0).
     constexpr uintptr_t kMapSheetsLoaded = 0x86835c;
@@ -79,6 +90,21 @@ namespace {
         });
         if (!g_Markers.empty()) MapSheetsLoaded::InstallAtPtr(Game::Addr(kMapSheetsLoaded));
         Logging.Log("[AP] dungeon markers to lead: %zu", g_Markers.size());
+    }
+
+    // Through Field_10D ExitOutShop clears the flag before Link is free, so this plays only after a led exit, or on a
+    // save left with the flag set.
+    void TickStolenGoods() {
+        if (!PlayerFree() || g_LastLevel == kShopLevel) {
+            g_StolenGoodsRequested = false;  // the chain took Link, or he is back in the shop
+            return;
+        }
+        if (g_StolenGoodsRequested || !EventFlags::CheckFlag(kStealFlag)) return;
+        if (PlayerCarrying() || LinkDead() || !ItemEventIdle()) return;
+        if (RequestEvent(kPlayerStartEvent, AP::STOLEN_GOODS_ENTRY, {})) {
+            g_StolenGoodsRequested = true;
+            Logging.Log("[AP] stolen goods requested in %s", g_LastLevel.c_str());
+        }
     }
 }
 
