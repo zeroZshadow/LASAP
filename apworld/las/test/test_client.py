@@ -8,6 +8,18 @@ from NetUtils import HintStatus
 from Utils import Version
 
 
+class TestTrackerVersion(unittest.TestCase):
+    def test_versions(self) -> None:
+        from ..client import TRACKER_MIN_VERSION, tracker_version
+        self.assertEqual(tracker_version("v0.3.8"), (0, 3, 8))
+        self.assertEqual(tracker_version("v0.2.24.1"), (0, 2, 24))
+        self.assertEqual(tracker_version("v0.4.0-beta2"), (0, 4, 0))
+        self.assertIsNone(tracker_version(None))
+        self.assertIsNone(tracker_version("tracker"))
+        self.assertLess(tracker_version("v0.3.7"), TRACKER_MIN_VERSION)
+        self.assertGreaterEqual(tracker_version("v0.3.10"), TRACKER_MIN_VERSION)
+
+
 class TestHintLines(unittest.TestCase):
     def run_lines(self, server_version: Version, lines) -> list:
         from ..client import LASContext

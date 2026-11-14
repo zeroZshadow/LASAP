@@ -232,46 +232,6 @@ def clamp_to_room(point, room: str):
     return min(max(point[0], x0 + 1.5), x0 + ROOM_W - 1.5), min(max(point[1], z0 + 1.5), z0 + ROOM_H - 1.5)
 
 
-def solve3(rows, values):
-    """Least squares for value = a·x + b·y + c."""
-    m = [[sum(r[i] * r[j] for r in rows) for j in range(3)] for i in range(3)]
-    v = [sum(r[i] * y for r, y in zip(rows, values)) for i in range(3)]
-    for i in range(3):
-        p = max(range(i, 3), key=lambda k: abs(m[k][i]))
-        m[i], m[p], v[i], v[p] = m[p], m[i], v[p], v[i]
-        for k in range(i + 1, 3):
-            f = m[k][i] / m[i][i]
-            m[k] = [a - f * b for a, b in zip(m[k], m[i])]
-            v[k] -= f * v[i]
-    x = [0.0] * 3
-    for i in reversed(range(3)):
-        x[i] = (v[i] - sum(m[i][j] * x[j] for j in range(i + 1, 3))) / m[i][i]
-    return x
-
-
-def pack_pins(pack: Path) -> dict:
-    """LASR overworld location -> (x, y) of its pin on the pack's overworld map."""
-    located = {}
-
-    def walk(locations, parent):
-        for loc in locations:
-            loc_id = f"{parent}/{loc['name']}" if parent else loc["name"]
-            for m in loc.get("map_locations", []):
-                if m["map"] == "map":
-                    located.setdefault(loc_id, (m["x"], m["y"]))
-            walk(loc.get("children", []), loc_id)
-
-    walk(poptracker_map.load(pack / "locations" / "overworld.json"), "")
-    pins = {}
-    for lasr, codes in poptracker_map.location_codes(poptracker_map.pack_sections(pack)).items():
-        for code in codes:
-            loc_id = code[1:].rpartition("/")[0]
-            if loc_id in located:
-                pins[lasr] = located[loc_id]
-                break
-    return pins
-
-
 def pack_places(pack: Path) -> dict:
     """LASR overworld location -> its place in the pack: the last part of its overworld section's parent."""
     places = {}
@@ -293,7 +253,7 @@ def main() -> None:
     level = Level(args.romfs)
     rooms = {**room_tables(), **DUNGEON_ROOMS}
     doors = level.field_doors()
-    pins = pack_pins(args.pack)
+    pins = poptracker_map.overworld_pins(args.pack)
     floors = {str(row["mLeaName"]): row["mFloor"] for row in map(
         parseStruct, readSheet(str(args.romfs / "region_common" / "datasheets" / "UiDungeonArea.gsheet"))["values"])}
 
@@ -310,8 +270,8 @@ def main() -> None:
     # The pack's pins in world coordinates
     anchors = [(pins[loc], pos) for loc, pos in exact.items() if loc in pins]
     rows = [(p[0], p[1], 1.0) for p, _ in anchors]
-    fx = solve3(rows, [w[0] for _, w in anchors])
-    fz = solve3(rows, [w[1] for _, w in anchors])
+    fx = poptracker_map.least_squares(rows, [w[0] for _, w in anchors])
+    fz = poptracker_map.least_squares(rows, [w[1] for _, w in anchors])
     fitted = {loc: (fx[0] * p[0] + fx[1] * p[1] + fx[2], fz[0] * p[0] + fz[1] * p[1] + fz[2]) for loc, p in pins.items()}
     errors = [math.dist(fitted[loc], exact[loc][:2]) for loc in exact if loc in fitted]
     print(f"pin fit: {len(anchors)} anchors, mean error {sum(errors) / len(errors):.1f}, max {max(errors):.1f}")

@@ -19,6 +19,10 @@ from typing import List, Tuple
 
 # Format (high byte) -> bytes per element; compressed formats store 4x4 pixel blocks as elements
 BLOCK_BYTES = {0x1a: 8, 0x1b: 16, 0x1c: 16, 0x1d: 8, 0x1e: 16, 0x1f: 16, 0x20: 16}
+# ASTC formats (high byte) -> their block's width and height in pixels; every block is 16 bytes (ap_astc)
+ASTC_BLOCKS = {0x2d: (4, 4), 0x2e: (5, 4), 0x2f: (5, 5), 0x30: (6, 5), 0x31: (6, 6), 0x32: (8, 5), 0x33: (8, 6),
+               0x34: (8, 8), 0x35: (10, 5), 0x36: (10, 6), 0x37: (10, 8), 0x38: (10, 10), 0x39: (12, 10),
+               0x3a: (12, 12)}
 # Component selection of a texture made from a plain BCn image: RGBA for BC1-3, R as RGB with alpha 1 for BC4, RG
 # with blue 0 and alpha 1 for BC5
 COMPONENTS = {0x1a: 0x05040302, 0x1b: 0x05040302, 0x1c: 0x05040302, 0x1d: 0x01020202, 0x1e: 0x01000302}
@@ -146,6 +150,22 @@ class Texture:
                 raise ValueError(f"{self.name}: its data ends inside a mip level")
             levels.append(deswizzle(self.data[offset:], columns, rows, element, block_height))
         return levels
+
+    def block_size(self) -> Tuple[int, int, int]:
+        """A block's width and height in pixels, and its bytes: 4x4 for BCn, the format's for ASTC."""
+        if self.format >> 8 in ASTC_BLOCKS:
+            return (*ASTC_BLOCKS[self.format >> 8], 16)
+        return 4, 4, self.element()
+
+    def level0(self) -> bytes:
+        """The full-size level's blocks in row order (BCn or ASTC)."""
+        if self.tile_mode != BLOCK_LINEAR:
+            raise ValueError(f"{self.name}: tile mode {self.tile_mode} is not block-linear")
+        bw, bh, element = self.block_size()
+        columns, rows = -(-self.width // bw), -(-self.height // bh)
+        if self.mip_offsets[0] + surface_size(columns, rows, element, 1 << self.block_height_log2) > len(self.data):
+            raise ValueError(f"{self.name}: its data ends inside its first level")
+        return deswizzle(self.data[self.mip_offsets[0]:], columns, rows, element, 1 << self.block_height_log2)
 
     def replace(self, format_: int, width: int, height: int, levels: List[bytes]) -> None:
         """Makes this a block-linear texture of the given BCn format and pixel size from its mip levels' blocks (in
@@ -302,6 +322,44 @@ class Bntx:
             positions.append(at)
             at += INFO_BLOCK + 8 * texture.mips
         return positions
+
+
+def from565(c: int) -> Tuple[int, int, int]:
+    """A BC1 endpoint's RGB565 colour as 8-bit RGB."""
+    r, g, b = c >> 11, (c >> 5) & 63, c & 31
+    return r << 3 | r >> 2, g << 2 | g >> 4, b << 3 | b >> 2
+
+
+def bc4_values(block: bytes) -> List[int]:
+    """The 16 values of a BC4 block (also BC3's alpha block), row order."""
+    v0, v1 = block[0], block[1]
+    if v0 > v1:
+        values = [v0, v1] + [((7 - i) * v0 + i * v1) // 7 for i in range(1, 7)]
+    else:
+        values = [v0, v1] + [((5 - i) * v0 + i * v1) // 5 for i in range(1, 5)] + [0, 255]
+    bits = int.from_bytes(block[2:8], "little")
+    return [values[(bits >> (3 * p)) & 7] for p in range(16)]
+
+
+def decode_bc3(blocks: bytes, width: int, height: int) -> bytes:
+    """RGBA bytes of a BC3 texture's level (blocks in row order), its size rounded up to whole blocks. BC3 reads every
+    colour block in 4-colour mode."""
+    columns, rows = -(-width // 4), -(-height // 4)
+    out = bytearray(columns * 4 * rows * 4 * 4)
+    stride = columns * 16
+    for i in range(columns * rows):
+        block = blocks[i * 16:i * 16 + 16]
+        alpha = bc4_values(block)
+        c0, c1 = int.from_bytes(block[8:10], "little"), int.from_bytes(block[10:12], "little")
+        bits = int.from_bytes(block[12:16], "little")
+        a, b = from565(c0), from565(c1)
+        palette = (a, b, tuple((2 * x + y) // 3 for x, y in zip(a, b)), tuple((x + 2 * y) // 3 for x, y in zip(a, b)))
+        bx, by = i % columns, i // columns
+        for p in range(16):
+            o = ((by * 4 + p // 4) * stride + (bx * 4 + p % 4) * 4)
+            out[o:o + 3] = bytes(palette[(bits >> (2 * p)) & 3])
+            out[o + 3] = alpha[p]
+    return bytes(out)
 
 
 def find_bntx(bfres: bytes) -> Tuple[int, int]:

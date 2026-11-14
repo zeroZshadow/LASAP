@@ -1,0 +1,498 @@
+[
+ {
+  "name": "Progressive Sword",
+  "type": "progressive",
+  "stages": [
+   {
+    "img": "images/items/EqSword_01.png"
+   },
+   {
+    "img": "images/items/EqSword_01.png"
+   }
+  ]
+ },
+ {
+  "name": "Progressive Shield",
+  "type": "progressive",
+  "stages": [
+   {
+    "img": "images/items/EqShield_00.png"
+   },
+   {
+    "img": "images/items/EqShield_01.png"
+   }
+  ]
+ },
+ {
+  "name": "Progressive Power Bracelet",
+  "type": "progressive",
+  "stages": [
+   {
+    "img": "images/items/EqPowerBracelet_00.png"
+   },
+   {
+    "img": "images/items/EqPowerBracelet_01.png"
+   }
+  ]
+ },
+ {
+  "name": "Pegasus Boots",
+  "type": "toggle",
+  "img": "images/items/EqPegasusBoots_00.png"
+ },
+ {
+  "name": "Flippers",
+  "type": "toggle",
+  "img": "images/items/Eqflippers_00.png"
+ },
+ {
+  "name": "Roc's Feather",
+  "type": "toggle",
+  "img": "images/items/ItemRocsFeather_00.png"
+ },
+ {
+  "name": "Bombs",
+  "type": "toggle",
+  "img": "images/items/ItemBomb_00.png"
+ },
+ {
+  "name": "Shovel",
+  "type": "toggle",
+  "img": "images/items/ItemShovel_00.png"
+ },
+ {
+  "name": "Ocarina",
+  "type": "toggle",
+  "img": "images/items/ItemOcarina_03.png"
+ },
+ {
+  "name": "Hookshot",
+  "type": "toggle",
+  "img": "images/items/ItemFookShot_00.png"
+ },
+ {
+  "name": "Bow",
+  "type": "toggle",
+  "img": "images/items/ItemBow_00.png"
+ },
+ {
+  "name": "Magic Rod",
+  "type": "toggle",
+  "img": "images/items/ItemMagicRod_00.png"
+ },
+ {
+  "name": "Boomerang",
+  "type": "toggle",
+  "img": "images/items/ItemBoomerang_00.png"
+ },
+ {
+  "name": "Magic Powder",
+  "type": "toggle",
+  "img": "images/items/ItemMagicPowder_00.png"
+ },
+ {
+  "name": "Sleepy Toadstool",
+  "type": "toggle",
+  "img": "images/items/ItemMushroom_00.png"
+ },
+ {
+  "name": "Bottle",
+  "type": "consumable",
+  "img": "images/items/ItemBottle_00.png"
+ },
+ {
+  "name": "Red Tunic",
+  "type": "toggle",
+  "img": "images/items/EqCloth_01.png"
+ },
+ {
+  "name": "Blue Tunic",
+  "type": "toggle",
+  "img": "images/items/EqCloth_02.png"
+ },
+ {
+  "name": "Secret Seashell",
+  "type": "consumable",
+  "img": "images/items/CollectSecretSeashell_00.png"
+ },
+ {
+  "name": "Secret Medicine",
+  "type": "toggle",
+  "img": "images/items/CollectSecretMedicine_00.png"
+ },
+ {
+  "name": "Ballad of the Wind Fish",
+  "type": "toggle",
+  "img": "images/items/ItemMusic00.png"
+ },
+ {
+  "name": "Manbo's Mambo",
+  "type": "toggle",
+  "img": "images/items/ItemMusic01.png"
+ },
+ {
+  "name": "Frog's Song of Soul",
+  "type": "toggle",
+  "img": "images/items/ItemMusic02.png"
+ },
+ {
+  "name": "Full Moon Cello",
+  "type": "toggle",
+  "img": "images/items/CollectInst_00.png"
+ },
+ {
+  "name": "Conch Horn",
+  "type": "toggle",
+  "img": "images/items/CollectInst_01.png"
+ },
+ {
+  "name": "Sea Lily's Bell",
+  "type": "toggle",
+  "img": "images/items/CollectInst_02.png"
+ },
+ {
+  "name": "Surf Harp",
+  "type": "toggle",
+  "img": "images/items/CollectInst_03.png"
+ },
+ {
+  "name": "Wind Marimba",
+  "type": "toggle",
+  "img": "images/items/CollectInst_04.png"
+ },
+ {
+  "name": "Coral Triangle",
+  "type": "toggle",
+  "img": "images/items/CollectInst_05.png"
+ },
+ {
+  "name": "Evening Calm Organ",
+  "type": "toggle",
+  "img": "images/items/CollectInst_06.png"
+ },
+ {
+  "name": "Thunder Drum",
+  "type": "toggle",
+  "img": "images/items/CollectInst_07.png"
+ },
+ {
+  "name": "Tail Key",
+  "type": "toggle",
+  "img": "images/items/CollectDgnKey_00.png"
+ },
+ {
+  "name": "Slime Key",
+  "type": "toggle",
+  "img": "images/items/CollectDgnKey_01.png"
+ },
+ {
+  "name": "Angler Key",
+  "type": "toggle",
+  "img": "images/items/CollectDgnKey_02.png"
+ },
+ {
+  "name": "Face Key",
+  "type": "toggle",
+  "img": "images/items/CollectDgnKey_03.png"
+ },
+ {
+  "name": "Bird Key",
+  "type": "toggle",
+  "img": "images/items/CollectDgnKey_04.png"
+ },
+ {
+  "name": "Yoshi Doll",
+  "type": "toggle",
+  "img": "images/items/TrdYoshiDoll_00.png"
+ },
+ {
+  "name": "Ribbon",
+  "type": "toggle",
+  "img": "images/items/TrdRibbon_00.png"
+ },
+ {
+  "name": "Dog Food",
+  "type": "toggle",
+  "img": "images/items/TrdDogfood_00.png"
+ },
+ {
+  "name": "Bananas",
+  "type": "toggle",
+  "img": "images/items/TrdBananas_00.png"
+ },
+ {
+  "name": "Stick",
+  "type": "toggle",
+  "img": "images/items/TrdStick_00.png"
+ },
+ {
+  "name": "Honeycomb",
+  "type": "toggle",
+  "img": "images/items/TrdHoneycomb_00.png"
+ },
+ {
+  "name": "Pineapple",
+  "type": "toggle",
+  "img": "images/items/TrdPineapple_00.png"
+ },
+ {
+  "name": "Hibiscus",
+  "type": "toggle",
+  "img": "images/items/TrdHibiscus_00.png"
+ },
+ {
+  "name": "Goat's Letter",
+  "type": "toggle",
+  "img": "images/items/TrdLetter_00.png"
+ },
+ {
+  "name": "Broom",
+  "type": "toggle",
+  "img": "images/items/TrdBroom_00.png"
+ },
+ {
+  "name": "Fishing Hook",
+  "type": "toggle",
+  "img": "images/items/TrdFishingHook_00.png"
+ },
+ {
+  "name": "Mermaid's Necklace",
+  "type": "toggle",
+  "img": "images/items/TrdNecklace_00.png"
+ },
+ {
+  "name": "Mermaid's Scale",
+  "type": "toggle",
+  "img": "images/items/TrdScale_00.png"
+ },
+ {
+  "name": "Magnifying Lens",
+  "type": "toggle",
+  "img": "images/items/TrdLens_00.png"
+ },
+ {
+  "name": "Small Key (Tail Cave)",
+  "type": "consumable",
+  "img": "images/items/SmallKey_00.png"
+ },
+ {
+  "name": "Nightmare Key (Tail Cave)",
+  "type": "toggle",
+  "img": "images/items/BossKey_00.png"
+ },
+ {
+  "name": "Dungeon Map (Tail Cave)",
+  "type": "toggle",
+  "img": "images/items/DgnMap_00.png"
+ },
+ {
+  "name": "Compass (Tail Cave)",
+  "type": "toggle",
+  "img": "images/items/DgnCompass_00.png"
+ },
+ {
+  "name": "Stone Beak (Tail Cave)",
+  "type": "toggle",
+  "img": "images/items/DgnBeak_00.png"
+ },
+ {
+  "name": "Small Key (Bottle Grotto)",
+  "type": "consumable",
+  "img": "images/items/SmallKey_00.png"
+ },
+ {
+  "name": "Nightmare Key (Bottle Grotto)",
+  "type": "toggle",
+  "img": "images/items/BossKey_00.png"
+ },
+ {
+  "name": "Dungeon Map (Bottle Grotto)",
+  "type": "toggle",
+  "img": "images/items/DgnMap_00.png"
+ },
+ {
+  "name": "Compass (Bottle Grotto)",
+  "type": "toggle",
+  "img": "images/items/DgnCompass_00.png"
+ },
+ {
+  "name": "Stone Beak (Bottle Grotto)",
+  "type": "toggle",
+  "img": "images/items/DgnBeak_00.png"
+ },
+ {
+  "name": "Small Key (Key Cavern)",
+  "type": "consumable",
+  "img": "images/items/SmallKey_00.png"
+ },
+ {
+  "name": "Nightmare Key (Key Cavern)",
+  "type": "toggle",
+  "img": "images/items/BossKey_00.png"
+ },
+ {
+  "name": "Dungeon Map (Key Cavern)",
+  "type": "toggle",
+  "img": "images/items/DgnMap_00.png"
+ },
+ {
+  "name": "Compass (Key Cavern)",
+  "type": "toggle",
+  "img": "images/items/DgnCompass_00.png"
+ },
+ {
+  "name": "Stone Beak (Key Cavern)",
+  "type": "toggle",
+  "img": "images/items/DgnBeak_00.png"
+ },
+ {
+  "name": "Small Key (Angler's Tunnel)",
+  "type": "consumable",
+  "img": "images/items/SmallKey_00.png"
+ },
+ {
+  "name": "Nightmare Key (Angler's Tunnel)",
+  "type": "toggle",
+  "img": "images/items/BossKey_00.png"
+ },
+ {
+  "name": "Dungeon Map (Angler's Tunnel)",
+  "type": "toggle",
+  "img": "images/items/DgnMap_00.png"
+ },
+ {
+  "name": "Compass (Angler's Tunnel)",
+  "type": "toggle",
+  "img": "images/items/DgnCompass_00.png"
+ },
+ {
+  "name": "Stone Beak (Angler's Tunnel)",
+  "type": "toggle",
+  "img": "images/items/DgnBeak_00.png"
+ },
+ {
+  "name": "Small Key (Catfish's Maw)",
+  "type": "consumable",
+  "img": "images/items/SmallKey_00.png"
+ },
+ {
+  "name": "Nightmare Key (Catfish's Maw)",
+  "type": "toggle",
+  "img": "images/items/BossKey_00.png"
+ },
+ {
+  "name": "Dungeon Map (Catfish's Maw)",
+  "type": "toggle",
+  "img": "images/items/DgnMap_00.png"
+ },
+ {
+  "name": "Compass (Catfish's Maw)",
+  "type": "toggle",
+  "img": "images/items/DgnCompass_00.png"
+ },
+ {
+  "name": "Stone Beak (Catfish's Maw)",
+  "type": "toggle",
+  "img": "images/items/DgnBeak_00.png"
+ },
+ {
+  "name": "Small Key (Face Shrine)",
+  "type": "consumable",
+  "img": "images/items/SmallKey_00.png"
+ },
+ {
+  "name": "Nightmare Key (Face Shrine)",
+  "type": "toggle",
+  "img": "images/items/BossKey_00.png"
+ },
+ {
+  "name": "Dungeon Map (Face Shrine)",
+  "type": "toggle",
+  "img": "images/items/DgnMap_00.png"
+ },
+ {
+  "name": "Compass (Face Shrine)",
+  "type": "toggle",
+  "img": "images/items/DgnCompass_00.png"
+ },
+ {
+  "name": "Stone Beak (Face Shrine)",
+  "type": "toggle",
+  "img": "images/items/DgnBeak_00.png"
+ },
+ {
+  "name": "Small Key (Eagle's Tower)",
+  "type": "consumable",
+  "img": "images/items/SmallKey_00.png"
+ },
+ {
+  "name": "Nightmare Key (Eagle's Tower)",
+  "type": "toggle",
+  "img": "images/items/BossKey_00.png"
+ },
+ {
+  "name": "Dungeon Map (Eagle's Tower)",
+  "type": "toggle",
+  "img": "images/items/DgnMap_00.png"
+ },
+ {
+  "name": "Compass (Eagle's Tower)",
+  "type": "toggle",
+  "img": "images/items/DgnCompass_00.png"
+ },
+ {
+  "name": "Stone Beak (Eagle's Tower)",
+  "type": "toggle",
+  "img": "images/items/DgnBeak_00.png"
+ },
+ {
+  "name": "Small Key (Turtle Rock)",
+  "type": "consumable",
+  "img": "images/items/SmallKey_00.png"
+ },
+ {
+  "name": "Nightmare Key (Turtle Rock)",
+  "type": "toggle",
+  "img": "images/items/BossKey_00.png"
+ },
+ {
+  "name": "Dungeon Map (Turtle Rock)",
+  "type": "toggle",
+  "img": "images/items/DgnMap_00.png"
+ },
+ {
+  "name": "Compass (Turtle Rock)",
+  "type": "toggle",
+  "img": "images/items/DgnCompass_00.png"
+ },
+ {
+  "name": "Stone Beak (Turtle Rock)",
+  "type": "toggle",
+  "img": "images/items/DgnBeak_00.png"
+ },
+ {
+  "name": "Small Key (Color Dungeon)",
+  "type": "consumable",
+  "img": "images/items/SmallKey_00.png"
+ },
+ {
+  "name": "Nightmare Key (Color Dungeon)",
+  "type": "toggle",
+  "img": "images/items/BossKey_00.png"
+ },
+ {
+  "name": "Dungeon Map (Color Dungeon)",
+  "type": "toggle",
+  "img": "images/items/DgnMap_00.png"
+ },
+ {
+  "name": "Compass (Color Dungeon)",
+  "type": "toggle",
+  "img": "images/items/DgnCompass_00.png"
+ },
+ {
+  "name": "Stone Beak (Color Dungeon)",
+  "type": "toggle",
+  "img": "images/items/DgnBeak_00.png"
+ }
+]

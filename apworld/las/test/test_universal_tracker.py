@@ -9,7 +9,7 @@ from test.general import setup_multiworld
 from worlds.AutoWorld import AutoWorldRegister, call_all
 
 from .test_logic import OPTION_SETS, STEPS
-from ..items import GAME
+from ..items import GAME, LASR_TO_ITEM, TRAP_ITEMS
 from ..lasr import (DUNGEONS, ENTRANCE_POOL, HOUSE_DOOR, door_entrance, door_region, dungeon_region,
                     location_dungeon)
 from ..locations import LASR_LOCATIONS
@@ -68,6 +68,10 @@ class TestUniversalTracker(unittest.TestCase):
         # the same items reach the same locations; Universal Tracker gets the starting items from the server
         names = [item.name for item in original.itempool + world.get_pre_fill_items() if item.player == 1]
         starting = [item.name for item in original.precollected_items[1]]
+        # its item panel shows the item pool's items: every item the slot gets is in it (the traps are random)
+        locked = [LASR_TO_ITEM[world.content(loc)] for loc in world.locked]
+        self.assertEqual({item.name for item in regen.itempool if item.player == 1} - set(TRAP_ITEMS),
+                         set(names + starting + locked) - set(TRAP_ITEMS))
         rng = random.Random(seed)
         for sample in range(self.samples):
             share = rng.choice((0.0, 0.15, 0.3, 0.5, 0.7, 1.0))

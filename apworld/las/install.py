@@ -32,8 +32,9 @@ PATCHER_PREFIX = f"{Path(__file__).parent.name}/patcher/"
 PATCHER_BUILD = PATCHER_PREFIX + "build.txt"
 SOURCE_PATCHER = Path(__file__).resolve().parent.parent.parent / "patcher"
 # Top-level modules of the patcher
-PATCHER_MODULES = {"las_ap_patch", "ap_assets", "ap_bntx", "ap_chest_model", "ap_ghost_model", "ap_entrances", "ap_goal",
-                   "ap_hints", "ap_map", "ap_options", "ap_save_name", "ap_shuffles", "romfs_check", "seed_file"}
+PATCHER_MODULES = {"las_ap_patch", "ap_assets", "ap_astc", "ap_bntx", "ap_chest_model", "ap_ghost_model", "ap_entrances",
+                   "ap_goal", "ap_hints", "ap_map", "ap_options", "ap_save_name", "ap_shuffles", "ap_tracker_map",
+                   "romfs_check", "seed_file"}
 _PATCHER_LOCK = threading.Lock()
 
 
@@ -251,6 +252,28 @@ def run_builtin_patcher(patch_file: Path, romfs: Path, out: Path, log: Callable[
             _forget_patcher_modules()
     if code != 0:
         raise _PatcherExit(f"The patcher failed (exit code {code}).")
+
+
+def tracker_images(romfs: Path, log: Callable[[str], None]) -> Path:
+    """The tracker's map images for this RomFS dump (DESIGN.md, Universal Tracker map): a zip in Archipelago's cache
+    folder that the patcher's ap_tracker_map builds once per dump and image version, its decoding spread over
+    processes that import it from the patcher's folder."""
+    import Utils
+    root = builtin_patcher_dir(log)
+    with _PATCHER_LOCK:
+        saved_path = list(sys.path)
+        _forget_patcher_modules()
+        sys.path.insert(0, str(root))
+        try:
+            images = importlib.import_module("ap_tracker_map")
+            out = Path(Utils.cache_path("las", "tracker", images.romfs_key(romfs) + ".zip"))
+            if not out.is_file():
+                log("Building the tracker's map from the RomFS dump. This happens once.")
+                images.build(romfs, out, path_entry=str(root))
+            return out
+        finally:
+            sys.path[:] = saved_path
+            _forget_patcher_modules()
 
 
 class _LastLine:

@@ -1,0 +1,61 @@
+[
+ {
+  "name": "Koholint Island",
+  "img": "images/maps/island.png",
+  "location_size": 30
+ },
+ {
+  "name": "D1 - Tail Cave",
+  "img": "images/maps/d1.png",
+  "location_size": 11,
+  "location_border_thickness": 2
+ },
+ {
+  "name": "D2 - Bottle Grotto",
+  "img": "images/maps/d2.png",
+  "location_size": 11,
+  "location_border_thickness": 2
+ },
+ {
+  "name": "D3 - Key Cavern",
+  "img": "images/maps/d3.png",
+  "location_size": 11,
+  "location_border_thickness": 2
+ },
+ {
+  "name": "D4 - Angler's Tunnel",
+  "img": "images/maps/d4.png",
+  "location_size": 11,
+  "location_border_thickness": 2
+ },
+ {
+  "name": "D5 - Catfish's Maw",
+  "img": "images/maps/d5.png",
+  "location_size": 11,
+  "location_border_thickness": 2
+ },
+ {
+  "name": "D6 - Face Shrine",
+  "img": "images/maps/d6.png",
+  "location_size": 11,
+  "location_border_thickness": 2
+ },
+ {
+  "name": "D7 - Eagle's Tower",
+  "img": "images/maps/d7.png",
+  "location_size": 11,
+  "location_border_thickness": 2
+ },
+ {
+  "name": "D8 - Turtle Rock",
+  "img": "images/maps/d8.png",
+  "location_size": 11,
+  "location_border_thickness": 2
+ },
+ {
+  "name": "D0 - Color Dungeon",
+  "img": "images/maps/d0.png",
+  "location_size": 11,
+  "location_border_thickness": 2
+ }
+]

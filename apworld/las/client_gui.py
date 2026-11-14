@@ -807,6 +807,86 @@ class PatchPanel(ScrollView):
         self.content.add_widget(box)
 
 
+# Universal Tracker's item panels: the room around and between their icons, and above and below a section's name
+ITEM_GRID_PADDING, ITEM_GRID_SPACING, ITEM_HEADER_PADDING = 2, 2, 1
+
+
+def tighten_item_grids(page, tracker_world) -> None:
+    """Universal Tracker's map page lays its item sections out with ITEM_GRID_PADDING and ITEM_GRID_SPACING instead
+    of its own wider gaps: each time its init_grid sized the grids for those, they are sized again, and those it made
+    before the tab was added are sized now."""
+    init_grid = page.init_grid
+
+    def tight(layout_id, layout_configs, ctx, items, vert=True):
+        init_grid(layout_id, layout_configs, ctx, items, vert)
+        tighten(page, layout_id, layout_configs, vert)
+
+    page.init_grid = tight
+    if tracker_world is not None:
+        for layout_id, configs in (("item_tracker_left", tracker_world.map_page_item_layouts_left),
+                                   ("item_tracker_right", tracker_world.map_page_item_layouts_right)):
+            tighten(page, layout_id, configs or [], True)
+
+
+def tighten(page, layout_id: str, layout_configs, vert: bool) -> None:
+    groups = page.ids.get(layout_id)
+    if groups is None:
+        return
+    configs = {config.name: config for config in layout_configs}
+    widest = 0
+    for container in groups.children:
+        grid, header = container.children  # the header was added first
+        config = configs.get(header.text)
+        if config is None or config.orientation != "lr":
+            continue
+        grid.padding, grid.spacing = ITEM_GRID_PADDING, ITEM_GRID_SPACING
+        grid.width = config.cols * config.item_width + (config.cols - 1) * ITEM_GRID_SPACING + 2 * ITEM_GRID_PADDING
+        grid.do_layout()
+        grid.height = grid.minimum_height
+        header.padding = (0, ITEM_HEADER_PADDING)
+        header.texture_update()
+        container.do_layout()
+        container.size = container.minimum_size
+        widest = max(widest, container.width)
+    if vert and widest:
+        groups.parent.width = widest
+
+
+def fix_map_view(page) -> None:
+    """Universal Tracker's map view: its stencil does not clip the map on every renderer, so it could draw over the
+    items left of it, and Recenter put the map at the window's corner. A scissor clips the map to its box, placed
+    as each frame draws (the tabs slide), and Recenter puts the map back at the box's corner."""
+    from kivy.graphics import Callback
+    from kivy.graphics.scissor_instructions import ScissorPop, ScissorPush
+    from kivy.graphics.transformation import Matrix
+    container = page.ids.tracker_map_container
+    box = container.parent.__self__
+    scissor = ScissorPush()
+
+    def clip(*_):
+        x, y = box.to_window(*box.pos)
+        scissor.x, scissor.y, scissor.width, scissor.height = round(x), round(y), round(box.width), round(box.height)
+
+    box.canvas.before.add(Callback(clip))
+    box.canvas.before.add(scissor)
+    box.canvas.after.add(ScissorPop())
+
+    def recenter():
+        container.transform = Matrix()
+        container.pos = box.pos
+
+    container.recenter_view = recenter
+
+
+def add_doors_box(page, ctx) -> None:
+    """An Entrances box beside Universal Tracker's Auto Tab: shows or hides the doors' pins (LASContext.show_doors)."""
+    auto_tab = page.ids.auto_tab_checkitem.__self__  # the widget, not ids' weak proxy
+    doors = type(auto_tab)(text="Entrances", active=ctx.tracker_doors_shown, pos_hint={"center_y": 0.5})
+    doors.bind(active=lambda _, value: ctx.show_doors(value))
+    row = auto_tab.parent
+    row.add_widget(doors, index=row.children.index(auto_tab))
+
+
 def make_manager(base):
     class LASManager(base):
         base_title = "Archipelago Link's Awakening (Switch) Client"
@@ -818,6 +898,20 @@ def make_manager(base):
             self.patch_panel = PatchPanel(self.ctx)
             self.patch_tab = self.add_client_tab("Patch", self.patch_panel)
             return container
+
+        def add_client_tab(self, title: str, content, index: int = -1):
+            """Universal Tracker's tabs: its map tab as "Tracker", not its list of locations in logic (it keeps
+            writing to that list's widget, which is then shown nowhere)."""
+            if title == "Tracker Page":
+                return None
+            if title == "Map Page":
+                try:  # Universal Tracker's widgets as its supported versions have them; without these, its own look
+                    tighten_item_grids(content, getattr(self.ctx, "tracker_world", None))
+                    fix_map_view(content)
+                    add_doors_box(content, self.ctx)
+                except Exception as e:
+                    logger.exception(f"Could not adjust Universal Tracker's map tab: {e}")
+            return super().add_client_tab("Tracker" if title == "Map Page" else title, content, index)
 
         def show_patch_tab(self) -> None:
             if not hasattr(self, "patch_tab") or self.screens.current_tab is self.patch_tab:

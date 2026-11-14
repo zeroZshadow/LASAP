@@ -19,6 +19,7 @@ from functools import lru_cache
 from typing import Dict, List, Optional, Sequence, Tuple
 
 import ap_bntx
+from ap_bntx import bc4_values, from565
 
 FILE_NAME = "ObjTreasureBoxSeashell.bfres"
 ALBEDO = "MI_dungeonTreasureBox_01_alb"
@@ -53,11 +54,6 @@ def recolour(colour: Sequence[float]) -> Colour:
     h, s, v = colorsys.rgb_to_hsv(*(c / 255 for c in colour))
     r, g, b = colorsys.hsv_to_rgb(blue_hue(h * 360) % 360 / 360, s, v)
     return r * 255, g * 255, b * 255
-
-
-def from565(c: int) -> Tuple[int, int, int]:
-    r, g, b = c >> 11, (c >> 5) & 63, c & 31
-    return r << 3 | r >> 2, g << 2 | g >> 4, b << 3 | b >> 2
 
 
 def to565(colour: Sequence[float]) -> int:
@@ -141,16 +137,6 @@ def palette(c0: int, c1: int) -> List[Colour]:
     if c0 > c1:
         return [a, b] + [tuple(w * x + (1 - w) * y for x, y in zip(a, b)) for w in WEIGHTS[2:]]
     return [a, b, tuple((x + y) / 2 for x, y in zip(a, b)), (0, 0, 0)]
-
-
-def bc4_values(block: bytes) -> List[int]:
-    v0, v1 = block[0], block[1]
-    if v0 > v1:
-        values = [v0, v1] + [((7 - i) * v0 + i * v1) // 7 for i in range(1, 7)]
-    else:
-        values = [v0, v1] + [((5 - i) * v0 + i * v1) // 5 for i in range(1, 5)] + [0, 255]
-    bits = int.from_bytes(block[2:8], "little")
-    return [values[(bits >> (3 * p)) & 7] for p in range(16)]
 
 
 @lru_cache(maxsize=4096)

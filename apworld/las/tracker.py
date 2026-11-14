@@ -31,6 +31,10 @@ DOORS_KEY = "las_doors_{team}_{player}"
 # Data storage key holding the overworld doors the player has gone through (Entrances), {door: the inside door it leads
 # to}: going through a door or out of its inside (the game's DOOR) finds the pair. Formatted with the team and the slot.
 ENTRANCES_KEY = "las_entrances_{team}_{player}"
+# Data storage key holding the level the game shows (LASR level names: Field, Lv01TailCave, ...), for trackers.
+# Formatted with the team and the slot.
+LEVEL_KEY = "las_level_{team}_{player}"
+
 def door_pool(entrances: Optional[Mapping[str, str]]) -> List[str]:
     """The slot's door pool, from its slot data's `entrances`: with a dungeon's door among them (Shuffled dungeons
     everything) DUNGEON_POOL, else ENTRANCE_POOL."""

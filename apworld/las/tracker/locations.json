@@ -1,0 +1,6157 @@
+[
+ {
+  "name": "Locations",
+  "children": [
+   {
+    "name": "Crocodile Sale",
+    "sections": [
+     {
+      "name": "Toronbo Shores - Crocodile Sale (Trade Dog Food)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 481,
+      "y": 1011
+     }
+    ]
+   },
+   {
+    "name": "South Bay",
+    "sections": [
+     {
+      "name": "Martha's Bay - South Bay Dig"
+     },
+     {
+      "name": "Martha's Bay - Owl Statue South Bay"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1336,
+      "y": 966
+     }
+    ]
+   },
+   {
+    "name": "Mermaid Statue",
+    "sections": [
+     {
+      "name": "Martha's Bay - Mermaid Statue"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1237,
+      "y": 1006
+     }
+    ]
+   },
+   {
+    "name": "Animal Village Outskirts",
+    "sections": [
+     {
+      "name": "Animal Village - Animal Village Northwest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1545,
+      "y": 880
+     }
+    ]
+   },
+   {
+    "name": "Animal Village Cave",
+    "sections": [
+     {
+      "name": "Animal Village - Animal Village Cave"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1755,
+      "y": 880
+     }
+    ]
+   },
+   {
+    "name": "Christine's House",
+    "sections": [
+     {
+      "name": "Animal Village - Christine's House (Trade Flower)"
+     },
+     {
+      "name": "Animal Village - Christine Grateful"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1683,
+      "y": 894
+     }
+    ]
+   },
+   {
+    "name": "Pond House",
+    "sections": [
+     {
+      "name": "Animal Village - Invisible Zora"
+     },
+     {
+      "name": "Animal Village - Trade Broom to Grandma"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1718,
+      "y": 894
+     }
+    ]
+   },
+   {
+    "name": "Chef Bear",
+    "sections": [
+     {
+      "name": "Animal Village - Chef Bear (Trade Honeycomb)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1720,
+      "y": 940
+     }
+    ]
+   },
+   {
+    "name": "East Beach",
+    "sections": [
+     {
+      "name": "Toronbo Shores - Beach Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 765,
+      "y": 1014
+     }
+    ]
+   },
+   {
+    "name": "Beach Sand",
+    "sections": [
+     {
+      "name": "Toronbo Shores - Beach Dig"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 668,
+      "y": 1104
+     }
+    ]
+   },
+   {
+    "name": "West Beach",
+    "sections": [
+     {
+      "name": "Toronbo Shores - Washed Up"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 338,
+      "y": 1104
+     }
+    ]
+   },
+   {
+    "name": "Goriya Cave",
+    "sections": [
+     {
+      "name": "Toronbo Shores - Goriya Cave (Boomerang Trade)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 543,
+      "y": 1042
+     }
+    ]
+   },
+   {
+    "name": "Dampe",
+    "sections": [
+     {
+      "name": "Tal Tal Heights - Dampe Page 1"
+     },
+     {
+      "name": "Tal Tal Heights - Dampe Heart Challenge"
+     },
+     {
+      "name": "Tal Tal Heights - Dampe Page 2"
+     },
+     {
+      "name": "Tal Tal Heights - Dampe Bottle Challenge"
+     },
+     {
+      "name": "Tal Tal Heights - Dampe Final"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 962,
+      "y": 319
+     }
+    ]
+   },
+   {
+    "name": "Taltal Entrance Cave",
+    "sections": [
+     {
+      "name": "Tal Tal Mountains East - Taltal Entrance Blocks"
+     },
+     {
+      "name": "Tal Tal Mountains East - Taltal Entrance Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 952,
+      "y": 190
+     }
+    ]
+   },
+   {
+    "name": "Taltal East Exterior",
+    "sections": [
+     {
+      "name": "Tal Tal Mountains East - Taltal East Left Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1088,
+      "y": 190
+     }
+    ]
+   },
+   {
+    "name": "Wasteland Soil",
+    "sections": [
+     {
+      "name": "Tabahl Wasteland - Wasteland Dig"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 998,
+      "y": 430
+     }
+    ]
+   },
+   {
+    "name": "Wasteland",
+    "sections": [
+     {
+      "name": "Tabahl Wasteland - North Wasteland"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 979,
+      "y": 384
+     }
+    ]
+   },
+   {
+    "name": "North Heights",
+    "sections": [
+     {
+      "name": "Tal Tal Heights - North of Moblin Cave"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 728,
+      "y": 280
+     }
+    ]
+   },
+   {
+    "name": "Sandpit",
+    "sections": [
+     {
+      "name": "Yarna Desert - Lanmola"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1838,
+      "y": 894
+     }
+    ]
+   },
+   {
+    "name": "Desert Cave",
+    "sections": [
+     {
+      "name": "Yarna Desert - Desert Cave"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1993,
+      "y": 880
+     }
+    ]
+   },
+   {
+    "name": "Walrus",
+    "sections": [
+     {
+      "name": "Yarna Desert - Walrus"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1755,
+      "y": 1067
+     }
+    ]
+   },
+   {
+    "name": "Desert Sand",
+    "sections": [
+     {
+      "name": "Yarna Desert - Desert Dig"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1942,
+      "y": 898
+     }
+    ]
+   },
+   {
+    "name": "Desert Rock",
+    "sections": [
+     {
+      "name": "Yarna Desert - Desert South"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1967,
+      "y": 1064
+     }
+    ]
+   },
+   {
+    "name": "Ghost's Grave",
+    "sections": [
+     {
+      "name": "Koholint Prairie - Ghost Reward"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 567,
+      "y": 534
+     }
+    ]
+   },
+   {
+    "name": "Ghost Grave Pit",
+    "sections": [
+     {
+      "name": "Koholint Prairie - Ghost Grave Dig"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 616,
+      "y": 587
+     }
+    ]
+   },
+   {
+    "name": "Graveyard Cave",
+    "sections": [
+     {
+      "name": "Koholint Prairie - Graveyard Cave"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 704,
+      "y": 584
+     }
+    ]
+   },
+   {
+    "name": "Graveyard Cave",
+    "sections": [
+     {
+      "name": "Koholint Prairie - Graveyard Cave"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 866,
+      "y": 570
+     }
+    ]
+   },
+   {
+    "name": "Ghost House",
+    "sections": [
+     {
+      "name": "Martha's Bay - Ghost House Pot"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 862,
+      "y": 1067
+     }
+    ]
+   },
+   {
+    "name": "Heights Hole",
+    "sections": [
+     {
+      "name": "Tal Tal Heights - Taltal Heights Hole"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1658,
+      "y": 302
+     }
+    ]
+   },
+   {
+    "name": "Kanalet West",
+    "sections": [
+     {
+      "name": "Kanalet Castle - Kanalet Crow"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1058,
+      "y": 479
+     }
+    ]
+   },
+   {
+    "name": "Kanalet East",
+    "sections": [
+     {
+      "name": "Kanalet Castle - Kanalet Mad Bomber"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1348,
+      "y": 497
+     }
+    ]
+   },
+   {
+    "name": "Kanalet Castle",
+    "sections": [
+     {
+      "name": "Kanalet Castle - Kanalet Kill Room"
+     },
+     {
+      "name": "Kanalet Castle - Kanalet Bombed Guard"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1222,
+      "y": 557
+     }
+    ]
+   },
+   {
+    "name": "Kanalet Top Floor",
+    "sections": [
+     {
+      "name": "Kanalet Castle - Kanalet Final Guard"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1222,
+      "y": 482
+     }
+    ]
+   },
+   {
+    "name": "Dream Shrine",
+    "sections": [
+     {
+      "name": "Mabe Village - Dream Shrine Right"
+     },
+     {
+      "name": "Mabe Village - Dream Shrine Left"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 442,
+      "y": 640
+     }
+    ]
+   },
+   {
+    "name": "Mabe Garden",
+    "sections": [
+     {
+      "name": "Mabe Village - Mabe Bushes"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 482,
+      "y": 763
+     }
+    ]
+   },
+   {
+    "name": "Doghouse",
+    "sections": [
+     {
+      "name": "Mabe Village - Doghouse Seashell Dig"
+     },
+     {
+      "name": "Mabe Village - Trade Ribbon to CiaoCiao"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 242,
+      "y": 762
+     }
+    ]
+   },
+   {
+    "name": "Well",
+    "sections": [
+     {
+      "name": "Mabe Village - Mabe Well"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 110,
+      "y": 775
+     }
+    ]
+   },
+   {
+    "name": "Fishing Hole",
+    "sections": [
+     {
+      "name": "Mabe Village - Fishing Any"
+     },
+     {
+      "name": "Mabe Village - Fishing 50"
+     },
+     {
+      "name": "Mabe Village - Fishing 100"
+     },
+     {
+      "name": "Mabe Village - Fishing 150"
+     },
+     {
+      "name": "Mabe Village - Fishing Cheep Cheep"
+     },
+     {
+      "name": "Mabe Village - Fishing Ol' Baron"
+     },
+     {
+      "name": "Mabe Village - Fishing Loose"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 240,
+      "y": 643
+     }
+    ]
+   },
+   {
+    "name": "Marin's House",
+    "sections": [
+     {
+      "name": "Mabe Village - Tarin"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 352,
+      "y": 767
+     }
+    ]
+   },
+   {
+    "name": "Marin",
+    "sections": [
+     {
+      "name": "Mabe Village - Ocarina with Marin"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 394,
+      "y": 730
+     }
+    ]
+   },
+   {
+    "name": "Mabe Shop",
+    "sections": [
+     {
+      "name": "Mabe Village - Shop Slot3 1st"
+     },
+     {
+      "name": "Mabe Village - Shop Slot3 2nd"
+     },
+     {
+      "name": "Mabe Village - Shop Slot5 1st"
+     },
+     {
+      "name": "Mabe Village - Shop Slot5 2nd"
+     },
+     {
+      "name": "Mabe Village - Shop Slot5 3rd"
+     },
+     {
+      "name": "Mabe Village - Shop Slot5 4th"
+     },
+     {
+      "name": "Mabe Village - Shop Slot5 5th"
+     },
+     {
+      "name": "Mabe Village - Shop Slot5 6th"
+     },
+     {
+      "name": "Mabe Village - Shop Slot5 7th"
+     },
+     {
+      "name": "Mabe Village - Shop Slot6"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 472,
+      "y": 714
+     }
+    ]
+   },
+   {
+    "name": "Mamasha",
+    "sections": [
+     {
+      "name": "Mabe Village - Mamasha (Trade Yoshi Doll)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 370,
+      "y": 629
+     }
+    ]
+   },
+   {
+    "name": "Outside Tail Cave",
+    "sections": [
+     {
+      "name": "Toronbo Shores - Tail Cave Bonk Tree"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 338,
+      "y": 960
+     }
+    ]
+   },
+   {
+    "name": "Beach Tree",
+    "sections": [
+     {
+      "name": "Toronbo Shores - Beach Bonk Tree"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 164,
+      "y": 1042
+     }
+    ]
+   },
+   {
+    "name": "Maze Cave",
+    "sections": [
+     {
+      "name": "Ancient Ruins - Armos Cave"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1830,
+      "y": 790
+     }
+    ]
+   },
+   {
+    "name": "Rock Maze",
+    "sections": [
+     {
+      "name": "Ancient Ruins - Rock Maze"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1916,
+      "y": 688
+     }
+    ]
+   },
+   {
+    "name": "Armos Shrine",
+    "sections": [
+     {
+      "name": "Ancient Ruins - Armos Knight"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1598,
+      "y": 767
+     }
+    ]
+   },
+   {
+    "name": "Goponga Cave",
+    "sections": [
+     {
+      "name": "Goponga Swamp - Goponga Cave Left"
+     },
+     {
+      "name": "Goponga Swamp - Goponga Cave Right"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 165,
+      "y": 287
+     }
+    ]
+   },
+   {
+    "name": "Goponga West",
+    "sections": [
+     {
+      "name": "Goponga Swamp - Goponga West Dig"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 259,
+      "y": 294
+     }
+    ]
+   },
+   {
+    "name": "Mr. Write",
+    "sections": [
+     {
+      "name": "Goponga Swamp - Mr. Write (Trade Letter)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 134,
+      "y": 329
+     }
+    ]
+   },
+   {
+    "name": "Slime Pond",
+    "sections": [
+     {
+      "name": "Ukuku Prairie - Pond Island"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 865,
+      "y": 771
+     }
+    ]
+   },
+   {
+    "name": "Southwest Bay",
+    "sections": [
+     {
+      "name": "Martha's Bay - Southwest Bay Bush"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1186,
+      "y": 1035
+     }
+    ]
+   },
+   {
+    "name": "Seashell Mansion Ext",
+    "sections": [
+     {
+      "name": "Ukuku Prairie - Beside Seashell Mansion"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1454,
+      "y": 664
+     }
+    ]
+   },
+   {
+    "name": "Bay Coast",
+    "sections": [
+     {
+      "name": "Martha's Bay - Small Coast Island"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1089,
+      "y": 1071
+     }
+    ]
+   },
+   {
+    "name": "Bay Plateau",
+    "sections": [
+     {
+      "name": "Martha's Bay - Above Cave Dig"
+     },
+     {
+      "name": "Martha's Bay - Owl Statue Above Cave"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1088,
+      "y": 783
+     }
+    ]
+   },
+   {
+    "name": "Atop D3",
+    "sections": [
+     {
+      "name": "Ukuku Prairie - Above D3"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 728,
+      "y": 762
+     }
+    ]
+   },
+   {
+    "name": "Skull Rock",
+    "sections": [
+     {
+      "name": "Ukuku Prairie - Under Skull Rock"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 975,
+      "y": 711
+     }
+    ]
+   },
+   {
+    "name": "Ukuku West Cave",
+    "sections": [
+     {
+      "name": "Ukuku Prairie - Ukuku Cave West Chest"
+     },
+     {
+      "name": "Ukuku Prairie - Ukuku Cave West Loose"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 652,
+      "y": 670
+     }
+    ]
+   },
+   {
+    "name": "Ukuku East",
+    "sections": [
+     {
+      "name": "Ukuku Prairie - Ukuku Cave East Chest"
+     },
+     {
+      "name": "Ukuku Prairie - Ukuku Cave East Loose"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 802,
+      "y": 654
+     }
+    ]
+   },
+   {
+    "name": "Bay Cove",
+    "sections": [
+     {
+      "name": "Martha's Bay - Mad Batter Bay"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 878,
+      "y": 1000
+     }
+    ]
+   },
+   {
+    "name": "Bay Passage",
+    "sections": [
+     {
+      "name": "Martha's Bay - Bay Passage Sunken"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1249,
+      "y": 1082
+     }
+    ]
+   },
+   {
+    "name": "River Crossing",
+    "sections": [
+     {
+      "name": "Martha's Bay - River Crossing Cave"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1384,
+      "y": 790
+     }
+    ]
+   },
+   {
+    "name": "River Crossing",
+    "sections": [
+     {
+      "name": "Martha's Bay - River Crossing Cave"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1498,
+      "y": 793
+     }
+    ]
+   },
+   {
+    "name": "Kiki the Monkey",
+    "sections": [
+     {
+      "name": "Ukuku Prairie - Kiki the Monkey (Trade Bananas)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1460,
+      "y": 624
+     }
+    ]
+   },
+   {
+    "name": "Tarin",
+    "sections": [
+     {
+      "name": "Ukuku Prairie - Tarin (Trade Stick)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 970,
+      "y": 648
+     }
+    ]
+   },
+   {
+    "name": "Kanalet Moat Ledge",
+    "sections": [
+     {
+      "name": "Ukuku Prairie - Kanalet South Cave"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1058,
+      "y": 624
+     }
+    ]
+   },
+   {
+    "name": "Bay Maze",
+    "sections": [
+     {
+      "name": "Martha's Bay - Plains Rock Maze"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1211,
+      "y": 840
+     }
+    ]
+   },
+   {
+    "name": "Ukuku Tree",
+    "sections": [
+     {
+      "name": "Ukuku Prairie - Ukuku Bonk Tree"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 624,
+      "y": 760
+     }
+    ]
+   },
+   {
+    "name": "Seashell Mansion",
+    "sections": [
+     {
+      "name": "Ukuku Prairie - Seashell Mansion 5 Seashells"
+     },
+     {
+      "name": "Ukuku Prairie - Seashell Mansion 15 Seashells"
+     },
+     {
+      "name": "Ukuku Prairie - Seashell Mansion 30 Seashells"
+     },
+     {
+      "name": "Ukuku Prairie - Seashell Mansion 40 Seashells"
+     },
+     {
+      "name": "Ukuku Prairie - Seashell Mansion 50 Seashells"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1347,
+      "y": 659
+     }
+    ]
+   },
+   {
+    "name": "Rapids West",
+    "sections": [
+     {
+      "name": "Rapids Ride - Rapids West Island"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1590,
+      "y": 460
+     }
+    ]
+   },
+   {
+    "name": "Rapids Middle",
+    "sections": [
+     {
+      "name": "Rapids Ride - Rapids Middle Island"
+     },
+     {
+      "name": "Rapids Ride - Owl Statue Rapids"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1707,
+      "y": 450
+     }
+    ]
+   },
+   {
+    "name": "Rapids East",
+    "sections": [
+     {
+      "name": "Rapids Ride - Rapids East Island"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1820,
+      "y": 486
+     }
+    ]
+   },
+   {
+    "name": "Rapids From D6",
+    "sections": [
+     {
+      "name": "Rapids Ride - Rapids South Island"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1570,
+      "y": 534
+     }
+    ]
+   },
+   {
+    "name": "Rapids Race",
+    "sections": [
+     {
+      "name": "Rapids Ride - Rapids Race 45"
+     },
+     {
+      "name": "Rapids Ride - Rapids Race 35"
+     },
+     {
+      "name": "Rapids Ride - Rapids Race 30"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1930,
+      "y": 338
+     }
+    ]
+   },
+   {
+    "name": "Rapids Race",
+    "sections": [
+     {
+      "name": "Rapids Ride - Rapids Race 45"
+     },
+     {
+      "name": "Rapids Ride - Rapids Race 35"
+     },
+     {
+      "name": "Rapids Ride - Rapids Race 30"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1944,
+      "y": 652
+     }
+    ]
+   },
+   {
+    "name": "Rapids Cave",
+    "sections": [
+     {
+      "name": "Rapids Ride - Rapids Ascent Cave"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1891,
+      "y": 653
+     }
+    ]
+   },
+   {
+    "name": "Mermaid",
+    "sections": [
+     {
+      "name": "Martha's Bay - Mermaid (Trade Necklace)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1275,
+      "y": 893
+     }
+    ]
+   },
+   {
+    "name": "Fisherman under the Bridge",
+    "sections": [
+     {
+      "name": "Martha's Bay - Fisherman under the Bridge (Trade Hook)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1358,
+      "y": 1014
+     }
+    ]
+   },
+   {
+    "name": "North Moat",
+    "sections": [
+     {
+      "name": "Kanalet Castle - Kanalet Moat North"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1100,
+      "y": 396
+     }
+    ]
+   },
+   {
+    "name": "South Moat",
+    "sections": [
+     {
+      "name": "Kanalet Castle - Kanalet Moat South"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1161,
+      "y": 616
+     }
+    ]
+   },
+   {
+    "name": "South Bay Pond",
+    "sections": [
+     {
+      "name": "Martha's Bay - South Bay Sunken"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1238,
+      "y": 1041
+     }
+    ]
+   },
+   {
+    "name": "Signpost Maze",
+    "sections": [
+     {
+      "name": "Sign Maze - Mamu"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 638,
+      "y": 954
+     }
+    ]
+   },
+   {
+    "name": "Goponga Swamp",
+    "sections": [
+     {
+      "name": "Goponga Swamp - Swamp Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 555,
+      "y": 332
+     }
+    ]
+   },
+   {
+    "name": "Papahl's Cave",
+    "sections": [
+     {
+      "name": "Tal Tal Mountains East - Taltal Left Ascent Cave"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1260,
+      "y": 212
+     }
+    ]
+   },
+   {
+    "name": "Papahl",
+    "sections": [
+     {
+      "name": "Tal Tal Mountains East - Papahl (Trade Pineapple)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1214,
+      "y": 184
+     }
+    ]
+   },
+   {
+    "name": "Taltal Bomb Hole",
+    "sections": [
+     {
+      "name": "Tal Tal Mountains East - Taltal Bomb Hole"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1267,
+      "y": 142
+     }
+    ]
+   },
+   {
+    "name": "Taltal Rooster Cave",
+    "sections": [
+     {
+      "name": "Tal Tal Mountains East - Taltal Rooster Cave"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1372,
+      "y": 167
+     }
+    ]
+   },
+   {
+    "name": "Taltal Crossing",
+    "sections": [
+     {
+      "name": "Tal Tal Mountains East - Taltal Crossing Cave"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 952,
+      "y": 138
+     }
+    ]
+   },
+   {
+    "name": "Taltal Crossing",
+    "sections": [
+     {
+      "name": "Tal Tal Mountains East - Taltal Crossing Cave"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 767,
+      "y": 211
+     }
+    ]
+   },
+   {
+    "name": "Tal Tal East Upper",
+    "sections": [
+     {
+      "name": "Tal Tal Mountains East - Taltal East Bridge"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1633,
+      "y": 118
+     }
+    ]
+   },
+   {
+    "name": "Taltal Water",
+    "sections": [
+     {
+      "name": "Tal Tal Mountains East - Taltal Sunken"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1609,
+      "y": 229
+     }
+    ]
+   },
+   {
+    "name": "Tal Tal Ledge",
+    "sections": [
+     {
+      "name": "Tal Tal Mountains East - Taltal Ledge Chest"
+     },
+     {
+      "name": "Tal Tal Mountains East - Taltal 5 Chest Puzzle"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1695,
+      "y": 190
+     }
+    ]
+   },
+   {
+    "name": "Manbo's Cave",
+    "sections": [
+     {
+      "name": "Tal Tal Heights - Manbo"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1358,
+      "y": 287
+     }
+    ]
+   },
+   {
+    "name": "Taltal River Cave",
+    "sections": [
+     {
+      "name": "Tal Tal Heights - Taltal East Drop"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1844,
+      "y": 286
+     }
+    ]
+   },
+   {
+    "name": "Taltal West",
+    "sections": [
+     {
+      "name": "Tal Tal Mountains West - Taltal West Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 600,
+      "y": 137
+     }
+    ]
+   },
+   {
+    "name": "Taltal West Cave",
+    "sections": [
+     {
+      "name": "Tal Tal Mountains West - Mad Batter Taltal"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 619,
+      "y": 160
+     }
+    ]
+   },
+   {
+    "name": "Taltal West Ext",
+    "sections": [
+     {
+      "name": "Tal Tal Mountains West - Taltal West Rock"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 743,
+      "y": 136
+     }
+    ]
+   },
+   {
+    "name": "Taltal West Lower",
+    "sections": [
+     {
+      "name": "Tal Tal Mountains West - Taltal West Escape"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 276,
+      "y": 233
+     }
+    ]
+   },
+   {
+    "name": "Taltal West 2",
+    "sections": [
+     {
+      "name": "Tal Tal Mountains West - Taltal West Dig"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 384,
+      "y": 172
+     }
+    ]
+   },
+   {
+    "name": "Taltal Peak",
+    "sections": [
+     {
+      "name": "Tal Tal Mountains West - Above Turtle Rock"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 98,
+      "y": 87
+     }
+    ]
+   },
+   {
+    "name": "Trendy Store",
+    "sections": [
+     {
+      "name": "Mabe Village - Trendy Prize 1"
+     },
+     {
+      "name": "Mabe Village - Trendy Prize 2"
+     },
+     {
+      "name": "Mabe Village - Trendy Prize 3"
+     },
+     {
+      "name": "Mabe Village - Trendy Prize 4"
+     },
+     {
+      "name": "Mabe Village - Trendy Prize 5"
+     },
+     {
+      "name": "Mabe Village - Trendy Prize 6"
+     },
+     {
+      "name": "Mabe Village - Trendy Prize Final"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 482,
+      "y": 827
+     }
+    ]
+   },
+   {
+    "name": "Villa Cave",
+    "sections": [
+     {
+      "name": "Pothole Field - Villa Cave"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 825,
+      "y": 902
+     }
+    ]
+   },
+   {
+    "name": "Pothole Field Loose",
+    "sections": [
+     {
+      "name": "Pothole Field - Pothole Field Heart Piece"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 963,
+      "y": 854
+     }
+    ]
+   },
+   {
+    "name": "Pothole Field",
+    "sections": [
+     {
+      "name": "Pothole Field - Pothole Field Slime Key"
+     },
+     {
+      "name": "Pothole Field - Owl Statue Pothole"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 878,
+      "y": 885
+     }
+    ]
+   },
+   {
+    "name": "Woods Crossing Cave",
+    "sections": [
+     {
+      "name": "Mysterious Woods - Woods Crossing Cave Chest"
+     },
+     {
+      "name": "Mysterious Woods - Woods Crossing Cave Loose"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 382,
+      "y": 524
+     }
+    ]
+   },
+   {
+    "name": "Woods Crossing Cave",
+    "sections": [
+     {
+      "name": "Mysterious Woods - Woods Crossing Cave Chest"
+     },
+     {
+      "name": "Mysterious Woods - Woods Crossing Cave Loose"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 146,
+      "y": 460
+     }
+    ]
+   },
+   {
+    "name": "Woods North Cave",
+    "sections": [
+     {
+      "name": "Mysterious Woods - Woods North Cave Chest"
+     },
+     {
+      "name": "Mysterious Woods - Woods North Cave Loose"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 333,
+      "y": 406
+     }
+    ]
+   },
+   {
+    "name": "Woods Batter",
+    "sections": [
+     {
+      "name": "Mysterious Woods - Mad Batter Woods"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 380,
+      "y": 454
+     }
+    ]
+   },
+   {
+    "name": "Woods South",
+    "sections": [
+     {
+      "name": "Mysterious Woods - Woods South Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 216,
+      "y": 586
+     }
+    ]
+   },
+   {
+    "name": "Woods North",
+    "sections": [
+     {
+      "name": "Mysterious Woods - Woods North Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 218,
+      "y": 401
+     }
+    ]
+   },
+   {
+    "name": "Woods West",
+    "sections": [
+     {
+      "name": "Mysterious Woods - Woods West Dig"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 103,
+      "y": 384
+     }
+    ]
+   },
+   {
+    "name": "Woods East",
+    "sections": [
+     {
+      "name": "Mysterious Woods - Woods East Dig"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 344,
+      "y": 472
+     }
+    ]
+   },
+   {
+    "name": "Toadstool",
+    "sections": [
+     {
+      "name": "Mysterious Woods - Toadstool Spot"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 74,
+      "y": 460
+     }
+    ]
+   },
+   {
+    "name": "Diamond Island",
+    "sections": [
+     {
+      "name": "Koholint Prairie - Diamond Island"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 592,
+      "y": 407
+     }
+    ]
+   },
+   {
+    "name": "Witch's Hut",
+    "sections": [
+     {
+      "name": "Koholint Prairie - Witch's Hut"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 716,
+      "y": 505
+     }
+    ]
+   },
+   {
+    "name": "03G",
+    "sections": [
+     {
+      "name": "Tail Cave - Full Moon Cello"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D1 - Tail Cave",
+      "x": 527,
+      "y": 152
+     }
+    ]
+   },
+   {
+    "name": "04G",
+    "sections": [
+     {
+      "name": "Tail Cave - Moldorm"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D1 - Tail Cave",
+      "x": 507,
+      "y": 212
+     }
+    ]
+   },
+   {
+    "name": "05A",
+    "sections": [
+     {
+      "name": "Tail Cave - Feather Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D1 - Tail Cave",
+      "x": 43,
+      "y": 280
+     }
+    ]
+   },
+   {
+    "name": "05D",
+    "sections": [
+     {
+      "name": "Tail Cave - Nightmare Key"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D1 - Tail Cave",
+      "x": 283,
+      "y": 272
+     }
+    ]
+   },
+   {
+    "name": "05F",
+    "sections": [
+     {
+      "name": "Tail Cave - 3 of a Kind"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D1 - Tail Cave",
+      "x": 475,
+      "y": 280
+     }
+    ]
+   },
+   {
+    "name": "06B",
+    "sections": [
+     {
+      "name": "Tail Cave - Bombable Wall"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D1 - Tail Cave",
+      "x": 123,
+      "y": 352
+     }
+    ]
+   },
+   {
+    "name": "06C",
+    "sections": [
+     {
+      "name": "Tail Cave - Kill the Moldorms"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D1 - Tail Cave",
+      "x": 247,
+      "y": 344
+     }
+    ]
+   },
+   {
+    "name": "06D",
+    "sections": [
+     {
+      "name": "Tail Cave - Spark Guarded Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D1 - Tail Cave",
+      "x": 283,
+      "y": 344
+     }
+    ]
+   },
+   {
+    "name": "07D",
+    "sections": [
+     {
+      "name": "Tail Cave - The Button"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D1 - Tail Cave",
+      "x": 315,
+      "y": 400
+     }
+    ]
+   },
+   {
+    "name": "07E",
+    "sections": [
+     {
+      "name": "Tail Cave - Map Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D1 - Tail Cave",
+      "x": 395,
+      "y": 416
+     }
+    ]
+   },
+   {
+    "name": "08B",
+    "sections": [
+     {
+      "name": "Tail Cave - Compass Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D1 - Tail Cave",
+      "x": 115,
+      "y": 480
+     }
+    ]
+   },
+   {
+    "name": "08C",
+    "sections": [
+     {
+      "name": "Tail Cave - Hardhat Beetles"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D1 - Tail Cave",
+      "x": 187,
+      "y": 480
+     }
+    ]
+   },
+   {
+    "name": "04C",
+    "sections": [
+     {
+      "name": "Tail Cave - Owl (Long Hallway)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D1 - Tail Cave",
+      "x": 195,
+      "y": 200
+     }
+    ]
+   },
+   {
+    "name": "04B",
+    "sections": [
+     {
+      "name": "Tail Cave - Owl (Spinies)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D1 - Tail Cave",
+      "x": 131,
+      "y": 200
+     }
+    ]
+   },
+   {
+    "name": "05F",
+    "sections": [
+     {
+      "name": "Tail Cave - Owl (3-of-a-Kind)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D1 - Tail Cave",
+      "x": 451,
+      "y": 264
+     }
+    ]
+   },
+   {
+    "name": "04F",
+    "sections": [
+     {
+      "name": "Bottle Grotto - Conch Horn"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D2 - Bottle Grotto",
+      "x": 447,
+      "y": 216
+     }
+    ]
+   },
+   {
+    "name": "04G",
+    "sections": [
+     {
+      "name": "Bottle Grotto - Mad Genie"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D2 - Bottle Grotto",
+      "x": 507,
+      "y": 212
+     }
+    ]
+   },
+   {
+    "name": "02B",
+    "sections": [
+     {
+      "name": "Bottle Grotto - Just a couple Boos"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D2 - Bottle Grotto",
+      "x": 155,
+      "y": 88
+     }
+    ]
+   },
+   {
+    "name": "02C",
+    "sections": [
+     {
+      "name": "Bottle Grotto - The Lonely Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D2 - Bottle Grotto",
+      "x": 227,
+      "y": 88
+     }
+    ]
+   },
+   {
+    "name": "02D",
+    "sections": [
+     {
+      "name": "Bottle Grotto - Blocks Everywhere"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D2 - Bottle Grotto",
+      "x": 307,
+      "y": 88
+     }
+    ]
+   },
+   {
+    "name": "03C",
+    "sections": [
+     {
+      "name": "Bottle Grotto - Map Chest in Vacuum Room"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D2 - Bottle Grotto",
+      "x": 187,
+      "y": 152
+     }
+    ]
+   },
+   {
+    "name": "03F",
+    "sections": [
+     {
+      "name": "Bottle Grotto - Pols Voice, Keese, then the Hooded Stalfos"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D2 - Bottle Grotto",
+      "x": 475,
+      "y": 152
+     }
+    ]
+   },
+   {
+    "name": "06B",
+    "sections": [
+     {
+      "name": "Bottle Grotto - Chest across the gap"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D2 - Bottle Grotto",
+      "x": 123,
+      "y": 344
+     }
+    ]
+   },
+   {
+    "name": "07D",
+    "sections": [
+     {
+      "name": "Bottle Grotto - Kill the Stalfos"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D2 - Bottle Grotto",
+      "x": 267,
+      "y": 416
+     }
+    ]
+   },
+   {
+    "name": "07F",
+    "sections": [
+     {
+      "name": "Bottle Grotto - Kill the Shyguys"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D2 - Bottle Grotto",
+      "x": 427,
+      "y": 416
+     }
+    ]
+   },
+   {
+    "name": "08C",
+    "sections": [
+     {
+      "name": "Bottle Grotto - Entrance Pot Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D2 - Bottle Grotto",
+      "x": 179,
+      "y": 472
+     }
+    ]
+   },
+   {
+    "name": "08D",
+    "sections": [
+     {
+      "name": "Bottle Grotto - Compass Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D2 - Bottle Grotto",
+      "x": 315,
+      "y": 472
+     }
+    ]
+   },
+   {
+    "name": "08E",
+    "sections": [
+     {
+      "name": "Bottle Grotto - Surrounded by Blocks"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D2 - Bottle Grotto",
+      "x": 355,
+      "y": 488
+     }
+    ]
+   },
+   {
+    "name": "08F",
+    "sections": [
+     {
+      "name": "Bottle Grotto - Button across the room"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D2 - Bottle Grotto",
+      "x": 475,
+      "y": 472
+     }
+    ]
+   },
+   {
+    "name": "07E",
+    "sections": [
+     {
+      "name": "Bottle Grotto - Owl (First Switch)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D2 - Bottle Grotto",
+      "x": 363,
+      "y": 392
+     }
+    ]
+   },
+   {
+    "name": "06G",
+    "sections": [
+     {
+      "name": "Bottle Grotto - Owl (Push Puzzle)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D2 - Bottle Grotto",
+      "x": 507,
+      "y": 328
+     }
+    ]
+   },
+   {
+    "name": "04C",
+    "sections": [
+     {
+      "name": "Bottle Grotto - Owl (Past Hinox)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D2 - Bottle Grotto",
+      "x": 211,
+      "y": 200
+     }
+    ]
+   },
+   {
+    "name": "06G",
+    "sections": [
+     {
+      "name": "Key Cavern - Sea Lily's Bell"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 527,
+      "y": 344
+     }
+    ]
+   },
+   {
+    "name": "07G",
+    "sections": [
+     {
+      "name": "Key Cavern - Slime Eye"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 507,
+      "y": 404
+     }
+    ]
+   },
+   {
+    "name": "08G",
+    "sections": [
+     {
+      "name": "Key Cavern - Conveyor Keese Mayhem"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 507,
+      "y": 480
+     }
+    ]
+   },
+   {
+    "name": "01B",
+    "sections": [
+     {
+      "name": "Key Cavern - Bombwall Room with Bombites"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 107,
+      "y": 32
+     }
+    ]
+   },
+   {
+    "name": "01C",
+    "sections": [
+     {
+      "name": "Key Cavern - After the Bombites"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 203,
+      "y": 24
+     }
+    ]
+   },
+   {
+    "name": "02A",
+    "sections": [
+     {
+      "name": "Key Cavern - Kill the Zols and Stalfos"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 75,
+      "y": 88
+     }
+    ]
+   },
+   {
+    "name": "02C",
+    "sections": [
+     {
+      "name": "Key Cavern - Chest after Dodongos"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 203,
+      "y": 88
+     }
+    ]
+   },
+   {
+    "name": "02D",
+    "sections": [
+     {
+      "name": "Key Cavern - East Ledge"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 315,
+      "y": 80
+     }
+    ]
+   },
+   {
+    "name": "03A",
+    "sections": [
+     {
+      "name": "Key Cavern - Pairodd Ceiling Key"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 27,
+      "y": 160
+     }
+    ]
+   },
+   {
+    "name": "04C",
+    "sections": [
+     {
+      "name": "Key Cavern - Kill the Five Zols"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 187,
+      "y": 224
+     }
+    ]
+   },
+   {
+    "name": "03G",
+    "sections": [
+     {
+      "name": "Key Cavern - North Basement Room"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 507,
+      "y": 160
+     }
+    ]
+   },
+   {
+    "name": "04F",
+    "sections": [
+     {
+      "name": "Key Cavern - West Ceiling Key"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 427,
+      "y": 224
+     }
+    ]
+   },
+   {
+    "name": "05G",
+    "sections": [
+     {
+      "name": "Key Cavern - South Ceiling Key"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 507,
+      "y": 288
+     }
+    ]
+   },
+   {
+    "name": "04B",
+    "sections": [
+     {
+      "name": "Key Cavern - Beak Chest around Blocks"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 115,
+      "y": 224
+     }
+    ]
+   },
+   {
+    "name": "05B",
+    "sections": [
+     {
+      "name": "Key Cavern - Kill the Stalfos & the Zol"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 155,
+      "y": 280
+     }
+    ]
+   },
+   {
+    "name": "06B",
+    "sections": [
+     {
+      "name": "Key Cavern - Kill the Zols"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 155,
+      "y": 336
+     }
+    ]
+   },
+   {
+    "name": "06C",
+    "sections": [
+     {
+      "name": "Key Cavern - Map Chest East of the 4 Zols"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 211,
+      "y": 352
+     }
+    ]
+   },
+   {
+    "name": "07B",
+    "sections": [
+     {
+      "name": "Key Cavern - First Room North"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 155,
+      "y": 408
+     }
+    ]
+   },
+   {
+    "name": "08C",
+    "sections": [
+     {
+      "name": "Key Cavern - East of Entrance"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 235,
+      "y": 472
+     }
+    ]
+   },
+   {
+    "name": "03G",
+    "sections": [
+     {
+      "name": "Key Cavern - Owl (Basement North)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 515,
+      "y": 160
+     }
+    ]
+   },
+   {
+    "name": "02D",
+    "sections": [
+     {
+      "name": "Key Cavern - Owl (Arrow)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 275,
+      "y": 72
+     }
+    ]
+   },
+   {
+    "name": "01A",
+    "sections": [
+     {
+      "name": "Key Cavern - Owl (Northwest)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D3 - Key Cavern",
+      "x": 43,
+      "y": 8
+     }
+    ]
+   },
+   {
+    "name": "03B",
+    "sections": [
+     {
+      "name": "Angler's Tunnel - Surf Harp"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D4 - Angler's Tunnel",
+      "x": 127,
+      "y": 152
+     }
+    ]
+   },
+   {
+    "name": "04AL",
+    "sections": [
+     {
+      "name": "Angler's Tunnel - Angler Fish"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D4 - Angler's Tunnel",
+      "x": 795,
+      "y": 4
+     }
+    ]
+   },
+   {
+    "name": "02D",
+    "sections": [
+     {
+      "name": "Angler's Tunnel - Flippers Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D4 - Angler's Tunnel",
+      "x": 283,
+      "y": 88
+     }
+    ]
+   },
+   {
+    "name": "03G",
+    "sections": [
+     {
+      "name": "Angler's Tunnel - Second Water Room Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D4 - Angler's Tunnel",
+      "x": 531,
+      "y": 152
+     }
+    ]
+   },
+   {
+    "name": "05G",
+    "sections": [
+     {
+      "name": "Angler's Tunnel - First Water Room Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D4 - Angler's Tunnel",
+      "x": 547,
+      "y": 288
+     }
+    ]
+   },
+   {
+    "name": "07C",
+    "sections": [
+     {
+      "name": "Angler's Tunnel - Through the stairs in the tile room"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D4 - Angler's Tunnel",
+      "x": 187,
+      "y": 400
+     }
+    ]
+   },
+   {
+    "name": "04D",
+    "sections": [
+     {
+      "name": "Angler's Tunnel - Chest between the two tile rooms"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D4 - Angler's Tunnel",
+      "x": 267,
+      "y": 216
+     }
+    ]
+   },
+   {
+    "name": "05C",
+    "sections": [
+     {
+      "name": "Angler's Tunnel - Chest guarded by Stalfos"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D4 - Angler's Tunnel",
+      "x": 219,
+      "y": 288
+     }
+    ]
+   },
+   {
+    "name": "06A",
+    "sections": [
+     {
+      "name": "Angler's Tunnel - Key drop in the hole"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D4 - Angler's Tunnel",
+      "x": 995,
+      "y": 4
+     }
+    ]
+   },
+   {
+    "name": "05D",
+    "sections": [
+     {
+      "name": "Angler's Tunnel - Chest surrounded by water"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D4 - Angler's Tunnel",
+      "x": 299,
+      "y": 288
+     }
+    ]
+   },
+   {
+    "name": "06F",
+    "sections": [
+     {
+      "name": "Angler's Tunnel - East Chest on the Island"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D4 - Angler's Tunnel",
+      "x": 427,
+      "y": 352
+     }
+    ]
+   },
+   {
+    "name": "04F",
+    "sections": [
+     {
+      "name": "Angler's Tunnel - Map Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D4 - Angler's Tunnel",
+      "x": 420,
+      "y": 240
+     }
+    ]
+   },
+   {
+    "name": "07F",
+    "sections": [
+     {
+      "name": "Angler's Tunnel - Beak Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D4 - Angler's Tunnel",
+      "x": 443,
+      "y": 408
+     }
+    ]
+   },
+   {
+    "name": "07E",
+    "sections": [
+     {
+      "name": "Angler's Tunnel - East Entrance Room"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D4 - Angler's Tunnel",
+      "x": 379,
+      "y": 424
+     }
+    ]
+   },
+   {
+    "name": "08E",
+    "sections": [
+     {
+      "name": "Angler's Tunnel - Crystal Maze Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D4 - Angler's Tunnel",
+      "x": 363,
+      "y": 488
+     }
+    ]
+   },
+   {
+    "name": "05E",
+    "sections": [
+     {
+      "name": "Angler's Tunnel - Owl Statue"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D4 - Angler's Tunnel",
+      "x": 355,
+      "y": 296
+     }
+    ]
+   },
+   {
+    "name": "01D",
+    "sections": [
+     {
+      "name": "Catfish's Maw - Wind Marimba"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D5 - Catfish's Maw",
+      "x": 287,
+      "y": 24
+     }
+    ]
+   },
+   {
+    "name": "02D",
+    "sections": [
+     {
+      "name": "Catfish's Maw - Slime Eel"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D5 - Catfish's Maw",
+      "x": 267,
+      "y": 84
+     }
+    ]
+   },
+   {
+    "name": "01B",
+    "sections": [
+     {
+      "name": "Catfish's Maw - Master Stalfos Round 4"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D5 - Catfish's Maw",
+      "x": 123,
+      "y": 32
+     }
+    ]
+   },
+   {
+    "name": "01C",
+    "sections": [
+     {
+      "name": "Catfish's Maw - Ceiling Key near Round 4"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D5 - Catfish's Maw",
+      "x": 187,
+      "y": 24
+     }
+    ]
+   },
+   {
+    "name": "01E",
+    "sections": [
+     {
+      "name": "Catfish's Maw - After Round 3"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D5 - Catfish's Maw",
+      "x": 363,
+      "y": 24
+     }
+    ]
+   },
+   {
+    "name": "02E",
+    "sections": [
+     {
+      "name": "Catfish's Maw - Nightmare Key through the water"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D5 - Catfish's Maw",
+      "x": 347,
+      "y": 88
+     }
+    ]
+   },
+   {
+    "name": "02G",
+    "sections": [
+     {
+      "name": "Catfish's Maw - Hookshot Chest 3"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D5 - Catfish's Maw",
+      "x": 555,
+      "y": 80
+     }
+    ]
+   },
+   {
+    "name": "03G",
+    "sections": [
+     {
+      "name": "Catfish's Maw - Hookshot Chest 1"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D5 - Catfish's Maw",
+      "x": 547,
+      "y": 144
+     }
+    ]
+   },
+   {
+    "name": "03H",
+    "sections": [
+     {
+      "name": "Catfish's Maw - Hookshot Chest 2"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D5 - Catfish's Maw",
+      "x": 635,
+      "y": 160
+     }
+    ]
+   },
+   {
+    "name": "05G",
+    "sections": [
+     {
+      "name": "Catfish's Maw - Chest after Round 1"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D5 - Catfish's Maw",
+      "x": 507,
+      "y": 280
+     }
+    ]
+   },
+   {
+    "name": "06C",
+    "sections": [
+     {
+      "name": "Catfish's Maw - Chest across the gap"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D5 - Catfish's Maw",
+      "x": 195,
+      "y": 344
+     }
+    ]
+   },
+   {
+    "name": "07D",
+    "sections": [
+     {
+      "name": "Catfish's Maw - Stone Beak"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D5 - Catfish's Maw",
+      "x": 315,
+      "y": 408
+     }
+    ]
+   },
+   {
+    "name": "08E",
+    "sections": [
+     {
+      "name": "Catfish's Maw - Compass Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D5 - Catfish's Maw",
+      "x": 387,
+      "y": 472
+     }
+    ]
+   },
+   {
+    "name": "08G",
+    "sections": [
+     {
+      "name": "Catfish's Maw - First Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D5 - Catfish's Maw",
+      "x": 547,
+      "y": 464
+     }
+    ]
+   },
+   {
+    "name": "06F",
+    "sections": [
+     {
+      "name": "Catfish's Maw - Owl (Triple Stalfos)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D5 - Catfish's Maw",
+      "x": 467,
+      "y": 328
+     }
+    ]
+   },
+   {
+    "name": "03C",
+    "sections": [
+     {
+      "name": "Catfish's Maw - Owl (Before Slime Eel)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D5 - Catfish's Maw",
+      "x": 211,
+      "y": 136
+     }
+    ]
+   },
+   {
+    "name": "03E",
+    "sections": [
+     {
+      "name": "Face Shrine - Coral Triangle"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D6 - Face Shrine",
+      "x": 367,
+      "y": 152
+     }
+    ]
+   },
+   {
+    "name": "04E",
+    "sections": [
+     {
+      "name": "Face Shrine - Facade"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D6 - Face Shrine",
+      "x": 347,
+      "y": 212
+     }
+    ]
+   },
+   {
+    "name": "02A",
+    "sections": [
+     {
+      "name": "Face Shrine - Northwest Horsehead"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D6 - Face Shrine",
+      "x": 67,
+      "y": 88
+     }
+    ]
+   },
+   {
+    "name": "02H",
+    "sections": [
+     {
+      "name": "Face Shrine - Northeast Horsehead"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D6 - Face Shrine",
+      "x": 587,
+      "y": 88
+     }
+    ]
+   },
+   {
+    "name": "03B",
+    "sections": [
+     {
+      "name": "Face Shrine - Compass Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D6 - Face Shrine",
+      "x": 115,
+      "y": 168
+     }
+    ]
+   },
+   {
+    "name": "04B",
+    "sections": [
+     {
+      "name": "Face Shrine - Beak Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D6 - Face Shrine",
+      "x": 115,
+      "y": 208
+     }
+    ]
+   },
+   {
+    "name": "03D",
+    "sections": [
+     {
+      "name": "Face Shrine - North Wizzrobe Blocks"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D6 - Face Shrine",
+      "x": 275,
+      "y": 160
+     }
+    ]
+   },
+   {
+    "name": "03G",
+    "sections": [
+     {
+      "name": "Face Shrine - North Pot Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D6 - Face Shrine",
+      "x": 539,
+      "y": 152
+     }
+    ]
+   },
+   {
+    "name": "04G",
+    "sections": [
+     {
+      "name": "Face Shrine - Chest in the water"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D6 - Face Shrine",
+      "x": 539,
+      "y": 208
+     }
+    ]
+   },
+   {
+    "name": "05A",
+    "sections": [
+     {
+      "name": "Face Shrine - More Wizzrobe Killing"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D6 - Face Shrine",
+      "x": 75,
+      "y": 280
+     }
+    ]
+   },
+   {
+    "name": "05D",
+    "sections": [
+     {
+      "name": "Face Shrine - Tile Room Key Drop"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D6 - Face Shrine",
+      "x": 267,
+      "y": 288
+     }
+    ]
+   },
+   {
+    "name": "06C",
+    "sections": [
+     {
+      "name": "Face Shrine - Use the Elephant"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D6 - Face Shrine",
+      "x": 227,
+      "y": 344
+     }
+    ]
+   },
+   {
+    "name": "07C",
+    "sections": [
+     {
+      "name": "Face Shrine - Kill the Wizzrobes"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D6 - Face Shrine",
+      "x": 227,
+      "y": 416
+     }
+    ]
+   },
+   {
+    "name": "07B",
+    "sections": [
+     {
+      "name": "Face Shrine - Power Bracelet 2 Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D6 - Face Shrine",
+      "x": 103,
+      "y": 400
+     }
+    ]
+   },
+   {
+    "name": "07G",
+    "sections": [
+     {
+      "name": "Face Shrine - Southeast Blade Trap"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D6 - Face Shrine",
+      "x": 555,
+      "y": 432
+     }
+    ]
+   },
+   {
+    "name": "04D",
+    "sections": [
+     {
+      "name": "Face Shrine - Owl (Ledge)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D6 - Face Shrine",
+      "x": 291,
+      "y": 240
+     }
+    ]
+   },
+   {
+    "name": "08G",
+    "sections": [
+     {
+      "name": "Face Shrine - Owl (Southeast)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D6 - Face Shrine",
+      "x": 499,
+      "y": 456
+     }
+    ]
+   },
+   {
+    "name": "03G",
+    "sections": [
+     {
+      "name": "Face Shrine - Owl (Canal)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D6 - Face Shrine",
+      "x": 523,
+      "y": 136
+     }
+    ]
+   },
+   {
+    "name": "02G",
+    "sections": [
+     {
+      "name": "Eagle's Tower - Organ of Evening Calm"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D7 - Eagle's Tower",
+      "x": 687,
+      "y": 88
+     }
+    ]
+   },
+   {
+    "name": "05HL",
+    "sections": [
+     {
+      "name": "Eagle's Tower - Evil Eagle"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D7 - Eagle's Tower",
+      "x": 911,
+      "y": 4
+     }
+    ]
+   },
+   {
+    "name": "08D",
+    "sections": [
+     {
+      "name": "Eagle's Tower - Like Like Key Drop"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D7 - Eagle's Tower",
+      "x": 267,
+      "y": 608
+     }
+    ]
+   },
+   {
+    "name": "07A",
+    "sections": [
+     {
+      "name": "Eagle's Tower - Stone Beak"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D7 - Eagle's Tower",
+      "x": 51,
+      "y": 536
+     }
+    ]
+   },
+   {
+    "name": "05A",
+    "sections": [
+     {
+      "name": "Eagle's Tower - West Ledge"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D7 - Eagle's Tower",
+      "x": 19,
+      "y": 400
+     }
+    ]
+   },
+   {
+    "name": "05D",
+    "sections": [
+     {
+      "name": "Eagle's Tower - East Ledge"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D7 - Eagle's Tower",
+      "x": 315,
+      "y": 400
+     }
+    ]
+   },
+   {
+    "name": "01B",
+    "sections": [
+     {
+      "name": "Eagle's Tower - Three-of-a-kind"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D7 - Eagle's Tower",
+      "x": 155,
+      "y": 24
+     }
+    ]
+   },
+   {
+    "name": "01C",
+    "sections": [
+     {
+      "name": "Eagle's Tower - Horseheads"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D7 - Eagle's Tower",
+      "x": 235,
+      "y": 24
+     }
+    ]
+   },
+   {
+    "name": "04A",
+    "sections": [
+     {
+      "name": "Eagle's Tower - Hinox"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D7 - Eagle's Tower",
+      "x": 27,
+      "y": 224
+     }
+    ]
+   },
+   {
+    "name": "04B",
+    "sections": [
+     {
+      "name": "Eagle's Tower - Three-of-a-kind Hookshot Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D7 - Eagle's Tower",
+      "x": 155,
+      "y": 216
+     }
+    ]
+   },
+   {
+    "name": "03D",
+    "sections": [
+     {
+      "name": "Eagle's Tower - Mirror Shield Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D7 - Eagle's Tower",
+      "x": 275,
+      "y": 152
+     }
+    ]
+   },
+   {
+    "name": "01G",
+    "sections": [
+     {
+      "name": "Eagle's Tower - Conveyor Horseheads"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D7 - Eagle's Tower",
+      "x": 715,
+      "y": 24
+     }
+    ]
+   },
+   {
+    "name": "02H",
+    "sections": [
+     {
+      "name": "Eagle's Tower - Grim Creeper"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D7 - Eagle's Tower",
+      "x": 795,
+      "y": 88
+     }
+    ]
+   },
+   {
+    "name": "02D",
+    "sections": [
+     {
+      "name": "Eagle's Tower - Owl (Ball)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D7 - Eagle's Tower",
+      "x": 259,
+      "y": 72
+     }
+    ]
+   },
+   {
+    "name": "05D",
+    "sections": [
+     {
+      "name": "Eagle's Tower - Owl (Kirbys)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D7 - Eagle's Tower",
+      "x": 283,
+      "y": 408
+     }
+    ]
+   },
+   {
+    "name": "04B",
+    "sections": [
+     {
+      "name": "Eagle's Tower - Owl (Hookshot Chest)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D7 - Eagle's Tower",
+      "x": 99,
+      "y": 200
+     }
+    ]
+   },
+   {
+    "name": "01D",
+    "sections": [
+     {
+      "name": "Turtle Rock - Thunder Drum"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 287,
+      "y": 24
+     }
+    ]
+   },
+   {
+    "name": "02D",
+    "sections": [
+     {
+      "name": "Turtle Rock - Hothead"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 267,
+      "y": 84
+     }
+    ]
+   },
+   {
+    "name": "02A",
+    "sections": [
+     {
+      "name": "Turtle Rock - Northwest Roomba after Cueball"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 75,
+      "y": 88
+     }
+    ]
+   },
+   {
+    "name": "02H",
+    "sections": [
+     {
+      "name": "Turtle Rock - Rod Chest after Blaino"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 595,
+      "y": 80
+     }
+    ]
+   },
+   {
+    "name": "03C",
+    "sections": [
+     {
+      "name": "Turtle Rock - Northwest Hookshot Ledge"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 235,
+      "y": 144
+     }
+    ]
+   },
+   {
+    "name": "03F",
+    "sections": [
+     {
+      "name": "Turtle Rock - Dodongos"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 467,
+      "y": 144
+     }
+    ]
+   },
+   {
+    "name": "02E",
+    "sections": [
+     {
+      "name": "Turtle Rock - North Hookshot Ledge"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 355,
+      "y": 76
+     }
+    ]
+   },
+   {
+    "name": "03G",
+    "sections": [
+     {
+      "name": "Turtle Rock - Gibdos Key Drop"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 527,
+      "y": 184
+     }
+    ]
+   },
+   {
+    "name": "04B",
+    "sections": [
+     {
+      "name": "Turtle Rock - Beamos Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 139,
+      "y": 224
+     }
+    ]
+   },
+   {
+    "name": "04C",
+    "sections": [
+     {
+      "name": "Turtle Rock - Arrow Statue"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 187,
+      "y": 224
+     }
+    ]
+   },
+   {
+    "name": "05B",
+    "sections": [
+     {
+      "name": "Turtle Rock - Light Torches"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 155,
+      "y": 280
+     }
+    ]
+   },
+   {
+    "name": "06A",
+    "sections": [
+     {
+      "name": "Turtle Rock - West Vire"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 27,
+      "y": 352
+     }
+    ]
+   },
+   {
+    "name": "06B",
+    "sections": [
+     {
+      "name": "Turtle Rock - After Hinox Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 155,
+      "y": 344
+     }
+    ]
+   },
+   {
+    "name": "06D",
+    "sections": [
+     {
+      "name": "Turtle Rock - Surrounded by Blocks"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 275,
+      "y": 344
+     }
+    ]
+   },
+   {
+    "name": "07B",
+    "sections": [
+     {
+      "name": "Turtle Rock - Sparks Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 139,
+      "y": 408
+     }
+    ]
+   },
+   {
+    "name": "07F",
+    "sections": [
+     {
+      "name": "Turtle Rock - East of Pots"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 443,
+      "y": 424
+     }
+    ]
+   },
+   {
+    "name": "07G",
+    "sections": [
+     {
+      "name": "Turtle Rock - East Roomba"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 499,
+      "y": 416
+     }
+    ]
+   },
+   {
+    "name": "08A",
+    "sections": [
+     {
+      "name": "Turtle Rock - Southwest Vacuum Zol Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 43,
+      "y": 484
+     }
+    ]
+   },
+   {
+    "name": "08H",
+    "sections": [
+     {
+      "name": "Turtle Rock - Snakes Southeast"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 635,
+      "y": 472
+     }
+    ]
+   },
+   {
+    "name": "06H",
+    "sections": [
+     {
+      "name": "Turtle Rock - Owl (Above Smasher)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 579,
+      "y": 366
+     }
+    ]
+   },
+   {
+    "name": "04G",
+    "sections": [
+     {
+      "name": "Turtle Rock - Owl (Below Gibdos)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 547,
+      "y": 200
+     }
+    ]
+   },
+   {
+    "name": "04C",
+    "sections": [
+     {
+      "name": "Turtle Rock - Owl (Eye Statue)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D8 - Turtle Rock",
+      "x": 223,
+      "y": 200
+     }
+    ]
+   },
+   {
+    "name": "04F",
+    "sections": [
+     {
+      "name": "Color Dungeon - After Blob Mini-Boss"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D0 - Color Dungeon",
+      "x": 443,
+      "y": 208
+     }
+    ]
+   },
+   {
+    "name": "05D",
+    "sections": [
+     {
+      "name": "Color Dungeon - Zol Pot Room Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D0 - Color Dungeon",
+      "x": 315,
+      "y": 280
+     }
+    ]
+   },
+   {
+    "name": "05E",
+    "sections": [
+     {
+      "name": "Color Dungeon - Four Orb Enemies"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D0 - Color Dungeon",
+      "x": 363,
+      "y": 288
+     }
+    ]
+   },
+   {
+    "name": "07F",
+    "sections": [
+     {
+      "name": "Color Dungeon - Orb Enemy Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D0 - Color Dungeon",
+      "x": 475,
+      "y": 408
+     }
+    ]
+   },
+   {
+    "name": "05F",
+    "sections": [
+     {
+      "name": "Color Dungeon - Match More Colors"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D0 - Color Dungeon",
+      "x": 451,
+      "y": 288
+     }
+    ]
+   },
+   {
+    "name": "07D",
+    "sections": [
+     {
+      "name": "Color Dungeon - Match the Colors"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D0 - Color Dungeon",
+      "x": 315,
+      "y": 408
+     }
+    ]
+   },
+   {
+    "name": "08E",
+    "sections": [
+     {
+      "name": "Color Dungeon - South Loop Chest"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D0 - Color Dungeon",
+      "x": 347,
+      "y": 496
+     }
+    ]
+   },
+   {
+    "name": "04C",
+    "sections": [
+     {
+      "name": "Color Dungeon - Fairy Queen 1"
+     },
+     {
+      "name": "Color Dungeon - Fairy Queen 2"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D0 - Color Dungeon",
+      "x": 207,
+      "y": 216
+     }
+    ]
+   },
+   {
+    "name": "06C",
+    "sections": [
+     {
+      "name": "Color Dungeon - Owl (Nine Switches)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D0 - Color Dungeon",
+      "x": 195,
+      "y": 328
+     }
+    ]
+   },
+   {
+    "name": "07D",
+    "sections": [
+     {
+      "name": "Color Dungeon - Owl (First Switches)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D0 - Color Dungeon",
+      "x": 291,
+      "y": 392
+     }
+    ]
+   },
+   {
+    "name": "05F",
+    "sections": [
+     {
+      "name": "Color Dungeon - Owl (Before Mini Boss)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D0 - Color Dungeon",
+      "x": 443,
+      "y": 264
+     }
+    ]
+   },
+   {
+    "name": "08D",
+    "sections": [
+     {
+      "name": "Color Dungeon - Rupee Room 1"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 2"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 3"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 4"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 5"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 6"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 7"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 8"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 9"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 10"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 11"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 12"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 13"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 14"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 15"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 16"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 17"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 18"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 19"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 20"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 21"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 22"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 23"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 24"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 25"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 26"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 27"
+     },
+     {
+      "name": "Color Dungeon - Rupee Room 28"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "D0 - Color Dungeon",
+      "x": 267,
+      "y": 468
+     }
+    ]
+   },
+   {
+    "name": "Goponga Swamp",
+    "sections": [
+     {
+      "name": "Goponga Swamp - Owl Statue Below D8"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 184,
+      "y": 216
+     }
+    ]
+   },
+   {
+    "name": "Taltal Heights",
+    "sections": [
+     {
+      "name": "Tal Tal Heights - Owl Statue Moblin Cave"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 703,
+      "y": 354
+     }
+    ]
+   },
+   {
+    "name": "Yarna Desert",
+    "sections": [
+     {
+      "name": "Yarna Desert - Owl Statue Desert"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1942,
+      "y": 870
+     }
+    ]
+   },
+   {
+    "name": "Ancient Ruins",
+    "sections": [
+     {
+      "name": "Ancient Ruins - Owl Statue Maze"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1992,
+      "y": 665
+     }
+    ]
+   },
+   {
+    "name": "Taltal Mountains",
+    "sections": [
+     {
+      "name": "Tal Tal Mountains East - Owl Statue Taltal East"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1794,
+      "y": 201
+     }
+    ]
+   },
+   {
+    "name": "Moblin Cave",
+    "sections": [
+     {
+      "name": "Tal Tal Heights - Moblin Cave (Save Bowwow)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 740,
+      "y": 360
+     }
+    ]
+   },
+   {
+    "name": "Weathervane",
+    "sections": [
+     {
+      "name": "Mabe Village - Weathervane (Rooster)"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 357,
+      "y": 718
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "Doors",
+  "children": [
+   {
+    "name": "Field_01O",
+    "sections": [
+     {
+      "name": "Field_01O"
+     },
+     {
+      "name": "Eagle's Tower Entrance"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1847,
+      "y": 118,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_02A",
+    "sections": [
+     {
+      "name": "Field_02A"
+     },
+     {
+      "name": "Turtle Rock Entrance"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 113,
+      "y": 152,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_03E",
+    "sections": [
+     {
+      "name": "Field_03E"
+     },
+     {
+      "name": "Bottle Grotto Entrance"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 578,
+      "y": 265,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_03L_a",
+    "sections": [
+     {
+      "name": "Field_03L_a"
+     },
+     {
+      "name": "Angler's Tunnel Entrance"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1453,
+      "y": 264,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_08H",
+    "sections": [
+     {
+      "name": "Field_08H"
+     },
+     {
+      "name": "Color Dungeon Entrance"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 999,
+      "y": 558,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_09M",
+    "sections": [
+     {
+      "name": "Field_09M"
+     },
+     {
+      "name": "Face Shrine Entrance"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1566,
+      "y": 641,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_12F",
+    "sections": [
+     {
+      "name": "Field_12F"
+     },
+     {
+      "name": "Key Cavern Entrance"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 741,
+      "y": 804,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_14D",
+    "sections": [
+     {
+      "name": "Field_14D"
+     },
+     {
+      "name": "Tail Cave Entrance"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 494,
+      "y": 931,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_14J_b",
+    "sections": [
+     {
+      "name": "Field_14J_b"
+     },
+     {
+      "name": "Catfish's Maw Entrance"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1221,
+      "y": 949,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_01D",
+    "sections": [
+     {
+      "name": "Field_01D"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 470,
+      "y": 131,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_01H",
+    "sections": [
+     {
+      "name": "Field_01H"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 952,
+      "y": 149,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_01K_b",
+    "sections": [
+     {
+      "name": "Field_01K_b"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1296,
+      "y": 157,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_01N",
+    "sections": [
+     {
+      "name": "Field_01N"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1666,
+      "y": 153,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_01P",
+    "sections": [
+     {
+      "name": "Field_01P"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1939,
+      "y": 131,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_02D",
+    "sections": [
+     {
+      "name": "Field_02D"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 481,
+      "y": 183,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_02F",
+    "sections": [
+     {
+      "name": "Field_02F"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 765,
+      "y": 204,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_02H",
+    "sections": [
+     {
+      "name": "Field_02H"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 951,
+      "y": 191,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_02I_a",
+    "sections": [
+     {
+      "name": "Field_02I_a"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1110,
+      "y": 178,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_02I_b",
+    "sections": [
+     {
+      "name": "Field_02I_b"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1135,
+      "y": 177,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_02J",
+    "sections": [
+     {
+      "name": "Field_02J"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1258,
+      "y": 203,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_02N_a",
+    "sections": [
+     {
+      "name": "Field_02N_a"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1665,
+      "y": 202,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_02N_b",
+    "sections": [
+     {
+      "name": "Field_02N_b"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1739,
+      "y": 195,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_02O_a",
+    "sections": [
+     {
+      "name": "Field_02O_a"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1815,
+      "y": 173,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_02O_b",
+    "sections": [
+     {
+      "name": "Field_02O_b"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1864,
+      "y": 173,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_02P_a",
+    "sections": [
+     {
+      "name": "Field_02P_a"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1926,
+      "y": 173,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_02P_c",
+    "sections": [
+     {
+      "name": "Field_02P_c"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1961,
+      "y": 194,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_02P_d",
+    "sections": [
+     {
+      "name": "Field_02P_d"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1986,
+      "y": 180,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_03A",
+    "sections": [
+     {
+      "name": "Field_03A"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 146,
+      "y": 280,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_03B",
+    "sections": [
+     {
+      "name": "Field_03B"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 183,
+      "y": 280,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_03L_b",
+    "sections": [
+     {
+      "name": "Field_03L_b"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1478,
+      "y": 277,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_03N",
+    "sections": [
+     {
+      "name": "Field_03N"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1713,
+      "y": 296,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_03P",
+    "sections": [
+     {
+      "name": "Field_03P"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1910,
+      "y": 307,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_05J",
+    "sections": [
+     {
+      "name": "Field_05J"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1231,
+      "y": 441,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_05K",
+    "sections": [
+     {
+      "name": "Field_05K"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1379,
+      "y": 426,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_06A",
+    "sections": [
+     {
+      "name": "Field_06A"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 147,
+      "y": 450,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_06J_a",
+    "sections": [
+     {
+      "name": "Field_06J_a"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1171,
+      "y": 464,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_06J_b",
+    "sections": [
+     {
+      "name": "Field_06J_b"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1220,
+      "y": 471,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_07C",
+    "sections": [
+     {
+      "name": "Field_07C"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 382,
+      "y": 515,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_07J",
+    "sections": [
+     {
+      "name": "Field_07J"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1219,
+      "y": 543,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_08F",
+    "sections": [
+     {
+      "name": "Field_08F"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 703,
+      "y": 582,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_08G",
+    "sections": [
+     {
+      "name": "Field_08G"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 864,
+      "y": 573,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_09C_a",
+    "sections": [
+     {
+      "name": "Field_09C_a"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 358,
+      "y": 638,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_09C_b",
+    "sections": [
+     {
+      "name": "Field_09C_b"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 383,
+      "y": 638,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_09P",
+    "sections": [
+     {
+      "name": "Field_09P"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1898,
+      "y": 636,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_10M",
+    "sections": [
+     {
+      "name": "Field_10M"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1590,
+      "y": 683,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_10N",
+    "sections": [
+     {
+      "name": "Field_10N"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1676,
+      "y": 707,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_11K",
+    "sections": [
+     {
+      "name": "Field_11K"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1381,
+      "y": 787,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_11L",
+    "sections": [
+     {
+      "name": "Field_11L"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1492,
+      "y": 787,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_12I_a",
+    "sections": [
+     {
+      "name": "Field_12I_a"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1098,
+      "y": 820,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_12I_b",
+    "sections": [
+     {
+      "name": "Field_12I_b"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1122,
+      "y": 847,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_13I",
+    "sections": [
+     {
+      "name": "Field_13I"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1061,
+      "y": 891,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_15H",
+    "sections": [
+     {
+      "name": "Field_15H"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 975,
+      "y": 998,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_16J",
+    "sections": [
+     {
+      "name": "Field_16J"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1247,
+      "y": 1077,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_01E",
+    "sections": [
+     {
+      "name": "Field_01E"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 618,
+      "y": 166,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_01K_a",
+    "sections": [
+     {
+      "name": "Field_01K_a"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1334,
+      "y": 106,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_01K_c",
+    "sections": [
+     {
+      "name": "Field_01K_c"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1371,
+      "y": 155,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_02B",
+    "sections": [
+     {
+      "name": "Field_02B"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 248,
+      "y": 166,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_02P_b",
+    "sections": [
+     {
+      "name": "Field_02P_b"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1937,
+      "y": 209,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_03K",
+    "sections": [
+     {
+      "name": "Field_03K"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1355,
+      "y": 279,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_03O",
+    "sections": [
+     {
+      "name": "Field_03O"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1836,
+      "y": 271,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_04A_a",
+    "sections": [
+     {
+      "name": "Field_04A_a"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 134,
+      "y": 330,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_04B",
+    "sections": [
+     {
+      "name": "Field_04B"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 239,
+      "y": 343,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_04F",
+    "sections": [
+     {
+      "name": "Field_04F"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 739,
+      "y": 348,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_04H",
+    "sections": [
+     {
+      "name": "Field_04H"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 961,
+      "y": 337,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_04P",
+    "sections": [
+     {
+      "name": "Field_04P"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1923,
+      "y": 330,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_05C",
+    "sections": [
+     {
+      "name": "Field_05C"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 332,
+      "y": 399,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_05F",
+    "sections": [
+     {
+      "name": "Field_05F"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 764,
+      "y": 394,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_05L",
+    "sections": [
+     {
+      "name": "Field_05L"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1453,
+      "y": 411,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_06C",
+    "sections": [
+     {
+      "name": "Field_06C"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 381,
+      "y": 456,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_07F",
+    "sections": [
+     {
+      "name": "Field_07F"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 715,
+      "y": 502,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_08I",
+    "sections": [
+     {
+      "name": "Field_08I"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1059,
+      "y": 629,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_09D",
+    "sections": [
+     {
+      "name": "Field_09D"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 444,
+      "y": 630,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_09E",
+    "sections": [
+     {
+      "name": "Field_09E"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 653,
+      "y": 662,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_09G",
+    "sections": [
+     {
+      "name": "Field_09G"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 801,
+      "y": 647,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_09H",
+    "sections": [
+     {
+      "name": "Field_09H"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 937,
+      "y": 618,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_09I",
+    "sections": [
+     {
+      "name": "Field_09I"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1097,
+      "y": 665,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_09K",
+    "sections": [
+     {
+      "name": "Field_09K"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1344,
+      "y": 646,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_09N",
+    "sections": [
+     {
+      "name": "Field_09N"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1689,
+      "y": 636,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_10C",
+    "sections": [
+     {
+      "name": "Field_10C"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 357,
+      "y": 715,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_10D",
+    "sections": [
+     {
+      "name": "Field_10D"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 469,
+      "y": 712,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_11A",
+    "sections": [
+     {
+      "name": "Field_11A"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 105,
+      "y": 786,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_11B_a",
+    "sections": [
+     {
+      "name": "Field_11B_a"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 210,
+      "y": 767,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_11B_b",
+    "sections": [
+     {
+      "name": "Field_11B_b"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 235,
+      "y": 763,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_11C",
+    "sections": [
+     {
+      "name": "Field_11C"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 358,
+      "y": 767,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_11E",
+    "sections": [
+     {
+      "name": "Field_11E"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 580,
+      "y": 761,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_11M",
+    "sections": [
+     {
+      "name": "Field_11M"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1591,
+      "y": 758,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_11O",
+    "sections": [
+     {
+      "name": "Field_11O"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1825,
+      "y": 783,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_12A",
+    "sections": [
+     {
+      "name": "Field_12A"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 87,
+      "y": 811,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_12B",
+    "sections": [
+     {
+      "name": "Field_12B"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 223,
+      "y": 821,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_12C",
+    "sections": [
+     {
+      "name": "Field_12C"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 358,
+      "y": 823,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_12D",
+    "sections": [
+     {
+      "name": "Field_12D"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 482,
+      "y": 820,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_13G",
+    "sections": [
+     {
+      "name": "Field_13G"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 827,
+      "y": 894,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_13M_a",
+    "sections": [
+     {
+      "name": "Field_13M_a"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1555,
+      "y": 889,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_13M_b",
+    "sections": [
+     {
+      "name": "Field_13M_b"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1616,
+      "y": 889,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_13N_a",
+    "sections": [
+     {
+      "name": "Field_13N_a"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1678,
+      "y": 894,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_13N_b",
+    "sections": [
+     {
+      "name": "Field_13N_b"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1715,
+      "y": 893,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_13N_c",
+    "sections": [
+     {
+      "name": "Field_13N_c"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1752,
+      "y": 867,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_13P",
+    "sections": [
+     {
+      "name": "Field_13P"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1987,
+      "y": 871,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_14E",
+    "sections": [
+     {
+      "name": "Field_14E"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 642,
+      "y": 953,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_14G",
+    "sections": [
+     {
+      "name": "Field_14G"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 840,
+      "y": 952,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_14L",
+    "sections": [
+     {
+      "name": "Field_14L"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1493,
+      "y": 953,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_14N",
+    "sections": [
+     {
+      "name": "Field_14N"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1715,
+      "y": 940,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_15D",
+    "sections": [
+     {
+      "name": "Field_15D"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 481,
+      "y": 1009,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_15G",
+    "sections": [
+     {
+      "name": "Field_15G"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 876,
+      "y": 998,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_15I",
+    "sections": [
+     {
+      "name": "Field_15I"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1074,
+      "y": 1014,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_15J",
+    "sections": [
+     {
+      "name": "Field_15J"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1234,
+      "y": 1005,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_15K",
+    "sections": [
+     {
+      "name": "Field_15K"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 1346,
+      "y": 1010,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_16E",
+    "sections": [
+     {
+      "name": "Field_16E"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 530,
+      "y": 1066,
+      "size": 12
+     }
+    ]
+   },
+   {
+    "name": "Field_16G",
+    "sections": [
+     {
+      "name": "Field_16G"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 865,
+      "y": 1065,
+      "size": 12
+     }
+    ]
+   }
+  ]
+ }
+]

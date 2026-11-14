@@ -98,6 +98,13 @@ class LASSettings(settings.Group):
         behind a tunnel (password@wss://host with a password). Generating writes it into each LAS patch file. The
         client uses it; when it is empty, the patch file's, else the default relay."""
 
+    class UtPackPath(settings.FilePath):
+        """The tracker's map images: the zip the client builds from your RomFS dump (in Archipelago's cache folder) and
+        writes here. Universal Tracker's map tab shows them. Empty: Universal Tracker asks for it; null: no map tab."""
+        required = False
+        description = "Link's Awakening tracker images (built by the client)"
+        ut_dialog_name = description
+
     platform: Platform = Platform("")
     emulator: Emulator = Emulator("")
     game_file: GameFile = GameFile("")
@@ -109,6 +116,7 @@ class LASSettings(settings.Group):
     ghosts: Union[Ghosts, bool] = True
     ghost_names: Union[GhostNames, bool] = True
     ghost_relay: GhostRelay = GhostRelay(DEFAULT_RELAY)
+    ut_pack_path: Union[UtPackPath, str] = UtPackPath("")
 
     # Player settings (PLAYER_SETTINGS): the Patch tab's look and sound settings, for every seed.
     class BlurRemoval(settings.Bool):

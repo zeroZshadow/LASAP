@@ -160,6 +160,53 @@ def pack_sections(pack: Path) -> dict:
     return sections
 
 
+def section_pins(pack: Path) -> dict:
+    """Full section code -> [(map, x, y)]: the pins of the location holding the section."""
+    pins = {}
+
+    def walk(locations, parent):
+        for loc in locations:
+            loc_id = f"{parent}/{loc['name']}" if parent else loc["name"]
+            for s in loc.get("sections", []):
+                pins[f"@{loc_id}/{s.get('name', '')}"] = [(m["map"], m["x"], m["y"]) for m in loc.get("map_locations", [])]
+            walk(loc.get("children", []), loc_id)
+
+    for name in ("overworld.json", "dungeons.json"):
+        walk(load(pack / "locations" / name), "")
+    return pins
+
+
+def overworld_pins(pack: Path) -> dict:
+    """LASR overworld location -> (x, y) of its pin on the pack's overworld map: its first section's that has one."""
+    pins = section_pins(pack)
+    found = {}
+    for lasr, codes in location_codes(pack_sections(pack)).items():
+        for code in codes:
+            on_map = [(x, y) for m, x, y in pins.get(code, ()) if m == "map"]
+            if on_map:
+                found[lasr] = on_map[0]
+                break
+    return found
+
+
+def least_squares(rows, values):
+    """Least squares for value = a·r[0] + b·r[1] + ... (the pins' affine fits; a row ends in 1.0 for the constant)."""
+    n = len(rows[0])
+    m = [[sum(r[i] * r[j] for r in rows) for j in range(n)] for i in range(n)]
+    v = [sum(r[i] * y for r, y in zip(rows, values)) for i in range(n)]
+    for i in range(n):
+        p = max(range(i, n), key=lambda k: abs(m[k][i]))
+        m[i], m[p], v[i], v[p] = m[p], m[i], v[p], v[i]
+        for k in range(i + 1, n):
+            f = m[k][i] / m[i][i]
+            m[k] = [a - f * b for a, b in zip(m[k], m[i])]
+            v[k] -= f * v[i]
+    x = [0.0] * n
+    for i in reversed(range(n)):
+        x[i] = (v[i] - sum(m[i][j] * x[j] for j in range(i + 1, n))) / m[i][i]
+    return x
+
+
 def resolve(sections: dict, code: str) -> str:
     """The full '@<location id>/<section>' for a code naming the end of a location id, as PopTracker matches it."""
     loc, _, section = code.rpartition("/")

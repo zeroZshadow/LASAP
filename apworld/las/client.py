@@ -1,5 +1,6 @@
 """PC client: bridges the Archipelago server and the game's exlaunch module (TCP line protocol, see DESIGN.md)."""
 import asyncio
+import re
 import socket
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -13,11 +14,11 @@ from .ids import LOCATION_BASE, LOCATION_OFFSETS
 from . import checklist, emulators, ghost_relay
 from .ghosts import DEFAULT_RELAY, GhostLink
 from .host_settings import PLAYER_SETTINGS, player_value
-from .install import InstallError, builtin_patcher_build, patch_and_install
+from .install import InstallError, builtin_patcher_build, patch_and_install, tracker_images
 from .items import GAME, ITEM_GAME_INFO
 from .options import ShuffledDungeons
-from .tracker import (DOORS_KEY, ENTRANCES_KEY, SIGN_KEY, LogicTracker, door_pool, found_entrance, tracked_instruments,
-                      tracked_seashells)
+from .tracker import (DOORS_KEY, ENTRANCES_KEY, LEVEL_KEY, SIGN_KEY, LogicTracker, door_pool, found_entrance,
+                      tracked_instruments, tracked_seashells)
 
 GAME_PORT = 43384
 PROTOCOL_VERSION = 2
@@ -33,9 +34,27 @@ CREATE_HINTS_VERSION = Utils.Version(0, 6, 2)
 # game takes to drop a client that went away).
 BUSY_STATUS = ("Another client is connected to the game. If another Links Awakening Switch Client window is open, "
                "close it.")
-# Data storage key holding the level the game shows (LASR level names: Field, Lv01TailCave, ...), for trackers
-LEVEL_KEY = "las_level_{team}_{slot}"
 # DUNGEON's level numbers (Lv<nn>)
+# Universal Tracker, when installed in at least this version (the one the embedding is tested with): the client is its
+# context too, and shows its map tab (DESIGN.md, Universal Tracker map). Without it the client is a plain CommonClient
+# one.
+TRACKER_DOORS_KEY = "tracker_doors_shown"  # Archipelago's persistent storage, under "las": LASContext.show_doors
+TRACKER_MIN_VERSION = (0, 3, 8)
+
+
+def tracker_version(text: Optional[str]) -> Optional[Tuple[int, int, int]]:
+    """Universal Tracker's version from its UT_VERSION ("v0.3.8", maybe with a suffix); None for none or another
+    form."""
+    m = re.match(r"v?(\d+)\.(\d+)\.(\d+)", text or "")
+    return (int(m[1]), int(m[2]), int(m[3])) if m else None
+
+
+try:
+    from worlds.tracker.TrackerClient import TrackerGameContext, UT_VERSION
+except ImportError:
+    TrackerGameContext, UT_VERSION = None, None
+TRACKER_LOADED = (tracker_version(UT_VERSION) or (0, 0, 0)) >= TRACKER_MIN_VERSION
+ClientContext = TrackerGameContext if TRACKER_LOADED else CommonContext
 DUNGEON_NUMBERS = {"1": "tail-cave", "2": "bottle-grotto", "3": "key-cavern", "4": "angler-tunnel", "5": "catfish-maw",
                    "6": "face-shrine", "7": "eagle-tower", "8": "turtle-rock", "10": "color-dungeon"}
 
@@ -171,15 +190,17 @@ class LASCommandProcessor(ClientCommandProcessor):
             logger.info(checks.checks["installed"].text)
 
 
-class LASContext(CommonContext):
+class LASContext(ClientContext):
     game = GAME
     # Remote items: the server sends this world's own items too. Starting inventory is granted by the patch.
     items_handling = 0b011
     command_processor = LASCommandProcessor
+    tags = CommonContext.tags  # the game's client, not a tracker-only connection (Universal Tracker's "Tracker" tag)
 
     def __init__(self, server_address: Optional[str], password: Optional[str], game_host: str, game_port: int,
                  patch_file: Optional[str] = None):
         super().__init__(server_address, password)
+        self.items_handling = LASContext.items_handling  # Universal Tracker's context sets its own
         self.patch_file = patch_file
         self.patch_slot = ""  # slot name from the patch file
         self.game_status = checklist.Check(checklist.INFO, "Waiting for the game to start.")
@@ -229,6 +250,12 @@ class LASContext(CommonContext):
         self.ghosts = GhostLink(self.send_game, self.refresh_patch_tab)
         self.ghost_relay_arg: Optional[str] = None  # --ghost-relay replaces las_options.ghost_relay
         self.ghost_secret_arg: Optional[str] = None  # --ghost-secret replaces the patch file's (tests)
+        # Universal Tracker's map images (start_tracker_images), and the slot's Connected it waits for them with
+        self.tracker_images: Optional[Path] = None
+        self.tracker_held: Optional[dict] = None
+        self.tracker_task: Optional[asyncio.Task] = None
+        # whether the map tab shows the doors' pins (its Entrances box), kept between runs
+        self.tracker_doors_shown: bool = Utils.persistent_load().get("las", {}).get(TRACKER_DOORS_KEY, True)
 
     async def get_username(self) -> None:
         # the slot comes from the patch file, as the server would otherwise ask for it
@@ -264,11 +291,13 @@ class LASContext(CommonContext):
 
     async def server_auth(self, password_requested: bool = False) -> None:
         if password_requested and not self.password:
-            await super().server_auth(password_requested)
+            await CommonContext.server_auth(self, password_requested)  # Universal Tracker's would connect itself
         await self.get_username()
         await self.send_connect()
 
     def on_package(self, cmd: str, args: dict) -> None:
+        if TRACKER_LOADED:
+            self.tracker_package(cmd, args)
         if cmd in ("Retrieved", "SetReply"):
             self.send_hints()  # CommonContext keeps the slot's hints in stored_data
         if cmd == "Connected":
@@ -326,6 +355,78 @@ class LASContext(CommonContext):
                 name = self.item_names.lookup_in_slot(item.item, item.player)
                 self.scouted_names[item.location - LOCATION_BASE] = f"{clean(name)}|{clean(owner)}"
             self.send_location_names()
+
+    def tracker_package(self, cmd: str, args: dict) -> None:
+        """Universal Tracker's handling of a package, for its map tab. A failure there stays there: Universal Tracker
+        marks the connection as closed on purpose when it fails, which would stop the reconnecting."""
+        if self.tracker_images is None:  # its map tab needs the images: it gets the slot once they exist
+            if cmd == "Connected":
+                self.tracker_held = args
+                self.start_tracker_images()
+            return
+        intentionally = self.disconnected_intentionally
+        try:
+            super().on_package(cmd, args)
+        except Exception:
+            logger.exception("Universal Tracker could not handle the server's " + cmd)
+            self.disconnected_intentionally = intentionally
+
+    def start_tracker_images(self) -> None:
+        """Builds Universal Tracker's map images from the RomFS dump in the background, once per dump
+        (install.tracker_images), and points las_options.ut_pack_path at them. Without a dump, a zip the client built
+        before serves; else there is no map tab."""
+        if not TRACKER_LOADED or self.tracker_images is not None or self.tracker_task is not None:
+            return
+        romfs = emulators.romfs_root(self.option("romfs_folder"))
+        if romfs is None:
+            import Utils
+            known = Path(self.option("ut_pack_path")) if self.option("ut_pack_path") else None
+            if known and known.is_file() and known.parent == Path(Utils.cache_path("las", "tracker")):
+                self.tracker_ready(known)
+            return
+        self.tracker_task = asyncio.create_task(self.build_tracker_images(romfs), name="tracker images")
+
+    async def build_tracker_images(self, romfs: Path) -> None:
+        try:
+            path = await asyncio.to_thread(tracker_images, romfs, logger.info)
+        except Exception as e:
+            logger.exception(f"Could not build the tracker's map: {e}")
+            return
+        finally:
+            self.tracker_task = None
+        self.set_option("ut_pack_path", str(path), detect=False)
+        self.tracker_ready(path)
+
+    def tracker_ready(self, path: Path) -> None:
+        """Universal Tracker's map images exist: it gets the slot it waited for, and the doors found."""
+        self.tracker_images = path
+        held, self.tracker_held = self.tracker_held, None
+        if held is not None and self.slot is not None:
+            self.tracker_package("Connected", held)
+            keys = getattr(self, "defered_entrance_datastorage_keys", None)
+            if keys:
+                asyncio.create_task(self.send_msgs([{"cmd": "Get", "keys": list(keys)}]))
+
+    def load_map(self, map_id) -> None:
+        """Universal Tracker's map, without the doors' pins while its Entrances box is off: the world's
+        ut_map_page_hidden_entrances, which it reads on loading a map, then lists every entrance."""
+        world = self.tracker_core.get_current_world()
+        if world is not None:
+            names = [] if self.tracker_doors_shown else list(
+                self.tracker_core.multiworld.regions.entrance_cache[self.tracker_core.player_id])
+            world.ut_map_page_hidden_entrances = {m["name"]: names for m in self.maps or ()}
+        super().load_map(map_id)
+
+    def show_doors(self, shown: bool) -> None:
+        """The map tab's Entrances box: shows or hides the doors' pins on the map shown, and remembers it."""
+        if shown == self.tracker_doors_shown:
+            return
+        self.tracker_doors_shown = shown
+        Utils.persistent_store("las", TRACKER_DOORS_KEY, shown)
+        if self.map_id is not None:
+            map_id, self.map_id = self.map_id, None
+            self.load_map(map_id)
+            self.updateTracker()
 
     def make_logic_tracker(self) -> None:
         """The slot's rules for the map tracker. A count of instruments or seashells left to chance stays hidden until
@@ -649,7 +750,7 @@ class LASContext(CommonContext):
         """Puts the game's level in the server's data storage, where trackers follow it (LEVEL_KEY)."""
         if self.game_level is None or self.slot is None:
             return
-        await self.send_msgs([{"cmd": "Set", "key": LEVEL_KEY.format(team=self.team, slot=self.slot), "default": "",
+        await self.send_msgs([{"cmd": "Set", "key": LEVEL_KEY.format(team=self.team, player=self.slot), "default": "",
                                "want_reply": False, "operations": [{"operation": "replace", "value": self.game_level}]}])
 
     async def send_doors(self) -> None:
@@ -1037,6 +1138,7 @@ async def prepare_patch(ctx: LASContext, patch: bool) -> None:
         ctx.show_patch_tab()
     await ctx.detect_from_emulator()
     ctx.refresh_patch_tab()
+    ctx.start_tracker_images()
 
 
 def launch(*launch_args: str) -> None:
@@ -1049,6 +1151,8 @@ def launch(*launch_args: str) -> None:
         ctx.update_ghosts()
         ghost_task = asyncio.create_task(ctx.ghosts.run(ctx.exit_event), name="ghosts")
         if gui_enabled and not args.nogui:
+            if TRACKER_LOADED:
+                ctx.run_generator()
             ctx.run_gui()
         ctx.run_cli()
         if ctx.ui:
@@ -1091,6 +1195,9 @@ def launch(*launch_args: str) -> None:
         args.game_host = LASWorld.settings.game_host
 
     Utils.init_logging("LASClient", exception_logger="Client")
+    if UT_VERSION and not TRACKER_LOADED:
+        logger.info(f"Universal Tracker {UT_VERSION} is older than v{'.'.join(map(str, TRACKER_MIN_VERSION))}, the "
+                    f"first that shows its map here. Update it for the map tab.")
     import colorama
     colorama.just_fix_windows_console()
     asyncio.run(main(args))

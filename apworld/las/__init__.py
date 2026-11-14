@@ -33,6 +33,7 @@ from .logic import PLACES, LogicCompiler, make_rule, referenced_regions
 from .models import model_for
 from .options import OPTION_GROUPS, DungeonItemPlacement, Goal, LASOptions, ShuffledDungeons, goal_instruments, goal_seashells
 from .tracker import DOORS_KEY, ENTRANCES_KEY, SIGN_KEY, LogicTracker, tracked_instruments, tracked_seashells
+from .ut_map import TRACKER_WORLD
 from . import lasr_settings
 
 
@@ -130,6 +131,7 @@ class LASWorld(World):
     ut_can_gen_without_yaml = True  # Universal Tracker regenerates the slot from its slot data
     # Universal Tracker watches these data storage keys and passes their values to reconnect_found_entrances
     found_entrances_datastorage_key = (SIGN_KEY, DOORS_KEY, ENTRANCES_KEY)
+    tracker_world: ClassVar[Dict[str, Any]] = TRACKER_WORLD  # Universal Tracker's map tab (ut_map.py)
 
     @staticmethod
     def interpret_slot_data(slot_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -530,10 +532,15 @@ class LASWorld(World):
                 if starting_gear[item.name] > 0:
                     starting_gear[item.name] -= 1
                     self.multiworld.itempool.append(item)
-                elif item.name in self.restricted:
+                elif item.name in self.restricted and not self.from_slot_data:
                     self.pre_fill_items.append(item)
                 else:
                     self.multiworld.itempool.append(item)
+        if self.from_slot_data:
+            # Universal Tracker never fills, and its item panel shows only the item pool's items: the pre-fill's
+            # stay in it (above), and the locked locations' items and the starting items join them
+            for lasr_item in [self.content(loc) for loc in self.locked] + list(self.starting_items):
+                self.multiworld.itempool.append(self.create_item(LASR_TO_ITEM[lasr_item]))
 
     def _ask_for_opener(self) -> None:
         """Very few locations are reachable with nothing (Tarin and a few loose items). Like LASR's Tarin rule, one of
