@@ -23,16 +23,15 @@ from .host_settings import LASSettings
 from .ids import LOCATION_OFFSETS
 from .items import FILLER_ITEM, GAME, ITEM_GAME_INFO, ITEM_NAME_GROUPS, ITEM_TABLE, LASR_TO_ITEM, LASItem
 from .entrances import PlacementError
-from .lasr import (CATEGORIES, COUNTED, DOOR_LOGIC, DOORS, DUNGEON_REWARD_LOCATIONS, DUNGEONS, ENTERED_BY_DOOR,
+from .lasr import (CATEGORIES, COUNTED, DOOR_LOGIC, DOORS, DUNGEON_POOL, DUNGEON_REWARD_LOCATIONS, DUNGEONS,
                    INSTRUMENT_LOCATIONS, INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC, SHOP_LOCATIONS, TRAPS, door_entrance,
                    door_node, dungeon_name, entrance_logic, dungeon_region, goal_logic, item_dungeon, location_dungeon, slot_doors,
-                   shuffle_dungeons, door_logic, door_region, ENTRANCE_POOL, HOME_ZONE, HOUSE_EXIT,
-                   HOUSE_EXIT_REGION, START_DOORS,
-                   WRITTEN_LOGIC)
+                   shuffle_dungeons, door_logic, door_region, ENTRANCE_POOL, HOME_DOOR, HOUSE_DOOR, HOUSE_EXIT,
+                   START_DOORS, WRITTEN_LOGIC, closed_dungeons, entered_by_door, start_pairs)
 from .locations import LASR_LOCATIONS, LOCATION_NAME_GROUPS, LOCATION_NAME_TO_ID, LOCATION_NAMES, LASLocation
 from .logic import PLACES, LogicCompiler, make_rule, referenced_regions
 from .models import model_for
-from .options import OPTION_GROUPS, DungeonItemPlacement, Goal, LASOptions, goal_instruments, goal_seashells
+from .options import OPTION_GROUPS, DungeonItemPlacement, Goal, LASOptions, ShuffledDungeons, goal_instruments, goal_seashells
 from .tracker import DOORS_KEY, ENTRANCES_KEY, SIGN_KEY, LogicTracker, tracked_instruments, tracked_seashells
 from . import lasr_settings
 
@@ -145,9 +144,13 @@ class LASWorld(World):
                 for name in ("small_keys", "nightmare_keys") if name == "keys" else (name,):
                     setattr(self.options, name, LASOptions.type_hints[name].from_any(value))
         options = self.options
+        if options.shuffled_dungeons == ShuffledDungeons.option_everything and not options.entrances:
+            logging.warning(f"{self.player_name}: Shuffled Dungeons everything needs Entrances: shuffling the dungeons "
+                            f"among themselves")
+            options.shuffled_dungeons.value = ShuffledDungeons.option_dungeons
         if passthrough:
             self.dungeon_entrances = dict(passthrough.get("dungeon_entrances") or {d: d for d in DUNGEONS})
-        elif options.shuffled_dungeons:
+        elif self.dungeon_map:
             self.dungeon_entrances = shuffle_dungeons(self.random)
         else:
             self.dungeon_entrances = {d: d for d in DUNGEONS}
@@ -215,13 +218,27 @@ class LASWorld(World):
         as the doors lead (lasr.entrance_logic)."""
         if not self.options.entrances:
             return entrance_logic(self.entrances, self.dungeon_entrances, self.start)
-        return door_logic(WRITTEN_LOGIC, slot_doors(None, self.dungeon_entrances), None, ENTRANCE_POOL, True)
+        return door_logic(WRITTEN_LOGIC, slot_doors(None, self.dungeon_entrances), self.door_pool)
+
+    @property
+    def dungeon_map(self) -> bool:
+        """Whether the dungeons' doors lead into each other at random (Shuffled dungeons dungeons)."""
+        return self.options.shuffled_dungeons == ShuffledDungeons.option_dungeons
+
+    @property
+    def door_pool(self) -> List[str]:
+        """The overworld doors the door placement moves (Entrances): with Shuffled dungeons everything the dungeons'
+        doors too (DUNGEON_POOL)."""
+        if self.options.shuffled_dungeons == ShuffledDungeons.option_everything:
+            return DUNGEON_POOL
+        return ENTRANCE_POOL
 
     def _plando(self) -> Tuple[Dict[str, str], Optional[str]]:
         """The plando connections (options.PlandoDoors): {overworld door: the inside door it leads to}, and the start door
-        Tarin's House Exit leads out of. Without Entrances the doors are left out, without Random Start the start, with a
-        warning; a door in two connections is an OptionError."""
-        outside = set(ENTRANCE_POOL)
+        Tarin's House Exit leads out of. Without Entrances the doors are left out, without Random Start the start and
+        the door outside the house, which then leads into it, a dungeon's door outside the door pool, with a warning; a door in two connections, the start's
+        among them, is an OptionError."""
+        outside = set(DUNGEON_POOL)
         names = {name.lower(): name for name in [*outside, *(DOORS["pairs"][door] for door in outside), HOUSE_EXIT,
                                                  *START_DOORS]}
         doors: Dict[str, str] = {}
@@ -239,11 +256,20 @@ class LASWorld(World):
                 logging.warning(f"{self.player_name}: Plando Connections: {entrance} needs Entrances")
                 continue
             door, inside = (entrance, exit_) if entrance in outside else (exit_, entrance)
+            if door == HOME_DOOR and not self.options.random_start:
+                logging.warning(f"{self.player_name}: Plando Connections: {HOME_DOOR} needs Random Start")
+                continue
+            if door not in self.door_pool or inside not in {DOORS["pairs"][other] for other in self.door_pool}:
+                logging.warning(f"{self.player_name}: Plando Connections: {door} with {inside} needs Shuffled Dungeons "
+                                f"everything")
+                continue
             for side in (door, inside):
                 if side in used:
                     raise OptionError(f"{self.player_name}: Plando Connections: {side} is in two connections")
                 used.add(side)
             doors[door] = inside
+        if start in used:
+            raise OptionError(f"{self.player_name}: Plando Connections: {start} is in two connections")
         return doors, start
 
     def _place_start(self, instruments: int, seashells: Optional[int]) -> Dict[str, str]:
@@ -272,10 +298,10 @@ class LASWorld(World):
         place around. With Boss Drops and Free Gifts off, the Hookshot stays in Catfish's Maw and the Rooster at the
         weathervane, so Catfish's Maw must not be behind a door that needs one of them. The overworld doors are placed
         later (connect_entrances), so none here: {}; with must_reach, None when no map reaches every location."""
-        for attempt in range(maps if self.options.shuffled_dungeons else 1):
+        for attempt in range(maps if self.dungeon_map else 1):
             if attempt:
                 self.dungeon_entrances = shuffle_dungeons(self.random)
-            if not (self.options.shuffled_dungeons or must_reach) or self._reaches({}, instruments, seashells):
+            if not (self.dungeon_map or must_reach) or self._reaches({}, instruments, seashells):
                 return {}
         return None if must_reach else {}
 
@@ -401,8 +427,9 @@ class LASWorld(World):
                 self.node_regions[name] = Region(name, self.player, self.multiworld)
                 self.multiworld.regions.append(self.node_regions[name])
         self.way_rules: Dict[str, Any] = {}  # entrance name -> its rule's expression (set_rules)
+        entered = entered_by_door(self.door_pool)
         for name, region in self.node_regions.items():
-            if name in ENTERED_BY_DOOR:
+            if name in entered:
                 continue
             ways = self.compiler.ways(name) if logic[name]["type"] in PLACES else {}
             if not ways:
@@ -411,14 +438,13 @@ class LASWorld(World):
                 parent = menu if source is None else self.node_regions[source]
                 entrance = parent.connect(region, f"To {name}" if source is None else f"{source} -> {name}")
                 self.way_rules[entrance.name] = expr
-        for dungeon in DUNGEONS:
+        for dungeon in closed_dungeons(self.door_pool):
             self.node_regions[door_node(dungeon)].create_exit(door_entrance(dungeon))
         if self.options.entrances:  # each shuffled door's way through, by the door's name (connect_entrances)
-            for door in ENTRANCE_POOL:
+            for door in self.door_pool:
                 for side, group in ((door, OUTSIDE_DOORS), (DOORS["pairs"][door], INSIDE_DOORS)):
                     exit_ = self.node_regions[door_region(side)].create_exit(side)
                     exit_.randomization_type, exit_.randomization_group = EntranceType.TWO_WAY, group
-            self.node_regions[HOUSE_EXIT_REGION].create_exit(HOUSE_EXIT)
 
         for loc in self.shuffled:
             region = self.node_regions[LOGIC[loc]["region"]]
@@ -580,11 +606,11 @@ class LASWorld(World):
         entrance leads to the region of the inside door it is paired with, and that inside door's back to it: as the
         slot data pairs them for Universal Tracker, else as Archipelago's generic entrance randomizer places them
         (_randomize_doors). Then the opener (_ask_for_opener)."""
-        if not (self.deferred and self.options.shuffled_dungeons):
+        if not (self.deferred and self.dungeon_map):
             self.connect_doors(DUNGEONS)
         if self.from_slot_data:  # the shuffled doors once the player has gone through them, when deferred
-            if self.options.entrances:
-                self._connect_house_exit()
+            if self.options.entrances:  # the house's at once: the player leaves it first
+                self._connect_pairs([self.start or HOME_DOOR])
             if not self.deferred:
                 self._connect_pairs(self.entrances)
             return
@@ -597,34 +623,30 @@ class LASWorld(World):
         inside doors' back; others and those connected already are left alone."""
         for door in doors:
             if door in self.entrances and self.get_entrance(door).connected_region is None:
-                inside = self.entrances[door]
-                self.get_entrance(door).connect(self.node_regions[door_region(inside)])
-                self.get_entrance(inside).connect(self.node_regions[door_region(door)])
+                self._connect_pair(door, self.entrances[door])
 
-    def _door_exits(self) -> List[Entrance]:
+    def _door_exits(self, fixed: Dict[str, str]) -> List[Entrance]:
         """The entrances the generic entrance randomizer places: each shuffled overworld door's and its inside door's,
-        in ENTRANCE_POOL's order, but for the plando's (_plando)."""
-        planned = set(self.plando_doors) | set(self.plando_doors.values())
-        return [self.get_entrance(side) for door in ENTRANCE_POOL for side in (door, DOORS["pairs"][door])
+        in door_pool's order, but for the fixed ones: the plando's (_plando) and the house's."""
+        planned = set(fixed) | set(fixed.values())
+        return [self.get_entrance(side) for door in self.door_pool for side in (door, DOORS["pairs"][door])
                 if side not in planned]
 
     def _plando_note(self) -> str:
         return " with these plando connections" if self.plando_doors or self.plando_start else ""
 
-    def _connect_house_exit(self) -> None:
-        """The house's way out leads out of the start door (Random start), else out of Tarin's."""
-        self.get_entrance(HOUSE_EXIT).connect(self.node_regions[START_DOORS[self.start] if self.start else HOME_ZONE])
-
     def _starts(self) -> List[Optional[str]]:
         """The start doors to try: Tarin's (None), or with Random start a random zone of START_DOORS each, then a random
-        door of it, up to START_ATTEMPTS; the plando's start alone (_plando)."""
+        door of it that no plando connection names, up to START_ATTEMPTS; the plando's start alone (_plando)."""
         if not self.options.random_start:
             return [None]
         if self.plando_start:
             return [self.plando_start]
-        zones = sorted(set(START_DOORS.values()))
+        planned = set(self.plando_doors)
+        free = {door: zone for door, zone in START_DOORS.items() if door not in planned}
+        zones = sorted(set(free.values()))
         self.random.shuffle(zones)
-        return [self.random.choice(sorted(door for door, its in START_DOORS.items() if its == zone))
+        return [self.random.choice(sorted(door for door, its in free.items() if its == zone))
                 for zone in zones[:START_ATTEMPTS]]
 
     def _randomize_doors(self) -> Dict[str, str]:
@@ -634,21 +656,20 @@ class LASWorld(World):
         randomizer makes every region reachable with all items, but stops checking on minimal accessibility once the
         goal is, and does not look at what the start reaches with none. So a placement counts when the slot's sweep
         reaches every location but the optional ones (_reaches), and with Random start when one item opens the start up
-        (_start_opens_up); else the doors are placed again, as after a deadlock. With Random start the house's exit is
-        an entrance too (lasr.HOUSE_EXIT), so each start gets its share of the tries (_starts): a start in a pocket
-        whatever the doors do wastes no more. The plando's doors are connected first and stay (_plando), as Archipelago's
-        plando connections are. No placement in DOOR_PLACEMENT_ATTEMPTS is a PlacementError."""
+        (_start_opens_up); else the doors are placed again, as after a deadlock. The plando's doors are connected first
+        and stay (_plando), as Archipelago's plando connections are, then the house's door with the start door (Random
+        start), or the door outside it: each start gets its share of the tries (_starts), so a start in a pocket
+        whatever the doors do wastes no more. No placement in DOOR_PLACEMENT_ATTEMPTS is a PlacementError."""
         for door, inside in self.plando_doors.items():
-            self.get_entrance(door).connect(self.node_regions[door_region(inside)])
-            self.get_entrance(inside).connect(self.node_regions[door_region(door)])
-        exits = self._door_exits()
-        house = self.get_entrance(HOUSE_EXIT)
-        pool = set(ENTRANCE_POOL)
+            self._connect_pair(door, inside)
+        pool = set(self.door_pool)
         starts = self._starts()
         problem = ""
         for start in starts:
             self.start = start
-            self._connect_house_exit()
+            house = {start or HOME_DOOR: HOUSE_DOOR}
+            self._connect_pair(*next(iter(house.items())))
+            exits = self._door_exits({**self.plando_doors, **house})
             for _ in range(DOOR_PLACEMENT_ATTEMPTS // len(starts)):
                 targets = []
                 for exit_ in exits:
@@ -662,7 +683,7 @@ class LASWorld(World):
                     problem = str(error).split("\n")[0]
                     self._unplace_doors(exits)
                     continue
-                placed = {**self.plando_doors,
+                placed = {**self.plando_doors, **house,
                           **{exit_: target for exit_, target in state.pairings if exit_ in pool}}
                 if not self._reaches(placed, self.goal_instruments, self.goal_seashells):
                     problem = "a location is out of reach"
@@ -671,10 +692,14 @@ class LASWorld(World):
                 else:
                     problem = "the start does not open up with one item"
                 self._unplace_doors(exits)
-            house.connected_region.entrances.remove(house)
-            house.connected_region = None
+            self._unplace_doors([self.get_entrance(side) for pair in house.items() for side in pair])
         raise PlacementError(f"{self.player_name}: Entrances: no door placement in {DOOR_PLACEMENT_ATTEMPTS} tries"
                              f"{self._plando_note()}: {problem}")
+
+    def _connect_pair(self, door: str, inside: str) -> None:
+        """Leads an overworld door into an inside door's region, and that inside door back into the door's."""
+        self.get_entrance(door).connect(self.node_regions[door_region(inside)])
+        self.get_entrance(inside).connect(self.node_regions[door_region(door)])
 
     def _unplace_doors(self, exits: List[Entrance]) -> None:
         """Undoes a door placement: the entrances lead nowhere again and their regions keep no targets."""
@@ -688,8 +713,8 @@ class LASWorld(World):
 
     def connect_doors(self, doors: Iterable[str]) -> None:
         """Connects these doors' entrances (dungeon_entrances' names; others are ignored), and the last door's once
-        every other is connected: where it leads is then known."""
-        entrances = {door: self.get_entrance(door_entrance(door)) for door in DUNGEONS}
+        every other is connected: where it leads is then known. A dungeon whose door is in the door pool has none."""
+        entrances = {door: self.get_entrance(door_entrance(door)) for door in closed_dungeons(self.door_pool)}
         for door in doors:
             if door in entrances and entrances[door].connected_region is None:
                 entrances[door].connect(self.node_regions[dungeon_region(self.dungeon_entrances[door])])
@@ -982,14 +1007,19 @@ class LASWorld(World):
             "location_chests": self.placed_chests(),
             "dungeon_entrances": dict(self.dungeon_entrances),
             # the overworld doors that lead elsewhere: the inside door each leads to, and the one it led to
-            "entrances": {door: inside for door, inside in self.entrances.items() if inside != DOORS["pairs"][door]},
-            "entrance_pairs": {door: DOORS["pairs"][door] for door, inside in self.entrances.items()
-                               if inside != DOORS["pairs"][door]},
+            "entrances": self.moved_doors(),
+            "entrance_pairs": {door: DOORS["pairs"][door] for door in self.moved_doors()},
             "start": self.start,  # the door the house's exit leads out of (Random start)
             "hints": self.in_game_hints(),
             "ghost_secret": self.ghost_secret(),
             "ghost_relay": str(self.settings.ghost_relay or ""),
         }
+
+    def moved_doors(self) -> Dict[str, str]:
+        """{overworld door: the inside door it leads to} for each door that leads elsewhere: as the door placement
+        pairs them (Entrances), else the start door and the door outside the house (Random start, lasr.start_pairs)."""
+        doors = dict(self.entrances) if self.options.entrances else start_pairs(self.start)
+        return {door: inside for door, inside in sorted(doors.items()) if inside != DOORS["pairs"][door]}
 
     _hints: Optional[Dict[str, Dict[str, Any]]] = None
     _hints_lock = threading.Lock()  # output and spoiler run on several threads
@@ -1004,7 +1034,7 @@ class LASWorld(World):
     def write_spoiler_header(self, spoiler_handle: TextIO) -> None:
         """The slot's doors go to the spoiler's own Entrances section, which Archipelago writes after the headers: the
         start (Random start), every dungeon door when one leads elsewhere (Shuffled dungeons), each overworld door
-        that leads elsewhere (Entrances). The ways out lead back, but for the house's exit."""
+        that leads elsewhere (moved_doors). The ways out lead back."""
         spoiler = self.multiworld.spoiler
         if self.start:
             spoiler.set_entrance(HOUSE_EXIT, f"{self.start} ({START_DOORS[self.start]})", "entrance",
@@ -1012,9 +1042,8 @@ class LASWorld(World):
         if any(door != dungeon for door, dungeon in self.dungeon_entrances.items()):
             for door, dungeon in self.dungeon_entrances.items():
                 spoiler.set_entrance(door_entrance(door), dungeon_name(dungeon), "both", self.player)
-        for door, inside in sorted(self.entrances.items()):
-            if inside != DOORS["pairs"][door]:
-                spoiler.set_entrance(door, inside, "both", self.player)
+        for door, inside in self.moved_doors().items():
+            spoiler.set_entrance(door, inside, "both", self.player)
 
     def write_spoiler(self, spoiler_handle: TextIO) -> None:
         hints = self.in_game_hints()

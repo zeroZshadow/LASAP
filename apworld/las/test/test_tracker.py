@@ -9,7 +9,7 @@ from worlds.AutoWorld import AutoWorldRegister
 from .test_logic import OPTION_SETS, STEPS
 from ..lasr import DOORS, ENTRANCE_POOL
 from ..locations import LOCATION_NAMES
-from ..tracker import LogicTracker, found_entrance, tracked_seashells
+from ..tracker import LogicTracker, door_pool, found_entrance, tracked_seashells
 
 
 class TestTracker(unittest.TestCase):
@@ -53,6 +53,7 @@ class TestTracker(unittest.TestCase):
     def test_entrances(self) -> None:
         self.check({"entrances": "everything"}, seed=2200)
         self.check({"entrances": "everything", "random_start": True, "shuffled_dungeons": True}, seed=2201)
+        self.check({"entrances": "everything", "shuffled_dungeons": "everything"}, seed=2202)
 
     def test_seashell_hunt(self) -> None:
         """The optional locations wait for an egg that takes seashells; the Mansion's rewards above the count are
@@ -85,8 +86,13 @@ class TestFoundEntrances(unittest.TestCase):
         self.assertEqual(found_entrance(DOORS["pairs"][door], inside), (door, inside))
         self.assertEqual(found_entrance(other, door), (door, inside))
         self.assertEqual(found_entrance(door, door), (door, DOORS["pairs"][door]))  # a door that leads where it did
-        self.assertIsNone(found_entrance("Field_11C", door))  # the house's exit, Random start
-        self.assertIsNone(found_entrance(DOORS["pairs"][DOORS["groups"]["dungeon"][0]], inside))
+        self.assertEqual(found_entrance("Field_11C", door), (door, "MarinTarinHouse_01A"))  # the house's exit led out of door
+        dungeon = DOORS["groups"]["dungeon"][0]
+        self.assertIsNone(found_entrance(DOORS["pairs"][dungeon], inside))
+        # Shuffled dungeons everything: a dungeon's door is a door of the pool
+        pool = door_pool({dungeon: inside})
+        self.assertEqual(found_entrance(DOORS["pairs"][dungeon], inside, pool), (dungeon, inside))
+        self.assertEqual(door_pool({door: inside}), ENTRANCE_POOL)
 
     def test_doors_not_gone_through_lead_nowhere(self) -> None:
         world_type = AutoWorldRegister.world_types["Links Awakening Switch"]

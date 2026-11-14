@@ -7,7 +7,7 @@ exit, its instrument's warp, the Fairy Queen's warps and her room's loading zone
 leads into it. The rooms and flowcharts keep their vanilla targets. The module also swaps the overworld map's dungeon
 markers (`markers`; the seed file's markers)."""
 import re
-from typing import List, Mapping, Optional
+from typing import List, Mapping
 
 import ap_assets
 
@@ -65,7 +65,8 @@ def door_jumps(entrances: Mapping[str, str], pairs: Mapping[str, str]) -> List[s
     """The jumps' lines of the overworld doors that lead elsewhere (Entrances): entrances maps such a door to the inside
     door it leads to, pairs to the one it led to. A door goes by the spot its partner lands on, so the overworld's jump
     through the door goes to the new inside door's spot, and that inside's jump out to the door's own spot. Tarin's
-    house's jump out is from any level: the warp menu and the Save & Quit after a game over lead outside its door too.
+    house's jump out is from any level: the warp menu and the Save & Quit after a game over lead outside its door too,
+    so with Random start they lead out of the start door, as the house does.
     A jump out onto a covered door (OPENING_FLAGS) also names the flag that opens it."""
     door_of = {inside: door for door, inside in pairs.items()}
     lines = []
@@ -75,16 +76,6 @@ def door_jumps(entrances: Mapping[str, str], pairs: Mapping[str, str]) -> List[s
         opening = f" {OPENING_FLAGS[door]}" if door in OPENING_FLAGS else ""
         lines.append(f"{out_from} {FIELD} {door_of[inside]} {FIELD} {door}{opening}")
     return lines
-
-
-def start_jumps(start: Optional[str]) -> List[str]:
-    """The jumps' line of a random start (Random start): the jump to the spot outside Tarin's door, from any level (the
-    house's exit, the warp menu, the Save & Quit after a game over), goes to the spot outside the start door instead,
-    with the flag that opens it if something covers it."""
-    if not start or start == HOME:
-        return []
-    opening = f" {OPENING_FLAGS[start]}" if start in OPENING_FLAGS else ""
-    return [f"{ANY_LEVEL} {FIELD} {HOME} {FIELD} {start}{opening}"]
 
 
 def markers(entrances: Mapping[str, str]) -> List[str]:

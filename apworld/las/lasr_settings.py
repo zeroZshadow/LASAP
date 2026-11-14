@@ -165,7 +165,8 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Open Mamu": bool(o.open_mamu),
         "Completed Bridge": bool(o.completed_bridge),
         "Classic D2": bool(o.classic_d2),
-        "Shuffled Dungeons": bool(o.shuffled_dungeons),
+        # the dungeons' doors into each other (dungeon_entrances); with everything they are doors of the door pool
+        "Shuffled Dungeons": o.shuffled_dungeons == o.shuffled_dungeons.option_dungeons,
         "Consumable Drops": True,
         "Bad Pets": False,  # not supported
         "Fast Fishing": bool(o.fast_fishing),

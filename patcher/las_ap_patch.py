@@ -197,12 +197,11 @@ def marker_lines(patch: dict) -> List[str]:
 
 
 def jump_lines(patch: dict) -> List[str]:
-    """The jumps' lines: the doors of shuffled dungeons, the overworld doors that lead elsewhere (Entrances), the house's
-    exit (Random start) and, on a seashell hunt, the egg's door."""
+    """The jumps' lines: the doors of shuffled dungeons, the overworld doors that lead elsewhere (Entrances, and the start
+    door and the door outside the house with Random start) and, on a seashell hunt, the egg's door."""
     shuffled = patch["settings"].get("Shuffled Dungeons", False)
     return ((ap_entrances.jumps(patch["dungeon_entrances"]) if shuffled else []) +
             ap_entrances.door_jumps(patch.get("entrances") or {}, patch.get("entrance_pairs") or {}) +
-            ap_entrances.start_jumps(patch.get("start")) +
             ap_goal.jumps(ap_goal.settings_seashells(patch["settings"])))
 
 
@@ -376,6 +375,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     if patch_shape(patch) != ap_assets.data()["shape"]:
         print("The patch's locations are not those of the mod this patcher makes: patch it with the patcher of the "
               "world version that made it.")
+        return 1
+    if ap_map.groups_key(ap_map.load_positions()) != ap_assets.data().get("map_groups"):
+        print("map_positions.json's map groups are not those of the assets' map icons: rebuild the assets "
+              "(scripts/build_assets.py).")
         return 1
 
     item_defs = load_yaml("items.yml")["Item_Pool"]

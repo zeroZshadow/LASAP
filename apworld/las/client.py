@@ -15,7 +15,8 @@ from .ghosts import DEFAULT_RELAY, GhostLink
 from .host_settings import PLAYER_SETTINGS, player_value
 from .install import InstallError, builtin_patcher_build, patch_and_install
 from .items import GAME, ITEM_GAME_INFO
-from .tracker import (DOORS_KEY, ENTRANCES_KEY, SIGN_KEY, LogicTracker, found_entrance, tracked_instruments,
+from .options import ShuffledDungeons
+from .tracker import (DOORS_KEY, ENTRANCES_KEY, SIGN_KEY, LogicTracker, door_pool, found_entrance, tracked_instruments,
                       tracked_seashells)
 
 GAME_PORT = 43384
@@ -373,11 +374,12 @@ class LASContext(CommonContext):
     @property
     def found_doors(self) -> Optional[Set[str]]:
         """The dungeon doors the player has found in the slot's seed, by dungeon_entrances names: those leading into
-        the dungeons the game reports entered, and those data storage has; None with dungeons not shuffled."""
+        the dungeons the game reports entered, and those data storage has; None with dungeons not shuffled among
+        themselves (with Shuffled dungeons everything the dungeon doors are doors of the door pool)."""
         entrances = self.slot_data.get("dungeon_entrances") or {}
         shuffled = self.slot_data.get("options", {}).get("shuffled_dungeons",
                                                          any(door != inside for door, inside in entrances.items()))
-        if not shuffled:
+        if shuffled != ShuffledDungeons.option_dungeons:
             return None
         return self.doors_stored | {door for door, inside in entrances.items() if inside in self.game_dungeons}
 
@@ -619,7 +621,7 @@ class LASContext(CommonContext):
             self.send_logic()
         elif cmd == "DOOR" and len(parts) == 3:
             # a level jump to the spot of parts[1] that went to that of parts[2]: through a shuffled door, or out
-            found = found_entrance(parts[1], parts[2])
+            found = found_entrance(parts[1], parts[2], door_pool(self.slot_data.get("entrances")))
             if found and self.game_entrances.get(found[0]) != found[1]:
                 self.game_entrances[found[0]] = found[1]
                 asyncio.create_task(self.send_entrances())

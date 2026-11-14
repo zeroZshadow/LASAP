@@ -10,7 +10,7 @@ from worlds.AutoWorld import AutoWorldRegister, call_all
 
 from .test_logic import OPTION_SETS, STEPS
 from ..items import GAME
-from ..lasr import (DUNGEONS, ENTRANCE_POOL, START_DOORS, door_entrance, door_region, dungeon_region,
+from ..lasr import (DUNGEONS, ENTRANCE_POOL, HOUSE_DOOR, door_entrance, door_region, dungeon_region,
                     location_dungeon)
 from ..locations import LASR_LOCATIONS
 
@@ -20,6 +20,7 @@ OPTIONS = OPTION_SETS + [
     {"small_keys": "any_dungeon", "nightmare_keys": "start_with", "dungeon_items": "own_world"},
     {"random_start": True},
     {"entrances": "everything", "random_start": True, "shuffled_dungeons": True},
+    {"entrances": "everything", "random_start": True, "shuffled_dungeons": "everything"},
     {"instruments": "dungeon_rewards", "seashell_mansion": 5, "heart_pieces": False, "seashells": False,
      "golden_leaves": False, "shop": False},
 ]
@@ -163,7 +164,7 @@ class TestDeferredDoors(unittest.TestCase):
 
 class TestDeferredEntrances(unittest.TestCase):
     """With Entrances Universal Tracker connects a shuffled door's entrance, and its inside door's, once the player has
-    gone through either (ENTRANCES_KEY); the house's exit leads out of the start door at once."""
+    gone through either (ENTRANCES_KEY); the house's door and the start door at once."""
 
     def setUp(self) -> None:
         world_type = AutoWorldRegister.world_types[GAME]
@@ -186,12 +187,13 @@ class TestDeferredEntrances(unittest.TestCase):
         regen = regenerate(self.slot_data, 4301)
         again = regen.worlds[1]
         entrances = self.slot_data["entrances"]
-        self.assertEqual(self.connected(again), {})
         start = self.slot_data["start"]
-        self.assertEqual(again.get_entrance("Tarin's House Exit").connected_region.name, START_DOORS[start])
-        door = ENTRANCE_POOL[0]
+        house = {start: door_region(HOUSE_DOOR)}
+        self.assertEqual(self.connected(again), house)
+        self.assertEqual(again.get_entrance(HOUSE_DOOR).connected_region.name, door_region(start))
+        door = next(door for door in ENTRANCE_POOL if door != start)
         again.reconnect_found_entrances("las_entrances_0_1", {door: entrances[door]})
-        self.assertEqual(self.connected(again), {door: door_region(entrances[door])})
+        self.assertEqual(self.connected(again), {**house, door: door_region(entrances[door])})
         self.assertEqual(again.get_entrance(entrances[door]).connected_region.name, door_region(door))
         before = self.reached(regen)
         again.reconnect_found_entrances("las_entrances_0_1", entrances)

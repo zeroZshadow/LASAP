@@ -11,7 +11,9 @@ HEAD = ("# Where the game's doors lead, by name, and the groups an entrance shuf
         "# A zone in logic.yml lists its doors; a door no zone lists is not in logic.")
 # The pairs with an overworld side, by kind; a pair goes by its overworld name. Pairs inside the game's levels, one-way
 # doors and the fixed doors are in none.
-FIXED = {"Field_01G": "the Wind Fish's Egg"}  # overworld doors no shuffle moves
+# Overworld doors no shuffle moves. Catfish's Maw's dives: Link comes up out of the water at the other end, which he
+# leaves only with the flippers; another door's inside led there crashes the game without them.
+FIXED = {"Field_01G": "the Wind Fish's Egg", "Field_14J_a": "Catfish's Maw's dive", "Field_14J_c": "Catfish's Maw's dive"}
 GROUPS = {
     "dungeon": "a dungeon's own door, the one shuffled dungeons move",
     "dungeon-other": "another overworld door into a dungeon's level",

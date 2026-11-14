@@ -5,7 +5,7 @@ from typing import Any, Dict, Iterable, List, Optional
 import yaml
 
 from .entrances import shuffle_pool, shuffled_doors
-from .logic import ALWAYS, SPEC, START, house_exits, lower_routes
+from .logic import ALWAYS, SPEC, START, house_exits, lower_routes, start_doors
 
 _Loader = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
 
@@ -65,10 +65,9 @@ def _with_dungeon_regions(written: Dict[str, Dict[str, Any]], *extra: str) -> Di
 _ENTERED = {DOORS["pairs"][DUNGEON_DOORS[dungeon]]: dungeon_region(dungeon) for dungeon in DUNGEONS}
 
 
-def plain_logic(written: Dict[str, Dict[str, Any]], doors: Dict[str, Any],
-                house_exit: Optional[str] = None) -> Dict[str, Dict[str, Any]]:
+def plain_logic(written: Dict[str, Dict[str, Any]], doors: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     """The routes lowered, each dungeon's door leading into the region just inside it."""
-    return lower_routes(_with_dungeon_regions(written, *_ENTERED.values()), doors, house_exit, _ENTERED)
+    return lower_routes(_with_dungeon_regions(written, *_ENTERED.values()), doors, _ENTERED)
 
 
 LOGIC: Dict[str, Dict[str, Any]] = plain_logic(WRITTEN_LOGIC, DOORS)
@@ -163,13 +162,12 @@ def door_region(door: str) -> str:
     return f"{door.replace('_', '-')}-door"
 
 
-# Entrances: the AP entrance of the house's way out, and the region it leaves from (door_logic's house_entrance)
+# Random start: the plando connections' and the spoiler's name of the house's way out, which leads out of the start door
 HOUSE_EXIT = "Tarin's House Exit"
-HOUSE_EXIT_REGION = "house-exit"
 
 
-def door_logic(written: Dict[str, Dict[str, Any]], doors: Dict[str, Any], house_exit: Optional[str] = None,
-               open_doors: Iterable[str] = (), house_entrance: bool = False) -> Dict[str, Dict[str, Any]]:
+def door_logic(written: Dict[str, Dict[str, Any]], doors: Dict[str, Any],
+               open_doors: Iterable[str] = ()) -> Dict[str, Dict[str, Any]]:
     """The routes lowered with each dungeon's door a region of its own (door_node), holding the door's way in, and the
     regions just inside the doors (dungeon_region) entered only through a door's entrance, which the world connects to
     the dungeon the door leads into: they keep no conditions. The ways out of the dungeons lead as `doors` pairs them.
@@ -177,9 +175,11 @@ def door_logic(written: Dict[str, Dict[str, Any]], doors: Dict[str, Any], house_
     well (door_region), with the door's way in, which leads on to the door's zone: the world connects the doors'
     entrances to each other's regions as the slot's entrances pair them, so the rules do not depend on where the doors
     lead. A way that drops onto such a door's spot leads to its zone: only its partner's way out leads through it.
-    With house_entrance the start's doors lead into a region of their own (HOUSE_EXIT_REGION), whose entrance
-    (HOUSE_EXIT) the world connects to the zone the house's exit leads to (START_DOORS, HOME_ZONE)."""
-    through = {DUNGEON_DOORS[dungeon]: door_node(dungeon) for dungeon in DUNGEONS}
+    A dungeon's door among `open_doors` (Shuffled dungeons everything, DUNGEON_POOL) is such a door instead of a
+    door_node, and its inside door's region leads on to the region just inside the dungeon, which keeps its ways in."""
+    open_doors = list(open_doors)
+    closed = closed_dungeons(open_doors)
+    through = {DUNGEON_DOORS[dungeon]: door_node(dungeon) for dungeon in closed}
     for dungeon in DUNGEONS:
         assert door_node(dungeon) not in written, dungeon
     nodes = _with_dungeon_regions(written, *_ENTERED.values(), *through.values())
@@ -188,16 +188,22 @@ def door_logic(written: Dict[str, Dict[str, Any]], doors: Dict[str, Any], house_
         for side in (door, doors["pairs"][door]):
             through[side] = door_region(side)
             assert through[side] not in written, through[side]
-            nodes[through[side]] = {"type": "region", "one-way": {zones[side]: ALWAYS}}
-    if house_entrance:
-        assert HOUSE_EXIT_REGION not in written
-        for door in written[START].get("doors") or {}:
-            through[door] = HOUSE_EXIT_REGION
-        nodes[HOUSE_EXIT_REGION] = {"type": "region"}
-    lowered = lower_routes(nodes, doors, house_exit, _ENTERED, through)
-    for dungeon in DUNGEONS:
+            nodes[through[side]] = {"type": "region", "one-way": {_ENTERED.get(side, zones.get(side)): ALWAYS}}
+    lowered = lower_routes(nodes, doors, _ENTERED, through)
+    for dungeon in closed:
         lowered[dungeon_region(dungeon)] = _without_conditions(lowered[dungeon_region(dungeon)])
     return lowered
+
+
+def closed_dungeons(open_doors: Iterable[str]) -> List[str]:
+    """The dungeons whose door is no door of `open_doors`: entered only through their door's entrance (door_logic)."""
+    opened = set(open_doors)
+    return [dungeon for dungeon in DUNGEONS if DUNGEON_DOORS[dungeon] not in opened]
+
+
+def entered_by_door(open_doors: Iterable[str] = ()) -> frozenset:
+    """The regions with no way in but a dungeon door's entrance: those just inside the closed_dungeons."""
+    return frozenset(dungeon_region(dungeon) for dungeon in closed_dungeons(open_doors))
 
 
 DOOR_LOGIC = door_logic(WRITTEN_LOGIC, DOORS)
@@ -205,33 +211,35 @@ DOOR_LOGIC = door_logic(WRITTEN_LOGIC, DOORS)
 
 def entrance_logic(entrances: Optional[Dict[str, str]], dungeon_entrances: Optional[Dict[str, str]] = None,
                    start: Optional[str] = None) -> Dict[str, Dict[str, Any]]:
-    """DOOR_LOGIC with a slot's doors (slot_doors): its overworld entrances (Entrances) and its dungeons',
-    and with the house's exit leading out of the `start` door (Random start, START_DOORS)."""
-    doors = slot_doors(entrances, dungeon_entrances)
-    if doors is DOORS and not start:
+    """DOOR_LOGIC with a slot's doors (slot_doors): its overworld entrances (Entrances) and its dungeons', and with
+    the house's door swapped with the `start` door (Random start, START_DOORS; logic.start_doors)."""
+    doors = start_doors(WRITTEN_LOGIC, slot_doors(entrances, dungeon_entrances), start)
+    if doors is DOORS:
         return DOOR_LOGIC
-    return door_logic(WRITTEN_LOGIC, doors, START_DOORS[start] if start else None)
+    return door_logic(WRITTEN_LOGIC, doors)
 
 
-# Entrances: the overworld doors the shuffle moves (entrances.shuffle_pool), as door_logic's open_doors
-ENTRANCE_POOL: List[str] = shuffle_pool(WRITTEN_LOGIC, DOORS)
+# Entrances: the overworld doors the shuffle moves (entrances.shuffle_pool), as door_logic's open_doors; with Shuffled
+# dungeons everything the dungeons' own doors too
+ENTRANCE_POOL: List[str] = shuffle_pool(DOORS)
+DUNGEON_POOL: List[str] = ENTRANCE_POOL + [door for door in DOORS["groups"]["dungeon"] if door not in ENTRANCE_POOL]
 
-# Random start: {overworld door: its zone} for each door the house's exit may lead out of (logic.house_exits)
+# Random start: {overworld door: its zone} for each door the house's door may be swapped with (logic.house_exits)
 START_DOORS: Dict[str, str] = house_exits(WRITTEN_LOGIC, DOORS)
+# The house's door, and the overworld door outside it, which leads into it without Random start
+(HOUSE_DOOR,) = WRITTEN_LOGIC[START]["doors"]
+HOME_DOOR = next(door for door, inside in DOORS["pairs"].items() if inside == HOUSE_DOOR)
 
 
-def _home_zone() -> str:
-    (door,) = WRITTEN_LOGIC[START]["doors"]
-    leads = {**DOORS["pairs"], **{other: one for one, other in DOORS["pairs"].items()}}
-    return next(zone for zone, node in WRITTEN_LOGIC.items() if leads[door] in (node.get("doors") or {}))
+def start_pairs(start: Optional[str]) -> Dict[str, str]:
+    """{overworld door: the inside door it leads to} for the doors a start moves (logic.start_doors): the start door
+    into the house, the door outside the house into the start door's inside. None for no start or Tarin's own."""
+    moved = start_doors(WRITTEN_LOGIC, DOORS, start)["pairs"]
+    return {door: inside for door, inside in moved.items() if inside != DOORS["pairs"][door]}
 
 
-# The zone the house's exit leads to without Random start: that of the door outside Tarin's
-HOME_ZONE = _home_zone()
-
-
-# Regions with no way in but a door's entrance
-ENTERED_BY_DOOR = frozenset(dungeon_region(dungeon) for dungeon in DUNGEONS)
+# Regions with no way in but a door's entrance, with the dungeons' doors out of the door pool
+ENTERED_BY_DOOR = entered_by_door()
 
 
 def shuffle_dungeons(random) -> Dict[str, str]:

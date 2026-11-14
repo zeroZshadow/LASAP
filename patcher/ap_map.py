@@ -13,6 +13,7 @@ hides the game's chest icons of the slot's chests (C lines); it names the hovere
 
 Positions come from map_positions.json (scripts/map_positions.py). modbuild/ap_map_edits.py adds the rows and texts.
 """
+import hashlib
 import json
 import math
 import os
@@ -61,6 +62,13 @@ def overworld_groups(positions: dict) -> list:
         else:
             groups.append((x, z, y, [loc]))
     return groups
+
+
+def groups_key(positions: dict) -> str:
+    """A fingerprint of the overworld groups (overworld_groups). The mod's icon rows number them as the asset build
+    found them (ap_map_edits), the seed's map as the patcher finds them, so the two must be the same groups: the asset
+    build stores it (ap_assets.data's map_groups), and the patcher refuses a patch when they differ."""
+    return hashlib.sha256(json.dumps(overworld_groups(positions)).encode("utf-8")).hexdigest()
 
 
 def dungeon_dots(positions: dict, location_ids: dict) -> list:

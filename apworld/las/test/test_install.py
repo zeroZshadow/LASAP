@@ -290,6 +290,16 @@ class TestPatchWithoutBuild(LASTestBase):
             self.assertTrue((out / "atmosphere" / "contents" / TITLE_ID / "romfs" / "region_common").is_dir())
 
 
+class TestMapGroups(unittest.TestCase):
+    def test_the_assets_map_icons_are_map_positions_groups(self) -> None:
+        """The mod's map icons number the overworld groups as the asset build found them, the seed's map as
+        map_positions.json gives them now (ap_map.groups_key): after map_positions.json changes, rebuild the assets."""
+        result = subprocess.run([sys.executable, "-c", "import ap_assets, ap_map\n"
+                                 "print(ap_map.groups_key(ap_map.load_positions()) == ap_assets.data().get('map_groups'))"],
+                                cwd=install.SOURCE_PATCHER, capture_output=True, text=True)
+        self.assertEqual(result.stdout.strip(), "True", result.stderr[-2000:])
+
+
 @unittest.skipUnless((ROMFS / "region_common").is_dir(), "RomFS dump not found (LASAP_ROMFS)")
 class TestMadeAssets(unittest.TestCase):
     def test_made_assets(self) -> None:

@@ -6,7 +6,9 @@ from pathlib import Path
 
 from . import LASTestBase
 from ..entrances import shuffle_pool
-from ..lasr import DOORS as GAME_DOORS, ENTRANCE_POOL, START_DOORS, WRITTEN_LOGIC, door_region, HOUSE_EXIT
+from ..lasr import (DOORS as GAME_DOORS, DUNGEON_DOORS, DUNGEON_POOL, DUNGEONS, ENTRANCE_POOL, HOME_DOOR, HOUSE_DOOR,
+                    HOUSE_EXIT, START_DOORS, WRITTEN_LOGIC, door_entrance, door_region, dungeon_region, start_pairs)
+from ..options import ShuffledDungeons
 from ..logic import ALWAYS, START, parse
 
 
@@ -31,8 +33,8 @@ WRITTEN = {
 
 
 class TestShufflePool(unittest.TestCase):
-    def test_the_starts_doors_stay(self) -> None:
-        self.assertEqual(shuffle_pool(WRITTEN, DOORS), ["Field_c", "Field_d", "Field_a", "Field_b"])
+    def test_the_groups_doors_move_the_houses_too(self) -> None:
+        self.assertEqual(shuffle_pool(DOORS), ["Field_c", "Field_d", "Field_house", "Field_a", "Field_b"])
 
 
 class TestDoorJumps(unittest.TestCase):
@@ -61,12 +63,21 @@ class TestDoorJumps(unittest.TestCase):
         self.assertIn("Cave Field Field_03C Field Field_06C AppearStairsFld06C", lines)
         self.assertIn("House Field Field_06C Field Field_03C", lines)
 
-    def test_a_random_start_takes_every_jump_home(self) -> None:
+    def test_a_random_start_swaps_the_houses_door(self) -> None:
+        """The start door leads into the house and every jump home out of it; Tarin's door into its inside, and back."""
         sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "patcher"))
         import ap_entrances
-        self.assertEqual(ap_entrances.start_jumps("Field_06C"), ["* Field Field_11C Field Field_06C AppearStairsFld06C"])
-        self.assertEqual(ap_entrances.start_jumps("Field_03C"), ["* Field Field_11C Field Field_03C"])
-        self.assertEqual(ap_entrances.start_jumps(None), [])
+        moved = start_pairs("Field_06C")
+        self.assertEqual(moved, {"Field_06C": HOUSE_DOOR, HOME_DOOR: GAME_DOORS["pairs"]["Field_06C"]})
+        inside = GAME_DOORS["pairs"]["Field_06C"]
+        lines = ap_entrances.door_jumps(moved, {door: GAME_DOORS["pairs"][door] for door in moved})
+        self.assertEqual(sorted(lines), sorted([
+            f"Field {ap_entrances.level_of(inside)} {inside} MarinTarinHouse {HOUSE_DOOR}",
+            "* Field Field_11C Field Field_06C AppearStairsFld06C",
+            f"Field MarinTarinHouse {HOUSE_DOOR} {ap_entrances.level_of(inside)} {inside}",
+            f"{ap_entrances.level_of(inside)} Field Field_06C Field Field_11C"]))
+        self.assertEqual(start_pairs(HOME_DOOR), {})
+        self.assertEqual(start_pairs(None), {})
 
 
 class TestRandomStart(LASTestBase):
@@ -80,6 +91,29 @@ class TestRandomStart(LASTestBase):
         zone = START_DOORS[world.start]
         tree = parse(str(world.door_logic[zone]["condition-basic"]))
         self.assertIn(("tok", START, 1), tree[1] if tree[0] == "or" else [tree])
+
+    def test_the_start_door_leads_back_into_the_house(self) -> None:
+        world = self.multiworld.worlds[self.player]
+        self.assertEqual(world.patch_data()["entrances"], start_pairs(world.start))
+        if world.start != HOME_DOOR:
+            self.assertEqual(world.patch_data()["entrances"][world.start], HOUSE_DOOR)
+
+
+class TestRandomStartPocket(unittest.TestCase):
+    """A zone whose only way out is the start door is a pocket once that door leads back into the house."""
+
+    def test_a_dead_end_start_is_never_picked(self) -> None:
+        from test.general import setup_multiworld
+        from .. import LASWorld
+        dead_ends = {door for door, zone in START_DOORS.items()
+                     if set((WRITTEN_LOGIC[zone].get("doors") or {})) == {door} and not WRITTEN_LOGIC[zone].get("one-way")
+                     and not WRITTEN_LOGIC[zone].get("connections")
+                     and not any(zone in (node.get("one-way") or {}) or zone in (node.get("connections") or {})
+                                 for node in WRITTEN_LOGIC.values())}
+        self.assertIn("Field_01N", dead_ends)  # the Tal Tal yard of the five chests
+        for seed in range(8):
+            world = setup_multiworld(LASWorld, seed=4400 + seed, options={"random_start": True}).worlds[1]
+            self.assertNotIn(world.start, dead_ends)
 
 
 class TestEntrancesOff(LASTestBase):
@@ -100,10 +134,11 @@ class TestDoorEntrances(LASTestBase):
             self.assertEqual(world.get_entrance(door).connected_region.name, door_region(inside))
             self.assertEqual(world.get_entrance(inside).connected_region.name, door_region(door))
 
-    def test_the_house_leads_out_of_the_start_door(self) -> None:
+    def test_the_house_and_the_start_door_lead_into_each_other(self) -> None:
         world = self.multiworld.worlds[self.player]
         self.assertIn(world.start, START_DOORS)
-        self.assertEqual(world.get_entrance(HOUSE_EXIT).connected_region.name, START_DOORS[world.start])
+        self.assertEqual(world.entrances[world.start], HOUSE_DOOR)
+        self.assertEqual(world.get_entrance(HOUSE_DOOR).connected_region.name, door_region(world.start))
 
     def test_a_door_leads_on_to_its_own_zone(self) -> None:
         """Whatever door leads to a door's region, it leads on to the zone of that door, and back through it."""
@@ -113,6 +148,47 @@ class TestDoorEntrances(LASTestBase):
             for side in (door, GAME_DOORS["pairs"][door]):
                 exits = {exit.name: exit.connected_region.name for exit in world.get_region(door_region(side)).exits}
                 self.assertEqual(set(exits.values()) - {zones[side]}, {exits[side]}, side)
+
+
+class TestDungeonsAmongTheDoors(LASTestBase):
+    """Shuffled dungeons everything: the dungeons' doors are doors of the door pool (lasr.DUNGEON_POOL)."""
+    options = {"entrances": "everything", "shuffled_dungeons": "everything", "random_start": True}
+
+    def test_the_dungeon_doors_are_placed_with_the_others(self) -> None:
+        world = self.multiworld.worlds[self.player]
+        self.assertEqual(set(world.entrances), set(DUNGEON_POOL))
+        self.assertEqual(world.dungeon_entrances, {dungeon: dungeon for dungeon in DUNGEONS})
+        for door in DUNGEON_DOORS.values():
+            inside = world.entrances[door]
+            self.assertEqual(world.get_entrance(door).connected_region.name, door_region(inside))
+            self.assertEqual(world.get_entrance(inside).connected_region.name, door_region(door))
+        with self.assertRaises(KeyError):
+            world.get_entrance(door_entrance(DUNGEONS[0]))
+
+    def test_a_dungeons_inside_door_leads_on_into_the_dungeon(self) -> None:
+        world = self.multiworld.worlds[self.player]
+        for dungeon, door in DUNGEON_DOORS.items():
+            region = world.get_region(door_region(GAME_DOORS["pairs"][door]))
+            self.assertIn(dungeon_region(dungeon), {exit_.connected_region.name for exit_ in region.exits})
+
+    def test_the_patch_leads_the_dungeon_doors_as_doors(self) -> None:
+        world = self.multiworld.worlds[self.player]
+        patch = world.patch_data()
+        self.assertFalse(patch["settings"]["Shuffled Dungeons"])
+        moved = {door for door in DUNGEON_DOORS.values() if world.entrances[door] != GAME_DOORS["pairs"][door]}
+        self.assertTrue(moved)
+        self.assertLessEqual(moved, set(patch["entrances"]))
+
+
+class TestDungeonsAmongTheDoorsNeedEntrances(LASTestBase):
+    """Without Entrances, Shuffled dungeons everything shuffles the dungeons among themselves."""
+    options = {"shuffled_dungeons": "everything"}
+
+    def test_dungeons_among_themselves(self) -> None:
+        world = self.multiworld.worlds[self.player]
+        self.assertEqual(world.options.shuffled_dungeons.value, ShuffledDungeons.option_dungeons)
+        self.assertTrue(world.patch_data()["settings"]["Shuffled Dungeons"])
+        self.assertEqual(world.entrances, {})
 
 
 # Three single doors of the shuffle: plando swaps the first two's insides, the first written inside first
@@ -137,7 +213,7 @@ class TestPlandoDoors(LASTestBase):
     def test_the_house_leads_out_of_the_planned_door(self) -> None:
         world = self.multiworld.worlds[self.player]
         self.assertEqual(world.start, "Field_11C")
-        self.assertEqual(world.get_entrance(HOUSE_EXIT).connected_region.name, START_DOORS["Field_11C"])
+        self.assertEqual(world.get_entrance(HOUSE_DOOR).connected_region.name, door_region("Field_11C"))
 
 
 class TestPlandoWithoutEntrances(LASTestBase):

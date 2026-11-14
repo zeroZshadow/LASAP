@@ -14,9 +14,9 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Set, 
 from BaseClasses import ItemClassification
 
 from .items import ITEM_TABLE, LASR_TO_ITEM
-from .lasr import (COUNTED, DOORS, DUNGEONS, ENTERED_BY_DOOR, ENTRANCE_POOL, INSTRUMENTS, LOGIC, START_DOORS,
-                   WRITTEN_LOGIC, door_logic, door_node, door_region, dungeon_of, dungeon_region, entrance_logic,
-                   goal_logic, slot_doors)
+from .lasr import (COUNTED, DOORS, DUNGEON_DOORS, DUNGEON_POOL, DUNGEONS, ENTRANCE_POOL, HOME_DOOR, INSTRUMENTS, LOGIC, WRITTEN_LOGIC,
+                   closed_dungeons, door_logic, door_node, door_region, dungeon_of, dungeon_region, entered_by_door,
+                   entrance_logic, goal_logic, slot_doors)
 from .logic import LogicCompiler, make_rule
 from .options import Goal, SeashellsRequired
 
@@ -31,18 +31,22 @@ DOORS_KEY = "las_doors_{team}_{player}"
 # Data storage key holding the overworld doors the player has gone through (Entrances), {door: the inside door it leads
 # to}: going through a door or out of its inside (the game's DOOR) finds the pair. Formatted with the team and the slot.
 ENTRANCES_KEY = "las_entrances_{team}_{player}"
-_OUTSIDE = frozenset(ENTRANCE_POOL)
-_INSIDE_OF = {DOORS["pairs"][door]: door for door in ENTRANCE_POOL}
+def door_pool(entrances: Optional[Mapping[str, str]]) -> List[str]:
+    """The slot's door pool, from its slot data's `entrances`: with a dungeon's door among them (Shuffled dungeons
+    everything) DUNGEON_POOL, else ENTRANCE_POOL."""
+    return DUNGEON_POOL if set(entrances or ()) & set(DUNGEON_DOORS.values()) else ENTRANCE_POOL
 
 
-def found_entrance(locator: str, to: str) -> Optional[Tuple[str, str]]:
-    """The shuffled door and the inside door it leads to that a level jump finds (the game's DOOR <locator> <to>): a
-    jump to the spot inside a door that leads to another inside door's spot went through that door, and a jump to an
-    overworld door's spot that leads to another overworld door's spot came out of the inside door the first leads to.
-    None for other jumps."""
-    if locator in _INSIDE_OF and to in _INSIDE_OF:
-        return _INSIDE_OF[locator], to
-    if locator in _OUTSIDE and to in _OUTSIDE:
+def found_entrance(locator: str, to: str, pool: Iterable[str] = ENTRANCE_POOL) -> Optional[Tuple[str, str]]:
+    """The shuffled door of `pool` (door_pool) and the inside door it leads to that a level jump finds (the game's
+    DOOR <locator> <to>): a jump to the spot inside a door that leads to another inside door's spot went through that
+    door, and a jump to an overworld door's spot that leads to another overworld door's spot came out of the inside
+    door the first leads to. None for other jumps."""
+    outside = set(pool)
+    inside_of = {DOORS["pairs"][door]: door for door in outside}
+    if locator in inside_of and to in inside_of:
+        return inside_of[locator], to
+    if locator in outside and to in outside:
         return to, DOORS["pairs"][locator]
     return None
 
@@ -99,17 +103,21 @@ class LogicTracker:
         LASR locations; `dungeon_entrances`: the slot data's, None for none shuffled; `optional`: the shuffled
         locations reached only after the goal, which opens with `instruments_required` instruments or, on a
         seashell hunt (`seashells_required` not None), with that many secret seashells; `overworld_entrances`: the slot
-        data's `entrances`, the overworld doors that lead elsewhere; `start`: the slot data's, the door the house's exit
-        leads out of (Random start), None for Tarin's own. The rules are the world's (lasr.entrance_logic,
+        data's `entrances`, the overworld doors that lead elsewhere; `start`: the slot data's, the door the house's door
+        is swapped with (Random start), None for Tarin's own. The rules are the world's (lasr.entrance_logic,
         whose ways out of the dungeons lead as the doors do): each dungeon door a region, and the region it leads into
         entered through it once the player knows where it leads (sweep). With overworld entrances, each shuffled door
         and inside door is a region too (lasr.door_logic's open_doors), entered through the door it is paired with
-        once the player knows the pair (sweep)."""
+        once the player knows the pair (sweep), the house's from the start: the player leaves it first. The doors
+        are those `overworld_entrances` names: a dungeon's door among them (Shuffled dungeons everything) is such a
+        door too, and its dungeon has no door region of its own."""
         entrances = dict(dungeon_entrances) if dungeon_entrances else {d: d for d in DUNGEONS}
         self.pairs = dict(overworld_entrances or {})
+        self.home = start or HOME_DOOR  # the door the house's door is paired with
+        pool = [door for door in DUNGEON_POOL if door in self.pairs]
+        closed = closed_dungeons(pool)
         if self.pairs:
-            doors = door_logic(WRITTEN_LOGIC, slot_doors(None, entrances), START_DOORS[start] if start else None,
-                               ENTRANCE_POOL)
+            doors = door_logic(WRITTEN_LOGIC, slot_doors(None, entrances), pool)
         else:
             doors = entrance_logic(None, entrances, start)
         logic = goal_logic(instruments_required, doors, seashells_required)
@@ -117,7 +125,7 @@ class LogicTracker:
         vanilla, self.shuffled, optional = list(vanilla), list(shuffled), set(optional)
         # the shuffled doors' regions too: what leads into each through its partner is no rule (sweep)
         sides = [side for door in self.pairs for side in (door, DOORS["pairs"][door])]
-        roots = (self.shuffled + vanilla + (["kill-nightmare"] if optional else []) + [door_node(d) for d in DUNGEONS]
+        roots = (self.shuffled + vanilla + (["kill-nightmare"] if optional else []) + [door_node(d) for d in closed]
                  + [door_region(side) for side in sides])
         needed = set(compiler.dependencies(roots)) & compiler.region_nodes
         self.regions: Dict[str, _Region] = {name: _Region() for name in needed}
@@ -130,8 +138,9 @@ class LogicTracker:
 
         # (its name, region, its rule, the door that leads into it or None): a region a door leads into is entered
         # through that door's region and has no other way in
-        led = {dungeon_region(inside): door for door, inside in entrances.items()}
-        self.entrances = [(name, self.regions[name], never if name in ENTERED_BY_DOOR else rule(name), led.get(name))
+        led = {dungeon_region(inside): door for door, inside in entrances.items() if door in closed}
+        entered = entered_by_door(pool)
+        self.entrances = [(name, self.regions[name], never if name in entered else rule(name), led.get(name))
                           for name in logic if name in needed]
         goal = make_rule(compiler.token("kill-nightmare", 1), PLAYER, self.regions)
 
@@ -147,7 +156,7 @@ class LogicTracker:
         # each shuffled dungeon location's door: the one that leads into its dungeon, by the location's name
         door_into = {inside: door for door, inside in entrances.items()}
         self.location_doors = {loc: self.regions[door_node(door_into[dungeon_of(loc)])]
-                               for loc in self.shuffled if dungeon_of(loc)}
+                               for loc in self.shuffled if dungeon_of(loc) and door_into[dungeon_of(loc)] in closed}
 
     def lead(self, overworld_entrances: Mapping[str, str]) -> "LogicTracker":
         """This tracker with the shuffled overworld doors leading as these say instead. The rules do not depend on
@@ -173,7 +182,7 @@ class LogicTracker:
         hidden. A shuffled overworld door and the inside door it leads to lead into each other only once the player
         has gone through them (`found_entrances`, the overworld doors found; None for every door)."""
         known = known_doors(found_doors)
-        found = set(self.pairs) if found_entrances is None else set(found_entrances) & set(self.pairs)
+        found = set(self.pairs) if found_entrances is None else (set(found_entrances) | {self.home}) & set(self.pairs)
         through: Dict[str, List[_Region]] = {}  # a door's region: the regions of the doors found to lead into it
         for door in found:
             outside, inside = door_region(door), door_region(self.pairs[door])

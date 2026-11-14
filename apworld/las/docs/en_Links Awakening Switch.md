@@ -36,7 +36,9 @@ items can be placed.
 
 ## Can dungeon entrances be shuffled?
 
-Yes, with Shuffled Dungeons. Each entrance leads into a random dungeon, and its exit leads back out the same way.
+Yes, with Shuffled Dungeons. On "dungeons", each entrance leads into a random dungeon, and its exit leads back out
+the same way. On "everything", with Entrances on, the dungeon entrances are shuffled with the other doors, so a dungeon
+entrance can lead into a cave or house, and a cave or house door into a dungeon.
 Trackers show where a door leads only after you have been through it.
 
 ## What does the player start with?

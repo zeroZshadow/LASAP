@@ -1065,11 +1065,12 @@ prairie:
     frog-maze: hookshot | rooster
     river: cross-water
     animal-village: rooster | hookshot
-    kanalet-hookshot-island: rooster | hookshot
+    kanalet-hookshot-island: rooster
     kanalet-porch: open-kanalet | (kanalet & break-bush)
     kanalet-east: bananas | completed-bridge | cross-water
   one-way:
     slime-dungeon-porch: feather | cross-water
+    kanalet-hookshot-island: hookshot
 frog-maze:
   type: region
 pothole-field:

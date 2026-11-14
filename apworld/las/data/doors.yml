@@ -198,7 +198,7 @@ one-way:
   Lv07EagleTower_04G: Lv07EagleTower_04C
   Lv09WindFishsEgg_08C: Field_01G
   Lv10ClothesDungeon_04C: Field_08H
-groups:  # the pairs with an overworld side, by their overworld name; pairs inside the levels and the doors that stay are in none. Stay: Field_01G (the Wind Fish's Egg)
+groups:  # the pairs with an overworld side, by their overworld name; pairs inside the levels and the doors that stay are in none. Stay: Field_01G (the Wind Fish's Egg), Field_14J_a (Catfish's Maw's dive), Field_14J_c (Catfish's Maw's dive)
   dungeon:  # a dungeon's own door, the one shuffled dungeons move
     - Field_01O
     - Field_02A
@@ -256,8 +256,6 @@ groups:  # the pairs with an overworld side, by their overworld name; pairs insi
     - Field_12I_a
     - Field_12I_b
     - Field_13I
-    - Field_14J_a
-    - Field_14J_c
     - Field_15H
     - Field_16J
   single:  # the one overworld door into its level

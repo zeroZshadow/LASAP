@@ -136,6 +136,7 @@ ALWAYS = "always"
 NEVER = "never-holds"  # no such name, so it never holds (LogicCompiler.token)
 PLACES = ("region", "room")
 ROUTE_KEYS = ("connections", "one-way", "doors")
+SHUFFLE_GROUPS = ("single", "connector")  # doors.yml's groups an entrance shuffle draws from: no dungeon's doors
 FIELD_DOOR = "Field_"  # an overworld door: a door goes by its room, and the overworld's rooms are Field_<row><column>
 
 
@@ -155,11 +156,10 @@ def _route_levels(value: object, where: str) -> Dict[str, str]:
     return found
 
 
-def _route_edges(logic: Mapping[str, Mapping], doors: Mapping[str, Mapping], house_exit: Optional[str],
+def _route_edges(logic: Mapping[str, Mapping], doors: Mapping[str, Mapping],
                  entered: Optional[Mapping[str, str]] = None,
                  through: Optional[Mapping[str, str]] = None) -> List[Tuple[str, str, Dict[str, str]]]:
-    """Every way between zones as (from, to, rule by level). With house_exit, the start's doors lead to that zone.
-    `entered` maps a door to the region just inside it: a door that leads to it leads into that region, which leads on
+    """Every way between zones as (from, to, rule by level). `entered` maps a door to the region just inside it: a door that leads to it leads into that region, which leads on
     to the door's zone; `through` maps a door to the region it leads into instead, wherever it leads (lasr.door_logic)."""
     edges = []
     written: Set[Tuple[str, str]] = set()
@@ -204,7 +204,7 @@ def _route_edges(logic: Mapping[str, Mapping], doors: Mapping[str, Mapping], hou
         if entered and landing in entered:
             edges.append((zone, entered[landing], door_rule[door]))
             continue
-        target = house_exit if house_exit and zone == START else door_zone.get(landing)
+        target = door_zone.get(landing)
         if target and target != zone:
             edges.append((zone, target, door_rule[door]))
     for landing, region in (entered or {}).items():
@@ -214,9 +214,10 @@ def _route_edges(logic: Mapping[str, Mapping], doors: Mapping[str, Mapping], hou
 
 
 def house_exits(logic: Mapping[str, Mapping], doors: Mapping[str, Mapping]) -> Dict[str, str]:
-    """{door: its zone}: the overworld doors the start's door may lead to. Each is one of a pair in doors.yml and has no
-    rule to go in at any level, so Link can always walk back into the house from where he comes out."""
-    paired = set(doors["pairs"]) | set(doors["pairs"].values())
+    """{door: its zone}: the overworld doors the start's door may lead to (start_doors). Each is a door of doors.yml's
+    SHUFFLE_GROUPS, so no dungeon's door, and has no rule to go in at any level, so Link can always walk back into the
+    house from where he comes out."""
+    paired = {door for group in SHUFFLE_GROUPS for door in (doors.get("groups") or {}).get(group) or ()}
     found = {}
     for zone, node in logic.items():
         if node.get("type") not in PLACES:
@@ -227,13 +228,25 @@ def house_exits(logic: Mapping[str, Mapping], doors: Mapping[str, Mapping]) -> D
     return found
 
 
-def lower_routes(logic: Mapping[str, Mapping], doors: Mapping[str, Mapping], house_exit: Optional[str] = None,
+def start_doors(logic: Mapping[str, Mapping], doors: Mapping[str, Any], start: Optional[str]) -> Mapping[str, Any]:
+    """doors.yml with the house's door swapped with the start door (house_exits): the start door leads into the house
+    and the house's way out leads out of it, and the door outside the house leads into the start door's inside and that
+    inside's way out out of it. The same doors for no start or the door outside the house."""
+    (house,) = logic[START]["doors"]
+    pairs = doors["pairs"]
+    home = next(door for door, inside in pairs.items() if inside == house)
+    if not start or start == home:
+        return doors
+    return {**doors, "pairs": {**pairs, start: house, home: pairs[start]}}
+
+
+def lower_routes(logic: Mapping[str, Mapping], doors: Mapping[str, Mapping],
                  entered: Optional[Mapping[str, str]] = None,
                  through: Optional[Mapping[str, str]] = None) -> Dict[str, Dict]:
     """The logic with each zone's ways in as its condition-* keys, the routes gone. Other nodes stay as they are.
     `entered` and `through` as _route_edges reads them."""
     incoming: Dict[str, Dict[str, List[str]]] = {}
-    for source, target, rule in _route_edges(logic, doors, house_exit, entered, through):
+    for source, target, rule in _route_edges(logic, doors, entered, through):
         levels = incoming.setdefault(target, {})
         for level, text in rule.items():
             if text == ALWAYS:

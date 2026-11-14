@@ -5,8 +5,9 @@ python simulator.py [--logic <logic.yml>]   the file stands in for the world's l
 Any Python starts it: it runs itself in .venv-ap.
 
 Nothing here decides what a rule means: worlds come from setup_multiworld as in the world's tests, rules from its LogicCompiler
-and make_rule. The start overlay lowers logic.yml's routes again with the house's door leading elsewhere, and refreshes the one thing
-derived from the result, DOOR_LOGIC. Elsewhere is a zone with an overworld door Link can always go in by (the world's house_exits).
+and make_rule. The start overlay lowers logic.yml's routes again with the house's door swapped with a door elsewhere (the world's
+start_doors), and refreshes the one thing derived from the result, DOOR_LOGIC. Elsewhere is a zone with an overworld door Link can
+always go in by (the world's house_exits).
 """
 import argparse
 import json
@@ -46,12 +47,13 @@ def import_world(logic_file):
     from worlds.las import lasr as lasr_module
     from worlds.las.items import LASR_TO_ITEM
     from worlds.las.lasr import COUNTED, DOOR_LOGIC, ITEM_DEFS, LOGIC, door_logic
-    from worlds.las.logic import NEVER, PLACES, PRESETS, START, house_exits, lower_routes, make_rule, node_tokens, parse
+    from worlds.las.logic import NEVER, PLACES, PRESETS, START, house_exits, lower_routes, make_rule, node_tokens, parse, start_doors
     from worlds.las.options import LASOptions
     return dict(CollectionState=CollectionState, FillError=FillError, distribute=distribute_items_restrictive, setup=setup_multiworld, gen_steps=gen_steps,
                 world_type=AutoWorldRegister.world_types["Links Awakening Switch"], lasr=lasr_module, item_names=LASR_TO_ITEM, counted=COUNTED,
                 door_logic_dict=DOOR_LOGIC, item_defs=ITEM_DEFS, logic=LOGIC, door_logic=door_logic, presets=PRESETS, make_rule=make_rule,
-                node_tokens=node_tokens, parse=parse, options=LASOptions, places=PLACES, lower_routes=lower_routes, house_exits=house_exits, start=START, never=NEVER)
+                node_tokens=node_tokens, parse=parse, options=LASOptions, places=PLACES, lower_routes=lower_routes, house_exits=house_exits, start=START, never=NEVER,
+                start_doors=start_doors)
 
 
 def smallest_within(pool, holds):
@@ -102,18 +104,21 @@ class Worker:
         return options
 
     def set_start(self, start):
-        """The zone the house's door leads to: mabe loses the way from the house and that zone gains it.
+        """The zone the house's door leads to: the house's door swaps with the zone's first door of house_exits, so that door leads
+        into the house and the door outside the house where it led.
         Fills LOGIC's zones and DOOR_LOGIC anew, in place: the world and the compiler read those dicts."""
         if start == self.overlay:
             return
         if start != EXIT and start not in self.exits:
             raise ValueError(f"{start}: the house's exit leads only to a zone with an overworld door that has no rule to go in")
-        lowered = self.ap["lasr"].plain_logic(*self.written, house_exit=start)
+        logic, doors = self.written
+        swapped = self.ap["start_doors"](logic, doors, self.exits[start][0] if start in self.exits else None)
+        lowered = self.ap["lasr"].plain_logic(logic, swapped)
         for name, node in lowered.items():
             if node["type"] in self.ap["places"]:
                 self.logic[name].clear()
                 self.logic[name].update(node)
-        fresh = self.ap["door_logic"](*self.written, house_exit=start)
+        fresh = self.ap["door_logic"](logic, swapped)
         doors = self.ap["door_logic_dict"]
         doors.clear()
         doors.update(fresh)

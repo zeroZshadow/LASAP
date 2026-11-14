@@ -5,10 +5,11 @@ from pathlib import Path
 import yaml
 
 from ..lasr import DOORS as SHIPPED_DOORS, LOGIC, WRITTEN_LOGIC
-from ..logic import ALWAYS, NEVER, PLACES, START, house_exits, lower_routes, node_tokens, parse
+from ..logic import ALWAYS, NEVER, PLACES, START, house_exits, lower_routes, node_tokens, parse, start_doors
 
 DATA = Path(__file__).resolve().parents[1] / "data"
-DOORS = {"pairs": {"Field_a": "Inside_a", "Field_b": "Inside_b", "Field_d": "Inside_d"}, "one-way": {"Hole": "Field_c"}}
+DOORS = {"pairs": {"Field_a": "Inside_a", "Field_b": "Inside_b", "Field_d": "Inside_d"}, "one-way": {"Hole": "Field_c"},
+         "groups": {"single": ["Field_a", "Field_b", "Field_d"]}}
 
 
 def zone(**routes):
@@ -71,13 +72,19 @@ class TestRoutes(unittest.TestCase):
         self.assertEqual(logic["b"]["condition-basic"], "a")
         self.assertEqual(logic["a"]["condition-basic"], NEVER)
 
-    def test_house_exit_moves_only_the_houses_door(self) -> None:
+    def test_a_start_swaps_the_houses_door_with_the_start_door(self) -> None:
+        """The start door leads into the house and back, the door outside the house into the start door's inside."""
         logic = {START: zone(doors={"Inside_a": ALWAYS}, one_way={"warp": "ocarina"}), "mabe": zone(doors={"Field_a": ALWAYS}),
-                 "plains": zone(one_way={"mabe": "sword"}), "warp": zone()}
-        moved = lower_routes(logic, DOORS, house_exit="plains")
+                 "plains": zone(doors={"Field_b": ALWAYS}), "cave": zone(doors={"Inside_b": ALWAYS}), "warp": zone()}
+        doors = start_doors(logic, DOORS, "Field_b")
+        self.assertEqual(doors["pairs"], {**DOORS["pairs"], "Field_b": "Inside_a", "Field_a": "Inside_b"})
+        moved = lower_routes(logic, doors)
         self.assertEqual(moved["plains"]["condition-basic"], START)
-        self.assertEqual(moved["mabe"]["condition-basic"], "plains & sword")
+        self.assertEqual(moved["cave"]["condition-basic"], "mabe")
+        self.assertEqual(moved["mabe"]["condition-basic"], "cave")
         self.assertEqual(moved["warp"]["condition-basic"], f"{START} & ocarina")
+        self.assertIs(start_doors(logic, DOORS, "Field_a"), DOORS)
+        self.assertIs(start_doors(logic, DOORS, None), DOORS)
 
     def test_house_exits_are_overworld_doors_with_no_rule_in(self) -> None:
         """Link can walk back into the house from wherever its door leads."""

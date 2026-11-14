@@ -5,7 +5,7 @@ from typing import Any, Optional
 from Options import (Choice, DeathLink, DefaultOnToggle, NamedRange, OptionGroup, PerGameCommonOptions,
                      PlandoConnections, Range, StartInventoryPool, Toggle, Visibility)
 
-from .lasr import DOORS, ENTRANCE_POOL, HOUSE_EXIT, START_DOORS
+from .lasr import DOORS, DUNGEON_POOL, HOUSE_DOOR, HOUSE_EXIT, START_DOORS
 
 
 class Logic(Choice):
@@ -274,17 +274,27 @@ class ClassicD2(Toggle):
     display_name = "Classic D2"
 
 
-class ShuffledDungeons(Toggle):
-    """Each dungeon's entrance leads into a random dungeon, the Color Dungeon included; its exit leads back out of that
-    entrance. The pause map's dungeon markers move with them, and the logic follows each door."""
+class ShuffledDungeons(Choice):
+    """Dungeons: each dungeon's entrance leads into a random dungeon, the Color Dungeon included; its exit leads back
+    out of that entrance. The pause map's dungeon markers move with them.
+    Everything: with Entrances, the dungeons' entrances are shuffled with the other doors, so a dungeon's entrance may
+    lead into a cave or house and a cave's or house's door into a dungeon; the pause map shows every check by its own
+    door. Without Entrances, as Dungeons.
+    The logic follows each door."""
     display_name = "Shuffled Dungeons"
+    option_none = 0
+    option_dungeons = 1
+    option_everything = 2
+    alias_false = 0
+    alias_true = 1
+    default = 0
 
 
 class Entrances(Choice):
     """Everything: each overworld door into a cave, house or tunnel leads into another one's inside at random, and its
-    inside leads back out of that door. Dungeon doors, the Face Shrine's and Turtle Rock's side doors, the Wind Fish's
-    Egg and Tarin's house keep theirs. Every place stays reachable; the logic follows each door, and needs logic that
-    lists those doors on both sides."""
+    inside leads back out of that door. Dungeon doors, the Face Shrine's and Turtle Rock's side doors, Catfish's Maw's
+    dives and the Wind Fish's Egg keep theirs, and Tarin's house keeps its own door unless Random Start moves it.
+    Every place stays reachable; the logic follows each door, and needs logic that lists those doors on both sides."""
     display_name = "Entrances"
     option_none = 0
     option_everything = 1
@@ -292,31 +302,32 @@ class Entrances(Choice):
 
 
 class RandomStart(Toggle):
-    """Leaving Tarin's house leads out of a random overworld door, one Link can always walk back in by, and the warp
-    menu and the Save & Quit after a game over lead there too. Only a start the item placement can get going from: one
-    that one item opens up."""
+    """Tarin's house's door swaps places with a random cave or house door: leaving the house leads out of that door,
+    and that door leads back into the house; the warp menu and the Save & Quit after a game over lead there too. The
+    door outside Tarin's house then leads where the start door led (with Entrances, somewhere at random). Only a start
+    the item placement can get going from: one that one item opens up."""
     display_name = "Random Start"
 
 
-_INSIDE_DOORS = frozenset(DOORS["pairs"][door] for door in ENTRANCE_POOL)
+_INSIDE_DOORS = frozenset(DOORS["pairs"][door] for door in DUNGEON_POOL) - {HOUSE_DOOR}
 
 
 class PlandoDoors(PlandoConnections):
     """With Entrances: an overworld door that leads to the inside door named with it, whose way out leads back out of
-    that door, whichever of the two comes first (the direction is not read: the doors lead both ways). With Random
-    Start: Tarin's House Exit with one of the start doors, which then is the start. Door names are those of the
-    spoiler's Entrances section. Needs the generator's plando connections.
+    that door, whichever of the two comes first (the direction is not read: the doors lead both ways); the door outside
+    Tarin's house only with Random Start, a dungeon's door only with Shuffled Dungeons on everything. With Random Start: Tarin's House Exit with one of the start doors, which then
+    is the start. Door names are those of the spoiler's Entrances section. Needs the generator's plando connections.
     - entrance: Field_03C
       exit: Cave_02B
     - entrance: Tarin's House Exit
       exit: Field_06C"""
     display_name = "Plando Connections"
-    entrances = frozenset([*ENTRANCE_POOL, *_INSIDE_DOORS, HOUSE_EXIT])
-    exits = frozenset([*ENTRANCE_POOL, *_INSIDE_DOORS, *START_DOORS])
+    entrances = frozenset([*DUNGEON_POOL, *_INSIDE_DOORS, HOUSE_EXIT])
+    exits = frozenset([*DUNGEON_POOL, *_INSIDE_DOORS, *START_DOORS])
 
     @classmethod
     def can_connect(cls, entrance: str, exit: str) -> bool:
-        outside = {door.lower() for door in ENTRANCE_POOL}
+        outside = {door.lower() for door in DUNGEON_POOL}
         inside = {door.lower() for door in _INSIDE_DOORS}
         entrance, exit = entrance.lower(), exit.lower()
         if entrance == HOUSE_EXIT.lower():
@@ -577,8 +588,9 @@ OPTION_GROUPS = [
                               BossDrops, Dampe, Rapids, Fishing, BlueRupees, OwlStatues, SeashellMansion]),
     OptionGroup("Goal", [Goal, InstrumentsRequired, SeashellsRequired]),
     OptionGroup("Dungeon Items", [SmallKeys, NightmareKeys, DungeonItems, Instruments]),
-    OptionGroup("Start", [StartingInstruments, StartingRupees, RandomStart]),
-    OptionGroup("World", [OpenMabe, OpenKanalet, OpenMamu, CompletedBridge, ClassicD2, ShuffledDungeons, Entrances, PlandoDoors, FreeBook,
+    OptionGroup("Start", [StartingInstruments, StartingRupees]),
+    OptionGroup("Entrance Randomizer", [ShuffledDungeons, Entrances, RandomStart, PlandoDoors]),
+    OptionGroup("World", [OpenMabe, OpenKanalet, OpenMamu, CompletedBridge, ClassicD2, FreeBook,
                           FastFishing, FastStalfos, ShuffledBombs, ShuffledPowder, AmmoGhost, MapTracker, InGameHints,
                           HintDistribution, Stealing, ChestAppearance]),
     OptionGroup("Gameplay", [Damage, MovementSpeed, Movement360, SkipSongCutscenes, InstantText, InstantPickups,
