@@ -33,7 +33,7 @@ from .logic import PLACES, LogicCompiler, make_rule, referenced_regions
 from .models import model_for
 from .options import OPTION_GROUPS, DungeonItemPlacement, Goal, LASOptions, ShuffledDungeons, goal_instruments, goal_seashells
 from .tracker import DOORS_KEY, ENTRANCES_KEY, SIGN_KEY, LogicTracker, tracked_instruments, tracked_seashells
-from .ut_map import TRACKER_WORLD
+from .ut_map import DOOR_STEPS, TRACKER_WORLD, door_out
 from . import lasr_settings
 
 
@@ -924,6 +924,16 @@ class LASWorld(World):
         logic = goal_logic(instruments_required, self.door_logic, seashells_required)
         self.compiler = LogicCompiler(logic, self.options.logic.current_key, self.settings_tokens, LASR_TO_ITEM,
                                       COUNTED)
+
+    def explain_path(self, entrance: Entrance, state: CollectionState) -> Optional[List[Dict[str, str]]]:
+        """Universal Tracker's /get_logical_path, per step of its way: only the doors Link goes through, each with the
+        door it comes out of (ut_map.DOOR_STEPS). A slot without shuffled doors has every step, as UT writes it."""
+        if not self.options.entrances and not closed_dungeons(self.door_pool):
+            return []
+        if entrance.name not in DOOR_STEPS:
+            return None
+        return [{"type": "color", "color": "blue", "text": entrance.name},
+                {"type": "text", "text": f" -> {door_out(entrance)}"}]
 
     def reconnect_found_entrances(self, key: str, value: Any) -> None:
         """Universal Tracker: a data storage key of found_entrances_datastorage_key changed. Once the player has read

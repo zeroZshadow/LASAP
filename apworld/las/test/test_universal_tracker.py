@@ -208,3 +208,14 @@ class TestDeferredEntrances(unittest.TestCase):
     def test_not_deferred(self) -> None:
         again = regenerate(self.slot_data, 4302, "off").worlds[1]
         self.assertEqual(self.connected(again), self.connected(self.original.worlds[1]))
+
+    def test_logical_path_lists_doors(self) -> None:
+        """/get_logical_path writes only the doors of its way (explain_path), each with the door it comes out of."""
+        world = self.original.worlds[1]
+        state = CollectionState(self.original)
+        door = next(door for door in ENTRANCE_POOL if world.get_entrance(door).connected_region is not None)
+        out = world.get_entrance(door).connected_region.name[:-5].replace("-", "_")
+        self.assertEqual(world.explain_path(world.get_entrance(door), state),
+                         [{"type": "color", "color": "blue", "text": door}, {"type": "text", "text": f" -> {out}"}])
+        route = next(e for e in self.original.get_entrances(1) if " -> " in e.name)
+        self.assertIsNone(world.explain_path(route, state))

@@ -887,6 +887,65 @@ def add_doors_box(page, ctx) -> None:
     row.add_widget(doors, index=row.children.index(auto_tab))
 
 
+ROUTE_COLOR = (0.19, 0.25, 1.0, 0.85)  # Universal Tracker's path blue (its "hinted" colour)
+ROUTE_WIDTH = 0.25  # the route's line, in pin sizes
+
+
+class RouteLine(Widget):
+    """The route on Universal Tracker's map (LASContext.route_points): a line in the map image's pixels, drawn under
+    the pins."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        from kivy.graphics import Color, Line
+        with self.canvas:
+            Color(*ROUTE_COLOR)
+            self.line = Line(points=[], width=1.0, joint="round", cap="round")
+
+
+def draw_route(page, points: List[Tuple[float, float]], pin_size: float) -> None:
+    """Draws the route on the map page's pins' canvas, which loading a map empties."""
+    canvas = page.ids.location_canvas
+    line = next((w for w in canvas.children if isinstance(w, RouteLine)), None)
+    if line is None:
+        line = RouteLine()
+        canvas.add_widget(line, index=len(canvas.children))
+    line.line.points = [c for p in points for c in p] if len(points) > 1 else []
+    line.line.width = max(1.0, pin_size * ROUTE_WIDTH)
+
+
+def add_route_search(page, ctx) -> None:
+    """A field beside the map's buttons: a location in logic (part of its name: a menu of those that match) gets its
+    route (LASContext.route_to)."""
+    from kivymd.uix.textfield import MDTextFieldHintText
+    field = ConnectBarTextInput(size_hint_x=None, width=dp(260), pos_hint={"center_y": 0.5})
+    field.add_widget(MDTextFieldHintText(text="Route to a check"))
+
+    def search(*_: Any) -> None:
+        text = field.text.strip().lower()
+        if not text:
+            return
+        found = [name for name in ctx.tracker_in_logic if text in name.lower()]
+        exact = [name for name in found if name.lower() == text]
+        if len(found) == 1 or exact:
+            ctx.route_to((exact or found)[0])
+            return
+        items = [{"text": name, "on_release": lambda n=name: pick(n)} for name in found[:20]] or \
+            [{"text": "No check in logic matches"}]
+        menu = MDDropdownMenu(caller=field, items=items, position="bottom", width=dp(420))
+
+        def pick(name: str) -> None:
+            menu.dismiss()
+            field.text = name
+            ctx.route_to(name)
+
+        menu.open()
+
+    field.bind(on_text_validate=search)
+    row = page.ids.auto_tab_checkitem.__self__.parent
+    row.add_widget(field)
+
+
 def make_manager(base):
     class LASManager(base):
         base_title = "Archipelago Link's Awakening (Switch) Client"
@@ -909,6 +968,7 @@ def make_manager(base):
                     tighten_item_grids(content, getattr(self.ctx, "tracker_world", None))
                     fix_map_view(content)
                     add_doors_box(content, self.ctx)
+                    add_route_search(content, self.ctx)
                 except Exception as e:
                     logger.exception(f"Could not adjust Universal Tracker's map tab: {e}")
             return super().add_client_tab("Tracker" if title == "Map Page" else title, content, index)

@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 import Utils
 from CommonClient import ClientCommandProcessor, CommonContext, get_base_parser, gui_enabled, logger, server_loop
+from MultiServer import mark_raw
 from NetUtils import ClientStatus, HintStatus
 
 from .container import LASContainer
@@ -19,6 +20,7 @@ from .items import GAME, ITEM_GAME_INFO
 from .options import ShuffledDungeons
 from .tracker import (DOORS_KEY, ENTRANCES_KEY, LEVEL_KEY, SIGN_KEY, LogicTracker, door_pool, found_entrance,
                       tracked_instruments, tracked_seashells)
+from .ut_map import DOOR_STEPS, door_out
 
 GAME_PORT = 43384
 PROTOCOL_VERSION = 2
@@ -50,11 +52,12 @@ def tracker_version(text: Optional[str]) -> Optional[Tuple[int, int, int]]:
 
 
 try:
-    from worlds.tracker.TrackerClient import TrackerGameContext, UT_VERSION
+    from worlds.tracker.TrackerClient import TrackerCommandProcessor, TrackerGameContext, UT_VERSION
 except ImportError:
-    TrackerGameContext, UT_VERSION = None, None
+    TrackerCommandProcessor, TrackerGameContext, UT_VERSION = None, None, None
 TRACKER_LOADED = (tracker_version(UT_VERSION) or (0, 0, 0)) >= TRACKER_MIN_VERSION
 ClientContext = TrackerGameContext if TRACKER_LOADED else CommonContext
+ClientCommands = TrackerCommandProcessor if TRACKER_LOADED else ClientCommandProcessor  # with UT's /explain and others
 DUNGEON_NUMBERS = {"1": "tail-cave", "2": "bottle-grotto", "3": "key-cavern", "4": "angler-tunnel", "5": "catfish-maw",
                    "6": "face-shrine", "7": "eagle-tower", "8": "turtle-rock", "10": "color-dungeon"}
 
@@ -69,8 +72,15 @@ OPTION_KEYS = ("platform", "emulator", "game_file", "romfs_folder", "sd_card_fol
 GHOST_KEYS = ("ghost_relay",)
 
 
-class LASCommandProcessor(ClientCommandProcessor):
+class LASCommandProcessor(ClientCommands):
     ctx: "LASContext"
+
+    if TRACKER_LOADED:
+        @mark_raw
+        def _cmd_get_logical_path(self, dest_name: str = "") -> None:
+            """Finds a logical expected path to a particular location or region by name"""
+            self.ctx.route_target = dest_name.strip() or None  # the Tracker tab's route ends at its pin
+            super()._cmd_get_logical_path(dest_name)
 
     def _cmd_las(self) -> None:
         """Show the connection state to the game."""
@@ -254,6 +264,11 @@ class LASContext(ClientContext):
         self.tracker_images: Optional[Path] = None
         self.tracker_held: Optional[dict] = None
         self.tracker_task: Optional[asyncio.Task] = None
+        # The Tracker tab's route (route_points): the check /get_logical_path went to, the locations in logic it finds
+        # routes to, and each pin's sections (section name -> its (map, x, y) spots), from UT's locations
+        self.route_target: Optional[str] = None
+        self.tracker_in_logic: List[str] = []
+        self.route_pins: Optional[Tuple[int, Dict[str, List[Tuple[str, float, float]]]]] = None
         # whether the map tab shows the doors' pins (its Entrances box), kept between runs
         self.tracker_doors_shown: bool = Utils.persistent_load().get("las", {}).get(TRACKER_DOORS_KEY, True)
 
@@ -416,6 +431,62 @@ class LASContext(ClientContext):
                 self.tracker_core.multiworld.regions.entrance_cache[self.tracker_core.player_id])
             world.ut_map_page_hidden_entrances = {m["name"]: names for m in self.maps or ()}
         super().load_map(map_id)
+        self.draw_route()
+
+    def updateTracker(self):
+        """Universal Tracker's sweep, keeping the locations it finds in logic for the Tracker tab's search, then the
+        route drawn again (a path found or cleared runs one)."""
+        tracker_state = super().updateTracker()
+        self.tracker_in_logic = sorted(tracker_state.in_logic_locations)
+        self.draw_route()
+        return tracker_state
+
+    def route_to(self, location: str) -> None:
+        """The Tracker tab's search: Universal Tracker's /get_logical_path to a location."""
+        from worlds.tracker.TrackerClient import get_logical_path
+        self.route_target = location
+        get_logical_path(self, location)
+
+    def route_points(self, map_name: str) -> List[Tuple[float, float]]:
+        """The way /get_logical_path found, on a map: the pins of the doors it goes through, in order (a door Link
+        comes out of at that door's pin), then the check's pin nearest the last door."""
+        if not self.logical_path_entrances:
+            return []
+        if self.route_pins is None or self.route_pins[0] != id(self.locs):
+            pins: Dict[str, List[Tuple[str, float, float]]] = {}
+            nodes = list(self.locs or ())
+            while nodes:
+                node = nodes.pop()
+                nodes.extend(node.get("children", ()))
+                for section in node.get("sections", ()):
+                    for spot in node.get("map_locations", ()):
+                        pins.setdefault(section.get("name", ""), []).append((spot["map"], spot["x"], spot["y"]))
+            self.route_pins = (id(self.locs), pins)
+        pins = self.route_pins[1]
+        world = self.tracker_core.get_current_world()
+        points: List[Tuple[float, float]] = []
+        for name in self.logical_path_entrances:
+            if name not in DOOR_STEPS:
+                continue
+            for door in (name, door_out(world.get_entrance(name))):
+                spot = next(((x, y) for m, x, y in pins.get(door, ()) if m == map_name), None)
+                if spot is not None:
+                    if not points or points[-1] != spot:
+                        points.append(spot)
+                    break
+        ends = [(x, y) for m, x, y in pins.get(self.route_target or "", ()) if m == map_name]
+        if ends:
+            last = points[-1] if points else ends[0]
+            points.append(min(ends, key=lambda p: (p[0] - last[0]) ** 2 + (p[1] - last[1]) ** 2))
+        return points
+
+    def draw_route(self) -> None:
+        if self.ui is None or self.map_page is None or self.map_id is None:
+            return
+        if not self.logical_path_entrances:
+            self.route_target = None
+        from .client_gui import draw_route
+        draw_route(self.map_page, self.route_points(self.maps[self.map_id]["name"]), self.ui.loc_size)
 
     def show_doors(self, shown: bool) -> None:
         """The map tab's Entrances box: shows or hides the doors' pins on the map shown, and remembers it."""
