@@ -1,15 +1,19 @@
 import hashlib
+import logging
 import os
 import secrets
 import threading
 import weakref
 from collections import Counter
-from typing import Any, ClassVar, Dict, Iterable, List, Mapping, Optional, Set, TextIO
+from typing import Any, ClassVar, Dict, Iterable, List, Mapping, Optional, Set, TextIO, Tuple
 
-from BaseClasses import CollectionState, Item, ItemClassification, Location, LocationProgressType, Region, Tutorial
-from Options import Accessibility, PerGameCommonOptions
+from BaseClasses import (CollectionState, Entrance, EntranceType, Item, ItemClassification, Location,
+                         LocationProgressType, Region, Tutorial)
+from entrance_rando import EntranceRandomizationError, randomize_entrances
+from Options import Accessibility, OptionError, PerGameCommonOptions
 from Fill import fill_restrictive
 from worlds.AutoWorld import WebWorld, World
+from worlds.generic.Rules import add_item_rule
 from worlds.LauncherComponents import Component, SuffixIdentifier, Type, components, launch as launch_component
 
 from .container import LASContainer
@@ -18,14 +22,18 @@ from .host_settings import LASSettings
 
 from .ids import LOCATION_OFFSETS
 from .items import FILLER_ITEM, GAME, ITEM_GAME_INFO, ITEM_NAME_GROUPS, ITEM_TABLE, LASR_TO_ITEM, LASItem
-from .lasr import (CATEGORIES, COUNTED, DOOR_LOGIC, DUNGEON_REWARD_LOCATIONS, DUNGEONS, ENTERED_BY_DOOR,
+from .entrances import PlacementError
+from .lasr import (CATEGORIES, COUNTED, DOOR_LOGIC, DOORS, DUNGEON_REWARD_LOCATIONS, DUNGEONS, ENTERED_BY_DOOR,
                    INSTRUMENT_LOCATIONS, INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC, SHOP_LOCATIONS, TRAPS, door_entrance,
-                   door_node, dungeon_name, dungeon_region, goal_logic, item_dungeon, location_dungeon, shuffle_dungeons)
+                   door_node, dungeon_name, entrance_logic, dungeon_region, goal_logic, item_dungeon, location_dungeon, slot_doors,
+                   shuffle_dungeons, door_logic, door_region, ENTRANCE_POOL, HOME_ZONE, HOUSE_EXIT,
+                   HOUSE_EXIT_REGION, START_DOORS,
+                   WRITTEN_LOGIC)
 from .locations import LASR_LOCATIONS, LOCATION_NAME_GROUPS, LOCATION_NAME_TO_ID, LOCATION_NAMES, LASLocation
-from .logic import LogicCompiler, make_rule, referenced_regions
+from .logic import PLACES, LogicCompiler, make_rule, referenced_regions
 from .models import model_for
 from .options import OPTION_GROUPS, DungeonItemPlacement, Goal, LASOptions, goal_instruments, goal_seashells
-from .tracker import DOORS_KEY, SIGN_KEY, tracked_instruments, tracked_seashells
+from .tracker import DOORS_KEY, ENTRANCES_KEY, SIGN_KEY, LogicTracker, tracked_instruments, tracked_seashells
 from . import lasr_settings
 
 
@@ -60,14 +68,25 @@ GOAL_LOCATION = "Wind Fish"
 GOAL_EVENT = "Victory"
 PATCH_FORMAT = 1
 EARLY_LOCATIONS_WANTED = 10
+OPENER_GAIN = 2  # locations the opener's item has to add for a start to be one the fill gets going from
 PRE_FILL_ATTEMPTS = 10
-PROGRESSION_CHECKS = 3
+PROGRESSION_CHECKS = 1  # fills per pre-fill try (_progression_fits): more catch little and cost a fill each
 DOOR_MAP_ATTEMPTS = 100
+START_ATTEMPTS = 10  # Random start: the starts tried before generation stops
+DOOR_PLACEMENT_ATTEMPTS = 40  # Entrances: the generic entrance randomizer's runs, shared by the starts tried
+OUTSIDE_DOORS, INSIDE_DOORS = 1, 2  # the randomizer's groups: an overworld door leads to an inside door and back
+DOOR_GROUPS = {OUTSIDE_DOORS: [INSIDE_DOORS], INSIDE_DOORS: [OUTSIDE_DOORS]}
 # the items traps replace, in this order; logic never needs them (rupees it needs come from farming)
 JUNK = ("rupee-50", "rupee-20", "rupee-5", "rupee-100", "chamber-stone", "rupee-300")
 # the options in the slot data ("options"), from which Universal Tracker regenerates the slot
-SLOT_DATA_OPTIONS = tuple(name for name in LASOptions.type_hints
-                          if name not in PerGameCommonOptions.type_hints and name != "start_inventory_from_pool")
+SLOT_DATA_OPTIONS = tuple(name for name in LASOptions.type_hints if name not in PerGameCommonOptions.type_hints
+                          and name not in ("start_inventory_from_pool", "plando_connections"))
+
+
+def opens_up(start: int, best: int) -> bool:
+    """Whether a start that reaches `start` locations, and `best` with the one item of the pool that reaches the most,
+    is one the fill gets going from: the item adds OPENER_GAIN, a place for the next item and one more."""
+    return best >= start + OPENER_GAIN
 
 
 class LASWorld(World):
@@ -96,14 +115,22 @@ class LASWorld(World):
     vanilla: List[str]  # LASR item locations that keep their vanilla content and are no AP locations
     starting_items: List[str]  # LASR item names given at the start by options
     pre_fill_items: List[Item]
+    plando_doors: Dict[str, str] = {}  # the plando connections' doors and start (_plando)
+    plando_start: Optional[str] = None
+    opener: Optional[str] = None  # the item Archipelago's early fill places at the start (_ask_for_opener)
+    _tracker_map: Optional[Tuple] = None  # the dungeon map and start the cached sweeps are for (_tracker)
+    _trackers: Dict[Tuple, LogicTracker]
     replaced: Dict[str, str] = {}  # location -> the item it holds instead of its own (_replaced_by_starting_gear)
     restricted: Dict[str, Set[str]]  # AP item name -> LASR locations it must be placed in
     dungeon_entrances: Dict[str, str]  # each dungeon's door -> the dungeon it leads into (connect_entrances)
+    entrances: Dict[str, str]  # Entrances: each shuffled overworld door -> its inside door (_randomize_doors)
+    start: Optional[str]  # Random start: the door the house's exit leads out of (lasr.START_DOORS), None for Tarin's own
+    door_logic: Dict[str, Dict[str, Any]]  # the logic with this slot's doors (lasr.door_logic)
     deferred: bool  # Universal Tracker: what the player finds in the game waits until it is found (generate_early)
 
     ut_can_gen_without_yaml = True  # Universal Tracker regenerates the slot from its slot data
     # Universal Tracker watches these data storage keys and passes their values to reconnect_found_entrances
-    found_entrances_datastorage_key = (SIGN_KEY, DOORS_KEY)
+    found_entrances_datastorage_key = (SIGN_KEY, DOORS_KEY, ENTRANCES_KEY)
 
     @staticmethod
     def interpret_slot_data(slot_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -129,12 +156,14 @@ class LASWorld(World):
         # count left to chance until the player reads the sign (tracked_instruments), the doors' entrances until the
         # player finds them (connect_entrances)
         mode = getattr(self.multiworld, "enforce_deferred_connections", "default")
+        self.from_slot_data = bool(passthrough)
         self.deferred = bool(passthrough) and mode != "off"
         instruments, seashells = goal_instruments(options), goal_seashells(options)
         if passthrough:
             sign_read = not self.deferred
             instruments = tracked_instruments(instruments, passthrough.get("instruments_known", True), sign_read)
             seashells = tracked_seashells(passthrough, sign_read)
+        self.door_logic = DOOR_LOGIC
         self.compile_logic(instruments, seashells)
 
         if passthrough:
@@ -169,6 +198,159 @@ class LASWorld(World):
         self.pre_fill_items = []
         self.restricted = {}
         self.replaced = self._replaced_by_starting_gear()
+
+        if passthrough:
+            self.start = passthrough.get("start")
+            self.entrances = dict(passthrough.get("entrances") or {})
+        else:
+            self.plando_doors, self.plando_start = self._plando()
+            self.entrances = self._place_start(instruments, seashells)
+        self.door_logic = self._slot_logic()
+        if self.door_logic is not DOOR_LOGIC:  # the rules again, with this slot's doors
+            self.compile_logic(instruments, seashells)
+
+    def _slot_logic(self) -> Dict[str, Dict[str, Any]]:
+        """The logic with this slot's doors. With Entrances the shuffled doors are entrances that connect_entrances
+        connects (lasr.door_logic's open_doors), so where they lead stays out of the rules; else the routes are lowered
+        as the doors lead (lasr.entrance_logic)."""
+        if not self.options.entrances:
+            return entrance_logic(self.entrances, self.dungeon_entrances, self.start)
+        return door_logic(WRITTEN_LOGIC, slot_doors(None, self.dungeon_entrances), None, ENTRANCE_POOL, True)
+
+    def _plando(self) -> Tuple[Dict[str, str], Optional[str]]:
+        """The plando connections (options.PlandoDoors): {overworld door: the inside door it leads to}, and the start door
+        Tarin's House Exit leads out of. Without Entrances the doors are left out, without Random Start the start, with a
+        warning; a door in two connections is an OptionError."""
+        outside = set(ENTRANCE_POOL)
+        names = {name.lower(): name for name in [*outside, *(DOORS["pairs"][door] for door in outside), HOUSE_EXIT,
+                                                 *START_DOORS]}
+        doors: Dict[str, str] = {}
+        start = None
+        used: Set[str] = set()
+        for connection in self.options.plando_connections.value:
+            entrance, exit_ = names[connection.entrance.lower()], names[connection.exit.lower()]
+            if entrance == HOUSE_EXIT:
+                if self.options.random_start:
+                    start = exit_
+                else:
+                    logging.warning(f"{self.player_name}: Plando Connections: {HOUSE_EXIT} needs Random Start")
+                continue
+            if not self.options.entrances:
+                logging.warning(f"{self.player_name}: Plando Connections: {entrance} needs Entrances")
+                continue
+            door, inside = (entrance, exit_) if entrance in outside else (exit_, entrance)
+            for side in (door, inside):
+                if side in used:
+                    raise OptionError(f"{self.player_name}: Plando Connections: {side} is in two connections")
+                used.add(side)
+            doors[door] = inside
+        return doors, start
+
+    def _place_start(self, instruments: int, seashells: Optional[int]) -> Dict[str, str]:
+        """The slot's start (Random start) and dungeon map (_place_doors). A random zone of START_DOORS, then a random
+        door of it, until a map reaches every location from there and one item opens the start up (_start_opens_up):
+        not a start in a pocket that takes more than one item to leave, which the fill cannot get going from. No start
+        in START_ATTEMPTS is a PlacementError: the roll's failure, not the options'. With Entrances where the doors lead
+        decides that, so connect_entrances picks the start with the doors (_randomize_doors). No doors are placed yet:
+        {}."""
+        self.start = None
+        if not self.options.random_start or self.options.entrances:
+            return self._place_doors(instruments, seashells)
+        for start in self._starts():
+            self.start = start
+            # each start its share of the dungeon maps: a start no map suits wastes no more
+            entrances = self._place_doors(instruments, seashells, True, DOOR_MAP_ATTEMPTS // START_ATTEMPTS)
+            if entrances is not None and self._start_opens_up(entrances, instruments, seashells):
+                return {}
+        raise PlacementError(f"{self.player_name}: Random Start: no start in {START_ATTEMPTS} tries reaches every "
+                             f"location and opens up with one item{self._plando_note()}")
+
+    def _place_doors(self, instruments: int, seashells: Optional[int], must_reach: bool = False,
+                     maps: int = DOOR_MAP_ATTEMPTS) -> Optional[Dict[str, str]]:
+        """With shuffled dungeons the slot's dungeon map again until every location is reachable (_reaches), the
+        overworld doors leading where they always do: a map can put items behind the doors they open, which no fill can
+        place around. With Boss Drops and Free Gifts off, the Hookshot stays in Catfish's Maw and the Rooster at the
+        weathervane, so Catfish's Maw must not be behind a door that needs one of them. The overworld doors are placed
+        later (connect_entrances), so none here: {}; with must_reach, None when no map reaches every location."""
+        for attempt in range(maps if self.options.shuffled_dungeons else 1):
+            if attempt:
+                self.dungeon_entrances = shuffle_dungeons(self.random)
+            if not (self.options.shuffled_dungeons or must_reach) or self._reaches({}, instruments, seashells):
+                return {}
+        return None if must_reach else {}
+
+    def _reaches(self, entrances: Dict[str, str], instruments: int, seashells: Optional[int]) -> bool:
+        """Whether every location of the slot but the optional ones is reachable through these entrances, the
+        slot's dungeon map and start with every item of the pool and the starting items, the vanilla and locked
+        locations giving theirs once reached: some items only exist where they stand (the rooster, the trade quest's)."""
+        required = [loc for loc in self.shuffled if loc not in self.optional]
+        tracker = self._tracker(required, entrances, instruments, seashells)
+        held = self._pool()
+        held.update(self.starting_items)
+        items = [LASR_TO_ITEM[item] for item, count in held.items() if item in LASR_TO_ITEM for _ in range(count)]
+        items += [item for item, count in self.options.start_inventory.value.items() for _ in range(count)]
+        return len(tracker.in_logic(items)) == len(required)
+
+    def _start_opens_up(self, entrances: Dict[str, str], instruments: int, seashells: Optional[int]) -> bool:
+        """start_opens_up for these doors, with the pool's progression items that are neither a dungeon's own
+        (_restricted_items) nor bound for another world (non_local_items), as the opener takes one of those. Of the
+        starting items only the world's own count: the
+        options' start inventories are Archipelago's Main's to give, which a world test (WorldTestBase) leaves out."""
+        restricted = self._restricted_items()
+        names = {LASR_TO_ITEM[item] for item, count in self._pool().items()
+                 if count > 0 and item in LASR_TO_ITEM and self._is_progression(item)}
+        names -= set(restricted) | set(self.options.non_local_items.value)
+        starting = [LASR_TO_ITEM[item] for item in self.starting_items if item in LASR_TO_ITEM]
+        start, reach = self._early_reach(entrances, instruments, seashells, starting, names, OPENER_GAIN)
+        return start >= EARLY_LOCATIONS_WANTED or bool(start) and opens_up(start, max(reach.values(), default=0))
+
+    def _early_reach(self, entrances: Dict[str, str], instruments: int, seashells: Optional[int],
+                     starting: List[str], names: Iterable[str],
+                     gain: Optional[int] = None) -> Tuple[int, Dict[str, int]]:
+        """How many of the locations the fill places into (not optional, locked or excluded) the slot's sweep reaches
+        with these starting items (AP names) alone, and per item of these names how many with that item besides: none
+        when the start reaches none or EARLY_LOCATIONS_WANTED. With a gain, the items up to the first that reaches that
+        many more than the start. The sweep is the world's rules (test_tracker.py), so it answers before the rules are
+        set."""
+        excluded = self.options.exclude_locations.value
+        empty = [loc for loc in self.shuffled if loc not in self.optional and loc not in self.locked
+                 and LOCATION_NAMES[loc] not in excluded]
+        tracker = self._tracker(empty, entrances, instruments, seashells)
+        start = len(tracker.in_logic(starting))
+        if not start or start >= EARLY_LOCATIONS_WANTED:
+            return start, {}
+        reach = {}
+        for name in sorted(names):
+            reach[name] = len(tracker.in_logic(starting + [name]))
+            if gain is not None and reach[name] >= start + gain:
+                break
+        return start, reach
+
+    def _tracker(self, locations: List[str], entrances: Dict[str, str], instruments: int,
+                 seashells: Optional[int]) -> LogicTracker:
+        """The slot's sweep over these locations, the vanilla and locked locations giving their items once reached.
+        Its rules depend on the dungeon map and the start, and on whether the overworld doors are shuffled, not on where
+        they lead (LogicTracker.lead): one sweep per map and start serves every door placement's tries."""
+        events = [loc for loc in self.vanilla + self.locked if self._is_progression(self.content(loc))]
+        slot = (tuple(sorted(self.dungeon_entrances.items())), self.start)
+        if self._tracker_map != slot:
+            self._tracker_map, self._trackers = slot, {}
+        key = (tuple(locations), tuple(events), instruments, seashells, bool(entrances))
+        tracker = self._trackers.get(key)
+        if tracker is None:
+            tracker = self._trackers[key] = LogicTracker(
+                self.options.logic.current_key, self.settings_tokens, events, locations, self.dungeon_entrances, (),
+                instruments, seashells, entrances, self.start)
+        return tracker.lead(entrances)
+
+    def _pool(self) -> Counter:
+        """The LASR items the pool holds before the starting items leave it: every item but those of the vanilla and
+        locked locations whose items are events."""
+        held = Counter({item: definition["quantity"] for item, definition in ITEM_DEFS.items()})
+        for loc in self.vanilla + self.locked:
+            if self._is_progression(self.content(loc)):
+                held[self.content(loc)] -= 1
+        return held
 
     def dungeon_item_placements(self) -> Dict[str, DungeonItemPlacement]:
         """The option placing each kind of dungeon item, by the LASR item name without its dungeon (key-D1: key)."""
@@ -205,8 +387,10 @@ class LASWorld(World):
     def create_regions(self) -> None:
         menu = Region("Menu", self.player, self.multiworld)
         self.multiworld.regions.append(menu)
-        # LASR regions, rooms and the few nodes on reference cycles are AP regions entered from Menu, but for the
-        # regions entered through a dungeon's door (lasr.door_logic), whose entrance connect_entrances connects
+        # LASR regions, rooms and the few nodes on reference cycles are AP regions. A place is entered from each region
+        # that leads a way into it, by that way's rule (LogicCompiler.ways), and from Menu by the ways no region leads;
+        # other nodes from Menu by their condition. The regions entered through a dungeon's door (lasr.door_logic) have
+        # only that door's entrance, which connect_entrances connects.
         logic = self.compiler.logic
         roots = self.shuffled + self.vanilla + ["kill-nightmare"] + \
             [k for k, v in logic.items() if v["type"] == "region"]
@@ -214,12 +398,27 @@ class LASWorld(World):
         self.node_regions: Dict[str, Region] = {}
         for name in logic:
             if name in needed:
-                region = self.node_regions[name] = Region(name, self.player, self.multiworld)
-                self.multiworld.regions.append(region)
-                if name not in ENTERED_BY_DOOR:
-                    menu.connect(region, f"To {name}")
+                self.node_regions[name] = Region(name, self.player, self.multiworld)
+                self.multiworld.regions.append(self.node_regions[name])
+        self.way_rules: Dict[str, Any] = {}  # entrance name -> its rule's expression (set_rules)
+        for name, region in self.node_regions.items():
+            if name in ENTERED_BY_DOOR:
+                continue
+            ways = self.compiler.ways(name) if logic[name]["type"] in PLACES else {}
+            if not ways:
+                ways = {None: self.compiler.node_expr(name)}
+            for source, expr in ways.items():
+                parent = menu if source is None else self.node_regions[source]
+                entrance = parent.connect(region, f"To {name}" if source is None else f"{source} -> {name}")
+                self.way_rules[entrance.name] = expr
         for dungeon in DUNGEONS:
             self.node_regions[door_node(dungeon)].create_exit(door_entrance(dungeon))
+        if self.options.entrances:  # each shuffled door's way through, by the door's name (connect_entrances)
+            for door in ENTRANCE_POOL:
+                for side, group in ((door, OUTSIDE_DOORS), (DOORS["pairs"][door], INSIDE_DOORS)):
+                    exit_ = self.node_regions[door_region(side)].create_exit(side)
+                    exit_.randomization_type, exit_.randomization_group = EntranceType.TWO_WAY, group
+            self.node_regions[HOUSE_EXIT_REGION].create_exit(HOUSE_EXIT)
 
         for loc in self.shuffled:
             region = self.node_regions[LOGIC[loc]["region"]]
@@ -310,6 +509,37 @@ class LASWorld(World):
                 else:
                     self.multiworld.itempool.append(item)
 
+    def _ask_for_opener(self) -> None:
+        """Very few locations are reachable with nothing (Tarin and a few loose items). Like LASR's Tarin rule, one of
+        them holds an item that opens up the island, so the fill does not run out of starting locations: one of the
+        pool's items that make EARLY_LOCATIONS_WANTED locations reachable (else of those that open the most), each item
+        as likely however many copies the pool holds; an item that is not only starting gear, and no item bound for
+        another world (non_local_items: Different World dungeon items among them). None when the start reaches no
+        location, or enough. Archipelago's early fill places it (local_early_items), outside the starting shop slots,
+        where only stealing gets it, when another starting location is free. The doors decide what the start reaches,
+        so once they are placed (connect_entrances); the item pool stays as create_items made it."""
+        ours = [item for item in self.multiworld.itempool if item.player == self.player and item.advancement]
+        gear = Counter(self.options.start_inventory_from_pool.value)
+        counts = Counter(item.name for item in ours)
+        names = [name for name, count in counts.items()
+                 if count > gear[name] and name not in self.options.non_local_items.value]
+        held = [item.name for item in self.multiworld.precollected_items[self.player]]  # what the slot starts with
+        start, reach = self._early_reach(self.entrances, self.goal_instruments, self.goal_seashells, held, names)
+        wanted = min(EARLY_LOCATIONS_WANTED, max(reach.values(), default=0))
+        if wanted <= start:
+            return
+        self.opener = self.random.choice(sorted(name for name, count in reach.items() if count >= wanted))
+        early = self.multiworld.local_early_items[self.player]
+        early[self.opener] = max(early.get(self.opener, 0), 1)
+        state = CollectionState(self.multiworld)
+        state.sweep_for_advancements(locations=self.get_locations())
+        spots = [loc for loc in self.get_locations() if loc.item is None and loc.address is not None
+                 and loc.progress_type != LocationProgressType.EXCLUDED and loc.can_reach(state)]
+        shop = [loc for loc in spots if LASR_LOCATIONS[loc.name] in SHOP_LOCATIONS]
+        if len(shop) < len(spots):
+            for loc in shop:
+                add_item_rule(loc, lambda item, name=self.opener: item.player != self.player or item.name != name)
+
     def _restricted_items(self) -> Dict[str, Set[str]]:
         options = self.options
         restricted: Dict[str, Set[str]] = {}
@@ -346,38 +576,115 @@ class LASWorld(World):
     def connect_entrances(self) -> None:
         """Connects each dungeon door's entrance to the region of the dungeon it leads into. With shuffled dungeons
         Universal Tracker connects a door's only once the player has found it (reconnect_found_entrances), as the map
-        names a dungeon only once it is entered (DESIGN.md, Shuffled dungeons)."""
-        if self.deferred and self.options.shuffled_dungeons:
-            return
-        self.connect_doors(DUNGEONS)
-        if self.options.shuffled_dungeons and not getattr(self.multiworld, "re_gen_passthrough", {}).get(GAME):
-            self._settle_doors()
-
-    def _settle_doors(self) -> None:
-        """Rolls the doors again until every location of this slot is reachable with all its items. A map can put items
-        behind the doors they open, which no fill can place around: with Boss Drops and Free Gifts off, the Hookshot
-        stays in Catfish's Maw and the Rooster at the weathervane, so Catfish's Maw must not be behind a door that needs
-        one of them."""
-        for _ in range(DOOR_MAP_ATTEMPTS):
-            if self._doors_reachable():
-                return
-            for door in DUNGEONS:
-                entrance = self.get_entrance(door_entrance(door))
-                entrance.connected_region.entrances.remove(entrance)
-                entrance.connected_region = None
-            self.dungeon_entrances = shuffle_dungeons(self.random)
+        names a dungeon only once it is entered (DESIGN.md, Shuffled dungeons). With Entrances, each shuffled door's
+        entrance leads to the region of the inside door it is paired with, and that inside door's back to it: as the
+        slot data pairs them for Universal Tracker, else as Archipelago's generic entrance randomizer places them
+        (_randomize_doors). Then the opener (_ask_for_opener)."""
+        if not (self.deferred and self.options.shuffled_dungeons):
             self.connect_doors(DUNGEONS)
+        if self.from_slot_data:  # the shuffled doors once the player has gone through them, when deferred
+            if self.options.entrances:
+                self._connect_house_exit()
+            if not self.deferred:
+                self._connect_pairs(self.entrances)
+            return
+        if self.options.entrances:
+            self.entrances = self._randomize_doors()
+        self._ask_for_opener()
 
-    def _doors_reachable(self) -> bool:
-        """Whether every location of this slot is reachable with all its items. It reads this slot's locations only,
-        as another slot's doors may not be connected yet."""
-        state = CollectionState(self.multiworld)
-        for item in self.multiworld.itempool + self.pre_fill_items:
-            if item.player == self.player:
-                state.collect(item, prevent_sweep=True)
-        locations = self.multiworld.get_locations(self.player)
-        state.sweep_for_advancements(locations)
-        return all(location.can_reach(state) for location in locations)
+    def _connect_pairs(self, doors: Iterable[str]) -> None:
+        """Connects these shuffled doors' entrances to the inside doors self.entrances pairs them with, and those
+        inside doors' back; others and those connected already are left alone."""
+        for door in doors:
+            if door in self.entrances and self.get_entrance(door).connected_region is None:
+                inside = self.entrances[door]
+                self.get_entrance(door).connect(self.node_regions[door_region(inside)])
+                self.get_entrance(inside).connect(self.node_regions[door_region(door)])
+
+    def _door_exits(self) -> List[Entrance]:
+        """The entrances the generic entrance randomizer places: each shuffled overworld door's and its inside door's,
+        in ENTRANCE_POOL's order, but for the plando's (_plando)."""
+        planned = set(self.plando_doors) | set(self.plando_doors.values())
+        return [self.get_entrance(side) for door in ENTRANCE_POOL for side in (door, DOORS["pairs"][door])
+                if side not in planned]
+
+    def _plando_note(self) -> str:
+        return " with these plando connections" if self.plando_doors or self.plando_start else ""
+
+    def _connect_house_exit(self) -> None:
+        """The house's way out leads out of the start door (Random start), else out of Tarin's."""
+        self.get_entrance(HOUSE_EXIT).connect(self.node_regions[START_DOORS[self.start] if self.start else HOME_ZONE])
+
+    def _starts(self) -> List[Optional[str]]:
+        """The start doors to try: Tarin's (None), or with Random start a random zone of START_DOORS each, then a random
+        door of it, up to START_ATTEMPTS; the plando's start alone (_plando)."""
+        if not self.options.random_start:
+            return [None]
+        if self.plando_start:
+            return [self.plando_start]
+        zones = sorted(set(START_DOORS.values()))
+        self.random.shuffle(zones)
+        return [self.random.choice(sorted(door for door, its in START_DOORS.items() if its == zone))
+                for zone in zones[:START_ATTEMPTS]]
+
+    def _randomize_doors(self) -> Dict[str, str]:
+        """{overworld door: the inside door it leads to} for each shuffled door, connected by Archipelago's generic
+        entrance randomizer, coupled: an overworld door only to an inside door, whose way out leads back out of it. Each
+        door's target is in its own door's region, by the door's name, as the randomizer pairs a way back by name. The
+        randomizer makes every region reachable with all items, but stops checking on minimal accessibility once the
+        goal is, and does not look at what the start reaches with none. So a placement counts when the slot's sweep
+        reaches every location but the optional ones (_reaches), and with Random start when one item opens the start up
+        (_start_opens_up); else the doors are placed again, as after a deadlock. With Random start the house's exit is
+        an entrance too (lasr.HOUSE_EXIT), so each start gets its share of the tries (_starts): a start in a pocket
+        whatever the doors do wastes no more. The plando's doors are connected first and stay (_plando), as Archipelago's
+        plando connections are. No placement in DOOR_PLACEMENT_ATTEMPTS is a PlacementError."""
+        for door, inside in self.plando_doors.items():
+            self.get_entrance(door).connect(self.node_regions[door_region(inside)])
+            self.get_entrance(inside).connect(self.node_regions[door_region(door)])
+        exits = self._door_exits()
+        house = self.get_entrance(HOUSE_EXIT)
+        pool = set(ENTRANCE_POOL)
+        starts = self._starts()
+        problem = ""
+        for start in starts:
+            self.start = start
+            self._connect_house_exit()
+            for _ in range(DOOR_PLACEMENT_ATTEMPTS // len(starts)):
+                targets = []
+                for exit_ in exits:
+                    target = self.node_regions[door_region(exit_.name)].create_er_target(exit_.name)
+                    target.randomization_type = EntranceType.TWO_WAY
+                    target.randomization_group = exit_.randomization_group
+                    targets.append(target)
+                try:
+                    state = randomize_entrances(self, True, DOOR_GROUPS, er_targets=targets, exits=exits)
+                except EntranceRandomizationError as error:
+                    problem = str(error).split("\n")[0]
+                    self._unplace_doors(exits)
+                    continue
+                placed = {**self.plando_doors,
+                          **{exit_: target for exit_, target in state.pairings if exit_ in pool}}
+                if not self._reaches(placed, self.goal_instruments, self.goal_seashells):
+                    problem = "a location is out of reach"
+                elif start is None or self._start_opens_up(placed, self.goal_instruments, self.goal_seashells):
+                    return placed
+                else:
+                    problem = "the start does not open up with one item"
+                self._unplace_doors(exits)
+            house.connected_region.entrances.remove(house)
+            house.connected_region = None
+        raise PlacementError(f"{self.player_name}: Entrances: no door placement in {DOOR_PLACEMENT_ATTEMPTS} tries"
+                             f"{self._plando_note()}: {problem}")
+
+    def _unplace_doors(self, exits: List[Entrance]) -> None:
+        """Undoes a door placement: the entrances lead nowhere again and their regions keep no targets."""
+        for exit_ in exits:
+            if exit_.connected_region is not None:
+                exit_.connected_region.entrances.remove(exit_)
+                exit_.connected_region = None
+        for exit_ in exits:
+            region = self.node_regions[door_region(exit_.name)]
+            region.entrances[:] = [entrance for entrance in region.entrances if entrance.parent_region is not None]
 
     def connect_doors(self, doors: Iterable[str]) -> None:
         """Connects these doors' entrances (dungeon_entrances' names; others are ignored), and the last door's once
@@ -422,13 +729,10 @@ class LASWorld(World):
         def rule(expr):
             return make_rule(expr, self.player, self.node_regions)
 
-        for name in self.node_regions:
-            if name in ENTERED_BY_DOOR:
-                continue
-            entrance = self.get_entrance(f"To {name}")
-            expr = self.compiler.node_expr(name)
+        for name, expr in self.way_rules.items():
+            entrance = self.get_entrance(name)
             entrance.access_rule = rule(expr)
-            for other in referenced_regions(expr):
+            for other in referenced_regions(expr) - {entrance.parent_region.name}:
                 self.multiworld.register_indirect_condition(self.node_regions[other], entrance)
         for loc in self.shuffled + self.vanilla:
             if loc in self.shuffled or self._is_progression(self.content(loc)):
@@ -454,7 +758,6 @@ class LASWorld(World):
     # --- fill ---
 
     def pre_fill(self) -> None:
-        self._place_opener()
         if not self.pre_fill_items:
             return
         allowed = {name: {self.get_location(LOCATION_NAMES[loc]) for loc in locs}
@@ -484,16 +787,18 @@ class LASWorld(World):
                 return 2
             return 1 if lasr.startswith("key-") else 0
 
+        others = self._others_state()
         for attempt in range(PRE_FILL_ATTEMPTS):
             items = sorted(self.pre_fill_items, key=priority)
             locations = sorted(candidates, key=lambda loc: loc.name)
             self.random.shuffle(locations)
             fill_restrictive(self.multiworld, state, locations, items, single_player_placement=True, lock=True,
                              allow_excluded=True, name="LAS Dungeon Items")
-            if attempt == PRE_FILL_ATTEMPTS - 1 or self._progression_fits():
+            if attempt == PRE_FILL_ATTEMPTS - 1 or self._progression_fits(others):
                 break
             for location in candidates:  # try another placement
-                if location.item is not None and location.item.player == self.player and                         location.item.name in self.restricted:
+                if location.item is not None and location.item.player == self.player and \
+                        location.item.name in self.restricted:
                     location.item.location = None
                     location.item = None
                     location.locked = False
@@ -521,51 +826,50 @@ class LASWorld(World):
                     fill_locations.remove(location)
                     pool.remove(item)
 
-    def _place_opener(self) -> None:
-        """Very few locations are reachable with nothing (Tarin and a few loose items). Like LASR's Tarin rule, one of
-        them holds an item that opens up the island, so the fill does not run out of starting locations: one of the
-        pool's items that make EARLY_LOCATIONS_WANTED locations reachable (else of those that open the most), each item
-        as likely however many copies the pool holds. It goes to a starting location outside the shop, where only
-        stealing gets it, if there is one."""
+    def start_opens_up(self) -> bool:
+        """Whether the fill can get going from where the game starts: the start reaches EARLY_LOCATIONS_WANTED
+        locations, or one progression item of the pool reaches OPENER_GAIN more than the start: a place for the next
+        item and one more. Not a start in a pocket that takes more than one item to leave (_start_opens_up)."""
+        return self._start_opens_up(self.entrances, self.goal_instruments, self.goal_seashells)
+
+    def _others_state(self) -> CollectionState:
+        """The other players' items, collected: their locations as open as their own items make them."""
         state = CollectionState(self.multiworld)
+        for item in self.multiworld.itempool:
+            if item.player != self.player:
+                state.collect(item, prevent_sweep=True)
+        for player in self.multiworld.player_ids:
+            if player != self.player:
+                for item in self.multiworld.worlds[player].get_pre_fill_items():
+                    state.collect(item, prevent_sweep=True)
         state.sweep_for_advancements()
+        return state
 
-        def open_locations(state: CollectionState) -> List[Location]:
-            return [loc for loc in self.multiworld.get_unfilled_locations(self.player)
-                    if loc.progress_type != LocationProgressType.EXCLUDED and loc.can_reach(state)]
-
-        start = open_locations(state)
-        if not start or len(start) >= EARLY_LOCATIONS_WANTED:
-            return
-        pool = [item for item in self.multiworld.itempool if item.player == self.player and item.advancement]
-        reach = {}
-        for name in sorted({item.name for item in pool}):
-            trial = state.copy()
-            trial.collect(self.create_item(name), prevent_sweep=True)
-            trial.sweep_for_advancements()
-            reach[name] = len(open_locations(trial))
-        wanted = min(EARLY_LOCATIONS_WANTED, max(reach.values(), default=0))
-        if wanted <= len(start):
-            return
-        name = self.random.choice(sorted(name for name, count in reach.items() if count >= wanted))
-        item = next(item for item in pool if item.name == name)
-        spots = [loc for loc in start if loc.can_fill(state, item, check_access=False)]
-        spots = [loc for loc in spots if LASR_LOCATIONS[loc.name] not in SHOP_LOCATIONS] or spots
-        if spots:  # this copy: list.remove would take the first equal item, the same name and player
-            del self.multiworld.itempool[next(i for i, other in enumerate(self.multiworld.itempool) if other is item)]
-            self.random.choice(spots).place_locked_item(item)
-
-    def _progression_fits(self) -> bool:
-        """Whether this world's progression items fit into its own empty locations, in each of a few random fills.
-        With few locations (most categories off, dungeon items in their dungeons) a placement of the dungeon items can
-        leave no placement that works, or few that the main fill finds."""
-        empty = [loc for loc in self.multiworld.get_unfilled_locations(self.player)]
+    def _progression_fits(self, others: CollectionState) -> bool:
+        """Whether this world's progression items fit into the empty locations, in each of a few random fills. With
+        few locations (most categories off, dungeon items in their dungeons) a placement of the dungeon items can leave
+        no placement that works, or few that the main fill finds. The main fill also places into the other players'
+        locations, so they count too, as open as their own items make them (`others`, _others_state); an item that
+        has to stay in this world (local_items) stays, by its locations' rules. The opener goes first, as
+        Archipelago's early fill places it before the main fill (_ask_for_opener): into an empty location the start
+        reaches."""
+        empty = list(self.multiworld.get_unfilled_locations())
+        start = CollectionState(self.multiworld)
+        start.sweep_for_advancements(locations=[loc for loc in self.multiworld.get_filled_locations()
+                                                if loc.address is None])
         for _ in range(PROGRESSION_CHECKS):
             items = [item for item in self.multiworld.itempool if item.player == self.player and item.advancement]
             locations = list(empty)
             self.random.shuffle(locations)
-            fill_restrictive(self.multiworld, CollectionState(self.multiworld), locations, items,
-                             single_player_placement=True, allow_partial=True, name="LAS Dungeon Items check")
+            opener = next((item for item in items if item.name == self.opener), None)
+            spot = opener and next((loc for loc in locations if loc.player == self.player and loc.can_reach(start)
+                                    and loc.can_fill(start, opener, check_access=False)), None)
+            if spot:
+                spot.item, opener.location = opener, spot
+                items.remove(opener)
+                locations.remove(spot)
+            fill_restrictive(self.multiworld, others, locations, items, allow_partial=True,
+                             name="LAS Dungeon Items check")
             for location in empty:
                 if location.item is not None:
                     location.item.location = None
@@ -585,14 +889,14 @@ class LASWorld(World):
     def compile_logic(self, instruments_required: int, seashells_required: Optional[int]) -> None:
         self.goal_instruments = instruments_required
         self.goal_seashells = seashells_required
-        logic = goal_logic(instruments_required, DOOR_LOGIC, seashells_required)
+        logic = goal_logic(instruments_required, self.door_logic, seashells_required)
         self.compiler = LogicCompiler(logic, self.options.logic.current_key, self.settings_tokens, LASR_TO_ITEM,
                                       COUNTED)
 
     def reconnect_found_entrances(self, key: str, value: Any) -> None:
         """Universal Tracker: a data storage key of found_entrances_datastorage_key changed. Once the player has read
-        the sign (SIGN_KEY), the rules take the slot's own counts; the doors found (DOORS_KEY) connect their
-        entrances."""
+        the sign (SIGN_KEY), the rules take the slot's own counts; the dungeon doors found (DOORS_KEY) and the
+        overworld doors gone through (ENTRANCES_KEY) connect their entrances."""
         if not self.deferred:
             return
         if key.startswith(SIGN_KEY.partition("{")[0]):
@@ -602,6 +906,8 @@ class LASWorld(World):
                 self.set_rules()
         elif key.startswith(DOORS_KEY.partition("{")[0]):
             self.connect_doors(value or {})
+        elif key.startswith(ENTRANCES_KEY.partition("{")[0]):
+            self._connect_pairs(value or {})
 
     # One random secret per multiworld, in every LAS slot's patch file: the ghost relay groups that multiworld's LAS
     # players by it (DESIGN.md, Ghosts). Not in the slot data, which anyone who can log into a slot reads.
@@ -632,6 +938,10 @@ class LASWorld(World):
             "starting_instruments": self.starting_instruments,
             # each dungeon's door -> the dungeon it leads into, for trackers and Universal Tracker
             "dungeon_entrances": self.dungeon_entrances,
+            # each shuffled overworld door -> the inside door it leads to (Entrances), for Universal Tracker
+            "entrances": self.entrances,
+            # the door the house's exit leads out of (Random start), None for Tarin's own
+            "start": self.start,
             # what the slot's rules depend on, for the client's in-logic locations (tracker.py)
             "logic": {
                 "preset": self.options.logic.current_key,
@@ -671,6 +981,11 @@ class LASWorld(World):
             "location_models": self.placed_models(),
             "location_chests": self.placed_chests(),
             "dungeon_entrances": dict(self.dungeon_entrances),
+            # the overworld doors that lead elsewhere: the inside door each leads to, and the one it led to
+            "entrances": {door: inside for door, inside in self.entrances.items() if inside != DOORS["pairs"][door]},
+            "entrance_pairs": {door: DOORS["pairs"][door] for door, inside in self.entrances.items()
+                               if inside != DOORS["pairs"][door]},
+            "start": self.start,  # the door the house's exit leads out of (Random start)
             "hints": self.in_game_hints(),
             "ghost_secret": self.ghost_secret(),
             "ghost_relay": str(self.settings.ghost_relay or ""),
@@ -686,11 +1001,22 @@ class LASWorld(World):
                 self._hints = choose_hints(self)
             return self._hints
 
-    def write_spoiler(self, spoiler_handle: TextIO) -> None:
+    def write_spoiler_header(self, spoiler_handle: TextIO) -> None:
+        """The slot's doors go to the spoiler's own Entrances section, which Archipelago writes after the headers: the
+        start (Random start), every dungeon door when one leads elsewhere (Shuffled dungeons), each overworld door
+        that leads elsewhere (Entrances). The ways out lead back, but for the house's exit."""
+        spoiler = self.multiworld.spoiler
+        if self.start:
+            spoiler.set_entrance(HOUSE_EXIT, f"{self.start} ({START_DOORS[self.start]})", "entrance",
+                                 self.player)
         if any(door != dungeon for door, dungeon in self.dungeon_entrances.items()):
-            spoiler_handle.write(f"\n\nDungeon entrances ({self.multiworld.player_name[self.player]}):\n\n")
             for door, dungeon in self.dungeon_entrances.items():
-                spoiler_handle.write(f"{dungeon_name(door)} entrance -> {dungeon_name(dungeon)}\n")
+                spoiler.set_entrance(door_entrance(door), dungeon_name(dungeon), "both", self.player)
+        for door, inside in sorted(self.entrances.items()):
+            if inside != DOORS["pairs"][door]:
+                spoiler.set_entrance(door, inside, "both", self.player)
+
+    def write_spoiler(self, spoiler_handle: TextIO) -> None:
         hints = self.in_game_hints()
         if hints:
             spoiler_handle.write(f"\n\nIn-game hints ({self.multiworld.player_name[self.player]}):\n\n")

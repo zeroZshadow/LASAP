@@ -1,0 +1,19 @@
+# Entrances: the Library's door (Field_12A) leads into Ulrira's house and Ulrira's door (Field_12B) into the Library,
+# and each inside's way out leads back out of the door that leads into it. The module reports each jump as DOOR
+# <locator> <the locator it went to> (DESIGN.md, Entrances, Doors gone through). Run after boot_file1 on a mod from
+# make_test_patch.py --entrances '{"Field_12A": "UlriraHouse_01A", "Field_12B": "Library_01A"}'.
+# the Library's door, north of Link, into Ulrira's house
+warp Field 5.25 10.5 137.5
+hold 0 0 32767 until level=UlriraHouse 10
+loaded 20
+at 7.5 11.25 2
+shot door_moved_in.png
+# its way out, south of Link, out of the Library's door
+hold 0 0 -32767 until level=Field 10
+loaded 20
+at 5.25 136.5 2
+# an expect skips the lines that came with the one it found: one SYNC per line
+game SYNC
+expect ^DOOR.Library_01A.UlriraHouse_01A$ 10
+game SYNC
+expect ^DOOR.Field_12B.Field_12A$ 10

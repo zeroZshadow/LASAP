@@ -13,7 +13,7 @@ from worlds.AutoWorld import AutoWorldRegister
 
 from .lasr_eval import LASREvaluator
 from ..items import ITEM_TABLE, LASR_TO_ITEM
-from ..lasr import ITEM_DEFS, ITEM_LOCATIONS, LOGIC, dungeon_logic, goal_logic
+from ..lasr import ITEM_DEFS, ITEM_LOCATIONS, LOGIC, WRITTEN_LOGIC, goal_logic, plain_logic, slot_doors
 from ..locations import LOCATION_NAMES
 from ..logic import make_rule, parse
 
@@ -39,9 +39,10 @@ OPTION_SETS = [
 
 def lasr_reachable(world, lasr_items: Counter) -> set:
     """Item locations LASR's evaluator reaches with the given items and the world's settings and dungeon entrances;
-    the world's optional locations only once it reaches the goal. LASR's logic has the doors in the dungeons'
-    conditions (dungeon_logic), the world's in its entrances."""
-    logic = goal_logic(world.goal_instruments, dungeon_logic(LOGIC, world.dungeon_entrances), world.goal_seashells)
+    the world's optional locations only once it reaches the goal. LASR's evaluator reads the routes lowered with the
+    slot's doors (plain_logic), the world has the dungeon doors in its entrances."""
+    doors = slot_doors(world.entrances, world.dungeon_entrances)
+    logic = goal_logic(world.goal_instruments, plain_logic(WRITTEN_LOGIC, doors), world.goal_seashells)
     logic_defs = copy.deepcopy(logic)
     for loc in world.removed:
         del logic_defs[loc]

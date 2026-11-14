@@ -10,13 +10,16 @@ from worlds.AutoWorld import AutoWorldRegister, call_all
 
 from .test_logic import OPTION_SETS, STEPS
 from ..items import GAME
-from ..lasr import DUNGEONS, door_entrance, dungeon_region, location_dungeon
+from ..lasr import (DUNGEONS, ENTRANCE_POOL, START_DOORS, door_entrance, door_region, dungeon_region,
+                    location_dungeon)
 from ..locations import LASR_LOCATIONS
 
 OPTIONS = OPTION_SETS + [
     {"small_keys": "anywhere", "nightmare_keys": "anywhere", "dungeon_items": "own_dungeon",
      "instruments": "own_dungeon", "starting_instruments": 2, "owl_statues": "dungeons", "traps": "few"},
     {"small_keys": "any_dungeon", "nightmare_keys": "start_with", "dungeon_items": "own_world"},
+    {"random_start": True},
+    {"entrances": "everything", "random_start": True, "shuffled_dungeons": True},
     {"instruments": "dungeon_rewards", "seashell_mansion": 5, "heart_pieces": False, "seashells": False,
      "golden_leaves": False, "shop": False},
 ]
@@ -156,3 +159,46 @@ class TestDeferredDoors(unittest.TestCase):
         unshuffled = setup_multiworld(world_type, STEPS, 4203).worlds[1]
         again = regenerate(unshuffled.fill_slot_data(), 4204).worlds[1]
         self.assertEqual(self.connected(again), {door: dungeon_region(door) for door in DUNGEONS})
+
+
+class TestDeferredEntrances(unittest.TestCase):
+    """With Entrances Universal Tracker connects a shuffled door's entrance, and its inside door's, once the player has
+    gone through either (ENTRANCES_KEY); the house's exit leads out of the start door at once."""
+
+    def setUp(self) -> None:
+        world_type = AutoWorldRegister.world_types[GAME]
+        self.original = setup_multiworld(world_type, STEPS, 4300, {"entrances": "everything", "random_start": True})
+        self.slot_data = self.original.worlds[1].fill_slot_data()
+
+    @staticmethod
+    def connected(world) -> dict:
+        return {door: world.get_entrance(door).connected_region.name for door in ENTRANCE_POOL
+                if world.get_entrance(door).connected_region is not None}
+
+    def reached(self, multiworld) -> int:
+        state = CollectionState(multiworld, True)
+        for item in self.original.itempool + self.original.worlds[1].get_pre_fill_items():
+            state.collect(multiworld.worlds[1].create_item(item.name), prevent_sweep=True)
+        state.sweep_for_advancements()
+        return len(multiworld.get_reachable_locations(state, 1))
+
+    def test_doors_wait_until_gone_through(self) -> None:
+        regen = regenerate(self.slot_data, 4301)
+        again = regen.worlds[1]
+        entrances = self.slot_data["entrances"]
+        self.assertEqual(self.connected(again), {})
+        start = self.slot_data["start"]
+        self.assertEqual(again.get_entrance("Tarin's House Exit").connected_region.name, START_DOORS[start])
+        door = ENTRANCE_POOL[0]
+        again.reconnect_found_entrances("las_entrances_0_1", {door: entrances[door]})
+        self.assertEqual(self.connected(again), {door: door_region(entrances[door])})
+        self.assertEqual(again.get_entrance(entrances[door]).connected_region.name, door_region(door))
+        before = self.reached(regen)
+        again.reconnect_found_entrances("las_entrances_0_1", entrances)
+        self.assertEqual(self.connected(again), self.connected(self.original.worlds[1]))
+        self.assertLess(before, self.reached(regen))
+        self.assertEqual(self.reached(regen), self.reached(self.original))
+
+    def test_not_deferred(self) -> None:
+        again = regenerate(self.slot_data, 4302, "off").worlds[1]
+        self.assertEqual(self.connected(again), self.connected(self.original.worlds[1]))

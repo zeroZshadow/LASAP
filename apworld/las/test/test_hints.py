@@ -186,6 +186,7 @@ class TestPrecise(HintsBase):
 
 
 class TestBalanced(HintsBase):
+    seed = 1  # a fill with barren areas: most leave none or one
     options = {**HintsBase.options, **LONG_CHECKS, "hint_distribution": "balanced"}
 
     def test_mix(self) -> None:

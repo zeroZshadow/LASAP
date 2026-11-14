@@ -41,11 +41,13 @@ class LASREvaluator:
 
     def checkAccess(self, newCheck, access):
         # get the name of the check without the parameter sometimes applied to enemy checks
-        no_params = re.match('[a-zA-Z0-9-]+', newCheck).group(0)
+        no_params = re.match('[a-zA-Z0-9.-]+', newCheck).group(0)
 
         if self.logic == 'none': return True
 
         if self.logic_defs[no_params]['type'] == 'enemy':
+            if 'condition-basic' not in self.logic_defs[no_params]:  # an enemy with no rule needs nothing, as in the world
+                return True
             param = re.search('\\[([a-z]+)\\]', newCheck)
             if param:
                 return self._eval(self.parseCondition(self.logic_defs[no_params]['condition-basic']), access) or self._eval(self.parseCondition(self.logic_defs[no_params]['condition-'+param.group(1)]), access)
@@ -62,7 +64,7 @@ class LASREvaluator:
 
     def parseCondition(self, condition):
         func = condition
-        func = re.sub('([a-zA-Z0-9\\-\\[\\]]+)(:(\\d+))?', lambda match: f'self.hasAccess(access, "{match.group(1)}", {match.group(3) or 1})', func)
+        func = re.sub('([a-zA-Z0-9\\-.\\[\\]]+)(:(\\d+))?', lambda match: f'self.hasAccess(access, "{match.group(1)}", {match.group(3) or 1})', func)
         func = re.sub('\\|', 'or', func)
         func = re.sub('&', 'and', func)
         func = re.sub('!', 'not ', func)

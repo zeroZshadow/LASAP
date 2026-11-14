@@ -1,12 +1,14 @@
 """Small-key soundness: the logic counts the keys Link has received, the game takes one per lock opened.
 
-key_locks.yml models each dungeon's locks (ObjLockDoor and ObjLockBlock, by their opened flag): where a lock is opened
-from (`at`) and the logic nodes and locations its key requirement stands for (`opens`). In the game's terms a node needs
-those locks open: each key token of the node is replaced by its locks, and a node without a key token of its own needs
-them on top of its condition. `routes` adds ways to a node that the logic does not count, in the game's terms only.
-`at` and the routes are conditions in the logic's grammar, in which `lock-<flag>` holds once that lock is open.
-A two-way way with a key token also reads it on the way back, where Link has come through that door: in the game's terms
-it holds there.
+key_locks.yml models each dungeon's locks (ObjLockDoor and ObjLockBlock, by their opened flag) as the zones each stands
+between: the first, and each other zone, whose way to the first goes through the lock. Link opens a lock from any of its
+zones. The logic writes a lock's key count on the routes through it; lowered, a zone's condition is a way per route in,
+each led by the zone the route comes from. In the game's terms a key token on a way is its lock open: the lock between
+the way's zone and the zone it leads to. A two-way route through a lock reads the key on the way back too, where in the
+game the lock is open once Link has come through it.
+
+Every place outside the dungeon counts as reached: with the entrances shuffled, any of the dungeon's doors can be the
+way in, and an exit leads back in by another door.
 
 A player who spends keys as badly as possible opens any lock they can reach, in any order. The logic is sound when,
 whatever they opened, everything the logic gives them with that many keys is still reachable:
@@ -16,10 +18,10 @@ More items only let that player reach more locks, so the worst cases have nearly
 and every item and setting but one or two (a missing item can close the route that needs no key).
 """
 import itertools
-from typing import Dict, FrozenSet, Iterable, List, Mapping, NamedTuple, Set, Tuple
+from typing import Dict, FrozenSet, Iterable, List, Mapping, NamedTuple, Optional, Set, Tuple
 
-from ..lasr import COUNTED, ITEM_DEFS, _load_yaml, location_dungeon
-from ..logic import condition_keys, node_tokens, parse
+from ..lasr import COUNTED, ITEM_DEFS, location_dungeon
+from ..logic import PLACES, condition_keys, node_tokens, parse
 
 
 class Failure(NamedTuple):
@@ -36,37 +38,29 @@ class KeyLogicCheck:
         self.preset = preset
         self.key = f"key-D{dungeon}"
         self.total_keys = ITEM_DEFS[self.key]["quantity"]
-        self.locks = {flag: dict(lock) for flag, lock in model["locks"].items()}
-        self.routes: Mapping[str, List[str]] = model.get("routes") or {}
-        self.way_back = self._way_back_nodes()
-        self.node_locks: Dict[str, FrozenSet[int]] = {}
-        for flag, lock in self.locks.items():
-            for name in lock.get("opens") or ():
-                assert name in logic, (dungeon, flag, name)
-                self.node_locks[name] = self.node_locks.get(name, frozenset()) | {flag}
+        self.locks: Dict[int, List[str]] = {flag: list(zones) for flag, zones in model["locks"].items()}
+        self.pair_locks: Dict[FrozenSet[str], int] = {}
+        for flag, zones in self.locks.items():
+            for zone in zones:
+                assert zone in logic and logic[zone]["type"] in PLACES, (dungeon, flag, zone)
+            for zone in zones[1:]:
+                pair = frozenset((zones[0], zone))
+                assert self.pair_locks.get(pair, flag) == flag, (dungeon, flag, sorted(pair))
+                self.pair_locks[pair] = flag
+        self.prefix = prefix = f"D{dungeon}."
         self.targets = [name for name, node in logic.items()
                         if (node["type"] == "item" and location_dungeon(name) == dungeon)
-                        or (node["type"] == "room" and name.startswith(f"D{dungeon}-"))]
+                        or (node["type"] in PLACES and name.startswith(prefix))]
         self.extra_keys = condition_keys(preset)
-        exprs = [lock["at"] for lock in self.locks.values()] + [r for routes in self.routes.values() for r in routes]
-        self.nodes = self._closure(self.targets + list(self.routes) + [n for e in exprs for n in self._expr_nodes(e)])
+        self.nodes = self._closure(self.targets + [zone for zones in self.locks.values() for zone in zones])
         self.variables: Set[str] = set()
         self.count_rules = {name: self._node_rule(name, False) for name in self.nodes}
         self.game_rules = {name: self._node_rule(name, True) for name in self.nodes}
-        self.at_rules = {flag: self._rule(self._compile(parse(lock["at"]), "", True)) for flag, lock in self.locks.items()}
+        self.at_rules = {flag: self._rule(" or ".join(f"({zone!r} in R)" for zone in zones))
+                         for flag, zones in self.locks.items()}
         self.dynamic = self._dynamic()
         self.static = [name for name in self.nodes if name not in self.dynamic]
         self.dynamic_order = [name for name in self.nodes if name in self.dynamic]
-
-    def _way_back_nodes(self) -> FrozenSet[str]:
-        """Nodes whose key token belongs to a way back: logic.yml writes a two-way way under the zone it leaves from."""
-        found = set()
-        for name, node in _load_yaml("logic.yml").items():
-            for value in (node.get("connections") or {}).values():
-                rules = value.values() if isinstance(value, Mapping) else (value,)
-                if any(self.key in node_tokens(parse(str(rule))) for rule in rules):
-                    found.add(name)
-        return frozenset(found)
 
     # --- compiling ---
 
@@ -78,7 +72,7 @@ class KeyLogicCheck:
     def _expr_nodes(self, expr: str) -> Iterable[str]:
         for token in node_tokens(parse(expr)):
             base = token.split("[")[0]
-            if base in self.logic and self.logic[base]["type"] != "item":
+            if base in self.logic and self.logic[base]["type"] != "item" and not self._outside(base):
                 yield base
 
     def _closure(self, roots: List[str]) -> List[str]:
@@ -86,7 +80,7 @@ class KeyLogicCheck:
         while stack:
             name = stack.pop()
             node = self.logic[name]
-            exprs = self._conditions_of(node) + list(self.routes.get(name, ()))
+            exprs = self._conditions_of(node)
             if node.get("region") in self.logic:
                 exprs.append(node["region"])
             for expr in exprs:
@@ -101,48 +95,60 @@ class KeyLogicCheck:
             ("condition-basic",) + self.extra_keys
         return [str(node[k]) for k in keys if node.get(k)]
 
-    def _compile(self, tree, owner: str, game: bool) -> str:
+    def _outside(self, name: str) -> bool:
+        return self.logic[name]["type"] in PLACES and not name.startswith(self.prefix)
+
+    def _is_place(self, tree) -> bool:
+        return tree[0] == "tok" and tree[2] <= 1 and self.logic.get(tree[1], {}).get("type") in PLACES
+
+    def _source(self, way) -> Optional[str]:
+        """The zone a lowered way comes from: the way itself or the zone leading its `&`."""
+        if self._is_place(way):
+            return way[1]
+        if way[0] == "and":
+            return next((part[1] for part in way[1] if self._is_place(part)), None)
+        return None
+
+    def _compile_condition(self, text: str, owner: str, game: bool) -> str:
+        tree = parse(text)
+        ways = tree[1] if tree[0] == "or" else [tree]
+        return "(" + " or ".join(self._compile(way, owner, game, self._source(way)) for way in ways) + ")"
+
+    def _compile(self, tree, owner: str, game: bool, source: Optional[str]) -> str:
         kind = tree[0]
         if kind == "not":
-            return f"(not {self._compile(tree[1], owner, game)})"
+            return f"(not {self._compile(tree[1], owner, game, source)})"
         if kind in ("and", "or"):
-            return "(" + f" {kind} ".join(self._compile(part, owner, game) for part in tree[1]) + ")"
+            return "(" + f" {kind} ".join(self._compile(part, owner, game, source) for part in tree[1]) + ")"
         name, count = tree[1], tree[2]
         if "[" in name:
             base, param = name[:-1].split("[")
             variant = self.logic[base].get(f"condition-{param}")
-            inner = self._compile(parse(str(variant)), base, game) if variant else "False"
+            inner = self._compile(parse(str(variant)), base, game, None) if variant else "False"
             return f"({base!r} in R or {inner})"
         if name == self.key:
             if not game:
                 return f"(K >= {count})"
-            locks = self.node_locks.get(owner, frozenset())
-            if not locks and owner in self.way_back:
-                return "True"
-            assert locks, f"{owner}: {name} stands for no lock in key_locks.yml"
-            return f"(O >= {set(locks)!r})"
+            flag = self.pair_locks.get(frozenset((source, owner))) if source else None
+            assert flag is not None, f"{owner} from {source}: {name} on a way through no lock in key_locks.yml"
+            return f"({flag} in O)"
         if name in ITEM_DEFS:
             return f"(c.get({name!r}, 0) >= {count})"
         if name in COUNTED:
             return "(" + " + ".join(f"(c.get({i!r}, 0) > 0)" for i in COUNTED[name]) + f" >= {count})"
         if name in self.logic and self.logic[name]["type"] != "item":
-            return f"({name!r} in R)" if count <= 1 else "False"
-        if name.startswith("lock-"):
-            assert game and int(name[5:]) in self.locks, name
-            return f"({int(name[5:])} in O)"
+            if count > 1:
+                return "False"
+            return "True" if self._outside(name) else f"({name!r} in R)"
         self.variables.add(name)  # a setting
         return f"(c.get({name!r}, 0) >= {count})"
 
     def _node_rule(self, name: str, game: bool):
         node = self.logic[name]
         conditions = self._conditions(name)
-        expr = " or ".join(self._compile(parse(c), name, game) for c in conditions) if conditions else "True"
+        expr = " or ".join(self._compile_condition(c, name, game) for c in conditions) if conditions else "True"
         if node.get("region") in self.logic:
             expr = f"({node['region']!r} in R) and ({expr})"
-        if game and name in self.node_locks and not any(self.key in node_tokens(parse(c)) for c in conditions):
-            expr = f"(O >= {set(self.node_locks[name])!r}) and ({expr})"
-        if game and name in self.routes:
-            expr = " or ".join([f"({expr})"] + [self._compile(parse(route), name, True) for route in self.routes[name]])
         return self._rule(expr)
 
     @staticmethod
@@ -151,10 +157,7 @@ class KeyLogicCheck:
 
     def _dynamic(self) -> Set[str]:
         """Nodes that depend on keys or locks."""
-        dynamic = set(self.node_locks) | set(self.routes)
-        for name in self.nodes:
-            if any(self.key in node_tokens(parse(c)) for c in self._conditions(name)):
-                dynamic.add(name)
+        dynamic = {name for name in self.nodes if any(self.key in node_tokens(parse(c)) for c in self._conditions(name))}
         changed = True
         while changed:
             changed = False

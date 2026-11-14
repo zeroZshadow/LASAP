@@ -68,6 +68,7 @@ namespace {
             if (EventFlags::CheckFlag(kGoalFlag) || LevelSystem::GetCurrentLevel() == kGoalLevel) AP::Send("GOAL");
             if (EventFlags::CheckFlag(AP::SIGN_FLAG)) AP::Send("SIGN");
             ReportFlags(true);
+            AP::ReportDoorJumps();
         } else if (cmd == "DEATH") {
             return ReceiveDeath(std::string(f.Rest()));
         } else if (cmd == "NAME") {

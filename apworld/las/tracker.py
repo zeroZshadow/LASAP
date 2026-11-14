@@ -14,8 +14,9 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Set, 
 from BaseClasses import ItemClassification
 
 from .items import ITEM_TABLE, LASR_TO_ITEM
-from .lasr import (COUNTED, DOOR_LOGIC, DUNGEONS, ENTERED_BY_DOOR, INSTRUMENTS, LOGIC, door_node, dungeon_of,
-                   dungeon_region, goal_logic)
+from .lasr import (COUNTED, DOORS, DUNGEONS, ENTERED_BY_DOOR, ENTRANCE_POOL, INSTRUMENTS, LOGIC, START_DOORS,
+                   WRITTEN_LOGIC, door_logic, door_node, door_region, dungeon_of, dungeon_region, entrance_logic,
+                   goal_logic, slot_doors)
 from .logic import LogicCompiler, make_rule
 from .options import Goal, SeashellsRequired
 
@@ -27,6 +28,23 @@ SIGN_KEY = "las_sign_{team}_{player}"
 # names: entering a dungeon (the game's DUNGEON) finds the door that leads into it. Formatted with the team and the
 # slot.
 DOORS_KEY = "las_doors_{team}_{player}"
+# Data storage key holding the overworld doors the player has gone through (Entrances), {door: the inside door it leads
+# to}: going through a door or out of its inside (the game's DOOR) finds the pair. Formatted with the team and the slot.
+ENTRANCES_KEY = "las_entrances_{team}_{player}"
+_OUTSIDE = frozenset(ENTRANCE_POOL)
+_INSIDE_OF = {DOORS["pairs"][door]: door for door in ENTRANCE_POOL}
+
+
+def found_entrance(locator: str, to: str) -> Optional[Tuple[str, str]]:
+    """The shuffled door and the inside door it leads to that a level jump finds (the game's DOOR <locator> <to>): a
+    jump to the spot inside a door that leads to another inside door's spot went through that door, and a jump to an
+    overworld door's spot that leads to another overworld door's spot came out of the inside door the first leads to.
+    None for other jumps."""
+    if locator in _INSIDE_OF and to in _INSIDE_OF:
+        return _INSIDE_OF[locator], to
+    if locator in _OUTSIDE and to in _OUTSIDE:
+        return to, DOORS["pairs"][locator]
+    return None
 
 
 def known_doors(found: Optional[Iterable[str]]) -> Set[str]:
@@ -75,18 +93,32 @@ def is_progression(item_name: str) -> bool:
 class LogicTracker:
     def __init__(self, preset: str, tokens: Mapping[str, bool], vanilla: Iterable[str], shuffled: Iterable[str],
                  dungeon_entrances: Optional[Mapping[str, str]] = None, optional: Iterable[str] = (),
-                 instruments_required: int = 8, seashells_required: Optional[int] = None):
+                 instruments_required: int = 8, seashells_required: Optional[int] = None,
+                 overworld_entrances: Optional[Mapping[str, str]] = None, start: Optional[str] = None):
         """`vanilla`: LASR locations that keep a progression item and are no AP locations; `shuffled`: the slot's
         LASR locations; `dungeon_entrances`: the slot data's, None for none shuffled; `optional`: the shuffled
         locations reached only after the goal, which opens with `instruments_required` instruments or, on a
-        seashell hunt (`seashells_required` not None), with that many secret seashells. The rules are the world's
-        (lasr.door_logic): each door a region, and the region it leads into entered through it once the player knows
-        where it leads (sweep)."""
+        seashell hunt (`seashells_required` not None), with that many secret seashells; `overworld_entrances`: the slot
+        data's `entrances`, the overworld doors that lead elsewhere; `start`: the slot data's, the door the house's exit
+        leads out of (Random start), None for Tarin's own. The rules are the world's (lasr.entrance_logic,
+        whose ways out of the dungeons lead as the doors do): each dungeon door a region, and the region it leads into
+        entered through it once the player knows where it leads (sweep). With overworld entrances, each shuffled door
+        and inside door is a region too (lasr.door_logic's open_doors), entered through the door it is paired with
+        once the player knows the pair (sweep)."""
         entrances = dict(dungeon_entrances) if dungeon_entrances else {d: d for d in DUNGEONS}
-        logic = goal_logic(instruments_required, DOOR_LOGIC, seashells_required)
+        self.pairs = dict(overworld_entrances or {})
+        if self.pairs:
+            doors = door_logic(WRITTEN_LOGIC, slot_doors(None, entrances), START_DOORS[start] if start else None,
+                               ENTRANCE_POOL)
+        else:
+            doors = entrance_logic(None, entrances, start)
+        logic = goal_logic(instruments_required, doors, seashells_required)
         compiler = LogicCompiler(logic, preset, tokens, LASR_TO_ITEM, COUNTED)
         vanilla, self.shuffled, optional = list(vanilla), list(shuffled), set(optional)
-        roots = self.shuffled + vanilla + (["kill-nightmare"] if optional else []) + [door_node(d) for d in DUNGEONS]
+        # the shuffled doors' regions too: what leads into each through its partner is no rule (sweep)
+        sides = [side for door in self.pairs for side in (door, DOORS["pairs"][door])]
+        roots = (self.shuffled + vanilla + (["kill-nightmare"] if optional else []) + [door_node(d) for d in DUNGEONS]
+                 + [door_region(side) for side in sides])
         needed = set(compiler.dependencies(roots)) & compiler.region_nodes
         self.regions: Dict[str, _Region] = {name: _Region() for name in needed}
 
@@ -96,10 +128,10 @@ class LogicTracker:
         def never(state) -> bool:
             return False
 
-        # (region, its rule, the door that leads into it or None): a region a door leads into is entered through that
-        # door's region and has no other way in
+        # (its name, region, its rule, the door that leads into it or None): a region a door leads into is entered
+        # through that door's region and has no other way in
         led = {dungeon_region(inside): door for door, inside in entrances.items()}
-        self.entrances = [(self.regions[name], never if name in ENTERED_BY_DOOR else rule(name), led.get(name))
+        self.entrances = [(name, self.regions[name], never if name in ENTERED_BY_DOOR else rule(name), led.get(name))
                           for name in logic if name in needed]
         goal = make_rule(compiler.token("kill-nightmare", 1), PLAYER, self.regions)
 
@@ -117,20 +149,37 @@ class LogicTracker:
         self.location_doors = {loc: self.regions[door_node(door_into[dungeon_of(loc)])]
                                for loc in self.shuffled if dungeon_of(loc)}
 
-    def in_logic(self, item_names: Iterable[str], found_doors: Optional[Iterable[str]] = None) -> Set[str]:
+    def lead(self, overworld_entrances: Mapping[str, str]) -> "LogicTracker":
+        """This tracker with the shuffled overworld doors leading as these say instead. The rules do not depend on
+        where the doors lead, only the sweep does, so one tracker serves every placement of the same doors."""
+        if set(overworld_entrances) != set(self.pairs):
+            raise ValueError("lead takes the doors the tracker was made with")
+        self.pairs = dict(overworld_entrances)
+        return self
+
+    def in_logic(self, item_names: Iterable[str], found_doors: Optional[Iterable[str]] = None,
+                 found_entrances: Optional[Iterable[str]] = None) -> Set[str]:
         """The shuffled locations reachable with these items (AP item names, starting items included) through the
         doors found (sweep)."""
-        return self.sweep(item_names, found_doors)[0]
+        return self.sweep(item_names, found_doors, found_entrances)[0]
 
-    def sweep(self, item_names: Iterable[str],
-              found_doors: Optional[Iterable[str]] = None) -> Tuple[Set[str], Set[str]]:
+    def sweep(self, item_names: Iterable[str], found_doors: Optional[Iterable[str]] = None,
+              found_entrances: Optional[Iterable[str]] = None) -> Tuple[Set[str], Set[str]]:
         """The shuffled locations reachable with these items, and the shuffled dungeon locations whose dungeon's door
         is reachable with them. A dungeon is entered only through a door whose dungeon the player knows (known_doors of
         `found_doors`, the doors found; None for every door), as the map names a dungeon only once it is entered: until
         then nothing inside it is in logic, nor what its inside reaches (the Rapids' south island chest through the
         Face Shrine, the top of Turtle Rock). The map tracker shows a dungeon's icon by its door while its name is
-        hidden."""
+        hidden. A shuffled overworld door and the inside door it leads to lead into each other only once the player
+        has gone through them (`found_entrances`, the overworld doors found; None for every door)."""
         known = known_doors(found_doors)
+        found = set(self.pairs) if found_entrances is None else set(found_entrances) & set(self.pairs)
+        through: Dict[str, List[_Region]] = {}  # a door's region: the regions of the doors found to lead into it
+        for door in found:
+            outside, inside = door_region(door), door_region(self.pairs[door])
+            if outside in self.regions and inside in self.regions:
+                through.setdefault(inside, []).append(self.regions[outside])
+                through.setdefault(outside, []).append(self.regions[inside])
         counts = Counter(name for name in item_names if name in ITEM_TABLE and is_progression(name))
         state = _State(counts)
         for region in self.regions.values():
@@ -139,8 +188,9 @@ class LogicTracker:
         changed = True
         while changed:
             changed = False
-            for region, rule, door in self.entrances:
-                if not region.reached and ((door in known and self.regions[door_node(door)].reached) or rule(state)):
+            for name, region, rule, door in self.entrances:
+                if not region.reached and ((door in known and self.regions[door_node(door)].reached) or rule(state)
+                                           or any(other.reached for other in through.get(name, ()))):
                     region.reached = changed = True
             for event in list(pending):
                 _, region, rule, item = event

@@ -44,9 +44,15 @@ namespace AP {
     // The client is connected and logged into the slot (SERVER lines).
     bool IsServerConnected();
     // Where a level jump from level `from` to that level and locator leads instead (the seed file's jumps; ap_jumps.cpp): a
-    // shuffled dungeon's door, exit or warp, or the seashell hunt's egg door. None: where it was going.
+    // shuffled dungeon's door, exit or warp, or the seashell hunt's egg door. None: where it was going. A led jump onto
+    // a covered door sets the flag that opens it.
     std::optional<std::pair<std::string_view, std::string_view>> LeadJump(std::string_view from, std::string_view level,
                                                                           std::string_view locator);
+    // A level jump that started, from level `from` to that level and locator, which went to `to`'s locator: a jump
+    // between the overworld and another level is reported as DOOR <locator> <to> (Entrances, Doors gone through), once,
+    // and again on each SYNC (ReportDoorJumps).
+    void NoteJump(std::string_view from, std::string_view level, std::string_view locator, std::string_view to);
+    void ReportDoorJumps();
     void ApplyInjectedInput(nn::hid::NpadBaseState* state);
     void Log(const std::string& text);
     std::string HelloLine();

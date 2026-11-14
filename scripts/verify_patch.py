@@ -9,7 +9,9 @@ switches, and config.ini names the goal's numbers for the egg and its sign, and 
 slots, and no flowchart asks CompareInt. Every in-game hint source shows its own message, a copy of the one it
 replaces, and the hints hold the seed's hints, which fit the text box. With Shuffled Dungeons, the jumps lead
 each dungeon door into the dungeon the patch's map names, and its ways out back out of that door, and the rooms keep
-their vanilla targets; the markers swap the map's dungeon markers, whose rows stay vanilla.
+their vanilla targets; the markers swap the map's dungeon markers, whose rows stay vanilla. With Entrances, the jumps
+lead each moved overworld door into its new inside and that inside back out of the door, a covered door's with the flag
+that opens it.
 The drop actor's flowchart reads and holds every drop's take entry, every drop has its model's bounds and a linked one
 (a tree's, hole's, chest's, owl statue's or boss's) its link, and no small key or slime key stand-in is left. Each chest's launch flag (Bouncy Items) is
 used by that chest and its drop alone, among all actors of its level (the RomFS's rooms, as the mod has them) and the
@@ -278,6 +280,15 @@ if fairy_warps != {ap_entrances.outside("color-dungeon")}:
     bad += 1
     print(f"FAIRY QUEEN warps to {fairy_warps}, not vanilla")
 hunt_lines = ap_goal.jumps(ap_goal.settings_seashells(patch["settings"]))
+# Entrances: per moved door, the overworld's jump through it to the new inside, and that inside's jump to its own old
+# door to this door, with the opening flag of a covered door
+moved, door_pairs = patch.get("entrances") or {}, patch.get("entrance_pairs") or {}
+door_of = {inside: door for door, inside in door_pairs.items()}
+for door, inside in moved.items():
+    out_from = ap_entrances.ANY_LEVEL if door_of[inside] == ap_entrances.HOME else ap_entrances.level_of(inside)
+    opening = ap_entrances.OPENING_FLAGS.get(door)
+    want += [f"Field {ap_entrances.level_of(door_pairs[door])} {door_pairs[door]} {ap_entrances.level_of(inside)} {inside}",
+             f"{out_from} Field {door_of[inside]} Field {door}" + (f" {opening}" if opening else "")]
 if sorted(jumps) != sorted(want + hunt_lines):
     bad += 1
     print(f"JUMPS {jumps}, want {want + hunt_lines}")
@@ -295,7 +306,7 @@ markers = seed.get("markers", [])
 if markers != marker_lines(patch):
     bad += 1
     print(f"MARKERS {markers}, want {marker_lines(patch)}")
-print(f"dungeon doors={doors} jumps={len(jumps)} markers={len(markers)} bad={bad}")
+print(f"dungeon doors={doors} moved doors={len(moved)} jumps={len(jumps)} markers={len(markers)} bad={bad}")
 
 # Drop actor: its flowchart reads (a duplicate entry name breaks the entry dictionary the game looks its entries up in)
 # and holds the take entry (LEB parameter 3) of every drop actor; the model every drop actor shows (its token's M line,

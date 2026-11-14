@@ -1,4 +1,4 @@
-# Where the game's doors lead: names only. Generated: python logic-studio/tools/build.py
+# Where the game's doors lead, by name, and the groups an entrance shuffle draws from. Generated: python logic-studio/tools/build.py
 # A zone in logic.yml lists its doors; a door no zone lists is not in logic.
 pairs:
   Field_01A: Lv08TurtleRock_03C
@@ -193,6 +193,127 @@ one-way:
   EagleKeyCave_02A: Field_01K_d
   EagleKeyCave_02B: Field_01K_d
   Field_02O: EagleTowerExit_01A_a
+  Field_13O: LanmolaCave_02A
   Lv07EagleTower_03H: Lv07EagleTower_08B_Warp
+  Lv07EagleTower_04G: Lv07EagleTower_04C
   Lv09WindFishsEgg_08C: Field_01G
   Lv10ClothesDungeon_04C: Field_08H
+groups:  # the pairs with an overworld side, by their overworld name; pairs inside the levels and the doors that stay are in none. Stay: Field_01G (the Wind Fish's Egg)
+  dungeon:  # a dungeon's own door, the one shuffled dungeons move
+    - Field_01O
+    - Field_02A
+    - Field_03E
+    - Field_03L_a
+    - Field_08H
+    - Field_09M
+    - Field_12F
+    - Field_14D
+    - Field_14J_b
+  dungeon-other:  # another overworld door into a dungeon's level
+    - Field_01A
+    - Field_01C
+    - Field_07M
+  connector:  # a door into a level with more than one overworld door
+    - Field_01D
+    - Field_01H
+    - Field_01K_b
+    - Field_01N
+    - Field_01P
+    - Field_02D
+    - Field_02F
+    - Field_02H
+    - Field_02I_a
+    - Field_02I_b
+    - Field_02J
+    - Field_02N_a
+    - Field_02N_b
+    - Field_02O_a
+    - Field_02O_b
+    - Field_02P_a
+    - Field_02P_c
+    - Field_02P_d
+    - Field_03A
+    - Field_03B
+    - Field_03L_b
+    - Field_03N
+    - Field_03P
+    - Field_05J
+    - Field_05K
+    - Field_06A
+    - Field_06J_a
+    - Field_06J_b
+    - Field_07C
+    - Field_07J
+    - Field_08F
+    - Field_08G
+    - Field_09C_a
+    - Field_09C_b
+    - Field_09P
+    - Field_10M
+    - Field_10N
+    - Field_11K
+    - Field_11L
+    - Field_12I_a
+    - Field_12I_b
+    - Field_13I
+    - Field_14J_a
+    - Field_14J_c
+    - Field_15H
+    - Field_16J
+  single:  # the one overworld door into its level
+    - Field_01E
+    - Field_01K_a
+    - Field_01K_c
+    - Field_02B
+    - Field_02P_b
+    - Field_03K
+    - Field_03O
+    - Field_04A_a
+    - Field_04B
+    - Field_04F
+    - Field_04H
+    - Field_04P
+    - Field_05C
+    - Field_05F
+    - Field_05L
+    - Field_06C
+    - Field_07F
+    - Field_08I
+    - Field_09D
+    - Field_09E
+    - Field_09G
+    - Field_09H
+    - Field_09I
+    - Field_09K
+    - Field_09N
+    - Field_10C
+    - Field_10D
+    - Field_11A
+    - Field_11B_a
+    - Field_11B_b
+    - Field_11C
+    - Field_11E
+    - Field_11M
+    - Field_11O
+    - Field_12A
+    - Field_12B
+    - Field_12C
+    - Field_12D
+    - Field_13G
+    - Field_13M_a
+    - Field_13M_b
+    - Field_13N_a
+    - Field_13N_b
+    - Field_13N_c
+    - Field_13P
+    - Field_14E
+    - Field_14G
+    - Field_14L
+    - Field_14N
+    - Field_15D
+    - Field_15G
+    - Field_15I
+    - Field_15J
+    - Field_15K
+    - Field_16E
+    - Field_16G

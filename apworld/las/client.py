@@ -15,7 +15,8 @@ from .ghosts import DEFAULT_RELAY, GhostLink
 from .host_settings import PLAYER_SETTINGS, player_value
 from .install import InstallError, builtin_patcher_build, patch_and_install
 from .items import GAME, ITEM_GAME_INFO
-from .tracker import DOORS_KEY, SIGN_KEY, LogicTracker, tracked_instruments, tracked_seashells
+from .tracker import (DOORS_KEY, ENTRANCES_KEY, SIGN_KEY, LogicTracker, found_entrance, tracked_instruments,
+                      tracked_seashells)
 
 GAME_PORT = 43384
 PROTOCOL_VERSION = 2
@@ -207,6 +208,11 @@ class LASContext(CommonContext):
         self.game_dungeons: Set[str] = set()  # the dungeons the game reports entered (DUNGEON), LASR names
         self.doors_sent: Set[str] = set()  # the dungeons whose door was put in data storage since connecting
         self.doors_stored: Set[str] = set()  # the doors data storage has as found (DOORS_KEY), from an earlier session
+        # the overworld doors the game reports gone through (DOOR), {door: the inside door it leads to}; those put in
+        # data storage since connecting; those data storage has as found (ENTRANCES_KEY)
+        self.game_entrances: Dict[str, str] = {}
+        self.entrances_sent: Set[str] = set()
+        self.entrances_stored: Set[str] = set()
         self.last_item_sent = 0.0
         # Local location id -> "<item name>|<owner name, empty for our own items>", from LocationScouts.
         self.scouted_names: Dict[int, str] = {}
@@ -284,11 +290,15 @@ class LASContext(CommonContext):
             self.slot_data = args["slot_data"]
             self.doors_sent.clear()
             self.doors_stored.clear()
+            self.entrances_sent.clear()
+            self.entrances_stored.clear()
             asyncio.create_task(self.send_doors())
+            asyncio.create_task(self.send_entrances())
             self.make_logic_tracker()
             asyncio.create_task(self.send_sign_read())
             # read or found in an earlier session: the game's save may have lost it (quit without saving)
-            asyncio.create_task(self.send_msgs([{"cmd": "Get", "keys": [self.sign_key, self.doors_key]}]))
+            asyncio.create_task(self.send_msgs([{"cmd": "Get",
+                                                 "keys": [self.sign_key, self.doors_key, self.entrances_key]}]))
             self.send_logic()
             self.update_ghosts()
         elif cmd == "RoomUpdate":
@@ -303,6 +313,9 @@ class LASContext(CommonContext):
                 self.on_sign_read(self.slot_seed_hash)
             if isinstance(keys.get(self.doors_key), dict):
                 self.doors_stored.update(keys[self.doors_key])
+                self.send_logic()
+            if isinstance(keys.get(self.entrances_key), dict):
+                self.entrances_stored.update(keys[self.entrances_key])
                 self.send_logic()
         elif cmd == "LocationInfo":
             for item in args["locations"]:
@@ -322,7 +335,8 @@ class LASContext(CommonContext):
         self.logic_tracker = LogicTracker(
             logic["preset"], logic["tokens"], logic["vanilla"],
             [names[loc - LOCATION_BASE] for loc in sorted(self.server_locations)],
-            self.slot_data.get("dungeon_entrances"), logic.get("optional", ()), *goal) if logic else None
+            self.slot_data.get("dungeon_entrances"), logic.get("optional", ()), *goal,
+            self.slot_data.get("entrances"), self.slot_data.get("start")) if logic else None
         self.logic_tracker_goal = goal
         self.logic_starting = logic.get("starting", []) if logic else []
         self.in_logic = self.doors_open = None
@@ -345,6 +359,16 @@ class LASContext(CommonContext):
     @property
     def doors_key(self) -> str:
         return DOORS_KEY.format(team=self.team, player=self.slot)
+
+    @property
+    def entrances_key(self) -> str:
+        return ENTRANCES_KEY.format(team=self.team, player=self.slot)
+
+    @property
+    def found_entrances(self) -> Set[str]:
+        """The shuffled overworld doors the player has gone through in the slot's seed: those the game reports, and
+        those data storage has."""
+        return self.entrances_stored | set(self.game_entrances)
 
     @property
     def found_doors(self) -> Optional[Set[str]]:
@@ -448,7 +472,7 @@ class LASContext(CommonContext):
             return
         names = list(self.logic_starting) + [self.item_names.lookup_in_game(item.item, self.game)
                                              for item in self.items_received]
-        reachable, doors = self.logic_tracker.sweep(names, self.found_doors)
+        reachable, doors = self.logic_tracker.sweep(names, self.found_doors, self.found_entrances)
         ids = {LOCATION_OFFSETS[loc] for loc in reachable}
         door_ids = {LOCATION_OFFSETS[loc] for loc in doors}
         if ids == self.in_logic and door_ids == self.doors_open and not force:
@@ -551,6 +575,7 @@ class LASContext(CommonContext):
             self.game_hints.clear()
             self.game_checked.clear()
             self.game_dungeons.clear()
+            self.game_entrances.clear()
             self.goal_reached = False
             if len(parts) < 2 or parts[1] != str(PROTOCOL_VERSION):
                 logger.error(f"Game protocol {parts[1:2]} does not match the client ({PROTOCOL_VERSION}).")
@@ -592,6 +617,13 @@ class LASContext(CommonContext):
             self.game_dungeons.add(DUNGEON_NUMBERS[parts[1]])
             asyncio.create_task(self.send_doors())
             self.send_logic()
+        elif cmd == "DOOR" and len(parts) == 3:
+            # a level jump to the spot of parts[1] that went to that of parts[2]: through a shuffled door, or out
+            found = found_entrance(parts[1], parts[2])
+            if found and self.game_entrances.get(found[0]) != found[1]:
+                self.game_entrances[found[0]] = found[1]
+                asyncio.create_task(self.send_entrances())
+                self.send_logic()
         elif cmd == "SIGN":
             # the player read the sign naming the instruments the egg needs
             self.on_sign_read(self.game_seed_hash)
@@ -631,6 +663,18 @@ class LASContext(CommonContext):
         self.doors_sent.update(doors.values())
         await self.send_msgs([{"cmd": "Set", "key": DOORS_KEY.format(team=self.team, player=self.slot), "default": {},
                                "want_reply": False, "operations": [{"operation": "update", "value": doors}]}])
+
+    async def send_entrances(self) -> None:
+        """Puts the overworld doors the game reports gone through in the server's data storage (ENTRANCES_KEY): the
+        player has found where they lead. Only into the slot of the seed the game runs, whose doors these are."""
+        if self.slot is None or not self.slot_seed_hash or self.slot_seed_hash != self.game_seed_hash:
+            return
+        doors = {door: inside for door, inside in self.game_entrances.items() if door not in self.entrances_sent}
+        if not doors:
+            return
+        self.entrances_sent.update(doors)
+        await self.send_msgs([{"cmd": "Set", "key": self.entrances_key, "default": {}, "want_reply": False,
+                               "operations": [{"operation": "update", "value": doors}]}])
 
     def set_game_status(self, level: str, text: str) -> None:
         self.game_status = checklist.Check(level, text)

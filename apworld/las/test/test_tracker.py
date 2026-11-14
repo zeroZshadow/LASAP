@@ -7,8 +7,9 @@ from test.general import setup_multiworld
 from worlds.AutoWorld import AutoWorldRegister
 
 from .test_logic import OPTION_SETS, STEPS
+from ..lasr import DOORS, ENTRANCE_POOL
 from ..locations import LOCATION_NAMES
-from ..tracker import LogicTracker, tracked_seashells
+from ..tracker import LogicTracker, found_entrance, tracked_seashells
 
 
 class TestTracker(unittest.TestCase):
@@ -23,7 +24,7 @@ class TestTracker(unittest.TestCase):
         # The client knows the slot's locations from the server, and the rest from the slot data.
         tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], world.shuffled,
                                slot_data["dungeon_entrances"], logic["optional"], slot_data["instruments_required"],
-                               tracked_seashells(slot_data, True))
+                               tracked_seashells(slot_data, True), slot_data["entrances"], slot_data["start"])
         # locked locations' items count once received, like the pool's
         locked = [multiworld.get_location(LOCATION_NAMES[loc], 1) for loc in logic["locked"]]
         pool = [item for item in multiworld.itempool + world.get_pre_fill_items() if item.player == 1]
@@ -49,6 +50,10 @@ class TestTracker(unittest.TestCase):
         for index, options in enumerate(OPTION_SETS):
             self.check(options, seed=2000 + index)
 
+    def test_entrances(self) -> None:
+        self.check({"entrances": "everything"}, seed=2200)
+        self.check({"entrances": "everything", "random_start": True, "shuffled_dungeons": True}, seed=2201)
+
     def test_seashell_hunt(self) -> None:
         """The optional locations wait for an egg that takes seashells; the Mansion's rewards above the count are
         checks before it."""
@@ -69,3 +74,41 @@ class TestTracker(unittest.TestCase):
         tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], world.shuffled)
         self.assertIn("marin", tracker.in_logic(logic["starting"]))
         self.assertNotIn("marin", tracker.in_logic([]))
+
+
+class TestFoundEntrances(unittest.TestCase):
+    def test_a_jump_finds_its_door(self) -> None:
+        """Through a door: the jump to the spot inside its own inside door leads to another one's. Out of an inside
+        door: the jump to the spot outside its own overworld door leads to another one's."""
+        door, other = ENTRANCE_POOL[:2]
+        inside = DOORS["pairs"][other]
+        self.assertEqual(found_entrance(DOORS["pairs"][door], inside), (door, inside))
+        self.assertEqual(found_entrance(other, door), (door, inside))
+        self.assertEqual(found_entrance(door, door), (door, DOORS["pairs"][door]))  # a door that leads where it did
+        self.assertIsNone(found_entrance("Field_11C", door))  # the house's exit, Random start
+        self.assertIsNone(found_entrance(DOORS["pairs"][DOORS["groups"]["dungeon"][0]], inside))
+
+    def test_doors_not_gone_through_lead_nowhere(self) -> None:
+        world_type = AutoWorldRegister.world_types["Links Awakening Switch"]
+        world = setup_multiworld(world_type, STEPS, 2300, {"entrances": "everything"}).worlds[1]
+        tracker = world._tracker(world.shuffled, world.entrances, world.goal_instruments, world.goal_seashells)
+        items = [item.name for item in world.multiworld.itempool + world.get_pre_fill_items()]
+        every = tracker.in_logic(items)
+        self.assertEqual(tracker.in_logic(items, found_entrances=world.entrances), every)
+        none = tracker.in_logic(items, found_entrances=())
+        self.assertLess(len(none), len(every))
+        self.assertTrue(none)  # Mabe and what its own zones reach
+
+    def test_a_tracker_led_elsewhere_sweeps_as_a_new_one(self) -> None:
+        """The world's tries share a sweep (LASWorld._tracker): one led to other doors answers as one made for them."""
+        world_type = AutoWorldRegister.world_types["Links Awakening Switch"]
+        world = setup_multiworld(world_type, STEPS, 2300, {"entrances": "everything"}).worlds[1]
+        doors = list(world.entrances)
+        swapped = {**world.entrances, doors[0]: world.entrances[doors[1]], doors[1]: world.entrances[doors[0]]}
+        args = (world.options.logic.current_key, world.settings_tokens, [], world.shuffled, world.dungeon_entrances, (),
+                world.goal_instruments, world.goal_seashells)
+        items = [item.name for item in world.multiworld.itempool + world.get_pre_fill_items()][:40]
+        led = LogicTracker(*args, world.entrances, world.start).lead(swapped)
+        self.assertEqual(led.in_logic(items), LogicTracker(*args, swapped, world.start).in_logic(items))
+        with self.assertRaises(ValueError):
+            led.lead({doors[0]: world.entrances[doors[0]]})

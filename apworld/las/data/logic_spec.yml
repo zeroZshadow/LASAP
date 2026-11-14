@@ -9,7 +9,8 @@ goal: kill-nightmare
 
 # The rule grammar: names, `name:N` counts, `!`, `&`, `|` and brackets. `!` binds tightest, then `&`, then `|`.
 grammar:
-  name: '[a-zA-Z0-9\-\[\]]+'  # an item, node, option or counted group; an enemy's variant in brackets: kill-x[pit]
+  name: '[a-zA-Z0-9\-\.\[\]]+'  # an item, node, option or counted group; an enemy's variant in brackets: kill-x[pit]
+  # A zone carved out of a level is named by the level's prefix, `.` and its own name: D1.a, D1.2d-a.
   count: ':'
   not: '!'
   and: '&'
@@ -23,8 +24,9 @@ levels: [basic, advanced, glitched, hell]
 # An enemy's other rules, written condition-pit and read as kill-x[pit] at every level.
 variants: [pit, heavy]
 
-# Each dungeon by its shuffle name, Tail Cave to Turtle Rock and then the Color Dungeon, and the zone its door leads
-# into. Dungeon shuffle swaps rules between these zones by name.
+# Each dungeon by its shuffle name, Tail Cave to Turtle Rock and then the Color Dungeon, and the region just inside its
+# door, which the world makes (lasr.dungeon_region): the door's way in, leading on to the zone of the dungeon's inside
+# door. Dungeon shuffle leads a door into another dungeon's region.
 dungeons:
   tail-cave: tail-cave
   bottle-grotto: bottle-grotto

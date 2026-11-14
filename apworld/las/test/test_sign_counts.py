@@ -127,7 +127,7 @@ class TestClient(unittest.TestCase):
                 await asyncio.sleep(0)
                 seen.append(ctx.logic_tracker_goal)
             gets = [msg for msg in sent if msg["cmd"] == "Get"]
-            self.assertEqual(gets, [{"cmd": "Get", "keys": ["las_sign_0_1", "las_doors_0_1"]}])
+            self.assertEqual(gets, [{"cmd": "Get", "keys": ["las_sign_0_1", "las_doors_0_1", "las_entrances_0_1"]}])
             return [msg for msg in sent if msg["cmd"] == "Set" and msg["key"].startswith("las_sign")], seen
         return asyncio.run(run())
 
@@ -178,7 +178,8 @@ class TestUniversalTracker(unittest.TestCase):
     def test_keys(self) -> None:
         world_type = AutoWorldRegister.world_types[GAME]
         self.assertEqual(world_type.found_entrances_datastorage_key,
-                         ("las_sign_{team}_{player}", "las_doors_{team}_{player}"))
+                         ("las_sign_{team}_{player}", "las_doors_{team}_{player}",
+                          "las_entrances_{team}_{player}"))
 
     def test_hidden_until_the_sign(self) -> None:
         world_type = AutoWorldRegister.world_types[GAME]

@@ -197,9 +197,12 @@ def marker_lines(patch: dict) -> List[str]:
 
 
 def jump_lines(patch: dict) -> List[str]:
-    """The jumps' lines: the doors of shuffled dungeons and, on a seashell hunt, the egg's door."""
+    """The jumps' lines: the doors of shuffled dungeons, the overworld doors that lead elsewhere (Entrances), the house's
+    exit (Random start) and, on a seashell hunt, the egg's door."""
     shuffled = patch["settings"].get("Shuffled Dungeons", False)
     return ((ap_entrances.jumps(patch["dungeon_entrances"]) if shuffled else []) +
+            ap_entrances.door_jumps(patch.get("entrances") or {}, patch.get("entrance_pairs") or {}) +
+            ap_entrances.start_jumps(patch.get("start")) +
             ap_goal.jumps(ap_goal.settings_seashells(patch["settings"])))
 
 

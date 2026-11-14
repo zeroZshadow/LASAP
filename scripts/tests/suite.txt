@@ -24,6 +24,7 @@ texts: newgame_file2 shop_text hint_vanilla
 egg_jukebox: newgame_file2 egg_jukebox
 zol_trap: newgame_file2 zol_trap
 dungeon_found client: newgame_file2 dungeon_found
+door_found client: newgame_file2 door_found
 jukebox_rapids: boot_file1 jukebox_rapids
 options_on options.open_mabe=True options.randomize_enemies=True options.classic_d2=True options.completed_bridge=True options.ammo_ghost=False: newgame_file2 option_rooms
 options_off: newgame_file2 option_rooms_off

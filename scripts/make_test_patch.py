@@ -4,7 +4,8 @@ and the shop slots LASR does not shuffle, which are no AP locations. The owl sta
 are removed locations (removed_location_ids).
 
 python make_test_patch.py <out.aplas> [--seed-hash <hash>] [--slot Tester] [--settings JSON] [--dungeons JSON]
-                          [--models loc=item,...] [--names loc=item[|player],...] [--starting item,item,...]
+                          [--entrances JSON] [--models loc=item,...] [--names loc=item[|player],...]
+                          [--starting item,item,...]
 
 --seed-hash defaults to a hash of the patch's contents, so the seed_hash of a mod made from it (config.ini) names the
 patch: the same options and world data give the same hash (scripts/suite.py checks the installed mod by it).
@@ -18,6 +19,9 @@ the world's, without the keys of a Start With setting.
 --settings replaces settings in the patch, e.g. '{"Instruments Required": 3, "Damage": "OHKO"}'.
 --dungeons leads dungeon doors into other dungeons and turns Shuffled Dungeons on, e.g.
 '{"tail-cave": "color-dungeon", "color-dungeon": "tail-cave"}' (door: the dungeon it leads into).
+--entrances leads overworld doors into other doors' insides, whose ways out lead back out of them, as Entrances does,
+e.g. '{"Field_12A": "UlriraHouse_01A", "Field_12B": "Library_01A"}' (door: the inside door it leads into, doors.yml
+names; the insides are those of the doors named).
 """
 import argparse
 import hashlib
@@ -56,7 +60,7 @@ DUNGEONS = ("tail-cave", "bottle-grotto", "key-cavern", "angler-tunnel", "catfis
 
 
 def make(seed_hash=None, slot: str = "Tester", settings: dict = None, dungeons: dict = None, models: dict = None,
-         starting=(), names: dict = None) -> dict:
+         starting=(), names: dict = None, overworld: dict = None) -> dict:
     """The patch, from the options as main takes them (parsed); scripts/build_assets.py builds the mod from make()."""
     models = models or {}
     logic = yaml.safe_load(open(DATA / "logic.yml"))
@@ -99,6 +103,11 @@ def make(seed_hash=None, slot: str = "Tester", settings: dict = None, dungeons: 
         "location_ids": location_ids, "removed_location_ids": removed_ids,
         "dungeon_entrances": entrances, "location_models": models,
     }
+    if overworld:  # --entrances
+        pairs = yaml.safe_load((DATA / "doors.yml").read_text(encoding="utf-8"))["pairs"]
+        assert sorted(overworld.values()) == sorted(pairs[door] for door in overworld), overworld
+        patch["entrances"] = dict(overworld)
+        patch["entrance_pairs"] = {door: pairs[door] for door in overworld}
     if names:
         patch["location_names"] = {loc: [*name.split("|", 1), ""][:2] for loc, name in names.items()}
     if patch["seed_hash"] is None:
@@ -113,6 +122,7 @@ def main() -> None:
     parser.add_argument("--slot", default="Tester")
     parser.add_argument("--settings", default="{}")
     parser.add_argument("--dungeons", default="{}")
+    parser.add_argument("--entrances", default="{}")
     parser.add_argument("--models", default="")
     parser.add_argument("--names", default="")
     parser.add_argument("--starting", default="")
@@ -120,7 +130,7 @@ def main() -> None:
     patch = make(args.seed_hash, args.slot, json.loads(args.settings), json.loads(args.dungeons),
                  dict(pair.split("=", 1) for pair in filter(None, args.models.split(","))),
                  filter(None, args.starting.split(",")),
-                 dict(pair.split("=", 1) for pair in filter(None, args.names.split(","))))
+                 dict(pair.split("=", 1) for pair in filter(None, args.names.split(","))), json.loads(args.entrances))
     args.out.write_text(json.dumps(patch, indent=1))
     ids = patch["location_ids"]
     print(f"{args.out}: {len(ids)} AP locations, {len(patch['placements']) - len(ids)} vanilla, "

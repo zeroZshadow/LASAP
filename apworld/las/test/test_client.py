@@ -75,6 +75,36 @@ class TestChecksBySeed(unittest.TestCase):
         self.assertEqual(sorted(sent[1]["locations"]), [LOCATION_BASE + 5, LOCATION_BASE + 6])
 
 
+class TestDoorLines(unittest.TestCase):
+    def test_doors_gone_through_go_to_data_storage(self) -> None:
+        """A DOOR line finds a shuffled door and the inside door it leads to, which go to data storage once, and only
+        for the slot of the seed the game runs; other jumps find nothing."""
+        from ..client import LASContext, PROTOCOL_VERSION
+        from ..lasr import DOORS, ENTRANCE_POOL
+
+        door, other = ENTRANCE_POOL[:2]
+        inside = DOORS["pairs"][other]
+
+        async def run() -> list:
+            ctx = LASContext(None, None, "127.0.0.1", 0)
+            sent = []
+
+            async def send_msgs(msgs):
+                sent.extend(msgs)
+            ctx.send_msgs = send_msgs
+            ctx.server = object()
+            ctx.slot, ctx.team, ctx.slot_seed_hash = 1, 0, "aaaa"
+            for line in (f"HELLO {PROTOCOL_VERSION} bbbb", f"DOOR {DOORS['pairs'][door]} {inside}",
+                         f"HELLO {PROTOCOL_VERSION} aaaa", f"DOOR {DOORS['pairs'][door]} {inside}",
+                         f"DOOR {other} {door}", "DOOR Lv01TailCave_08D Lv01TailCave_08D"):
+                ctx.handle_game_line(line)
+                await asyncio.sleep(0)
+            return sent
+        sent = asyncio.run(run())
+        self.assertEqual(sent, [{"cmd": "Set", "key": "las_entrances_0_1", "default": {}, "want_reply": False,
+                                 "operations": [{"operation": "update", "value": {door: inside}}]}])
+
+
 class TestGhostNamesFromGame(unittest.TestCase):
     def test_dpad_toggle_keeps_the_setting(self) -> None:
         """GHOSTNAMES from the game (the d-pad's up) sets the client's ghost_names, as /ghostnames does."""

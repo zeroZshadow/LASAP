@@ -29,9 +29,12 @@ SOLID = ("ObjGrass", "ObjRock", "ObjFieldCrac", "ObjGrave", "ObjCactus", "ObjTre
 SKIP_ACTORS = ("MapStatic", "MapKinematic", "MapFixture", "TagCamera", "TagChangeEnv", "TagLight", "TagTailorPla", "TagHolocaust", "TagSwitchLight", "TagActivateC",
                "AreaCameraOf", "AreaAmbience", "AreaWarterFlow", "AreaBeltConv")
 ITEM_ACTORS = ("ObjTreasureBox", "ItemHeartPiece", "ItemSeashell", "ItemSecretSe", "ItemGoldenLeaf", "ItemSmallKey", "ItemHeartContainer")
-# Checks that stand on one actor, where the rooms LASR and DOOR_LEVELS give do not say (DOOR_LEVELS names the door the map marks)
+# Checks that stand on one actor, where the rooms LASR, DOOR_LEVELS and the dungeon map give do not say (DOOR_LEVELS names the
+# door the map marks; the dungeon map has no side-view rooms, so a check in one is pinned on the room above: Angler's and the Evil Eagle's fights, and
+# the key that drops into 04E's hole and is picked up in 06A)
 CHECK_ACTORS = {"ciao-ciao": ("DogHouse_01A", "NpcRibbonBow"), "dream-shrine-left": ("DreamShrine_01A", "ItemOcarina"), "bay-fisherman": ("FishingBoat_01A", "NpcMarthasBa"),
-                "taltal-rooster-cave": ("EagleKeyCave_01A", "ItemBirdKey")}
+                "taltal-rooster-cave": ("EagleKeyCave_01A", "ItemBirdKey"), "D4-angler": ("Lv04AnglersTunnel_04AL", "EnemyAngler"),
+                "D4-sunken-item": ("Lv04AnglersTunnel_06A", "ItemSmallKey"), "D7-eagle": ("Lv07EagleTower_05HL", "EnemyAlbatoss")}
 ITEM_PARAMS = ("Seashell", "GoldenLeaf", "HeartPiece", "SmallKey")
 # Overworld checks found by what they hold: actors whose first parameter is the check's index, and actors of which the overworld has one
 INDEXED_ITEMS = {"ItemSecretSe": "seashell", "ItemHeartPiece": "heart-piece"}
@@ -44,6 +47,10 @@ FLOW_JUMPS = {("GameControl", "RequestLevelJump"), ("GameControl", "RequestWarp"
               ("GameControl", "RequestLevelJumpInCurrentLevel"), ("WarpUI", "JumpToSelectedLocation")}
 # Actors that move Link by running a flow, by room and kind: the flow holding the jump
 EVENT_JUMPS = {("BedRoom_01A", "ObjBed2"): "Bed"}
+# Teleports whose actor has no target: its code starts this flow's entry point, which jumps (the game's main names
+# FallOutAnt beside AreaAntlion: Lanmola's sand pit drops Link into LanmolaCave)
+ACTOR_FLOW_JUMPS = {"AreaAntlion": ("Field", "FallOutAnt")}
+DROPS = ("AreaHoleLowe", "AreaAntlion")  # Link falls through, one way
 # Kinds that may move Link, seen in the room files, that the extractor does not follow
 NOT_FOLLOWED = ("AreaEagleTower", "AreaReturnAb", "ObjLv9Stair", "ObjColorHole", "AreaBasement", "TagAreaEvent")
 COMPANION_REACH = 6.0  # world units: how far from a landing a teleport back may be
@@ -176,8 +183,9 @@ def area_near(area, x, z, reach=2):
     return best[1] if best else None
 
 
-def read_teleports(levels):
-    """Every teleport actor, and the player starts they land on."""
+def read_teleports(levels, actor_jumps):
+    """Every teleport actor, and the player starts they land on. `actor_jumps`: {kind: (level, locator, entry point)} of
+    the actors whose flow entry point jumps (ACTOR_FLOW_JUMPS)."""
     starts, teleports = defaultdict(list), []
     for level, rooms in levels.items():
         for room in rooms:
@@ -190,6 +198,10 @@ def read_teleports(levels):
                     target_level = params[lvl_at] if lvl_at is not None and params[lvl_at] else level
                     teleports.append({"id": f"{room['name']}/{kind}/{len(teleports)}", "kind": kind, "level": level, "room": room["name"], "x": a["x"], "y": a["y"], "z": a["z"],
                                       "to_level": target_level, "to": params[loc_at], "gate": a["switches"], "event": next((p for p in params[loc_at + 1:] if isinstance(p, str) and p), "")})
+                elif kind in actor_jumps:
+                    target_level, locator, entry = actor_jumps[kind]
+                    teleports.append({"id": f"{room['name']}/{kind}/{len(teleports)}", "kind": kind, "level": level, "room": room["name"], "x": a["x"], "y": a["y"], "z": a["z"],
+                                      "to_level": target_level, "to": locator, "gate": a["switches"], "event": entry})
     return starts, teleports
 
 
@@ -204,6 +216,26 @@ def landing_of(level, locator, starts, room_index):
         if room and "flags" in room:
             return {"room": name, "x": room["x"] + room["w"] * TILE / 2, "y": 0, "z": room["z"] + room["h"] * TILE / 2, "approx": True}
     return None
+
+
+def drops_onto_holes(teleports, room_index):
+    """A dungeon drop is an area over its whole room, placed in a corner: off a hole tile it moves to the room's hole tile
+    nearest to it. A landing on the same spot of the room below moves with it, as Link falls straight down."""
+    for t in teleports:
+        room = room_index.get(t["room"])
+        if t["kind"] not in DROPS or level_kind(t["level"]) != "dungeon" or not room or "flags" not in room:
+            continue
+        col, row = int((t["x"] - room["x"]) // TILE), int((t["z"] - room["z"]) // TILE)
+        holes = [(i % room["w"], i // room["w"]) for i, f in enumerate(room["flags"]) if f & F_DEEP]
+        if not holes or (col, row) in holes:
+            continue
+        hx, hz = min(holes, key=lambda h: (h[0] - col) ** 2 + (h[1] - row) ** 2)
+        x, z = room["x"] + (hx + 0.5) * TILE, room["z"] + (hz + 0.5) * TILE
+        land = t["landing"]
+        below = land and room_index.get(land["room"])
+        if below and math.isclose(land["x"] - below["x"], t["x"] - room["x"]) and math.isclose(land["z"] - below["z"], t["z"] - room["z"]):
+            land["x"], land["z"] = below["x"] + x - room["x"], below["z"] + z - room["z"]
+        t["x"], t["z"] = x, z
 
 
 def pair_companions(teleports, starts, room_index, report):
@@ -296,14 +328,17 @@ def place_checks(levels, room_index, report, facts):
     door_levels = eval_constants(ROOT / "scripts" / "map_positions.py", {"DOOR_LEVELS"})["DOOR_LEVELS"]
     field = field_items(levels[FIELD])
     checks = {}
+    def on_actor(name):
+        room, kind = CHECK_ACTORS[name]
+        actor = next(a for a in room_index[room]["actors"] if a["kind"] == kind)
+        return {"level": room.rsplit("_", 1)[0], "room": room, "x": actor["x"], "y": actor["y"], "z": actor["z"], "exact": True}
+
     for name, places in positions["dungeon"].items():
         room, x, z = places[0]
-        checks[name] = {"level": room.rsplit("_", 1)[0], "room": room, "x": x, "z": z, "exact": True}
+        checks[name] = on_actor(name) if name in CHECK_ACTORS else {"level": room.rsplit("_", 1)[0], "room": room, "x": x, "z": z, "exact": True}
     for name, (x, z, _) in positions["overworld"].items():
         if name in CHECK_ACTORS:
-            room, kind = CHECK_ACTORS[name]
-            actor = next(a for a in room_index[room]["actors"] if a["kind"] == kind)
-            checks[name] = {"level": room.rsplit("_", 1)[0], "room": room, "x": actor["x"], "y": actor["y"], "z": actor["z"], "exact": True}
+            checks[name] = on_actor(name)
             continue
         room = tables.get(name)
         level = door_levels.get(name)
@@ -331,6 +366,35 @@ def place_checks(levels, room_index, report, facts):
     return checks
 
 
+def jump_target(data):
+    """(level, locator, literal) of a jump event's data: literal when both are written in the flow, not passed in."""
+    raw = dict(data.params.data) if data.params else {}
+    params = {k: getattr(v, "v", v) for k, v in raw.items()}
+    kinds = {k: type(v).__name__ for k, v in raw.items()}
+    level, locator = params.get("level"), params.get("locator")
+    literal = isinstance(locator, str) and bool(locator) and "Argument" not in kinds.get("locator", "") and "Argument" not in kinds.get("level", "")
+    return level if isinstance(level, str) else None, locator if isinstance(locator, str) else None, literal
+
+
+def entry_jump(event_dir, flow, entry):
+    """(level, locator) of the first literal jump a flow's entry point reaches."""
+    chart = event_tools.readFlow(str(event_dir / f"{flow}.bfevfl")).flowchart
+    queue, seen = deque([event_tools.findEntryPoint(chart, entry).main_event.v]), set()
+    while queue:
+        event = queue.popleft()
+        if event is None or id(event) in seen:
+            continue
+        seen.add(id(event))
+        data = event.data
+        if hasattr(data, "actor_action") and hasattr(data, "actor") and (data.actor.v.identifier.name, data.actor_action.v.v) in FLOW_JUMPS:
+            level, locator, literal = jump_target(data)
+            if literal:
+                return level, locator
+        refs = [getattr(data, "nxt", None), getattr(data, "join", None), *(getattr(data, "cases", None) or {}).values(), *(getattr(data, "forks", None) or [])]
+        queue.extend(ref.v for ref in refs if ref is not None and getattr(ref, "v", None) is not None)
+    raise SystemExit(f"{flow}/{entry} reaches no jump")
+
+
 def read_flow_jumps(event_dir, starts, report):
     jumps = []
     for path in sorted(event_dir.glob("*.bfevfl")):
@@ -342,12 +406,8 @@ def read_flow_jumps(event_dir, starts, report):
             pair = (data.actor.v.identifier.name, data.actor_action.v.v)
             if pair not in FLOW_JUMPS:
                 continue
-            raw = dict(data.params.data) if data.params else {}
-            params = {k: getattr(v, "v", v) for k, v in raw.items()}
-            kinds = {k: type(v).__name__ for k, v in raw.items()}
-            level, locator = params.get("level"), params.get("locator")
-            literal = isinstance(locator, str) and bool(locator) and "Argument" not in kinds.get("locator", "") and "Argument" not in kinds.get("level", "")
-            entry = {"flow": path.stem, "event": event.name, "action": pair[1], "level": level if isinstance(level, str) else None, "to": locator if isinstance(locator, str) else None, "literal": literal}
+            level, locator, literal = jump_target(data)
+            entry = {"flow": path.stem, "event": event.name, "action": pair[1], "level": level, "to": locator, "literal": literal}
             if literal:
                 found = next(((k, v[0]) for k, v in starts.items() if k[1] == locator and (not level or k[0] == level)), None)
                 if found:
@@ -506,8 +566,11 @@ def build(facts):
             return data["side_area"]
         return area_near(areas.get(level, {}), x, z, reach)
 
-    starts, teleports = read_teleports(levels)
+    actor_jumps = {kind: (*entry_jump(common / "event", flow, entry), entry) for kind, (flow, entry) in ACTOR_FLOW_JUMPS.items()}
+    starts, teleports = read_teleports(levels, actor_jumps)
     pair_companions(teleports, starts, room_index, report)
+    teleports = [t for t in teleports if not (t["kind"] == "AreaLevelOpen" and t["landing"] and t["landing"].get("approx"))]  # no start to land on: a trigger left unused, below 03H's floor in Turtle Rock
+    drops_onto_holes(teleports, room_index)
     for t in teleports:
         t["from_area"] = area_at(t["level"], t["room"], t["x"], t["z"])
         land = t["landing"]
@@ -543,7 +606,7 @@ def build(facts):
         for room in rooms:
             room["actors"] = [a for a in room["actors"] if not a["kind"].startswith(SKIP_ACTORS)]
     for t in teleports:
-        t["drop"] = t["kind"] == "AreaHoleLowe"  # a hole Link falls through, one way
+        t["drop"] = t["kind"] in DROPS
     for w in warps:
         w["on_map"] = w["kind"] not in ("TagRapidFlow", "AreaRapidFlow")  # the rapids' current carries Link along, no warp spot
     index = {"levels": level_index, "teleports": teleports, "warps": warps, "warp_points": points, "flow_jumps": jumps, "flags": flags, "checks": checks,

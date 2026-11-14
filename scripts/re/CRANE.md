@@ -412,7 +412,7 @@ Each enter sets the filter and re-sets the actor's global pose. `ObjCraneFence_P
 
 `CranePrize_MakeCollision` reads the embedded file `<symbol>.cidb` of `Prize<symbol>.bfres` and makes a dynamic `CollisionComp` from its shapes. `CranePrize_ApplyPhysicsTraits` (`0x143c30`) applies the `CranePrizePhysicsTraits` row that `collision.traits` names, then `PhysicsBody_SetMassAndCom` sets its mass with the row's `centerOfGravity` (body frame, not scaled); the inertia comes from the shapes.
 
-**cidb.** `u32 4`, `"CIDB"`, `u32 0x10`, `u32 0`, `+0x10` u32 shape count, entry offsets from `+0x14` (each + 8). Entry: `+0x0` u32 parameter bytes, `+0x4` u32 4, `+0x8` u32 type, `+0xc` u32 `0xffffff00`, `+0x10` position, `+0x1c` rotation (Euler, radians), `+0x28` parameters: 1 box (half extents), 2 capsule (radius, half height), 3 sphere (radius).
+**cidb.** `u32 4`, `"CIDB"`, `u32 0x10`, `u32 0`, `+0x10` u32 shape count, entry offsets from `+0x14` (each + 8). Entry: `+0x0` u32 parameter bytes, `+0x4` u32 4, `+0x8` u32 type, `+0xc` u32 `0xffffff00`, `+0x10` position, `+0x1c` rotation (Euler, radians), `+0x28` parameters: 1 box (half extents), 2 capsule (radius, half height), 3 sphere (radius). The type's low byte is the shape: 0 is a triangle mesh. Its upper u16 (entry `+0x12` as `CollisionComp_Make` counts) is the shape's collision kind: `0x829c60` turns it into the shape's filter word (ITEMS.md, Collision filters) from a table of 21 words at `0xa1b6518` (kind 0 and 1 `0xd7077dc1`, 6 `0xd7073fc4`, 8 `0x810338d1`, `0xa` `0x800678cb`, `0x11` `0xd5077dc1`; a kind above `0x14` throws). Link's capsule meets kinds 0–5, 7, 8, `0xa`, `0xb`, `0x10` and `0x11`; kind 6 is layer 4, which his set leaves out: the flat two- or four-triangle planes across a dungeon room's doorways are kind 6, so Link walks through them. A mesh's parameters are a cooked PhysX triangle mesh: `"NXS\x01"`, `"MESH"`, u32 14, u32 0, u32 flags (bit 2 8-bit indices, bit 3 16-bit, else 32-bit), u32 vertex count, u32 triangle count, the vertices (3 f32, model space), then 3 indices a triangle; the entry's `+0x4` is the size of the attribute words at its end (ITEMS.md, Collision attributes).
 
 | Prize | Shapes (centre; size, before `modelScale`) |
 |---|---|
@@ -462,6 +462,7 @@ The game area box covers the machine's inside. The claw releases above the belt 
 - The floor-front box of AreaCraneGame's update (Update step 3): what it is for, when it overlaps the game area box only at z 5.0–5.25.
 - AreaCraneGame `+0x4a4`, the prizes won in a play: no reader found.
 - Layers 18 and 19 in the prize mask, and 7, 12, 19, 26 in the belt's: which bodies (the map's `CraneGame.cidb`, the claw, the arms).
+- cidb: the low byte of an entry's `+0xc` word (`0x00` on boxes, `0x01` and `0x02` on a room's meshes); which bodies layer 4 is for (the kind-6 doorway planes stop it; enemies assumed).
 - `0x145590`: which contacts play a prize's landing SE (a shape type `& 0x1f` = 1, or an ObjMovingFloorCrane).
 - `getEvent.jingle`: its reader.
 - `CranePrizeParams +0x30`: which of the get holder's poses vtable `+0xb0` serves.

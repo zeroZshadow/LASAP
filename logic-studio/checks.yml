@@ -208,14 +208,14 @@ D3-owl-statue-basement-north: {level: Lv03KeyCavern, room: Lv03KeyCavern_03G, x:
 D3-owl-statue-arrow: {level: Lv03KeyCavern, room: Lv03KeyCavern_02D, x: 50.25, z: 12.75, exact: true, content: rupee-20}
 D3-owl-statue-northwest: {level: Lv03KeyCavern, room: Lv03KeyCavern_01A, x: 6.75, z: 0.75, exact: true, content: rupee-20}
 D4-instrument: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_03B, x: 22.5, z: 27.75, exact: true, content: surf-harp}
-D4-angler: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_04B, x: 18.75, z: 39.0, exact: true, content: heart-container, index: 3}
+D4-angler: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_04AL, x: 147.75, y: 2.5, z: 0.0, exact: true, content: heart-container, index: 3}
 D4-north-chest: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_02D, x: 51.75, z: 15.75, exact: true, content: flippers}
 D4-east-side-north: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_03G, x: 98.25, z: 27.75, exact: true, content: key-D4}
 D4-east-side-south: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_05G, x: 101.25, z: 53.25, exact: true, content: key-D4}
 D4-west-ledge: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_07C, x: 33.75, z: 74.25, exact: true, content: nightmare-key-D4}
 D4-east-of-puzzle: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_04D, x: 48.75, z: 39.75, exact: true, content: key-D4}
 D4-south-of-puzzle: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_05C, x: 39.75, z: 53.25, exact: true, content: zol-trap}
-D4-sunken-item: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_04E, x: 65.25, z: 41.25, exact: true, content: key-D4}
+D4-sunken-item: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_06A, x: 185.25, y: 1.5, z: 0.0, exact: true, content: key-D4}
 D4-central-room: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_05D, x: 54.75, z: 53.25, exact: true, content: rupee-50}
 D4-small-island: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_06F, x: 78.75, z: 65.25, exact: true, content: rupee-50}
 D4-ledge-north: {level: Lv04AnglersTunnel, room: Lv04AnglersTunnel_04F, x: 77.4, z: 44.25, exact: true, content: map-D4}
@@ -258,7 +258,7 @@ D6-owl-statue-ledge: {level: Lv06FaceShrine, room: Lv06FaceShrine_04D, x: 53.25,
 D6-owl-statue-southeast: {level: Lv06FaceShrine, room: Lv06FaceShrine_08G, x: 92.25, z: 84.75, exact: true, content: rupee-20}
 D6-owl-statue-canal: {level: Lv06FaceShrine, room: Lv06FaceShrine_03G, x: 96.75, z: 24.75, exact: true, content: rupee-20}
 D7-instrument: {level: Lv07EagleTower, room: Lv07EagleTower_02G, x: 127.5, z: 15.75, exact: true, content: evening-calm-organ}
-D7-eagle: {level: Lv07EagleTower, room: Lv07EagleTower_03G, x: 123.75, z: 27.0, exact: true, content: heart-container, index: 6}
+D7-eagle: {level: Lv07EagleTower, room: Lv07EagleTower_05HL, x: 169.5, y: 12.0, z: 0.0, exact: true, content: heart-container, index: 6}
 D7-like-likes: {level: Lv07EagleTower, room: Lv07EagleTower_08D, x: 48.75, z: 113.25, exact: true, content: key-D7}
 D7-1f-west: {level: Lv07EagleTower, room: Lv07EagleTower_07A, x: 8.25, z: 99.75, exact: true, content: stone-beak-D7}
 D7-west-ledge: {level: Lv07EagleTower, room: Lv07EagleTower_05A, x: 2.25, z: 74.25, exact: true, content: seashell, index: 25}

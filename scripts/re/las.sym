@@ -2428,3 +2428,117 @@ LightCulling_Setup 0x094fbd50 f (env, width, height, mode): LightCulling_Init fi
 LightCulling_Init 0x094dea90 f (env, width, height, mode): mode at +0x90; tile size by mode from 0x9c07644 {0,16,32,64,80}; ceil(1920/size) x ceil(1080/size) tiles (+0x98, +0x9c, count +0xa0); LightIndexList +0xa8, LightIndexCounts +0xb8
 LightCulling_SetMode 0x094fc860 f (env, mode): LightCulling_Setup with the render size (Graphics +0x6e38/+0x6e3c, docked +0x6e40/+0x6e44); the game passes 3 (0x0851df10)
 LightIndexCounts_Init 0x094e9560 f (block, count, bufferCount): count u32 of 0, the GPU buffers, name "LightIndexCounts"
+ObjCrystalSwitch_Ctor 0x08feffd0 f
+ObjCrystalSwitch_vtable 0x0a0fd668 l
+ObjCrystalSwitch_Setup 0x08ff0410 f unless level flag 8: level flag 9 = (LEB param 0 == 1), param 0 to +0x3f0, set flag 8; LEB param 1 == 1: Entity_Destroy before the model (an entrance room's state initializer)
+ObjCrystalSwitch_OnHit 0x08ff29fc f the Hit anim; toggles +0x3f0 and writes it to level flag 9
+ObjCrystalSwitch_State 0x08ff1d30 f level flag 9
+ObjCrystalSwitch_StateInited 0x08ff1e50 f level flag 8
+ObjCrystalSwitch_MarkInited 0x08ff1ee0 f sets level flag 8
+Bitset_Set 0x08608510 f (bitset {+0x10 bytes, +0x18 byte count}, index, bool)
+LevelFlagBits 0x0a1c5188 l the level flags' bitset object (LevelFlags +0x48)
+ObjPurpleUnevenSwitch_State 0x091bbed0 f level flag 9
+LevelData_FindPlayerStart 0x08dee2e0 f (level data, char* name, len) -> {Vec4 pos, s32 angle}*: the lvb tagPlayerStart map (+0x238); an unknown name gives a static zero position and angle 0x7fffffff (0x0a1b6bd0), Link at the origin
+LevelData_DefaultPlayerStart 0x08dee240 f (level data): LevelData_FindPlayerStart with the name at +0x260 (length +0x2a0), the .lvb's first tagPlayerStart (LevelData_Load); callers DungeonMap_Setup and DungeonMap_MakeRoomIcons
+LevelScene_Start 0x08d3e470 f level scene slot (ptr 0x0a0c7100): Link and camera, then LevelScene_MakeRoomManager from SaveCurrent LevelName, Locator, RestartPos, RestartDirection << 29
+LevelScene_OnRoomManagerFinishedSlot 0x08d40210 f copies room manager +0x138 level, +0x180 locator, +0x1d0 offset, +0x1e0 into the LevelScene_OnRoomManagerFinished lambda
+RoomManager_FullLoadFinish 0x08d67c10 f lambda: manager vtable +0x68 (LevelLoad_Finish) with true; the reload after LevelManager_WarpInLevel passes false (0x08d68744)
+RoomManager_FindArrivalStart 0x08d5cca0 f (out, manager): null for locator $NONE; else the loaded TagPlayerStart (0x18f) whose name is the locator (+0xd0), through vtable +0x88
+RoomManager_MakeArrivalEvent 0x08d5c0b0 f vtable +0x88 (out, manager, TagPlayerStart sp*): TagPlayerStart_StartEvent
+PanelPlay_MakeArrivalEvent 0x08d4a8b0 f PanelPlay vtable +0x88: as RoomManager_MakeArrivalEvent only when +0x410 == 1
+Player_PlaceAtLevelStart 0x08d615f0 f (pos*): Player_Respawn(player, pos, 2), camera reset; from LevelLoad_Finish
+TagPlayerStart_Ctor 0x09329290 f actor 0x18f factory (vtable 0x0a128968)
+TagPlayerStart_Setup 0x09329980 f vtable +0x58: NpcComponent with flowchart PlayerStart into +0x2a8
+TagPlayerStart_GetName 0x0932ae80 f (out StringView, actor): LEB param 0 (+0xbc), the locator
+TagPlayerStart_GetEntry 0x0932af20 f (out StringView, actor): LEB param 1 (+0xc4), its PlayerStart.bfevfl entry, default "default"
+TagPlayerStart_StartEvent 0x0932afe0 f (out, actor): the arrival event, entry GetEntry with the companion variant (AreaLevelOpen_CompanionEntry)
+GameControl_RequestWarp 0x08d03430 f event action body: params locator, offsetX, offsetZ; empty level, so LevelManager_WarpInLevel
+GameControl_Quit 0x08d03840 f event action body: locator $QUIT
+GameControl_GoToEnding 0x08d03900 f event action body: locator $ENDING
+GameControl_SaveNop 0x08d18560 f functor of the GameControl action Save: no task
+Actor_RequestLevelJump 0x0860ecb0 f generic actor action RequestLevelJump(linkIndex): the linked AreaLevelOpen's LEB params 0/1 into Event_SetLevelJump; no vanilla flow uses it
+PanelDungeon_JumpToAdventure 0x08cf2040 f event action: Event_SetLevelJump to PanelAdventure, health reset
+PanelDungeon_JumpToEdit 0x08cf25d0 f event action: Event_SetLevelJump PanelEdit/PanelEdit
+SaveSnapshot 0x09300c60 f (s8 slot): copies the live save image into the copy (SaveCopy_ptr), runs its subscribers (SaveWriter_Lambda), header and body CRC
+SaveWriter_Lambda 0x09300640 f (this, header**, body*): on the copy: SaveCurrent_SetRetryLocation with scene +0x660 (skipped without a scene), fills the file header
+SaveCurrent_SetRetryLocation 0x09300ac0 f (SaveCurrent**, retry*): Locator $NONE, RestartPos/RestartDirection from retryB (+0x20, set +0x34) else retryA
+SaveWriter_Install 0x09300500 f subscribes SaveWriter_Lambda (vtable 0x0a123c30) to the save image; from the initializer 0x0850e910
+SaveImage_UpdateCrc 0x092fed00 f (image): header and body CRC
+SaveImage_Write 0x09300cf0 f (out task, u8 slot, bool no snapshot)
+SaveCopy_ptr 0x0a1c5828 l shared_ptr to the save image copy that is written (made by 0x09300390); the live SaveCurrent is not changed by a save
+SaveManager_Ctor 0x0930c1a0 f adds the location providers FishingPond and PanelEdit to +0x188
+SaveManager_Commit 0x0930ccc0 f (manager): SaveSnapshot(3), then on the copy the overrides +0x464..+0x467 (cleared by every request, no setter found) and the first matching provider's LevelName, Locator, RestartPos, RestartDirection
+SaveManager_Write 0x0930d360 f (manager): CRC of the copy, SaveImage_Write(3, true)
+SaveLocation_FishingPondMatch 0x0930e020 f (provider, save body): the save's LevelName is FishingPond
+SaveLocation_FishingPondFill 0x0930e0a0 f (provider, out): Field / Field_09B, pos 0, dir 0
+SaveLocation_PanelEditMatch 0x0930deb0 f (provider, save body): the save's LevelName is PanelEdit
+SaveLocation_PanelEditFill 0x0930df30 f (provider, out): DanpeiHouse / DanpeiHouse_01A_a, pos 0, dir 0
+SaveManager_RequestSave 0x0930f450 f (manager, u8 kind): as SaveManager_RequestAutoSave when +0x1d == 0, then 0x0930d8e0(+0x10, 2)
+SaveManager_SetAutoSaveLocationSheet 0x0930f640 f (holder 0x0a1c59f0, sheet sp*): AutoSaveLocation.gsheet from the level scene
+AutoSaveLocation_Lookup 0x0930eb80 f lambda body: the AutoSaveLocation row of the room manager's level (+0x88)
+FileMenu_NewGameStart 0x09367070 f GlobalSave_Reset, MarinTarinHouse / Opening
+FileMenu_Continue 0x09367c80 f an empty LevelName becomes MarinTarinHouse / Opening; the save's location otherwise
+SaveBody_NewGame 0x092fd890 f new-game save body: MarinTarinHouse / Opening
+PlayReport_Location 0x092f7db0 f play report: level name, ZoneId, position
+Ending_SetClearSave 0x0938deb0 f ShadowClear, refills, save LevelName Lv09WindFishsEgg, Locator $NONE, FieldPosition, RestartPos, direction 4
+FileMenusScene_Update 0x08d32050 f file menus' end: SetGameState(4) (a file chosen) or (1)
+EndingScene_Update 0x08d2f140 f the ending scene's machine; SetGameState(1, true) at its end
+AreaAntlion_StartFallOutAnt 0x0853e690 f (actor): Field.bfevfl entry FallOutAnt, no arguments
+AreaStairs_StartEvent 0x08564420 f (out, actor): AreaUpstairs/AreaDownstairs: Stairs.bfevfl entry LEB param 1 (default DefaultUpStairs/DefaultDownStairs), arg locator LEB param 0
+AreaWarpHole_StartEvent 0x0858fa60 f (out, actor): AreaWarpHoleEventBox: FieldWarpOut with >= 2 warp points, else FieldWarpOutReturn
+ObjWarpManbo_StartEvent 0x091c0b40 f (out, actor): FieldWarpOutWait with >= 2 warp points, else FieldWarpOutReturnWait
+ObjDungeonWarpHole_StartWarp 0x0903b830 f DungeonObject.bfevfl Warp, arg location LEB param 0, or param 1 while switch 1 is on
+EnemyDeathBallVacuum_StartWarp 0x08762c30 f Area.bfevfl DeathBallVacuum_Warp, arg locator LEB param 0 (DeathballWarpPoint)
+NpcRaccoon_StartEvent 0x08f211a0 f (out, npc, StringView* entry): stoptalk gets offsetX/offsetZ = Link minus the linked actor
+Instrument_StartGetEvent 0x08db0e40 f (out, component, StringView* itemKey): entry get, args level LEB param 0, location LEB param 1, itemKey
+Lv09Play_vtable 0x0a0c6940 l room manager subclass for levels named Lv09*; IsType key 0x0a1b6298; +0x68 0x08d342b0 wraps LevelLoad_Finish
+ChamberUi_LevelJump0 0x0941a940 f Chamber Dungeon UI: LevelJump(PanelAdventure, the Chamber's locator)
+ChamberUi_LevelJump1 0x094265a0 f Chamber Dungeon UI: LevelJump(DanpeiHouse, DanpeiHouse_01A_c) or (PanelAdventure, the Chamber's locator)
+PdPage_OnChoice0 0x094342a0 f PdPage callback: LevelJump(PanelEdit, PanelEdit)
+PdPage_OnChoice1 0x09434760 f PdPage callback: LevelJump(PanelEdit, PanelEdit)
+PdPage_OnChoice2 0x09434b50 f PdPage callback: LevelJump(PanelAdventure, the Chamber's locator)
+PlaceName_Subscribe 0x08df0430 f (place names, room manager +0x240): PlaceName_OnZone on scene +0x760 for level type 3, else PlaceName_OnRoom on +0x708
+PlaceName_OnZone 0x08df0fb0 f (lambda, u32** id): LocationName row by zone id, sets its first-show flag (0x08df1144), queues the name
+PlaceName_OnRoom 0x08df0910 f (place names, s32* id): as PlaceName_OnZone for the other level types (flag at 0x08df0a4c); ignores 0x48a
+LocationName_RowByZone 0x08df02d0 f (out, sheet, u32 id): the first row with +0x8 <= id <= +0xc (mMinZoneID, mMaxZoneID)
+CompanionActor_Make 0x08e26670 f (out sp, u8 kind): Actor_Create at Link, owner the actor system: 1 NpcBowWow 0x14d, 2 NpcMarin 0x14a, 3 NpcGhost 0x179, 4 NpcFlyingCucco 0x181; from Player_SpawnCompanion
+Link_LeaveCompanion 0x092804c0 f probably the Link.LeaveCompanion action lambda body: Player_ReleaseCompanion
+Link_QueryWithNobody 0x09281c10 f Link query WithNobody: Inventory +0x9d == 0
+Link_QueryWithWanwan 0x09281b80 f Link query WithWanwan: Inventory +0x9d == 1
+Link_QueryWithMarin 0x09281af0 f Link query WithMarin: Inventory +0x9d == 2
+Link_QueryWithGhost 0x09281a60 f Link query WithGhost: Inventory +0x9d == 3
+Link_QueryWithCucco 0x092819d0 f Link query WithCucco: Inventory +0x9d == 4
+NpcBowWow_JoinBody 0x08e42a20 f probably the BowWow.Join action: Player_SetCompanion(Link, self +0x2a8)
+NpcFlyingCucco_JoinBody 0x08ea5dd0 f probably the FlyingCucco.Join action: Player_SetCompanion(Link, self +0x2a8)
+NpcGhost_JoinBody 0x08ec57f0 f probably NpcGhost's Join action (no flow uses it): Player_SetCompanion(Link, self +0x2a8)
+NpcMarin_JoinBody 0x08ef8d60 f probably the Marin.Join action: Player_SetCompanion(Link, self +0x2a8)
+Lv09Play_Update 0x08d32ee0 f Lv09Play vtable +0x20: RoomManager_Update; in state 1 with Link's z >= 108: Lv09Play_StartRunScroll with 3 (x < 15.75), 1 (x >= 1499.25), else 2 (z < 120.75)
+Lv09Play_StartRunScroll 0x08d33140 f (manager, int direction): Stairs.bfevfl RunScrollWhiteLv09 on the flowchart at +0x410, Int arg direction
+Lv09Play_Start 0x08d33ac0 f vtable +0x48: RoomManager_Start, then event/Stairs.bfevfl into +0x410
+Lv09Play_Finish 0x08d34160 f vtable +0x50: drops +0x410, state 6, finished
+Lv09Play_CreateRoom 0x08d341d0 f vtable +0x60 (out, manager, area sp*, bool): Room_Ctor, vtable Lv9Room_vtable; +0x254 = area max z >= 108, +0x250 = Lv9LevelData_RoomMode for those, else 2
+Lv09Play_LevelLoadFinish 0x08d342b0 f vtable +0x68: once, the Lv9 level data (0x2f0 bytes, 0x08dfae00) into +0x208; then LevelLoad_Finish
+Lv9Room_vtable 0x0a0d06b0 l Room subclass of Lv09Play_CreateRoom; +0x18 0x08df5d20 names rooms Lv9{0:S16}-{1:X8}
+Lv9LevelData_RoomMode 0x08df98c0 f (level data, area): 2 for area max z < 108, else entry +0x210[area zone index +0x64] & 3 (guess at the meaning)
+ObjLv9Stair_Factory 0x09107dd0 f ActorTable id 0x25e; Npc.gsheet row: Lv09WindFishsEgg.bfevfl, trigger 10 (linked AreaEventBox entered) StairsUp
+ObjLv9Stair_vtable 0x0a10bd70 l actor vtable; its NpcComponent's vtable 0x0a10bf28
+MightPunch_CrashOutTimer 0x0929bdf0 f (obj, float dt): +0xb8 counted down while +0xb1; then event MightPunchCrashOut on flowchart +0xc8; caller 0x0929a738
+NpcCuccoKeeper_Factory 0x08e84370 f ActorTable id 0x182
+NpcCuccoKeeper_StartStrikeEvent 0x08e88be0 f (actor): counter +0x3d0 + 1, entry cuccoStrike{0}
+AreaLevelOpen_Setup 0x08577920 f vtable +0x20: Area.bfevfl DeferredInit, Collision (+0x2b8, trigger box = LEB scale, filter 0x80a), with LEB p3 int 1 WallCollision (+0x2c8, solid, scale/2 + 0.05, filter 0x2801), EventChara +0x2d8, event-queue slots, machine Hide/Show +0x320
+AreaLevelOpen_IsA 0x08578b20 f vtable +0x68: TypeId_AreaLevelOpen, then its bases
+AreaLevelOpen_Register 0x08578d10 f vtable +0x78: posts AreaLevelOpen_Update (lambda 0x0a058cb0) on EntityManager +0x100
+AreaLevelOpen_Update 0x08579320 f lambda +0x30: Hide/Show machine; with p3 1 syncs Player_CanEnterArea into +0x3f9, Collision enabled and WallCollision filter bit 0x800; pending trigger +0x400 and Player_CanEnterArea -> the +0x310 handler or AreaLevelOpen_StartEvent
+AreaLevelOpen_HideUpdate 0x0857a4a0 f state 0: flowchart loaded and LEB switch 0 on: activates both collisions, state Show
+AreaLevelOpen_ShowUpdate 0x0857a640 f state 1: LEB switch 0 off: deactivates both collisions, state Hide
+AreaLevelOpen_OnTriggerEntered 0x0857ae90 f (actor, trigger event): a live Player: copy into +0x400
+AreaLevelOpen_OnTriggerLeft 0x0857ab20 f (actor): frees +0x400
+AreaLevelOpen_OnQueueStarted 0x0857a910 f lambda: Collision enabled -> disabled, +0x3f8 = 1
+AreaLevelOpen_OnQueueEnded 0x0857a840 f lambda: +0x3f8 -> Collision enabled again
+AreaLevelOpen_FlowLoaded 0x0857b880 f DeferredInit callback: Area.bfevfl into +0x2a8, else Entity_Destroy
+TypeId_AreaLevelOpen 0x0a1af700 l AreaLevelOpen's type object static
+BoxCollision_MakeShape 0x0853f0c0 f (out sp, actor, StringView* name, parent sp*, world*, Vec4* halfExtents, bool* static, u8* shapeFlags): 0x320-byte box BodyCollision (vtable 0x0a153d68); null parent: becomes the actor's root
+BoxCollision_MakeSolid 0x085459e0 f (out sp, actor, StringView* name, parent sp*, world*, Vec4* halfExtents, bool* static): as BoxCollision_MakeShape with shape flags 0xb
+Player_CanEnterArea 0x0925cd70 f (player) -> bool: AreaLevelOpen and stairs gate; false in death, resurrection, fallAbyss, demoEvent, blownAway, hookshot; jump/fall in the air only on a side-view ladder or carrying the flying rooster; damage true on a side-view ladder; else +0x1b8c bit 18
+Player_RefreshEnterArea 0x0925dbf0 f (player): the current state's virtual +0x88 into +0x1b8c bit 18; capsule (+0x2d8) filter bit 23 set when false
+NpcComponent_AreaLevelOpenHandler 0x08e5e5b0 f lambda (vtable 0x0a0e09e8 +0x30) in AreaLevelOpen +0x2f0: owner active and NpcComponent_OnTrigger false -> AreaLevelOpen_StartEvent

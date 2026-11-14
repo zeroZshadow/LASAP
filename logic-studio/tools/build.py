@@ -18,6 +18,7 @@ sys.path.insert(0, str(HERE))
 import checks  # noqa: E402
 import doors  # noqa: E402
 import extract  # noqa: E402
+import cidb  # noqa: E402  (on the path through extract)
 import model_bounds  # noqa: E402  (on the path through extract)
 import render  # noqa: E402
 
@@ -56,15 +57,17 @@ def same_marks(marks):
 
 
 def same_doors(teleports, levels, versions):
-    """Doors at one place in the versions of a room are one door: they share a `same`."""
+    """Teleports at one place in the versions of a room are one door when one of them is a door: they share a `same`,
+    and one with no partner of its own is a door too."""
     rooms = {room["name"]: room for rs in levels.values() for room in rs}
     places = defaultdict(list)
     for t in teleports:
-        if t["door"] and t["room"] in versions:
+        if t["room"] in versions:
             places[(versions[t["room"]], t["x"] - rooms[t["room"]]["x"], t["z"] - rooms[t["room"]]["z"])].append(t)
     for (room, x, z), found in places.items():
-        if len(found) > 1:
+        if len(found) > 1 and any(t["door"] for t in found):
             for t in found:
+                t["door"] = True
                 t["same"] = f"{room}-door-{x:g}-{z:g}"
 
 
@@ -107,6 +110,30 @@ def write_if_changed(path, data):
         path.write_bytes(data)
 
 
+def arches(rooms):
+    """Room name -> the door arches its model stands on its edges (render.edge_arches), for a level's top-down rooms."""
+    folder = Path(extract.lookup("romfs")) / "region_common" / "map"
+    found = {}
+    for room in render.top_rooms(rooms):
+        file = folder / f"{room['name']}.bfres"
+        if "origin" in room and file.exists():
+            found[room["name"]] = render.edge_arches(room, model_bounds.shapes(str(file)))
+    return found
+
+
+def raised_floor(rooms):
+    """(room name, tile index) -> height: the raised floor of a dungeon's top-down rooms (render.raised), from their
+    models' collision. Not for other levels: in a house, the tops of tables, beds and counters are where it looks."""
+    folder = Path(extract.lookup("romfs")) / "region_common" / "map"
+    found = {}
+    for room in render.top_rooms(rooms):
+        file = folder / f"{room['name']}.bfres"
+        if "origin" in room and file.exists():
+            triangles = cidb.link_triangles(file.read_bytes(), room["origin"])
+            found.update(((room["name"], i), height) for i, height in render.raised(room, triangles).items())
+    return found
+
+
 def side_terrain(rooms):
     """What a level's side-view room models show on the plane Link plays on."""
     folder = Path(extract.lookup("romfs")) / "region_common" / "map"
@@ -131,13 +158,13 @@ def main():
         if kinds[name] not in SHOWN:
             continue
         drawn = [r for r in rooms if r.get("flags")]
-        layout[name] = [{k: r[k] for k in ROOM_FIELDS if k in r} for r in drawn]
-        opened, found = render.doors(rooms) if name != extract.FIELD else (set(), [])
+        layout[name] = [{**{k: r[k] for k in ROOM_FIELDS if k in r}, **({"base": render.side_base(r)} if r["side"] and render.side_base(r) else {})} for r in drawn]
+        opened, found, passages = render.doors(rooms, arches(rooms) if kinds[name] == "dungeon" else None) if name != extract.FIELD else (set(), [], set())
         if found:
             same_marks(found)
             marks[name] = found
         if render.top_rooms(rooms):
-            img, (x, z) = render.level_picture(rooms, opened)
+            img, (x, z) = render.level_picture(rooms, opened, render.walkable_raised(rooms, raised_floor(rooms), opened) if kinds[name] == "dungeon" else None, passages)
             files[f"{name}.png"] = render.png(img)
             pictures[name] = {"file": f"{name}.png", "x": x, "z": z}
         terrain = side_terrain(drawn)  # one room's model can hold its neighbours' terrain, so a level's models are read together
@@ -149,9 +176,13 @@ def main():
                     render.draw_terrain(img, room, terrain)
                 files[f"{room['name']}.png"] = render.png(img)
                 pictures[room["name"]] = {"file": f"{room['name']}.png"}
+    swatches = {}
+    for name in render.PATTERNED:
+        swatches[name] = f"legend-{name.lower().replace(' ', '-')}.png"
+        files[swatches[name]] = render.png(render.swatch(name))
     cells = [re.fullmatch(r"Field_(\d+)([A-Z])", room["name"]) for room in layout[extract.FIELD]]
     overworld = {"level": extract.FIELD, "columns": sorted({m[2] for m in cells if m}), "rows": sorted({m[1] for m in cells if m})}
-    places = {"tile": render.TILE, "px": render.PX, "side_tiles": render.SIDE_TILES, "overworld": overworld, "colours": render.COLOURS,
+    places = {"tile": render.TILE, "px": render.PX, "side_tiles": render.SIDE_TILES, "overworld": overworld, "colours": render.COLOURS, "swatches": swatches,
               "doors": {letter: name for letter, name in render.DOORS.values()}, **index, "layout": layout, "pictures": pictures, "marks": marks}
     print(json.dumps(report["totals"]))
     for key, title in FINDINGS.items():

@@ -26,16 +26,25 @@ namespace {
     HOOK_DEFINE_TRAMPOLINE(LevelJump) {
         static bool Callback(void* manager, Game::StrView* level, Game::StrView* locator, const void* offset) {
             Game::StrView ledLevel, ledLocator;
+            std::string toLevel, toLocator, ledTo;  // copied: the game's strings may not outlive the jump
             if (level != nullptr && locator != nullptr) {
-                if (auto led = AP::LeadJump(g_CurrentLevel, level->View(), locator->View())) {
+                toLevel = level->View();
+                toLocator = locator->View();
+                ledTo = toLocator;
+                if (auto led = AP::LeadJump(g_CurrentLevel, toLevel, toLocator)) {
                     ledLevel = Game::StrView(led->first);
                     ledLocator = Game::StrView(led->second);
+                    ledTo = led->second;
                     level = &ledLevel;
                     locator = &ledLocator;
                 }
             }
+            std::string from = g_CurrentLevel;  // the jump's level, before the new one loads
             bool started = Orig(manager, level, locator, offset);
-            if (started) g_Jumping = true;
+            if (started) {
+                g_Jumping = true;
+                AP::NoteJump(from, toLevel, toLocator, ledTo);
+            }
             return started;
         }
     };

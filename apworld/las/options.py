@@ -2,8 +2,10 @@ import random
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from Options import (Choice, DeathLink, DefaultOnToggle, NamedRange, OptionGroup, PerGameCommonOptions, Range,
-                     StartInventoryPool, Toggle, Visibility)
+from Options import (Choice, DeathLink, DefaultOnToggle, NamedRange, OptionGroup, PerGameCommonOptions,
+                     PlandoConnections, Range, StartInventoryPool, Toggle, Visibility)
+
+from .lasr import DOORS, ENTRANCE_POOL, HOUSE_EXIT, START_DOORS
 
 
 class Logic(Choice):
@@ -278,6 +280,50 @@ class ShuffledDungeons(Toggle):
     display_name = "Shuffled Dungeons"
 
 
+class Entrances(Choice):
+    """Everything: each overworld door into a cave, house or tunnel leads into another one's inside at random, and its
+    inside leads back out of that door. Dungeon doors, the Face Shrine's and Turtle Rock's side doors, the Wind Fish's
+    Egg and Tarin's house keep theirs. Every place stays reachable; the logic follows each door, and needs logic that
+    lists those doors on both sides."""
+    display_name = "Entrances"
+    option_none = 0
+    option_everything = 1
+    default = 0
+
+
+class RandomStart(Toggle):
+    """Leaving Tarin's house leads out of a random overworld door, one Link can always walk back in by, and the warp
+    menu and the Save & Quit after a game over lead there too. Only a start the item placement can get going from: one
+    that one item opens up."""
+    display_name = "Random Start"
+
+
+_INSIDE_DOORS = frozenset(DOORS["pairs"][door] for door in ENTRANCE_POOL)
+
+
+class PlandoDoors(PlandoConnections):
+    """With Entrances: an overworld door that leads to the inside door named with it, whose way out leads back out of
+    that door, whichever of the two comes first (the direction is not read: the doors lead both ways). With Random
+    Start: Tarin's House Exit with one of the start doors, which then is the start. Door names are those of the
+    spoiler's Entrances section. Needs the generator's plando connections.
+    - entrance: Field_03C
+      exit: Cave_02B
+    - entrance: Tarin's House Exit
+      exit: Field_06C"""
+    display_name = "Plando Connections"
+    entrances = frozenset([*ENTRANCE_POOL, *_INSIDE_DOORS, HOUSE_EXIT])
+    exits = frozenset([*ENTRANCE_POOL, *_INSIDE_DOORS, *START_DOORS])
+
+    @classmethod
+    def can_connect(cls, entrance: str, exit: str) -> bool:
+        outside = {door.lower() for door in ENTRANCE_POOL}
+        inside = {door.lower() for door in _INSIDE_DOORS}
+        entrance, exit = entrance.lower(), exit.lower()
+        if entrance == HOUSE_EXIT.lower():
+            return exit in {door.lower() for door in START_DOORS}
+        return (entrance in outside and exit in inside) or (entrance in inside and exit in outside)
+
+
 class FreeBook(DefaultOnToggle):
     """The book revealing the Wind Fish's Egg path can be read without the Magnifying Lens."""
     display_name = "Free Book"
@@ -494,6 +540,9 @@ class LASOptions(PerGameCommonOptions):
     completed_bridge: CompletedBridge
     classic_d2: ClassicD2
     shuffled_dungeons: ShuffledDungeons
+    entrances: Entrances
+    random_start: RandomStart
+    plando_connections: PlandoDoors
     free_book: FreeBook
     fast_fishing: FastFishing
     fast_stalfos: FastStalfos
@@ -528,8 +577,8 @@ OPTION_GROUPS = [
                               BossDrops, Dampe, Rapids, Fishing, BlueRupees, OwlStatues, SeashellMansion]),
     OptionGroup("Goal", [Goal, InstrumentsRequired, SeashellsRequired]),
     OptionGroup("Dungeon Items", [SmallKeys, NightmareKeys, DungeonItems, Instruments]),
-    OptionGroup("Start", [StartingInstruments, StartingRupees]),
-    OptionGroup("World", [OpenMabe, OpenKanalet, OpenMamu, CompletedBridge, ClassicD2, ShuffledDungeons, FreeBook,
+    OptionGroup("Start", [StartingInstruments, StartingRupees, RandomStart]),
+    OptionGroup("World", [OpenMabe, OpenKanalet, OpenMamu, CompletedBridge, ClassicD2, ShuffledDungeons, Entrances, PlandoDoors, FreeBook,
                           FastFishing, FastStalfos, ShuffledBombs, ShuffledPowder, AmmoGhost, MapTracker, InGameHints,
                           HintDistribution, Stealing, ChestAppearance]),
     OptionGroup("Gameplay", [Damage, MovementSpeed, Movement360, SkipSongCutscenes, InstantText, InstantPickups,

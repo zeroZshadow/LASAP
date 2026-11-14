@@ -38,9 +38,27 @@ def test_two_doors_with_one_name_stop_the_build():
         doors.table([{**door, "id": "Room/1", "to": "Field_A"}, {**door, "id": "Room/2", "to": "Field_B"}])
 
 
+def door_pair(n, inside):
+    """An overworld door Field_0<n>A into level `inside`, and its partner."""
+    outside = {"id": f"Field_0{n}A/1", "door": True, "level": "Field", "room": f"Field_0{n}A", "to": f"{inside}_01A_{n}", "to_level": inside, "companion": f"{inside}/{n}"}
+    return [outside, {"id": f"{inside}/{n}", "door": True, "level": inside, "room": f"{inside}_01A", "to": f"Field_0{n}A", "to_level": "Field", "companion": outside["id"]}]
+
+
+def test_overworld_pairs_are_grouped_by_what_they_lead_into():
+    teleports = door_pair(1, "Lv01Cave") + door_pair(2, "Lv01Cave") + door_pair(3, "House") + door_pair(4, "Tunnel") + door_pair(5, "Tunnel")
+    assert doors.table(teleports, dungeons={"Field_01A"})["groups"] == {
+        "dungeon": ["Field_01A"], "dungeon-other": ["Field_02A"], "connector": ["Field_04A", "Field_05A"], "single": ["Field_03A"]}
+
+
+def test_fixed_doors_are_in_no_group():
+    grouped = {door for names in doors.table(json.loads(PLACES.read_text(encoding="utf-8"))["teleports"])["groups"].values() for door in names}
+    assert not grouped & set(doors.FIXED)
+
+
 def test_every_picture_is_placed_and_there():
-    pictures = json.loads(PLACES.read_text(encoding="utf-8"))["pictures"]
-    assert {entry["file"] for entry in pictures.values()} == {path.name for path in MAPS.glob("*.png")}
+    places = json.loads(PLACES.read_text(encoding="utf-8"))
+    placed = {entry["file"] for entry in places["pictures"].values()} | set(places["swatches"].values())
+    assert placed == {path.name for path in MAPS.glob("*.png")}
 
 
 def test_checks_yml_reads_back_as_it_is_written():

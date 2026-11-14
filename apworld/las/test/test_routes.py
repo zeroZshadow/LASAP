@@ -4,11 +4,11 @@ from pathlib import Path
 
 import yaml
 
-from ..lasr import LOGIC
-from ..logic import ALWAYS, NEVER, PLACES, START, lower_routes
+from ..lasr import DOORS as SHIPPED_DOORS, LOGIC, WRITTEN_LOGIC
+from ..logic import ALWAYS, NEVER, PLACES, START, house_exits, lower_routes, node_tokens, parse
 
 DATA = Path(__file__).resolve().parents[1] / "data"
-DOORS = {"pairs": {"Field_a": "Inside_a", "Field_b": "Inside_b"}, "one-way": {"Hole": "Field_c"}}
+DOORS = {"pairs": {"Field_a": "Inside_a", "Field_b": "Inside_b", "Field_d": "Inside_d"}, "one-way": {"Hole": "Field_c"}}
 
 
 def zone(**routes):
@@ -79,6 +79,13 @@ class TestRoutes(unittest.TestCase):
         self.assertEqual(moved["mabe"]["condition-basic"], "plains & sword")
         self.assertEqual(moved["warp"]["condition-basic"], f"{START} & ocarina")
 
+    def test_house_exits_are_overworld_doors_with_no_rule_in(self) -> None:
+        """Link can walk back into the house from wherever its door leads."""
+        logic = {START: zone(doors={"Inside_a": ALWAYS}), "mabe": zone(doors={"Field_a": ALWAYS, "Field_d": "bombs"}),
+                 "plains": zone(doors={"Field_b": {"basic": ALWAYS, "hell": "sword"}}), "pit": zone(doors={"Field_c": ALWAYS}),
+                 "cave": zone(doors={"Inside_b": ALWAYS})}
+        self.assertEqual(house_exits(logic, DOORS), {"Field_a": "mabe"})
+
     def test_refused(self) -> None:
         refused = {
             "empty rule": dict(a=zone(one_way={"b": None}), b=zone()),
@@ -107,10 +114,21 @@ class TestLogicFile(unittest.TestCase):
                 self.assertNotEqual(node["condition-basic"], NEVER, name)
 
     def test_the_house_leads_to_mabe_through_its_door(self) -> None:
-        self.assertEqual(LOGIC["mabe"]["condition-basic"], START)
+        """The house's door comes out in mabe, so mabe has a way in from the house; the house is the start."""
+        pairs = {**SHIPPED_DOORS["pairs"], **{b: a for a, b in SHIPPED_DOORS["pairs"].items()}}
+        zone_of = {door: name for name, node in WRITTEN_LOGIC.items() for door in (node.get("doors") or {})}
+        self.assertEqual({zone_of.get(pairs.get(door)) for door in WRITTEN_LOGIC[START].get("doors") or {}}, {"mabe"})
+        self.assertIn(START, node_tokens(parse(LOGIC["mabe"]["condition-basic"])))
         self.assertNotIn("condition-basic", LOGIC[START])
 
     def test_doors_have_one_name_each(self) -> None:
         doors = yaml.safe_load((DATA / "doors.yml").read_text(encoding="utf-8"))
         names = list(doors["pairs"]) + list(doors["pairs"].values()) + list(doors["one-way"])
         self.assertEqual(len(names), len(set(names)))
+
+    def test_door_groups_hold_pairs_once(self) -> None:
+        """An entrance shuffle draws pairs from the groups by their first name."""
+        doors = yaml.safe_load((DATA / "doors.yml").read_text(encoding="utf-8"))
+        grouped = [door for names in doors["groups"].values() for door in names]
+        self.assertEqual(len(grouped), len(set(grouped)))
+        self.assertLessEqual(set(grouped), set(doors["pairs"]))

@@ -6,13 +6,12 @@ Any Python starts it: it runs itself in .venv-ap.
 
 Nothing here decides what a rule means: worlds come from setup_multiworld as in the world's tests, rules from its LogicCompiler
 and make_rule. The start overlay lowers logic.yml's routes again with the house's door leading elsewhere, and refreshes the one thing
-derived from the result, DOOR_LOGIC.
+derived from the result, DOOR_LOGIC. Elsewhere is a zone with an overworld door Link can always go in by (the world's house_exits).
 """
 import argparse
 import json
 import logging
 import os
-import pkgutil
 import sys
 import time
 from collections import Counter, deque
@@ -25,21 +24,16 @@ STEPS = ("generate_early", "create_regions", "create_items", "set_rules", "conne
 ALL_CHECKS = {"trade_quest": True, "dampe": True, "rapids": True, "fishing": True, "blue_rupees": True, "owl_statues": "all", "seashell_mansion": 50}
 EXIT = "mabe"  # where the house's door leads in doors.yml
 SETS_SECONDS = 0.4
+WORLDS_KEPT = 32  # one per options and from zone; a world is quick to build and small
 SETS_SHOWN = 5
+SETS_SECONDS_MOST = 5  # the longest a request may ask the search to take
 
 
 def import_world(logic_file):
     """Imports Archipelago and the world, with logic_file in place of logic.yml. AP prints while it loads its worlds."""
     if logic_file:
-        real_get_data = pkgutil.get_data
-        draft = Path(logic_file).read_bytes()
-
-        def get_data(package, resource):
-            if resource == "data/logic.yml" and package.endswith("las.lasr"):
-                return draft
-            return real_get_data(package, resource)
-
-        pkgutil.get_data = get_data
+        import logic_override
+        logic_override.use(logic_file)
     os.chdir(AP)
     sys.path.insert(0, str(AP))
     os.environ["AP_TEST_WORLDS"] = "las"  # AP loads only this world, not every game's; it reads this only under a test runner
@@ -52,12 +46,30 @@ def import_world(logic_file):
     from worlds.las import lasr as lasr_module
     from worlds.las.items import LASR_TO_ITEM
     from worlds.las.lasr import COUNTED, DOOR_LOGIC, ITEM_DEFS, LOGIC, door_logic
-    from worlds.las.logic import PLACES, PRESETS, lower_routes, make_rule, node_tokens, parse
+    from worlds.las.logic import NEVER, PLACES, PRESETS, START, house_exits, lower_routes, make_rule, node_tokens, parse
     from worlds.las.options import LASOptions
     return dict(CollectionState=CollectionState, FillError=FillError, distribute=distribute_items_restrictive, setup=setup_multiworld, gen_steps=gen_steps,
                 world_type=AutoWorldRegister.world_types["Links Awakening Switch"], lasr=lasr_module, item_names=LASR_TO_ITEM, counted=COUNTED,
                 door_logic_dict=DOOR_LOGIC, item_defs=ITEM_DEFS, logic=LOGIC, door_logic=door_logic, presets=PRESETS, make_rule=make_rule,
-                node_tokens=node_tokens, parse=parse, options=LASOptions, places=PLACES, lower_routes=lower_routes)
+                node_tokens=node_tokens, parse=parse, options=LASOptions, places=PLACES, lower_routes=lower_routes, house_exits=house_exits, start=START, never=NEVER)
+
+
+def smallest_within(pool, holds):
+    """A set within a pool that holds, with no unit it can do without: chunks are dropped while it still holds, the chunk
+    halving down to single units, so the many units a rule does not read go in a few tries."""
+    keep = list(pool)
+    chunk = max(1, len(keep) // 2)
+    while True:
+        at = 0
+        while at < len(keep):
+            trial = keep[:at] + keep[at + chunk:]
+            if holds(trial):
+                keep = trial
+            else:
+                at += chunk
+        if chunk == 1:
+            return keep
+        chunk = max(1, chunk // 2)
 
 
 class Worker:
@@ -65,6 +77,12 @@ class Worker:
         self.ap = import_world(logic_file)
         self.logic = self.ap["logic"]
         self.written = self.ap["lasr"]._load_yaml("logic.yml"), self.ap["lasr"]._load_yaml("doors.yml")
+        self.exits = {}  # zone -> the doors in it the house's exit may lead to (house_exits), the house's own first
+        logic, doors = self.written
+        pairs = {**doors["pairs"], **{b: a for a, b in doors["pairs"].items()}}
+        own = {pairs.get(door) for door in logic.get(self.ap["start"], {}).get("doors") or {}}
+        for door, zone in sorted(self.ap["house_exits"](*self.written).items(), key=lambda item: (item[0] not in own, item[0])):
+            self.exits.setdefault(zone, []).append(door)
         self.worlds = {}
         self.overlay = EXIT
 
@@ -88,12 +106,14 @@ class Worker:
         Fills LOGIC's zones and DOOR_LOGIC anew, in place: the world and the compiler read those dicts."""
         if start == self.overlay:
             return
-        lowered = self.ap["lower_routes"](*self.written, house_exit=start)
+        if start != EXIT and start not in self.exits:
+            raise ValueError(f"{start}: the house's exit leads only to a zone with an overworld door that has no rule to go in")
+        lowered = self.ap["lasr"].plain_logic(*self.written, house_exit=start)
         for name, node in lowered.items():
             if node["type"] in self.ap["places"]:
                 self.logic[name].clear()
                 self.logic[name].update(node)
-        fresh = self.ap["door_logic"](self.logic)
+        fresh = self.ap["door_logic"](*self.written, house_exit=start)
         doors = self.ap["door_logic_dict"]
         doors.clear()
         doors.update(fresh)
@@ -101,14 +121,36 @@ class Worker:
         self.worlds.clear()
 
     def world_for(self, request):
+        """The world for a request's options. With `from`, that zone is reached too, as if the game started there as well.
+        With `within`, a list of zones, every other zone never holds: the way stays inside them, not out through a door
+        and back in by another, as where a door leads can be shuffled."""
         self.set_start(request.get("start") or EXIT)
         options = self.options_for(request)
-        key = json.dumps(options, sort_keys=True)
+        start = request.get("from") or ""
+        within = sorted(request.get("within") or [])
+        key = json.dumps([options, start, within], sort_keys=True)
         if key not in self.worlds:
-            if len(self.worlds) > 8:
+            if len(self.worlds) > WORLDS_KEPT:
                 self.worlds.pop(next(iter(self.worlds)))
-            multiworld = self.ap["setup"](self.ap["world_type"], STEPS, 1, options)
-            self.worlds[key] = {"multiworld": multiworld, "world": multiworld.worlds[1], "rules": {}}
+            doors = self.ap["door_logic_dict"]
+            kept = dict(doors)
+            shut = {name: {**node, **{k: self.ap["never"] for k in node if k.startswith("condition-")}, "condition-basic": self.ap["never"]}
+                    for name, node in kept.items() if within and node["type"] in self.ap["places"] and name not in within}
+            doors.update(shut)  # the world compiles its rules from DOOR_LOGIC while it is set up
+            try:
+                multiworld = self.ap["setup"](self.ap["world_type"], STEPS, 1, options)
+            finally:
+                doors.clear()
+                doors.update(kept)
+            world = multiworld.worlds[1]
+            if shut:  # rules the compiler makes later read the zones shut too
+                world.compiler.logic = {**world.compiler.logic, **shut}
+                world.compiler._inline.clear()
+            if start:
+                if start not in world.node_regions:
+                    raise LookupError(f"{start}: no check, region or the goal needs it, so the world has no region for it")
+                world.get_region(world.origin_region_name).connect(world.node_regions[start], f"from {start}")
+            self.worlds[key] = {"multiworld": multiworld, "world": world, "rules": {}}
         return self.worlds[key]
 
     # ---- rules, through the world's compiler
@@ -141,6 +183,8 @@ class Worker:
             return world.node_regions[node["region"]].can_reach(state) and self.node_rule(built, name)(state)
         if name in world.node_regions:
             return world.node_regions[name].can_reach(state)
+        if node["type"] in ("region", "room"):  # the world makes a region only for one a check, the goal or a region needs
+            raise LookupError(f"{name}: no check, region or the goal needs it, so the world has no region for it")
         return self.node_rule(built, name)(state)
 
     def reach(self, request):
@@ -151,7 +195,7 @@ class Worker:
         for name, node in self.logic.items():
             if node["type"] == "item":
                 checks[name] = bool(self.holds(built, state, name))
-            elif node["type"] in ("region", "room"):
+            elif node["type"] in ("region", "room") and name in built["world"].node_regions:
                 zones[name] = bool(self.holds(built, state, name))
         goal = self.expr_rule(built, built["world"].compiler.token("kill-nightmare", 1))(state)
         return {"checks": checks, "zones": zones, "goal": bool(goal), "instruments_required": built["world"].goal_instruments, "ms": round((time.perf_counter() - started) * 1000, 1)}
@@ -252,7 +296,7 @@ class Worker:
         universe = [(item, n) for item, top in most.items() for n in range(held[item] + 1, top + 1)]
         if not holds_with(universe):
             return {"name": name, "sets": [], "complete": True, "holds": False, "never": True}
-        deadline = time.perf_counter() + SETS_SECONDS
+        deadline = time.perf_counter() + min(float(request.get("seconds") or SETS_SECONDS), SETS_SECONDS_MOST)
         found = []
         queue = deque([frozenset()])
         seen = set()
@@ -270,21 +314,17 @@ class Worker:
                 pool = [u for u in universe if u not in removed]
                 if not holds_with(pool):
                     continue
-                keep = list(pool)
-                for unit in pool:
-                    trial = [u for u in keep if u != unit]
-                    if holds_with(trial):
-                        keep = trial
-                label = frozenset(keep)
+                label = frozenset(smallest_within(pool, holds_with))
                 found.append(label)
             queue.extend(removed | {unit} for unit in label)
         sets = sorted({tuple(sorted(Counter(item for item, _ in f).items())) for f in found}, key=lambda s: (sum(n for _, n in s), s))
-        return {"name": name, "sets": [[{"item": item, "count": n} for item, n in s] for s in sets[:SETS_SHOWN]], "found": len(sets), "complete": complete, "holds": False}
+        return {"name": name, "sets": [[{"item": item, "count": n} for item, n in s] for s in sets[:int(request.get("shown") or SETS_SHOWN)]], "found": len(sets), "complete": complete, "holds": False}
 
     # ---- whole seeds
 
     def fill(self, request, emit):
-        """Real seeds per start: reach with every item, the goal, and whether a fill succeeds."""
+        """Real seeds per start: reach with every item, the goal, and whether a fill succeeds; a start in a pocket the
+        fill cannot get out of (the world's start_opens_up) gets no seeds."""
         seeds = request.get("seeds", 5)
         for start in request["starts"]:
             self.set_start(start)
@@ -297,6 +337,9 @@ class Worker:
             shuffled = len(locations)
             reached = sum(1 for location in locations if location.can_reach(state))
             goal = bool(before.can_beat_game(state))
+            if not before.worlds[1].start_opens_up():  # a pocket: no seed starts there
+                emit({"start": start, "reached": reached, "shuffled": shuffled, "goal": goal, "fills": 0, "seeds": 0, "error": "", "pocket": True})
+                continue
             for seed in range(seeds):
                 try:
                     self.ap["distribute"](self.ap["setup"](self.ap["world_type"], self.ap["gen_steps"], seed + 1, options))
@@ -326,7 +369,8 @@ class Worker:
         tokens = {token.replace("_", "-") for token in hints}
         spec = self.ap["lasr"].SPEC
         return {"items": items, "unread_items": sorted(set(spec["items"]) - set(items)), "all_options": sorted(spec["options"]), "defaults": sorted(defaults),
-                "option_tokens": sorted(tokens | {"can-steal", "stealing-needs-sword"}), "presets": list(self.ap["presets"]), "start": EXIT}
+                "option_tokens": sorted(tokens | {"can-steal", "stealing-needs-sword"}), "presets": list(self.ap["presets"]), "start": EXIT,
+                "starts": [{"zone": zone, "doors": self.exits[zone]} for zone in sorted(self.exits, key=lambda z: (z != EXIT, z))]}
 
 
 def main():

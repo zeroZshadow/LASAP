@@ -136,6 +136,7 @@ ALWAYS = "always"
 NEVER = "never-holds"  # no such name, so it never holds (LogicCompiler.token)
 PLACES = ("region", "room")
 ROUTE_KEYS = ("connections", "one-way", "doors")
+FIELD_DOOR = "Field_"  # an overworld door: a door goes by its room, and the overworld's rooms are Field_<row><column>
 
 
 def _route_levels(value: object, where: str) -> Dict[str, str]:
@@ -154,9 +155,12 @@ def _route_levels(value: object, where: str) -> Dict[str, str]:
     return found
 
 
-def _route_edges(logic: Mapping[str, Mapping], doors: Mapping[str, Mapping],
-                 house_exit: Optional[str]) -> List[Tuple[str, str, Dict[str, str]]]:
-    """Every way between zones as (from, to, rule by level). With house_exit, the start's doors lead to that zone."""
+def _route_edges(logic: Mapping[str, Mapping], doors: Mapping[str, Mapping], house_exit: Optional[str],
+                 entered: Optional[Mapping[str, str]] = None,
+                 through: Optional[Mapping[str, str]] = None) -> List[Tuple[str, str, Dict[str, str]]]:
+    """Every way between zones as (from, to, rule by level). With house_exit, the start's doors lead to that zone.
+    `entered` maps a door to the region just inside it: a door that leads to it leads into that region, which leads on
+    to the door's zone; `through` maps a door to the region it leads into instead, wherever it leads (lasr.door_logic)."""
     edges = []
     written: Set[Tuple[str, str]] = set()
     door_zone: Dict[str, str] = {}
@@ -193,17 +197,43 @@ def _route_edges(logic: Mapping[str, Mapping], doors: Mapping[str, Mapping],
             raise ValueError(f"{zone} door {door}: not in doors.yml")
         if door not in leads:  # only a place to land
             continue
-        target = house_exit if house_exit and zone == START else door_zone.get(leads[door])
+        landing = leads[door]
+        if through and door in through:
+            edges.append((zone, through[door], door_rule[door]))
+            continue
+        if entered and landing in entered:
+            edges.append((zone, entered[landing], door_rule[door]))
+            continue
+        target = house_exit if house_exit and zone == START else door_zone.get(landing)
         if target and target != zone:
             edges.append((zone, target, door_rule[door]))
+    for landing, region in (entered or {}).items():
+        if landing in door_zone:
+            edges.append((region, door_zone[landing], {"basic": ALWAYS}))
     return edges
 
 
-def lower_routes(logic: Mapping[str, Mapping], doors: Mapping[str, Mapping],
-                 house_exit: Optional[str] = None) -> Dict[str, Dict]:
-    """The logic with each zone's ways in as its condition-* keys, the routes gone. Other nodes stay as they are."""
+def house_exits(logic: Mapping[str, Mapping], doors: Mapping[str, Mapping]) -> Dict[str, str]:
+    """{door: its zone}: the overworld doors the start's door may lead to. Each is one of a pair in doors.yml and has no
+    rule to go in at any level, so Link can always walk back into the house from where he comes out."""
+    paired = set(doors["pairs"]) | set(doors["pairs"].values())
+    found = {}
+    for zone, node in logic.items():
+        if node.get("type") not in PLACES:
+            continue
+        for door, value in (node.get("doors") or {}).items():
+            if door.startswith(FIELD_DOOR) and door in paired and set(_route_levels(value, f"{zone} door {door}").values()) == {ALWAYS}:
+                found[door] = zone
+    return found
+
+
+def lower_routes(logic: Mapping[str, Mapping], doors: Mapping[str, Mapping], house_exit: Optional[str] = None,
+                 entered: Optional[Mapping[str, str]] = None,
+                 through: Optional[Mapping[str, str]] = None) -> Dict[str, Dict]:
+    """The logic with each zone's ways in as its condition-* keys, the routes gone. Other nodes stay as they are.
+    `entered` and `through` as _route_edges reads them."""
     incoming: Dict[str, Dict[str, List[str]]] = {}
-    for source, target, rule in _route_edges(logic, doors, house_exit):
+    for source, target, rule in _route_edges(logic, doors, house_exit, entered, through):
         levels = incoming.setdefault(target, {})
         for level, text in rule.items():
             if text == ALWAYS:
@@ -382,6 +412,26 @@ class LogicCompiler:
             return basic
         return _or([basic] + [self.compile(node[key]) for key in self.extra_keys if key in node])
 
+    def ways(self, name: str) -> Dict[Optional[str], Expr]:
+        """A place's condition split by the region node leading each way (`source`, `source & rule`, as lower_routes
+        writes them): per such region the rule from there, and under None the ways no region node leads. Ways that
+        never hold are left out."""
+        node = self.logic[name]
+        found: Dict[Optional[str], List[Expr]] = {}
+        for key in ("condition-basic",) + self.extra_keys:
+            if not node.get(key):
+                continue
+            tree = parse(str(node[key]))
+            for part in tree[1] if tree[0] == "or" else [tree]:
+                lead = part if part[0] == "tok" else part[1][0] if part[0] == "and" else None
+                if lead and lead[0] == "tok" and lead[2] <= 1 and lead[1] in self.region_nodes:
+                    rest = [] if part is lead else part[1][1:]
+                    rule = self._compile(rest[0]) if len(rest) == 1 else self._compile(("and", rest)) if rest else True
+                    found.setdefault(lead[1], []).append(rule)
+                else:
+                    found.setdefault(None, []).append(self._compile(part))
+        return {source: rule for source, parts in found.items() for rule in [_or(parts)] if rule is not False}
+
     def dependencies(self, roots: Iterable[str]) -> List[str]:
         """Logic nodes (non-item) reachable through references from roots, in logic.yml order."""
         stack = list(roots)
@@ -418,6 +468,13 @@ def referenced_regions(expr: Expr) -> Set[str]:
     return set(_REGION_REF.findall(expr)) if isinstance(expr, str) else set()
 
 
+@lru_cache(maxsize=50000)
+def _rule_code(expr: str, player: int) -> Any:
+    """A rule's compiled code. Worlds and trackers build the same rules again with other regions; the bound keeps a
+    process that generates many seeds (a fuzzer's worker) from keeping every slot's shuffled rules."""
+    return compile(f"def rule(state):\n    c = state.prog_items[{player}]\n    return {expr}\n", "<rule>", "exec")
+
+
 def make_rule(expr: Expr, player: int, regions: Mapping[str, object]) -> Callable:
     """Builds a rule function; regions maps the node names used by the expression to their AP regions."""
     if expr is True:
@@ -425,5 +482,5 @@ def make_rule(expr: Expr, player: int, regions: Mapping[str, object]) -> Callabl
     if expr is False:
         return lambda state: False
     namespace: Dict = {"_R": regions}
-    exec(f"def rule(state):\n    c = state.prog_items[{player}]\n    return {expr}\n", namespace)
+    exec(_rule_code(expr, player), namespace)
     return namespace["rule"]

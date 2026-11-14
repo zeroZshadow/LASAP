@@ -29,19 +29,17 @@ class TestKeyLogic(unittest.TestCase):
         self.assertEqual(sorted(LOCKS), [f"D{n}" for n in range(9)])
         for dungeon, model in LOCKS.items():
             for preset in PRESETS:
-                accepted = {target for target, presets in (model.get("accepted") or {}).items() if preset in presets}
                 with self.subTest(dungeon=dungeon, preset=preset):
                     failures = KeyLogicCheck(LOGIC, preset, int(dungeon[1:]), model).run()
-                    self.assertEqual([], [describe(f) for f in failures if f.target not in accepted][:10])
-                    self.assertEqual(accepted, accepted & {f.target for f in failures}, "accepted, though sound")
+                    self.assertEqual([], [describe(f) for f in failures][:10])
 
     def test_catches_too_few_keys(self) -> None:
-        """Bottle Grotto's Hinox area with 2 keys instead of 3: both keys can go into the doors west and south of the
-        torches."""
+        """Bottle Grotto's pushblock room with 2 keys instead of 3: both keys can go into the doors west and south of
+        the torches."""
         logic = copy.deepcopy(LOGIC)
-        logic["D2-4C"]["condition-basic"] = logic["D2-4C"]["condition-basic"].replace("key-D2:3", "key-D2:2")
+        logic["D2.h"]["condition-basic"] = logic["D2.h"]["condition-basic"].replace("key-D2:3", "key-D2:2")
         failures = KeyLogicCheck(logic, "basic", 2, LOCKS["D2"]).check()
-        self.assertIn(("D2-4C", 2, frozenset({710, 711})), [(f.target, f.keys, f.opened) for f in failures])
+        self.assertIn(("D2.h", 2, frozenset({710, 711})), [(f.target, f.keys, f.opened) for f in failures])
 
 
 @unittest.skipUnless(LEVELS.exists(), "RomFS dump not found (LASAP_ROMFS or local_paths.json romfs)")

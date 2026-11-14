@@ -7,7 +7,7 @@ from worlds.AutoWorld import AutoWorldRegister
 
 from ..lasr import ITEM_DEFS, ITEM_LOCATIONS, LOGIC
 from ..lasr_settings import lasr_settings, logic_tokens, setting_token
-from ..logic import referenced_tokens
+from ..logic import NEVER, referenced_tokens
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 PATCHER_DATA = Path(__file__).resolve().parents[3] / "patcher" / "data"
@@ -15,7 +15,7 @@ COPIES = ("items.yml", "locations.yml", "logic.yml")
 
 # Tokens in logic.yml's conditions that resolve to nothing, so they never hold (logic.py). Removing or correcting one
 # changes what the logic allows.
-UNRESOLVED = {"dash", "fast-trendy", "free-shop", "pegasus-boots", "prairie", "reduced-farming", "tracey"}
+UNRESOLVED: set = set()
 
 
 def declared_settings() -> set:
@@ -28,11 +28,14 @@ def declared_settings() -> set:
 
 class TestLogicNames(unittest.TestCase):
     def test_tokens_resolve(self) -> None:
-        """As LogicCompiler.token resolves them: a setting, an item, a node that is no location, or an enemy's variant."""
+        """As LogicCompiler.token resolves them: a setting, an item, a node that is no location, or an enemy's variant.
+        NEVER, which lowering writes for a zone with no way in, never holds by design (test_routes checks the zones)."""
         settings = declared_settings()
         unresolved = set()
         for token in referenced_tokens(LOGIC):
             base, _, variant = token.partition("[")
+            if token == NEVER:
+                continue
             if variant:
                 resolved = LOGIC.get(base, {}).get("type") == "enemy"
             else:
