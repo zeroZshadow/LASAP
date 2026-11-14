@@ -13,7 +13,7 @@ import traceback
 import types
 import zipfile
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Set
 
 from .emulators import TITLE_ID
 from .host_settings import PLAYER_DEFAULTS
@@ -32,9 +32,11 @@ PATCHER_PREFIX = f"{Path(__file__).parent.name}/patcher/"
 PATCHER_BUILD = PATCHER_PREFIX + "build.txt"
 SOURCE_PATCHER = Path(__file__).resolve().parent.parent.parent / "patcher"
 # Top-level modules of the patcher
-PATCHER_MODULES = {"las_ap_patch", "ap_assets", "ap_astc", "ap_bntx", "ap_chest_model", "ap_ghost_model", "ap_entrances",
-                   "ap_goal", "ap_hints", "ap_map", "ap_options", "ap_save_name", "ap_shuffles", "ap_tracker_map",
-                   "romfs_check", "seed_file"}
+PATCHER_MODULES = {"las_ap_patch", "ap_assets", "ap_bntx", "ap_chest_model", "ap_ghost_model", "ap_entrances", "ap_goal",
+                   "ap_hints", "ap_map", "ap_options", "ap_save_name", "ap_shuffles", "romfs_check", "seed_file"}
+# Those only the tracker's images use (tracker_images): a patcher run leaves them imported, as the images build
+# outside _PATCHER_LOCK and its worker processes are handed ap_tracker_map's functions by module name
+TRACKER_MODULES = {"ap_astc", "ap_tracker_map"}
 _PATCHER_LOCK = threading.Lock()
 
 
@@ -220,9 +222,9 @@ def romfs_problem(romfs: Path) -> Optional[str]:
     return _romfs_check.problem(romfs, _romfs_sources)
 
 
-def _forget_patcher_modules() -> None:
+def _forget_patcher_modules(modules: Set[str] = PATCHER_MODULES) -> None:
     for name in list(sys.modules):
-        if name.split(".")[0] in PATCHER_MODULES:
+        if name.split(".")[0] in modules:
             del sys.modules[name]
 
 
@@ -257,23 +259,27 @@ def run_builtin_patcher(patch_file: Path, romfs: Path, out: Path, log: Callable[
 def tracker_images(romfs: Path, log: Callable[[str], None]) -> Path:
     """The tracker's map images for this RomFS dump (DESIGN.md, Universal Tracker map): a zip in Archipelago's cache
     folder that the patcher's ap_tracker_map builds once per dump and image version, its decoding spread over
-    processes that import it from the patcher's folder."""
+    processes that import it from the patcher's folder. Only the import takes _PATCHER_LOCK, so a patch need not
+    wait for the build."""
     import Utils
     root = builtin_patcher_dir(log)
     with _PATCHER_LOCK:
         saved_path = list(sys.path)
-        _forget_patcher_modules()
+        _forget_patcher_modules(PATCHER_MODULES | TRACKER_MODULES)
         sys.path.insert(0, str(root))
         try:
             images = importlib.import_module("ap_tracker_map")
-            out = Path(Utils.cache_path("las", "tracker", images.romfs_key(romfs) + ".zip"))
-            if not out.is_file():
-                log("Building the tracker's map from the RomFS dump. This happens once.")
-                images.build(romfs, out, path_entry=str(root))
-            return out
         finally:
             sys.path[:] = saved_path
-            _forget_patcher_modules()
+    try:
+        out = Path(Utils.cache_path("las", "tracker", images.romfs_key(romfs) + ".zip"))
+        if not out.is_file():
+            log("Building the tracker's map from the RomFS dump. This happens once.")
+            images.build(romfs, out, path_entry=str(root))
+        return out
+    finally:
+        with _PATCHER_LOCK:
+            _forget_patcher_modules(PATCHER_MODULES | TRACKER_MODULES)
 
 
 class _LastLine:

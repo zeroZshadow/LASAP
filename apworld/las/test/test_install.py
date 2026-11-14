@@ -249,7 +249,7 @@ class TestInstall(unittest.TestCase):
 
     def test_patcher_modules_ship(self) -> None:
         """Every top-level patcher module is in the release (build_release.py's PATCHER_FILES) and is unloaded after an
-        in-process run (install.PATCHER_MODULES)."""
+        in-process run (install.PATCHER_MODULES, TRACKER_MODULES)."""
         modules = sorted(install.SOURCE_PATCHER.glob("*.py"))
         if not modules:
             self.skipTest("no patcher source")
@@ -257,7 +257,7 @@ class TestInstall(unittest.TestCase):
         for module in modules:
             with self.subTest(module=module.name):
                 self.assertIn(module.name, files)
-                self.assertIn(module.stem, install.PATCHER_MODULES)
+                self.assertIn(module.stem, install.PATCHER_MODULES | install.TRACKER_MODULES)
 
     def test_patcher_data_ships(self) -> None:
         """Every data file the patcher loads (las_ap_patch.load_yaml) is in the release (build_release.py's

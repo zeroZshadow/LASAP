@@ -253,7 +253,6 @@ class LASContext(ClientContext):
         self.in_logic: Optional[Set[int]] = None  # local ids last sent to the game as in logic
         self.doors_open: Optional[Set[int]] = None  # local ids last sent to the game as behind a reachable door
         self.hinted: Optional[Set[int]] = None  # local ids last sent to the game as holding a hint not yet found
-        self.logic_starting: List[str] = []  # the slot's starting items, which the server does not send
         self.slot_data: Dict[str, Any] = {}
         # the instruments and the seashells (None for no hunt) the map tracker's rules take for the egg
         self.logic_tracker_goal: Tuple[int, Optional[int]] = (8, None)
@@ -272,6 +271,8 @@ class LASContext(ClientContext):
         self.route_pins: Optional[Tuple[int, Dict[str, List[Tuple[str, float, float]]]]] = None
         # whether the map tab shows the doors' pins (its Entrances box), kept between runs
         self.tracker_doors_shown: bool = Utils.persistent_load().get("las", {}).get(TRACKER_DOORS_KEY, True)
+        # the dungeon door entrances each map hid when the map shown was loaded (load_map, refresh_door_pins)
+        self.tracker_doors_hidden: Dict[str, List[str]] = {}
 
     async def get_username(self) -> None:
         # the slot comes from the patch file, as the server would otherwise ask for it
@@ -312,8 +313,8 @@ class LASContext(ClientContext):
         await self.send_connect()
 
     def on_package(self, cmd: str, args: dict) -> None:
-        if cmd == "Connected":  # before Universal Tracker's sweep, which takes them (tracker_items_received)
-            self.logic_starting = (args["slot_data"].get("logic") or {}).get("starting", [])
+        if cmd == "Connected":  # before Universal Tracker's sweep, which takes its starting items (logic_starting)
+            self.slot_data = args["slot_data"]
         if TRACKER_LOADED:
             self.tracker_package(cmd, args)
         if cmd in ("Retrieved", "SetReply"):
@@ -335,7 +336,6 @@ class LASContext(ClientContext):
                 asyncio.create_task(self.update_death_link(True))
             asyncio.create_task(self.send_level())
             self.send_checked(self.checked_locations)
-            self.slot_data = args["slot_data"]
             self.doors_sent.clear()
             self.doors_stored.clear()
             self.entrances_sent.clear()
@@ -362,6 +362,7 @@ class LASContext(ClientContext):
             if isinstance(keys.get(self.doors_key), dict):
                 self.doors_stored.update(keys[self.doors_key])
                 self.send_logic()
+                self.refresh_door_pins()
             if isinstance(keys.get(self.entrances_key), dict):
                 self.entrances_stored.update(keys[self.entrances_key])
                 self.send_logic()
@@ -397,8 +398,7 @@ class LASContext(ClientContext):
             return
         romfs = emulators.romfs_root(self.option("romfs_folder"))
         if romfs is None:
-            import Utils
-            known = Path(self.option("ut_pack_path")) if self.option("ut_pack_path") else None
+            known =Path(self.option("ut_pack_path")) if self.option("ut_pack_path") else None
             if known and known.is_file() and known.parent == Path(Utils.cache_path("las", "tracker")):
                 self.tracker_ready(known)
             return
@@ -426,6 +426,11 @@ class LASContext(ClientContext):
                 asyncio.create_task(self.send_msgs([{"cmd": "Get", "keys": list(keys)}]))
 
     @property
+    def logic_starting(self) -> List[str]:
+        """The slot's starting items (its slot data's logic), which the server does not send."""
+        return (self.slot_data.get("logic") or {}).get("starting", [])
+
+    @property
     def tracker_items_received(self) -> List[NetworkItem]:
         """Universal Tracker's items: the slot's starting items, which UT leaves out of the world it generates and the
         server sends only to clients that ask for them (items_handling), then the items received."""
@@ -440,10 +445,25 @@ class LASContext(ClientContext):
         if world is not None:
             names = [] if self.tracker_doors_shown else list(
                 self.tracker_core.multiworld.regions.entrance_cache[self.tracker_core.player_id])
-            doors = hidden_door_entrances(self.slot_data.get("dungeon_entrances"), known_doors(self.found_doors))
+            self.tracker_doors_hidden = doors = self.hidden_doors()
             world.ut_map_page_hidden_entrances = {m["name"]: names + doors.get(m["name"], []) for m in self.maps or ()}
         super().load_map(map_id)
         self.draw_route()
+
+    def hidden_doors(self) -> Dict[str, List[str]]:
+        """Each dungeon map's dungeon door entrances to hide, by the doors known now (ut_map.hidden_door_entrances)."""
+        return hidden_door_entrances(self.slot_data.get("dungeon_entrances"), known_doors(self.found_doors))
+
+    def refresh_door_pins(self) -> None:
+        """A dungeon door became known: the map shown loads again when that changes the door pins it hides, as
+        Universal Tracker reads them only on loading a map."""
+        if TRACKER_LOADED and self.map_id is not None and self.hidden_doors() != self.tracker_doors_hidden:
+            self.reload_map()
+
+    def reload_map(self) -> None:
+        map_id, self.map_id = self.map_id, None
+        self.load_map(map_id)
+        self.updateTracker()
 
     def updateTracker(self):
         """Universal Tracker's sweep, keeping the locations it finds in logic for the Tracker tab's search, then the
@@ -454,15 +474,8 @@ class LASContext(ClientContext):
         return tracker_state
 
     def route_to(self, location: str) -> None:
-        """The Tracker tab's search: Universal Tracker's /get_logical_path to a location, which race mode turns off as
-        UT's command does."""
-        if self.stored_data.get("_read_race_mode"):
-            logger.info("Logical Path is disabled during Race Mode")
-            return
-        from worlds.tracker.TrackerClient import get_logical_path
-        self.start_route(location)
-        get_logical_path(self, location)
-        self.draw_route()
+        """The Tracker tab's search: the /get_logical_path command to a location (LASCommandProcessor)."""
+        self.command_processor(self)._cmd_get_logical_path(location)
 
     def start_route(self, text: str) -> None:
         """Before /get_logical_path: no route, so that one it cannot find leaves none, and the location the route ends
@@ -530,9 +543,7 @@ class LASContext(ClientContext):
         self.tracker_doors_shown = shown
         Utils.persistent_store("las", TRACKER_DOORS_KEY, shown)
         if self.map_id is not None:
-            map_id, self.map_id = self.map_id, None
-            self.load_map(map_id)
-            self.updateTracker()
+            self.reload_map()
 
     def make_logic_tracker(self) -> None:
         """The slot's rules for the map tracker. A count of instruments or seashells left to chance stays hidden until
@@ -546,7 +557,6 @@ class LASContext(ClientContext):
             self.slot_data.get("dungeon_entrances"), logic.get("optional", ()), *goal,
             self.slot_data.get("entrances"), self.slot_data.get("start")) if logic else None
         self.logic_tracker_goal = goal
-        self.logic_starting = logic.get("starting", []) if logic else []
         self.in_logic = self.doors_open = None
 
     def tracked_goal(self, sign_read: bool) -> Tuple[int, Optional[int]]:
@@ -826,6 +836,7 @@ class LASContext(ClientContext):
             self.game_dungeons.add(DUNGEON_NUMBERS[parts[1]])
             asyncio.create_task(self.send_doors())
             self.send_logic()
+            self.refresh_door_pins()
         elif cmd == "DOOR" and len(parts) == 3:
             # a level jump to the spot of parts[1] that went to that of parts[2]: through a shuffled door, or out
             found = found_entrance(parts[1], parts[2], door_pool(self.slot_data.get("entrances")))

@@ -32,7 +32,7 @@ class TestTrackerItems(unittest.TestCase):
 
         async def run() -> list:
             ctx = client.LASContext(None, None, "127.0.0.1", 0)
-            ctx.logic_starting = ["Stone Beak (Face Shrine)", "Compass (Face Shrine)"]
+            ctx.slot_data = {"logic": {"starting": ["Stone Beak (Face Shrine)", "Compass (Face Shrine)"]}}
             ctx.items_received = [NetworkItem(ITEM_TABLE["Hookshot"].code, 1234, 1, 1)]
             return [item.item for item in ctx.tracker_items_received]
 

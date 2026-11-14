@@ -228,10 +228,12 @@ def png(rgba: bytes, width: int, height: int) -> bytes:
 
 
 def romfs_key(romfs: Path) -> str:
-    """Names what the images are built from: the two archives' contents and MAP_VERSION."""
+    """Names what the images are built from: the two archives, by their sizes and modification times (reading Game.arc
+    whole would take seconds on a slow disk), and MAP_VERSION."""
     digest = hashlib.sha1()
     for name in ("Game.arc", "DgnTex.arc"):
-        digest.update((romfs / UI / name).read_bytes())
+        stat = (romfs / UI / name).stat()
+        digest.update(f"{name} {stat.st_size} {stat.st_mtime_ns}\n".encode())
     return f"{digest.hexdigest()[:16]}-v{MAP_VERSION}"
 
 
