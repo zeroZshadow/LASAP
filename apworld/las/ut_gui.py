@@ -34,7 +34,7 @@ ROUTE_RING, ROUTE_START_WIDTH = 0.8, 0.12  # the start's ring: its radius and it
 ROUTE_SUGGESTIONS = 12  # the search field's menu shows at most this many locations
 
 
-LETTER_DISC = 18  # a dungeon map's stair letters (StairLetters): their discs' size, in map pixels
+LETTER_DISC = 12  # a dungeon map's stair letters (StairLetters): their discs' size, in map pixels
 LETTER_FONT = 72  # the letters' font size in texture pixels, so they stay sharp zoomed in
 PIN_REACH = 8  # a pin answers the pointer this many dp around its middle, if its drawn square is smaller
 CLICK_SLOP = 6  # dp a press may move and still be a click on the map, not a drag
