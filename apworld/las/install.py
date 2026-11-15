@@ -258,19 +258,17 @@ def run_builtin_patcher(patch_file: Path, romfs: Path, out: Path, log: Callable[
 
 
 def tracker_images(romfs: Path, log: Callable[[str], None]) -> Path:
-    """The tracker's map images zip for this RomFS dump and the world's stair letters (tracker/maps.json), built once
-    (DESIGN.md, Universal Tracker map). Only the import takes _PATCHER_LOCK, so a patch need not wait for the build."""
-    import pkgutil
+    """The tracker's map images zip for this RomFS dump, built once (DESIGN.md, Universal Tracker map). Only the
+    import takes _PATCHER_LOCK, so a patch need not wait for the build."""
     import Utils
     root = builtin_patcher_dir(log)
     with _PATCHER_LOCK, _patcher_imports(root, PATCHER_MODULES | TRACKER_MODULES):
         images = importlib.import_module("ap_tracker_map")
     try:
-        stairs = images.stair_letters(json.loads(pkgutil.get_data(__package__, "tracker/maps.json").decode("utf-8")))
-        out = Path(Utils.cache_path("las", "tracker", images.romfs_key(romfs, stairs) + ".zip"))
+        out = Path(Utils.cache_path("las", "tracker", images.romfs_key(romfs) + ".zip"))
         if not out.is_file():
             log("Building the tracker's map from the RomFS dump. This happens once.")
-            images.build(romfs, out, path_entry=str(root), stairs=stairs)
+            images.build(romfs, out, path_entry=str(root))
         return out
     finally:
         with _PATCHER_LOCK:

@@ -34,6 +34,8 @@ ROUTE_RING, ROUTE_START_WIDTH = 0.8, 0.12  # the start's ring: its radius and it
 ROUTE_SUGGESTIONS = 12  # the search field's menu shows at most this many locations
 
 
+LETTER_DISC = 18  # a dungeon map's stair letters (StairLetters): their discs' size, in map pixels
+LETTER_FONT = 72  # the letters' font size in texture pixels, so they stay sharp zoomed in
 PIN_REACH = 8  # a pin answers the pointer this many dp around its middle, if its drawn square is smaller
 CLICK_SLOP = 6  # dp a press may move and still be a click on the map, not a drag
 
@@ -303,6 +305,9 @@ def load_pins(page, ctx, coords, door_coords, event_coords, use_split, default_s
     border = ctx.ui.loc_border
     squares = ctx.dungeon_square_pins(ctx.maps[ctx.map_id]["name"]) if ctx.map_id is not None else {}
     checks = list(coords.items()) + [(spot, (ids, None)) for spot, ids in squares.items()]
+    stairs = ctx.maps[ctx.map_id].get("stairs", ()) if ctx.map_id is not None else ()
+    if stairs:
+        canvas.add_widget(StairLetters(stairs))
     for kind, places, table in (("location", checks, tables[0]), ("entrance", door_coords.items(), tables[1]),
                                 ("event", event_coords.items(), tables[2])):
         for spot, (names, size) in places:
@@ -314,6 +319,37 @@ def load_pins(page, ctx, coords, door_coords, event_coords, use_split, default_s
     show_door_pins(page, ctx.tracker_doors_shown)
     page.las_hover.reset()
     return tables
+
+
+@functools.lru_cache(maxsize=None)
+def letter_texture(letter: str):
+    """A stair letter's texture: bold, white, LETTER_FONT pixels."""
+    from kivy.core.text import Label as CoreLabel
+    text = CoreLabel(text=letter, font_size=LETTER_FONT, bold=True, color=(1, 1, 1, 1))
+    text.refresh()
+    return text.texture
+
+
+class StairLetters(Widget):
+    """A dungeon map's stair letters (tracker/maps.json's "stairs"), under its pins: a black disc with the letter in
+    white at each stair, drawn in the map's pixels from a font texture, so they stay sharp at every zoom."""
+
+    def __init__(self, stairs) -> None:
+        super().__init__(size_hint=(None, None), size=(0, 0))
+        from kivy.graphics import Color, Rectangle, SmoothEllipse
+        radius = LETTER_DISC / 2
+        with self.canvas:
+            for stair in stairs:
+                x, y = stair["x"], stair["y"]
+                Color(0, 0, 0)
+                SmoothEllipse(pos=(x - radius, y - radius), size=(LETTER_DISC, LETTER_DISC))
+                texture = letter_texture(stair["letter"])
+                scale = LETTER_DISC * 0.8 / texture.height
+                w, h = texture.width * scale, texture.height * scale
+                t = texture.tex_coords  # upside down: the pins' canvas has y down, as PopTracker's maps
+                Color(1, 1, 1)
+                Rectangle(texture=texture, pos=(x - w / 2, y - h / 2), size=(w, h),
+                          tex_coords=(t[6], t[7], t[4], t[5], t[2], t[3], t[0], t[1]))
 
 
 def show_door_pins(page, shown: bool) -> None:

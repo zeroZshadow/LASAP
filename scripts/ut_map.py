@@ -20,9 +20,9 @@ Run with .venv-ap: python scripts/ut_map.py [<PopTracker pack folder>]
   (logic.yml), "<zone> -> <zone>".
 - The goal's pin: its event location (GOAL_LOCATION) at the egg's door on the overworld, placed as the doors are.
   The client colours it by whether the goal is in logic (TrackerMixin.updateTracker).
-- A dungeon map's stair letters (maps.json's "stairs", which ap_tracker_map draws into its image): the stairs of a
-  side-view passage (places.json layout's side rooms side by side), or of a stair that leads to another top-view
-  room, share a letter, A, B, ... from the map's top.
+- A dungeon map's stair letters (maps.json's "stairs", which the client draws over the map: ut_gui.StairLetters):
+  the stairs of a side-view passage (places.json layout's side rooms side by side), or of a stair that leads to
+  another top-view room, share a letter, A, B, ... from the map's top.
 - items.json: the items of ut_map.ITEM_SECTIONS and DUNGEON_SECTIONS that ap_tracker_map.ITEM_ICONS has an icon for,
   under their AP names; a progressive item has one icon per level.
 """
@@ -60,6 +60,7 @@ PACK_TO_ISLAND = (1.5, -45.0, -41.0)
 # dungeon's checks
 ISLAND_PIN, DOOR_PIN, DUNGEON_PIN = 30, 12, 11
 EGG_PIN = 24  # the goal's pin at the egg, a diamond like the doors'
+LETTERS = "ABCDEFGHJKLMNP"  # the stair letters, in the order they are given out (I and O read as 1 and 0)
 STAIRS = ("AreaUpstairs", "AreaDownstairs")  # places.json's teleport kinds of a dungeon's stairs
 
 
@@ -197,9 +198,9 @@ def stair_letters(level: str) -> list:
     spots = [sorted((in_dungeon(room, x, z, origins) for room, x, z in group), key=lambda p: (p[1], p[0]))
              for group in merged if len(group) > 1 and all(room in origins for room, _, _ in group)]
     spots.sort(key=lambda group: (group[0][1], group[0][0]))
-    if len(spots) > len(ap_tracker_map.LETTERS):
-        raise SystemExit(f"{level}: {len(spots)} stair groups, more than ap_tracker_map.LETTERS")
-    return [{"letter": letter, "x": x, "y": y} for letter, group in zip(ap_tracker_map.LETTERS, spots)
+    if len(spots) > len(LETTERS):
+        raise SystemExit(f"{level}: {len(spots)} stair groups, more than LETTERS")
+    return [{"letter": letter, "x": x, "y": y} for letter, group in zip(LETTERS, spots)
             for x, y in group]
 
 
