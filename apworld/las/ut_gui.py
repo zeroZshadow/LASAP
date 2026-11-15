@@ -1,5 +1,6 @@
 """The client's changes to Universal Tracker's map tab (DESIGN.md, Universal Tracker map)."""
 import functools
+import math
 from typing import Any, Dict, List, Optional, Tuple
 
 # kvui sets kivy up and has to be imported before the kivy modules
@@ -21,8 +22,15 @@ PANEL_SIDES = {"item_tracker_left": "left", "item_tracker_right": "right"}
 # A panel's handle: its chevron points the way a click moves the panel's edge, by side and whether it is folded
 HANDLE_ICONS = {("left", False): "chevron-left", ("left", True): "chevron-right",
                 ("right", False): "chevron-right", ("right", True): "chevron-left"}
-ROUTE_COLOR = (0.19, 0.25, 1.0, 0.85)  # Universal Tracker's path blue (its "hinted" colour)
-ROUTE_WIDTH = 0.25  # the route's line, in pin sizes
+ROUTE_COLOR = (0.19, 0.25, 1.0, 1.0)  # Universal Tracker's path blue (its "hinted" colour): where Link walks
+ROUTE_THROUGH_COLOR = (1.0, 0.2, 0.85, 1.0)  # magenta: through a level the map does not show (a connector)
+ROUTE_EDGE_COLOR = (0.05, 0.05, 0.1, 0.9)  # the route's dark edge, for contrast on the map's greens and browns
+ROUTE_START_COLOR = (1.0, 1.0, 1.0, 1.0)  # the ring at the route's start, over the pins
+ROUTE_WIDTH = 0.1  # the route's line, in pin sizes
+ROUTE_EDGE = 1.0  # the dark edge on both sides, in map pixels
+ROUTE_DASH, ROUTE_GAP = 4.0, 5.0  # a dashed leg's dashes and gaps, in line widths
+ROUTE_SMOOTH = 1.2  # the lines' soft edges, in screen pixels
+ROUTE_RING, ROUTE_START_WIDTH = 0.8, 0.12  # the start's ring: its radius and its line, in pin sizes
 ROUTE_SUGGESTIONS = 12  # the search field's menu shows at most this many locations
 
 
@@ -36,6 +44,8 @@ def adjust_map_page(page, ctx) -> None:
     fix_map_view(page)
     add_doors_box(page, ctx)
     add_route_search(page, ctx)
+    add_route_clicks(page, ctx)
+    follow_zoom(page, ctx)
 
 
 def use_own_pins(page, ctx) -> None:
@@ -437,27 +447,131 @@ class MapHover:
         self.show(self.pinned or None)
 
 
+def outlined(lines: List[Tuple[Tuple[float, ...], Dict[str, Any]]], width: float, smooth: float) -> None:
+    """Lines (their colour, their Line arguments) on the canvas being drawn, each over a ROUTE_EDGE_COLOR edge; every
+    edge first, so no edge covers another line. Kivy's SmoothLine, as a wide Line has jagged edges: its soft edge
+    `smooth` wide, in the canvas's units."""
+    from kivy.graphics import Color, SmoothLine
+    Color(*ROUTE_EDGE_COLOR)
+    for _, line in lines:
+        SmoothLine(width=width + ROUTE_EDGE, overdraw_width=smooth, **line)
+    for color, line in lines:
+        Color(*color)
+        SmoothLine(width=width, overdraw_width=smooth, **line)
+
+
 class RouteLine(Widget):
-    """The route on Universal Tracker's map (TrackerMixin.route_points): a line in the map image's pixels, drawn
-    under the pins."""
+    """The route on Universal Tracker's map (TrackerMixin.route_points), in the map image's pixels, under the pins:
+    a solid ROUTE_COLOR line where Link walks on the map and a dashed ROUTE_THROUGH_COLOR one where he goes through a
+    level the map does not show, both with a dark edge."""
 
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        from kivy.graphics import Color, Line
+    def draw(self, points: List[Tuple[float, float, bool]], pin_size: float, smooth: float) -> None:
+        self.canvas.clear()
+        width = max(1.0, pin_size * ROUTE_WIDTH)
+        lines: List[Tuple[Tuple[float, ...], Dict[str, Any]]] = []
+        walked: List[float] = []  # the solid run being gathered, as one line for its joints
+        for (x, y, _), (x2, y2, walk) in zip(points, points[1:]):
+            if walk:
+                walked += [x, y, x2, y2] if not walked else [x2, y2]
+                continue
+            if walked:
+                lines.append((ROUTE_COLOR, {"points": walked}))
+                walked = []
+            length = math.hypot(x2 - x, y2 - y)
+            step = width * (ROUTE_DASH + ROUTE_GAP)
+            for at in range(int(length // step) + 1 if length else 0):
+                a, b = at * step / length, min(1.0, (at * step + width * ROUTE_DASH) / length)
+                lines.append((ROUTE_THROUGH_COLOR, {"points": [x + (x2 - x) * a, y + (y2 - y) * a,
+                                                               x + (x2 - x) * b, y + (y2 - y) * b]}))
+        if walked:
+            lines.append((ROUTE_COLOR, {"points": walked}))
         with self.canvas:
-            Color(*ROUTE_COLOR)
-            self.line = Line(points=[], width=1.0, joint="round", cap="round")
+            outlined(lines, width, smooth)
 
 
-def draw_route(page, points: List[Tuple[float, float]], pin_size: float) -> None:
-    """Draws the route on the map page's pins' canvas, which loading a map empties."""
+class RouteStart(Widget):
+    """The ring around the pin of the door the route starts at, over the pins."""
+
+    def draw(self, spot: Optional[Tuple[float, float]], pin_size: float, smooth: float) -> None:
+        self.canvas.clear()
+        if spot is None:
+            return
+        with self.canvas:
+            outlined([(ROUTE_START_COLOR, {"circle": (spot[0], spot[1], pin_size * ROUTE_RING)})],
+                     max(1.5, pin_size * ROUTE_START_WIDTH), smooth)
+
+
+def draw_route(page, points: List[Tuple[float, float, bool]], started: bool, pin_size: float) -> None:
+    """Draws the route on the map page's pins' canvas, which loading a map empties: its line under the pins, its start
+    over them, moved back on top as Universal Tracker adds pins and icons. Their soft edges are ROUTE_SMOOTH screen
+    pixels wide at the map's zoom (follow_zoom)."""
     canvas = page.ids.location_canvas
+    image = page.ids.tracker_map
+    scale = (image.norm_image_size[0] / image.texture_size[0] if image.texture_size[0] else 1) *         page.ids.tracker_map_container.scale
+    smooth = ROUTE_SMOOTH / scale if scale > 0 else ROUTE_SMOOTH
     line = next((w for w in canvas.children if isinstance(w, RouteLine)), None)
     if line is None:
         line = RouteLine()
         canvas.add_widget(line, index=len(canvas.children))
-    line.line.points = [c for p in points for c in p] if len(points) > 1 else []
-    line.line.width = max(1.0, pin_size * ROUTE_WIDTH)
+    line.draw(points, pin_size, smooth)
+    start = next((w for w in canvas.children if isinstance(w, RouteStart)), None)
+    if start is None:
+        start = RouteStart()
+    if canvas.children[0] is not start:
+        if start.parent is not None:
+            canvas.remove_widget(start)
+        canvas.add_widget(start)
+    start.draw(points[0][:2] if started and points else None, pin_size, smooth)
+
+
+def follow_zoom(page, ctx) -> None:
+    """The route drawn again as the map's zoom or size changes, for its soft edges (draw_route)."""
+    redraw = Clock.create_trigger(lambda *_: ctx.draw_route(), 0.05)
+    page.ids.tracker_map_container.bind(scale=lambda *_: redraw())
+    page.ids.tracker_map.bind(norm_image_size=lambda *_: redraw())
+
+
+def add_route_clicks(page, ctx) -> None:
+    """A right-click on a map pin routes to its location or door (TrackerMixin.route_to), with the other pins drawn at
+    its place (a dungeon's square under its door); to one of a menu where they have several not yet checked. The pin
+    is the one MapHover shows the tooltip of."""
+    canvas = page.ids.location_canvas.__self__
+
+    def names(pin: MapPin) -> List[str]:
+        if pin.kind == "entrance":
+            return list(pin.statuses)
+        world = ctx.tracker_core.get_current_world()
+        if pin.kind != "location" or world is None:
+            return []
+        return [world.location_id_to_name[loc] for loc, status in pin.statuses.items() if status != "collected"]
+
+    def clicked(widget, touch) -> bool:
+        hover = getattr(page, "las_hover", None)
+        if getattr(touch, "button", None) != "right" or hover is None:
+            return False
+        x, y = widget.to_window(*touch.pos)
+        pin = hover.pin_at((x, y))
+        if pin is None:
+            return False
+        here = [p for p in canvas.children if isinstance(p, MapPin) and p.opacity and p is not pin
+                and (p.x, p.y) == (pin.x, pin.y)]
+        found = [name for p in [pin, *here] for name in names(p)]
+        if not found:
+            return False
+        if len(found) == 1:
+            ctx.route_to(found[0])
+            return True
+        menu = MDDropdownMenu(caller=Widget(pos=(x, y), size=(1, 1)), position="bottom", width=dp(360))
+
+        def pick(name: str) -> None:
+            menu.dismiss()
+            ctx.route_to(name)
+
+        menu.items = [{"text": name, "on_release": lambda n=name: pick(n)} for name in found]
+        menu.open()
+        return True
+
+    canvas.bind(on_touch_down=clicked)
 
 
 def clear_route_search(page) -> None:

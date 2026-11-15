@@ -2,15 +2,17 @@
 connects the dungeon doors' entrances once the player has found them."""
 import random
 import unittest
+from types import SimpleNamespace
 
 from BaseClasses import CollectionState
 from worlds.AutoWorld import AutoWorldRegister
 
 from . import OPTION_SETS, generate, generate_world, regenerate
 from ..items import GAME, LASR_TO_ITEM, TRAP_ITEMS
-from ..lasr import (DUNGEONS, ENTRANCE_POOL, HOUSE_DOOR, door_entrance, door_region, dungeon_region,
+from ..lasr import (DOORS, DUNGEONS, ENTRANCE_POOL, HOUSE_DOOR, door_entrance, door_region, dungeon_region,
                     location_dungeon)
 from ..locations import LASR_LOCATIONS
+from ..ut_map import SPOT_ZONES, find_route, spot_region
 
 OPTIONS = OPTION_SETS + [
     {"small_keys": "anywhere", "nightmare_keys": "anywhere", "dungeon_items": "own_dungeon",
@@ -190,3 +192,65 @@ class TestDeferredEntrances(unittest.TestCase):
                          [{"type": "color", "color": "blue", "text": door}, {"type": "text", "text": f" -> {out}"}])
         route = next(e for e in self.original.get_entrances(1) if " -> " in e.name)
         self.assertIsNone(world.explain_path(route, state))
+
+    def full_state(self) -> CollectionState:
+        state = CollectionState(self.original, True)
+        for item in self.original.itempool + self.original.worlds[1].get_pre_fill_items():
+            state.collect(self.original.worlds[1].create_item(item.name), prevent_sweep=True)
+        state.sweep_for_advancements()
+        return state
+
+    def test_route_from_a_door(self) -> None:
+        """A route starts in the region Link stands in after a jump to a door's spot (spot_region) and goes on, each
+        entrance after the one before, each rule passed."""
+        regions = self.original.regions.region_cache[1]
+        state = self.full_state()
+        door = next(door for door in ENTRANCE_POOL if door != self.slot_data["start"])
+        self.assertIs(spot_region(door, regions), regions[door_region(door)])
+        self.assertIs(spot_region(DOORS["pairs"][door], regions), regions[door_region(DOORS["pairs"][door])])
+        kept = next(door for door in SPOT_ZONES if door_region(door) not in regions and SPOT_ZONES[door] in regions)
+        self.assertIs(spot_region(kept, regions), regions[SPOT_ZONES[kept]])
+        self.assertIsNone(spot_region("Field_99Z", regions))
+        start = spot_region(door, regions)
+        self.assertEqual(find_route(start, start, state), [])
+        for location in random.Random(4303).sample(sorted(self.original.get_reachable_locations(state, 1),
+                                                          key=lambda loc: loc.name), 20):
+            route = find_route(start, location.parent_region, state)
+            self.assertIsNotNone(route, location.name)
+            at = start
+            for way in route:
+                self.assertIs(way.parent_region, at)
+                self.assertTrue(way.access_rule(state), way.name)
+                at = way.connected_region
+            self.assertIs(at, location.parent_region)
+
+    def test_route_legs(self) -> None:
+        """On a map the route's legs are walked but after a door Link goes into, and to a door's pin he comes out of a
+        level at (TrackerMixin.route_points); a ring marks the start door's pin."""
+        from ..ut_context import TrackerMixin
+        world = self.original.worlds[1]
+        entrances = self.slot_data["entrances"]
+        doors = [door for door in ENTRANCE_POOL if door != self.slot_data["start"]][:3]
+        start, into, out = doors  # Link goes into `into`, and out of the inside door `out` leads into
+        target = next(loc.name for loc in self.original.get_locations(1) if loc.address is not None)
+        pins = [start, into, out, target]
+        locs = [{"sections": [{"name": name}], "map_locations": [{"map": "M", "x": n, "y": 0}]}
+                for n, name in enumerate(pins)]
+        core = SimpleNamespace(get_current_world=lambda: world, multiworld=self.original, player_id=1)
+
+        def pins_of():
+            return TrackerMixin.section_pins(SimpleNamespace(locs=locs, route_pins=None))
+
+        def points(route_start):
+            ctx = SimpleNamespace(logical_path_entrances=[into, "x -> y", entrances[out]], route_start=route_start,
+                                  route_target=target, tracker_core=core, section_pins=pins_of)
+            return TrackerMixin.route_points(ctx, "M")
+
+        self.assertEqual(points(start), ([(0, 0, True), (1, 0, True), (2, 0, False), (3, 0, True)], True))
+        # from inside the level the start door leads into: at the start door's pin, through the level
+        self.assertEqual(points(entrances[start])[0][:2], [(0, 0, True), (1, 0, False)])
+        self.assertEqual(points(None), ([(1, 0, True), (2, 0, False), (3, 0, True)], False))
+        # Link ends inside a level: to the target's pin through it
+        ctx = SimpleNamespace(logical_path_entrances=[into], route_start=None, route_target=target, tracker_core=core,
+                              section_pins=pins_of)
+        self.assertEqual(TrackerMixin.route_points(ctx, "M"), ([(1, 0, True), (3, 0, False)], False))

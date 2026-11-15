@@ -49,8 +49,8 @@ namespace AP {
     std::optional<std::pair<std::string_view, std::string_view>> LeadJump(std::string_view from, std::string_view level,
                                                                           std::string_view locator);
     // A level jump that started, from level `from` to that level and locator, which went to `to`'s locator: a jump
-    // between the overworld and another level is reported as DOOR <locator> <to> (Entrances, Doors gone through), once,
-    // and again on each SYNC (ReportDoorJumps).
+    // between the overworld and another level is reported as DOOR <locator> <to> (Entrances, Doors gone through), each
+    // time, and those since the game started again on each SYNC, the latest last (ReportDoorJumps).
     void NoteJump(std::string_view from, std::string_view level, std::string_view locator, std::string_view to);
     void ReportDoorJumps();
     // The way back from the landing Link is on (ap_jumps.cpp, TickLanding), which the APReturn event's RETURN_LOCATOR

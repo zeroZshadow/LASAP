@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import Utils
+from BaseClasses import Location
 from CommonClient import ClientCommandProcessor, CommonContext, logger
 from NetUtils import NetworkItem
 
@@ -14,8 +15,8 @@ from .install import tracker_images
 from .items import ITEM_TABLE, LASR_TO_ITEM
 from .lasr import DUNGEONS, INSTRUMENTS, door_entrance
 from .tracker import known_doors
-from .ut_map import (DOOR_STEPS, LOCATION_DUNGEONS, OVERWORLD_MAP, door_out, dungeon_squares, hidden_door_entrances,
-                     hidden_locations)
+from .ut_map import (DOOR_STEPS, LOCATION_DUNGEONS, OVERWORLD_MAP, door_out, dungeon_squares, find_route,
+                     hidden_door_entrances, hidden_locations, spot_region)
 
 TRACKER_DOORS_KEY = "tracker_doors_shown"  # Archipelago's persistent storage, under "las": TrackerMixin.show_doors
 # A pin status's colour in its tooltip (TrackerMixin.pin_text): Universal Tracker's, by its colour names
@@ -49,9 +50,13 @@ class TrackerMixin:
         self.tracker_images: Optional[Path] = None
         self.tracker_held: Optional[dict] = None
         self.tracker_task: Optional[asyncio.Task] = None
-        # The Tracker tab's route (route_points): its target check or door, the locations in logic, the sweep's state
-        # (the doors it reaches: route_doors), and the pins by section
+        # The Tracker tab's route (route_points): its target check or door, the door it starts at (None: the slot's
+        # start), the locations in logic, the sweep's state (the doors it reaches: route_doors), and the pins by
+        # section
         self.route_target: Optional[str] = None
+        self.route_start: Optional[str] = None
+        # the spot of the door Link came through last: the game's last DOOR line's <to> (LASContext)
+        self.game_exit: Optional[str] = None
         self.tracker_in_logic: List[str] = []
         self.tracker_state: Any = None
         self.reached_doors: Optional[Tuple[int, List[str]]] = None
@@ -193,6 +198,7 @@ class TrackerMixin:
         return self.reached_doors[1]
 
     def route_to(self, name: str) -> None:
+        """A route to a location or a door: /get_logical_path, as the command box runs it."""
         self.command_processor(self)._cmd_get_logical_path(name)
 
     def start_route(self, text: str) -> None:
@@ -200,7 +206,7 @@ class TrackerMixin:
         route ends at (route_points), the one UT takes the name for when it matches it to locations, regions and
         entrances."""
         self.logical_path_entrances.clear()
-        self.route_target = None
+        self.route_target = self.route_start = None
         multiworld, player = self.tracker_core.multiworld, self.tracker_core.player_id
         if multiworld is None or player is None or not text.strip():
             return
@@ -211,30 +217,86 @@ class TrackerMixin:
         if usable and (name in locations or name in DOOR_STEPS & entrances):
             self.route_target = name
 
-    def route_points(self, map_name: str) -> List[Tuple[float, float]]:
-        """The way /get_logical_path found, on a map: the pins of the doors it goes through, in order (a door Link
-        comes out of at that door's pin), then the check's pin nearest the last door."""
-        if not self.logical_path_entrances:
-            return []
+    def route_from_exit(self) -> bool:
+        """/get_logical_path from the door Link came through last (game_exit) instead of the slot's start: the way
+        through the fewest doors to the route's target (ut_map.find_route), logged as UT logs its own. False, with no
+        route, when there is none: UT's from the start then."""
+        world = self.tracker_core.get_current_world()
+        target, spot = self.route_target, self.game_exit
+        if world is None or target is None or spot is None or not self.game or \
+                (self.stored_data or {}).get("_read_race_mode"):
+            return False
+        state = self.updateTracker().state
+        player = self.tracker_core.player_id
+        start = spot_region(spot, self.tracker_core.multiworld.regions.region_cache[player])
+        end = world.get_location(target) if target in self.tracker_core.multiworld.regions.location_cache[player] \
+            else world.get_entrance(target)
+        if state is None or start is None or end.parent_region is None or not end.can_reach(state):
+            return False
+        route = find_route(start, end.parent_region, state)
+        if route is None:
+            return False
+        self.route_start = spot
+        self.logical_path_entrances.extend(way.name for way in route)
+        self.print_json([{"type": "text", "text": "From "}, {"type": "color", "color": "blue", "text": spot}])
+
+        def explained(text: List[dict], step: Any) -> List[dict]:  # with its rule, as UT logs a step it has no text for
+            if hasattr(step.access_rule, "explain_json"):
+                return [*text, {"type": "text", "text": ":\n    "}, *step.access_rule.explain_json(state)]
+            return text
+
+        for way in route:
+            text = world.explain_path(way, state)
+            if text is not None:
+                self.print_json(text or explained([{"type": "color", "color": "blue", "text": way.name}], way))
+        if isinstance(end, Location):
+            self.print_json(explained([{"type": "text", "text": "->"},
+                                       {"type": "color", "color": "green", "text": end.name}], end))
+        elif world.explain_path(end, state):
+            self.print_json(world.explain_path(end, state))
+        return True
+
+    def route_points(self, map_name: str) -> Tuple[List[Tuple[float, float, bool]], bool]:
+        """The route on a map, and whether its first point is the door it starts at (route_from_exit): the pins of the
+        doors it goes through, in order (a door Link comes out of at that door's pin), then the target's pin nearest
+        the last door. Each point with whether Link walks the leg to it on this map: not after a door he goes into, nor
+        to a door's pin he comes out of a level at, as the map does not show the level in between."""
+        if not self.logical_path_entrances and self.route_start is None:
+            return [], False
         pins = self.section_pins()
         world = self.tracker_core.get_current_world()
-        points: List[Tuple[float, float]] = []
-        for name in self.logical_path_entrances:
-            if name not in DOOR_STEPS:
-                continue
-            for door in (name, door_out(world.get_entrance(name))):
+        entrances = self.tracker_core.multiworld.regions.entrance_cache[self.tracker_core.player_id]
+        points: List[Tuple[float, float, bool]] = []
+        inside = False  # Link is in a level the map does not show
+
+        def add(doors: Tuple[Tuple[str, bool], ...]) -> bool:
+            """The first of these doors with a pin on this map, and whether Link comes out of a level at it."""
+            nonlocal inside
+            for door, out in doors:
                 spot = next(((x, y) for m, x, y in pins.get(door, ()) if m == map_name), None)
-                if spot is not None:
-                    if not points or points[-1] != spot:
-                        points.append(spot)
-                    break
+                if spot is None:
+                    continue
+                if points and points[-1][:2] == spot:
+                    points[-1] = (*spot, points[-1][2])
+                else:
+                    points.append((*spot, not points or not (inside or out)))
+                inside = not out
+                return True
+            return False
+
+        start = self.route_start
+        started = start is not None and add(((start, True),) + (
+            ((door_out(world.get_entrance(start)), False),) if start in entrances else ()))
+        for name in self.logical_path_entrances:
+            if name in DOOR_STEPS:
+                add(((name, False), (door_out(world.get_entrance(name)), True)))
         ends = [(x, y) for m, x, y in pins.get(self.route_target or "", ()) if m == map_name]
         if ends:
-            last = points[-1] if points else ends[0]
+            last = points[-1][:2] if points else ends[0]
             end = min(ends, key=lambda p: (p[0] - last[0]) ** 2 + (p[1] - last[1]) ** 2)
-            if not points or points[-1] != end:  # a door's route ends at the last door it goes through
-                points.append(end)
-        return points
+            if not points or points[-1][:2] != end:  # a door's route ends at the last door it goes through
+                points.append((*end, not points or not inside))
+        return points, started and bool(points)
 
     def section_pins(self) -> Dict[str, List[Tuple[str, float, float]]]:
         """The pack's pins (tracker/locations.json) by section name: (map, x, y) each."""
@@ -272,7 +334,7 @@ class TrackerMixin:
         return squares
 
     def clear_path(self) -> None:
-        self.route_target = None
+        self.route_target = self.route_start = None
         super().clear_path()
         if self.map_page is not None:
             from .ut_gui import clear_route_search
@@ -282,7 +344,7 @@ class TrackerMixin:
         if self.ui is None or self.map_page is None or self.map_id is None:
             return
         from .ut_gui import draw_route
-        draw_route(self.map_page, self.route_points(self.maps[self.map_id]["name"]), self.ui.loc_size)
+        draw_route(self.map_page, *self.route_points(self.maps[self.map_id]["name"]), self.ui.loc_size)
 
     def show_doors(self, shown: bool) -> None:
         """The map tab's Entrances box: shows or hides the doors' pins on the map shown, and remembers it."""

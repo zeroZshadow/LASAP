@@ -32,7 +32,8 @@ namespace {
     // a door's marker label, and the label and show flag of the dungeon behind it, which its row takes
     struct Marker { std::string_view door, label, flag; };
     std::vector<Marker> g_Markers;
-    // The DOOR lines of the jumps between the overworld and other levels since the game started, each once
+    // The DOOR lines of the jumps between the overworld and other levels since the game started, each once, the
+    // latest jump's last: the client takes the last line as the door Link came through last
     std::vector<std::string> g_DoorJumps;
     constexpr std::string_view kOverworld = "Field";
 
@@ -204,7 +205,8 @@ namespace AP {
     void NoteJump(std::string_view from, std::string_view level, std::string_view locator, std::string_view to) {
         if ((from == kOverworld) == (level == kOverworld) || locator.empty() || to.empty()) return;
         std::string line = "DOOR " + std::string(locator) + " " + std::string(to);
-        if (std::find(g_DoorJumps.begin(), g_DoorJumps.end(), line) != g_DoorJumps.end()) return;
+        auto known = std::find(g_DoorJumps.begin(), g_DoorJumps.end(), line);
+        if (known != g_DoorJumps.end()) g_DoorJumps.erase(known);
         g_DoorJumps.push_back(line);
         Send(line);
     }

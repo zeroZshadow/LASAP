@@ -89,7 +89,8 @@ class TestChecksBySeed(unittest.TestCase):
 class TestDoorLines(unittest.TestCase):
     def test_doors_gone_through_go_to_data_storage(self) -> None:
         """A DOOR line finds a shuffled door and the inside door it leads to, which go to data storage once, and only
-        for the slot of the seed the game runs; other jumps find nothing."""
+        for the slot of the seed the game runs; other jumps find nothing. The last line's spot is the route's start,
+        until the game says HELLO again."""
         from ..client import PROTOCOL_VERSION
         from ..lasr import DOORS, ENTRANCE_POOL
 
@@ -103,8 +104,12 @@ class TestDoorLines(unittest.TestCase):
                          f"DOOR {other} {door}", "DOOR Lv01TailCave_08D Lv01TailCave_08D"):
                 ctx.handle_game_line(line)
                 await asyncio.sleep(0)
-            return sent
-        self.assertEqual(asyncio.run(run()), [{"cmd": "Set", "key": "las_entrances_0_1", "default": {},
+            exits = [ctx.game_exit]
+            ctx.handle_game_line(f"HELLO {PROTOCOL_VERSION} aaaa")
+            return sent, exits + [ctx.game_exit]
+        sent, exits = asyncio.run(run())
+        self.assertEqual(exits, ["Lv01TailCave_08D", None])
+        self.assertEqual(sent, [{"cmd": "Set", "key": "las_entrances_0_1", "default": {},
                                                "want_reply": False,
                                                "operations": [{"operation": "update", "value": {door: inside}}]}])
 

@@ -1,7 +1,8 @@
 # Doors gone through (DESIGN.md, Entrances, Doors gone through): each level jump between the overworld and another
-# level is reported as DOOR <locator> <the locator it went to>, once, and all again on SYNC; the client learns the
-# shuffled doors the player has gone through from them. Run after newgame_file2 with the client connected to the game,
-# on a mod with the doors unshuffled: each jump goes where it always does.
+# level is reported as DOOR <locator> <the locator it went to>, each time, and each once again on SYNC, the latest
+# last; the client learns the shuffled doors the player has gone through from them, and the route's start from the
+# last. Run after newgame_file2 with the client connected to the game, on a mod with the doors unshuffled: each jump
+# goes where it always does.
 expect HELLO 30
 send DBG setflag TailCaveShutterOpened 1
 expect FLAG.TailCaveShutterOpened.1 5
@@ -14,6 +15,10 @@ expect ^AP.DOOR.Lv01TailCave_08D.Lv01TailCave_08D$ 20
 hold 0 0 -32767 until level=Field 10
 loaded 20
 expect ^AP.DOOR.Field_14D.Field_14D$ 20
+# back in: reported again
+hold 0 0 32767 until level=Lv01TailCave 10
+loaded 20
+expect ^AP.DOOR.Lv01TailCave_08D.Lv01TailCave_08D$ 20
 # an expect skips the lines that came with the one it found: one SYNC per line
 game SYNC
 expect ^DOOR.Lv01TailCave_08D.Lv01TailCave_08D$ 10

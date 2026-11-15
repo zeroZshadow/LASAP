@@ -58,7 +58,8 @@ class LASCommandProcessor(ClientCommands):
         def _cmd_get_logical_path(self, dest_name: str = "") -> None:
             """Finds a logical expected path to a particular location or region by name"""
             self.ctx.start_route(dest_name)
-            super()._cmd_get_logical_path(dest_name)
+            if not self.ctx.route_from_exit():
+                super()._cmd_get_logical_path(dest_name)
             self.ctx.draw_route()
 
     def _cmd_las(self) -> None:
@@ -532,6 +533,7 @@ class LASContext(TrackerMixin, ClientContext):
             self.game_checked.clear()
             self.game_dungeons.clear()
             self.game_entrances.clear()
+            self.game_exit = None
             self.goal_reached = False
             if len(parts) < 2 or parts[1] != str(PROTOCOL_VERSION):
                 logger.error(f"Game protocol {parts[1:2]} does not match the client ({PROTOCOL_VERSION}).")
@@ -575,7 +577,9 @@ class LASContext(TrackerMixin, ClientContext):
             self.send_logic()
             self.refresh_door_pins()
         elif cmd == "DOOR" and len(parts) == 3:
-            # a level jump to the spot of parts[1] that went to that of parts[2]: through a shuffled door, or out
+            # a level jump to the spot of parts[1] that went to that of parts[2]: through a shuffled door, or out. The
+            # last one is the latest jump (the route's start, TrackerMixin.route_from_exit)
+            self.game_exit = parts[2]
             found = found_entrance(parts[1], parts[2], door_pool(self.slot_data.get("entrances")))
             if found and self.game_entrances.get(found[0]) != found[1]:
                 self.game_entrances[found[0]] = found[1]

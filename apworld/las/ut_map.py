@@ -1,11 +1,12 @@
 """Universal Tracker's map tab (DESIGN.md, Universal Tracker map): the data behind tracker/*.json (scripts/ut_map.py
-writes them) and the door entrances a route goes through."""
+writes them), the door entrances a route goes through and the route search."""
+import heapq
 import re
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 
 from .items import LASR_TO_ITEM
-from .lasr import (CATEGORIES, DOORS, DUNGEON_NAMES, DUNGEON_NUMBERS, DUNGEONS, INSTRUMENTS, LOGIC, door_entrance,
-                   dungeon_of)
+from .lasr import (CATEGORIES, DOORS, DUNGEON_DOORS, DUNGEON_NAMES, DUNGEON_NUMBERS, DUNGEONS, INSTRUMENTS, LOGIC,
+                   WRITTEN_LOGIC, door_entrance, door_region, dungeon_of, dungeon_region)
 from .locations import LOCATION_NAMES
 from .tracker import LEVEL_KEY
 
@@ -88,6 +89,50 @@ ITEM_SIZE, DUNGEON_ITEM_SIZE = (40, 40), (32, 32)
 # The entrances that go through a door (Entrances, Shuffled dungeons): each door's, named after the door, and each
 # dungeon's door's (lasr.door_entrance)
 DOOR_STEPS = frozenset(DOORS["pairs"]) | frozenset(DOORS["pairs"].values()) | {door_entrance(d) for d in DUNGEONS}
+
+
+# A route's step through a door costs more than any number of steps between zones: the fewest doors first
+DOOR_COST = 1000
+# The region Link stands in once a jump landed on a door's spot, when the door is no shuffled one (spot_region)
+SPOT_ZONES = {**{door: zone for zone, node in WRITTEN_LOGIC.items() for door in (node.get("doors") or {})},
+              **{DOORS["pairs"][DUNGEON_DOORS[dungeon]]: dungeon_region(dungeon) for dungeon in DUNGEONS}}
+
+
+def spot_region(locator: str, regions: Mapping[str, Any]) -> Any:
+    """The region of `regions` (by name) Link stands in after a level jump to this door's spot (the game's DOOR
+    <locator> <to>): a shuffled door's region (lasr.door_region), else the zone that has the door. None for others."""
+    for name in (door_region(locator), SPOT_ZONES.get(locator)):
+        if name in regions:
+            return regions[name]
+    return None
+
+
+def find_route(start: Any, goal: Any, state: Any) -> Optional[List[Any]]:
+    """The entrances from region `start` to region `goal` whose rules `state` passes, through the fewest doors
+    (DOOR_STEPS); None when there is no way."""
+    best = {start: 0}
+    came: Dict[Any, Any] = {}
+    queue = [(0, 0, start)]
+    pushed = 1
+    while queue:
+        cost, _, region = heapq.heappop(queue)
+        if region is goal:
+            steps = []
+            while region is not start:
+                steps.append(came[region])
+                region = came[region].parent_region
+            return steps[::-1]
+        if cost > best[region]:
+            continue
+        for way in region.exits:
+            to = way.connected_region
+            step = cost + (DOOR_COST if way.name in DOOR_STEPS else 1)
+            if to is None or step >= best.get(to, step + 1) or not way.access_rule(state):
+                continue
+            best[to], came[to] = step, way
+            heapq.heappush(queue, (step, pushed, to))
+            pushed += 1
+    return None
 
 
 def door_out(entrance: Any) -> str:
