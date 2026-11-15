@@ -1,5 +1,6 @@
 """The client's changes to Universal Tracker's map tab (DESIGN.md, Universal Tracker map)."""
-from typing import Any, Dict, List, Tuple
+import functools
+from typing import Any, Dict, List, Optional, Tuple
 
 # kvui sets kivy up and has to be imported before the kivy modules
 from kvui import ConnectBarTextInput  # isort: skip
@@ -25,12 +26,23 @@ ROUTE_WIDTH = 0.25  # the route's line, in pin sizes
 ROUTE_SUGGESTIONS = 12  # the search field's menu shows at most this many locations
 
 
+PIN_REACH = 8  # a pin answers the pointer this many dp around its middle, if its drawn square is smaller
+CLICK_SLOP = 6  # dp a press may move and still be a click on the map, not a drag
+
+
 def adjust_map_page(page, ctx) -> None:
     tighten_item_grids(page, getattr(ctx, "tracker_world", None))
     add_panel_handles(page)
     fix_map_view(page)
     add_doors_box(page, ctx)
     add_route_search(page, ctx)
+
+
+def use_own_pins(page, ctx) -> None:
+    """Universal Tracker's map page draws the client's pins (load_pins) with one tooltip for all (MapHover), from its
+    first map on."""
+    page.las_hover = MapHover(page, ctx)
+    ctx.map_page_coords_func = lambda *args: load_pins(page, ctx, *args)
 
 
 class ItemPanels:
@@ -174,6 +186,251 @@ def add_doors_box(page, ctx) -> None:
     row.add_widget(doors, index=row.children.index(auto_tab))
 
 
+@functools.lru_cache(maxsize=None)
+def hex_color(name: str) -> Tuple[float, float, float]:
+    from kivy.utils import get_color_from_hex
+    from worlds.tracker.TrackerClient import get_ut_color
+    return tuple(get_color_from_hex("#" + get_ut_color(name))[:3])
+
+
+def mixed_status(statuses) -> str:
+    """Universal Tracker's colour of a check pin with these statuses (its APLocationMixed)."""
+    glitches = any(s.endswith("glitched") for s in statuses)
+    in_logic = any(s.endswith("in_logic") for s in statuses)
+    out_of_logic = any(s.endswith("out_of_logic") for s in statuses)
+    hinted = any(s.startswith("hinted") for s in statuses)
+    for colour, when in (("mixed_logic", in_logic and (out_of_logic or (glitches and hinted))),
+                         ("hinted_glitched", glitches and hinted), ("hinted_out_of_logic", hinted and out_of_logic),
+                         ("hinted", hinted), ("in_logic_glitched", glitches and in_logic),
+                         ("out_of_logic_glitched", glitches and out_of_logic), ("in_logic", in_logic),
+                         ("out_of_logic", out_of_logic), ("glitched", glitches)):
+        if when:
+            return colour
+    return "collected"
+
+
+def split_statuses(statuses) -> List[str]:
+    """Universal Tracker's four colours of a split check pin (its APLocationSplit)."""
+    from collections import Counter
+    counts = Counter(s for s in statuses if s != "collected")
+
+    def order(pair) -> float:
+        status, n = pair
+        return {"out_of_logic": 0, "in_logic": 999999999, "hinted_in_logic": 8888888}.get(status, n + ord(status[0]) / 10)
+    found = [s for s, _ in sorted(counts.items(), key=order, reverse=True)]
+    return (found * max(2, 4 // len(found)))[:4] if found else ["collected"] * 4
+
+
+DOOR_COLOURS = {"path": "hinted", "passable": "in_logic", "impassable": "out_of_logic"}
+
+
+class MapPin(Widget):
+    """A pin on Universal Tracker's map in place of its own (load_pins), drawn as it draws them: a check's square (four
+    triangles when split), a door's (an entrance) or event's diamond. It has no tooltip or hover binding of its own,
+    which made loading a map slow and hovering unreliable: MapHover shows one tooltip for all. `statuses` is what
+    Universal Tracker's updateTracker sets through update_status, by location id, entrance or event name."""
+
+    def __init__(self, kind: str, names: List[Any], pos: Tuple[float, float], size: float, border: float,
+                 split: bool) -> None:
+        super().__init__(size_hint=(None, None), pos=pos, size=(size, size))
+        from kivy.graphics import Color, PopMatrix, PushMatrix, Rectangle, Rotate, Scale, Triangle
+        self.kind, self.split = kind, split
+        self.statuses: Dict[Any, str] = {name: "none" for name in names}
+        self.go_mode: Any = None  # the egg's pin: whether the goal is in logic (TrackerMixin.updateTracker)
+        x, y, half = pos[0], pos[1], size / 2
+        with self.canvas:
+            if kind != "location":
+                PushMatrix()
+                Rotate(angle=45, origin=pos)
+                Scale(0.7, 0.7, 1, origin=pos)
+            Color(0, 0, 0)
+            Rectangle(pos=(x - half - border, y - half - border), size=(size + 2 * border, size + 2 * border))
+            if split:  # Universal Tracker's order: its colours 1, 3, 2 and 4, from the pin's top clockwise
+                self.colours = [None] * 4
+                for index, (ax, ay, bx, by) in ((0, (-1, 1, 1, 1)), (2, (1, -1, 1, 1)), (1, (-1, -1, 1, -1)),
+                                                (3, (-1, -1, -1, 1))):
+                    self.colours[index] = Color(1, 1, 1)
+                    Triangle(points=[x, y, x + ax * half, y + ay * half, x + bx * half, y + by * half])
+            else:
+                self.colours = [Color(1, 1, 1)]
+                Rectangle(pos=(x - half, y - half), size=(size, size))
+            if kind != "location":
+                PopMatrix()
+        self.paint()
+
+    def update_status(self, name: Any, status: str) -> None:
+        if name in self.statuses and self.statuses[name] != status:
+            self.statuses[name] = status
+            self.paint()
+
+    def paint(self) -> None:
+        statuses = list(self.statuses.values())
+        if self.go_mode is not None:
+            names = ["in_logic" if self.go_mode else "out_of_logic"]
+        elif self.kind != "location":
+            found = [DOOR_COLOURS[s] for s in ("path", "passable", "impassable") if s in statuses]
+            names = found[:1] or ["collected"]
+        else:
+            names = split_statuses(statuses) if self.split else [mixed_status(statuses)]
+        for colour, name in zip(self.colours, names):
+            colour.rgb = hex_color(name)
+
+    def reach(self, scale: float) -> float:
+        """How far from its middle, in map pixels, the pin answers the pointer at `scale` window pixels per map pixel."""
+        drawn = self.width / 2 * (0.7 if self.kind != "location" else 1)
+        return max(drawn, dp(PIN_REACH) / scale if scale else drawn)
+
+
+def load_pins(page, ctx, coords, door_coords, event_coords, use_split, default_size):
+    """Universal Tracker's map pins (its map_page_coords_func), as MapPins: each table maps a place (x, y) to its
+    sections and size. Returns its tables of pins by location id, entrance and event."""
+    from collections import defaultdict
+    canvas = page.ids.location_canvas
+    canvas.clear_widgets()
+    page.location_icons = []
+    tables = (defaultdict(list), defaultdict(list), defaultdict(list))
+    border = ctx.ui.loc_border
+    for kind, places, table in (("location", coords, tables[0]), ("entrance", door_coords, tables[1]),
+                                ("event", event_coords, tables[2])):
+        for spot, (names, size) in places.items():
+            pin = MapPin(kind, names, spot, size if size is not None else default_size, border,
+                         use_split and kind == "location")
+            canvas.add_widget(pin)
+            for name in names:
+                table[name].append(pin)
+    show_door_pins(page, ctx.tracker_doors_shown)
+    page.las_hover.reset()
+    return tables
+
+
+def show_door_pins(page, shown: bool) -> None:
+    """The Entrances box: the doors' pins drawn or not, without loading the map again."""
+    for pin in page.ids.location_canvas.children:
+        if isinstance(pin, MapPin) and pin.kind == "entrance":
+            pin.opacity = 1 if shown else 0
+    page.las_hover.reset()
+
+
+class MapHover:
+    """One tooltip for the map's pins (MapPin): the pin under the pointer, or nearest it where pins overlap, shows its
+    text at once; a click on a pin keeps it shown until a click elsewhere or on it again. The text is
+    ctx.pin_text's."""
+
+    def __init__(self, page, ctx) -> None:
+        from kivy.core.window import Window
+        from kvui import ToolTip
+        self.page, self.ctx, self.window = page, ctx, Window
+        self.tip = ToolTip(text="", markup=True)
+        self.tip.pos_hint = {}
+        self.tip.bind(size=lambda *_: self.place())
+        self.shown: Optional[MapPin] = None
+        self.pinned: Optional[MapPin] = None
+        self.at: Tuple[float, float] = (0, 0)  # the pointer
+        self.anchor: Tuple[float, float] = (0, 0)  # where the shown pin was entered or clicked
+        self.press: Optional[Tuple[Any, Tuple[float, float]]] = None
+        Window.bind(mouse_pos=self.moved, on_cursor_leave=lambda *_: self.show(self.pinned),
+                    on_touch_down=self.touch_down, on_touch_up=self.touch_up)
+
+    def map_point(self, pos) -> Optional[Tuple[float, float, float]]:
+        """A window point on the map: its place in map pixels (PopTracker's, from the top left) and the window pixels
+        per map pixel there; None when the map does not show it."""
+        box = self.page.ids.tracker_map_container.parent
+        if box.get_root_window() is None or not box.collide_point(*box.to_widget(*pos)) or self.covered(box, pos):
+            return None
+        image = self.page.ids.tracker_map
+        (nw, nh), (tw, th) = image.norm_image_size, image.texture_size
+        if not tw or not th:
+            return None
+        x, y = image.to_widget(*pos)
+        scale = nw / tw
+        left, top = image.x + (image.width - nw) / 2, image.y + (image.height + nh) / 2
+        return (x - left) / scale, (top - y) / scale, scale * self.page.ids.tracker_map_container.scale
+
+    def covered(self, box, pos) -> bool:
+        """Whether a popup or menu above the window's content covers the point."""
+        branch = box
+        while branch.parent is not None and branch.parent is not self.window:
+            branch = branch.parent
+        for child in self.window.children:
+            if child is branch:
+                return False
+            if child is not self.tip and child.collide_point(*pos):
+                return True
+        return False
+
+    def pin_at(self, pos) -> Optional[MapPin]:
+        point = self.map_point(pos)
+        if point is None:
+            return None
+        x, y, scale = point
+        best, distance = None, None
+        for pin in self.page.ids.location_canvas.children:
+            if isinstance(pin, MapPin) and pin.opacity:
+                dx, dy = abs(pin.x - x), abs(pin.y - y)
+                if max(dx, dy) <= pin.reach(scale) and (distance is None or dx * dx + dy * dy < distance):
+                    best, distance = pin, dx * dx + dy * dy
+        return best
+
+    def moved(self, _, pos) -> None:
+        self.at = tuple(pos)
+        if self.pinned is not None:
+            if self.pinned.parent is not None and self.page.ids.tracker_map_container.get_root_window() is not None:
+                return
+            self.pinned = None
+        self.show(self.pin_at(pos))
+
+    def touch_down(self, _, touch) -> None:
+        if getattr(touch, "button", "left") == "left" and not getattr(touch, "is_mouse_scrolling", False):
+            self.press = (touch.uid, tuple(touch.pos))
+
+    def touch_up(self, _, touch) -> None:
+        press, self.press = self.press, None
+        if press is None or press[0] != touch.uid or max(abs(touch.x - press[1][0]),
+                                                         abs(touch.y - press[1][1])) > dp(CLICK_SLOP):
+            return
+        pin = self.pin_at(touch.pos)
+        self.pinned = pin if pin is not self.pinned else None
+        self.at = tuple(touch.pos)
+        self.show(pin)
+
+    def show(self, pin: Optional[MapPin]) -> None:
+        if pin is None or pin.parent is None:
+            self.shown = None
+            if self.tip.parent is not None:
+                self.tip.parent.remove_widget(self.tip)
+            return
+        if pin is not self.shown:
+            self.shown = pin
+            self.anchor = self.at
+        self.tip.text = self.ctx.pin_text(pin)
+        self.tip.opacity, self.tip.scale_value_x, self.tip.scale_value_y = 1, 1, 1
+        if self.tip.parent is None:
+            self.window.add_widget(self.tip)
+        self.place()
+
+    def place(self) -> None:
+        """Below the point the pin was entered or clicked at, inside the window; above it when there is no room."""
+        if self.shown is None:
+            return
+        x, y = self.anchor
+        width, height = self.tip.size
+        top = y - dp(20)
+        bottom = top - height if top - height >= dp(4) else y + dp(20)
+        self.tip.pos = (min(max(dp(4), x - width / 2), self.window.width - width - dp(4)),
+                        min(bottom, self.window.height - height - dp(4)))
+
+    def refresh(self) -> None:
+        """The shown pin's text again: its statuses changed."""
+        if self.shown is not None:
+            self.show(self.shown)
+
+    def reset(self) -> None:
+        """The map's pins changed: a pin no longer drawn lets go of the tooltip."""
+        if self.pinned is not None and (self.pinned.parent is None or not self.pinned.opacity):
+            self.pinned = None
+        self.show(self.pinned or None)
+
+
 class RouteLine(Widget):
     """The route on Universal Tracker's map (TrackerMixin.route_points): a line in the map image's pixels, drawn
     under the pins."""
@@ -197,17 +454,25 @@ def draw_route(page, points: List[Tuple[float, float]], pin_size: float) -> None
     line.line.width = max(1.0, pin_size * ROUTE_WIDTH)
 
 
+def clear_route_search(page) -> None:
+    """Clear Path empties the search field too."""
+    field = getattr(page, "las_route_field", None)
+    if field is not None:
+        field.text = ""
+
+
 def add_route_search(page, ctx) -> None:
     """A field in a row below the map's checkboxes, with Universal Tracker's Clear Path beside it. As it is typed in, a
-    menu below it suggests the locations in logic whose names hold the text; picking one, or Enter when one matches,
-    gets its route (TrackerMixin.route_to)."""
+    menu below it suggests the locations in logic and the doors the sweep reaches (TrackerMixin.route_doors) whose
+    names hold the text; picking one, or Enter when one matches, gets its route (TrackerMixin.route_to)."""
     from kivy.uix.relativelayout import RelativeLayout
     field = ConnectBarTextInput(size_hint_x=None, width=dp(260), pos_hint={"x": 0, "center_y": 0.5})
     # a label over the empty field: KivyMD's hint widget rests where a taller field has its text, on this one's border
-    hint = label("Route to a check", 14, Palette().muted, one_line=True, pos_hint={"x": 0.05, "center_y": 0.5})
+    hint = label("Route to a check or door", 14, Palette().muted, one_line=True, pos_hint={"x": 0.05, "center_y": 0.5})
     holder = RelativeLayout(size_hint=(None, None), size=(dp(260), dp(30)), pos_hint={"center_y": 0.5})
     holder.add_widget(field)
     holder.add_widget(hint)
+    page.las_route_field = field
     field.bind(text=lambda *_: show_hint(), focus=lambda *_: show_hint())
 
     def show_hint() -> None:
@@ -215,7 +480,7 @@ def add_route_search(page, ctx) -> None:
     shown: Dict[str, Any] = {"menu": None, "picked": None}
 
     def matches(text: str) -> List[str]:
-        return [name for name in ctx.tracker_in_logic if text in name.lower()]
+        return [name for name in (*ctx.tracker_in_logic, *ctx.route_doors()) if text in name.lower()]
 
     def close() -> None:
         menu, shown["menu"] = shown["menu"], None

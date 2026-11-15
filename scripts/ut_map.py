@@ -18,6 +18,11 @@ Run with .venv-ap: python scripts/ut_map.py [<PopTracker pack folder>]
   own door every dungeon's door entrance, which the client hides on the maps of the dungeons it is not known to lead
   into (LASContext.load_map); on another door the world's way from the zone outside it to the zone inside
   (logic.yml), "<zone> -> <zone>".
+- The goal's pin: its event location (GOAL_LOCATION) at the egg's door on the overworld, placed as the doors are.
+  The client colours it by whether the goal is in logic (TrackerMixin.updateTracker).
+- A dungeon map's stair letters (maps.json's "stairs", which ap_tracker_map draws into its image): the stairs of a
+  side-view passage (places.json layout's side rooms side by side), or of a stair that leads to another top-view
+  room, share a letter, A, B, ... from the map's top.
 - items.json: the items of ut_map.ITEM_SECTIONS and DUNGEON_SECTIONS that ap_tracker_map.ITEM_ICONS has an icon for,
   under their AP names; a progressive item has one icon per level.
 """
@@ -35,6 +40,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "vendor" / "Archipelago"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(ROOT / "patcher"))
+from worlds.las import GOAL_LOCATION  # noqa: E402
 from worlds.las.items import LASR_TO_ITEM  # noqa: E402
 from worlds.las.lasr import DOORS, DUNGEON_DOORS, DUNGEONS, WRITTEN_LOGIC, door_entrance  # noqa: E402
 from worlds.las.locations import display_name  # noqa: E402
@@ -53,6 +59,8 @@ PACK_TO_ISLAND = (1.5, -45.0, -41.0)
 # Pin sizes in image pixels: the island's checks, its doors (smaller, so that a check's pin at its door shows) and a
 # dungeon's checks
 ISLAND_PIN, DOOR_PIN, DUNGEON_PIN = 30, 12, 11
+EGG_PIN = 24  # the goal's pin at the egg, a diamond like the doors'
+STAIRS = ("AreaUpstairs", "AreaDownstairs")  # places.json's teleport kinds of a dungeon's stairs
 
 
 @functools.cache
@@ -148,12 +156,67 @@ def in_dungeon(room: str, x: float, z: float, origins: dict):
     return round((gx + cx / uw * rw) / step), round((gy + cz / uh * rh) / step)
 
 
+def stair_letters(level: str) -> list:
+    """A dungeon level's stairs that lead to each other, each pair or group under one letter: those of a side-view
+    passage (its side rooms side by side in the layout), and a stair leading to another top-view room with the stair
+    it lands at (or its landing). On the dungeon's image, lettered from its top."""
+    layout, origins = places()["layout"][level], room_origins()
+    teleports = [t for t in places()["teleports"] if t["level"] == level and t["to_level"] == level
+                 and t["kind"] in STAIRS]
+    by_id = {t["id"]: t for t in teleports}
+    side = {room["name"]: room for room in layout if room["side"]}
+    passage = {name: name for name in side}
+
+    def root(name: str) -> str:
+        while passage[name] != name:
+            name = passage[name]
+        return name
+    for a in side.values():
+        for b in side.values():
+            if a["z"] == b["z"] and abs(a["x"] + a["w"] * places()["tile"] - b["x"]) < 0.01:
+                passage[root(a["name"])] = root(b["name"])
+    groups: dict = {}
+    for t in teleports:
+        if t["room"] in side:
+            continue
+        to = t["landing"]["room"] if t["landing"] else t["to"]
+        here = (t["room"], t["x"], t["z"])
+        if to in side:
+            groups.setdefault(root(to), set()).add(here)
+        else:
+            there = by_id.get(t["companion"])
+            end = (there["room"], there["x"], there["z"]) if there else (to, t["landing"]["x"], t["landing"]["z"])
+            groups.setdefault(frozenset((t["id"], there["id"] if there else to)), set()).update((here, end))
+    merged: list = []  # groups that share a stair are one (Eagle's Tower's 04C: from 04G, and to and from 08G)
+    for group in groups.values():
+        for other in [m for m in merged if m & group]:
+            merged.remove(other)
+            group = group | other
+        merged.append(group)
+    # a room the layout has only in side-view variants (Eagle's Tower's 05E) is not on the image
+    spots = [sorted((in_dungeon(room, x, z, origins) for room, x, z in group), key=lambda p: (p[1], p[0]))
+             for group in merged if len(group) > 1 and all(room in origins for room, _, _ in group)]
+    spots.sort(key=lambda group: (group[0][1], group[0][0]))
+    if len(spots) > len(ap_tracker_map.LETTERS):
+        raise SystemExit(f"{level}: {len(spots)} stair groups, more than ap_tracker_map.LETTERS")
+    return [{"letter": letter, "x": x, "y": y} for letter, group in zip(ap_tracker_map.LETTERS, spots)
+            for x, y in group]
+
+
 def maps_json() -> list:
     maps = [{"name": MAPS[0], "img": ap_tracker_map.ISLAND_IMAGE, "location_size": ISLAND_PIN}]
     for name, number in zip(MAPS[1:], DUNGEON_NUMBERS):
         maps.append({"name": name, "img": ap_tracker_map.dungeon_image(number), "location_size": DUNGEON_PIN,
-                     "location_border_thickness": 2})
+                     "location_border_thickness": 2, "stairs": stair_letters(ap_tracker_map.LEVELS[number])})
     return maps
+
+
+def egg_pin(place) -> dict:
+    """The goal's pin at the egg's door on the overworld."""
+    (door,) = [t for t in places()["teleports"] if t["level"] == "Field" and t["to_level"] == "Lv09WindFishsEgg"]
+    x, y = on_island(*place(door["x"], door["z"], door["y"]))
+    return {"name": "Wind Fish's Egg", "sections": [{"name": GOAL_LOCATION}],
+            "map_locations": [{"map": MAPS[0], "x": x, "y": y, "size": EGG_PIN}]}
 
 
 def locations_json(pack: Path) -> list:
@@ -199,7 +262,7 @@ def locations_json(pack: Path) -> list:
     print(f"{sum(len(s['sections']) for s in pins)} location sections at {len(pins)} pins, {len(entrances)} doors, "
           f"{len(inside)} dungeon doors")
     return [{"name": "Locations", "children": pins}, {"name": "Doors", "children": entrances},
-            {"name": "Dungeon doors", "children": inside}]
+            {"name": "Dungeon doors", "children": inside}, {"name": "Goal", "children": [egg_pin(place)]}]
 
 
 def items_json() -> list:

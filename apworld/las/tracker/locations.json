@@ -6554,5 +6554,26 @@
     ]
    }
   ]
+ },
+ {
+  "name": "Goal",
+  "children": [
+   {
+    "name": "Wind Fish's Egg",
+    "sections": [
+     {
+      "name": "Wind Fish"
+     }
+    ],
+    "map_locations": [
+     {
+      "map": "Koholint Island",
+      "x": 856,
+      "y": 57,
+      "size": 24
+     }
+    ]
+   }
+  ]
  }
 ]

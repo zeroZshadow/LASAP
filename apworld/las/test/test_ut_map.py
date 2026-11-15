@@ -7,9 +7,11 @@ from pathlib import Path
 from worlds.AutoWorld import AutoWorldRegister
 
 from . import generate_world
+from .. import GOAL_LOCATION
 from ..items import GAME
-from ..lasr import DOORS, DUNGEONS, door_entrance
-from ..ut_map import MAPS, TRACKER_WORLD, dungeon_map, hidden_door_entrances, map_index
+from ..lasr import CATEGORIES, DOORS, DUNGEONS, door_entrance
+from ..locations import LOCATION_NAMES
+from ..ut_map import MAPS, TRACKER_WORLD, dungeon_map, hidden_door_entrances, hidden_locations, map_index
 
 TRACKER = Path(__file__).resolve().parent.parent / TRACKER_WORLD["map_page_folder"]
 
@@ -87,6 +89,38 @@ class TestUTMap(unittest.TestCase):
         self.assertEqual(every - set(hidden[dungeon_map(DUNGEONS[1])]), {door_entrance(DUNGEONS[0])})
         for dungeon in DUNGEONS[2:] + DUNGEONS[:1]:
             self.assertEqual(set(hidden[dungeon_map(dungeon)]), every, dungeon)
+
+    def test_the_goal_pin_is_the_worlds_goal_event(self) -> None:
+        """The egg's pin is the goal's event location, on the island."""
+        ((pin,),) = [group("Goal")]
+        self.assertEqual([s["name"] for s in pin["sections"]], [GOAL_LOCATION])
+        self.assertEqual([spot["map"] for spot in pin["map_locations"]], [MAPS[0]])
+        world = generate_world({}, 4500)
+        self.assertIsNone(world.get_location(GOAL_LOCATION).address)
+
+    def test_hidden_checks(self) -> None:
+        """The map leaves off the optional checks and the Trendy Game's prizes the slot does not need."""
+        trendy = {LOCATION_NAMES[loc] for loc in CATEGORIES["Trendy_Rewards"]}
+        yoshi, shells = "Mabe Village - Trendy Prize 1", {"Mabe Village - Trendy Prize 3", "Mabe Village - Trendy Prize 6"}
+        for seed, (options, shown) in enumerate((({"seashell_mansion": 0, "rapids": False}, set()),
+                                                 ({"trade_quest": True, "seashell_mansion": 5}, {yoshi} | shells),
+                                                 ({"goal": "seashell_hunt", "seashell_mansion": 0}, shells))):
+            with self.subTest(options=options):
+                world = generate_world(options, 4600 + seed)
+                hidden = set(hidden_locations(world))
+                self.assertEqual(hidden - trendy, {LOCATION_NAMES[loc] for loc in world.optional})
+                self.assertEqual(trendy - hidden, shown)
+                if not options.get("rapids", True):
+                    self.assertIn("Rapids Ride - Rapids Race 30", hidden)
+
+    def test_stair_letters(self) -> None:
+        """Each letter on a dungeon's map marks at least two stairs; Turtle Rock's six side-view passages, A to F."""
+        maps = {m["name"]: m for m in load(TRACKER_WORLD["map_page_maps"])}
+        for name in MAPS[1:]:
+            letters = [s["letter"] for s in maps[name].get("stairs", ())]
+            for letter in set(letters):
+                self.assertGreaterEqual(letters.count(letter), 2, (name, letter))
+        self.assertEqual(sorted(set(s["letter"] for s in maps["D8 - Turtle Rock"]["stairs"])), list("ABCDEF"))
 
     def test_the_map_follows_the_level(self) -> None:
         self.assertEqual(MAPS[map_index("Field")], MAPS[0])

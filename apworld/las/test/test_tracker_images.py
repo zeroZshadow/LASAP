@@ -111,6 +111,31 @@ class TestTrackerImages(unittest.TestCase):
                 (level / name).write_bytes(b"")
             self.assertEqual(self.images.level_cells(Path(romfs), "Lv04AnglersTunnel"), {"02D", "05E"})
 
+    def test_stair_letters(self) -> None:
+        """A letter is a disc centred on its stair: opaque in the middle, clear at its corners, white with the letter in
+        black; the letters' images go by maps.json's images, and they name the zip."""
+        size = self.images.LETTER_DISC
+        image = texels(self.images.letter_image("A"))
+        self.assertEqual(image[0][3], 0)
+        self.assertEqual(image[size * size // 2 + size // 2][3], 255)
+        shades = {t[0] for t in image if t[3] == 255}
+        self.assertLess(min(shades), 0x40)
+        self.assertEqual(max(shades), 0xff)
+        canvas = bytearray(bytes([100, 100, 100, 255]) * 40 * 40)
+        self.images.draw_letters(canvas, 40, 40, [{"letter": "B", "x": 20, "y": 20}])
+        middle = [canvas[(y * 40 + x) * 4] for y in range(40) for x in range(40) if canvas[(y * 40 + x) * 4] != 100]
+        self.assertTrue(middle)
+        self.assertEqual(canvas[:4], bytes([100, 100, 100, 255]))
+        maps = [{"img": "a.png", "stairs": [{"letter": "A", "x": 1, "y": 2}]}, {"img": "b.png"}]
+        self.assertEqual(self.images.stair_letters(maps), {"a.png": maps[0]["stairs"]})
+        with tempfile.TemporaryDirectory() as romfs:
+            ui = Path(romfs, self.images.UI)
+            ui.mkdir(parents=True)
+            for name in ("Game.arc", "DgnTex.arc"):
+                (ui / name).write_bytes(b"x")
+            self.assertNotEqual(self.images.romfs_key(Path(romfs)),
+                                self.images.romfs_key(Path(romfs), self.images.stair_letters(maps)))
+
     def test_instruments(self) -> None:
         """CollectInst_<n> numbers the instruments in the world's order."""
         from ..lasr import INSTRUMENTS

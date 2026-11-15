@@ -4,7 +4,8 @@ import re
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 
 from .items import LASR_TO_ITEM
-from .lasr import DOORS, DUNGEON_NAMES, DUNGEON_NUMBERS, DUNGEONS, INSTRUMENTS, door_entrance
+from .lasr import CATEGORIES, DOORS, DUNGEON_NAMES, DUNGEON_NUMBERS, DUNGEONS, INSTRUMENTS, LOGIC, door_entrance
+from .locations import LOCATION_NAMES
 from .tracker import LEVEL_KEY
 
 OVERWORLD_MAP = "Koholint Island"
@@ -28,6 +29,19 @@ def hidden_door_entrances(dungeon_entrances: Optional[Mapping[str, str]], known:
     known = set(known)
     return {dungeon_map(dungeon): [door_entrance(door) for door in DUNGEONS
                                    if not (door in known and leads[door] == dungeon)] for dungeon in DUNGEONS}
+
+
+def hidden_locations(world) -> List[str]:
+    """The checks the map leaves off: the optional ones (LASWorld.optional), and the Trendy Game's prizes whose item
+    the slot does not need: the Yoshi Doll without the trade quest, a seashell when neither the Seashell Mansion nor
+    a seashell hunt takes seashells, heart pieces and chamber stones always."""
+    needed = set()
+    if world.options.trade_quest:
+        needed.add("yoshi-doll")
+    if world.options.seashell_mansion.value or world.goal_seashells:
+        needed.add("seashell")
+    trendy = [loc for loc in CATEGORIES["Trendy_Rewards"] if LOGIC[loc]["content"] not in needed]
+    return [LOCATION_NAMES[loc] for loc in (*world.optional, *trendy)]
 
 
 # The pack's maps, in its order: the overworld's, then the dungeons' d1 ... d8 and d0

@@ -15,8 +15,11 @@ JSON (scripts/ut_map.py) names these files and places its pins by this module's 
 - Both at half size (STEP): ASTC decodes only the texels kept (ap_astc), the slow part, spread over processes.
 - The item icons (ITEM_ICONS) at full size, from Game.arc, trimmed to what they draw (trim): Universal Tracker fits
   an icon to its cell, and the game's icons sit in margins of different sizes.
+- A dungeon's stair letters (the world's tracker/maps.json "stairs", by image): a white disc with the letter at each
+  stair (draw_letter), from FONT.
 """
 import hashlib
+import json
 import os
 import re
 import struct
@@ -29,8 +32,8 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 import ap_astc
 import ap_bntx
 
-# Bump when the images change, so clients build them again
-MAP_VERSION = 4
+# Bump when the images change, so clients build them again (a change of the stair letters renames the zip: romfs_key)
+MAP_VERSION = 5
 UI = Path("region_common", "ui")
 LEVEL = Path("region_common", "level")
 STEP = 2  # the maps' scale: texture pixels per image pixel
@@ -45,6 +48,25 @@ GRID_ORIGIN = (14, 8)  # the first room's top left on DgnMapGrid_00 (1308 x 1040
 LEVELS = {1: "Lv01TailCave", 2: "Lv02BottleGrotto", 3: "Lv03KeyCavern", 4: "Lv04AnglersTunnel", 5: "Lv05CatfishsMaw",
           6: "Lv06FaceShrine", 7: "Lv07EagleTower", 8: "Lv08TurtleRock", 0: "Lv10ClothesDungeon"}
 ISLAND_IMAGE = "images/maps/island.png"
+# A dungeon map's stair letters: their discs' size in image pixels, and each letter's 5 x 7 glyph, rows from the top
+LETTER_DISC = 16
+FONT = {
+    "A": (".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"),
+    "B": ("####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."),
+    "C": (".###.", "#...#", "#....", "#....", "#....", "#...#", ".###."),
+    "D": ("####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."),
+    "E": ("#####", "#....", "#....", "####.", "#....", "#....", "#####"),
+    "F": ("#####", "#....", "#....", "####.", "#....", "#....", "#...."),
+    "G": (".###.", "#...#", "#....", "#.###", "#...#", "#...#", ".####"),
+    "H": ("#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"),
+    "J": ("..###", "...#.", "...#.", "...#.", "...#.", "#..#.", ".##.."),
+    "K": ("#...#", "#..#.", "#.#..", "##...", "#.#..", "#..#.", "#...#"),
+    "L": ("#....", "#....", "#....", "#....", "#....", "#....", "#####"),
+    "M": ("#...#", "##.##", "#.#.#", "#.#.#", "#...#", "#...#", "#...#"),
+    "N": ("#...#", "#...#", "##..#", "#.#.#", "#..##", "#...#", "#...#"),
+    "P": ("####.", "#...#", "#...#", "####.", "#....", "#....", "#...."),
+}
+LETTERS = "".join(FONT)  # in the order they are given out (I and O left out: they read as 1 and 0)
 # Format suffixes of Game.arc's textures, in the order an icon takes them: BC3, then ASTC
 ICON_SUFFIXES = ("^q", "^w", "^_A", "^_D")
 TRIM_ALPHA = 16  # an icon's texels with no more alpha than this are trimmed off (trim): faint glow
@@ -218,6 +240,44 @@ def composite(canvas: bytearray, width: int, height: int, image: bytes, iw: int,
                     canvas[o + 3] = total // 255
 
 
+def letter_image(letter: str, size: int = LETTER_DISC, samples: int = 4) -> bytes:
+    """A stair letter's RGBA image, size x size: a white disc with a dark rim and the letter in black (FONT, bold: each
+    glyph cell inks the one right of it too), each pixel the mean of samples x samples points."""
+    glyph, radius = FONT[letter], size / 2
+    width = len(glyph[0]) + 1
+    cell = size * 0.62 / len(glyph)  # the glyph's height is 0.62 of the disc's
+    left, top = radius - cell * width / 2, radius - cell * len(glyph) / 2
+    out = bytearray(size * size * 4)
+    for py in range(size):
+        for px in range(size):
+            shade = alpha = 0
+            for sy in range(samples):
+                for sx in range(samples):
+                    x, y = px + (sx + 0.5) / samples, py + (sy + 0.5) / samples
+                    d = ((x - radius) ** 2 + (y - radius) ** 2) ** 0.5
+                    if d > radius:
+                        continue
+                    gx, gy = int((x - left) // cell), int((y - top) // cell)
+                    row = glyph[gy] if 0 <= gy < len(glyph) else ""
+                    inked = d > radius - 1 or "#" in row[max(0, gx - 1):max(0, gx + 1)]
+                    shade += 0x20 if inked else 0xff
+                    alpha += 1
+            o = (py * size + px) * 4
+            if alpha:
+                out[o:o + 3] = bytes([shade // alpha] * 3)
+                out[o + 3] = alpha * 255 // (samples * samples)
+    return bytes(out)
+
+
+def draw_letters(canvas: bytearray, width: int, height: int, stairs: Sequence[dict]) -> None:
+    """A dungeon image's stair letters (maps.json's "stairs"): each disc centred on its stair."""
+    images: Dict[str, bytes] = {}
+    for stair in stairs:
+        image = images.setdefault(stair["letter"], letter_image(stair["letter"]))
+        composite(canvas, width, height, image, LETTER_DISC, LETTER_DISC, round(stair["x"] - LETTER_DISC / 2),
+                  round(stair["y"] - LETTER_DISC / 2))
+
+
 def png(rgba: bytes, width: int, height: int) -> bytes:
     def chunk(kind: bytes, data: bytes) -> bytes:
         return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
@@ -227,13 +287,15 @@ def png(rgba: bytes, width: int, height: int) -> bytes:
             + chunk(b"IDAT", zlib.compress(raw, 6)) + chunk(b"IEND", b""))
 
 
-def romfs_key(romfs: Path) -> str:
+def romfs_key(romfs: Path, stairs: Optional[Dict[str, list]] = None) -> str:
     """Names what the images are built from: the two archives, by their sizes and modification times (reading Game.arc
-    whole would take seconds on a slow disk), and MAP_VERSION."""
+    whole would take seconds on a slow disk), the stair letters and MAP_VERSION."""
     digest = hashlib.sha1()
     for name in ("Game.arc", "DgnTex.arc"):
         stat = (romfs / UI / name).stat()
         digest.update(f"{name} {stat.st_size} {stat.st_mtime_ns}\n".encode())
+    if stairs:
+        digest.update(json.dumps(stairs, sort_keys=True).encode())
     return f"{digest.hexdigest()[:16]}-v{MAP_VERSION}"
 
 
@@ -253,8 +315,15 @@ def decode_all(jobs: Sequence[tuple], processes: int, path_entry: Optional[str])
     return [decode_job(job) for job in jobs]
 
 
-def build(romfs: Path, out: Path, processes: Optional[int] = None, path_entry: Optional[str] = None) -> None:
-    """Writes the tracker's zip from the RomFS to out (through a temporary file next to it)."""
+def stair_letters(maps: Sequence[dict]) -> Dict[str, list]:
+    """The world's tracker/maps.json's stair letters, by image."""
+    return {m["img"]: m["stairs"] for m in maps if m.get("stairs")}
+
+
+def build(romfs: Path, out: Path, processes: Optional[int] = None, path_entry: Optional[str] = None,
+          stairs: Optional[Dict[str, list]] = None) -> None:
+    """Writes the tracker's zip from the RomFS to out (through a temporary file next to it), with the dungeons' stair
+    letters (stair_letters)."""
     game = read_sarc((romfs / UI / "Game.arc").read_bytes())
     found = textures(game)
     rooms = textures(read_sarc((romfs / UI / "DgnTex.arc").read_bytes()))
@@ -296,6 +365,7 @@ def build(romfs: Path, out: Path, processes: Optional[int] = None, path_entry: O
             canvas, cw, ch = canvases[target]
             composite(canvas, cw, ch, rgba, w, h, x // STEP, y // STEP)
     for name, (canvas, cw, ch) in canvases.items():
+        draw_letters(canvas, cw, ch, (stairs or {}).get(name, ()))
         files[name] = png(bytes(canvas), cw, ch)
     for value in ITEM_ICONS.values():
         for base in ([value] if isinstance(value, str) else value):
@@ -312,9 +382,11 @@ def build(romfs: Path, out: Path, processes: Optional[int] = None, path_entry: O
 
 
 def main(argv: Iterable[str]) -> int:
-    """Builds the zip from the command line: <RomFS> <out.zip> [processes]."""
+    """Builds the zip from the command line: <RomFS> <out.zip> [<maps.json> [processes]], the stair letters from the
+    world's tracker/maps.json."""
     args = list(argv)
-    build(Path(args[0]), Path(args[1]), int(args[2]) if len(args) > 2 else None, str(Path(__file__).parent))
+    stairs = stair_letters(json.loads(Path(args[2]).read_text(encoding="utf-8"))) if len(args) > 2 else None
+    build(Path(args[0]), Path(args[1]), int(args[3]) if len(args) > 3 else None, str(Path(__file__).parent), stairs)
     return 0
 
 
