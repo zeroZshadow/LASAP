@@ -8,7 +8,7 @@ PY="${LASAP_PY:-$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --gi
 "$PY" "$(dirname "$0")/emu.py" check
 SB="$("$PY" "$(dirname "$0")/local_paths.py" sandbox)/ryujinx/sdcard"
 OUT="$1"
-# A patch written before the patcher's last commit lacks that change (an old Common.bfevfl warps home into the house).
+# A patch written before the patcher's last commit lacks that change.
 PATCHED="$(stat -c %Y "$OUT/config/lasr-exl/config.ini")"
 CHANGED="$(git -C "$(dirname "$0")/.." log -1 --format=%ct -- patcher)"
 if [ -n "$CHANGED" ] && [ "$PATCHED" -lt "$CHANGED" ]; then

@@ -14,7 +14,8 @@ GAME_EXTENSIONS = (".nsp", ".xci")
 
 
 def _config_home() -> Path:
-    """Where Ryujinx keeps its per-user folder (.NET's ApplicationData)."""
+    """The per-user application data folder (.NET's ApplicationData), where Ryujinx and, on Windows, Yuzu forks keep
+    theirs."""
     if sys.platform == "win32":
         return Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
     if sys.platform == "darwin":
@@ -97,7 +98,6 @@ class Emulator:
         return None
 
     def start_args(self, game: str, data_dir: Optional[Path]) -> List[str]:
-        """data_dir: the target's, None without one."""
         return [self.program] + ([game] if game else [])
 
 

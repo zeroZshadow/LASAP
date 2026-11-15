@@ -1,6 +1,5 @@
-"""Starting gear (start_inventory_from_pool) comes out of the item pool: Archipelago takes every copy it gives at the
-start out of multiworld.itempool, so each must be there, also when the options leave its vanilla location unrandomized
-or the pre-fill would place it (LASWorld._replaced_by_starting_gear)."""
+"""Starting gear (start_inventory_from_pool) stays in the item pool, from which Archipelago takes it
+(LASWorld._replaced_by_starting_gear)."""
 from collections import Counter
 
 from . import LASTestBase
@@ -25,7 +24,6 @@ class TestStartingGearAtLockedLocations(StartingGearBase):
             self.assertIn(loc, self.world.locked)
             item = self.multiworld.get_location(LOCATION_NAMES[loc], self.player).item
             self.assertEqual(item.name, "50 Rupees", loc)
-        self.assertNotIn("dream-shrine-left", self.world.fill_slot_data()["logic"]["locked"])
 
     def test_gear_in_pool(self) -> None:
         self.assert_gear_in_pool()

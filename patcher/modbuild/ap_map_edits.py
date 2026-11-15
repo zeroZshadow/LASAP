@@ -1,11 +1,30 @@
 """The map tracker's rows and texts in the mod, the same in every seed (ap_map.py; DESIGN.md, Map tracker)."""
+import math
+
 import ap_map_icons
 from RandomizerCore.Randomizers.chests import CHEST_ROOMS
 from RandomizerCore.Randomizers.data import DUNGEON_MAP_ICONS
 from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct
 
-from ap_map import (CHEST_ACTOR, DOT_LABEL, DUNGEON_MARKERS, ENTRANCE_OFFSET, FLAG_PREFIX, LOOKS, load_positions,
-                    overworld_groups)
+from ap_map import CHEST_ACTOR, DOT_LABEL, DUNGEON_MARKERS, ENTRANCE_OFFSET, FLAG_PREFIX, LOOKS, load_positions
+
+# Checks closer than this (world units; a screen is 15 x 12) share an icon.
+GROUP_DISTANCE = 3.0
+
+
+def overworld_groups(positions: dict) -> list:
+    """[(x, z, y, [lasr location, ...])]: every overworld location, each joined to the first spot near it (by x and
+    z), in name order."""
+    groups = []
+    for loc in sorted(positions["overworld"]):
+        x, z, y = positions["overworld"][loc]
+        for group in groups:
+            if math.dist((group[0], group[1]), (x, z)) < GROUP_DISTANCE:
+                group[3].append(loc)
+                break
+        else:
+            groups.append((x, z, y, [loc]))
+    return groups
 
 
 def door_groups(files) -> list:
@@ -17,11 +36,13 @@ def door_groups(files) -> list:
             for label in DUNGEON_MARKERS.values()]
 
 
-def add(files) -> None:
-    """The icons' rows and texts, in every mod."""
-    places = [(x, z, y) for x, z, y, _ in overworld_groups(load_positions()) + door_groups(files)]
+def add(files) -> list:
+    """Returns the overworld groups' locations, in the order the rows number them (ap_assets.data's map_groups)."""
+    groups = overworld_groups(load_positions())
+    places = [(x, z, y) for x, z, y, _ in groups + door_groups(files)]
     _field_icons(files, places)
     _text(files, len(places))
+    return [locs for *_, locs in groups]
 
 
 def _field_icons(files, places: list) -> None:

@@ -8,10 +8,6 @@ from ..lasr import ITEM_DEFS, ITEM_LOCATIONS, LOGIC
 from ..lasr_settings import lasr_settings, logic_tokens, setting_token
 from ..logic import NEVER, referenced_tokens
 
-# Tokens in logic.yml's conditions that resolve to nothing, so they never hold (logic.py). Removing or correcting one
-# changes what the logic allows.
-UNRESOLVED: set = set()
-
 
 def declared_settings() -> set:
     """The tokens LASR's settings can put into the logic: every boolean setting's, and those of Stealing."""
@@ -37,7 +33,7 @@ class TestLogicNames(unittest.TestCase):
                 resolved = token in settings or token in ITEM_DEFS or LOGIC.get(token, {}).get("type", "item") != "item"
             if not resolved:
                 unresolved.add(token)
-        self.assertEqual(sorted(unresolved), sorted(UNRESOLVED))
+        self.assertEqual(sorted(unresolved), [])
 
     def test_locations(self) -> None:
         """A location holds an item of the pool and stands in a node."""

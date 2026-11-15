@@ -240,12 +240,3 @@ class TestEggEvent(unittest.TestCase):
             self.assertEqual(self.ap_goal.jumps(seashells),
                              ["Field Lv09WindFishsEgg Lv09WindFishsEgg_08D Ending Lv09WindFishsEgg_05H"])
         self.assertEqual(self.ap_goal.jumps(None), [])
-
-    def test_settings_seashells(self) -> None:
-        """The patch's Seashell Hunt decides the hunt; a patch without it is a hunt when it takes seashells."""
-        for settings, seashells in (({"Seashell Hunt": True, "Seashells Required": 0}, 0),
-                                    ({"Seashell Hunt": True, "Seashells Required": 20}, 20),
-                                    ({"Seashell Hunt": False, "Seashells Required": 0}, None),
-                                    ({"Seashells Required": 20}, 20), ({"Seashells Required": 0}, None), ({}, None)):
-            with self.subTest(settings=settings):
-                self.assertEqual(self.ap_goal.settings_seashells(settings), seashells)

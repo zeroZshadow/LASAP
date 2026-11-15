@@ -1,7 +1,7 @@
 # Seashells Required (DESIGN.md, Goal): on a seashell hunt with 3 required, the sign below the Wind Fish's egg says
 # so; the egg stays shut with two seashells, and the third, received at the egg, plays its opening without the Ballad.
-# Its door then leads to the ending. Run after newgame_file2 on a mod patched with Seashells Required 3 (and
-# Instruments Required 0, as a seashell hunt's settings have). DBG grant adds the seashells without an item-get.
+# Its door then leads to the ending. Run after newgame_file2 on a mod patched with Seashell Hunt on, Seashells
+# Required 3 and Instruments Required 0. DBG grant adds the seashells without an item-get.
 # The sign one tile north: its text (Place:SBMountTamaranch) names the number. The owl in front of the stairs talks
 # when Link first stands there; FourteenClear marks that talk as done.
 send DBG setflag FourteenClear 1

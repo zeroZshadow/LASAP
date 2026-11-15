@@ -18,6 +18,8 @@ from RandomizerCore.Tools import event_tools  # noqa: E402
 from RandomizerCore.Tools.leb import Grid, Room  # noqa: E402
 from RandomizerCore.Tools.oead_tools import readSheet  # noqa: E402
 from local_paths import lookup  # noqa: E402
+import las_rooms  # noqa: E402
+from las_rooms import DOOR_LEVELS, INSTRUMENT_ACTORS, ITEM_PARAMS, room_tables  # noqa: E402
 
 TILE = 1.5
 FIELD = "Field"
@@ -28,21 +30,19 @@ SOLID = ("ObjGrass", "ObjRock", "ObjFieldCrac", "ObjGrave", "ObjCactus", "ObjTre
 # Actors left out of the level files: meshes, lights and camera setup that no view draws
 SKIP_ACTORS = ("MapStatic", "MapKinematic", "MapFixture", "TagCamera", "TagChangeEnv", "TagLight", "TagTailorPla", "TagHolocaust", "TagSwitchLight", "TagActivateC",
                "AreaCameraOf", "AreaAmbience", "AreaWarterFlow", "AreaBeltConv")
-ITEM_ACTORS = ("ObjTreasureBox", "ItemHeartPiece", "ItemSeashell", "ItemSecretSe", "ItemGoldenLeaf", "ItemSmallKey", "ItemHeartContainer")
+ITEM_ACTORS = (*las_rooms.ITEM_ACTORS, "ItemSecretSe")
 # Checks that stand on one actor, where the rooms LASR, DOOR_LEVELS and the dungeon map give do not say (DOOR_LEVELS names the
 # door the map marks; the dungeon map has no side-view rooms, so a check in one is pinned on the room above: Angler's and the Evil Eagle's fights, and
 # the key that drops into 04E's hole and is picked up in 06A)
 CHECK_ACTORS = {"ciao-ciao": ("DogHouse_01A", "NpcRibbonBow"), "dream-shrine-left": ("DreamShrine_01A", "ItemOcarina"), "bay-fisherman": ("FishingBoat_01A", "NpcMarthasBa"),
                 "taltal-rooster-cave": ("EagleKeyCave_01A", "ItemBirdKey"), "D4-angler": ("Lv04AnglersTunnel_04AL", "EnemyAngler"),
                 "D4-sunken-item": ("Lv04AnglersTunnel_06A", "ItemSmallKey"), "D7-eagle": ("Lv07EagleTower_05HL", "EnemyAlbatoss")}
-ITEM_PARAMS = ("Seashell", "GoldenLeaf", "HeartPiece", "SmallKey")
 # Overworld checks found by what they hold: actors whose first parameter is the check's index, and actors of which the overworld has one
 INDEXED_ITEMS = {"ItemSecretSe": "seashell", "ItemHeartPiece": "heart-piece"}
 SINGLE_ITEMS = {"ItemSlimeKey": "slime-key", "ItemSleepyMu": "mushroom"}
 # A teleport's kind by actor: where its target's level and locator sit in the parameters
 TELEPORTS = {"AreaLevelOpen": (0, 1), "AreaHoleLowe": (0, 1), "AreaUpstairs": (None, 0), "AreaDownstairs": (None, 0),
              "PanelDownsta": (None, 0), "PanelWallDow": (None, 0), "ObjDungeonWa": (None, 0)}
-INSTRUMENTS = ("ItemFullMoon", "ItemConchHorn", "ItemSeaLilys", "ItemSurfHarp", "ItemWindMari", "ItemCoralTri", "ItemEveningC", "ItemThunderD")
 FLOW_JUMPS = {("GameControl", "RequestLevelJump"), ("GameControl", "RequestWarp"), ("GameControl", "RequestRestartWarp"),
               ("GameControl", "RequestLevelJumpInCurrentLevel"), ("WarpUI", "JumpToSelectedLocation")}
 # Actors that move Link by running a flow, by room and kind: the flow holding the jump
@@ -273,23 +273,6 @@ def eval_constants(path, names):
     return found
 
 
-def room_tables():
-    """LASR location -> room, from the *_ROOMS dicts in LASR's randomizers."""
-    rooms = {}
-    for path in sorted((ROOT / "patcher" / "modbuild" / "RandomizerCore" / "Randomizers").glob("*.py")):
-        for node in ast.parse(path.read_text(encoding="utf-8")).body:
-            if (isinstance(node, ast.Assign) and isinstance(node.value, ast.Dict) and isinstance(node.targets[0], ast.Name)
-                    and node.targets[0].id.endswith("_ROOMS") and not node.targets[0].id.startswith("PANEL")):
-                try:
-                    table = ast.literal_eval(node.value)
-                except ValueError:
-                    continue
-                for location, room in table.items():
-                    if isinstance(room, str):
-                        rooms.setdefault(location, room)
-    return rooms
-
-
 def field_room(x, z):
     return f"Field_{int(z // 12) + 1:02d}{chr(65 + int(x // 15))}"
 
@@ -321,11 +304,10 @@ def holds(actor, node):
 
 def place_checks(levels, room_index, report, facts):
     """Each check's real place. map_positions.json puts interior checks at their door, so those take their room from LASR's
-    tables or map_positions' level table, and their position from the item actor there. Its overworld points are what the game's
+    tables or las_rooms.DOOR_LEVELS, and their position from the item actor there. Its overworld points are what the game's
     map shows, some of them pins or a neighbour's actor, so an overworld check with its own actor stands on that."""
     positions = json.loads((ROOT / "patcher" / "map_positions.json").read_text(encoding="utf-8"))
     tables = room_tables()
-    door_levels = eval_constants(ROOT / "scripts" / "map_positions.py", {"DOOR_LEVELS"})["DOOR_LEVELS"]
     field = field_items(levels[FIELD])
     checks = {}
     def on_actor(name):
@@ -341,7 +323,7 @@ def place_checks(levels, room_index, report, facts):
             checks[name] = on_actor(name)
             continue
         room = tables.get(name)
-        level = door_levels.get(name)
+        level = DOOR_LEVELS.get(name)
         if room and not room.startswith(FIELD) and room in room_index:
             data = room_index[room]
             items = [a for a in data["actors"] if a["kind"].startswith(ITEM_ACTORS) or (a["params"] and isinstance(a["params"][0], str) and a["params"][0].startswith(ITEM_PARAMS))]
@@ -479,7 +461,7 @@ def other_teleports(levels, points, starts, jumps):
                 elif k == "ObjWarpManbo":
                     point = by_index.get(ps[0])
                     add(k, level, room, a, FIELD, point["locator"] if point else None, f"WarpPoint {ps[0]}")
-                elif k in INSTRUMENTS and ps and ps[0] == FIELD:
+                elif k in INSTRUMENT_ACTORS and ps and ps[0] == FIELD:
                     add(k, level, room, a, FIELD, ps[1])
                 elif k in ("AreaRapidFlow", "TagRapidFlow"):
                     add(k, level, room, a)

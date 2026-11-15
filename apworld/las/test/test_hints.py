@@ -1,4 +1,5 @@
 """In-game hints (hints.py): which locations and areas the owl statues and books name, by hint_distribution."""
+import ast
 import re
 import unittest
 from collections import Counter
@@ -8,6 +9,8 @@ from Fill import distribute_items_restrictive
 from test.general import gen_steps, setup_multiworld
 from worlds.AutoWorld import AutoWorldRegister, call_all
 
+from . import PATCHER, forget, patcher_import
+from .. import PATCH_FORMAT
 from ..hints import ALWAYS, DISTRIBUTIONS, JOKES, KINDS, SOURCES, area, candidates
 from ..items import GAME, ITEM_TABLE
 from ..lasr import item_dungeon, location_dungeon
@@ -239,22 +242,15 @@ class TestClientHinted(unittest.TestCase):
         """The client tells the game which of the slot's locations hold a server hint not yet found (HINTED), for the
         map tracker, again only when that changes."""
         import asyncio
-        from ..client import LASContext
+        from . import client_context
         from ..ids import LOCATION_BASE
-
-        lines = []
-
-        class Writer:
-            def write(self, data: bytes) -> None:
-                lines.append(data.decode().rstrip("\n"))
 
         def hint(location: int, finding: int = 1, found: bool = False) -> dict:
             return {"receiving_player": 2, "finding_player": finding, "location": LOCATION_BASE + location,
                     "item": 1, "found": found, "status": 0}
 
-        async def run() -> None:
-            ctx = LASContext(None, None, "127.0.0.1", 0)
-            ctx.slot, ctx.team, ctx.game_writer = 1, 0, Writer()  # type: ignore[assignment]
+        async def run() -> list:
+            ctx, _, lines = client_context(game=True, slot=1, team=0)
             key = "_read_hints_0_1"
             # another player's location, and a hint found, are left out
             ctx.stored_data[key] = [hint(55), hint(7), hint(9, finding=2), hint(64, found=True)]
@@ -262,5 +258,20 @@ class TestClientHinted(unittest.TestCase):
             ctx.on_package("SetReply", {"key": key, "value": ctx.stored_data[key]})  # the same: nothing sent
             ctx.stored_data[key] = [hint(55, found=True), hint(7)]
             ctx.on_package("SetReply", {"key": key, "value": ctx.stored_data[key]})
-        asyncio.run(run())
-        self.assertEqual(lines, ["HINTED CLEAR", "HINTED 7 55", "HINTED CLEAR", "HINTED 7"])
+            return lines
+        self.assertEqual(asyncio.run(run()), ["HINTED CLEAR", "HINTED 7 55", "HINTED CLEAR", "HINTED 7"])
+
+
+class TestPatcherAgrees(unittest.TestCase):
+    """The patcher numbers the hint sources (APHint<n>) and reads the patch format as the world writes them."""
+
+    def test_sources(self) -> None:
+        ap_hints, = patcher_import("ap_hints")
+        forget("ap_hints")
+        self.assertEqual(tuple(ap_hints.SOURCES), SOURCES)
+
+    def test_patch_format(self) -> None:
+        tree = ast.parse((PATCHER / "las_ap_patch.py").read_text(encoding="utf-8"))
+        values = [ast.literal_eval(node.value) for node in tree.body if isinstance(node, ast.Assign)
+                  and isinstance(node.targets[0], ast.Name) and node.targets[0].id == "PATCH_FORMAT"]
+        self.assertEqual(values, [PATCH_FORMAT])

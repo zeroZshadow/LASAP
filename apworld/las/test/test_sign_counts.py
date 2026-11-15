@@ -16,7 +16,7 @@ from Options import generate_yaml_templates
 from test.general import setup_multiworld
 from worlds.AutoWorld import AutoWorldRegister
 
-from . import test_goal
+from . import client_context, test_goal
 from .test_logic import STEPS
 from .test_universal_tracker import regenerate
 from ..items import GAME
@@ -107,18 +107,8 @@ class TestClient(unittest.TestCase):
             "logic": {"preset": "basic", "tokens": {}, "vanilla": [], "optional": [], "starting": []}}
 
     def run_lines(self, slot_data: dict, lines) -> tuple:
-        from ..client import LASContext
-
         async def run():
-            ctx = LASContext(None, None, "127.0.0.1", 0)
-            sent = []
-
-            async def send_msgs(msgs):
-                sent.extend(msgs)
-            ctx.send_msgs = send_msgs
-            ctx.server = object()
-            ctx.slot = 1
-            ctx.team = 0
+            ctx, sent, _ = client_context(server=object(), slot=1, team=0)
             seen = [ctx.logic_tracker_goal]
             ctx.on_package("Connected", {"slot_data": slot_data})
             seen.append(ctx.logic_tracker_goal)
@@ -153,11 +143,8 @@ class TestClient(unittest.TestCase):
 
     def test_read_in_an_earlier_session(self) -> None:
         """The key in data storage counts, as the game's save may have lost the read."""
-        from ..client import LASContext
-
         async def run() -> list:
-            ctx = LASContext(None, None, "127.0.0.1", 0)
-            ctx.slot, ctx.team, ctx.slot_seed_hash, ctx.slot_data = 1, 0, "abc", self.SLOT_DATA
+            ctx, _, _ = client_context(slot=1, team=0, slot_seed_hash="abc", slot_data=self.SLOT_DATA)
             ctx.make_logic_tracker()
             seen = []
             for value in (None, True):
@@ -166,12 +153,9 @@ class TestClient(unittest.TestCase):
             return seen
         self.assertEqual(asyncio.run(run()), [8, 3])
 
-    def test_known_and_old_slot_data(self) -> None:
-        old = {k: v for k, v in self.SLOT_DATA.items() if k != "instruments_known"}
-        for slot_data in ({**self.SLOT_DATA, "instruments_known": True}, old):
-            with self.subTest(slot_data=slot_data):
-                _, seen = self.run_lines(slot_data, ["HELLO 2 abc"])
-                self.assertEqual([goal[0] for goal in seen[1:]], [3, 3])
+    def test_known(self) -> None:
+        _, seen = self.run_lines({**self.SLOT_DATA, "instruments_known": True}, ["HELLO 2 abc"])
+        self.assertEqual([goal[0] for goal in seen[1:]], [3, 3])
 
 
 class TestUniversalTracker(unittest.TestCase):

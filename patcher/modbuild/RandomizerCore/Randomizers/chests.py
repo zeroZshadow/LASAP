@@ -3,9 +3,11 @@ import RandomizerCore.Tools.event_tools as event_tools
 
 class ChestRandomizer:
     def __init__(self, mod_generator) -> None:
+        import mod  # patcher/modbuild/mod.py, which imports this module
         self.parent = mod_generator
-        self.makeChestContentFixes()  # mod._chest_contents
+        mod.chest_contents(self)
         self.writeChestEvent()
+        mod.chest_placeholder_branch(self.parent.file_manager)
 
 
     def writeChestEvent(self):

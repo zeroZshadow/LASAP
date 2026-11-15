@@ -1,6 +1,5 @@
 #!/bin/bash
 # Restarts the sandbox game with the freshly built test module (patcher/exl-test/subsdk9) and boots to file 1.
-# Needs the scripted client running (TESTING.md, "Scripted AP session").
 set -e
 cd "$(dirname "$0")/.."
 # In a worktree the venvs stay in the main checkout.

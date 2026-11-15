@@ -1,6 +1,5 @@
 # Multiplayer ghosts, the puppets (DESIGN.md, Ghosts). Run after boot_file1, set up as ghost_net (a ghost relay, the
-# client joined to it with --ghost-secret test, scripts/ghost_peer.py --secret test circling), on a mod with
-# ghost_puppet.py install. On the open lawn east of Mabe's phone booth tree (Field_12D).
+# client joined to it with --ghost-secret test, scripts/ghost_peer.py --secret test circling). On the open lawn east of Mabe's phone booth tree (Field_12D).
 connect
 expect HELLO 30
 warp Field 43 10.5 137

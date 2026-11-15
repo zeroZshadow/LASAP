@@ -34,8 +34,8 @@ SOURCE_PATCHER = Path(__file__).resolve().parent.parent.parent / "patcher"
 # Top-level modules of the patcher
 PATCHER_MODULES = {"las_ap_patch", "ap_assets", "ap_bntx", "ap_chest_model", "ap_ghost_model", "ap_entrances", "ap_goal",
                    "ap_hints", "ap_map", "ap_options", "ap_save_name", "ap_shuffles", "romfs_check", "seed_file"}
-# Those only the tracker's images use (tracker_images): a patcher run leaves them imported, as the images build
-# outside _PATCHER_LOCK and its worker processes are handed ap_tracker_map's functions by module name
+# Imported only by tracker_images, which builds outside _PATCHER_LOCK and hands its worker processes ap_tracker_map's
+# functions by module name: patcher runs leave these imported
 TRACKER_MODULES = {"ap_astc", "ap_tracker_map"}
 _PATCHER_LOCK = threading.Lock()
 
@@ -257,10 +257,8 @@ def run_builtin_patcher(patch_file: Path, romfs: Path, out: Path, log: Callable[
 
 
 def tracker_images(romfs: Path, log: Callable[[str], None]) -> Path:
-    """The tracker's map images for this RomFS dump (DESIGN.md, Universal Tracker map): a zip in Archipelago's cache
-    folder that the patcher's ap_tracker_map builds once per dump and image version, its decoding spread over
-    processes that import it from the patcher's folder. Only the import takes _PATCHER_LOCK, so a patch need not
-    wait for the build."""
+    """The tracker's map images zip for this RomFS dump, built once (DESIGN.md, Universal Tracker map). Only the
+    import takes _PATCHER_LOCK, so a patch need not wait for the build."""
     import Utils
     root = builtin_patcher_dir(log)
     with _PATCHER_LOCK:
@@ -283,7 +281,6 @@ def tracker_images(romfs: Path, log: Callable[[str], None]) -> Path:
 
 
 class _LastLine:
-    """Passes the patcher's lines on to the log and keeps the last one."""
     def __init__(self, log: Callable[[str], None]) -> None:
         self.log = log
         self.line = ""
@@ -361,16 +358,12 @@ def install(out: Path, sd_card: Path, mods: Path, build: Optional[str] = None,
 
 
 def patch_and_install(command: str, patch_file: Path, seed_hash: str, romfs: Path, sd_card: Path, mods: Path,
-                      log: Callable[[str], None], force: bool = False,
-                      settings: Optional[Dict[str, Any]] = None,
-                      on_install: Optional[Callable[[], None]] = None) -> bool:
-    """Installs the mod for `patch_file` with these player settings unless it is installed already. Returns whether
-    it patched. `on_install` is called once patching is done, before the files are copied."""
+                      log: Callable[[str], None], settings: Optional[Dict[str, Any]] = None,
+                      on_install: Optional[Callable[[], None]] = None) -> None:
+    """Installs the mod for `patch_file` with these player settings. `on_install` is called once patching is done,
+    before the files are copied."""
     if not sd_card.is_dir():
         raise InstallError(f"The SD card folder {sd_card} does not exist.")
-    if not force and mod_state(sd_card, mods, seed_hash, command, settings) == CURRENT:
-        log(f"The mod for seed {seed_hash} is already installed in {mods}.")
-        return False
     with tempfile.TemporaryDirectory(prefix="las-ap-") as tmp:
         log(f"Patching {patch_file.name}.")
         run_patcher(command, patch_file, romfs, Path(tmp), log, settings)
@@ -378,4 +371,3 @@ def patch_and_install(command: str, patch_file: Path, seed_hash: str, romfs: Pat
             on_install()
         install(Path(tmp), sd_card, mods, None if command.strip() else builtin_patcher_build(), settings)
     log(f"Installed the mod for seed {seed_hash}: {mods} and {sd_card / CONFIG_PATH}.")
-    return True

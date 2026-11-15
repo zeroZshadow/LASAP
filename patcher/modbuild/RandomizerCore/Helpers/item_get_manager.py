@@ -50,6 +50,10 @@ class ItemGetManager:
         after : str | None
             The event that comes after the returned ItemGetAnimation"""
 
+        import mod  # patcher/modbuild/mod.py, which imports this module
+        if item == mod.PLACEHOLDER_KEY:
+            return mod.placeholder_get(flowchart, item, index, before, after)
+
         # progressive items
         if item == 'PowerBraceletLv1':
             return event_tools.createProgressiveItemSwitch(flowchart, 'PowerBraceletLv1', 'PowerBraceletLv2',

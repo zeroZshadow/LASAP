@@ -67,7 +67,7 @@ namespace {
         // Completed Bridge: Kiki and the stick stand aside (Field_08L, LASR's TradeQuestRandomizer)
         {"completed_bridge", true, 0x750014005CF52527, Edit::Move, 0, 173.25f, 91.0f},
         {"completed_bridge", true, 0x750013005CF52527, Edit::Move, 0, 173.219f, 91.855f},
-        // The Ammo Ghost in Tarin's house (patcher ap_ghost.ACTOR_KEY)
+        // The Ammo Ghost in Tarin's house (patcher ap_ammo_ghost.ACTOR_KEY)
         {"ammo_ghost", false, 0x6D0040005CEDEAC0, Edit::Skip},
     };
 

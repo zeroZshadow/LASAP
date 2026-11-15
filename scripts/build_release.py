@@ -29,11 +29,8 @@ BUILD = ROOT / "build" / "release"
 GAME = "Links Awakening Switch"
 PREFIX = "las/patcher/"  # install.py PATCHER_PREFIX
 TESTS = "las/test/"  # the world's tests, which "Build APWorlds" packs and players do not need
-# Patcher files and folders, relative to patcher/
-PATCHER_FILES = ("las_ap_patch.py", "ap_assets.py", "ap_astc.py", "ap_bntx.py", "ap_chest_model.py", "ap_ghost_model.py",
-                 "ap_entrances.py", "ap_goal.py", "ap_hints.py", "ap_map.py", "ap_options.py", "ap_save_name.py",
-                 "ap_shuffles.py", "ap_tracker_map.py", "seed_file.py", "romfs_check.py", "map_positions.json", "version.txt",
-                 "LICENSE-LASR.txt", "assets", "exl/subsdk9", "exl/main.npdm")
+# Patcher files and folders besides its Python files, relative to patcher/
+PATCHER_FILES = ("map_positions.json", "version.txt", "LICENSE-LASR.txt", "assets", "exl/subsdk9", "exl/main.npdm")
 # The world's data files the patcher reads, packed as its data folder (las_ap_patch.DATA_DIR)
 WORLD_DATA = ROOT / "apworld" / "las" / "data"
 PATCHER_DATA = ("items.yml", "logic.yml")
@@ -46,7 +43,7 @@ MODULE_LICENSE = ROOT / "las-ap-exl" / "LICENSE"
 def patcher_files() -> dict:
     """Archive name -> file for the patcher."""
     files = {}
-    for entry in PATCHER_FILES:
+    for entry in (*sorted(p.name for p in PATCHER.glob("*.py")), *PATCHER_FILES):
         path = PATCHER / entry
         if not path.exists():
             sys.exit(f"patcher/{entry} is missing" + (" (scripts/build_exl.sh)" if entry.startswith("exl") else ""))

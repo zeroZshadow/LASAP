@@ -1,158 +1,24 @@
 import RandomizerCore.Tools.event_tools as event_tools
+from RandomizerCore.Randomizers import heart_pieces
 from RandomizerCore.Randomizers.data import MODEL_SIZES, MODEL_ROTATIONS
-import copy
+
+SUNKEN_SHELLS = ("kanalet-moat-north", "taltal-sunken")  # shown as heart pieces, so placed as sunken ones
 
 
 class SeashellRandomizer:
+    """The sunken seashells, as heart piece actors (heart piece actors are bigger and easier to see). ap_drop makes the
+    other seashells' drops."""
+
     def __init__(self, mod_generator) -> None:
         self.parent = mod_generator
-
-        self.flow = self.parent.file_manager.readFile('SmallKey.bfevfl')
-
-        # we are using local flags to spawn stuff the items
-        # this is because we want them to keep the bahavior where they despawn if you leave
-        # Field looks to use around 80 local flags, all being gravestones or grass with holes under them
-        # I believe local flags range from 0-255, so we will try starting at 101
-        self.local_flag_index = 101
-
-        self.addBushDrops()
-        self.addRockDrops()
-        self.addTreeDrops()
-        self.addHoleDrops()
-
-        self.parent.file_manager.writeFile('SmallKey.bfevfl', self.flow)
-
-        self.randomizeStaticShells()
-
-
-    def addBushDrops(self) -> None:
-        for room in GRASS_ROOMS:
-
-            room_data = self.parent.file_manager.readFile(f"{GRASS_ROOMS[room]}.leb")
-
-            grass = [a for a in room_data.actors if isinstance(a.parameters[1], bytes) and str(a.parameters[1], "utf-8").startswith("Seashell")][0]
-            grass.parameters[1] = bytes("None", "utf-8")
-            grass.switches[0] = (0, self.local_flag_index)
-            key = copy.deepcopy(grass)
-            key.key += 1
-            key.name = bytes(f"ItemSmallKey-{hex(key.key)[2:].upper()}", "utf-8")
-            key.type = 0xa9 # small key
-            key.rotY = 0
-            key.switches[1] = (1, self.parent.flag_manager.flags[GRASS_FLAGS[room]])
-            room_data.actors.append(key)
-            item_key, item_index, model_path, model_name = self.parent.item_info_manager.getItemInfoWithModel(room)
-            room_data.setSmallKeyParams(model_path, model_name, room, item_key)
-            self.writeKeyEvent(self.flow.flowchart, room)
-
-            self.parent.file_manager.writeFile(f"{GRASS_ROOMS[room]}.leb", room_data)
-            self.local_flag_index += 1
-
-
-    def addRockDrops(self) -> None:
-        for room in ROCK_ROOMS:
-
-            room_data = self.parent.file_manager.readFile(f"{ROCK_ROOMS[room]}.leb")
-
-            rock = [a for a in room_data.actors if isinstance(a.parameters[0], bytes) and str(a.parameters[0], "utf-8").startswith("Seashell")][0]
-            rock.parameters[0] = bytes("None", "utf-8")
-            rock.switches[0] = (0, self.local_flag_index)
-            key = copy.deepcopy(rock)
-            key.key += 1
-            key.name = bytes(f"ItemSmallKey-{hex(key.key)[2:].upper()}", "utf-8")
-            key.type = 0xa9 # small key
-            key.rotY = 0
-            key.switches[1] = (1, self.parent.flag_manager.flags[ROCK_FLAGS[room]])
-            room_data.actors.append(key)
-            item_key, item_index, model_path, model_name = self.parent.item_info_manager.getItemInfoWithModel(room)
-            room_data.setSmallKeyParams(model_path, model_name, room, item_key)
-            self.writeKeyEvent(self.flow.flowchart, room)
-
-            self.parent.file_manager.writeFile(f"{ROCK_ROOMS[room]}.leb", room_data)
-            self.local_flag_index += 1
-
-
-    def addTreeDrops(self) -> None:
-        """Adds small keys where the item in the tree would land
-
-        We use exlaunch to force the tree to set its switch0 when bonked"""
-
-        for room in TREE_ROOMS:
-
-            room_data = self.parent.file_manager.readFile(f"{TREE_ROOMS[room]}.leb")
-
-            tree = [a for a in room_data.actors if isinstance(a.parameters[0], bytes) and str(a.parameters[0], "utf-8").startswith("Seashell")][0]
-            tree.parameters[0] = bytes("Tree", "utf-8")
-            tree.switches[0] = (0, self.local_flag_index)
-            key = copy.deepcopy(tree)
-            key.key += 1
-            key.name = bytes(f"ItemSmallKey-{hex(key.key)[2:].upper()}", "utf-8")
-            key.type = 0xa9 # small key
-            key.posX = TREE_DROP_POSITIONS[room][0]
-            key.posY = TREE_DROP_POSITIONS[room][1]
-            key.posZ = TREE_DROP_POSITIONS[room][2]
-            key.rotY = 0
-            key.switches[1] = (1, self.parent.flag_manager.flags[TREE_FLAGS[room]])
-            room_data.actors.append(key)
-            item_key, item_index, model_path, model_name = self.parent.item_info_manager.getItemInfoWithModel(room)
-            room_data.setSmallKeyParams(model_path, model_name, room, item_key)
-            self.writeKeyEvent(self.flow.flowchart, room)
-
-            self.parent.file_manager.writeFile(f"{TREE_ROOMS[room]}.leb", room_data)
-            self.local_flag_index += 1
-
-
-    def addHoleDrops(self) -> None:
-        for room in HOLE_ROOMS:
-
-            room_data = self.parent.file_manager.readFile(f"{HOLE_ROOMS[room]}.leb")
-
-            hole = [a for a in room_data.actors if a.type == 0x233][0]
-            hole.switches[0] = (0, self.local_flag_index)
-            key = copy.deepcopy(hole)
-            key.key += 1
-            key.name = bytes(f"ItemSmallKey-{hex(key.key)[2:].upper()}", "utf-8")
-            key.type = 0xa9 # small key
-            key.posX = HOLE_DROP_POSITONS[room][0]
-            key.posY = HOLE_DROP_POSITONS[room][1]
-            key.posZ = HOLE_DROP_POSITONS[room][2]
-            key.rotY = 0
-            key.switches[1] = (1, self.parent.flag_manager.flags[HOLE_FLAGS[room]])
-            room_data.actors.append(key)
-            item_key, item_index, model_path, model_name = self.parent.item_info_manager.getItemInfoWithModel(room)
-            room_data.setSmallKeyParams(model_path, model_name, room, item_key)
-            self.writeKeyEvent(self.flow.flowchart, room)
-
-            self.parent.file_manager.writeFile(f"{HOLE_ROOMS[room]}.leb", room_data)
-            self.local_flag_index += 1
-
-
-    def writeKeyEvent(self, flowchart, room) -> None:
-        """Adds a new entry point to the SmallKey event flow for each key room, and inserts an ItemGetAnimation to it"""
-        
-        item_event = self.parent.item_get_manager.get(flowchart, room)
-
-        event_tools.addEntryPoint(flowchart, room)
-
-        event_tools.createActionChain(flowchart, room, [
-            ('SmallKey', 'Deactivate', {}),
-            ('SmallKey', 'SetActorSwitch', {'value': True, 'switchIndex': 1}),
-            ('SmallKey', 'Destroy', {})
-        ], item_event)
-
-
-    def randomizeStaticShells(self) -> None:
         flow = self.parent.file_manager.readFile('SinkingSword.bfevfl')
 
-        for room in SHELL_ROOMS:
+        for room in SUNKEN_SHELLS:
 
             item_key, item_index, model_path, model_name = self.parent.item_info_manager.getItemInfoWithModel(room)
             room_data = self.parent.file_manager.readFile(f"{SHELL_ROOMS[room]}.leb")
-            shells = [a for a in room_data.actors if a.type == 0x87]
-            if len(shells) > 0:
-                shell = shells[0]
-                shell.type = 0x8a # turn shells into ItemSlimeKey actors
-            else:
-                shell = [a for a in room_data.actors if a.type == 0x8a][0] # slime key
+            shell = [a for a in room_data.actors if a.type == 0x87][0]
+            shell.type = 0xB0
 
             get_anim = self.parent.item_get_manager.get(flow.flowchart, room)
 
@@ -162,17 +28,11 @@ class SeashellRandomizer:
                 ('EventFlags', 'SetFlag', {'symbol': SHELL_FLAGS[room], 'value': True})
             ], get_anim)
 
-            # sunken seashells will be changed into heart piece actors
-            # heart piece actors are bigger and easier to see without manually figuring out scale
-            if room in ("kanalet-moat-north", "taltal-sunken"):
-                shell.type = 0xB0
-                if model_name not in ("HeartPiece", "HeartContainer"):
-                    shell.posY += 0.25 # raise them up 1/6 of a tile
-                    shell.scaleX = 0.75
-                    shell.scaleY = 0.75
-                    shell.scaleZ = 0.75
+            if model_name not in ("HeartPiece", "HeartContainer"):
+                shell.posY += heart_pieces.SUNKEN_RISE
+                shell.scaleX = shell.scaleY = shell.scaleZ = heart_pieces.SUNKEN_SHRUNK
 
-            # could be ItemSlimeKey or ItemHeartPiece actor, so we can't use parameter[0] as that is index for HPs
+            # parameter[0] is the heart piece's index
             shell.parameters[1] = bytes(model_path, 'utf-8')
             shell.parameters[2] = bytes(model_name, 'utf-8')
             shell.parameters[3] = bytes(room, 'utf-8') # entry point

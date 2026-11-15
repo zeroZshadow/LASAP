@@ -5,7 +5,12 @@ import unittest
 from unittest import mock
 
 from NetUtils import HintStatus
-from Utils import Version
+
+from . import client_context
+from ..items import ITEM_TABLE, LASR_TO_ITEM
+from ..lasr import DUNGEONS, LOGIC
+
+SWAP = {**{d: d for d in DUNGEONS}, "tail-cave": "turtle-rock", "turtle-rock": "tail-cave"}
 
 
 class TestTrackerVersion(unittest.TestCase):
@@ -25,15 +30,14 @@ class TestTrackerItems(unittest.TestCase):
         """Universal Tracker takes the slot's starting items, which the server sends only at items_handling 0b111,
         before the items received."""
         from .. import client
-        from ..items import ITEM_TABLE
         if not client.TRACKER_LOADED:
             self.skipTest("Universal Tracker not installed")
         from NetUtils import NetworkItem
 
         async def run() -> list:
-            ctx = client.LASContext(None, None, "127.0.0.1", 0)
-            ctx.slot_data = {"logic": {"starting": ["Stone Beak (Face Shrine)", "Compass (Face Shrine)"]}}
-            ctx.items_received = [NetworkItem(ITEM_TABLE["Hookshot"].code, 1234, 1, 1)]
+            ctx, _, _ = client_context(
+                slot_data={"logic": {"starting": ["Stone Beak (Face Shrine)", "Compass (Face Shrine)"]}},
+                items_received=[NetworkItem(ITEM_TABLE["Hookshot"].code, 1234, 1, 1)])
             return [item.item for item in ctx.tracker_items_received]
 
         self.assertEqual(asyncio.run(run()), [ITEM_TABLE[name].code for name in
@@ -41,53 +45,28 @@ class TestTrackerItems(unittest.TestCase):
 
 
 class TestHintLines(unittest.TestCase):
-    def run_lines(self, server_version: Version, lines) -> list:
-        from ..client import LASContext
-
+    def test_create_hints(self) -> None:
         async def run() -> list:
-            ctx = LASContext(None, None, "127.0.0.1", 0)
-            sent = []
-
-            async def send_msgs(msgs):
-                sent.extend(msgs)
-            ctx.send_msgs = send_msgs
-            ctx.server = object()
-            ctx.slot = 1
-            ctx.server_version = server_version
-            for line in lines:
+            ctx, sent, _ = client_context(server=object(), slot=1)
+            for line in ("HINT 2 1279393921", "HINT 1 1279393846", "HINT 2 1279393921"):
                 ctx.handle_game_line(line)
                 await asyncio.sleep(0)
             return sent
-        return asyncio.run(run())
-
-    def test_create_hints(self) -> None:
-        sent = self.run_lines(Version(0, 6, 8), ["HINT 2 1279393921", "HINT 1 1279393846", "HINT 2 1279393921"])
-        self.assertEqual(sent, [
+        self.assertEqual(asyncio.run(run()), [
             {"cmd": "CreateHints", "player": 2, "locations": [1279393921], "status": HintStatus.HINT_PRIORITY},
             {"cmd": "CreateHints", "player": 1, "locations": [1279393846], "status": HintStatus.HINT_PRIORITY},
         ])
-
-    def test_old_server_scouts_own_locations(self) -> None:
-        sent = self.run_lines(Version(0, 6, 1), ["HINT 2 1279393921", "HINT 1 1279393846"])
-        self.assertEqual(sent, [{"cmd": "LocationScouts", "locations": [1279393846], "create_as_hint": 2}])
 
 
 class TestChecksBySeed(unittest.TestCase):
     def test_checks_wait_for_the_slot_of_the_game_seed(self) -> None:
         """Checks and the goal the game reports before the client knows the slot go only to the slot of the seed the
         game runs; a new game connection forgets those of the last one."""
-        from ..client import LASContext, LOCATION_BASE, PROTOCOL_VERSION
+        from ..client import LOCATION_BASE, PROTOCOL_VERSION
 
         async def run() -> list:
-            ctx = LASContext(None, None, "127.0.0.1", 0)
-            sent = []
-
-            async def send_msgs(msgs):
-                sent.extend(msgs)
-            ctx.send_msgs = send_msgs
-            ctx.server = object()
-            ctx.slot = 1
-            ctx.missing_locations = {LOCATION_BASE + 5, LOCATION_BASE + 6}
+            ctx, sent, _ = client_context(server=object(), slot=1,
+                                          missing_locations={LOCATION_BASE + 5, LOCATION_BASE + 6})
             for line in (f"HELLO {PROTOCOL_VERSION} aaaa", "CHECKS 5 6", "GOAL"):
                 ctx.handle_game_line(line)
                 await asyncio.sleep(0)
@@ -111,30 +90,92 @@ class TestDoorLines(unittest.TestCase):
     def test_doors_gone_through_go_to_data_storage(self) -> None:
         """A DOOR line finds a shuffled door and the inside door it leads to, which go to data storage once, and only
         for the slot of the seed the game runs; other jumps find nothing."""
-        from ..client import LASContext, PROTOCOL_VERSION
+        from ..client import PROTOCOL_VERSION
         from ..lasr import DOORS, ENTRANCE_POOL
 
         door, other = ENTRANCE_POOL[:2]
         inside = DOORS["pairs"][other]
 
         async def run() -> list:
-            ctx = LASContext(None, None, "127.0.0.1", 0)
-            sent = []
-
-            async def send_msgs(msgs):
-                sent.extend(msgs)
-            ctx.send_msgs = send_msgs
-            ctx.server = object()
-            ctx.slot, ctx.team, ctx.slot_seed_hash = 1, 0, "aaaa"
+            ctx, sent, _ = client_context(server=object(), slot=1, team=0, slot_seed_hash="aaaa")
             for line in (f"HELLO {PROTOCOL_VERSION} bbbb", f"DOOR {DOORS['pairs'][door]} {inside}",
                          f"HELLO {PROTOCOL_VERSION} aaaa", f"DOOR {DOORS['pairs'][door]} {inside}",
                          f"DOOR {other} {door}", "DOOR Lv01TailCave_08D Lv01TailCave_08D"):
                 ctx.handle_game_line(line)
                 await asyncio.sleep(0)
             return sent
-        sent = asyncio.run(run())
-        self.assertEqual(sent, [{"cmd": "Set", "key": "las_entrances_0_1", "default": {}, "want_reply": False,
-                                 "operations": [{"operation": "update", "value": {door: inside}}]}])
+        self.assertEqual(asyncio.run(run()), [{"cmd": "Set", "key": "las_entrances_0_1", "default": {},
+                                               "want_reply": False,
+                                               "operations": [{"operation": "update", "value": {door: inside}}]}])
+
+
+class TestDungeonDoors(unittest.TestCase):
+    def test_found_doors(self) -> None:
+        """The client's found doors: those leading into the dungeons the game reports entered and those data storage
+        has; every door with dungeons not shuffled."""
+        from ..client import PROTOCOL_VERSION
+
+        async def run() -> list:
+            ctx, _, _ = client_context(slot=1, team=0,
+                                       slot_data={"dungeon_entrances": SWAP, "options": {"shuffled_dungeons": 1}})
+            found = [ctx.found_doors]
+            ctx.handle_game_line(f"HELLO {PROTOCOL_VERSION} aaaa")
+            ctx.handle_game_line("DUNGEON 8")
+            found.append(ctx.found_doors)
+            ctx.on_package("Retrieved", {"keys": {"las_sign_0_1": None, "las_doors_0_1": {"key-cavern": "key-cavern"}}})
+            found.append(ctx.found_doors)
+            ctx.slot_data = {"dungeon_entrances": SWAP, "options": {"shuffled_dungeons": 0}}
+            found.append(ctx.found_doors)
+            await asyncio.sleep(0)
+            return found
+        self.assertEqual(asyncio.run(run()), [set(), {"tail-cave"}, {"tail-cave", "key-cavern"}, None])
+
+    def test_sends_doors(self) -> None:
+        """The client sends the locations behind reachable doors (DOORS) before those in logic (INLOGIC)."""
+        from ..ids import LOCATION_BASE, LOCATION_OFFSETS
+
+        d1 = [k for k in LOGIC if k.startswith("D1-") and LOGIC[k]["type"] == "item"]
+        d8 = [k for k in LOGIC if k.startswith("D8-") and LOGIC[k]["type"] == "item"]
+        tokens = {"open-mabe": True, "free-book": True, "shuffled-bombs": True, "can-steal": True}
+
+        async def run() -> list:
+            ctx, _, lines = client_context(
+                game=True, slot=1, team=0, server_locations={LOCATION_BASE + LOCATION_OFFSETS[loc] for loc in d1 + d8},
+                slot_data={"dungeon_entrances": SWAP, "logic": {
+                    "preset": "basic", "tokens": tokens, "vanilla": [], "optional": [],
+                    "starting": [LASR_TO_ITEM["tail-key"]]}})
+            ctx.make_logic_tracker()
+            ctx.send_logic()
+            ctx.send_logic()  # nothing changed: nothing sent
+            return lines
+        doors = " ".join(str(local_id) for local_id in sorted(LOCATION_OFFSETS[loc] for loc in d8))
+        self.assertEqual(asyncio.run(run()), ["DOORS CLEAR", f"DOORS {doors}", "INLOGIC CLEAR"])
+
+    def test_publishes_found_doors(self) -> None:
+        """A dungeon the game reports entered (DUNGEON) finds the door that leads into it: the client adds it to
+        las_doors_<team>_<slot> once per connection, for the slot of the seed the game runs only. Turtle Rock is behind
+        Tail Cave's door."""
+        from ..client import PROTOCOL_VERSION
+
+        async def run() -> list:
+            ctx, sent, _ = client_context(server=object(), slot=1, team=0, slot_data={"dungeon_entrances": SWAP},
+                                          slot_seed_hash="aaaa")
+            # another seed's game: not its doors; then the game of the slot's seed, SYNC sending its dungeons again
+            for line in (f"HELLO {PROTOCOL_VERSION} bbbb", "DUNGEON 8", f"HELLO {PROTOCOL_VERSION} aaaa",
+                         "DUNGEON 8", "DUNGEON 3", "DUNGEON 8", "DUNGEON 3", "DUNGEON 9"):
+                ctx.handle_game_line(line)
+                await asyncio.sleep(0)
+            sent.append("reconnected")
+            ctx.doors_sent.clear()  # a new connection to the server sends them again
+            await ctx.send_doors()
+            return [msg if isinstance(msg, str) else msg["operations"] for msg in sent
+                    if isinstance(msg, str) or (msg["cmd"] == "Set" and msg["key"] == "las_doors_0_1")]
+        self.assertEqual(asyncio.run(run()), [
+            [{"operation": "update", "value": {"tail-cave": "turtle-rock"}}],
+            [{"operation": "update", "value": {"key-cavern": "key-cavern"}}],
+            "reconnected",
+            [{"operation": "update", "value": {"tail-cave": "turtle-rock", "key-cavern": "key-cavern"}}],
+        ])
 
 
 class TestGhostNamesFromGame(unittest.TestCase):
@@ -143,7 +184,7 @@ class TestGhostNamesFromGame(unittest.TestCase):
         from ..client import LASContext
 
         async def run() -> list:
-            ctx = LASContext(None, None, "127.0.0.1", 0)
+            ctx, _, _ = client_context()
             with mock.patch.object(LASContext, "set_ghost_names") as set_names:
                 ctx.handle_game_line("GHOSTNAMES 0")
                 ctx.handle_game_line("GHOSTNAMES 1")
@@ -166,7 +207,8 @@ class TestGameConnection(unittest.TestCase):
                 loop = asyncio.create_task(ctx.game_loop())
                 reports = []
                 ctx.report = lambda level, message, replace=False: reports.append(message)
-                with mock.patch.object(LASContext, "option", return_value="Ryujinx.exe"),                         mock.patch("subprocess.Popen", side_effect=AssertionError("started an emulator")):
+                with mock.patch.object(LASContext, "option", return_value="Ryujinx.exe"), \
+                        mock.patch("subprocess.Popen", side_effect=AssertionError("started an emulator")):
                     await ctx.start_emulator()
                 ctx.exit_event.set()
                 loop.cancel()
@@ -226,11 +268,10 @@ class TestDetection(unittest.TestCase):
             options = {"emulator": str(exe)}
 
             async def run() -> None:
-                ctx = LASContext(None, None, "127.0.0.1", 0)
+                ctx, _, _ = client_context(report=lambda *args, **kwargs: None)
                 with mock.patch.object(LASContext, "option", side_effect=lambda key: options.get(key, "")), \
                         mock.patch.object(LASContext, "set_option",
                                           side_effect=lambda key, value, detect=True: options.update({key: value})):
-                    ctx.report = lambda *args, **kwargs: None
                     await ctx.install_patch()
                     self.assertNotIn("romfs_folder", options)
                     dump = exe.parent / "user" / "dump" / TITLE_ID / "romfs" / "region_common" / "event"
@@ -261,12 +302,11 @@ class TestSwitchInstall(unittest.TestCase):
             steps = []
 
             async def run() -> LASContext:
-                ctx = LASContext(None, None, "127.0.0.1", 0)
+                ctx, _, _ = client_context()
 
-                def install(*args) -> bool:
+                def install(*args) -> None:
                     steps.append(list(ctx.install_steps))
                     args[-1]()  # patched: copying
-                    return True
 
                 with mock.patch.object(LASContext, "option", side_effect=lambda key: options.get(key, "")), \
                         mock.patch.object(LASContext, "check_setup", return_value=ready), \

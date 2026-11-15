@@ -6,7 +6,7 @@ class ConditionsDatasheetFixes:
         sheet = mod_generator.file_manager.readFile('Conditions.gsheet')
 
         for condition in sheet['values']:
-            self.editConditions(condition, mod_generator.settings)
+            self.editConditions(condition)
 
         self.makeConditions(sheet, mod_generator.placements)
         mod_generator.file_manager.writeFile('Conditions.gsheet', sheet)
@@ -44,7 +44,7 @@ class ConditionsDatasheetFixes:
         sheet['values'].append(mansion_condition)
 
 
-    def editConditions(self, condition, settings):
+    def editConditions(self, condition):
         """Makes needed changes to conditions, such as making Marin staying in Mabe and the shop not sell shields until you find one"""
 
         # Make sure Marin always stays in the village even if you trade for the pineapple

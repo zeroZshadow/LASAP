@@ -1,11 +1,4 @@
-"""Shuffled dungeons: each dungeon's overworld door leads into the dungeon the patch maps it to, and that dungeon's
-ways out lead out of that door (DESIGN.md, Shuffled dungeons).
-
-The module leads the level jumps (`jumps`; the seed file's jumps): a jump from the overworld to a dungeon's entrance
-goes to the entrance of the dungeon behind that door, and a jump from a dungeon to the outside of its own door (its
-exit, its instrument's warp, the Fairy Queen's warps and her room's loading zone) goes to the outside of the door that
-leads into it. The rooms and flowcharts keep their vanilla targets. The module also swaps the overworld map's dungeon
-markers (`markers`; the seed file's markers)."""
+"""The seed file's jumps and markers for Shuffled dungeons and Entrances (DESIGN.md, Shuffled dungeons, Entrances)."""
 import re
 from typing import List, Mapping
 
@@ -62,12 +55,9 @@ def jumps(entrances: Mapping[str, str]) -> List[str]:
 
 
 def door_jumps(entrances: Mapping[str, str], pairs: Mapping[str, str]) -> List[str]:
-    """The jumps' lines of the overworld doors that lead elsewhere (Entrances): entrances maps such a door to the inside
-    door it leads to, pairs to the one it led to. A door goes by the spot its partner lands on, so the overworld's jump
-    through the door goes to the new inside door's spot, and that inside's jump out to the door's own spot. Tarin's
-    house's jump out is from any level: the warp menu and the Save & Quit after a game over lead outside its door too,
-    so with Random start they lead out of the start door, as the house does.
-    A jump out onto a covered door (OPENING_FLAGS) also names the flag that opens it."""
+    """The jumps' lines of the overworld doors that lead elsewhere: entrances maps such a door to the inside door it
+    leads to, pairs to the one it led to. Tarin's house's jump out is from any level: the warp menu and the Save & Quit
+    after a game over lead outside its door too. A jump out onto a covered door also names the flag that opens it."""
     door_of = {inside: door for door, inside in pairs.items()}
     lines = []
     for door, inside in entrances.items():
@@ -80,8 +70,7 @@ def door_jumps(entrances: Mapping[str, str], pairs: Mapping[str, str]) -> List[s
 
 def markers(entrances: Mapping[str, str]) -> List[str]:
     """The markers' lines: per door that leads into another dungeon, its map marker's label, then the label and show
-    flag of the dungeon's, which the module gives the door's marker: it names the dungeon behind the door and shows
-    once that dungeon is entered."""
+    flag of the dungeon behind it."""
     icons = ap_assets.data()["dungeon_map_icons"]
     return [f"{icons[door][0]} {' '.join(icons[dungeon])}"
             for door, dungeon in entrances.items() if door != dungeon]

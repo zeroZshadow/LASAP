@@ -1,12 +1,8 @@
-"""Which of a slot's locations are in logic for the items it has, for the map tracker (DESIGN.md, Map tracker).
+"""Which of a slot's locations are in logic for the items it has (DESIGN.md, Map tracker).
 
-The client evaluates the world's own rules (logic.py) without a MultiWorld. The rules read item counts from
-`state.prog_items` and regions through `can_reach`, so a small state and region stand-ins serve. Regions, and the
-items of vanilla locations (no AP locations), are added until nothing changes, as Archipelago's sweep does. A location
-is in logic only for the items the player has: the item of a locked location (a trade item, a companion) counts once
-it is received, not while the location could be reached, as the player may not know where it is. An optional location
-(LASWorld.optional) is in logic only once the goal is.
-The slot data's "logic" entry carries what the rules depend on (LASWorld.fill_slot_data).
+Evaluates the world's own rules without a MultiWorld: they read `state.prog_items` and `can_reach`, so a small state
+and region stand-ins serve. A locked location's item counts once received, not while the location could be reached,
+as the player may not know where it is.
 """
 from collections import Counter
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Set, Tuple
@@ -21,23 +17,14 @@ from .logic import LogicCompiler, make_rule
 from .options import Goal, SeashellsRequired
 
 PLAYER = 1
-# Data storage key the client sets to true once the player has read the sign at the foot of the egg's stairs, which
-# names the instruments the egg needs (DESIGN.md, Goal). Formatted with the team and the slot.
-SIGN_KEY = "las_sign_{team}_{player}"
-# Data storage key holding the dungeon doors the player has found, {door: dungeon} by the slot data's dungeon_entrances
-# names: entering a dungeon (the game's DUNGEON) finds the door that leads into it. Formatted with the team and the
-# slot.
-DOORS_KEY = "las_doors_{team}_{player}"
-# Data storage key holding the overworld doors the player has gone through (Entrances), {door: the inside door it leads
-# to}: going through a door or out of its inside (the game's DOOR) finds the pair. Formatted with the team and the slot.
-ENTRANCES_KEY = "las_entrances_{team}_{player}"
-# Data storage key holding the level the game shows (LASR level names: Field, Lv01TailCave, ...), for trackers.
-# Formatted with the team and the slot.
-LEVEL_KEY = "las_level_{team}_{player}"
+# Data storage keys, formatted with the team and the slot.
+SIGN_KEY = "las_sign_{team}_{player}"  # true once the player read the sign naming the instruments the egg needs
+DOORS_KEY = "las_doors_{team}_{player}"  # the dungeon doors found, {door: dungeon}: entering a dungeon finds its door
+ENTRANCES_KEY = "las_entrances_{team}_{player}"  # the overworld doors gone through, {door: its inside door}
+LEVEL_KEY = "las_level_{team}_{player}"  # the level the game shows (Field, Lv01TailCave, ...)
 
 def door_pool(entrances: Optional[Mapping[str, str]]) -> List[str]:
-    """The slot's door pool, from its slot data's `entrances`: with a dungeon's door among them (Shuffled dungeons
-    everything) DUNGEON_POOL, else ENTRANCE_POOL."""
+    """The slot's door pool from its slot data's `entrances`: DUNGEON_POOL when a dungeon's door is among them."""
     return DUNGEON_POOL if set(entrances or ()) & set(DUNGEON_DOORS.values()) else ENTRANCE_POOL
 
 
@@ -104,17 +91,9 @@ class LogicTracker:
                  instruments_required: int = 8, seashells_required: Optional[int] = None,
                  overworld_entrances: Optional[Mapping[str, str]] = None, start: Optional[str] = None):
         """`vanilla`: LASR locations that keep a progression item and are no AP locations; `shuffled`: the slot's
-        LASR locations; `dungeon_entrances`: the slot data's, None for none shuffled; `optional`: the shuffled
-        locations reached only after the goal, which opens with `instruments_required` instruments or, on a
-        seashell hunt (`seashells_required` not None), with that many secret seashells; `overworld_entrances`: the slot
-        data's `entrances`, the overworld doors that lead elsewhere; `start`: the slot data's, the door the house's door
-        is swapped with (Random start), None for Tarin's own. The rules are the world's (lasr.entrance_logic,
-        whose ways out of the dungeons lead as the doors do): each dungeon door a region, and the region it leads into
-        entered through it once the player knows where it leads (sweep). With overworld entrances, each shuffled door
-        and inside door is a region too (lasr.door_logic's open_doors), entered through the door it is paired with
-        once the player knows the pair (sweep), the house's from the start: the player leaves it first. The doors
-        are those `overworld_entrances` names: a dungeon's door among them (Shuffled dungeons everything) is such a
-        door too, and its dungeon has no door region of its own."""
+        locations; `optional`: those reached only after the goal; the other arguments are the slot data's. Each
+        closed dungeon door and, with overworld entrances, each shuffled door is a region entered through its partner
+        once the player knows where it leads (sweep); the house's door from the start, as the player leaves it first."""
         entrances = dict(dungeon_entrances) if dungeon_entrances else {d: d for d in DUNGEONS}
         self.pairs = dict(overworld_entrances or {})
         self.home = start or HOME_DOOR  # the door the house's door is paired with
@@ -178,13 +157,10 @@ class LogicTracker:
 
     def sweep(self, item_names: Iterable[str], found_doors: Optional[Iterable[str]] = None,
               found_entrances: Optional[Iterable[str]] = None) -> Tuple[Set[str], Set[str]]:
-        """The shuffled locations reachable with these items, and the shuffled dungeon locations whose dungeon's door
-        is reachable with them. A dungeon is entered only through a door whose dungeon the player knows (known_doors of
-        `found_doors`, the doors found; None for every door), as the map names a dungeon only once it is entered: until
-        then nothing inside it is in logic, nor what its inside reaches (the Rapids' south island chest through the
-        Face Shrine, the top of Turtle Rock). The map tracker shows a dungeon's icon by its door while its name is
-        hidden. A shuffled overworld door and the inside door it leads to lead into each other only once the player
-        has gone through them (`found_entrances`, the overworld doors found; None for every door)."""
+        """The shuffled locations reachable with these items, and the dungeon locations whose door is reachable. A
+        dungeon is entered only through a door whose dungeon the player knows (known_doors), so nothing it leads to is
+        in logic before (the Rapids' south island chest through the Face Shrine, the top of Turtle Rock). A shuffled
+        door and its inside door lead into each other once gone through (`found_entrances`). None: every door."""
         known = known_doors(found_doors)
         found = set(self.pairs) if found_entrances is None else (set(found_entrances) | {self.home}) & set(self.pairs)
         through: Dict[str, List[_Region]] = {}  # a door's region: the regions of the doors found to lead into it

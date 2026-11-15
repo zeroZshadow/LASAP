@@ -28,9 +28,6 @@ assert len(LASR_LOCATIONS) == len(LOCATION_NAMES), "duplicate location display n
 
 LOCATION_NAME_TO_ID: Dict[str, int] = {LOCATION_NAMES[k]: LOCATION_BASE + LOCATION_OFFSETS[k] for k in ITEM_LOCATIONS}
 
-# LASR category of each categorized location (locations.yml); the rest are always shuffled.
-LOCATION_CATEGORY: Dict[str, str] = {loc: category for category, locs in CATEGORIES.items() for loc in locs}
-
 _GROUP_NAMES = {
     "Chest_Locations": "Overworld Chests",
     "Fishing_Rewards": "Fishing",

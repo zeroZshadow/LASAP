@@ -37,7 +37,7 @@ _TRAPS = {0: "None", 3: "Few", 999: "Trapsanity"}  # other counts are "Many"; LA
 _DAMAGE = {0: "None", 1: "Normal", 2: "OHKO"}
 _CHEST_TYPES = {0: "Default", 1: "Size", 2: "Texture + Size"}
 _INSTANT_PICKUPS = {0: "Disabled", 1: "Incoming", 2: "Everything"}
-SEASHELL_CHEST = "seashell"  # the patcher's blue chest texture for seashells (ap_chest.CHEST_TYPE)
+SEASHELL_CHEST = "seashell"  # the patcher's blue chest texture for seashells (ap_chest_model.CHEST_TYPE)
 
 
 def chest_look(options: LASOptions, lasr_item: Optional[str], progression: bool = False, useful: bool = False,
@@ -158,7 +158,7 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Unrandomizer Mode": False,
         "Randomize Enemies": bool(o.randomize_enemies),
         "Randomize Enemy Sizes": bool(o.randomize_enemy_sizes),
-        "Bouncy Items": bool(o.bouncy_items),  # read by the AP patcher (ap_drop.py) and the module, not by LASR
+        "Bouncy Items": bool(o.bouncy_items),  # read by the AP patcher (ap_options.py), not by LASR
         "Chest Types": _CHEST_TYPES[o.chest_appearance.value],
         "Open Kanalet": bool(o.open_kanalet),
         "Open Mabe": bool(o.open_mabe),
@@ -174,8 +174,8 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Free Book": bool(o.free_book),
         "Fast Stalfos": bool(o.fast_stalfos),
         "Shuffled Powder": bool(o.shuffled_powder),
-        "Ammo Ghost": bool(o.ammo_ghost),  # read by the AP patcher (ap_ghost.py), not by LASR
-        "Map Tracker": bool(o.map_tracker),  # read by the AP patcher (ap_map.py), not by LASR
+        "Ammo Ghost": bool(o.ammo_ghost),  # read by the AP patcher (ap_options.py), not by LASR
+        "Map Tracker": bool(o.map_tracker),  # read by the AP patcher (las_ap_patch.py), not by LASR
         # read by the AP patcher (config.ini for the module), not by LASR; Seashells Required 0 without the hunt
         "Instruments Required": goal_instruments(o),
         "Seashell Hunt": goal_seashells(o) is not None,

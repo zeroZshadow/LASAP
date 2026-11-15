@@ -3,15 +3,10 @@
 python scripts/poptracker_test.py <pack folder> [--variant <variant>] [<step> ...]
 in .venv-ap; steps: manual full marks lean shells (all, in this order); variant: tracker (default) or var_itemsonly
 
-The PopTracker folder is this machine's: "poptracker" in scripts/local_paths.json (gitignored, TESTING.md). Its
-sandbox PopTracker (app, a copy in portable mode: config, saves and log.txt stay in its portable-config folder) loads
-the pack from <pack folder> with a test hook from its user-override folder: the pack's scripts/init.lua followed by
-scripts/poptracker_test.lua, which prints the tracker's items, locations and sections on commands (DESIGN in
-poptracker_test.lua). A local MultiServer on PORT serves the newest seed in its out folder, generated from the slots
-Full, Lean and Shells (goal seashell_hunt) in its players folder; the test connects to it as the slot to check
-locations and write data storage, and sends items with the server console's /send. Each step checks the tracker
-against the slot's received items, checked locations and settings and stops at the first difference. Screenshots of
-the tracker's window go to its shots folder for review.
+Setup and folders: TESTING.md. The sandbox PopTracker ("poptracker" in local_paths.json) is a portable-mode copy:
+config, saves and log.txt stay in its portable-config folder. The test connects as the slot to check locations and
+write data storage, and sends items with the server console's /send. Each step stops at the first difference between
+the tracker and the slot's items, locations and settings.
 """
 import json
 import os

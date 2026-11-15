@@ -1,32 +1,20 @@
 """The options the RomFS holds both ways (DESIGN.md, Options): the mod is the same for every seed, and config.ini's
-[options] section (OPTIONS) picks a way at runtime. LASR runs with LASR_SETTINGS; modbuild/ap_option_edits.py makes
-their edits itself, each behind an option flag the module answers."""
+[options] section (OPTIONS) picks a way at runtime. The asset build reads no setting; modbuild/ap_option_edits.py makes
+the options' edits, each behind an option flag the module answers."""
 
 FLAG_PREFIX = "APOpt."  # AP::Options::Flag
 IF_PREFIX = "APIf|"
-# config.ini [options] key -> whether a patch's settings turn the option on
-OPTIONS = {
-    "open_mabe": lambda s: s.get("Open Mabe", False),
-    "classic_d2": lambda s: s.get("Classic D2", False),
-    "completed_bridge": lambda s: s.get("Completed Bridge", False),
-    "randomize_enemies": lambda s: s.get("Randomize Enemies", False),
-    "fast_fishing": lambda s: s.get("Fast Fishing", False),
-    "shuffled_bombs": lambda s: s.get("Shuffled Bombs", False),
-    "shuffled_powder": lambda s: s.get("Shuffled Powder", False),
-    "song_cutscenes": lambda s: s.get("Song Cutscenes", False),  # on skips them
-    "owl_overworld": lambda s: s.get("Owl Gifts", "None") in ("Overworld", "All"),
-    "owl_dungeons": lambda s: s.get("Owl Gifts", "None") in ("Dungeons", "All"),
-    "ammo_ghost": lambda s: s.get("Ammo Ghost", True),  # the option's default, also for patches without it
-    "bouncy_items": lambda s: s.get("Bouncy Items", False),
-}
-# The values LASR runs with in the asset build: the mod's own, whatever the seed's
-LASR_SETTINGS = {
-    "Open Mabe": False, "Classic D2": False, "Completed Bridge": False, "Randomize Enemies": False,
-    "Fast Fishing": False, "Shuffled Bombs": False, "Shuffled Powder": False, "Song Cutscenes": False,
-    "Owl Gifts": "None", "Traps": "Many", "Music": "Vanilla", "Randomize Text": False,
-    "Randomize Environments": False,
-}
+# config.ini [options] key -> the setting that turns the option on
+SETTINGS = {"open_mabe": "Open Mabe", "classic_d2": "Classic D2", "completed_bridge": "Completed Bridge",
+            "randomize_enemies": "Randomize Enemies", "fast_fishing": "Fast Fishing",
+            "shuffled_bombs": "Shuffled Bombs", "shuffled_powder": "Shuffled Powder",
+            "song_cutscenes": "Song Cutscenes",  # on skips them
+            "ammo_ghost": "Ammo Ghost", "bouncy_items": "Bouncy Items"}
+# config.ini [options] key -> the Owl Gifts values that turn the option on
+OWL_GIFTS = {"owl_overworld": ("Overworld", "All"), "owl_dungeons": ("Dungeons", "All")}
+OPTIONS = (*SETTINGS, *OWL_GIFTS)
 
 
-def config_lines(settings: dict) -> str:
-    return "\n[options]\n" + "".join(f"{key} = {bool(on(settings))}\n" for key, on in OPTIONS.items())
+def config(settings: dict) -> dict:
+    return {**{key: settings[setting] for key, setting in SETTINGS.items()},
+            **{key: settings["Owl Gifts"] in gifts for key, gifts in OWL_GIFTS.items()}}

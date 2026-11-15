@@ -45,6 +45,7 @@ SETTINGS = {
     "Open Mabe": False, "Open Mamu": False, "Completed Bridge": False, "Classic D2": False,
     "Shuffled Dungeons": False, "Consumable Drops": True, "Bad Pets": False, "Fast Fishing": True,
     "Shuffled Bombs": False, "Free Book": True, "Fast Stalfos": True, "Shuffled Powder": False, "Ammo Ghost": True, "Map Tracker": True,
+    "Bouncy Items": False, "Instruments Required": 8, "Seashell Hunt": False, "Seashells Required": 0,
     "Stealing": "Always", "Boss Cutscenes": True, "Song Cutscenes": False, "Movement Speed": True,
     "Chest Animations": True, "Key Animations": True, "Item Get Animations": False, "Item Pool": "Standard",
     "Traps": "None", "Nice Bombs": True, "Nice Hookshot": False, "Nice Magic Rod": True, "Damage": "Normal",
@@ -101,7 +102,8 @@ def make(seed_hash=None, slot: str = "Tester", settings: dict = None, dungeons: 
         "format": 1, "seed_name": "test", "player": 1, "slot_name": slot, "seed_hash": seed_hash,
         "settings": settings, "starting_items": list(starting), "placements": placements,
         "location_ids": location_ids, "removed_location_ids": removed_ids,
-        "dungeon_entrances": entrances, "location_models": models,
+        "dungeon_entrances": entrances, "location_models": models, "location_chests": {}, "location_names": {},
+        "optional_locations": [], "entrances": {}, "entrance_pairs": {}, "hints": {},
     }
     if overworld:  # --entrances
         pairs = yaml.safe_load((DATA / "doors.yml").read_text(encoding="utf-8"))["pairs"]

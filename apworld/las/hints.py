@@ -1,17 +1,7 @@
-"""In-game hints (options in_game_hints and hint_distribution): owl statues and library books give hints about this
-slot's items.
+"""In-game hints from owl statues and library books (DESIGN.md, In-game hints), picked once the multiworld is filled.
 
-The world picks them once the multiworld is filled (choose_hints). The kinds:
-- always: a long check of this world (ALWAYS) holding a progression or useful item, anyone's.
-- required: an area of this world, or a location of another, holding an item this slot cannot win without.
-- barren: an area of this world whose locations hold no progression item, anyone's.
-- area: the area of this world, or the world, holding one of this slot's progression items, then useful ones.
-- precise: the location holding one of this slot's progression items, then useful ones.
-- joke: for the sources left over.
-hint_distribution sets how many of each (DISTRIBUTIONS). An area is the part of a location's name before " - ": an
-overworld region or a dungeon. No hint is about an optional location (LASWorld.optional), which only the goal opens. The patch carries each source's text and kind (`hints`); in server mode the hints that
-name one location (always, precise) also carry it, which the client hints on the server when the game reports the
-hint as read."""
+An area is the part of a location's name before " - ". No hint is about an optional location. In server mode the
+hints that name one location also carry it, which the client hints on the server once the game reports it read."""
 from typing import TYPE_CHECKING, Dict, Iterable, Iterator, List, NamedTuple, Optional, Set
 
 from BaseClasses import CollectionState, Location

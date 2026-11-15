@@ -1,8 +1,4 @@
-"""A new save's name starts as the slot name.
-
-The name entry of a new file shows `UI:NameEntry_Default` ("Link") until the player renames it, and OK keeps it. The
-module hands out the slot name there, as far as the game takes it (`save_name`), from config.ini ([archipelago]
-save_name)."""
+"""A new save's name: the slot name, as far as the game's name entry takes it (DESIGN.md, Save name)."""
 DEFAULT = "Link"
 # The game's keyboard (nn::swkbd, UserName preset) takes up to 8 characters and rejects @, % and \; a name of spaces
 # only is refused by the game's own check.

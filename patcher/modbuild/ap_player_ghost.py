@@ -1,11 +1,5 @@
-"""Multiplayer ghosts (DESIGN.md, Ghosts): the rows the module draws other players with. Their model,
-PlayerGhost.bfres, the patcher makes from the player's Playerlink.bfres (patcher/ap_ghost_model.py).
-
-The row APGhost is NpcGhost's row drawing that model with Link's animations, with no collision, action, event
-triggers or conditions. The module spawns ghosts as NpcGhost actors that read the APGhost row. It is copied from
-the game's NpcGhost row before the Ammo Ghost option (ap_ghost.py) rewrites that one. Its facial row, APGhost in
-Facial.gsheet, names Link's face animations (eye, mouth, ear) so the NPC gets a material animation slot for each,
-held at frame 0 until the module sets the sender's frames.
+"""Multiplayer ghosts (DESIGN.md, Ghosts): the APGhost rows the module draws other players with, NpcGhost's row
+drawing PlayerGhost.bfres (patcher/ap_ghost_model.py) with Link's animations and nothing else.
 """
 import copy
 
@@ -78,7 +72,7 @@ def add_facial_row(sheet: dict) -> None:
 
 
 def add(files) -> None:
-    """At patch time, before ap_ghost.add: the APGhost rows in the mod's Npc.gsheet and Facial.gsheet."""
+    """The APGhost rows in the mod's Npc.gsheet and Facial.gsheet; before ap_ammo_ghost.add rewrites NpcGhost's row."""
     sheet = files.readFile("Npc.gsheet")
     add_row(sheet)
     files.writeFile("Npc.gsheet", sheet)

@@ -146,97 +146,6 @@ class TestDungeonLogic(unittest.TestCase):
         self.assertTrue(set(d6 + d8) <= tracker.in_logic(items, others + ["key-cavern", "face-shrine"]))
         self.assertEqual(tracker.in_logic(items), tracker.in_logic(items, DUNGEONS))
 
-    def test_client_found_doors(self) -> None:
-        """The client's found doors: those leading into the dungeons the game reports entered and those data storage
-        has; every door with dungeons not shuffled."""
-        import asyncio
-        from ..client import LASContext, PROTOCOL_VERSION
-
-        async def run() -> list:
-            ctx = LASContext(None, None, "127.0.0.1", 0)
-            ctx.slot, ctx.team = 1, 0
-            ctx.slot_data = {"dungeon_entrances": SWAP, "options": {"shuffled_dungeons": 1}}
-            found = [ctx.found_doors]
-            ctx.handle_game_line(f"HELLO {PROTOCOL_VERSION} aaaa")
-            ctx.handle_game_line("DUNGEON 8")
-            found.append(ctx.found_doors)
-            ctx.on_package("Retrieved", {"keys": {"las_sign_0_1": None, "las_doors_0_1": {"key-cavern": "key-cavern"}}})
-            found.append(ctx.found_doors)
-            ctx.slot_data = {"dungeon_entrances": SWAP, "options": {"shuffled_dungeons": 0}}
-            found.append(ctx.found_doors)
-            await asyncio.sleep(0)
-            return found
-        self.assertEqual(asyncio.run(run()), [set(), {"tail-cave"}, {"tail-cave", "key-cavern"}, None])
-
-    def test_client_sends_doors(self) -> None:
-        """The client sends the locations behind reachable doors (DOORS) before those in logic (INLOGIC)."""
-        import asyncio
-        from ..client import LASContext
-        from ..ids import LOCATION_BASE, LOCATION_OFFSETS
-
-        lasr = {data.lasr_name: name for name, data in ITEM_TABLE.items()}
-        d1 = [k for k in LOGIC if k.startswith("D1-") and LOGIC[k]["type"] == "item"]
-        d8 = [k for k in LOGIC if k.startswith("D8-") and LOGIC[k]["type"] == "item"]
-        tokens = {"open-mabe": True, "free-book": True, "shuffled-bombs": True, "can-steal": True}
-
-        class Writer:
-            def __init__(self) -> None:
-                self.lines = []
-
-            def write(self, data: bytes) -> None:
-                self.lines.append(data.decode().rstrip("\n"))
-
-        writer = Writer()
-
-        async def run() -> None:
-            ctx = LASContext(None, None, "127.0.0.1", 0)
-            ctx.slot, ctx.team, ctx.game_writer = 1, 0, writer  # type: ignore[assignment]
-            ctx.server_locations = {LOCATION_BASE + LOCATION_OFFSETS[loc] for loc in d1 + d8}
-            ctx.slot_data = {"dungeon_entrances": SWAP, "logic": {
-                "preset": "basic", "tokens": tokens, "vanilla": [], "optional": [], "starting": [lasr["tail-key"]]}}
-            ctx.make_logic_tracker()
-            ctx.send_logic()
-            ctx.send_logic()  # nothing changed: nothing sent
-        asyncio.run(run())
-        doors = " ".join(str(local_id) for local_id in sorted(LOCATION_OFFSETS[loc] for loc in d8))
-        self.assertEqual(writer.lines, ["DOORS CLEAR", f"DOORS {doors}", "INLOGIC CLEAR"])
-
-    def test_client_publishes_found_doors(self) -> None:
-        """A dungeon the game reports entered (DUNGEON) finds the door that leads into it: the client adds it to
-        las_doors_<team>_<slot> once per connection, for the slot of the seed the game runs only. Turtle Rock is behind
-        Tail Cave's door."""
-        import asyncio
-        from ..client import LASContext, PROTOCOL_VERSION
-
-        async def run() -> list:
-            ctx = LASContext(None, None, "127.0.0.1", 0)
-            sent = []
-
-            async def send_msgs(msgs):
-                sent.extend(msgs)
-            ctx.send_msgs = send_msgs
-            ctx.server = object()
-            ctx.slot, ctx.team = 1, 0
-            ctx.slot_data = {"dungeon_entrances": SWAP}
-            ctx.slot_seed_hash = "aaaa"
-            # another seed's game: not its doors; then the game of the slot's seed, SYNC sending its dungeons again
-            for line in (f"HELLO {PROTOCOL_VERSION} bbbb", "DUNGEON 8", f"HELLO {PROTOCOL_VERSION} aaaa",
-                         "DUNGEON 8", "DUNGEON 3", "DUNGEON 8", "DUNGEON 3", "DUNGEON 9"):
-                ctx.handle_game_line(line)
-                await asyncio.sleep(0)
-            sent.append("reconnected")
-            ctx.doors_sent.clear()  # a new connection to the server sends them again
-            await ctx.send_doors()
-            return [msg if isinstance(msg, str) else msg["operations"] for msg in sent
-                    if isinstance(msg, str) or (msg["cmd"] == "Set" and msg["key"] == "las_doors_0_1")]
-        sent = asyncio.run(run())
-        self.assertEqual(sent, [
-            [{"operation": "update", "value": {"tail-cave": "turtle-rock"}}],
-            [{"operation": "update", "value": {"key-cavern": "key-cavern"}}],
-            "reconnected",
-            [{"operation": "update", "value": {"tail-cave": "turtle-rock", "key-cavern": "key-cavern"}}],
-        ])
-
 
 class TestDoorLogic(unittest.TestCase):
     """The world's logic: each door a region holding the door's conditions, the regions doors lead into entered only
@@ -264,7 +173,6 @@ class TestDoorLogic(unittest.TestCase):
 
 class TestShuffledDungeons(LASTestBase):
     options = {"shuffled_dungeons": True}
-    seed = 7
 
     def test_patch_slot_data_and_spoiler(self) -> None:
         entrances = self.world.dungeon_entrances

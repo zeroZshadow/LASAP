@@ -1,63 +1,39 @@
 """PC client: bridges the Archipelago server and the game's exlaunch module (TCP line protocol, see DESIGN.md)."""
 import asyncio
-import re
 import socket
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import Utils
-from CommonClient import ClientCommandProcessor, CommonContext, get_base_parser, gui_enabled, logger, server_loop
+from CommonClient import CommonContext, get_base_parser, gui_enabled, logger, server_loop
 from MultiServer import mark_raw
-from NetUtils import ClientStatus, HintStatus, NetworkItem
+from NetUtils import ClientStatus, HintStatus
 
 from .container import LASContainer
 from .ids import LOCATION_BASE, LOCATION_OFFSETS
 from . import checklist, emulators, ghost_relay
 from .ghosts import DEFAULT_RELAY, GhostLink
 from .host_settings import PLAYER_SETTINGS, player_value
-from .install import InstallError, builtin_patcher_build, patch_and_install, tracker_images
-from .items import GAME, ITEM_GAME_INFO, ITEM_TABLE
+from .install import InstallError, builtin_patcher_build, patch_and_install
+from .items import GAME, ITEM_GAME_INFO
 from .options import ShuffledDungeons
 from .tracker import (DOORS_KEY, ENTRANCES_KEY, LEVEL_KEY, SIGN_KEY, LogicTracker, door_pool, found_entrance,
-                      known_doors, tracked_instruments, tracked_seashells)
-from .ut_map import DOOR_STEPS, door_out, hidden_door_entrances
+                      tracked_instruments, tracked_seashells)
+from .ut_context import (TRACKER_LOADED, TRACKER_MIN_VERSION, UT_VERSION, ClientCommands, ClientContext,
+                         TrackerMixin, tracker_version)
 
 GAME_PORT = 43384
 PROTOCOL_VERSION = 2
 PING_INTERVAL = 2.0
 RESEND_INTERVAL = 3.0
 HELLO_TIMEOUT = 5.0
-# The release world (scripts/build_release.py): the client leaves out the commands for tests and a client run without
-# the window (LASCommandProcessor)
+# The release world (scripts/build_release.py): the client leaves out the commands for tests (LASCommandProcessor)
 RELEASE = builtin_patcher_build() is not None
-# Servers before this have no CreateHints; on them, in-game hints of this slot's own locations become hints by scouting
-CREATE_HINTS_VERSION = Utils.Version(0, 6, 2)
 # The game takes one client at a time; another client's connection waits without an answer (also for the 10 s the
 # game takes to drop a client that went away).
 BUSY_STATUS = ("Another client is connected to the game. If another Links Awakening Switch Client window is open, "
                "close it.")
 # DUNGEON's level numbers (Lv<nn>)
-# Universal Tracker, when installed in at least this version (the one the embedding is tested with): the client is its
-# context too, and shows its map tab (DESIGN.md, Universal Tracker map). Without it the client is a plain CommonClient
-# one.
-TRACKER_DOORS_KEY = "tracker_doors_shown"  # Archipelago's persistent storage, under "las": LASContext.show_doors
-TRACKER_MIN_VERSION = (0, 3, 8)
-
-
-def tracker_version(text: Optional[str]) -> Optional[Tuple[int, int, int]]:
-    """Universal Tracker's version from its UT_VERSION ("v0.3.8", maybe with a suffix); None for none or another
-    form."""
-    m = re.match(r"v?(\d+)\.(\d+)\.(\d+)", text or "")
-    return (int(m[1]), int(m[2]), int(m[3])) if m else None
-
-
-try:
-    from worlds.tracker.TrackerClient import TrackerCommandProcessor, TrackerGameContext, UT_VERSION
-except ImportError:
-    TrackerCommandProcessor, TrackerGameContext, UT_VERSION = None, None, None
-TRACKER_LOADED = (tracker_version(UT_VERSION) or (0, 0, 0)) >= TRACKER_MIN_VERSION
-ClientContext = TrackerGameContext if TRACKER_LOADED else CommonContext
-ClientCommands = TrackerCommandProcessor if TRACKER_LOADED else ClientCommandProcessor  # with UT's /explain and others
 DUNGEON_NUMBERS = {"1": "tail-cave", "2": "bottle-grotto", "3": "key-cavern", "4": "angler-tunnel", "5": "catfish-maw",
                    "6": "face-shrine", "7": "eagle-tower", "8": "turtle-rock", "10": "color-dungeon"}
 
@@ -69,7 +45,6 @@ def clean(text: str) -> str:
 
 OPTION_KEYS = ("platform", "emulator", "game_file", "romfs_folder", "sd_card_folder", "mod_folder", "patcher_command",
                "game_host")
-GHOST_KEYS = ("ghost_relay",)
 
 
 class LASCommandProcessor(ClientCommands):
@@ -140,8 +115,7 @@ class LASCommandProcessor(ClientCommands):
         """Ask the game to resend its received-item count and collected locations."""
         self.ctx.send_game("SYNC")
 
-    # Commands for tests and a client run without the window (TESTING.md): players use the Patch tab
-    if not RELEASE:
+    if not RELEASE:  # commands for tests (TESTING.md)
         def _cmd_dbg(self, *args: str) -> None:
             """Send a debug command to the game module (testing only), e.g. /dbg state."""
             self.ctx.send_game("DBG " + " ".join(args))
@@ -150,58 +124,8 @@ class LASCommandProcessor(ClientCommands):
             """Send a raw protocol line to the game module (testing only)."""
             self.ctx.send_game(" ".join(args))
 
-        def _cmd_patch(self, patch_file: str = "") -> None:
-            """Patch and install the mod again, from the given .aplas or the one this client was opened with."""
-            if patch_file:
-                self.ctx.set_patch_file(patch_file)
-            asyncio.create_task(self.ctx.install_patch(force=True))
 
-        def _cmd_play(self) -> None:
-            """Install the mod when it is missing or out of date, then start the emulator with the game."""
-            asyncio.create_task(self.ctx.install_patch(start=True))
-
-        def _cmd_start(self) -> None:
-            """Start the emulator with the game."""
-            asyncio.create_task(self.ctx.start_emulator())
-
-        def _cmd_setting(self, key: str = "", value: str = "") -> None:
-            """Show the look and sound settings, or set one, e.g. /setting music Shuffled or
-            /setting blur_removal on."""
-            settings = {s.key: s for s in PLAYER_SETTINGS}
-            if not key:
-                for s in PLAYER_SETTINGS:
-                    value = self.ctx.player_option(s.key)
-                    shown = ("on" if value else "off") if s.choices is None else value
-                    logger.info(f"{s.key}: {shown} ({'/'.join(s.choices or ('on', 'off'))}) - {s.label}")
-                return
-            if key not in settings or not value:
-                logger.error("Usage: /setting <name> <value>, with a name from /setting.")
-                return
-            setting = settings[key]
-            if setting.choices is None:
-                if value.lower() not in ("on", "off", "true", "false"):
-                    logger.error(f"{key} is on or off.")
-                    return
-                self.ctx.set_player_option(key, value.lower() in ("on", "true"))
-            else:
-                choice = next((c for c in setting.choices if c.lower() == value.lower()), None)
-                if choice is None:
-                    logger.error(f"{key} is one of {', '.join(setting.choices)}.")
-                    return
-                self.ctx.set_player_option(key, choice)
-            logger.info(self.ctx.check_setup().checks["installed"].text)
-
-        def _cmd_setup(self) -> None:
-            """Show the patch settings and what is missing (the Patch tab has the same)."""
-            checks = self.ctx.check_setup()
-            for key in OPTION_KEYS:
-                check = checks.checks.get(key)
-                note = f" - {check.text}" if check and check.text else ""
-                logger.info(f"{key}: {self.ctx.option(key) or '(empty)'}{note}")
-            logger.info(checks.checks["installed"].text)
-
-
-class LASContext(ClientContext):
+class LASContext(TrackerMixin, ClientContext):
     game = GAME
     # Remote items: the server sends this world's own items too. Starting inventory is granted by the patch.
     items_handling = 0b011
@@ -241,8 +165,7 @@ class LASContext(ClientContext):
         self.game_dungeons: Set[str] = set()  # the dungeons the game reports entered (DUNGEON), LASR names
         self.doors_sent: Set[str] = set()  # the dungeons whose door was put in data storage since connecting
         self.doors_stored: Set[str] = set()  # the doors data storage has as found (DOORS_KEY), from an earlier session
-        # the overworld doors the game reports gone through (DOOR), {door: the inside door it leads to}; those put in
-        # data storage since connecting; those data storage has as found (ENTRANCES_KEY)
+        # overworld doors gone through (DOOR), {door: inside door}; then sent and stored ones, as for dungeon doors
         self.game_entrances: Dict[str, str] = {}
         self.entrances_sent: Set[str] = set()
         self.entrances_stored: Set[str] = set()
@@ -260,19 +183,6 @@ class LASContext(ClientContext):
         self.ghosts = GhostLink(self.send_game, self.refresh_patch_tab)
         self.ghost_relay_arg: Optional[str] = None  # --ghost-relay replaces las_options.ghost_relay
         self.ghost_secret_arg: Optional[str] = None  # --ghost-secret replaces the patch file's (tests)
-        # Universal Tracker's map images (start_tracker_images), and the slot's Connected it waits for them with
-        self.tracker_images: Optional[Path] = None
-        self.tracker_held: Optional[dict] = None
-        self.tracker_task: Optional[asyncio.Task] = None
-        # The Tracker tab's route (route_points): the check /get_logical_path went to, the locations in logic it finds
-        # routes to, and each pin's sections (section name -> its (map, x, y) spots), from UT's locations
-        self.route_target: Optional[str] = None
-        self.tracker_in_logic: List[str] = []
-        self.route_pins: Optional[Tuple[int, Dict[str, List[Tuple[str, float, float]]]]] = None
-        # whether the map tab shows the doors' pins (its Entrances box), kept between runs
-        self.tracker_doors_shown: bool = Utils.persistent_load().get("las", {}).get(TRACKER_DOORS_KEY, True)
-        # the dungeon door entrances each map hid when the map shown was loaded (load_map, refresh_door_pins)
-        self.tracker_doors_hidden: Dict[str, List[str]] = {}
 
     async def get_username(self) -> None:
         # the slot comes from the patch file, as the server would otherwise ask for it
@@ -323,7 +233,7 @@ class LASContext(ClientContext):
             self.hinted = None
             self.slot_seed_hash = args["slot_data"].get("seed_hash")
             self.notice_sent = False
-            self.check_seed()
+            self.report_seed()
             self.send_notice()
             self.send_server_state()
             self.refresh_patch_tab()
@@ -375,175 +285,10 @@ class LASContext(ClientContext):
                 self.scouted_names[item.location - LOCATION_BASE] = f"{clean(name)}|{clean(owner)}"
             self.send_location_names()
 
-    def tracker_package(self, cmd: str, args: dict) -> None:
-        """Universal Tracker's handling of a package, for its map tab. A failure there stays there: Universal Tracker
-        marks the connection as closed on purpose when it fails, which would stop the reconnecting."""
-        if self.tracker_images is None:  # its map tab needs the images: it gets the slot once they exist
-            if cmd == "Connected":
-                self.tracker_held = args
-                self.start_tracker_images()
-            return
-        intentionally = self.disconnected_intentionally
-        try:
-            super().on_package(cmd, args)
-        except Exception:
-            logger.exception("Universal Tracker could not handle the server's " + cmd)
-            self.disconnected_intentionally = intentionally
-
-    def start_tracker_images(self) -> None:
-        """Builds Universal Tracker's map images from the RomFS dump in the background, once per dump
-        (install.tracker_images), and points las_options.ut_pack_path at them. Without a dump, a zip the client built
-        before serves; else there is no map tab."""
-        if not TRACKER_LOADED or self.tracker_images is not None or self.tracker_task is not None:
-            return
-        romfs = emulators.romfs_root(self.option("romfs_folder"))
-        if romfs is None:
-            known =Path(self.option("ut_pack_path")) if self.option("ut_pack_path") else None
-            if known and known.is_file() and known.parent == Path(Utils.cache_path("las", "tracker")):
-                self.tracker_ready(known)
-            return
-        self.tracker_task = asyncio.create_task(self.build_tracker_images(romfs), name="tracker images")
-
-    async def build_tracker_images(self, romfs: Path) -> None:
-        try:
-            path = await asyncio.to_thread(tracker_images, romfs, logger.info)
-        except Exception as e:
-            logger.exception(f"Could not build the tracker's map: {e}")
-            return
-        finally:
-            self.tracker_task = None
-        self.set_option("ut_pack_path", str(path), detect=False)
-        self.tracker_ready(path)
-
-    def tracker_ready(self, path: Path) -> None:
-        """Universal Tracker's map images exist: it gets the slot it waited for, and the doors found."""
-        self.tracker_images = path
-        held, self.tracker_held = self.tracker_held, None
-        if held is not None and self.slot is not None:
-            self.tracker_package("Connected", held)
-            keys = getattr(self, "defered_entrance_datastorage_keys", None)
-            if keys:
-                asyncio.create_task(self.send_msgs([{"cmd": "Get", "keys": list(keys)}]))
-
     @property
     def logic_starting(self) -> List[str]:
         """The slot's starting items (its slot data's logic), which the server does not send."""
         return (self.slot_data.get("logic") or {}).get("starting", [])
-
-    @property
-    def tracker_items_received(self) -> List[NetworkItem]:
-        """Universal Tracker's items: the slot's starting items, which UT leaves out of the world it generates and the
-        server sends only to clients that ask for them (items_handling), then the items received."""
-        starting = [NetworkItem(ITEM_TABLE[name].code, -2, 0) for name in self.logic_starting if name in ITEM_TABLE]
-        return starting + super().tracker_items_received
-
-    def load_map(self, map_id) -> None:
-        """Universal Tracker's map, without the doors' pins while its Entrances box is off: the world's
-        ut_map_page_hidden_entrances, which it reads on loading a map, then lists every entrance. A dungeon's map
-        shows only the dungeon door entrance known to lead into it (ut_map.hidden_door_entrances)."""
-        world = self.tracker_core.get_current_world()
-        if world is not None:
-            names = [] if self.tracker_doors_shown else list(
-                self.tracker_core.multiworld.regions.entrance_cache[self.tracker_core.player_id])
-            self.tracker_doors_hidden = doors = self.hidden_doors()
-            world.ut_map_page_hidden_entrances = {m["name"]: names + doors.get(m["name"], []) for m in self.maps or ()}
-        super().load_map(map_id)
-        self.draw_route()
-
-    def hidden_doors(self) -> Dict[str, List[str]]:
-        """Each dungeon map's dungeon door entrances to hide, by the doors known now (ut_map.hidden_door_entrances)."""
-        return hidden_door_entrances(self.slot_data.get("dungeon_entrances"), known_doors(self.found_doors))
-
-    def refresh_door_pins(self) -> None:
-        """A dungeon door became known: the map shown loads again when that changes the door pins it hides, as
-        Universal Tracker reads them only on loading a map."""
-        if TRACKER_LOADED and self.map_id is not None and self.hidden_doors() != self.tracker_doors_hidden:
-            self.reload_map()
-
-    def reload_map(self) -> None:
-        map_id, self.map_id = self.map_id, None
-        self.load_map(map_id)
-        self.updateTracker()
-
-    def updateTracker(self):
-        """Universal Tracker's sweep, keeping the locations it finds in logic for the Tracker tab's search, then the
-        route drawn again (a path found or cleared runs one)."""
-        tracker_state = super().updateTracker()
-        self.tracker_in_logic = sorted(tracker_state.in_logic_locations)
-        self.draw_route()
-        return tracker_state
-
-    def route_to(self, location: str) -> None:
-        """The Tracker tab's search: the /get_logical_path command to a location (LASCommandProcessor)."""
-        self.command_processor(self)._cmd_get_logical_path(location)
-
-    def start_route(self, text: str) -> None:
-        """Before /get_logical_path: no route, so that one it cannot find leaves none, and the location the route ends
-        at (route_points), the one UT takes the name for when it matches it to locations, regions and entrances."""
-        self.logical_path_entrances.clear()
-        self.route_target = None
-        multiworld, player = self.tracker_core.multiworld, self.tracker_core.player_id
-        if multiworld is None or player is None or not text.strip():
-            return
-        regions = multiworld.regions
-        locations = set(regions.location_cache[player])
-        names = locations | set(regions.region_cache[player]) | set(regions.entrance_cache[player])
-        name, usable, _ = Utils.get_intended_text(text, names)
-        if usable and name in locations:
-            self.route_target = name
-
-    def route_points(self, map_name: str) -> List[Tuple[float, float]]:
-        """The way /get_logical_path found, on a map: the pins of the doors it goes through, in order (a door Link
-        comes out of at that door's pin), then the check's pin nearest the last door."""
-        if not self.logical_path_entrances:
-            return []
-        if self.route_pins is None or self.route_pins[0] != id(self.locs):
-            pins: Dict[str, List[Tuple[str, float, float]]] = {}
-            nodes = list(self.locs or ())
-            while nodes:
-                node = nodes.pop()
-                nodes.extend(node.get("children", ()))
-                for section in node.get("sections", ()):
-                    for spot in node.get("map_locations", ()):
-                        pins.setdefault(section.get("name", ""), []).append((spot["map"], spot["x"], spot["y"]))
-            self.route_pins = (id(self.locs), pins)
-        pins = self.route_pins[1]
-        world = self.tracker_core.get_current_world()
-        points: List[Tuple[float, float]] = []
-        for name in self.logical_path_entrances:
-            if name not in DOOR_STEPS:
-                continue
-            for door in (name, door_out(world.get_entrance(name))):
-                spot = next(((x, y) for m, x, y in pins.get(door, ()) if m == map_name), None)
-                if spot is not None:
-                    if not points or points[-1] != spot:
-                        points.append(spot)
-                    break
-        ends = [(x, y) for m, x, y in pins.get(self.route_target or "", ()) if m == map_name]
-        if ends:
-            last = points[-1] if points else ends[0]
-            points.append(min(ends, key=lambda p: (p[0] - last[0]) ** 2 + (p[1] - last[1]) ** 2))
-        return points
-
-    def clear_path(self) -> None:
-        """Universal Tracker's Clear Path: no route, so none drawn."""
-        self.route_target = None
-        super().clear_path()
-
-    def draw_route(self) -> None:
-        if self.ui is None or self.map_page is None or self.map_id is None:
-            return
-        from .client_gui import draw_route
-        draw_route(self.map_page, self.route_points(self.maps[self.map_id]["name"]), self.ui.loc_size)
-
-    def show_doors(self, shown: bool) -> None:
-        """The map tab's Entrances box: shows or hides the doors' pins on the map shown, and remembers it."""
-        if shown == self.tracker_doors_shown:
-            return
-        self.tracker_doors_shown = shown
-        Utils.persistent_store("las", TRACKER_DOORS_KEY, shown)
-        if self.map_id is not None:
-            self.reload_map()
 
     def make_logic_tracker(self) -> None:
         """The slot's rules for the map tracker. A count of instruments or seashells left to chance stays hidden until
@@ -612,7 +357,6 @@ class LASContext(ClientContext):
             self.send_logic()
 
     async def send_sign_read(self) -> None:
-        """Puts the sign's read in the server's data storage, where trackers follow it (SIGN_KEY)."""
         if not self.sign_read or self.slot is None:
             return
         await self.send_msgs([{"cmd": "Set", "key": self.sign_key,
@@ -630,7 +374,7 @@ class LASContext(ClientContext):
         self.notice_sent = True
         # the popup holds two lines of about 22 characters
         slot = clean(self.player_names.get(self.slot, self.auth or ""))[:16]
-        if self.slot_seed_hash and self.slot_seed_hash != self.game_seed_hash:
+        if self.seed_mismatch:
             self.send_game(f"NOTICE Wrong seed for {slot}|Reinstall the patch")
         else:
             self.send_game(f"NOTICE Archipelago connected|as {slot}")
@@ -646,13 +390,11 @@ class LASContext(ClientContext):
     def send_server_state(self) -> None:
         """Tells the game whether the client is logged into the slot of the game's seed; the game reminds the player
         while it is not."""
-        online = bool(self.server and self.slot) and not (
-            self.slot_seed_hash and self.game_seed_hash and self.slot_seed_hash != self.game_seed_hash)
+        online = bool(self.server and self.slot) and not self.seed_mismatch
         self.send_game(f"SERVER {int(online)}")
 
     @property
     def server_status(self) -> checklist.Check:
-        """The server connection, for the Patch tab."""
         if self.server and self.slot:
             name = self.player_names.get(self.slot, self.auth or "")
             return checklist.Check(checklist.OK, f"Connected to the Archipelago server as {name}.")
@@ -661,23 +403,28 @@ class LASContext(ClientContext):
         return checklist.Check(checklist.TODO, "Not connected to the server: enter the room's address at the top and "
                                                "press Connect.")
 
-    def check_seed(self) -> bool:
-        if self.slot_seed_hash and self.game_seed_hash and self.slot_seed_hash != self.game_seed_hash:
+    @property
+    def seed_mismatch(self) -> bool:
+        return bool(self.slot_seed_hash and self.game_seed_hash and self.slot_seed_hash != self.game_seed_hash)
+
+    @property
+    def seed_matches(self) -> bool:
+        return bool(self.slot_seed_hash) and self.slot_seed_hash == self.game_seed_hash
+
+    def report_seed(self) -> None:
+        if self.seed_mismatch:
             self.set_game_status(checklist.ERROR, f"The game runs another seed ({self.game_seed_hash}) than slot "
                                  f"{self.auth} ({self.slot_seed_hash}). Press Play, then restart the game.")
             logger.error(f"The game runs another seed ({self.game_seed_hash}) than this slot ({self.slot_seed_hash}). "
                          f"In the Patch tab, choose this slot's patch file and press Play, then restart "
                          f"the game.")
-            return False
-        return True
 
     def send_game(self, line: str) -> None:
         if self.game_writer is not None:
             self.game_writer.write(line.encode() + b"\n")
 
     def send_checked(self, locations) -> None:
-        """Tells the game which locations the server has as checked, for the map tracker."""
-        if not self.slot or (self.slot_seed_hash and self.game_seed_hash and self.slot_seed_hash != self.game_seed_hash):
+        if not self.slot or self.seed_mismatch:
             return
         ids = sorted(loc - LOCATION_BASE for loc in locations if loc >= LOCATION_BASE)
         for i in range(0, len(ids), 64):
@@ -685,9 +432,7 @@ class LASContext(ClientContext):
 
     def send_logic(self, force: bool = False) -> None:
         """Tells the game which locations are in logic for the items received, when that changed."""
-        if self.logic_tracker is None or self.game_writer is None or not self.slot:
-            return
-        if self.slot_seed_hash and self.game_seed_hash and self.slot_seed_hash != self.game_seed_hash:
+        if self.logic_tracker is None or self.game_writer is None or not self.slot or self.seed_mismatch:
             return
         names = list(self.logic_starting) + [self.item_names.lookup_in_game(item.item, self.game)
                                              for item in self.items_received]
@@ -702,9 +447,7 @@ class LASContext(ClientContext):
 
     def send_hints(self, force: bool = False) -> None:
         """Tells the game which of the slot's locations hold a server hint not yet found, when that changed."""
-        if self.game_writer is None or not self.slot:
-            return
-        if self.slot_seed_hash and self.game_seed_hash and self.slot_seed_hash != self.game_seed_hash:
+        if self.game_writer is None or not self.slot or self.seed_mismatch:
             return
         hints = self.stored_data.get(f"_read_hints_{self.team}_{self.slot}") or []
         ids = {hint["location"] - LOCATION_BASE for hint in hints
@@ -715,7 +458,6 @@ class LASContext(ClientContext):
         self.send_id_lines("HINTED", ids)
 
     def send_id_lines(self, command: str, ids: Set[int]) -> None:
-        """<command> CLEAR, then the local ids, 64 to a line."""
         self.send_game(f"{command} CLEAR")
         ordered = sorted(ids)
         for i in range(0, len(ordered), 64):
@@ -727,7 +469,7 @@ class LASContext(ClientContext):
 
     def send_next_item(self) -> None:
         """Sends the next item the game has not applied yet; the game answers RECV with its new count."""
-        if self.game_writer is None or self.game_recv is None or not self.check_seed():
+        if self.game_writer is None or self.game_recv is None or self.seed_mismatch:
             return
         if self.game_recv >= len(self.items_received):
             return
@@ -746,7 +488,7 @@ class LASContext(ClientContext):
 
     async def flush_checks(self) -> None:
         # only into the slot of the seed the game runs: checks that came before the slot was known wait for it
-        if not self.server or not self.slot or not self.slot_seed_hash or self.slot_seed_hash != self.game_seed_hash:
+        if not self.server or not self.slot or not self.seed_matches:
             return
         new = self.game_checked - self.locations_checked
         if new:
@@ -757,7 +499,7 @@ class LASContext(ClientContext):
 
     async def flush_hints(self) -> None:
         """Makes the in-game hints read in the game server hints, as !hint would (DESIGN.md, In-game hints)."""
-        if not self.server or not self.slot or not self.check_seed():
+        if not self.server or not self.slot or self.seed_mismatch:
             return
         new = sorted(self.game_hints - self.hints_sent)
         if not new:
@@ -766,11 +508,8 @@ class LASContext(ClientContext):
         by_player: Dict[int, List[int]] = {}
         for player, location in new:
             by_player.setdefault(player, []).append(location)
-        if self.server_version >= CREATE_HINTS_VERSION:
-            await self.send_msgs([{"cmd": "CreateHints", "player": player, "locations": locations,
-                                   "status": HintStatus.HINT_PRIORITY} for player, locations in by_player.items()])
-        elif self.slot in by_player:
-            await self.send_msgs([{"cmd": "LocationScouts", "locations": by_player[self.slot], "create_as_hint": 2}])
+        await self.send_msgs([{"cmd": "CreateHints", "player": player, "locations": locations,
+                               "status": HintStatus.HINT_PRIORITY} for player, locations in by_player.items()])
 
     def on_game_line(self, raw: bytes) -> None:
         """A line from the game; one the client cannot handle is logged and skipped, so it ends neither the game's
@@ -800,7 +539,7 @@ class LASContext(ClientContext):
                 logger.error(f"Game protocol {parts[1:2]} does not match the client ({PROTOCOL_VERSION}).")
             logger.info(f"Connected to the game (seed hash {self.game_seed_hash}).")
             self.set_game_status(checklist.OK, f"Connected to the game (seed {self.game_seed_hash}).")
-            self.check_seed()
+            self.report_seed()
             self.send_notice()
             self.send_server_state()
             self.send_location_names()
@@ -821,7 +560,7 @@ class LASContext(ClientContext):
             self.send_next_item()
         elif cmd in ("CHECK", "CHECKS"):
             ids = {LOCATION_BASE + int(p) for p in parts[1:]}
-            if self.check_seed():
+            if not self.seed_mismatch:
                 self.game_checked |= ids
                 asyncio.create_task(self.flush_checks())
         elif cmd == "HINT" and len(parts) == 3:
@@ -864,16 +603,14 @@ class LASContext(ClientContext):
             logger.info("game: " + line)
 
     async def send_level(self) -> None:
-        """Puts the game's level in the server's data storage, where trackers follow it (LEVEL_KEY)."""
         if self.game_level is None or self.slot is None:
             return
         await self.send_msgs([{"cmd": "Set", "key": LEVEL_KEY.format(team=self.team, player=self.slot), "default": "",
                                "want_reply": False, "operations": [{"operation": "replace", "value": self.game_level}]}])
 
     async def send_doors(self) -> None:
-        """Puts the doors that lead into the dungeons the game reports entered in the server's data storage
-        (DOORS_KEY): the player has found them. Only into the slot of the seed the game runs, whose doors these are."""
-        if self.slot is None or not self.slot_seed_hash or self.slot_seed_hash != self.game_seed_hash:
+        """Stores the doors into the dungeons the game reports entered as found (DOORS_KEY)."""
+        if self.slot is None or not self.seed_matches:
             return
         entrances = self.slot_data.get("dungeon_entrances") or {}
         doors = {door: inside for door, inside in entrances.items()
@@ -885,9 +622,8 @@ class LASContext(ClientContext):
                                "want_reply": False, "operations": [{"operation": "update", "value": doors}]}])
 
     async def send_entrances(self) -> None:
-        """Puts the overworld doors the game reports gone through in the server's data storage (ENTRANCES_KEY): the
-        player has found where they lead. Only into the slot of the seed the game runs, whose doors these are."""
-        if self.slot is None or not self.slot_seed_hash or self.slot_seed_hash != self.game_seed_hash:
+        """Stores the overworld doors the game reports gone through as found (ENTRANCES_KEY)."""
+        if self.slot is None or not self.seed_matches:
             return
         doors = {door: inside for door, inside in self.game_entrances.items() if door not in self.entrances_sent}
         if not doors:
@@ -990,7 +726,7 @@ class LASContext(ClientContext):
             self.set_option("game_host", "127.0.0.1")  # the game runs on this computer, not on the Switch
         if key in ("emulator", "platform") and detect:
             asyncio.create_task(self.detect_from_emulator())
-        if key in GHOST_KEYS:
+        if key == "ghost_relay":
             self.update_ghosts()
         self.refresh_patch_tab()
 
@@ -1045,9 +781,7 @@ class LASContext(ClientContext):
         self.ghosts.set_names(on)
 
     def update_ghosts(self) -> None:
-        """Hands the ghost link its settings, the multiworld's ghost secret (from the patch file) and the slot; it
-        reconnects when they change. The relay is the client's setting (DEFAULT_RELAY by default); when it is empty,
-        the one the patch file was made with, else DEFAULT_RELAY."""
+        """Hands the ghost link its settings, secret and slot; it reconnects when they change."""
         from . import LASWorld
         options = LASWorld.settings
         slot = self.auth or self.patch_slot or ""
@@ -1067,7 +801,6 @@ class LASContext(ClientContext):
 
     @property
     def ghost_status(self) -> checklist.Check:
-        """The ghosts' link to the relay, for the Patch tab."""
         return self.ghosts.status if self.ghosts.status.text else checklist.Check(checklist.INFO,
                                                                                     self.ghosts.waiting_for())
 
@@ -1186,7 +919,7 @@ class LASContext(ClientContext):
             try:
                 await asyncio.to_thread(patch_and_install, self.option("patcher_command"), Path(self.patch_file),
                                         checks.seed_hash, emulators.romfs_root(self.option("romfs_folder")),
-                                        target.sd_card, target.mods, log, True, self.player_settings(), copying)
+                                        target.sd_card, target.mods, log, self.player_settings(), copying)
             except (InstallError, OSError) as e:
                 self.report("error", f"Patching failed: {e} The Archipelago tab shows the patcher's output.")
                 self.show_patch_tab()
@@ -1289,7 +1022,7 @@ def launch(*launch_args: str) -> None:
                                                               "(default: las_options.ghost_relay).")
     parser.add_argument("--ghost-secret", default=None,
                         help="The multiworld's ghost secret, for tests (default: the patch file's).")
-    if not hasattr(parser.parse_args([]), "nogui"):
+    if not hasattr(parser.parse_args([]), "nogui"):  # Archipelago adds --nogui only when there is a stdout
         parser.add_argument("--nogui", default=False, action="store_true")
     parser.add_argument("url", nargs="?", help="Archipelago connection url, or an .aplas patch file to install")
     args = parser.parse_args(launch_args)

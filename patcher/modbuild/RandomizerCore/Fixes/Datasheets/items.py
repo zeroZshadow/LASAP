@@ -3,9 +3,11 @@ from RandomizerCore.Tools.oead_tools import parseStruct, dictToStruct
 
 class ItemsDatasheetFixes:
     def __init__(self, mod_generator) -> None:
+        import mod  # patcher/modbuild/mod.py, which imports this module
         self.parent = mod_generator
         sheet = self.parent.file_manager.readFile('Items.gsheet')
         self.makeItemChanges(sheet)
+        mod.add_placeholder_row(self, sheet)
         self.parent.file_manager.writeFile('Items.gsheet', sheet)
 
 
@@ -40,13 +42,13 @@ class ItemsDatasheetFixes:
             if item['symbol'] == 'Song_Soul':
                 item['npcKey'] = 'NpcMamu'
 
-            # set the tunic npcKeys to empty strings so that nothing gets held up
+            # the tunics' item-get holds up the model they show in the world (vanilla's rows show the ocarina)
             if item['symbol'] == 'ClothesGreen':
                 item['npcKey'] = ''
             if item['symbol'] == 'ClothesRed':
-                item['npcKey'] = ''
+                item['npcKey'] = 'NpcSkeletalGuardRed'
             if item['symbol'] == 'ClothesBlue':
-                item['npcKey'] = ''
+                item['npcKey'] = 'NpcSkeletalGuardBlue'
 
         if dummy is None:
             raise KeyError('SmallKey was not found in Items.gsheet')

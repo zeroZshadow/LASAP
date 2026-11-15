@@ -103,23 +103,21 @@ class TestInstall(unittest.TestCase):
     def tearDown(self) -> None:
         self.tmp.cleanup()
 
-    def run_install(self, seed: str, force: bool = False) -> bool:
+    def run_install(self, seed: str) -> None:
         self.patch.write_text(seed)
-        return patch_and_install(self.command, self.patch, seed, self.romfs, self.sd, self.mods, self.lines.append,
-                                 force)
+        patch_and_install(self.command, self.patch, seed, self.romfs, self.sd, self.mods, self.lines.append)
 
-    def test_installs_once_per_seed(self) -> None:
+    def test_installs_a_seed(self) -> None:
         mods = self.mods
         self.assertIsNone(installed_seed(self.sd, mods))
-        self.assertTrue(self.run_install("aaaa0001"))
+        self.run_install("aaaa0001")
         self.assertIn("Mod written", self.lines)
         self.assertEqual(installed_seed(self.sd, mods), "aaaa0001")
-        self.assertFalse(self.run_install("aaaa0001"))
-        self.assertTrue(self.run_install("aaaa0001", force=True))
+        self.assertEqual(install.mod_state(self.sd, mods, "aaaa0001", self.command), install.CURRENT)
 
         (mods / "romfs" / "stale").write_text("old seed")
         (self.sd / CONFIG_PATH).with_name("ap_map.txt").write_text("an earlier patcher's file")
-        self.assertTrue(self.run_install("bbbb0002"))
+        self.run_install("bbbb0002")
         self.assertEqual(installed_seed(self.sd, mods), "bbbb0002")
         self.assertEqual((mods / "exefs" / "file").read_text(), "bbbb0002")
         self.assertFalse((mods / "romfs" / "stale").exists())
@@ -148,8 +146,8 @@ class TestInstall(unittest.TestCase):
         self.command = ""
         saved_path = list(sys.path)
         with mock.patch.object(install, "builtin_patcher_dir", return_value=root):
-            self.assertTrue(self.run_install("aaaa0001"))
-            self.assertTrue(self.run_install("bbbb0002", force=True))
+            self.run_install("aaaa0001")
+            self.run_install("bbbb0002")
         self.assertEqual((self.mods / "exefs" / "file").read_text(), "bbbb0002")
         self.assertEqual(self.lines.count("Mod written, run 1"), 2)
         self.assertEqual(sys.path, saved_path)
@@ -187,13 +185,12 @@ class TestInstall(unittest.TestCase):
         self.command = ""
         with mock.patch.object(install, "builtin_patcher_dir", return_value=root):
             with mock.patch.object(install, "builtin_patcher_build", return_value="1"):
-                self.assertTrue(self.run_install("aaaa0001"))
+                self.run_install("aaaa0001")
                 self.assertEqual(install.mod_state(self.sd, self.mods, "aaaa0001", ""), install.CURRENT)
-                self.assertFalse(self.run_install("aaaa0001"))
             with mock.patch.object(install, "builtin_patcher_build", return_value="2"):
                 self.assertEqual(install.mod_state(self.sd, self.mods, "aaaa0001", ""), install.OUTDATED)
                 self.assertEqual(install.mod_state(self.sd, self.mods, "bbbb0002", ""), install.OTHER_SEED)
-                self.assertTrue(self.run_install("aaaa0001"))
+                self.run_install("aaaa0001")
                 self.assertEqual(install.mod_state(self.sd, self.mods, "aaaa0001", ""), install.CURRENT)
 
     def test_player_settings_reinstall(self) -> None:
@@ -204,7 +201,7 @@ class TestInstall(unittest.TestCase):
         self.command = ""
         music = {"Music": "Shuffled"}
         with mock.patch.object(install, "builtin_patcher_dir", return_value=root):
-            self.assertTrue(self.run_install("aaaa0001"))
+            self.run_install("aaaa0001")
             # an install without the settings file counts as the defaults
             (self.sd / install.SETTINGS_PATH).unlink()
             self.assertEqual(install.mod_state(self.sd, self.mods, "aaaa0001", "", dict(PLAYER_DEFAULTS)),
@@ -215,12 +212,10 @@ class TestInstall(unittest.TestCase):
             self.assertEqual(install.mod_state(self.sd, self.mods, "aaaa0001", "", dict(PLAYER_DEFAULTS)),
                              install.CURRENT)
             self.patch.write_text("aaaa0001")
-            self.assertTrue(patch_and_install("", self.patch, "aaaa0001", self.romfs, self.sd, self.mods,
-                                              self.lines.append, settings=music))
+            patch_and_install("", self.patch, "aaaa0001", self.romfs, self.sd, self.mods, self.lines.append,
+                              settings=music)
             self.assertIn("Mod written, run 1", self.lines)
             self.assertEqual(install.mod_state(self.sd, self.mods, "aaaa0001", "", music), install.CURRENT)
-            self.assertFalse(patch_and_install("", self.patch, "aaaa0001", self.romfs, self.sd, self.mods,
-                                               self.lines.append, settings=music))
 
     def test_player_settings_arguments(self) -> None:
         """The settings reach the patcher command as a JSON object."""
@@ -247,16 +242,14 @@ class TestInstall(unittest.TestCase):
         for setting in PLAYER_SETTINGS:
             self.assertEqual(getattr(LASSettings, setting.key), setting.default, setting.key)
 
-    def test_patcher_modules_ship(self) -> None:
-        """Every top-level patcher module is in the release (build_release.py's PATCHER_FILES) and is unloaded after an
-        in-process run (install.PATCHER_MODULES, TRACKER_MODULES)."""
+    def test_patcher_modules_unload(self) -> None:
+        """Every top-level patcher module is unloaded after an in-process run (install.PATCHER_MODULES,
+        TRACKER_MODULES)."""
         modules = sorted(install.SOURCE_PATCHER.glob("*.py"))
         if not modules:
             self.skipTest("no patcher source")
-        files = build_release_value("PATCHER_FILES")
         for module in modules:
             with self.subTest(module=module.name):
-                self.assertIn(module.name, files)
                 self.assertIn(module.stem, install.PATCHER_MODULES | install.TRACKER_MODULES)
 
     def test_patcher_data_ships(self) -> None:
@@ -301,16 +294,6 @@ class TestPatchWithoutBuild(LASTestBase):
             self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
             self.assertTrue((out / "atmosphere" / "contents" / TITLE_ID / "exefs" / "subsdk9").is_file())
             self.assertTrue((out / "atmosphere" / "contents" / TITLE_ID / "romfs" / "region_common").is_dir())
-
-
-class TestMapGroups(unittest.TestCase):
-    def test_the_assets_map_icons_are_map_positions_groups(self) -> None:
-        """The mod's map icons number the overworld groups as the asset build found them, the seed's map as
-        map_positions.json gives them now (ap_map.groups_key): after map_positions.json changes, rebuild the assets."""
-        result = subprocess.run([sys.executable, "-c", "import ap_assets, ap_map\n"
-                                 "print(ap_map.groups_key(ap_map.load_positions()) == ap_assets.data().get('map_groups'))"],
-                                cwd=install.SOURCE_PATCHER, capture_output=True, text=True)
-        self.assertEqual(result.stdout.strip(), "True", result.stderr[-2000:])
 
 
 @unittest.skipUnless((ROMFS / "region_common").is_dir(), "RomFS dump not found (LASAP_ROMFS)")

@@ -1,22 +1,10 @@
-"""Ghost relay: passes players' positions between the LAS clients of one run, for multiplayer ghosts (DESIGN.md,
-Ghosts). Also the wire protocol the client uses (ghosts.py). Standard library only, so the file runs on its own:
+"""Ghost relay for multiplayer ghosts (DESIGN.md, Ghosts), and the wire protocol the client uses (ghosts.py). Standard
+library only, so the file runs on its own:
 
-    python3 ghost_relay.py [--host 0.0.0.0] [--port 43390] [--forward] [--password PASSWORD] [--nogroups]
+    python3 ghost_relay.py [--port 43390] [--forward] [--password PASSWORD] [--nogroups]   (--help lists all)
 
---forward has the router forward the port to this computer while the relay runs (NAT-PMP, else UPnP). --password (or
-the environment variable LAS_GHOST_RELAY_PASSWORD) lets in only clients that send it: players enter the relay as
-password@host:port. --nogroups puts the players of all multiworlds in one group.
-
-Plain TCP with TCP_NODELAY. Every message is a frame: a u16 length (big-endian), then the payload, whose first byte is
-the message type. The same port also takes WebSocket connections (a client entering ws:// or wss://, for a relay behind
-a proxy such as a Cloudflare Tunnel): their binary messages carry the same byte stream of frames. The first byte tells
-them apart: a frame's length starts with 0 or 1 (no frame is longer than MAX_FRAME), an HTTP request with "G" (GET).
-A WebSocket from this computer or a --trusted-proxy (a reverse proxy's container) counts as the player's address in
-its CF-Connecting-IP or X-Forwarded-For header. A client joins a group, SHA-256("lasghost" | secret), computed by the client from its multiworld's
-ghost secret (in the patch file), so the relay never sees the secret. The relay forwards a player's position to the group's members in the same level, and in
-the overworld (Field) only to those within the 3x3 screens around the sender, each member getting the nearest
-MAX_SHOWN players of its area; it sends an "off" for a player who leaves a member's area or the group. A member's
-frames go out together every BATCH seconds.
+Every message is a frame, a u16 big-endian length then the payload, whose first byte is the message type; WebSocket
+connections on the same port carry the same byte stream.
 """
 import argparse
 import asyncio
@@ -386,9 +374,6 @@ class WebSocketWriter:
     def transport(self) -> asyncio.WriteTransport:
         return self.writer.transport
 
-    def get_extra_info(self, name: str, default=None):
-        return self.writer.get_extra_info(name, default)
-
     def write(self, data: bytes) -> None:
         self.send(WS_BINARY, data)
 
@@ -420,9 +405,6 @@ class WebSocketWriter:
 
     async def drain(self) -> None:
         await self.writer.drain()
-
-    async def wait_closed(self) -> None:
-        await self.writer.wait_closed()
 
 
 class WebSocketReader:
@@ -656,7 +638,8 @@ class Relay:
     async def open(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, address: str) \
             -> Tuple[Union[asyncio.StreamReader, WebSocketReader, None], Union[asyncio.StreamWriter, WebSocketWriter],
                      str, bytes]:
-        """Tells plain TCP from a WebSocket by the first byte. Returns the connection's reader and writer (reader None:
+        """Tells plain TCP from a WebSocket by the first byte: a frame's length starts with 0 or 1 (MAX_FRAME), an
+        HTTP request with "G". Returns the connection's reader and writer (reader None:
         an HTTP request that was no upgrade, answered), the player's address and the first byte if it belongs to the
         first frame."""
         first = await reader.readexactly(1)
@@ -1062,7 +1045,6 @@ def default_gateways() -> List[str]:
     this computer's IPv4 addresses."""
     import re
     import subprocess
-    import sys
     found: List[str] = []
     try:
         if sys.platform.startswith("linux"):
@@ -1206,7 +1188,6 @@ def forward_port(port: int) -> Tuple[Union["NatPmp", UPnP], str]:
 
 
 def is_public(address: str) -> bool:
-    import ipaddress
     try:
         ip = ipaddress.ip_address(address)
     except ValueError:
@@ -1235,12 +1216,11 @@ async def serve(host: str, port: int, echo: Optional[float] = None, forward: boo
     unmapper = None
     if forward:
         try:
-            mapping, external = await asyncio.to_thread(forward_port, port)
+            m, external = await asyncio.to_thread(forward_port, port)
         except ForwardError as error:
             relay.log.error(f"Port forwarding: {error}. Forward TCP port {port} to this computer on the router "
                             "instead.")
         else:
-            m = mapping  # NatPmp or UPnP
             unmapper = Unmapper(m, relay.log)
             unmapper.watch_console()
             relay.log.info(f"{m.name}: the router forwards TCP port {m.external_port} to {m.internal_ip}:{port}")

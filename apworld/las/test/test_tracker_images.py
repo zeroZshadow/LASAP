@@ -120,6 +120,11 @@ class TestTrackerImages(unittest.TestCase):
                 (level / name).write_bytes(b"")
             self.assertEqual(self.images.level_cells(Path(romfs), "Lv04AnglersTunnel"), {"02D", "05E"})
 
+    def test_instruments(self) -> None:
+        """CollectInst_<n> numbers the instruments in the world's order."""
+        from ..lasr import INSTRUMENTS
+        self.assertEqual(self.images._INSTRUMENTS, INSTRUMENTS)
+
 
 # (block, block width, block height, RGBA) from the game's textures, RGBA by texture2ddecoder
 BLOCKS = [

@@ -118,19 +118,23 @@ class TestEverythingOptionalNoTraps(LASTestBase):
 
 
 class TestFewFiller(unittest.TestCase):
-    """Alone with nearly every category off, the slot has fewer filler and traps than optional locations: as many are
-    excluded as it has filler and traps, the rest hold its own items but small keys, and the seed generates. Those can
-    hold progression, which the goal never needs but other locations may."""
+    """Every location category off, dungeon items in their own dungeons, no starting gear: nearly all locations are in
+    dungeons, only Tarin's is reachable at the start, and there is less filler than optional locations: as many are
+    excluded as there is filler, the rest hold own items."""
     options = {**{name: False for name in ("chests", "free_gifts", "golden_leaves", "heart_pieces", "seashells",
                                            "miscellaneous", "shop", "boss_drops", "open_mabe")},
-               "seashell_mansion": 0, "small_keys": "own_dungeon", "nightmare_keys": "own_dungeon", "dungeon_items": "own_dungeon",
-               "instruments": "any_dungeon", "start_inventory_from_pool": {}}
+               "seashell_mansion": 0, "small_keys": "own_dungeon", "nightmare_keys": "own_dungeon",
+               "dungeon_items": "own_dungeon", "instruments": "any_dungeon", "start_inventory_from_pool": {}}
 
     def test_generates(self) -> None:
         world_type = AutoWorldRegister.world_types[GAME]
-        for seed in range(4):
+        for seed in range(8):
             multiworld = setup_multiworld(world_type, gen_steps, seed, self.options)
             world = multiworld.worlds[1]
+            # an item that opens the most locations goes to the start, though none opens EARLY_LOCATIONS_WANTED
+            self.assertIsNotNone(world.opener, seed)
+            self.assertEqual(multiworld.local_early_items[1], {world.opener: 1}, seed)
+            self.assertTrue(world._progression_fits(world._others_state()), seed)
             filler = sum(1 for item in multiworld.itempool if not (item.advancement or item.useful))
             locations = [multiworld.get_location(LOCATION_NAMES[loc], 1) for loc in world.optional]
             excluded = [loc for loc in locations if loc.progress_type == LocationProgressType.EXCLUDED]

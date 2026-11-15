@@ -35,7 +35,3 @@ class TestText(unittest.TestCase):
             self.assertEqual(place in holds, donor in holds, place)
             if place in holds:
                 self.assertEqual(fix, "=", place)
-
-
-if __name__ == "__main__":
-    unittest.main()

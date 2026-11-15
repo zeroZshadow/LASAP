@@ -1,17 +1,6 @@
-"""The drop actor (DESIGN.md, Drop actor): every location LASR shows as a stand-in item (a small key actor for the item
-that drops out of a cut bush, a lifted rock or pot, a bonked tree or a bombed hole, a dungeon's falling key, a Kanalet
-Castle golden leaf; a buried slime key for a dig spot) shows it as ItemAPDrop, an actor type the module adds to the
-game's actor table (ap_drop.cpp), instead. No small key or slime key stand-in is left in the rooms, and the mod keeps the
-game's small key flowchart (mod.py skips LASR's). The bosses' items, the ghost's reward, the Color Dungeon's blue
-rupees and, with Bouncy Items, the chests' and owl statues' gifts are drop actors too.
-
-The actor has an Npc.gsheet row of its own (the small key's data: the model, the take entry and the shell sensor from
-LEB parameters 1 to 4) and its own flowchart, made here: the pops and one take entry per location. LEB parameter 0 picks
-how it appears (Motion); a tree's or hole's first LEB link names the tree or the hole's dropper it leaves.
-The module centres and sizes each drop's model by its bounds (scripts/drop_bounds.py).
-
-With the Bouncy Items option the drop is a ball (its own collision and physics traits; the module launches it at random
-and spins it, config.ini's bouncy_items), and each chest's item jumps out of it when it opens, instead of the item-get.
+"""The drop actor (DESIGN.md, Drop actor): ItemAPDrop's rows and flowchart, and drop actors for the seashells in bushes,
+rocks, trees, holes and dig spots, the dungeon keys and golden leaves, the bosses' items, the ghost's reward, the blue
+rupees and, for Bouncy Items, the AP chests and owl statues. The Npc row reads the model, the take entry and the shell sensor from LEB parameters 1 to 4.
 """
 import copy
 import math
@@ -21,16 +10,18 @@ from pathlib import Path
 import ap_option_edits
 import evfl
 from RandomizerCore.Randomizers.chests import CHEST_ROOMS
-from RandomizerCore.Randomizers.seashells import GRASS_ROOMS, HOLE_ROOMS, ROCK_ROOMS, SHELL_FLAGS, SHELL_ROOMS, TREE_ROOMS
+from RandomizerCore.Randomizers.data import MODEL_ROTATIONS, MODEL_SIZES
+from RandomizerCore.Randomizers.golden_leaves import createRoomKey
+from RandomizerCore.Randomizers.seashells import (GRASS_FLAGS, GRASS_ROOMS, HOLE_DROP_POSITONS, HOLE_FLAGS, HOLE_ROOMS,
+                                                  ROCK_FLAGS, ROCK_ROOMS, SHELL_FLAGS, SHELL_ROOMS, SUNKEN_SHELLS,
+                                                  TREE_DROP_POSITIONS, TREE_FLAGS, TREE_ROOMS)
 from RandomizerCore.Randomizers.small_keys import GOLDEN_LEAF_ROOMS, SMALL_KEY_ROOMS
 from RandomizerCore.Tools import event_tools
 from RandomizerCore.Tools.gsheet import FloatArray
-from RandomizerCore.Tools.leb import Room
 from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct
 
 DROP_ACTOR = "ItemAPDrop"  # must match AP::DROP_ACTOR: the actor table's name and the Npc row
 DROP_ACTOR_ID = 0xA7  # must match AP::DROP_ACTOR_ID: an empty id of the game's actor table
-BOUNCY_SETTING = "Bouncy Items"  # the world's option (lasr_settings), config.ini's [options] bouncy_items
 BALL_ROW = "ItemAPDropBall"  # the drop's Npc row with Bouncy Items, which the module swaps in (ap_options.cpp)
 
 
@@ -52,16 +43,16 @@ class Motion(IntEnum):
 
 SMALL_KEY_ID = 0xA9
 SLIME_KEY_ID = 0x8A
+SHELL_ID = 0x87
+SHELL_DROPPER_ID = 0x233  # AreaShellDropper
 SMALL_KEY_ROW = "ItemSmallKey"
 SMALL_KEY_TRAITS = "SmallKey"
-SMALL_KEY_EVENT = "SmallKey.bfevfl"  # LASR's edits are its stand-ins' entries: mod.py does not write it
 REFALL = b"ReFall"
 EVENT_FILE = "APDrop.bfevfl"
 EVENT_ACTOR = "APDrop"
 # The pops (switch 0 turns on while switch 1, the got flag, is off): a dungeon key or golden leaf falls as the small
-# key with LASR's Key Animations, which the world always sets: the drop sound, the fall, and the player's control back
-# after 2 seconds; any other comes out at once. A trigger's actor parameter condition (category 4) compares LEB
-# parameter 0; the first trigger whose conditions hold runs.
+# key with LASR's Key Animations, any other comes out at once. A trigger's actor parameter condition (category 4)
+# compares LEB parameter 0; the first trigger whose conditions hold runs.
 POP_TRIGGER = 14
 TAKE_TRIGGER = 0
 SWITCH_CONDITION = 8
@@ -87,26 +78,26 @@ ANGULAR_DAMP = 0.05
 SPHERE_SHAPE = 1  # Npc row collision shape: parameters [radius] (ItemRecoveryHeart's)
 SPHERE_RADIUS = 0.3  # resting on its bottom: the centre that high above the actor's root
 
+# Seashells in bushes, rocks, trees and holes: a drop that the actor's switch 0, a level flag of its own counted up from
+# SPOT_FLAG_BASE (above those the rooms use), pops; a tree's or hole's in a spot of its own. Per location: the room,
+# the got flag
 ROOMS = {**GRASS_ROOMS, **ROCK_ROOMS, **TREE_ROOMS, **HOLE_ROOMS}
+GOT_FLAGS = {**GRASS_FLAGS, **ROCK_FLAGS, **TREE_FLAGS, **HOLE_FLAGS}
+SPOTS = {**TREE_DROP_POSITIONS, **HOLE_DROP_POSITONS}
+SPOT_FLAG_BASE = 101
 ROOM_MOTIONS = {**{location: Motion.TREE for location in TREE_ROOMS}, **{location: Motion.HOLE for location in HOLE_ROOMS}}
 # the motions whose first LEB link names the actor they come from
 LINKED = (Motion.TREE, Motion.HOLE, Motion.CHEST, Motion.OWL, Motion.BOSS, Motion.BOSS_PIT)
 LAUNCHED = (Motion.CHEST, Motion.OWL)  # launched by a launch flag of their own (_launched_drop)
-# Dungeon keys and golden leaves: LASR's stand-ins, which fall from above when their switch 0 (a global flag) turns
-# on. pothole-final, which LASR lists with the small keys, is a dig. The sunken key stands in two rooms, LASR writing
-# both.
+# Dungeon keys and golden leaves (the room's first small key; golden_leaves.createRoomKey makes the leaves small
+# keys), which fall from above when their switch 0 (a global flag) turns on. pothole-final, which LASR lists with the
+# small keys, is a dig. The sunken key stands in two rooms.
 KEY_ROOMS = {location: [room] for location, room in {**SMALL_KEY_ROOMS, **GOLDEN_LEAF_ROOMS}.items()
              if location not in SHELL_ROOMS}
 KEY_ROOMS["D4-sunken-item"].append("Lv04AnglersTunnel_06A")
-# Dig spots: LASR's buried slime keys (the sunken seashells are heart piece actors, which stay)
-DIG_ROOMS = SHELL_ROOMS
-# Boss drops: each boss drops its item (a heart container, the Angler Key, the Face Key, the hookshot) as in the game
-# (its BossItemDrop event; the bosses' flowcharts and drop rows stay the game's), and the module makes the boss's drop actor, linked to the boss
-# and holding the location's item (without Boss Drops its vanilla one), pop out of the ground where the item would
-# start, in place of it (ap_drop.cpp), turning its switch 0 (BOSS_FLAG) on; the game drops the item again when the room
-# loads while it is not had, and the drop stands there (Lanmola, not made again, drops nothing: BOSS_PITS). Switch 1 is
-# a got flag of its own (GOT_FLAG).
-# Per location: the boss's actor (Enemy<name>), its room (Master Stalfos's last fight's).
+# Dig spots: the room's seashell, else its slime key (the sunken seashells are heart piece actors, which stay)
+DIG_ROOMS = {location: room for location, room in SHELL_ROOMS.items() if location not in SUNKEN_SHELLS}
+# Boss drops, per location: the boss's actor (Enemy<name>), its room (Master Stalfos's last fight's)
 BOSS_DROPS = {
     "D1-moldorm": ("DeguTail", "Lv01TailCave_04G"),
     "D2-genie": ("PotDemonKing", "Lv02BottleGrotto_04G"),
@@ -120,33 +111,24 @@ BOSS_DROPS = {
     "armos-knight": ("DeguArmos", "ArmosShrine_02A"),
     "D5-master-stalfos": ("MasterStalfon", "Lv05CatfishsMaw_01B"),
 }
-# A boss's item that falls into a pit: Lanmola's, into the desert's pit at Lanmola's spot, below which the game stands
-# the item in the cave (LASR removes it, RoomFixes). The boss's drop is a BOSS_PIT, and a drop stands where that item
-# does, switch 0 BOSS_FLAG. Per location: the room, the item's actor (in the RomFS's room)
+# A boss's item that falls into a pit, where the game stands it in the room below: a drop takes the item's place
+# there. Per location: the room, the item's actor
 BOSS_PITS = {"lanmola": ("LanmolaCave_02A", "ItemAnglerKey")}
 BOSS_FLAG = "APBossDrop_{}"
 GOT_FLAG = "APDropGet_{}"
-# The ghost's reward (ghost-reward): the game gives a bottle in the ghost's farewell at its grave (Field.bfevfl,
-# Graveyard_talk, which turns Ghost4_Clear on), and LASR the location's item in the event after it (mod.py skips
-# that). A drop stands where Link takes it, the spot of the farewell's trigger (TagAreaEvent) on the grave's floor,
-# and shows once the farewell turned its switch 0 (GHOST_FLAG) on. Its room, the trigger's event entry, the grave
+# The ghost's reward: LASR gives it in the event after the farewell at the grave (mod.py skips that); a drop stands at
+# the farewell trigger's spot (TagAreaEvent) on the grave's floor. Its room, the trigger's event entry, the grave
 GHOST_DROP = "ghost-reward"
 GHOST_ROOM, GHOST_TRIGGER, GHOST_GRAVE = "Field_07E", b"Graveyard_talk", "ObjGhostsGrave"
 GHOST_FLAG = "Ghost4_Clear"
-# The Color Dungeon's blue rupees (D0-rupee-1 to -28: the room's rupees in turn): each rupee made a drop actor where
-# it stands. Its switch 1 is the rupee's own got flag (its switch 0, Lv10RupeeGet...); switch 0 a level flag of the
-# drops' own, which the module turns on when one is made and not taken, so it stands there from the start.
+# The Color Dungeon's blue rupees (D0-rupee-1 to -28: the room's rupees in turn), each a drop where it stands
 BLUE_RUPEE_ROOM = "Lv10ClothesDungeon_08D"
 RUPEE_ACTOR = 0xAB
 BLUE_RUPEES = [f"D0-rupee-{n}" for n in range(1, 29)]
-# Bouncy Items, chests: a drop actor in front of each AP chest, linked to it. The chest holds DROP_CHEST_KEY, for which
-# TreasureBox.bfevfl plays no item-get but turns its switch LAUNCHED_SWITCH on (a level flag of its own, not saved),
-# the drop's switch 0: the ball pops out. The chest's opened flag (its switch 1, saved), which opening it set, is the
-# drop's switch DROP_OPENED: it stays on while the ball is out, and goes off when the chest's room loads with no ball
-# out and the item not taken (ap_drop.cpp, DropStaysOut), so the chest is closed again. Each of the five chests of
-# FIVE_CHESTS, which LASR all gives the location's item, has a drop, and their switch 1 is a got flag of their own
-# (GOT_FLAG), which taking one sets: the puzzle closes the chests again when Link leaves.
-# Left out: the two Eagle's Tower chests whose room is copied for the tower's collapse.
+# Bouncy Items, chests: the chest holds DROP_CHEST_KEY and turns its LAUNCHED_SWITCH on, the drop's switch 0; its
+# opened flag (switch 1) is the drop's DROP_OPENED. FIVE_CHESTS' drops share a got flag of their own, as the puzzle
+# closes the chests again when Link leaves. Left out: the two Eagle's Tower chests whose room is copied for the
+# tower's collapse.
 CHEST_ACTOR = 0xF7
 CHEST_OPENED = 1
 # Not switch 1, which the drop's row lays out no drop for once on: the opened flag is on when the ball pops.
@@ -159,11 +141,8 @@ CHEST_LOCATIONS = [location for location in CHEST_ROOMS if location not in CHEST
 # added by mod.py
 FLAGS = [flag.format(location) for location in BOSS_DROPS for flag in (BOSS_FLAG, GOT_FLAG)] + [
     GOT_FLAG.format(location) for location in (GHOST_DROP, FIVE_CHESTS)]
-# Bouncy Items, owl statues: a drop actor in front of each owl statue that gives an item (LASR's Owl Gifts), linked to
-# it. LASR's gift in the statue's event (FieldOwlStatue.bfevfl, DungeonOwlStatue.bfevfl), behind a check of the
-# location's flag, turns the statue's LAUNCHED_SWITCH on instead, the drop's switch 0, and taking the drop sets the
-# location's flag (its switch 1), so examining the statue launches it until it is taken. Statue actor: its flowchart
-# and event actor; the rooms with owl statues.
+# Bouncy Items, owl statues: LASR's gift turns the statue's LAUNCHED_SWITCH on instead, the drop's switch 0; the drop's
+# switch 1 is the location's flag. Statue actor: its flowchart and event actor; the rooms with owl statues.
 OWL_FLOWS = {0xD2: "FieldOwlStatue", 0xF9: "DungeonOwlStatue"}
 OWL_ROOMS = (
     "Field_02B", "Field_02O", "Field_04F", "Field_06N", "Field_09P", "Field_11I", "Field_13G", "Field_13P", "Field_14K",
@@ -188,21 +167,21 @@ OPEN_EVENTS = ("Event32", "Event15")  # TreasureBox.bfevfl: BoxOpen in TreasureB
 
 def add(proc, placeholder_key: str) -> None:
     """Bouncy Items' parts are in every mod, the module turning them on. It changes the AP chests' item, so it runs
-    after ap_map, which finds them by it."""
+    after ap_map_edits, which finds them by it."""
     files = proc.file_manager
     _npc_row(files)
     _traits_row(files)
     flow = _flow()
-    for location, room in ROOMS.items():
-        _room_actor(files, room, location, ROOM_MOTIONS.get(location, Motion.HOPS))
+    for flag, (location, room) in enumerate(ROOMS.items(), SPOT_FLAG_BASE):
+        _spot_drop(proc, room, location, flag)
         _take_entry(proc, flow.flowchart, location)
     for location, rooms in KEY_ROOMS.items():
         for room in rooms:
-            _room_actor(files, room, location, Motion.FALLS)
+            _key_drop(proc, room, location)
         _take_entry(proc, flow.flowchart, location)
     for location, room in DIG_ROOMS.items():
-        if _dig_actor(proc, room, location):
-            _take_entry(proc, flow.flowchart, location)
+        _dig_drop(proc, room, location)
+        _take_entry(proc, flow.flowchart, location)
     _bosses(proc, flow)
     _ghost(proc, flow)
     level_flags = {}
@@ -279,8 +258,7 @@ def _flow():
 
 
 def _take_entry(proc, flowchart, location: str, got_switches: tuple = (1,)) -> None:
-    """LASR's take entry for a small key stand-in (seashells.writeKeyEvent), for the drop actor, turning the switches
-    on. A second entry of the same name would break the flowchart's entry dictionary, which the game looks every entry
+    """The drop's take entry for the location, as LASR's small keys have them, turning the switches on. A second entry of the same name would break the flowchart's entry dictionary, which the game looks every entry
     up in."""
     if event_tools.findEntryPoint(flowchart, location) is not None:
         raise ValueError(f"{EVENT_FILE} has an entry {location} already")
@@ -298,42 +276,80 @@ def _make_drop(actor) -> None:
     actor.name = f"{DROP_ACTOR}-{actor.key:016X}".encode()
 
 
-def _room_actor(files, room_name: str, location: str, motion: Motion) -> None:
-    """LASR's small key stand-in made a drop actor. A tree's or hole's links to
-    the tree or dropper, the actor that sets its switch 0 (LASR gives both the same)."""
+def _show(proc, drop, location: str) -> None:
+    """The location's item on a drop: its model, take entry and shell sensor (LEB parameters 1 to 4), size and turn."""
+    item_key, _, model_path, model_name = proc.item_info_manager.getItemInfoWithModel(location)
+    drop.parameters[1] = model_path.encode()
+    drop.parameters[2] = model_name.encode()
+    drop.parameters[3] = location.encode()
+    drop.parameters[4] = b"true" if item_key == "Seashell" else b"false"
+    if model_name in MODEL_SIZES:
+        drop.scaleX = drop.scaleY = drop.scaleZ = MODEL_SIZES[model_name]
+    if model_name in MODEL_ROTATIONS:
+        drop.rotY = MODEL_ROTATIONS[model_name]
+
+
+def _spot_drop(proc, room_name: str, location: str, flag: int) -> None:
+    """The seashell's drop in a bush, rock, tree or hole (ROOMS): a copy of its actor, which no longer gives the
+    seashell; a tree's or hole's links to it."""
+    files = proc.file_manager
     room_file = f"{room_name}.leb"
     room = files.readFile(room_file)
-    # the small key whose take entry (LEB parameter 3) is the location
-    drop = next(a for a in room.actors if a.type == SMALL_KEY_ID and a.parameters[3] == location.encode())
+    if location in HOLE_ROOMS:
+        source = next(a for a in room.actors if a.type == SHELL_DROPPER_ID)
+    else:
+        slot = 1 if location in GRASS_ROOMS else 0  # the parameter that names the seashell
+        source = next(a for a in room.actors
+                      if isinstance(a.parameters[slot], bytes) and a.parameters[slot].startswith(b"Seashell"))
+        source.parameters[slot] = b"Tree" if location in TREE_ROOMS else b"None"
+    source.switches[0] = (LEVEL_FLAG, flag)
+    drop = copy.deepcopy(source)
+    drop.key += 1
+    drop.rotY = 0.0
+    if location in SPOTS:
+        drop.posX, drop.posY, drop.posZ = SPOTS[location]
+    drop.switches[1] = (GLOBAL_FLAG, proc.flag_manager.flags[GOT_FLAGS[location]])
+    room.actors.append(drop)
+    _show(proc, drop, location)
     _make_drop(drop)
-    if motion == Motion.FALLS and drop.parameters[0] == REFALL:
-        motion = Motion.REFALLS
+    motion = ROOM_MOTIONS.get(location, Motion.HOPS)
     drop.parameters[0] = int(motion)
     if motion in LINKED:
-        if tuple(drop.switches[0]) == NO_SWITCH:
-            raise ValueError(f"{room_name}: {location}'s stand-in has no switch 0 to find its tree or dropper by")
-        source = next(i for i, a in enumerate(room.actors) if a is not drop and a.switches[0] == drop.switches[0])
-        drop.relationships.section_1 = [[[0, 0], source]]
+        drop.relationships.section_1 = [[[0, 0], next(i for i, a in enumerate(room.actors) if a is source)]]
         drop.relationships.x = 1
     files.writeFile(room_file, room)
 
 
-def _dig_actor(proc, room_name: str, location: str) -> bool:
-    """LASR's buried slime key made a buried drop actor (False for a sunken seashell): its model, take entry and shell
-    sensor (the slime key's LEB parameters 1, 2, 3 and 5), switch 1 the location's got flag."""
+def _key_drop(proc, room_name: str, location: str) -> None:
+    """The dungeon key's or golden leaf's drop (KEY_ROOMS), falling again whenever Link enters its zone where the
+    small key has "ReFall"."""
     files = proc.file_manager
     room_file = f"{room_name}.leb"
     room = files.readFile(room_file)
-    drop = next((a for a in room.actors if a.type == SLIME_KEY_ID and a.parameters[3] == location.encode()), None)
+    if location in GOLDEN_LEAF_ROOMS:
+        createRoomKey(room, location, proc.flag_manager.flags)
+    drop = next(a for a in room.actors if a.type == SMALL_KEY_ID)
+    _show(proc, drop, location)
+    _make_drop(drop)
+    drop.parameters[0] = int(Motion.REFALLS if drop.parameters[0] == REFALL else Motion.FALLS)
+    files.writeFile(room_file, room)
+
+
+def _dig_drop(proc, room_name: str, location: str) -> None:
+    """The dig spot's buried drop, switch 1 the location's got flag."""
+    files = proc.file_manager
+    room_file = f"{room_name}.leb"
+    room = files.readFile(room_file)
+    drop = next((a for a in room.actors if a.type == SHELL_ID), None)
     if drop is None:
-        return False
+        drop = next(a for a in room.actors if a.type == SLIME_KEY_ID)
+    _show(proc, drop, location)
     _make_drop(drop)
     drop.rotY = 0.0
     drop.scaleX = drop.scaleY = drop.scaleZ = 1.0
-    drop.parameters = [int(Motion.BURIED), *drop.parameters[1:4], drop.parameters[5], 0, 0, 0]
+    drop.parameters = [int(Motion.BURIED), *drop.parameters[1:5], 0, 0, 0]
     drop.switches = [NO_SWITCH, (GLOBAL_FLAG, proc.flag_manager.flags[SHELL_FLAGS[location]]), NO_SWITCH, NO_SWITCH]
     files.writeFile(room_file, room)
-    return True
 
 
 def _model(proc, location: str) -> tuple:
@@ -400,9 +416,9 @@ def _bosses(proc, flow) -> None:
         if location in BOSS_PITS:
             pit_file = f"{BOSS_PITS[location][0]}.leb"
             pit = files.readFile(pit_file)
-            vanilla = Room((Path(files.parent.rom_path) / files.getRelativeDir(pit_file) / pit_file).read_bytes())
-            item = next(a for a in vanilla.actors if a.name.split(b"-")[0].decode() == BOSS_PITS[location][1])
-            drop = _new_drop(pit, item, location, Motion.HOPS, model)
+            item = next(i for i, a in enumerate(pit.actors) if a.name.split(b"-")[0].decode() == BOSS_PITS[location][1])
+            drop = _new_drop(pit, pit.actors[item], location, Motion.HOPS, model)
+            del pit.actors[item]
             drop.switches = list(switches)
             files.writeFile(pit_file, pit)
         _take_entry(proc, flow.flowchart, location)
@@ -545,7 +561,7 @@ def level_flags_used(files, level: Path) -> set:
 def _chest_skip(files, placeholder_key: str) -> None:
     """A chest holding DROP_CHEST_KEY plays no item-get once open, nor PopItem (DROP_CHEST_KEY has no Items.gsheet
     row), with Bouncy Items: it turns its launch flag on, and its drop actor pops out. Without, it gives the AP
-    placeholder as the other AP chests do (mod._chest_placeholder_branch). CompareString's case 0 is a
+    placeholder as the other AP chests do (mod.chest_placeholder_branch). CompareString's case 0 is a
     match."""
     flow = files.readFile("TreasureBox.bfevfl")
     chart = flow.flowchart

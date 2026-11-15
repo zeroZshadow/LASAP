@@ -1,35 +1,17 @@
 """A new save's name: the slot name as the game takes it (patcher/ap_save_name.py)."""
-import os
-import sys
 import unittest
-from pathlib import Path
 
-PATCHER = Path(os.path.realpath(__file__)).parents[3] / "patcher"
-
-
-def _import(*names):
-    saved = list(sys.path)
-    sys.path.insert(0, str(PATCHER))
-    try:
-        return [__import__(name, fromlist=["_"]) for name in names]
-    finally:
-        sys.path[:] = saved
-
-
-def _forget(*prefixes) -> None:
-    for name in list(sys.modules):
-        if name.split(".")[0] in prefixes:
-            del sys.modules[name]
+from . import forget, patcher_import
 
 
 class TestSaveName(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.ap_save_name, = _import("ap_save_name")
+        cls.ap_save_name, = patcher_import("ap_save_name")
 
     @classmethod
     def tearDownClass(cls) -> None:
-        _forget("ap_save_name")
+        forget("ap_save_name")
 
     def test_rule(self) -> None:
         cases = {

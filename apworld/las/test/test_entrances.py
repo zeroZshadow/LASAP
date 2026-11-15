@@ -1,35 +1,20 @@
-"""Entrances: which doors move (entrances.py), the doors as AP entrances, plando, and the patch's jumps for the moved
-doors."""
-import sys
+"""Entrances: which doors move (lasr.shuffle_pool), the doors as AP entrances, plando, and the patch's jumps for the
+moved doors."""
 import unittest
-from pathlib import Path
 
-from . import LASTestBase
-from ..entrances import shuffle_pool
+from . import LASTestBase, forget, patcher_import
 from ..lasr import (DOORS as GAME_DOORS, DUNGEON_DOORS, DUNGEON_POOL, DUNGEONS, ENTRANCE_POOL, HOME_DOOR, HOUSE_DOOR,
-                    HOUSE_EXIT, START_DOORS, WRITTEN_LOGIC, door_entrance, door_region, dungeon_region, start_pairs)
+                    HOUSE_EXIT, START_DOORS, WRITTEN_LOGIC, door_entrance, door_region, dungeon_region, shuffle_pool,
+                    start_pairs)
 from ..options import ShuffledDungeons
-from ..logic import ALWAYS, START, parse
+from ..logic import START, parse
 
-
-def zone(**routes):
-    return {"type": "region", **{key.replace("_", "-"): value for key, value in routes.items()}}
-
-
-# The house in mabe; a two-door cave from mabe up to a ledge; two dead ends in mabe.
+# The house; a two-door cave; two dead ends.
 DOORS = {"pairs": {"Field_house": "House_01A", "Field_a": "Cave_01A", "Field_b": "Cave_02A", "Field_c": "Shed_01A",
                    "Field_d": "Hut_01A"},
          "one-way": {},
          "groups": {"dungeon": [], "dungeon-other": [], "connector": ["Field_a", "Field_b"],
                     "single": ["Field_c", "Field_d", "Field_house"]}}
-WRITTEN = {
-    START: zone(doors={"House_01A": ALWAYS}),
-    "mabe": zone(doors={"Field_house": ALWAYS, "Field_a": ALWAYS, "Field_c": ALWAYS, "Field_d": "bombs"}),
-    "ledge": zone(doors={"Field_b": ALWAYS}),
-    "cave": zone(doors={"Cave_01A": ALWAYS, "Cave_02A": ALWAYS}),
-    "shed": zone(doors={"Shed_01A": ALWAYS}),
-    "hut": zone(doors={"Hut_01A": ALWAYS}),
-}
 
 
 class TestShufflePool(unittest.TestCase):
@@ -38,44 +23,44 @@ class TestShufflePool(unittest.TestCase):
 
 
 class TestDoorJumps(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.ap_entrances, = patcher_import("ap_entrances")
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        forget("ap_entrances")
+
     def test_a_moved_door_leads_in_and_back_out(self) -> None:
-        sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "patcher"))
-        import ap_entrances
-        lines = ap_entrances.door_jumps({"Field_01A": "Cave_02B", "Field_03C": "House_01A"},
-                                        {"Field_01A": "House_01A", "Field_03C": "Cave_02B"})
+        lines = self.ap_entrances.door_jumps({"Field_01A": "Cave_02B", "Field_03C": "House_01A"},
+                                             {"Field_01A": "House_01A", "Field_03C": "Cave_02B"})
         self.assertEqual(lines, ["Field House House_01A Cave Cave_02B", "Cave Field Field_03C Field Field_01A",
                                  "Field Cave Cave_02B House House_01A", "House Field Field_01A Field Field_03C"])
 
-
     def test_every_jump_home_follows_tarins_house(self) -> None:
-        sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "patcher"))
-        import ap_entrances
-        lines = ap_entrances.door_jumps({"Field_11C": "Cave_02B", "Field_03C": "MarinTarinHouse_01A"},
-                                        {"Field_11C": "MarinTarinHouse_01A", "Field_03C": "Cave_02B"})
+        lines = self.ap_entrances.door_jumps({"Field_11C": "Cave_02B", "Field_03C": "MarinTarinHouse_01A"},
+                                             {"Field_11C": "MarinTarinHouse_01A", "Field_03C": "Cave_02B"})
         self.assertIn("* Field Field_11C Field Field_03C", lines)
         self.assertNotIn("MarinTarinHouse Field Field_11C Field Field_03C", lines)
 
     def test_a_jump_out_onto_a_covered_door_opens_it(self) -> None:
-        sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "patcher"))
-        import ap_entrances
-        lines = ap_entrances.door_jumps({"Field_06C": "Cave_02B", "Field_03C": "House_01A"},
-                                        {"Field_06C": "House_01A", "Field_03C": "Cave_02B"})
+        lines = self.ap_entrances.door_jumps({"Field_06C": "Cave_02B", "Field_03C": "House_01A"},
+                                             {"Field_06C": "House_01A", "Field_03C": "Cave_02B"})
         self.assertIn("Cave Field Field_03C Field Field_06C AppearStairsFld06C", lines)
         self.assertIn("House Field Field_06C Field Field_03C", lines)
 
     def test_a_random_start_swaps_the_houses_door(self) -> None:
         """The start door leads into the house and every jump home out of it; Tarin's door into its inside, and back."""
-        sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "patcher"))
-        import ap_entrances
+        level_of = self.ap_entrances.level_of
         moved = start_pairs("Field_06C")
         self.assertEqual(moved, {"Field_06C": HOUSE_DOOR, HOME_DOOR: GAME_DOORS["pairs"]["Field_06C"]})
         inside = GAME_DOORS["pairs"]["Field_06C"]
-        lines = ap_entrances.door_jumps(moved, {door: GAME_DOORS["pairs"][door] for door in moved})
+        lines = self.ap_entrances.door_jumps(moved, {door: GAME_DOORS["pairs"][door] for door in moved})
         self.assertEqual(sorted(lines), sorted([
-            f"Field {ap_entrances.level_of(inside)} {inside} MarinTarinHouse {HOUSE_DOOR}",
+            f"Field {level_of(inside)} {inside} MarinTarinHouse {HOUSE_DOOR}",
             "* Field Field_11C Field Field_06C AppearStairsFld06C",
-            f"Field MarinTarinHouse {HOUSE_DOOR} {ap_entrances.level_of(inside)} {inside}",
-            f"{ap_entrances.level_of(inside)} Field Field_06C Field Field_11C"]))
+            f"Field MarinTarinHouse {HOUSE_DOOR} {level_of(inside)} {inside}",
+            f"{level_of(inside)} Field Field_06C Field Field_11C"]))
         self.assertEqual(start_pairs(HOME_DOOR), {})
         self.assertEqual(start_pairs(None), {})
 
@@ -233,3 +218,12 @@ class TestPlandoTwice(unittest.TestCase):
         twice = [SWAP[0], {"entrance": GAME_DOORS["pairs"][SINGLES[1]], "exit": SINGLES[2]}]
         with self.assertRaisesRegex(OptionError, GAME_DOORS["pairs"][SINGLES[1]]):
             setup_multiworld(LASWorld, seed=1, options={"entrances": "everything", "plando_connections": twice})
+
+
+class TestDungeonMapFails(unittest.TestCase):
+    def test_no_map_reaching_everything_is_a_placement_error(self) -> None:
+        from unittest import mock
+        from test.general import setup_multiworld
+        from .. import LASWorld, PlacementError
+        with mock.patch.object(LASWorld, "_reaches", return_value=False), self.assertRaises(PlacementError):
+            setup_multiworld(LASWorld, ("generate_early",), 1, {"shuffled_dungeons": "dungeons"})

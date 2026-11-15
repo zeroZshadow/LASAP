@@ -5,7 +5,7 @@ import sys
 import unittest
 from pathlib import Path
 
-from . import romfs
+from . import client_context, romfs
 
 PATCHER = Path(__file__).resolve().parents[3] / "patcher"
 ROMFS = romfs()
@@ -94,27 +94,13 @@ class TestGameOverFlow(unittest.TestCase):
 
 class TestClientDeathLink(unittest.TestCase):
     def context(self, tags):
-        from ..client import LASContext
-        ctx = LASContext(None, None, "127.0.0.1", 0)
-        ctx.slot = 1
-        ctx.player_names = {1: "Link"}
-        ctx.tags = set(tags)
-        ctx.game_lines = []
-        ctx.send_game = ctx.game_lines.append
-
         class Server:
             socket = object()
-        ctx.server = Server()
-        return ctx
+        return client_context(game=True, slot=1, player_names={1: "Link"}, tags=set(tags), server=Server())
 
     def run_died(self, tags) -> list:
         async def run() -> list:
-            ctx = self.context(tags)
-            sent = []
-
-            async def send_msgs(msgs):
-                sent.extend(msgs)
-            ctx.send_msgs = send_msgs
+            ctx, sent, _ = self.context(tags)
             ctx.handle_game_line("DIED")
             await asyncio.sleep(0)
             await asyncio.sleep(0)
@@ -134,7 +120,7 @@ class TestClientDeathLink(unittest.TestCase):
 
     def test_received_death_reaches_game(self) -> None:
         async def run() -> list:
-            ctx = self.context({"AP", "DeathLink"})
+            ctx, _, lines = self.context({"AP", "DeathLink"})
             ctx.on_deathlink({"time": 1.0, "source": "Finder", "cause": "Finder fell."})
-            return ctx.game_lines
+            return lines
         self.assertEqual(asyncio.run(run()), ["DEATH Finder"])

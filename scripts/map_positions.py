@@ -20,7 +20,6 @@ Overworld checks also get the name of their spot, which names a map icon holding
 the check (its section's parent), or SPOT_NAMES.
 """
 import argparse
-import ast
 import json
 import math
 import re
@@ -35,29 +34,15 @@ from RandomizerCore.Tools.leb import Room  # noqa: E402
 from RandomizerCore.Tools.oead_tools import parseStruct, readSheet  # noqa: E402
 from worlds.las.locations import display_name  # noqa: E402
 import poptracker_map  # noqa: E402
+import las_rooms  # noqa: E402
+from las_rooms import DOOR_LEVELS, INSTRUMENT_ACTORS, ITEM_ACTORS, room_tables  # noqa: E402
 from local_paths import local_path  # noqa: E402
 
 OUT = ROOT / "patcher" / "map_positions.json"
 IDS = json.loads((ROOT / "apworld" / "las" / "data" / "ids.json").read_text(encoding="utf-8"))
-RANDOMIZERS = ROOT / "patcher" / "modbuild" / "RandomizerCore" / "Randomizers"
 ROOM_W, ROOM_H = 15.0, 12.0  # a room (screen) in world units; room <row><col> spans x 15·col.., z 12·(row - 1)..
+ITEM_PARAMS = tuple(p.encode() for p in las_rooms.ITEM_PARAMS)
 
-# Checks in buildings without a room table: the level whose overworld door marks them.
-DOOR_LEVELS = {
-    "sale": "BananaHouse", "mermaid-cave": "MermaidStatue", "christine-trade": "ChristineHouse",
-    "christine-grateful": "ChristineHouse", "invisible-zora": "HiddenZoraHouse", "chef-bear": "BearHouse",
-    "goriya-trader": "BoomerangCave", "tarin": "MarinTarinHouse", "mamasha": "QuadupletHouse", "ciao-ciao": "DogHouse",
-    "armos-knight": "ArmosShrine", "mr-write": "DrWrightHouse", "mad-batter-bay": "MadBattersWell01",
-    "mad-batter-woods": "MadBattersWell02", "mad-batter-taltal": "MadBattersWell03", "mamu": "MamuCave",
-    "manbo": "MamboCave", "syrup": "MagicPowderHouse", "dream-shrine-left": "BedRoom", "moblin-cave": "MoriblinCave",
-    "rooster-statue": "FlyingCuccoCave",
-    **{f"dampe-{part}": "DanpeiHouse" for part in ("page-1", "heart-challenge", "page-2", "bottle-challenge", "final")},
-    **{loc: "Shop" for loc in ("shop-slot3-1st", "shop-slot3-2nd", "shop-slot5-1st", "shop-slot5-2nd", "shop-slot5-3rd",
-                               "shop-slot5-4th", "shop-slot5-5th", "shop-slot5-6th", "shop-slot5-7th", "shop-slot6")},
-    **{f"{n}-seashell-reward": "SeashellHouse" for n in (5, 15, 30, 40, 50)},
-    **{f"rapids-race-{n}": "RapidsRideTicket" for n in (45, 35, 30)},
-    **{f"trendy-prize-{n}": "CraneGame" for n in (1, 2, 3, 4, 5, 6, "final")},
-}
 # Spot names other than the pack's place: one name for the checks of the pack's places that share a map icon, and
 # clearer names. LASR location -> spot name.
 SPOT_NAMES = {
@@ -79,10 +64,6 @@ ACTOR_PREFIXES = {
     **{f"owl-statue-{place}": "ObjFieldOwlS" for place in ("below-D8", "moblin-cave", "pothole", "above-cave",
                                                            "south-bay", "desert", "maze", "rapids", "taltal-east")},
 }
-
-# Actors that hold a check, by name prefix or by their first parameter (rocks, bushes and holes hiding an item).
-ITEM_ACTORS = ("ObjTreasureBox", "ItemHeartPiece", "ItemSeashell", "ItemGoldenLeaf", "ItemSmallKey", "ItemHeartContainer")
-ITEM_PARAMS = (b"Seashell", b"GoldenLeaf", b"HeartPiece", b"SmallKey")
 
 # Dungeon checks without a room table. Owl statues: the room in the owl's event entry (DungeonOwlStatue.bfevfl
 # examine_<dungeon><room>); bosses: the dungeon's boss room (UiDungeonArea.gsheet mIsBoss).
@@ -112,31 +93,10 @@ DUNGEON_ROOMS = {
 }
 # Actors that mark a dungeon check in its room, by name prefix: an owl statue's, and any other check's.
 OWL_ACTORS = ("ObjDungeonOw",)
-# The instruments, each its own actor (a room's actor names keep 12 characters).
-INSTRUMENT_ACTORS = ("ItemFullMoon", "ItemConchHorn", "ItemSeaLilys", "ItemSurfHarp", "ItemWindMari", "ItemCoralTri",
-                     "ItemEveningC", "ItemThunderD")
 DUNGEON_ACTORS = ITEM_ACTORS + INSTRUMENT_ACTORS + ("NpcFairyQueen", "EnemyMasterS")
 # Eagle's Tower once collapsed (UiDungeonArea mFloor): its top's rooms are those of 3F before the collapse, 4 rows
 # further south.
 COLLAPSED_FLOOR, COLLAPSED_ROWS = 14, 4
-
-
-def room_tables() -> dict:
-    """LASR location -> room, from the *_ROOMS dicts in LASR's randomizers."""
-    rooms = {}
-    for path in sorted(RANDOMIZERS.glob("*.py")):
-        for node in ast.parse(path.read_text(encoding="utf-8")).body:
-            if (isinstance(node, ast.Assign) and isinstance(node.value, ast.Dict)
-                    and isinstance(node.targets[0], ast.Name) and node.targets[0].id.endswith("_ROOMS")
-                    and not node.targets[0].id.startswith("PANEL")):
-                try:
-                    table = ast.literal_eval(node.value)
-                except ValueError:
-                    continue
-                for loc, room in table.items():
-                    if isinstance(room, str):
-                        rooms.setdefault(loc, room)
-    return rooms
 
 
 class Level:
@@ -163,7 +123,8 @@ class Level:
         doors = {}
         for room in self.field_rooms():
             for actor in room.actors:
-                if actor.name.startswith((b"AreaLevelOpen", b"AreaHole")) and isinstance(actor.parameters[0], bytes)                         and actor.parameters[0]:
+                if actor.name.startswith((b"AreaLevelOpen", b"AreaHole")) and isinstance(actor.parameters[0], bytes) \
+                        and actor.parameters[0]:
                     doors.setdefault(actor.parameters[0].decode(), []).append((actor.posX, actor.posZ, actor.posY))
         return doors
 

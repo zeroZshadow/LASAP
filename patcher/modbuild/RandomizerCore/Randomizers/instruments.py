@@ -11,6 +11,8 @@ class InstrumentRandomizer:
     def makeInstrumentChanges(self):
         """Iterates through the Instrument rooms and edits the Instrument actor data"""
 
+        import mod  # patcher/modbuild/mod.py, which imports this module
+
         # Open up the already modded SinkingSword eventflow to make new events
         flow = self.parent.file_manager.readFile('SinkingSword.bfevfl')
 
@@ -19,6 +21,7 @@ class InstrumentRandomizer:
             room_data = self.parent.file_manager.readFile(f'{INSTRUMENT_ROOMS[room]}.leb')
 
             self.changeInstrument(flow.flowchart, room, room_data)
+            mod.native_instrument_get(flow.flowchart, room)
 
             self.parent.file_manager.writeFile(f'{INSTRUMENT_ROOMS[room]}.leb', room_data)
 

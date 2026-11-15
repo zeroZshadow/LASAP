@@ -17,9 +17,8 @@ DEFAULT_RELAY = wire.DEFAULT_RELAY
 
 
 def line_pos(parts: List[str]) -> Optional[wire.Pos]:
-    """A POS line's fields (`POS <level> <x> <y> <z> <yaw> <anim> <anim frame> <upper anim> <flags> <time> <shapes>
-    <tunic> <eye> <mouth> <ear>`, wire.Pos) as the position the wire carries, or None when Link is in no level the
-    relay knows (`POS none`, a level missing from wire.LEVELS) or the line is malformed."""
+    """A POS line (DESIGN.md) as the position the wire carries; None for `POS none`, a level the relay does not know
+    or a malformed line."""
     if len(parts) != 16 or parts[1] not in wire.LEVEL_IDS:
         return None
     try:
@@ -35,8 +34,6 @@ def line_pos(parts: List[str]) -> Optional[wire.Pos]:
 
 
 def ghost_line(n: int, slot: str, p: wire.Pos) -> Optional[str]:
-    """`GHOST <n> <level> <x> <y> <z> <yaw> <anim> <anim frame> <upper anim> <flags> <time> <shapes> <tunic> <eye>
-    <mouth> <ear> <slot name>` for a position."""
     if p.level >= len(wire.LEVELS):
         return None
     name = " ".join(slot.replace("|", "/").split()) or "?"

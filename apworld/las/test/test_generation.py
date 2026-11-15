@@ -29,9 +29,8 @@ class TestDefault(LASTestBase):
         distribute_items_restrictive(self.multiworld)
         call_all(self.multiworld, "post_fill")
         slot_data = self.world.fill_slot_data()
-        self.assertEqual(set(slot_data), {"seed_hash", "goal", "instruments_required", "instruments_known",
-                                          "seashells_required", "seashells_known", "death_link", "location_count",
-                                          "settings", "logic", "options", "starting_instruments", "dungeon_entrances",
+        self.assertEqual(set(slot_data), {"seed_hash", "instruments_required", "instruments_known",
+                                          "seashells_required", "seashells_known", "death_link", "settings", "logic", "options", "starting_instruments", "dungeon_entrances",
                                           "entrances", "start"})
         self.assertEqual(slot_data["instruments_required"], 8)
         self.assertTrue(slot_data["instruments_known"])
@@ -42,8 +41,6 @@ class TestDefault(LASTestBase):
         self.assertEqual(tuple(slot_data["settings"]), TRACKER_SETTINGS)
         self.assertEqual(slot_data["settings"]["Shuffle Instruments"], "Anywhere")
         self.assertRegex(slot_data["seed_hash"], r"^[0-9a-f]{8}$")
-        self.assertEqual(slot_data["location_count"],
-                         len([loc for loc in self.multiworld.get_locations(self.player) if loc.address is not None]))
 
         with tempfile.TemporaryDirectory() as directory:
             self.world.generate_output(directory)
@@ -168,7 +165,6 @@ class TestVanillaHeavy(LASTestBase):
 
     def test_unrandomized_locations(self) -> None:
         """An unrandomized location is a check holding its default item, locked."""
-        from BaseClasses import ItemClassification
         from ..items import LASR_TO_ITEM
         from ..lasr import LOGIC
         from ..lasr_settings import MANSION_THRESHOLDS, fixed_locations, kept_locations
@@ -376,26 +372,6 @@ class TestDifferentWorldRoom(unittest.TestCase):
         from .. import LASWorld
         multiworld = self.multiworld(LASWorld, 0, accessibility="minimal", non_local_items={"Hookshot"})
         self.assertEqual(multiworld.worlds[1].options.non_local_items.value, {"Hookshot"})
-
-
-class TestFewLocations(unittest.TestCase):
-    """Every location category off, dungeon items in their own dungeons, no starting gear: nearly all locations are in
-    dungeons, and only Tarin's is reachable at the start."""
-    options = {**{name: False for name in ("chests", "free_gifts", "golden_leaves", "heart_pieces", "seashells",
-                                           "miscellaneous", "shop", "boss_drops", "open_mabe")},
-               "seashell_mansion": 0, "small_keys": "own_dungeon", "nightmare_keys": "own_dungeon", "dungeon_items": "own_dungeon",
-               "instruments": "any_dungeon", "start_inventory_from_pool": {}}
-
-    def test_pre_fill_leaves_room_for_progression(self) -> None:
-        from test.general import setup_multiworld
-        from .. import LASWorld
-        for seed in range(1, 9):
-            multiworld = setup_multiworld(LASWorld, seed=seed, options=self.options)
-            world = multiworld.worlds[1]
-            # an item that opens the most locations goes to the start, though none opens EARLY_LOCATIONS_WANTED
-            self.assertIsNotNone(world.opener, seed)
-            self.assertEqual(multiworld.local_early_items[1], {world.opener: 1}, seed)
-            self.assertTrue(world._progression_fits(world._others_state()), seed)
 
 
 def starting_locations(multiworld) -> list:

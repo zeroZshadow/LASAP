@@ -77,12 +77,7 @@ def gated(flowchart, option: str):
             point(entry.main_event, gate(main, entry.main_event.v))
 
 
-# ---- Sheets (mod._write_file) ----
-
-def _append_once(conditions, condition: dict) -> None:
-    if not any(c["parameter"] == condition["parameter"] for c in conditions):
-        conditions.append(dictToStruct(condition))
-
+# ---- Sheets (mod.edit_sheets) ----
 
 def npc_rows(rows) -> None:
     """The refills of bombs and powder hide until Link finds them (Shuffled Bombs, Powder), and Kiki leaves with the
@@ -93,7 +88,7 @@ def npc_rows(rows) -> None:
     for row in rows:
         if row["symbol"] in hides:
             option, found = hides[row["symbol"]]
-            _append_once(row["layoutConditions"], {**option_if(option, (1, f"!{found}"), NEVER), "layoutID": -1})
+            row["layoutConditions"].append(dictToStruct({**option_if(option, (1, f"!{found}"), NEVER), "layoutID": -1}))
         elif row["symbol"] == "NpcKiki":
             row["layoutConditions"][0] = dictToStruct(
                 {**option_if("completed_bridge", (1, "KikiGone"), (1, "StickDrop")), "layoutID": -1})
@@ -123,7 +118,7 @@ SHEETS = {"Npc.gsheet": npc_rows, "Conditions.gsheet": condition_rows, "CranePri
 
 # ---- Events: LASR's methods with both ways ----
 
-# LASR's dungeon owl statues -> the event their gift follows; ("sub", n): the subflow of shared_entries' entry n
+# LASR's dungeon owl statues -> the event their gift follows; ("sub", n): the subflow of SHARED_OWLS' entry n
 DUNGEON_OWLS = {
     "D1-owl-statue-spinies": ("sub", 0), "D1-owl-statue-3-of-a-kind": ("sub", 1),
     "D1-owl-statue-long-hallway": "Event48", "D2-owl-statue-first-switch": "Event59",

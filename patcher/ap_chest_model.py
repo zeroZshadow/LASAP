@@ -22,6 +22,7 @@ import ap_bntx
 from ap_bntx import bc4_values, from565
 
 FILE_NAME = "ObjTreasureBoxSeashell.bfres"
+CHEST_TYPE = "seashell"  # the seashell's chest-type in LASR's item definitions
 ALBEDO = "MI_dungeonTreasureBox_01_alb"
 METALNESS = "MI_dungeonTreasureBox_01_mtl"
 BC1 = (0x1a06, 0x1a01)

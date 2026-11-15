@@ -2,14 +2,6 @@
 tests beside it (TESTING.md, "Test suite"). Run in .venv-ap, with the sandbox lock held or free.
 
 python suite.py [-j <instances>] [--no-world] [<group> ...]
-
-Each group runs on a suite instance (emu.py, LASAP_INSTANCE 1 and up): a copy of the sandbox's data folder with the
-mod the sandbox has installed (deploy_mod.sh), which must be suite.txt's (its mod: line), this checkout's test
-module (patcher/exl-test, build_exl.sh), the group's config.ini changes and seed file sections (scripts/tests/seed),
-from the new-game snapshot's saves, in a fresh emulator, with a fresh client session when the group needs one. The sandbox
-itself is left as it is.
-Instances run their groups side by side, the longest first (by the last run's times). Logs go to the sandbox folder's
-suite/logs.
 """
 import argparse
 import json

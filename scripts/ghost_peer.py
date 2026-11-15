@@ -10,10 +10,10 @@ ghost_relay.py's Pos), "nowhere", "burst <every ms> <hold ms>" (holds its frames
 every every ms, then sends them together, as TCP delivers the lines behind a lost packet; "burst 0 0" ends it) and
 "link <jitter ms> <loss %> <stall ms>" (a bad link: each frame waits a random time, jitter on average, and that
 percentage of them stall ms more, delivered in order as TCP does; "link 0 0 0" ends it) while it runs.
-"record <file> [<slot>]" writes the frames one other player sends
-(that slot's, or the first to send one; "<wall clock ms> <the position as a keyframe in hex>" per line; two peers'
-files sorted together make one, as a player goes from one area to another) until "record stop"; "play <file>" sends
-such frames as its own, on their timing and its clock, then stands at the last ("PLAYED <frames>").
+"record <file> [<slot>]" writes the frames one other player sends (that slot's, or the first to send one; "<wall
+clock ms> <the position as a keyframe in hex>" per line; two peers' files sorted together make one, as a player goes
+from one area to another) until "record stop"; "play <file>" sends such frames as its own, on their timing and its
+clock, then stands at the last ("PLAYED <frames>").
 """
 import argparse
 import asyncio
@@ -64,7 +64,8 @@ async def main(args) -> None:
             elif kind == wire.FRAME:
                 player_id = struct.unpack_from(">H", payload, 1)[0]
                 p = positions[player_id] = wire.decode_pos(payload[3:], positions.get(player_id))
-                if recording["file"] is not None and recording["player"] is None and                         recording["slot"] in (None, names.get(player_id)):
+                if recording["file"] is not None and recording["player"] is None and \
+                        recording["slot"] in (None, names.get(player_id)):
                     recording["player"] = player_id
                 if recording["file"] is not None and player_id == recording["player"]:
                     recording["file"].write(f"{time.time() * 1000:.0f} {wire.encode_pos(p).hex()}\n")

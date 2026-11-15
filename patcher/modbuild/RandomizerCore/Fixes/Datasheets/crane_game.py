@@ -6,7 +6,7 @@ prizes_dict = {}
 class CraneGameDatasheetFixes:
     def __init__(self, mod_generator) -> None:
         sheet = mod_generator.file_manager.readFile('CranePrize.gsheet')
-        self.makeDatasheetChanges(sheet, mod_generator.settings)
+        self.makeDatasheetChanges(sheet)
         mod_generator.file_manager.writeFile('CranePrize.gsheet', sheet)
 
         group1 = mod_generator.file_manager.readFile('CranePrizeFeaturedPrizeGroup1.gsheet')
@@ -16,7 +16,7 @@ class CraneGameDatasheetFixes:
         # mod_generator.file_manager.writeFile('CranePrizeFeaturedPrizeGroup2.gsheet', group2)
 
 
-    def makeDatasheetChanges(self, sheet, settings):
+    def makeDatasheetChanges(self, sheet):
         """Edits conditions in the Trendy prizes datasheet. Trendy is still a WIP"""
         
         # PRIZE PLACEMENTS

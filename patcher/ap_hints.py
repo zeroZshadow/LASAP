@@ -1,13 +1,5 @@
-"""In-game hints (DESIGN.md, In-game hints): owl statues and library books say the patch's `hints`.
-
-In every patch each source shows its own message (modbuild/ap_hint_edits.py), Hint:APHint<n> for owl statues and System:APHint<n> for
-books (n: the source's place in SOURCES): a copy of the text it replaces, with its window style. The module shows the
-seed's hint in it instead and sets the event flag APHint<n> (FLAGS), from the seed file's hints (`lines`), which also names the
-location a server hint makes, and names a book with a hint in its question.
-
-Owl statues that share their text get their own: the Tail Cave statue in room 04B (which shares 05F's entry) and the
-three Color Dungeon statues get entries of their own, as LASR's Owl Gifts give them (owls.py), each with its own copy
-of the statue's events. With Owl Gifts on, the gift follows the hint."""
+"""In-game hints (DESIGN.md, In-game hints): the owl statues and books that show hints, their messages and the seed
+file's hint lines."""
 FLAG_PREFIX = "APHint"  # flag and message label prefix; AP::HINT_PREFIX
 LINE_WIDTH = 42  # characters per line
 PAGE_LINES = 3  # lines per text box
@@ -52,14 +44,13 @@ DUNGEON_OWLS = {
     "D0-owl-statue-first-switches": "ColorDungeonStoneOwl",
     "D0-owl-statue-before-mini-boss": "ColorDungeonStoneOwl",
 }
-# Statues whose entry point other statues share: (their own entry, their room, the shared entry). The room's statue
-# is pointed at its own entry, as LASR does for Owl Gifts.
+# Statues that share their text: their own entry point (modbuild/ap_option_edits.SHARED_OWLS)
 OWN_ENTRIES = {
-    "D1-owl-statue-spinies": ("examine_Tail04B", "Lv01TailCave_04B", "examine_Tail04B05F"),
-    "D1-owl-statue-3-of-a-kind": ("examine_Tail04B05F", None, None),
-    "D0-owl-statue-nine-switches": ("examine_Color06C", "Lv10ClothesDungeon_06C", "examine_Color"),
-    "D0-owl-statue-first-switches": ("examine_Color07D", "Lv10ClothesDungeon_07D", "examine_Color"),
-    "D0-owl-statue-before-mini-boss": ("examine_Color05F", "Lv10ClothesDungeon_05F", "examine_Color"),
+    "D1-owl-statue-spinies": "examine_Tail04B",
+    "D1-owl-statue-3-of-a-kind": "examine_Tail04B05F",
+    "D0-owl-statue-nine-switches": "examine_Color06C",
+    "D0-owl-statue-first-switches": "examine_Color07D",
+    "D0-owl-statue-before-mini-boss": "examine_Color05F",
 }
 # Library books: their text (System.msbt) in Book.bfevfl. The map, the egg book and the Color Dungeon's book stay.
 BOOKS = {

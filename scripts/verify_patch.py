@@ -13,7 +13,7 @@ their vanilla targets; the markers swap the map's dungeon markers, whose rows st
 lead each moved overworld door into its new inside and that inside back out of the door, a covered door's with the flag
 that opens it.
 The drop actor's flowchart reads and holds every drop's take entry, every drop has its model's bounds and a linked one
-(a tree's, hole's, chest's, owl statue's or boss's) its link, and no small key or slime key stand-in is left. Each chest's launch flag (Bouncy Items) is
+(a tree's, hole's, chest's, owl statue's or boss's) its link, and no small key or dig spot's slime key is left. Each chest's launch flag (Bouncy Items) is
 used by that chest and its drop alone, among all actors of its level (the RomFS's rooms, as the mod has them) and the
 RomFS flowcharts' level flags; so is each owl statue's (Bouncy Items, Owl Gifts). The start holds the starting items,
 the rupees and the start flags, which the start event neither gives nor sets.
@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "patcher" / "modbuild"))
 from local_paths import local_path  # noqa: E402
 from mod import CHEST_FILES, SHOP_TEXT, START_FLAGS, chest_token  # noqa: E402  (LASR on the path)
-import ap_chest  # noqa: E402
+import ap_chest_model  # noqa: E402
 import ap_drop  # noqa: E402
 import ap_model  # noqa: E402
 import ap_goal  # noqa: E402
@@ -43,7 +43,7 @@ from las_ap_patch import (COMPANION_FLAGS, INDEX_KINDS, PLACEHOLDER_KEY, START_M
 patch = load_patch(Path(sys.argv[1]))
 seed = seed_file.read(Path(sys.argv[2]) / "config/lasr-exl")
 item_defs = load_yaml("items.yml")["Item_Pool"]
-models = patch.get("location_models", {})
+models = patch["location_models"]
 level_dir = Path(sys.argv[2]) / "atmosphere/contents/01006BB00C6F0000/romfs/region_common/level"
 ok = bad = 0
 for loc, room_name in CHEST_ROOMS.items():
@@ -84,8 +84,8 @@ print(f"models shown={len(shown)} stand-ins={len(stand_ins)} token parameters={t
 # Chests: an AP location's chests name its chest token, the others their chest file. With "Texture + Size" every
 # chest holding this slot's seashell, vanilla or a check, is the seashell chest, and no other chest is.
 chest_files = {int(p[1]): p[3] for p in lines if p[0] == "C"}
-looks = patch.get("location_chests", {})
-textured = patch["settings"].get("Chest Types") == "Texture + Size"
+looks = patch["location_chests"]
+textured = patch["settings"]["Chest Types"] == "Texture + Size"
 blue = 0
 for loc, room_name in CHEST_ROOMS.items():
     item = patch["placements"].get(loc)
@@ -102,15 +102,15 @@ for loc, room_name in CHEST_ROOMS.items():
         shown = chest_files.get(local_id, CHEST_FILES["default"])
     else:
         shown = written.pop().decode() if len(written) == 1 else None
-    want = textured and (item == "seashell" or (item == "ap-item" and looks.get(loc, [None, None])[1] == ap_chest.CHEST_TYPE))
-    if (shown == ap_chest.FILE_NAME) != want:
+    want = textured and (item == "seashell" or (item == "ap-item" and looks.get(loc, [None, None])[1] == ap_chest_model.CHEST_TYPE))
+    if (shown == ap_chest_model.FILE_NAME) != want:
         bad += 1
         print(f"CHEST TEXTURE {loc} {room_name}: {shown} for {item} {looks.get(loc)}")
     blue += want
 print(f"chests shown={len(chest_files)} seashell={blue} bad={bad}")
 
 # Map tracker: every AP location has one icon, and every icon its datasheet row.
-if patch["settings"].get("Map Tracker"):
+if patch["settings"]["Map Tracker"]:
     import ap_map  # noqa: E402
     from RandomizerCore.Tools.oead_tools import readSheet  # noqa: E402
     out = Path(sys.argv[2])
@@ -119,7 +119,7 @@ if patch["settings"].get("Map Tracker"):
     dots = {int(p[1]): (p[2], float(p[3]), float(p[4]), [int(i) for i in p[5:]]) for p in lines if p[0] == "M"}
     iconed = [i for ids in overworld.values() for i in ids] + [i for *_, ids in dots.values() for i in ids]
     positions = ap_map.load_positions()
-    optional = set(patch.get("optional_locations", ()))
+    optional = set(patch["optional_locations"])
     shown = {loc: i for loc, i in patch["location_ids"].items() if loc not in optional}
     # overworld icons: overworld and dungeon checks (at the dungeon's entrance); dungeon dots: the dungeons' checks,
     # one per place (Eagle's Tower before and after its collapse)
@@ -187,7 +187,7 @@ print(f"kept locations={len(kept)} bad={bad}")
 
 # In-game hints: in every patch each source shows its own message, a copy of the one it replaces, and no event sets
 # its flag (the module does); the seed file's hints hold the seed's hints, each fitting the text box.
-hints = patch.get("hints", {})
+hints = patch["hints"]
 import ap_hints  # noqa: E402
 from RandomizerCore.Tools.oead_tools import readSheet  # noqa: E402
 from RandomizerCore.Tools.text_tools import TextFile  # noqa: E402
@@ -228,13 +228,14 @@ if lines != ap_hints.lines(hints):
     bad += 1
     print(f"HINTS FILE {lines} != {ap_hints.lines(hints)}")
 # the statues that shared an entry point have their own
-for source, (entry, room, _) in ap_hints.OWN_ENTRIES.items():
+import ap_option_edits  # noqa: E402
+for room, _, entry, _ in ap_option_edits.SHARED_OWLS:
     if room:
         path = level_dir / room.split("_")[0] / f"{room}.leb"
         statues = [a for a in Room(path.read_bytes()).actors if a.parameters and a.parameters[0] == entry.encode()]
         if len(statues) != 1:
             bad += 1
-            print(f"HINT {source}: {room} has {len(statues)} statues with {entry}")
+            print(f"HINT {room} has {len(statues)} statues with {entry}")
 print(f"hints={len(hints)} server={sum(1 for line in lines if line.startswith('S '))} bad={bad}")
 
 # Shuffled Dungeons: the module leads each door into the dungeon behind it, and that dungeon's ways out out of the door
@@ -265,7 +266,7 @@ for door, dungeon in patch["dungeon_entrances"].items():
     if found != (ap_entrances.entrance(door), ap_entrances.outside(door)):
         bad += 1
         print(f"DOOR {door}: door to {found[0]}, exit to {found[1]}, not vanilla")
-    if patch["settings"].get("Shuffled Dungeons") and door != dungeon:
+    if patch["settings"]["Shuffled Dungeons"] and door != dungeon:
         inside, out = ap_entrances.entrance(dungeon), ap_entrances.outside(dungeon)
         want += [f"Field {ap_entrances.level_of(ap_entrances.entrance(door))} {ap_entrances.entrance(door)} "
                  f"{ap_entrances.level_of(inside)} {inside}",
@@ -282,7 +283,7 @@ if fairy_warps != {ap_entrances.outside("color-dungeon")}:
 hunt_lines = ap_goal.jumps(ap_goal.settings_seashells(patch["settings"]))
 # Entrances: per moved door, the overworld's jump through it to the new inside, and that inside's jump to its own old
 # door to this door, with the opening flag of a covered door
-moved, door_pairs = patch.get("entrances") or {}, patch.get("entrance_pairs") or {}
+moved, door_pairs = patch["entrances"], patch["entrance_pairs"]
 door_of = {inside: door for door, inside in door_pairs.items()}
 for door, inside in moved.items():
     out_from = ap_entrances.ANY_LEVEL if door_of[inside] == ap_entrances.HOME else ap_entrances.level_of(inside)
@@ -311,7 +312,7 @@ print(f"dungeon doors={doors} moved doors={len(moved)} jumps={len(jumps)} marker
 # Drop actor: its flowchart reads (a duplicate entry name breaks the entry dictionary the game looks its entries up in)
 # and holds the take entry (LEB parameter 3) of every drop actor; the model every drop actor shows (its token's M line,
 # else the Archipelago model's) has its bounds in the module's drop_bounds.hpp, and a tree's or hole's drop a link; no
-# small key or slime key stand-in is left (LASR's are drops).
+# small key or dig spot's slime key is left (they are drops).
 drop_flow = evfl.EventFlow()
 try:
     drop_flow.read((Path(sys.argv[2]) / "atmosphere/contents/01006BB00C6F0000/romfs/region_common/event" /
@@ -353,7 +354,7 @@ if missing and entries:
     print(f"DROP take entries missing: {[(loc, takes[loc]) for loc in missing]}")
 if keys:
     bad += 1
-    print(f"DROP small key or slime key stand-ins left in {keys}")
+    print(f"DROP small keys or slime keys left in {keys}")
 if unlinked:
     bad += 1
     print(f"DROP linked drops (tree, hole, chest, owl statue, boss) without a link in {unlinked}")
@@ -376,7 +377,7 @@ print(f"drops={len(takes)} take entries={len(entries)} bad={bad}")
 
 # The goal: the egg's event asks HasAllInstruments at its switches in every patch, which the module answers from
 # config.ini's numbers (below).
-required = patch["settings"].get("Instruments Required", 8)
+required = patch["settings"]["Instruments Required"]
 seashells = ap_goal.settings_seashells(patch["settings"])
 hunt = seashells is not None
 egg = Path(sys.argv[2]) / "atmosphere/contents/01006BB00C6F0000/romfs/region_common/event" / ap_goal.EVENT_FILE
@@ -395,7 +396,7 @@ if egg_doors != [ap_goal.EGG_LOCATOR]:
 config = (Path(sys.argv[2]) / "config/lasr-exl/config.ini").read_text(encoding="utf-8")
 archipelago = dict(line.split(" = ", 1) for line in config.split("[archipelago]")[1].strip().splitlines())
 want = {"seashell_hunt": str(hunt), "seashells_required": str(seashells or 0), "instruments_required": str(required),
-        "save_name": save_name(patch.get("slot_name", ""))}
+        "save_name": save_name(patch["slot_name"])}
 if any(archipelago.get(key) != value for key, value in want.items()):
     bad += 1
     print(f"CONFIG [archipelago] {archipelago}, want {want}")
@@ -432,16 +433,16 @@ for item in patch["starting_items"]:
         bad += 1
         print(f"START item {item} ({key}) missing")
 for setting, kind in START_WITH_KINDS.items():
-    if patch["settings"].get(setting) == "Start With":
+    if patch["settings"][setting] == "Start With":
         for n in range(9):
             want = item_defs[f"{kind}-D{n}"]
             got = items.count((want["item-key"], 9 if n == 0 else n - 1))
             if got != want.get("quantity", 1):
                 bad += 1
                 print(f"START {kind}-D{n}: {got} given, want {want.get('quantity', 1)}")
-if rupees != ([patch["settings"]["Rupees"]] if patch["settings"].get("Rupees", 0) > 0 else []):
+if rupees != ([patch["settings"]["Rupees"]] if patch["settings"]["Rupees"] > 0 else []):
     bad += 1
-    print(f"START rupees {rupees}, want {patch['settings'].get('Rupees')}")
+    print(f"START rupees {rupees}, want {patch['settings']['Rupees']}")
 if START_MARKER not in flags or not set(START_FLAGS) <= set(flags):
     bad += 1
     print(f"START flags {flags} lack {sorted(set(START_FLAGS) - set(flags))}")

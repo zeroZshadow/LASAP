@@ -527,7 +527,7 @@
  "region_common/event/APDrop.bfevfl": {
   "source": null,
   "source_sha256": null,
-  "sha256": "842d7400b5780302fb7cc99c2f47888ec4eba95dadbe01934c9861361781ac20"
+  "sha256": "b7f611efa2bbf38f2797ed2d9a93e9a954c3ece5a0bdbd3e860fd443b64410d3"
  },
  "region_common/event/Book.bfevfl": {
   "source": "region_common/event/Book.bfevfl",
@@ -547,12 +547,12 @@
  "region_common/event/Common.bfevfl": {
   "source": "region_common/event/Common.bfevfl",
   "source_sha256": "9661205f1d397647dd0f76c0f52aafc9089ccfb324efe463305b6c55a0f50d79",
-  "sha256": "3a4ba2a698f9285dfbee38e818f96417274ff939787ec93aa69ea7058321e45f"
+  "sha256": "2a15be654b898c5e60aac48558faa1a88292f87b1c52cd109fd45a207c1d882b"
  },
  "region_common/event/Danpei.bfevfl": {
   "source": "region_common/event/Danpei.bfevfl",
   "source_sha256": "731b68736d99255207601c76cfad12c26be9df1205ed17066065fb3d514fcc7e",
-  "sha256": "433cdd2fdcd48549828ca237328a0de8ba0152cec068bf40f8062dcd639e326a"
+  "sha256": "59c41019d0db7e6c4ca95aef32e5f5044f57268e49ae3cdae74eb3b3d71770e9"
  },
  "region_common/event/DrWrite.bfevfl": {
   "source": "region_common/event/DrWrite.bfevfl",
@@ -562,7 +562,7 @@
  "region_common/event/DungeonOwlStatue.bfevfl": {
   "source": "region_common/event/DungeonOwlStatue.bfevfl",
   "source_sha256": "c1a2220f6bbeb93c8e48f6ab79f5a295c2ce1444831716ad650c01c67ed27d64",
-  "sha256": "378e310115d935e0644627b6ab366c7607ee9f997c00abf07967a977bbfeeb8d"
+  "sha256": "2471083e4e86484c0a8b8dddb5c047ff3ae39a807da3107a8de89bdf5b959dc3"
  },
  "region_common/event/FairyQueen.bfevfl": {
   "source": "region_common/event/FairyQueen.bfevfl",
@@ -572,22 +572,22 @@
  "region_common/event/FieldOwlStatue.bfevfl": {
   "source": "region_common/event/FieldOwlStatue.bfevfl",
   "source_sha256": "b33e7c9a69c4fb4b97b1da724518c59a6cac36dcc5edc172aa8fdc7f5f53233f",
-  "sha256": "9dd37989935ea4e1d3da485b3fb66769581433a05e2907715e7a47d97faee732"
+  "sha256": "f47b708a14f5edc4297fd35b788425984ce5b94d5910cf2c14f2a5809d696328"
  },
  "region_common/event/Fisherman.bfevfl": {
   "source": "region_common/event/Fisherman.bfevfl",
   "source_sha256": "cd1c263c8220d3f7e573d684c1d57c99903b136cb24048259bad4475fbc93fd9",
-  "sha256": "8ea7b53a9356171870e31e7c56174fa3ddc16be08075e8231a5f31aaabc4bb81"
+  "sha256": "a8cafd07d6b127d231f26a3dcab2b4eacf00b286d0786b6020ed2013cbe4f192"
  },
  "region_common/event/GameShopOwner.bfevfl": {
   "source": "region_common/event/GameShopOwner.bfevfl",
   "source_sha256": "1e602a3d2c809ec12429f5a36caad363d2486a36fcdbc9f59e822a525c941916",
-  "sha256": "a1bc608cf18ef2871fe3300dc4312b2d6786be5626aca6de7d5afc436a48cde2"
+  "sha256": "c6f3e641fd38610abd5d8a1618276111a41b19a657edecdb177568e474b8fa78"
  },
  "region_common/event/Ghost.bfevfl": {
   "source": "region_common/event/Ghost.bfevfl",
   "source_sha256": "d9267163bce517f1bd9062f5b0f394760268b42fc431f9c069290f029c9ccd1f",
-  "sha256": "b90b82574cd81884dfed8bc5e62b348bebe6ba6931361e85415fa0726db4c7b8"
+  "sha256": "b22b158cbb143a7747e31650c40409e9a2b013eab5a2960bb68db38bdfbb9833"
  },
  "region_common/event/Goriya.bfevfl": {
   "source": "region_common/event/Goriya.bfevfl",
@@ -602,7 +602,7 @@
  "region_common/event/Item.bfevfl": {
   "source": "region_common/event/Item.bfevfl",
   "source_sha256": "2ecfa2d151d053e1e4194bbe47c946fa6124555baa0d2cd900447d4cfb9bccd0",
-  "sha256": "a973c133241c4cc798a0c02b870847aa32338e93653a740a8c078637533a69ed"
+  "sha256": "e84a9f74d95ac87b7279eabecff41ab4bd51cf91edc72321fe5fe012e6eeb7f8"
  },
  "region_common/event/Kiki.bfevfl": {
   "source": "region_common/event/Kiki.bfevfl",
@@ -657,7 +657,7 @@
  "region_common/event/PlayerStart.bfevfl": {
   "source": "region_common/event/PlayerStart.bfevfl",
   "source_sha256": "39a69abcd372498b016d50315a41e857fec48ed1736359651b573c699d5d70af",
-  "sha256": "78432300a126dd7feabfcbe72b2adfb2cc2995809196fd220a486ee1ed060af6"
+  "sha256": "d5b712278a9f3d34db665189d52209da3570215b9a2c6741d4d41dee75c99afe"
  },
  "region_common/event/PrizeCommon.bfevfl": {
   "source": "region_common/event/PrizeCommon.bfevfl",
@@ -672,7 +672,7 @@
  "region_common/event/RaftShopMan.bfevfl": {
   "source": "region_common/event/RaftShopMan.bfevfl",
   "source_sha256": "132ce0739aee939e42f32cb0191061b46da1d2ede0eb18a8304db14561e93ffb",
-  "sha256": "cf07307e11f770d7a96f5d2c57db2c7e1fa1d8010e4ebaacf0d36b65ef40404d"
+  "sha256": "e9ba92213ffe44524687758cf4ff5185f6151c07e4fcf2b47a20d54f8dad730e"
  },
  "region_common/event/RibbonBowWow.bfevfl": {
   "source": "region_common/event/RibbonBowWow.bfevfl",
@@ -682,7 +682,7 @@
  "region_common/event/RoosterBones.bfevfl": {
   "source": "region_common/event/RoosterBones.bfevfl",
   "source_sha256": "2b766ba9c2720e94991e460006d74dba0500c743e004000e26f07dd78797bab7",
-  "sha256": "3db7a392b989aba7779766ef73315a20e43f84d5eb7b11a26819fda6bc15a310"
+  "sha256": "3c39f1bd12e1d11111200e6e1b74e6a733017365ba0d0554682f56d3492dcc8c"
  },
  "region_common/event/Sale.bfevfl": {
   "source": "region_common/event/Sale.bfevfl",
@@ -697,17 +697,17 @@
  "region_common/event/ShellMansionMaster.bfevfl": {
   "source": "region_common/event/ShellMansionMaster.bfevfl",
   "source_sha256": "1f60e4169bf51f374a3ce60d2046d94599e8a5a8b4704866cd0adcf2e7892566",
-  "sha256": "4eefbd2c5ccdb5217db50310f8a6297095d9de3f9d8595056b9297225e51ac9a"
+  "sha256": "c977b248b6c4aedce083ffa43c86ca8f2c5ddfdcd6406adba9380a46350f2bf4"
  },
  "region_common/event/ShellMansionPresent.bfevfl": {
   "source": "region_common/event/ShellMansionPresent.bfevfl",
   "source_sha256": "5fb8ca1dca9280117eb05849d2cd3552d9e1995d813344944d6851fc5ec32de5",
-  "sha256": "21c4a405f73f37fea27d6428fb6826dfe8d339456e47eed558c113cedbe4b055"
+  "sha256": "82e9d2899f0e9885b26fedeaadd306f301645acd6029b406f73bc460382e69dd"
  },
  "region_common/event/SinkingSword.bfevfl": {
   "source": "region_common/event/SinkingSword.bfevfl",
   "source_sha256": "bcec801f41bf86824f80f006832cfd773be337b026516ecc8bb5a66bdc6401c9",
-  "sha256": "498c597badc922462a0bd0c920fbda2f2c6f50d5e60eafe1f0da7f90c5f49c3c"
+  "sha256": "42d983628d937275f83fb83569ecdac8bcff425b22403594afa011f27aff9d7b"
  },
  "region_common/event/SkeletalGuardBlue.bfevfl": {
   "source": "region_common/event/SkeletalGuardBlue.bfevfl",
@@ -732,12 +732,12 @@
  "region_common/event/ToolShopkeeper.bfevfl": {
   "source": "region_common/event/ToolShopkeeper.bfevfl",
   "source_sha256": "684edab84b4b48f7767c3f18f69d638b3bf2a1b15c94b8118d8d4c438cdd7423",
-  "sha256": "f378560953ff0aa94e3acc05a07c3a57eb5bd7eaec37efae63d2d6e7852cd600"
+  "sha256": "db281aea6d254d3b585d7b98b6ec3113b8624979e73d13f4be1cc005393b77aa"
  },
  "region_common/event/TreasureBox.bfevfl": {
   "source": "region_common/event/TreasureBox.bfevfl",
   "source_sha256": "96a6a38edcc5cb59d5a4bb8f6cb14a541ce0062ee7d959e6a15034d3ce2c2d63",
-  "sha256": "f8905f1febe6f4f23df08a3ba33c04f1030de5ea041ffba0f6e9ce2a7aed9c16"
+  "sha256": "ecda06201b5a209e507ece0d212aeb6d30f4acde304e060ab40ca22d6a0aca69"
  },
  "region_common/event/Walrus.bfevfl": {
   "source": "region_common/event/Walrus.bfevfl",

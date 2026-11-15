@@ -28,11 +28,6 @@ class RoomFixes:
         room_data.actors[0].parameters[2] = b'BatterC'
         self.parent.file_manager.writeFile('MadBattersWell03_01A.leb', room_data)
 
-        ### Lanmola Cave: Remove the AnglerKey actor
-        room_data = self.parent.file_manager.readFile('LanmolaCave_02A.leb')
-        room_data.actors.pop(5)
-        self.parent.file_manager.writeFile('LanmolaCave_02A.leb', room_data)
-
         ### Remove the BoyA and BoyB cutscene after getting the FullMoonCello
         room_data = self.parent.file_manager.readFile('Field_12A.leb')
 

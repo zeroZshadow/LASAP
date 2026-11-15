@@ -1,6 +1,6 @@
 """Headless Ryubing harness for the sandbox (see TESTING.md).
 
-python emu.py start [--fresh-log]   boot the game headless; prints the PID
+python emu.py start                 boot the game headless; prints the PID
 python emu.py stop                  kill the instance started by this script (by PID)
 python emu.py shot <out.png>        capture the game window
 python emu.py log [regex]           print matching lines of the newest emulator log
@@ -9,16 +9,8 @@ python emu.py lock <owner>          take the sandbox for a session; fails while 
 python emu.py unlock <owner>        give it back
 python emu.py check                 fail unless the sandbox is free or held by $LASAP_SANDBOX_OWNER
 
-Sessions that run side by side share the sandbox (data folder, emu.pid, port 43385, the e2e folder). A session takes
-the lock before it deploys, resets saves or starts the emulator, runs those with LASAP_SANDBOX_OWNER set to its
-owner name, and unlocks when its test run is over. `start`, `stop`, deploy_mod.sh and reset_saves.sh refuse while
-another owner holds the lock.
-
-LASAP_INSTANCE=<n> (n >= 1) works on suite instance n instead (scripts/suite.py): a copy of the sandbox's data folder
-in suite/<n>, with its own emu.pid and game port (instance_port). Instance 0 is the sandbox itself.
-
-The emulator's windows open without taking focus and stay behind other windows (`tuck`), so the sandbox can run
-while the user works or plays. They stay open: a minimized window may stop presenting frames.
+The lock and LASAP_INSTANCE: TESTING.md ("Sharing the sandbox", "Test suite"). The emulator's windows open without
+focus behind other windows (`tuck`) and stay open: a minimized window may stop presenting frames.
 """
 import ctypes
 import glob

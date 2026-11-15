@@ -6,7 +6,6 @@ from ap_hints import (BEAK_ITEM_TYPE, BOOK_FLOW, BOOKS, DUNGEON_FLOW, DUNGEON_OW
 
 
 def add(files) -> None:
-    """Every source's own message, the same in every patch."""
     _field_owls(files)
     _dungeon_owls(files)
     _books(files)
@@ -22,7 +21,6 @@ def _message_event(chart, message_name: str):
 
 
 def _in_place(chart, old: str, new: str) -> None:
-    """Shows the new message instead of the old one."""
     _message_event(chart, old).data.params.data["message"] = new
 
 
@@ -38,16 +36,11 @@ def _dungeon_owls(files) -> None:
     chart = flow.flowchart
     for source, old in DUNGEON_OWLS.items():
         new = f"Hint:{label(source)}"
-        entry, room, shared = OWN_ENTRIES.get(source, (None, None, None))
-        entry_point = event_tools.findEntryPoint(chart, entry) if entry else None
-        if entry_point is not None and getattr(entry_point.main_event.v.data, "entry_point_name", None):
-            # LASR's Owl Gifts: the entry runs the shared events as a subflow, then the gift
-            gift = entry_point.main_event.v.data.nxt.v
+        entry = OWN_ENTRIES.get(source)
+        if entry:
+            # the entry runs the shared events as a subflow (ap_option_edits.SHARED_OWLS), then the gift
+            gift = event_tools.findEntryPoint(chart, entry).main_event.v.data.nxt.v
             event_tools.insertEventAfter(chart, entry, _owl_events(chart, new, gift.name if gift else None))
-        elif entry and entry_point is None:
-            event_tools.addEntryPoint(chart, entry)
-            event_tools.insertEventAfter(chart, entry, _owl_events(chart, new, None))
-            _own_entry(files, room, shared, entry)
         else:
             _in_place(chart, f"Hint:{old}", new)
     files.writeFile(DUNGEON_FLOW, flow)
@@ -66,14 +59,6 @@ def _owl_events(chart, message_name: str, after) -> str:
     no_beak = event_tools.createSubFlowEvent(chart, "", "examine_NoBeak", {})
     return event_tools.createSwitchEvent(chart, "Inventory", "HasItem", {"itemType": BEAK_ITEM_TYPE, "count": 1},
                                          {0: no_beak, 1: fork})
-
-
-def _own_entry(files, room: str, shared: str, entry: str) -> None:
-    data = files.readFile(f"{room}.leb")
-    statues = [a for a in data.actors if a.parameters and a.parameters[0] in (shared.encode(), entry.encode())]
-    assert len(statues) == 1, (room, len(statues))
-    statues[0].parameters[0] = entry.encode()
-    files.writeFile(f"{room}.leb", data)
 
 
 def _books(files) -> None:

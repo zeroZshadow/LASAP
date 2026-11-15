@@ -1,7 +1,4 @@
-"""Compiles LASR condition strings (logic.yml) into CollectionState rules.
-
-Grammar (data/logic_spec.yml): names, ``&``, ``|``, ``!``, parentheses, and ``name:N`` counts. Precedence follows the
-Python LASR rewrites conditions into: ``!`` > ``&`` > ``|``.
+"""Compiles LASR condition strings (logic.yml, grammar in data/logic_spec.yml) into CollectionState rules.
 
 Name resolution matches LASR's shuffler (``checkAccess``/``canReachLocation``):
 - items from items.yml count copies (``sword:2``);
@@ -159,8 +156,8 @@ def _route_levels(value: object, where: str) -> Dict[str, str]:
 def _route_edges(logic: Mapping[str, Mapping], doors: Mapping[str, Mapping],
                  entered: Optional[Mapping[str, str]] = None,
                  through: Optional[Mapping[str, str]] = None) -> List[Tuple[str, str, Dict[str, str]]]:
-    """Every way between zones as (from, to, rule by level). `entered` maps a door to the region just inside it: a door that leads to it leads into that region, which leads on
-    to the door's zone; `through` maps a door to the region it leads into instead, wherever it leads (lasr.door_logic)."""
+    """Every way between zones as (from, to, rule by level). `entered` maps a door to the region just inside it,
+    which leads on to the door's zone; `through` maps a door to the region it leads into wherever it leads."""
     edges = []
     written: Set[Tuple[str, str]] = set()
     door_zone: Dict[str, str] = {}
@@ -313,7 +310,6 @@ class LogicCompiler:
     def __init__(self, logic: Mapping[str, Mapping], preset: str, settings: Mapping[str, bool],
                  item_names: Mapping[str, str], counted: Mapping[str, Sequence[str]] = {}):
         self.logic = logic
-        self.preset = preset
         self.settings = settings
         self.item_names = item_names
         self.counted = counted

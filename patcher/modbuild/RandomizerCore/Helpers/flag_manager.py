@@ -3,9 +3,11 @@ from RandomizerCore.Tools import gsheet
 
 class FlagManager:
     def __init__(self, mod_generator):
+        import mod  # patcher/modbuild/mod.py, which imports this module
         sheet = mod_generator.file_manager.readFile("GlobalFlags.gsheet")
         self.parseFlags(sheet)
         self.addCustomFlags()
+        mod.add_ap_flags(self)
         sheet["values"] = gsheet.StructArray()
         for k,v in self.flags.items():
             sheet["values"].append({"symbol": k, "index": v})

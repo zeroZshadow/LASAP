@@ -1,11 +1,10 @@
 """LASR (LAS Randomizer) data: logic, item pool and location categories, loaded from the bundled YAML files."""
 import pkgutil
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Mapping, Optional
 
 import yaml
 
-from .entrances import shuffle_pool, shuffled_doors
-from .logic import ALWAYS, SPEC, START, house_exits, lower_routes, start_doors
+from .logic import ALWAYS, SHUFFLE_GROUPS, SPEC, START, house_exits, lower_routes, start_doors
 
 _Loader = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
 
@@ -17,11 +16,8 @@ def _load_yaml(name: str) -> Any:
 WRITTEN_LOGIC: Dict[str, Dict[str, Any]] = _load_yaml("logic.yml")  # with its routes, as logic.yml writes them
 DOORS: Dict[str, Any] = _load_yaml("doors.yml")
 
-# Dungeon entrance shuffle. A dungeon's door is its pair in doors.yml's `dungeon` group; the dungeon is the one its
-# inside's level holds (Lv01 Tail Cave, ..., Lv08 Turtle Rock, Lv10 the Color Dungeon). The region just inside the door
-# (dungeon_region, named by data/logic_spec.yml) is the way in through it: it leads on to the zone of the dungeon's
-# inside door. Shuffled dungeons pair a dungeon's door with another dungeon's inside (slot_doors), as entrance shuffle
-# does the other doors, so the way out leads where the way in came from.
+# A dungeon's door is its pair in doors.yml's `dungeon` group; its inside's level names the dungeon (Lv01 Tail Cave,
+# ..., Lv10 the Color Dungeon).
 DUNGEONS = tuple(SPEC["dungeons"])
 
 
@@ -52,7 +48,7 @@ def slot_doors(entrances: Optional[Dict[str, str]] = None,
     for door, dungeon in (dungeon_entrances or {}).items():
         if door != dungeon:
             pairs[DUNGEON_DOORS[door]] = DOORS["pairs"][DUNGEON_DOORS[dungeon]]
-    return shuffled_doors(DOORS, pairs) if pairs else DOORS
+    return {**DOORS, "pairs": {**DOORS["pairs"], **pairs}} if pairs else DOORS
 
 
 def _with_dungeon_regions(written: Dict[str, Dict[str, Any]], *extra: str) -> Dict[str, Dict[str, Any]]:
@@ -73,8 +69,7 @@ def plain_logic(written: Dict[str, Dict[str, Any]], doors: Dict[str, Any]) -> Di
 LOGIC: Dict[str, Dict[str, Any]] = plain_logic(WRITTEN_LOGIC, DOORS)
 
 
-_items_yml = _load_yaml("items.yml")
-ITEM_DEFS: Dict[str, Dict[str, Any]] = _items_yml["Item_Pool"]
+ITEM_DEFS: Dict[str, Dict[str, Any]] = _load_yaml("items.yml")["Item_Pool"]
 CATEGORIES: Dict[str, List[str]] = _load_yaml("locations.yml")
 
 # The companions the logic's companion locations hold, which items.yml does not have.
@@ -86,8 +81,7 @@ if set(ITEM_DEFS) != set(SPEC["items"]):
 
 ITEM_LOCATIONS: List[str] = [k for k, v in LOGIC.items() if v["type"] == "item"]
 
-# Dungeon number used in LASR names (D1..D8, D0 = Color Dungeon) -> in-game dungeon level index.
-# Same as LASR shuffler: level = number - 1, and the Color Dungeon is level 9.
+# LASR dungeon number (D1..D8, D0 the Color Dungeon) -> the game's level index.
 DUNGEON_LEVEL = {n: (9 if n == 0 else n - 1) for n in range(9)}
 DUNGEON_NAMES = {
     1: "Tail Cave",
@@ -101,8 +95,7 @@ DUNGEON_NAMES = {
     0: "Color Dungeon",
 }
 
-# The counted groups of data/logic_spec.yml: "instruments:N" holds with N different instruments (logic.py, counted),
-# which the egg's condition reads.
+# "instruments:N" holds with N different instruments of the group.
 COUNTED = {name: tuple(members) for name, members in SPEC["counted"].items()}
 INSTRUMENTS_TOKEN = "instruments"
 INSTRUMENTS = COUNTED[INSTRUMENTS_TOKEN]
@@ -120,7 +113,7 @@ EGG = SPEC["egg"]
 GOAL_NODE = SPEC["goal"]
 
 
-def goal_logic(instruments_required: int, logic: Dict[str, Dict[str, Any]] = LOGIC,
+def goal_logic(instruments_required: int, logic: Dict[str, Dict[str, Any]],
                seashells_required: Optional[int] = None) -> Dict[str, Dict[str, Any]]:
     """The logic with the Wind Fish's egg opening at this many instruments, or on a seashell hunt (seashells not None)
     at that many secret seashells and no instruments. On a hunt the egg opens by itself, without the Ballad, and its
@@ -146,19 +139,15 @@ def dungeon_name(dungeon: str) -> str:
 
 
 def door_node(dungeon: str) -> str:
-    """The logic node of a dungeon's overworld door (door_logic)."""
     return f"{dungeon}-door"
 
 
 def door_entrance(dungeon: str) -> str:
-    """The AP entrance through a dungeon's door, into the dungeon it leads into."""
     return f"{dungeon_name(dungeon)} Entrance"
 
 
 def door_region(door: str) -> str:
-    """The region of a shuffled overworld door or of its inside door (Entrances): the door's way in, the spot the way
-    out of its partner lands on, and the way on to its zone. A rule's name has no `_` (data/logic_spec.yml's
-    grammar)."""
+    """The region of a shuffled door: its way in, where its partner's way out lands. Rule names have no `_`."""
     return f"{door.replace('_', '-')}-door"
 
 
@@ -168,15 +157,11 @@ HOUSE_EXIT = "Tarin's House Exit"
 
 def door_logic(written: Dict[str, Dict[str, Any]], doors: Dict[str, Any],
                open_doors: Iterable[str] = ()) -> Dict[str, Dict[str, Any]]:
-    """The routes lowered with each dungeon's door a region of its own (door_node), holding the door's way in, and the
-    regions just inside the doors (dungeon_region) entered only through a door's entrance, which the world connects to
-    the dungeon the door leads into: they keep no conditions. The ways out of the dungeons lead as `doors` pairs them.
-    Each of `open_doors` (Entrances: ENTRANCE_POOL) and the inside door `doors` pairs it with is a region of its own as
-    well (door_region), with the door's way in, which leads on to the door's zone: the world connects the doors'
-    entrances to each other's regions as the slot's entrances pair them, so the rules do not depend on where the doors
-    lead. A way that drops onto such a door's spot leads to its zone: only its partner's way out leads through it.
-    A dungeon's door among `open_doors` (Shuffled dungeons everything, DUNGEON_POOL) is such a door instead of a
-    door_node, and its inside door's region leads on to the region just inside the dungeon, which keeps its ways in."""
+    """The routes lowered with each closed dungeon's door a region of its own (door_node) and the region just inside
+    it (dungeon_region) reached only through the door's entrance, without conditions. Each of `open_doors` and its
+    inside door get a door_region leading on to the door's zone; the world connects those regions as the slot's
+    entrances pair them, so the rules do not depend on where the doors lead. A way that drops onto such a door's spot
+    leads to its zone."""
     open_doors = list(open_doors)
     closed = closed_dungeons(open_doors)
     through = {DUNGEON_DOORS[dungeon]: door_node(dungeon) for dungeon in closed}
@@ -219,8 +204,16 @@ def entrance_logic(entrances: Optional[Dict[str, str]], dungeon_entrances: Optio
     return door_logic(WRITTEN_LOGIC, doors)
 
 
-# Entrances: the overworld doors the shuffle moves (entrances.shuffle_pool), as door_logic's open_doors; with Shuffled
-# dungeons everything the dungeons' own doors too
+class PlacementError(Exception):
+    """No placement in every try: a generation failure, which fuzzers count, not an option error they set aside."""
+
+
+def shuffle_pool(doors: Mapping[str, Any]) -> List[str]:
+    """The overworld doors Entrances moves: doors.yml's SHUFFLE_GROUPS, the door outside the house among them."""
+    return [door for group in SHUFFLE_GROUPS for door in doors["groups"][group]]
+
+
+# door_logic's open_doors for Entrances; DUNGEON_POOL adds the dungeons' doors for Shuffled dungeons everything.
 ENTRANCE_POOL: List[str] = shuffle_pool(DOORS)
 DUNGEON_POOL: List[str] = ENTRANCE_POOL + [door for door in DOORS["groups"]["dungeon"] if door not in ENTRANCE_POOL]
 

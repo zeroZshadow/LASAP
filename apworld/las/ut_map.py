@@ -1,17 +1,10 @@
-"""Universal Tracker's map tab (DESIGN.md, Universal Tracker map): this world's tracker/maps.json, tracker/locations.json
-and tracker/items.json, which scripts/ut_map.py writes, with the images the client builds from the player's RomFS dump
-(patcher/ap_tracker_map.py) in the zip las_options ut_pack_path names: a section per location, named after it, and per
-shuffled overworld door one named after its entrance. UT colours a door by its entrance: gone through (connected,
-Deferred) or not, reachable or not. Left of the map the items of ITEM_SECTIONS, right of it each dungeon's of
-DUNGEON_SECTIONS, those the slot's item pool has, with the game's icons.
-
-A way /get_logical_path finds is the doors Link goes through (DOOR_STEPS, LASWorld.explain_path); the client draws it
-from door pin to door pin and on to the check's pin."""
+"""Universal Tracker's map tab (DESIGN.md, Universal Tracker map): the data behind tracker/*.json (scripts/ut_map.py
+writes them) and the door entrances a route goes through."""
 import re
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 
 from .items import LASR_TO_ITEM
-from .lasr import DOORS, DUNGEON_NAMES, DUNGEONS, door_entrance
+from .lasr import DOORS, DUNGEON_NAMES, DUNGEONS, INSTRUMENTS, door_entrance
 from .tracker import LEVEL_KEY
 
 OVERWORLD_MAP = "Koholint Island"
@@ -23,7 +16,6 @@ def dungeon_label(number: int) -> str:
 
 
 def dungeon_map(dungeon: str) -> str:
-    """A dungeon's map, by its DUNGEONS name."""
     return dungeon_label((DUNGEONS.index(dungeon) + 1) % len(DUNGEONS))
 
 
@@ -56,14 +48,12 @@ ITEM_SECTIONS = (
                "bow", "rod", "boomerang", "powder", "mushroom", "bottle", "red-tunic", "blue-tunic", "seashell",
                "medicine"), 5),
     ("Songs", ("song-ballad", "song-mambo", "song-soul"), 5),
-    ("Instruments", ("full-moon-cello", "conch-horn", "sea-lilys-bell", "surf-harp", "wind-marimba", "coral-triangle",
-                     "evening-calm-organ", "thunder-drum"), 4),
+    ("Instruments", INSTRUMENTS, 4),
     ("Keys", ("tail-key", "slime-key", "angler-key", "face-key", "bird-key"), 5),
     ("Trade", ("yoshi-doll", "ribbon", "dog-food", "bananas", "stick", "honeycomb", "pineapple", "hibiscus", "letter",
                "broom", "fishing-hook", "necklace", "mermaid-scale", "magnifying-lens"), 5),
 )
-# Right of the map, a section per dungeon: its small keys, nightmare key and stone beak. The pack has no icons for maps
-# and compasses.
+# Right of the map, a section per dungeon: its small keys, nightmare key, map, compass and stone beak
 DUNGEON_SECTIONS = tuple((dungeon_label(n), (f"key-D{n}", f"nightmare-key-D{n}", f"map-D{n}", f"compass-D{n}",
                                               f"stone-beak-D{n}"), 5) for n in (*range(1, 9), 0))
 ITEM_SIZE, DUNGEON_ITEM_SIZE = (40, 40), (32, 32)

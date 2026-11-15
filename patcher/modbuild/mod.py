@@ -1,7 +1,6 @@
-"""The mod's RomFS, the same for every seed: LASR's mod generator (RandomizerCore, MIT) with the patcher's edits on
-top. scripts/build_assets.py runs `build` on a patch with the locations the world gives every seed (make_test_patch.py)
-and stores the files as assets (ap_assets.py). Every AP location gives the Archipelago placeholder, whose AddItemID
-index is the location's local id; the exlaunch module reports it as a check. Needs .venv-lasr.
+"""The mod's RomFS, the same for every seed: our fork of LASR's mod generator (RandomizerCore, MIT), which calls the
+edits here at its hook points, then the patcher's edits on top; built into the assets by scripts/build_assets.py
+(DESIGN.md, Assets). Needs .venv-lasr.
 """
 import copy
 import sys
@@ -14,27 +13,22 @@ sys.path.insert(0, str(HERE))
 
 import evfl  # noqa: E402
 from RandomizerCore import mod_generator  # noqa: E402
-from RandomizerCore.Fixes.Datasheets.items import ItemsDatasheetFixes  # noqa: E402
 from RandomizerCore.Fixes.Events import player_start  # noqa: E402
-from RandomizerCore.Helpers.file_manager import FileManager  # noqa: E402
-from RandomizerCore.Helpers.flag_manager import FlagManager  # noqa: E402
-from RandomizerCore.Helpers.item_get_manager import ItemGetManager  # noqa: E402
 from RandomizerCore.Randomizers import chests as lasr_chests  # noqa: E402
-from RandomizerCore.Randomizers.chests import ChestRandomizer  # noqa: E402
 from RandomizerCore.Randomizers.data import (BGM_TRACKS, DUNGEON_ENTRANCES, DUNGEON_MAP_ICONS,  # noqa: E402
                                              MODEL_ROTATIONS, MODEL_SIZES, SIDESCROLLER_ENVIRONMENTS,
                                              TOPDOWN_ENVIRONMENTS)
-from RandomizerCore.Randomizers.heart_pieces import HEART_ROOMS, sunken as HEART_SUNKEN  # noqa: E402
-from RandomizerCore.Randomizers.instruments import InstrumentRandomizer  # noqa: E402
+from RandomizerCore.Randomizers import heart_pieces  # noqa: E402
+from RandomizerCore.Randomizers.seashells import SUNKEN_SHELLS  # noqa: E402
 from RandomizerCore.Randomizers.shop import TEXT_TO_CHANGE as SHOP_TEXT  # noqa: E402
 from RandomizerCore.Tools import event_tools  # noqa: E402
 from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct  # noqa: E402
 from RandomizerCore.Tools.text_tools import TextFile  # noqa: E402
+import ap_ammo_ghost  # noqa: E402
 import ap_ballad  # noqa: E402
-import ap_chest  # noqa: E402
+import ap_chest_model  # noqa: E402
 import ap_deathlink  # noqa: E402
 import ap_drop  # noqa: E402
-import ap_ghost  # noqa: E402
 import ap_goal  # noqa: E402
 import ap_hint_edits  # noqa: E402
 import ap_hints  # noqa: E402
@@ -42,17 +36,15 @@ import ap_map  # noqa: E402
 import ap_map_edits  # noqa: E402
 import ap_model  # noqa: E402
 import ap_option_edits  # noqa: E402
-import ap_options  # noqa: E402
 import ap_player_ghost  # noqa: E402
 import ap_shuffles  # noqa: E402
 from las_ap_patch import (COMPANION_FLAGS, PLACEHOLDER_KEY, START_ITEMS_FLAG, dungeon_item,  # noqa: E402
                           load_yaml, model_token)
 
 PLACEHOLDER_ITEM_ID = 71  # must match AP::PLACEHOLDER_ITEM_ID in the exlaunch module
-# An AP location's chests name CHEST_TOKEN and its local id as their model file; the module shows the chest of the
-# location's item, as LASR's "Chest Types" would (the models' C lines).
+# An AP location's chests name CHEST_TOKEN and its local id as their model file (DESIGN.md, Item models)
 CHEST_TOKEN = "apchest:"  # AP::CHEST_TOKEN
-CHEST_FILES = {**lasr_chests.CHEST_TEXTURES, ap_chest.CHEST_TYPE: ap_chest.FILE_NAME}  # chest-type -> model file
+CHEST_FILES = {**lasr_chests.CHEST_TEXTURES, ap_chest_model.CHEST_TYPE: ap_chest_model.FILE_NAME}  # chest-type -> model file
 # LASR's chests for las_ap_patch.chest_look and the seed's chests (ap_assets.data)
 CHESTS = {"rooms": list(lasr_chests.CHEST_ROOMS), "sizes": lasr_chests.CHEST_SIZES, "files": CHEST_FILES}
 CHEST_MODEL = "TreasureBox"  # the model in every chest file
@@ -77,8 +69,8 @@ TRAP_EVENT_KEYS = ("ZapTrap", "DrownTrap", "SquishTrap", "DeathballTrap", "Quake
 # An item-get whose message entry starts with this plays as the game's own also with Instant Pickups; the module drops
 # the mark (AP::NATIVE_ITEM_GET_MARK). The instruments' pedestals have it: their whiteout and warp follow at once.
 NATIVE_ITEM_GET_MARK = "!"
-# Holding Minus opens this Common.bfevfl event (AP::WARP_MENU_ENTRY): a choice to warp home, to the start point outside
-# Tarin's door that leaving the house uses (Field_11C, ExitOut). B picks the bottom choice, so Continue is there.
+# Holding Minus opens this Common.bfevfl event (AP::WARP_MENU_ENTRY; DESIGN.md, Warp menu). B picks the bottom
+# choice, so Continue is there.
 WARP_MENU_ENTRY = "APWarpMenu"
 WARP_MENU_KEY = "APWarpMenu"
 WARP_MENU_TEXT = "Return to Tarin's house?[CHOICE_TOP]Warp home[CHOICE_BOTTOM]Continue"
@@ -113,43 +105,36 @@ INSTRUMENT_JINGLES = {"FullMoonCello": "BGM_INST_VIOLIN", "ConchHorn": "BGM_INST
 # (ap_drop.GHOST_DROP); LASR gives it in the owl's talk at the grave, which shows once the farewell turned
 # Ghost4_Clear on, and so leaves its watched flag out: with the drop the owl stays away too.
 START_FLAGS = (*player_start.START_FLAGS, "EighthClear")
-# Items.gsheet tunic rows -> the npc key their item-get holds up (items.yml's npc-key; the green tunic has none)
-TUNIC_NPC_KEYS = {"ClothesRed": "NpcSkeletalGuardRed", "ClothesBlue": "NpcSkeletalGuardBlue"}
 
 
-def _add_ap_flags(self) -> None:
-    _original_add_custom_flags(self)
+def add_ap_flags(flags) -> None:
+    """After LASR's flags (FlagManager.addCustomFlags): a flag's id follows the order flags are added in."""
     for i in range(RECV_FLAG_BITS):
-        self.addFlag(f"APRecv{i}")
+        flags.addFlag(f"APRecv{i}")
     for i in range(MEDICINE_FLAG_BITS):
-        self.addFlag(f"{MEDICINE_FLAG}{i}")
-    self.addFlag(ap_ghost.BOW_FLAG)
-    self.addFlag(ap_goal.SIGN_FLAG)
-    self.addFlag(START_ITEMS_FLAG)
+        flags.addFlag(f"{MEDICINE_FLAG}{i}")
+    flags.addFlag(ap_ammo_ghost.BOW_FLAG)
+    flags.addFlag(ap_goal.SIGN_FLAG)
+    flags.addFlag(START_ITEMS_FLAG)
     for flag in ap_deathlink.FLAGS:
-        self.addFlag(flag)
+        flags.addFlag(flag)
     for flag in ap_hints.FLAGS:
-        self.addFlag(flag)
+        flags.addFlag(flag)
     for flag in ap_drop.FLAGS:
-        self.addFlag(flag)
+        flags.addFlag(flag)
 
 
-def _add_placeholder_row(self, sheet) -> None:
+def add_placeholder_row(fixes, sheet) -> None:
     """The placeholder's row, with its own item id and model; the rows' ids and npc keys go to the process's
     item_rows."""
-    _original_make_item_changes(self, sheet)
-    # LASR empties the tunics' npcKey (vanilla's rows show the ocarina), so their item-get holds up nothing and shows
-    # no glow; they hold up the model LASR shows for them in the world.
     for item in sheet["values"]:
-        if item["symbol"] in TUNIC_NPC_KEYS:
-            item["npcKey"] = TUNIC_NPC_KEYS[item["symbol"]]
         if item["symbol"] in INSTRUMENT_JINGLES:
             item["jingle"] = INSTRUMENT_JINGLES[item["symbol"]]
     # Parsed up front: appending to the sheet invalidates references to its rows.
     rows = {str(item["symbol"]): parseStruct(item) for item in sheet["values"]}
     if any(row["itemID"] == PLACEHOLDER_ITEM_ID for row in rows.values()):
         raise ValueError(f"Items.gsheet already uses the placeholder's item id {PLACEHOLDER_ITEM_ID}")
-    self.parent.item_rows.update({key: (row["itemID"], str(row["npcKey"])) for key, row in rows.items()})
+    fixes.parent.item_rows.update({key: (row["itemID"], str(row["npcKey"])) for key, row in rows.items()})
     row = copy.deepcopy(rows["SmallKey"])
     row["symbol"] = PLACEHOLDER_KEY
     row["itemID"] = PLACEHOLDER_ITEM_ID
@@ -216,11 +201,9 @@ def add_texts(proc) -> None:
         files.writeTextFile(relative_path, "UI.msbt", msbt)
 
 
-def _placeholder_get_first(self, flowchart, item, index, before=None, after=None):
-    """The placeholder is added before its item-get, unlike LASR's other items: the module learns the location
-    from the AddItemID call and names the item in the text that follows."""
-    if item != PLACEHOLDER_KEY:
-        return _original_get_with_animation(self, flowchart, item, index, before, after)
+def placeholder_get(flowchart, item, index, before=None, after=None):
+    """The placeholder is added before its item-get, unlike LASR's other items (ItemGetManager.getWithAnimation): the
+    module learns the location from the AddItemID call and names the item in the text that follows."""
     return event_tools.createActionChain(flowchart, before, [
         ("Inventory", "AddItemByKey", {"itemKey": PLACEHOLDER_KEY, "count": 1, "index": index, "autoEquip": False}),
         ("Link", "GenericItemGetSequenceByKey", {"itemKey": item, "keepCarry": False,
@@ -228,10 +211,9 @@ def _placeholder_get_first(self, flowchart, item, index, before=None, after=None
     ], after)
 
 
-def _chest_placeholder_branch(self) -> None:
-    """Vanilla chests play the item-get before adding the item; chests with the placeholder add it first."""
-    _original_write_chest_event(self)
-    files = self.parent.file_manager
+def chest_placeholder_branch(files) -> None:
+    """Vanilla chests play the item-get before adding the item; chests with the placeholder add it first (after
+    ChestRandomizer.writeChestEvent)."""
     flow = files.readFile("TreasureBox.bfevfl")
     chart = flow.flowchart
     open_next = event_tools.findEvent(chart, "Event32").data.nxt.v.name  # LASR's item switch chain
@@ -249,11 +231,11 @@ def _chest_placeholder_branch(self) -> None:
     files.writeFile("TreasureBox.bfevfl", flow)
 
 
-def _native_instrument_get(self, flowchart, room, room_data):
-    """The instrument pedestal's item-gets (any item, progressive ones on both branches) keep the game's item-get. The
-    music stops before it, as in the game (MusicalInstrument.bfevfl), so the item's jingle plays alone; LASR's whiteout
-    after it lets the jingle play on (its StopAllBGM is in a chain its fork cuts off) until the warp out."""
-    _original_change_instrument(self, flowchart, room, room_data)
+def native_instrument_get(flowchart, room) -> None:
+    """The instrument pedestal's item-gets (any item, progressive ones on both branches) keep the game's item-get
+    (after InstrumentRandomizer.changeInstrument). The music stops before it, as in the game
+    (MusicalInstrument.bfevfl), so the item's jingle plays alone; LASR's whiteout after it lets the jingle play on
+    (its StopAllBGM is in a chain its fork cuts off) until the warp out."""
     first = event_tools.findEntryPoint(flowchart, room).main_event.v.name
     event_tools.createActionChain(flowchart, room, [("Audio", "StopAllBGM", {"duration": 1.0})], first)
     mark_native_item_gets(flowchart, room)
@@ -283,48 +265,32 @@ def mark_native_item_gets(chart, entry) -> None:
             todo.append(data.join.v)
 
 
-def _write_file(self, file_name: str, data) -> None:
-    """The Archipelago model gets an Npc entry, which the item-get shows, and the chest's entry takes its model from its
-    actor's parameters. The small key's flowchart stays the game's:
-    LASR's edits are its stand-ins' entries, and every stand-in is a drop actor, with a flowchart of its own (ap_drop)."""
-    if file_name == ap_drop.SMALL_KEY_EVENT:
-        return
-    # Once: the sheet is written again after LASR's run (ap_ghost).
-    if file_name == "Npc.gsheet" and not any(row["symbol"] == PLACEHOLDER_DEF["npc-key"] for row in data["values"]):
-        # Parsed before appending: appending to the sheet invalidates references to its rows.
-        source = next(parseStruct(row) for row in data["values"] if row["symbol"] == PLACEHOLDER_SOURCE_NPC)
-        source["symbol"] = PLACEHOLDER_DEF["npc-key"]
-        source["graphics"]["path"] = ap_model.FILE_NAME
-        source["graphics"]["model"] = ap_model.MODEL_NAME
-        data["values"].append(dictToStruct(source))
-    if file_name == "Npc.gsheet":
-        # Every chest names its model file and model name, as LASR's "Texture + Size" has it (_chest_contents)
-        chest = next(row for row in data["values"] if row["symbol"] == "ObjTreasureBox")
-        chest["graphics"]["path"], chest["graphics"]["model"] = "$6", "$7"
-    if file_name in ap_option_edits.SHEETS:
-        ap_option_edits.SHEETS[file_name](data["values"])
-    _original_write_file(self, file_name, data)
+def edit_sheets(proc) -> None:
+    """After LASR's run: the Archipelago model gets an Npc entry, which the item-get shows, the chest's entry takes its
+    model from its actor's parameters, and the options' sheet edits (ap_option_edits.SHEETS)."""
+    files = proc.file_manager
+    npc = files.readFile("Npc.gsheet")
+    # Parsed before appending: appending to the sheet invalidates references to its rows.
+    source = next(parseStruct(row) for row in npc["values"] if row["symbol"] == PLACEHOLDER_SOURCE_NPC)
+    source["symbol"] = PLACEHOLDER_DEF["npc-key"]
+    source["graphics"]["path"] = ap_model.FILE_NAME
+    source["graphics"]["model"] = ap_model.MODEL_NAME
+    npc["values"].append(dictToStruct(source))
+    # Every chest names its model file and model name, as LASR's "Texture + Size" has it (chest_contents)
+    chest = next(row for row in npc["values"] if row["symbol"] == "ObjTreasureBox")
+    chest["graphics"]["path"], chest["graphics"]["model"] = "$6", "$7"
+    files.writeFile("Npc.gsheet", npc)
+    for name, edit in ap_option_edits.SHEETS.items():
+        sheet = files.readFile(name)
+        edit(sheet["values"])
+        files.writeFile(name, sheet)
 
 
-_original_get_with_animation = ItemGetManager.getWithAnimation
-_original_write_file = FileManager.writeFile
-FileManager.writeFile = _write_file
-_original_write_chest_event = ChestRandomizer.writeChestEvent
-ItemGetManager.getWithAnimation = _placeholder_get_first
-ChestRandomizer.writeChestEvent = _chest_placeholder_branch
-_original_change_instrument = InstrumentRandomizer.changeInstrument
-InstrumentRandomizer.changeInstrument = _native_instrument_get
-_original_add_custom_flags = FlagManager.addCustomFlags
-_original_make_item_changes = ItemsDatasheetFixes.makeItemChanges
-FlagManager.addCustomFlags = _add_ap_flags
-ItemsDatasheetFixes.makeItemChanges = _add_placeholder_row
-
-
-def _chest_contents(self) -> None:
-    """LASR's chest contents, each chest naming its model file (the Npc row's $6, _write_file): every chest location is
-    an AP location, and its chests name its CHEST_TOKEN, the same in every seed (the module shows the chest of the
-    location's item)."""
-    mod = self.parent
+def chest_contents(chests) -> None:
+    """LASR's chest contents (ChestRandomizer), each chest naming its model file (the Npc row's $6, edit_sheets): every
+    chest location is an AP location, and its chests name its CHEST_TOKEN, the same in every seed (the module shows the
+    chest of the location's item)."""
+    mod = chests.parent
     files = mod.file_manager
     for level in lasr_chests.PANEL_CHEST_ROOMS.values():
         room = files.readFile(f"{level}.leb")
@@ -343,9 +309,6 @@ def _chest_contents(self) -> None:
             files.writeFile(f"{name}.leb", room)
 
 
-ChestRandomizer.makeChestContentFixes = _chest_contents
-
-
 class APModsProcess(mod_generator.ModsProcess):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -353,29 +316,15 @@ class APModsProcess(mod_generator.ModsProcess):
 
     def run(self) -> None:
         super().run()
+        edit_sheets(self)
         add_events(self)
         add_texts(self)
 
 
 def build_placements(patch: dict, logic: dict) -> dict:
-    """Converts the AP patch file into the placements dict LASR's ModsProcess expects."""
-    settings = dict(patch["settings"])
-    settings.setdefault("Excluded Locations", [])
-    settings["Starting Gear"] = list(patch["starting_items"])
-    # The module leads the doors of shuffled dungeons (ap_entrances): LASR's doors, exits and warps stay vanilla.
-    settings["Shuffled Dungeons"] = False
-    settings.update(ap_options.LASR_SETTINGS)
-
-    placements = {
-        "settings": settings,
-        "force-junk": [],
-        "force-vanilla": [loc for loc, item in patch["placements"].items() if item != "ap-item"],
-        "starting-items": list(patch["starting_items"]),
-        "dungeon-entrances": dict(patch["dungeon_entrances"]),
-        "indexes": {},
-        "moblin-cave": "bow-wow",
-        "rooster-statue": "rooster",
-    }
+    """Converts the AP patch file into the placements dict LASR's ModsProcess expects: each location's item, and the
+    in-game index of those that have one."""
+    placements = {"indexes": {}}
     ids = gift_ids(patch)
     for loc, item in patch["placements"].items():
         placements[loc] = item
@@ -395,11 +344,10 @@ def build_placements(patch: dict, logic: dict) -> dict:
 def gift_ids(patch: dict) -> dict:
     """The local ids the mod gives: the AP locations', and the owl statues' the options leave out
     (removed_location_ids), whose gifts the module turns off (ap_options)."""
-    return {**patch.get("removed_location_ids", {}), **patch["location_ids"]}
+    return {**patch["removed_location_ids"], **patch["location_ids"]}
 
 
 def chest_token(local_id) -> str:
-    """What a location's chests name as their model file."""
     return f"{CHEST_TOKEN}{int(local_id)}"
 
 
@@ -447,18 +395,22 @@ def build(romfs: Path, out: Path, patch: dict) -> dict:
     if "rooster-statue" in patch["location_ids"]:
         add_rooster_flag(proc.file_manager)
     ap_player_ghost.add(proc.file_manager)  # from NpcGhost's row before the Ammo Ghost rewrites it
-    ap_ghost.add(proc.file_manager)  # the module leaves him out without the option (ap_options.cpp)
+    ap_ammo_ghost.add(proc.file_manager)  # the module leaves him out without the option (ap_options.cpp)
     ap_hint_edits.add(proc.file_manager)
     ap_ballad.add(romfs, proc.romfs_dir)
-    ap_map_edits.add(proc.file_manager)
+    map_groups = ap_map_edits.add(proc.file_manager)
     # before the drops, which change the AP chests' item the map finds them by
     map_chests = ap_map_edits.dungeon_chests(proc.file_manager, patch["location_ids"], PLACEHOLDER_KEY)
     ap_drop.add(proc, PLACEHOLDER_KEY)
     return {
         "item_rows": proc.item_rows,
         "chests": CHESTS,
-        "heart_rooms": list(HEART_ROOMS),
-        "heart_sunken": list(HEART_SUNKEN),
+        "heart_rooms": list(heart_pieces.HEART_ROOMS),
+        "heart_sunken": list(heart_pieces.sunken),
+        "heart_shrunk": heart_pieces.SHRUNK,
+        "heart_sunken_shrunk": heart_pieces.SUNKEN_SHRUNK,
+        "heart_sunken_rise": heart_pieces.SUNKEN_RISE,
+        "sunken_shells": list(SUNKEN_SHELLS),
         "model_sizes": MODEL_SIZES,
         "model_rotations": MODEL_ROTATIONS,
         "shop_text": SHOP_TEXT,
@@ -466,6 +418,7 @@ def build(romfs: Path, out: Path, patch: dict) -> dict:
         "boss_flags": player_start.BOSS_FLAGS,
         "dungeon_entrances": DUNGEON_ENTRANCES,
         "dungeon_map_icons": DUNGEON_MAP_ICONS,
+        "map_groups": map_groups,
         "map_doors": ap_map_edits.door_groups(proc.file_manager),
         "map_chests": map_chests,
         "bgm_tracks": BGM_TRACKS,

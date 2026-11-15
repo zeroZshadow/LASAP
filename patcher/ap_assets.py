@@ -124,6 +124,5 @@ def install(romfs: Path, out_romfs: Path, path: str) -> None:
 
 
 def install_all(romfs: Path, out_romfs: Path) -> None:
-    """The mod's RomFS: every asset."""
     for path in manifest():
         install(romfs, out_romfs, path)

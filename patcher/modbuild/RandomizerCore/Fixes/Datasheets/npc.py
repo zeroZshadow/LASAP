@@ -6,13 +6,13 @@ class NpcDatasheetFixes:
     def __init__(self, mod_generator) -> None:
         sheet = mod_generator.file_manager.readFile('Npc.gsheet')
         for npc in sheet['values']:
-            self.makeNpcChanges(npc, mod_generator.placements, mod_generator.settings)
+            self.makeNpcChanges(npc, mod_generator.placements)
 
         self.makeNewNpcs(sheet, mod_generator.placements, mod_generator.item_defs)
         mod_generator.file_manager.writeFile('Npc.gsheet', sheet)
 
 
-    def makeNpcChanges(self, npc, placements, settings):
+    def makeNpcChanges(self, npc, placements):
         """Makes lots of changes to the Npc datasheet to make this randomizer work, 
         ranging from event triggers to layout conditions to even graphics changes. 
         Also makes the shell sensor go off if the Npc holds a seashell"""

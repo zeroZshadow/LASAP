@@ -15,7 +15,6 @@ from RandomizerCore.Randomizers.miscellaneous import MiscRandomizer
 from RandomizerCore.Randomizers.seashells import SeashellRandomizer
 from RandomizerCore.Randomizers.fishing import FishingRandomizer
 from RandomizerCore.Randomizers.owls import OwlStatueRandomizer
-from RandomizerCore.Randomizers.small_keys import KeyRandomizer
 from RandomizerCore.Randomizers.rapids import RapidsRandomizer
 from RandomizerCore.Randomizers.chests import ChestRandomizer
 from RandomizerCore.Randomizers.dampe import DampeRandomizer
@@ -28,7 +27,6 @@ class ModsProcess:
     def __init__(self, placements: dict, rom_path: Path, out_dir: Path, items: dict):
         self.item_defs = items
         self.placements = placements
-        self.settings = self.placements.pop('settings')
 
         self.rom_path = rom_path
         self.romfs_dir = out_dir / "atmosphere" / "contents" / "01006BB00C6F0000" / "romfs"
@@ -60,7 +58,6 @@ class ModsProcess:
         FishingRandomizer(self)
         TrendyGameRandomizer(self)
 
-        KeyRandomizer(self) # also handles the golden leaves
         InstrumentRandomizer(self)
 
         OwlStatueRandomizer(self)

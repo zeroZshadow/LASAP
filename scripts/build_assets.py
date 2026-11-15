@@ -18,7 +18,6 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "patcher" / "modbuild"))
 import mod  # noqa: E402  (LASR and the patcher on the path)
 import ap_assets  # noqa: E402
-import ap_map  # noqa: E402
 import las_ap_patch  # noqa: E402
 import make_test_patch  # noqa: E402
 from local_paths import local_path  # noqa: E402
@@ -53,7 +52,6 @@ def build(romfs: Path) -> tuple:
         built = {path.relative_to(out).as_posix(): path.read_bytes() for path in out.rglob("*") if path.is_file()}
     built.update(own_files(romfs))
     data["shape"] = las_ap_patch.patch_shape(patch)
-    data["map_groups"] = ap_map.groups_key(ap_map.load_positions())
     # LASR writes back some files it reads unchanged; the game reads those from its own RomFS
     return {path: content for path, content in built.items()
             if not (romfs / path).is_file() or (romfs / path).read_bytes() != content}, json.loads(json.dumps(data))

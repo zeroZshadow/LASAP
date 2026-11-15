@@ -1,19 +1,5 @@
-"""Map tracker (DESIGN.md, Map tracker): the pause map shows where the slot's unchecked locations are.
-
-Overworld: four UiFieldMapIcons rows per spot of checks (a group of nearby locations), one per look: in logic,
-partly in logic, out of logic and collected, with the marker frames of ap_map_icons.py. Each dungeon door also gets a
-group, next to the game's marker of the door, with the checks of the dungeon behind it. The groups are those of every
-location, the same in every seed; the seed file's map gives each the slot's locations in it. The map shows a row's icon while
-the event flag in the row is set and names it with Place:<label>; flag and label are APMap<mark><group>, which the
-module answers from the seed file's map (map_tracker.cpp): the group's look shows, named by group_name(), at the size of one
-check or of several. The module lists a group's locations by their short names (its check list).
-
-Dungeons: the module puts a dot of the same looks on the dungeon map per spot holding checks (the map's M lines) and
-hides the game's chest icons of the slot's chests (C lines); it names the hovered dot with Place:APMapDot.
-
-Positions come from map_positions.json (scripts/map_positions.py). modbuild/ap_map_edits.py adds the rows and texts.
-"""
-import hashlib
+"""Map tracker (DESIGN.md, Map tracker): the seed file's map, from map_positions.json (scripts/map_positions.py) and
+the overworld groups of the asset build. modbuild/ap_map_edits.py adds the icon rows and texts."""
 import json
 import math
 import os
@@ -28,8 +14,6 @@ POSITIONS = HERE / "map_positions.json"
 FLAG_PREFIX = "APMap"  # AP::MAP_FLAG_PREFIX in the module
 # The mark after the prefix per look: in logic, partly in logic, out of logic, collected (AP::MAP_LOOK_MARKS)
 LOOKS = ("", "P", "X", "C")
-# Checks closer than this (world units; a screen is 15 x 12) share an icon.
-GROUP_DISTANCE = 3.0
 # Dungeon checks closer than this in the same room share a dot (Key Cavern's basement key beside its owl statue).
 DOT_DISTANCE = 2.0
 DOT_LABEL = "APMapDot"  # the Place.msbt entry the module names the hovered dungeon dot with (AP::MAP_DOT_LABEL)
@@ -47,28 +31,6 @@ NAME_WIDTH = 30  # the name of an icon of several checks fits the hover box's li
 
 def load_positions() -> dict:
     return json.loads(POSITIONS.read_text(encoding="utf-8"))
-
-
-def overworld_groups(positions: dict) -> list:
-    """[(x, z, y, [lasr location, ...])]: every overworld location, each joined to the first spot near it (by x and
-    z), in name order."""
-    groups = []
-    for loc in sorted(positions["overworld"]):
-        x, z, y = positions["overworld"][loc]
-        for group in groups:
-            if math.dist((group[0], group[1]), (x, z)) < GROUP_DISTANCE:
-                group[3].append(loc)
-                break
-        else:
-            groups.append((x, z, y, [loc]))
-    return groups
-
-
-def groups_key(positions: dict) -> str:
-    """A fingerprint of the overworld groups (overworld_groups). The mod's icon rows number them as the asset build
-    found them (ap_map_edits), the seed's map as the patcher finds them, so the two must be the same groups: the asset
-    build stores it (ap_assets.data's map_groups), and the patcher refuses a patch when they differ."""
-    return hashlib.sha256(json.dumps(overworld_groups(positions)).encode("utf-8")).hexdigest()
 
 
 def dungeon_dots(positions: dict, location_ids: dict) -> list:
@@ -134,12 +96,11 @@ def lines(location_ids: dict, entrances: Optional[Mapping[str, str]] = None) -> 
     dungeons, else None. The doors' places and the dungeon chests come from the mod's build (ap_assets.data)."""
     shuffled_dungeons = entrances is not None
     positions = load_positions()
-    spots = overworld_groups(positions)
     data = ap_assets.data()
     doors = data["map_doors"]
     by_id = lambda loc: int(location_ids[loc])  # noqa: E731
     # the slot's checks of each group, in local id order; a group without any shows no icon
-    overworld = [sorted((loc for loc in locs if loc in location_ids), key=by_id) for *_, locs in spots]
+    overworld = [sorted((loc for loc in locs if loc in location_ids), key=by_id) for locs in data["map_groups"]]
     overworld += [sorted(door_checks(location_ids, door, entrances), key=by_id) for *_, door in doors]
     shown = [(g, locs) for g, locs in enumerate(overworld) if locs]
     dots = dungeon_dots(positions, location_ids)

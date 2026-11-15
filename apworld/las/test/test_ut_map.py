@@ -98,7 +98,3 @@ class TestUTMap(unittest.TestCase):
         self.assertEqual(MAPS[map_index("Lv10ClothesDungeon")], "D0 - Color Dungeon")
         for level in ("Lv09WindFishsEgg", "MarinTarinHouse", "", None):
             self.assertEqual(map_index(level), 0, level)
-
-
-if __name__ == "__main__":
-    unittest.main()

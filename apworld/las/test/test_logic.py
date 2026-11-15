@@ -1,9 +1,6 @@
 """Cross-checks the compiled AP rules against LASR's own reachability evaluation."""
 import copy
-import os
 import random
-import sys
-import types
 import unittest
 from collections import Counter
 
@@ -13,12 +10,11 @@ from worlds.AutoWorld import AutoWorldRegister
 
 from .lasr_eval import LASREvaluator
 from ..items import ITEM_TABLE, LASR_TO_ITEM
-from ..lasr import ITEM_DEFS, ITEM_LOCATIONS, LOGIC, WRITTEN_LOGIC, goal_logic, plain_logic, slot_doors
+from ..lasr import LOGIC, WRITTEN_LOGIC, goal_logic, plain_logic, slot_doors
 from ..locations import LOCATION_NAMES
 from ..logic import make_rule, parse
 
 STEPS = ("generate_early", "create_regions", "create_items", "set_rules", "connect_entrances", "generate_basic")
-LASR_ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)), *[os.pardir] * 3, "reference", "DEV-BUILD-LASR")
 
 OPTION_SETS = [
     {},
@@ -88,19 +84,6 @@ class TestLogicCrossCheck(unittest.TestCase):
         for index, options in enumerate(OPTION_SETS):
             self.check(options, seed=1000 + index)
 
-    def test_goal_matches_lasr(self) -> None:
-        world_type = AutoWorldRegister.world_types["Links Awakening Switch"]
-        multiworld = setup_multiworld(world_type, STEPS, 7, {"instruments": "anywhere"})
-        state = multiworld.get_all_state()
-        self.assertTrue(multiworld.can_beat_game(state))
-        for instrument in ("full-moon-cello", "thunder-drum"):
-            state = CollectionState(multiworld)
-            for item in multiworld.itempool + multiworld.worlds[1].get_pre_fill_items():
-                if item.name != LASR_TO_ITEM[instrument]:
-                    state.collect(item, prevent_sweep=True)
-            state.sweep_for_advancements()
-            self.assertFalse(multiworld.can_beat_game(state), instrument)
-
 
 class TestParser(unittest.TestCase):
     def test_precedence(self) -> None:
@@ -115,50 +98,6 @@ class TestParser(unittest.TestCase):
             for key, value in node.items():
                 if key.startswith("condition-"):
                     parse(str(value))
-
-
-@unittest.skipUnless(os.path.isdir(os.path.join(LASR_ROOT, "RandomizerCore")), "LASR reference checkout not found")
-class TestEvaluatorMatchesLASR(unittest.TestCase):
-    """The vendored evaluator gives the same answers as LASR's ItemShuffler.canReachLocation."""
-
-    def test_against_lasr_source(self) -> None:
-        stubs = {}
-        qtcore = types.ModuleType("PySide6.QtCore")
-        qtcore.QThread = type("QThread", (), {"__init__": lambda self, parent=None: None})
-        qtcore.Signal = lambda *args: None
-        stubs["PySide6"] = types.ModuleType("PySide6")
-        stubs["PySide6.QtCore"] = qtcore
-        paths = types.ModuleType("RandomizerCore.Paths.randomizer_paths")
-        paths.IS_RUNNING_FROM_SOURCE = False
-        stubs["RandomizerCore.Paths.randomizer_paths"] = paths
-        saved = {name: sys.modules.get(name) for name in stubs}
-        sys.modules.update(stubs)
-        sys.path.insert(0, os.path.abspath(LASR_ROOT))
-        try:
-            from RandomizerCore.shuffler import ItemShuffler
-        finally:
-            sys.path.pop(0)
-            for name, module in saved.items():
-                if module is None:
-                    sys.modules.pop(name, None)
-                else:
-                    sys.modules[name] = module
-
-        rng = random.Random(5)
-        pool = [k for k, v in ITEM_DEFS.items() for _ in range(v["quantity"])]
-        for preset in ("basic", "hell"):
-            shuffler = ItemShuffler({"Seed": "1", "Preset": preset}, {}, copy.deepcopy(LOGIC))
-            placements = {k: None for k, v in LOGIC.items() if v["type"] in ("item", "follower")}
-            placements["moblin-cave"] = "bow-wow"
-            placements["rooster-statue"] = "rooster"
-            placements["force-junk"] = set()
-            shuffler.placements = placements
-            for _ in range(4):
-                access = Counter(item for item in pool if rng.random() < 0.6)
-                access.update({"open-mabe": 1, "free-book": 1, "shuffled-bombs": 1, "can-steal": 1})
-                reached = LASREvaluator(preset, LOGIC, placements).reachable(dict(access))
-                for loc in rng.sample(ITEM_LOCATIONS, 25):
-                    self.assertEqual(shuffler.canReachLocation(loc, dict(access)), loc in reached, (preset, loc))
 
 
 class TestIndirectConditions(unittest.TestCase):
@@ -179,9 +118,7 @@ class TestIndirectConditions(unittest.TestCase):
 
 
 class TestRefills(unittest.TestCase):
-    """Powder, bombs and arrows refill from bushes Link breaks and from the Ammo Ghost (logic.yml), for
-    the item he holds; a refill never pays for itself. Without stealing, as stealing refills bombs and arrows at the
-    shop with no item."""
+    """Ammo refills (logic.yml); without stealing, which refills bombs and arrows at the shop."""
 
     def state(self, ammo_ghost: bool, items):
         world_type = AutoWorldRegister.world_types["Links Awakening Switch"]

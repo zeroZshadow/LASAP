@@ -8,6 +8,11 @@ sunken = [
     'river-crossing-cave',
     'kanalet-moat-south'
 ]
+# A heart piece place's actor showing a model that is not a heart: its scale, and a sunken one's scale and rise
+# (las_ap_patch.ground_transform undoes them for the token)
+SHRUNK = 0.55
+SUNKEN_SHRUNK = 0.75
+SUNKEN_RISE = 0.25  # 1/6 of a tile
 
 
 class HeartPieceRandomizer:
@@ -48,17 +53,11 @@ class HeartPieceRandomizer:
 
         if room in sunken:
             if model_name not in ("HeartPiece", "HeartContainer"):
-                act.posY += 0.25 # raise them up 1/6 of a tile
-                act.scaleX = 0.75
-                act.scaleY = 0.75
-                act.scaleZ = 0.75
+                act.posY += SUNKEN_RISE
+                act.scaleX = act.scaleY = act.scaleZ = SUNKEN_SHRUNK
         else:
-            # for freestanding heart pieces, shrink the actor if the model will be big
-            # we might want a separate model size list, for now this should be fine
             if model_name not in ("HeartPiece", "HeartContainer"):
-                act.scaleX = 0.55
-                act.scaleY = 0.55
-                act.scaleZ = 0.55
+                act.scaleX = act.scaleY = act.scaleZ = SHRUNK
 
         # parameter[0] is index, which doesnt matter because we make ItemHeartPiece ignore inventory for spawning
         act.parameters[1] = bytes(model_path, 'utf-8')

@@ -1,6 +1,6 @@
 """The player's shuffles, LASR's Music (Shuffled, Removed), Randomize Environments and Randomize Text, with a RomFS that
 is the same for every seed: the seed file's shuffles say what each swaps, and the module swaps it as the game looks it up
-(ap_shuffles.cpp; DESIGN.md, Options). LASR's own shuffles stay off (ap_options.LASR_SETTINGS).
+(ap_shuffles.cpp; DESIGN.md, Options). The asset build runs none of LASR's shuffles.
 
 Music: a track for each of LASR's tracks, or none. Environments: per environment one of its kind (top-down or side
 view), as LASR picks per zone. Text: LASR's messages in a new order, the Talker names among themselves and the
@@ -83,9 +83,9 @@ def text_lines(rng) -> list:
 
 
 def lines(settings: dict, rng) -> list:
-    shuffled = music_lines(settings.get("Music", "Vanilla"), rng)
-    if settings.get("Randomize Environments"):
+    shuffled = music_lines(settings["Music"], rng)
+    if settings["Randomize Environments"]:
         shuffled += environment_lines(rng)
-    if settings.get("Randomize Text"):
+    if settings["Randomize Text"]:
         shuffled += text_lines(rng)
     return shuffled

@@ -109,7 +109,3 @@ class TestDungeonPositions(unittest.TestCase):
         self.assertEqual(sorted(re.sub(r".*_", "", room) for loc, places in self.dungeon.items()
                                 if loc.startswith("D7-") for room, *_ in places if self.floors[room] in (3, 14)),
                          ["01G", "02H", "05G", "06H"])
-
-
-if __name__ == "__main__":
-    unittest.main()

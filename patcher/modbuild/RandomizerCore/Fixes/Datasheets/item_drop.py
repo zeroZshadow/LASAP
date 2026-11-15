@@ -4,11 +4,11 @@ import RandomizerCore.Tools.oead_tools as oead_tools
 class ItemDropDatasheetFixes:
     def __init__(self, mod_generator) -> None:
         sheet = mod_generator.file_manager.readFile('ItemDrop.gsheet')
-        self.makeDatasheetChanges(sheet, mod_generator.settings)
+        self.makeDatasheetChanges(sheet)
         mod_generator.file_manager.writeFile('ItemDrop.gsheet', sheet)
 
 
-    def makeDatasheetChanges(self, sheet, settings):
+    def makeDatasheetChanges(self, sheet):
         """Iterates through all the values in the ItemDrop datasheet and makes changes"""
 
         for i in range(len(sheet['values'])):

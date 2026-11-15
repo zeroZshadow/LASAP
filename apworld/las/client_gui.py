@@ -67,8 +67,6 @@ TITLES = {
 
 
 class Palette:
-    """The window theme's colors, and status colors that read on its background."""
-
     def __init__(self) -> None:
         theme = MDApp.get_running_app().theme_cls
         self.text = theme.onSurfaceColor
@@ -86,7 +84,7 @@ class Palette:
 
 
 class Tile(ButtonBehavior, MDBoxLayout):
-    """A box that acts as a button: setup steps, choices, SD cards, summary rows."""
+    pass
 
 
 class HoverButton(MDButton):
@@ -106,8 +104,8 @@ class HoverButton(MDButton):
 
 
 def label(text: str, size: float = 14, color: Any = None, bold: bool = False, one_line: bool = False,
-          **kwargs: Any) -> MDLabel:
-    widget = MDLabel(text=text, markup=True, theme_font_size="Custom", font_size=sp(size), bold=bold, **kwargs)
+          markup: bool = False, **kwargs: Any) -> MDLabel:
+    widget = MDLabel(text=text, markup=markup, theme_font_size="Custom", font_size=sp(size), bold=bold, **kwargs)
     if color is not None:
         widget.theme_text_color, widget.text_color = "Custom", color
     if one_line:
@@ -351,7 +349,7 @@ class PatchPanel(ScrollView):
 
     def status_line(self, check: checklist.Check, size: float = 14) -> MDBoxLayout:
         k = self.colors
-        text = label(escape_markup(check.text), size, k.status[check.level] if check.level == ERROR else k.text)
+        text = label(check.text, size, k.status[check.level] if check.level == ERROR else k.text)
         return row(self.status_icon(check.level), text, spacing=10)
 
     def checkbox(self, text: str, active: bool, action: Callable[[bool], None], height: float = 40) -> MDBoxLayout:
@@ -413,7 +411,7 @@ class PatchPanel(ScrollView):
         if check.level == OK:
             card.add_widget(row(self.status_icon(OK), label(f"Slot {m['slot']} · seed {m['seed']}", 14, k.text,
                                                             one_line=True), spacing=10, height=22))
-            card.add_widget(label(escape_markup(short_path(m["patch_file"])), 13, k.muted, one_line=True))
+            card.add_widget(label(short_path(m["patch_file"]), 13, k.muted, one_line=True))
         else:
             card.add_widget(label("The .aplas file for your slot. It is on the website's room page, or in the zip "
                                   "the generator made.", 14, k.text))
@@ -459,7 +457,7 @@ class PatchPanel(ScrollView):
         card.add_widget(label("Choose the emulator's program. The client finds its SD card, its mod folder and your "
                               "game from it.", 14, k.text))
         if m["options"]["emulator"]:
-            box = row(self.status_icon(check.level), label(escape_markup(check.text), 14,
+            box = row(self.status_icon(check.level), label(check.text, 14,
                                                            k.status[ERROR] if check.level == ERROR else k.text),
                       button("Change", lambda: self.browse("emulator"), "text"), spacing=10,
                       padding=(dp(12), dp(4)), line_color=k.line, radius=[dp(8)])
@@ -473,7 +471,7 @@ class PatchPanel(ScrollView):
         c = m["checks"]
         sd = m["options"]["sd_card_folder"]
         card.add_widget(self.title("Your Switch"))
-        card.add_widget(label("[b]SD card[/b] · put the Switch's SD card in this computer", 14, k.text))
+        card.add_widget(label("[b]SD card[/b] · put the Switch's SD card in this computer", 14, k.text, markup=True))
         drives = list(m["drives"])
         if sd and not any(emulators.same_path(d.root, Path(sd)) for d in drives):
             drives.append(emulators.Drive(Path(sd), "", emulators.has_atmosphere(Path(sd))))
@@ -486,7 +484,7 @@ class PatchPanel(ScrollView):
             tile = Tile(orientation="horizontal", spacing=dp(12), padding=(dp(12), 0), size_hint_y=None,
                         height=dp(40), line_color=k.accent if chosen else k.outline, radius=[dp(8)])
             tile.add_widget(icon("radiobox-marked" if chosen else "radiobox-blank", k.accent))
-            tile.add_widget(label(escape_markup(f"{drive.root} {drive.label}".strip()), 14, k.text, bold=chosen,
+            tile.add_widget(label(f"{drive.root} {drive.label}".strip(), 14, k.text, bold=chosen,
                                   one_line=True, pos_hint={"center_y": 0.5}))
             tile.add_widget(note)
             tile.bind(on_release=lambda *_, d=drive: self.commit("sd_card_folder", str(d.root)))
@@ -514,11 +512,11 @@ class PatchPanel(ScrollView):
         self.shown = None
         self.refresh()
 
-    def file_row(self, level: str, title: str, text: str, color: Any, buttons: List[Widget]) -> MDBoxLayout:
-        """A game files line: status, name, what was found or what to do, and its buttons at the right."""
+    def file_row(self, level: str, title: str, text: str, color: Any, buttons: List[Widget],
+                 markup: bool = False) -> MDBoxLayout:
         line = row(self.status_icon(level), label(title, 14, self.colors.text, bold=True, one_line=True,
                                                   size_hint_x=None, width=dp(96), pos_hint={"center_y": 0.5}),
-                   label(text, 14, color, pos_hint={"center_y": 0.5}), spacing=10)
+                   label(text, 14, color, markup=markup, pos_hint={"center_y": 0.5}), spacing=10)
         for b in buttons:
             line.add_widget(b)
         return line
@@ -539,7 +537,7 @@ class PatchPanel(ScrollView):
             actions.append(button("Check again", self.check_romfs))
         actions.append(button("Change" if found else "Choose folder…" if finds else "Choose RomFS folder…",
                               lambda: self.browse("romfs_folder"), "outlined" if found or finds else "filled"))
-        state = escape_markup(m["options"]["romfs_folder"]) if found else "needed once"
+        state = m["options"]["romfs_folder"] if found else "needed once"
         card.add_widget(self.file_row(OK if found else TODO, "RomFS dump", state,
                                       k.muted if found else k.status[TODO], actions))
         if not found:
@@ -548,7 +546,7 @@ class PatchPanel(ScrollView):
                 steps.add_widget(label(f"{i}. {text}", 14, k.text))
             card.add_widget(steps)
             if romfs.level == ERROR:
-                card.add_widget(label(escape_markup(romfs.text), 14, k.status[ERROR], padding=(dp(28), 0, 0, 0)))
+                card.add_widget(label(romfs.text, 14, k.status[ERROR], padding=(dp(28), 0, 0, 0)))
         if not switch:
             game = c["game_file"]
             path = m["options"]["game_file"]
@@ -561,7 +559,7 @@ class PatchPanel(ScrollView):
             level = OK if game.level == OK else ERROR if game.level == ERROR else INFO
             card.add_widget(self.file_row(level, "Game", text + "  [color=#7f93b3](optional)[/color]", k.muted,
                                           [button("Change" if path else "Choose game file…",
-                                                  lambda: self.browse("game_file"), "outlined")]))
+                                                  lambda: self.browse("game_file"), "outlined")], markup=True))
         ready = all(m["done"].values())
         if ready and c["patcher_command"].level != OK:
             card.add_widget(self.status_line(c["patcher_command"]))
@@ -577,9 +575,9 @@ class PatchPanel(ScrollView):
         name = emulators.emulator(m["options"]["emulator"] if not switch else "").name
         card = self.card(strong=True, padding=(18, 14), spacing=10)
         where = f" · {m['server']}" if m["server"] else ""
-        header = row(label(escape_markup(f"Slot {m['slot']}"), 20, k.text, bold=True, adaptive_width=True,
+        header = row(label(f"Slot {m['slot']}", 20, k.text, bold=True, adaptive_width=True,
                            pos_hint={"center_y": 0.5}),
-                     label(escape_markup(f"seed {m['seed']}{where}"), 14, k.muted, adaptive_width=True,
+                     label(f"seed {m['seed']}{where}", 14, k.muted, adaptive_width=True,
                            pos_hint={"center_y": 0.5}), spacing=10, height=32)
         if m["mod_state"] == OTHER_SEED:
             pill = MDBoxLayout(adaptive_width=True, size_hint_y=None, height=dp(20), padding=(dp(8), 0),
@@ -610,9 +608,9 @@ class PatchPanel(ScrollView):
                          radius=[dp(10)])
             box.add_widget(row(self.status_icon(ERROR, 20), label(
                 f"[b]Another Link's Awakening mod is installed.[/b] It would load together with this one in {name}. "
-                f"Remove its folder, then check again.", 14, k.text), spacing=10))
+                f"Remove its folder, then check again.", 14, k.text, markup=True), spacing=10))
             for path in others:
-                box.add_widget(label(escape_markup(str(path)), 13, k.text, one_line=True, padding=(dp(30), 0, 0, 0)))
+                box.add_widget(label(str(path), 13, k.text, one_line=True, padding=(dp(30), 0, 0, 0)))
             box.add_widget(row(button("Open the folder", lambda: Utils.open_file(str(others[0]))),
                                button("Check again", self.refresh_drives, "outlined"), fill(),
                                padding=(dp(30), 0, 0, 0)))
@@ -666,7 +664,7 @@ class PatchPanel(ScrollView):
                         height=dp(40), disabled=m["patching"])
             tile.add_widget(label(title, 14, k.text, bold=True, one_line=True, size_hint_x=None, width=dp(120),
                                   pos_hint={"center_y": 0.5}))
-            tile.add_widget(label(escape_markup(text), 14, k.status[level] if level != INFO else k.muted,
+            tile.add_widget(label(text, 14, k.status[level] if level != INFO else k.muted,
                                   one_line=True, pos_hint={"center_y": 0.5}))
             tile.add_widget(icon("chevron-right", k.accent))
             tile.bind(on_release=lambda *_, p=panel: self.show("panel", panel=p))
@@ -725,7 +723,7 @@ class PatchPanel(ScrollView):
         for title, value, step in rows:
             box.add_widget(row(label(title, 14, k.text, bold=True, one_line=True, size_hint_x=None, width=dp(130),
                                      pos_hint={"center_y": 0.5}),
-                               label(escape_markup(value), 14, k.muted, one_line=True, pos_hint={"center_y": 0.5}),
+                               label(value, 14, k.muted, one_line=True, pos_hint={"center_y": 0.5}),
                                button("Change", lambda s=step: self.show("setup", s, editing=True), "text"),
                                spacing=12, height=50, padding=(dp(16), 0, dp(6), 0)))
         self.content.add_widget(box)
@@ -759,7 +757,7 @@ class PatchPanel(ScrollView):
                              "you are.", 14, k.text))
         status = m["ghost_status"]
         box.add_widget(row(self.checkbox("Show ghosts", m["ghosts"], self.ctx.set_ghosts),
-                           label(escape_markup(status.text) if m["ghosts"] else "Ghosts are off.", 13,
+                           label(status.text if m["ghosts"] else "Ghosts are off.", 13,
                                  k.status[status.level] if m["ghosts"] and status.level != INFO else k.muted,
                                  pos_hint={"center_y": 0.5}), spacing=16, height=40))
         box.add_widget(self.checkbox("Show their slot names over their heads", m["ghost_names"],
@@ -792,7 +790,7 @@ class PatchPanel(ScrollView):
                 help_text = f"Empty: {empty}. {help_text}"
             used = row(label("In use:", 13, k.muted, one_line=True, size_hint_x=None, width=dp(50),
                              pos_hint={"center_y": 0.5}),
-                       label(escape_markup(in_use[key]) or "-", 13, k.text, one_line=True, pos_hint={"center_y": 0.5}),
+                       label(in_use[key] or "-", 13, k.text, one_line=True, pos_hint={"center_y": 0.5}),
                        spacing=6, height=20, padding=(dp(150), 0, 0, 0))
             if key in ("sd_card_folder", "mod_folder") and in_use[key]:
                 folder = Path(in_use[key])
@@ -805,264 +803,6 @@ class PatchPanel(ScrollView):
             box.add_widget(label("Windows opens .aplas files with another program. Right-click a .aplas file, choose "
                                  "Open with, then Archipelago.", 13, k.muted))
         self.content.add_widget(box)
-
-
-# Universal Tracker's item panels: the room around and between their icons, and above and below a section's name
-ITEM_GRID_PADDING, ITEM_GRID_SPACING, ITEM_HEADER_PADDING = 2, 2, 1
-ITEM_PANELS_KEY = "tracker_folded_panels"  # Archipelago's persistent storage, under "las": {"left"/"right": folded}
-PANEL_SIDES = {"item_tracker_left": "left", "item_tracker_right": "right"}
-# A panel's handle: its chevron points the way a click moves the panel's edge, by side and whether it is folded
-HANDLE_ICONS = {("left", False): "chevron-left", ("left", True): "chevron-right",
-                ("right", False): "chevron-right", ("right", True): "chevron-left"}
-
-
-class ItemPanels:
-    """The map page's item panels: the width each one's sections take, which are folded, their handles, and each
-    one's scroll view and the row it stands in."""
-
-    def __init__(self) -> None:
-        self.widths: Dict[str, float] = {}
-        self.folded: Dict[str, bool] = dict(Utils.persistent_load().get("las", {}).get(ITEM_PANELS_KEY, {}))
-        self.handles: Dict[str, Any] = {}
-        self.places: Dict[str, Tuple[Any, Any]] = {}
-
-
-def item_panels(page) -> ItemPanels:
-    panels = getattr(page, "las_item_panels", None)
-    if panels is None:
-        panels = page.las_item_panels = ItemPanels()
-    return panels
-
-
-def show_panel(page, side: str) -> None:
-    """A panel at its sections' width, or out of its row while folded (at no width its icons still draw); its handle
-    only while it has sections."""
-    panels = item_panels(page)
-    groups = page.ids.get(f"item_tracker_{side}")
-    width = panels.widths.get(side, 0)
-    folded = panels.folded.get(side, False) and bool(width)
-    if groups is not None and width:
-        groups.parent.width = width
-    handle = panels.handles.get(side)
-    if side in panels.places:
-        scroll, row = panels.places[side]
-        if folded and scroll.parent is row:
-            row.remove_widget(scroll)
-        elif not folded and scroll.parent is None:  # beside its handle: a BoxLayout lays its children out last first
-            at = row.children.index(handle)
-            row.add_widget(scroll, index=at + 1 if side == "left" else at)
-    if handle is not None:
-        handle.icon = HANDLE_ICONS[side, folded]
-        handle.opacity, handle.disabled = (1, False) if width else (0, True)
-        handle.width = dp(24) if width else 0
-
-
-def tighten_item_grids(page, tracker_world) -> None:
-    """Universal Tracker's map page lays its item sections out with ITEM_GRID_PADDING and ITEM_GRID_SPACING instead
-    of its own wider gaps: each time its init_grid sized the grids for those, they are sized again, and those it made
-    before the tab was added are sized now."""
-    init_grid = page.init_grid
-
-    def tight(layout_id, layout_configs, ctx, items, vert=True):
-        init_grid(layout_id, layout_configs, ctx, items, vert)
-        tighten(page, layout_id, layout_configs, vert)
-
-    page.init_grid = tight
-    if tracker_world is not None:
-        for layout_id, configs in (("item_tracker_left", tracker_world.map_page_item_layouts_left),
-                                   ("item_tracker_right", tracker_world.map_page_item_layouts_right)):
-            tighten(page, layout_id, configs or [], True)
-
-
-def tighten(page, layout_id: str, layout_configs, vert: bool) -> None:
-    groups = page.ids.get(layout_id)
-    if groups is None:
-        return
-    configs = {config.name: config for config in layout_configs}
-    widest = 0
-    for container in groups.children:
-        grid, header = container.children  # the header was added first
-        config = configs.get(header.text)
-        if config is None or config.orientation != "lr":
-            continue
-        grid.padding, grid.spacing = ITEM_GRID_PADDING, ITEM_GRID_SPACING
-        grid.width = config.cols * config.item_width + (config.cols - 1) * ITEM_GRID_SPACING + 2 * ITEM_GRID_PADDING
-        grid.do_layout()
-        grid.height = grid.minimum_height
-        header.padding = (0, ITEM_HEADER_PADDING)
-        header.texture_update()
-        container.do_layout()
-        container.size = container.minimum_size
-        widest = max(widest, container.width)
-    if vert and widest:
-        groups.parent.width = widest
-        if layout_id in PANEL_SIDES:
-            item_panels(page).widths[PANEL_SIDES[layout_id]] = widest
-            show_panel(page, PANEL_SIDES[layout_id])
-
-
-def add_panel_handles(page) -> None:
-    """A chevron on the map's side of each item panel folds the panel away, giving the map its room, and opens it
-    again; Archipelago's persistent storage keeps which are folded. A panel without sections has none."""
-    from kivymd.uix.button import MDIconButton
-    panels = item_panels(page)
-    for side in PANEL_SIDES.values():
-        scroll = page.ids[f"item_tracker_{side}"].parent
-        row = scroll.parent
-        handle = MDIconButton(icon=HANDLE_ICONS[side, False], style="standard", size_hint=(None, None),
-                              size=(dp(24), dp(48)), pos_hint={"center_y": 0.5})
-
-        def toggle(_: Any, side: str = side) -> None:
-            panels.folded[side] = not panels.folded.get(side, False)
-            Utils.persistent_store("las", ITEM_PANELS_KEY, dict(panels.folded))
-            show_panel(page, side)
-
-        handle.bind(on_release=toggle)
-        at = row.children.index(scroll)  # a BoxLayout lays its children out last first
-        row.add_widget(handle, index=at if side == "left" else at + 1)
-        panels.handles[side] = handle
-        panels.places[side] = (scroll, row)
-        show_panel(page, side)
-
-
-def fix_map_view(page) -> None:
-    """Universal Tracker's map view: its stencil does not clip the map on every renderer, so it could draw over the
-    items left of it, and Recenter put the map at the window's corner. A scissor clips the map to its box, placed
-    as each frame draws (the tabs slide), and Recenter puts the map back at the box's corner."""
-    from kivy.graphics import Callback
-    from kivy.graphics.scissor_instructions import ScissorPop, ScissorPush
-    from kivy.graphics.transformation import Matrix
-    container = page.ids.tracker_map_container
-    box = container.parent.__self__
-    scissor = ScissorPush()
-
-    def clip(*_):
-        x, y = box.to_window(*box.pos)
-        scissor.x, scissor.y, scissor.width, scissor.height = round(x), round(y), round(box.width), round(box.height)
-
-    box.canvas.before.add(Callback(clip))
-    box.canvas.before.add(scissor)
-    box.canvas.after.add(ScissorPop())
-
-    def recenter():
-        container.transform = Matrix()
-        container.pos = box.pos
-
-    container.recenter_view = recenter
-
-
-def add_doors_box(page, ctx) -> None:
-    """An Entrances box beside Universal Tracker's Auto Tab: shows or hides the doors' pins (LASContext.show_doors)."""
-    auto_tab = page.ids.auto_tab_checkitem.__self__  # the widget, not ids' weak proxy
-    doors = type(auto_tab)(text="Entrances", active=ctx.tracker_doors_shown, pos_hint={"center_y": 0.5})
-    doors.bind(active=lambda _, value: ctx.show_doors(value))
-    row = auto_tab.parent
-    row.add_widget(doors, index=row.children.index(auto_tab))
-
-
-ROUTE_COLOR = (0.19, 0.25, 1.0, 0.85)  # Universal Tracker's path blue (its "hinted" colour)
-ROUTE_WIDTH = 0.25  # the route's line, in pin sizes
-ROUTE_SUGGESTIONS = 12  # the search field's menu shows at most this many locations
-
-
-class RouteLine(Widget):
-    """The route on Universal Tracker's map (LASContext.route_points): a line in the map image's pixels, drawn under
-    the pins."""
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        from kivy.graphics import Color, Line
-        with self.canvas:
-            Color(*ROUTE_COLOR)
-            self.line = Line(points=[], width=1.0, joint="round", cap="round")
-
-
-def draw_route(page, points: List[Tuple[float, float]], pin_size: float) -> None:
-    """Draws the route on the map page's pins' canvas, which loading a map empties."""
-    canvas = page.ids.location_canvas
-    line = next((w for w in canvas.children if isinstance(w, RouteLine)), None)
-    if line is None:
-        line = RouteLine()
-        canvas.add_widget(line, index=len(canvas.children))
-    line.line.points = [c for p in points for c in p] if len(points) > 1 else []
-    line.line.width = max(1.0, pin_size * ROUTE_WIDTH)
-
-
-def add_route_search(page, ctx) -> None:
-    """A field in a row below the map's checkboxes, with Universal Tracker's Clear Path beside it. As it is typed in, a
-    menu below it suggests the locations in logic whose names hold the text; picking one, or Enter when one matches,
-    gets its route (LASContext.route_to)."""
-    from kivy.uix.relativelayout import RelativeLayout
-    field = ConnectBarTextInput(size_hint_x=None, width=dp(260), pos_hint={"x": 0, "center_y": 0.5})
-    # a label over the empty field: KivyMD's hint widget rests where a taller field has its text, on this one's border
-    hint = label("Route to a check", 14, Palette().muted, one_line=True, pos_hint={"x": 0.05, "center_y": 0.5})
-    holder = RelativeLayout(size_hint=(None, None), size=(dp(260), dp(30)), pos_hint={"center_y": 0.5})
-    holder.add_widget(field)
-    holder.add_widget(hint)
-    field.bind(text=lambda *_: show_hint(), focus=lambda *_: show_hint())
-
-    def show_hint() -> None:
-        hint.opacity = 0 if field.text or field.focus else 1
-    shown: Dict[str, Any] = {"menu": None, "picked": None}
-
-    def matches(text: str) -> List[str]:
-        return [name for name in ctx.tracker_in_logic if text in name.lower()]
-
-    def close() -> None:
-        menu, shown["menu"] = shown["menu"], None
-        if menu is not None:
-            menu.dismiss()
-
-    def pick(name: str) -> None:
-        close()
-        shown["picked"] = name
-        field.text = name
-        ctx.route_to(name)
-
-    def suggest(*_: Any) -> None:
-        text = field.text.strip().lower()
-        found = matches(text) if text and field.text != shown["picked"] else []
-        if not found:
-            close()
-            return
-        items = [{"text": name, "on_release": lambda n=name: pick(n)} for name in found[:ROUTE_SUGGESTIONS]]
-        menu = shown["menu"]
-        if menu is None:  # the field keeps the keyboard; a touch outside the menu closes it
-            menu = shown["menu"] = MDDropdownMenu(caller=field, items=items, position="bottom", width=dp(420))
-            menu.bind(on_dismiss=lambda *_: shown.update(menu=None) if shown["menu"] is menu else None)
-            menu.open()
-        else:  # the open menu with the new items, sized and placed as open() does, without its animation
-            menu.items = items
-            menu.set_menu_properties()
-            menu.height = menu.target_height
-            menu.set_menu_pos()
-
-    def search(*_: Any) -> None:
-        text = field.text.strip().lower()
-        found = matches(text) if text else []
-        exact = [name for name in found if name.lower() == text]
-        if len(found) == 1 or exact:
-            pick((exact or found)[0])
-
-    suggest_soon = Clock.create_trigger(suggest, 0.15)
-    field.bind(text=lambda *_: suggest_soon())
-    field.bind(on_text_validate=search)
-    header = page.ids.auto_tab_checkitem.__self__.parent
-    below = MDBoxLayout(holder, size_hint=(None, None), padding=(dp(12), dp(4), dp(12), dp(8)), spacing=dp(16))
-    clear = next((w for w in header.children if isinstance(w, MDButton)
-                  and any(getattr(c, "text", "") == "Clear Path" for c in w.children)), None)
-    if clear is not None:  # else it stays where Universal Tracker put it
-        header.remove_widget(clear)
-        below.add_widget(clear)
-    below.bind(minimum_size=below.setter("size"))
-    box = header.parent
-
-    def align(*_: Any) -> None:  # under the checkboxes: at the header's left, which centres itself
-        below.pos_hint = {"x": (header.x - box.x) / box.width if box.width else 0}
-
-    header.bind(pos=align, size=align)
-    box.bind(pos=align, size=align)
-    box.add_widget(below, index=box.children.index(header))
 
 
 def make_manager(base):
@@ -1084,11 +824,8 @@ def make_manager(base):
                 return None
             if title == "Map Page":
                 try:  # Universal Tracker's widgets as its supported versions have them; without these, its own look
-                    tighten_item_grids(content, getattr(self.ctx, "tracker_world", None))
-                    add_panel_handles(content)
-                    fix_map_view(content)
-                    add_doors_box(content, self.ctx)
-                    add_route_search(content, self.ctx)
+                    from .ut_gui import adjust_map_page
+                    adjust_map_page(content, self.ctx)
                 except Exception as e:
                     logger.exception(f"Could not adjust Universal Tracker's map tab: {e}")
             return super().add_client_tab("Tracker" if title == "Map Page" else title, content, index)
