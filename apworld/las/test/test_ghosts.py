@@ -15,8 +15,10 @@ QUIET = 0.15  # how long a test waits to be sure nothing arrives
 
 
 class FakeClient:
-    def __init__(self, port: int, websocket: bool = False):
+    def __init__(self, port: int, websocket: bool = False, client: Optional[bytes] = None):
+        """client: the client id, the one of the client it reconnects as (default: a new one)."""
         self.port = port
+        self.client = client or wire.new_client_id()
         self.websocket = websocket
         self.reader = None  # asyncio.StreamReader or wire.WebSocketReader
         self.writer = None  # asyncio.StreamWriter or wire.WebSocketWriter
@@ -26,14 +28,10 @@ class FakeClient:
         self.positions = {}  # the last position of each player received
         self.keys: List[bool] = []  # whether each FRAME received was a keyframe
 
-    async def join(self, secret: str, slot: str, version: int = wire.PROTOCOL_VERSION,
-                   password: Optional[str] = "") -> bytes:
-        """Joins; password None sends a join without the password field."""
+    async def join(self, secret: str, slot: str, version: int = wire.PROTOCOL_VERSION, password: str = "") -> bytes:
         _, self.reader, self.writer = await wire.connect(
             f"{'ws://' if self.websocket else ''}127.0.0.1:{self.port}")
-        message = bytearray(wire.join_message(wire.group_id(secret), slot, slot + " (player)", password or ""))
-        if password is None:
-            message = message[:-1]
+        message = bytearray(wire.join_message(wire.group_id(secret), slot, slot + " (player)", self.client, password))
         message[1] = version
         self.writer.write(wire.frame(bytes(message)))
         first = await self.next()
@@ -234,7 +232,8 @@ class TestRelay(unittest.TestCase):
 
     def test_same_slot_again(self) -> None:
         async def test(port: int, relay: wire.Relay) -> None:
-            a, b, a2 = FakeClient(port), FakeClient(port), FakeClient(port)
+            a, b = FakeClient(port), FakeClient(port)
+            a2 = FakeClient(port, client=a.client)
             await a.join("secret1", "A")
             await b.join("secret1", "B")
             a.pos(SHOP, 1, 1)
@@ -252,12 +251,36 @@ class TestRelay(unittest.TestCase):
             for client in (b, a2):
                 client.close()
             # alone in its group: the new connection is in the group again, where the next player finds it
-            c, c2, d = FakeClient(port), FakeClient(port), FakeClient(port)
+            c, d = FakeClient(port), FakeClient(port)
+            c2 = FakeClient(port, client=c.client)
             await c.join("secret3", "C")
             await c2.join("secret3", "C")
             await d.join("secret3", "D")
             self.assertEqual(players(await d.collect()), [(c2.id, "C")])
             for client in (c2, d):
+                client.close()
+        self.run_relay(test)
+
+    def test_co_op_players_of_one_slot(self) -> None:
+        """Two clients of one slot (co-op: other client ids) are both members and see each other; each one's reconnect
+        replaces only its own connection."""
+        async def test(port: int, relay: wire.Relay) -> None:
+            a, partner = FakeClient(port), FakeClient(port)
+            await a.join("secret1", "A")
+            await partner.join("secret1", "A")
+            self.assertEqual(players(await a.collect()), [(partner.id, "A")])
+            a.pos(SHOP, 1, 1)
+            partner.pos(SHOP, 2, 2)
+            self.assertEqual(frames(await a.collect()), [(partner.id, 2, 2)])
+            self.assertEqual(frames(await partner.collect()), [(a.id, 1, 1)])
+            a2 = FakeClient(port, client=a.client)
+            await a2.join("secret1", "A")
+            got = await partner.collect()
+            self.assertEqual((offs(got), players(got)), ([(a.id, wire.OFF_LEFT)], [(a2.id, "A")]))
+            with self.assertRaises(asyncio.IncompleteReadError):
+                await a.next()
+            self.assertEqual(len(relay.groups[wire.group_id("secret1")]), 2)
+            for client in (a2, partner):
                 client.close()
         self.run_relay(test)
 
@@ -282,7 +305,7 @@ class TestRelay(unittest.TestCase):
                 self.assertEqual(sorted(set(ids)), sorted({a.id, b.id, c.id} - {client.id}))
 
             # the second multiworld's Link reconnects: it replaces its old connection, not the first one's Link
-            b2 = FakeClient(port)
+            b2 = FakeClient(port, client=b.client)
             await b2.join("secret2", "Link")
             self.assertEqual(sorted(players(await b2.collect())), [(a.id, "Link"), (c.id, "C")])
             got = await a.collect()
@@ -295,12 +318,12 @@ class TestRelay(unittest.TestCase):
             self.assertEqual(frames(await a.collect()), [(b2.id, 1, 1)])
             self.assertEqual(len(relay.groups[wire.ONE_GROUP]), 3)
 
-            # full: only a slot already in it gets in again
+            # full: only a client already in it gets in again
             relay.max_group = 3
-            d = FakeClient(port)
-            reply = await d.join("secret3", "Link")
-            self.assertEqual((reply[0], reply[1:].decode()), (wire.ERROR, "The ghost relay is full."))
-            c2 = FakeClient(port)
+            for secret, slot in (("secret3", "Link"), ("secret2", "C")):  # a new one, another client of C (co-op)
+                reply = await FakeClient(port).join(secret, slot)
+                self.assertEqual((reply[0], reply[1:].decode()), (wire.ERROR, "The ghost relay is full."))
+            c2 = FakeClient(port, client=c.client)
             self.assertEqual((await c2.join("secret2", "C"))[0], wire.WELCOME)
             for client in (a, b2, c2):
                 client.close()
@@ -310,11 +333,14 @@ class TestRelay(unittest.TestCase):
 
     def test_refusals(self) -> None:
         async def test(port: int, relay: wire.Relay) -> None:
-            old = FakeClient(port)
-            reply = await old.join("secret1", "A", version=wire.PROTOCOL_VERSION + 1)
-            self.assertEqual(reply[0], wire.ERROR)
-            with self.assertRaises(asyncio.IncompleteReadError):
-                await old.next()
+            for version, says in ((wire.PROTOCOL_VERSION - 1, "Update the Link's Awakening world."),
+                                  (wire.PROTOCOL_VERSION + 1, "its host needs to update it.")):
+                other = FakeClient(port)
+                reply = await other.join("secret1", "A", version=version)
+                self.assertEqual(reply[0], wire.ERROR)
+                self.assertTrue(reply[1:].decode().endswith(says), reply)
+                with self.assertRaises(asyncio.IncompleteReadError):
+                    await other.next()
             # a frame that is not a join
             reader, writer = await asyncio.open_connection("127.0.0.1", port)
             writer.write(wire.frame(bytes([wire.PING])))
@@ -369,21 +395,21 @@ class TestRelay(unittest.TestCase):
         self.run_relay(test)
 
     def test_max_group(self) -> None:
-        """--max-group caps each group; other groups and a slot already in the group still get in."""
+        """--max-group caps each group; other groups and a client already in the group still get in."""
         async def test(port: int, relay: wire.Relay) -> None:
             a, b = FakeClient(port), FakeClient(port)
             self.assertEqual((await a.join("secret1", "A"))[0], wire.WELCOME)
             self.assertEqual((await b.join("secret1", "B"))[0], wire.WELCOME)
-            c = FakeClient(port)
-            reply = await c.join("secret1", "C")
-            self.assertEqual((reply[0], reply[1:].decode()), (wire.ERROR, "This group of players is full."))
+            for slot in ("C", "B"):  # another slot, or another client of a slot in it (co-op)
+                reply = await FakeClient(port).join("secret1", slot)
+                self.assertEqual((reply[0], reply[1:].decode()), (wire.ERROR, "This group of players is full."))
             self.assertEqual((await FakeClient(port).join("secret2", "C"))[0], wire.WELCOME)
-            self.assertEqual((await FakeClient(port).join("secret1", "B"))[0], wire.WELCOME)  # a reconnect
+            self.assertEqual((await FakeClient(port, client=b.client).join("secret1", "B"))[0], wire.WELCOME)
         self.run_relay(test, max_group=2)
 
     def test_join_and_leave_are_logged(self) -> None:
-        """One line per join and leave: the slot (the player's name when it differs), the start of the group id, the
-        transport; on leaving how long and why."""
+        """One line per join and leave: the slot (the player's name when it differs) and the client id,
+        the start of the group id, the transport; on leaving how long and why."""
         self.assertEqual([wire.duration(s) for s in (5, 59.9, 60, 3599, 3600, 4380)],
                          ["5 s", "59 s", "1 min", "59 min", "1 h 0 min", "1 h 13 min"])
 
@@ -393,7 +419,7 @@ class TestRelay(unittest.TestCase):
                 a, b = FakeClient(port, websocket=True), FakeClient(port)
                 await a.join("secret1", "Link")
                 await b.join("secret1", "Marin")
-                again = FakeClient(port)
+                again = FakeClient(port, client=b.client)
                 await again.join("secret1", "Marin")  # a reconnect: the old connection leaves
                 again.writer.write(struct.pack(">H", wire.MAX_FRAME + 1))
                 a.close()
@@ -401,16 +427,18 @@ class TestRelay(unittest.TestCase):
                     await asyncio.sleep(0.02)
                 b.close()
             lines = [line.split(":", 2)[2] for line in logs.output]
+            link = f"'Link' ('Link (player)') [{a.client.hex()}]"
+            marin = f"'Marin' ('Marin (player)') [{b.client.hex()}]"
             self.assertEqual(lines[:4], [
-                f"join: 'Link' ('Link (player)') in group {group} by WebSocket",
-                f"join: 'Marin' ('Marin (player)') in group {group} by TCP",
-                f"leave: 'Marin' ('Marin (player)') from group {group} after 0 s, replaced by a new connection",
-                f"join: 'Marin' ('Marin (player)') in group {group} by TCP",
+                f"join: {link} in group {group} by WebSocket",
+                f"join: {marin} in group {group} by TCP",
+                f"leave: {marin} from group {group} after 0 s, replaced by a new connection",
+                f"join: {marin} in group {group} by TCP",
             ])
             # the last two leave in either order
             self.assertEqual(sorted(lines[4:]), [
-                f"leave: 'Link' ('Link (player)') from group {group} after 0 s, disconnected",
-                f"leave: 'Marin' ('Marin (player)') from group {group} after 0 s, sent a malformed frame",
+                f"leave: {link} from group {group} after 0 s, disconnected",
+                f"leave: {marin} from group {group} after 0 s, sent a malformed frame",
             ])
         self.run_relay(test)
 
@@ -451,7 +479,7 @@ class TestRelay(unittest.TestCase):
             for n, player in enumerate(("203.0.113.5", "203.0.113.5", "203.0.113.5", "203.0.113.6")):
                 reader, writer = await open_from(port, player)
                 writers.append(writer)
-                writer.write(wire.frame(wire.join_message(wire.group_id("secret1"), f"P{n}", f"P{n}")))
+                writer.write(wire.frame(wire.join_message(wire.group_id("secret1"), f"P{n}", f"P{n}", wire.new_client_id())))
                 joined.append(((await asyncio.wait_for(wire.read_frame(reader), 2))[0], player))
             self.assertEqual(joined, [(wire.WELCOME, "203.0.113.5")] * 2 + [(wire.ERROR, "203.0.113.5"),
                                                                              (wire.WELCOME, "203.0.113.6")])
@@ -481,7 +509,7 @@ class TestRelay(unittest.TestCase):
             wire.parse_address("ftp://ghosts.example")
 
         async def test(port: int, relay: wire.Relay) -> None:
-            for password in (None, "", "wrong"):
+            for password in ("", "wrong"):
                 client = FakeClient(port)
                 reply = await client.join("secret1", "A", password=password)
                 self.assertEqual(reply[0], wire.ERROR)
@@ -497,7 +525,7 @@ class TestRelay(unittest.TestCase):
         async def open_relay(port: int, relay: wire.Relay) -> None:
             # without a password on the relay, a join with or without one is let in
             a, b = FakeClient(port), FakeClient(port)
-            self.assertEqual((await a.join("secret1", "A", password=None))[0], wire.WELCOME)
+            self.assertEqual((await a.join("secret1", "A"))[0], wire.WELCOME)
             self.assertEqual((await b.join("secret1", "B", password="any"))[0], wire.WELCOME)
             a.close()
             b.close()
@@ -639,6 +667,7 @@ class TestGhostLink(unittest.TestCase):
             exit_event = asyncio.Event()
             tasks = []
             for name, link in links.items():
+                link.set_server(True)
                 link.on_game_connected()
                 # A by WebSocket, B by plain TCP
                 link.configure(True, ("ws://" if name == "A" else "") + address, "secret1", name, name)
@@ -711,6 +740,7 @@ class TestGhostLink(unittest.TestCase):
             exit_event = asyncio.Event()
             tasks = []
             for name, link in links.items():
+                link.set_server(True)
                 link.on_game_connected()
                 link.configure(True, address, "secret-" + name, "Link", "Link")
                 tasks.append(asyncio.create_task(link.run(exit_event)))
@@ -757,6 +787,8 @@ class TestGhostLink(unittest.TestCase):
 
         async def main(default_relay: bool) -> checklist.Check:
             link = GhostLink(lambda line: None)
+            link.set_server(True)
+            link.on_game_connected()
             exit_event = asyncio.Event()
             task = asyncio.create_task(link.run(exit_event))
             link.configure(True, closed, "secret1", "A", "A", default_relay)
@@ -793,6 +825,8 @@ class TestGhostLink(unittest.TestCase):
         async def main() -> List[str]:
             statuses: List[str] = []
             link = GhostLink(lambda line: None, lambda: statuses.append(link.status.text))
+            link.set_server(True)
+            link.on_game_connected()
             exit_event = asyncio.Event()
             task = asyncio.create_task(link.run(exit_event))
 
@@ -829,6 +863,8 @@ class TestGhostLink(unittest.TestCase):
             server = await asyncio.start_server(relay.handle, "127.0.0.1", 0)
             address = f"127.0.0.1:{server.sockets[0].getsockname()[1]}"
             link = GhostLink(lambda line: None)
+            link.set_server(True)
+            link.on_game_connected()
             exit_event = asyncio.Event()
             task = asyncio.create_task(link.run(exit_event))
 
@@ -851,6 +887,127 @@ class TestGhostLink(unittest.TestCase):
             server.close()
         with mock.patch.object(wire, "WRONG_PASSWORD_DELAY", 0):
             asyncio.run(main())
+
+
+    def test_lasting_join_resets_the_retry_delay(self) -> None:
+        """A link that stayed joined STABLE_AFTER retries after the first delay when it drops; one dropped sooner waits
+        the next delay."""
+        from .. import ghosts
+        from ..ghosts import GhostLink
+
+        async def main() -> None:
+            relay = wire.Relay()
+            server = await asyncio.start_server(relay.handle, "127.0.0.1", 0)
+            address = f"127.0.0.1:{server.sockets[0].getsockname()[1]}"
+            link = GhostLink(lambda line: None)
+            link.set_server(True)
+            link.on_game_connected()
+            exit_event = asyncio.Event()
+            task = asyncio.create_task(link.run(exit_event))
+            link.configure(True, address, "secret1", "A", "A")
+
+            async def joined_again(after: int, seconds: float) -> bool:
+                for _ in range(int(seconds / 0.02)):
+                    if link.joined and link.own_id != after:
+                        return True
+                    await asyncio.sleep(0.02)
+                return False
+
+            def kick() -> int:
+                own_id = link.own_id
+                relay.members[own_id].close()
+                return own_id
+
+            self.assertTrue(await joined_again(-1, 3))
+            for _ in range(2):  # each drop after a lasting join: the first delay again
+                await asyncio.sleep(ghosts.STABLE_AFTER)
+                self.assertTrue(await joined_again(kick(), 1))
+            # dropped at once: the next delay
+            self.assertFalse(await joined_again(kick(), 1))
+            exit_event.set()
+            link.wake.set()
+            await task
+            server.close()
+        with mock.patch.object(ghosts, "RETRY_DELAYS", (0.05, 10)), mock.patch.object(ghosts, "STABLE_AFTER", 0.3):
+            asyncio.run(main())
+
+    def test_co_op_links_of_one_slot(self) -> None:
+        """Two clients of one slot, each with its own game (co-op), are both joined and show each other."""
+        from ..ghosts import GhostLink
+
+        async def main() -> None:
+            relay = wire.Relay()
+            server = await asyncio.start_server(relay.handle, "127.0.0.1", 0)
+            address = f"127.0.0.1:{server.sockets[0].getsockname()[1]}"
+            links = (GhostLink(lambda line: None), GhostLink(lambda line: None))
+            exit_event = asyncio.Event()
+            tasks = []
+            for link in links:
+                link.set_server(True)
+                link.on_game_connected()
+                link.configure(True, address, "secret1", "A", "A")
+                tasks.append(asyncio.create_task(link.run(exit_event)))
+            for _ in range(150):
+                if all(len(link.players) == 1 for link in links):
+                    break
+                await asyncio.sleep(0.02)
+            await asyncio.sleep(0.2)  # neither replaces the other
+            self.assertEqual([list(link.players) for link in links], [[links[1].own_id], [links[0].own_id]])
+            self.assertEqual(len(relay.members), 2)
+            exit_event.set()
+            for link in links:
+                link.wake.set()
+            await asyncio.gather(*tasks)
+            server.close()
+        asyncio.run(main())
+
+    def test_joins_only_with_the_server_and_the_game(self) -> None:
+        """The link joins only while the client is logged into the slot and connected to the game, so a second client
+        of the slot, which the game turns away, never takes its place on the relay."""
+        from ..ghosts import GhostLink
+
+        async def main() -> None:
+            relay = wire.Relay()
+            server = await asyncio.start_server(relay.handle, "127.0.0.1", 0)
+            address = f"127.0.0.1:{server.sockets[0].getsockname()[1]}"
+            playing, idle = GhostLink(lambda line: None), GhostLink(lambda line: None)
+            exit_event = asyncio.Event()
+            tasks = []
+            for link in (playing, idle):
+                link.configure(True, address, "secret1", "A", "A")
+                tasks.append(asyncio.create_task(link.run(exit_event)))
+
+            async def until(test) -> None:
+                for _ in range(150):
+                    if test():
+                        return
+                    await asyncio.sleep(0.02)
+                self.fail(f"timed out; statuses: {playing.status.text!r}, {idle.status.text!r}; "
+                          f"members: {len(relay.members)}")
+
+            await until(lambda: playing.status.text == "Ghosts: waiting for the Archipelago server.")
+            for link in (playing, idle):
+                link.set_server(True)
+            await until(lambda: playing.status.text == idle.status.text == "Ghosts: waiting for the game.")
+            playing.on_game_connected()
+            await until(lambda: playing.joined)
+            await asyncio.sleep(0.2)
+            self.assertEqual((len(relay.members), idle.joined), (1, False))
+            # the game goes: the link leaves until it comes back
+            playing.on_game_lost()
+            await until(lambda: not relay.members and playing.status.text == "Ghosts: waiting for the game.")
+            playing.on_game_connected()
+            await until(lambda: playing.joined)
+            # logged out of the slot: it leaves
+            playing.set_server(False)
+            await until(lambda: not relay.members and
+                        playing.status.text == "Ghosts: waiting for the Archipelago server.")
+            exit_event.set()
+            for link in (playing, idle):
+                link.wake.set()
+            await asyncio.gather(*tasks)
+            server.close()
+        asyncio.run(main())
 
 
 class TestGhostSecret(unittest.TestCase):
@@ -894,6 +1051,10 @@ class TestGhostSecret(unittest.TestCase):
                 ctx.update_ghosts()
                 self.assertEqual((ctx.ghosts.secret, ctx.ghosts.slot, ctx.ghosts.address),
                                  ("abc123", "Link", "127.0.0.1:1"))
+                self.assertEqual(ctx.ghosts.waiting_for(), "Ghosts: waiting for the Archipelago server.")
+                ctx.ghost_offline_arg = True
+                ctx.update_ghosts()
+                self.assertTrue(ctx.ghosts.server_connected)
                 ctx.ghost_relay_arg = ""
                 ctx.update_ghosts()
                 self.assertEqual(ctx.ghosts.waiting_for(), "Ghosts are off: enter a ghost relay to turn them on.")

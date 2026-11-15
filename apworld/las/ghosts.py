@@ -13,6 +13,9 @@ MIN_INTERVAL = 0.045  # at most ~20 frames a second go to the relay; what the pl
 PING_INTERVAL = 10.0
 SILENT_TIMEOUT = 30.0  # the relay answers pings; a link that hears nothing this long reconnects
 RETRY_DELAYS = (2, 5, 10, 30, 60)
+# a link joined this long worked: its next retry starts from the first delay again. Longer than the longest delay, so
+# two clients taking the slot from each other on the relay keep their longest delay.
+STABLE_AFTER = 120.0
 DEFAULT_RELAY = wire.DEFAULT_RELAY
 
 
@@ -48,8 +51,10 @@ def ghost_line(n: int, slot: str, p: wire.Pos) -> Optional[str]:
 
 
 class GhostLink:
-    """Keeps the client joined to its multiworld's group on the relay while ghosts are on and the relay address, the
-    ghost secret and the slot name are known; `configure` reconnects when any of them changes."""
+    """Keeps the client joined to its multiworld's group on the relay while ghosts are on, the relay address, the
+    ghost secret and the slot name are known, and the client is logged into the slot on the AP server and connected to
+    the game, so a second client window of the slot, which the game turns away, never joins. `configure` reconnects
+    when any of the settings changes."""
 
     def __init__(self, send_game: Callable[[str], None], changed: Callable[[], None] = lambda: None):
         self.send_game = send_game
@@ -61,10 +66,12 @@ class GhostLink:
         self.slot = ""
         self.player = ""
         self.names = True  # name tags over the ghosts in the game
+        self.server_connected = False  # logged into the slot on the AP server (set_server)
         self.game_connected = False
         self.status = checklist.Check(checklist.INFO, "")
         self.writer: Optional[Union[asyncio.StreamWriter, wire.WebSocketWriter]] = None
         self.joined = False
+        self.joined_at: Optional[float] = None  # when this connection's WELCOME came (loop time)
         self.own_id = -1
         self.players: Dict[int, Tuple[str, str]] = {}  # the group's other members: id -> (slot, player name)
         self.ghosts: List[Optional[int]] = [None] * GHOST_SLOTS  # the player id each ghost slot shows
@@ -78,6 +85,7 @@ class GhostLink:
         self.sent_frames = 0
         self.received_frames = 0
         self.wake = asyncio.Event()
+        self.client_id = wire.new_client_id()  # the relay replaces a connection only with one of the same id
 
     # settings and state
 
@@ -91,6 +99,13 @@ class GhostLink:
         self.enabled, self.address, self.secret, self.slot, self.player, self.default_relay = new
         self.drop()
         self.wake.set()
+
+    def set_server(self, connected: bool) -> None:
+        """Whether the client is logged into the slot on the AP server; the link leaves the relay without it."""
+        if connected != self.server_connected:
+            self.server_connected = connected
+            self.drop()
+            self.wake.set()
 
     def set_names(self, on: bool) -> None:
         if on != self.names:
@@ -111,6 +126,10 @@ class GhostLink:
             return "Ghosts are off: enter a ghost relay to turn them on."
         if not self.secret:
             return "Ghosts: open this slot's patch file (one made with ghosts) to find the other players."
+        if not self.server_connected:
+            return "Ghosts: waiting for the Archipelago server."
+        if not self.game_connected:
+            return "Ghosts: waiting for the game."
         if not self.slot:
             return "Ghosts: waiting for the slot name (patch file or server)."
         return ""
@@ -118,10 +137,13 @@ class GhostLink:
     # the game's side
 
     def on_game_connected(self) -> None:
-        self.game_connected = True
+        """The game said HELLO; the link joins the relay if nothing else keeps it (waiting_for)."""
+        was_connected, self.game_connected = self.game_connected, True
         self.send_game(f"GHOSTS {int(self.joined)}")
         self.send_game(f"GHOSTNAMES {int(self.names)}")
         self.clear_ghosts()  # each shows again with its player's next frame
+        if not was_connected:
+            self.wake.set()
 
     def clear_ghosts(self) -> None:
         for n, player_id in enumerate(self.ghosts):
@@ -130,8 +152,11 @@ class GhostLink:
         self.ghosts = [None] * GHOST_SLOTS
 
     def on_game_lost(self) -> None:
+        """The link leaves the relay until the game connects again."""
         self.game_connected = False
-        self.queue(None)
+        self.pending, self.pending_set = None, False
+        self.drop()
+        self.wake.set()
 
     def on_pos(self, parts: List[str]) -> None:
         """A POS line from the game."""
@@ -231,6 +256,7 @@ class GhostLink:
         elif kind == wire.WELCOME:
             self.own_id = struct.unpack_from(">H", payload, 2)[0]
             self.joined = True
+            self.joined_at = asyncio.get_running_loop().time()
             self.joined_status()
             if self.game_connected:
                 self.send_game("GHOSTS 1")
@@ -276,6 +302,7 @@ class GhostLink:
                 await self.wait(self.wake, None)
                 retrying = False
                 continue
+            self.joined_at = None
             try:
                 await self.session(announce=not retrying)
                 failures = 0
@@ -294,6 +321,8 @@ class GhostLink:
             if self.wake.is_set():
                 retrying = False
                 continue  # the settings changed: connect again at once
+            if self.joined_at is not None and asyncio.get_running_loop().time() - self.joined_at >= STABLE_AFTER:
+                failures = 0
             delay = RETRY_DELAYS[min(failures, len(RETRY_DELAYS) - 1)]
             failures += 1
             retrying = True
@@ -323,7 +352,8 @@ class GhostLink:
             self.set_status(checklist.INFO, f"Ghosts: connecting to the relay {wire.shown_address(self.address)}...")
         password, reader, writer = await wire.connect(self.address)
         self.writer = writer
-        writer.write(wire.frame(wire.join_message(wire.group_id(self.secret), self.slot, self.player, password)))
+        writer.write(wire.frame(wire.join_message(wire.group_id(self.secret), self.slot, self.player, self.client_id,
+                                                         password)))
         pinger = asyncio.create_task(self.ping(writer))
         try:
             while not self.wake.is_set():

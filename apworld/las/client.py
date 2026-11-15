@@ -185,6 +185,7 @@ class LASContext(TrackerMixin, ClientContext):
         self.ghosts = GhostLink(self.send_game, self.refresh_patch_tab)
         self.ghost_relay_arg: Optional[str] = None  # --ghost-relay replaces las_options.ghost_relay
         self.ghost_secret_arg: Optional[str] = None  # --ghost-secret replaces the patch file's (tests)
+        self.ghost_offline_arg = False  # --ghost-offline: ghosts without the AP server (tests)
 
     async def get_username(self) -> None:
         # the slot comes from the patch file, as the server would otherwise ask for it
@@ -382,6 +383,7 @@ class LASContext(TrackerMixin, ClientContext):
         self.notice_sent = False
         await super().connection_closed()
         self.send_server_state()
+        self.update_ghosts()
         self.refresh_patch_tab()
 
     def send_server_state(self) -> None:
@@ -760,7 +762,8 @@ class LASContext(TrackerMixin, ClientContext):
         self.ghosts.set_names(on)
 
     def update_ghosts(self) -> None:
-        """Hands the ghost link its settings, secret and slot; it reconnects when they change."""
+        """Hands the ghost link its settings, secret and slot, and whether the client is logged into the slot; it
+        reconnects when they change."""
         options = LASWorld.settings
         slot = self.auth or self.patch_slot or ""
         player = self.player_names.get(self.slot, slot) if self.slot else slot
@@ -775,6 +778,7 @@ class LASContext(TrackerMixin, ClientContext):
         if secret is None:
             secret = str(patch.get("ghost_secret", ""))
         self.ghosts.configure(bool(options.ghosts), address, secret, slot, player, default_relay)
+        self.ghosts.set_server(self.ghost_offline_arg or bool(self.server and self.slot))
         self.ghosts.set_names(bool(options.ghost_names))
 
     @property
@@ -974,6 +978,7 @@ def launch(*launch_args: str) -> None:
         ctx = LASContext(args.connect, args.password, args.game_host, args.game_port, args.patch)
         ctx.auth = args.name
         ctx.ghost_relay_arg, ctx.ghost_secret_arg = args.ghost_relay, args.ghost_secret
+        ctx.ghost_offline_arg = args.ghost_offline
         ctx.server_task = asyncio.create_task(server_loop(ctx), name="server loop")
         game_task = asyncio.create_task(ctx.game_loop(), name="game loop")
         ctx.update_ghosts()
@@ -1000,6 +1005,8 @@ def launch(*launch_args: str) -> None:
                                                               "(default: las_options.ghost_relay).")
     parser.add_argument("--ghost-secret", default=None,
                         help="The multiworld's ghost secret, for tests (default: the patch file's).")
+    parser.add_argument("--ghost-offline", action="store_true",
+                        help="Join the ghost relay without logging into the AP server, for tests.")
     if not hasattr(parser.parse_args([]), "nogui"):  # Archipelago adds --nogui only when there is a stdout
         parser.add_argument("--nogui", default=False, action="store_true")
     parser.add_argument("url", nargs="?", help="Archipelago connection url, or an .aplas patch file to install")

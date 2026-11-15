@@ -95,7 +95,8 @@ async def run(walker: Walker, relay: str, source: str, secret: str, deadline: fl
     except (OSError, asyncio.TimeoutError, asyncio.IncompleteReadError, ValueError) as e:
         walker.error = repr(e)
         return
-    writer.write(wire.frame(wire.join_message(wire.group_id(secret), walker.name, walker.name, password)))
+    writer.write(wire.frame(wire.join_message(wire.group_id(secret), walker.name, walker.name, wire.new_client_id(),
+                                               password)))
 
     async def receive() -> None:
         while True:

@@ -184,7 +184,7 @@ class Session:
             wait_port(inst.relay, 20)
             self.spawn(inst, [str(ROOT / "scripts" / "ghost_peer.py"), "--relay", f"127.0.0.1:{inst.relay}",
                               "--secret", GHOST_SECRET, "--seconds", "3600"], "peer.log", "peer_cmds.txt")
-            args = ["--ghost-relay", f"127.0.0.1:{inst.relay}", "--ghost-secret", GHOST_SECRET]
+            args = ["--ghost-relay", f"127.0.0.1:{inst.relay}", "--ghost-secret", GHOST_SECRET, "--ghost-offline"]
         self.spawn(inst, [str(ROOT / "scripts" / "las_client.py"), "--nogui", "--game-host", "127.0.0.1",
                           "--game-port", str(inst.port), "--name", "Link", *args], "client.log", "cmds.txt")
 

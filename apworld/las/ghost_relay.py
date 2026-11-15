@@ -23,13 +23,13 @@ import threading
 import time
 from typing import Dict, List, NamedTuple, Optional, Sequence, Set, Tuple, Union
 
-PROTOCOL_VERSION = 4
+PROTOCOL_VERSION = 5
 DEFAULT_PORT = 43390
 DEFAULT_RELAY = "wss://ghosts.zerozshadow.com"  # the client's ghost_relay setting's default
 
 # Client -> relay
-JOIN = 0x01  # u8 version, 32 bytes group, slot name, player name, relay password (each a u8 length and UTF-8; the
-# password may be missing: none)
+JOIN = 0x01  # u8 version, 32 bytes group, slot name, player name, relay password (each a u8 length and UTF-8), then
+# CLIENT_ID_SIZE bytes client id: the client's own random id, kept across its reconnects
 POS = 0x02  # a position (encode_pos): a keyframe, or the changes since the client's previous POS
 NOWHERE = 0x03  # the player is in no level (title, file menu, level load, game not connected)
 PING = 0x04  # keep-alive; the relay answers PONG
@@ -197,6 +197,7 @@ TRUSTED_PROXY_ENV = "LAS_GHOST_RELAY_TRUSTED_PROXY"
 MAX_GROUP_ENV = "LAS_GHOST_RELAY_MAX_GROUP"
 WRONG_PASSWORD_DELAY = 1.0  # seconds before a wrong password is refused, so guessing is slow
 ONE_GROUP = b"all"  # --nogroups: the group of every member (not 32 bytes, so no join's group)
+CLIENT_ID_SIZE = 4  # logged whole: as many hex digits as group_label shows
 
 
 def group_id(secret: str) -> bytes:
@@ -293,18 +294,29 @@ def read_name(data: bytes, at: int) -> Tuple[str, int]:
     return data[at + 1:at + 1 + n].decode("utf-8", "replace"), at + 1 + n
 
 
-def join_message(group: bytes, slot: str, player: str, password: str = "") -> bytes:
-    return bytes([JOIN, PROTOCOL_VERSION]) + group + name_bytes(slot) + name_bytes(player) + name_bytes(password)
+def new_client_id() -> bytes:
+    return os.urandom(CLIENT_ID_SIZE)
 
 
-def parse_join(payload: bytes) -> Tuple[int, bytes, str, str, str]:
-    version, group = payload[1], payload[2:34]
+def join_message(group: bytes, slot: str, player: str, client: bytes, password: str = "") -> bytes:
+    """The client id goes last, so a relay of another version still reads the version and refuses with a message."""
+    return (bytes([JOIN, PROTOCOL_VERSION]) + group + name_bytes(slot) + name_bytes(player) + name_bytes(password) +
+            client)
+
+
+def parse_join(payload: bytes) -> Tuple[bytes, str, str, str, bytes]:
+    """A join of this PROTOCOL_VERSION (the caller checks the version first): group, slot, player, password and client
+    id."""
+    group = payload[2:34]
     if len(group) != 32:
         raise ValueError("short join")
     slot, at = read_name(payload, 34)
     player, at = read_name(payload, at)
-    password = read_name(payload, at)[0] if at < len(payload) else ""
-    return version, group, slot, player, password
+    password, at = read_name(payload, at)
+    client = payload[at:]
+    if len(client) != CLIENT_ID_SIZE:
+        raise ValueError(f"client id of {len(client)} bytes")
+    return group, slot, player, password, client
 
 
 def player_message(player_id: int, slot: str, player: str) -> bytes:
@@ -547,6 +559,7 @@ class Member:
         self.address = address
         self.id = -1
         self.world = b""  # the join's group: the member's multiworld
+        self.client = b""  # the join's client id: two of a slot's members with other ids are co-op players
         self.group: Optional[bytes] = None  # the group it is in: its world's, or ONE_GROUP
         self.slot = ""
         self.player = ""
@@ -569,8 +582,13 @@ class Member:
         self.leave_reason = "disconnected"  # for the leave line
 
     def label(self) -> str:
-        """The slot, and the player's name when it differs, for the log."""
-        return repr(self.slot) + (f" ({self.player!r})" if self.player and self.player != self.slot else "")
+        """The slot, the player's name when it differs, and the client id, for the log."""
+        return (repr(self.slot) + (f" ({self.player!r})" if self.player and self.player != self.slot else "") +
+                f" [{self.client.hex()}]")
+
+    def same(self, world: bytes, slot: str, client: bytes) -> bool:
+        """Whether a join is this member's client again (a reconnect)."""
+        return self.world == world and self.slot == slot and self.client == client
 
     def send(self, payload: bytes, droppable: bool = False) -> bool:
         """Queues a frame for the next flush; False when it was dropped (closed, or droppable and too much waits)."""
@@ -715,19 +733,22 @@ class Relay:
             payload = await asyncio.wait_for(read_frame(stream, first), 10)
             if payload[0] != JOIN:
                 return self.refuse(member, "Join first.")
-            version, world, slot, player, password = parse_join(payload)
+            version = payload[1] if len(payload) > 1 else 0
             if version != PROTOCOL_VERSION:
+                update = ("Update the Link's Awakening world." if version < PROTOCOL_VERSION else
+                          "The relay is older than the client: its host needs to update it.")
                 return self.refuse(member, f"The ghost relay speaks version {PROTOCOL_VERSION}, the client {version}. "
-                                           f"Update the Link's Awakening world.")
+                                           f"{update}")
+            world, slot, player, password, client = parse_join(payload)
             if self.password and not hmac.compare_digest(password.encode(), self.password.encode()):
                 await asyncio.sleep(WRONG_PASSWORD_DELAY)
                 return self.refuse(member, "Wrong relay password. Enter the relay as password@host:port."
                                    if password else "This relay needs a password: enter it as password@host:port.")
             members = self.groups.get(self.group_of(world), ())
-            if len(members) >= self.max_group and not any(m.world == world and m.slot == slot for m in members):
+            if len(members) >= self.max_group and not any(m.same(world, slot, client) for m in members):
                 return self.refuse(member, "The ghost relay is full." if self.nogroups else
                                    "This group of players is full.")
-            self.join(member, world, slot, player)
+            self.join(member, world, slot, player, client)
             while True:
                 payload = await read_frame(stream)
                 member.last_heard = time.monotonic()
@@ -748,20 +769,20 @@ class Relay:
     def group_of(self, world: bytes) -> bytes:
         return ONE_GROUP if self.nogroups else world
 
-    def join(self, member: Member, world: bytes, slot: str, player: str) -> None:
+    def join(self, member: Member, world: bytes, slot: str, player: str, client: bytes) -> None:
         """Puts a member into its group: the others there get a PLAYER for it, it one for each of them (never one for
         itself)."""
         group = self.group_of(world)
         members = self.groups.setdefault(group, [])
-        for old in [m for m in members if m.world == world and m.slot == slot]:
-            # the same slot of the same multiworld again (a reconnect before the old connection timed out): the new
-            # connection wins
+        for old in [m for m in members if m.same(world, slot, client)]:
+            # the same client again (a reconnect before the old connection timed out): the new connection wins. Another
+            # client of the slot (co-op) stays.
             old.leave_reason = "replaced by a new connection"
             self.leave(old)
             old.close()
         members = self.groups.setdefault(group, [])  # leave() drops a group it empties
         member.id = self.new_id()
-        member.world, member.group, member.slot, member.player = world, group, slot, player
+        member.world, member.group, member.slot, member.player, member.client = world, group, slot, player, client
         self.members[member.id] = member
         member.send(bytes([WELCOME, PROTOCOL_VERSION]) + struct.pack(">H", member.id))
         announce = player_message(member.id, slot, player)
