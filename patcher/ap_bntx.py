@@ -15,7 +15,7 @@ power of two that covers an eighth of its height in rows, at most 16; each small
 a power of two) no longer fill a block halves it.
 """
 import struct
-from typing import Iterator, List, Tuple
+from typing import Iterator, List, Sequence, Tuple
 
 # Format (high byte) -> bytes per element: a pixel of the uncompressed formats (below 0x1a), a 4x4 pixel block of the
 # compressed ones
@@ -381,10 +381,21 @@ def build_dictionary(names: List[str]) -> List[Tuple[int, int, int, int]]:
     return [(ref & 0xffffffff, left, right, i - 1) for i, (ref, left, right) in enumerate(nodes)]
 
 
+# Texture formats: sRGB (low byte 6) or linear (1)
+BC1 = (0x1a06, 0x1a01)
+BC3 = (0x1c06, 0x1c01)
+BC4 = 0x1d01
+
+
 def from565(c: int) -> Tuple[int, int, int]:
     """A BC1 endpoint's RGB565 colour as 8-bit RGB."""
     r, g, b = c >> 11, (c >> 5) & 63, c & 31
     return r << 3 | r >> 2, g << 2 | g >> 4, b << 3 | b >> 2
+
+
+def to565(colour: Sequence[float]) -> int:
+    r, g, b = (min(255.0, max(0.0, c)) for c in colour)
+    return round(r * 31 / 255) << 11 | round(g * 63 / 255) << 5 | round(b * 31 / 255)
 
 
 def bc4_values(block: bytes) -> List[int]:

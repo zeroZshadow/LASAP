@@ -307,6 +307,18 @@ def parse_join(payload: bytes) -> Tuple[int, bytes, str, str, str]:
     return version, group, slot, player, password
 
 
+def player_message(player_id: int, slot: str, player: str) -> bytes:
+    return bytes([PLAYER]) + struct.pack(">H", player_id) + name_bytes(slot) + name_bytes(player)
+
+
+def frame_message(player_id: int, body: bytes) -> bytes:
+    return bytes([FRAME]) + struct.pack(">H", player_id) + body
+
+
+def off_message(player_id: int, reason: int) -> bytes:
+    return bytes([OFF]) + struct.pack(">HB", player_id, reason)
+
+
 async def read_frame(reader: Union[asyncio.StreamReader, "WebSocketReader"], first: bytes = b"") -> bytes:
     """The next frame's payload (first: its first byte, already read); raises IncompleteReadError at the end and
     ValueError on a bad length."""
@@ -752,13 +764,12 @@ class Relay:
         member.world, member.group, member.slot, member.player = world, group, slot, player
         self.members[member.id] = member
         member.send(bytes([WELCOME, PROTOCOL_VERSION]) + struct.pack(">H", member.id))
-        announce = bytes([PLAYER]) + struct.pack(">H", member.id) + name_bytes(slot) + name_bytes(player)
+        announce = player_message(member.id, slot, player)
         for other in members:
-            member.send(bytes([PLAYER]) + struct.pack(">H", other.id) + name_bytes(other.slot) +
-                        name_bytes(other.player))
+            member.send(player_message(other.id, other.slot, other.player))
             other.send(announce)
         if self.echo is not None:
-            member.send(bytes([PLAYER]) + struct.pack(">H", ECHO_ID) + name_bytes("Echo") + name_bytes("Echo"))
+            member.send(player_message(ECHO_ID, "Echo", "Echo"))
         members.append(member)
         member.joined_at = time.monotonic()
         transport = "WebSocket" if isinstance(member.writer, WebSocketWriter) else "TCP"
@@ -773,7 +784,7 @@ class Relay:
         if not members:
             self.groups.pop(member.group, None)
         self.members.pop(member.id, None)
-        off = bytes([OFF]) + struct.pack(">HB", member.id, OFF_LEFT)
+        off = off_message(member.id, OFF_LEFT)
         for other in members:
             other.unshow(member)
             other.send(off)
@@ -801,13 +812,13 @@ class Relay:
             self.update(member, body)
             if self.echo is not None:
                 echo = encode_pos(pos._replace(x=pos.x + self.echo).quantized())
-                member.send(bytes([FRAME]) + struct.pack(">H", ECHO_ID) + echo, droppable=True)
+                member.send(frame_message(ECHO_ID, echo), droppable=True)
         elif kind == NOWHERE and member.group is not None:
             member.base = member.pos = None
             member.level = NO_LEVEL
             member.last_pos = time.monotonic()
             if self.echo is not None:
-                member.send(bytes([OFF]) + struct.pack(">HB", ECHO_ID, OFF_AREA))
+                member.send(off_message(ECHO_ID, OFF_AREA))
             self.update(member)
 
     def update(self, member: Member, body: Optional[bytes] = None) -> None:
@@ -833,19 +844,18 @@ class Relay:
         if shown not in viewer.synced and not is_key(body):
             self.show(viewer, shown)
             return
-        viewer.visible.add(shown)
-        if viewer.send(bytes([FRAME]) + struct.pack(">H", shown.id) + body, droppable=True):
-            viewer.synced.add(shown)
-        else:
-            viewer.synced.discard(shown)
+        self.send_frame(viewer, shown, body)
+
+    @classmethod
+    def show(cls, viewer: Member, shown: Member) -> None:
+        """Sends the viewer a keyframe of the shown member's position."""
+        if shown.pos is not None:
+            cls.send_frame(viewer, shown, encode_pos(shown.pos))
 
     @staticmethod
-    def show(viewer: Member, shown: Member) -> None:
-        """Sends the viewer a keyframe of the shown member's position."""
-        if shown.pos is None:
-            return
+    def send_frame(viewer: Member, shown: Member, body: bytes) -> None:
         viewer.visible.add(shown)
-        if viewer.send(bytes([FRAME]) + struct.pack(">H", shown.id) + encode_pos(shown.pos), droppable=True):
+        if viewer.send(frame_message(shown.id, body), droppable=True):
             viewer.synced.add(shown)
         else:
             viewer.synced.discard(shown)
@@ -876,7 +886,7 @@ class Relay:
     def hide(viewer: Member, shown: Member) -> None:
         if shown in viewer.visible:
             viewer.unshow(shown)
-            viewer.send(bytes([OFF]) + struct.pack(">HB", shown.id, OFF_AREA))
+            viewer.send(off_message(shown.id, OFF_AREA))
 
     async def sweep(self) -> None:
         """Once a second: members silent for SILENT_OFF are shown to nobody, connections silent for SILENT_DROP

@@ -1,9 +1,7 @@
 """The logic's data: every name in it resolves."""
 import unittest
 
-from test.general import setup_multiworld
-from worlds.AutoWorld import AutoWorldRegister
-
+from . import generate_world
 from ..lasr import ITEM_DEFS, ITEM_LOCATIONS, LOGIC
 from ..lasr_settings import lasr_settings, logic_tokens, setting_token
 from ..logic import NEVER, referenced_tokens
@@ -11,8 +9,7 @@ from ..logic import NEVER, referenced_tokens
 
 def declared_settings() -> set:
     """The tokens LASR's settings can put into the logic: every boolean setting's, and those of Stealing."""
-    world_type = AutoWorldRegister.world_types["Links Awakening Switch"]
-    options = setup_multiworld(world_type, (), 1, {"stealing": "standard"}).worlds[1].options
+    options = generate_world({"stealing": "standard"}, 1, ()).options
     settings = {setting_token(key) for key, value in lasr_settings(options).items() if isinstance(value, bool)}
     return settings | set(logic_tokens(options))
 

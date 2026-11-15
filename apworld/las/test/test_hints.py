@@ -32,12 +32,13 @@ class HintsBase(unittest.TestCase):
     seed = 7
     options = {"start_hints": ["Hookshot"], "start_location_hints": ["Tail Cave - Feather Chest"]}
 
-    def setUp(self) -> None:
-        self.multiworld = filled(self.seed, self.options)
-        self.world = self.multiworld.worlds[1]
-        self.hints = self.world.in_game_hints()
-        self.locations = {(loc.player, loc.address): loc for loc in self.multiworld.get_filled_locations()
-                          if isinstance(loc.address, int)}
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.multiworld = filled(cls.seed, cls.options)
+        cls.world = cls.multiworld.worlds[1]
+        cls.hints = cls.world.in_game_hints()
+        cls.locations = {(loc.player, loc.address): loc for loc in cls.multiworld.get_filled_locations()
+                         if isinstance(loc.address, int)}
 
     def of_kind(self, kind: str):
         return [hint for hint in self.hints.values() if hint["kind"] == kind]

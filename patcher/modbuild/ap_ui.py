@@ -79,15 +79,20 @@ def _patch_textures(data: bytes) -> bytes:
     return bntx.pack()
 
 
+def archive_writer(sarc):
+    """A writer for a UI archive, with the game's archives' alignments."""
+    writer = oead.SarcWriter.from_sarc(sarc)
+    writer.set_min_alignment(16)
+    writer.add_alignment_requirement("bnsh", 0x1000)
+    writer.add_alignment_requirement("bntx", 0x1000)
+    return writer
+
+
 def build(archive: bytes) -> bytes:
     """StartUp.arc with the popup changes. LASR edits the same archive (the title screen's Randomizer logo), so this
     takes LASR's output when there is one."""
     sarc = oead.Sarc(archive)
-    writer = oead.SarcWriter.from_sarc(sarc)
-    # the alignments of the original archive
-    writer.set_min_alignment(16)
-    writer.add_alignment_requirement("bnsh", 0x1000)
-    writer.add_alignment_requirement("bntx", 0x1000)
+    writer = archive_writer(sarc)
     writer.files[LAYOUT] = _patch_layout(bytes(sarc.get_file(LAYOUT).data))
     writer.files[TEXTURES] = _patch_textures(bytes(sarc.get_file(TEXTURES).data))
     return bytes(writer.write()[1])

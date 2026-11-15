@@ -3,10 +3,8 @@ import random
 import unittest
 
 from BaseClasses import CollectionState
-from test.general import setup_multiworld
-from worlds.AutoWorld import AutoWorldRegister
 
-from .test_logic import OPTION_SETS, STEPS
+from . import OPTION_SETS, generate, generate_world
 from ..lasr import DOORS, ENTRANCE_POOL
 from ..locations import LOCATION_NAMES
 from ..tracker import LogicTracker, door_pool, found_entrance, tracked_seashells
@@ -16,8 +14,7 @@ class TestTracker(unittest.TestCase):
     samples = 12
 
     def check(self, options: dict, seed: int) -> None:
-        world_type = AutoWorldRegister.world_types["Links Awakening Switch"]
-        multiworld = setup_multiworld(world_type, STEPS, seed, options)
+        multiworld = generate(options, seed)
         world = multiworld.worlds[1]
         slot_data = world.fill_slot_data()
         logic = slot_data["logic"]
@@ -65,8 +62,7 @@ class TestTracker(unittest.TestCase):
 
     def test_starting_items_count(self) -> None:
         """The slot data's starting items count: Marin's song needs the Ocarina, a starting item by default."""
-        world_type = AutoWorldRegister.world_types["Links Awakening Switch"]
-        multiworld = setup_multiworld(world_type, STEPS, 3000, {})
+        multiworld = generate(seed=3000)
         world = multiworld.worlds[1]
         # Generate applies the starting gear (start_inventory_from_pool) after the steps the test runs
         multiworld.push_precollected(world.create_item("Ocarina"))
@@ -78,6 +74,10 @@ class TestTracker(unittest.TestCase):
 
 
 class TestFoundEntrances(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.world = generate_world({"entrances": "everything"}, 2300)
+
     def test_a_jump_finds_its_door(self) -> None:
         """Through a door: the jump to the spot inside its own inside door leads to another one's. Out of an inside
         door: the jump to the spot outside its own overworld door leads to another one's."""
@@ -95,8 +95,7 @@ class TestFoundEntrances(unittest.TestCase):
         self.assertEqual(door_pool({door: inside}), ENTRANCE_POOL)
 
     def test_doors_not_gone_through_lead_nowhere(self) -> None:
-        world_type = AutoWorldRegister.world_types["Links Awakening Switch"]
-        world = setup_multiworld(world_type, STEPS, 2300, {"entrances": "everything"}).worlds[1]
+        world = self.world
         tracker = world._tracker(world.shuffled, world.entrances, world.goal_instruments, world.goal_seashells)
         items = [item.name for item in world.multiworld.itempool + world.get_pre_fill_items()]
         every = tracker.in_logic(items)
@@ -107,8 +106,7 @@ class TestFoundEntrances(unittest.TestCase):
 
     def test_a_tracker_led_elsewhere_sweeps_as_a_new_one(self) -> None:
         """The world's tries share a sweep (LASWorld._tracker): one led to other doors answers as one made for them."""
-        world_type = AutoWorldRegister.world_types["Links Awakening Switch"]
-        world = setup_multiworld(world_type, STEPS, 2300, {"entrances": "everything"}).worlds[1]
+        world = self.world
         doors = list(world.entrances)
         swapped = {**world.entrances, doors[0]: world.entrances[doors[1]], doors[1]: world.entrances[doors[0]]}
         args = (world.options.logic.current_key, world.settings_tokens, [], world.shuffled, world.dungeon_entrances, (),

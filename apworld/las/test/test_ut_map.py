@@ -4,10 +4,9 @@ import json
 import unittest
 from pathlib import Path
 
-from test.general import setup_multiworld
 from worlds.AutoWorld import AutoWorldRegister
 
-from .test_logic import STEPS
+from . import generate_world
 from ..items import GAME
 from ..lasr import DOORS, DUNGEONS, door_entrance
 from ..ut_map import MAPS, TRACKER_WORLD, dungeon_map, hidden_door_entrances, map_index
@@ -49,12 +48,11 @@ class TestUTMap(unittest.TestCase):
         dungeon_entrances = {door_entrance(dungeon) for dungeon in DUNGEONS}
         doors = section_names("Doors")
         self.assertLessEqual(doors, set(DOORS["pairs"]) | dungeon_entrances)
-        world_type = AutoWorldRegister.world_types[GAME]
         for seed, options in enumerate(({"entrances": "everything", "shuffled_dungeons": "everything",
                                          "random_start": True},
                                         {"entrances": "everything", "shuffled_dungeons": True})):
             with self.subTest(options=options):
-                world = setup_multiworld(world_type, STEPS, 4300 + seed, options).worlds[1]
+                world = generate_world(options, 4300 + seed)
                 entrances = {e.name for e in world.multiworld.get_entrances(1)}
                 self.assertLessEqual(set(world.door_pool), doors & entrances)
                 self.assertLessEqual(dungeon_entrances & entrances, doors)
@@ -71,11 +69,10 @@ class TestUTMap(unittest.TestCase):
     def test_dungeon_doors_are_the_worlds_entrances(self) -> None:
         """Every dungeon door pin shows: one of its sections is an entrance of the world, with or without shuffled
         doors."""
-        world_type = AutoWorldRegister.world_types[GAME]
         for seed, options in enumerate(({}, {"shuffled_dungeons": True},
                                         {"entrances": "everything", "shuffled_dungeons": "everything"})):
             with self.subTest(options=options):
-                world = setup_multiworld(world_type, STEPS, 4400 + seed, options).worlds[1]
+                world = generate_world(options, 4400 + seed)
                 entrances = {e.name for e in world.multiworld.get_entrances(1)}
                 for pin in group("Dungeon doors"):
                     self.assertTrue({s["name"] for s in pin["sections"]} & entrances, pin["name"])

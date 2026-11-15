@@ -5,32 +5,14 @@ import unittest
 from collections import Counter
 
 from BaseClasses import CollectionState
-from test.general import setup_multiworld
-from worlds.AutoWorld import AutoWorldRegister
+from test.general import gen_steps
 
+from . import OPTION_SETS, generate, generate_world
 from .lasr_eval import LASREvaluator
 from ..items import ITEM_TABLE, LASR_TO_ITEM
 from ..lasr import LOGIC, WRITTEN_LOGIC, goal_logic, plain_logic, slot_doors
 from ..locations import LOCATION_NAMES
 from ..logic import make_rule, parse
-
-STEPS = ("generate_early", "create_regions", "create_items", "set_rules", "connect_entrances", "generate_basic")
-
-OPTION_SETS = [
-    {},
-    {"logic": "advanced"},
-    {"logic": "glitched"},
-    {"logic": "hell"},
-    {"open_mabe": False, "open_kanalet": False, "open_mamu": False, "completed_bridge": False,
-     "classic_d2": True, "stealing": "never", "shuffled_bombs": False, "shuffled_powder": False},
-    {"logic": "hell", "owl_statues": "all", "blue_rupees": True, "trade_quest": True, "dampe": True,
-     "rapids": True, "fishing": True, "seashell_mansion": 50, "free_book": False, "fast_fishing": False,
-     "fast_stalfos": False, "stealing": "always"},
-    {"chests": False, "free_gifts": False, "miscellaneous": False, "boss_drops": False, "instruments": "vanilla",
-     "starting_instruments": 3, "seashell_mansion": 0, "dungeon_items": "start_with"},
-    {"shuffled_dungeons": True},
-    {"logic": "hell", "shuffled_dungeons": True, "owl_statues": "dungeons"},
-]
 
 
 def lasr_reachable(world, lasr_items: Counter) -> set:
@@ -58,8 +40,7 @@ class TestLogicCrossCheck(unittest.TestCase):
     samples = 20
 
     def check(self, options: dict, seed: int) -> None:
-        world_type = AutoWorldRegister.world_types["Links Awakening Switch"]
-        multiworld = setup_multiworld(world_type, STEPS, seed, options)
+        multiworld = generate(options, seed)
         world = multiworld.worlds[1]
         pool = [item for item in multiworld.itempool + world.get_pre_fill_items() if item.player == 1]
         precollected = list(multiworld.precollected_items[1])
@@ -105,9 +86,8 @@ class TestIndirectConditions(unittest.TestCase):
 
     def test_option_sets(self) -> None:
         from Fill import distribute_items_restrictive
-        world_type = AutoWorldRegister.world_types["Links Awakening Switch"]
         for index, options in enumerate(OPTION_SETS):
-            multiworld = setup_multiworld(world_type, seed=2000 + index, options=options)
+            multiworld = generate(options, 2000 + index, gen_steps)
             distribute_items_restrictive(multiworld)
             world = multiworld.worlds[1]
             explicit = list(multiworld.get_spheres())
@@ -120,9 +100,12 @@ class TestIndirectConditions(unittest.TestCase):
 class TestRefills(unittest.TestCase):
     """Ammo refills (logic.yml); without stealing, which refills bombs and arrows at the shop."""
 
+    worlds = {}
+
     def state(self, ammo_ghost: bool, items):
-        world_type = AutoWorldRegister.world_types["Links Awakening Switch"]
-        world = setup_multiworld(world_type, STEPS, 90, {"ammo_ghost": ammo_ghost, "stealing": "never"}).worlds[1]
+        if ammo_ghost not in self.worlds:
+            self.worlds[ammo_ghost] = generate_world({"ammo_ghost": ammo_ghost, "stealing": "never"}, 90)
+        world = self.worlds[ammo_ghost]
         state = CollectionState(world.multiworld)
         for item in items:
             state.collect(world.create_item(LASR_TO_ITEM[item]), prevent_sweep=True)
@@ -157,8 +140,7 @@ class TestTrendyPrizes(unittest.TestCase):
     (logic.yml)."""
 
     def test_order(self) -> None:
-        world_type = AutoWorldRegister.world_types["Links Awakening Switch"]
-        world = setup_multiworld(world_type, STEPS, 91, {}).worlds[1]
+        world = generate_world({}, 91)
         prizes = ("trendy-prize-4", "trendy-prize-5", "trendy-prize-6")
         for instruments, reached in (
                 ([], ()),
@@ -182,8 +164,7 @@ class TestSwampSideOfWoods(unittest.TestCase):
     the rooster. The dig also takes the shovel."""
 
     def test_ways_in(self) -> None:
-        world_type = AutoWorldRegister.world_types["Links Awakening Switch"]
-        world = setup_multiworld(world_type, STEPS, 92, {"stealing": "never"}).worlds[1]
+        world = generate_world({"stealing": "never"}, 92)
         chest = world.get_location(LOCATION_NAMES["woods-north-chest"])
         dig = world.get_location(LOCATION_NAMES["woods-west-dig"])
         for items, chest_reached, dig_reached in (

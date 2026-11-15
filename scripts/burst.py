@@ -13,13 +13,11 @@ needs no more than the game's 60), which keeps the writing short; the PNGs are w
 for what takes a PNG per frame a minute; pull single frames out of it with ffmpeg.
 """
 import argparse
-import ctypes
 import os
 import subprocess
 import sys
 import threading
 import time
-from ctypes import wintypes
 
 from PIL import Image
 
@@ -27,47 +25,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import e2e  # noqa: E402
 import emu  # noqa: E402
-
-user32 = ctypes.WinDLL("user32", use_last_error=True)
-gdi32 = ctypes.WinDLL("gdi32", use_last_error=True)
-user32.GetDC.restype = wintypes.HDC
-user32.GetDC.argtypes = [wintypes.HWND]
-user32.PrintWindow.argtypes = [wintypes.HWND, wintypes.HDC, wintypes.UINT]
-gdi32.CreateCompatibleDC.restype = wintypes.HDC
-gdi32.CreateCompatibleDC.argtypes = [wintypes.HDC]
-gdi32.CreateCompatibleBitmap.restype = wintypes.HBITMAP
-gdi32.CreateCompatibleBitmap.argtypes = [wintypes.HDC, ctypes.c_int, ctypes.c_int]
-gdi32.SelectObject.argtypes = [wintypes.HDC, wintypes.HGDIOBJ]
-gdi32.GetDIBits.argtypes = [wintypes.HDC, wintypes.HBITMAP, wintypes.UINT, wintypes.UINT, ctypes.c_void_p,
-                            ctypes.c_void_p, wintypes.UINT]
-EnumProc = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
-PW_CLIENTONLY, PW_RENDERFULLCONTENT = 1, 2
-
-
-class BITMAPINFOHEADER(ctypes.Structure):
-    _fields_ = [("biSize", wintypes.DWORD), ("biWidth", wintypes.LONG), ("biHeight", wintypes.LONG),
-                ("biPlanes", wintypes.WORD), ("biBitCount", wintypes.WORD), ("biCompression", wintypes.DWORD),
-                ("biSizeImage", wintypes.DWORD), ("biXPelsPerMeter", wintypes.LONG),
-                ("biYPelsPerMeter", wintypes.LONG), ("biClrUsed", wintypes.DWORD), ("biClrImportant", wintypes.DWORD)]
-
-
-def game_window(pid: int) -> tuple[int, int, int]:
-    """The emulator's game window: handle, client width and height."""
-    found = []
-
-    def visit(hwnd, _):
-        owner = wintypes.DWORD()
-        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
-        if owner.value == pid and user32.IsWindowVisible(hwnd):
-            r = wintypes.RECT()
-            user32.GetClientRect(hwnd, ctypes.byref(r))
-            if r.right - r.left >= 100:
-                found.append((hwnd, r.right - r.left, r.bottom - r.top))
-        return True
-    user32.EnumWindows(EnumProc(visit), 0)
-    if not found:
-        raise SystemExit("no emulator window")
-    return found[0]
 
 
 def main() -> None:
@@ -82,13 +39,12 @@ def main() -> None:
     parser.add_argument("--video")
     args = parser.parse_args()
     os.makedirs(args.out, exist_ok=True)
-    hwnd, w, h = game_window(int(open(emu.PIDFILE).read().strip()))
+    hwnd = emu.game_window(int(open(emu.PIDFILE).read().strip()))
+    if hwnd is None:
+        raise SystemExit("no emulator window")
+    capture = emu.Capture(hwnd)
+    w, h = capture.w, capture.h
     crop = tuple(int(v) for v in args.crop.split(",")) if args.crop else None
-    hdc = user32.GetDC(hwnd)
-    mdc = gdi32.CreateCompatibleDC(hdc)
-    bmp = gdi32.CreateCompatibleBitmap(hdc, w, h)
-    gdi32.SelectObject(mdc, bmp)
-    info = BITMAPINFOHEADER(ctypes.sizeof(BITMAPINFOHEADER), w, -h, 1, 32, 0, 0, 0, 0, 0, 0)
     debug = e2e.Debug(5) if args.dbg else None
     sent = []
 
@@ -110,10 +66,8 @@ def main() -> None:
             wait = start + len(frames) * step - time.perf_counter()
             if wait > 0:
                 time.sleep(wait)
-        user32.PrintWindow(hwnd, mdc, PW_CLIENTONLY | PW_RENDERFULLCONTENT)
-        buf = ctypes.create_string_buffer(w * h * 4)
-        gdi32.GetDIBits(mdc, bmp, 0, h, buf, ctypes.byref(info), 0)
-        frames.append((buf, time.perf_counter() - start))
+        frames.append((capture.frame(), time.perf_counter() - start))
+    capture.close()
     if sent:
         print(f"command at {(sent[0] - start) * 1000:.0f} ms")
     if args.video:

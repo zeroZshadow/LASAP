@@ -13,6 +13,7 @@ pins mirror those sections.
 import json
 import re
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -130,59 +131,66 @@ DUNGEON_ROOMS = {
 }
 
 
-def load(path: Path):
-    text = re.sub(r"^\s*//.*$", "", path.read_text(encoding="utf-8-sig"), flags=re.M)
-    return json.loads(text)
+def jsonc(path: Path):
+    """A pack JSON file: comments and trailing commas allowed."""
+    text = path.read_text(encoding="utf-8-sig")
+    out, i, n = [], 0, len(text)
+    while i < n:
+        c = text[i]
+        if c == '"':
+            j = i + 1
+            while text[j] != '"':
+                j += 2 if text[j] == "\\" else 1
+            out.append(text[i:j + 1])
+            i = j + 1
+        elif text.startswith("//", i):
+            i = text.find("\n", i)
+            i = n if i < 0 else i
+        elif text.startswith("/*", i):
+            i = text.index("*/", i) + 2
+        else:
+            out.append(c)
+            i += 1
+    return json.loads(re.sub(r",(\s*[}\]])", r"\1", "".join(out)))
 
 
-REFS: dict = {}  # full section code -> the section it mirrors ("ref")
-HOSTED: dict = {}  # full section code -> its hosted item codes
+def walk_locations(nodes: list, parent: str = ""):
+    """(full location id, node) of each location in a pack locations file, parents first."""
+    for node in nodes:
+        loc_id = f"{parent}/{node['name']}" if parent else node["name"]
+        yield loc_id, node
+        yield from walk_locations(node.get("children", []), loc_id)
 
 
-def pack_sections(pack: Path) -> dict:
-    """Full location id -> section names. Fills REFS."""
-    sections = {}
+@dataclass
+class Locations:
+    sections: dict = field(default_factory=dict)  # full location id -> its section names
+    pins: dict = field(default_factory=dict)  # full section code -> [(map, x, y)]: its location's pins
+    refs: dict = field(default_factory=dict)  # full section code -> the section it mirrors ("ref")
+    hosted: dict = field(default_factory=dict)  # full section code -> its hosted item codes
 
-    def walk(locations, parent):
-        for loc in locations:
-            loc_id = f"{parent}/{loc['name']}" if parent else loc["name"]
+
+def pack_locations(pack: Path) -> Locations:
+    locs = Locations()
+    for name in ("overworld.json", "dungeons.json"):
+        for loc_id, loc in walk_locations(jsonc(pack / "locations" / name)):
             if loc.get("sections"):
-                sections[loc_id] = [s.get("name", "") for s in loc["sections"]]
-                for s in loc["sections"]:
-                    code = f"@{loc_id}/{s.get('name', '')}"
-                    if s.get("ref"):
-                        REFS[code] = s["ref"]
-                    HOSTED[code] = [c.strip() for c in s.get("hosted_item", "").split(",") if c.strip()]
-            walk(loc.get("children", []), loc_id)
-
-    for name in ("overworld.json", "dungeons.json"):
-        walk(load(pack / "locations" / name), "")
-    return sections
-
-
-def section_pins(pack: Path) -> dict:
-    """Full section code -> [(map, x, y)]: the pins of the location holding the section."""
-    pins = {}
-
-    def walk(locations, parent):
-        for loc in locations:
-            loc_id = f"{parent}/{loc['name']}" if parent else loc["name"]
+                locs.sections[loc_id] = [s.get("name", "") for s in loc["sections"]]
             for s in loc.get("sections", []):
-                pins[f"@{loc_id}/{s.get('name', '')}"] = [(m["map"], m["x"], m["y"]) for m in loc.get("map_locations", [])]
-            walk(loc.get("children", []), loc_id)
+                code = f"@{loc_id}/{s.get('name', '')}"
+                if s.get("ref"):
+                    locs.refs[code] = s["ref"]
+                locs.hosted[code] = [c.strip() for c in s.get("hosted_item", "").split(",") if c.strip()]
+                locs.pins[code] = [(m["map"], m["x"], m["y"]) for m in loc.get("map_locations", [])]
+    return locs
 
-    for name in ("overworld.json", "dungeons.json"):
-        walk(load(pack / "locations" / name), "")
-    return pins
 
-
-def overworld_pins(pack: Path) -> dict:
+def overworld_pins(locs: Locations) -> dict:
     """LASR overworld location -> (x, y) of its pin on the pack's overworld map: its first section's that has one."""
-    pins = section_pins(pack)
     found = {}
-    for lasr, codes in location_codes(pack_sections(pack)).items():
+    for lasr, codes in location_codes(locs).items():
         for code in codes:
-            on_map = [(x, y) for m, x, y in pins.get(code, ()) if m == "map"]
+            on_map = [(x, y) for m, x, y in locs.pins.get(code, ()) if m == "map"]
             if on_map:
                 found[lasr] = on_map[0]
                 break
@@ -217,8 +225,9 @@ def resolve(sections: dict, code: str) -> str:
     return f"@{found[0]}/{section}"
 
 
-def location_codes(sections: dict) -> dict:
+def location_codes(locs: Locations) -> dict:
     """LASR location -> its pack section codes."""
+    sections = locs.sections
     codes = {}
     by_section = {}
     for loc_id, secs in sections.items():
@@ -236,7 +245,7 @@ def location_codes(sections: dict) -> dict:
             dungeon_code = resolve(sections, f"Dungeons/{folder}/{room}/{dungeon_sec}")
             overworld_code = resolve(sections, f"World/{overworld}/{section or room}")
             # The overworld pin's section mirrors the dungeon map's ("ref"); otherwise both are set.
-            ref = REFS.get(overworld_code)
+            ref = locs.refs.get(overworld_code)
             mirrored = ref is not None and dungeon_code.endswith("/" + ref)
             codes[lasr] = [dungeon_code] if mirrored else [dungeon_code, overworld_code]
         elif lasr in LOCATIONS:
@@ -253,7 +262,7 @@ def location_codes(sections: dict) -> dict:
 def item_images(pack: Path) -> dict:
     """LASR item -> the pack's image of its code (the item's, or its stage's)."""
     images = {}
-    for item in load(pack / "items" / "items.json"):
+    for item in jsonc(pack / "items" / "items.json"):
         for entry in [item] + item.get("stages", []):
             for code in entry.get("codes", "").split(","):
                 if code.strip() and entry.get("img"):
@@ -273,9 +282,9 @@ def hint_code(code: str) -> str:
     return "hint:" + code[1:].replace(",", "")
 
 
-def check_hint_items(codes: dict) -> None:
+def check_hint_items(codes: dict, hosted: dict) -> None:
     for code in sorted({c for section_codes in codes.values() for c in section_codes}):
-        if hint_code(code) not in HOSTED[code]:
+        if hint_code(code) not in hosted[code]:
             raise SystemExit(f'{code}: add "hosted_item": "{hint_code(code)}" (after any hosted item)')
 
 
@@ -286,8 +295,9 @@ def lua_string(text: str) -> str:
 def main() -> None:
     pack = Path(sys.argv[1])
     images = item_images(pack)
-    codes = location_codes(pack_sections(pack))
-    check_hint_items(codes)
+    locs = pack_locations(pack)
+    codes = location_codes(locs)
+    check_hint_items(codes, locs.hosted)
     out = pack / "scripts" / "autotracking"
     out.mkdir(parents=True, exist_ok=True)
     header = "-- Generated by LASAP's scripts/poptracker_map.py from its apworld/las/data/ids.json; do not edit.\n"

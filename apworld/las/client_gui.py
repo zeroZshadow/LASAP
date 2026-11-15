@@ -64,6 +64,8 @@ TITLES = {
     "sd_card_folder": "the Switch's SD card",
     "mod_folder": "the mod folder",
 }
+OTHER_PROGRAM = "Windows opens .aplas files with another program. Right-click a .aplas file, choose Open with, then " \
+                "Archipelago."
 
 
 class Palette:
@@ -105,6 +107,8 @@ class HoverButton(MDButton):
 
 def label(text: str, size: float = 14, color: Any = None, bold: bool = False, one_line: bool = False,
           markup: bool = False, **kwargs: Any) -> MDLabel:
+    if one_line:
+        kwargs.setdefault("pos_hint", {"center_y": 0.5})
     widget = MDLabel(text=text, markup=markup, theme_font_size="Custom", font_size=sp(size), bold=bold, **kwargs)
     if color is not None:
         widget.theme_text_color, widget.text_color = "Custom", color
@@ -114,6 +118,11 @@ def label(text: str, size: float = 14, color: Any = None, bold: bool = False, on
     else:
         widget.adaptive_height = True
     return widget
+
+
+def caption(text: str, width: float, color: Any, size: float = 14, bold: bool = True) -> MDLabel:
+    """A one-line label of fixed width: the name before a value or a field."""
+    return label(text, size, color, bold=bold, one_line=True, size_hint_x=None, width=dp(width))
 
 
 def icon(name: str, color: Any, size: float = 18, **kwargs: Any) -> MDIcon:
@@ -298,13 +307,7 @@ class PatchPanel(ScrollView):
         asyncio.create_task(self.ctx.detect_from_emulator(game=False))
 
     def register_file_type(self) -> None:
-        error = file_types.register()
-        if error:
-            logger.error(error)
-        else:
-            logger.info("Double-clicking a .aplas file now opens it in this client.")
-        self.shown = None
-        self.refresh()
+        self.file_type_changed(file_types.register(), "Double-clicking a .aplas file now opens it in this client.")
 
     def toggle_register(self, on: bool) -> None:
         """The step 1 box: ticked, a chosen patch file registers .aplas; unticked removes the registration."""
@@ -312,13 +315,19 @@ class PatchPanel(ScrollView):
         if on and self.shown and self.shown["done"][1] and not file_types.is_registered():
             self.register_file_type()
         elif not on and file_types.is_registered():
-            error = file_types.unregister()
-            if error:
-                logger.error(error)
-            else:
-                logger.info("Double-clicking a .aplas file no longer opens it in this client.")
-            self.shown = None
-            self.refresh()
+            self.file_type_changed(file_types.unregister(),
+                                   "Double-clicking a .aplas file no longer opens it in this client.")
+
+    def file_type_changed(self, error: Optional[str], done: str) -> None:
+        if error:
+            logger.error(error)
+        else:
+            logger.info(done)
+        self.rebuild()
+
+    def rebuild(self) -> None:
+        self.shown = None
+        self.refresh()
 
     def choose(self, setting: PlayerSetting, caller: Widget) -> None:
         def pick(value: str) -> None:
@@ -341,6 +350,9 @@ class PatchPanel(ScrollView):
         return column(spacing=spacing, padding=(dp(padding[0]), dp(padding[1])), md_bg_color=k.card,
                       line_color=k.accent if strong else k.line, radius=[dp(10)])
 
+    def list_box(self) -> MDBoxLayout:
+        return column(spacing=0, line_color=self.colors.line, radius=[dp(10)])
+
     def title(self, text: str, size: float = 18) -> MDLabel:
         return label(text, size, self.colors.text, bold=True)
 
@@ -356,7 +368,7 @@ class PatchPanel(ScrollView):
         box = MDCheckbox(size_hint=(None, None), size=(dp(32), dp(32)), active=active, pos_hint={"center_y": 0.5})
         box.bind(active=lambda w, on: action(bool(on)))
         caption = Tile(size_hint_y=None, height=dp(height))
-        caption.add_widget(label(text, 14, self.colors.text, one_line=True, pos_hint={"center_y": 0.5}))
+        caption.add_widget(label(text, 14, self.colors.text, one_line=True))
         caption.bind(on_release=lambda *_: setattr(box, "active", not box.active))
         return row(box, caption, spacing=6, height=height)
 
@@ -380,10 +392,9 @@ class PatchPanel(ScrollView):
             else:
                 badge = MDBoxLayout(size_hint=(None, None), size=(dp(20), dp(20)), radius=[dp(10)], line_color=color,
                                     pos_hint={"center_y": 0.5})
-                badge.add_widget(label(str(n), 11, color, halign="center", valign="middle", one_line=True,
-                                       pos_hint={"center_y": 0.5}))
+                badge.add_widget(label(str(n), 11, color, halign="center", valign="middle", one_line=True))
                 tile.add_widget(badge)
-            tile.add_widget(label(name, 13, color, bold=current, one_line=True, pos_hint={"center_y": 0.5}))
+            tile.add_widget(label(name, 13, color, bold=current, one_line=True))
             tile.bind(on_release=lambda *_, n=n: self.show("setup", n, editing=self.editing))
             steps.add_widget(tile)
         self.content.add_widget(steps)
@@ -419,16 +430,13 @@ class PatchPanel(ScrollView):
                 card.add_widget(self.status_line(check))
         choose = button("Choose another…" if check.level == OK else "Choose patch file…",
                         lambda: self.browse("patch_file"), "outlined" if check.level == OK else "filled")
-        card.add_widget(row(choose, fill(), *([button("Done" if self.editing else "Next", self.finish if
-                                                      self.editing else self.next_step)]
-                                              if check.level == OK else [])))
+        card.add_widget(row(choose, fill(), *([self.next_button(True)] if check.level == OK else [])))
         if Utils.is_windows:
             card.add_widget(self.checkbox("Open .aplas patch files in this client when I double-click them",
                                           m["ours"] or m["register_wanted"] and not m["done"][1],
                                           self.toggle_register))
         if m["other_program"]:
-            card.add_widget(label("Windows opens .aplas files with another program. Right-click a .aplas file, choose "
-                                  "Open with, then Archipelago.", 13, k.muted))
+            card.add_widget(label(OTHER_PROGRAM, 13, k.muted))
 
     def step_platform(self, card: MDBoxLayout, m: Dict[str, Any]) -> None:
         k = self.colors
@@ -478,14 +486,12 @@ class PatchPanel(ScrollView):
         cards = column(spacing=6)
         for drive in drives:
             chosen = bool(sd) and emulators.same_path(drive.root, Path(sd))
-            note = label("has Atmosphère" if drive.atmosphere else "no atmosphere folder", 13,
-                         k.status[OK] if drive.atmosphere else k.muted, one_line=True, size_hint_x=None, width=dp(150),
-                         pos_hint={"center_y": 0.5})
+            note = caption("has Atmosphère" if drive.atmosphere else "no atmosphere folder", 150,
+                           k.status[OK] if drive.atmosphere else k.muted, 13, bold=False)
             tile = Tile(orientation="horizontal", spacing=dp(12), padding=(dp(12), 0), size_hint_y=None,
                         height=dp(40), line_color=k.accent if chosen else k.outline, radius=[dp(8)])
             tile.add_widget(icon("radiobox-marked" if chosen else "radiobox-blank", k.accent))
-            tile.add_widget(label(f"{drive.root} {drive.label}".strip(), 14, k.text, bold=chosen,
-                                  one_line=True, pos_hint={"center_y": 0.5}))
+            tile.add_widget(label(f"{drive.root} {drive.label}".strip(), 14, k.text, bold=chosen, one_line=True))
             tile.add_widget(note)
             tile.bind(on_release=lambda *_, d=drive: self.commit("sd_card_folder", str(d.root)))
             cards.add_widget(tile)
@@ -493,12 +499,11 @@ class PatchPanel(ScrollView):
             cards.add_widget(label("No SD card found. Put it in this computer, or choose its folder.", 14, k.muted))
         card.add_widget(cards)
         card.add_widget(row(button("Another folder…", lambda: self.browse("sd_card_folder"), "text"),
-                            button("Look again", self.refresh_drives, "text"), fill()))
+                            button("Look again", self.rebuild, "text"), fill()))
         if sd and c["sd_card_folder"].level != OK:
             card.add_widget(self.status_line(c["sd_card_folder"]))
         host = self.field("game_host", width=180)
-        card.add_widget(row(label("Switch's IP address", 14, k.text, bold=True, one_line=True, size_hint_x=None,
-                                  width=dp(160), pos_hint={"center_y": 0.5}), host, fill(), height=32))
+        card.add_widget(row(caption("Switch's IP address", 160, k.text), host, fill(), height=32))
         card.add_widget(label("Such as 192.168.1.42. On the Switch: System Settings, Internet, Connection Status. "
                               "The Switch and this computer must be on the same network.", 13, k.muted))
         card_done = c["sd_card_folder"].level == OK or m["sd_card_out"]
@@ -508,14 +513,9 @@ class PatchPanel(ScrollView):
                                                not card_done or text.strip() in checklist.LOCAL_HOSTS))
         card.add_widget(row(fill(), next_button))
 
-    def refresh_drives(self) -> None:
-        self.shown = None
-        self.refresh()
-
     def file_row(self, level: str, title: str, text: str, color: Any, buttons: List[Widget],
                  markup: bool = False) -> MDBoxLayout:
-        line = row(self.status_icon(level), label(title, 14, self.colors.text, bold=True, one_line=True,
-                                                  size_hint_x=None, width=dp(96), pos_hint={"center_y": 0.5}),
+        line = row(self.status_icon(level), caption(title, 96, self.colors.text),
                    label(text, 14, color, markup=markup, pos_hint={"center_y": 0.5}), spacing=10)
         for b in buttons:
             line.add_widget(b)
@@ -600,8 +600,8 @@ class PatchPanel(ScrollView):
                                                        pos_hint={"center_y": 0.5})
                 else:
                     mark = icon("circle-outline", k.outline)
-                card.add_widget(row(mark, label(step, 14, k.text if i <= m["step_at"] else k.muted, one_line=True,
-                                                pos_hint={"center_y": 0.5}), spacing=10, height=22))
+                card.add_widget(row(mark, label(step, 14, k.text if i <= m["step_at"] else k.muted, one_line=True),
+                                    spacing=10, height=22))
         elif others:
             red = k.status[ERROR]
             box = column(spacing=8, padding=(dp(14), dp(12)), md_bg_color=red[:3] + [0.12], line_color=red,
@@ -612,7 +612,7 @@ class PatchPanel(ScrollView):
             for path in others:
                 box.add_widget(label(str(path), 13, k.text, one_line=True, padding=(dp(30), 0, 0, 0)))
             box.add_widget(row(button("Open the folder", lambda: Utils.open_file(str(others[0]))),
-                               button("Check again", self.refresh_drives, "outlined"), fill(),
+                               button("Check again", self.rebuild, "outlined"), fill(),
                                padding=(dp(30), 0, 0, 0)))
             card.add_widget(box)
         else:
@@ -658,14 +658,12 @@ class PatchPanel(ScrollView):
         card.add_widget(actions)
         self.content.add_widget(card)
 
-        summary = column(spacing=0, line_color=k.line, radius=[dp(10)])
+        summary = self.list_box()
         for title, text, level, panel in self.summaries(m, name):
             tile = Tile(orientation="horizontal", spacing=dp(12), padding=(dp(16), 0), size_hint_y=None,
                         height=dp(40), disabled=m["patching"])
-            tile.add_widget(label(title, 14, k.text, bold=True, one_line=True, size_hint_x=None, width=dp(120),
-                                  pos_hint={"center_y": 0.5}))
-            tile.add_widget(label(text, 14, k.status[level] if level != INFO else k.muted,
-                                  one_line=True, pos_hint={"center_y": 0.5}))
+            tile.add_widget(caption(title, 120, k.text))
+            tile.add_widget(label(text, 14, k.status[level] if level != INFO else k.muted, one_line=True))
             tile.add_widget(icon("chevron-right", k.accent))
             tile.bind(on_release=lambda *_, p=panel: self.show("panel", panel=p))
             summary.add_widget(tile)
@@ -698,9 +696,8 @@ class PatchPanel(ScrollView):
         back = HoverButton(MDButtonIcon(icon="chevron-left"), MDButtonText(text="Back"), style="outlined", radius=dp(8),
                         pos_hint={"center_y": 0.5})
         back.bind(on_release=lambda *_: self.show("ready"))
-        header = row(back, label(title, 18, k.text, bold=True, one_line=True, adaptive_width=True,
-                                 pos_hint={"center_y": 0.5}),
-                     label(note, 13, k.muted, one_line=True, pos_hint={"center_y": 0.5}), spacing=12, height=40)
+        header = row(back, label(title, 18, k.text, bold=True, one_line=True, adaptive_width=True),
+                     label(note, 13, k.muted, one_line=True), spacing=12, height=40)
         if self.panel == "advanced" and Utils.is_windows and not m["ours"]:
             header.add_widget(button("Open .aplas files with a double-click", self.register_file_type, "outlined"))
         self.content.add_widget(header)
@@ -719,11 +716,9 @@ class PatchPanel(ScrollView):
                 ("RomFS dump", o["romfs_folder"], 4)]
         if not switch:
             rows.append(("Game", o["game_file"] or f"None: you start it in {name}", 4))
-        box = column(spacing=0, line_color=k.line, radius=[dp(10)])
+        box = self.list_box()
         for title, value, step in rows:
-            box.add_widget(row(label(title, 14, k.text, bold=True, one_line=True, size_hint_x=None, width=dp(130),
-                                     pos_hint={"center_y": 0.5}),
-                               label(value, 14, k.muted, one_line=True, pos_hint={"center_y": 0.5}),
+            box.add_widget(row(caption(title, 130, k.text), label(value, 14, k.muted, one_line=True),
                                button("Change", lambda s=step: self.show("setup", s, editing=True), "text"),
                                spacing=12, height=50, padding=(dp(16), 0, dp(6), 0)))
         self.content.add_widget(box)
@@ -742,9 +737,9 @@ class PatchPanel(ScrollView):
                 choice = HoverButton(MDButtonIcon(icon="menu-down"), MDButtonText(text=value), style="outlined",
                                   radius=dp(6), pos_hint={"center_y": 0.5})
                 choice.bind(on_release=lambda b, s=setting: self.choose(s, b))
-                grid.add_widget(row(label(setting.label, 14, k.text, one_line=True, size_hint_x=None, width=dp(120),
-                                          pos_hint={"center_y": 0.5}), choice, fill(), spacing=8, height=44))
-        box = column(spacing=0, line_color=k.line, radius=[dp(10)])
+                grid.add_widget(row(caption(setting.label, 120, k.text, bold=False), choice, fill(), spacing=8,
+                                    height=44))
+        box = self.list_box()
         box.add_widget(grid)
         self.content.add_widget(box)
         self.content.add_widget(label("These apply to every seed. How the game plays is set in your options file.",
@@ -762,8 +757,7 @@ class PatchPanel(ScrollView):
                                  pos_hint={"center_y": 0.5}), spacing=16, height=40))
         box.add_widget(self.checkbox("Show their slot names over their heads", m["ghost_names"],
                                      self.ctx.set_ghost_names))
-        box.add_widget(row(label("Ghost relay", 14, k.text, bold=True, one_line=True, size_hint_x=None, width=dp(110),
-                                 pos_hint={"center_y": 0.5}), self.field("ghost_relay"), spacing=12, height=32))
+        box.add_widget(row(caption("Ghost relay", 110, k.text), self.field("ghost_relay"), spacing=12, height=32))
         box.add_widget(label("Leave it empty for the default relay. host:port, password@host:port or a wss:// "
                              "address.", 13, k.muted, padding=(dp(122), 0, 0, 0)))
         self.content.add_widget(box)
@@ -784,14 +778,11 @@ class PatchPanel(ScrollView):
             if name and key in ("sd_card_folder", "mod_folder"):
                 empty = f"{name}'s own" if key == "sd_card_folder" else f"{name}'s default"
             setting = column(spacing=2)
-            setting.add_widget(row(label(title, 14, k.text, bold=True, one_line=True, size_hint_x=None, width=dp(140),
-                                         pos_hint={"center_y": 0.5}), self.field(key), spacing=10, height=32))
+            setting.add_widget(row(caption(title, 140, k.text), self.field(key), spacing=10, height=32))
             if not m["options"][key]:
                 help_text = f"Empty: {empty}. {help_text}"
-            used = row(label("In use:", 13, k.muted, one_line=True, size_hint_x=None, width=dp(50),
-                             pos_hint={"center_y": 0.5}),
-                       label(in_use[key] or "-", 13, k.text, one_line=True, pos_hint={"center_y": 0.5}),
-                       spacing=6, height=20, padding=(dp(150), 0, 0, 0))
+            used = row(caption("In use:", 50, k.muted, 13, bold=False),
+                       label(in_use[key] or "-", 13, k.text, one_line=True), spacing=6, height=20, padding=(dp(150), 0, 0, 0))
             if key in ("sd_card_folder", "mod_folder") and in_use[key]:
                 folder = Path(in_use[key])
                 used.add_widget(button("Open", lambda f=folder: Utils.open_file(str(f if f.is_dir() else f.parent)),
@@ -800,8 +791,7 @@ class PatchPanel(ScrollView):
             setting.add_widget(label(help_text, 12, k.muted, one_line=True, padding=(dp(150), 0, 0, 0)))
             box.add_widget(setting)
         if m["other_program"]:
-            box.add_widget(label("Windows opens .aplas files with another program. Right-click a .aplas file, choose "
-                                 "Open with, then Archipelago.", 13, k.muted))
+            box.add_widget(label(OTHER_PROGRAM, 13, k.muted))
         self.content.add_widget(box)
 
 

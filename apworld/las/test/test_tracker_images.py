@@ -1,13 +1,12 @@
 """The tracker's map images (patcher ap_tracker_map.py): its ASTC decoder (ap_astc.py), BC3 icons (ap_bntx.py) and how
 it draws and writes the images."""
 import struct
-import sys
 import tempfile
 import unittest
 import zlib
 from pathlib import Path
 
-PATCHER = Path(__file__).resolve().parents[3] / "patcher"
+from . import patcher_import
 
 
 def texels(rgba: bytes):
@@ -17,15 +16,7 @@ def texels(rgba: bytes):
 class TestTrackerImages(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        saved = list(sys.path)
-        sys.path.insert(0, str(PATCHER))
-        try:
-            import ap_astc
-            import ap_bntx
-            import ap_tracker_map
-        finally:
-            sys.path[:] = saved
-        cls.astc, cls.bntx, cls.images = ap_astc, ap_bntx, ap_tracker_map
+        cls.astc, cls.bntx, cls.images = patcher_import("ap_astc", "ap_bntx", "ap_tracker_map")
 
     def test_astc_blocks(self) -> None:
         """Blocks of the game's textures, one per kind (block size, partitions, planes, ranges, endpoint mode, void

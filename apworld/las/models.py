@@ -6,11 +6,12 @@ from typing import List, Tuple
 from BaseClasses import Item, ItemClassification
 
 from .items import GAME, ITEM_TABLE
-from .lasr import ITEM_DEFS, _load_yaml
+from .lasr import ITEM_DEFS, load_yaml
 
 MODEL_RULES: List[Tuple[re.Pattern, str]] = [
     (re.compile(pattern, re.IGNORECASE), entry["model"])
-    for entry in _load_yaml("item_models.yml") for pattern in entry["names"]
+    for entry in load_yaml("item_models.yml") for pattern in entry["names"]
+
 ]
 
 

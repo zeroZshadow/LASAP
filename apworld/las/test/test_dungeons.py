@@ -6,7 +6,7 @@ from unittest import mock
 
 from . import LASTestBase
 from .. import LASWorld
-from ..items import ITEM_TABLE
+from ..items import LASR_TO_ITEM
 from ..lasr import (DOOR_LOGIC, DOORS, DUNGEON_DOORS, DUNGEONS, ENTERED_BY_DOOR, ITEM_DEFS, LOGIC, WRITTEN_LOGIC,
                     door_entrance, door_logic, door_node, dungeon_name, dungeon_of, dungeon_region, entrance_logic, plain_logic,
                     shuffle_dungeons, slot_doors)
@@ -17,6 +17,13 @@ from ..tracker import LogicTracker
 IDENTITY = {d: d for d in DUNGEONS}
 SWAP = {**IDENTITY, "tail-cave": "turtle-rock", "turtle-rock": "tail-cave"}
 SHRINE_SWAP = {**IDENTITY, "face-shrine": "key-cavern", "key-cavern": "face-shrine"}
+TOKENS = {"open-mabe": True, "free-book": True, "shuffled-bombs": True, "can-steal": True}
+EVERYTHING = [LASR_TO_ITEM[k] for k, v in ITEM_DEFS.items() if k in LASR_TO_ITEM for _ in range(v["quantity"])]
+
+
+def checks(n: int) -> list:
+    """Dungeon n's item locations."""
+    return [k for k in LOGIC if k.startswith(f"D{n}-") and LOGIC[k]["type"] == "item"]
 
 
 def conditions(node: dict) -> dict:
@@ -89,14 +96,10 @@ class TestDungeonLogic(unittest.TestCase):
     def test_tracker_follows_the_doors(self) -> None:
         """Through Tail Cave's door into Turtle Rock: Turtle Rock and its top without the Ocarina, Tail Cave not
         without it."""
-        lasr = {data.lasr_name: name for name, data in ITEM_TABLE.items()}
-        everything = [lasr[k] for k, v in ITEM_DEFS.items() if k in lasr for _ in range(v["quantity"])]
-        items = [name for name in everything if name != lasr["ocarina"]]
-        tokens = {"open-mabe": True, "free-book": True, "shuffled-bombs": True, "can-steal": True}
-        d1 = [k for k in LOGIC if k.startswith("D1-") and LOGIC[k]["type"] == "item"]
-        d8 = [k for k in LOGIC if k.startswith("D8-") and LOGIC[k]["type"] == "item"] + ["above-turtle-rock"]
-        vanilla = LogicTracker("basic", tokens, [], d1 + d8).in_logic(items)
-        swapped = LogicTracker("basic", tokens, [], d1 + d8, SWAP).in_logic(items)
+        items = [name for name in EVERYTHING if name != LASR_TO_ITEM["ocarina"]]
+        d1, d8 = checks(1), checks(8) + ["above-turtle-rock"]
+        vanilla = LogicTracker("basic", TOKENS, [], d1 + d8).in_logic(items)
+        swapped = LogicTracker("basic", TOKENS, [], d1 + d8, SWAP).in_logic(items)
         self.assertTrue(set(d1) <= vanilla and not set(d8) & vanilla)
         self.assertTrue(set(d8) <= swapped and not set(d1) & swapped)
 
@@ -112,14 +115,11 @@ class TestDungeonLogic(unittest.TestCase):
     def test_tracker_doors(self) -> None:
         """Behind a reachable door: every check of the dungeon it leads into, in logic or not. With the Tail Key alone,
         Tail Cave's door (into Turtle Rock) and none of Turtle Rock's checks."""
-        lasr = {data.lasr_name: name for name, data in ITEM_TABLE.items()}
-        tokens = {"open-mabe": True, "free-book": True, "shuffled-bombs": True, "can-steal": True}
-        d1 = [k for k in LOGIC if k.startswith("D1-") and LOGIC[k]["type"] == "item"]
-        d8 = [k for k in LOGIC if k.startswith("D8-") and LOGIC[k]["type"] == "item"]
-        reachable, doors = LogicTracker("basic", tokens, [], d1 + d8, SWAP).sweep([lasr["tail-key"]])
+        d1, d8 = checks(1), checks(8)
+        reachable, doors = LogicTracker("basic", TOKENS, [], d1 + d8, SWAP).sweep([LASR_TO_ITEM["tail-key"]])
         self.assertEqual(doors, set(d8))
         self.assertFalse(reachable & set(d8))
-        reachable, doors = LogicTracker("basic", tokens, [], d1 + d8).sweep([lasr["tail-key"]])
+        reachable, doors = LogicTracker("basic", TOKENS, [], d1 + d8).sweep([LASR_TO_ITEM["tail-key"]])
         self.assertEqual(doors, set(d1))
         self.assertTrue(reachable < set(d1))
 
@@ -127,14 +127,11 @@ class TestDungeonLogic(unittest.TestCase):
         """A dungeon is in logic only once the door that leads into it is found, and so is what its inside reaches:
         the Rapids' south island chest through the Face Shrine, the top of Turtle Rock. The door's own look (DOORS)
         does not wait. The last door counts as found once the other eight are."""
-        lasr = {data.lasr_name: name for name, data in ITEM_TABLE.items()}
-        items = [lasr[k] for k, v in ITEM_DEFS.items() if k in lasr for _ in range(v["quantity"])]
-        tokens = {"open-mabe": True, "free-book": True, "shuffled-bombs": True, "can-steal": True}
-        d6 = [k for k in LOGIC if k.startswith("D6-") and LOGIC[k]["type"] == "item"] + ["rapids-south-island"]
-        d8 = [k for k in LOGIC if k.startswith("D8-") and LOGIC[k]["type"] == "item"] + ["above-turtle-rock"]
+        items = EVERYTHING
+        d6, d8 = checks(6) + ["rapids-south-island"], checks(8) + ["above-turtle-rock"]
         entrances = {**IDENTITY, "key-cavern": "face-shrine", "face-shrine": "turtle-rock",
                      "turtle-rock": "key-cavern"}
-        tracker = LogicTracker("basic", tokens, [], d6 + d8, entrances)
+        tracker = LogicTracker("basic", TOKENS, [], d6 + d8, entrances)
         others = [door for door in DUNGEONS if door not in ("key-cavern", "face-shrine", "turtle-rock")]
         reachable, doors = tracker.sweep(items, others)
         self.assertFalse(reachable & set(d6 + d8))
@@ -220,7 +217,7 @@ class TestDoorDeadlock(LASTestBase):
             self.assertNotIn(into_catfish, ("eagle-tower", "face-shrine", "turtle-rock"), seed)
 
     def test_stuck_map_is_seen(self) -> None:
-        with mock.patch.object(LASWorld, "_place_doors", return_value={}), mock.patch.object(LASWorld, "pre_fill"), \
+        with mock.patch.object(LASWorld, "_place_doors", return_value=True), mock.patch.object(LASWorld, "pre_fill"), \
                 mock.patch(f"{LASWorld.__module__}.shuffle_dungeons", return_value=self.STUCK):
             self.world_setup(self.seed)
         self.assertFalse(self.reaches())

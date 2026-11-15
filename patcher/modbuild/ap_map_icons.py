@@ -232,11 +232,9 @@ def _patch_animation(data: bytes) -> bytes:
 def build(archive: bytes) -> bytes:
     """Game.arc with the map tracker's marker textures and frames."""
     import oead
+    from ap_ui import archive_writer
     sarc = oead.Sarc(archive)
-    writer = oead.SarcWriter.from_sarc(sarc)
-    writer.set_min_alignment(16)
-    writer.add_alignment_requirement("bnsh", 0x1000)
-    writer.add_alignment_requirement("bntx", 0x1000)
+    writer = archive_writer(sarc)
     writer.files[ANIMATION] = _patch_animation(bytes(sarc.get_file(ANIMATION).data))
     writer.files[TEXTURES] = _add_textures(bytes(sarc.get_file(TEXTURES).data))
     return bytes(writer.write()[1])

@@ -78,7 +78,8 @@ class Worker:
     def __init__(self, logic_file=None):
         self.ap = import_world(logic_file)
         self.logic = self.ap["logic"]
-        self.written = self.ap["lasr"]._load_yaml("logic.yml"), self.ap["lasr"]._load_yaml("doors.yml")
+        self.written = self.ap["lasr"].load_yaml("logic.yml"), self.ap["lasr"].load_yaml("doors.yml")
+
         self.exits = {}  # zone -> the doors in it the house's exit may lead to (house_exits), the house's own first
         logic, doors = self.written
         pairs = {**doors["pairs"], **{b: a for a, b in doors["pairs"].items()}}

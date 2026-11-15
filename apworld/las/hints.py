@@ -43,7 +43,6 @@ JOKES = (
     "Your Tarin is under a beehive somewhere.",
     "Your rooster is at the weather vane. Mostly.",
 )
-DUNGEON_ITEM_KINDS = ("key", "nightmare-key", "map", "compass", "stone-beak")
 # Long checks the always hints name, when shuffled: the trade quest's end, the Seashell Mansion's last rewards, the
 # rapids race's best time, Ol' Baron and Dampe's last challenge.
 ALWAYS = ("mermaid-cave", "40-seashell-reward", "50-seashell-reward", "rapids-race-30", "fishing-ol-baron",
@@ -120,7 +119,7 @@ def candidates(world: "LASWorld") -> List[Location]:
             if lasr_location in known:
                 continue
             # a dungeon item in its own dungeon: where it has to be anyway
-            if lasr_item[:-3] in DUNGEON_ITEM_KINDS and location_dungeon(lasr_location) == item_dungeon(lasr_item):
+            if item_dungeon(lasr_item) >= 0 and location_dungeon(lasr_location) == item_dungeon(lasr_item):
                 continue
         found.append(location)
     return sorted(found, key=lambda loc: (loc.player, loc.name))

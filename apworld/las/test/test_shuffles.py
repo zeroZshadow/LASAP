@@ -1,22 +1,14 @@
 """Randomize Text's pools and lines (patcher ap_shuffles.py)."""
 import random
-import sys
 import unittest
-from pathlib import Path
 
-PATCHER = Path(__file__).resolve().parents[3] / "patcher"
+from . import patcher_import
 
 
 class TestText(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        saved = list(sys.path)
-        sys.path.insert(0, str(PATCHER))
-        try:
-            import ap_shuffles
-        finally:
-            sys.path[:] = saved
-        cls.shuffles = ap_shuffles
+        cls.shuffles = ap_shuffles = patcher_import("ap_shuffles")[0]
         cls.lines = [line.split() for line in ap_shuffles.text_lines(random.Random("test"))]
 
     def test_kept_messages_stay(self):

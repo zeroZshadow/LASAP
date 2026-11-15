@@ -60,27 +60,27 @@ def short_name(name: str) -> str:
     return name.split(" - ", 1)[-1]
 
 
-def group_name(positions: dict, locs: list) -> str:
+def group_name(positions: dict, names: dict, locs: list) -> str:
     """An overworld icon's name: its dungeon ("D1 Tail Cave"), its check's name, or the spot of its checks
     (map_positions.json, the PopTracker pack's place)."""
     dungeon = re.match(r"(D\d)-", locs[0])
     if dungeon:
-        return f"{dungeon.group(1)} {positions['names'][locs[0]].split(' - ', 1)[0]}"
+        return f"{dungeon.group(1)} {names[locs[0]].split(' - ', 1)[0]}"
     if len(locs) == 1:
-        return short_name(positions["names"][locs[0]])
+        return short_name(names[locs[0]])
     return positions["spots"][locs[0]]
 
 
-def dot_name(positions: dict, locs: list) -> str:
+def dot_name(names: dict, locs: list) -> str:
     """A dungeon dot's name: its check's name; for several, what their names start with ("Rupee Room" for Rupee Room 1
     to 28), else the first name and how many more."""
-    names = [short_name(positions["names"][loc]) for loc in locs]
-    if len(names) == 1:
-        return names[0]
-    common = os.path.commonprefix(names).rstrip(" 0123456789")
+    shorts = [short_name(names[loc]) for loc in locs]
+    if len(shorts) == 1:
+        return shorts[0]
+    common = os.path.commonprefix(shorts).rstrip(" 0123456789")
     if len(common) >= 4:
         return common
-    return f"{names[0]} +{len(names) - 1}"
+    return f"{shorts[0]} +{len(shorts) - 1}"
 
 
 def hidden_until(locs: list, shuffled_dungeons: bool):
@@ -91,9 +91,9 @@ def hidden_until(locs: list, shuffled_dungeons: bool):
     return marker_flags[DUNGEON_MARKERS[dungeon.group(1)]] if dungeon and shuffled_dungeons else None
 
 
-def lines(location_ids: dict, entrances: Optional[Mapping[str, str]] = None) -> list:
-    """The seed file's map, which turns the tracker on. `entrances`: the patch's dungeon_entrances with shuffled
-    dungeons, else None. The doors' places and the dungeon chests come from the mod's build (ap_assets.data)."""
+def lines(location_ids: dict, names: dict, entrances: Optional[Mapping[str, str]] = None) -> list:
+    """The seed file's map, which turns the tracker on. `names`: the world's location_names.json. `entrances`: the
+    patch's dungeon_entrances with shuffled dungeons, else None. The doors' places and the dungeon chests come from the mod's build (ap_assets.data)."""
     shuffled_dungeons = entrances is not None
     positions = load_positions()
     data = ap_assets.data()
@@ -110,9 +110,9 @@ def lines(location_ids: dict, entrances: Optional[Mapping[str, str]] = None) -> 
         lines.append(f"O {g} " + " ".join(str(location_ids[loc]) for loc in locs))
     for d, (room, x, z, locs) in enumerate(dots):
         lines.append(f"M {d} {room} {x:.3f} {z:.3f} " + " ".join(str(location_ids[loc]) for loc in locs))
-    lines += [f"G {g} {group_name(positions, locs)}" for g, locs in shown]
-    lines += [f"MG {d} {dot_name(positions, locs)}" for d, (*_, locs) in enumerate(dots)]
+    lines += [f"G {g} {group_name(positions, names, locs)}" for g, locs in shown]
+    lines += [f"MG {d} {dot_name(names, locs)}" for d, (*_, locs) in enumerate(dots)]
     lines += [f"H {g} {flag} {HIDDEN_DUNGEON}" for g, locs in shown if (flag := hidden_until(locs, shuffled_dungeons))]
-    lines += [f"N {location_ids[loc]} {short_name(positions['names'][loc])}"
+    lines += [f"N {location_ids[loc]} {short_name(names[loc])}"
               for loc in sorted({loc for _, locs in shown for loc in locs} | {loc for *_, locs in dots for loc in locs})]
     return lines

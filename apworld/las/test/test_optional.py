@@ -7,7 +7,7 @@ from Fill import distribute_items_restrictive
 from test.general import gen_steps, setup_multiworld
 from worlds.AutoWorld import AutoWorldRegister, call_all
 
-from . import LASTestBase
+from . import LASTestBase, generate
 from .. import GOAL_EVENT
 from ..items import GAME, ITEM_TABLE, LASR_TO_ITEM
 from ..lasr import CATEGORIES, SHOP_LOCATIONS
@@ -127,9 +127,8 @@ class TestFewFiller(unittest.TestCase):
                "dungeon_items": "own_dungeon", "instruments": "any_dungeon", "start_inventory_from_pool": {}}
 
     def test_generates(self) -> None:
-        world_type = AutoWorldRegister.world_types[GAME]
         for seed in range(8):
-            multiworld = setup_multiworld(world_type, gen_steps, seed, self.options)
+            multiworld = generate(self.options, seed, gen_steps)
             world = multiworld.worlds[1]
             # an item that opens the most locations goes to the start, though none opens EARLY_LOCATIONS_WANTED
             self.assertIsNotNone(world.opener, seed)

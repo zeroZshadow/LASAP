@@ -16,6 +16,11 @@ RETRY_DELAYS = (2, 5, 10, 30, 60)
 DEFAULT_RELAY = wire.DEFAULT_RELAY
 
 
+def clean(text: str) -> str:
+    """Names travel inside a line, separated by '|'."""
+    return " ".join(text.replace("|", "/").split())
+
+
 def line_pos(parts: List[str]) -> Optional[wire.Pos]:
     """A POS line (DESIGN.md) as the position the wire carries; None for `POS none`, a level the relay does not know
     or a malformed line."""
@@ -36,7 +41,7 @@ def line_pos(parts: List[str]) -> Optional[wire.Pos]:
 def ghost_line(n: int, slot: str, p: wire.Pos) -> Optional[str]:
     if p.level >= len(wire.LEVELS):
         return None
-    name = " ".join(slot.replace("|", "/").split()) or "?"
+    name = clean(slot) or "?"
     return (f"GHOST {n} {wire.LEVELS[p.level]} {p.x:.3f} {p.y:.3f} {p.z:.3f} {p.yaw * 360 / 65536:.1f} {p.anim} "
             f"{p.anim_frame} {p.upper_anim} {p.flags} {p.time_ms} {p.shapes} {p.tunic} {p.eye} {p.mouth} {p.ear} "
             f"{name}")
@@ -116,10 +121,13 @@ class GhostLink:
         self.game_connected = True
         self.send_game(f"GHOSTS {int(self.joined)}")
         self.send_game(f"GHOSTNAMES {int(self.names)}")
+        self.clear_ghosts()  # each shows again with its player's next frame
+
+    def clear_ghosts(self) -> None:
         for n, player_id in enumerate(self.ghosts):
             if player_id is not None:
                 self.send_game(f"GHOST {n} off")
-        self.ghosts = [None] * GHOST_SLOTS  # each shows again with its player's next frame
+        self.ghosts = [None] * GHOST_SLOTS
 
     def on_game_lost(self) -> None:
         self.game_connected = False
@@ -191,10 +199,7 @@ class GhostLink:
         self.players.clear()
         self.positions.clear()
         self.sent = None  # a new connection starts with a keyframe
-        for n, player_id in enumerate(self.ghosts):
-            if player_id is not None:
-                self.send_game(f"GHOST {n} off")
-        self.ghosts = [None] * GHOST_SLOTS
+        self.clear_ghosts()
         if self.flush_handle is not None:
             self.flush_handle.cancel()
             self.flush_handle = None

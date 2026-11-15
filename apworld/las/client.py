@@ -1,6 +1,5 @@
 """PC client: bridges the Archipelago server and the game's exlaunch module (TCP line protocol, see DESIGN.md)."""
 import asyncio
-import socket
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -9,10 +8,10 @@ from CommonClient import CommonContext, get_base_parser, gui_enabled, logger, se
 from MultiServer import mark_raw
 from NetUtils import ClientStatus, HintStatus
 
+from . import LASWorld, checklist, emulators, ghost_relay
 from .container import LASContainer
 from .ids import LOCATION_BASE, LOCATION_OFFSETS
-from . import checklist, emulators, ghost_relay
-from .ghosts import DEFAULT_RELAY, GhostLink
+from .ghosts import DEFAULT_RELAY, GhostLink, clean
 from .host_settings import PLAYER_SETTINGS, player_value
 from .install import InstallError, builtin_patcher_build, patch_and_install
 from .items import GAME, ITEM_GAME_INFO
@@ -36,15 +35,19 @@ BUSY_STATUS = ("Another client is connected to the game. If another Links Awaken
 # DUNGEON's level numbers (Lv<nn>)
 DUNGEON_NUMBERS = {"1": "tail-cave", "2": "bottle-grotto", "3": "key-cavern", "4": "angler-tunnel", "5": "catfish-maw",
                    "6": "face-shrine", "7": "eagle-tower", "8": "turtle-rock", "10": "color-dungeon"}
-
-
-def clean(text: str) -> str:
-    """Names travel inside a line, separated by '|'."""
-    return " ".join(text.replace("|", "/").split())
-
-
 OPTION_KEYS = ("platform", "emulator", "game_file", "romfs_folder", "sd_card_folder", "mod_folder", "patcher_command",
                "game_host")
+
+
+def read_container(path: Optional[str]) -> Optional[LASContainer]:
+    if not path:
+        return None
+    container = LASContainer(path)
+    try:
+        container.read()
+    except Exception:
+        return None
+    return container
 
 
 class LASCommandProcessor(ClientCommands):
@@ -137,15 +140,14 @@ class LASContext(TrackerMixin, ClientContext):
         super().__init__(server_address, password)
         self.items_handling = LASContext.items_handling  # Universal Tracker's context sets its own
         self.patch_file = patch_file
-        self.patch_slot = ""  # slot name from the patch file
+        container = self.read_patch_file()
+        self.patch_slot = container.player_name if container else ""  # slot name from the patch file
         self.game_status = checklist.Check(checklist.INFO, "Waiting for the game to start.")
         self.patching = False  # an install runs; the Patch tab's buttons are off
         self.install_steps: List[str] = []  # what Play or an install does, and the one it is at
         self.install_step = 0
         self.last_report: Optional[checklist.Check] = None  # the last line report() wrote, for the Patch tab
         self.notice_sent = False  # the game was told the server connection state
-        container = self.read_patch_file()
-        self.patch_slot = container.player_name if container else ""
         self.game_host = game_host
         self.game_port = game_port
         self.game_writer: Optional[asyncio.StreamWriter] = None
@@ -207,14 +209,7 @@ class LASContext(TrackerMixin, ClientContext):
         self.update_ghosts()
 
     def read_patch_file(self) -> Optional[LASContainer]:
-        if not self.patch_file:
-            return None
-        container = LASContainer(self.patch_file)
-        try:
-            container.read()
-        except Exception:
-            return None
-        return container
+        return read_container(self.patch_file)
 
     async def server_auth(self, password_requested: bool = False) -> None:
         if password_requested and not self.password:
@@ -359,9 +354,11 @@ class LASContext(TrackerMixin, ClientContext):
     async def send_sign_read(self) -> None:
         if not self.sign_read or self.slot is None:
             return
-        await self.send_msgs([{"cmd": "Set", "key": self.sign_key,
-                               "default": False, "want_reply": False,
-                               "operations": [{"operation": "replace", "value": True}]}])
+        await self.set_storage(self.sign_key, False, "replace", True)
+
+    async def set_storage(self, key: str, default: Any, operation: str, value: Any) -> None:
+        await self.send_msgs([{"cmd": "Set", "key": key, "default": default, "want_reply": False,
+                               "operations": [{"operation": operation, "value": value}]}])
 
     def on_deathlink(self, data: Dict) -> None:
         super().on_deathlink(data)
@@ -426,9 +423,7 @@ class LASContext(TrackerMixin, ClientContext):
     def send_checked(self, locations) -> None:
         if not self.slot or self.seed_mismatch:
             return
-        ids = sorted(loc - LOCATION_BASE for loc in locations if loc >= LOCATION_BASE)
-        for i in range(0, len(ids), 64):
-            self.send_game("CHECKED " + " ".join(str(local_id) for local_id in ids[i:i + 64]))
+        self.send_id_lines("CHECKED", {loc - LOCATION_BASE for loc in locations if loc >= LOCATION_BASE}, clear=False)
 
     def send_logic(self, force: bool = False) -> None:
         """Tells the game which locations are in logic for the items received, when that changed."""
@@ -457,8 +452,9 @@ class LASContext(TrackerMixin, ClientContext):
         self.hinted = ids
         self.send_id_lines("HINTED", ids)
 
-    def send_id_lines(self, command: str, ids: Set[int]) -> None:
-        self.send_game(f"{command} CLEAR")
+    def send_id_lines(self, command: str, ids: Set[int], clear: bool = True) -> None:
+        if clear:
+            self.send_game(f"{command} CLEAR")
         ordered = sorted(ids)
         for i in range(0, len(ordered), 64):
             self.send_game(f"{command} " + " ".join(str(local_id) for local_id in ordered[i:i + 64]))
@@ -605,8 +601,7 @@ class LASContext(TrackerMixin, ClientContext):
     async def send_level(self) -> None:
         if self.game_level is None or self.slot is None:
             return
-        await self.send_msgs([{"cmd": "Set", "key": LEVEL_KEY.format(team=self.team, player=self.slot), "default": "",
-                               "want_reply": False, "operations": [{"operation": "replace", "value": self.game_level}]}])
+        await self.set_storage(LEVEL_KEY.format(team=self.team, player=self.slot), "", "replace", self.game_level)
 
     async def send_doors(self) -> None:
         """Stores the doors into the dungeons the game reports entered as found (DOORS_KEY)."""
@@ -618,8 +613,7 @@ class LASContext(TrackerMixin, ClientContext):
         if not doors:
             return
         self.doors_sent.update(doors.values())
-        await self.send_msgs([{"cmd": "Set", "key": DOORS_KEY.format(team=self.team, player=self.slot), "default": {},
-                               "want_reply": False, "operations": [{"operation": "update", "value": doors}]}])
+        await self.set_storage(self.doors_key, {}, "update", doors)
 
     async def send_entrances(self) -> None:
         """Stores the overworld doors the game reports gone through as found (ENTRANCES_KEY)."""
@@ -629,8 +623,7 @@ class LASContext(TrackerMixin, ClientContext):
         if not doors:
             return
         self.entrances_sent.update(doors)
-        await self.send_msgs([{"cmd": "Set", "key": self.entrances_key, "default": {}, "want_reply": False,
-                               "operations": [{"operation": "update", "value": doors}]}])
+        await self.set_storage(self.entrances_key, {}, "update", doors)
 
     def set_game_status(self, level: str, text: str) -> None:
         self.game_status = checklist.Check(level, text)
@@ -643,9 +636,7 @@ class LASContext(TrackerMixin, ClientContext):
             try:
                 reader, writer = await asyncio.wait_for(
                     asyncio.open_connection(self.game_host, self.game_port), timeout=HELLO_TIMEOUT)
-                sock = writer.get_extra_info("socket")
-                if sock is not None:  # GHOST lines go out as written, not held back for an ACK
-                    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                ghost_relay.set_nodelay(writer)  # GHOST lines go out as written, not held back for an ACK
                 # the game says HELLO right away; while it serves another client, it takes no new one
                 first = await asyncio.wait_for(reader.readline(), timeout=HELLO_TIMEOUT)
             except (OSError, asyncio.TimeoutError):
@@ -705,21 +696,22 @@ class LASContext(TrackerMixin, ClientContext):
 
     @staticmethod
     def option(key: str) -> str:
-        from . import LASWorld
         return str(getattr(LASWorld.settings, key) or "")
 
-    def set_option(self, key: str, value: str, detect: bool = True) -> None:
+    @staticmethod
+    def store(key: str, value: Any) -> None:
         import settings
-        from . import LASWorld
+        setattr(LASWorld.settings, key, value)
+        settings.get_settings().save()
+
+    def set_option(self, key: str, value: str, detect: bool = True) -> None:
         value = value.strip().strip('"')
         if self.option(key) == value:
             return
         if key == "platform" and self.platform() not in ("", value):
             for folder in ("sd_card_folder", "mod_folder"):  # the other platform's SD card and mods
                 self.set_option(folder, "", detect=False)
-        options = LASWorld.settings
-        setattr(options, key, type(getattr(options, key))(value))
-        settings.get_settings().save()
+        self.store(key, type(getattr(LASWorld.settings, key))(value))
         if key == "game_host":
             self.game_host = value or "127.0.0.1"
         if key == "platform" and value == checklist.EMULATOR and self.option("game_host") != "127.0.0.1":
@@ -733,56 +725,42 @@ class LASContext(TrackerMixin, ClientContext):
     @staticmethod
     def player_option(key: str) -> Any:
         """A player setting (host_settings.PLAYER_SETTINGS) as the patcher takes it."""
-        from . import LASWorld
         setting = next(s for s in PLAYER_SETTINGS if s.key == key)
         return player_value(setting, getattr(LASWorld.settings, key))
 
     def set_player_option(self, key: str, value: Any) -> None:
-        import settings
-        from . import LASWorld
         if self.player_option(key) == value:
             return
-        setattr(LASWorld.settings, key, value)
-        settings.get_settings().save()
+        self.store(key, value)
         self.refresh_patch_tab()
 
     @staticmethod
     def player_settings() -> Dict[str, Any]:
-        from . import LASWorld
         return LASWorld.settings.player_settings()
 
     @staticmethod
     def ghosts_on() -> bool:
-        from . import LASWorld
         return bool(LASWorld.settings.ghosts)
 
     def set_ghosts(self, on: bool) -> None:
-        import settings
-        from . import LASWorld
         if self.ghosts_on() == on:
             return
-        LASWorld.settings.ghosts = on
-        settings.get_settings().save()
+        self.store("ghosts", on)
         self.update_ghosts()
         self.refresh_patch_tab()
 
     @staticmethod
     def ghost_names_on() -> bool:
-        from . import LASWorld
         return bool(LASWorld.settings.ghost_names)
 
     def set_ghost_names(self, on: bool) -> None:
-        import settings
-        from . import LASWorld
         if self.ghost_names_on() == on:
             return
-        LASWorld.settings.ghost_names = on
-        settings.get_settings().save()
+        self.store("ghost_names", on)
         self.ghosts.set_names(on)
 
     def update_ghosts(self) -> None:
         """Hands the ghost link its settings, secret and slot; it reconnects when they change."""
-        from . import LASWorld
         options = LASWorld.settings
         slot = self.auth or self.patch_slot or ""
         player = self.player_names.get(self.slot, slot) if self.slot else slot
@@ -1030,18 +1008,14 @@ def launch(*launch_args: str) -> None:
     if args.url and args.url.lower().endswith(LASContainer.patch_file_ending):
         # Opened with a patch file: connect to the server and slot it names; Play installs its mod.
         args.patch, args.url = args.url, None
-        container = LASContainer(args.patch)
-        try:
-            container.read()
+        container = read_container(args.patch)  # None: check_setup reports it
+        if container:
             args.connect = args.connect or container.server or None
             args.name = args.name or container.player_name or None
-        except Exception:
-            pass  # check_setup reports it
     if args.url:
         from CommonClient import handle_url_arg
         args = handle_url_arg(args, parser=parser)
     if args.game_host is None:
-        from . import LASWorld
         args.game_host = LASWorld.settings.game_host
 
     Utils.init_logging("LASClient", exception_logger="Client")

@@ -22,12 +22,12 @@ from .host_settings import LASSettings
 
 from .ids import LOCATION_OFFSETS
 from .items import FILLER_ITEM, GAME, ITEM_GAME_INFO, ITEM_NAME_GROUPS, ITEM_TABLE, LASR_TO_ITEM, LASItem
-from .lasr import (CATEGORIES, COUNTED, DOOR_LOGIC, DOORS, DUNGEON_POOL, DUNGEON_REWARD_LOCATIONS, DUNGEONS,
-                   INSTRUMENT_LOCATIONS, INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC, SHOP_LOCATIONS, TRAPS,
-                   PlacementError, door_entrance,
-                   door_node, dungeon_name, entrance_logic, dungeon_region, goal_logic, item_dungeon, location_dungeon, slot_doors,
-                   shuffle_dungeons, door_logic, door_region, ENTRANCE_POOL, HOME_DOOR, HOUSE_DOOR, HOUSE_EXIT,
-                   START_DOORS, WRITTEN_LOGIC, closed_dungeons, entered_by_door, start_pairs)
+from .lasr import (CATEGORIES, COUNTED, DOORS, DUNGEON_POOL, DUNGEON_REWARD_LOCATIONS, DUNGEONS, ENTRANCE_POOL,
+                   HOME_DOOR, HOUSE_DOOR, HOUSE_EXIT, INSTRUMENT_LOCATIONS, INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS,
+                   LOGIC, SHOP_LOCATIONS, START_DOORS, TRAPS, PlacementError, closed_dungeons, door_entrance,
+                   door_node, door_region, dungeon_item_kind, dungeon_name, dungeon_region, entered_by_door,
+                   goal_logic, item_dungeon, location_dungeon, shuffle_dungeons, slot_logic, start_pairs)
+
 from .locations import LASR_LOCATIONS, LOCATION_NAME_GROUPS, LOCATION_NAME_TO_ID, LOCATION_NAMES, LASLocation
 from .logic import PLACES, LogicCompiler, make_rule, referenced_regions
 from .models import model_for
@@ -164,8 +164,6 @@ class LASWorld(World):
             sign_read = not self.deferred
             instruments = tracked_instruments(instruments, passthrough["instruments_known"], sign_read)
             seashells = tracked_seashells(passthrough, sign_read)
-        self.door_logic = DOOR_LOGIC
-        self.compile_logic(instruments, seashells)
 
         if passthrough:
             self.starting_instruments = list(passthrough["starting_instruments"])
@@ -174,7 +172,7 @@ class LASWorld(World):
         self.starting_items = list(self.starting_instruments)
         self.different_world: Set[str] = set()
         for kind, placement in self.dungeon_item_placements().items():
-            items = [item for item in ITEM_DEFS if item_dungeon(item) >= 0 and item[:-3] == kind]
+            items = [item for item in ITEM_DEFS if dungeon_item_kind(item) == kind]
             if placement == placement.option_start_with:
                 for item in items:
                     self.starting_items += [item] * ITEM_DEFS[item]["quantity"]
@@ -188,7 +186,7 @@ class LASWorld(World):
         vanilla = lasr_settings.fixed_locations()
         unrandomized = lasr_settings.unrandomized_locations(options)
         if options.instruments == options.instruments.option_vanilla:
-            started = {f"D{INSTRUMENTS.index(i) + 1}-instrument" for i in self.starting_instruments}
+            started = {INSTRUMENT_LOCATIONS[INSTRUMENTS.index(i)] for i in self.starting_instruments}
             unrandomized |= set(INSTRUMENT_LOCATIONS) - started
         optional = lasr_settings.optional_locations(options)
         self.removed = [loc for loc in ITEM_LOCATIONS if loc in removed]
@@ -205,17 +203,12 @@ class LASWorld(World):
             self.entrances = dict(passthrough["entrances"])
         else:
             self.plando_doors, self.plando_start = self._plando()
-            self.entrances = self._place_start(instruments, seashells)
-        self.door_logic = self._slot_logic()
-        if self.door_logic is not DOOR_LOGIC:  # the rules again, with this slot's doors
-            self.compile_logic(instruments, seashells)
-
-    def _slot_logic(self) -> Dict[str, Dict[str, Any]]:
-        """The logic with this slot's doors. With Entrances where the shuffled doors lead stays out of the rules
-        (connect_entrances connects them); else the routes are lowered as the doors lead."""
-        if not self.options.entrances:
-            return entrance_logic(self.entrances, self.dungeon_entrances, self.start)
-        return door_logic(WRITTEN_LOGIC, slot_doors(None, self.dungeon_entrances), self.door_pool)
+            self._place_start(instruments, seashells)
+            self.entrances = {}  # with Entrances connect_entrances places the doors
+        # with Entrances where the shuffled doors lead stays out of the rules (connect_entrances connects them)
+        self.door_logic = slot_logic(self.dungeon_entrances, self.door_pool if self.options.entrances else (),
+                                     self.start)
+        self.compile_logic(instruments, seashells)
 
     @property
     def dungeon_map(self) -> bool:
@@ -267,37 +260,37 @@ class LASWorld(World):
             raise OptionError(f"{self.player_name}: Plando Connections: {start} is in two connections")
         return doors, start
 
-    def _place_start(self, instruments: int, seashells: Optional[int]) -> Dict[str, str]:
+    def _place_start(self, instruments: int, seashells: Optional[int]) -> None:
         """Rolls the Random start and the dungeon map: a start from which a map reaches every location and one item
-        opens up (_start_opens_up). With Entrances connect_entrances picks the start with the doors. Returns {}."""
+        opens up (_start_opens_up). With Entrances connect_entrances picks the start with the doors."""
         self.start = None
         if not self.options.random_start or self.options.entrances:
             # with Entrances connect_entrances checks the map with the doors placed
-            if self._place_doors(instruments, seashells, self.dungeon_map and not self.options.entrances) is None:
+            if not self._place_doors(instruments, seashells, self.dungeon_map and not self.options.entrances):
                 raise PlacementError(f"{self.player_name}: Shuffled Dungeons: no dungeon map in {DOOR_MAP_ATTEMPTS} "
                                      f"tries reaches every location")
-            return {}
+            return
         for start in self._starts():
             self.start = start
             # each start its share of the dungeon maps: a start no map suits wastes no more
-            entrances = self._place_doors(instruments, seashells, True, DOOR_MAP_ATTEMPTS // START_ATTEMPTS)
-            if entrances is not None and self._start_opens_up(entrances, instruments, seashells):
-                return {}
+            if self._place_doors(instruments, seashells, True, DOOR_MAP_ATTEMPTS // START_ATTEMPTS) and \
+                    self._start_opens_up({}, instruments, seashells):
+                return
         raise PlacementError(f"{self.player_name}: Random Start: no start in {START_ATTEMPTS} tries reaches every "
                              f"location and opens up with one item{self._plando_note()}")
 
     def _place_doors(self, instruments: int, seashells: Optional[int], must_reach: bool = False,
-                     maps: int = DOOR_MAP_ATTEMPTS) -> Optional[Dict[str, str]]:
+                     maps: int = DOOR_MAP_ATTEMPTS) -> bool:
         """Rolls the dungeon map until every location is reachable: a map can put items behind the doors they open.
         With Boss Drops and Free Gifts off, the Hookshot stays in Catfish's Maw and the Rooster at the weathervane, so
-        Catfish's Maw must not be behind a door that needs one of them. Returns {}, or None with must_reach when no map
-        reaches every location."""
+        Catfish's Maw must not be behind a door that needs one of them. False with must_reach when no map reaches every
+        location."""
         for attempt in range(maps if self.dungeon_map else 1):
             if attempt:
                 self.dungeon_entrances = shuffle_dungeons(self.random)
             if not (self.dungeon_map or must_reach) or self._reaches({}, instruments, seashells):
-                return {}
-        return None if must_reach else {}
+                return True
+        return not must_reach
 
     def _reaches(self, entrances: Dict[str, str], instruments: int, seashells: Optional[int]) -> bool:
         """Whether every non-optional location is reachable with the whole pool and the starting items, the vanilla and
@@ -348,7 +341,7 @@ class LASWorld(World):
         """The slot's sweep over these locations, the vanilla and locked locations giving their items once reached.
         Its rules depend on the dungeon map and the start, and on whether the overworld doors are shuffled, not on where
         they lead (LogicTracker.lead): one sweep per map and start serves every door placement's tries."""
-        events = [loc for loc in self.vanilla + self.locked if self._is_progression(self.content(loc))]
+        events = [loc for loc in self.unrandomized() if self._is_progression(self.content(loc))]
         slot = (tuple(sorted(self.dungeon_entrances.items())), self.start)
         if self._tracker_map != slot:
             self._tracker_map, self._trackers = slot, {}
@@ -360,12 +353,12 @@ class LASWorld(World):
                 instruments, seashells, entrances, self.start)
         return tracker.lead(entrances)
 
-    def _pool(self) -> Counter:
+    def _pool(self, events_only: bool = True) -> Counter:
         """The LASR items the pool holds before the starting items leave it: every item but those of the vanilla and
-        locked locations whose items are events."""
+        locked locations (with `events_only` those whose items are events)."""
         held = Counter({item: definition["quantity"] for item, definition in ITEM_DEFS.items()})
-        for loc in self.vanilla + self.locked:
-            if self._is_progression(self.content(loc)):
+        for loc in self.unrandomized():
+            if not events_only or self._is_progression(self.content(loc)):
                 held[self.content(loc)] -= 1
         return held
 
@@ -379,9 +372,7 @@ class LASWorld(World):
         """Locked locations whose item is starting gear the pool would otherwise not hold: Archipelago takes starting
         gear out of the pool, so such a location holds 50 Rupees instead and its item joins the pool. The Trendy
         Game's prizes stay: the game gives them itself."""
-        in_pool = Counter({k: v["quantity"] for k, v in ITEM_DEFS.items()})
-        for loc in self.vanilla + self.locked:
-            in_pool[self.content(loc)] -= 1
+        in_pool = self._pool(events_only=False)
         for item in self.starting_items:
             in_pool[item] -= 1
         kept = lasr_settings.kept_locations()
@@ -469,11 +460,9 @@ class LASWorld(World):
     def item_pool(self) -> Counter:
         """LASR item counts for the shuffled locations, following LASR's pool adjustments."""
         options = self.options
-        pool = Counter({k: v["quantity"] for k, v in ITEM_DEFS.items()})
+        pool = self._pool(events_only=False)
         for category in ("Overworld_Owl_Statues", "Dungeon_Owl_Statues"):
             pool["rupee-20"] += sum(1 for loc in CATEGORIES[category] if loc not in self.removed)
-        for loc in self.vanilla + self.locked:
-            pool[self.content(loc)] -= 1
         for item in self.starting_items:
             if pool[item] > 0:
                 pool[item] -= 1
@@ -572,7 +561,7 @@ class LASWorld(World):
             number = item_dungeon(lasr_item)
             if number < 0:
                 continue
-            placement = placements[lasr_item[:-3]]
+            placement = placements[dungeon_item_kind(lasr_item)]
             if placement == placement.option_own_dungeon:
                 restricted[LASR_TO_ITEM[lasr_item]] = in_dungeon(number)
             elif placement == placement.option_any_dungeon:
@@ -778,14 +767,7 @@ class LASWorld(World):
                 (item.player != self.player or item.name not in allowed or location in allowed[item.name])
                 and original(item))
 
-        state = CollectionState(self.multiworld)
-        for item in self.multiworld.itempool:
-            state.collect(item, prevent_sweep=True)
-        for player in self.multiworld.player_ids:
-            if player != self.player:
-                for item in self.multiworld.worlds[player].get_pre_fill_items():
-                    state.collect(item, prevent_sweep=True)
-        state.sweep_for_advancements()
+        state = self._others_state(own=True)
 
         def priority(item: Item) -> int:
             # fill_restrictive places from the end of the list: instruments, nightmare keys, small keys first
@@ -839,12 +821,14 @@ class LASWorld(World):
         """Whether the fill can get going from where the game starts: not a pocket that takes two items to leave."""
         return self._start_opens_up(self.entrances, self.goal_instruments, self.goal_seashells)
 
-    def _others_state(self) -> CollectionState:
-        """The other players' items, collected: their locations as open as their own items make them."""
+    def _others_state(self, own: bool = False) -> CollectionState:
+        """The other players' items, collected: their locations as open as their own items make them. With `own` this
+        world's item pool too."""
         state = CollectionState(self.multiworld)
         for item in self.multiworld.itempool:
-            if item.player != self.player:
+            if own or item.player != self.player:
                 state.collect(item, prevent_sweep=True)
+
         for player in self.multiworld.player_ids:
             if player != self.player:
                 for item in self.multiworld.worlds[player].get_pre_fill_items():

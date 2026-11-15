@@ -4,7 +4,7 @@ import re
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 
 from .items import LASR_TO_ITEM
-from .lasr import DOORS, DUNGEON_NAMES, DUNGEONS, INSTRUMENTS, door_entrance
+from .lasr import DOORS, DUNGEON_NAMES, DUNGEON_NUMBERS, DUNGEONS, INSTRUMENTS, door_entrance
 from .tracker import LEVEL_KEY
 
 OVERWORLD_MAP = "Koholint Island"
@@ -16,7 +16,8 @@ def dungeon_label(number: int) -> str:
 
 
 def dungeon_map(dungeon: str) -> str:
-    return dungeon_label((DUNGEONS.index(dungeon) + 1) % len(DUNGEONS))
+    return dungeon_label(DUNGEON_NUMBERS[dungeon])
+
 
 
 def hidden_door_entrances(dungeon_entrances: Optional[Mapping[str, str]], known: Iterable[str]) -> Dict[str, List[str]]:

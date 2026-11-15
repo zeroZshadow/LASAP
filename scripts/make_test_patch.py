@@ -64,9 +64,9 @@ def make(seed_hash=None, slot: str = "Tester", settings: dict = None, dungeons: 
          starting=(), names: dict = None, overworld: dict = None) -> dict:
     """The patch, from the options as main takes them (parsed); scripts/build_assets.py builds the mod from make()."""
     models = models or {}
-    logic = yaml.safe_load(open(DATA / "logic.yml"))
-    categories = yaml.safe_load(open(DATA / "locations.yml"))
-    ids = json.load(open(DATA / "ids.json"))["locations"]
+    logic = yaml.safe_load((DATA / "logic.yml").read_text(encoding="utf-8"))
+    categories = yaml.safe_load((DATA / "locations.yml").read_text(encoding="utf-8"))
+    ids = json.loads((DATA / "ids.json").read_text(encoding="utf-8"))["locations"]
 
     settings = {**SETTINGS, **(settings or {})}
     # As the world has them (lasr.SHOP_LOCATIONS, COMPANION_LOCATIONS): the shop slots LASR keeps, and the companions
@@ -133,7 +133,7 @@ def main() -> None:
                  dict(pair.split("=", 1) for pair in filter(None, args.models.split(","))),
                  filter(None, args.starting.split(",")),
                  dict(pair.split("=", 1) for pair in filter(None, args.names.split(","))), json.loads(args.entrances))
-    args.out.write_text(json.dumps(patch, indent=1))
+    args.out.write_text(json.dumps(patch, indent=1), encoding="utf-8")
     ids = patch["location_ids"]
     print(f"{args.out}: {len(ids)} AP locations, {len(patch['placements']) - len(ids)} vanilla, "
           f"{len(patch['removed_location_ids'])} removed")

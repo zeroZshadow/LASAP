@@ -2,14 +2,28 @@ import os
 import re
 import tempfile
 import unittest
+from collections import Counter
 
+from BaseClasses import CollectionState
+from Fill import distribute_items_restrictive
+from Options import Visibility
+from test.general import gen_steps, setup_multiworld
 from worlds.AutoWorld import call_all
+from worlds.generic.Rules import locality_rules
 
 from . import LASTestBase
+from .. import JUNK, LASWorld
 from ..container import LASContainer
+from ..host_settings import PLAYER_DEFAULTS
 from ..ids import LOCATION_OFFSETS
-from ..lasr import CATEGORIES, ITEM_DEFS, ITEM_LOCATIONS, LOGIC, SHOP_LOCATIONS
-from ..locations import LOCATION_NAMES
+from ..items import ITEM_NAME_GROUPS, ITEM_TABLE, LASR_TO_ITEM
+from ..lasr import (CATEGORIES, INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS, LOGIC, SHOP_LOCATIONS, TRAPS, item_dungeon,
+                    location_dungeon)
+from ..lasr_settings import (MANSION_THRESHOLDS, TRACKER_SETTINGS, chest_look, fixed_locations, kept_locations,
+                             lasr_settings)
+from ..locations import LASR_LOCATIONS, LOCATION_NAMES
+from ..options import BouncyItems, StartingGear
+from ..tracker import LogicTracker
 
 
 class TestBouncyItemsHidden(LASTestBase):
@@ -17,15 +31,12 @@ class TestBouncyItemsHidden(LASTestBase):
     options = {"bouncy_items": True}
 
     def test_hidden_and_set(self) -> None:
-        from Options import Visibility
-        from ..options import BouncyItems
         self.assertFalse(BouncyItems.visibility & (Visibility.template | Visibility.simple_ui | Visibility.complex_ui))
         self.assertTrue(self.world.patch_data()["settings"]["Bouncy Items"])
 
 
 class TestDefault(LASTestBase):
     def test_patch_and_slot_data(self) -> None:
-        from Fill import distribute_items_restrictive
         distribute_items_restrictive(self.multiworld)
         call_all(self.multiworld, "post_fill")
         slot_data = self.world.fill_slot_data()
@@ -37,7 +48,6 @@ class TestDefault(LASTestBase):
         self.assertEqual(slot_data["seashells_required"], 0)
         self.assertEqual(self.world.patch_data()["settings"]["Instruments Required"], 8)
         self.assertEqual(self.world.patch_data()["settings"]["Seashells Required"], 0)
-        from ..lasr_settings import TRACKER_SETTINGS
         self.assertEqual(tuple(slot_data["settings"]), TRACKER_SETTINGS)
         self.assertEqual(slot_data["settings"]["Shuffle Instruments"], "Anywhere")
         self.assertRegex(slot_data["seed_hash"], r"^[0-9a-f]{8}$")
@@ -69,7 +79,6 @@ class TestDefault(LASTestBase):
         self.assertEqual(set(patch["placements"]), set(ITEM_LOCATIONS) - owls)  # owls are off by default
         for loc, item in patch["placements"].items():
             self.assertTrue(item == "ap-item" or item in ITEM_DEFS, (loc, item))
-        from ..lasr_settings import kept_locations
         shuffled = {loc for loc, item in patch["placements"].items() if item == "ap-item"}
         kept = kept_locations() & set(patch["location_ids"])
         self.assertEqual(set(patch["location_ids"]), shuffled | kept)
@@ -106,8 +115,6 @@ class TestDefault(LASTestBase):
 class TestLASRDefaults(LASTestBase):
     def test_defaults_match_lasr(self) -> None:
         """The default options are the original randomizer's default settings."""
-        from ..lasr_settings import lasr_settings
-        from ..options import StartingGear
         settings = lasr_settings(self.world.options)
         expected = {"Preset": "Basic", "Chests": True, "Free Gifts": True, "Trade Quest": False, "Golden Leaves": True,
                     "Heart Pieces": True, "Seashells": True, "Miscellaneous": True, "Shop": True, "Boss Drops": True,
@@ -165,9 +172,6 @@ class TestVanillaHeavy(LASTestBase):
 
     def test_unrandomized_locations(self) -> None:
         """An unrandomized location is a check holding its default item, locked."""
-        from ..items import LASR_TO_ITEM
-        from ..lasr import LOGIC
-        from ..lasr_settings import MANSION_THRESHOLDS, fixed_locations, kept_locations
         locked = set(self.world.locked)
         # the Mansion at 0: its rewards are optional, and the seashells count for them
         self.assertLessEqual(set(MANSION_THRESHOLDS), set(self.world.optional))
@@ -202,8 +206,6 @@ class TestVanillaHeavy(LASTestBase):
     def test_tracker_counts_a_locked_item_once_received(self) -> None:
         """A locked location's item counts for the map's logic once received, not while the location is reachable:
         Mamasha needs the Yoshi Doll in hand, not a reachable Trendy Game."""
-        from ..items import LASR_TO_ITEM
-        from ..tracker import LogicTracker
         logic = self.world.fill_slot_data()["logic"]
         tracker = LogicTracker(logic["preset"], logic["tokens"], logic["vanilla"], self.world.shuffled,
                                optional=logic["optional"])
@@ -231,9 +233,6 @@ class TestOwnDungeon(LASTestBase):
     }
 
     def test_dungeon_items_in_own_dungeon(self) -> None:
-        from ..lasr import location_dungeon, item_dungeon, INSTRUMENTS
-        from ..items import ITEM_TABLE
-        from ..locations import LASR_LOCATIONS
         for location in self.multiworld.get_locations(self.player):
             if location.address is None or location.item is None or location.item.player != self.player:
                 continue
@@ -250,9 +249,6 @@ class TestKeysAnyDungeon(LASTestBase):
     options = {"small_keys": "any_dungeon", "nightmare_keys": "own_dungeon"}
 
     def test_keys_in_dungeons(self) -> None:
-        from ..lasr import location_dungeon, item_dungeon
-        from ..items import ITEM_TABLE
-        from ..locations import LASR_LOCATIONS
         self.assertEqual(self.world.patch_data()["settings"]["Small Keys"], "Any Dungeon")
         elsewhere = 0
         for location in self.multiworld.get_locations(self.player):
@@ -274,8 +270,6 @@ class TestKeysStartWith(LASTestBase):
     options = {"small_keys": "start_with", "nightmare_keys": "start_with"}
 
     def test_started(self) -> None:
-        from collections import Counter
-        from ..items import ITEM_TABLE
         expected = Counter({item: ITEM_DEFS[item]["quantity"] for item in ITEM_DEFS
                             if item.startswith(("key-", "nightmare-key-"))})
         started = Counter(ITEM_TABLE[item.name].lasr_name for item in self.multiworld.precollected_items[self.player])
@@ -294,7 +288,6 @@ class TestKeysLocality(LASTestBase):
     options = {"small_keys": "own_world", "nightmare_keys": "different_world"}
 
     def test_locality(self) -> None:
-        from ..items import ITEM_NAME_GROUPS
         self.assertLessEqual(ITEM_NAME_GROUPS["Small Keys"], self.world.options.local_items.value)
         self.assertLessEqual(ITEM_NAME_GROUPS["Nightmare Keys"], self.world.options.non_local_items.value)
         self.assertFalse(self.world.restricted)
@@ -307,11 +300,6 @@ class TestKeysInMultiworld(unittest.TestCase):
     the other's."""
 
     def test_two_players(self) -> None:
-        from test.general import setup_multiworld
-        from Fill import distribute_items_restrictive
-        from worlds.generic.Rules import locality_rules
-        from .. import LASWorld
-        from ..items import ITEM_TABLE
         for seed in range(3):
             multiworld = setup_multiworld([LASWorld, LASWorld], seed=seed,
                                           options={"small_keys": "own_world", "nightmare_keys": "different_world"})
@@ -335,15 +323,11 @@ class TestDifferentWorldRoom(unittest.TestCase):
     @staticmethod
     def multiworld(game, seed, **options):
         """A LAS slot beside a slot of the game, with the options for both."""
-        from test.general import setup_multiworld
-        from .. import LASWorld
         return setup_multiworld([LASWorld, game], seed=seed, options=options)
 
     def test_small_world_takes_what_fits(self) -> None:
         """ChecksFinder's 25 locations cannot hold the 27 maps, compasses and stone beaks."""
-        from Fill import distribute_items_restrictive
         from worlds.checksfinder import ChecksFinderWorld
-        from worlds.generic.Rules import locality_rules
         for seed in range(10):
             multiworld = self.multiworld(ChecksFinderWorld, seed, dungeon_items="different_world")
             world = multiworld.worlds[1]
@@ -357,26 +341,22 @@ class TestDifferentWorldRoom(unittest.TestCase):
 
     def test_room_for_all_keeps_all(self) -> None:
         from worlds.checksfinder import ChecksFinderWorld
-        from ..items import ITEM_NAME_GROUPS
         world = self.multiworld(ChecksFinderWorld, 0, nightmare_keys="different_world").worlds[1]
         self.assertLessEqual(ITEM_NAME_GROUPS["Nightmare Keys"], world.options.non_local_items.value)
 
     def test_minimal_world_has_no_room(self) -> None:
         """The fill may lock a minimal slot's locations away after placing items there."""
-        from .. import LASWorld
         multiworld = self.multiworld(LASWorld, 0, accessibility="minimal", small_keys="different_world")
         self.assertFalse(multiworld.worlds[1].options.non_local_items.value)
         self.assertFalse(multiworld.worlds[2].options.non_local_items.value)
 
     def test_yaml_non_local_items_stay(self) -> None:
-        from .. import LASWorld
         multiworld = self.multiworld(LASWorld, 0, accessibility="minimal", non_local_items={"Hookshot"})
         self.assertEqual(multiworld.worlds[1].options.non_local_items.value, {"Hookshot"})
 
 
 def starting_locations(multiworld) -> list:
     """The slot's locations reachable with what it starts with, the events placed before the fill given."""
-    from BaseClasses import CollectionState
     state = CollectionState(multiworld)
     state.sweep_for_advancements(locations=[loc for loc in multiworld.get_locations() if loc.address is None])
     return [loc for loc in multiworld.get_locations(1) if loc.address is not None and loc.can_reach(state)]
@@ -388,10 +368,6 @@ class TestOpener(unittest.TestCase):
     options = {"start_inventory_from_pool": {}}
 
     def test_opener(self) -> None:
-        from Fill import distribute_items_restrictive
-        from test.general import setup_multiworld
-        from .. import LASWorld
-        from ..locations import LASR_LOCATIONS
         names = set()
         for seed in range(1, 9):
             multiworld = setup_multiworld(LASWorld, seed=seed, options=self.options)
@@ -405,8 +381,6 @@ class TestOpener(unittest.TestCase):
         self.assertGreater(len(names), 1)
 
     def test_no_opener_with_sword(self) -> None:
-        from test.general import gen_steps, setup_multiworld
-        from .. import LASWorld
         multiworld = setup_multiworld(LASWorld, seed=1, options=self.options, steps=gen_steps[:1])
         multiworld.push_precollected(multiworld.worlds[1].create_item("Progressive Sword"))  # as Main gives it
         for step in gen_steps[1:]:
@@ -419,10 +393,6 @@ class TestAnyDungeon(LASTestBase):
     options = {"instruments": "any_dungeon", "starting_instruments": 1}
 
     def test_instruments_in_dungeons(self) -> None:
-        from ..lasr import location_dungeon, INSTRUMENTS
-        from ..items import ITEM_TABLE
-        from ..locations import LASR_LOCATIONS
-        from ..lasr_settings import lasr_settings
         self.assertEqual(lasr_settings(self.world.options)["Shuffle Instruments"], "Any Dungeon")
         placed = 0
         for location in self.multiworld.get_locations(self.player):
@@ -447,7 +417,6 @@ class TestDungeonRewards(LASTestBase):
     }
 
     def test_starting_rupees(self) -> None:
-        from ..lasr_settings import lasr_settings
         self.assertEqual(lasr_settings(self.world.options)["Rupees"], 0)
 
 
@@ -455,9 +424,6 @@ class TestTrapsanity(LASTestBase):
     options = {"traps": "trapsanity", "blue_rupees": True, "owl_statues": "all"}
 
     def test_every_junk_item_is_a_trap(self) -> None:
-        from .. import JUNK
-        from ..lasr import TRAPS
-        from ..lasr_settings import lasr_settings
         pool = self.world.item_pool()
         self.assertFalse({item for item in JUNK if pool[item]})
         self.assertGreater(sum(pool[trap] for trap in TRAPS), 100)
@@ -469,7 +435,6 @@ class TestNoTraps(LASTestBase):
     options = {"traps": "none"}
 
     def test_no_trap(self) -> None:
-        from ..lasr import TRAPS
         pool = self.world.item_pool()
         self.assertEqual(pool["zol-trap"], 0)
         self.assertEqual(sum(pool[trap] for trap in TRAPS), 0)
@@ -480,8 +445,6 @@ class TestTrapCount(LASTestBase):
     options = {"traps": 25}
 
     def test_count(self) -> None:
-        from ..lasr import TRAPS
-        from ..lasr_settings import lasr_settings
         pool = self.world.item_pool()
         self.assertEqual(sum(pool[trap] for trap in TRAPS), 25)
         self.assertEqual(pool["zol-trap"], 1)
@@ -504,12 +467,9 @@ class TestChestAppearance(LASTestBase):
     options = {"chest_appearance": "texture_and_size", "small_keys": "own_dungeon", "nightmare_keys": "own_dungeon"}
 
     def test_every_location_has_a_chest_look(self) -> None:
-        from ..lasr_settings import lasr_settings
-        from ..locations import LOCATION_NAMES
         self.assertEqual(lasr_settings(self.world.options)["Chest Types"], "Texture + Size")
         looks = self.world.patch_data()["location_chests"]
         # the test world is filled only up to pre_fill: dungeon items
-        from ..lasr_settings import kept_locations
         filled = {loc for loc in set(self.world.shuffled) - kept_locations()
                   if self.multiworld.get_location(LOCATION_NAMES[loc], self.player).item is not None}
         self.assertTrue(filled)
@@ -519,7 +479,6 @@ class TestChestAppearance(LASTestBase):
             self.assertIn(chest_type, (None, "junk", "key", "life-upgrade", "seashell"), loc)
 
     def test_looks(self) -> None:
-        from ..lasr_settings import chest_look
         options = self.world.options
         self.assertEqual(chest_look(options, None, progression=True), ["important", None])
         self.assertEqual(chest_look(options, None, useful=True), ["good", None])
@@ -543,7 +502,6 @@ class TestGameplayOptions(LASTestBase):
                "disable_piece_of_power": True, "easy_fishing": False, "instant_pickups": "incoming"}
 
     def test_patch_settings(self) -> None:
-        from ..host_settings import PLAYER_DEFAULTS
         settings = self.world.patch_data()["settings"]
         self.assertEqual({k: settings[k] for k in ("Damage", "Movement Speed", "360 Movement", "Song Cutscenes",
                                                    "Instant Text", "Nice Hookshot", "Disable Guardian Acorn",

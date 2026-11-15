@@ -11,6 +11,7 @@ import struct
 from typing import List
 
 import ap_bntx
+from ap_bntx import BC1, BC3, BC4
 
 FILE_NAME = "PlayerGhost.bfres"
 ALPHA = 128
@@ -29,11 +30,8 @@ SHOWN_MATERIALS = ("MI_body", "MI_boots", "MI_ear", "MI_eye", "MI_mouth", "MI_ha
                    "linkSwordA_MI_sowrdA", "linkSwordA_MI_sowrdAball", "MI_flippers", "MagicRod_MI_magicRod",
                    "Ocarina_MI_ocarina", "Shovel_MI_shovel", "linkHookShot_MI_hookShot", "linkShieldB_MI_shieldB",
                    "linkShieldB_MI_shieldBMirror", "linkSwordB_MI_sowrdB", "linkSwordB_MI_sowrdBball")
-# Texture formats: BC1 and BC3 in sRGB (low byte 6) or linear (1); the shrunk textures keep theirs (also linear BC4,
-# BC5 and signed BC5)
-BC1 = (0x1a06, 0x1a01)
-BC3 = (0x1c06, 0x1c01)
-SHRINKABLE = BC1 + BC3 + (0x1d01, 0x1e01, 0x1e02)
+# The shrunk textures keep their format: BC1, BC3, BC4, BC5 and signed BC5
+SHRINKABLE = BC1 + BC3 + (BC4, 0x1e01, 0x1e02)
 
 
 def bc1_to_bc3(blocks: bytes, alpha: int) -> bytes:

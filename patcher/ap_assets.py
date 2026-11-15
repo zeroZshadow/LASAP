@@ -18,6 +18,7 @@ import bsdiff4
 
 import ap_chest_model
 import ap_ghost_model
+import romfs_check
 
 ASSET_DIR = Path(__file__).resolve().parent / "assets"
 MANIFEST = ASSET_DIR / "assets.json"
@@ -27,10 +28,10 @@ UI = "region_common/ui/StartUp.arc"
 GAME = "region_common/ui/Game.arc"  # ap_map_icons.ARCHIVE
 ACTOR = "region_common/actor"
 MODEL = f"{ACTOR}/ItemArchipelago.bfres"  # ap_model.FILE_NAME
-PLAYER_GHOST = f"{ACTOR}/PlayerGhost.bfres"  # ap_ghost_model.FILE_NAME
+PLAYER_GHOST = f"{ACTOR}/{ap_ghost_model.FILE_NAME}"
 CHEST = f"{ACTOR}/ObjTreasureBox.bfres"
-LASR_CHESTS = tuple(f"{ACTOR}/ObjTreasureBox{kind}.bfres" for kind in ("Junk", "Key", "LifeUpgrade"))
-SEASHELL_CHEST = f"{ACTOR}/ObjTreasureBoxSeashell.bfres"  # ap_chest_model.FILE_NAME
+LASR_CHESTS = tuple(f"{ACTOR}/{name}" for name in ap_chest_model.LASR_LOOKS)
+SEASHELL_CHEST = f"{ACTOR}/{ap_chest_model.FILE_NAME}"
 CHEST_TEXTURES = LASR_CHESTS + (SEASHELL_CHEST,)
 BALLAD_LOOP = "region_common/audio/stream/BGM_ENSEMBLE_LOOP.bfstm"  # ap_ballad.LOOPED
 # The files the mod adds that come from another RomFS file; the others it adds come from nothing
@@ -97,14 +98,10 @@ def _source(romfs: Path, entry: Dict[str, Optional[str]]) -> bytes:
     """The RomFS file an asset comes from; AssetError unless it is the file of game version 1.0.0."""
     if entry["source"] is None:
         return b""
-    try:
-        source = (romfs / entry["source"]).read_bytes()
-    except OSError:
-        source = b""
-    if _sha256(source) != entry["source_sha256"]:
-        raise AssetError(f"The RomFS dump is not of game version 1.0.0 ({entry['source']} differs). Turn the "
-                         f"game's update off in the emulator and dump the RomFS again (see the setup guide).")
-    return source
+    problem = romfs_check.problem(romfs, {entry["source"]: entry["source_sha256"]})  # hashed once per run
+    if problem:
+        raise AssetError(problem)
+    return (romfs / entry["source"]).read_bytes()
 
 
 def load(romfs: Path, path: str) -> bytes:

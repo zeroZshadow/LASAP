@@ -123,18 +123,41 @@ def start() -> None:
     if os.environ.get("LASAP_AUDIO") == "1":
         args[args.index("--audio-volume") + 1] = "1"
         env = dict(os.environ)
+    proc = popen_tucked(args, stdout=out, stderr=subprocess.STDOUT, env=env)
+    with open(PIDFILE, "w") as f:
+        f.write(str(proc.pid))
+    print(proc.pid)
+
+
+def popen_tucked(args: list, **kwargs) -> subprocess.Popen:
+    """Starts a program whose windows open without focus behind the others (`tuck`)."""
     foreground = ctypes.windll.user32.GetForegroundWindow()
     info = subprocess.STARTUPINFO()
     info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     info.wShowWindow = SW_SHOWNOACTIVATE
-    proc = subprocess.Popen(args, stdout=out, stderr=subprocess.STDOUT, env=env, startupinfo=info)
-    with open(PIDFILE, "w") as f:
-        f.write(str(proc.pid))
+    proc = subprocess.Popen(args, startupinfo=info, **kwargs)
     # pythonw has no console: a console process here would open a terminal window over the user's.
     pythonw = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
     subprocess.Popen([pythonw, os.path.abspath(__file__), "tuck", str(proc.pid), str(foreground or 0)],
                      creationflags=subprocess.CREATE_NO_WINDOW, close_fds=True)
-    print(proc.pid)
+    return proc
+
+
+def windows(pid: int) -> list:
+    """The visible windows of process pid."""
+    from ctypes import wintypes
+    user32 = ctypes.windll.user32
+    found = []
+    proc = wintypes.DWORD()
+
+    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    def each(hwnd, _):
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(proc))
+        if proc.value == pid and user32.IsWindowVisible(hwnd):
+            found.append(hwnd)
+        return True
+    user32.EnumWindows(each, 0)
+    return found
 
 
 def tuck(pid: int, foreground: int) -> None:
@@ -144,24 +167,10 @@ def tuck(pid: int, foreground: int) -> None:
     user32 = ctypes.windll.user32
     user32.SetWindowPos.argtypes = [wintypes.HWND, wintypes.HWND] + [ctypes.c_int] * 4 + [wintypes.UINT]
     HWND_BOTTOM, SWP_NOSIZE, SWP_NOMOVE, SWP_NOACTIVATE = 1, 0x1, 0x2, 0x10
-    proc = wintypes.DWORD()
     seen = set()
-
-    def windows() -> list:
-        found = []
-
-        @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
-        def each(hwnd, _):
-            user32.GetWindowThreadProcessId(hwnd, ctypes.byref(proc))
-            if proc.value == pid and user32.IsWindowVisible(hwnd):
-                found.append(hwnd)
-            return True
-        user32.EnumWindows(each, 0)
-        return found
-
     deadline = time.time() + TUCK_SECONDS
     while time.time() < deadline:
-        for hwnd in windows():
+        for hwnd in windows(pid):
             if hwnd not in seen:
                 seen.add(hwnd)
                 user32.SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE)
@@ -188,68 +197,82 @@ def stop(quiet: bool = False) -> None:
         print("stopped", pid)
 
 
-def shot(out: str, pid: int | None = None) -> None:
-    """Captures the emulator's game window (PrintWindow: it works while the window is covered) into a PNG, or the
-    window of another process (pid), such as the sandbox PopTracker's."""
-    import struct
-    import zlib
+def game_window(pid: int) -> int | None:
+    """The first visible window of process pid wider than 100 pixels: the emulator's game window."""
     from ctypes import wintypes
-    user32, gdi32 = ctypes.windll.user32, ctypes.windll.gdi32
-    for fn in (user32.GetDC, gdi32.CreateCompatibleDC, gdi32.CreateCompatibleBitmap, gdi32.SelectObject):
-        fn.restype = wintypes.HANDLE
-    user32.GetDC.argtypes = [wintypes.HWND]
-    gdi32.CreateCompatibleDC.argtypes = [wintypes.HANDLE]
-    gdi32.CreateCompatibleBitmap.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_int]
-    gdi32.SelectObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
-    gdi32.DeleteObject.argtypes = gdi32.DeleteDC.argtypes = [wintypes.HANDLE]
-    gdi32.GetDIBits.argtypes = [wintypes.HANDLE, wintypes.HANDLE, wintypes.UINT, wintypes.UINT, ctypes.c_void_p,
-                                ctypes.c_void_p, wintypes.UINT]
-    user32.PrintWindow.argtypes = [wintypes.HWND, wintypes.HANDLE, wintypes.UINT]
-    user32.ReleaseDC.argtypes = [wintypes.HWND, wintypes.HANDLE]
-    if pid is None:
-        pid = int(open(PIDFILE).read().strip())
-    found = []
-    proc = wintypes.DWORD()
+    for hwnd in windows(pid):
+        rect = wintypes.RECT()
+        ctypes.windll.user32.GetClientRect(hwnd, ctypes.byref(rect))
+        if rect.right - rect.left >= 100:
+            return hwnd
+    return None
 
-    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
-    def each(hwnd, _):
-        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(proc))
-        if proc.value == pid and user32.IsWindowVisible(hwnd):
-            found.append(hwnd)
-        return True
-    user32.EnumWindows(each, 0)
-    for hwnd in found:
+
+class Capture:
+    """A window's client area through PrintWindow (it works while the window is covered), as top-down 32-bit BGRA
+    frames."""
+
+    def __init__(self, hwnd: int) -> None:
+        import struct
+        from ctypes import wintypes
+        self.user32, self.gdi32 = user32, gdi32 = ctypes.windll.user32, ctypes.windll.gdi32
+        for fn in (user32.GetDC, gdi32.CreateCompatibleDC, gdi32.CreateCompatibleBitmap, gdi32.SelectObject):
+            fn.restype = wintypes.HANDLE
+        user32.GetDC.argtypes = [wintypes.HWND]
+        gdi32.CreateCompatibleDC.argtypes = [wintypes.HANDLE]
+        gdi32.CreateCompatibleBitmap.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_int]
+        gdi32.SelectObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+        gdi32.DeleteObject.argtypes = gdi32.DeleteDC.argtypes = [wintypes.HANDLE]
+        gdi32.GetDIBits.argtypes = [wintypes.HANDLE, wintypes.HANDLE, wintypes.UINT, wintypes.UINT, ctypes.c_void_p,
+                                    ctypes.c_void_p, wintypes.UINT]
+        user32.PrintWindow.argtypes = [wintypes.HWND, wintypes.HANDLE, wintypes.UINT]
+        user32.ReleaseDC.argtypes = [wintypes.HWND, wintypes.HANDLE]
         rect = wintypes.RECT()
         user32.GetClientRect(hwnd, ctypes.byref(rect))
-        w, h = rect.right - rect.left, rect.bottom - rect.top
-        if w < 100:
-            continue
-        screen = user32.GetDC(None)
-        dc = gdi32.CreateCompatibleDC(screen)
-        bmp = gdi32.CreateCompatibleBitmap(screen, w, h)
-        old = gdi32.SelectObject(dc, bmp)
-        ok = user32.PrintWindow(hwnd, dc, 3)  # PW_CLIENTONLY | PW_RENDERFULLCONTENT
-        gdi32.SelectObject(dc, old)
-        # BITMAPINFOHEADER of a top-down 32-bit DIB
-        info = struct.pack("<IiiHHIIiiII", 40, w, -h, 1, 32, 0, 0, 0, 0, 0, 0)
-        bgra = ctypes.create_string_buffer(w * h * 4)
-        gdi32.GetDIBits(dc, bmp, 0, h, bgra, info, 0)
-        gdi32.DeleteObject(bmp)
-        gdi32.DeleteDC(dc)
-        user32.ReleaseDC(None, screen)
-        rgb = bytearray(w * h * 3)
-        rgb[0::3], rgb[1::3], rgb[2::3] = bgra.raw[2::4], bgra.raw[1::4], bgra.raw[0::4]
-        stride = w * 3
-        raw = b"".join(b"\x00" + rgb[y * stride:(y + 1) * stride] for y in range(h))
+        self.hwnd, self.w, self.h = hwnd, rect.right - rect.left, rect.bottom - rect.top
+        self.screen = user32.GetDC(None)
+        self.dc = gdi32.CreateCompatibleDC(self.screen)
+        self.bmp = gdi32.CreateCompatibleBitmap(self.screen, self.w, self.h)
+        self.info = struct.pack("<IiiHHIIiiII", 40, self.w, -self.h, 1, 32, 0, 0, 0, 0, 0, 0)  # BITMAPINFOHEADER
+        self.ok = 0
 
-        def chunk(kind: bytes, data: bytes) -> bytes:
-            return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
-        with open(out, "wb") as f:
-            f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) +
-                    chunk(b"IDAT", zlib.compress(raw, 1)) + chunk(b"IEND", b""))
-        print(f"captured {w}x{h} ok={ok} -> {out}")
+    def frame(self) -> ctypes.Array:
+        old = self.gdi32.SelectObject(self.dc, self.bmp)
+        self.ok = self.user32.PrintWindow(self.hwnd, self.dc, 3)  # PW_CLIENTONLY | PW_RENDERFULLCONTENT
+        self.gdi32.SelectObject(self.dc, old)  # GetDIBits wants the bitmap out of the DC
+        bgra = ctypes.create_string_buffer(self.w * self.h * 4)
+        self.gdi32.GetDIBits(self.dc, self.bmp, 0, self.h, bgra, self.info, 0)
+        return bgra
+
+    def close(self) -> None:
+        self.gdi32.DeleteObject(self.bmp)
+        self.gdi32.DeleteDC(self.dc)
+        self.user32.ReleaseDC(None, self.screen)
+
+
+def shot(out: str, pid: int | None = None) -> None:
+    """Captures the emulator's game window into a PNG, or the window of another process (pid), such as the sandbox
+    PopTracker's."""
+    import struct
+    import zlib
+    hwnd = game_window(int(open(PIDFILE).read().strip()) if pid is None else pid)
+    if hwnd is None:
+        print("no emulator window to capture")
         return
-    print("no emulator window to capture")
+    capture = Capture(hwnd)
+    bgra, w, h = capture.frame(), capture.w, capture.h
+    capture.close()
+    rgb = bytearray(w * h * 3)
+    rgb[0::3], rgb[1::3], rgb[2::3] = bgra.raw[2::4], bgra.raw[1::4], bgra.raw[0::4]
+    stride = w * 3
+    raw = b"".join(b"\x00" + rgb[y * stride:(y + 1) * stride] for y in range(h))
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+    with open(out, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) +
+                chunk(b"IDAT", zlib.compress(raw, 1)) + chunk(b"IEND", b""))
+    print(f"captured {w}x{h} ok={capture.ok} -> {out}")
 
 
 def log(pattern: str = "") -> None:

@@ -130,30 +130,22 @@ class DungeonItemPlacement(Choice):
     default = 0
 
 
+def _placement_doc(items: str) -> str:
+    return f"Where {items} are placed.\n    {DungeonItemPlacement.__doc__}"
+
+
 class SmallKeys(DungeonItemPlacement):
-    """Where small keys are placed.
-    own_dungeon: inside their own dungeon. any_dungeon: inside any of your dungeons, the Color Dungeon included.
-    own_world: anywhere in your world. different_world: in other players' worlds as far as those have room, a world with
-    minimal accessibility counting as none; the rest, and all of them when you play alone, anywhere.
-    anywhere: anywhere in the multiworld. start_with: given at the start."""
+    __doc__ = _placement_doc("small keys")
     display_name = "Small Keys"
 
 
 class NightmareKeys(DungeonItemPlacement):
-    """Where nightmare keys are placed.
-    own_dungeon: inside their own dungeon. any_dungeon: inside any of your dungeons, the Color Dungeon included.
-    own_world: anywhere in your world. different_world: in other players' worlds as far as those have room, a world with
-    minimal accessibility counting as none; the rest, and all of them when you play alone, anywhere.
-    anywhere: anywhere in the multiworld. start_with: given at the start."""
+    __doc__ = _placement_doc("nightmare keys")
     display_name = "Nightmare Keys"
 
 
 class DungeonItems(DungeonItemPlacement):
-    """Where dungeon maps, compasses and stone beaks are placed.
-    own_dungeon: inside their own dungeon. any_dungeon: inside any of your dungeons, the Color Dungeon included.
-    own_world: anywhere in your world. different_world: in other players' worlds as far as those have room, a world with
-    minimal accessibility counting as none; the rest, and all of them when you play alone, anywhere.
-    anywhere: anywhere in the multiworld. start_with: given at the start."""
+    __doc__ = _placement_doc("dungeon maps, compasses and stone beaks")
     display_name = "Maps, Compasses and Stone Beaks"
     default = 2
 
@@ -309,6 +301,9 @@ class RandomStart(Toggle):
 
 
 _INSIDE_DOORS = frozenset(DOORS["pairs"][door] for door in DUNGEON_POOL) - {HOUSE_DOOR}
+_OUTSIDE_LOWER = frozenset(door.lower() for door in DUNGEON_POOL)
+_INSIDE_LOWER = frozenset(door.lower() for door in _INSIDE_DOORS)
+_START_LOWER = frozenset(door.lower() for door in START_DOORS)
 
 
 class PlandoDoors(PlandoConnections):
@@ -326,12 +321,12 @@ class PlandoDoors(PlandoConnections):
 
     @classmethod
     def can_connect(cls, entrance: str, exit: str) -> bool:
-        outside = {door.lower() for door in DUNGEON_POOL}
-        inside = {door.lower() for door in _INSIDE_DOORS}
         entrance, exit = entrance.lower(), exit.lower()
         if entrance == HOUSE_EXIT.lower():
-            return exit in {door.lower() for door in START_DOORS}
-        return (entrance in outside and exit in inside) or (entrance in inside and exit in outside)
+            return exit in _START_LOWER
+        return (entrance in _OUTSIDE_LOWER and exit in _INSIDE_LOWER) or \
+            (entrance in _INSIDE_LOWER and exit in _OUTSIDE_LOWER)
+
 
 
 class FreeBook(DefaultOnToggle):

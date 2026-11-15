@@ -2,13 +2,10 @@
 import ast
 import re
 import struct
-import sys
 import unittest
-from pathlib import Path
 
-from . import romfs
+from . import ROOT, forget, patcher_import, romfs
 
-ROOT = Path(__file__).resolve().parents[3]
 ROMFS = romfs()
 ENSEMBLE = ROMFS / "region_common" / "audio" / "stream" / "BGM_ENSEMBLE_INST.bfstm"
 PATCHER_TRACKS = ROOT / "patcher" / "modbuild" / "RandomizerCore" / "Randomizers" / "data.py"
@@ -57,19 +54,13 @@ class TestBalladLoop(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        saved = list(sys.path)
-        sys.path.insert(0, str(ROOT / "patcher" / "modbuild"))
-        try:
-            import ap_ballad
-        finally:
-            sys.path[:] = saved
-        cls.ap_ballad = ap_ballad
+        cls.ap_ballad = ap_ballad = patcher_import("ap_ballad", modbuild=True)[0]
         cls.source = ENSEMBLE.read_bytes()
         cls.looped = ap_ballad.loop_stream(cls.source, ap_ballad.LOOP_END)
 
     @classmethod
     def tearDownClass(cls) -> None:
-        sys.modules.pop("ap_ballad", None)
+        forget("ap_ballad")
 
     @staticmethod
     def sections(data: bytes) -> dict:

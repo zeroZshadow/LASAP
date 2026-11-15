@@ -1,19 +1,17 @@
 """Small keys: the logic's key counts hold against a player who spends keys as badly as possible (key_logic.py), and
 key_locks.yml has exactly the RomFS's locks."""
 import copy
-import sys
 import unittest
 from pathlib import Path
 
 import yaml
 
-from . import romfs
+from . import forget, patcher_import, romfs
 from .key_logic import KeyLogicCheck
 from ..lasr import LOGIC
 from ..logic import PRESETS
 
 LOCKS = yaml.safe_load((Path(__file__).with_name("key_locks.yml")).read_text(encoding="utf-8"))
-PATCHER = Path(__file__).resolve().parents[3] / "patcher"
 LEVELS = romfs() / "region_common" / "level"
 
 
@@ -46,14 +44,10 @@ class TestKeyLogic(unittest.TestCase):
 class TestKeyLocksRomFS(unittest.TestCase):
     def test_locks(self) -> None:
         """Each dungeon's ObjLockDoor and ObjLockBlock opened flags, as key_locks.yml lists them."""
-        saved = list(sys.path)
-        sys.path.insert(0, str(PATCHER / "modbuild"))
         try:
-            from RandomizerCore.Tools.leb import Room
+            Room = patcher_import("RandomizerCore.Tools.leb", modbuild=True)[0].Room
         finally:
-            sys.path[:] = saved
-            for name in [name for name in sys.modules if name.split(".")[0] == "RandomizerCore"]:
-                del sys.modules[name]
+            forget("RandomizerCore")
         for dungeon in LOCKS:
             number = int(dungeon[1:])
             level = next(LEVELS.glob(f"Lv{10 if number == 0 else number:02d}*"))

@@ -28,11 +28,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "patcher" / "modbuild"))
-sys.path.insert(0, str(ROOT / "vendor" / "Archipelago"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from RandomizerCore.Tools.leb import Room  # noqa: E402
 from RandomizerCore.Tools.oead_tools import parseStruct, readSheet  # noqa: E402
-from worlds.las.locations import display_name  # noqa: E402
 import poptracker_map  # noqa: E402
 import las_rooms  # noqa: E402
 from las_rooms import DOOR_LEVELS, INSTRUMENT_ACTORS, ITEM_ACTORS, room_tables  # noqa: E402
@@ -196,7 +194,7 @@ def clamp_to_room(point, room: str):
 def pack_places(pack: Path) -> dict:
     """LASR overworld location -> its place in the pack: the last part of its overworld section's parent."""
     places = {}
-    for lasr, codes in poptracker_map.location_codes(poptracker_map.pack_sections(pack)).items():
+    for lasr, codes in poptracker_map.location_codes(poptracker_map.pack_locations(pack)).items():
         world = [code for code in codes if code.startswith("@World/")]
         if world:
             places[lasr] = world[0][1:].rpartition("/")[0].rpartition("/")[2]
@@ -214,7 +212,7 @@ def main() -> None:
     level = Level(args.romfs)
     rooms = {**room_tables(), **DUNGEON_ROOMS}
     doors = level.field_doors()
-    pins = poptracker_map.overworld_pins(args.pack)
+    pins = poptracker_map.overworld_pins(poptracker_map.pack_locations(args.pack))
     floors = {str(row["mLeaName"]): row["mFloor"] for row in map(
         parseStruct, readSheet(str(args.romfs / "region_common" / "datasheets" / "UiDungeonArea.gsheet"))["values"])}
 
@@ -260,10 +258,9 @@ def main() -> None:
         sources[source] = sources.get(source, 0) + 1
     print("overworld:", sources, "dungeon:", len(dungeon))
 
-    names = {lasr: display_name(lasr) for lasr in IDS["locations"]}
     places = pack_places(args.pack)
     spots = {lasr: SPOT_NAMES.get(lasr) or places[lasr] for lasr in overworld}
-    OUT.write_text(json.dumps({"overworld": overworld, "dungeon": dungeon, "names": names, "spots": spots}, indent=1,
+    OUT.write_text(json.dumps({"overworld": overworld, "dungeon": dungeon, "spots": spots}, indent=1,
                               ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
     print(f"wrote {OUT}")
 

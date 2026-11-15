@@ -19,14 +19,12 @@ from functools import lru_cache
 from typing import Dict, List, Optional, Sequence, Tuple
 
 import ap_bntx
-from ap_bntx import bc4_values, from565
+from ap_bntx import BC1, BC4, bc4_values, from565, to565
 
 FILE_NAME = "ObjTreasureBoxSeashell.bfres"
 CHEST_TYPE = "seashell"  # the seashell's chest-type in LASR's item definitions
 ALBEDO = "MI_dungeonTreasureBox_01_alb"
 METALNESS = "MI_dungeonTreasureBox_01_mtl"
-BC1 = (0x1a06, 0x1a01)
-BC4 = 0x1d01
 # LASR's chest looks: per file the colour of the metal, the wood and the purple panels (LASR's flat albedos, linear)
 LASR_LOOKS = {"ObjTreasureBoxJunk.bfres": ((104, 105, 104), (107, 69, 24), (49, 30, 13)),
               "ObjTreasureBoxKey.bfres": ((115, 117, 115), (115, 44, 41), (41, 40, 41)),
@@ -57,11 +55,6 @@ def recolour(colour: Sequence[float]) -> Colour:
     return r * 255, g * 255, b * 255
 
 
-def to565(colour: Sequence[float]) -> int:
-    r, g, b = (min(255.0, max(0.0, c)) for c in colour)
-    return round(r * 31 / 255) << 11 | round(g * 63 / 255) << 5 | round(b * 31 / 255)
-
-
 def fit(counts: List[int], targets: List[Colour]) -> Tuple[Colour, Colour]:
     """The endpoint colours whose palette is closest (least squares) to targets, each entry weighted by how many
     pixels use it."""
@@ -88,12 +81,15 @@ def recolour_block(c0: int, c1: int, bits: int) -> bytes:
             bits ^= sum(1 << (2 * p) for p in range(16) if not (bits >> (2 * p)) & 2)
         return struct.pack("<HHI", n0, n1, bits)
     a, b = from565(c0), from565(c1)
-    targets = [recolour(tuple(w * x + (1 - w) * y for x, y in zip(a, b))) for w in WEIGHTS]
+    return fit_block(bits, [recolour(tuple(w * x + (1 - w) * y for x, y in zip(a, b))) for w in WEIGHTS])
+
+
+def fit_block(bits: int, targets: List[Colour]) -> bytes:
+    """A 4-colour block keeping its indices, its endpoints fitted to each index's target."""
     counts = [0] * 4
     for p in range(16):
         counts[(bits >> (2 * p)) & 3] += 1
-    end0, end1 = fit(counts, targets)
-    n0, n1 = to565(end0), to565(end1)
+    n0, n1 = (to565(end) for end in fit(counts, targets))
     if n0 < n1:  # 4-colour mode needs n0 > n1: swap the endpoints and indices 0<->1, 2<->3
         n0, n1, bits = n1, n0, bits ^ 0x55555555
     elif n0 == n1:
@@ -222,16 +218,7 @@ def look_block(block: Block, target) -> bytes:
     if all(p is None for p in parts):
         return struct.pack("<HHI", c0, c1, bits)
     if c0 > c1 and all(p == parts[0] for p in parts):  # one part: keep the indices, fit to the palette's targets
-        counts = [0] * 4
-        for p in range(16):
-            counts[(bits >> (2 * p)) & 3] += 1
-        end0, end1 = fit(counts, [target(c, parts[0]) for c in palette(c0, c1)])
-        n0, n1 = to565(end0), to565(end1)
-        if n0 < n1:
-            n0, n1, bits = n1, n0, bits ^ 0x55555555
-        elif n0 == n1:
-            bits = 0
-        return struct.pack("<HHI", n0, n1, bits)
+        return fit_block(bits, [target(c, parts[0]) for c in palette(c0, c1)])
     indices = [(bits >> (2 * p)) & 3 for p in range(16)]
     if c0 <= c1:  # from a 3-colour block: start from its endpoints
         indices = [i if i < 2 else 0 for i in indices]

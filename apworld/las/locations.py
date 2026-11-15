@@ -1,12 +1,10 @@
-import json
-import pkgutil
 from typing import Dict, Set
 
 from BaseClasses import Location
 
 from .ids import LOCATION_BASE, LOCATION_OFFSETS
 from .items import GAME
-from .lasr import CATEGORIES, DUNGEON_NAMES, ITEM_LOCATIONS, location_dungeon
+from .lasr import CATEGORIES, DUNGEON_NAMES, ITEM_LOCATIONS, load_json, location_dungeon
 
 
 class LASLocation(Location):
@@ -15,7 +13,8 @@ class LASLocation(Location):
 
 # LASR name -> AP name: "<region or dungeon> - <label>", the label as the PopTracker pack names the check (its section,
 # or for a dungeon its room on the dungeon map; scripts/poptracker_map.py)
-_NAMES: Dict[str, str] = json.loads(pkgutil.get_data(__name__, "data/location_names.json").decode("utf-8"))
+_NAMES: Dict[str, str] = load_json("location_names.json")
+
 
 
 def display_name(lasr_location: str) -> str:

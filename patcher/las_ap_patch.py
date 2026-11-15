@@ -56,7 +56,6 @@ INDEX_KINDS = {"seashell": "S", "heart-piece": "H", "golden-leaf": "L", "heart-c
                "chamber-stone": "P"}
 # The companions' locations and the flag their joining sets
 COMPANION_FLAGS = {"moblin-cave": "BowWowJoin", "rooster-statue": "RoosterFoundFlag"}
-DUNGEON_ITEM_PREFIXES = ("compass", "map", "stone", "key", "nightmare")
 # The seed file's start (DESIGN.md, Start state); both must match the module's
 START_ITEMS_FLAG = "APStartItems"
 START_MARKER = "FirstClear"
@@ -127,7 +126,7 @@ def player_settings(text: str) -> dict:
 
 
 def load_yaml(name: str):
-    with open(DATA_DIR / name, "r") as f:
+    with open(DATA_DIR / name, encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
@@ -136,7 +135,7 @@ def dungeon_item(item: str) -> Optional[tuple]:
     Color Dungeon D0 9), as LASR's shuffler gives dungeon items; the module's AddItemID hook adds a dungeon item with
     an index to that dungeon. None for other items."""
     kind, _, number = item.rpartition("-D")
-    if not number.isdigit() or not kind.startswith(DUNGEON_ITEM_PREFIXES):
+    if not number.isdigit() or kind not in START_WITH_KINDS.values():
         return None
     return kind, 9 if number == "0" else int(number) - 1
 
@@ -349,6 +348,7 @@ def seed_files(patch: dict) -> tuple:
         # the activities the options leave out stay off the map, as in PopTracker
         optional = set(patch["optional_locations"])
         sections["map"] = ap_map.lines({loc: i for loc, i in patch["location_ids"].items() if loc not in optional},
+                                       json.loads((DATA_DIR / "location_names.json").read_text(encoding="utf-8")),
                                        patch["dungeon_entrances"] if patch["settings"]["Shuffled Dungeons"] else None)
     return config_text(patch["settings"], patch["seed_hash"], patch["slot_name"]), sections
 

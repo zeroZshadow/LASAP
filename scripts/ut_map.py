@@ -22,6 +22,7 @@ Run with .venv-ap: python scripts/ut_map.py [<PopTracker pack folder>]
   under their AP names; a progressive item has one icon per level.
 """
 import argparse
+import functools
 import json
 import math
 import re
@@ -54,10 +55,20 @@ PACK_TO_ISLAND = (1.5, -45.0, -41.0)
 ISLAND_PIN, DOOR_PIN, DUNGEON_PIN = 30, 12, 11
 
 
+@functools.cache
+def places() -> dict:
+    return json.loads((STUDIO / "places.json").read_text(encoding="utf-8"))
+
+
+@functools.cache
+def checks() -> dict:
+    return yaml.safe_load((STUDIO / "checks.yml").read_text(encoding="utf-8"))
+
+
 def door_spots() -> dict:
     """Overworld door name -> (x, z, height): the door on the overworld. A door goes by the spot its partner lands
     on."""
-    teleports = json.loads((STUDIO / "places.json").read_text(encoding="utf-8"))["teleports"]
+    teleports = places()["teleports"]
     by_id = {t["id"]: t for t in teleports}
     return {by_id[t["companion"]]["to"]: (t["x"], t["z"], t["y"]) for t in teleports
             if t["level"] == "Field" and t["door"] and t["companion"]}
@@ -65,7 +76,7 @@ def door_spots() -> dict:
 
 def landings() -> dict:
     """Overworld door name -> (room, x, z): where Link lands inside the door, in the level's coordinates."""
-    teleports = json.loads((STUDIO / "places.json").read_text(encoding="utf-8"))["teleports"]
+    teleports = places()["teleports"]
     by_id = {t["id"]: t for t in teleports}
     return {by_id[t["companion"]]["to"]: (t["landing"]["room"], t["landing"]["x"], t["landing"]["z"])
             for t in teleports if t["level"] == "Field" and t["door"] and t["companion"] and t["landing"]}
@@ -99,9 +110,8 @@ def world_to_pin(pins: dict):
     """The affine map from overworld coordinates (x, z, height) to the pack's overworld map, which draws higher places
     further north, fitted through the overworld checks whose place is exact (checks.yml) at their height
     (patcher/map_positions.json)."""
-    checks = yaml.safe_load((STUDIO / "checks.yml").read_text(encoding="utf-8"))
     world = json.loads((ROOT / "patcher" / "map_positions.json").read_text(encoding="utf-8"))["overworld"]
-    anchors = [(world[loc], pins[loc]) for loc, c in checks.items()
+    anchors = [(world[loc], pins[loc]) for loc, c in checks().items()
                if c.get("level") == "Field" and c.get("exact") and loc in pins and loc in world]
     rows = [(*w, 1.0) for w, _ in anchors]
     fx = poptracker_map.least_squares(rows, [p[0] for _, p in anchors])
@@ -123,7 +133,7 @@ def on_island(x: float, y: float):
 
 def room_origins() -> dict:
     """Room name -> (x, z): its top left in its level's coordinates (places.json layout)."""
-    layout = json.loads((STUDIO / "places.json").read_text(encoding="utf-8"))["layout"]
+    layout = places()["layout"]
     return {room["name"]: (room["x"], room["z"]) for rooms in layout.values() for room in rooms}
 
 
@@ -147,9 +157,8 @@ def maps_json() -> list:
 
 
 def locations_json(pack: Path) -> list:
-    pins = poptracker_map.section_pins(pack)
-    codes = poptracker_map.location_codes(poptracker_map.pack_sections(pack))
-    checks = yaml.safe_load((STUDIO / "checks.yml").read_text(encoding="utf-8"))
+    locs = poptracker_map.pack_locations(pack)
+    codes = poptracker_map.location_codes(locs)
     dungeon_maps = {ap_tracker_map.LEVELS[n]: name for name, n in zip(MAPS[1:], DUNGEON_NUMBERS)}
     origins = room_origins()
     spots = {}  # (map, x, y) -> {"name": a place's name, "sections": [...]}
@@ -158,13 +167,13 @@ def locations_json(pack: Path) -> list:
         section = {"name": display_name(lasr)}
         places = []
         if re.match(r"D\d-", lasr):
-            check = checks.get(lasr, {})
+            check = checks().get(lasr, {})
             if check.get("level") in dungeon_maps and "x" in check:
                 places.append((dungeon_maps[check["level"]], *in_dungeon(check["room"], check["x"], check["z"], origins),
                                check["room"].rpartition("_")[2]))
         else:
             for code in codes[lasr]:
-                for m, x, y in pins.get(code, ()):
+                for m, x, y in locs.pins.get(code, ()):
                     if m == "map":
                         places.append((MAPS[0], *on_island(x, y), code[1:].rpartition("/")[0].rpartition("/")[2]))
         if not places:
@@ -175,7 +184,7 @@ def locations_json(pack: Path) -> list:
                 spot["sections"].append(section)
     if unplaced:
         raise SystemExit(f"no pin for {unplaced}")
-    place = world_to_pin(poptracker_map.overworld_pins(pack))
+    place = world_to_pin(poptracker_map.overworld_pins(locs))
     doors = door_spots()
     dungeon_of = {door: dungeon for dungeon, door in DUNGEON_DOORS.items()}
     entrances = []
@@ -184,12 +193,12 @@ def locations_json(pack: Path) -> list:
         sections = [{"name": door}] + ([{"name": door_entrance(dungeon_of[door])}] if door in dungeon_of else [])
         entrances.append({"name": door, "sections": sections,
                           "map_locations": [{"map": MAPS[0], "x": x, "y": y, "size": DOOR_PIN}]})
-    checks = [{"name": spot["name"], "sections": spot["sections"], "map_locations": [{"map": m, "x": x, "y": y}]}
-              for (m, x, y), spot in spots.items()]
+    pins = [{"name": spot["name"], "sections": spot["sections"], "map_locations": [{"map": m, "x": x, "y": y}]}
+            for (m, x, y), spot in spots.items()]
     inside = dungeon_doors(dungeon_maps)
-    print(f"{sum(len(s['sections']) for s in checks)} location sections at {len(checks)} pins, {len(entrances)} doors, "
+    print(f"{sum(len(s['sections']) for s in pins)} location sections at {len(pins)} pins, {len(entrances)} doors, "
           f"{len(inside)} dungeon doors")
-    return [{"name": "Locations", "children": checks}, {"name": "Doors", "children": entrances},
+    return [{"name": "Locations", "children": pins}, {"name": "Doors", "children": entrances},
             {"name": "Dungeon doors", "children": inside}]
 
 

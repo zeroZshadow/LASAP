@@ -8,6 +8,7 @@ from enum import IntEnum
 from pathlib import Path
 
 import ap_option_edits
+from ap_map import CHEST_ACTOR
 import evfl
 from RandomizerCore.Randomizers.chests import CHEST_ROOMS
 from RandomizerCore.Randomizers.data import MODEL_ROTATIONS, MODEL_SIZES
@@ -129,7 +130,6 @@ BLUE_RUPEES = [f"D0-rupee-{n}" for n in range(1, 29)]
 # opened flag (switch 1) is the drop's DROP_OPENED. FIVE_CHESTS' drops share a got flag of their own, as the puzzle
 # closes the chests again when Link leaves. Left out: the two Eagle's Tower chests whose room is copied for the
 # tower's collapse.
-CHEST_ACTOR = 0xF7
 CHEST_OPENED = 1
 # Not switch 1, which the drop's row lays out no drop for once on: the opened flag is on when the ball pops.
 # AP::DROP_OPENED_SWITCH in the module
@@ -276,6 +276,14 @@ def _make_drop(actor) -> None:
     actor.name = f"{DROP_ACTOR}-{actor.key:016X}".encode()
 
 
+def _plain_drop(drop, location: str, motion: Motion, model: tuple) -> None:
+    """The actor as the location's drop, unturned and unscaled."""
+    _make_drop(drop)
+    drop.rotY = 0.0
+    drop.scaleX = drop.scaleY = drop.scaleZ = 1.0
+    drop.parameters = [int(motion), model[0].encode(), model[1].encode(), location.encode(), b"false", 0, 0, 0]
+
+
 def _show(proc, drop, location: str) -> None:
     """The location's item on a drop: its model, take entry and shell sensor (LEB parameters 1 to 4), size and turn."""
     item_key, _, model_path, model_name = proc.item_info_manager.getItemInfoWithModel(location)
@@ -366,10 +374,7 @@ def _new_drop(room, source, location: str, motion: Motion, model: tuple):
     drop.key = source.key + 1
     while drop.key in keys:
         drop.key += 1
-    _make_drop(drop)
-    drop.rotY = 0.0
-    drop.scaleX = drop.scaleY = drop.scaleZ = 1.0
-    drop.parameters = [int(motion), model[0].encode(), model[1].encode(), location.encode(), b"false", 0, 0, 0]
+    _plain_drop(drop, location, motion, model)
     links = drop.relationships
     links.section_1, links.x = [], 0
     links.section_2, links.z = [], 0
@@ -451,11 +456,7 @@ def _blue_rupees(proc, flow, level_flags: dict) -> None:
     for location, drop in zip(BLUE_RUPEES, rupees):
         model = _model(proc, location)
         got = tuple(drop.switches[0])
-        _make_drop(drop)
-        drop.rotY = 0.0
-        drop.scaleX = drop.scaleY = drop.scaleZ = 1.0
-        drop.parameters = [int(Motion.PLACED), model[0].encode(), model[1].encode(), location.encode(), b"false", 0, 0,
-                           0]
+        _plain_drop(drop, location, Motion.PLACED, model)
         drop.switches = [shown, got, NO_SWITCH, NO_SWITCH]
         _take_entry(proc, flow.flowchart, location)
     files.writeFile(room_file, room)
@@ -515,9 +516,8 @@ def _owls(proc, flow, level_flags: dict) -> None:
         files.writeFile(f"{actor}.bfevfl", charts[actor])
 
 
-def _owl_gift(chart, entry: str):
-    """LASR's gift in an owl statue's event: the first check of an owl location's flag the entry leads to (not into
-    subflows), or None (no entry, or an owl without an item)."""
+def reachable_events(chart, entry: str):
+    """The events an entry point leads to (not into subflows), depth first; none without the entry."""
     start = event_tools.findEntryPoint(chart, entry)
     todo = [start.main_event.v] if start is not None else []
     seen = set()
@@ -526,14 +526,20 @@ def _owl_gift(chart, entry: str):
         if event is None or event.name in seen:
             continue
         seen.add(event.name)
+        yield event
         data = event.data
-        if (isinstance(data, evfl.event.SwitchEvent) and data.actor.v.identifier.name == "EventFlags" and
-                data.actor_query.v.v == "CheckFlag" and OWL_MARK in data.params.data.get("symbol", "")):
-            return event
         todo += [link.v for link in (getattr(data, "nxt", None), getattr(data, "join", None)) if link is not None]
         todo += [case.v for case in (getattr(data, "cases", None) or {}).values()]
         todo += [fork.v for fork in getattr(data, "forks", None) or []]
-    return None
+
+
+def _owl_gift(chart, entry: str):
+    """LASR's gift in an owl statue's event: the first check of an owl location's flag the entry leads to, or None (no
+    entry, or an owl without an item)."""
+    return next((event for event in reachable_events(chart, entry)
+                 if isinstance(event.data, evfl.event.SwitchEvent) and
+                 event.data.actor.v.identifier.name == "EventFlags" and event.data.actor_query.v.v == "CheckFlag" and
+                 OWL_MARK in event.data.params.data.get("symbol", "")), None)
 
 
 def _free_level_flag(files, room_file: str, taken: dict) -> int:

@@ -23,6 +23,7 @@ from websockets.sync.client import connect
 
 import emu
 from local_paths import local_path
+from poptracker_map import jsonc, walk_locations
 
 ROOT = Path(__file__).resolve().parent.parent
 HOME = local_path("poptracker")
@@ -54,29 +55,6 @@ class Fail(Exception):
     pass
 
 
-def jsonc(path: Path):
-    """A pack JSON file: comments and trailing commas allowed."""
-    text = path.read_text(encoding="utf-8-sig")
-    out, i, n = [], 0, len(text)
-    while i < n:
-        c = text[i]
-        if c == '"':
-            j = i + 1
-            while text[j] != '"':
-                j += 2 if text[j] == "\\" else 1
-            out.append(text[i:j + 1])
-            i = j + 1
-        elif text.startswith("//", i):
-            i = text.find("\n", i)
-            i = n if i < 0 else i
-        elif text.startswith("/*", i):
-            i = text.index("*/", i) + 2
-        else:
-            out.append(c)
-            i += 1
-    return json.loads(re.sub(r",(\s*[}\]])", r"\1", "".join(out)))
-
-
 class Pack:
     def __init__(self, path: Path):
         self.path = path
@@ -93,7 +71,11 @@ class Pack:
         self.visibility = {}  # section code -> its visibility_rules
         init = (path / "scripts" / "init.lua").read_text(encoding="utf-8")
         for name in re.findall(r'^Tracker:AddLocations\("([^"]+)"\)', init, re.M):
-            self._walk(jsonc(path / name), "")
+            for loc_id, node in walk_locations(jsonc(path / name)):
+                self.locations.append(loc_id)
+                for section in node.get("sections", []):
+                    self.sections.append(f"@{loc_id}/{section.get('name', '')}")
+                    self.visibility[self.sections[-1]] = section.get("visibility_rules", [])
         self.location_map = {}  # AP location id -> (LASR key, [section codes])
         text = (path / "scripts" / "autotracking" / "location_mapping.lua").read_text(encoding="utf-8")
         for m in re.finditer(r'\[(\d+)\] = \{(.*)\},\s*-- (\S+)', text):
@@ -103,15 +85,6 @@ class Pack:
         for m in re.finditer(r'\[(\d+)\] = \{"([^"]+)", (?:"(\w+)"|(\d+))\},\s*-- (\S+)', text):
             self.item_map[int(m.group(1))] = (m.group(5), m.group(2), m.group(3) or int(m.group(4)))
         self.item_images = {int(m.group(1)): m.group(2) for m in re.finditer(r'\[(\d+)\] = "([^"]+)",', text)}
-
-    def _walk(self, nodes: list, parent: str) -> None:
-        for node in nodes:
-            path = f"{parent}/{node['name']}" if parent else node["name"]
-            self.locations.append(path)
-            for section in node.get("sections", []):
-                self.sections.append(f"@{path}/{section.get('name', '')}")
-                self.visibility[self.sections[-1]] = section.get("visibility_rules", [])
-            self._walk(node.get("children", []), path)
 
     def location_id(self, key: str) -> int:
         return next(i for i, (k, _) in self.location_map.items() if k == key)
@@ -194,15 +167,8 @@ class Tracker:
         if slot:
             args += ["--ap-host", f"localhost:{PORT}", "--ap-slot", slot]
         args.append(str(self.pack.path))  # the pack last, after its options
-        foreground = emu.ctypes.windll.user32.GetForegroundWindow()
-        info = subprocess.STARTUPINFO()
-        info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        info.wShowWindow = emu.SW_SHOWNOACTIVATE
-        self.proc = subprocess.Popen(args, cwd=APP, startupinfo=info, stdin=subprocess.DEVNULL,
-                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        pythonw = Path(sys.executable).with_name("pythonw.exe")
-        subprocess.Popen([str(pythonw), str(ROOT / "scripts" / "emu.py"), "tuck", str(self.proc.pid),
-                          str(foreground or 0)], creationflags=CREATE_NO_WINDOW, close_fds=True)
+        self.proc = emu.popen_tucked(args, cwd=APP, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                     stderr=subprocess.DEVNULL)
         print(f"PopTracker {self.proc.pid} {self.variant} {slot or '(no AP)'}")
         self.wait(r"^LASAPTEST LOADED", 30)
 

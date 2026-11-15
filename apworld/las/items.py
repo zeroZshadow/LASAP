@@ -2,7 +2,7 @@ from typing import Dict, NamedTuple, Set, Tuple
 
 from BaseClasses import Item, ItemClassification
 
-from .lasr import DUNGEON_LEVEL, DUNGEON_NAMES, INSTRUMENTS, ITEM_DEFS, LOGIC, TRAPS, item_dungeon
+from .lasr import DUNGEON_LEVEL, DUNGEON_NAMES, INSTRUMENTS, ITEM_DEFS, LOGIC, TRAPS, dungeon_item_kind, item_dungeon
 from .logic import referenced_tokens
 from .ids import ITEM_BASE, ITEM_OFFSETS
 
@@ -98,9 +98,8 @@ _DISPLAY_NAMES.update({"bow-wow": "Bow-Wow", "rooster": "Flying Rooster"})
 def display_name(lasr_item: str) -> str:
     if lasr_item in _DISPLAY_NAMES:
         return _DISPLAY_NAMES[lasr_item]
-    dungeon = item_dungeon(lasr_item)
-    kind = lasr_item[:-3]
-    return f"{_DUNGEON_ITEM_NAMES[kind]} ({DUNGEON_NAMES[dungeon]})"
+    return f"{_DUNGEON_ITEM_NAMES[dungeon_item_kind(lasr_item)]} ({DUNGEON_NAMES[item_dungeon(lasr_item)]})"
+
 
 
 class ItemData(NamedTuple):

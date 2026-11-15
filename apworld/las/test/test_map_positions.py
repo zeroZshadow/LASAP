@@ -2,14 +2,10 @@
 each dot lies in its room's box and on its check's actor, in a room the dungeon map shows on a floor."""
 import json
 import re
-import sys
 import unittest
-from pathlib import Path
 
-from . import romfs
+from . import PATCHER, forget, patcher_import, romfs
 
-ROOT = Path(__file__).resolve().parents[3]
-PATCHER = ROOT / "patcher"
 ROMFS = romfs()
 LEVELS = ROMFS / "region_common" / "level"
 AREAS = ROMFS / "region_common" / "datasheets" / "UiDungeonArea.gsheet"
@@ -20,15 +16,10 @@ CHEST, OWL = b"ObjTreasureBox", b"ObjDungeonOw"
 class TestDungeonPositions(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        saved = list(sys.path)
-        sys.path.insert(0, str(PATCHER / "modbuild"))
-        try:
-            from RandomizerCore.Randomizers.chests import CHEST_ROOMS
-            from RandomizerCore.Tools.leb import Room
-            from RandomizerCore.Tools.oead_tools import parseStruct, readSheet
-        finally:
-            sys.path[:] = saved
-        cls.chest_rooms = CHEST_ROOMS
+        chests, leb, oead_tools = patcher_import("RandomizerCore.Randomizers.chests", "RandomizerCore.Tools.leb",
+                                                 "RandomizerCore.Tools.oead_tools", modbuild=True)
+        Room, parseStruct, readSheet = leb.Room, oead_tools.parseStruct, oead_tools.readSheet
+        cls.chest_rooms = chests.CHEST_ROOMS
         cls.floors = {str(row["mLeaName"]): row["mFloor"] for row in map(parseStruct, readSheet(str(AREAS))["values"])}
         cls.dungeon = json.loads((PATCHER / "map_positions.json").read_text(encoding="utf-8"))["dungeon"]
         cls.rooms = {}
@@ -40,9 +31,7 @@ class TestDungeonPositions(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        for name in list(sys.modules):
-            if name.split(".")[0] == "RandomizerCore":
-                del sys.modules[name]
+        forget("RandomizerCore")
 
     def actors(self, room: str, prefix: bytes) -> list:
         return [(a.posX, a.posZ) for a in self.rooms[room].actors if a.name.startswith(prefix)]

@@ -10,11 +10,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+from local_paths import venv_python
+
 ROOT = Path(__file__).resolve().parent.parent
-VENV_PYTHON = ROOT / ".venv-relay" / "Scripts" / "python.exe"
-if not VENV_PYTHON.exists():  # a worktree uses the main checkout's venv (TESTING.md, "Working in a worktree")
-    VENV_PYTHON = Path(subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=ROOT,
-                                      capture_output=True, text=True).stdout.strip()).parent / ".venv-relay" / "Scripts" / "python.exe"
+VENV_PYTHON = venv_python(".venv-relay")
 NAME = "LASGhostRelay"
 
 

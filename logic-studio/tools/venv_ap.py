@@ -1,16 +1,14 @@
 """Archipelago's Python for the game's scripts Logic Studio starts: the main checkout's .venv-ap, also from a worktree."""
-import os
 import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+sys.path.append(str(Path(__file__).resolve().parents[2] / "scripts"))
+from local_paths import venv_python  # noqa: E402
 
 
 def python():
-    common = subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
-    main = Path(common).parent if common else ROOT
-    return main / ".venv-ap" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    return venv_python(".venv-ap")
 
 
 def relaunch():

@@ -38,7 +38,7 @@ import ap_model  # noqa: E402
 import ap_option_edits  # noqa: E402
 import ap_player_ghost  # noqa: E402
 import ap_shuffles  # noqa: E402
-from las_ap_patch import (COMPANION_FLAGS, PLACEHOLDER_KEY, START_ITEMS_FLAG, dungeon_item,  # noqa: E402
+from las_ap_patch import (COMPANION_FLAGS, INDEX_KINDS, PLACEHOLDER_KEY, START_ITEMS_FLAG, dungeon_item,  # noqa: E402
                           load_yaml, model_token)
 
 PLACEHOLDER_ITEM_ID = 71  # must match AP::PLACEHOLDER_ITEM_ID in the exlaunch module
@@ -90,8 +90,6 @@ PLACEHOLDER_DEF = {
     "npc-key": "ItemArchipelago",
     "message": f"UI:{PLACEHOLDER_NAME_KEY}",
 }
-# Item kinds whose in-game index LASR takes from logic.yml for vanilla placements.
-INDEXED_ITEMS = ("seashell", "heart-piece", "heart-container", "bottle", "golden-leaf", "chamber-stone")
 ROOSTER_EVENT_FILE = "RoosterBones.bfevfl"
 # Items.gsheet instrument rows -> their jingle: the instrument's own song, which the pedestal's whiteout plays in the
 # game (MusicalInstrument.bfevfl's PlayAndWaitMusicalInstrument), in place of the fanfare all eight share
@@ -218,12 +216,7 @@ def chest_placeholder_branch(files) -> None:
     chart = flow.flowchart
     open_next = event_tools.findEvent(chart, "Event32").data.nxt.v.name  # LASR's item switch chain
     auto_save = event_tools.findEvent(chart, "Event40").data.nxt.v.name  # LASR's RequestAutoSave
-    ap_get = event_tools.createActionChain(chart, None, [
-        ("Inventory", "AddItemByKey", {"itemKey": PLACEHOLDER_KEY, "count": 1,
-                                       "index": evfl.common.Argument("itemIndex"), "autoEquip": False}),
-        ("Link", "GenericItemGetSequenceByKey", {"itemKey": evfl.common.Argument("itemKey"), "keepCarry": False,
-                                                 "messageEntry": PLACEHOLDER_KEY}),
-    ], auto_save)
+    ap_get = placeholder_get(chart, evfl.common.Argument("itemKey"), evfl.common.Argument("itemIndex"), after=auto_save)
     ap_check = event_tools.createSwitchEvent(chart, "FlowControl", "CompareString",
         {"value1": "itemKey", "value2": PLACEHOLDER_KEY}, {0: ap_get, 1: open_next})
     event_tools.insertEventAfter(chart, "Event32", ap_check)
@@ -243,26 +236,13 @@ def native_instrument_get(flowchart, room) -> None:
 
 def mark_native_item_gets(chart, entry) -> None:
     """Marks every Link item-get reachable from an entry point (NATIVE_ITEM_GET_MARK)."""
-    todo = [event_tools.findEntryPoint(chart, entry).main_event.v]
-    seen = set()
-    while todo:
-        event = todo.pop()
-        if event is None or event.name in seen:
-            continue
-        seen.add(event.name)
+    for event in ap_drop.reachable_events(chart, entry):
         data = event.data
         if isinstance(data, evfl.event.ActionEvent) and data.actor.v.identifier.name == "Link" and \
                 data.actor_action.v.v in ("GenericItemGetSequenceByKey", "GenericItemGetSequence"):
             entry_param = data.params.data.get("messageEntry", "")
             if isinstance(entry_param, str) and not entry_param.startswith(NATIVE_ITEM_GET_MARK):
                 data.params.data["messageEntry"] = NATIVE_ITEM_GET_MARK + entry_param
-        if getattr(data, "nxt", None) is not None:
-            todo.append(data.nxt.v)
-        if isinstance(data, evfl.event.SwitchEvent):
-            todo.extend(case.v for case in data.cases.values())
-        if isinstance(data, evfl.event.ForkEvent):
-            todo.extend(fork.v for fork in data.forks)
-            todo.append(data.join.v)
 
 
 def edit_sheets(proc) -> None:
@@ -331,7 +311,7 @@ def build_placements(patch: dict, logic: dict) -> dict:
         if item == "ap-item":
             placements["indexes"][loc] = int(ids[loc])
             placements[loc] = location_item(loc)
-        elif item in INDEXED_ITEMS and "index" in logic.get(loc, {}):
+        elif item in INDEX_KINDS and "index" in logic.get(loc, {}):  # vanilla: LASR takes the index from logic.yml
             placements["indexes"][loc] = logic[loc]["index"]
         elif dungeon_item(item):
             placements["indexes"][loc] = dungeon_item(item)[1]

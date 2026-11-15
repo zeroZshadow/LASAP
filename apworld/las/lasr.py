@@ -1,4 +1,5 @@
 """LASR (LAS Randomizer) data: logic, item pool and location categories, loaded from the bundled YAML files."""
+import json
 import pkgutil
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 
@@ -9,21 +10,27 @@ from .logic import ALWAYS, SHUFFLE_GROUPS, SPEC, START, house_exits, lower_route
 _Loader = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
 
 
-def _load_yaml(name: str) -> Any:
+def load_yaml(name: str) -> Any:
     return yaml.load(pkgutil.get_data(__name__, f"data/{name}"), Loader=_Loader)
 
 
-WRITTEN_LOGIC: Dict[str, Dict[str, Any]] = _load_yaml("logic.yml")  # with its routes, as logic.yml writes them
-DOORS: Dict[str, Any] = _load_yaml("doors.yml")
+def load_json(name: str) -> Any:
+    return json.loads(pkgutil.get_data(__name__, f"data/{name}").decode("utf-8"))
 
-# A dungeon's door is its pair in doors.yml's `dungeon` group; its inside's level names the dungeon (Lv01 Tail Cave,
-# ..., Lv10 the Color Dungeon).
+
+WRITTEN_LOGIC: Dict[str, Dict[str, Any]] = load_yaml("logic.yml")  # with its routes, as logic.yml writes them
+DOORS: Dict[str, Any] = load_yaml("doors.yml")
+
 DUNGEONS = tuple(SPEC["dungeons"])
+# Each dungeon's number in location and item names (D1-..., key-D1) and in its inside's level (Lv01 ... Lv08): D1 Tail
+# Cave ... D8 Turtle Rock, D0 the Color Dungeon (Lv10).
+DUNGEON_NUMBERS: Dict[str, int] = {dungeon: (index + 1) % len(DUNGEONS) for index, dungeon in enumerate(DUNGEONS)}
+NUMBERED_DUNGEONS: Dict[int, str] = {number: dungeon for dungeon, number in DUNGEON_NUMBERS.items()}
 
 
 def _inside_dungeon(door: str) -> str:
-    level = int(DOORS["pairs"][door][2:4])
-    return DUNGEONS[(level % 10 - 1) % len(DUNGEONS)]
+    """The dungeon a door of doors.yml's `dungeon` group leads into by default, by its inside's level."""
+    return NUMBERED_DUNGEONS[int(DOORS["pairs"][door][2:4]) % 10]
 
 
 DUNGEON_DOORS: Dict[str, str] = {_inside_dungeon(door): door for door in DOORS["groups"]["dungeon"]}
@@ -69,8 +76,8 @@ def plain_logic(written: Dict[str, Dict[str, Any]], doors: Dict[str, Any]) -> Di
 LOGIC: Dict[str, Dict[str, Any]] = plain_logic(WRITTEN_LOGIC, DOORS)
 
 
-ITEM_DEFS: Dict[str, Dict[str, Any]] = _load_yaml("items.yml")["Item_Pool"]
-CATEGORIES: Dict[str, List[str]] = _load_yaml("locations.yml")
+ITEM_DEFS: Dict[str, Dict[str, Any]] = load_yaml("items.yml")["Item_Pool"]
+CATEGORIES: Dict[str, List[str]] = load_yaml("locations.yml")
 
 # The companions the logic's companion locations hold, which items.yml does not have.
 COMPANION_ITEMS = {"bow-wow": {"type": "important", "quantity": 1, "item-key": "None"},
@@ -135,7 +142,7 @@ def goal_logic(instruments_required: int, logic: Dict[str, Dict[str, Any]],
 
 def dungeon_name(dungeon: str) -> str:
     """The game's name of a dungeon (DUNGEONS name): Tail Cave, ..., Color Dungeon."""
-    return DUNGEON_NAMES[(DUNGEONS.index(dungeon) + 1) % len(DUNGEONS)]
+    return DUNGEON_NAMES[DUNGEON_NUMBERS[dungeon]]
 
 
 def door_node(dungeon: str) -> str:
@@ -204,6 +211,16 @@ def entrance_logic(entrances: Optional[Dict[str, str]], dungeon_entrances: Optio
     return door_logic(WRITTEN_LOGIC, doors)
 
 
+def slot_logic(dungeon_entrances: Optional[Dict[str, str]], open_doors: Iterable[str] = (),
+               start: Optional[str] = None) -> Dict[str, Dict[str, Any]]:
+    """The logic with a slot's doors. With Entrances (`open_doors`: its door pool) where those doors lead stays out of
+    the rules (door_logic); else the routes are lowered as the dungeon doors and the start lead (entrance_logic)."""
+    open_doors = list(open_doors)
+    if open_doors:
+        return door_logic(WRITTEN_LOGIC, slot_doors(None, dungeon_entrances), open_doors)
+    return entrance_logic(None, dungeon_entrances, start)
+
+
 class PlacementError(Exception):
     """No placement in every try: a generation failure, which fuzzers count, not an option error they set aside."""
 
@@ -256,7 +273,7 @@ def dungeon_of(location: str) -> Optional[str]:
     """The dungeon (DUNGEONS name) a location's name puts it in: D1-... Tail Cave, ..., D0-... the Color Dungeon; None
     outside the dungeons. A location's region need not be its dungeon's."""
     number = location_dungeon(location)
-    return DUNGEONS[(number - 1) % len(DUNGEONS)] if number >= 0 else None
+    return NUMBERED_DUNGEONS[number] if number >= 0 else None
 
 
 def item_dungeon(item: str) -> int:
@@ -264,3 +281,9 @@ def item_dungeon(item: str) -> int:
     if len(item) > 3 and item[-3] == "-" and item[-2] == "D" and item[-1].isdigit():
         return int(item[-1])
     return -1
+
+
+def dungeon_item_kind(item: str) -> Optional[str]:
+    """A LASR dungeon item's kind (key-D3: key, nightmare-key, map, compass, stone-beak), or None."""
+    return item[:-3] if item_dungeon(item) >= 0 else None
+

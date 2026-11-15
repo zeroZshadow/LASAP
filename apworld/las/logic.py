@@ -114,13 +114,17 @@ def node_tokens(tree: Node) -> Iterable[str]:
             yield from node_tokens(part)
 
 
+def conditions(node: Mapping) -> Iterable[Tuple[str, str]]:
+    """A node's condition-* keys that hold a condition, with its text."""
+    return ((key, str(value)) for key, value in node.items() if key.startswith("condition-") and value)
+
+
 def referenced_tokens(logic: Mapping[str, Mapping]) -> Set[str]:
     """Every name used by any condition of any preset."""
     tokens: Set[str] = set()
     for definition in logic.values():
-        for key, value in definition.items():
-            if key.startswith("condition-") and value:
-                tokens.update(node_tokens(parse(str(value))))
+        for _, text in conditions(definition):
+            tokens.update(node_tokens(parse(text)))
     return tokens
 
 
@@ -320,19 +324,18 @@ class LogicCompiler:
     def _references(self, name: str) -> Set[str]:
         """Logic nodes named by a node's conditions (any preset)."""
         found = set()
-        for key, value in self.logic[name].items():
-            if key.startswith("condition-") and value:
-                for token in node_tokens(parse(str(value))):
-                    base = token.split("[")[0]
-                    if base in self.logic and self.logic[base]["type"] != "item":
-                        found.add(base)
+        for _, text in conditions(self.logic[name]):
+            for token in node_tokens(parse(text)):
+                base = token.split("[")[0]
+                if base in self.logic and self.logic[base]["type"] != "item":
+                    found.add(base)
         return found
 
     def _region_nodes(self) -> Set[str]:
         """Nodes that become AP regions: regions, rooms, and nodes on a reference cycle; the rest are inlined."""
-        nodes = {k for k, v in self.logic.items() if v["type"] in ("region", "room")}
+        nodes = {k for k, v in self.logic.items() if v["type"] in PLACES}
         graph = {k: self._references(k) - nodes for k, v in self.logic.items()
-                 if v["type"] not in ("item", "region", "room", "follower")}
+                 if v["type"] not in ("item", "follower", *PLACES)}
         # Tarjan's strongly connected components
         index: Dict[str, int] = {}
         low: Dict[str, int] = {}
@@ -448,14 +451,13 @@ class LogicCompiler:
         while stack:
             name = stack.pop()
             node = self.logic[name]
-            for key, value in node.items():
-                if not key.startswith("condition-") or not value:
-                    continue
+            for key, text in conditions(node):
                 if node["type"] == "enemy" and key not in ("condition-basic", "condition-pit", "condition-heavy"):
                     continue
                 if node["type"] != "enemy" and key != "condition-basic" and key not in self.extra_keys:
                     continue
-                for token in node_tokens(parse(str(value))):
+                for token in node_tokens(parse(text)):
+
                     base = token.split("[")[0]
                     if token in self.settings or base in seen:
                         continue

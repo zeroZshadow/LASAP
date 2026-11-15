@@ -6,15 +6,10 @@ Received DeathLinks are logged as "DeathLink: ..." lines (CommonContext.on_death
 """
 import asyncio
 import logging
-import os
-import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-AP = os.path.join(ROOT, "vendor", "Archipelago")
-os.chdir(AP)
-sys.path.insert(0, AP)
-import ModuleUpdate  # noqa: E402
-ModuleUpdate.update_ran = True
+from ap import setup
+
+setup()
 from CommonClient import ClientCommandProcessor, CommonContext, get_base_parser, server_loop  # noqa: E402
 
 

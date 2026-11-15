@@ -10,9 +10,9 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Set, 
 from BaseClasses import ItemClassification
 
 from .items import ITEM_TABLE, LASR_TO_ITEM
-from .lasr import (COUNTED, DOORS, DUNGEON_DOORS, DUNGEON_POOL, DUNGEONS, ENTRANCE_POOL, HOME_DOOR, INSTRUMENTS, LOGIC, WRITTEN_LOGIC,
-                   closed_dungeons, door_logic, door_node, door_region, dungeon_of, dungeon_region, entered_by_door,
-                   entrance_logic, goal_logic, slot_doors)
+from .lasr import (COUNTED, DOORS, DUNGEON_DOORS, DUNGEON_POOL, DUNGEONS, ENTRANCE_POOL, HOME_DOOR, INSTRUMENTS, LOGIC,
+                   closed_dungeons, door_node, door_region, dungeon_of, dungeon_region, entered_by_door, goal_logic,
+                   slot_logic)
 from .logic import LogicCompiler, make_rule
 from .options import Goal, SeashellsRequired
 
@@ -99,11 +99,8 @@ class LogicTracker:
         self.home = start or HOME_DOOR  # the door the house's door is paired with
         pool = [door for door in DUNGEON_POOL if door in self.pairs]
         closed = closed_dungeons(pool)
-        if self.pairs:
-            doors = door_logic(WRITTEN_LOGIC, slot_doors(None, entrances), pool)
-        else:
-            doors = entrance_logic(None, entrances, start)
-        logic = goal_logic(instruments_required, doors, seashells_required)
+        logic = goal_logic(instruments_required, slot_logic(entrances, pool, start), seashells_required)
+
         compiler = LogicCompiler(logic, preset, tokens, LASR_TO_ITEM, COUNTED)
         vanilla, self.shuffled, optional = list(vanilla), list(shuffled), set(optional)
         # the shuffled doors' regions too: what leads into each through its partner is no rule (sweep)

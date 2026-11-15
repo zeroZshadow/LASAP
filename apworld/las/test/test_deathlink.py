@@ -1,13 +1,10 @@
 """DeathLink: the patched game over flow (patcher ap_deathlink.py) and the client's DIED and DEATH lines."""
 import asyncio
 import itertools
-import sys
 import unittest
-from pathlib import Path
 
-from . import client_context, romfs
+from . import client_context, forget, patcher_import, romfs
 
-PATCHER = Path(__file__).resolve().parents[3] / "patcher"
 ROMFS = romfs()
 COMMON_EVENT = ROMFS / "region_common" / "event" / "Common.bfevfl"
 
@@ -19,20 +16,11 @@ class TestGameOverFlow(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        saved = list(sys.path)
-        sys.path.insert(0, str(PATCHER / "modbuild"))
-        try:
-            import evfl
-            import ap_deathlink
-        finally:
-            sys.path[:] = saved
-        cls.evfl, cls.ap_deathlink = evfl, ap_deathlink
+        cls.evfl, cls.ap_deathlink = patcher_import("evfl", "ap_deathlink", modbuild=True)
 
     @classmethod
     def tearDownClass(cls) -> None:
-        for name in list(sys.modules):
-            if name.split(".")[0] in ("ap_deathlink", "RandomizerCore"):
-                del sys.modules[name]
+        forget("ap_deathlink", "RandomizerCore")
 
     def read(self):
         flow = self.evfl.EventFlow()

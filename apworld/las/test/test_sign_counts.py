@@ -13,12 +13,9 @@ import yaml
 from Generate import handle_option, roll_settings
 from BaseClasses import PlandoOptions
 from Options import generate_yaml_templates
-from test.general import setup_multiworld
 from worlds.AutoWorld import AutoWorldRegister
 
-from . import client_context, test_goal
-from .test_logic import STEPS
-from .test_universal_tracker import regenerate
+from . import beatable, client_context, generate_world, regenerate
 from ..items import GAME
 from ..lasr import INSTRUMENTS
 from ..options import InstrumentsRequired, SeashellsRequired
@@ -78,21 +75,19 @@ class TestKnown(unittest.TestCase):
 
 class TestSlotData(unittest.TestCase):
     def test_slot_data(self) -> None:
-        world_type = AutoWorldRegister.world_types[GAME]
         for value, known in ((3, True), ("random-range-2-6", False)):
             with self.subTest(value=value):
-                world = setup_multiworld(world_type, STEPS, 70, {"instruments_required": value}).worlds[1]
+                world = generate_world({"instruments_required": value}, 70)
                 slot_data = world.fill_slot_data()
                 self.assertEqual(slot_data["instruments_known"], known)
                 self.assertTrue(slot_data["seashells_known"])
                 self.assertEqual(world.goal_instruments, slot_data["instruments_required"])
 
     def test_seashell_hunt(self) -> None:
-        world_type = AutoWorldRegister.world_types[GAME]
         for value, known in ((12, True), ("random-range-5-20", False)):
             with self.subTest(value=value):
-                world = setup_multiworld(world_type, STEPS, 71, {"goal": "seashell_hunt", "instruments_required":
-                                                                 "random", "seashells_required": value}).worlds[1]
+                world = generate_world({"goal": "seashell_hunt", "instruments_required": "random",
+                                        "seashells_required": value}, 71)
                 slot_data = world.fill_slot_data()
                 self.assertEqual(slot_data["seashells_known"], known)
                 self.assertTrue(slot_data["instruments_known"])
@@ -160,37 +155,32 @@ class TestClient(unittest.TestCase):
 
 class TestUniversalTracker(unittest.TestCase):
     def test_keys(self) -> None:
-        world_type = AutoWorldRegister.world_types[GAME]
-        self.assertEqual(world_type.found_entrances_datastorage_key,
+        self.assertEqual(AutoWorldRegister.world_types[GAME].found_entrances_datastorage_key,
                          ("las_sign_{team}_{player}", "las_doors_{team}_{player}",
                           "las_entrances_{team}_{player}"))
 
     def test_hidden_until_the_sign(self) -> None:
-        world_type = AutoWorldRegister.world_types[GAME]
         for value, known in (("random-range-1-6", False), (3, True)):
             with self.subTest(value=value):
-                world = setup_multiworld(world_type, STEPS, 80, {"instruments_required": value}).worlds[1]
+                world = generate_world({"instruments_required": value}, 80)
                 slot_data = world.fill_slot_data()
                 regen = regenerate(slot_data, 81)
                 again = regen.worlds[1]
                 required = slot_data["instruments_required"]
                 self.assertEqual(again.goal_instruments, required if known else 8)
-                beatable = test_goal.TestInstrumentsRequired.beatable
-                self.assertEqual(beatable(self, regen, INSTRUMENTS[:required]), known)
+                self.assertEqual(beatable(regen, INSTRUMENTS[:required]), known)
                 again.reconnect_found_entrances("las_sign_0_1", None)
                 self.assertEqual(again.goal_instruments, required if known else 8)
                 again.reconnect_found_entrances("las_sign_0_1", True)
                 self.assertEqual(again.goal_instruments, required)
-                self.assertTrue(beatable(self, regen, INSTRUMENTS[:required]))
-                self.assertFalse(beatable(self, regen, INSTRUMENTS[:required - 1]))
+                self.assertTrue(beatable(regen, INSTRUMENTS[:required]))
+                self.assertFalse(beatable(regen, INSTRUMENTS[:required - 1]))
                 self.assertEqual(again.compiler.node_expr("egg"), world.compiler.node_expr("egg"))
                 for loc in world.shuffled:
                     self.assertEqual(again.compiler.node_expr(loc), world.compiler.node_expr(loc), loc)
 
     def test_seashells_hidden_until_the_sign(self) -> None:
-        world_type = AutoWorldRegister.world_types[GAME]
-        world = setup_multiworld(world_type, STEPS, 82, {"goal": "seashell_hunt",
-                                                         "seashells_required": "random-range-5-20"}).worlds[1]
+        world = generate_world({"goal": "seashell_hunt", "seashells_required": "random-range-5-20"}, 82)
         slot_data = world.fill_slot_data()
         again = regenerate(slot_data, 83).worlds[1]
         self.assertEqual(again.goal_seashells, SeashellsRequired.range_end)
@@ -200,8 +190,6 @@ class TestUniversalTracker(unittest.TestCase):
 
     def test_shown_with_deferral_off(self) -> None:
         """With Universal Tracker's enforce_deferred_entrances off, a count left to chance shows at once."""
-        world_type = AutoWorldRegister.world_types[GAME]
-        world = setup_multiworld(world_type, STEPS, 84, {"goal": "seashell_hunt",
-                                                         "seashells_required": "random-range-5-20"}).worlds[1]
+        world = generate_world({"goal": "seashell_hunt", "seashells_required": "random-range-5-20"}, 84)
         again = regenerate(world.fill_slot_data(), 85, "off").worlds[1]
         self.assertEqual(again.goal_seashells, world.goal_seashells)

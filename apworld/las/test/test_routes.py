@@ -1,13 +1,9 @@
 """logic.yml's routes (logic.lower_routes): how they read, what they refuse, and what the file itself holds."""
 import unittest
-from pathlib import Path
-
-import yaml
 
 from ..lasr import DOORS as SHIPPED_DOORS, LOGIC, WRITTEN_LOGIC
 from ..logic import ALWAYS, NEVER, PLACES, START, house_exits, lower_routes, node_tokens, parse, start_doors
 
-DATA = Path(__file__).resolve().parents[1] / "data"
 DOORS = {"pairs": {"Field_a": "Inside_a", "Field_b": "Inside_b", "Field_d": "Inside_d"}, "one-way": {"Hole": "Field_c"},
          "groups": {"single": ["Field_a", "Field_b", "Field_d"]}}
 
@@ -129,13 +125,11 @@ class TestLogicFile(unittest.TestCase):
         self.assertNotIn("condition-basic", LOGIC[START])
 
     def test_doors_have_one_name_each(self) -> None:
-        doors = yaml.safe_load((DATA / "doors.yml").read_text(encoding="utf-8"))
-        names = list(doors["pairs"]) + list(doors["pairs"].values()) + list(doors["one-way"])
+        names = list(SHIPPED_DOORS["pairs"]) + list(SHIPPED_DOORS["pairs"].values()) + list(SHIPPED_DOORS["one-way"])
         self.assertEqual(len(names), len(set(names)))
 
     def test_door_groups_hold_pairs_once(self) -> None:
         """An entrance shuffle draws pairs from the groups by their first name."""
-        doors = yaml.safe_load((DATA / "doors.yml").read_text(encoding="utf-8"))
-        grouped = [door for names in doors["groups"].values() for door in names]
+        grouped = [door for names in SHIPPED_DOORS["groups"].values() for door in names]
         self.assertEqual(len(grouped), len(set(grouped)))
-        self.assertLessEqual(set(grouped), set(doors["pairs"]))
+        self.assertLessEqual(set(grouped), set(SHIPPED_DOORS["pairs"]))

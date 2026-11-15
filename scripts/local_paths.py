@@ -5,6 +5,7 @@ python local_paths.py <key>   prints the value, for shell scripts
 """
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -30,6 +31,16 @@ def local_path(key: str) -> Path:
         env = ENV.get(key)
         raise SystemExit(f'{FILE} needs "{key}"' + (f" (or {env})" if env else "") + " (TESTING.md, Requirements)")
     return Path(value)
+
+
+def venv_python(name: str) -> Path:
+    """The Python of the main checkout's venv `name` (.venv-ap, ...), which a worktree uses too (TESTING.md, "Working
+    in a worktree")."""
+    root = FILE.parent.parent
+    common = subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=root,
+                            capture_output=True, text=True).stdout.strip()
+    main = Path(common).parent if common else root
+    return main / name / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
 
 
 if __name__ == "__main__":

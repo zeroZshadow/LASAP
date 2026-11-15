@@ -64,9 +64,12 @@ class KeyLogicCheck:
 
     # --- compiling ---
 
-    def _conditions(self, name: str) -> List[str]:
-        node = self.logic[name]
-        keys = ("condition-basic",) if node["type"] == "enemy" else ("condition-basic",) + self.extra_keys
+    def _conditions(self, node: Mapping, kills: bool = False) -> List[str]:
+        """Its conditions; an enemy's with `kills` also the pit and heavy kills'."""
+        if node["type"] == "enemy":
+            keys = ("condition-basic", "condition-pit", "condition-heavy") if kills else ("condition-basic",)
+        else:
+            keys = ("condition-basic",) + self.extra_keys
         return [str(node[k]) for k in keys if node.get(k)]
 
     def _expr_nodes(self, expr: str) -> Iterable[str]:
@@ -80,7 +83,7 @@ class KeyLogicCheck:
         while stack:
             name = stack.pop()
             node = self.logic[name]
-            exprs = self._conditions_of(node)
+            exprs = self._conditions(node, kills=True)
             if node.get("region") in self.logic:
                 exprs.append(node["region"])
             for expr in exprs:
@@ -89,11 +92,6 @@ class KeyLogicCheck:
                         seen.add(base)
                         stack.append(base)
         return [name for name in self.logic if name in seen]
-
-    def _conditions_of(self, node: Mapping) -> List[str]:
-        keys = ("condition-basic", "condition-pit", "condition-heavy") if node["type"] == "enemy" else \
-            ("condition-basic",) + self.extra_keys
-        return [str(node[k]) for k in keys if node.get(k)]
 
     def _outside(self, name: str) -> bool:
         return self.logic[name]["type"] in PLACES and not name.startswith(self.prefix)
@@ -145,7 +143,7 @@ class KeyLogicCheck:
 
     def _node_rule(self, name: str, game: bool):
         node = self.logic[name]
-        conditions = self._conditions(name)
+        conditions = self._conditions(self.logic[name])
         expr = " or ".join(self._compile_condition(c, name, game) for c in conditions) if conditions else "True"
         if node.get("region") in self.logic:
             expr = f"({node['region']!r} in R) and ({expr})"
@@ -157,7 +155,8 @@ class KeyLogicCheck:
 
     def _dynamic(self) -> Set[str]:
         """Nodes that depend on keys or locks."""
-        dynamic = {name for name in self.nodes if any(self.key in node_tokens(parse(c)) for c in self._conditions(name))}
+        dynamic = {name for name in self.nodes
+                   if any(self.key in node_tokens(parse(c)) for c in self._conditions(self.logic[name]))}
         changed = True
         while changed:
             changed = False
@@ -165,7 +164,8 @@ class KeyLogicCheck:
                 if name in dynamic:
                     continue
                 node = self.logic[name]
-                refs = [b for c in self._conditions_of(node) for b in self._expr_nodes(c)] + [node.get("region")]
+                refs = [b for c in self._conditions(node, kills=True) for b in self._expr_nodes(c)]
+                refs.append(node.get("region"))
                 if any(ref in dynamic for ref in refs):
                     dynamic.add(name)
                     changed = True
@@ -224,7 +224,7 @@ class KeyLogicCheck:
         several copies, one copy fewer."""
         names = set(self.variables)
         for name in self.nodes:
-            for condition in self._conditions_of(self.logic[name]):
+            for condition in self._conditions(self.logic[name], kills=True):
                 names.update(t for t in node_tokens(parse(condition)) if t in ITEM_DEFS)
         names.discard(self.key)
         full = self.items()

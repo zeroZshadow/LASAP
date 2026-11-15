@@ -1,5 +1,7 @@
 """Turns an .aplas into an installed mod: runs the patcher, then copies its output to the game's SD card."""
 import configparser
+import contextlib
+import functools
 import importlib
 import io
 import json
@@ -13,7 +15,7 @@ import traceback
 import types
 import zipfile
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, Iterator, List, Optional, Set
 
 from .emulators import TITLE_ID
 from .host_settings import PLAYER_DEFAULTS
@@ -42,10 +44,6 @@ _PATCHER_LOCK = threading.Lock()
 
 class InstallError(Exception):
     pass
-
-
-class _PatcherExit(InstallError):
-    """The patcher ended with an error code; it printed why last."""
 
 
 def split_command(command: str) -> List[str]:
@@ -133,19 +131,8 @@ def _world_archive() -> Optional[Path]:
     return Path(archive) if archive else None
 
 
-def builtin_patcher_available() -> bool:
-    archive = _world_archive()
-    if archive is not None:
-        with zipfile.ZipFile(archive) as zf:
-            return PATCHER_BUILD in zf.namelist()
-    return (SOURCE_PATCHER / "las_ap_patch.py").is_file()
-
-
-def builtin_patcher_build() -> Optional[str]:
-    """The build of the patcher the release world carries; None from source, where it changes with every edit."""
-    archive = _world_archive()
-    if archive is None:
-        return None
+@functools.lru_cache(maxsize=None)
+def _archive_build(archive: Path) -> Optional[str]:
     try:
         with zipfile.ZipFile(archive) as zf:
             return zf.read(PATCHER_BUILD).decode().strip()
@@ -153,42 +140,50 @@ def builtin_patcher_build() -> Optional[str]:
         return None
 
 
+def builtin_patcher_available() -> bool:
+    archive = _world_archive()
+    if archive is not None:
+        return _archive_build(archive) is not None
+    return (SOURCE_PATCHER / "las_ap_patch.py").is_file()
+
+
+def builtin_patcher_build() -> Optional[str]:
+    """The build of the patcher the release world carries; None from source, where it changes with every edit."""
+    archive = _world_archive()
+    return None if archive is None else _archive_build(archive)
+
+
 def builtin_patcher_dir(log: Callable[[str], None]) -> Path:
     """The patcher the world carries, unpacked into Archipelago's cache folder once per build; from source, the
     repository's patcher folder."""
+    if not builtin_patcher_available():
+        raise InstallError("This copy of the world has no patcher: set the patcher command under Advanced settings "
+                           "(see the setup guide).")
     archive = _world_archive()
     if archive is None:
-        if not (SOURCE_PATCHER / "las_ap_patch.py").is_file():
-            raise InstallError("This copy of the world has no patcher: set the patcher command under Advanced "
-                               "settings (see the setup guide).")
         return SOURCE_PATCHER
     import Utils
-    with zipfile.ZipFile(archive) as zf:
+    cache = Path(Utils.cache_path("las", "patcher"))
+    target = cache / _archive_build(archive)
+    if not (target / ".complete").is_file():
+        log("Unpacking the patcher. This happens once for each version of the world.")
+        if cache.is_dir():
+            for old in cache.iterdir():
+                shutil.rmtree(old, ignore_errors=True)
+        cache.mkdir(parents=True, exist_ok=True)
+        tmp = Path(tempfile.mkdtemp(dir=cache))
         try:
-            build = zf.read(PATCHER_BUILD).decode().strip()
-        except KeyError:
-            raise InstallError("This copy of the world has no patcher: set the patcher command under Advanced "
-                               "settings (see the setup guide).") from None
-        cache = Path(Utils.cache_path("las", "patcher"))
-        target = cache / build
-        if not (target / ".complete").is_file():
-            log("Unpacking the patcher. This happens once for each version of the world.")
-            if cache.is_dir():
-                for old in cache.iterdir():
-                    shutil.rmtree(old, ignore_errors=True)
-            cache.mkdir(parents=True, exist_ok=True)
-            tmp = Path(tempfile.mkdtemp(dir=cache))
-            try:
+            with zipfile.ZipFile(archive) as zf:
                 for name in zf.namelist():
                     if name.startswith(PATCHER_PREFIX) and not name.endswith("/"):
                         dest = tmp / name[len(PATCHER_PREFIX):]
                         dest.parent.mkdir(parents=True, exist_ok=True)
                         dest.write_bytes(zf.read(name))
-                tmp.rename(target)
-            except BaseException:
-                shutil.rmtree(tmp, ignore_errors=True)
-                raise
-            (target / ".complete").touch()
+            tmp.rename(target)
+        except BaseException:
+            shutil.rmtree(tmp, ignore_errors=True)
+            raise
+        (target / ".complete").touch()
     return target
 
 
@@ -228,21 +223,30 @@ def _forget_patcher_modules(modules: Set[str] = PATCHER_MODULES) -> None:
             del sys.modules[name]
 
 
+@contextlib.contextmanager
+def _patcher_imports(root: Path, modules: Set[str] = PATCHER_MODULES) -> Iterator[None]:
+    """The patcher's modules import fresh from `root` inside; sys.path is restored after."""
+    saved_path = list(sys.path)
+    _forget_patcher_modules(modules)
+    sys.path.insert(0, str(root))
+    try:
+        yield
+    finally:
+        sys.path[:] = saved_path
+
+
 def run_builtin_patcher(patch_file: Path, romfs: Path, out: Path, log: Callable[[str], None],
-                        extra: List[str]) -> None:
-    """Runs the patcher in this process. Its modules are imported fresh for each run, as it keeps state in module
-    globals, and are dropped afterwards."""
+                        extra: List[str]) -> int:
+    """Runs the patcher in this process and gives its exit code. Its modules are imported fresh for each run, as it
+    keeps state in module globals, and are dropped afterwards."""
     root = builtin_patcher_dir(log)
-    with _PATCHER_LOCK:
-        saved_path = list(sys.path)
-        _forget_patcher_modules()
-        sys.path.insert(0, str(root))
+    with _PATCHER_LOCK, _patcher_imports(root):
         saved_streams = sys.stdout, sys.stderr
         sys.stdout = _ThreadOutput(saved_streams[0], log)
         sys.stderr = _ThreadOutput(saved_streams[1], log)
         try:
             patcher = importlib.import_module("las_ap_patch")
-            code = patcher.main([str(patch_file), "--romfs", str(romfs), "--out", str(out), *extra])
+            return patcher.main([str(patch_file), "--romfs", str(romfs), "--out", str(out), *extra])
         except Exception as e:
             log(traceback.format_exc())
             raise InstallError(f"The patcher failed: {e}") from e
@@ -250,10 +254,7 @@ def run_builtin_patcher(patch_file: Path, romfs: Path, out: Path, log: Callable[
             sys.stdout.write("\n")
             sys.stderr.write("\n")
             sys.stdout, sys.stderr = saved_streams
-            sys.path[:] = saved_path
             _forget_patcher_modules()
-    if code != 0:
-        raise _PatcherExit(f"The patcher failed (exit code {code}).")
 
 
 def tracker_images(romfs: Path, log: Callable[[str], None]) -> Path:
@@ -261,14 +262,8 @@ def tracker_images(romfs: Path, log: Callable[[str], None]) -> Path:
     import takes _PATCHER_LOCK, so a patch need not wait for the build."""
     import Utils
     root = builtin_patcher_dir(log)
-    with _PATCHER_LOCK:
-        saved_path = list(sys.path)
-        _forget_patcher_modules(PATCHER_MODULES | TRACKER_MODULES)
-        sys.path.insert(0, str(root))
-        try:
-            images = importlib.import_module("ap_tracker_map")
-        finally:
-            sys.path[:] = saved_path
+    with _PATCHER_LOCK, _patcher_imports(root, PATCHER_MODULES | TRACKER_MODULES):
+        images = importlib.import_module("ap_tracker_map")
     try:
         out = Path(Utils.cache_path("las", "tracker", images.romfs_key(romfs) + ".zip"))
         if not out.is_file():
@@ -280,49 +275,37 @@ def tracker_images(romfs: Path, log: Callable[[str], None]) -> Path:
             _forget_patcher_modules(PATCHER_MODULES | TRACKER_MODULES)
 
 
-class _LastLine:
-    def __init__(self, log: Callable[[str], None]) -> None:
-        self.log = log
-        self.line = ""
-
-    def __call__(self, text: str) -> None:
-        lines = [line.strip() for line in text.splitlines() if line.strip()]
-        if lines:
-            self.line = lines[-1]
-        self.log(text)
-
-
 def run_patcher(command: str, patch_file: Path, romfs: Path, out: Path, log: Callable[[str], None],
                 settings: Optional[Dict[str, Any]] = None) -> None:
-    """Runs the patcher command, or the patcher the world carries when it is empty, with these player settings."""
+    """Runs the patcher command, or the patcher the world carries when it is empty, with these player settings. A
+    failed run's error is the patcher's last line: it prints why."""
     extra = ["--settings", json.dumps(settings)] if settings else []
-    output = _LastLine(log)
-    try:
-        _run_patcher(command, patch_file, romfs, out, output, extra)
-    except _PatcherExit as e:
-        if output.line:
-            raise InstallError(output.line) from e
-        raise
+    last = ""
 
+    def output(text: str) -> None:
+        nonlocal last
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        if lines:
+            last = lines[-1]
+        log(text)
 
-def _run_patcher(command: str, patch_file: Path, romfs: Path, out: Path, log: Callable[[str], None],
-                 extra: List[str]) -> None:
     if not command.strip():
-        run_builtin_patcher(patch_file, romfs, out, log, extra)
-        return
-    args = split_command(command) + [str(patch_file), "--romfs", str(romfs), "--out", str(out), *extra]
-    flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-    try:
-        proc = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                text=True, errors="replace", creationflags=flags)
-    except OSError as e:
-        raise InstallError(f"Could not start the patcher ({args[0]}): {e}") from e
-    assert proc.stdout is not None
-    for line in proc.stdout:
-        if line.strip():
-            log(line.rstrip())
-    if proc.wait() != 0:
-        raise _PatcherExit(f"The patcher failed (exit code {proc.returncode}).")
+        code = run_builtin_patcher(patch_file, romfs, out, output, extra)
+    else:
+        args = split_command(command) + [str(patch_file), "--romfs", str(romfs), "--out", str(out), *extra]
+        flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+        try:
+            proc = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    text=True, errors="replace", creationflags=flags)
+        except OSError as e:
+            raise InstallError(f"Could not start the patcher ({args[0]}): {e}") from e
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            if line.strip():
+                output(line.rstrip())
+        code = proc.wait()
+    if code != 0:
+        raise InstallError(last or f"The patcher failed (exit code {code}).")
 
 
 def install(out: Path, sd_card: Path, mods: Path, build: Optional[str] = None,
