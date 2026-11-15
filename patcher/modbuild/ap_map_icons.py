@@ -8,10 +8,11 @@ look and the ring's to the archive's textures, and frames after the game's own: 
 of checks, then per look one at the size of a single check (frame()), then the ring around each (ring_frame()).
 
 Built once from a RomFS dump, as an asset (ap_assets.py)."""
-import io
 import math
 import struct
 from pathlib import Path
+
+import ap_bntx
 
 ARCHIVE = Path("region_common", "ui", "Game.arc")
 ANIMATION = "anim/Gm_MapMarker_SetMark.bflan"
@@ -124,88 +125,12 @@ def _ring_pixels() -> bytes:
     return bytes(out)
 
 
-def _dds(pixels: bytes, size: int) -> io.BytesIO:
-    """An uncompressed RGBA DDS (byte order R, G, B, A)."""
-    header = bytearray(128)
-    header[0:4] = b"DDS "
-    struct.pack_into("<7I", header, 4, 124, 0x100f, size, size, size * 4, 0, 1)
-    struct.pack_into("<2I", header, 76, 32, 0x41)  # pixel format: RGB with alpha
-    struct.pack_into("<5I", header, 88, 32, 0xff, 0xff00, 0xff0000, 0xff000000)
-    struct.pack_into("<I", header, 108, 0x1000)
-    return io.BytesIO(bytes(header) + pixels)
-
-
-def _bit(name: bytes, bit: int) -> int:
-    """Bit of a name as the textures' name dictionary counts them: from the name's last byte, low bit first."""
-    index = bit >> 3
-    return (name[len(name) - 1 - index] >> (bit & 7)) & 1 if index < len(name) else 0
-
-
-def build_dictionary(names: list) -> list:
-    """The nodes (reference bit, left, right, name index or -1) of a name dictionary (_DIC): a Patricia trie with
-    a root node, the names inserted in order."""
-    keys = [b""] + [name.encode() for name in names]
-    nodes = [[-1, 0, 0]]  # the root; it leads left
-
-    def child(index: int, key: bytes) -> int:
-        ref, left, right = nodes[index]
-        return right if ref >= 0 and _bit(key, ref) else left
-
-    for index in range(1, len(keys)):
-        key = keys[index]
-        parent, current = 0, nodes[0][1]
-        while nodes[parent][0] < nodes[current][0]:
-            parent, current = current, child(current, key)
-        found = keys[current]
-        bit = next(b for b in range(max(len(found), len(key)) * 8) if _bit(found, b) != _bit(key, b))
-        parent, current = 0, nodes[0][1]
-        while nodes[parent][0] < nodes[current][0] < bit:
-            parent, current = current, child(current, key)
-        nodes.append([bit, current, index] if _bit(key, bit) else [bit, index, current])
-        ref, left, right = nodes[parent]
-        if ref >= 0 and _bit(key, ref):
-            nodes[parent][2] = index
-        else:
-            nodes[parent][1] = index
-    return [(ref & 0xffffffff, left, right, i - 1) for i, (ref, left, right) in enumerate(nodes)]
-
-
 def _add_textures(data: bytes) -> bytes:
-    import copy
-    from RandomizerCore.Tools.bntx_editor import bntx_editor
-    from RandomizerCore.Tools.bntx_editor.structs import StringTable
-
-    editor = bntx_editor.BNTXEditor()
-    editor.openFile(data)
-    bntx = editor.bntx
-    dictionary = bntx.texNameDict
-    if [(n.referenceBit, n.leftIdx, n.rightIdx) for n in dictionary.entries] != \
-            [node[:3] for node in build_dictionary([t.name for t in bntx.textures])]:
-        raise ValueError(f"{TEXTURES}: the name dictionary is not built as build_dictionary() builds it")
-    template = next(t for t in bntx.textures if t.name == TEMPLATE)
-    made = [(name, _dot_pixels(look)) for look, name in enumerate(NAMES)] + [(RING_NAME, _ring_pixels())]
-    for name, pixels in made:
-        texture = bntx.replace(copy.deepcopy(template), template.tileMode, True, False, False, False,
-                               _dds(pixels, TEXTURE_SIZE))
-        if not texture:
-            raise ValueError(f"cannot make texture {name}")
-        entry = StringTable.Entry(bntx.header.endianness)
-        entry.string, entry.size_ = name, len(name.encode())
-        bntx.strTbl.entries.append(entry)
-        bntx.strTbl.count += 1
-        texture.name, texture.nameIdx = name, len(bntx.strTbl.entries) - 1
-        bntx.textures.append(texture)
-    bntx.texContainer.count = len(bntx.textures)
-    # The dictionary names the textures in their order.
-    nodes = build_dictionary([t.name for t in bntx.textures])
-    dictionary.entries = []
-    for i, (ref, left, right, name) in enumerate(nodes):
-        node = StringTable.TexNameDict.Entry(dictionary.endianness)
-        node.referenceBit, node.leftIdx, node.rightIdx = ref, left, right
-        node.strIdx = -1 if i == 0 else bntx.textures[name].nameIdx
-        dictionary.entries.append(node)
-    dictionary.count = len(bntx.textures)
-    return bytes(editor.save())
+    bntx = ap_bntx.Bntx(data)
+    template = bntx.texture(TEMPLATE)
+    for name, pixels in [(name, _dot_pixels(look)) for look, name in enumerate(NAMES)] + [(RING_NAME, _ring_pixels())]:
+        bntx.add(name, template).replace(0x0b06, TEXTURE_SIZE, TEXTURE_SIZE, [pixels])
+    return bntx.pack()
 
 
 # Animation

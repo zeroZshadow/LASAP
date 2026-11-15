@@ -1,11 +1,11 @@
 """Archipelago look for the autosave popup ("Now saving.", Ld_ThrobberSave in StartUp.arc), which the module also
 uses for its notices (toasts): a wider text pane with room for longer text, and the Archipelago logo in place of
 the egg. The egg texture (Loading_00) is shared with the loading screen's throbber, which shows the logo too."""
-import io
 import math
 import struct
 from pathlib import Path
 
+import ap_bntx
 import oead
 
 ARCHIVE = Path("region_common", "ui", "StartUp.arc")
@@ -71,31 +71,12 @@ def _logo_alpha(size: int) -> bytes:
     return bytes(alpha)
 
 
-def _logo_dds(size: int) -> io.BytesIO:
-    """Luminance + alpha DDS (A8L8): white everywhere, the logo in alpha."""
-    pixels = b"".join(bytes((255, a)) for a in _logo_alpha(size))
-    header = bytearray(128)
-    header[0:4] = b"DDS "
-    struct.pack_into("<7I", header, 4, 124, 0x100f, size, size, size * 2, 0, 1)
-    struct.pack_into("<2I", header, 76, 32, 0x20001)          # pixel format: luminance + alpha
-    struct.pack_into("<5I", header, 88, 16, 0xff, 0xff, 0xff, 0xff00)
-    struct.pack_into("<I", header, 108, 0x1000)
-    return io.BytesIO(bytes(header) + pixels)
-
-
 def _patch_textures(data: bytes) -> bytes:
-    from RandomizerCore.Tools.bntx_editor import bntx_editor
-    editor = bntx_editor.BNTXEditor()
-    editor.openFile(data)
-    for index, texture in enumerate(editor.bntx.textures):
-        if texture.name == ICON:
-            new = editor.bntx.replace(texture, texture.tileMode, False, False, False, False,
-                                      _logo_dds(texture.width))
-            if not new:
-                raise ValueError(f"cannot replace {ICON}")
-            editor.bntx.textures[index] = new
-            return bytes(editor.save())
-    raise ValueError(f"{TEXTURES} has no texture {ICON}")
+    """The textures with the logo as the icon: white R8G8 (R white, G the logo's alpha)."""
+    bntx = ap_bntx.Bntx(data)
+    icon = bntx.texture(ICON)
+    icon.replace(0x0901, icon.width, icon.height, [b"".join(bytes((255, a)) for a in _logo_alpha(icon.width))])
+    return bntx.pack()
 
 
 def build(archive: bytes) -> bytes:

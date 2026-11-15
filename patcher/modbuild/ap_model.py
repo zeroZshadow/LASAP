@@ -6,13 +6,11 @@ replaced with flat ones (the albedo holds one stripe per ball color, the smoothn
 material's rim light is white and kept to the balls' edges, and its glow is turned off. The model inside keeps its name.
 """
 import colorsys
-import io
 import math
 import struct
-from typing import TYPE_CHECKING, Callable
+from pathlib import Path
 
-if TYPE_CHECKING:
-    from RandomizerCore.Tools.bntx_editor import bfres
+import ap_bntx
 
 SOURCE = "ItemShellRader.bfres"
 FILE_NAME = "ItemArchipelago.bfres"
@@ -182,10 +180,7 @@ def _rebuild_geometry(data: bytearray) -> None:
 
 def _rebuild_materials(data: bytearray) -> None:
     r = _Reader(data)
-    model = r.u64(0x28)
-    materials = r.u64(model + 0x38)
-    for m in range(r.u16(model + 0x6C)):
-        material = materials + 0xA8 * m
+    for _, material in ap_bntx.materials(data):
         params, values = r.u64(material + 0x50), r.u64(material + 0x60)
         for p in range(r.u16(material + 0x9E)):
             entry = params + 32 * p
@@ -198,64 +193,35 @@ def _rebuild_materials(data: bytearray) -> None:
                 struct.pack_into(f"<{len(value)}f", data, values + offset, *value)
 
 
-def _dds(width: int, height: int, fourcc: bytes, block: Callable[[int, int], bytes], block_size: int) -> io.BytesIO:
-    blocks = b"".join(block(bx, by) for by in range(height // 4) for bx in range(width // 4))
-    header = bytearray(128)
-    header[0:4] = b"DDS "
-    struct.pack_into("<7I", header, 4, 124, 0x81007, height, width, len(blocks), 0, 1)
-    struct.pack_into("<2I4s", header, 76, 32, 4, fourcc)
-    struct.pack_into("<I", header, 108, 0x1000)
-    assert len(blocks) == (width // 4) * (height // 4) * block_size
-    return io.BytesIO(bytes(header) + blocks)
-
-
 def _bc1(color) -> bytes:
     c = (color[0] >> 3) << 11 | (color[1] >> 2) << 5 | color[2] >> 3
     return struct.pack("<HHI", c, c, 0)
 
 
-def _textures(width: int, height: int) -> dict:
-    """Replacement DDS per texture name suffix: (fourcc, block function, block size, sRGB)."""
+def _textures(width: int) -> dict:
+    """Replacement per texture name suffix: its format and its 4x4 blocks by block column."""
     stripes = width // 4
     return {
-        "_alb": (b"DXT1", lambda bx, by: _bc1(COLORS[min(5, bx * 6 // stripes)]), 8, True),
-        "_nml": (b"BC5S", lambda bx, by: bytes(16), 16, False),        # flat: x = y = 0
-        "_mask01": (b"DXT1", lambda bx, by: _bc1((0, 0, 0)), 8, True),
-        "_nml2": (b"DXT1", lambda bx, by: _bc1((128, 128, 255)), 8, True),
-        "_smt": (b"BC4U", lambda bx, by: bytes((SMOOTHNESS, SMOOTHNESS, 0, 0, 0, 0, 0, 0)), 8, False),
+        "_alb": (0x1a06, lambda bx: _bc1(COLORS[min(5, bx * 6 // stripes)])),
+        "_nml": (0x1e02, lambda bx: bytes(16)),  # flat: x = y = 0
+        "_mask01": (0x1a06, lambda bx: _bc1((0, 0, 0))),
+        "_nml2": (0x1a06, lambda bx: _bc1((128, 128, 255))),
+        "_smt": (0x1d01, lambda bx: bytes((SMOOTHNESS, SMOOTHNESS, 0, 0, 0, 0, 0, 0))),
     }
 
 
-def _rebuild_textures(model: "bfres.File") -> None:
-    from RandomizerCore.Tools.bntx_editor import bntx_editor
-    if model.bfresTexture.pos is None:
-        raise ValueError(f"no textures in {SOURCE}")
-    start, size = model.bfresTexture.pos, model.bfresTexture.size
-    editor = bntx_editor.BNTXEditor()
-    editor.openFile(bytes(model.rawData[start:start + size]))
-    for index, texture in enumerate(editor.bntx.textures):
-        suffix = texture.name[len("MI_ShellRader"):]
-        fourcc, block, block_size, srgb = _textures(texture.width, texture.height)[suffix]
-        dds = _dds(texture.width, texture.height, fourcc, block, block_size)
-        new = editor.bntx.replace(texture, texture.tileMode, srgb, False, False, False, dds)
-        if not new:
-            raise ValueError(f"cannot replace {texture.name}")
-        editor.bntx.textures[index] = new
-    data = editor.save()
-    if len(data) > size:
-        raise ValueError("the rebuilt textures do not fit the model file")
-    raw = bytearray(model.rawData)
-    raw[start:start + len(data)] = data
-    model.rawData = raw
+def _rebuild_textures(data: bytes) -> bytearray:
+    bntx, at, size = ap_bntx.open_bfres(data)
+    for texture in bntx.textures:
+        format_, block = _textures(texture.width)[texture.name[len("MI_ShellRader"):]]
+        blocks = b"".join(block(bx) for _ in range(texture.height // 4) for bx in range(texture.width // 4))
+        texture.replace(format_, texture.width, texture.height, [blocks])
+    return ap_bntx.replace_bntx(data, bntx.pack(), at, size)
 
 
 def build(source_path: str) -> bytes:
     """ItemArchipelago.bfres, from the RomFS's ItemShellRader.bfres."""
-    from RandomizerCore.Tools.bntx_editor import bfres  # the asset build only: the release has no BNTX editor
-    model = bfres.File()
-    model.readFromFile(source_path)
-    _rebuild_textures(model)
-    data = bytearray(model.rawData)
+    data = _rebuild_textures(Path(source_path).read_bytes())
     _rebuild_geometry(data)
     _rebuild_materials(data)
     return bytes(data)

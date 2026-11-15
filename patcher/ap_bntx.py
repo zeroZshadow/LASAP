@@ -1,6 +1,6 @@
 """BNTX textures in a bfres model (DESIGN.md, Assets): reading a BNTX's textures, the Tegra X1 block-linear layout
-they are stored in, replacing textures and writing the BNTX again. Standard library only, so the patcher can make
-textures from the player's RomFS.
+they are stored in, replacing and adding textures and writing the BNTX again, and finding a bfres model's materials.
+Standard library only, so the patcher can make textures from the player's RomFS.
 
 A BNTX holds a header, a texture container, the texture info pointers, a string table with the texture name
 dictionary, one BRTI block per texture (its info and mip pointers), the BRTD data block and a relocation table. pack()
@@ -15,17 +15,19 @@ power of two that covers an eighth of its height in rows, at most 16; each small
 a power of two) no longer fill a block halves it.
 """
 import struct
-from typing import List, Tuple
+from typing import Iterator, List, Tuple
 
-# Format (high byte) -> bytes per element; compressed formats store 4x4 pixel blocks as elements
-BLOCK_BYTES = {0x1a: 8, 0x1b: 16, 0x1c: 16, 0x1d: 8, 0x1e: 16, 0x1f: 16, 0x20: 16}
+# Format (high byte) -> bytes per element: a pixel of the uncompressed formats (below 0x1a), a 4x4 pixel block of the
+# compressed ones
+BLOCK_BYTES = {0x09: 2, 0x0b: 4, 0x1a: 8, 0x1b: 16, 0x1c: 16, 0x1d: 8, 0x1e: 16, 0x1f: 16, 0x20: 16}
 # ASTC formats (high byte) -> their block's width and height in pixels; every block is 16 bytes (ap_astc)
 ASTC_BLOCKS = {0x2d: (4, 4), 0x2e: (5, 4), 0x2f: (5, 5), 0x30: (6, 5), 0x31: (6, 6), 0x32: (8, 5), 0x33: (8, 6),
                0x34: (8, 8), 0x35: (10, 5), 0x36: (10, 6), 0x37: (10, 8), 0x38: (10, 10), 0x39: (12, 10),
                0x3a: (12, 12)}
-# Component selection of a texture made from a plain BCn image: RGBA for BC1-3, R as RGB with alpha 1 for BC4, RG
-# with blue 0 and alpha 1 for BC5
-COMPONENTS = {0x1a: 0x05040302, 0x1b: 0x05040302, 0x1c: 0x05040302, 0x1d: 0x01020202, 0x1e: 0x01000302}
+# Component selection of a texture made from a plain image: R as RGB and G as alpha for R8G8, RGBA for R8G8B8A8 and
+# BC1-3, R as RGB with alpha 1 for BC4, RG with blue 0 and alpha 1 for BC5
+COMPONENTS = {0x09: 0x03020202, 0x0b: 0x05040302, 0x1a: 0x05040302, 0x1b: 0x05040302, 0x1c: 0x05040302,
+              0x1d: 0x01020202, 0x1e: 0x01000302}
 GOB_WIDTH, GOB_ROWS = 64, 8
 GOB_BYTES = GOB_WIDTH * GOB_ROWS
 ALIGNMENT_SHIFT = 12  # the BNTX's alignment on the Switch: 4 KiB
@@ -44,6 +46,7 @@ BLOCK_HEADER = struct.Struct("<4s2I4x")
 DICT_NODE = struct.Struct("<I2Hq")
 RELOC_SECTION = struct.Struct("<Q2I2i")
 RELOC_ENTRY = struct.Struct("<IH2B")
+FMDL_SIZE, FMAT_SIZE = 0x78, 0xa8
 
 
 def _round_up(value: int, alignment: int) -> int:
@@ -54,8 +57,13 @@ def _pow2_round_up(value: int) -> int:
     return 1 << (value - 1).bit_length() if value > 0 else 0
 
 
-def _blocks(size: int) -> int:
-    return -(-size // 4)
+def _block_pixels(format_: int) -> int:
+    """The width and height in pixels of a format's element."""
+    return 1 if format_ >> 8 < 0x1a else 4
+
+
+def _blocks(size: int, block: int) -> int:
+    return -(-size // block)
 
 
 def _block_height(rows: int) -> int:
@@ -63,14 +71,14 @@ def _block_height(rows: int) -> int:
     return min(16, _pow2_round_up(rows // GOB_ROWS))
 
 
-def _mip_layouts(width: int, height: int, mips: int, block_height: int) -> List[Tuple[int, int, int]]:
-    """Each mip level's width and height in elements and block height in GOBs, for a compressed texture of the given
-    pixel size whose top level has block_height (a power of two, or 0)."""
+def _mip_layouts(width: int, height: int, mips: int, block_height: int, block: int) -> List[Tuple[int, int, int]]:
+    """Each mip level's width and height in elements (block pixels square) and block height in GOBs, for a texture of
+    the given pixel size whose top level has block_height (a power of two, or 0)."""
     log2 = max(0, block_height.bit_length() - 1)
     shift = 0
     layouts = []
     for level in range(mips):
-        columns, rows = _blocks(max(1, width >> level)), _blocks(max(1, height >> level))
+        columns, rows = _blocks(max(1, width >> level), block), _blocks(max(1, height >> level), block)
         if _pow2_round_up(rows) < block_height * GOB_ROWS:
             shift += 1
         layouts.append((columns, rows, 1 << max(0, log2 - shift)))
@@ -135,7 +143,7 @@ class Texture:
 
     def element(self) -> int:
         if self.format >> 8 not in BLOCK_BYTES:
-            raise ValueError(f"{self.name}: format {self.format:#x} is not a BCn format")
+            raise ValueError(f"{self.name}: format {self.format:#x} is not supported")
         return BLOCK_BYTES[self.format >> 8]
 
     def levels(self) -> List[bytes]:
@@ -144,7 +152,8 @@ class Texture:
             raise ValueError(f"{self.name}: tile mode {self.tile_mode} is not block-linear")
         element = self.element()
         levels = []
-        layouts = _mip_layouts(self.width, self.height, self.mips, 1 << self.block_height_log2)
+        layouts = _mip_layouts(self.width, self.height, self.mips, 1 << self.block_height_log2,
+                               _block_pixels(self.format))
         for offset, (columns, rows, block_height) in zip(self.mip_offsets, layouts):
             if offset + surface_size(columns, rows, element, block_height) > len(self.data):
                 raise ValueError(f"{self.name}: its data ends inside a mip level")
@@ -152,13 +161,13 @@ class Texture:
         return levels
 
     def block_size(self) -> Tuple[int, int, int]:
-        """A block's width and height in pixels, and its bytes: 4x4 for BCn, the format's for ASTC."""
+        """A block's width and height in pixels, and its bytes: the format's for ASTC, 4x4 for BCn, a pixel else."""
         if self.format >> 8 in ASTC_BLOCKS:
             return (*ASTC_BLOCKS[self.format >> 8], 16)
-        return 4, 4, self.element()
+        return _block_pixels(self.format), _block_pixels(self.format), self.element()
 
     def level0(self) -> bytes:
-        """The full-size level's blocks in row order (BCn or ASTC)."""
+        """The full-size level's blocks in row order."""
         if self.tile_mode != BLOCK_LINEAR:
             raise ValueError(f"{self.name}: tile mode {self.tile_mode} is not block-linear")
         bw, bh, element = self.block_size()
@@ -168,13 +177,13 @@ class Texture:
         return deswizzle(self.data[self.mip_offsets[0]:], columns, rows, element, 1 << self.block_height_log2)
 
     def replace(self, format_: int, width: int, height: int, levels: List[bytes]) -> None:
-        """Makes this a block-linear texture of the given BCn format and pixel size from its mip levels' blocks (in
-        row order); the format's low byte says sRGB (6) or not (1)."""
-        element = BLOCK_BYTES[format_ >> 8]
-        block_height = _block_height(_blocks(height))
+        """Makes this a block-linear texture of the given format (BLOCK_BYTES) and pixel size from its mip levels'
+        elements (in row order); the format's low byte says sRGB (6), unorm (1) or snorm (2)."""
+        element, block = BLOCK_BYTES[format_ >> 8], _block_pixels(format_)
+        block_height = _block_height(_blocks(height, block))
         surfaces, offsets = [], []
         for level, (columns, rows, level_block_height) in zip(
-                levels, _mip_layouts(width, height, len(levels), block_height)):
+                levels, _mip_layouts(width, height, len(levels), block_height, block)):
             if len(level) != columns * rows * element:
                 raise ValueError(f"{self.name}: a mip level has {len(level)} bytes, not {columns * rows * element}")
             offsets.append(sum(len(s) for s in surfaces))
@@ -236,6 +245,19 @@ class Bntx:
         texture = next((t for t in self.textures if t.name == name), None)
         if texture is None:
             raise ValueError(f"the BNTX has no texture {name}")
+        return texture
+
+    def add(self, name: str, template: Texture) -> Texture:
+        """A new last texture named name, a copy of template (replace() gives it its image)."""
+        names = [t.name for t in self.textures]
+        if [node[:3] for node in self.dict_nodes] != [node[:3] for node in build_dictionary(names)]:
+            raise ValueError("the BNTX's name dictionary is not built as build_dictionary() builds it")
+        texture = Texture(name, list(template.info), template.data, list(template.mip_offsets))
+        self.strings.append(name.encode())
+        self.name_indices.append(len(self.strings) - 1)
+        self.textures.append(texture)
+        self.dict_nodes = [(ref, left, right, self.name_indices[i] if i >= 0 else -1)
+                           for ref, left, right, i in build_dictionary(names + [name])]
         return texture
 
     def pack(self) -> bytes:
@@ -324,6 +346,41 @@ class Bntx:
         return positions
 
 
+def _bit(name: bytes, bit: int) -> int:
+    """Bit of a name as a name dictionary counts them: from the name's last byte, low bit first."""
+    index = bit >> 3
+    return (name[len(name) - 1 - index] >> (bit & 7)) & 1 if index < len(name) else 0
+
+
+def build_dictionary(names: List[str]) -> List[Tuple[int, int, int, int]]:
+    """The nodes (reference bit, left, right, name index or -1) of a name dictionary (_DIC): a Patricia trie with
+    a root node, the names inserted in order."""
+    keys = [b""] + [name.encode() for name in names]
+    nodes = [[-1, 0, 0]]  # the root; it leads left
+
+    def child(index: int, key: bytes) -> int:
+        ref, left, right = nodes[index]
+        return right if ref >= 0 and _bit(key, ref) else left
+
+    for index in range(1, len(keys)):
+        key = keys[index]
+        parent, current = 0, nodes[0][1]
+        while nodes[parent][0] < nodes[current][0]:
+            parent, current = current, child(current, key)
+        found = keys[current]
+        bit = next(b for b in range(max(len(found), len(key)) * 8) if _bit(found, b) != _bit(key, b))
+        parent, current = 0, nodes[0][1]
+        while nodes[parent][0] < nodes[current][0] < bit:
+            parent, current = current, child(current, key)
+        nodes.append([bit, current, index] if _bit(key, bit) else [bit, index, current])
+        ref = nodes[parent][0]
+        if ref >= 0 and _bit(key, ref):
+            nodes[parent][2] = index
+        else:
+            nodes[parent][1] = index
+    return [(ref & 0xffffffff, left, right, i - 1) for i, (ref, left, right) in enumerate(nodes)]
+
+
 def from565(c: int) -> Tuple[int, int, int]:
     """A BC1 endpoint's RGB565 colour as 8-bit RGB."""
     r, g, b = c >> 11, (c >> 5) & 63, c & 31
@@ -390,3 +447,17 @@ def open_bfres(bfres: bytes) -> Tuple[Bntx, int, int]:
     at, size = find_bntx(bfres)
     return Bntx(bfres[at:at + size]), at, size
 
+
+def bfres_string(bfres: bytes, at: int) -> str:
+    length = struct.unpack_from("<H", bfres, at)[0]
+    return bytes(bfres[at + 2:at + 2 + length]).decode("utf-8")
+
+
+def materials(bfres: bytes) -> Iterator[Tuple[str, int]]:
+    """Each material (FMAT) of a bfres's models: its name and where it starts."""
+    models, = struct.unpack_from("<Q", bfres, 0x28)
+    for model in range(models, models + FMDL_SIZE * struct.unpack_from("<H", bfres, 0xdc)[0], FMDL_SIZE):
+        first, = struct.unpack_from("<Q", bfres, model + 0x38)
+        count, = struct.unpack_from("<H", bfres, model + 0x6c)
+        for material in range(first, first + FMAT_SIZE * count, FMAT_SIZE):
+            yield bfres_string(bfres, struct.unpack_from("<Q", bfres, material + 8)[0]), material

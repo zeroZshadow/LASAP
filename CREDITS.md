@@ -6,7 +6,7 @@
 - **[Archipelago](https://github.com/ArchipelagoMW/Archipelago)** by the Archipelago team: the multiworld framework, server and client.
 - **[open-dread-rando-exlaunch](https://github.com/randovania/open-dread-rando-exlaunch)** by the Randovania team: the basis of the module's socket code.
 - **[oead](https://github.com/zeldamods/oead)** by leoetlino: the datasheet code in `patcher/modbuild/RandomizerCore/Tools/gsheet.py` is a Python port of it.
-- **[BNTX Editor](https://github.com/aboood40091/BNTX-Editor)** by AboodXD: texture editing for the map icons and item models.
+- **[BNTX Editor](https://github.com/aboood40091/BNTX-Editor)** by AboodXD: the texture editing of LASR's title screen logo.
 - **[BfresLibrary](https://github.com/KillzXGaming/BfresLibrary)** by KillzXGaming: the reference for the BFRES layouts the test tools read.
 - **[LASR PopTracker pack](https://github.com/Br00ty/lasr_brooty)** by Br00ty: check names and map positions.
 - **[LADXR](https://github.com/daid/LADXR)** by daid: the dungeon layouts behind the small-key logic test.

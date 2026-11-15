@@ -76,29 +76,16 @@ def bc3_scale_alpha(blocks: bytes, alpha: int) -> bytes:
 
 
 def set_render_pass(data: bytearray, materials: tuple, value: int) -> int:
-    """Sets the FMAT shader option "pass" of the named materials; returns how many it set."""
-    def name_at(p: int) -> str:
-        length = struct.unpack_from("<H", data, p)[0]
-        return bytes(data[p + 2:p + 2 + length]).decode("latin1")
-
-    def is_name(p: int) -> bool:
-        if not 0 < p < len(data) - 2:
-            return False
-        length = struct.unpack_from("<H", data, p)[0]
-        return 0 < length < 64 and all(32 <= c < 127 for c in data[p + 2:p + 2 + length])
-
+    """Sets the render info "pass" of the named materials; returns how many it set."""
     count = 0
-    i = data.find(b"FMAT")
-    while i >= 0:
-        name = struct.unpack_from("<Q", data, i + 8)[0]
-        if is_name(name) and name_at(name) in materials:
-            for k in range(data[i + 0x9a]):
-                entry = struct.unpack_from("<Q", data, i + 0x10)[0] + k * 0x18
-                option_name, value_at = struct.unpack_from("<QQ", data, entry)
-                if name_at(option_name) == "pass":
+    for name, material in ap_bntx.materials(data):
+        if name in materials:
+            infos, = struct.unpack_from("<Q", data, material + 0x10)
+            for entry in range(infos, infos + 0x18 * data[material + 0x9a], 0x18):
+                info_name, value_at = struct.unpack_from("<QQ", data, entry)
+                if ap_bntx.bfres_string(data, info_name) == "pass":
                     struct.pack_into("<i", data, value_at, value)
                     count += 1
-        i = data.find(b"FMAT", i + 4)
     return count
 
 
