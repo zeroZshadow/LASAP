@@ -498,7 +498,7 @@ D2-west-chest:
   condition-basic: feather | hookshot
 D2-double-stalfos:
   type: item
-  condition-basic: kill-stalfos
+  condition-basic: kill-stalfos & kill-stalfos-yellow
 D2-double-shy-guys:
   type: item
   condition-basic: D2.g & kill-shy-guy
@@ -732,7 +732,6 @@ D7-3ofakind-north:
   condition-basic: kill-3-of-a-kind
 D7-2f-horseheads:
   type: item
-  condition-basic: bracelet
 D7-hinox:
   type: item
   condition-basic: kill-hinox
@@ -3010,3 +3009,6 @@ Lv06FaceShrine_04F:
 Field_10C:
   type: door
   condition-basic: bracelet:2
+Field_15J:
+  type: door
+  condition-basic: mermaid-scale

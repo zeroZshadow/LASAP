@@ -958,7 +958,7 @@ D2-double-stalfos:
   type: item
   content: key-D2
   region: D2.c
-  condition-basic: kill-stalfos
+  condition-basic: kill-stalfos & kill-stalfos-yellow
 D2-double-shy-guys:
   type: item
   content: key-D2
@@ -1374,7 +1374,6 @@ D7-2f-horseheads:
   type: item
   content: map-D7
   region: D7.d
-  condition-basic: bracelet
 D7-hinox:
   type: item
   content: key-D7
@@ -2027,7 +2026,7 @@ marthas-bat-porch:
 mermaid-statue-land:
   type: region
   doors:
-    Field_15J: always
+    Field_15J: mermaid-scale
 rapids-south:
   type: region
   connections:
