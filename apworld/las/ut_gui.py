@@ -283,16 +283,19 @@ class MapPin(Widget):
 
 def load_pins(page, ctx, coords, door_coords, event_coords, use_split, default_size):
     """Universal Tracker's map pins (its map_page_coords_func), as MapPins: each table maps a place (x, y) to its
-    sections and size. Returns its tables of pins by location id, entrance and event."""
+    sections and size. With them the island's dungeon check squares (TrackerMixin.dungeon_square_pins), under the
+    doors' pins. Returns its tables of pins by location id, entrance and event."""
     from collections import defaultdict
     canvas = page.ids.location_canvas
     canvas.clear_widgets()
     page.location_icons = []
     tables = (defaultdict(list), defaultdict(list), defaultdict(list))
     border = ctx.ui.loc_border
-    for kind, places, table in (("location", coords, tables[0]), ("entrance", door_coords, tables[1]),
-                                ("event", event_coords, tables[2])):
-        for spot, (names, size) in places.items():
+    squares = ctx.dungeon_square_pins(ctx.maps[ctx.map_id]["name"]) if ctx.map_id is not None else {}
+    checks = list(coords.items()) + [(spot, (ids, None)) for spot, ids in squares.items()]
+    for kind, places, table in (("location", checks, tables[0]), ("entrance", door_coords.items(), tables[1]),
+                                ("event", event_coords.items(), tables[2])):
+        for spot, (names, size) in places:
             pin = MapPin(kind, names, spot, size if size is not None else default_size, border,
                          use_split and kind == "location")
             canvas.add_widget(pin)
@@ -394,6 +397,7 @@ class MapHover:
         self.show(pin)
 
     def show(self, pin: Optional[MapPin]) -> None:
+        """The pin's tooltip, with those of the other pins drawn at its place (a dungeon's square under its door)."""
         if pin is None or pin.parent is None:
             self.shown = None
             if self.tip.parent is not None:
@@ -402,7 +406,9 @@ class MapHover:
         if pin is not self.shown:
             self.shown = pin
             self.anchor = self.at
-        self.tip.text = self.ctx.pin_text(pin)
+        here = [p for p in self.page.ids.location_canvas.children if isinstance(p, MapPin) and p.opacity
+                and p is not pin and (p.x, p.y) == (pin.x, pin.y)]
+        self.tip.text = "\n\n".join(self.ctx.pin_text(p) for p in [pin, *here])
         self.tip.opacity, self.tip.scale_value_x, self.tip.scale_value_y = 1, 1, 1
         if self.tip.parent is None:
             self.window.add_widget(self.tip)

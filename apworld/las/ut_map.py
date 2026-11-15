@@ -4,7 +4,8 @@ import re
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 
 from .items import LASR_TO_ITEM
-from .lasr import CATEGORIES, DOORS, DUNGEON_NAMES, DUNGEON_NUMBERS, DUNGEONS, INSTRUMENTS, LOGIC, door_entrance
+from .lasr import (CATEGORIES, DOORS, DUNGEON_NAMES, DUNGEON_NUMBERS, DUNGEONS, INSTRUMENTS, LOGIC, door_entrance,
+                   dungeon_of)
 from .locations import LOCATION_NAMES
 from .tracker import LEVEL_KEY
 
@@ -29,6 +30,18 @@ def hidden_door_entrances(dungeon_entrances: Optional[Mapping[str, str]], known:
     known = set(known)
     return {dungeon_map(dungeon): [door_entrance(door) for door in DUNGEONS
                                    if not (door in known and leads[door] == dungeon)] for dungeon in DUNGEONS}
+
+
+# AP location name -> its dungeon (lasr.dungeon_of), for the dungeons' locations
+LOCATION_DUNGEONS: Dict[str, str] = {name: dungeon_of(loc) for loc, name in LOCATION_NAMES.items() if dungeon_of(loc)}
+
+
+def dungeon_squares(dungeon_entrances: Mapping[str, str], known: Iterable[str]) -> Dict[str, str]:
+    """The island's dungeon check squares: each dungeon door known (tracker.known_doors) to lead into a dungeon, with
+    that dungeon, whose checks its square holds, as the pause map's door groups do. `dungeon_entrances`: the world's
+    (each door's dungeon, itself when dungeons are not shuffled among themselves)."""
+    known = set(known)
+    return {door: dungeon_entrances[door] for door in DUNGEONS if door in known}
 
 
 def hidden_locations(world) -> List[str]:

@@ -11,7 +11,8 @@ from .. import GOAL_LOCATION
 from ..items import GAME
 from ..lasr import CATEGORIES, DOORS, DUNGEONS, door_entrance
 from ..locations import LOCATION_NAMES
-from ..ut_map import MAPS, TRACKER_WORLD, dungeon_map, hidden_door_entrances, hidden_locations, map_index
+from ..ut_map import (LOCATION_DUNGEONS, MAPS, TRACKER_WORLD, dungeon_map, dungeon_squares, hidden_door_entrances,
+                      hidden_locations, map_index)
 
 TRACKER = Path(__file__).resolve().parent.parent / TRACKER_WORLD["map_page_folder"]
 
@@ -112,6 +113,18 @@ class TestUTMap(unittest.TestCase):
                 self.assertEqual(trendy - hidden, shown)
                 if not options.get("rapids", True):
                     self.assertIn("Rapids Ride - Rapids Race 30", hidden)
+
+    def test_dungeon_squares(self) -> None:
+        """The island's dungeon check squares: at each door known to lead into a dungeon, that dungeon's checks; doors
+        whose dungeon is unknown have none."""
+        self.assertEqual(dungeon_squares({d: d for d in DUNGEONS}, DUNGEONS), {d: d for d in DUNGEONS})
+        leads = dict(zip(DUNGEONS, DUNGEONS[1:] + DUNGEONS[:1]))
+        self.assertEqual(dungeon_squares(leads, [DUNGEONS[0]]), {DUNGEONS[0]: DUNGEONS[1]})
+        self.assertEqual(dungeon_squares(leads, []), {})
+        self.assertEqual(set(LOCATION_DUNGEONS.values()), set(DUNGEONS))
+        self.assertEqual(LOCATION_DUNGEONS["Tail Cave - Moldorm"], "tail-cave")
+        doors = {s["name"] for pin in group("Doors") for s in pin["sections"]}
+        self.assertLessEqual({door_entrance(d) for d in DUNGEONS}, doors)
 
     def test_stair_letters(self) -> None:
         """Each letter on a dungeon's map marks at least two stairs; Turtle Rock's six side-view passages, A to F."""

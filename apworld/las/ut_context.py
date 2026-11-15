@@ -12,9 +12,10 @@ from NetUtils import NetworkItem
 from . import GOAL_LOCATION, emulators
 from .install import tracker_images
 from .items import ITEM_TABLE, LASR_TO_ITEM
-from .lasr import INSTRUMENTS
+from .lasr import DUNGEONS, INSTRUMENTS, door_entrance
 from .tracker import known_doors
-from .ut_map import DOOR_STEPS, door_out, hidden_door_entrances, hidden_locations
+from .ut_map import (DOOR_STEPS, LOCATION_DUNGEONS, OVERWORLD_MAP, door_out, dungeon_squares, hidden_door_entrances,
+                     hidden_locations)
 
 TRACKER_DOORS_KEY = "tracker_doors_shown"  # Archipelago's persistent storage, under "las": TrackerMixin.show_doors
 # A pin status's colour in its tooltip (TrackerMixin.pin_text): Universal Tracker's, by its colour names
@@ -215,17 +216,7 @@ class TrackerMixin:
         comes out of at that door's pin), then the check's pin nearest the last door."""
         if not self.logical_path_entrances:
             return []
-        if self.route_pins is None or self.route_pins[0] != id(self.locs):
-            pins: Dict[str, List[Tuple[str, float, float]]] = {}
-            nodes = list(self.locs or ())
-            while nodes:
-                node = nodes.pop()
-                nodes.extend(node.get("children", ()))
-                for section in node.get("sections", ()):
-                    for spot in node.get("map_locations", ()):
-                        pins.setdefault(section.get("name", ""), []).append((spot["map"], spot["x"], spot["y"]))
-            self.route_pins = (id(self.locs), pins)
-        pins = self.route_pins[1]
+        pins = self.section_pins()
         world = self.tracker_core.get_current_world()
         points: List[Tuple[float, float]] = []
         for name in self.logical_path_entrances:
@@ -244,6 +235,41 @@ class TrackerMixin:
             if not points or points[-1] != end:  # a door's route ends at the last door it goes through
                 points.append(end)
         return points
+
+    def section_pins(self) -> Dict[str, List[Tuple[str, float, float]]]:
+        """The pack's pins (tracker/locations.json) by section name: (map, x, y) each."""
+        if self.route_pins is None or self.route_pins[0] != id(self.locs):
+            pins: Dict[str, List[Tuple[str, float, float]]] = {}
+            nodes = list(self.locs or ())
+            while nodes:
+                node = nodes.pop()
+                nodes.extend(node.get("children", ()))
+                for section in node.get("sections", ()):
+                    for spot in node.get("map_locations", ()):
+                        pins.setdefault(section.get("name", ""), []).append((spot["map"], spot["x"], spot["y"]))
+            self.route_pins = (id(self.locs), pins)
+        return self.route_pins[1]
+
+    def dungeon_square_pins(self, map_name: str) -> Dict[Tuple[float, float], List[int]]:
+        """The island's dungeon check squares (ut_map.dungeon_squares), for ut_gui.load_pins: at each dungeon door's
+        pin (Doors' section of its dungeon door entrance), the ids of the server's locations of the dungeon known to
+        be behind it, but those the map leaves off."""
+        world = self.tracker_core.get_current_world()
+        if map_name != OVERWORLD_MAP or world is None:
+            return {}
+        pins = self.section_pins()
+        hidden = set(getattr(world, "ut_map_page_hidden_locations", {}).get(map_name, ()))
+        ids = world.location_name_to_id
+        checks: Dict[str, List[int]] = {dungeon: [] for dungeon in DUNGEONS}
+        for name, dungeon in LOCATION_DUNGEONS.items():
+            if name in ids and ids[name] in self.server_locations and ids[name] not in hidden:
+                checks[dungeon].append(ids[name])
+        squares = {}
+        for door, dungeon in dungeon_squares(world.dungeon_entrances, known_doors(self.found_doors)).items():
+            spot = next(((x, y) for m, x, y in pins.get(door_entrance(door), ()) if m == map_name), None)
+            if spot is not None and checks[dungeon]:
+                squares[spot] = checks[dungeon]
+        return squares
 
     def clear_path(self) -> None:
         self.route_target = None
