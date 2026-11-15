@@ -1,5 +1,6 @@
 #include "game/hooks/level.hpp"
 #include "ap/ap.hpp"
+#include "ap/ap_patcher.hpp"
 #include "game/data/inventory.hpp"
 #include "game/framework.hpp"
 #include "game/hooks/eventflags.hpp"
@@ -22,21 +23,35 @@ namespace {
     };
 
     // A jump to another point of the same level (Manbo's Mambo, a warp hole) tears the rooms down and loads them
-    // again under the same level name, with Link kept. A jump the seed leads elsewhere goes there (AP::LeadJump).
+    // again under the same level name, with Link kept. A jump the seed leads elsewhere goes there (AP::LeadJump). The
+    // APReturn event's jump is the way back from a landing (AP::ReturnJump): a door's jump, which the seed leads as
+    // that door's, or a world position in the level Link left.
     HOOK_DEFINE_TRAMPOLINE(LevelJump) {
         static bool Callback(void* manager, Game::StrView* level, Game::StrView* locator, const void* offset) {
-            Game::StrView ledLevel, ledLocator;
-            std::string toLevel, toLocator, ledTo;  // copied: the game's strings may not outlive the jump
+            Game::StrView backLevel, backLocator, ledLevel, ledLocator;  // the seed file's text, which outlives the jump
+            std::string toLevel, toLocator, ledTo, ledToLevel;  // copied: the game's strings may not outlive the jump
+            bool led = false;
             if (level != nullptr && locator != nullptr) {
+                if (locator->View() == AP::RETURN_LOCATOR) {
+                    AP::ReturnTarget back = AP::ReturnJump();
+                    backLevel = Game::StrView(back.level);
+                    backLocator = Game::StrView(back.locator);
+                    level = &backLevel;
+                    locator = &backLocator;
+                    if (back.offset != nullptr) offset = back.offset;
+                }
                 toLevel = level->View();
                 toLocator = locator->View();
+                ledToLevel = toLevel;
                 ledTo = toLocator;
-                if (auto led = AP::LeadJump(g_CurrentLevel, toLevel, toLocator)) {
-                    ledLevel = Game::StrView(led->first);
-                    ledLocator = Game::StrView(led->second);
-                    ledTo = led->second;
+                if (auto lead = AP::LeadJump(g_CurrentLevel, toLevel, toLocator)) {
+                    ledLevel = Game::StrView(lead->first);
+                    ledLocator = Game::StrView(lead->second);
+                    ledToLevel = lead->first;
+                    ledTo = lead->second;
                     level = &ledLevel;
                     locator = &ledLocator;
+                    led = true;
                 }
             }
             std::string from = g_CurrentLevel;  // the jump's level, before the new one loads
@@ -44,6 +59,7 @@ namespace {
             if (started) {
                 g_Jumping = true;
                 AP::NoteJump(from, toLevel, toLocator, ledTo);
+                AP::JumpStarted(from, ledToLevel, ledTo, led);
             }
             return started;
         }

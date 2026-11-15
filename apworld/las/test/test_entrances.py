@@ -22,6 +22,18 @@ DOORS = {"pairs": {"Field_house": "House_01A", "Field_a": "Cave_01A", "Field_b":
                     "single": ["Field_c", "Field_d", "Field_house"]}}
 
 
+def lead(jumps, level_from: str, level: str, locator: str) -> tuple:
+    """Where the jumps' lines lead a jump from level_from to that level and locator, as the module's LeadJump does."""
+    for from_, to_level, to, led_level, led in (line.split()[:5] for line in jumps):
+        if from_ in (level_from, "*") and (to_level, to) == (level, locator):
+            return led_level, led
+    return level, locator
+
+
+def returns_by_landing(lines) -> dict:
+    return {(level, spot): (to_level, to) for level, spot, to_level, to in map(str.split, lines)}
+
+
 class TestShufflePool(unittest.TestCase):
     def test_the_groups_doors_move_the_houses_too(self) -> None:
         self.assertEqual(shuffle_pool(DOORS), ["Field_c", "Field_d", "Field_house", "Field_a", "Field_b"])
@@ -41,6 +53,28 @@ class TestDoorJumps(unittest.TestCase):
                                              {"Field_01A": "House_01A", "Field_03C": "Cave_02B"})
         self.assertEqual(lines, ["Field House House_01A Cave Cave_02B", "Cave Field Field_03C Field Field_01A",
                                  "Field Cave Cave_02B House House_01A", "House Field Field_01A Field Field_03C"])
+
+    def test_a_landing_goes_back_through_the_door_link_took(self) -> None:
+        """A return is the jump of the door at a led landing, which the jumps lead to the spot outside the door Link
+        came through."""
+        entrances = {"Field_01A": "Cave_02B", "Field_03C": "House_01A"}
+        pairs = {"Field_01A": "House_01A", "Field_03C": "Cave_02B"}
+        jumps = self.ap_entrances.door_jumps(entrances, pairs)
+        back = returns_by_landing(self.ap_entrances.returns(entrances, pairs))
+        self.assertEqual(len(back), 4)
+        # in through Field_01A, which lands on Cave_02B
+        self.assertEqual(lead(jumps, "Cave", *back["Cave", "Cave_02B"]), ("Field", "Field_01A"))
+        # out of the house, which lands on Field_03C
+        self.assertEqual(lead(jumps, "Field", *back["Field", "Field_03C"]), ("House", "House_01A"))
+
+    def test_a_dungeon_landing_goes_back_through_its_door(self) -> None:
+        entrances = {"tail-cave": "color-dungeon", "color-dungeon": "tail-cave"}
+        entrance, outside, level_of = self.ap_entrances.entrance, self.ap_entrances.outside, self.ap_entrances.level_of
+        jumps = self.ap_entrances.jumps(entrances)
+        back = returns_by_landing(self.ap_entrances.dungeon_returns(entrances))
+        inside = entrance("color-dungeon")
+        self.assertEqual(lead(jumps, level_of(inside), *back[level_of(inside), inside]), ("Field", outside("tail-cave")))
+        self.assertEqual(lead(jumps, "Field", *back["Field", outside("tail-cave")]), (level_of(inside), inside))
 
     def test_every_jump_home_follows_tarins_house(self) -> None:
         lines = self.ap_entrances.door_jumps({"Field_11C": "Cave_02B", "Field_03C": "MarinTarinHouse_01A"},

@@ -262,6 +262,7 @@ namespace AP {
         LoadKept();
         LoadStart();
         LoadJumps();
+        LoadReturns();
         LoadMarkers();
         LoadHints();
         ListUi::InstallHooks();
@@ -381,6 +382,7 @@ namespace AP {
         TickWarpMenu();
         TickEgg();
         TickStolenGoods();
+        TickLanding();
         TickMedicine();
         // the d-pad changes the music in free play, not where a minigame may steer with it
         JukeboxPane::Tick(PlayerFree() && g_LastLevel != kCraneGameLevel && g_LastLevel != "FishingPond");

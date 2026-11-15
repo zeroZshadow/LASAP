@@ -1,0 +1,38 @@
+# Entrances and stealing in the water: the cave door in the Tal Tal waters (Field_03O) leads into the shop, so the
+# shop's way out leads out of it, into the water. Link, with the flippers, leaves with a stolen item and swims: the
+# item comes there (ap_jumps.cpp, TickStolenGoods), and the shopkeeper lets him back in. Sets the steal flags instead
+# of stealing. Gives the flippers and leaves them. Run after boot_file1 on a mod from make_test_patch.py --entrances
+# '{"Field_03O": "Shop_01A", "Field_10D": "EagleTowerExit_01A_b"}'.
+guard hurt
+send DBG grant Flippers 1 -1 0
+expect OK.grant 5
+send DBG setflag ScoopGet 0
+expect FLAG.ScoopGet.0 5
+# in the water south of the cave's door, swimming, which warp does not wait for
+send DBG warp Field 218.25 12 28.5
+expect OK.warp 5
+inlevel 20
+await 5 event=30
+hold 0 0 32767 until level=Shop 10
+loaded 20
+level Shop
+send DBG setflag ShopShovelSteal 1
+expect FLAG.ShopShovelSteal.1 5
+send DBG setflag StealSuccess 1
+expect FLAG.StealSuccess.1 5
+# its way out, south of Link, into the water: the stolen item's get plays while he swims
+hold 0 0 -32767 until level=Field 10
+inlevel 20
+until msg:KeyWaiting 15
+tapuntil 2 msg:Closed when textready 10
+poll FLAG.StealSuccess.0 10 DBG flag StealSuccess
+send DBG flag ScoopGet
+expect FLAG.ScoopGet.1 5
+await 8 event=30
+# back in through the door: no punishment, Link stands free in the shop
+hold 0 0 32767 until level=Shop 10
+loaded 20
+level Shop
+free 15
+wait 3
+free 5

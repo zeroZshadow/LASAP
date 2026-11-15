@@ -11,7 +11,7 @@ replaces, and the hints hold the seed's hints, which fit the text box. With Shuf
 each dungeon door into the dungeon the patch's map names, and its ways out back out of that door, and the rooms keep
 their vanilla targets; the markers swap the map's dungeon markers, whose rows stay vanilla. With Entrances, the jumps
 lead each moved overworld door into its new inside and that inside back out of the door, a covered door's with the flag
-that opens it.
+that opens it. Each landing of a led jump has one return, a jump the jumps lead elsewhere (the door at the landing).
 The drop actor's flowchart reads and holds every drop's take entry, every drop has its model's bounds and a linked one
 (a tree's, hole's, chest's, owl statue's or boss's) its link, and no small key or dig spot's slime key is left. Each chest's launch flag (Bouncy Items) is
 used by that chest and its drop alone, among all actors of its level (the RomFS's rooms, as the mod has them) and the
@@ -293,6 +293,17 @@ for door, inside in moved.items():
 if sorted(jumps) != sorted(want + hunt_lines):
     bad += 1
     print(f"JUMPS {jumps}, want {want + hunt_lines}")
+# Water landings: each landing of a led jump (but the egg's) has one return, the jump of the door at it, which the jumps
+# lead on
+returns = [line.split() for line in seed.get("returns", [])]
+landings = sorted((line.split()[3], line.split()[4]) for line in want)
+if sorted((level, spot) for level, spot, _, _ in returns) != landings:
+    bad += 1
+    print(f"RETURNS land on {sorted((level, spot) for level, spot, _, _ in returns)}, want {landings}")
+for level, spot, back_level, back in returns:
+    if not any(f.split()[0] in (level, ap_entrances.ANY_LEVEL) and f.split()[1:3] == [back_level, back] for f in jumps):
+        bad += 1
+        print(f"RETURN from {level} {spot}: {back_level} {back} is no led jump")
 # The map's dungeon markers keep their rows (each its door's label and show flag); the seed file's markers swap them.
 from RandomizerCore.Randomizers.data import DUNGEON_MAP_ICONS  # noqa: E402
 from RandomizerCore.Tools.oead_tools import readSheet as read_sheet  # noqa: E402
@@ -307,7 +318,8 @@ markers = seed.get("markers", [])
 if markers != marker_lines(patch):
     bad += 1
     print(f"MARKERS {markers}, want {marker_lines(patch)}")
-print(f"dungeon doors={doors} moved doors={len(moved)} jumps={len(jumps)} markers={len(markers)} bad={bad}")
+print(f"dungeon doors={doors} moved doors={len(moved)} jumps={len(jumps)} returns={len(returns)} markers={len(markers)} "
+      f"bad={bad}")
 
 # Drop actor: its flowchart reads (a duplicate entry name breaks the entry dictionary the game looks its entries up in)
 # and holds the take entry (LEB parameter 3) of every drop actor; the model every drop actor shows (its token's M line,

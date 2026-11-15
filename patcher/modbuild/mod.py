@@ -76,6 +76,11 @@ WARP_MENU_KEY = "APWarpMenu"
 WARP_MENU_TEXT = "Return to Tarin's house?[CHOICE_TOP]Warp home[CHOICE_BOTTOM]Continue"
 WARP_MENU_STYLE_FROM = "CheckShieldBook"  # a vanilla yes/no prompt in System.msbt
 WARP_HOME = {"level": "Field", "locator": "Field_11C", "offsetX": 0.0, "offsetZ": 0.0}
+# A Link who lands where he cannot stand, through a led door, goes back through it with this Common.bfevfl event
+# (AP::RETURN_ENTRY; DESIGN.md, Entrances, Water landings): the module puts the way back in place of its jump's
+# locator (AP::RETURN_LOCATOR), and of its level.
+RETURN_ENTRY = "APReturn"
+RETURN_JUMP = {"level": "Field", "locator": "APReturn", "offsetX": 0.0, "offsetZ": 0.0}
 ITEM_TEXT_STYLE_FROM = "GetHookShot"  # System.msbt entry whose window style the AP texts use
 PLACEHOLDER_NAME_KEY = "ItemName_ArchipelagoItem"
 PLACEHOLDER_NAME = "Archipelago Item"
@@ -143,7 +148,7 @@ def add_placeholder_row(fixes, sheet) -> None:
 
 def add_events(proc) -> None:
     """The entry points the module plays: the placeholder's and received items' texts (Item.bfevfl), received items'
-    item-get, the traps and the warp menu (Common.bfevfl)."""
+    item-get, the traps, the warp menu and the way back from a landing (Common.bfevfl)."""
     flow = proc.file_manager.readFile("Item.bfevfl")
     event_tools.addEntryPoint(flow.flowchart, PLACEHOLDER_KEY)
     event_tools.createActionChain(flow.flowchart, PLACEHOLDER_KEY, [
@@ -171,6 +176,10 @@ def add_events(proc) -> None:
     event_tools.createActionChain(common.flowchart, WARP_MENU_ENTRY, [
         ("Dialog", "Show", {"message": f"System:{WARP_MENU_KEY}"}),
     ], choice)
+    event_tools.addEntryPoint(common.flowchart, RETURN_ENTRY)
+    event_tools.createActionChain(common.flowchart, RETURN_ENTRY, [
+        ("GameControl", "RequestLevelJump", dict(RETURN_JUMP)),
+    ])
     ap_deathlink.patch_game_over(common.flowchart)
     proc.file_manager.writeFile("Common.bfevfl", common)
 

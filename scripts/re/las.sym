@@ -2542,3 +2542,4 @@ BoxCollision_MakeSolid 0x085459e0 f (out sp, actor, StringView* name, parent sp*
 Player_CanEnterArea 0x0925cd70 f (player) -> bool: AreaLevelOpen and stairs gate; false in death, resurrection, fallAbyss, demoEvent, blownAway, hookshot; jump/fall in the air only on a side-view ladder or carrying the flying rooster; damage true on a side-view ladder; else +0x1b8c bit 18
 Player_RefreshEnterArea 0x0925dbf0 f (player): the current state's virtual +0x88 into +0x1b8c bit 18; capsule (+0x2d8) filter bit 23 set when false
 NpcComponent_AreaLevelOpenHandler 0x08e5e5b0 f lambda (vtable 0x0a0e09e8 +0x30) in AreaLevelOpen +0x2f0: owner active and NpcComponent_OnTrigger false -> AreaLevelOpen_StartEvent
+Kiki_OnCompanionContact 0x08edc9b0 f (this, contact): with a companion on the contact and the +0x2fc byte of 0x9d8600 clear, starts Kiki.bfevfl Bowwow_talk (vtable +0x170); module nops the 0x9d8aa0 branch

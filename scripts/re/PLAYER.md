@@ -119,7 +119,10 @@ object); `neverGrounded` holds until the first ground update; `airTimer` counts 
   `playerCollision`'s controller (Character controller; `Player_OnBodyContact` `0xd4ffb0`, `Player_OnBodyTouch`
   `0xd4e7d0`); a touch's other actor goes into `touchedActors`. `Player_ClearContacts` (`0xd343e0`) empties both.
 
-**Respawn.** `Player_Respawn` (`0xd337a0 (player, Coords*, bool)`) puts Link at the coordinates. The update
+**Respawn.** `Player_Respawn` (`0xd337a0 (player, Coords*, bool)`) puts Link at the coordinates. A level jump keeps
+`respawnCoords`: until Link stands on safe ground in the new level, a respawn puts him at the last level's spot, in the
+new level's coordinates (in game 2026-11-15: led into the Tal Tal waters from the Library, he fell into the water, then
+fell from the Library's spot in the overworld every 1.5 s; the Eagle's Tower hole drops into a cave of water alone). The update
 (`Player_UpdateAnimation`) grows `airTime` while no event runs, Link is off the ground (`groundQuery.flags` bit 0)
 and not on a ladder or in `fallAbyss`; above 1.5 s it calls `Player_Respawn(player, &respawnCoords, false)`. A
 respawn zeroes `moveDelta`, `hit.attacker`, `hit.pending` and `handItems`, writes the handoff's `variant` and `flag`

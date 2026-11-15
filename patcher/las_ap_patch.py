@@ -194,6 +194,13 @@ def jump_lines(patch: dict) -> List[str]:
             ap_goal.jumps(ap_goal.settings_seashells(patch["settings"])))
 
 
+def return_lines(patch: dict) -> List[str]:
+    """The returns' lines, per spot a led jump of jump_lines lands on: the jump back the way Link came."""
+    shuffled = patch["settings"]["Shuffled Dungeons"]
+    return ((ap_entrances.dungeon_returns(patch["dungeon_entrances"]) if shuffled else []) +
+            ap_entrances.returns(patch["entrances"], patch["entrance_pairs"]))
+
+
 def shop_lines(patch: dict) -> List[str]:
     """Per AP shop slot its price tag and buy dialog labels and its location's local id."""
     return [f"{tag} {buy} {int(patch['location_ids'][loc])}"
@@ -340,6 +347,7 @@ def seed_files(patch: dict) -> tuple:
         "start": start_lines(item_defs, patch),
         "shop": shop_lines(patch),
         "jumps": jump_lines(patch),
+        "returns": return_lines(patch),
         "markers": marker_lines(patch),
         "shuffles": ap_shuffles.lines(patch["settings"], random.Random(f"{seed} shuffles")),
         "hints": ap_hints.lines(patch["hints"]),

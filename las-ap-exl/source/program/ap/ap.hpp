@@ -53,6 +53,14 @@ namespace AP {
     // and again on each SYNC (ReportDoorJumps).
     void NoteJump(std::string_view from, std::string_view level, std::string_view locator, std::string_view to);
     void ReportDoorJumps();
+    // The way back from the landing Link is on (ap_jumps.cpp, TickLanding), which the APReturn event's RETURN_LOCATOR
+    // stands for: the jump of the door at a led landing (the seed file's returns), else Link's last safe spot in the
+    // level he left, as a jump to a world position with that offset. Tarin's door when there is none.
+    struct ReturnTarget { std::string_view level, locator; const void* offset; };  // offset null: the event's
+    ReturnTarget ReturnJump();
+    // A level jump that started from level `from` for that level and locator, `led` there by the seed file's jumps:
+    // the landing is watched until Link stands on safe ground there (TickLanding).
+    void JumpStarted(std::string_view from, std::string_view level, std::string_view locator, bool led);
     void ApplyInjectedInput(nn::hid::NpadBaseState* state);
     void Log(const std::string& text);
     std::string HelloLine();

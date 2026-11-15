@@ -1,4 +1,5 @@
-"""The seed file's jumps and markers for Shuffled dungeons and Entrances (DESIGN.md, Shuffled dungeons, Entrances)."""
+"""The seed file's jumps, returns and markers for Shuffled dungeons and Entrances (DESIGN.md, Shuffled dungeons,
+Entrances)."""
 import re
 from typing import List, Mapping
 
@@ -65,6 +66,30 @@ def door_jumps(entrances: Mapping[str, str], pairs: Mapping[str, str]) -> List[s
         out_from = ANY_LEVEL if door_of[inside] == HOME else level_of(inside)
         opening = f" {OPENING_FLAGS[door]}" if door in OPENING_FLAGS else ""
         lines.append(f"{out_from} {FIELD} {door_of[inside]} {FIELD} {door}{opening}")
+    return lines
+
+
+def returns(entrances: Mapping[str, str], pairs: Mapping[str, str]) -> List[str]:
+    """The returns' lines, per spot a led overworld door lands on: "<level> <spot> <level> <locator>", the jump of the
+    door at that spot, as the game names it before the jumps lead it. A Link who cannot stand where he landed (water
+    without the flippers) goes back through it, to where he came from (DESIGN.md, Entrances, Water landings)."""
+    door_of = {inside: door for door, inside in pairs.items()}
+    lines = []
+    for door, inside in entrances.items():
+        lines.append(f"{level_of(inside)} {inside} {FIELD} {door_of[inside]}")
+        lines.append(f"{FIELD} {door} {level_of(pairs[door])} {pairs[door]}")
+    return lines
+
+
+def dungeon_returns(entrances: Mapping[str, str]) -> List[str]:
+    """returns' lines for the dungeon doors that lead into other dungeons: the dungeon's way out from where its door
+    lands, and the door's jump in from outside it."""
+    lines = []
+    for door, dungeon in entrances.items():
+        if door == dungeon:
+            continue
+        lines.append(f"{level_of(entrance(dungeon))} {entrance(dungeon)} {FIELD} {outside(dungeon)}")
+        lines.append(f"{FIELD} {outside(door)} {level_of(entrance(door))} {entrance(door)}")
     return lines
 
 

@@ -67,7 +67,7 @@ end. Fable: confirmed.
 | Arrival entries that warp: `PlayerStart` `FallInLv7`; `Stairs` `RunScrollWhiteLv09` (`Lv09Play_Update` once Link's z ≥ 108), `RunScrollLv06` (an `AreaUpstairs` entry), `MightPunchCrashOut` (`MightPunch_CrashOutTimer`) | literals | WarpInLevel | covered (not entrances) | confirmed |
 | Warp menu (module), LASR's game-over Save & Quit | `RequestLevelJump(Field, Field_11C)` | LevelJump | covered (`*` line) | in game (warp menu) |
 | Game-over Retry, file load, System Load | Save fields (Saved location) | SetGameState | covered | confirmed, in game |
-| Pits, water, falls (`Player_Respawn`) | `respawnCoords` in the level | none | covered | confirmed |
+| Pits, water, falls (`Player_Respawn`) | `respawnCoords` in the level; right after a level jump still the last level's, until Link stands on safe ground (a landing in water: DESIGN.md, Entrances, Water landings) | none | covered | confirmed |
 | Owl statues, `ObjColorHole`, `ObjLv9Stair`, `AreaEagleTower`, `AreaReturnAbyssIgnoreGrid`, rapids areas, `ObjRaft` | no funnel call in their code | none | covered | confirmed for direct calls |
 
 ## Saved location
@@ -103,6 +103,9 @@ In game (scratch mod: Madam MeowMeow's door leads into the dog house, Tarin's an
 
 ## Arrival
 
+- A level jump's offset (`LevelManager_LevelJump`'s fourth argument, an event's `+0x140`) is a Vec4: `RequestLevelJump`
+  fills x and z. With locator `$NONE` it is the world position Link lands at (in game 2026-11-15: the module's jump
+  back from the cave under the Eagle's Tower hole, y included).
 - `LevelLoad_Finish`: locator `$NONE` places Link at the room manager's `+0x120` as a world position; any other locator
   goes through `LevelData_FindPlayerStart`, the `.lvb`'s `tagPlayerStart` names, plus the offset. **An unknown name
   places Link at the origin** (a static zero entry, angle 0x7fffffff), without an error. Fable: confirmed.
@@ -199,8 +202,10 @@ The eight telephone boxes are eight levels. **Covered.** Fable: confirmed (it fo
 - Stealing is the exception: leaving the shop with an item sets `StealSuccess` and the item's steal flag, and
   `ExitOutShop` gives the item and clears `StealSuccess` (LASR's chain). A led shop exit lands on another door's entry,
   and `EntranceIn_Tool` punishes Link while `StealSuccess` is set. The patcher copies the chain into the `PlayerStart` entry
-  `APStolenGoods`, which the module requests once Link is free outside the shop with `StealSuccess` set
-  (`TickStolenGoods`). **Covered.**
+  `APStolenGoods`, which the module requests once Link stands or swims free outside the shop with `StealSuccess` set
+  (`TickStolenGoods`), and before it sends him back from a water landing (DESIGN.md, Entrances, Water landings).
+  **Covered.** In game (2026-11-15): a shop exit led into the Tal Tal waters gives the item while Link swims, and
+  without the flippers before the way back into the shop; the shopkeeper lets him in.
 
 ## Blocked landings
 

@@ -63,6 +63,9 @@ namespace Patches {
         // The Color Dungeon opens whatever companion follows Link
         {0xc868d4, inst::Nop()},
         {0xc868d8, inst::CmpImmediate(reg::W8, 0)},
+        // Kiki picks no fight with BowWow: his companion-contact callback (Kiki_OnCompanionContact) never starts
+        // Kiki.bfevfl's Bowwow_talk, whose WarReady keeps his trade from Link while BowWow follows
+        {0x9d8aa0, inst::Nop()},
         // EnemySoldierIronBall ignores GoldenLeaf[4]
         {0x6a62f8, inst::Nop()},
         // NPCs hold the item they give: new Items.gsheet rows with its model

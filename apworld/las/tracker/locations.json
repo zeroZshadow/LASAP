@@ -5833,22 +5833,6 @@
     ]
    },
    {
-    "name": "Field_13G",
-    "sections": [
-     {
-      "name": "Field_13G"
-     }
-    ],
-    "map_locations": [
-     {
-      "map": "Koholint Island",
-      "x": 827,
-      "y": 894,
-      "size": 12
-     }
-    ]
-   },
-   {
     "name": "Field_13M_a",
     "sections": [
      {

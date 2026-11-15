@@ -1,0 +1,28 @@
+# Kiki and BowWow: with BowWow following, Kiki picks no fight (Kiki.bfevfl's Bowwow_talk, patches.hpp kRandoFixes),
+# and trades the bananas for his check. Makes BowWow follow and sets TradeBananasGet instead of the trade quest. Run
+# after boot_file1 on a mod without Completed Bridge, the kiki location unchecked; leaves BowWow following and the
+# bridge built.
+send DBG poke 9d 01
+expect OK 5
+send DBG setflag TradeBananasGet 1
+expect FLAG.TradeBananasGet.1 5
+warp Field 171.75 7.5 97.5
+send DBG peek i 9d 1
+expect PEEK.i.9d.01 5
+# beside Kiki with BowWow, where the fight starts in the game
+guard event=22
+goto 171.75 7.5 93.5
+wait 5
+guard off event=22
+goto 171.75 7.5 92.75
+face up
+interact 1 10
+advance 2 30
+choose 0
+advance 2 120
+free 30
+send DBG flag StickDrop
+expect FLAG.StickDrop.1 5
+# the item-get's text named the kiki location (ids.json 90)
+send DBG text
+expect found=90\s 5
