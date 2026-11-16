@@ -13,7 +13,7 @@ from NetUtils import NetworkItem
 from . import GOAL_LOCATION, emulators
 from .install import tracker_images
 from .items import ITEM_TABLE, LASR_TO_ITEM
-from .lasr import DUNGEONS, INSTRUMENTS, door_entrance
+from .lasr import DUNGEONS, INSTRUMENTS, door_entrance, door_label
 from .tracker import known_doors
 from .ut_map import (DOOR_STEPS, LOCATION_DUNGEONS, OVERWORLD_MAP, door_out, dungeon_squares, find_route,
                      hidden_door_entrances, hidden_locations, spot_region)
@@ -238,7 +238,7 @@ class TrackerMixin:
             return False
         self.route_start = spot
         self.logical_path_entrances.extend(way.name for way in route)
-        self.print_json([{"type": "text", "text": "From "}, {"type": "color", "color": "blue", "text": spot}])
+        self.print_json([{"type": "text", "text": "From "}, {"type": "color", "color": "blue", "text": door_label(spot)}])
 
         def explained(text: List[dict], step: Any) -> List[dict]:  # with its rule, as UT logs a step it has no text for
             if hasattr(step.access_rule, "explain_json"):
@@ -248,7 +248,8 @@ class TrackerMixin:
         for way in route:
             text = world.explain_path(way, state)
             if text is not None:
-                self.print_json(text or explained([{"type": "color", "color": "blue", "text": way.name}], way))
+                self.print_json(text or explained([{"type": "color", "color": "blue", "text": door_label(way.name)}],
+                                                  way))
         if isinstance(end, Location):
             self.print_json(explained([{"type": "text", "text": "->"},
                                        {"type": "color", "color": "green", "text": end.name}], end))
@@ -367,10 +368,10 @@ class TrackerMixin:
                              + self.goal_lines(world))
         lines = []
         for key, status in pin.statuses.items():
-            name = world.location_id_to_name.get(key, str(key)) if pin.kind == "location" else key
+            name = world.location_id_to_name.get(key, str(key)) if pin.kind == "location" else door_label(key)
             lines.append(f"{name}: [color={get_ut_color(STATUS_COLOURS.get(status, status))}]{status}[/color]")
             if pin.kind == "entrance" and world is not None and world.get_entrance(key).connected_region is not None:
-                lines.append(f"  -> {door_out(world.get_entrance(key))}")
+                lines.append(f"  -> {door_label(door_out(world.get_entrance(key)))}")
         return "\n".join(lines)
 
     def goal_lines(self, world) -> List[str]:

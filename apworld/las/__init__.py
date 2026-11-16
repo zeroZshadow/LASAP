@@ -25,7 +25,7 @@ from .items import FILLER_ITEM, GAME, ITEM_GAME_INFO, ITEM_NAME_GROUPS, ITEM_TAB
 from .lasr import (CATEGORIES, COUNTED, DOORS, DUNGEON_POOL, DUNGEON_REWARD_LOCATIONS, DUNGEONS, ENTRANCE_POOL,
                    HOME_DOOR, HOUSE_DOOR, HOUSE_EXIT, INSTRUMENT_LOCATIONS, INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS,
                    LOGIC, SHOP_LOCATIONS, START_DOORS, TRAPS, PlacementError, closed_dungeons, door_entrance,
-                   door_node, door_region, dungeon_item_kind, dungeon_name, dungeon_region, entered_by_door,
+                   door_label, door_node, door_of_label, door_region, dungeon_item_kind, dungeon_name, dungeon_region, entered_by_door,
                    goal_logic, item_dungeon, location_dungeon, shuffle_dungeons, slot_logic, start_pairs)
 
 from .locations import LASR_LOCATIONS, LOCATION_NAME_GROUPS, LOCATION_NAME_TO_ID, LOCATION_NAMES, LASLocation
@@ -233,7 +233,7 @@ class LASWorld(World):
         start = None
         used: Set[str] = set()
         for connection in self.options.plando_connections.value:
-            entrance, exit_ = names[connection.entrance.lower()], names[connection.exit.lower()]
+            entrance, exit_ = (names[door_of_label(side).lower()] for side in (connection.entrance, connection.exit))
             if entrance == HOUSE_EXIT:
                 if self.options.random_start:
                     start = exit_
@@ -887,8 +887,8 @@ class LASWorld(World):
             return []
         if entrance.name not in DOOR_STEPS:
             return None
-        return [{"type": "color", "color": "blue", "text": entrance.name},
-                {"type": "text", "text": f" -> {door_out(entrance)}"}]
+        return [{"type": "color", "color": "blue", "text": door_label(entrance.name)},
+                {"type": "text", "text": f" -> {door_label(door_out(entrance))}"}]
 
     def reconnect_found_entrances(self, key: str, value: Any) -> None:
         """Universal Tracker: a data storage key of found_entrances_datastorage_key changed. Once the player has read
@@ -1006,13 +1006,13 @@ class LASWorld(World):
         that leads elsewhere (moved_doors). The ways out lead back."""
         spoiler = self.multiworld.spoiler
         if self.start:
-            spoiler.set_entrance(HOUSE_EXIT, f"{self.start} ({START_DOORS[self.start]})", "entrance",
+            spoiler.set_entrance(HOUSE_EXIT, f"{door_label(self.start)} ({START_DOORS[self.start]})", "entrance",
                                  self.player)
         if any(door != dungeon for door, dungeon in self.dungeon_entrances.items()):
             for door, dungeon in self.dungeon_entrances.items():
                 spoiler.set_entrance(door_entrance(door), dungeon_name(dungeon), "both", self.player)
         for door, inside in self.moved_doors().items():
-            spoiler.set_entrance(door, inside, "both", self.player)
+            spoiler.set_entrance(door_label(door), door_label(inside), "both", self.player)
 
     def write_spoiler(self, spoiler_handle: TextIO) -> None:
         hints = self.in_game_hints()

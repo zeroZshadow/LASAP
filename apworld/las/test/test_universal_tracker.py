@@ -9,8 +9,8 @@ from worlds.AutoWorld import AutoWorldRegister
 
 from . import OPTION_SETS, generate, generate_world, regenerate
 from ..items import GAME, LASR_TO_ITEM, TRAP_ITEMS
-from ..lasr import (DOORS, DUNGEONS, ENTRANCE_POOL, HOUSE_DOOR, door_entrance, door_region, dungeon_region,
-                    location_dungeon)
+from ..lasr import (DOORS, DUNGEONS, ENTRANCE_POOL, HOUSE_DOOR, door_entrance, door_label, door_region,
+                    dungeon_region, location_dungeon)
 from ..locations import LASR_LOCATIONS
 from ..ut_map import SPOT_ZONES, find_route, spot_region
 
@@ -189,7 +189,8 @@ class TestDeferredEntrances(unittest.TestCase):
         door = next(door for door in ENTRANCE_POOL if world.get_entrance(door).connected_region is not None)
         out = world.get_entrance(door).connected_region.name[:-5].replace("-", "_")
         self.assertEqual(world.explain_path(world.get_entrance(door), state),
-                         [{"type": "color", "color": "blue", "text": door}, {"type": "text", "text": f" -> {out}"}])
+                         [{"type": "color", "color": "blue", "text": door_label(door)},
+                          {"type": "text", "text": f" -> {door_label(out)}"}])
         route = next(e for e in self.original.get_entrances(1) if " -> " in e.name)
         self.assertIsNone(world.explain_path(route, state))
 

@@ -14,6 +14,7 @@ from kivymd.uix.button import MDButton
 from kivymd.uix.menu import MDDropdownMenu
 
 from .client_gui import Palette, label
+from .lasr import door_label
 
 # Universal Tracker's item panels: the room around and between their icons, and above and below a section's name
 ITEM_GRID_PADDING, ITEM_GRID_SPACING, ITEM_HEADER_PADDING = 2, 2, 1
@@ -603,7 +604,7 @@ def add_route_clicks(page, ctx) -> None:
             menu.dismiss()
             ctx.route_to(name)
 
-        menu.items = [{"text": name, "on_release": lambda n=name: pick(n)} for name in found]
+        menu.items = [{"text": door_label(name), "on_release": lambda n=name: pick(n)} for name in found]
         menu.open()
         return True
 
@@ -636,7 +637,8 @@ def add_route_search(page, ctx) -> None:
     shown: Dict[str, Any] = {"menu": None, "picked": None}
 
     def matches(text: str) -> List[str]:
-        return [name for name in (*ctx.tracker_in_logic, *ctx.route_doors()) if text in name.lower()]
+        """The locations and doors whose names hold the text: a door by its player-facing name (lasr.door_label)."""
+        return [name for name in (*ctx.tracker_in_logic, *ctx.route_doors()) if text in door_label(name).lower()]
 
     def close() -> None:
         menu, shown["menu"] = shown["menu"], None
@@ -645,8 +647,8 @@ def add_route_search(page, ctx) -> None:
 
     def pick(name: str) -> None:
         close()
-        shown["picked"] = name
-        field.text = name
+        shown["picked"] = door_label(name)
+        field.text = door_label(name)
         ctx.route_to(name)
 
     def suggest(*_: Any) -> None:
@@ -655,7 +657,7 @@ def add_route_search(page, ctx) -> None:
         if not found:
             close()
             return
-        items = [{"text": name, "on_release": lambda n=name: pick(n)} for name in found[:ROUTE_SUGGESTIONS]]
+        items = [{"text": door_label(name), "on_release": lambda n=name: pick(n)} for name in found[:ROUTE_SUGGESTIONS]]
         menu = shown["menu"]
         if menu is None:  # the field keeps the keyboard; a touch outside the menu closes it
             menu = shown["menu"] = MDDropdownMenu(caller=field, items=items, position="bottom", width=dp(420))
@@ -670,7 +672,7 @@ def add_route_search(page, ctx) -> None:
     def search(*_: Any) -> None:
         text = field.text.strip().lower()
         found = matches(text) if text else []
-        exact = [name for name in found if name.lower() == text]
+        exact = [name for name in found if door_label(name).lower() == text]
         if len(found) == 1 or exact:
             pick((exact or found)[0])
 

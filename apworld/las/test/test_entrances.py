@@ -8,9 +8,10 @@ from test.general import gen_steps
 
 from . import LASTestBase, forget, generate, generate_world, patcher_import
 from .. import LASWorld, PlacementError
-from ..lasr import (DOORS as GAME_DOORS, DUNGEON_DOORS, DUNGEON_POOL, DUNGEONS, ENTRANCE_POOL, HOME_DOOR, HOUSE_DOOR,
-                    HOUSE_EXIT, START_DOORS, WRITTEN_LOGIC, door_entrance, door_region, dungeon_region, shuffle_pool,
-                    start_pairs)
+from ..lasr import (DOOR_NAMES, DOORS as GAME_DOORS, DUNGEON_DOORS, DUNGEON_POOL, DUNGEONS, ENTRANCE_POOL, HOME_DOOR,
+                    HOUSE_DOOR, HOUSE_EXIT, START_DOORS, WRITTEN_LOGIC, door_entrance, door_label, door_of_label,
+                    door_region, dungeon_region, shuffle_pool, start_pairs)
+from ..options import PlandoDoors
 from ..options import ShuffledDungeons
 from ..logic import START, parse
 
@@ -227,6 +228,19 @@ class TestPlandoDoors(LASTestBase):
         self.assertEqual(self.world.get_entrance(HOUSE_DOOR).connected_region.name, door_region("Field_11C"))
 
 
+class TestPlandoByName(LASTestBase):
+    """Plando takes the doors' player-facing names (lasr.door_label), in any case."""
+    options = {"entrances": "everything", "random_start": True,
+               "plando_connections": [{"entrance": door_label(SINGLES[0]).upper(), "exit": door_label(GAME_DOORS["pairs"][SINGLES[1]])},
+                                      {"entrance": door_label(GAME_DOORS["pairs"][SINGLES[0]]), "exit": door_label(SINGLES[1])},
+                                      {"entrance": HOUSE_EXIT, "exit": door_label("Field_11C")}]}
+
+    def test_the_named_doors_lead_as_planned(self) -> None:
+        self.assertEqual(self.world.entrances[SINGLES[0]], GAME_DOORS["pairs"][SINGLES[1]])
+        self.assertEqual(self.world.entrances[SINGLES[1]], GAME_DOORS["pairs"][SINGLES[0]])
+        self.assertEqual(self.world.start, "Field_11C")
+
+
 class TestPlandoWithoutEntrances(LASTestBase):
     """Without Entrances or Random Start the plando's doors and start are left out."""
     options = {"plando_connections": SWAP + [{"entrance": HOUSE_EXIT, "exit": "Field_11C"}]}
@@ -240,6 +254,31 @@ class TestPlandoTwice(unittest.TestCase):
         twice = [SWAP[0], {"entrance": GAME_DOORS["pairs"][SINGLES[1]], "exit": SINGLES[2]}]
         with self.assertRaisesRegex(OptionError, GAME_DOORS["pairs"][SINGLES[1]]):
             generate({"entrances": "everything", "plando_connections": twice}, 1, gen_steps)
+
+
+class TestDoorNames(unittest.TestCase):
+    def test_every_shuffled_door_has_a_name_of_its_own(self) -> None:
+        doors = {door for group in GAME_DOORS["groups"].values() for door in group}
+        self.assertEqual(set(DOOR_NAMES), doors)
+        names = [door_label(side) for door in doors for side in (door, GAME_DOORS["pairs"][door])]
+        self.assertEqual(len(set(name.lower() for name in names)), len(names))
+
+    def test_a_name_stands_for_its_door(self) -> None:
+        for door in DOOR_NAMES:
+            self.assertEqual(door_of_label(door_label(door)), door)
+            if GAME_DOORS["pairs"][door] != HOUSE_DOOR:
+                self.assertEqual(door_of_label(door_label(GAME_DOORS["pairs"][door])), GAME_DOORS["pairs"][door])
+            self.assertEqual(door_of_label(door), door)
+        self.assertEqual(door_label(HOUSE_DOOR), HOUSE_EXIT)
+        self.assertEqual(door_of_label(HOUSE_EXIT), HOUSE_EXIT)
+
+    def test_plando_takes_names_and_ids(self) -> None:
+        inside = GAME_DOORS["pairs"][SINGLES[1]]
+        self.assertTrue(PlandoDoors.can_connect(door_label(SINGLES[0]), door_label(inside)))
+        self.assertTrue(PlandoDoors.can_connect(SINGLES[0], inside))
+        self.assertTrue(PlandoDoors.can_connect(HOUSE_EXIT, door_label(next(iter(START_DOORS)))))
+        self.assertFalse(PlandoDoors.can_connect(door_label(SINGLES[0]), door_label(SINGLES[1])))
+        self.assertIn(door_label(SINGLES[0]).lower(), PlandoDoors.entrances)
 
 
 class TestDungeonMapFails(unittest.TestCase):

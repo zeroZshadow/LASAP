@@ -20,6 +20,8 @@ def load_json(name: str) -> Any:
 
 WRITTEN_LOGIC: Dict[str, Dict[str, Any]] = load_yaml("logic.yml")  # with its routes, as logic.yml writes them
 DOORS: Dict[str, Any] = load_yaml("doors.yml")
+# Player-facing names of the shuffled overworld doors, by door: the spoiler, plando and the tracker show them (door_label)
+DOOR_NAMES: Dict[str, str] = load_yaml("door_names.yml")
 
 DUNGEONS = tuple(SPEC["dungeons"])
 # Each dungeon's number in location and item names (D1-..., key-D1) and in its inside's level (Lv01 ... Lv08): D1 Tail
@@ -160,6 +162,28 @@ def door_region(door: str) -> str:
 
 # Random start: the plando connections' and the spoiler's name of the house's way out, which leads out of the start door
 HOUSE_EXIT = "Tarin's House Exit"
+_DOOR_OF_INSIDE = {DOORS["pairs"][door]: door for door in DOOR_NAMES}
+EXIT_SUFFIX = " Exit"  # an inside door's name: its overworld door's, then this
+_DOOR_BY_LABEL = {**{f"{name}{EXIT_SUFFIX}".lower(): inside for inside, door in _DOOR_OF_INSIDE.items()
+                     for name in (DOOR_NAMES[door],)},
+                  **{name.lower(): door for door, name in DOOR_NAMES.items()}}
+_DOOR_BY_LABEL.pop(HOUSE_EXIT.lower())  # the name of the start's way out (Random start), not of the house's inside door
+
+
+def door_label(door: str) -> str:
+    """A door's player-facing name: door_names.yml's for a shuffled overworld door, `<that name> Exit` for the inside
+    door it leads to in the game. Other names, and doors.yml's own, stay as they are: the world, the seed file and the
+    tracker's data go by doors.yml's names."""
+    if door in DOOR_NAMES:
+        return DOOR_NAMES[door]
+    if door in _DOOR_OF_INSIDE:
+        return DOOR_NAMES[_DOOR_OF_INSIDE[door]] + EXIT_SUFFIX
+    return door
+
+
+def door_of_label(name: str) -> str:
+    """The doors.yml name a player-facing door name (door_label) stands for, any case; other names as they are."""
+    return _DOOR_BY_LABEL.get(name.lower(), name)
 
 
 def door_logic(written: Dict[str, Dict[str, Any]], doors: Dict[str, Any],

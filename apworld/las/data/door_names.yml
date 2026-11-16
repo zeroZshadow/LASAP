@@ -1,0 +1,119 @@
+# A player-facing name per shuffled overworld door of doors.yml, by its door; the inside door it leads to in the game is
+# that name with " Exit" (lasr.door_label). A connector's doors share a name and differ by their end.
+
+# a dungeon's own door
+Field_14D: Tail Cave
+Field_03E: Bottle Grotto
+Field_12F: Key Cavern
+Field_03L_a: Angler's Tunnel
+Field_14J_b: Catfish's Maw
+Field_09M: Face Shrine
+Field_01O: Eagle's Tower
+Field_02A: Turtle Rock
+Field_08H: Color Dungeon
+
+# another door into a dungeon's level
+Field_01A: Turtle Rock West          # the side door on the mountain top, west
+Field_01C: Turtle Rock East          # the side door on the mountain top, east
+Field_07M: Face Shrine North         # Lv06FaceShrine_02A, the stairs north of the shrine
+
+# connectors
+Field_01D: Turtle Cave North         # TurtleRockEnter, the cave on the way to Turtle Rock
+Field_02D: Turtle Cave South         # cracked wall
+Field_02F: Mountain Cave West        # Tamaranch04, five doors
+Field_01H: Mountain Cave Top         # under the rock by the bridge
+Field_02H: Mountain Cave Middle
+Field_02I_a: Mountain Cave East L
+Field_02I_b: Mountain Cave East R
+Field_01K_b: Henhouse Cave Upper     # Tamaranch02
+Field_02J: Henhouse Cave Lower
+Field_01N: Five Chest Cave Yard      # Tamaranch05, three doors
+Field_02N_a: Five Chest Cave West
+Field_02N_b: Five Chest Cave East
+Field_02O_a: Eagle Cave West         # Tamaranch01, four doors by Eagle's Tower
+Field_02O_b: Eagle Cave Middle
+Field_02P_a: Eagle Cave East
+Field_02P_c: Eagle Cave Lower
+Field_01P: Tower Cave Upper          # Tamaranch03, east of Eagle's Tower
+Field_02P_d: Tower Cave Lower
+Field_03A: Swamp Cave West
+Field_03B: Swamp Cave East
+Field_03L_b: Angler Cave West        # AnglersTunnelExit, by Angler's Tunnel
+Field_03N: Angler Cave East
+Field_03P: Rapids Cave North
+Field_09P: Rapids Cave South
+Field_05J: Kanalet Passage West      # KanaletCastleEnter
+Field_05K: Kanalet Passage East      # under the rock, the crow's golden leaf
+Field_07J: Kanalet Castle Front
+Field_06J_a: Kanalet Castle Back L
+Field_06J_b: Kanalet Castle Back R
+Field_06A: Woods Cave West
+Field_07C: Woods Cave East
+Field_08F: Grave Cave West
+Field_08G: Grave Cave East           # under the grave
+Field_09C_a: Quadruplets L           # two doors of one house
+Field_09C_b: Quadruplets R
+Field_10M: Face Cave West            # FaceShrineEnter
+Field_10N: Face Cave East            # Armos stairs
+Field_11K: Village Tunnel West       # AnimalVillageEnter
+Field_11L: Village Tunnel East
+Field_12I_a: Bay Cave Hill           # MarthaUkuku, three doors
+Field_12I_b: Bay Cave Prairie
+Field_13I: Bay Cave Shore
+Field_15H: Batter Cave West          # MadBattersWellEnter
+Field_16J: Batter Cave East
+
+# the one door into its level
+Field_11C: Tarin's House
+Field_11B_a: Madam MeowMeow
+Field_11B_b: Dog House
+Field_12A: Library
+Field_12B: Ulrira's House
+Field_12D: Trendy Game
+Field_10D: Tool Shop
+Field_11A: Mabe Well
+Field_10C: Rooster's Grave
+Field_12C: Mabe Phone
+Field_09D: Dream Shrine
+Field_15D: Sale's House
+Field_16E: Goriya's Cave             # BoomerangCave
+Field_16G: House by the Bay
+Field_14E: Mamu's Cave
+Field_15G: Mad Batter Bay
+Field_15I: Bay Phone
+Field_15J: Mermaid Statue
+Field_15K: Fisherman's Boat
+Field_14G: Richard's Villa
+Field_13M_a: Rabbit House
+Field_13M_b: Schule's House
+Field_13N_a: Christine's House
+Field_13N_b: Hidden Zora
+Field_13N_c: Village Cave            # cracked wall to the desert
+Field_14N: Chef Bear
+Field_14L: Village Phone
+Field_13P: Lanmola Cave
+Field_11M: Armos Shrine              # ArmosShrine, the ruins' shrine
+Field_11O: Armos Cave                # ArmosShrineCave
+Field_09N: Rapids Fairy              # south of the rapids
+Field_09K: Seashell Mansion
+Field_09E: Prairie Cave West         # UkukuCave01
+Field_09G: Prairie Cave East         # UkukuCave02, cracked wall
+Field_09H: Prairie Fairy             # cracked wall
+Field_11E: Prairie Phone West        # TelephoneBox01
+Field_09I: Prairie Phone East        # TelephoneBox07
+Field_07F: Witch's Hut
+Field_05F: Crazy Tracy
+Field_05C: Woods Hollow              # MysteriousWoodsCave02, the small woods cave
+Field_06C: Mad Batter Woods
+Field_04F: Moblin Cave
+Field_04A_a: Mr. Write's House
+Field_04B: Swamp Phone
+Field_08I: Kanalet Moat Cave         # KanaletCastleSouthCave
+Field_05L: Kanalet Phone
+Field_01E: Mad Batter Tal Tal
+Field_01K_a: Henhouse
+Field_01K_c: Bird Key Cave
+Field_02B: Turtle Rock Phone
+Field_02P_b: Tal Tal Fairy
+Field_03K: Manbo's Cave
+Field_03O: Waterfall Cave            # EagleTowerExit, the cave under the hole by Eagle's Tower

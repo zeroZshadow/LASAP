@@ -4,7 +4,7 @@ from typing import Any, Optional
 from Options import (Choice, DeathLink, DefaultOnToggle, NamedRange, OptionGroup, PerGameCommonOptions,
                      PlandoConnections, Range, StartInventoryPool, Toggle, Visibility)
 
-from .lasr import DOORS, DUNGEON_POOL, HOUSE_DOOR, HOUSE_EXIT, START_DOORS
+from .lasr import DOORS, DUNGEON_POOL, HOUSE_DOOR, HOUSE_EXIT, START_DOORS, door_label, door_of_label
 
 
 class Logic(Choice):
@@ -301,6 +301,13 @@ class RandomStart(Toggle):
 
 
 _INSIDE_DOORS = frozenset(DOORS["pairs"][door] for door in DUNGEON_POOL) - {HOUSE_DOOR}
+
+
+def _with_labels(doors):
+    """Each door's id and its player-facing name (lasr.door_label): plando takes either."""
+    return [name for door in doors for name in {door, door_label(door)}]
+
+
 _OUTSIDE_LOWER = frozenset(door.lower() for door in DUNGEON_POOL)
 _INSIDE_LOWER = frozenset(door.lower() for door in _INSIDE_DOORS)
 _START_LOWER = frozenset(door.lower() for door in START_DOORS)
@@ -310,18 +317,21 @@ class PlandoDoors(PlandoConnections):
     """With Entrances: an overworld door that leads to the inside door named with it, whose way out leads back out of
     that door, whichever of the two comes first (the direction is not read: the doors lead both ways); the door outside
     Tarin's house only with Random Start, a dungeon's door only with Shuffled Dungeons on everything. With Random Start: Tarin's House Exit with one of the start doors, which then
-    is the start. Door names are those of the spoiler's Entrances section. Needs the generator's plando connections.
-    - entrance: Field_03C
-      exit: Cave_02B
+    is the start. Door names are those of the spoiler's Entrances section (an inside door is its overworld door's name
+    with " Exit"), or the doors' ids. Needs the generator's plando connections.
+    - entrance: Library
+      exit: Tool Shop Exit
     - entrance: Tarin's House Exit
-      exit: Field_06C"""
+      exit: Moblin Cave"""
     display_name = "Plando Connections"
-    entrances = frozenset([*DUNGEON_POOL, *_INSIDE_DOORS, HOUSE_EXIT])
-    exits = frozenset([*DUNGEON_POOL, *_INSIDE_DOORS, *START_DOORS])
+    entrances = frozenset([*_with_labels(DUNGEON_POOL), *_with_labels(_INSIDE_DOORS), HOUSE_EXIT])
+    exits = frozenset([*_with_labels(DUNGEON_POOL), *_with_labels(_INSIDE_DOORS), *_with_labels(START_DOORS)])
 
     @classmethod
     def can_connect(cls, entrance: str, exit: str) -> bool:
-        entrance, exit = entrance.lower(), exit.lower()
+        if entrance.lower() == HOUSE_EXIT.lower():
+            return door_of_label(exit).lower() in _START_LOWER
+        entrance, exit = door_of_label(entrance).lower(), door_of_label(exit).lower()
         if entrance == HOUSE_EXIT.lower():
             return exit in _START_LOWER
         return (entrance in _OUTSIDE_LOWER and exit in _INSIDE_LOWER) or \
