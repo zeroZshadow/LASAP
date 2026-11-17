@@ -15,8 +15,8 @@ from .install import tracker_images
 from .items import ITEM_TABLE, LASR_TO_ITEM
 from .lasr import DUNGEONS, INSTRUMENTS, door_entrance, door_label
 from .tracker import known_doors
-from .ut_map import (DOOR_STEPS, LOCATION_DUNGEONS, OVERWORLD_MAP, door_out, dungeon_squares, find_route,
-                     hidden_door_entrances, hidden_locations, spot_region)
+from .ut_map import (DOOR_STEPS, LOCATION_DUNGEONS, OVERWORLD_MAP, connector_exits, door_out, dungeon_squares,
+                     find_route, hidden_door_entrances, hidden_locations, spot_region)
 
 TRACKER_DOORS_KEY = "tracker_doors_shown"  # Archipelago's persistent storage, under "las": TrackerMixin.show_doors
 # A pin status's colour in its tooltip (TrackerMixin.pin_text): Universal Tracker's, by its colour names
@@ -149,6 +149,19 @@ class TrackerMixin:
         super().load_map(map_id)
         self.draw_route()
 
+    def entrance_connected(self, name: str) -> bool:
+        """Whether the slot's entrance of that name leads somewhere: a door the player has gone through, with Universal
+        Tracker's deferred entrances (door_pin_colour)."""
+        entrance = self.tracker_core.multiworld.regions.entrance_cache[self.tracker_core.player_id].get(name) \
+            if self.tracker_core.get_current_world() is not None else None
+        return entrance is not None and entrance.connected_region is not None
+
+    def door_pin_names(self, names: List[str]) -> List[str]:
+        """A door pin's entrances, and the ways out of the other ends of the connector its door leads into in the slot
+        (connector_exits): Universal Tracker keeps their statuses on the pin too (ut_gui.load_pins)."""
+        entrances = self.slot_data.get("entrances") or {}
+        return list(names) + [way for name in names for way in connector_exits(entrances, name) if way not in names]
+
     def hidden_doors(self) -> Dict[str, List[str]]:
         """Each dungeon map's dungeon door entrances to hide, by the doors known now (ut_map.hidden_door_entrances)."""
         return hidden_door_entrances(self.slot_data.get("dungeon_entrances"), known_doors(self.found_doors))
@@ -178,6 +191,10 @@ class TrackerMixin:
             for pin in getattr(self, "ldeferred_dict", {}).get(GOAL_LOCATION, ()):
                 if hasattr(pin, "paint"):  # the client's pin (ut_gui.MapPin)
                     pin.go_mode = go
+                    pin.paint()
+            # a door's pin also follows which connector ends are connected, which may change with no status change
+            for pin in {id(pin): pin for pins in getattr(self, "deferred_dict", {}).values() for pin in pins}.values():
+                if hasattr(pin, "paint"):
                     pin.paint()
         self.draw_route()
         hover = getattr(self.map_page, "las_hover", None)

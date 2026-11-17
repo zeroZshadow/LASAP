@@ -1,8 +1,8 @@
 # Doors gone through (DESIGN.md, Entrances, Doors gone through): each level jump between the overworld and another
-# level is reported as DOOR <locator> <the locator it went to>, each time, and each once again on SYNC, the latest
-# last; the client learns the shuffled doors the player has gone through from them, and the route's start from the
-# last. Run after newgame_file2 with the client connected to the game, on a mod with the doors unshuffled: each jump
-# goes where it always does.
+# level, and the warp home, also from the overworld, is reported as DOOR <locator> <the locator it went to>, each
+# time, and each once again on SYNC, the latest last; the client learns the shuffled doors the player has gone
+# through from them, and the route's start from the last. Run after newgame_file2 with the client connected to the
+# game, on a mod with the doors unshuffled: each jump goes where it always does.
 expect HELLO 30
 send DBG setflag TailCaveShutterOpened 1
 expect FLAG.TailCaveShutterOpened.1 5
@@ -19,8 +19,19 @@ expect ^AP.DOOR.Field_14D.Field_14D$ 20
 hold 0 0 32767 until level=Lv01TailCave 10
 loaded 20
 expect ^AP.DOOR.Lv01TailCave_08D.Lv01TailCave_08D$ 20
+# out again, then the warp home from the overworld: a jump within Field, reported as it comes out of Tarin's door
+hold 0 0 -32767 until level=Field 10
+loaded 20
+expect ^AP.DOOR.Field_14D.Field_14D$ 20
+hold 800 0 0 until !event=0 5
+until msg:Selecting 10
+choose 0
+expect ^AP.DOOR.Field_11C.Field_11C$ 30
+until free 20
 # an expect skips the lines that came with the one it found: one SYNC per line
 game SYNC
 expect ^DOOR.Lv01TailCave_08D.Lv01TailCave_08D$ 10
 game SYNC
 expect ^DOOR.Field_14D.Field_14D$ 10
+game SYNC
+expect ^DOOR.Field_11C.Field_11C$ 10

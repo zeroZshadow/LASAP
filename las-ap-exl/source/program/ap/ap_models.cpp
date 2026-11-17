@@ -106,6 +106,18 @@ namespace {
         }
     };
 
+    // An item-get's fanfare, and a find's popup's (Music::Fanfare): the placeholder's, but for a location that shows an
+    // instrument, that instrument's song (DESIGN.md, Instrument songs)
+    HOOK_DEFINE_TRAMPOLINE(ItemGetPlayFanfare) {
+        static void Callback(ItemId item) {
+            if (item == AP::PLACEHOLDER_ITEM_ID) {
+                ItemId shown = ShownItem(item);
+                if (shown >= ItemId::FullMoonCello && shown <= ItemId::ThunderDrum) item = shown;
+            }
+            Orig(item);
+        }
+    };
+
     // The other items held up as models: the mansion's present, the NPCs that show what they give
     HOOK_DEFINE_TRAMPOLINE(ItemModelMake) {
         static void Callback(Game::SharedPtr<Game::ItemModelHolder>* out, Game::SharedPtr<>* owner,
@@ -289,6 +301,7 @@ namespace {
         LoadModels();
         NpcResolveParam::InstallAtFuncPtr(Game::NpcComponent_ResolveParam.Ptr());
         ItemGetHolderMake::InstallAtFuncPtr(Game::ItemGetHolder_Make.Ptr());
+        ItemGetPlayFanfare::InstallAtFuncPtr(Game::ItemGet_PlayFanfare.Ptr());
         ItemModelMake::InstallAtFuncPtr(Game::ItemModel_Make.Ptr());
         if (!g_Stances.empty() || !g_ChestSizes.empty()) ActorCreate::InstallAtFuncPtr(Game::Actor_Create.Ptr());
         DatasheetCreate::InstallAtFuncPtr(Game::Datasheet_Create.Ptr());

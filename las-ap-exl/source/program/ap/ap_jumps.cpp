@@ -203,7 +203,10 @@ namespace AP {
     }
 
     void NoteJump(std::string_view from, std::string_view level, std::string_view locator, std::string_view to) {
-        if ((from == kOverworld) == (level == kOverworld) || locator.empty() || to.empty()) return;
+        if (locator.empty() || to.empty()) return;
+        // the warp home, from the overworld too, comes out of Tarin's door's pair
+        bool home = level == kOverworld && locator == AP::HOME_LOCATOR;
+        if ((from == kOverworld) == (level == kOverworld) && !home) return;
         std::string line = "DOOR " + std::string(locator) + " " + std::string(to);
         auto known = std::find(g_DoorJumps.begin(), g_DoorJumps.end(), line);
         if (known != g_DoorJumps.end()) g_DoorJumps.erase(known);
@@ -222,6 +225,7 @@ namespace AP {
     }
 
     void JumpStarted(std::string_view from, std::string_view level, std::string_view locator, bool led) {
+        StartJump(from, level);
         g_Landing = Landing::None;
         g_LandingReturn = nullptr;
         g_LeftLevel.clear();

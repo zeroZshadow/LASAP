@@ -1,0 +1,28 @@
+# Instant Pickups with an instrument (DESIGN.md, Instrument songs): a find of the placeholder at a location that shows
+# an instrument plays that instrument's song, not the placeholder's fanfare. Run after boot_file1 on a save where the
+# beach chest is closed, on a mod patched with Instant Pickups on Everything whose beach chest shows the Evening Calm
+# Organ (make_test_patch.py --models beach-chest=evening-calm-organ --names "beach-chest=Evening Calm Organ").
+# Screenshots: instant_instrument_song the popup.
+guard hurt
+send DBG grant PowerBraceletLv1 1 -1 0
+expect OK.grant 5
+warp Field 86.25 6 173.25
+at 86.25 173.25
+face right
+interact
+until carry=1+free 3
+face left
+tap 1
+until carry=0 3
+goto 87.75 6 173.25
+at 87.75 173.25
+face up
+guard off hurt
+guard anim=item_get_st
+interact
+await 3 popup=1
+await 3 bgm=\S*BGM_INST_ORGAN
+shot instant_instrument_song.png
+free 5
+await 10 popup=0
+guard off anim=item_get_st

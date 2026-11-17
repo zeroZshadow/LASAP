@@ -111,6 +111,8 @@ namespace AP::Bridge {
     void LoadStart();
     // Gives a new save its starting items, and sets its start flags once Link has left Tarin's house.
     void TickStart();
+    // A level jump that started from level `from` to that level: one that leaves Tarin's house sets the start flags.
+    void StartJump(std::string_view from, std::string_view level);
 
     // ---- Item-gets and popups (ap_itemget.cpp) ----
 

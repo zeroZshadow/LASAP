@@ -1,6 +1,7 @@
 // The start state (DESIGN.md, Start state): a new save's starting items and flags, from the seed file's start. The
-// items come once Link stands in his first level; the flags the first time he stands in another level than Tarin's
-// house, where the opening and Marin's talk still find them unset, as LASR's start event set them on his first exit.
+// items come once Link stands in his first level; the flags as a jump first leaves Tarin's house, where the opening and
+// Marin's talk still find them unset, as LASR's start event set them on his first exit, or else the first time he
+// stands in another level.
 #include "ap/ap_bridge.hpp"
 #include "ap/ap_patcher.hpp"
 #include "config/seed_file.hpp"
@@ -69,5 +70,13 @@ namespace {
             else GiveStartItems();
         }
         if (LevelSystem::GetCurrentLevel() != kStartLevel) SetStartFlags();
+    }
+
+    // Before the level loads: its actors are made and check their flags while it loads, before Link stands there, so an
+    // owl made with its watched flag unset would fly in (the beach's, beside the banana house's door).
+    void StartJump(std::string_view from, std::string_view level) {
+        if (g_StartFlags.empty() || from != kStartLevel || level == kStartLevel) return;
+        if (!EventFlags::CheckFlag(AP::START_ITEMS_FLAG) || EventFlags::CheckFlag(AP::START_MARKER)) return;
+        SetStartFlags();
     }
 }

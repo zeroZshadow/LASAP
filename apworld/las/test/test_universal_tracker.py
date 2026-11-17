@@ -12,7 +12,7 @@ from ..items import GAME, LASR_TO_ITEM, TRAP_ITEMS
 from ..lasr import (DOORS, DUNGEONS, ENTRANCE_POOL, HOUSE_DOOR, door_entrance, door_label, door_region,
                     dungeon_region, location_dungeon)
 from ..locations import LASR_LOCATIONS
-from ..ut_map import SPOT_ZONES, find_route, spot_region
+from ..ut_map import SPOT_ZONES, connector_exits, find_route, spot_region
 
 OPTIONS = OPTION_SETS + [
     {"small_keys": "anywhere", "nightmare_keys": "anywhere", "dungeon_items": "own_dungeon",
@@ -181,6 +181,48 @@ class TestDeferredEntrances(unittest.TestCase):
     def test_not_deferred(self) -> None:
         again = regenerate(self.slot_data, 4302, "off").worlds[1]
         self.assertEqual(self.connected(again), self.connected(self.original.worlds[1]))
+
+    def test_door_pin_names(self) -> None:
+        """The pin of a door that leads into a connector in the slot also shows that connector's other ends."""
+        from ..ut_context import TrackerMixin
+        ctx = SimpleNamespace(slot_data=self.slot_data)
+        entrances = self.slot_data["entrances"]
+        door = next(door for door in ENTRANCE_POOL if connector_exits(entrances, door))
+        self.assertEqual(TrackerMixin.door_pin_names(ctx, [door]), [door, *connector_exits(entrances, door)])
+        single = next(door for door in ENTRANCE_POOL if not connector_exits(entrances, door))
+        self.assertEqual(TrackerMixin.door_pin_names(ctx, [single]), [single])
+
+    def test_way_out_of_a_reached_inside(self) -> None:
+        """Through a connector's door Link reaches its other inside door before he knows where that one leads out: its
+        entrance, which the pin of the door he came in through also shows (ut_map.connector_exits), is reachable and
+        not connected, so that pin stays in logic; going out through it connects it."""
+        regen = regenerate(self.slot_data, 4304)
+        world = regen.worlds[1]
+        entrances, start = self.slot_data["entrances"], self.slot_data["start"]
+        led_by = {inside: door for door, inside in entrances.items()}
+        level = lambda inside: inside.split("_0")[0]  # noqa: E731
+        connectors = [DOORS["pairs"][door] for door in DOORS["groups"]["connector"]]
+        found = {}
+        for door in ENTRANCE_POOL:
+            if door == start or entrances[door] not in connectors:
+                continue
+            found[door] = entrances[door]
+            world.reconnect_found_entrances("las_entrances_0_1", found)
+            state = CollectionState(regen, True)
+            for item in self.original.itempool + self.original.worlds[1].get_pre_fill_items():
+                state.collect(world.create_item(item.name), prevent_sweep=True)
+            state.sweep_for_advancements()
+            other = next((inside for inside in connectors
+                          if level(inside) == level(entrances[door]) and inside != entrances[door]
+                          and led_by[inside] not in found and led_by[inside] != start
+                          and world.get_entrance(inside).can_reach(state)), None)
+            if other is None:
+                continue
+            self.assertIsNone(world.get_entrance(other).connected_region)
+            world.reconnect_found_entrances("las_entrances_0_1", {**found, led_by[other]: other})
+            self.assertEqual(world.get_entrance(other).connected_region.name, door_region(led_by[other]))
+            return
+        self.fail("no connector whose other inside door is reached")
 
     def test_logical_path_lists_doors(self) -> None:
         """/get_logical_path writes only the doors of its way (explain_path), each with the door it comes out of."""

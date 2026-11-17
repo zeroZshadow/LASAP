@@ -2,7 +2,7 @@
 writes them), the door entrances a route goes through and the route search."""
 import heapq
 import re
-from typing import Any, Dict, Iterable, List, Mapping, Optional
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 
 from .items import LASR_TO_ITEM
 from .lasr import (CATEGORIES, DOORS, DUNGEON_DOORS, DUNGEON_NAMES, DUNGEON_NUMBERS, DUNGEONS, INSTRUMENTS, LOGIC,
@@ -133,6 +133,48 @@ def find_route(start: Any, goal: Any, state: Any) -> Optional[List[Any]]:
             heapq.heappush(queue, (step, pushed, to))
             pushed += 1
     return None
+
+
+# Universal Tracker's entrance statuses, the strongest first, and the colour each gives a door's pin
+DOOR_COLOURS = {"path": "hinted", "passable": "in_logic", "impassable": "out_of_logic"}
+OUTSIDE_DOORS, INSIDE_DOORS = frozenset(DOORS["pairs"]), frozenset(DOORS["pairs"].values())
+
+
+def level_of(inside: str) -> str:
+    """The level of an inside door, named after its room (FaceShrineEnter_01B, BedRoom_01A_b)."""
+    return re.match(r"(.+?)_\d\d[A-Z]", inside).group(1)
+
+
+# The connectors' inside doors by level: a connector is a level with more than one overworld door (doors.yml)
+CONNECTOR_INSIDES: Dict[str, List[str]] = {}
+for _door in DOORS["groups"]["connector"]:
+    CONNECTOR_INSIDES.setdefault(level_of(DOORS["pairs"][_door]), []).append(DOORS["pairs"][_door])
+
+
+def connector_exits(entrances: Mapping[str, str], door: str) -> List[str]:
+    """The AP entrances out of the other inside doors of the connector `door` leads into in a slot (`entrances`, the
+    slot data's {door: inside door}): the connector's other ends, which a door's pin also shows (ut_gui.load_pins)."""
+    inside = entrances.get(door)
+    if inside is None or inside not in INSIDE_DOORS:
+        return []
+    return [other for other in CONNECTOR_INSIDES.get(level_of(inside), ()) if other != inside]
+
+
+def door_pin_colour(statuses: Mapping[str, str], connected: Callable[[str], bool] = lambda name: False) -> str:
+    """A door pin's colour from Universal Tracker's statuses of its entrances, the strongest (DOOR_COLOURS), else
+    collected. On an overworld door's pin, once the player went through the door (`connected`), the connector's other
+    ends (connector_exits) he has not gone out of count too: one in logic keeps the pin in logic, one out of reach makes
+    it out of logic, and the pin is collected once he has gone out of every end. UT gives an end out of reach the same
+    status whether he has gone out of it or not, so `connected` tells them apart. Before he went through the door its
+    ends do not count, as they would tell where it leads."""
+    outside = [name for name in statuses if name in OUTSIDE_DOORS]
+    entered = any(connected(name) for name in outside)
+    shown = set()
+    for name, status in statuses.items():
+        if outside and name in INSIDE_DOORS and (not entered or connected(name)):
+            continue  # an end of a door not gone through, or one gone out of
+        shown.add(status)
+    return next((colour for status, colour in DOOR_COLOURS.items() if status in shown), "collected")
 
 
 def door_out(entrance: Any) -> str:

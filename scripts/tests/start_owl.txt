@@ -1,0 +1,21 @@
+# The beach owl stays away with a start beside the beach (DESIGN.md, Start state): Tarin's house's way out leads out
+# of the banana house's door (Field_15D), and arriving there loads the washed-up item's room with its owl (Field_16C,
+# entry First, shown while FirstClear is off). The start flags are set as the jump leaves the house, so the owl is
+# made with FirstClear on and Link stands in its area by the washed-up item free. Set later, the owl flies in and
+# holds him. Needs a mod patched with --entrances '{"Field_11C": "BananaHouse_01A", "Field_15D":
+# "MarinTarinHouse_01A"}'; run after newgame_file2. Screenshot: start_owl.
+guard off hurt
+poll FLAG.FirstClear.0 3 DBG flag FirstClear
+# ShieldGet as Tarin's talk sets it: Tarin lets Link out, and the owl's switch is on. No warp: one passes through
+# another level, which sets the start flags.
+poll FLAG.ShieldGet.1 3 DBG setflag ShieldGet 1
+goto 6.85 0 3.83
+hold 0 0 -32767 until level=Field 10
+until free 20
+at 53.25 172.5 1.5
+poll FLAG.FirstClear.1 3 DBG flag FirstClear
+# Within the level, so the rooms made on arrival stay
+goto 37.5 3.75 187.0
+wait 3
+until free 1
+shot start_owl.png

@@ -1962,6 +1962,7 @@ river:
     rapids-south-fairy: cross-water
     face-dungeon-cave-porch: cross-water & kill-armos
     kanalet-east: cross-water
+    marthas-bay-land: cross-water
   doors:
     Field_14J_a: flippers
     Field_15K: flippers

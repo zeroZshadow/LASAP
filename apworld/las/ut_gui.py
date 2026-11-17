@@ -1,7 +1,7 @@
 """The client's changes to Universal Tracker's map tab (DESIGN.md, Universal Tracker map)."""
 import functools
 import math
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 # kvui sets kivy up and has to be imported before the kivy modules
 from kvui import ConnectBarTextInput  # isort: skip
@@ -15,6 +15,7 @@ from kivymd.uix.menu import MDDropdownMenu
 
 from .client_gui import Palette, label
 from .lasr import door_label
+from .ut_map import door_pin_colour
 
 # Universal Tracker's item panels: the room around and between their icons, and above and below a section's name
 ITEM_GRID_PADDING, ITEM_GRID_SPACING, ITEM_HEADER_PADDING = 2, 2, 1
@@ -234,9 +235,6 @@ def split_statuses(statuses) -> List[str]:
     return (found * max(2, 4 // len(found)))[:4] if found else ["collected"] * 4
 
 
-DOOR_COLOURS = {"path": "hinted", "passable": "in_logic", "impassable": "out_of_logic"}
-
-
 class MapPin(Widget):
     """A pin on Universal Tracker's map in place of its own (load_pins), drawn as it draws them: a check's square (four
     triangles when split), a door's (an entrance) or event's diamond. It has no tooltip or hover binding of its own,
@@ -244,12 +242,14 @@ class MapPin(Widget):
     Universal Tracker's updateTracker sets through update_status, by location id, entrance or event name."""
 
     def __init__(self, kind: str, names: List[Any], pos: Tuple[float, float], size: float, border: float,
-                 split: bool) -> None:
+                 split: bool, connected: Optional[Callable[[str], bool]] = None) -> None:
         super().__init__(size_hint=(None, None), pos=pos, size=(size, size))
         from kivy.graphics import Color, PopMatrix, PushMatrix, Rectangle, Rotate, Scale, Triangle
         self.kind, self.split = kind, split
         self.statuses: Dict[Any, str] = {name: "none" for name in names}
         self.go_mode: Any = None  # the egg's pin: whether the goal is in logic (TrackerMixin.updateTracker)
+        # a door's pin: whether an entrance is connected (door_pin_colour), TrackerMixin.entrance_connected
+        self.connected: Callable[[str], bool] = connected or (lambda name: False)
         x, y, half = pos[0], pos[1], size / 2
         with self.canvas:
             if kind != "location":
@@ -281,8 +281,7 @@ class MapPin(Widget):
         if self.go_mode is not None:
             names = ["in_logic" if self.go_mode else "out_of_logic"]
         elif self.kind != "location":
-            found = [DOOR_COLOURS[s] for s in ("path", "passable", "impassable") if s in statuses]
-            names = found[:1] or ["collected"]
+            names = [door_pin_colour(self.statuses, self.connected)]
         else:
             names = split_statuses(statuses) if self.split else [mixed_status(statuses)]
         for colour, name in zip(self.colours, names):
@@ -312,8 +311,10 @@ def load_pins(page, ctx, coords, door_coords, event_coords, use_split, default_s
     for kind, places, table in (("location", checks, tables[0]), ("entrance", door_coords.items(), tables[1]),
                                 ("event", event_coords.items(), tables[2])):
         for spot, (names, size) in places:
+            if kind == "entrance":  # with the ways out of the connector's other ends
+                names = ctx.door_pin_names(names)
             pin = MapPin(kind, names, spot, size if size is not None else default_size, border,
-                         use_split and kind == "location")
+                         use_split and kind == "location", ctx.entrance_connected)
             canvas.add_widget(pin)
             for name in names:
                 table[name].append(pin)

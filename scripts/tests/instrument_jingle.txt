@@ -1,8 +1,8 @@
 # Each instrument's fanfare is its own song (DESIGN.md, Instrument songs): a received instrument's item-get and a find
 # (DBG pickup). Then Tail Cave's pedestal (Lv01TailCave_03G, 97.5 2.0 27.75), whose location shows the Full Moon Cello:
-# its item-get and found text, then the whiteout and the warp out. Run after newgame_file2 with Instant Pickups disabled, on
-# a mod from make_test_patch.py --models D1-instrument=full-moon-cello --names "D1-instrument=Full Moon Cello". A
-# received instrument's text closes by itself.
+# its item-get with the cello's song and found text, then the whiteout and the warp out. Run after newgame_file2
+# with Instant Pickups disabled, on a mod from make_test_patch.py --models D1-instrument=full-moon-cello --names
+# "D1-instrument=Full Moon Cello". A received instrument's text closes by itself.
 guard hurt
 free 30
 send DBG grant SurfHarp 1 -1
@@ -22,6 +22,8 @@ goto 97.5 1.5 28.5
 face up
 interact
 await 10 anim=item_get_st
+# the placeholder's fanfare is the song of the instrument its location shows
+await 3 bgm=\S*BGM_INST_VIOLIN
 # The found text waits for a button, as every placeholder's does.
 until msg:KeyWaiting 15
 dismiss 15

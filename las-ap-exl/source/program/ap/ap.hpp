@@ -49,7 +49,8 @@ namespace AP {
     std::optional<std::pair<std::string_view, std::string_view>> LeadJump(std::string_view from, std::string_view level,
                                                                           std::string_view locator);
     // A level jump that started, from level `from` to that level and locator, which went to `to`'s locator: a jump
-    // between the overworld and another level is reported as DOOR <locator> <to> (Entrances, Doors gone through), each
+    // between the overworld and another level, or to the spot outside Tarin's door (HOME_LOCATOR: the warp home), is
+    // reported as DOOR <locator> <to> (Entrances, Doors gone through), each
     // time, and those since the game started again on each SYNC, the latest last (ReportDoorJumps).
     void NoteJump(std::string_view from, std::string_view level, std::string_view locator, std::string_view to);
     void ReportDoorJumps();
