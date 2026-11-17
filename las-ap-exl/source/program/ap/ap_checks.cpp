@@ -1,4 +1,4 @@
-// Checks (DESIGN.md, Map tracker; In-game hints; Persistence): the locations collected here (saved per seed and
+// Checks (DESIGN.md, Map tracker; In-game hints; Persistence): the locations collected here (saved per save and
 // reported), those the server has as checked or in logic and those the player marked skipped, for the map tracker;
 // and the in-game hints read and the dungeons entered.
 #include "ap/ap.hpp"
@@ -7,9 +7,13 @@
 #include "ap/ap_patcher.hpp"
 #include "config/seed_file.hpp"
 #include "game/hooks/eventflags.hpp"
+#include "game/sym.hpp"
 #include "game/time.hpp"
+#include "hooks.hpp"
+#include "loggers.hpp"
 #include "nn/fs.hpp"
 #include <algorithm>
+#include <cstring>
 #include <optional>
 #include <cstdlib>
 
@@ -19,12 +23,16 @@ namespace {
 
     constexpr size_t kChecksBytes = 65536 / 8;
 
+    // The live save's files, sd:/lasap/<its SaveId>.chk and .skp, and the id they are loaded for. A save's id is in
+    // each save file it wrote, a file and the autosave alike, so they share its files.
     std::string g_ChecksPath;
     std::vector<u8> g_Checks(kChecksBytes, 0);
-    bool g_ChecksLoaded = false;
-    // Locations the player marked as skipped on the map (map tracker), kept per seed next to the checks.
+    std::optional<Game::SaveId> g_LoadedId;
+    // Locations the player marked as skipped on the map (map tracker), kept per save next to the checks.
     std::string g_SkippedPath;
     std::vector<u8> g_Skipped(kChecksBytes, 0);
+    // The save whose checks went to the client since it was loaded
+    std::optional<Game::SaveId> g_SentId;
     // Locations the server has as checked (CHECKED lines), for the map tracker.
     std::vector<u8> g_ServerChecks(kChecksBytes, 0);
     // Locations in logic for the items received (INLOGIC lines), for the map tracker.
@@ -84,14 +92,150 @@ namespace {
         nn::fs::CloseFile(h);
     }
 
-    void LoadChecks() {
-        g_ChecksPath = "sd:/lasap/" + g_SeedHash + ".chk";
-        g_SkippedPath = "sd:/lasap/" + g_SeedHash + ".skp";
-        nn::fs::CreateDirectory("sd:/lasap");
-        ReadBits(g_ChecksPath, g_Checks);
-        ReadBits(g_SkippedPath, g_Skipped);
-        g_ChecksLoaded = true;
+    // The files in sd:/lasap
+    std::vector<std::string> CheckFileNames() {
+        std::vector<std::string> names;
+        nn::fs::DirectoryHandle dir{};
+        if (R_FAILED(nn::fs::OpenDirectory(&dir, "sd:/lasap", nn::fs::OpenDirectoryMode_File))) return names;
+        s64 count = 0;
+        nn::fs::GetDirectoryEntryCount(&count, dir);
+        std::vector<nn::fs::DirectoryEntry> entries(static_cast<size_t>(std::max<s64>(count, 0)));
+        s64 read = 0;
+        if (!entries.empty()) nn::fs::ReadDirectory(&read, entries.data(), dir, count);
+        nn::fs::CloseDirectory(dir);
+        for (s64 i = 0; i < read; i++) names.emplace_back(entries[i].m_Name);
+        std::sort(names.begin(), names.end());
+        return names;
     }
+
+    bool FileThere(const std::string& path) {
+        nn::fs::FileHandle h{};
+        if (R_FAILED(nn::fs::OpenFile(&h, path.c_str(), nn::fs::OpenMode_Read))) return false;
+        nn::fs::CloseFile(h);
+        return true;
+    }
+
+    bool SameId(const Game::SaveId& a, const Game::SaveId& b) {
+        return std::memcmp(a.bytes, b.bytes, sizeof a.bytes) == 0;
+    }
+
+    // A save's files go by its id in hex; those of a mod before them by the seed's hash
+    std::string IdName(const Game::SaveId& id) {
+        static constexpr char kHex[] = "0123456789abcdef";
+        std::string name;
+        for (u8 b : id.bytes) {
+            name += kHex[b >> 4];
+            name += kHex[b & 0xf];
+        }
+        return name;
+    }
+
+    std::string FilePath(std::string_view stem, std::string_view ext) {
+        return "sd:/lasap/" + std::string(stem) + "." + std::string(ext);
+    }
+
+    Game::SaveId& HeaderId(int slot) {
+        return *reinterpret_cast<Game::SaveId*>(&(*Game::FileHeaders)[slot][8]);
+    }
+
+    // A save file the boot read, or one written since, has the id
+    bool InSaveFile(const Game::SaveId& id) {
+        for (int slot = 0; slot < 4; slot++) {
+            if (SameId(HeaderId(slot), id)) return true;
+        }
+        return false;
+    }
+
+    // The live save's files. A save without them that a save file holds is from before they went by save: it takes
+    // the seed's files (CleanUp deletes those once every save has its own). A new game's are empty.
+    void LoadChecks() {
+        const Game::SaveId id = *Game::LiveSaveId;
+        g_LoadedId = id;
+        g_ChecksPath = FilePath(IdName(id), "chk");
+        g_SkippedPath = FilePath(IdName(id), "skp");
+        std::fill(g_Checks.begin(), g_Checks.end(), 0);
+        std::fill(g_Skipped.begin(), g_Skipped.end(), 0);
+        nn::fs::CreateDirectory("sd:/lasap");
+        if (FileThere(g_ChecksPath)) {
+            ReadBits(g_ChecksPath, g_Checks);
+            ReadBits(g_SkippedPath, g_Skipped);
+            return;
+        }
+        if (InSaveFile(id) && FileThere(FilePath(g_SeedHash, "chk"))) {
+            ReadBits(FilePath(g_SeedHash, "chk"), g_Checks);
+            if (FileThere(FilePath(g_SeedHash, "skp"))) {
+                ReadBits(FilePath(g_SeedHash, "skp"), g_Skipped);
+                WriteBits(g_SkippedPath, g_Skipped);
+            }
+            Logging.Log("[AP] checks: save %s takes the seed's files", IdName(id).c_str());
+        }
+        WriteBits(g_ChecksPath, g_Checks);
+    }
+
+    void EnsureLoaded() {
+        if (!g_LoadedId || !SameId(*g_LoadedId, *Game::LiveSaveId)) LoadChecks();
+    }
+
+    // Deletes the check files of saves that are gone: those named by an id that no save file holds and that is not
+    // the save in play's (one not written yet), and the seed-named files of other seeds, or of this seed once every
+    // save has its own. The file menu's live save is no save in play: a copy loads its source there.
+    void CleanUp() {
+        if (*Game::FileHeadersRead == 0) return;
+        std::vector<std::string> saves;
+        for (s8 slot = 0; slot < 4; slot++) {
+            if (Game::SaveFile_Exists(slot)) saves.push_back(IdName(HeaderId(slot)));
+        }
+        bool allOwn = std::all_of(saves.begin(), saves.end(), [](const std::string& s) {
+            return FileThere(FilePath(s, "chk"));
+        });
+        if (g_SentId) saves.push_back(IdName(*g_SentId));
+
+        int deleted = 0;
+        for (const std::string& name : CheckFileNames()) {
+            size_t dot = name.rfind('.');
+            if (dot == std::string_view::npos) continue;
+            std::string_view stem = std::string_view(name).substr(0, dot), ext = std::string_view(name).substr(dot + 1);
+            if (ext != "chk" && ext != "skp") continue;
+            bool gone;
+            if (stem.size() == 32) gone = std::find(saves.begin(), saves.end(), stem) == saves.end();
+            else if (stem.size() == 8) gone = stem != g_SeedHash || allOwn;
+            else continue;
+            if (gone && R_SUCCEEDED(nn::fs::DeleteFile(FilePath(stem, ext).c_str()))) deleted++;
+        }
+        if (deleted > 0) Logging.Log("[AP] checks: deleted %d files of saves that are gone", deleted);
+    }
+
+    // The file menu opens (FileOperate_Setup, as it clears the current file), and a file was erased (DeleteDataEnd)
+    HOOK_DEFINE_INLINE(FileMenuOpen) {
+        static void Callback(exl::hook::nx64::InlineCtx*) { CleanUp(); }
+    };
+    HOOK_DEFINE_INLINE(FileErased) {
+        static void Callback(exl::hook::nx64::InlineCtx*) { CleanUp(); }
+    };
+    // Each write of a save file (SaveImage_Write (task, u8 slot, bool)): the file menu's copy of its header gets the
+    // save's id, which the game puts there only from the boot's read
+    HOOK_DEFINE_INLINE(SaveWrite) {
+        static void Callback(exl::hook::nx64::InlineCtx* ctx) {
+            u8 slot = static_cast<u8>(ctx->W[1]);
+            if (slot < 4) HeaderId(slot) = *Game::LiveSaveId;
+        }
+    };
+    // The file menu's copy, as it writes the source it loaded into the live save (CopyDataSave): the copy gets an id
+    // of its own and a copy of the source's files
+    HOOK_DEFINE_INLINE(FileCopy) {
+        static void Callback(exl::hook::nx64::InlineCtx*) {
+            const Game::SaveId source = *Game::LiveSaveId;
+            *Game::LiveSaveId = Game::GenerateUuid();
+            for (const char* ext : {"chk", "skp"}) {
+                std::string from = FilePath(IdName(source), ext);
+                if (!FileThere(from)) continue;
+                std::vector<u8> bits(kChecksBytes, 0);
+                ReadBits(from, bits);
+                WriteBits(FilePath(IdName(*Game::LiveSaveId), ext), bits);
+            }
+        }
+    };
+    constexpr uintptr_t kFileMenuOpen = 0xe603e8, kFileErased = 0xe65220, kSaveWrite = 0xdfccf0, kFileCopy = 0xe66ff0;
 
     void SaveChecks() {
         WriteBits(g_ChecksPath, g_Checks);
@@ -112,7 +256,7 @@ namespace {
 }
 
     void RecordCheck(LocationId location) {
-        if (!g_ChecksLoaded) LoadChecks();
+        EnsureLoaded();
         if (std::optional<Bit> bit = BitOf(location)) {
             g_Checks[bit->byte] |= bit->mask;
             SaveChecks();
@@ -123,12 +267,13 @@ namespace {
 
     bool CollectedHere(LocationId location) {
         if (!BitOf(location)) return false;
-        if (!g_ChecksLoaded) LoadChecks();
+        EnsureLoaded();
         return Has(g_Checks, location);
     }
 
     void SendAllChecks() {
-        if (!g_ChecksLoaded) LoadChecks();
+        if (!g_SentId) return;  // no save in play
+        EnsureLoaded();
         std::string line = "CHECKS";
         int onLine = 0;
         for (size_t i = 0; i < kChecksBytes * 8; i++) {
@@ -210,10 +355,34 @@ namespace {
         }
     }
 
+    void TickSaveChecks(bool inPlay) {
+        if (!inPlay) {
+            g_SentId.reset();
+            return;
+        }
+        if (!PlayerReady() || (g_SentId && SameId(*g_SentId, *Game::LiveSaveId))) return;
+        g_SentId = *Game::LiveSaveId;
+        SendAllChecks();
+    }
+
+    void InstallSaveChecks() {
+        FileMenuOpen::InstallAtOffset(Game::Offset(kFileMenuOpen));
+        FileErased::InstallAtOffset(Game::Offset(kFileErased));
+        SaveWrite::InstallAtOffset(Game::Offset(kSaveWrite));
+        FileCopy::InstallAtOffset(Game::Offset(kFileCopy));
+    }
+
 #ifdef LASAP_TEST
     void ClearChecks() {
+        EnsureLoaded();
         std::fill(g_Checks.begin(), g_Checks.end(), 0);
         SaveChecks();
+    }
+
+    std::string CheckFiles() {
+        std::string line;
+        for (const std::string& name : CheckFileNames()) line += " " + name;
+        return line;
     }
 #endif
 }
@@ -239,20 +408,20 @@ namespace AP {
 
     bool IsLocationChecked(LocationId location) {
         if (!BitOf(location)) return false;
-        if (!g_ChecksLoaded) LoadChecks();
+        EnsureLoaded();
         return Has(g_Checks, location) || Has(g_ServerChecks, location);
     }
 
     bool IsLocationSkipped(LocationId location) {
         if (!BitOf(location)) return false;
-        if (!g_ChecksLoaded) LoadChecks();
+        EnsureLoaded();
         return Has(g_Skipped, location);
     }
 
     void SetLocationSkipped(LocationId location, bool skipped) {
         std::optional<Bit> bit = BitOf(location);
         if (!bit) return;
-        if (!g_ChecksLoaded) LoadChecks();
+        EnsureLoaded();
         g_Skipped[bit->byte] = skipped ? g_Skipped[bit->byte] | bit->mask : g_Skipped[bit->byte] & ~bit->mask;
         WriteBits(g_SkippedPath, g_Skipped);
     }

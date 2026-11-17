@@ -210,8 +210,13 @@ namespace AP::Bridge {
     // Saves a location collected here and reports it.
     void RecordCheck(LocationId location);
     bool CollectedHere(LocationId location);
-    // CHECKS lines with every location collected here.
+    // CHECKS lines with every location collected here, while a save is in play.
     void SendAllChecks();
+    // Each frame, whether a save is loaded: a save's checks go to the client once its player is ready, again when
+    // another save takes its place.
+    void TickSaveChecks(bool inPlay);
+    // The check files' hooks on the file menu and the save writes (DESIGN.md, Persistence).
+    void InstallSaveChecks();
     // CHECKED <local id>...: locations the server has as checked; INLOGIC CLEAR, then INLOGIC <local id>...: the
     // locations in logic for the items received; DOORS CLEAR, then DOORS <local id>...: the dungeon locations whose
     // dungeon's door is reachable for them; HINTED CLEAR, then HINTED <local id>...: the locations holding a server
@@ -232,6 +237,8 @@ namespace AP::Bridge {
 #ifdef LASAP_TEST
     // DBG clearchecks
     void ClearChecks();
+    // DBG checkfiles: the files in sd:/lasap, each after a space
+    std::string CheckFiles();
 #endif
 
     // ---- The protocol's lines from the client (ap_protocol.cpp) ----
@@ -249,6 +256,15 @@ namespace AP::Bridge {
     void InstallEggHooks();
     // On a seashell hunt: plays the Wind Fish's Egg's opening once Link stands at the egg holding the seashells.
     void TickEgg();
+
+    // ---- Warp Points (ap_warps.cpp) ----
+
+    // Reads the seed file's warps; with any, hooks the game's opening of warp points, which becomes their items'.
+    void InstallWarpPoints();
+    // A warp point's item key, $WARP:<index>.
+    bool IsWarpKey(const std::string& key);
+    // A received warp point item: opens its point.
+    void GrantWarp(const std::string& key);
 
     // ---- The warp menu (ap_warp_menu.cpp) ----
 

@@ -1,7 +1,7 @@
 """LASR (LAS Randomizer) data: logic, item pool and location categories, loaded from the bundled YAML files."""
 import json
 import pkgutil
-from typing import Any, Dict, Iterable, List, Mapping, Optional
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
 import yaml
 
@@ -85,6 +85,15 @@ CATEGORIES: Dict[str, List[str]] = load_yaml("locations.yml")
 COMPANION_ITEMS = {"bow-wow": {"type": "important", "quantity": 1, "item-key": "None"},
                    "rooster": {"type": "important", "quantity": 1, "item-key": "None"}}
 ITEM_DEFS.update(COMPANION_ITEMS)
+# The items that open the overworld's warp points (option warp_points; DESIGN.md, Warp points), each with its point's
+# WarpPoint.gsheet index. With the option on the pool holds each once (LASWorld.item_pool), else none.
+WARP_POINTS: Dict[str, int] = {
+    f"warp-{name}": index for index, name in enumerate(
+        ("ukuku-prairie", "turtle-rock", "taltal-heights", "animal-village", "manbos-pond", "dampes-shack",
+         "seashell-mansion", "taltal-east", "marthas-bay", "taltal-west"))}
+WARP_ITEMS = {item: {"type": "important", "quantity": 0, "item-key": f"$WARP:{index}"}
+              for item, index in WARP_POINTS.items()}
+ITEM_DEFS.update(WARP_ITEMS)
 if set(ITEM_DEFS) != set(SPEC["items"]):
     raise ValueError(f"data/logic_spec.yml and items.yml name other items: {sorted(set(ITEM_DEFS) ^ set(SPEC['items']))}")
 
@@ -170,10 +179,27 @@ _DOOR_BY_LABEL = {**{f"{name}{EXIT_SUFFIX}".lower(): inside for inside, door in 
 _DOOR_BY_LABEL.pop(HOUSE_EXIT.lower())  # the name of the start's way out (Random start), not of the house's inside door
 
 
+def zone_of(door: str) -> str:
+    """The logic zone that lists a door (logic.yml)."""
+    (zone,) = [name for name, node in WRITTEN_LOGIC.items() if door in (node.get("doors") or {})]
+    return zone
+
+
+def dungeon_route(door: str) -> str:
+    """The world's way into a dungeon through another overworld door (doors.yml's dungeon-other): from the zone
+    outside the door to the zone inside, an entrance of the logic's routes."""
+    return f"{zone_of(door)} -> {zone_of(DOORS['pairs'][door])}"
+
+
+_DOOR_OF_ROUTE = {dungeon_route(door): door for door in DOORS["groups"]["dungeon-other"]}
+
+
 def door_label(door: str) -> str:
     """A door's player-facing name: door_names.yml's for a shuffled overworld door, `<that name> Exit` for the inside
-    door it leads to in the game. Other names, and doors.yml's own, stay as they are: the world, the seed file and the
-    tracker's data go by doors.yml's names."""
+    door it leads to in the game, the door's for a way into a dungeon through another door (dungeon_route). Other
+    names, and doors.yml's own, stay as they are: the world, the seed file and the tracker's data go by doors.yml's
+    names."""
+    door = _DOOR_OF_ROUTE.get(door, door)
     if door in DOOR_NAMES:
         return DOOR_NAMES[door]
     if door in _DOOR_OF_INSIDE:

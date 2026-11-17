@@ -220,6 +220,11 @@ def kept_lines(logic: dict, item_defs: dict, patch: dict) -> List[str]:
     return lines
 
 
+def warp_lines(patch: dict) -> List[str]:
+    """Per warp point only its item opens (Warp Points): its WarpPoint.gsheet index."""
+    return [str(index) for index in patch.get("warp_points", [])]
+
+
 def model_token(local_id) -> str:
     return f"{MODEL_TOKEN}{int(local_id)}"
 
@@ -351,6 +356,7 @@ def seed_files(patch: dict) -> tuple:
         "markers": marker_lines(patch),
         "shuffles": ap_shuffles.lines(patch["settings"], random.Random(f"{seed} shuffles")),
         "hints": ap_hints.lines(patch["hints"]),
+        "warps": warp_lines(patch),
     }
     if patch["settings"]["Map Tracker"]:
         # the checks the world leaves off the trackers (ut_map.hidden_checks) stay off the map

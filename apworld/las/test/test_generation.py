@@ -67,7 +67,7 @@ class TestDefault(LASTestBase):
         self.assertEqual(set(patch), {"format", "seed_name", "player", "slot_name", "seed_hash", "settings",
                                       "starting_items", "placements", "location_ids", "removed_location_ids",
                                       "optional_locations", "map_hidden_locations", "location_names", "location_models", "location_chests", "dungeon_entrances", "hints",
-                                      "ghost_secret", "ghost_relay", "entrances", "entrance_pairs", "start"})
+                                      "ghost_secret", "ghost_relay", "entrances", "entrance_pairs", "start", "warp_points"})
         self.assertLessEqual(set(patch["location_models"]), set(patch["location_ids"]))
         self.assertEqual(patch["format"], 1)
         self.assertEqual(patch["seed_hash"], slot_data["seed_hash"])
@@ -76,7 +76,9 @@ class TestDefault(LASTestBase):
         self.assertEqual(patch["seed_name"], self.multiworld.seed_name)
 
         owls = set(CATEGORIES["Overworld_Owl_Statues"]) | set(CATEGORIES["Dungeon_Owl_Statues"])
-        self.assertEqual(set(patch["placements"]), set(ITEM_LOCATIONS) - owls)  # owls are off by default
+        # owls and warp points are off by default
+        self.assertEqual(set(patch["placements"]), set(ITEM_LOCATIONS) - owls)
+        self.assertEqual(patch["warp_points"], [])
         for loc, item in patch["placements"].items():
             self.assertTrue(item == "ap-item" or item in ITEM_DEFS, (loc, item))
         shuffled = {loc for loc, item in patch["placements"].items() if item == "ap-item"}

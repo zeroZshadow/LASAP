@@ -1256,7 +1256,7 @@ D5-owl-statue-before-slime-eel:
   type: item
   content: rupee-20
   region: D5.h
-  condition-basic: feather & stone-beak-D5
+  condition-basic: stone-beak-D5
 D6-instrument:
   type: item
   content: coral-triangle
@@ -1331,12 +1331,12 @@ D6-owl-statue-southeast:
   type: item
   content: rupee-20
   region: D6.t
-  condition-basic: bracelet:2 & kill-wizzrobe & stone-beak-D6
+  condition-basic: stone-beak-D6
 D6-owl-statue-canal:
   type: item
   content: rupee-20
   region: D6.f
-  condition-basic: break-pot & stone-beak-D6
+  condition-basic: stone-beak-D6
 D7-instrument:
   type: item
   content: evening-calm-organ
@@ -1512,7 +1512,7 @@ D8-owl-statue-below-gibdos:
   type: item
   content: rupee-20
   region: D8.o
-  condition-basic: feather & stone-beak-D8
+  condition-basic: stone-beak-D8
 D8-owl-statue-eye-statue:
   type: item
   content: rupee-20
@@ -1797,6 +1797,18 @@ rapids:
     rapids-river: always
 tarin-house:
   type: region
+  # Manbo's Mambo to an open warp point (Warp Points), from anywhere outside a dungeon: the warp home reaches the house
+  # from anywhere
+  one-way:
+    prairie: ocarina & song-mambo & (warp-ukuku-prairie | warp-seashell-mansion)
+    turtle-dungeon-top: ocarina & song-mambo & warp-turtle-rock
+    taltal-heights: ocarina & song-mambo & warp-taltal-heights
+    animal-village: ocarina & song-mambo & warp-animal-village
+    tracy-yard: ocarina & song-mambo & warp-manbos-pond
+    goponga-central: ocarina & song-mambo & warp-dampes-shack
+    taltal-east2-right: ocarina & song-mambo & warp-taltal-east
+    marthas-bay-land: ocarina & song-mambo & warp-marthas-bay
+    taltal-west2: ocarina & song-mambo & warp-taltal-west
   doors:
     MarinTarinHouse_01A: always
 mabe-well-porch:

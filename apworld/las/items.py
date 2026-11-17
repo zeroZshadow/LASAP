@@ -2,7 +2,8 @@ from typing import Dict, NamedTuple, Set, Tuple
 
 from BaseClasses import Item, ItemClassification
 
-from .lasr import DUNGEON_LEVEL, DUNGEON_NAMES, INSTRUMENTS, ITEM_DEFS, LOGIC, TRAPS, dungeon_item_kind, item_dungeon
+from .lasr import (DUNGEON_LEVEL, DUNGEON_NAMES, INSTRUMENTS, ITEM_DEFS, LOGIC, TRAPS, WARP_ITEMS, dungeon_item_kind,
+                   item_dungeon)
 from .logic import referenced_tokens
 from .ids import ITEM_BASE, ITEM_OFFSETS
 
@@ -93,6 +94,12 @@ _DUNGEON_ITEM_NAMES = {
     "map": "Dungeon Map",
 }
 _DISPLAY_NAMES.update({"bow-wow": "Bow-Wow", "rooster": "Flying Rooster"})
+# The warp points' items, by the game's names of the warp points (Place.msbt WarpPoint_*)
+_DISPLAY_NAMES.update({f"warp-{key}": f"Warp: {name}" for key, name in (
+    ("ukuku-prairie", "Ukuku Prairie"), ("turtle-rock", "Turtle Rock"), ("taltal-heights", "Tal Tal Heights"),
+    ("animal-village", "Animal Village"), ("manbos-pond", "Manbo's Pond"), ("dampes-shack", "Dampe's Shack"),
+    ("seashell-mansion", "Seashell Mansion"), ("taltal-east", "Eastern Tal Tal Mountains"),
+    ("marthas-bay", "Martha's Bay"), ("taltal-west", "Western Tal Tal Mountains"))})
 
 
 def display_name(lasr_item: str) -> str:
@@ -156,6 +163,7 @@ ITEM_NAME_GROUPS: Dict[str, Set[str]] = {
     "Traps": _group(lambda i: i.endswith("-trap")),
     "Capacity Upgrades": _group(lambda i: i.endswith("-capacity")),
     "Tunics": _group(lambda i: i.endswith("-tunic")),
+    "Warps": _group(lambda i: i in WARP_ITEMS),
     "Sword": {"Progressive Sword"},
     "Shield": {"Progressive Shield"},
     "Power Bracelet": {"Progressive Power Bracelet"},

@@ -265,6 +265,8 @@ namespace AP {
         LoadReturns();
         LoadMarkers();
         LoadHints();
+        InstallWarpPoints();
+        InstallSaveChecks();
         ListUi::InstallHooks();
         JukeboxPane::InstallHooks();
         FileLoad::InstallAtFuncPtr(Game::FileOperate20_StartLoad.Ptr());
@@ -328,6 +330,7 @@ namespace AP {
         // A level (re)loads while there is no player: the settle time starts once he stands in it. The game over
         // menu holds everything back until its Retry has reloaded the level.
         Game::Framework* fmwk = Game::GetFramework();
+        TickSaveChecks(!NoSaveLoaded(fmwk));
         if (NoSaveLoaded(fmwk)) {
             g_SaveRecvReported = false;
             g_FoundSinceLoad.clear();

@@ -1,7 +1,8 @@
 """Writes a synthetic .aplas patch for patcher tests, its locations as the world gives them: every location an AP
 location holding the placeholder, but for the Trendy Game's prizes and the companions, which keep their vanilla item,
 and the shop slots LASR does not shuffle, which are no AP locations. The owl statues the Owl Gifts setting leaves out
-are removed locations (removed_location_ids).
+are removed locations (removed_location_ids). With the Warp Points setting all ten warp points open only by their
+items (warp_points).
 
 python make_test_patch.py <out.aplas> [--seed-hash <hash>] [--slot Tester] [--settings JSON] [--dungeons JSON]
                           [--entrances JSON] [--models loc=item,...] [--names loc=item[|player],...]
@@ -53,7 +54,7 @@ SETTINGS = {
     "Randomize Environments": False, "Disable Low Health Beep": False, "Easy Fishing": True, "No 30 FPS Drops": "On emulators", "Instant Pickups": "Disabled", "360 Movement": False,
     "Blur Removal": False, "Instant Text": False, "Disable Guardian Acorn": False,
     "Disable Piece of Power": False, "Rupees": 100, "Containers": 0, "Pieces": 0,
-    "Seashells Important": True, "Trade Important": True,
+    "Seashells Important": True, "Trade Important": True, "Warp Points": False,
 }
 
 DUNGEONS = ("tail-cave", "bottle-grotto", "key-cavern", "angler-tunnel", "catfish-maw", "face-shrine",
@@ -104,6 +105,7 @@ def make(seed_hash=None, slot: str = "Tester", settings: dict = None, dungeons: 
         "location_ids": location_ids, "removed_location_ids": removed_ids,
         "dungeon_entrances": entrances, "location_models": models, "location_chests": {}, "location_names": {},
         "optional_locations": [], "entrances": {}, "entrance_pairs": {}, "hints": {},
+        "warp_points": list(range(10)) if settings["Warp Points"] else [],  # as lasr.WARP_POINTS
     }
     if overworld:  # --entrances
         pairs = yaml.safe_load((DATA / "doors.yml").read_text(encoding="utf-8"))["pairs"]

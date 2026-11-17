@@ -413,6 +413,7 @@ namespace {
             s += " hc=" + std::to_string(items->HeartContainers);
             s += " leaves=" + std::to_string(items->GoldenLeaves);
             s += " stones=" + Hex(ChamberStoneBits());
+            s += " warps=" + Hex(items->WarpPoints);
             s += " medicine=" + std::to_string(items->ExtraItems.Medicine) + "/" + std::to_string(GetMedicineWaiting());
             s += " sword=" + std::to_string(items->MainItems.SwordLv1) + "/" + std::to_string(items->UpgradeItems.SwordLv2);
             s += " shield=" + std::to_string(items->MainItems.Shield) + "/" + std::to_string(items->UpgradeItems.MirrorShield);
@@ -568,6 +569,8 @@ namespace {
         } else if (cmd == "clearchecks") {
             ClearChecks();
             AP::Send("OK clearchecks");
+        } else if (cmd == "checkfiles") {
+            AP::Send("CHECKFILES" + CheckFiles());
         } else if (cmd == "map") {
             if (a.size() >= 3) MapTracker::SetMode(atoi(a[2].c_str()));
             AP::Send(MapTracker::State());

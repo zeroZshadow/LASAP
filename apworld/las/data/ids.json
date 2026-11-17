@@ -116,7 +116,17 @@
     "compass-D0": 114,
     "map-D0": 115,
     "bow-wow": 116,
-    "rooster": 117
+    "rooster": 117,
+    "warp-ukuku-prairie": 118,
+    "warp-turtle-rock": 119,
+    "warp-taltal-heights": 120,
+    "warp-animal-village": 121,
+    "warp-manbos-pond": 122,
+    "warp-dampes-shack": 123,
+    "warp-seashell-mansion": 124,
+    "warp-taltal-east": 125,
+    "warp-marthas-bay": 126,
+    "warp-taltal-west": 127
   },
   "locations": {
     "sale": 1,

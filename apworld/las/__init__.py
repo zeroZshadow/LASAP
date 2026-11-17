@@ -24,7 +24,7 @@ from .ids import LOCATION_OFFSETS
 from .items import FILLER_ITEM, GAME, ITEM_GAME_INFO, ITEM_NAME_GROUPS, ITEM_TABLE, LASR_TO_ITEM, LASItem
 from .lasr import (CATEGORIES, COUNTED, DOORS, DUNGEON_POOL, DUNGEON_REWARD_LOCATIONS, DUNGEONS, ENTRANCE_POOL,
                    HOME_DOOR, HOUSE_DOOR, HOUSE_EXIT, INSTRUMENT_LOCATIONS, INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS,
-                   LOGIC, SHOP_LOCATIONS, START_DOORS, TRAPS, PlacementError, closed_dungeons, door_entrance,
+                   LOGIC, SHOP_LOCATIONS, START_DOORS, TRAPS, WARP_POINTS, PlacementError, closed_dungeons, door_entrance,
                    door_label, door_node, door_of_label, door_region, dungeon_item_kind, dungeon_name, dungeon_region, entered_by_door,
                    goal_logic, item_dungeon, location_dungeon, shuffle_dungeons, slot_logic, start_pairs)
 
@@ -482,6 +482,11 @@ class LASWorld(World):
                 count -= taken
                 for _ in range(taken):
                     pool[self.random.choice(TRAPS)] += 1
+        if options.warp_points:
+            # each warp point's item takes a junk item's place
+            for warp in WARP_POINTS:
+                pool[next(junk for junk in JUNK if pool[junk] > 0)] -= 1
+                pool[warp] += 1
         assert all(n >= 0 for n in pool.values()), pool
         filled = len(self.shuffled) - len(self.locked)
         assert sum(pool.values()) == filled, (sum(pool.values()), filled)
@@ -970,6 +975,8 @@ class LASWorld(World):
             "location_ids": {loc: LOCATION_OFFSETS[loc] for loc in self.shuffled},
             # the owl statues the options leave out: the mod gives their gifts too, which the module turns off
             "removed_location_ids": {loc: LOCATION_OFFSETS[loc] for loc in self.removed},
+            # the warp points only their items open: their WarpPoint.gsheet indices
+            "warp_points": sorted(WARP_POINTS.values()) if self.options.warp_points else [],
             "optional_locations": self.optional,
             "map_hidden_locations": [loc for loc in hidden_checks(self) if loc in self.shuffled],
             "location_names": self.placed_names(),

@@ -66,7 +66,7 @@ Datasheets (`.gsheet`) are read and written by `modbuild/RandomizerCore/Tools/gs
 
 ## Seed file
 
-The patcher writes the per-seed tables the module reads to `config/lasr-exl/ap_seed.txt` next to `config.ini` (`patcher/seed_file.py`, `AP::SEED_PATH`): a `[<section>]` line before each section's lines. The module reads it once at boot (`config/seed_file.cpp`) and keeps it; the loaders keep views of its names, each ended with a 0, as the game reads some names to their terminator. Each line is space-separated fields, a name with spaces last. A section without lines is left out, and the module reads a missing section as empty. Sections: `names`, `indices`, `kept`, `models`, `start`, `shop`, `jumps`, `markers`, `shuffles`, `hints`, `map`; their lines are in the sections below that use them. `config.ini` stays apart: LASR's format, and the client reads the installed seed from it.
+The patcher writes the per-seed tables the module reads to `config/lasr-exl/ap_seed.txt` next to `config.ini` (`patcher/seed_file.py`, `AP::SEED_PATH`): a `[<section>]` line before each section's lines. The module reads it once at boot (`config/seed_file.cpp`) and keeps it; the loaders keep views of its names, each ended with a 0, as the game reads some names to their terminator. Each line is space-separated fields, a name with spaces last. A section without lines is left out, and the module reads a missing section as empty. Sections: `names`, `indices`, `kept`, `models`, `start`, `shop`, `jumps`, `markers`, `shuffles`, `hints`, `map`, `warps`; their lines are in the sections below that use them. `config.ini` stays apart: LASR's format, and the client reads the installed seed from it.
 
 ## Code the module writes
 
@@ -199,6 +199,7 @@ An Archipelago player container (`container.py`, `APPlayerContainer`): a zip wit
   "placements": { "<lasr location name>": "<lasr item name> | \"ap-item\"" },
   "location_ids": { "<lasr location name>": "<local id (int)>" },
   "removed_location_ids": { "<lasr location name>": "<local id (int)>" },
+  "warp_points": ["<WarpPoint.gsheet index (int)>"],
   "optional_locations": ["<lasr location name>"],
   "map_hidden_locations": ["<lasr location name>"],
   "location_names": { "<lasr location name>": ["<AP item name>", "<owner's name, empty for this slot>"] },
@@ -215,6 +216,7 @@ An Archipelago player container (`container.py`, `APPlayerContainer`): a zip wit
 - `starting_items` are what a new save starts with (Start state).
 - `placements` covers every LASR item location: AP locations are `"ap-item"`, the kept and fixed ones carry their vanilla item. Owl statues that give no gift are left out, as in LASR.
 - `removed_location_ids` gives the owl statues the options leave out their ids, so every mod has each statue's gift (Options). It is optional.
+- `warp_points` lists the warp points only their items open (Warp points). It is optional and empty with the option off.
 - `optional_locations` lists the AP locations of the activities the options leave out (`LASWorld.optional`).
 - `map_hidden_locations` lists the AP locations the trackers leave off (`ut_map.hidden_checks`): the optional ones and the Trendy Game's prizes the slot does not need. The map tracker leaves them off the map, as Universal Tracker's map does. Without it the map leaves off `optional_locations`.
 - `location_names` covers the AP locations. The patcher writes it to the seed file's `names` for the in-game text, which gets the same names at runtime from the client.
@@ -382,6 +384,13 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 - The module hides Minus from the game while it is held; released sooner, a short press reaches the game, so a tap still opens and closes the map.
 - The menu opens only when an item display could start and not in levels where a warp would break what runs there: the Wind Fish's Egg, the Chamber Dungeons and their editor (`Panel*`), the fishing pond, the trendy game, the ending and Marin's event levels.
 
+**Warp points** (option `warp_points`, settings key `Warp Points`; `ap_warps.cpp`, `lasr.WARP_POINTS`)
+- With the option on, the pool holds an item `warp-<name>` ("Warp: <the game's name>") for each of the overworld's ten warp points (the four holes, Manbo's six platforms; scripts/re/UI.md, Warp points), in place of ten junk items (`JUNK`, `LASWorld.item_pool`), and only that item opens its point. The points are no locations. Off, the pool has no warp items and the game opens them as in vanilla.
+- The game opens a point by setting its bit of `Inventory +0xb8`, in four places: a hole as Link steps in, a platform once its tile (a dig spot) is dug, the rock over a platform as it is lifted, and `Link.AddWarpPoint`, which only Manbo's song event runs, for his pond. The seed file's `warps` has `<index>` per shuffled point (`las_ap_patch.warp_lines`); the module hooks each store (its `orr`, where the store's new bit is alone) and keeps a shuffled point's bit as it was.
+- A received `$WARP:<index>` item sets the bit, with the received toast. An open platform shows open at once; the game's first-warp message plays the first time.
+- A hole or platform whose own bit is clear lifts Link out again: its warp start (`AreaWarpHole_StartEvent`, `ObjWarpManbo_StartEvent`) counts no point open, so it takes the game's way for fewer than two. The warp map, from a point or Manbo's Mambo, shows only open points.
+- **Logic.** Manbo's Mambo works from anywhere outside a dungeon and the warp home reaches Tarin's house from anywhere, so one-way routes from `tarin-house` lead into each point's zone with `ocarina & song-mambo & warp-<name>`. Warping from a hole or platform is left out of the logic.
+
 **DeathLink** (option `death_link`; `patcher/modbuild/ap_deathlink.py`)
 - The client takes the `DeathLink` tag when the slot data's `death_link` is on: it turns a `DIED` into a DeathLink and a received DeathLink into `DEATH <source player>`. With the option off the client has no tag: the server sends it no deaths, and `DIED` is ignored.
 - The patcher changes `Common.bfevfl`'s `GameOver`, which revives Link with Tracy's Secret Medicine (`Inventory.HasItem` itemType 22, used up) unless the shopkeeper takes revenge for a theft. A bottled fairy never revives Link in this game. A received death sets the flag `APDeathLink`, and the flow runs for it as for any other death; the flow clears the flag both where the medicine revives Link and where the death stands. A death that stands sets `APDied` before the game over unless `APDeathLink` is set; the module polls `APDied`, clears it and sends `DIED`. So the medicine's rescue sends nothing, and a received death is never sent back.
@@ -501,6 +510,8 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 **Persistence**
 - **Received-item count:** event flags `APRecv0`..`APRecv15`, read as a 16-bit counter. The patcher adds them to `GlobalFlags.gsheet`.
 - **Waiting Secret Medicines:** event flags `APMedicine0`..`APMedicine1`, a 2-bit count, also added by the patcher.
-- **Collected locations:** a bitset file `sd:/lasap/<seed_hash>.chk`, written on each check, so checks made while disconnected are reported later.
-- **Skipped locations:** a bitset file `sd:/lasap/<seed_hash>.skp`, written on each mark or unmark on the map (Map tracker, Skipping a check).
+- **Collected locations:** a bitset file `sd:/lasap/<save id>.chk`, written on each check, so checks made while disconnected are reported later. The save id is the save's `SaveId` in hex (scripts/re/ITEMS.md, Save files): a new game draws one, and every save file the game writes from it, the file and the shared autosave alike, carries it, so they share the file. The module loads the live save's files when its id changes (`ap_checks.cpp`), and sends all of its checks once the player is ready in a save, again after another save takes its place; at the title and the file menu it sends none.
+- **Skipped locations:** a bitset file `sd:/lasap/<save id>.skp`, written on each mark or unmark on the map (Map tracker, Skipping a check).
+- **File menu.** A copy (`CopyDataSave`) gets an id of its own and a copy of its source's files. As the file menu opens and after an erase (`DeleteDataEnd`), the module deletes the check files of saves that are gone: those whose id no save file holds (`SaveFile_Exists` and the file menu's header table, which the module updates on each save write) and that are not the save in play's. A new game left unsaved loses its files there.
+- **Seed-named files** (`<seed_hash>.chk`/`.skp`, from mods before the files went by save): a save that a save file holds and that has no file of its own takes the installed seed's files once. The file menu deletes other seeds' and, once every save has its own, the installed seed's.
 - **Read hints:** event flags `APHint<n>` (In-game hints).

@@ -104,11 +104,13 @@ class TestDungeonLogic(unittest.TestCase):
         self.assertTrue(set(d8) <= swapped and not set(d1) & swapped)
 
     def test_turtle_rock_top(self) -> None:
-        """The top of Turtle Rock is a region of its own, reached from Turtle Rock's inside, with the heart piece."""
+        """The top of Turtle Rock is a region of its own, reached from Turtle Rock's inside or by its warp point (Manbo's
+        Mambo from anywhere, written from Tarin's house), with the heart piece."""
         top = LOGIC["turtle-dungeon-top"]
         self.assertEqual(top["type"], "region")
         self.assertTrue(node_tokens(parse(top["condition-basic"])))
-        self.assertTrue(all(name.startswith("D8.") for name in node_tokens(parse(top["condition-basic"]))))
+        zones = [name for name in node_tokens(parse(top["condition-basic"])) if name in LOGIC]
+        self.assertTrue(all(name.startswith("D8.") or name == "tarin-house" for name in zones), zones)
         self.assertEqual(LOGIC["above-turtle-rock"]["region"], "turtle-dungeon-top")
         self.assertFalse(any(key.startswith("condition-") for key in LOGIC["above-turtle-rock"]))
 

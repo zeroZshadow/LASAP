@@ -130,6 +130,10 @@ namespace {
         // LASR's "$EXT:" keys only name a chest text (Master Stalfos' Note); "None" is an item the client has no key
         // for.
         if (k.starts_with("$EXT:") || k == "None") return std::nullopt;
+        if (IsWarpKey(k)) {
+            GrantWarp(k);
+            return std::nullopt;
+        }
         if (k == "SwordLv1" && EventFlags::CheckFlag("SwordFoundFlag")) k = "SwordLv2";
         else if (k == "Shield" && EventFlags::CheckFlag("ShieldFoundFlag")) k = "MirrorShield";
         else if (k == "PowerBraceletLv1" && EventFlags::CheckFlag("BraceletFoundFlag")) k = "PowerBraceletLv2";

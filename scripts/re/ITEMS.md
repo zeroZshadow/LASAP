@@ -156,7 +156,7 @@ The save is the static `GlobalSave` (`0x1cbb200`). `GlobalSave_Reset` (`0xdfab90
 
 A bit table is 0x28 bytes, `{u64, u64, u8* bits, s32 bytes, s32 bits}`; the `las.sym` names of the tables point at
 their `+0x10`. `SaveId` is what the play reports send as `SaveId` (formatted as a UUID); `GlobalSave_Reset` fills it
-with `nn::util::GenerateUuid` (import stub `0x14324c0`). The level state's position is the iron ball's: ObjIronball's
+with `nn::util::GenerateUuid` (import stub `0x14324c0`), and a file menu copy keeps it (Save files). The level state's position is the iron ball's: ObjIronball's
 states (from its setup `0xbc9250`) store and read it, and the room manager clears it with the level flags on a level
 load. `GlobalSave_Reset` also zeroes the body's `+0x5de4` (u32).
 
@@ -178,7 +178,14 @@ load. `GlobalSave_Reset` also zeroes the body's `+0x5de4` (u32).
 | `+0x50a8` | 6 / 48 | themes the theme list has shown: `0xce3c70` tests, `0xce3da0` sets (`Pd_Panel`, `0xf22c50`); a theme slot (`0xf75ee0`) plays animator frame 1 while it is clear |
 | `+0x50a0` | 7 / 49 | `MapPieceClearReward` rows given (`RewardGetSequence`) |
 
-The save files are `save:\savedata0.bin` to `3` (a table at `0x1cc1950`, 0x28 bytes per file), read and written by asynchronous file tasks (`0xdfd420`, `0xe00a80`, `0xe02730`, `0xe072b0`, `0xe07930`).
+The save files are `save:\savedata0.bin` to `3` (a table at `0x1cc1950`, 0x28 bytes per file), read and written by asynchronous file tasks (`0xdfd420`, `0xe00a80`, `0xe02730`, `0xe07930`).
+
+**Save files**
+- `savedata0`..`2` are files 1-3; `savedata3` is the one autosave, shared by all three files: the file menu shows it as a fourth panel (`UI:SystemSlotAuto`) that only starts. `SaveManager_Commit` snapshots slot 3 and `SaveManager_Write` writes it, both with a constant 3. A manual save (pause menu, UI 0x1f) writes the slot picked there (cursor at screen `+0x14a00`, write `SaveImage_Write` at `0xf80b2c`). A file holds the image from GlobalSave `+0x20`: the file header first (the SaveHeader at file offset `0x5380`).
+- `SaveImage_Write` (`0xdfccf0 (out task, u8 slot, bool no snapshot)`) is every write of a file. The file header's `+0x4` is the header's own CRC; the body's CRC is at body `+0x5de4` (GlobalSave `+0x5ee4`). A load checks both and copies all 0x5ee0 bytes. Measured 2026-11-17: the continued file's `SaveId` stays across loads and saves, and the autosave holds the `SaveId` of the file played last.
+- **File menu headers.** `FileHeaders` (`0x1cc13e0`, 0xe0 bytes per slot 0-3) holds each file's header, read at boot (`0xe06ca0` → `0xe07930`; `0xe06200` copies them in and sets `0x1cc1896`). Each `SaveSnapshot(slot)` rewrites the entry's `+0x20`..`+0xdf` only, so its `SaveId` (`+0x8`) stays the boot's; an erase leaves the entry. The panels show a slot empty by `SaveFile_Exists` (`0xe072b0 (s8 slot) -> bool`, mounts `save:`) and read the entry from `+0x20`: the name, health (`+0x32`/`+0x34`), deaths (`+0x36`), `LevelName` (`+0x38`), the save date (`+0x88`), Hero mode (`+0xd5`).
+- **File menu states** (the UI object's machine at `+0x80`, `0xe60b90`; cursor u8 `+0x159b0`, panel i's slot byte at `+0x49f8 + i * 0x4080`). `FileOperate_Setup` (`0xe5ec50`) sets the current file (u8 `0x1ca1d30`, a UI hint read only by `SaveFile_Latest` `0xf8d2b0`) to 0xff at `0xe603e8` as the menu opens. Continue: Load (12) enter `0xe63880` reads the cursor's slot into the copy (`SaveFile_Read` `0xe00520`, mode 1), `FileMenu_Continue` sets the current file, and the level scene's `+0x48` (`0x837980`) copies the copy into the live save. New game: `FileMenu_NewGameStart` resets the live save (a new `SaveId`); NewGameSave enter (`0xe68940`) writes it after the name entry. Erase: DeleteDataWaitKey (17; X+L+R held 3 s), DeleteData (19, `SaveFile_Delete` `0xe02330` deletes `savedataN.bin` and `screenshotN.bin`), DeleteDataEnd (20, enter `0xe65220`) once it succeeded. Copy: CopyDataSelect (22; panel 0 the source, the cursor picks an empty target), CopyDataConfirm (Cancel first), CopyDataLoad (27, `SaveFile_Read` mode 0: the source into the live save), CopyDataSave (28, enter `0xe66ff0`: the screenshot, then `SaveImage_Write(task, target, false)` at `0xe670d8`, so the copy keeps the source's `SaveId`), CopyDataEnd (29).
+- The SaveHeader's `+0x30`..`+0x3f` is not read or written by its 28 users or the save's write (`SaveWriter_Lambda`); callees it is passed to were not followed.
 
 **SaveHeader** (0x140 bytes, the size `GlobalSave_Reset` clears):
 

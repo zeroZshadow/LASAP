@@ -103,6 +103,14 @@ class OwlStatues(Choice):
     default = 0
 
 
+class WarpPoints(Toggle):
+    """Put an item for each of the overworld's ten warp points in the pool, in place of ten junk items. A warp point
+    takes you there or away only once its Warp item arrives, with the Ocarina's Manbo's Mambo too: stepping into a warp
+    hole, digging up a warp platform, lifting the rock off one or learning Manbo's Mambo opens none.
+    Off, they open as in the original game."""
+    display_name = "Warp Points"
+
+
 class SeashellMansion(Choice):
     """The Seashell Mansion rewards up to this seashell count are shuffled. The others are optional: in logic only after the goal,
     holding only junk and traps, yours or another player's."""
@@ -540,6 +548,7 @@ class LASOptions(PerGameCommonOptions):
     blue_rupees: BlueRupees
     owl_statues: OwlStatues
     seashell_mansion: SeashellMansion
+    warp_points: WarpPoints
     small_keys: SmallKeys
     nightmare_keys: NightmareKeys
     dungeon_items: DungeonItems
@@ -589,7 +598,8 @@ class LASOptions(PerGameCommonOptions):
 
 OPTION_GROUPS = [
     OptionGroup("Locations", [Chests, FreeGifts, TradeQuest, GoldenLeaves, HeartPieces, Seashells, Miscellaneous, Shop,
-                              BossDrops, Dampe, Rapids, Fishing, BlueRupees, OwlStatues, SeashellMansion]),
+                              BossDrops, Dampe, Rapids, Fishing, BlueRupees, OwlStatues, SeashellMansion,
+                              WarpPoints]),
     OptionGroup("Goal", [Goal, InstrumentsRequired, SeashellsRequired]),
     OptionGroup("Dungeon Items", [SmallKeys, NightmareKeys, DungeonItems, Instruments]),
     OptionGroup("Start", [StartingInstruments, StartingRupees]),

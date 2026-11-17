@@ -57,6 +57,7 @@ namespace {
                                       AP::HasLocationName(*location);
                 if (IsTrapKey(key)) QueueTrap(key, item, sender, sender.empty() ? location : std::nullopt);
                 else if (id && !namedWhenFound) QueueShow(ItemShow{*id, item, sender});
+                else if (IsWarpKey(key) && !namedWhenFound) AP::QueueToast(AP::ReceivedToast(item, sender));
                 SetRecvCount(*n);
                 have = *n;
             }

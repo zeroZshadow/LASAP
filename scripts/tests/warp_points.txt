@@ -1,0 +1,103 @@
+# Warp Points (DESIGN.md, Warp points): opening a warp point leaves it closed, sends no check, and its item opens
+# it. Needs a mod with Warp Points on (make_test_patch.py --settings '{"Warp Points": true}') and runs after
+# newgame_file2 (no warp point open; no client: `game` sends the ITEM lines).
+# - The buried platform of Eastern Tal Tal Mountains (point 7, Field_02P, 234.75 18.75 21.75): Link digs it up from
+#   the tile south of it; its item opens it and the game's first-opening message plays.
+# - The Turtle Rock hole (point 1, Field_01B, 24.75 27 11.25), closed while two other points are open: Link lands in
+#   it, the game's first-opening message plays, and Link is set down south of it (its look stays open until the
+#   room reloads); with its item it opens the warp map, which B closes.
+# - The Tal Tal Heights hole (point 2, Field_03M, 189.75 13.5 32.25), its item received first: Link lands in it and
+#   the warp map opens.
+# - The rock over Dampe's Shack's platform (point 5, Field_03H, 107.25 14.25 32.25): lifting it opens nothing.
+# - Manbo's Pond (point 4): Link swims up to Manbo in his cave (MamboCave) with the Ocarina; his song opens nothing.
+# Grants the Shovel (on Y), the Power Bracelet, the Ocarina and the Flippers (sandbox saves only).
+# Screenshots: warp_1 the platform dug up, warp_2 its opening message, warp_3 lifted out of the closed hole,
+# warp_4 the warp map, warp_5 the rock lifted, warp_6 after Manbo's song, warp_7 the warp map at Tal Tal Heights.
+guard hurt
+free 10
+check warps=0\s
+send DBG grant Shovel 1 -1 0
+expect OK.grant 5
+send DBG poke a2 07
+expect OK.poke 5
+send DBG grant PowerBraceletLv1 1 -1 0
+expect OK.grant 5
+
+# The platform: dug up, its bit stays clear
+warp Field 234.75 18.75 23.25
+poll OK.enemies.killed 3 DBG enemies kill
+face up
+tap 8
+free 5
+wait 2
+shot warp_1.png
+check warps=0\s
+game ITEM 1 $WARP:7 1 -1 -1 Warp: Eastern Tal Tal Mountains|
+expect RECV\s1 10
+check warps=80\s
+until textready 10
+shot warp_2.png
+dismiss 20
+
+# The hole: closed, with points 7 and 0 open (the warp map would show them), it lifts Link out
+game ITEM 2 $WARP:0 1 -1 -1 Warp: Ukuku Prairie|
+expect RECV\s2 10
+check warps=81\s
+send DBG warp Field 24.75 27 11.25
+# The game's first-opening message, then the hole lifts Link out
+until textready 15
+dismiss 20
+free 20
+shot warp_3.png
+check warps=81\s
+at 24.75 14 1
+game ITEM 3 $WARP:1 1 -1 -1 Warp: Turtle Rock|
+expect RECV\s3 10
+check warps=83\s
+# Open, it takes Link in again and opens the warp map; B closes it and Link walks out
+goto 24.75 27 12.75
+hold 0 0 32767 until !free 5
+wait 4
+shot warp_4.png
+tap 2
+free 20
+check level=Field\s
+
+# The Tal Tal Heights hole, received before it is found: open
+game ITEM 4 $WARP:2 1 -1 -1 Warp: Tal Tal Heights|
+expect RECV\s4 10
+check warps=87\s
+send DBG warp Field 189.75 13.5 32.25
+until !free 15
+wait 4
+shot warp_7.png
+tap 2
+free 20
+check warps=87\s
+
+# The rock over Dampe's Shack's platform: lifting it opens nothing
+warp Field 107.25 14.25 33.75
+poll OK.enemies.killed 3 DBG enemies kill
+face up
+interact
+until carry=1+free 3
+shot warp_5.png
+check warps=87\s
+face down
+tap 1
+until carry=0 3
+
+# Manbo's song: his gift's check; the pond's bit stays clear. Link swims (event 30), which is not free.
+send DBG grant Ocarina 1 -1 0
+expect OK.grant 5
+send DBG grant Flippers 1 -1 0
+expect OK.grant 5
+send DBG warp MamboCave 7.5 5 0
+inlevel 20
+until event=30 10
+face right
+tapuntil 1 textready 10
+tapuntil 2 event=30 when textready 120
+shot warp_6.png
+check warps=87\s
+state

@@ -25,7 +25,7 @@ OPTION_SETS = [
      "classic_d2": True, "stealing": "never", "shuffled_bombs": False, "shuffled_powder": False},
     {"logic": "hell", "owl_statues": "all", "blue_rupees": True, "trade_quest": True, "dampe": True,
      "rapids": True, "fishing": True, "seashell_mansion": 50, "free_book": False, "fast_fishing": False,
-     "fast_stalfos": False, "stealing": "always"},
+     "fast_stalfos": False, "stealing": "always", "warp_points": True},
     {"chests": False, "free_gifts": False, "miscellaneous": False, "boss_drops": False, "instruments": "vanilla",
      "starting_instruments": 3, "seashell_mansion": 0, "dungeon_items": "start_with"},
     {"shuffled_dungeons": True},

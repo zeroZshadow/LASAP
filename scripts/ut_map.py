@@ -17,7 +17,7 @@ Run with .venv-ap: python scripts/ut_map.py [<PopTracker pack folder>]
   lands inside (places.json). Its sections: the inside door's entrance (Shuffled dungeons everything); on a dungeon's
   own door every dungeon's door entrance, which the client hides on the maps of the dungeons it is not known to lead
   into (LASContext.load_map); on another door the world's way from the zone outside it to the zone inside
-  (logic.yml), "<zone> -> <zone>".
+  (lasr.dungeon_route), which the client names after the door (lasr.door_label).
 - The goal's pin: its event location (GOAL_LOCATION) at the egg's door on the overworld, placed as the doors are.
   The client colours it by whether the goal is in logic (TrackerMixin.updateTracker).
 - A dungeon map's stair letters (maps.json's "stairs", which the client draws over the map: ut_gui.StairLetters):
@@ -42,7 +42,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(ROOT / "patcher"))
 from worlds.las import GOAL_LOCATION  # noqa: E402
 from worlds.las.items import LASR_TO_ITEM  # noqa: E402
-from worlds.las.lasr import DOORS, DUNGEON_DOORS, DUNGEONS, WRITTEN_LOGIC, door_entrance  # noqa: E402
+from worlds.las.lasr import DOORS, DUNGEON_DOORS, DUNGEONS, door_entrance, dungeon_route  # noqa: E402
 from worlds.las.locations import display_name  # noqa: E402
 from worlds.las.ut_map import DUNGEON_SECTIONS, ITEM_SECTIONS, MAPS  # noqa: E402
 import ap_tracker_map  # noqa: E402
@@ -91,12 +91,6 @@ def landings() -> dict:
             for t in teleports if t["level"] == "Field" and t["door"] and t["companion"] and t["landing"]}
 
 
-def zone_of(door: str) -> str:
-    """The logic zone that lists a door (logic.yml)."""
-    (zone,) = [name for name, node in WRITTEN_LOGIC.items() if door in (node.get("doors") or {})]
-    return zone
-
-
 def dungeon_doors(dungeon_maps: dict) -> list:
     """Each door into a dungeon's level: a pin on the dungeon's map where Link lands inside."""
     spots, origins = landings(), room_origins()
@@ -108,7 +102,7 @@ def dungeon_doors(dungeon_maps: dict) -> list:
         if door in DOORS["groups"]["dungeon"]:
             sections += [{"name": door_entrance(dungeon)} for dungeon in DUNGEONS]
         else:
-            sections.append({"name": f"{zone_of(door)} -> {zone_of(inside)}"})
+            sections.append({"name": dungeon_route(door)})
         x, y = in_dungeon(room, x, z, origins)
         pins.append({"name": inside, "sections": sections,
                      "map_locations": [{"map": dungeon_maps[room.partition("_")[0]], "x": x, "y": y, "size": DOOR_PIN}]})

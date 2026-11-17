@@ -117,7 +117,7 @@ TRACKER_SETTINGS = ("Preset", "Chests", "Free Gifts", "Trade Quest", "Golden Lea
                     "Trendy Game", "Blue Rupees", "Owl Gifts", "Dungeon Maps", "Compasses", "Stone Beaks", "Small Keys",
                     "Nightmare Keys", "Shuffle Instruments", "Open Kanalet", "Open Mabe", "Open Mamu",
                     "Completed Bridge", "Classic D2", "Shuffled Dungeons", "Fast Fishing", "Shuffled Bombs",
-                    "Free Book", "Fast Stalfos", "Shuffled Powder", "Stealing")
+                    "Free Book", "Fast Stalfos", "Shuffled Powder", "Stealing", "Warp Points")
 
 
 def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str, Any]:
@@ -145,6 +145,7 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Trendy Game": False,
         "Blue Rupees": bool(o.blue_rupees),
         "Owl Gifts": _OWLS[o.owl_statues.value],
+        "Warp Points": bool(o.warp_points),  # read by the AP patcher (las_ap_patch.py), not by LASR
         "Dungeon Maps": _DUNGEON_ITEMS[o.dungeon_items.value],
         "Compasses": _DUNGEON_ITEMS[o.dungeon_items.value],
         "Stone Beaks": _DUNGEON_ITEMS[o.dungeon_items.value],

@@ -17,7 +17,7 @@ namespace Game {
     namespace Data { struct SaveHeader; }
     namespace Data { enum class ItemId : int; }
     namespace Data::Inventory { struct InventoryItems; }
-    namespace Actors { struct NpcComponent; }
+    namespace Actors { struct NpcComponent; struct AreaWarpHoleEventBox; struct ObjWarpManbo; }
     template<int N> struct StateMachine;
     namespace Ui { struct Pane; struct TextBox; struct TextHolder; struct LayoutWrapper; struct Animator;
                    struct Manager; struct Navi; struct NaviGuide; struct MenuPage; struct GmSystem;
@@ -256,6 +256,18 @@ namespace Game {
     inline constexpr Func<bool(void*, u8, bool)> SaveManager_RequestAutoSave{0xe0b360};
     // The save header (game/data/inventory.hpp)
     inline constexpr Global<const Data::SaveHeader*> SaveHeader_ptr{0x1cc1360};
+    // A save's id (the file header's SaveId, +0x8; ITEMS.md, Save files): a new game draws one; a copy keeps it
+    struct SaveId { u8 bytes[16]; };
+    // The live save's id: GlobalSave (0x1cbb200) +0x20, the file header, +0x8
+    inline constexpr Global<SaveId> LiveSaveId{0x1cbb228};
+    // Each save file's header as the file menu shows it (0xe0 bytes each; files 1-3, then the autosave), read at boot
+    inline constexpr Global<u8[4][0xe0]> FileHeaders{0x1cc13e0};
+    // The boot's read of FileHeaders has finished
+    inline constexpr Global<u8> FileHeadersRead{0x1cc1896};
+    // (slot) -> whether save:/savedata<slot>.bin is there; mounts save:
+    inline constexpr Func<bool(s8)> SaveFile_Exists{0xe072b0};
+    // nn::util::GenerateUuid's import stub (GlobalSave_Reset's SaveId)
+    inline constexpr Func<SaveId()> GenerateUuid{0x14324c0};
 
     // ---- Memory ----
     inline constexpr Func<void*(size_t)> operator_new{0x1431170};
@@ -435,6 +447,12 @@ namespace Game {
     // The event query Inventory.HasAllInstruments (std::function body, the functor unused): the eight instruments'
     // bits of Inventory +0xac all set. Only WindFishsEgg.bfevfl asks it.
     inline constexpr Func<bool(void*)> EventQuery_HasAllInstruments{0x7e3240};
+    // The WarpPoint.gsheet rows whose Inventory +0xb8 bit is set (scripts/re/UI.md, Warp points)
+    inline constexpr Func<s32()> WarpPoint_CountActivated{0x2ee40};
+    // (out event request, actor): a warp hole's and a Manbo platform's warp, Field.bfevfl FieldWarpOut(Wait) with at
+    // least 2 warp points open, else FieldWarpOutReturn(Wait), which lifts Link out again
+    inline constexpr Func<void(void*, Actors::AreaWarpHoleEventBox*)> AreaWarpHole_StartEvent{0x8ba60};
+    inline constexpr Func<void(void*, Actors::ObjWarpManbo*)> ObjWarpManbo_StartEvent{0xcbcb40};
     // The current dungeon (8 the Chamber Dungeon, 0xff outside dungeons), which dungeon items count for
     inline constexpr Global<u8> LevelIndex{0x1cc13c8};
     // Per dungeon a pointer to its entry (game/map.hpp)

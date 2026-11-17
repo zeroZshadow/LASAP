@@ -2465,6 +2465,13 @@ SaveCurrent_SetRetryLocation 0x09300ac0 f (SaveCurrent**, retry*): Locator $NONE
 SaveWriter_Install 0x09300500 f subscribes SaveWriter_Lambda (vtable 0x0a123c30) to the save image; from the initializer 0x0850e910
 SaveImage_UpdateCrc 0x092fed00 f (image): header and body CRC
 SaveImage_Write 0x09300cf0 f (out task, u8 slot, bool no snapshot)
+SaveFile_Read 0x09304520 f (out task, s8 slot, mode): 1 into the save copy, 0 into the live save
+SaveFile_Delete 0x09306330 f (out task, s8 slot): savedataN.bin, then screenshotN.bin
+SaveFile_Latest 0x094912b0 f the newest file by the header's save date
+FileHeaders 0x0a1c53e0 l 4 x 0xe0: each file's header as the file menu shows it, read at boot; SaveId at +0x8 stays the boot's
+FileOperate_Setup 0x09362c50 f the title file menu's setup: current file (0x0a1a5d30) 0xff
+FileMenu_DeleteDataEnd 0x09369220 f state 20 enter: an erase succeeded (slot at UI +0x159b0)
+FileMenu_CopyDataSave 0x0936aff0 f state 28 enter: writes the copy (the source loaded into the live save)
 SaveCopy_ptr 0x0a1c5828 l shared_ptr to the save image copy that is written (made by 0x09300390); the live SaveCurrent is not changed by a save
 SaveManager_Ctor 0x0930c1a0 f adds the location providers FishingPond and PanelEdit to +0x188
 SaveManager_Commit 0x0930ccc0 f (manager): SaveSnapshot(3), then on the copy the overrides +0x464..+0x467 (cleared by every request, no setter found) and the first matching provider's LevelName, Locator, RestartPos, RestartDirection
@@ -2487,6 +2494,10 @@ AreaAntlion_StartFallOutAnt 0x0853e690 f (actor): Field.bfevfl entry FallOutAnt,
 AreaStairs_StartEvent 0x08564420 f (out, actor): AreaUpstairs/AreaDownstairs: Stairs.bfevfl entry LEB param 1 (default DefaultUpStairs/DefaultDownStairs), arg locator LEB param 0
 AreaWarpHole_StartEvent 0x0858fa60 f (out, actor): AreaWarpHoleEventBox: FieldWarpOut with >= 2 warp points, else FieldWarpOutReturn
 ObjWarpManbo_StartEvent 0x091c0b40 f (out, actor): FieldWarpOutWait with >= 2 warp points, else FieldWarpOutReturnWait
+AreaWarpHole_Open 0x0858f450 f (hole): a state's enter: plays its open look, sets Inventory +0xb8 bit +0x478 (its index, -1 none)
+ObjWarpManbo_TryOpen 0x091c0eb0 f (platform): while bit +0x400 of Inventory +0xb8 is clear, sets it once the platform's grid cell has flags 0x30000 (a dug dig spot); each frame of its closed state
+ObjWarpManbo_ClosedUpdate 0x091c06b0 f (platform): ObjWarpManbo_TryOpen, then the open state (1) once its bit is set
+ObjWarpManbo_OpenEnter 0x091c0710 f (platform): without the flag FindWarpPointFirst, Field.bfevfl FirstOcarinaWarp
 ObjDungeonWarpHole_StartWarp 0x0903b830 f DungeonObject.bfevfl Warp, arg location LEB param 0, or param 1 while switch 1 is on
 EnemyDeathBallVacuum_StartWarp 0x08762c30 f Area.bfevfl DeathBallVacuum_Warp, arg locator LEB param 0 (DeathballWarpPoint)
 NpcRaccoon_StartEvent 0x08f211a0 f (out, npc, StringView* entry): stoptalk gets offsetX/offsetZ = Link minus the linked actor

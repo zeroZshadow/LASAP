@@ -51,7 +51,9 @@ items: [sword, shield, bracelet, boots, flippers, feather, shovel, hookshot, bow
   key-D4, nightmare-key-D4, stone-beak-D4, compass-D4, map-D4, key-D5, nightmare-key-D5, stone-beak-D5, compass-D5,
   map-D5, key-D6, nightmare-key-D6, stone-beak-D6, compass-D6, map-D6, key-D7, nightmare-key-D7, stone-beak-D7,
   compass-D7, map-D7, key-D8, nightmare-key-D8, stone-beak-D8, compass-D8, map-D8, key-D0, nightmare-key-D0,
-  stone-beak-D0, compass-D0, map-D0, bow-wow, rooster]
+  stone-beak-D0, compass-D0, map-D0, bow-wow, rooster, warp-ukuku-prairie, warp-turtle-rock, warp-taltal-heights,
+  warp-animal-village, warp-manbos-pond, warp-dampes-shack, warp-seashell-mansion, warp-taltal-east, warp-marthas-bay,
+  warp-taltal-west]
 
 # Every option a rule may name; the world sets each one per slot.
 options: [360-movement, ammo-ghost, bad-pets, blue-rupees, blur-removal, boss-cutscenes, boss-drops, bouncy-items,
@@ -62,7 +64,7 @@ options: [360-movement, ammo-ghost, bad-pets, blue-rupees, blur-removal, boss-cu
   nice-magic-rod, open-kanalet, open-mabe, open-mamu, race-mode, randomize-enemies, randomize-enemy-sizes,
   randomize-environments, randomize-sound-effects, randomize-text, seashell-hunt, seashells, seashells-important,
   shop, shuffled-bombs, shuffled-dungeons, shuffled-powder, song-cutscenes, stealing-needs-sword, trade-important,
-  trade-quest, trendy-game, unrandomizer-mode]
+  trade-quest, trendy-game, unrandomizer-mode, warp-points]
 
 # The options the world always leaves off: a rule never holds through one of them.
 always-off: [bad-pets, blur-removal, companions, create-spoiler-log, disable-low-health-beep, item-get-animations, race-mode,
