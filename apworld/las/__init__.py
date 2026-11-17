@@ -33,7 +33,7 @@ from .logic import PLACES, LogicCompiler, make_rule, referenced_regions
 from .models import model_for
 from .options import OPTION_GROUPS, DungeonItemPlacement, Goal, LASOptions, ShuffledDungeons, goal_instruments, goal_seashells
 from .tracker import DOORS_KEY, ENTRANCES_KEY, SIGN_KEY, LogicTracker, tracked_instruments, tracked_seashells
-from .ut_map import DOOR_STEPS, TRACKER_WORLD, door_out
+from .ut_map import DOOR_STEPS, TRACKER_WORLD, door_out, hidden_checks
 from . import lasr_settings
 
 
@@ -971,6 +971,7 @@ class LASWorld(World):
             # the owl statues the options leave out: the mod gives their gifts too, which the module turns off
             "removed_location_ids": {loc: LOCATION_OFFSETS[loc] for loc in self.removed},
             "optional_locations": self.optional,
+            "map_hidden_locations": [loc for loc in hidden_checks(self) if loc in self.shuffled],
             "location_names": self.placed_names(),
             "location_models": self.placed_models(),
             "location_chests": self.placed_chests(),

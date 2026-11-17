@@ -18,6 +18,11 @@ def dungeon_label(number: int) -> str:
     return f"D{number} - {DUNGEON_NAMES[number]}"
 
 
+def check_label(name: str) -> str:
+    """A check's name in a pin's tooltip: its location name without the area, which the pin's place shows."""
+    return name.partition(" - ")[2] or name
+
+
 def dungeon_map(dungeon: str) -> str:
     return dungeon_label(DUNGEON_NUMBERS[dungeon])
 
@@ -45,17 +50,23 @@ def dungeon_squares(dungeon_entrances: Mapping[str, str], known: Iterable[str]) 
     return {door: dungeon_entrances[door] for door in DUNGEONS if door in known}
 
 
-def hidden_locations(world) -> List[str]:
-    """The checks the map leaves off: the optional ones (LASWorld.optional), and the Trendy Game's prizes whose item
-    the slot does not need: the Yoshi Doll without the trade quest, a seashell when neither the Seashell Mansion nor
-    a seashell hunt takes seashells, heart pieces and chamber stones always."""
+def hidden_checks(world) -> List[str]:
+    """The checks the trackers leave off, by LASR names: the optional ones (LASWorld.optional), and the Trendy Game's
+    prizes whose item the slot does not need: the Yoshi Doll without the trade quest, a seashell when neither the
+    Seashell Mansion nor a seashell hunt takes seashells, heart pieces and chamber stones always. Universal Tracker's
+    map (hidden_locations) and the in-game map (the patch's map_hidden_locations) both leave them off."""
     needed = set()
     if world.options.trade_quest:
         needed.add("yoshi-doll")
     if world.options.seashell_mansion.value or world.goal_seashells:
         needed.add("seashell")
     trendy = [loc for loc in CATEGORIES["Trendy_Rewards"] if LOGIC[loc]["content"] not in needed]
-    return [LOCATION_NAMES[loc] for loc in (*world.optional, *trendy)]
+    return [*world.optional, *trendy]
+
+
+def hidden_locations(world) -> List[str]:
+    """The checks Universal Tracker's map leaves off (hidden_checks), by AP names."""
+    return [LOCATION_NAMES[loc] for loc in hidden_checks(world)]
 
 
 # The pack's maps, in its order: the overworld's, then the dungeons' d1 ... d8 and d0

@@ -119,8 +119,8 @@ if patch["settings"]["Map Tracker"]:
     dots = {int(p[1]): (p[2], float(p[3]), float(p[4]), [int(i) for i in p[5:]]) for p in lines if p[0] == "M"}
     iconed = [i for ids in overworld.values() for i in ids] + [i for *_, ids in dots.values() for i in ids]
     positions = ap_map.load_positions()
-    optional = set(patch["optional_locations"])
-    shown = {loc: i for loc, i in patch["location_ids"].items() if loc not in optional}
+    hidden = set(patch.get("map_hidden_locations", patch["optional_locations"]))
+    shown = {loc: i for loc, i in patch["location_ids"].items() if loc not in hidden}
     # overworld icons: overworld and dungeon checks (at the dungeon's entrance); dungeon dots: the dungeons' checks,
     # one per place (Eagle's Tower before and after its collapse)
     want = [int(i) for loc, i in shown.items() if loc in positions["overworld"]]

@@ -15,8 +15,8 @@ from .install import tracker_images
 from .items import ITEM_TABLE, LASR_TO_ITEM
 from .lasr import DUNGEONS, INSTRUMENTS, door_entrance, door_label
 from .tracker import known_doors
-from .ut_map import (DOOR_STEPS, LOCATION_DUNGEONS, OVERWORLD_MAP, connector_exits, door_out, dungeon_squares,
-                     find_route, hidden_door_entrances, hidden_locations, spot_region)
+from .ut_map import (DOOR_STEPS, LOCATION_DUNGEONS, OVERWORLD_MAP, check_label, connector_exits, door_out,
+                     dungeon_squares, find_route, hidden_door_entrances, hidden_locations, spot_region)
 
 TRACKER_DOORS_KEY = "tracker_doors_shown"  # Archipelago's persistent storage, under "las": TrackerMixin.show_doors
 # A pin status's colour in its tooltip (TrackerMixin.pin_text): Universal Tracker's, by its colour names
@@ -375,8 +375,8 @@ class TrackerMixin:
             show_door_pins(self.map_page, shown)
 
     def pin_text(self, pin) -> str:
-        """A map pin's tooltip (ut_gui.MapHover): each of its checks or doors with its status, a door gone through
-        with the door it leads to; the egg's whether the goal is in logic, with the goal's items."""
+        """A map pin's tooltip (ut_gui.MapHover): each of its checks (check_label) or doors with its status, a door
+        gone through with the door it leads to; the egg's whether the goal is in logic, with the goal's items."""
         from worlds.tracker.TrackerClient import get_ut_color
         world = self.tracker_core.get_current_world()
         if pin.go_mode is not None:
@@ -385,7 +385,8 @@ class TrackerMixin:
                              + self.goal_lines(world))
         lines = []
         for key, status in pin.statuses.items():
-            name = world.location_id_to_name.get(key, str(key)) if pin.kind == "location" else door_label(key)
+            name = check_label(world.location_id_to_name.get(key, str(key))) if pin.kind == "location" \
+                else door_label(key)
             lines.append(f"{name}: [color={get_ut_color(STATUS_COLOURS.get(status, status))}]{status}[/color]")
             if pin.kind == "entrance" and world is not None and world.get_entrance(key).connected_region is not None:
                 lines.append(f"  -> {door_label(door_out(world.get_entrance(key)))}")

@@ -353,9 +353,9 @@ def seed_files(patch: dict) -> tuple:
         "hints": ap_hints.lines(patch["hints"]),
     }
     if patch["settings"]["Map Tracker"]:
-        # the activities the options leave out stay off the map, as in PopTracker
-        optional = set(patch["optional_locations"])
-        sections["map"] = ap_map.lines({loc: i for loc, i in patch["location_ids"].items() if loc not in optional},
+        # the checks the world leaves off the trackers (ut_map.hidden_checks) stay off the map
+        hidden = set(patch.get("map_hidden_locations", patch["optional_locations"]))
+        sections["map"] = ap_map.lines({loc: i for loc, i in patch["location_ids"].items() if loc not in hidden},
                                        json.loads((DATA_DIR / "location_names.json").read_text(encoding="utf-8")),
                                        patch["dungeon_entrances"] if patch["settings"]["Shuffled Dungeons"] else None)
     return config_text(patch["settings"], patch["seed_hash"], patch["slot_name"]), sections

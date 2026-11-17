@@ -11,7 +11,8 @@ from .. import GOAL_LOCATION
 from ..items import GAME
 from ..lasr import CATEGORIES, DOORS, DUNGEONS, door_entrance
 from ..locations import LOCATION_NAMES
-from ..ut_map import (CONNECTOR_INSIDES, LOCATION_DUNGEONS, MAPS, TRACKER_WORLD, connector_exits, door_pin_colour,
+from ..ut_map import (CONNECTOR_INSIDES, LOCATION_DUNGEONS, MAPS, TRACKER_WORLD, check_label, connector_exits,
+                      door_pin_colour,
                       dungeon_map, dungeon_squares, hidden_door_entrances, hidden_locations, map_index)
 
 TRACKER = Path(__file__).resolve().parent.parent / TRACKER_WORLD["map_page_folder"]
@@ -134,8 +135,18 @@ class TestUTMap(unittest.TestCase):
         world = generate_world({}, 4500)
         self.assertIsNone(world.get_location(GOAL_LOCATION).address)
 
+    def test_check_labels(self) -> None:
+        """A pin's checks show without their area, and still differ within the pin."""
+        self.assertEqual(check_label("Tal Tal Mountains West - Taltal West Chest"), "Taltal West Chest")
+        self.assertEqual(check_label(GOAL_LOCATION), GOAL_LOCATION)
+        checks = set(LOCATION_NAMES.values())
+        for pin in group("Locations"):
+            labels = [check_label(s["name"]) for s in pin["sections"] if s["name"] in checks]
+            self.assertEqual(len(labels), len(set(labels)), pin["name"])
+
     def test_hidden_checks(self) -> None:
-        """The map leaves off the optional checks and the Trendy Game's prizes the slot does not need."""
+        """The map leaves off the optional checks and the Trendy Game's prizes the slot does not need; the patch tells
+        the in-game map the same ones."""
         trendy = {LOCATION_NAMES[loc] for loc in CATEGORIES["Trendy_Rewards"]}
         yoshi, shells = "Mabe Village - Trendy Prize 1", {"Mabe Village - Trendy Prize 3", "Mabe Village - Trendy Prize 6"}
         for seed, (options, shown) in enumerate((({"seashell_mansion": 0, "rapids": False}, set()),
@@ -146,6 +157,9 @@ class TestUTMap(unittest.TestCase):
                 hidden = set(hidden_locations(world))
                 self.assertEqual(hidden - trendy, {LOCATION_NAMES[loc] for loc in world.optional})
                 self.assertEqual(trendy - hidden, shown)
+                in_game = {LOCATION_NAMES[loc] for loc in world.patch_data()["map_hidden_locations"]}
+                self.assertEqual(in_game, {LOCATION_NAMES[loc] for loc in world.shuffled} & hidden)
+                self.assertTrue(trendy - shown <= in_game)
                 if not options.get("rapids", True):
                     self.assertIn("Rapids Ride - Rapids Race 30", hidden)
 
