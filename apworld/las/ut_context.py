@@ -17,8 +17,8 @@ from .items import ITEM_TABLE, LASR_TO_ITEM
 from .lasr import DUNGEONS, INSTRUMENTS, WARP_LOCATORS, WARP_ZONES, door_entrance, door_label
 from .tracker import known_doors
 from .ut_map import (DOOR_STEPS, JUMP_LABELS, LOCATION_DUNGEONS, MAMBO, OVERWORLD_MAP, WARP_HOME, check_label,
-                     connector_exits, door_out, door_status, dungeon_squares, find_route, held_warps, hidden_door_entrances,
-                     hidden_locations, route_jumps, spot_region, warp_step)
+                     connector_exits, door_out, door_status, drop_exits, dungeon_squares, find_route, held_warps,
+                     hidden_door_entrances, hidden_locations, route_jumps, spot_region, warp_step)
 
 TRACKER_DOORS_KEY = "tracker_doors_shown"  # Archipelago's persistent storage, under "las": TrackerMixin.show_doors
 # A pin status's colour in its tooltip (TrackerMixin.pin_text): Universal Tracker's, by its colour names
@@ -202,9 +202,14 @@ class TrackerMixin:
 
     def door_pin_names(self, names: List[str]) -> List[str]:
         """A door pin's entrances, and the ways out of the other ends of the connector its door leads into in the slot
-        (connector_exits): Universal Tracker keeps their statuses on the pin too (ut_gui.load_pins)."""
+        (connector_exits) or of the area a drop lands in (drop_exits): Universal Tracker keeps their statuses on the pin
+        too (ut_gui.load_pins)."""
         entrances = self.slot_data.get("entrances") or {}
-        return list(names) + [way for name in names for way in connector_exits(entrances, name) if way not in names]
+        world = self.tracker_core.get_current_world()
+        known = self.tracker_core.multiworld.regions.entrance_cache[self.tracker_core.player_id] \
+            if world is not None else {}
+        ways = [way for name in names for way in (*connector_exits(entrances, name), *drop_exits(name, known))]
+        return list(names) + [way for way in dict.fromkeys(ways) if way not in names]
 
     def hidden_doors(self) -> Dict[str, List[str]]:
         """Each dungeon map's dungeon door entrances to hide, by the doors known now (ut_map.hidden_door_entrances)."""
@@ -472,7 +477,7 @@ class TrackerMixin:
             if pin.kind == "location":
                 name = check_label(world.location_id_to_name.get(key, str(key)))
             else:
-                name, status = door_label(key), door_status(key, status)
+                name, status = door_label(key), door_status(key, status, pin.statuses)
             lines.append(f"{name}: [color={get_ut_color(STATUS_COLOURS.get(status, status))}]{status}[/color]")
             if pin.kind == "entrance" and world is not None and world.get_entrance(key).connected_region is not None:
                 lines.append(f"  -> {door_label(door_out(world.get_entrance(key)))}")

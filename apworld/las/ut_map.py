@@ -252,11 +252,13 @@ for _door in DOORS["groups"]["connector"]:
     CONNECTOR_INSIDES.setdefault(level_of(DOORS["pairs"][_door]), []).append(DOORS["pairs"][_door])
 
 
-def connector_ends() -> Dict[str, List[str]]:
-    """Each connector inside door's other ends (CONNECTOR_INSIDES) that a way leads to from its zone (logic.yml), by any
-    rule: the level's connections and one-ways, and its doors that lead to its other doors (doors.yml); none through a
-    door out to the overworld."""
-    zone_of = {door: zone for zone, node in WRITTEN_LOGIC.items() for door in (node.get("doors") or {})}
+_ZONE_OF_DOOR = {door: zone for zone, node in WRITTEN_LOGIC.items() for door in (node.get("doors") or {})}
+
+
+def _level_ways() -> Dict[str, set]:
+    """The zones a way leads to from each zone (logic.yml), by any rule: the connections and one-ways, and the doors
+    that lead to other doors (doors.yml); none through a door to or from the overworld."""
+    zone_of = _ZONE_OF_DOOR
     ways: Dict[str, set] = {}
     for zone, node in WRITTEN_LOGIC.items():
         for target in node.get("connections") or {}:
@@ -268,20 +270,42 @@ def connector_ends() -> Dict[str, List[str]]:
     for door, to in leads:
         if not door.startswith(FIELD_DOOR) and not to.startswith(FIELD_DOOR) and door in zone_of and to in zone_of:
             ways.setdefault(zone_of[door], set()).add(zone_of[to])
-    ends = {}
+    return ways
+
+
+def _reached(zone: str, ways: Mapping[str, set]) -> set:
+    """The zones the ways (_level_ways) lead to from a zone, and the zone."""
+    reached, todo = {zone}, [zone]
+    while todo:
+        for target in ways.get(todo.pop(), ()):
+            if target not in reached:
+                reached.add(target)
+                todo.append(target)
+    return reached
+
+
+def connector_ends() -> Dict[str, List[str]]:
+    """Each connector inside door's other ends (CONNECTOR_INSIDES) that a way leads to from its zone (_level_ways)."""
+    ways, ends = _level_ways(), {}
     for insides in CONNECTOR_INSIDES.values():
         for inside in insides:
-            reached, todo = {zone_of[inside]}, [zone_of[inside]]
-            while todo:
-                for target in ways.get(todo.pop(), ()):
-                    if target not in reached:
-                        reached.add(target)
-                        todo.append(target)
-            ends[inside] = [other for other in insides if other != inside and zone_of[other] in reached]
+            reached = _reached(_ZONE_OF_DOOR[inside], ways)
+            ends[inside] = [other for other in insides if other != inside and _ZONE_OF_DOOR[other] in reached]
     return ends
 
 
-CONNECTOR_ENDS = connector_ends()
+def drop_ends() -> Dict[str, List[str]]:
+    """Each drop's way down (DROP_ROUTES) with the inside doors out of the area it lands in: those of doors.yml's pairs a
+    way leads to from the zone it lands in (_level_ways)."""
+    ways, insides = _level_ways(), sorted(DOORS["pairs"].values())
+    ends = {}
+    for drop in DROP_NAMES:
+        reached = _reached(_ZONE_OF_DOOR[DOORS["one-way"][drop]], ways)
+        ends[drop_route(drop)] = [door for door in insides if _ZONE_OF_DOOR.get(door) in reached]
+    return ends
+
+
+CONNECTOR_ENDS, DROP_ENDS = connector_ends(), drop_ends()
 
 
 def connector_exits(entrances: Mapping[str, str], door: str) -> List[str]:
@@ -292,26 +316,38 @@ def connector_exits(entrances: Mapping[str, str], door: str) -> List[str]:
     return list(CONNECTOR_ENDS.get(inside, ())) if inside is not None else []
 
 
-def door_status(name: str, status: str) -> str:
-    """An entrance's status on a door's pin: Universal Tracker's, but a drop (DROP_ROUTES) Link can reach is passable.
-    UT gives an entrance that is not shuffled "passed" once reachable, and a drop leads on however often it is taken."""
-    return "passable" if status == "passed" and name in DROP_ROUTES else status
+def drop_exits(drop: str, entrances: Iterable[str]) -> List[str]:
+    """The AP entrances out of the area a drop (DROP_ROUTES) lands in (DROP_ENDS) that the slot has (`entrances`):
+    the drop's ends, which its pin also shows (ut_gui.load_pins). None without shuffled doors."""
+    entrances = set(entrances)
+    return [door for door in DROP_ENDS.get(drop, ()) if door in entrances]
+
+
+def door_status(name: str, status: str, statuses: Mapping[str, str]) -> str:
+    """An entrance's status on a door's pin with these `statuses`: Universal Tracker's, but a drop (DROP_ROUTES) Link
+    can reach is passable on a pin without ends (drop_exits). UT gives an entrance that is not shuffled "passed" once
+    reachable."""
+    if status == "passed" and name in DROP_ROUTES and not any(other in INSIDE_DOORS for other in statuses):
+        return "passable"
+    return status
 
 
 def door_pin_colour(statuses: Mapping[str, str], connected: Callable[[str], bool] = lambda name: False) -> str:
     """A door pin's colour from Universal Tracker's statuses of its entrances (door_status), the strongest
-    (DOOR_COLOURS), else collected. On an overworld door's pin, once the player went through the door (`connected`), the connector's other
-    ends (connector_exits) he has not gone out of count too: one in logic keeps the pin in logic, one out of reach makes
-    it out of logic, and the pin is collected once he has gone out of every end. UT gives an end out of reach the same
-    status whether he has gone out of it or not, so `connected` tells them apart. Before he went through the door its
-    ends do not count, as they would tell where it leads."""
-    outside = [name for name in statuses if name in OUTSIDE_DOORS]
-    entered = any(connected(name) for name in outside)
+    (DOOR_COLOURS), else collected. On an overworld door's pin, once the player went through the door (`connected`),
+    the connector's other ends (connector_exits) he has not gone out of count too: one in logic keeps the pin in logic,
+    one out of reach makes it out of logic, and the pin is collected once he has gone out of every end. UT gives an end
+    out of reach the same status whether he has gone out of it or not, so `connected` tells them apart. Before he went
+    through the door its ends do not count, as they would tell where it leads. A drop's pin counts as gone through
+    while Link can reach the drop, as where it leads is known: its ends (drop_exits) count then, and it is collected
+    once he has gone through the doors of the area it lands in; out of reach it is out of logic."""
+    outside = [name for name in statuses if name in OUTSIDE_DOORS or name in DROP_ROUTES]
+    entered = any(statuses[name] != "impassable" if name in DROP_ROUTES else connected(name) for name in outside)
     shown = set()
     for name, status in statuses.items():
         if outside and name in INSIDE_DOORS and (not entered or connected(name)):
             continue  # an end of a door not gone through, or one gone out of
-        shown.add(door_status(name, status))
+        shown.add(door_status(name, status, statuses))
     return next((colour for status, colour in DOOR_COLOURS.items() if status in shown), "collected")
 
 

@@ -12,10 +12,9 @@ from ..items import GAME
 from ..lasr import (CATEGORIES, DOORS, DROP_NAMES, DUNGEONS, WARP_POINTS, WRITTEN_LOGIC, door_entrance, door_label,
                     door_region)
 from ..locations import LOCATION_NAMES
-from ..ut_map import (CONNECTOR_INSIDES, DROP_ROUTES, LOCATION_DUNGEONS, MAPS, TRACKER_WORLD, check_label, connector_exits,
-                      door_pin_colour,
-                      dungeon_map, dungeon_squares, hidden_door_entrances, hidden_locations, map_index,
-                      zone_places)
+from ..ut_map import (CONNECTOR_INSIDES, DROP_ENDS, DROP_ROUTES, LOCATION_DUNGEONS, MAPS, TRACKER_WORLD, check_label,
+                      connector_exits, door_pin_colour, drop_exits, dungeon_map, dungeon_squares,
+                      hidden_door_entrances, hidden_locations, map_index, zone_places)
 
 TRACKER = Path(__file__).resolve().parent.parent / TRACKER_WORLD["map_page_folder"]
 
@@ -70,6 +69,8 @@ class TestUTMap(unittest.TestCase):
                 self.assertLessEqual(set(world.door_pool), doors & entrances)
                 # the connectors' other ends a door's pin also shows (connector_exits)
                 self.assertLessEqual({way for ways in CONNECTOR_INSIDES.values() for way in ways}, entrances)
+                # the ways out of the area a drop lands in, which its pin also shows (drop_exits)
+                self.assertLessEqual({way for ways in DROP_ENDS.values() for way in ways}, entrances)
                 self.assertLessEqual(dungeon_entrances & entrances, doors)
 
     def test_zone_places(self) -> None:
@@ -94,12 +95,22 @@ class TestUTMap(unittest.TestCase):
         for level, insides in CONNECTOR_INSIDES.items():
             self.assertGreater(len(insides), 1, level)
 
+    def test_drop_exits(self) -> None:
+        """A drop's pin also shows the ways out of the area it lands in, those the slot has."""
+        eagle, lanmola = "eagle-dungeon-drop -> eagle-tower-exit", "desert -> lanmola-cave"
+        self.assertEqual(set(DROP_ROUTES), {eagle, lanmola})
+        self.assertEqual(drop_exits(eagle, ["EagleTowerExit_01A_b", "Field_03O"]), ["EagleTowerExit_01A_b"])
+        self.assertEqual(drop_exits(lanmola, ["LanmolaCave_02B"]), ["LanmolaCave_02B"])
+        self.assertEqual(drop_exits(lanmola, []), [])  # no Entrances
+        self.assertEqual(drop_exits("Field_03O", ["EagleTowerExit_01A_b"]), [])  # not a drop
+
     def test_door_pin_colour(self) -> None:
         """A door pin takes its entrances' strongest status. Once the player went through the door, the connector's
         other ends he has not gone out of count too: in logic keeps it in logic, out of reach makes it out of logic, and
         it is collected once he has gone out of every end. Before, they do not count (they would tell where it leads)."""
         door, near, far, other = "Field_15H", "Tamaranch01_02A", "Tamaranch01_01C", "Tamaranch01_04B"
-        drop = min(DROP_ROUTES)
+        drop = "eagle-dungeon-drop -> eagle-tower-exit"
+        end = "EagleTowerExit_01A_b"
         cases = [
             # two doors: the far end in logic, out of reach, gone out of while now out of reach, gone out of
             ({door: "passed", far: "passable"}, {door}, "in_logic"),
@@ -116,9 +127,17 @@ class TestUTMap(unittest.TestCase):
             ({door: "impassable", far: "passable"}, set(), "out_of_logic"),
             # a dungeon map's pin is the inside door's own: its status counts
             ({near: "impassable", door_entrance("tail-cave"): "passed"}, set(), "out_of_logic"),
-            # a drop Link can reach stays in logic: UT gives it "passed", as it is not shuffled
+            # a drop without ends (no Entrances) Link can reach stays in logic: UT gives it "passed", not being shuffled
             ({drop: "passed"}, set(), "in_logic"),
-            ({drop: "impassable"}, set(), "out_of_logic")]
+            ({drop: "impassable"}, set(), "out_of_logic"),
+            # a drop's ends count while Link can reach it: collected once he has gone through the area's doors
+            ({drop: "passed", end: "passable"}, set(), "in_logic"),
+            ({drop: "passed", end: "impassable"}, set(), "out_of_logic"),
+            ({drop: "passed", end: "passable"}, {end}, "collected"),
+            ({drop: "path", end: "passable"}, {end}, "hinted"),
+            # out of reach (Eagle's Tower's without flippers) it is out of logic, its ends in logic or gone through
+            ({drop: "impassable", end: "passable"}, set(), "out_of_logic"),
+            ({drop: "impassable", end: "passable"}, {end}, "out_of_logic")]
         for statuses, connected, colour in cases:
             with self.subTest(statuses=statuses, connected=connected):
                 self.assertEqual(door_pin_colour(statuses, connected.__contains__), colour)

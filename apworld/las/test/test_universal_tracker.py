@@ -12,7 +12,7 @@ from ..items import GAME, LASR_TO_ITEM, TRAP_ITEMS
 from ..lasr import (DOORS, DUNGEONS, ENTRANCE_POOL, HOUSE_DOOR, door_entrance, door_label, door_region,
                     dungeon_region, location_dungeon)
 from ..locations import LASR_LOCATIONS
-from ..ut_map import SPOT_ZONES, connector_exits, find_route, spot_region
+from ..ut_map import DROP_ENDS, SPOT_ZONES, connector_exits, find_route, spot_region
 
 OPTIONS = OPTION_SETS + [
     {"small_keys": "anywhere", "nightmare_keys": "anywhere", "dungeon_items": "own_dungeon",
@@ -183,14 +183,24 @@ class TestDeferredEntrances(unittest.TestCase):
         self.assertEqual(self.connected(again), self.connected(self.original.worlds[1]))
 
     def test_door_pin_names(self) -> None:
-        """The pin of a door that leads into a connector in the slot also shows that connector's other ends."""
+        """The pin of a door that leads into a connector in the slot also shows that connector's other ends, a drop's
+        pin the ways out of the area it lands in, those the slot has."""
         from ..ut_context import TrackerMixin
-        ctx = SimpleNamespace(slot_data=self.slot_data)
+        regen = regenerate(self.slot_data, 4305)
+        core = SimpleNamespace(get_current_world=lambda: regen.worlds[1], multiworld=regen, player_id=1)
+        ctx = SimpleNamespace(slot_data=self.slot_data, tracker_core=core)
         entrances = self.slot_data["entrances"]
         door = next(door for door in ENTRANCE_POOL if connector_exits(entrances, door))
         self.assertEqual(TrackerMixin.door_pin_names(ctx, [door]), [door, *connector_exits(entrances, door)])
         single = next(door for door in ENTRANCE_POOL if not connector_exits(entrances, door))
         self.assertEqual(TrackerMixin.door_pin_names(ctx, [single]), [single])
+        for drop, ends in DROP_ENDS.items():
+            self.assertEqual(TrackerMixin.door_pin_names(ctx, [drop]), [drop, *ends])
+        plain = regenerate(generate_world({}, 4306).fill_slot_data(), 4307)  # no shuffled doors: no ends
+        core.get_current_world, core.multiworld = lambda: plain.worlds[1], plain
+        ctx.slot_data = {}
+        for drop in DROP_ENDS:
+            self.assertEqual(TrackerMixin.door_pin_names(ctx, [drop]), [drop])
 
     def test_way_out_of_a_reached_inside(self) -> None:
         """Through a connector's door Link reaches its other inside door before he knows where that one leads out: its
