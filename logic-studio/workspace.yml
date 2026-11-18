@@ -310,7 +310,7 @@ mermaid-martha:
   condition-basic: flippers & necklace
 bay-fisherman:
   type: item
-  condition-basic: fishing-hook
+  condition-basic: fishing-hook & flippers
 kanalet-moat-north:
   type: item
   condition-basic: flippers
@@ -352,9 +352,10 @@ taltal-5-chest-puzzle:
   type: item
 manbo:
   type: item
-  condition-basic: ocarina
+  condition-basic: flippers & ocarina
 taltal-east-drop:
   type: item
+  condition-basic: flippers
 taltal-west-chest:
   type: item
 mad-batter-taltal:

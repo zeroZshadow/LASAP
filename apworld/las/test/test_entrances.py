@@ -11,6 +11,7 @@ from .. import LASWorld, PlacementError
 from ..lasr import (DOOR_NAMES, DOORS as GAME_DOORS, DUNGEON_DOORS, DUNGEON_POOL, DUNGEONS, ENTRANCE_POOL, HOME_DOOR,
                     HOUSE_DOOR, HOUSE_EXIT, START_DOORS, WRITTEN_LOGIC, door_entrance, door_label, door_of_label,
                     door_region, dungeon_region, shuffle_pool, start_pairs)
+from ..locations import LOCATION_NAMES
 from ..options import PlandoDoors
 from ..options import ShuffledDungeons
 from ..logic import START, parse
@@ -226,6 +227,29 @@ class TestPlandoDoors(LASTestBase):
     def test_the_house_leads_out_of_the_planned_door(self) -> None:
         self.assertEqual(self.world.start, "Field_11C")
         self.assertEqual(self.world.get_entrance(HOUSE_DOOR).connected_region.name, door_region("Field_11C"))
+
+
+# Rooms Link swims into, by their check, zone and overworld door, each led to from a door on dry land
+SWIM_ROOMS = {"bay-fisherman": ("fishing-boat", "Field_15K", "Field_15D"),
+              "taltal-east-drop": ("eagle-tower-exit", "Field_03O", "Field_05K"),
+              "manbo": ("mambo-cave", "Field_03K", "Field_09C_b")}
+
+
+class TestSwimRoomsOnDryDoors(LASTestBase):
+    """The boat's room, the cave below Eagle's Tower and Manbo's cave are deep water from the door: their checks
+    need the flippers whatever door leads there."""
+    options = {"entrances": "everything",
+               "plando_connections": [{"entrance": dry, "exit": GAME_DOORS["pairs"][door]}
+                                      for _, door, dry in SWIM_ROOMS.values()]}
+
+    def test_their_checks_need_the_flippers(self) -> None:
+        self.collect_all_but(["Flippers"])
+        for check, (zone, _, _) in SWIM_ROOMS.items():
+            self.assertTrue(self.can_reach_region(zone), zone)
+            self.assertFalse(self.can_reach_location(LOCATION_NAMES[check]), check)
+        self.collect_by_name("Flippers")
+        for check in SWIM_ROOMS:
+            self.assertTrue(self.can_reach_location(LOCATION_NAMES[check]), check)
 
 
 class TestPlandoByName(LASTestBase):

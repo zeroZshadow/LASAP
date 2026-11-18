@@ -3,10 +3,11 @@
 #   worktree.sh setup      own Archipelago worktree (vendor/Archipelago, worlds/las -> this worktree's world) and the
 #                          built modules (patcher/exl, patcher/exl-test, with their build times) and
 #                          scripts/local_paths.json from the main checkout
-#   worktree.sh test [args] the world's tests with pytest, on this worktree's world
+#   worktree.sh test [args] the world's tests with pytest, on this worktree's world: the test paths given
+#                          (worlds/las/test/...), else the whole folder
 #   worktree.sh land <subject> [<line> [<line>]]
-#                          rebase this branch onto master, put it on master as one commit with that message, then
-#                          remove the Archipelago worktree
+#                          rebase this branch onto master, run the whole world test suite, put the branch on master as
+#                          one commit with that message, then remove the Archipelago worktree
 #   worktree.sh teardown   remove the Archipelago worktree only
 # The venvs stay in the main checkout ($MAIN/.venv-ap, $MAIN/.venv-lasr); nothing here links to them.
 set -e
@@ -21,6 +22,16 @@ teardown() {
     if [ -e "$AP/worlds/las" ]; then cmd //c rmdir "$(winpath "$AP/worlds/las")"; fi
     if [ -e "$AP" ]; then git -C "$MAIN/vendor/Archipelago" worktree remove --force "$AP"; fi
     git -C "$MAIN/vendor/Archipelago" worktree prune
+}
+
+run_tests() {
+    # The whole folder unless a test path is given
+    local paths=(worlds/las/test) arg
+    for arg in "$@"; do
+        case "$arg" in worlds/las/test*) paths=() ;; esac
+    done
+    [ -e "$AP/worlds/las" ] || { echo "no Archipelago worktree: run worktree.sh setup"; return 1; }
+    (cd "$AP" && "$MAIN/.venv-ap/Scripts/python.exe" -m pytest "${paths[@]}" -q "$@")
 }
 
 case "$1" in
@@ -45,7 +56,7 @@ setup)
     ;;
 test)
     shift
-    cd "$AP" && "$MAIN/.venv-ap/Scripts/python.exe" -m pytest worlds/las/test -q "$@"
+    run_tests "$@"
     ;;
 land)
     shift
@@ -63,6 +74,11 @@ land)
         exit 1
     fi
     [ "$(git rev-parse HEAD)" != "$(git rev-parse master)" ] || { echo "nothing to land: this branch is master"; exit 1; }
+    # The whole suite, not only the tests of the files changed: a change to data such as logic.yml breaks tests elsewhere
+    if ! run_tests -p no:warnings; then
+        echo "not landed: the world's tests fail. Fix them, commit, land again"
+        exit 1
+    fi
     # The squash is made here, not in the main checkout, whose index other sessions may be using; master then only
     # fast-forwards to it.
     if [ $# -gt 1 ]; then
@@ -83,7 +99,7 @@ teardown)
     teardown
     ;;
 *)
-    sed -n '2,11p' "$0"
+    sed -n '2,12p' "$0"
     exit 1
     ;;
 esac

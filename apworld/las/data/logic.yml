@@ -604,7 +604,7 @@ bay-fisherman:
   type: item
   content: necklace
   region: fishing-boat
-  condition-basic: fishing-hook
+  condition-basic: fishing-hook & flippers
 kanalet-moat-north:
   type: item
   content: seashell
@@ -684,12 +684,13 @@ manbo:
   type: item
   content: song-mambo
   region: mambo-cave
-  condition-basic: ocarina
+  condition-basic: flippers & ocarina
 taltal-east-drop:
   type: item
   content: heart-piece
   index: 7
   region: eagle-tower-exit
+  condition-basic: flippers
 taltal-west-chest:
   type: item
   content: rupee-50
