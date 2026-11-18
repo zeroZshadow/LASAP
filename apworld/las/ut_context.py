@@ -11,6 +11,7 @@ from CommonClient import ClientCommandProcessor, CommonContext, logger
 from NetUtils import NetworkItem
 
 from . import GOAL_LOCATION, emulators
+from .checklist import ERROR, INFO, TODO
 from .install import tracker_images
 from .items import ITEM_TABLE, LASR_TO_ITEM
 from .lasr import DUNGEONS, INSTRUMENTS, door_entrance, door_label
@@ -32,10 +33,14 @@ def tracker_version(text: Optional[str]) -> Optional[Tuple[int, int, int]]:
     return (int(m[1]), int(m[2]), int(m[3])) if m else None
 
 
+# Why Universal Tracker is installed but could not be imported, for the Tracker tab (TrackerMixin.tracker_status)
+TRACKER_IMPORT_ERROR: Optional[str] = None
 try:
     from worlds.tracker.TrackerClient import TrackerCommandProcessor, TrackerGameContext, UT_VERSION
-except ImportError:
+except Exception as e:  # a broken Universal Tracker leaves the client without its map
     TrackerCommandProcessor, TrackerGameContext, UT_VERSION = None, None, None
+    if not (isinstance(e, ModuleNotFoundError) and e.name == "worlds.tracker"):  # not installed
+        TRACKER_IMPORT_ERROR = f"{type(e).__name__}: {e}"
 TRACKER_LOADED = (tracker_version(UT_VERSION) or (0, 0, 0)) >= TRACKER_MIN_VERSION
 ClientContext = TrackerGameContext if TRACKER_LOADED else CommonContext
 ClientCommands = TrackerCommandProcessor if TRACKER_LOADED else ClientCommandProcessor  # with UT's /explain and others
@@ -50,6 +55,8 @@ class TrackerMixin:
         self.tracker_images: Optional[Path] = None
         self.tracker_held: Optional[dict] = None
         self.tracker_task: Optional[asyncio.Task] = None
+        # why the map images could not be built, or Universal Tracker could not handle the slot, for the Tracker tab
+        self.tracker_problem: Optional[str] = None
         # The Tracker tab's route (route_points): its target check or door, the door it starts at (None: the slot's
         # start), the locations in logic, the sweep's state (the doors it reaches: route_doors), and the pins by
         # section
@@ -86,10 +93,14 @@ class TrackerMixin:
                 self.start_tracker_images()
             return
         intentionally = self.disconnected_intentionally
+        if cmd == "Connected":
+            self.tracker_problem = None
         try:
             super().on_package(cmd, args)
-        except Exception:
+        except Exception as e:
             logger.exception("Universal Tracker could not handle the server's " + cmd)
+            self.tracker_problem = f"Universal Tracker could not handle the server's {cmd}: " \
+                                   f"{e.args[0] if e.args else e}"
             self.disconnected_intentionally = intentionally
 
     def start_tracker_images(self) -> None:
@@ -107,10 +118,12 @@ class TrackerMixin:
         self.tracker_task = asyncio.create_task(self.build_tracker_images(romfs), name="tracker images")
 
     async def build_tracker_images(self, romfs: Path) -> None:
+        self.tracker_problem = None
         try:
             path = await asyncio.to_thread(tracker_images, romfs, logger.info)
         except Exception as e:
             logger.exception(f"Could not build the tracker's map: {e}")
+            self.tracker_problem = f"Could not build the map: {e}"
             return
         finally:
             self.tracker_task = None
@@ -126,6 +139,36 @@ class TrackerMixin:
             keys = getattr(self, "defered_entrance_datastorage_keys", None)
             if keys:
                 asyncio.create_task(self.send_msgs([{"cmd": "Get", "keys": list(keys)}]))
+
+    def tracker_status(self) -> Tuple[str, str]:
+        """What keeps the Tracker tab from showing Universal Tracker's map, as a checklist level and a line, for while
+        it shows none (client_gui.TrackerPanel)."""
+        if TRACKER_IMPORT_ERROR:
+            return ERROR, f"Universal Tracker is installed but could not be loaded: {TRACKER_IMPORT_ERROR}"
+        if UT_VERSION is None:
+            return TODO, ("Universal Tracker is not installed. Put tracker.apworld into the custom_worlds folder, then "
+                          "restart the client.")
+        if not TRACKER_LOADED:
+            return TODO, (f"Universal Tracker {UT_VERSION} is too old. The map needs "
+                          f"v{'.'.join(map(str, TRACKER_MIN_VERSION))} or newer.")
+        if self.tracker_task is not None:
+            return INFO, "Building the map from the RomFS dump. This happens once."
+        if self.tracker_problem:
+            return ERROR, self.tracker_problem
+        if self.tracker_images is None and emulators.romfs_root(self.option("romfs_folder")) is None:
+            return TODO, "The map is built from the RomFS dump: set its folder in the Patch tab."
+        if self.server is None or not self.slot:
+            return TODO, "Not connected to the server. Connect to see the map."
+        if self.tracker_images is None:
+            return INFO, "Waiting for the map images."
+        core = getattr(self, "tracker_core", None)
+        if core is not None and core.multiworld is None:
+            error = [line for line in str(core.gen_error or "").splitlines() if line.strip()]
+            return ERROR, "Universal Tracker could not generate the slot" + (f": {error[-1].strip()}" if error else
+                                                                             ".") + " /faris_asked tells more."
+        if getattr(self, "tracker_world", None) is None:
+            return ERROR, "Universal Tracker could not load the map. The log may tell why."
+        return INFO, "Loading the map."
 
     @property
     def tracker_items_received(self) -> List[NetworkItem]:

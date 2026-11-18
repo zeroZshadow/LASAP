@@ -3,6 +3,7 @@ import importlib.util
 import os
 import plistlib
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -86,6 +87,18 @@ def main(argv):
 """
 
 
+# Stands in for ap_tracker_map as tracker_images imports it: one dump's zip, by its key and map version.
+FAKE_TRACKER_MAP = """
+def romfs_key(romfs):
+    return "dump-v6"
+
+
+def build(romfs, out, path_entry=None):
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text("map")
+"""
+
+
 class TestInstall(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
@@ -153,17 +166,18 @@ class TestInstall(unittest.TestCase):
         self.assertEqual(sys.path, saved_path)
         self.assertNotIn("las_ap_patch", sys.modules)
 
+    def packaged_world(self, build: str) -> Path:
+        path = Path(self.tmp.name) / f"las {build}.apworld"
+        with zipfile.ZipFile(path, "w") as zf:
+            zf.writestr(install.PATCHER_BUILD, build)
+            zf.writestr(install.PATCHER_PREFIX + "data/items.yml", build)
+        return path
+
     def test_builtin_patcher_unpacks_once(self) -> None:
         """The packaged world's patcher is unpacked once per build; a new build replaces the old one."""
         import Utils
         root = Path(self.tmp.name)
-
-        def world(build: str) -> Path:
-            path = root / f"las {build}.apworld"
-            with zipfile.ZipFile(path, "w") as zf:
-                zf.writestr(install.PATCHER_BUILD, build)
-                zf.writestr(install.PATCHER_PREFIX + "data/items.yml", build)
-            return path
+        world = self.packaged_world
 
         with mock.patch.object(Utils.cache_path, "cached_path", str(root / "cache"), create=True):
             with mock.patch.object(install, "_world_archive", return_value=world("1")):
@@ -176,6 +190,51 @@ class TestInstall(unittest.TestCase):
                 second = install.builtin_patcher_dir(self.lines.append)
             self.assertEqual((second / "data" / "items.yml").read_text(), "2")
             self.assertFalse(first.exists())
+
+    def test_builtin_patcher_beside_a_locked_folder(self) -> None:
+        """A build's folder this user can neither read nor delete (an elevated run's mkdtemp folder on Windows) stays,
+        and the build unpacks into the next name."""
+        import Utils
+        root = Path(self.tmp.name)
+        locked = root / "cache" / "las" / "patcher" / "1"
+        (locked / "data").mkdir(parents=True)
+        (locked / ".complete").touch()
+        is_file, rmtree = Path.is_file, shutil.rmtree
+
+        def unreadable(path: Path) -> bool:
+            if path.parent == locked:
+                raise PermissionError(13, "Access is denied", str(path))
+            return is_file(path)
+
+        def undeletable(path, *args, **kwargs) -> None:
+            if Path(path) != locked:
+                rmtree(path, *args, **kwargs)
+
+        with mock.patch.object(Utils.cache_path, "cached_path", str(root / "cache"), create=True),                 mock.patch.object(install, "_world_archive", return_value=self.packaged_world("1")),                 mock.patch.object(Path, "is_file", unreadable), mock.patch.object(shutil, "rmtree", undeletable):
+            first = install.builtin_patcher_dir(self.lines.append)
+            self.assertEqual(install.builtin_patcher_dir(self.lines.append), first)
+        self.assertEqual(first, locked.with_name("1.1"))
+        self.assertEqual((first / "data" / "items.yml").read_text(), "1")
+        self.assertEqual(sum("Unpacking" in line for line in self.lines), 1)
+
+    def test_tracker_images_replace_older_zips(self) -> None:
+        """The map zip for the dump is built once; the zips of older map versions or other dumps, and unfinished
+        builds, go."""
+        import Utils
+        root = Path(self.tmp.name)
+        patcher = root / "patcher"
+        patcher.mkdir()
+        (patcher / "ap_tracker_map.py").write_text(FAKE_TRACKER_MAP)
+        folder = root / "cache" / "las" / "tracker"
+        folder.mkdir(parents=True)
+        for name in ("dump-v5.zip", "other-v6.zip", "dump-v6.part", "notes.txt"):
+            (folder / name).write_text("old")
+        with mock.patch.object(Utils.cache_path, "cached_path", str(root / "cache"), create=True),                 mock.patch.object(install, "builtin_patcher_dir", return_value=patcher):
+            out = install.tracker_images(self.romfs, self.lines.append)
+            self.assertEqual(install.tracker_images(self.romfs, self.lines.append), out)
+        self.assertEqual(out, folder / "dump-v6.zip")
+        self.assertEqual(sorted(f.name for f in folder.iterdir()), ["dump-v6.zip", "notes.txt"])
+        self.assertEqual(sum("Building" in line for line in self.lines), 1)
 
     def test_newer_world_reinstalls(self) -> None:
         """A mod the built-in patcher of another world version wrote is outdated; Play reinstalls it."""

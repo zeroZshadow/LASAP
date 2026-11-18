@@ -13,6 +13,7 @@ import tempfile
 import threading
 import traceback
 import types
+import uuid
 import zipfile
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Optional, Set
@@ -40,6 +41,8 @@ PATCHER_MODULES = {"las_ap_patch", "ap_assets", "ap_bntx", "ap_chest_model", "ap
 # functions by module name: patcher runs leave these imported
 TRACKER_MODULES = {"ap_astc", "ap_tracker_map"}
 _PATCHER_LOCK = threading.Lock()
+UNPACK_TRIES = 5  # builtin_patcher_dir: the folder names a build tries
+_UNPACK_LOCK = threading.Lock()  # builtin_patcher_dir: the tracker's map and a patch may unpack at once
 
 
 class InstallError(Exception):
@@ -164,27 +167,49 @@ def builtin_patcher_dir(log: Callable[[str], None]) -> Path:
         return SOURCE_PATCHER
     import Utils
     cache = Path(Utils.cache_path("las", "patcher"))
-    target = cache / _archive_build(archive)
-    if not (target / ".complete").is_file():
-        log("Unpacking the patcher. This happens once for each version of the world.")
-        if cache.is_dir():
+    build = _archive_build(archive)
+    # A folder of a build this user cannot read or delete, such as one an elevated run made with mkdtemp, stays: the
+    # build goes into the next name then.
+    names = [build] + [f"{build}.{n}" for n in range(1, UNPACK_TRIES)]
+    with _UNPACK_LOCK:
+        target = next((cache / name for name in names if _unpacked(cache / name)), None)
+        if target is None:
+            log("Unpacking the patcher. This happens once for each version of the world.")
+            cache.mkdir(parents=True, exist_ok=True)
             for old in cache.iterdir():
                 shutil.rmtree(old, ignore_errors=True)
-        cache.mkdir(parents=True, exist_ok=True)
-        tmp = Path(tempfile.mkdtemp(dir=cache))
-        try:
-            with zipfile.ZipFile(archive) as zf:
-                for name in zf.namelist():
-                    if name.startswith(PATCHER_PREFIX) and not name.endswith("/"):
-                        dest = tmp / name[len(PATCHER_PREFIX):]
-                        dest.parent.mkdir(parents=True, exist_ok=True)
-                        dest.write_bytes(zf.read(name))
-            tmp.rename(target)
-        except BaseException:
-            shutil.rmtree(tmp, ignore_errors=True)
-            raise
-        (target / ".complete").touch()
+            target = next((cache / name for name in names if not (cache / name).exists()), None)
+            if target is None:
+                raise InstallError(f"Could not unpack the patcher: this user cannot delete the folders in {cache}. "
+                                   f"Delete that folder and try again.")
+            _unpack(archive, cache, target)
     return target
+
+
+def _unpacked(target: Path) -> bool:
+    try:
+        return (target / ".complete").is_file()
+    except OSError:
+        return False
+
+
+def _unpack(archive: Path, cache: Path, target: Path) -> None:
+    # Not tempfile.mkdtemp: on Windows its folder lets in only SYSTEM, the Administrators and its owner, and the owner
+    # of an elevated run's folder is the Administrators group, which locks the player's normal runs out of it.
+    tmp = cache / f".unpack-{uuid.uuid4().hex}"
+    tmp.mkdir()
+    try:
+        with zipfile.ZipFile(archive) as zf:
+            for name in zf.namelist():
+                if name.startswith(PATCHER_PREFIX) and not name.endswith("/"):
+                    dest = tmp / name[len(PATCHER_PREFIX):]
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    dest.write_bytes(zf.read(name))
+        tmp.rename(target)
+    except BaseException:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise
+    (target / ".complete").touch()
 
 
 def _patcher_file(name: str) -> Optional[bytes]:
@@ -258,8 +283,9 @@ def run_builtin_patcher(patch_file: Path, romfs: Path, out: Path, log: Callable[
 
 
 def tracker_images(romfs: Path, log: Callable[[str], None]) -> Path:
-    """The tracker's map images zip for this RomFS dump, built once (DESIGN.md, Universal Tracker map). Only the
-    import takes _PATCHER_LOCK, so a patch need not wait for the build."""
+    """The tracker's map images zip for this RomFS dump, built once (DESIGN.md, Universal Tracker map), without the
+    folder's other zips (remove_other_images). Only the import takes _PATCHER_LOCK, so a patch need not wait for the
+    build."""
     import Utils
     root = builtin_patcher_dir(log)
     with _PATCHER_LOCK, _patcher_imports(root, PATCHER_MODULES | TRACKER_MODULES):
@@ -269,10 +295,22 @@ def tracker_images(romfs: Path, log: Callable[[str], None]) -> Path:
         if not out.is_file():
             log("Building the tracker's map from the RomFS dump. This happens once.")
             images.build(romfs, out, path_entry=str(root))
+        remove_other_images(out)
         return out
     finally:
         with _PATCHER_LOCK:
             _forget_patcher_modules(PATCHER_MODULES | TRACKER_MODULES)
+
+
+def remove_other_images(keep: Path) -> None:
+    """Deletes the map zips (and unfinished .part builds) next to `keep`: those of an older MAP_VERSION or another
+    RomFS dump. One still open, in another client window, stays."""
+    for file in keep.parent.iterdir():
+        if file != keep and file.suffix in (".zip", ".part") and file.is_file():
+            try:
+                file.unlink()
+            except OSError:
+                pass
 
 
 def run_patcher(command: str, patch_file: Path, romfs: Path, out: Path, log: Callable[[str], None],

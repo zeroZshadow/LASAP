@@ -795,20 +795,71 @@ class PatchPanel(ScrollView):
         self.content.add_widget(box)
 
 
+class MapTab:
+    """Stands in for Universal Tracker's map tab, whose page the Tracker tab shows (LASManager.add_client_tab): UT
+    takes the page out of it and hands it back to remove_client_tab."""
+    def __init__(self, content: Widget) -> None:
+        self.content = content
+
+
+class TrackerPanel(MDBoxLayout):
+    """The Tracker tab: Universal Tracker's map page while UT shows one, else what keeps it from showing one
+    (TrackerMixin.tracker_status)."""
+    def __init__(self, ctx: "LASContext", **kwargs):
+        super().__init__(orientation="vertical", **kwargs)
+        self.ctx = ctx
+        self.map: Optional[Widget] = None
+        self.shown: Optional[Tuple[str, str]] = None
+        self.status = column(padding=(dp(16), dp(14)))
+        self.hide_map()
+        Clock.schedule_interval(lambda dt: self.refresh(), 1)
+
+    def show_map(self, page: Widget) -> None:
+        self.clear_widgets()
+        self.map = page
+        self.add_widget(page)
+
+    def hide_map(self) -> None:
+        self.clear_widgets()
+        self.map = self.shown = None
+        self.add_widget(self.status)
+        self.add_widget(fill())
+        self.refresh()
+
+    def refresh(self) -> None:
+        if self.map is not None:
+            return
+        status = self.ctx.tracker_status()
+        if status == self.shown:
+            return
+        self.shown = level, text = status
+        colors = Palette()
+        if level == INFO:
+            mark = MDCircularProgressIndicator(size_hint=(None, None), size=(dp(18), dp(18)), line_width=dp(2),
+                                               pos_hint={"center_y": 0.5})
+        else:
+            mark = icon(ICONS[level], colors.status[level])
+        self.status.clear_widgets()
+        self.status.add_widget(row(mark, label(text, 14, colors.text), spacing=10))
+
+
 def make_manager(base):
     class LASManager(base):
         base_title = "Archipelago Link's Awakening (Switch) Client"
         patch_panel: PatchPanel
         patch_tab: MDNavigationItemBase
+        tracker_panel: TrackerPanel
 
         def build(self):
             container = super().build()
             self.patch_panel = PatchPanel(self.ctx)
             self.patch_tab = self.add_client_tab("Patch", self.patch_panel)
+            self.tracker_panel = TrackerPanel(self.ctx)
+            self.add_client_tab("Tracker", self.tracker_panel)
             return container
 
         def add_client_tab(self, title: str, content, index: int = -1):
-            """Universal Tracker's tabs: its map tab as "Tracker", not its list of locations in logic (it keeps
+            """Universal Tracker's tabs: its map page in the Tracker tab, not its list of locations in logic (it keeps
             writing to that list's widget, which is then shown nowhere)."""
             if title == "Tracker Page":
                 return None
@@ -818,7 +869,15 @@ def make_manager(base):
                     adjust_map_page(content, self.ctx)
                 except Exception as e:
                     logger.exception(f"Could not adjust Universal Tracker's map tab: {e}")
-            return super().add_client_tab("Tracker" if title == "Map Page" else title, content, index)
+                self.tracker_panel.show_map(content)
+                return MapTab(content)
+            return super().add_client_tab(title, content, index)
+
+        def remove_client_tab(self, tab) -> None:
+            if isinstance(tab, MapTab):
+                self.tracker_panel.hide_map()
+            else:
+                super().remove_client_tab(tab)
 
         def show_patch_tab(self) -> None:
             if not hasattr(self, "patch_tab") or self.screens.current_tab is self.patch_tab:

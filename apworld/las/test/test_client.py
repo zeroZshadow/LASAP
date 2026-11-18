@@ -25,6 +25,63 @@ class TestTrackerVersion(unittest.TestCase):
         self.assertGreaterEqual(tracker_version("v0.3.10"), TRACKER_MIN_VERSION)
 
 
+class TestTrackerStatus(unittest.TestCase):
+    def test_status_until_the_map_shows(self) -> None:
+        """The Tracker tab says what keeps Universal Tracker's map from showing, in the order the player meets it."""
+        from pathlib import Path
+        from types import SimpleNamespace
+        from .. import ut_context
+        from ..checklist import ERROR, INFO, TODO
+
+        async def run() -> list:
+            ctx, _, _ = client_context()
+            statuses = []
+
+            def status(**globals_) -> str:
+                values = {"TRACKER_IMPORT_ERROR": None, "UT_VERSION": "v0.3.8", "TRACKER_LOADED": True, **globals_}
+                with mock.patch.multiple(ut_context, **values):
+                    level, text = ctx.tracker_status()
+                statuses.append((level, text.split(" ")[0:3]))
+                return text
+
+            status(TRACKER_IMPORT_ERROR="SyntaxError: bad", UT_VERSION=None, TRACKER_LOADED=False)
+            status(UT_VERSION=None, TRACKER_LOADED=False)
+            status(UT_VERSION="v0.3.5", TRACKER_LOADED=False)
+            with mock.patch.object(ut_context.emulators, "romfs_root", return_value=None):
+                status()
+            with mock.patch.object(ut_context.emulators, "romfs_root", return_value=Path("romfs")):
+                ctx.tracker_task = object()
+                status()
+                ctx.tracker_task, ctx.tracker_problem = None, "Could not build the map: denied"
+                status()
+                ctx.tracker_problem = None
+                status()
+                ctx.server, ctx.slot = object(), 1
+                status()
+                ctx.tracker_images = Path("map.zip")
+                ctx.tracker_core = SimpleNamespace(multiworld=None, gen_error="Traceback\n  line\nValueError: bad\n")
+                self.assertIn("ValueError: bad", status())
+                ctx.tracker_core.multiworld, ctx.tracker_world = object(), None
+                status()
+                ctx.tracker_world = object()
+                status()
+            return statuses
+
+        self.assertEqual(asyncio.run(run()), [
+            (ERROR, ["Universal", "Tracker", "is"]),
+            (TODO, ["Universal", "Tracker", "is"]),
+            (TODO, ["Universal", "Tracker", "v0.3.5"]),
+            (TODO, ["The", "map", "is"]),
+            (INFO, ["Building", "the", "map"]),
+            (ERROR, ["Could", "not", "build"]),
+            (TODO, ["Not", "connected", "to"]),
+            (INFO, ["Waiting", "for", "the"]),
+            (ERROR, ["Universal", "Tracker", "could"]),
+            (ERROR, ["Universal", "Tracker", "could"]),
+            (INFO, ["Loading", "the", "map."]),
+        ])
+
+
 class TestTrackerItems(unittest.TestCase):
     def test_starting_items_reach_universal_tracker(self) -> None:
         """Universal Tracker takes the slot's starting items, which the server sends only at items_handling 0b111,

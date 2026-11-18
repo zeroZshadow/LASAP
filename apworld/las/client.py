@@ -726,6 +726,8 @@ class LASContext(TrackerMixin, ClientContext):
             asyncio.create_task(self.detect_from_emulator())
         if key == "ghost_relay":
             self.update_ghosts()
+        if key == "romfs_folder" and self.ui:  # the window's event loop runs the build
+            self.start_tracker_images()
         self.refresh_patch_tab()
 
     @staticmethod
