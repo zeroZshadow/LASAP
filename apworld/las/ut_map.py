@@ -6,8 +6,10 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 
 from .items import LASR_TO_ITEM
 from .lasr import (CATEGORIES, DOORS, DUNGEON_DOORS, DUNGEON_NAMES, DUNGEON_NUMBERS, DUNGEONS, INSTRUMENTS, LOGIC,
-                   WRITTEN_LOGIC, door_entrance, door_region, dungeon_of, dungeon_region)
+                   WARP_MAP, WARP_ZONES, WRITTEN_LOGIC, door_entrance, door_region, dungeon_of, dungeon_region,
+                   in_dungeon)
 from .locations import LOCATION_NAMES
+from .logic import START
 from .tracker import LEVEL_KEY
 
 OVERWORLD_MAP = "Koholint Island"
@@ -118,11 +120,46 @@ def spot_region(locator: str, regions: Mapping[str, Any]) -> Any:
     return None
 
 
-def find_route(start: Any, goal: Any, state: Any) -> Optional[List[Any]]:
+# The warps Link takes from where he stands (route_jumps), by their entrances: the warp home into Tarin's house, Menu's
+# way into the start (DESIGN.md, Warp menu), and Manbo's Mambo onto the warp map, the start's way onto it (Warp points)
+WARP_HOME, MAMBO = f"To {START}", f"{START} -> {WARP_MAP}"
+JUMP_LABELS = {WARP_HOME: "Warp home", MAMBO: "Manbo's Mambo"}
+
+
+def route_jumps(world: Any) -> List[Any]:
+    """find_route's jumps: (entrance, whether Link can take it in a region). The warp home works anywhere, Manbo's Mambo
+    outside a dungeon (in one it leads to the dungeon's entrance: the dungeon's zones' own routes)."""
+    tests: Dict[str, Callable[[Any], bool]] = {WARP_HOME: lambda region: True,
+                                               MAMBO: lambda region: not in_dungeon(region.name)}
+    found = []
+    for name, test in tests.items():
+        try:
+            found.append((world.get_entrance(name), test))
+        except KeyError:
+            pass
+    return found
+
+
+def warp_step(way: Any) -> Optional[str]:
+    """What a step does on the warp map: "into" from a warp point or Manbo's Mambo, "out" onto a warp point, else
+    None."""
+    if way.connected_region is not None and way.connected_region.name == WARP_MAP:
+        return "into"
+    return "out" if way.parent_region is not None and way.parent_region.name == WARP_MAP else None
+
+
+def held_warps(zone: str, state: Any, player: int) -> List[str]:
+    """The warp points in a zone whose items `state` has (lasr.WARP_ZONES), in WARP_POINTS' order."""
+    return [item for item, at in WARP_ZONES.items() if at == zone and state.has(LASR_TO_ITEM[item], player)]
+
+
+def find_route(start: Any, goal: Any, state: Any, jumps: Iterable[Any] = ()) -> Optional[List[Any]]:
     """The entrances from region `start` to region `goal` whose rules `state` passes, through the fewest doors
-    (DOOR_STEPS); None when there is no way."""
+    (DOOR_STEPS) and warps; None when there is no way. Each entrance starts where the one before ends, but `jumps`
+    (route_jumps), which Link takes from any region its test passes."""
+    jumps = list(jumps)
     best = {start: 0}
-    came: Dict[Any, Any] = {}
+    came: Dict[Any, Any] = {}  # region -> (the entrance into it, the region it was taken from)
     queue = [(0, 0, start)]
     pushed = 1
     while queue:
@@ -130,17 +167,19 @@ def find_route(start: Any, goal: Any, state: Any) -> Optional[List[Any]]:
         if region is goal:
             steps = []
             while region is not start:
-                steps.append(came[region])
-                region = came[region].parent_region
+                way, region = came[region]
+                steps.append(way)
             return steps[::-1]
         if cost > best[region]:
             continue
-        for way in region.exits:
+        ways = [(way, way.name in DOOR_STEPS or warp_step(way) == "into") for way in region.exits]
+        ways += [(way, True) for way, test in jumps if way.parent_region is not region and test(region)]
+        for way, far in ways:
             to = way.connected_region
-            step = cost + (DOOR_COST if way.name in DOOR_STEPS else 1)
+            step = cost + (DOOR_COST if far else 1)
             if to is None or step >= best.get(to, step + 1) or not way.access_rule(state):
                 continue
-            best[to], came[to] = step, way
+            best[to], came[to] = step, (way, region)
             heapq.heappush(queue, (step, pushed, to))
             pushed += 1
     return None

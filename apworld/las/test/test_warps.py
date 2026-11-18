@@ -1,11 +1,15 @@
 """Warp Points: the items that open the overworld's warp points (DESIGN.md, Warp points)."""
 from collections import Counter
+from types import SimpleNamespace
+
+from BaseClasses import CollectionState
 
 from . import LASTestBase
 from .. import JUNK
 from ..items import LASR_TO_ITEM
 from ..lasr import WARP_POINTS
 from ..locations import LOCATION_NAMES
+from ..ut_map import MAMBO, find_route, route_jumps
 
 ABOVE_TURTLE_ROCK = LOCATION_NAMES["above-turtle-rock"]
 
@@ -48,6 +52,77 @@ class TestWarpPoints(LASTestBase):
         self.assertFalse(self.can_reach_location(ABOVE_TURTLE_ROCK))
         self.collect_by_name(LASR_TO_ITEM["warp-turtle-rock"])
         self.assertTrue(self.can_reach_location(ABOVE_TURTLE_ROCK))
+
+    def test_warp_point_to_warp_point(self) -> None:
+        """Walking onto an open warp point leads to every other open one, with no Ocarina."""
+        self.collect_by_name(LASR_TO_ITEM["bracelet"])
+        self.assertTrue(self.can_reach_region("prairie"))
+        self.collect_by_name(LASR_TO_ITEM["warp-turtle-rock"])
+        self.assertFalse(self.can_reach_location(ABOVE_TURTLE_ROCK))
+        self.collect_by_name(LASR_TO_ITEM["warp-ukuku-prairie"])
+        self.assertTrue(self.can_reach_location(ABOVE_TURTLE_ROCK))
+
+    def state_of(self, *items: str) -> CollectionState:
+        state = CollectionState(self.multiworld)
+        for item in items:
+            state.collect(self.world.create_item(LASR_TO_ITEM[item]), prevent_sweep=True)
+        return state
+
+    def region(self, name: str):
+        return self.multiworld.get_region(name, self.player)
+
+    def test_rock_over_platform(self) -> None:
+        """Dampe's Shack's platform lies under a rock: warping from it needs the Power Bracelet."""
+        goal = self.region("turtle-dungeon-top")
+        state = self.state_of("warp-dampes-shack", "warp-turtle-rock")
+        self.assertIsNone(find_route(self.region("goponga-central"), goal, state))
+        state.collect(self.world.create_item(LASR_TO_ITEM["bracelet"]), prevent_sweep=True)
+        self.assertIsNotNone(find_route(self.region("goponga-central"), goal, state))
+
+    def test_route_by_mambo(self) -> None:
+        """The tracker's route plays Manbo's Mambo where Link stands, outside a dungeon (ut_map.route_jumps)."""
+        goal = self.region("turtle-dungeon-top")
+        state = self.state_of("ocarina", "song-mambo", "warp-turtle-rock")
+        self.assertIsNone(find_route(self.region("mabe"), goal, state))
+        route = find_route(self.region("mabe"), goal, state, route_jumps(self.world))
+        self.assertEqual([way.name for way in route], [MAMBO, "warp-map -> turtle-dungeon-top"])
+        self.assertEqual(self.world.explain_path(route[0], state), [{"type": "color", "color": "blue", "text": "Manbo's Mambo"}])
+        self.assertEqual(self.world.explain_path(route[1], state),
+                         [{"type": "text", "text": f" -> {LASR_TO_ITEM['warp-turtle-rock']}"}])
+        inside = [way.name for way in find_route(self.region("D1.a"), goal, state, route_jumps(self.world))]
+        self.assertIn(MAMBO, inside[1:])
+
+    def test_route_by_warp_point(self) -> None:
+        """The tracker's route walks onto a warp point, named by the item Link has, and warps from it."""
+        goal = self.region("turtle-dungeon-top")
+        state = self.state_of("warp-seashell-mansion", "warp-turtle-rock")
+        route = find_route(self.region("prairie"), goal, state, route_jumps(self.world))
+        self.assertEqual([way.name for way in route], ["prairie -> warp-map", "warp-map -> turtle-dungeon-top"])
+        self.assertEqual(self.world.explain_path(route[0], state),
+                         [{"type": "color", "color": "blue", "text": LASR_TO_ITEM["warp-seashell-mansion"]}])
+
+    def test_route_legs(self) -> None:
+        """On the map a warp is a jump: walked to the warp point Link warps from, dashed to the one he lands on, and
+        dashed from where Link stands for Manbo's Mambo (TrackerMixin.route_points)."""
+        from ..ut_context import TrackerMixin
+        target = LOCATION_NAMES["above-turtle-rock"]
+        locs = [{"sections": [{"name": name}], "map_locations": [{"map": "M", "x": x, "y": 0}]}
+                for name, x in (("Field_X", 0), (target, 3))]
+        warps = {item: None for item in WARP_POINTS}
+        warps.update({"warp-ukuku-prairie": (1, 0), "warp-seashell-mansion": (9, 0), "warp-turtle-rock": (2, 0)})
+        core = SimpleNamespace(get_current_world=lambda: self.world, multiworld=self.multiworld, player_id=self.player)
+
+        def points(route, *items):
+            ctx = SimpleNamespace(logical_path_entrances=route, route_start="Field_X", route_target=target,
+                                  tracker_core=core, warp_pins=lambda _: warps, tracker_state=self.state_of(*items),
+                                  section_pins=lambda: TrackerMixin.section_pins(SimpleNamespace(locs=locs, route_pins=None)))
+            return TrackerMixin.route_points(ctx, "M")[0]
+
+        self.assertEqual(points(["prairie -> warp-map", "warp-map -> turtle-dungeon-top"],
+                                "warp-ukuku-prairie", "warp-turtle-rock"),
+                         [(0, 0, True), (1, 0, True), (2, 0, False), (3, 0, True)])
+        self.assertEqual(points([MAMBO, "warp-map -> turtle-dungeon-top"], "warp-turtle-rock"),
+                         [(0, 0, True), (2, 0, False), (3, 0, True)])
 
 
 class TestWarpPointsOff(LASTestBase):

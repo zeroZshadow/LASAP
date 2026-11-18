@@ -20,6 +20,8 @@ Run with .venv-ap: python scripts/ut_map.py [<PopTracker pack folder>]
   (lasr.dungeon_route), which the client names after the door (lasr.door_label).
 - The goal's pin: its event location (GOAL_LOCATION) at the egg's door on the overworld, placed as the doors are.
   The client colours it by whether the goal is in logic (TrackerMixin.updateTracker).
+- The warp points' places on the island (maps.json's "warps", by their items: lasr.WARP_POINTS), where a route's
+  warps start and land (TrackerMixin.route_points): Logic Studio's places.json warp points, placed as the doors are.
 - A dungeon map's stair letters (maps.json's "stairs", which the client draws over the map: ut_gui.StairLetters):
   the stairs of a side-view passage (places.json layout's side rooms side by side), or of a stair that leads to
   another top-view room, share a letter, A, B, ... from the map's top.
@@ -42,7 +44,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(ROOT / "patcher"))
 from worlds.las import GOAL_LOCATION  # noqa: E402
 from worlds.las.items import LASR_TO_ITEM  # noqa: E402
-from worlds.las.lasr import DOORS, DUNGEON_DOORS, DUNGEONS, door_entrance, dungeon_route  # noqa: E402
+from worlds.las.lasr import DOORS, DUNGEON_DOORS, DUNGEONS, WARP_POINTS, door_entrance, dungeon_route  # noqa: E402
 from worlds.las.locations import display_name  # noqa: E402
 from worlds.las.ut_map import DUNGEON_SECTIONS, ITEM_SECTIONS, MAPS  # noqa: E402
 import ap_tracker_map  # noqa: E402
@@ -128,6 +130,23 @@ def world_to_pin(pins: dict):
     return place
 
 
+@functools.cache
+def overworld_place(pack: Path):
+    """world_to_pin through the pack's overworld pins."""
+    return world_to_pin(poptracker_map.overworld_pins(poptracker_map.pack_locations(pack)))
+
+
+def warp_spots(place) -> list:
+    """Each warp point's place on the island, by its item: its hole or platform (places.json warps) at its height."""
+    items = {index: item for item, index in WARP_POINTS.items()}
+    heights = {(w["room"], w["x"], w["z"]): w["y"] for w in places()["warps"]}
+    spots = []
+    for point in places()["warp_points"]:
+        x, y = on_island(*place(point["x"], point["z"], heights[point["room"], point["x"], point["z"]]))
+        spots.append({"warp": items[point["index"]], "x": x, "y": y})
+    return spots
+
+
 def on_island(x: float, y: float):
     """A pack pin's place on ap_tracker_map's island image."""
     scale, dx, dy = PACK_TO_ISLAND
@@ -198,8 +217,9 @@ def stair_letters(level: str) -> list:
             for x, y in group]
 
 
-def maps_json() -> list:
-    maps = [{"name": MAPS[0], "img": ap_tracker_map.ISLAND_IMAGE, "location_size": ISLAND_PIN}]
+def maps_json(pack: Path) -> list:
+    maps = [{"name": MAPS[0], "img": ap_tracker_map.ISLAND_IMAGE, "location_size": ISLAND_PIN,
+             "warps": warp_spots(overworld_place(pack))}]
     for name, number in zip(MAPS[1:], DUNGEON_NUMBERS):
         maps.append({"name": name, "img": ap_tracker_map.dungeon_image(number), "location_size": DUNGEON_PIN,
                      "location_border_thickness": 2, "stairs": stair_letters(ap_tracker_map.LEVELS[number])})
@@ -242,7 +262,7 @@ def locations_json(pack: Path) -> list:
                 spot["sections"].append(section)
     if unplaced:
         raise SystemExit(f"no pin for {unplaced}")
-    place = world_to_pin(poptracker_map.overworld_pins(locs))
+    place = overworld_place(pack)
     doors = door_spots()
     dungeon_of = {door: dungeon for dungeon, door in DUNGEON_DOORS.items()}
     entrances = []
@@ -287,7 +307,7 @@ def main() -> None:
     parser.add_argument("pack", nargs="?", type=Path)
     args = parser.parse_args()
     pack = args.pack or local_path("lasr_brooty")
-    write(OUT / "maps.json", maps_json())
+    write(OUT / "maps.json", maps_json(pack))
     write(OUT / "locations.json", locations_json(pack))
     write(OUT / "items.json", items_json())
     print(f"written to {OUT}")

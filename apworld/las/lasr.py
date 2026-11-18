@@ -1,6 +1,7 @@
 """LASR (LAS Randomizer) data: logic, item pool and location categories, loaded from the bundled YAML files."""
 import json
 import pkgutil
+import re
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
 import yaml
@@ -49,6 +50,14 @@ def dungeon_region(dungeon: str) -> str:
     return SPEC["dungeons"][dungeon]
 
 
+_DUNGEON_ZONE = re.compile(r"D\d\.")  # a dungeon level's zones: D1.a (logic-studio/game.yml, zone_prefixes)
+
+
+def in_dungeon(region: str) -> bool:
+    """Whether a region is inside a dungeon: one of a dungeon level's zones, or the region just inside its door."""
+    return bool(_DUNGEON_ZONE.match(region)) or region in SPEC["dungeons"].values()
+
+
 def slot_doors(entrances: Optional[Dict[str, str]] = None,
                dungeon_entrances: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
     """doors.yml with a slot's doors: the overworld doors leading as its entrances say, and each dungeon's door into the
@@ -94,6 +103,13 @@ WARP_POINTS: Dict[str, int] = {
 WARP_ITEMS = {item: {"type": "important", "quantity": 0, "item-key": f"$WARP:{index}"}
               for item, index in WARP_POINTS.items()}
 ITEM_DEFS.update(WARP_ITEMS)
+# The warp map's region (logic.yml): a warp point and Manbo's Mambo lead onto it, and it on to each open point's zone
+WARP_MAP = "warp-map"
+# Each warp point's zone, by its item: where the warp map's way out with that item leads
+WARP_ZONES: Dict[str, str] = {item: zone for zone, rule in WRITTEN_LOGIC[WARP_MAP]["one-way"].items()
+                              for item in re.findall(r"warp-[a-z-]+", str(rule)) if item in WARP_POINTS}
+if set(WARP_ZONES) != set(WARP_POINTS):
+    raise ValueError(f"logic.yml's {WARP_MAP} leads nowhere with {sorted(set(WARP_POINTS) - set(WARP_ZONES))}")
 if set(ITEM_DEFS) != set(SPEC["items"]):
     raise ValueError(f"data/logic_spec.yml and items.yml name other items: {sorted(set(ITEM_DEFS) ^ set(SPEC['items']))}")
 

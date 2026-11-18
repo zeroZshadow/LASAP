@@ -976,18 +976,22 @@ rapids:
     rapids-river: always
 tarin-house:
   type: region
-  # Manbo's Mambo to an open warp point (Warp Points), from anywhere outside a dungeon: the warp home reaches the house
-  # from anywhere
+  # Manbo's Mambo opens the warp map from anywhere outside a dungeon: the warp home reaches the house from anywhere
   one-way:
-    prairie: ocarina & song-mambo & (warp-ukuku-prairie | warp-seashell-mansion)
-    turtle-dungeon-top: ocarina & song-mambo & warp-turtle-rock
-    taltal-heights: ocarina & song-mambo & warp-taltal-heights
-    animal-village: ocarina & song-mambo & warp-animal-village
-    tracy-yard: ocarina & song-mambo & warp-manbos-pond
-    goponga-central: ocarina & song-mambo & warp-dampes-shack
-    taltal-east2-right: ocarina & song-mambo & warp-taltal-east
-    marthas-bay-land: ocarina & song-mambo & warp-marthas-bay
-    taltal-west2: ocarina & song-mambo & warp-taltal-west
+    warp-map: ocarina & song-mambo
+warp-map:
+  type: region
+  # The warp map (Warp Points): from a warp point or Manbo's Mambo, on to any open warp point
+  one-way:
+    prairie: warp-ukuku-prairie | warp-seashell-mansion
+    turtle-dungeon-top: warp-turtle-rock
+    taltal-heights: warp-taltal-heights
+    animal-village: warp-animal-village
+    tracy-yard: warp-manbos-pond
+    goponga-central: warp-dampes-shack
+    taltal-east2-right: warp-taltal-east
+    marthas-bay-land: warp-marthas-bay
+    taltal-west2: warp-taltal-west
 mabe-well-porch:
   type: region
 bed-room:
@@ -1054,6 +1058,7 @@ goponga-central:
   connections:
     swamp: bracelet
   one-way:
+    warp-map: warp-dampes-shack & bracelet
     taltal-central: bracelet
 graveyard-west:
   type: region
@@ -1069,6 +1074,8 @@ tracy-yard:
   type: region
   connections:
     graveyard-east: bracelet
+  one-way:
+    warp-map: warp-manbos-pond
 prairie:
   type: region
   connections:
@@ -1080,6 +1087,7 @@ prairie:
     kanalet-porch: open-kanalet | (kanalet & break-bush)
     kanalet-east: bananas | completed-bridge | cross-water
   one-way:
+    warp-map: warp-ukuku-prairie | warp-seashell-mansion
     slime-dungeon-porch: feather | cross-water
     kanalet-hookshot-island: hookshot
 frog-maze:
@@ -1110,11 +1118,14 @@ animal-village:
     mermaid-statue-land: hookshot
     desert: break-bush
     rapids-south: bracelet
+  one-way:
+    warp-map: warp-animal-village
 desert:
   type: region
 marthas-bay-land:
   type: region
   one-way:
+    warp-map: warp-marthas-bay & bracelet
     marthas-bay-bushland: ((rooster | feather) & (boomerang | rod)) | (feather & sword)
 prairie-hill:
   type: region
@@ -1171,6 +1182,8 @@ taltal-heights:
   type: region
   connections:
     rapids-porch: hookshot
+  one-way:
+    warp-map: warp-taltal-heights
 anglers-dungeon-porch:
   type: region
   connections:
@@ -1237,6 +1250,8 @@ taltal-east2-center:
   type: region
 taltal-east2-right:
   type: region
+  one-way:
+    warp-map: warp-taltal-east
 eagle-dungeon-porch:
   type: region
   one-way:
@@ -1257,12 +1272,15 @@ taltal-west2:
   connections:
     turtle-dungeon-porch: always
   one-way:
+    warp-map: warp-taltal-west & bracelet
     taltal-west1: always
     goponga-west: always
 turtle-dungeon-porch:
   type: region
 turtle-dungeon-top:
   type: region
+  one-way:
+    warp-map: warp-turtle-rock
 face-dungeon-top:
   type: region
 rapids-river:

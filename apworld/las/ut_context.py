@@ -14,10 +14,11 @@ from . import GOAL_LOCATION, emulators
 from .checklist import ERROR, INFO, TODO
 from .install import tracker_images
 from .items import ITEM_TABLE, LASR_TO_ITEM
-from .lasr import DUNGEONS, INSTRUMENTS, door_entrance, door_label
+from .lasr import DUNGEONS, INSTRUMENTS, WARP_ZONES, door_entrance, door_label
 from .tracker import known_doors
-from .ut_map import (DOOR_STEPS, LOCATION_DUNGEONS, OVERWORLD_MAP, check_label, connector_exits, door_out,
-                     dungeon_squares, find_route, hidden_door_entrances, hidden_locations, spot_region)
+from .ut_map import (DOOR_STEPS, JUMP_LABELS, LOCATION_DUNGEONS, MAMBO, OVERWORLD_MAP, WARP_HOME, check_label,
+                     connector_exits, door_out, dungeon_squares, find_route, held_warps, hidden_door_entrances,
+                     hidden_locations, route_jumps, spot_region, warp_step)
 
 TRACKER_DOORS_KEY = "tracker_doors_shown"  # Archipelago's persistent storage, under "las": TrackerMixin.show_doors
 # A pin status's colour in its tooltip (TrackerMixin.pin_text): Universal Tracker's, by its colour names
@@ -279,8 +280,9 @@ class TrackerMixin:
 
     def route_from_exit(self) -> bool:
         """/get_logical_path from the door Link came through last (game_exit) instead of the slot's start: the way
-        through the fewest doors to the route's target (ut_map.find_route), logged as UT logs its own. False, with no
-        route, when there is none: UT's from the start then."""
+        through the fewest doors and warps to the route's target (ut_map.find_route), with the warps Link takes from
+        where he stands (ut_map.route_jumps), logged as UT logs its own. False, with no route, when there is none: UT's
+        from the start then."""
         world = self.tracker_core.get_current_world()
         target, spot = self.route_target, self.game_exit
         if world is None or target is None or spot is None or not self.game or \
@@ -293,7 +295,7 @@ class TrackerMixin:
             else world.get_entrance(target)
         if state is None or start is None or end.parent_region is None or not end.can_reach(state):
             return False
-        route = find_route(start, end.parent_region, state)
+        route = find_route(start, end.parent_region, state, route_jumps(world))
         if route is None:
             return False
         self.route_start = spot
@@ -306,6 +308,9 @@ class TrackerMixin:
             return text
 
         for way in route:
+            if way.name == WARP_HOME:
+                self.print_json([{"type": "color", "color": "blue", "text": JUMP_LABELS[WARP_HOME]}])
+                continue
             text = world.explain_path(way, state)
             if text is not None:
                 self.print_json(text or explained([{"type": "color", "color": "blue", "text": door_label(way.name)}],
@@ -320,30 +325,45 @@ class TrackerMixin:
     def route_points(self, map_name: str) -> Tuple[List[Tuple[float, float, bool]], bool]:
         """The route on a map, and whether its first point is the door it starts at (route_from_exit): the pins of the
         doors it goes through, in order (a door Link comes out of at that door's pin), then the target's pin nearest
-        the last door. Each point with whether Link walks the leg to it on this map: not after a door he goes into, nor
-        to a door's pin he comes out of a level at, as the map does not show the level in between."""
+        the last door. A warp point Link warps from or to is a point too (warp_pins), and a warp leaves where Link
+        stands. Each point with whether Link walks the leg to it on this map: not after a door he goes into or a warp,
+        nor to a door's pin he comes out of a level at, as the map does not show the level in between."""
         if not self.logical_path_entrances and self.route_start is None:
             return [], False
         pins = self.section_pins()
         world = self.tracker_core.get_current_world()
         entrances = self.tracker_core.multiworld.regions.entrance_cache[self.tracker_core.player_id]
+        warps = self.warp_pins(map_name)
+        state, player = self.tracker_state, self.tracker_core.player_id
         points: List[Tuple[float, float, bool]] = []
-        inside = False  # Link is in a level the map does not show
+        inside = False  # Link is in a level the map does not show, or warps
+
+        def put(spot: Tuple[float, float], out: bool) -> None:
+            """A point, and whether Link comes out of a level or a warp at it."""
+            nonlocal inside
+            if points and points[-1][:2] == spot:
+                points[-1] = (*spot, points[-1][2])
+            else:
+                points.append((*spot, not points or not (inside or out)))
+            inside = not out
 
         def add(doors: Tuple[Tuple[str, bool], ...]) -> bool:
             """The first of these doors with a pin on this map, and whether Link comes out of a level at it."""
-            nonlocal inside
             for door, out in doors:
                 spot = next(((x, y) for m, x, y in pins.get(door, ()) if m == map_name), None)
-                if spot is None:
-                    continue
-                if points and points[-1][:2] == spot:
-                    points[-1] = (*spot, points[-1][2])
-                else:
-                    points.append((*spot, not points or not (inside or out)))
-                inside = not out
-                return True
+                if spot is not None:
+                    put(spot, out)
+                    return True
             return False
+
+        def warp_point(zone: str) -> Optional[Tuple[float, float]]:
+            """The pin of the zone's warp point the route takes: of those whose items Link has, the nearest."""
+            spots = [warps[item] for item in held_warps(zone, state, player)] if state is not None else []
+            spots = [spot for spot in spots if spot is not None]
+            if not spots:
+                return None
+            last = points[-1][:2] if points else spots[0]
+            return min(spots, key=lambda p: (p[0] - last[0]) ** 2 + (p[1] - last[1]) ** 2)
 
         start = self.route_start
         started = start is not None and add(((start, True),) + (
@@ -351,6 +371,15 @@ class TrackerMixin:
         for name in self.logical_path_entrances:
             if name in DOOR_STEPS:
                 add(((name, False), (door_out(world.get_entrance(name)), True)))
+            elif name in (WARP_HOME, MAMBO):
+                inside = True
+            elif name in entrances and warp_step(way := entrances[name]) is not None:
+                into = warp_step(way) == "into"
+                spot = warp_point((way.parent_region if into else way.connected_region).name)
+                if spot is not None:
+                    put(spot, not into)
+                elif into:
+                    inside = True
         ends = [(x, y) for m, x, y in pins.get(self.route_target or "", ()) if m == map_name]
         if ends:
             last = points[-1][:2] if points else ends[0]
@@ -358,6 +387,12 @@ class TrackerMixin:
             if not points or points[-1][:2] != end:  # a door's route ends at the last door it goes through
                 points.append((*end, not points or not inside))
         return points, started and bool(points)
+
+    def warp_pins(self, map_name: str) -> Dict[str, Optional[Tuple[float, float]]]:
+        """The warp points' pins on a map (tracker/maps.json's "warps"), by their items: None for each not on it."""
+        found = next((m for m in self.maps or () if m.get("name") == map_name), {})
+        spots = {warp["warp"]: (warp["x"], warp["y"]) for warp in found.get("warps", ())}
+        return {item: spots.get(item) for item in WARP_ZONES}
 
     def section_pins(self) -> Dict[str, List[Tuple[str, float, float]]]:
         """The pack's pins (tracker/locations.json) by section name: (map, x, y) each."""

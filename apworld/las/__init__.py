@@ -33,7 +33,7 @@ from .logic import PLACES, LogicCompiler, make_rule, referenced_regions
 from .models import model_for
 from .options import OPTION_GROUPS, DungeonItemPlacement, Goal, LASOptions, ShuffledDungeons, goal_instruments, goal_seashells
 from .tracker import DOORS_KEY, ENTRANCES_KEY, SIGN_KEY, LogicTracker, tracked_instruments, tracked_seashells
-from .ut_map import DOOR_STEPS, TRACKER_WORLD, door_out, hidden_checks
+from .ut_map import DOOR_STEPS, JUMP_LABELS, MAMBO, TRACKER_WORLD, door_out, held_warps, hidden_checks, warp_step
 from . import lasr_settings
 
 
@@ -887,7 +887,19 @@ class LASWorld(World):
 
     def explain_path(self, entrance: Entrance, state: CollectionState) -> Optional[List[Dict[str, str]]]:
         """Universal Tracker's /get_logical_path, per step of its way: only the doors Link goes through, each with the
-        door it comes out of (ut_map.DOOR_STEPS). A slot without shuffled doors has every step, as UT writes it."""
+        door it comes out of (ut_map.DOOR_STEPS), and the warps: onto the warp map by Manbo's Mambo or from a warp
+        point, then ` -> ` the point Link comes out at, each point by its item's name. A slot without shuffled doors has
+        every other step, as UT writes it."""
+        warp = warp_step(entrance)
+        if warp is not None:
+            zone = entrance.parent_region if warp == "into" else entrance.connected_region
+            if entrance.name == MAMBO:
+                label = JUMP_LABELS[MAMBO]
+            else:
+                label = next((LASR_TO_ITEM[item] for item in held_warps(zone.name, state, self.player)), zone.name)
+            if warp == "into":
+                return [{"type": "color", "color": "blue", "text": label}]
+            return [{"type": "text", "text": f" -> {label}"}]
         if not self.options.entrances and not closed_dungeons(self.door_pool):
             return []
         if entrance.name not in DOOR_STEPS:

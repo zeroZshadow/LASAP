@@ -2,7 +2,59 @@
  {
   "name": "Koholint Island",
   "img": "images/maps/island.png",
-  "location_size": 30
+  "location_size": 30,
+  "warps": [
+   {
+    "warp": "warp-ukuku-prairie",
+    "x": 740,
+    "y": 714
+   },
+   {
+    "warp": "warp-turtle-rock",
+    "x": 249,
+    "y": 120
+   },
+   {
+    "warp": "warp-taltal-heights",
+    "x": 1602,
+    "y": 297
+   },
+   {
+    "warp": "warp-animal-village",
+    "x": 1604,
+    "y": 1011
+   },
+   {
+    "warp": "warp-manbos-pond",
+    "x": 708,
+    "y": 423
+   },
+   {
+    "warp": "warp-dampes-shack",
+    "x": 924,
+    "y": 294
+   },
+   {
+    "warp": "warp-seashell-mansion",
+    "x": 1405,
+    "y": 652
+   },
+   {
+    "warp": "warp-taltal-east",
+    "x": 1974,
+    "y": 215
+   },
+   {
+    "warp": "warp-marthas-bay",
+    "x": 944,
+    "y": 1031
+   },
+   {
+    "warp": "warp-taltal-west",
+    "x": 482,
+    "y": 152
+   }
+  ]
  },
  {
   "name": "D1 - Tail Cave",

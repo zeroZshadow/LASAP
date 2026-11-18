@@ -286,7 +286,8 @@ class TestDeferredEntrances(unittest.TestCase):
 
         def points(route_start):
             ctx = SimpleNamespace(logical_path_entrances=[into, "x -> y", entrances[out]], route_start=route_start,
-                                  route_target=target, tracker_core=core, section_pins=pins_of)
+                                  route_target=target, tracker_core=core, section_pins=pins_of,
+                                  warp_pins=lambda _: {}, tracker_state=None)
             return TrackerMixin.route_points(ctx, "M")
 
         self.assertEqual(points(start), ([(0, 0, True), (1, 0, True), (2, 0, False), (3, 0, True)], True))
@@ -295,5 +296,5 @@ class TestDeferredEntrances(unittest.TestCase):
         self.assertEqual(points(None), ([(1, 0, True), (2, 0, False), (3, 0, True)], False))
         # Link ends inside a level: to the target's pin through it
         ctx = SimpleNamespace(logical_path_entrances=[into], route_start=None, route_target=target, tracker_core=core,
-                              section_pins=pins_of)
+                              section_pins=pins_of, warp_pins=lambda _: {}, tracker_state=None)
         self.assertEqual(TrackerMixin.route_points(ctx, "M"), ([(1, 0, True), (3, 0, False)], False))
