@@ -1,5 +1,6 @@
 """Static checks on patcher output: every chest location holds the AP placeholder, the chests with a drop (Bouncy Items) the drop actor's
-chest key, with its local id. The seed file's models name the model of every location `location_models` gives one, and the
+chest key, with its local id. The seed file's models name the model of every location `location_models` gives one or
+`location_traps` lists (that one with the trap's item id), and the
 item stand-in rows of the AP locations, and the rooms' item actors name the locations' tokens. An AP location's chests
 name its chest token; with "Texture + Size" chests, the chests holding a seashell and only those are the seashell chest
 (for an AP location, by its C line in the models). Every randomized heart piece and seashell actor has a unique index above
@@ -28,6 +29,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "patcher" / "modbuild"))
 from local_paths import local_path  # noqa: E402
 from mod import CHEST_FILES, SHOP_TEXT, START_FLAGS, chest_token  # noqa: E402  (LASR on the path)
+import ap_assets  # noqa: E402
 import ap_chest_model  # noqa: E402
 import ap_drop  # noqa: E402
 import ap_model  # noqa: E402
@@ -38,7 +40,8 @@ from RandomizerCore.Tools.leb import Room  # noqa: E402
 from ap_save_name import save_name  # noqa: E402
 import seed_file  # noqa: E402
 from las_ap_patch import (COMPANION_FLAGS, INDEX_KINDS, PLACEHOLDER_KEY, START_MARKER, START_UPGRADES,  # noqa: E402
-                          START_WITH_KINDS, MODEL_TOKEN, load_patch, load_yaml, marker_lines, model_def)
+                          START_WITH_KINDS, MODEL_TOKEN, TRAP_MODEL, load_patch, load_yaml, marker_lines,
+                          model_def)
 
 patch = load_patch(Path(sys.argv[1]))
 seed = seed_file.read(Path(sys.argv[2]) / "config/lasr-exl")
@@ -65,15 +68,23 @@ for loc, room_name in CHEST_ROOMS.items():
         print(f"MISMATCH {loc} {room_name}: {found} want {want}")
 print(f"chests ok={ok} bad={bad}")
 
-# Models: one M line per location with a model of its own; the rooms' item actors name their location's token.
+# Models: one M line per location with a model of its own or a trap, a trap's with the trap's item id; the rooms' item
+# actors name their location's token.
 lines = [line.split() for line in seed.get("models", [])]
 shown = {int(p[1]) for p in lines if p[0] == "M"}
+traps = {int(patch["location_ids"][loc]) for loc in patch.get("location_traps", [])
+         if loc in patch["location_ids"] and patch["placements"].get(loc) == "ap-item"}
 want = {int(patch["location_ids"][loc]) for loc in models
         if loc in patch["location_ids"] and patch["placements"].get(loc) == "ap-item"
-        and model_def(item_defs, models[loc])}
+        and model_def(item_defs, models[loc])} | traps
 if shown != want:
     bad += 1
-    print(f"MODELS for {sorted(shown ^ want)} differ from location_models")
+    print(f"MODELS for {sorted(shown ^ want)} differ from location_models and location_traps")
+trap_id = ap_assets.data()["item_rows"][TRAP_MODEL["item-key"]][0]
+wrong = sorted(int(p[1]) for p in lines if p[0] == "M" and (int(p[1]) in traps) != (int(p[2]) == trap_id))
+if wrong:
+    bad += 1
+    print(f"TRAP item ids wrong for {wrong}")
 stand_ins = {p[1] for p in lines if p[0] == "I"}
 tokens = 0
 for path in level_dir.rglob("*.leb"):

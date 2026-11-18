@@ -232,7 +232,7 @@ class ChestAppearance(Choice):
     """Whether a chest's look tells what it holds, as in the original randomizer.
     uniform: every chest looks the same. size: big chests hold important items. texture_and_size: also a texture
     for junk, keys, heart upgrades and seashells (blue). Other players' items count as important when they are
-    progression."""
+    progression. Traps look like a progression item, in a big chest."""
     display_name = "Chest Appearance"
     option_uniform = 0
     option_size = 1

@@ -399,6 +399,10 @@
   "APWarpMedallion": [
    132,
    "ItemWarpMedallion"
+  ],
+  "APTrap": [
+   133,
+   "ItemAPTrap"
   ]
  },
  "chests": {

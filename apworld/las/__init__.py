@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import os
+import random
 import secrets
 import threading
 import weakref
@@ -31,7 +32,7 @@ from .lasr import (CATEGORIES, COUNTED, DOORS, DUNGEON_POOL, DUNGEON_REWARD_LOCA
 
 from .locations import LASR_LOCATIONS, LOCATION_NAME_GROUPS, LOCATION_NAME_TO_ID, LOCATION_NAMES, LASLocation
 from .logic import PLACES, LogicCompiler, make_rule, referenced_regions
-from .models import model_for
+from .models import is_decoy, model_for
 from .options import OPTION_GROUPS, DungeonItemPlacement, Goal, LASOptions, ShuffledDungeons, goal_instruments, goal_seashells
 from .tracker import DOORS_KEY, ENTRANCES_KEY, SIGN_KEY, LogicTracker, tracked_instruments, tracked_seashells
 from .ut_map import DOOR_STEPS, JUMP_LABELS, MAMBO, TRACKER_WORLD, door_out, held_warps, hidden_checks, warp_step
@@ -998,6 +999,7 @@ class LASWorld(World):
             "location_names": self.placed_names(),
             "location_models": self.placed_models(),
             "location_chests": self.placed_chests(),
+            "location_traps": self.placed_traps(),
             "dungeon_entrances": dict(self.dungeon_entrances),
             # the overworld doors that lead elsewhere: the inside door each leads to, and the one it led to
             "entrances": self.moved_doors(),
@@ -1055,22 +1057,46 @@ class LASWorld(World):
                 names[loc] = [item.name, owner]
         return names
 
+    def placed_traps(self) -> List[str]:
+        """The AP locations that hold a trap, anyone's. Their item-get shows the trap's model (patcher TRAP_MODEL)."""
+        return sorted(loc for loc in set(self.shuffled) - lasr_settings.kept_locations()
+                      if (item := self.multiworld.get_location(LOCATION_NAMES[loc], self.player).item) is not None
+                      and item.trap)
+
+    def trap_decoys(self) -> Dict[str, str]:
+        """The LASR item each AP location holding a trap poses as on the ground and by its chest: one of this slot's
+        items that a randomized location holds and a trap can pose as (models.is_decoy), at random. A trap thus never
+        looks like an item the seed does not shuffle. The pick is the seed's and the location's, so it stays the same
+        on every call."""
+        pool = sorted(ITEM_TABLE[loc.item.name].lasr_name for loc in self.multiworld.get_filled_locations()
+                      if loc.item.player == self.player and loc.address is not None and not loc.locked
+                      and loc.item.name in ITEM_TABLE and is_decoy(ITEM_TABLE[loc.item.name].lasr_name))
+        if not pool:
+            return {}
+        rng = random.Random(f"{self.multiworld.seed}-{self.player}-trap-decoys")
+        return {loc: rng.choice(pool) for loc in self.placed_traps()}
+
     def placed_models(self) -> Dict[str, str]:
         """The LASR item whose model each AP location shows; locations left out show the Archipelago model."""
         models = {}
+        decoys = self.trap_decoys()
         for loc in set(self.shuffled) - lasr_settings.kept_locations():
             item = self.multiworld.get_location(LOCATION_NAMES[loc], self.player).item
-            model = model_for(item) if item is not None else ""
+            model = decoys.get(loc) or (model_for(item) if item is not None else "")
             if model:
                 models[loc] = model
         return models
 
     def placed_chests(self) -> Dict[str, List[Any]]:
-        """How the chest at each AP location looks (lasr_settings.chest_look)."""
+        """How the chest at each AP location looks (lasr_settings.chest_look); a trap's is its decoy's."""
         looks = {}
+        decoys = self.trap_decoys()
         for loc in set(self.shuffled) - lasr_settings.kept_locations():
             item = self.multiworld.get_location(LOCATION_NAMES[loc], self.player).item
             if item is None:
+                continue
+            if loc in decoys:
+                looks[loc] = lasr_settings.chest_look(self.options, decoys[loc])
                 continue
             own = item.player == self.player and item.name in ITEM_TABLE
             looks[loc] = lasr_settings.chest_look(self.options, ITEM_TABLE[item.name].lasr_name if own else None,

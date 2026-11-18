@@ -57,6 +57,11 @@ WARP_ITEM_PREFIX = "warp-"
 # Upright on the ground it would reach into the floor: it leans back (ground-tilt, degrees about x).
 WARP_MODEL = {"item-key": "APWarpMedallion", "model-path": Path(ap_assets.WARP_MODEL).name, "model-name": "ShellRader",
               "npc-key": "ItemWarpMedallion", "ground-tilt": -30.0}
+# A trap (`location_traps`) poses as another item on the ground, but its item-get and popup hold up the Boo figure of
+# the crane game: its Items.gsheet row and Npc entry (modbuild/mod.py) give it that model. A trap without a model to
+# pose as shows the Archipelago model on the ground.
+TRAP_MODEL = {"item-key": "APTrap", "model-path": "PrizeTeresa.bfres", "model-name": "Teresa", "npc-key": "ItemAPTrap"}
+PLACEHOLDER_MODEL = {"model-path": Path(ap_assets.MODEL).name, "model-name": "ShellRader"}  # ap_model's
 # Items counted by inventory bits, as the module names them in the seed file's indices: kind letter per item
 INDEX_KINDS = {"seashell": "S", "heart-piece": "H", "golden-leaf": "L", "heart-container": "C", "bottle": "B",
                "chamber-stone": "P"}
@@ -287,9 +292,17 @@ def model_lines(patch: dict, item_defs: dict) -> List[str]:
         size, model = chest_look(patch["settings"], item_type, chest_type, chests)
         if (size, model) != (1.0, chests["files"]["default"]):
             lines.append(f"C {int(ids[loc])} {size:.4f} {model}")
-    for loc, model in shown_models(patch, item_defs).items():
-        item_id, npc_key = item_rows.get(model["item-key"], (-1, ""))
+    traps = set(patch.get("location_traps", []))
+    shown = shown_models(patch, item_defs)
+    for loc in sorted(traps - set(shown)):
+        if loc in ids and patch["placements"].get(loc) == "ap-item":
+            shown[loc] = PLACEHOLDER_MODEL
+    for loc, model in shown.items():
+        row = TRAP_MODEL["item-key"] if loc in traps else model.get("item-key", "")
+        item_id, npc_key = item_rows.get(row, (-1, ""))
         lines.append(f"M {int(ids[loc])} {item_id if npc_key else -1} {model['model-path']} {model['model-name']}")
+        if model is PLACEHOLDER_MODEL:
+            continue  # stands as the token does
         scale, yaw, rise, tilt = ground_transform(loc, model)
         if (scale, yaw, rise, tilt) != (1.0, None, 0.0, 0.0):
             lines.append(f"S {int(ids[loc])} {scale:.4f} {'-' if yaw is None else f'{yaw:.1f}'} {rise:.4f}"

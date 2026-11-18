@@ -34,6 +34,7 @@ namespace {
         {"Mamu", 1.930f, {0.0f, 1.401f, -0.446f}, {20.0f, 0.0f, -20.0f}},
         {"SkeletalGuardRed", 0.673f, {0.0f, 0.523f, 0.035f}, {20.0f, 0.0f, -20.0f}},
         {"SkeletalGuardBlue", 0.673f, {0.0f, 0.523f, 0.035f}, {20.0f, 0.0f, -20.0f}},
+        {"Teresa", 0.751f, {-0.036f, 0.570f, -0.100f}, {20.0f, 0.0f, 0.0f}},  // the trap's Boo (patcher TRAP_MODEL)
     };
     // The ocarina's size in the item-get: its radius around its root times its item-get scale
     constexpr float kItemModelRadius = 0.459f * 1.17f;

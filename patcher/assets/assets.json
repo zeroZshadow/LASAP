@@ -497,7 +497,7 @@
  "region_common/datasheets/Items.gsheet": {
   "source": "region_common/datasheets/Items.gsheet",
   "source_sha256": "e0014c3376725282ac8c70036f303b5738dd5557a396d276afc3e5547bc78e0b",
-  "sha256": "4f22ed7354efd6c78a429a63874821c29f101778213bb70885aadbe2f5053d58"
+  "sha256": "db1a7687ee25278fe15ec829a29a5f36bc9117d91fd4cc47c7c21e49be199b09"
  },
  "region_common/datasheets/MapPieceClearReward.gsheet": {
   "source": "region_common/datasheets/MapPieceClearReward.gsheet",
@@ -512,7 +512,7 @@
  "region_common/datasheets/Npc.gsheet": {
   "source": "region_common/datasheets/Npc.gsheet",
   "source_sha256": "39dc9855aa050bc6f0fb4acd6dea7ea09dfe143e2fe26762ee46d9cd1895741e",
-  "sha256": "3f171036f11cf4e75b2066971340f31d094365631cfda51cb135307a61f5e0a6"
+  "sha256": "8e2cdbf85a6ca990fef62142405ace5dae2efb7954350128d74ab408a46536ed"
  },
  "region_common/datasheets/NpcPhysicsTraits.gsheet": {
   "source": "region_common/datasheets/NpcPhysicsTraits.gsheet",

@@ -55,7 +55,7 @@ Any shuffled item, including dungeon items and instruments when their options al
 
 A matching Link's Awakening model if its name has one (any shield shows the shield), otherwise the Archipelago logo as
 six colored balls. Picking it up names the item and its owner. With `chest_appearance`, a chest's size and texture show
-what it holds.
+what it holds. A trap, yours or another world's, looks like one of your progression items, also its chest; picking it up shows a Boo.
 
 ## When the player receives an item, what happens?
 

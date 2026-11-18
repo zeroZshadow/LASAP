@@ -66,7 +66,7 @@ class TestDefault(LASTestBase):
 
         self.assertEqual(set(patch), {"format", "seed_name", "player", "slot_name", "seed_hash", "settings",
                                       "starting_items", "placements", "location_ids", "removed_location_ids",
-                                      "optional_locations", "map_hidden_locations", "location_names", "location_models", "location_chests", "dungeon_entrances", "hints",
+                                      "optional_locations", "map_hidden_locations", "location_names", "location_models", "location_chests", "location_traps", "dungeon_entrances", "hints",
                                       "ghost_secret", "ghost_relay", "entrances", "entrance_pairs", "start", "warp_points"})
         self.assertLessEqual(set(patch["location_models"]), set(patch["location_ids"]))
         self.assertEqual(patch["format"], 1)
@@ -494,6 +494,29 @@ class TestChestAppearance(LASTestBase):
         self.assertEqual(chest_look(options, "seashell"), ["seashell", "seashell"])
         options.chest_appearance.value = options.chest_appearance.option_size
         self.assertEqual(chest_look(options, "heart-container"), ["junk", "life-upgrade"])
+
+
+class TestTrapDecoys(LASTestBase):
+    """A trap shows the model of one of the slot's shuffled progression items, in that item's chest, and the patch lists
+    it as a trap."""
+    options = {"traps": "trapsanity", "chest_appearance": "texture_and_size"}
+
+    def test_traps_pose_as_progression(self) -> None:
+        distribute_items_restrictive(self.multiworld)
+        patch = self.world.patch_data()
+        shuffled = {ITEM_TABLE[loc.item.name].lasr_name for loc in self.multiworld.get_filled_locations(self.player)
+                    if loc.address is not None and not loc.locked and loc.item.name in ITEM_TABLE}
+        traps = {loc for loc in set(self.world.shuffled) - kept_locations()
+                 if self.multiworld.get_location(LOCATION_NAMES[loc], self.player).item.trap}
+        self.assertTrue(traps)
+        self.assertEqual(patch["location_traps"], sorted(traps))
+        for loc in traps:
+            model = patch["location_models"][loc]
+            self.assertIn(model, shuffled, loc)
+            self.assertEqual(ITEM_DEFS[model]["type"], "important", loc)
+            self.assertEqual(item_dungeon(model), -1, loc)
+            self.assertEqual(patch["location_chests"][loc], ["important", None], loc)
+        self.assertEqual(self.world.patch_data()["location_models"], patch["location_models"])
 
 
 class TestGameplayOptions(LASTestBase):
