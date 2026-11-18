@@ -36,6 +36,8 @@ namespace {
     // latest jump's last: the client takes the last line as the door Link came through last
     std::vector<std::string> g_DoorJumps;
     constexpr std::string_view kOverworld = "Field";
+    // a warp point's spot in Field (WarpPoint.gsheet mLocator; scripts/re/UI.md, Warp map)
+    constexpr std::string_view kWarpLocator = "Warp_";
 
     // Stealing (scripts/re/ENTRANCES.md, Doors, companions and arrival events): leaving the shop with an item sets
     // StealSuccess, and Field_10D's arrival entry ExitOutShop gives the item and clears it. A shop exit led elsewhere
@@ -204,9 +206,9 @@ namespace AP {
 
     void NoteJump(std::string_view from, std::string_view level, std::string_view locator, std::string_view to) {
         if (locator.empty() || to.empty()) return;
-        // the warp home, from the overworld too, comes out of Tarin's door's pair
-        bool home = level == kOverworld && locator == AP::HOME_LOCATOR;
-        if ((from == kOverworld) == (level == kOverworld) && !home) return;
+        // the warp home, from the overworld too, comes out of Tarin's door's pair; a warp point's warp lands on its spot
+        bool warp = level == kOverworld && (locator == AP::HOME_LOCATOR || locator.starts_with(kWarpLocator));
+        if ((from == kOverworld) == (level == kOverworld) && !warp) return;
         std::string line = "DOOR " + std::string(locator) + " " + std::string(to);
         auto known = std::find(g_DoorJumps.begin(), g_DoorJumps.end(), line);
         if (known != g_DoorJumps.end()) g_DoorJumps.erase(known);

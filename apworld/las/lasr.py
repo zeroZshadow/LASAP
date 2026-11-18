@@ -112,6 +112,12 @@ WARP_ZONES: Dict[str, str] = {item: zone for zone, rule in WRITTEN_LOGIC[WARP_MA
                               for item in re.findall(r"warp-[a-z-]+", str(rule)) if item in WARP_POINTS}
 if set(WARP_ZONES) != set(WARP_POINTS):
     raise ValueError(f"logic.yml's {WARP_MAP} leads nowhere with {sorted(set(WARP_POINTS) - set(WARP_ZONES))}")
+# Each warp point's item by its spot's locator (WarpPoint.gsheet mLocator), where a warp to it lands in Field (the
+# game's DOOR <locator> <to>), in WARP_POINTS' order, which is the index order
+WARP_LOCATORS: Dict[str, str] = dict(zip(
+    ("Warp_UkukuPrairie", "Warp_TalTalMountain", "Warp_TalTalHeights", "Warp_EastOfTheBay", "Warp_MambogaPond",
+     "Warp_DanpeiHouse", "Warp_ShellHouseEast", "Warp_TalTalMtEastEast", "Warp_MarthasBayWest", "Warp_TalTalMtWest"),
+    WARP_POINTS))
 if set(ITEM_DEFS) != set(SPEC["items"]):
     raise ValueError(f"data/logic_spec.yml and items.yml name other items: {sorted(set(ITEM_DEFS) ^ set(SPEC['items']))}")
 

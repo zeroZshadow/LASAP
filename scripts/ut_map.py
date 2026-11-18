@@ -25,6 +25,8 @@ Run with .venv-ap: python scripts/ut_map.py [<PopTracker pack folder>]
 - A dungeon map's stair letters (maps.json's "stairs", which the client draws over the map: ut_gui.StairLetters):
   the stairs of a side-view passage (places.json layout's side rooms side by side), or of a stair that leads to
   another top-view room, share a letter, A, B, ... from the map's top.
+- zone_places.json: each logic zone's middle and each door's and warp point's spot in its level, for the lengths of
+  the walks a route takes (ut_map.find_route); not Universal Tracker's.
 - items.json: the items of ut_map.ITEM_SECTIONS and DUNGEON_SECTIONS that ap_tracker_map.ITEM_ICONS has an icon for,
   under their AP names; a progressive item has one icon per level.
 """
@@ -44,7 +46,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(ROOT / "patcher"))
 from worlds.las import GOAL_LOCATION  # noqa: E402
 from worlds.las.items import LASR_TO_ITEM  # noqa: E402
-from worlds.las.lasr import DOORS, DUNGEON_DOORS, DUNGEONS, WARP_POINTS, door_entrance, dungeon_route  # noqa: E402
+from worlds.las.lasr import (DOORS, DUNGEON_DOORS, DUNGEONS, WARP_POINTS, WRITTEN_LOGIC, door_entrance,  # noqa: E402
+                             dungeon_route)
 from worlds.las.locations import display_name  # noqa: E402
 from worlds.las.ut_map import DUNGEON_SECTIONS, ITEM_SECTIONS, MAPS  # noqa: E402
 import ap_tracker_map  # noqa: E402
@@ -145,6 +148,62 @@ def warp_spots(place) -> list:
         x, y = on_island(*place(point["x"], point["z"], heights[point["room"], point["x"], point["z"]]))
         spots.append({"warp": items[point["index"]], "x": x, "y": y})
     return spots
+
+
+def tiles(spec: str, width: int, height: int) -> list:
+    """The tiles (row, column) of a zone in a room (zones.yml's paint): `all`, or rows=columns groups, each a comma
+    list of numbers and ranges."""
+    def numbers(text: str) -> list:
+        found = []
+        for part in text.split(","):
+            low, _, high = part.partition("-")
+            found += range(int(low), int(high or low) + 1)
+        return found
+    if spec.strip() == "all":
+        return [(row, column) for row in range(height) for column in range(width)]
+    found = []
+    for group in spec.split():
+        rows, _, columns = group.partition("=")
+        found += [(row, column) for row in numbers(rows) for column in numbers(columns)]
+    return found
+
+
+def zone_places() -> dict:
+    """tracker/zone_places.json: each logic zone's middle, the mean of its tiles (Logic Studio's zones.yml paint, in its
+    level with the most) or of its doors' spots for a zone not painted, and each door's and warp point's spot (places.json: where a jump to the door lands, and the
+    warp point's place), the doors by doors.yml's names and the points by their items, each as [level, x, z] in its
+    level's coordinates."""
+    paint = yaml.safe_load((STUDIO / "zones.yml").read_text(encoding="utf-8"))["paint"]
+    tile = places()["tile"]
+    sizes = {room["name"]: (room["x"], room["z"], room["w"], room["h"])
+             for layout in places()["layout"].values() for room in layout}
+    level_of = {room["name"]: level for level, layout in places()["layout"].items() for room in layout}
+    spots: dict = {}
+    for room, zones in paint.items():
+        ox, oz, width, height = sizes[room]
+        for zone, spec in zones.items():
+            spots.setdefault(zone, {}).setdefault(level_of[room], []).extend(
+                (ox + (column + 0.5) * tile, oz + (row + 0.5) * tile) for row, column in tiles(spec, width, height))
+    middles = {}
+    for zone, levels in sorted(spots.items()):
+        level, points = max(levels.items(), key=lambda kv: len(kv[1]))
+        middles[zone] = [level, round(sum(x for x, _ in points) / len(points), 2),
+                         round(sum(z for _, z in points) / len(points), 2)]
+    doors = set(DOORS["pairs"]) | set(DOORS["pairs"].values()) | set(DOORS["one-way"].values())
+    landed = {t["to"]: t["landing"] for t in places()["teleports"] if t["to"] in doors and t["landing"]}
+    door_spots = {door: [level_of[land["room"]], land["x"], land["z"]] for door, land in sorted(landed.items())}
+    for zone, node in WRITTEN_LOGIC.items():  # a level of one room is one zone, which zones.yml does not paint
+        at = [door_spots[door] for door in node.get("doors") or () if door in door_spots]
+        if zone not in middles and at:
+            level = max({spot[0] for spot in at}, key=lambda name: sum(spot[0] == name for spot in at))
+            at = [spot for spot in at if spot[0] == level]
+            middles[zone] = [level, round(sum(spot[1] for spot in at) / len(at), 2),
+                             round(sum(spot[2] for spot in at) / len(at), 2)]
+    middles = dict(sorted(middles.items()))
+    items = {index: item for item, index in WARP_POINTS.items()}
+    warps = {items[point["index"]]: [level_of[point["room"]], point["x"], point["z"]]
+             for point in places()["warp_points"]}
+    return {"zones": middles, "doors": door_spots, "warps": warps}
 
 
 def on_island(x: float, y: float):
@@ -310,6 +369,7 @@ def main() -> None:
     write(OUT / "maps.json", maps_json(pack))
     write(OUT / "locations.json", locations_json(pack))
     write(OUT / "items.json", items_json())
+    write(OUT / "zone_places.json", zone_places())
     print(f"written to {OUT}")
 
 

@@ -1,0 +1,4323 @@
+{
+ "zones": {
+  "D0.a": [
+   "Lv10ClothesDungeon",
+   37.63,
+   83.67
+  ],
+  "D0.b": [
+   "Lv10ClothesDungeon",
+   73.07,
+   71.49
+  ],
+  "D0.c": [
+   "Lv10ClothesDungeon",
+   97.24,
+   53.8
+  ],
+  "D0.d": [
+   "Lv10ClothesDungeon",
+   67.23,
+   66.06
+  ],
+  "D0.e": [
+   "Lv10ClothesDungeon",
+   52.48,
+   89.89
+  ],
+  "D0.f": [
+   "Lv10ClothesDungeon",
+   67.76,
+   89.8
+  ],
+  "D0.g": [
+   "Lv10ClothesDungeon",
+   82.24,
+   89.8
+  ],
+  "D0.h": [
+   "Lv10ClothesDungeon",
+   97.24,
+   42.2
+  ],
+  "D0.i": [
+   "Lv10ClothesDungeon",
+   52.5,
+   65.81
+  ],
+  "D0.j": [
+   "Lv10ClothesDungeon",
+   82.42,
+   42.56
+  ],
+  "D0.k": [
+   "Lv10ClothesDungeon",
+   59.85,
+   54.1
+  ],
+  "D0.l": [
+   "Lv10ClothesDungeon",
+   37.73,
+   65.68
+  ],
+  "D0.m": [
+   "Lv10ClothesDungeon",
+   37.24,
+   54.2
+  ],
+  "D0.n": [
+   "Lv10ClothesDungeon",
+   22.76,
+   53.8
+  ],
+  "D0.o": [
+   "Lv10ClothesDungeon",
+   22.76,
+   42.2
+  ],
+  "D0.p": [
+   "Lv10ClothesDungeon",
+   37.1,
+   41.9
+  ],
+  "D1.2d-a": [
+   "Lv01TailCave",
+   150.0,
+   0.0
+  ],
+  "D1.2d-b": [
+   "Lv01TailCave",
+   210.0,
+   0.0
+  ],
+  "D1.a": [
+   "Lv01TailCave",
+   53.57,
+   83.53
+  ],
+  "D1.b": [
+   "Lv01TailCave",
+   51.88,
+   62.6
+  ],
+  "D1.c": [
+   "Lv01TailCave",
+   38.3,
+   77.65
+  ],
+  "D1.d": [
+   "Lv01TailCave",
+   22.18,
+   90.64
+  ],
+  "D1.e": [
+   "Lv01TailCave",
+   36.97,
+   41.68
+  ],
+  "D1.f": [
+   "Lv01TailCave",
+   55.92,
+   52.47
+  ],
+  "D1.g": [
+   "Lv01TailCave",
+   82.61,
+   60.1
+  ],
+  "D1.h": [
+   "Lv01TailCave",
+   24.3,
+   66.0
+  ],
+  "D1.i": [
+   "Lv01TailCave",
+   97.24,
+   65.8
+  ],
+  "D1.j": [
+   "Lv01TailCave",
+   6.95,
+   63.4
+  ],
+  "D1.k": [
+   "Lv01TailCave",
+   97.5,
+   53.97
+  ],
+  "D1.l": [
+   "Lv01TailCave",
+   97.5,
+   42.0
+  ],
+  "D1.m": [
+   "Lv01TailCave",
+   97.5,
+   30.58
+  ],
+  "D2.2d-a": [
+   "Lv02BottleGrotto",
+   270.0,
+   0.0
+  ],
+  "D2.2d-b": [
+   "Lv02BottleGrotto",
+   210.0,
+   0.0
+  ],
+  "D2.2d-c0": [
+   "Lv02BottleGrotto",
+   157.5,
+   0.0
+  ],
+  "D2.2d-c1": [
+   "Lv02BottleGrotto",
+   142.5,
+   0.0
+  ],
+  "D2.a": [
+   "Lv02BottleGrotto",
+   37.51,
+   83.59
+  ],
+  "D2.b": [
+   "Lv02BottleGrotto",
+   22.76,
+   77.8
+  ],
+  "D2.c": [
+   "Lv02BottleGrotto",
+   61.74,
+   78.06
+  ],
+  "D2.d": [
+   "Lv02BottleGrotto",
+   22.5,
+   66.82
+  ],
+  "D2.e": [
+   "Lv02BottleGrotto",
+   68.79,
+   89.23
+  ],
+  "D2.f": [
+   "Lv02BottleGrotto",
+   52.5,
+   89.32
+  ],
+  "D2.g": [
+   "Lv02BottleGrotto",
+   88.98,
+   82.06
+  ],
+  "D2.h": [
+   "Lv02BottleGrotto",
+   97.6,
+   66.1
+  ],
+  "D2.i": [
+   "Lv02BottleGrotto",
+   22.5,
+   53.77
+  ],
+  "D2.j": [
+   "Lv02BottleGrotto",
+   22.77,
+   42.48
+  ],
+  "D2.k": [
+   "Lv02BottleGrotto",
+   33.13,
+   42.49
+  ],
+  "D2.l": [
+   "Lv02BottleGrotto",
+   37.72,
+   27.8
+  ],
+  "D2.m": [
+   "Lv02BottleGrotto",
+   37.5,
+   41.25
+  ],
+  "D2.n": [
+   "Lv02BottleGrotto",
+   23.74,
+   17.25
+  ],
+  "D2.o": [
+   "Lv02BottleGrotto",
+   68.99,
+   20.36
+  ],
+  "D2.p": [
+   "Lv02BottleGrotto",
+   37.75,
+   37.75
+  ],
+  "D2.q": [
+   "Lv02BottleGrotto",
+   97.23,
+   18.0
+  ],
+  "D2.r": [
+   "Lv02BottleGrotto",
+   97.5,
+   53.55
+  ],
+  "D2.s": [
+   "Lv02BottleGrotto",
+   97.24,
+   42.26
+  ],
+  "D2.t": [
+   "Lv02BottleGrotto",
+   82.88,
+   42.38
+  ],
+  "D3.2d-a": [
+   "Lv03KeyCavern",
+   127.5,
+   0.0
+  ],
+  "D3.2d-b": [
+   "Lv03KeyCavern",
+   142.5,
+   0.0
+  ],
+  "D3.a": [
+   "Lv03KeyCavern",
+   30.65,
+   90.23
+  ],
+  "D3.aa": [
+   "Lv03KeyCavern",
+   112.23,
+   90.0
+  ],
+  "D3.ab": [
+   "Lv03KeyCavern",
+   97.68,
+   89.41
+  ],
+  "D3.ac": [
+   "Lv03KeyCavern",
+   97.5,
+   78.0
+  ],
+  "D3.ad": [
+   "Lv03KeyCavern",
+   97.5,
+   66.58
+  ],
+  "D3.b": [
+   "Lv03KeyCavern",
+   23.21,
+   78.13
+  ],
+  "D3.c": [
+   "Lv03KeyCavern",
+   24.8,
+   47.83
+  ],
+  "D3.d": [
+   "Lv03KeyCavern",
+   25.75,
+   66.0
+  ],
+  "D3.e": [
+   "Lv03KeyCavern",
+   97.5,
+   42.0
+  ],
+  "D3.f": [
+   "Lv03KeyCavern",
+   37.23,
+   66.0
+  ],
+  "D3.g": [
+   "Lv03KeyCavern",
+   97.5,
+   30.38
+  ],
+  "D3.h": [
+   "Lv03KeyCavern",
+   82.93,
+   42.05
+  ],
+  "D3.i": [
+   "Lv03KeyCavern",
+   111.65,
+   41.7
+  ],
+  "D3.j": [
+   "Lv03KeyCavern",
+   97.55,
+   53.82
+  ],
+  "D3.k": [
+   "Lv03KeyCavern",
+   37.61,
+   29.17
+  ],
+  "D3.l": [
+   "Lv03KeyCavern",
+   18.29,
+   11.01
+  ],
+  "D3.m": [
+   "Lv03KeyCavern",
+   52.0,
+   6.04
+  ],
+  "D3.n": [
+   "Lv03KeyCavern",
+   22.5,
+   17.97
+  ],
+  "D3.o": [
+   "Lv03KeyCavern",
+   27.75,
+   23.25
+  ],
+  "D3.p": [
+   "Lv03KeyCavern",
+   36.86,
+   17.25
+  ],
+  "D3.q": [
+   "Lv03KeyCavern",
+   7.93,
+   29.75
+  ],
+  "D3.r": [
+   "Lv03KeyCavern",
+   50.57,
+   29.93
+  ],
+  "D3.s": [
+   "Lv03KeyCavern",
+   6.15,
+   18.0
+  ],
+  "D3.t": [
+   "Lv03KeyCavern",
+   37.69,
+   4.52
+  ],
+  "D3.u": [
+   "Lv03KeyCavern",
+   31.5,
+   20.25
+  ],
+  "D3.v": [
+   "Lv03KeyCavern",
+   57.34,
+   27.61
+  ],
+  "D3.w": [
+   "Lv03KeyCavern",
+   22.53,
+   4.63
+  ],
+  "D3.x": [
+   "Lv03KeyCavern",
+   33.75,
+   24.75
+  ],
+  "D3.y": [
+   "Lv03KeyCavern",
+   57.75,
+   15.75
+  ],
+  "D3.z": [
+   "Lv03KeyCavern",
+   32.25,
+   27.75
+  ],
+  "D4.2d-a": [
+   "Lv04AnglersTunnel",
+   145.5,
+   0.0
+  ],
+  "D4.2d-b": [
+   "Lv04AnglersTunnel",
+   195.0,
+   0.0
+  ],
+  "D4.2d-c": [
+   "Lv04AnglersTunnel",
+   315.0,
+   0.0
+  ],
+  "D4.2d-d": [
+   "Lv04AnglersTunnel",
+   255.0,
+   0.0
+  ],
+  "D4.a": [
+   "Lv04AnglersTunnel",
+   58.78,
+   74.75
+  ],
+  "D4.b": [
+   "Lv04AnglersTunnel",
+   97.62,
+   43.33
+  ],
+  "D4.c": [
+   "Lv04AnglersTunnel",
+   67.5,
+   79.78
+  ],
+  "D4.d": [
+   "Lv04AnglersTunnel",
+   83.66,
+   78.8
+  ],
+  "D4.e": [
+   "Lv04AnglersTunnel",
+   67.5,
+   89.79
+  ],
+  "D4.f": [
+   "Lv04AnglersTunnel",
+   83.23,
+   64.01
+  ],
+  "D4.g": [
+   "Lv04AnglersTunnel",
+   84.75,
+   47.25
+  ],
+  "D4.h": [
+   "Lv04AnglersTunnel",
+   70.05,
+   46.62
+  ],
+  "D4.i": [
+   "Lv04AnglersTunnel",
+   42.5,
+   56.47
+  ],
+  "D4.j": [
+   "Lv04AnglersTunnel",
+   53.64,
+   32.71
+  ],
+  "D4.k": [
+   "Lv04AnglersTunnel",
+   67.5,
+   30.0
+  ],
+  "D4.l": [
+   "Lv04AnglersTunnel",
+   58.73,
+   60.19
+  ],
+  "D4.m": [
+   "Lv04AnglersTunnel",
+   36.71,
+   40.99
+  ],
+  "D4.n": [
+   "Lv04AnglersTunnel",
+   54.75,
+   54.0
+  ],
+  "D4.o": [
+   "Lv04AnglersTunnel",
+   52.61,
+   19.2
+  ],
+  "D4.p": [
+   "Lv04AnglersTunnel",
+   67.43,
+   18.2
+  ],
+  "D4.q": [
+   "Lv04AnglersTunnel",
+   49.5,
+   50.25
+  ],
+  "D4.r": [
+   "Lv04AnglersTunnel",
+   48.0,
+   61.5
+  ],
+  "D4.s": [
+   "Lv04AnglersTunnel",
+   48.0,
+   55.5
+  ],
+  "D4.t": [
+   "Lv04AnglersTunnel",
+   34.5,
+   72.0
+  ],
+  "D4.u": [
+   "Lv04AnglersTunnel",
+   23.7,
+   53.07
+  ],
+  "D4.v": [
+   "Lv04AnglersTunnel",
+   22.5,
+   42.08
+  ],
+  "D4.w": [
+   "Lv04AnglersTunnel",
+   22.5,
+   30.58
+  ],
+  "D5.2d-a": [
+   "Lv05CatfishsMaw",
+   172.5,
+   0.0
+  ],
+  "D5.2d-b": [
+   "Lv05CatfishsMaw",
+   157.5,
+   0.0
+  ],
+  "D5.2d-c": [
+   "Lv05CatfishsMaw",
+   292.5,
+   0.0
+  ],
+  "D5.2d-d": [
+   "Lv05CatfishsMaw",
+   277.5,
+   0.0
+  ],
+  "D5.2d-e": [
+   "Lv05CatfishsMaw",
+   352.5,
+   0.0
+  ],
+  "D5.2d-f": [
+   "Lv05CatfishsMaw",
+   337.5,
+   0.0
+  ],
+  "D5.2d-g": [
+   "Lv05CatfishsMaw",
+   232.5,
+   0.0
+  ],
+  "D5.2d-h": [
+   "Lv05CatfishsMaw",
+   217.5,
+   0.0
+  ],
+  "D5.a": [
+   "Lv05CatfishsMaw",
+   22.77,
+   6.0
+  ],
+  "D5.aa": [
+   "Lv05CatfishsMaw",
+   82.24,
+   6.32
+  ],
+  "D5.ab": [
+   "Lv05CatfishsMaw",
+   66.48,
+   19.02
+  ],
+  "D5.ac": [
+   "Lv05CatfishsMaw",
+   71.25,
+   14.25
+  ],
+  "D5.ad": [
+   "Lv05CatfishsMaw",
+   56.25,
+   33.38
+  ],
+  "D5.ae": [
+   "Lv05CatfishsMaw",
+   72.38,
+   32.25
+  ],
+  "D5.af": [
+   "Lv05CatfishsMaw",
+   71.5,
+   27.25
+  ],
+  "D5.ah": [
+   "Lv05CatfishsMaw",
+   22.77,
+   30.12
+  ],
+  "D5.ai": [
+   "Lv05CatfishsMaw",
+   112.23,
+   42.06
+  ],
+  "D5.aj": [
+   "Lv05CatfishsMaw",
+   83.25,
+   30.75
+  ],
+  "D5.ak": [
+   "Lv05CatfishsMaw",
+   79.7,
+   19.43
+  ],
+  "D5.al": [
+   "Lv05CatfishsMaw",
+   92.74,
+   22.01
+  ],
+  "D5.b": [
+   "Lv05CatfishsMaw",
+   37.23,
+   6.0
+  ],
+  "D5.c": [
+   "Lv05CatfishsMaw",
+   52.5,
+   6.75
+  ],
+  "D5.d": [
+   "Lv05CatfishsMaw",
+   68.37,
+   6.92
+  ],
+  "D5.e": [
+   "Lv05CatfishsMaw",
+   52.5,
+   18.0
+  ],
+  "D5.h": [
+   "Lv05CatfishsMaw",
+   37.88,
+   30.6
+  ],
+  "D5.i": [
+   "Lv05CatfishsMaw",
+   55.72,
+   26.43
+  ],
+  "D5.j": [
+   "Lv05CatfishsMaw",
+   103.61,
+   26.14
+  ],
+  "D5.k": [
+   "Lv05CatfishsMaw",
+   116.55,
+   28.2
+  ],
+  "D5.l": [
+   "Lv05CatfishsMaw",
+   88.61,
+   41.47
+  ],
+  "D5.m": [
+   "Lv05CatfishsMaw",
+   37.77,
+   66.12
+  ],
+  "D5.o": [
+   "Lv05CatfishsMaw",
+   52.77,
+   78.0
+  ],
+  "D5.p": [
+   "Lv05CatfishsMaw",
+   77.76,
+   73.82
+  ],
+  "D5.q": [
+   "Lv05CatfishsMaw",
+   67.82,
+   90.0
+  ],
+  "D5.r": [
+   "Lv05CatfishsMaw",
+   96.82,
+   90.26
+  ],
+  "D5.s": [
+   "Lv05CatfishsMaw",
+   101.25,
+   87.0
+  ],
+  "D5.t": [
+   "Lv05CatfishsMaw",
+   64.82,
+   66.36
+  ],
+  "D5.u": [
+   "Lv05CatfishsMaw",
+   50.44,
+   66.04
+  ],
+  "D5.v": [
+   "Lv05CatfishsMaw",
+   68.3,
+   57.05
+  ],
+  "D5.w": [
+   "Lv05CatfishsMaw",
+   53.05,
+   54.03
+  ],
+  "D5.x": [
+   "Lv05CatfishsMaw",
+   67.17,
+   51.63
+  ],
+  "D5.y": [
+   "Lv05CatfishsMaw",
+   82.76,
+   54.26
+  ],
+  "D5.z": [
+   "Lv05CatfishsMaw",
+   102.0,
+   15.0
+  ],
+  "D6.2d-a": [
+   "Lv06FaceShrine",
+   277.5,
+   0.0
+  ],
+  "D6.2d-b": [
+   "Lv06FaceShrine",
+   292.5,
+   0.0
+  ],
+  "D6.2d-c": [
+   "Lv06FaceShrine",
+   157.5,
+   0.0
+  ],
+  "D6.2d-d": [
+   "Lv06FaceShrine",
+   217.5,
+   0.0
+  ],
+  "D6.2d-e": [
+   "Lv06FaceShrine",
+   232.5,
+   0.0
+  ],
+  "D6.2d-f": [
+   "Lv06FaceShrine",
+   172.5,
+   0.0
+  ],
+  "D6.a": [
+   "Lv06FaceShrine",
+   7.51,
+   18.1
+  ],
+  "D6.aa": [
+   "Lv06FaceShrine",
+   112.58,
+   30.4
+  ],
+  "D6.ab": [
+   "Lv06FaceShrine",
+   96.95,
+   77.93
+  ],
+  "D6.ac": [
+   "Lv06FaceShrine",
+   22.5,
+   89.79
+  ],
+  "D6.ad": [
+   "Lv06FaceShrine",
+   53.47,
+   41.42
+  ],
+  "D6.ae": [
+   "Lv06FaceShrine",
+   37.5,
+   42.0
+  ],
+  "D6.af": [
+   "Lv06FaceShrine",
+   22.5,
+   43.57
+  ],
+  "D6.ag": [
+   "Lv06FaceShrine",
+   37.36,
+   54.02
+  ],
+  "D6.ah": [
+   "Lv06FaceShrine",
+   82.49,
+   53.9
+  ],
+  "D6.ai": [
+   "Lv06FaceShrine",
+   82.52,
+   41.95
+  ],
+  "D6.aj": [
+   "Lv06FaceShrine",
+   53.32,
+   66.38
+  ],
+  "D6.ak": [
+   "Lv06FaceShrine",
+   67.12,
+   65.98
+  ],
+  "D6.al": [
+   "Lv06FaceShrine",
+   7.35,
+   29.82
+  ],
+  "D6.am": [
+   "Lv06FaceShrine",
+   11.55,
+   53.15
+  ],
+  "D6.b": [
+   "Lv06FaceShrine",
+   112.56,
+   18.21
+  ],
+  "D6.c": [
+   "Lv06FaceShrine",
+   24.75,
+   31.81
+  ],
+  "D6.d": [
+   "Lv06FaceShrine",
+   51.22,
+   31.39
+  ],
+  "D6.e": [
+   "Lv06FaceShrine",
+   67.5,
+   30.58
+  ],
+  "D6.f": [
+   "Lv06FaceShrine",
+   97.48,
+   28.39
+  ],
+  "D6.g": [
+   "Lv06FaceShrine",
+   11.14,
+   40.83
+  ],
+  "D6.h": [
+   "Lv06FaceShrine",
+   30.26,
+   51.15
+  ],
+  "D6.i": [
+   "Lv06FaceShrine",
+   67.5,
+   42.0
+  ],
+  "D6.j": [
+   "Lv06FaceShrine",
+   98.72,
+   53.47
+  ],
+  "D6.k": [
+   "Lv06FaceShrine",
+   6.0,
+   54.08
+  ],
+  "D6.l": [
+   "Lv06FaceShrine",
+   52.62,
+   54.21
+  ],
+  "D6.m": [
+   "Lv06FaceShrine",
+   67.5,
+   54.0
+  ],
+  "D6.n": [
+   "Lv06FaceShrine",
+   38.66,
+   64.89
+  ],
+  "D6.o": [
+   "Lv06FaceShrine",
+   82.48,
+   66.11
+  ],
+  "D6.p": [
+   "Lv06FaceShrine",
+   22.5,
+   78.27
+  ],
+  "D6.q": [
+   "Lv06FaceShrine",
+   42.0,
+   78.0
+  ],
+  "D6.r": [
+   "Lv06FaceShrine",
+   82.78,
+   78.53
+  ],
+  "D6.s": [
+   "Lv06FaceShrine",
+   101.55,
+   89.1
+  ],
+  "D6.t": [
+   "Lv06FaceShrine",
+   95.65,
+   88.5
+  ],
+  "D6.u": [
+   "Lv06FaceShrine",
+   49.48,
+   83.88
+  ],
+  "D6.v": [
+   "Lv06FaceShrine",
+   93.36,
+   40.97
+  ],
+  "D6.w": [
+   "Lv06FaceShrine",
+   93.94,
+   51.94
+  ],
+  "D6.x": [
+   "Lv06FaceShrine",
+   103.12,
+   54.38
+  ],
+  "D6.y": [
+   "Lv06FaceShrine",
+   112.33,
+   53.64
+  ],
+  "D6.z": [
+   "Lv06FaceShrine",
+   112.27,
+   42.0
+  ],
+  "D7.2d-a": [
+   "Lv07EagleTower",
+   172.5,
+   0.0
+  ],
+  "D7.a": [
+   "Lv07EagleTower",
+   31.22,
+   110.9
+  ],
+  "D7.b": [
+   "Lv07EagleTower",
+   54.75,
+   30.0
+  ],
+  "D7.c": [
+   "Lv07EagleTower",
+   29.02,
+   91.35
+  ],
+  "D7.d": [
+   "Lv07EagleTower",
+   42.97,
+   13.39
+  ],
+  "D7.e": [
+   "Lv07EagleTower",
+   28.54,
+   27.82
+  ],
+  "D7.f": [
+   "Lv07EagleTower",
+   23.57,
+   40.05
+  ],
+  "D7.g": [
+   "Lv07EagleTower",
+   46.07,
+   32.96
+  ],
+  "D7.h": [
+   "Lv07EagleTower",
+   12.57,
+   18.42
+  ],
+  "D7.i": [
+   "Lv07EagleTower",
+   17.83,
+   38.83
+  ],
+  "D7.j": [
+   "Lv07EagleTower",
+   25.49,
+   33.01
+  ],
+  "D7.k": [
+   "Lv07EagleTower",
+   7.56,
+   91.47
+  ],
+  "D7.l": [
+   "Lv07EagleTower",
+   50.6,
+   94.9
+  ],
+  "D7.m": [
+   "Lv07EagleTower",
+   120.0,
+   86.0
+  ],
+  "D7.n": [
+   "Lv07EagleTower",
+   98.19,
+   64.04
+  ],
+  "D7.o": [
+   "Lv07EagleTower",
+   96.25,
+   52.7
+  ],
+  "D7.p": [
+   "Lv07EagleTower",
+   142.5,
+   65.84
+  ],
+  "D7.q": [
+   "Lv07EagleTower",
+   142.5,
+   53.87
+  ],
+  "D7.r": [
+   "Lv07EagleTower",
+   120.5,
+   31.0
+  ],
+  "D7.s": [
+   "Lv07EagleTower",
+   119.07,
+   54.47
+  ],
+  "D7.t": [
+   "Lv07EagleTower",
+   117.69,
+   23.09
+  ],
+  "D7.u": [
+   "Lv07EagleTower",
+   127.5,
+   18.0
+  ],
+  "D7.v": [
+   "Lv07EagleTower",
+   53.87,
+   101.69
+  ],
+  "D8.2d-a": [
+   "Lv08TurtleRock",
+   352.5,
+   0.0
+  ],
+  "D8.2d-b": [
+   "Lv08TurtleRock",
+   337.5,
+   0.0
+  ],
+  "D8.2d-c": [
+   "Lv08TurtleRock",
+   277.5,
+   0.0
+  ],
+  "D8.2d-d": [
+   "Lv08TurtleRock",
+   292.5,
+   0.0
+  ],
+  "D8.2d-e": [
+   "Lv08TurtleRock",
+   457.5,
+   0.0
+  ],
+  "D8.2d-f": [
+   "Lv08TurtleRock",
+   472.5,
+   0.0
+  ],
+  "D8.2d-g": [
+   "Lv08TurtleRock",
+   397.5,
+   0.0
+  ],
+  "D8.2d-h": [
+   "Lv08TurtleRock",
+   412.5,
+   0.0
+  ],
+  "D8.2d-i": [
+   "Lv08TurtleRock",
+   237.0,
+   0.0
+  ],
+  "D8.2d-j": [
+   "Lv08TurtleRock",
+   222.0,
+   0.0
+  ],
+  "D8.2d-k": [
+   "Lv08TurtleRock",
+   174.75,
+   0.0
+  ],
+  "D8.2d-l": [
+   "Lv08TurtleRock",
+   159.75,
+   0.0
+  ],
+  "D8.a": [
+   "Lv08TurtleRock",
+   52.5,
+   6.58
+  ],
+  "D8.aa": [
+   "Lv08TurtleRock",
+   113.04,
+   89.09
+  ],
+  "D8.ab": [
+   "Lv08TurtleRock",
+   52.51,
+   84.81
+  ],
+  "D8.ac": [
+   "Lv08TurtleRock",
+   56.8,
+   70.98
+  ],
+  "D8.ad": [
+   "Lv08TurtleRock",
+   67.28,
+   78.43
+  ],
+  "D8.ae": [
+   "Lv08TurtleRock",
+   67.5,
+   89.62
+  ],
+  "D8.af": [
+   "Lv08TurtleRock",
+   100.81,
+   76.37
+  ],
+  "D8.ag": [
+   "Lv08TurtleRock",
+   112.58,
+   78.0
+  ],
+  "D8.ah": [
+   "Lv08TurtleRock",
+   96.61,
+   66.14
+  ],
+  "D8.ai": [
+   "Lv08TurtleRock",
+   83.72,
+   66.54
+  ],
+  "D8.aj": [
+   "Lv08TurtleRock",
+   71.89,
+   70.82
+  ],
+  "D8.ak": [
+   "Lv08TurtleRock",
+   52.83,
+   63.81
+  ],
+  "D8.al": [
+   "Lv08TurtleRock",
+   56.93,
+   58.7
+  ],
+  "D8.am": [
+   "Lv08TurtleRock",
+   79.78,
+   31.42
+  ],
+  "D8.an": [
+   "Lv08TurtleRock",
+   66.17,
+   27.63
+  ],
+  "D8.ao": [
+   "Lv08TurtleRock",
+   42.01,
+   31.51
+  ],
+  "D8.ap": [
+   "Lv08TurtleRock",
+   52.7,
+   27.89
+  ],
+  "D8.aq": [
+   "Lv08TurtleRock",
+   70.5,
+   13.8
+  ],
+  "D8.ar": [
+   "Lv08TurtleRock",
+   29.12,
+   28.38
+  ],
+  "D8.as": [
+   "Lv08TurtleRock",
+   37.24,
+   66.2
+  ],
+  "D8.at": [
+   "Lv08TurtleRock",
+   7.42,
+   78.0
+  ],
+  "D8.au": [
+   "Lv08TurtleRock",
+   37.76,
+   77.8
+  ],
+  "D8.av": [
+   "Lv08TurtleRock",
+   55.25,
+   52.54
+  ],
+  "D8.aw": [
+   "Lv08TurtleRock",
+   69.75,
+   57.0
+  ],
+  "D8.ax": [
+   "Lv08TurtleRock",
+   84.9,
+   42.02
+  ],
+  "D8.ay": [
+   "Lv08TurtleRock",
+   78.29,
+   41.6
+  ],
+  "D8.az": [
+   "Lv08TurtleRock",
+   67.84,
+   43.23
+  ],
+  "D8.b": [
+   "Lv08TurtleRock",
+   7.32,
+   18.21
+  ],
+  "D8.ba": [
+   "Lv08TurtleRock",
+   64.5,
+   38.25
+  ],
+  "D8.bb": [
+   "Lv08TurtleRock",
+   66.75,
+   44.85
+  ],
+  "D8.bc": [
+   "Lv08TurtleRock",
+   66.75,
+   45.75
+  ],
+  "D8.bd": [
+   "Lv08TurtleRock",
+   52.41,
+   42.31
+  ],
+  "D8.be": [
+   "Lv08TurtleRock",
+   44.25,
+   41.25
+  ],
+  "D8.bf": [
+   "Lv08TurtleRock",
+   109.05,
+   20.1
+  ],
+  "D8.bg": [
+   "Lv08TurtleRock",
+   112.44,
+   29.6
+  ],
+  "D8.bh": [
+   "Lv08TurtleRock",
+   62.25,
+   48.75
+  ],
+  "D8.bi": [
+   "Lv08TurtleRock",
+   51.75,
+   48.75
+  ],
+  "D8.c": [
+   "Lv08TurtleRock",
+   52.5,
+   18.0
+  ],
+  "D8.d": [
+   "Lv08TurtleRock",
+   65.25,
+   15.0
+  ],
+  "D8.e": [
+   "Lv08TurtleRock",
+   114.03,
+   17.58
+  ],
+  "D8.f": [
+   "Lv08TurtleRock",
+   7.59,
+   29.91
+  ],
+  "D8.g": [
+   "Lv08TurtleRock",
+   19.42,
+   29.83
+  ],
+  "D8.h": [
+   "Lv08TurtleRock",
+   42.0,
+   27.0
+  ],
+  "D8.j": [
+   "Lv08TurtleRock",
+   61.92,
+   27.08
+  ],
+  "D8.k": [
+   "Lv08TurtleRock",
+   83.62,
+   26.93
+  ],
+  "D8.l": [
+   "Lv08TurtleRock",
+   98.07,
+   30.16
+  ],
+  "D8.m": [
+   "Lv08TurtleRock",
+   22.4,
+   43.47
+  ],
+  "D8.n": [
+   "Lv08TurtleRock",
+   35.85,
+   47.81
+  ],
+  "D8.o": [
+   "Lv08TurtleRock",
+   97.44,
+   41.92
+  ],
+  "D8.p": [
+   "Lv08TurtleRock",
+   23.4,
+   54.3
+  ],
+  "D8.q": [
+   "Lv08TurtleRock",
+   82.82,
+   53.14
+  ],
+  "D8.r": [
+   "Lv08TurtleRock",
+   97.24,
+   53.8
+  ],
+  "D8.s": [
+   "Lv08TurtleRock",
+   7.3,
+   66.49
+  ],
+  "D8.t": [
+   "Lv08TurtleRock",
+   21.45,
+   67.65
+  ],
+  "D8.v": [
+   "Lv08TurtleRock",
+   112.58,
+   66.29
+  ],
+  "D8.w": [
+   "Lv08TurtleRock",
+   24.2,
+   78.34
+  ],
+  "D8.x": [
+   "Lv08TurtleRock",
+   84.38,
+   78.84
+  ],
+  "D8.z": [
+   "Lv08TurtleRock",
+   6.58,
+   89.76
+  ],
+  "Tamaranch04a": [
+   "Tamaranch04",
+   23.66,
+   12.09
+  ],
+  "Tamaranch04a-drop": [
+   "Tamaranch04",
+   7.25,
+   5.25
+  ],
+  "Tamaranch04b-left": [
+   "Tamaranch04",
+   46.52,
+   18.11
+  ],
+  "Tamaranch04b-mid": [
+   "Tamaranch04",
+   59.57,
+   15.32
+  ],
+  "Tamaranch04b-right": [
+   "Tamaranch04",
+   63.5,
+   22.25
+  ],
+  "Tamaranch04c-left": [
+   "Tamaranch04",
+   11.64,
+   43.01
+  ],
+  "Tamaranch04c-right": [
+   "Tamaranch04",
+   24.94,
+   42.69
+  ],
+  "Tamaranch04d-left": [
+   "Tamaranch04",
+   12.22,
+   67.42
+  ],
+  "Tamaranch04d-right": [
+   "Tamaranch04",
+   33.12,
+   64.93
+  ],
+  "Tamaranch04e": [
+   "Tamaranch04",
+   30.0,
+   90.0
+  ],
+  "ancient-ruins": [
+   "Field",
+   209.99,
+   130.46
+  ],
+  "anglers-dungeon-porch": [
+   "Field",
+   171.75,
+   27.56
+  ],
+  "anglers-tunnel-exit-left": [
+   "AnglersTunnelExit",
+   10.35,
+   5.85
+  ],
+  "anglers-tunnel-exit-right": [
+   "AnglersTunnelExit",
+   26.5,
+   8.25
+  ],
+  "animal-village": [
+   "Field",
+   179.35,
+   158.64
+  ],
+  "animal-village-cave-level": [
+   "AnimalVillageCave",
+   24.0,
+   22.4
+  ],
+  "animal-village-enter-left": [
+   "AnimalVillageEnter",
+   10.79,
+   6.17
+  ],
+  "animal-village-enter-right": [
+   "AnimalVillageEnter",
+   24.04,
+   5.64
+  ],
+  "armos-shrine": [
+   "ArmosShrine",
+   7.5,
+   33.75
+  ],
+  "armos-shrine-cave": [
+   "ArmosShrineCave",
+   9.75,
+   8.25
+  ],
+  "banana-house": [
+   "BananaHouse",
+   7.5,
+   10.88
+  ],
+  "banana-house-porch": [
+   "Field",
+   55.28,
+   175.96
+  ],
+  "beach-left": [
+   "Field",
+   18.77,
+   177.82
+  ],
+  "beach-right": [
+   "Field",
+   63.39,
+   180.8
+  ],
+  "bear-house": [
+   "BearHouse",
+   7.5,
+   10.88
+  ],
+  "bed-room": [
+   "BedRoom",
+   7.5,
+   10.5
+  ],
+  "boomerang-cave": [
+   "BoomerangCave",
+   7.5,
+   11.25
+  ],
+  "bottle-grotto-porch": [
+   "Field",
+   65.25,
+   27.75
+  ],
+  "catfish-dungeon-porch": [
+   "Field",
+   143.45,
+   161.85
+  ],
+  "catfishs-maw-enter": [
+   "CatfishsMawEnter",
+   7.5,
+   0.0
+  ],
+  "christine-house": [
+   "ChristineHouse",
+   7.5,
+   10.12
+  ],
+  "crane-game": [
+   "CraneGame",
+   7.5,
+   7.5
+  ],
+  "cucco-house": [
+   "CuccoHouse",
+   7.5,
+   10.5
+  ],
+  "danpei-house": [
+   "DanpeiHouse",
+   7.5,
+   9.38
+  ],
+  "desert": [
+   "Field",
+   217.99,
+   169.0
+  ],
+  "dog-house": [
+   "DogHouse",
+   15.0,
+   8.81
+  ],
+  "dr-wright-house": [
+   "DrWrightHouse",
+   7.5,
+   11.25
+  ],
+  "dream-shrine-porch": [
+   "Field",
+   48.75,
+   102.0
+  ],
+  "eagle-dungeon-drop": [
+   "Field",
+   218.25,
+   20.25
+  ],
+  "eagle-dungeon-porch": [
+   "Field",
+   223.77,
+   14.76
+  ],
+  "eagle-key-cave": [
+   "EagleKeyCave",
+   20.25,
+   6.75
+  ],
+  "eagle-tower-exit": [
+   "EagleTowerExit",
+   7.5,
+   6.0
+  ],
+  "face-dungeon-cave-porch": [
+   "Field",
+   200.62,
+   110.62
+  ],
+  "face-dungeon-porch": [
+   "Field",
+   187.62,
+   104.93
+  ],
+  "face-dungeon-top": [
+   "Field",
+   186.0,
+   76.5
+  ],
+  "face-shrine-enter-left": [
+   "FaceShrineEnter",
+   3.9,
+   4.05
+  ],
+  "face-shrine-enter-right": [
+   "FaceShrineEnter",
+   18.65,
+   8.56
+  ],
+  "fairy-fountain-01": [
+   "FairyFountain01",
+   7.5,
+   10.4
+  ],
+  "fairy-fountain-02": [
+   "FairyFountain02",
+   7.5,
+   10.4
+  ],
+  "fairy-fountain-03": [
+   "FairyFountain03",
+   7.5,
+   10.4
+  ],
+  "field.rapids-south-east": [
+   "Field",
+   232.38,
+   111.24
+  ],
+  "fishing-boat": [
+   "FishingBoat",
+   18.0,
+   0.0
+  ],
+  "flying-cucco-cave": [
+   "FlyingCuccoCave",
+   8.25,
+   21.75
+  ],
+  "frog-maze": [
+   "Field",
+   74.34,
+   155.57
+  ],
+  "ghost-house": [
+   "GhostHouse",
+   7.5,
+   10.12
+  ],
+  "ghost-house-yard": [
+   "Field",
+   99.08,
+   180.12
+  ],
+  "goponga-cave": [
+   "GopongaCave",
+   11.25,
+   5.25
+  ],
+  "goponga-central": [
+   "Field",
+   93.24,
+   39.24
+  ],
+  "goponga-west": [
+   "Field",
+   14.89,
+   34.13
+  ],
+  "graveyard-cave-porch": [
+   "Field",
+   80.25,
+   90.0
+  ],
+  "graveyard-east": [
+   "Field",
+   101.41,
+   74.98
+  ],
+  "graveyard-west": [
+   "Field",
+   72.52,
+   88.75
+  ],
+  "hidden-zora-house": [
+   "HiddenZoraHouse",
+   7.5,
+   10.12
+  ],
+  "kanalet": [
+   "Field",
+   146.23,
+   67.53
+  ],
+  "kanalet-castle-enter-left": [
+   "KanaletCastleEnter",
+   7.5,
+   0.0
+  ],
+  "kanalet-castle-enter-right": [
+   "KanaletCastleEnter",
+   22.5,
+   0.0
+  ],
+  "kanalet-castle-south-cave": [
+   "KanaletCastleSouthCave",
+   8.25,
+   6.75
+  ],
+  "kanalet-castle.a": [
+   "KanaletCastle",
+   15.0,
+   11.45
+  ],
+  "kanalet-castle.b": [
+   "KanaletCastle",
+   69.27,
+   11.51
+  ],
+  "kanalet-castle.c": [
+   "KanaletCastle",
+   83.05,
+   12.99
+  ],
+  "kanalet-east": [
+   "Field",
+   169.15,
+   64.15
+  ],
+  "kanalet-hookshot-island": [
+   "Field",
+   126.19,
+   93.56
+  ],
+  "kanalet-porch": [
+   "Field",
+   143.25,
+   85.23
+  ],
+  "kanalet-top": [
+   "Field",
+   142.4,
+   70.3
+  ],
+  "lanmola-cave": [
+   "LanmolaCave",
+   16.88,
+   19.12
+  ],
+  "library": [
+   "Library",
+   7.5,
+   11.25
+  ],
+  "lv-09-wind-fishs-egg": [
+   "Lv09WindFishsEgg",
+   7.5,
+   22.5
+  ],
+  "mabe": [
+   "Field",
+   33.9,
+   134.27
+  ],
+  "mabe-well-porch": [
+   "Field",
+   8.25,
+   127.5
+  ],
+  "mad-batters-well-01": [
+   "MadBattersWell01",
+   12.75,
+   9.75
+  ],
+  "mad-batters-well-02": [
+   "MadBattersWell02",
+   12.75,
+   6.75
+  ],
+  "mad-batters-well-03": [
+   "MadBattersWell03",
+   12.75,
+   6.75
+  ],
+  "mad-batters-well-enter-left": [
+   "MadBattersWellEnter",
+   15.0,
+   6.0
+  ],
+  "mad-batters-well-enter-right": [
+   "MadBattersWellEnter",
+   22.5,
+   18.0
+  ],
+  "madam-house": [
+   "MadamHouse",
+   6.0,
+   9.0
+  ],
+  "magic-powder-house": [
+   "MagicPowderHouse",
+   7.5,
+   11.63
+  ],
+  "mambo-cave": [
+   "MamboCave",
+   -1.5,
+   0.0
+  ],
+  "mamu-cave": [
+   "MamuCave",
+   12.38,
+   9.75
+  ],
+  "martha-ukuku.a": [
+   "MarthaUkuku",
+   27.5,
+   46.0
+  ],
+  "martha-ukuku.b": [
+   "MarthaUkuku",
+   7.5,
+   42.0
+  ],
+  "martha-ukuku.c": [
+   "MarthaUkuku",
+   27.75,
+   2.25
+  ],
+  "martha-ukuku.d": [
+   "MarthaUkuku",
+   16.04,
+   6.66
+  ],
+  "marthas-bat-porch": [
+   "Field",
+   107.04,
+   171.11
+  ],
+  "marthas-bay-bushland": [
+   "Field",
+   145.04,
+   186.68
+  ],
+  "marthas-bay-land": [
+   "Field",
+   126.63,
+   173.05
+  ],
+  "mermaid-statue": [
+   "MermaidStatue",
+   9.75,
+   20.25
+  ],
+  "mermaid-statue-land": [
+   "Field",
+   150.71,
+   177.51
+  ],
+  "moriblin-cave": [
+   "MoriblinCave",
+   7.5,
+   22.4
+  ],
+  "mysterious-woods-cave-01": [
+   "MysteriousWoodsCave01",
+   20.25,
+   6.75
+  ],
+  "mysterious-woods-cave-02": [
+   "MysteriousWoodsCave02",
+   7.5,
+   10.4
+  ],
+  "pothole-field": [
+   "Field",
+   106.2,
+   153.87
+  ],
+  "prairie": [
+   "Field",
+   118.59,
+   120.2
+  ],
+  "prairie-hill": [
+   "Field",
+   126.48,
+   136.12
+  ],
+  "quaduplet-house": [
+   "QuadupletHouse",
+   11.25,
+   2.25
+  ],
+  "rabbit-big-house": [
+   "RabbitBigHouse",
+   6.0,
+   8.63
+  ],
+  "rapids": [
+   "Field",
+   209.68,
+   68.14
+  ],
+  "rapids-cave-porch": [
+   "Field",
+   222.38,
+   98.25
+  ],
+  "rapids-porch": [
+   "Field",
+   226.26,
+   36.46
+  ],
+  "rapids-ride-exit.a": [
+   "RapidsRideExit",
+   11.25,
+   22.12
+  ],
+  "rapids-ride-exit.b": [
+   "RapidsRideExit",
+   5.46,
+   11.46
+  ],
+  "rapids-ride-exit.c": [
+   "RapidsRideExit",
+   6.75,
+   1.88
+  ],
+  "rapids-ride-ticket": [
+   "RapidsRideTicket",
+   7.5,
+   10.5
+  ],
+  "rapids-river": [
+   "Field",
+   222.3,
+   100.53
+  ],
+  "rapids-south": [
+   "Field",
+   218.31,
+   109.37
+  ],
+  "rapids-south-fairy": [
+   "Field",
+   202.65,
+   101.15
+  ],
+  "richard-cave-left": [
+   "RichardCave",
+   8.06,
+   10.33
+  ],
+  "richard-cave-right": [
+   "RichardCave",
+   67.81,
+   6.6
+  ],
+  "richard-house": [
+   "RichardHouse",
+   3.75,
+   3.75
+  ],
+  "river": [
+   "Field",
+   155.37,
+   117.31
+  ],
+  "schule-donavitch-house": [
+   "SchuleDonavitchHouse",
+   7.5,
+   10.31
+  ],
+  "seashell-house": [
+   "SeashellHouse",
+   0.75,
+   0.0
+  ],
+  "shop-level": [
+   "Shop",
+   7.5,
+   9.75
+  ],
+  "slime-dungeon-porch": [
+   "Field",
+   88.47,
+   132.43
+  ],
+  "swamp": [
+   "Field",
+   49.95,
+   36.5
+  ],
+  "taltal-central": [
+   "Field",
+   108.83,
+   27.68
+  ],
+  "taltal-east0-bridge": [
+   "Field",
+   122.55,
+   10.3
+  ],
+  "taltal-east0-cave-porch": [
+   "Field",
+   110.25,
+   21.0
+  ],
+  "taltal-east0-left": [
+   "Field",
+   128.4,
+   18.45
+  ],
+  "taltal-east0-right": [
+   "Field",
+   146.29,
+   22.4
+  ],
+  "taltal-east0-right-top": [
+   "Field",
+   144.7,
+   16.45
+  ],
+  "taltal-east1-left": [
+   "Field",
+   182.62,
+   21.89
+  ],
+  "taltal-east1-right": [
+   "Field",
+   195.5,
+   22.75
+  ],
+  "taltal-east1-top": [
+   "Field",
+   167.23,
+   13.68
+  ],
+  "taltal-east2-5chest-yard": [
+   "Field",
+   199.83,
+   18.25
+  ],
+  "taltal-east2-center": [
+   "Field",
+   225.17,
+   21.06
+  ],
+  "taltal-east2-left": [
+   "Field",
+   211.41,
+   22.19
+  ],
+  "taltal-east2-right": [
+   "Field",
+   233.96,
+   21.82
+  ],
+  "taltal-heights": [
+   "Field",
+   174.02,
+   38.0
+  ],
+  "taltal-waterfall": [
+   "Field",
+   171.75,
+   23.25
+  ],
+  "taltal-waters": [
+   "Field",
+   182.36,
+   29.9
+  ],
+  "taltal-west0": [
+   "Field",
+   74.06,
+   17.5
+  ],
+  "taltal-west1": [
+   "Field",
+   48.09,
+   22.41
+  ],
+  "taltal-west2": [
+   "Field",
+   25.97,
+   19.22
+  ],
+  "tamaranch-01.a": [
+   "Tamaranch01",
+   22.5,
+   6.0
+  ],
+  "tamaranch-01.b": [
+   "Tamaranch01",
+   15.0,
+   42.0
+  ],
+  "tamaranch-01.c": [
+   "Tamaranch01",
+   7.5,
+   78.0
+  ],
+  "tamaranch-01.d": [
+   "Tamaranch01",
+   22.5,
+   78.0
+  ],
+  "tamaranch-01.e": [
+   "Tamaranch01",
+   22.5,
+   90.0
+  ],
+  "tamaranch-02-1": [
+   "Tamaranch02",
+   7.5,
+   12.0
+  ],
+  "tamaranch-02.b": [
+   "Tamaranch02",
+   52.5,
+   12.0
+  ],
+  "tamaranch-03.a": [
+   "Tamaranch03",
+   7.5,
+   12.0
+  ],
+  "tamaranch-03.b": [
+   "Tamaranch03",
+   15.0,
+   54.0
+  ],
+  "tamaranch-05.a": [
+   "Tamaranch05",
+   15.0,
+   18.0
+  ],
+  "tamaranch-05.b": [
+   "Tamaranch05",
+   7.5,
+   6.0
+  ],
+  "tamaranch-05.c": [
+   "Tamaranch05",
+   7.5,
+   60.0
+  ],
+  "tarin-house": [
+   "MarinTarinHouse",
+   7.5,
+   6.0
+  ],
+  "telephone-box-01-ukuku-1": [
+   "TelephoneBox01_Ukuku1",
+   7.5,
+   10.5
+  ],
+  "telephone-box-02-mebe": [
+   "TelephoneBox02_Mebe",
+   7.5,
+   10.5
+  ],
+  "telephone-box-03-kanalet": [
+   "TelephoneBox03_Kanalet",
+   7.5,
+   10.5
+  ],
+  "telephone-box-04-animal-village": [
+   "TelephoneBox04_AnimalVillage",
+   7.5,
+   10.5
+  ],
+  "telephone-box-05-turtle-rock": [
+   "TelephoneBox05_TurtleRock",
+   7.5,
+   10.5
+  ],
+  "telephone-box-06-goponga": [
+   "TelephoneBox06_Goponga",
+   7.5,
+   10.5
+  ],
+  "telephone-box-07-ukuku-2": [
+   "TelephoneBox07_Ukuku2",
+   7.5,
+   10.5
+  ],
+  "telephone-box-08-martha": [
+   "TelephoneBox08_Martha",
+   7.5,
+   10.5
+  ],
+  "town-well": [
+   "TownWell",
+   6.75,
+   5.25
+  ],
+  "tracy-house": [
+   "TracyHouse",
+   7.5,
+   10.5
+  ],
+  "tracy-yard": [
+   "Field",
+   84.53,
+   58.06
+  ],
+  "trendy-porch": [
+   "Field",
+   53.25,
+   139.35
+  ],
+  "turtle-dungeon-porch": [
+   "Field",
+   8.25,
+   16.5
+  ],
+  "turtle-dungeon-top": [
+   "Field",
+   22.46,
+   12.25
+  ],
+  "turtle-rock-enter.a": [
+   "TurtleRockEnter",
+   7.5,
+   18.0
+  ],
+  "turtle-rock-enter.b": [
+   "TurtleRockEnter",
+   7.5,
+   6.0
+  ],
+  "ukuku-cave-01": [
+   "UkukuCave01",
+   7.49,
+   10.4
+  ],
+  "ukuku-cave-02.a": [
+   "UkukuCave02",
+   21.86,
+   7.34
+  ],
+  "ukuku-cave-02.b": [
+   "UkukuCave02",
+   8.03,
+   10.41
+  ],
+  "ukuku-cave-02.c": [
+   "UkukuCave02",
+   4.5,
+   21.0
+  ],
+  "ulrira-house": [
+   "UlriraHouse",
+   7.5,
+   11.25
+  ],
+  "under-grave.a": [
+   "UnderGrave",
+   7.5,
+   6.0
+  ],
+  "under-grave.b": [
+   "UnderGrave",
+   22.5,
+   6.0
+  ],
+  "woods": [
+   "Field",
+   42.8,
+   73.33
+  ],
+  "woods-cave-porch": [
+   "Field",
+   35.25,
+   54.0
+  ],
+  "woods-north": [
+   "Field",
+   15.39,
+   46.75
+  ],
+  "woods-racoon": [
+   "Field",
+   22.29,
+   58.07
+  ],
+  "woods-west": [
+   "Field",
+   8.48,
+   62.25
+  ]
+ },
+ "doors": {
+  "AnglersTunnelExit_01A": [
+   "AnglersTunnelExit",
+   3.75,
+   2.25
+  ],
+  "AnglersTunnelExit_01B": [
+   "AnglersTunnelExit",
+   27.75,
+   9.75
+  ],
+  "AnimalVillageCave_02B": [
+   "AnimalVillageCave",
+   24.0,
+   22.4
+  ],
+  "AnimalVillageEnter_01A": [
+   "AnimalVillageEnter",
+   3.75,
+   5.25
+  ],
+  "AnimalVillageEnter_01B": [
+   "AnimalVillageEnter",
+   26.25,
+   5.25
+  ],
+  "ArmosShrineCave_01A": [
+   "ArmosShrineCave",
+   9.75,
+   8.25
+  ],
+  "ArmosShrine_03A": [
+   "ArmosShrine",
+   7.5,
+   33.75
+  ],
+  "BananaHouse_01A": [
+   "BananaHouse",
+   7.5,
+   10.875
+  ],
+  "BearHouse_01A": [
+   "BearHouse",
+   7.5,
+   10.875
+  ],
+  "BedRoom_01A_b": [
+   "BedRoom",
+   7.5,
+   10.5
+  ],
+  "BoomerangCave_01A": [
+   "BoomerangCave",
+   7.5,
+   11.25
+  ],
+  "CatfishsMawEnter_01A": [
+   "CatfishsMawEnter",
+   2.25,
+   0.0
+  ],
+  "CatfishsMawEnter_01B": [
+   "CatfishsMawEnter",
+   25.5,
+   0.0
+  ],
+  "ChristineHouse_01A": [
+   "ChristineHouse",
+   7.5,
+   10.125
+  ],
+  "CraneGame_01A": [
+   "CraneGame",
+   7.5,
+   7.5
+  ],
+  "CuccoHouse_01A": [
+   "CuccoHouse",
+   7.5,
+   10.5
+  ],
+  "DanpeiHouse_01A_a": [
+   "DanpeiHouse",
+   7.5,
+   9.38
+  ],
+  "DogHouse_01A": [
+   "DogHouse",
+   15.0,
+   8.812
+  ],
+  "DrWrightHouse_01A": [
+   "DrWrightHouse",
+   7.5,
+   11.25
+  ],
+  "EagleKeyCave_02C": [
+   "EagleKeyCave",
+   39.0,
+   22.4
+  ],
+  "EagleTowerExit_01A_a": [
+   "EagleTowerExit",
+   7.5,
+   6.0
+  ],
+  "EagleTowerExit_01A_b": [
+   "EagleTowerExit",
+   7.5,
+   10.4
+  ],
+  "FaceShrineEnter_01A": [
+   "FaceShrineEnter",
+   3.75,
+   0.75
+  ],
+  "FaceShrineEnter_01B": [
+   "FaceShrineEnter",
+   27.75,
+   8.25
+  ],
+  "FairyFountain01_01A": [
+   "FairyFountain01",
+   7.5,
+   10.4
+  ],
+  "FairyFountain02_01A": [
+   "FairyFountain02",
+   7.5,
+   10.4
+  ],
+  "FairyFountain03_01A": [
+   "FairyFountain03",
+   7.5,
+   10.4
+  ],
+  "Field_01A": [
+   "Field",
+   6.75,
+   12.0
+  ],
+  "Field_01C": [
+   "Field",
+   35.25,
+   12.0
+  ],
+  "Field_01D": [
+   "Field",
+   51.75,
+   12.0
+  ],
+  "Field_01E": [
+   "Field",
+   69.75,
+   17.25
+  ],
+  "Field_01G": [
+   "Field",
+   98.25,
+   8.25
+  ],
+  "Field_01H": [
+   "Field",
+   110.25,
+   15.75
+  ],
+  "Field_01K_a": [
+   "Field",
+   156.75,
+   9.75
+  ],
+  "Field_01K_b": [
+   "Field",
+   152.25,
+   15.75
+  ],
+  "Field_01K_c": [
+   "Field",
+   161.25,
+   17.25
+  ],
+  "Field_01K_d": [
+   "Field",
+   159.75,
+   23.25
+  ],
+  "Field_01N": [
+   "Field",
+   197.25,
+   13.5
+  ],
+  "Field_01O": [
+   "Field",
+   219.0,
+   12.0
+  ],
+  "Field_01P": [
+   "Field",
+   230.25,
+   13.5
+  ],
+  "Field_02A": [
+   "Field",
+   8.25,
+   16.5
+  ],
+  "Field_02B": [
+   "Field",
+   24.75,
+   19.5
+  ],
+  "Field_02D": [
+   "Field",
+   53.25,
+   16.5
+  ],
+  "Field_02F": [
+   "Field",
+   87.75,
+   21.0
+  ],
+  "Field_02H": [
+   "Field",
+   110.25,
+   21.0
+  ],
+  "Field_02I_a": [
+   "Field",
+   129.75,
+   16.5
+  ],
+  "Field_02I_b": [
+   "Field",
+   132.75,
+   16.5
+  ],
+  "Field_02J": [
+   "Field",
+   147.75,
+   21.0
+  ],
+  "Field_02N_a": [
+   "Field",
+   197.25,
+   21.0
+  ],
+  "Field_02N_b": [
+   "Field",
+   206.25,
+   19.5
+  ],
+  "Field_02O_a": [
+   "Field",
+   215.25,
+   19.5
+  ],
+  "Field_02O_b": [
+   "Field",
+   221.25,
+   19.5
+  ],
+  "Field_02P_a": [
+   "Field",
+   228.75,
+   19.5
+  ],
+  "Field_02P_b": [
+   "Field",
+   230.25,
+   22.5
+  ],
+  "Field_02P_c": [
+   "Field",
+   233.25,
+   19.5
+  ],
+  "Field_02P_d": [
+   "Field",
+   236.25,
+   16.5
+  ],
+  "Field_03A": [
+   "Field",
+   12.75,
+   30.0
+  ],
+  "Field_03B": [
+   "Field",
+   17.25,
+   30.0
+  ],
+  "Field_03E": [
+   "Field",
+   65.25,
+   27.0
+  ],
+  "Field_03K": [
+   "Field",
+   159.75,
+   28.5
+  ],
+  "Field_03L_a": [
+   "Field",
+   171.75,
+   25.5
+  ],
+  "Field_03L_b": [
+   "Field",
+   174.75,
+   26.25
+  ],
+  "Field_03N": [
+   "Field",
+   203.25,
+   32.25
+  ],
+  "Field_03O": [
+   "Field",
+   218.25,
+   27.0
+  ],
+  "Field_03P": [
+   "Field",
+   227.25,
+   33.75
+  ],
+  "Field_04A_a": [
+   "Field",
+   11.25,
+   40.5
+  ],
+  "Field_04B": [
+   "Field",
+   24.0,
+   43.5
+  ],
+  "Field_04F": [
+   "Field",
+   84.75,
+   43.5
+  ],
+  "Field_04H": [
+   "Field",
+   111.75,
+   42.0
+  ],
+  "Field_04P": [
+   "Field",
+   228.75,
+   40.5
+  ],
+  "Field_05C": [
+   "Field",
+   35.25,
+   54.0
+  ],
+  "Field_05F": [
+   "Field",
+   87.75,
+   54.0
+  ],
+  "Field_05J": [
+   "Field",
+   144.75,
+   54.75
+  ],
+  "Field_05K": [
+   "Field",
+   162.75,
+   51.75
+  ],
+  "Field_05L": [
+   "Field",
+   171.75,
+   51.0
+  ],
+  "Field_06A": [
+   "Field",
+   12.75,
+   64.5
+  ],
+  "Field_06C": [
+   "Field",
+   41.25,
+   63.75
+  ],
+  "Field_06J_a": [
+   "Field",
+   137.25,
+   66.0
+  ],
+  "Field_06J_b": [
+   "Field",
+   143.25,
+   67.5
+  ],
+  "Field_07C": [
+   "Field",
+   41.25,
+   78.0
+  ],
+  "Field_07F": [
+   "Field",
+   81.75,
+   76.5
+  ],
+  "Field_07J": [
+   "Field",
+   143.25,
+   78.0
+  ],
+  "Field_07M": [
+   "Field",
+   186.75,
+   75.75
+  ],
+  "Field_08F": [
+   "Field",
+   80.25,
+   89.25
+  ],
+  "Field_08G": [
+   "Field",
+   99.75,
+   89.25
+  ],
+  "Field_08H": [
+   "Field",
+   116.25,
+   86.25
+  ],
+  "Field_08I": [
+   "Field",
+   123.75,
+   93.75
+  ],
+  "Field_09C_a": [
+   "Field",
+   38.25,
+   103.5
+  ],
+  "Field_09C_b": [
+   "Field",
+   41.25,
+   103.5
+  ],
+  "Field_09D": [
+   "Field",
+   48.75,
+   102.0
+  ],
+  "Field_09E": [
+   "Field",
+   74.25,
+   105.0
+  ],
+  "Field_09G": [
+   "Field",
+   92.25,
+   102.0
+  ],
+  "Field_09H": [
+   "Field",
+   108.75,
+   96.0
+  ],
+  "Field_09I": [
+   "Field",
+   128.25,
+   103.5
+  ],
+  "Field_09K": [
+   "Field",
+   158.25,
+   102.0
+  ],
+  "Field_09M": [
+   "Field",
+   185.25,
+   102.0
+  ],
+  "Field_09N": [
+   "Field",
+   200.25,
+   97.5
+  ],
+  "Field_09P": [
+   "Field",
+   225.75,
+   97.5
+  ],
+  "Field_10C": [
+   "Field",
+   38.25,
+   114.75
+  ],
+  "Field_10D": [
+   "Field",
+   51.75,
+   116.25
+  ],
+  "Field_10M": [
+   "Field",
+   188.25,
+   108.0
+  ],
+  "Field_10N": [
+   "Field",
+   200.25,
+   110.25
+  ],
+  "Field_11A": [
+   "Field",
+   8.25,
+   131.25
+  ],
+  "Field_11B_a": [
+   "Field",
+   20.25,
+   127.5
+  ],
+  "Field_11B_b": [
+   "Field",
+   23.25,
+   126.75
+  ],
+  "Field_11C": [
+   "Field",
+   38.25,
+   127.5
+  ],
+  "Field_11E": [
+   "Field",
+   65.25,
+   126.0
+  ],
+  "Field_11K": [
+   "Field",
+   162.75,
+   126.75
+  ],
+  "Field_11L": [
+   "Field",
+   176.25,
+   126.75
+  ],
+  "Field_11M": [
+   "Field",
+   188.25,
+   124.5
+  ],
+  "Field_11O": [
+   "Field",
+   216.75,
+   126.75
+  ],
+  "Field_12A": [
+   "Field",
+   5.25,
+   136.5
+  ],
+  "Field_12B": [
+   "Field",
+   21.75,
+   138.75
+  ],
+  "Field_12C": [
+   "Field",
+   38.25,
+   139.5
+  ],
+  "Field_12D": [
+   "Field",
+   53.25,
+   138.75
+  ],
+  "Field_12F": [
+   "Field",
+   84.75,
+   135.0
+  ],
+  "Field_12I_a": [
+   "Field",
+   128.25,
+   138.0
+  ],
+  "Field_12I_b": [
+   "Field",
+   131.25,
+   141.0
+  ],
+  "Field_13G": [
+   "Field",
+   95.25,
+   151.5
+  ],
+  "Field_13I": [
+   "Field",
+   123.75,
+   150.0
+  ],
+  "Field_13M_a": [
+   "Field",
+   183.75,
+   150.0
+  ],
+  "Field_13M_b": [
+   "Field",
+   191.25,
+   150.0
+  ],
+  "Field_13N_a": [
+   "Field",
+   198.75,
+   150.0
+  ],
+  "Field_13N_b": [
+   "Field",
+   203.25,
+   150.0
+  ],
+  "Field_13N_c": [
+   "Field",
+   207.75,
+   145.5
+  ],
+  "Field_13P": [
+   "Field",
+   236.25,
+   146.25
+  ],
+  "Field_14D": [
+   "Field",
+   54.75,
+   159.0
+  ],
+  "Field_14E": [
+   "Field",
+   72.75,
+   161.25
+  ],
+  "Field_14G": [
+   "Field",
+   96.75,
+   163.5
+  ],
+  "Field_14J_a": [
+   "Field",
+   138.75,
+   164.25
+  ],
+  "Field_14J_b": [
+   "Field",
+   143.25,
+   161.25
+  ],
+  "Field_14J_c": [
+   "Field",
+   141.75,
+   164.25
+  ],
+  "Field_14L": [
+   "Field",
+   176.25,
+   163.5
+  ],
+  "Field_14N": [
+   "Field",
+   203.25,
+   160.5
+  ],
+  "Field_15D": [
+   "Field",
+   53.25,
+   172.5
+  ],
+  "Field_15G": [
+   "Field",
+   101.25,
+   170.25
+  ],
+  "Field_15H": [
+   "Field",
+   113.25,
+   170.25
+  ],
+  "Field_15I": [
+   "Field",
+   125.25,
+   175.5
+  ],
+  "Field_15J": [
+   "Field",
+   144.75,
+   171.75
+  ],
+  "Field_15K": [
+   "Field",
+   158.438,
+   171.75
+  ],
+  "Field_16E": [
+   "Field",
+   59.25,
+   182.25
+  ],
+  "Field_16G": [
+   "Field",
+   99.75,
+   186.0
+  ],
+  "Field_16J": [
+   "Field",
+   146.25,
+   186.75
+  ],
+  "FishingBoat_01A": [
+   "FishingBoat",
+   18.0,
+   0.0
+  ],
+  "FlyingCuccoCave_02A": [
+   "FlyingCuccoCave",
+   8.25,
+   21.75
+  ],
+  "GhostHouse_01A": [
+   "GhostHouse",
+   7.5,
+   10.125
+  ],
+  "GopongaCave_01A": [
+   "GopongaCave",
+   7.5,
+   10.4
+  ],
+  "GopongaCave_01B": [
+   "GopongaCave",
+   22.5,
+   10.4
+  ],
+  "HiddenZoraHouse_01A": [
+   "HiddenZoraHouse",
+   7.5,
+   10.125
+  ],
+  "KanaletCastleEnter_01A": [
+   "KanaletCastleEnter",
+   2.25,
+   0.0
+  ],
+  "KanaletCastleEnter_01B": [
+   "KanaletCastleEnter",
+   24.75,
+   0.0
+  ],
+  "KanaletCastleSouthCave_01A": [
+   "KanaletCastleSouthCave",
+   8.25,
+   6.75
+  ],
+  "KanaletCastle_01A": [
+   "KanaletCastle",
+   9.75,
+   0.75
+  ],
+  "KanaletCastle_01C": [
+   "KanaletCastle",
+   66.75,
+   0.75
+  ],
+  "KanaletCastle_02B": [
+   "KanaletCastle",
+   22.5,
+   22.4
+  ],
+  "KanaletCastle_02C": [
+   "KanaletCastle",
+   67.5,
+   22.4
+  ],
+  "KanaletCastle_02D": [
+   "KanaletCastle",
+   82.5,
+   22.4
+  ],
+  "LanmolaCave_02A": [
+   "LanmolaCave",
+   7.5,
+   18.0
+  ],
+  "LanmolaCave_02B": [
+   "LanmolaCave",
+   26.25,
+   20.25
+  ],
+  "Library_01A": [
+   "Library",
+   7.5,
+   11.25
+  ],
+  "Lv01TailCave_01F": [
+   "Lv01TailCave",
+   138.75,
+   0.0
+  ],
+  "Lv01TailCave_01G": [
+   "Lv01TailCave",
+   161.25,
+   0.0
+  ],
+  "Lv01TailCave_02G": [
+   "Lv01TailCave",
+   221.25,
+   0.0
+  ],
+  "Lv01TailCave_04B": [
+   "Lv01TailCave",
+   27.75,
+   38.25
+  ],
+  "Lv01TailCave_05G": [
+   "Lv01TailCave",
+   98.25,
+   53.25
+  ],
+  "Lv01TailCave_06G_Warp": [
+   "Lv01TailCave",
+   97.5,
+   66.0
+  ],
+  "Lv01TailCave_07A": [
+   "Lv01TailCave",
+   6.75,
+   80.25
+  ],
+  "Lv01TailCave_08D": [
+   "Lv01TailCave",
+   52.5,
+   93.75
+  ],
+  "Lv01TailCave_08D_Warp": [
+   "Lv01TailCave",
+   52.5,
+   90.0
+  ],
+  "Lv02BottleGrotto_02G": [
+   "Lv02BottleGrotto",
+   102.75,
+   14.25
+  ],
+  "Lv02BottleGrotto_03F": [
+   "Lv02BottleGrotto",
+   77.25,
+   26.25
+  ],
+  "Lv02BottleGrotto_04B_Warp": [
+   "Lv02BottleGrotto",
+   22.5,
+   42.0
+  ],
+  "Lv02BottleGrotto_04C": [
+   "Lv02BottleGrotto",
+   36.75,
+   42.75
+  ],
+  "Lv02BottleGrotto_04D": [
+   "Lv02BottleGrotto",
+   137.25,
+   0.0
+  ],
+  "Lv02BottleGrotto_04E": [
+   "Lv02BottleGrotto",
+   162.75,
+   0.0
+  ],
+  "Lv02BottleGrotto_05B": [
+   "Lv02BottleGrotto",
+   26.25,
+   57.75
+  ],
+  "Lv02BottleGrotto_05D": [
+   "Lv02BottleGrotto",
+   197.25,
+   0.0
+  ],
+  "Lv02BottleGrotto_05E": [
+   "Lv02BottleGrotto",
+   222.75,
+   0.0
+  ],
+  "Lv02BottleGrotto_05G": [
+   "Lv02BottleGrotto",
+   102.75,
+   50.25
+  ],
+  "Lv02BottleGrotto_06D": [
+   "Lv02BottleGrotto",
+   257.25,
+   0.0
+  ],
+  "Lv02BottleGrotto_06E": [
+   "Lv02BottleGrotto",
+   282.75,
+   0.0
+  ],
+  "Lv02BottleGrotto_06G": [
+   "Lv02BottleGrotto",
+   102.75,
+   62.25
+  ],
+  "Lv02BottleGrotto_08C": [
+   "Lv02BottleGrotto",
+   37.5,
+   94.5
+  ],
+  "Lv02BottleGrotto_08C_Warp": [
+   "Lv02BottleGrotto",
+   37.5,
+   90.0
+  ],
+  "Lv03KeyCavern_01F": [
+   "Lv03KeyCavern",
+   122.25,
+   0.0
+  ],
+  "Lv03KeyCavern_01G": [
+   "Lv03KeyCavern",
+   147.75,
+   0.0
+  ],
+  "Lv03KeyCavern_02B_Warp": [
+   "Lv03KeyCavern",
+   22.5,
+   17.25
+  ],
+  "Lv03KeyCavern_03C": [
+   "Lv03KeyCavern",
+   32.25,
+   27.75
+  ],
+  "Lv03KeyCavern_04B": [
+   "Lv03KeyCavern",
+   24.75,
+   41.25
+  ],
+  "Lv03KeyCavern_04C": [
+   "Lv03KeyCavern",
+   36.75,
+   42.75
+  ],
+  "Lv03KeyCavern_04G": [
+   "Lv03KeyCavern",
+   99.75,
+   41.25
+  ],
+  "Lv03KeyCavern_04H": [
+   "Lv03KeyCavern",
+   111.75,
+   44.25
+  ],
+  "Lv03KeyCavern_08B": [
+   "Lv03KeyCavern",
+   22.5,
+   94.312
+  ],
+  "Lv03KeyCavern_08B_Warp": [
+   "Lv03KeyCavern",
+   22.5,
+   90.0
+  ],
+  "Lv03KeyCavern_08H": [
+   "Lv03KeyCavern",
+   117.75,
+   86.25
+  ],
+  "Lv04AnglersTunnel_03E_Warp": [
+   "Lv04AnglersTunnel",
+   67.5,
+   32.625
+  ],
+  "Lv04AnglersTunnel_04AU": [
+   "Lv04AnglersTunnel",
+   138.75,
+   0.0
+  ],
+  "Lv04AnglersTunnel_04B": [
+   "Lv04AnglersTunnel",
+   21.75,
+   42.75
+  ],
+  "Lv04AnglersTunnel_04C": [
+   "Lv04AnglersTunnel",
+   42.75,
+   38.25
+  ],
+  "Lv04AnglersTunnel_04F": [
+   "Lv04AnglersTunnel",
+   86.25,
+   39.75
+  ],
+  "Lv04AnglersTunnel_05C": [
+   "Lv04AnglersTunnel",
+   32.25,
+   50.25
+  ],
+  "Lv04AnglersTunnel_05D": [
+   "Lv04AnglersTunnel",
+   47.25,
+   50.25
+  ],
+  "Lv04AnglersTunnel_06B": [
+   "Lv04AnglersTunnel",
+   207.75,
+   0.0
+  ],
+  "Lv04AnglersTunnel_06C": [
+   "Lv04AnglersTunnel",
+   33.75,
+   69.75
+  ],
+  "Lv04AnglersTunnel_07A": [
+   "Lv04AnglersTunnel",
+   242.25,
+   0.0
+  ],
+  "Lv04AnglersTunnel_07B": [
+   "Lv04AnglersTunnel",
+   267.75,
+   0.0
+  ],
+  "Lv04AnglersTunnel_08A": [
+   "Lv04AnglersTunnel",
+   302.25,
+   0.0
+  ],
+  "Lv04AnglersTunnel_08B": [
+   "Lv04AnglersTunnel",
+   327.75,
+   0.0
+  ],
+  "Lv04AnglersTunnel_08D": [
+   "Lv04AnglersTunnel",
+   52.5,
+   93.75
+  ],
+  "Lv04AnglersTunnel_08D_Warp": [
+   "Lv04AnglersTunnel",
+   52.5,
+   88.5
+  ],
+  "Lv05CatfishsMaw_01C": [
+   "Lv05CatfishsMaw",
+   42.75,
+   9.75
+  ],
+  "Lv05CatfishsMaw_02E": [
+   "Lv05CatfishsMaw",
+   72.75,
+   14.25
+  ],
+  "Lv05CatfishsMaw_03B": [
+   "Lv05CatfishsMaw",
+   17.25,
+   26.25
+  ],
+  "Lv05CatfishsMaw_03E": [
+   "Lv05CatfishsMaw",
+   71.25,
+   32.25
+  ],
+  "Lv05CatfishsMaw_03F": [
+   "Lv05CatfishsMaw",
+   83.25,
+   30.75
+  ],
+  "Lv05CatfishsMaw_05A": [
+   "Lv05CatfishsMaw",
+   152.25,
+   0.0
+  ],
+  "Lv05CatfishsMaw_05B": [
+   "Lv05CatfishsMaw",
+   175.5,
+   0.0
+  ],
+  "Lv05CatfishsMaw_05D_Warp": [
+   "Lv05CatfishsMaw",
+   52.5,
+   54.0
+  ],
+  "Lv05CatfishsMaw_05E": [
+   "Lv05CatfishsMaw",
+   71.25,
+   50.25
+  ],
+  "Lv05CatfishsMaw_05G": [
+   "Lv05CatfishsMaw",
+   102.75,
+   54.75
+  ],
+  "Lv05CatfishsMaw_06A": [
+   "Lv05CatfishsMaw",
+   212.25,
+   0.0
+  ],
+  "Lv05CatfishsMaw_06B": [
+   "Lv05CatfishsMaw",
+   237.75,
+   0.0
+  ],
+  "Lv05CatfishsMaw_07A": [
+   "Lv05CatfishsMaw",
+   272.25,
+   0.0
+  ],
+  "Lv05CatfishsMaw_07B": [
+   "Lv05CatfishsMaw",
+   297.75,
+   0.0
+  ],
+  "Lv05CatfishsMaw_08A": [
+   "Lv05CatfishsMaw",
+   332.25,
+   0.0
+  ],
+  "Lv05CatfishsMaw_08B": [
+   "Lv05CatfishsMaw",
+   357.75,
+   0.0
+  ],
+  "Lv05CatfishsMaw_08E": [
+   "Lv05CatfishsMaw",
+   63.75,
+   87.75
+  ],
+  "Lv05CatfishsMaw_08H": [
+   "Lv05CatfishsMaw",
+   112.5,
+   93.75
+  ],
+  "Lv05CatfishsMaw_08H_Warp": [
+   "Lv05CatfishsMaw",
+   112.5,
+   90.0
+  ],
+  "Lv06FaceShrine_01A": [
+   "Lv06FaceShrine",
+   152.25,
+   0.0
+  ],
+  "Lv06FaceShrine_01B": [
+   "Lv06FaceShrine",
+   177.75,
+   0.0
+  ],
+  "Lv06FaceShrine_01C": [
+   "Lv06FaceShrine",
+   212.25,
+   0.0
+  ],
+  "Lv06FaceShrine_01D": [
+   "Lv06FaceShrine",
+   237.75,
+   0.0
+  ],
+  "Lv06FaceShrine_01E": [
+   "Lv06FaceShrine",
+   272.25,
+   0.0
+  ],
+  "Lv06FaceShrine_01F": [
+   "Lv06FaceShrine",
+   297.75,
+   0.0
+  ],
+  "Lv06FaceShrine_02A": [
+   "Lv06FaceShrine",
+   11.25,
+   13.0
+  ],
+  "Lv06FaceShrine_04B": [
+   "Lv06FaceShrine",
+   20.25,
+   44.25
+  ],
+  "Lv06FaceShrine_04F": [
+   "Lv06FaceShrine",
+   78.75,
+   41.25
+  ],
+  "Lv06FaceShrine_04H": [
+   "Lv06FaceShrine",
+   117.75,
+   38.25
+  ],
+  "Lv06FaceShrine_05C": [
+   "Lv06FaceShrine",
+   42.75,
+   50.25
+  ],
+  "Lv06FaceShrine_05D": [
+   "Lv06FaceShrine",
+   47.25,
+   50.25
+  ],
+  "Lv06FaceShrine_05F_Warp": [
+   "Lv06FaceShrine",
+   82.5,
+   54.0
+  ],
+  "Lv06FaceShrine_08B": [
+   "Lv06FaceShrine",
+   20.25,
+   90.75
+  ],
+  "Lv06FaceShrine_08D": [
+   "Lv06FaceShrine",
+   52.5,
+   94.5
+  ],
+  "Lv06FaceShrine_08D_Warp": [
+   "Lv06FaceShrine",
+   52.5,
+   89.25
+  ],
+  "Lv07EagleTower_01B": [
+   "Lv07EagleTower",
+   22.5,
+   3.75
+  ],
+  "Lv07EagleTower_01C": [
+   "Lv07EagleTower",
+   37.5,
+   3.75
+  ],
+  "Lv07EagleTower_02HL": [
+   "Lv07EagleTower",
+   171.75,
+   0.0
+  ],
+  "Lv07EagleTower_03A": [
+   "Lv07EagleTower",
+   11.25,
+   25.5
+  ],
+  "Lv07EagleTower_03D": [
+   "Lv07EagleTower",
+   54.75,
+   27.75
+  ],
+  "Lv07EagleTower_03G": [
+   "Lv07EagleTower",
+   122.25,
+   24.25
+  ],
+  "Lv07EagleTower_04C": [
+   "Lv07EagleTower",
+   41.25,
+   36.75
+  ],
+  "Lv07EagleTower_05B": [
+   "Lv07EagleTower",
+   23.25,
+   75.75
+  ],
+  "Lv07EagleTower_05C": [
+   "Lv07EagleTower",
+   36.75,
+   75.75
+  ],
+  "Lv07EagleTower_07A": [
+   "Lv07EagleTower",
+   11.25,
+   96.75
+  ],
+  "Lv07EagleTower_07D_b": [
+   "Lv07EagleTower",
+   53.25,
+   96.75
+  ],
+  "Lv07EagleTower_07H_Warp": [
+   "Lv07EagleTower",
+   142.5,
+   102.0
+  ],
+  "Lv07EagleTower_08B_Warp": [
+   "Lv07EagleTower",
+   22.5,
+   114.0
+  ],
+  "Lv07EagleTower_08B_b": [
+   "Lv07EagleTower",
+   22.5,
+   118.5
+  ],
+  "Lv07EagleTower_08G": [
+   "Lv07EagleTower",
+   132.75,
+   110.25
+  ],
+  "Lv08TurtleRock_01A": [
+   "Lv08TurtleRock",
+   153.0,
+   0.0
+  ],
+  "Lv08TurtleRock_01B": [
+   "Lv08TurtleRock",
+   181.5,
+   0.0
+  ],
+  "Lv08TurtleRock_01E": [
+   "Lv08TurtleRock",
+   71.25,
+   2.25
+  ],
+  "Lv08TurtleRock_01G": [
+   "Lv08TurtleRock",
+   215.25,
+   0.0
+  ],
+  "Lv08TurtleRock_01H": [
+   "Lv08TurtleRock",
+   243.75,
+   0.0
+  ],
+  "Lv08TurtleRock_02B": [
+   "Lv08TurtleRock",
+   272.25,
+   0.0
+  ],
+  "Lv08TurtleRock_02C": [
+   "Lv08TurtleRock",
+   297.75,
+   0.0
+  ],
+  "Lv08TurtleRock_02F": [
+   "Lv08TurtleRock",
+   332.25,
+   0.0
+  ],
+  "Lv08TurtleRock_02G": [
+   "Lv08TurtleRock",
+   357.75,
+   0.0
+  ],
+  "Lv08TurtleRock_02H": [
+   "Lv08TurtleRock",
+   108.75,
+   18.75
+  ],
+  "Lv08TurtleRock_03B": [
+   "Lv08TurtleRock",
+   23.25,
+   26.25
+  ],
+  "Lv08TurtleRock_03C": [
+   "Lv08TurtleRock",
+   38.25,
+   25.5
+  ],
+  "Lv08TurtleRock_03D": [
+   "Lv08TurtleRock",
+   54.0,
+   29.25
+  ],
+  "Lv08TurtleRock_03F": [
+   "Lv08TurtleRock",
+   83.25,
+   25.5
+  ],
+  "Lv08TurtleRock_03H_Warp": [
+   "Lv08TurtleRock",
+   112.5,
+   30.0
+  ],
+  "Lv08TurtleRock_04E": [
+   "Lv08TurtleRock",
+   66.75,
+   45.75
+  ],
+  "Lv08TurtleRock_05D": [
+   "Lv08TurtleRock",
+   47.25,
+   57.75
+  ],
+  "Lv08TurtleRock_05G": [
+   "Lv08TurtleRock",
+   98.25,
+   54.75
+  ],
+  "Lv08TurtleRock_06E": [
+   "Lv08TurtleRock",
+   72.75,
+   69.75
+  ],
+  "Lv08TurtleRock_06F": [
+   "Lv08TurtleRock",
+   87.75,
+   62.25
+  ],
+  "Lv08TurtleRock_06H": [
+   "Lv08TurtleRock",
+   107.25,
+   62.25
+  ],
+  "Lv08TurtleRock_08B": [
+   "Lv08TurtleRock",
+   392.25,
+   0.0
+  ],
+  "Lv08TurtleRock_08C": [
+   "Lv08TurtleRock",
+   417.75,
+   0.0
+  ],
+  "Lv08TurtleRock_08D_Warp": [
+   "Lv08TurtleRock",
+   52.5,
+   90.0
+  ],
+  "Lv08TurtleRock_08D_b": [
+   "Lv08TurtleRock",
+   52.5,
+   94.5
+  ],
+  "Lv08TurtleRock_08E": [
+   "Lv08TurtleRock",
+   72.75,
+   86.25
+  ],
+  "Lv08TurtleRock_08F": [
+   "Lv08TurtleRock",
+   452.25,
+   0.0
+  ],
+  "Lv08TurtleRock_08G": [
+   "Lv08TurtleRock",
+   477.75,
+   0.0
+  ],
+  "Lv08TurtleRock_08H": [
+   "Lv08TurtleRock",
+   107.25,
+   93.75
+  ],
+  "Lv09WindFishsEgg_08D": [
+   "Lv09WindFishsEgg",
+   7.5,
+   22.5
+  ],
+  "Lv10ClothesDungeon_04B_Warp": [
+   "Lv10ClothesDungeon",
+   22.5,
+   42.0
+  ],
+  "Lv10ClothesDungeon_08C": [
+   "Lv10ClothesDungeon",
+   38.25,
+   92.25
+  ],
+  "Lv10ClothesDungeon_08C_Warp": [
+   "Lv10ClothesDungeon",
+   37.5,
+   90.0
+  ],
+  "MadBattersWell01_01A": [
+   "MadBattersWell01",
+   12.75,
+   9.75
+  ],
+  "MadBattersWell02_01A": [
+   "MadBattersWell02",
+   12.75,
+   6.75
+  ],
+  "MadBattersWell03_01A": [
+   "MadBattersWell03",
+   12.75,
+   6.75
+  ],
+  "MadBattersWellEnter_01A": [
+   "MadBattersWellEnter",
+   3.75,
+   3.75
+  ],
+  "MadBattersWellEnter_02B": [
+   "MadBattersWellEnter",
+   27.75,
+   21.75
+  ],
+  "MadamHouse_01A": [
+   "MadamHouse",
+   6.0,
+   9.0
+  ],
+  "MagicPowderHouse_01A": [
+   "MagicPowderHouse",
+   7.5,
+   11.63
+  ],
+  "MamboCave_01A": [
+   "MamboCave",
+   -1.5,
+   0.0
+  ],
+  "MamuCave_01A": [
+   "MamuCave",
+   12.375,
+   9.75
+  ],
+  "MarinTarinHouse_01A": [
+   "MarinTarinHouse",
+   7.5,
+   10.0
+  ],
+  "MarthaUkuku_01B": [
+   "MarthaUkuku",
+   25.5,
+   10.4
+  ],
+  "MarthaUkuku_01C": [
+   "MarthaUkuku",
+   33.75,
+   2.25
+  ],
+  "MarthaUkuku_02A": [
+   "MarthaUkuku",
+   8.25,
+   42.75
+  ],
+  "MarthaUkuku_02C": [
+   "MarthaUkuku",
+   34.5,
+   46.4
+  ],
+  "MarthaUkuku_03B": [
+   "MarthaUkuku",
+   19.5,
+   58.4
+  ],
+  "MermaidStatue_02A": [
+   "MermaidStatue",
+   9.75,
+   20.25
+  ],
+  "MoriblinCave_02A": [
+   "MoriblinCave",
+   7.5,
+   22.4
+  ],
+  "MysteriousWoodsCave01_01A": [
+   "MysteriousWoodsCave01",
+   7.5,
+   10.4
+  ],
+  "MysteriousWoodsCave01_02B": [
+   "MysteriousWoodsCave01",
+   23.25,
+   22.4
+  ],
+  "MysteriousWoodsCave02_01A": [
+   "MysteriousWoodsCave02",
+   7.5,
+   10.4
+  ],
+  "QuadupletHouse_01A": [
+   "QuadupletHouse",
+   6.75,
+   10.875
+  ],
+  "QuadupletHouse_01B": [
+   "QuadupletHouse",
+   14.25,
+   10.875
+  ],
+  "RabbitBigHouse_01A": [
+   "RabbitBigHouse",
+   6.0,
+   8.63
+  ],
+  "RapidsRideExit_01A": [
+   "RapidsRideExit",
+   6.75,
+   0.75
+  ],
+  "RapidsRideExit_02A": [
+   "RapidsRideExit",
+   11.25,
+   22.5
+  ],
+  "RapidsRideTicket_01A": [
+   "RapidsRideTicket",
+   7.5,
+   10.5
+  ],
+  "RichardCave_01A": [
+   "RichardCave",
+   12.75,
+   2.25
+  ],
+  "RichardCave_01B": [
+   "RichardCave",
+   64.5,
+   10.4
+  ],
+  "RichardCave_01C": [
+   "RichardCave",
+   71.25,
+   2.25
+  ],
+  "RichardCave_02A": [
+   "RichardCave",
+   12.75,
+   21.75
+  ],
+  "RichardHouse_01A_a": [
+   "RichardHouse",
+   9.8,
+   4.37
+  ],
+  "RichardHouse_01A_b": [
+   "RichardHouse",
+   7.5,
+   9.75
+  ],
+  "SchuleDonavitchHouse_01A": [
+   "SchuleDonavitchHouse",
+   7.5,
+   10.313
+  ],
+  "SeashellHouse_01A": [
+   "SeashellHouse",
+   0.75,
+   0.0
+  ],
+  "Shop_01A": [
+   "Shop",
+   7.5,
+   9.75
+  ],
+  "Tamaranch01_01A": [
+   "Tamaranch01",
+   3.0,
+   10.4
+  ],
+  "Tamaranch01_01C": [
+   "Tamaranch01",
+   40.5,
+   10.4
+  ],
+  "Tamaranch01_02A": [
+   "Tamaranch01",
+   12.0,
+   46.4
+  ],
+  "Tamaranch01_02B": [
+   "Tamaranch01",
+   21.75,
+   45.75
+  ],
+  "Tamaranch01_03A": [
+   "Tamaranch01",
+   6.75,
+   77.25
+  ],
+  "Tamaranch01_04B": [
+   "Tamaranch01",
+   24.0,
+   94.4
+  ],
+  "Tamaranch02_01A": [
+   "Tamaranch02",
+   9.75,
+   5.25
+  ],
+  "Tamaranch02_01B": [
+   "Tamaranch02",
+   54.75,
+   8.25
+  ],
+  "Tamaranch02_02A": [
+   "Tamaranch02",
+   6.0,
+   22.4
+  ],
+  "Tamaranch02_02B": [
+   "Tamaranch02",
+   52.5,
+   22.4
+  ],
+  "Tamaranch03_01A": [
+   "Tamaranch03",
+   6.75,
+   8.25
+  ],
+  "Tamaranch03_02A": [
+   "Tamaranch03",
+   9.0,
+   22.4
+  ],
+  "Tamaranch03_03A": [
+   "Tamaranch03",
+   10.5,
+   58.5
+  ],
+  "Tamaranch03_03B": [
+   "Tamaranch03",
+   20.25,
+   53.25
+  ],
+  "Tamaranch04_01A": [
+   "Tamaranch04",
+   6.75,
+   5.25
+  ],
+  "Tamaranch04_01B": [
+   "Tamaranch04",
+   26.25,
+   3.75
+  ],
+  "Tamaranch04_02C": [
+   "Tamaranch04",
+   42.75,
+   17.25
+  ],
+  "Tamaranch04_02D": [
+   "Tamaranch04",
+   52.5,
+   22.4
+  ],
+  "Tamaranch04_02E": [
+   "Tamaranch04",
+   64.5,
+   22.4
+  ],
+  "Tamaranch04_03A": [
+   "Tamaranch04",
+   7.5,
+   46.4
+  ],
+  "Tamaranch04_03B": [
+   "Tamaranch04",
+   27.75,
+   41.25
+  ],
+  "Tamaranch04_04A": [
+   "Tamaranch04",
+   7.5,
+   70.4
+  ],
+  "Tamaranch04_04C": [
+   "Tamaranch04",
+   39.75,
+   63.75
+  ],
+  "Tamaranch04_05B": [
+   "Tamaranch04",
+   20.25,
+   89.25
+  ],
+  "Tamaranch04_05C": [
+   "Tamaranch04",
+   39.75,
+   90.75
+  ],
+  "Tamaranch05_01A": [
+   "Tamaranch05",
+   5.25,
+   3.75
+  ],
+  "Tamaranch05_02A": [
+   "Tamaranch05",
+   3.0,
+   22.4
+  ],
+  "Tamaranch05_02B": [
+   "Tamaranch05",
+   25.5,
+   22.4
+  ],
+  "Tamaranch05_03A": [
+   "Tamaranch05",
+   8.25,
+   51.75
+  ],
+  "Tamaranch05_04A": [
+   "Tamaranch05",
+   7.5,
+   70.4
+  ],
+  "TelephoneBox01_Ukuku1_01A": [
+   "TelephoneBox01_Ukuku1",
+   7.5,
+   10.5
+  ],
+  "TelephoneBox02_Mebe_01A": [
+   "TelephoneBox02_Mebe",
+   7.5,
+   10.5
+  ],
+  "TelephoneBox03_Kanalet_01A": [
+   "TelephoneBox03_Kanalet",
+   7.5,
+   10.5
+  ],
+  "TelephoneBox04_AnimalVillage_01A": [
+   "TelephoneBox04_AnimalVillage",
+   7.5,
+   10.5
+  ],
+  "TelephoneBox05_TurtleRock_01A": [
+   "TelephoneBox05_TurtleRock",
+   7.5,
+   10.5
+  ],
+  "TelephoneBox06_Goponga_01A": [
+   "TelephoneBox06_Goponga",
+   7.5,
+   10.5
+  ],
+  "TelephoneBox07_Ukuku2_01A": [
+   "TelephoneBox07_Ukuku2",
+   7.5,
+   10.5
+  ],
+  "TelephoneBox08_Martha_01A": [
+   "TelephoneBox08_Martha",
+   7.5,
+   10.5
+  ],
+  "TownWell_01A": [
+   "TownWell",
+   6.75,
+   5.25
+  ],
+  "TracyHouse_01A": [
+   "TracyHouse",
+   7.5,
+   10.5
+  ],
+  "TurtleRockEnter_01A": [
+   "TurtleRockEnter",
+   2.25,
+   5.25
+  ],
+  "TurtleRockEnter_02A": [
+   "TurtleRockEnter",
+   10.5,
+   22.4
+  ],
+  "UkukuCave01_01A": [
+   "UkukuCave01",
+   7.49,
+   10.4
+  ],
+  "UkukuCave02_02A": [
+   "UkukuCave02",
+   6.0,
+   22.4
+  ],
+  "UlriraHouse_01A": [
+   "UlriraHouse",
+   7.5,
+   11.25
+  ],
+  "UnderGrave_01A": [
+   "UnderGrave",
+   5.25,
+   5.25
+  ],
+  "UnderGrave_01B": [
+   "UnderGrave",
+   20.25,
+   2.25
+  ]
+ },
+ "warps": {
+  "warp-ukuku-prairie": [
+   "Field",
+   84.75,
+   114.75
+  ],
+  "warp-turtle-rock": [
+   "Field",
+   24.75,
+   11.25
+  ],
+  "warp-taltal-heights": [
+   "Field",
+   189.75,
+   32.25
+  ],
+  "warp-animal-village": [
+   "Field",
+   189.75,
+   173.25
+  ],
+  "warp-manbos-pond": [
+   "Field",
+   81.0,
+   57.0
+  ],
+  "warp-dampes-shack": [
+   "Field",
+   107.25,
+   32.25
+  ],
+  "warp-seashell-mansion": [
+   "Field",
+   165.75,
+   101.25
+  ],
+  "warp-taltal-east": [
+   "Field",
+   234.75,
+   21.75
+  ],
+  "warp-marthas-bay": [
+   "Field",
+   109.5,
+   177.0
+  ],
+  "warp-taltal-west": [
+   "Field",
+   53.25,
+   14.25
+  ]
+ }
+}

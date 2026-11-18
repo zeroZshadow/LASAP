@@ -1,15 +1,20 @@
 """Universal Tracker's map tab (DESIGN.md, Universal Tracker map): the data behind tracker/*.json (scripts/ut_map.py
-writes them), the door entrances a route goes through and the route search."""
+writes them), the door entrances a route goes through and the route search, by the zones' places
+(tracker/zone_places.json)."""
+import functools
 import heapq
+import json
+import math
+import pkgutil
 import re
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple
 
 from .items import LASR_TO_ITEM
 from .lasr import (CATEGORIES, DOORS, DUNGEON_DOORS, DUNGEON_NAMES, DUNGEON_NUMBERS, DUNGEONS, INSTRUMENTS, LOGIC,
-                   WARP_MAP, WARP_ZONES, WRITTEN_LOGIC, door_entrance, door_region, dungeon_of, dungeon_region,
+                   WARP_LOCATORS, WARP_MAP, WARP_ZONES, WRITTEN_LOGIC, door_entrance, door_region, dungeon_of, dungeon_region,
                    in_dungeon)
 from .locations import LOCATION_NAMES
-from .logic import START
+from .logic import FIELD_DOOR, START
 from .tracker import LEVEL_KEY
 
 OVERWORLD_MAP = "Koholint Island"
@@ -104,16 +109,17 @@ ITEM_SIZE, DUNGEON_ITEM_SIZE = (40, 40), (32, 32)
 DOOR_STEPS = frozenset(DOORS["pairs"]) | frozenset(DOORS["pairs"].values()) | {door_entrance(d) for d in DUNGEONS}
 
 
-# A route's step through a door costs more than any number of steps between zones: the fewest doors first
-DOOR_COST = 1000
-# The region Link stands in once a jump landed on a door's spot, when the door is no shuffled one (spot_region)
+# The region Link stands in once a jump landed on a door's spot, when the door is no shuffled one, or on a warp point's
+# (spot_region)
 SPOT_ZONES = {**{door: zone for zone, node in WRITTEN_LOGIC.items() for door in (node.get("doors") or {})},
-              **{DOORS["pairs"][DUNGEON_DOORS[dungeon]]: dungeon_region(dungeon) for dungeon in DUNGEONS}}
+              **{DOORS["pairs"][DUNGEON_DOORS[dungeon]]: dungeon_region(dungeon) for dungeon in DUNGEONS},
+              **{locator: WARP_ZONES[item] for locator, item in WARP_LOCATORS.items()}}
 
 
 def spot_region(locator: str, regions: Mapping[str, Any]) -> Any:
-    """The region of `regions` (by name) Link stands in after a level jump to this door's spot (the game's DOOR
-    <locator> <to>): a shuffled door's region (lasr.door_region), else the zone that has the door. None for others."""
+    """The region of `regions` (by name) Link stands in after a level jump to this door's or warp point's spot (the
+    game's DOOR <locator> <to>): a shuffled door's region (lasr.door_region), else the zone that has the door or the
+    point (lasr.WARP_LOCATORS). None for others."""
     for name in (door_region(locator), SPOT_ZONES.get(locator)):
         if name in regions:
             return regions[name]
@@ -153,10 +159,51 @@ def held_warps(zone: str, state: Any, player: int) -> List[str]:
     return [item for item, at in WARP_ZONES.items() if at == zone and state.has(LASR_TO_ITEM[item], player)]
 
 
+# A route's costs (find_route), in the levels' units (a tile is 1.5, an overworld screen 15 by 12): a walk between two
+# places in a level its length, a door about a screen's walk, a warp about three, a step between places not placed a
+# tile's walk
+DOOR_COST, WARP_COST, STEP_COST = 15.0, 45.0, 1.5
+Place = Tuple[str, float, float]  # a level and a spot in its coordinates (tracker/zone_places.json)
+
+
+@functools.cache
+def zone_places() -> Tuple[Dict[str, Place], Dict[str, Place]]:
+    """The regions' places (tracker/zone_places.json, scripts/ut_map.py): each zone's middle, a door's region's (lasr.
+    door_region) and the region just inside a dungeon's door (lasr.dungeon_region) at the door's spot; and the warp
+    points' spots by their items."""
+    data = json.loads(pkgutil.get_data(__name__, "tracker/zone_places.json").decode("utf-8"))
+    doors = {door: tuple(spot) for door, spot in data["doors"].items()}
+    regions = {zone: tuple(spot) for zone, spot in data["zones"].items()}
+    regions.update({door_region(door): spot for door, spot in doors.items()})
+    regions.update({dungeon_region(dungeon): doors[DOORS["pairs"][DUNGEON_DOORS[dungeon]]] for dungeon in DUNGEONS
+                    if DOORS["pairs"][DUNGEON_DOORS[dungeon]] in doors})
+    return regions, {item: tuple(spot) for item, spot in data["warps"].items()}
+
+
+def walk(here: Optional[Place], there: Optional[Place]) -> Optional[float]:
+    """The length of a walk between two places in one level; None for places not in one level or not placed."""
+    return math.dist(here[1:], there[1:]) if here is not None and there is not None and here[0] == there[0] else None
+
+
+def step_cost(way: Any, region: Any, state: Any, jump: bool) -> float:
+    """What a route's step costs (DOOR_COST and the others): a warp (`jump`, or onto the warp map from a warp point,
+    with the walk to its nearest point whose item Link has); through a door, or to another level; a walk in a level;
+    a step to or from a place not placed."""
+    regions, warps = zone_places()
+    here, there = regions.get(region.name), regions.get(way.connected_region.name)
+    if jump or warp_step(way) == "into":
+        spots = [warps[item] for item in held_warps(region.name, state, way.player) if item in warps]
+        return WARP_COST + min((walk(here, spot) or 0.0 for spot in spots), default=0.0)
+    if way.name in DOOR_STEPS or (here is not None and there is not None and here[0] != there[0]):
+        return DOOR_COST
+    length = walk(here, there)
+    return STEP_COST if length is None else max(length, STEP_COST)
+
+
 def find_route(start: Any, goal: Any, state: Any, jumps: Iterable[Any] = ()) -> Optional[List[Any]]:
-    """The entrances from region `start` to region `goal` whose rules `state` passes, through the fewest doors
-    (DOOR_STEPS) and warps; None when there is no way. Each entrance starts where the one before ends, but `jumps`
-    (route_jumps), which Link takes from any region its test passes."""
+    """The entrances from region `start` to region `goal` whose rules `state` passes that cost the least (step_cost):
+    the shortest walk, with each door and warp costing a walk of its own; None when there is no way. Each entrance
+    starts where the one before ends, but `jumps` (route_jumps), which Link takes from any region its test passes."""
     jumps = list(jumps)
     best = {start: 0}
     came: Dict[Any, Any] = {}  # region -> (the entrance into it, the region it was taken from)
@@ -172,12 +219,14 @@ def find_route(start: Any, goal: Any, state: Any, jumps: Iterable[Any] = ()) -> 
             return steps[::-1]
         if cost > best[region]:
             continue
-        ways = [(way, way.name in DOOR_STEPS or warp_step(way) == "into") for way in region.exits]
+        ways = [(way, False) for way in region.exits]
         ways += [(way, True) for way, test in jumps if way.parent_region is not region and test(region)]
-        for way, far in ways:
+        for way, jump in ways:
             to = way.connected_region
-            step = cost + (DOOR_COST if far else 1)
-            if to is None or step >= best.get(to, step + 1) or not way.access_rule(state):
+            if to is None:
+                continue
+            step = cost + step_cost(way, region, state, jump)
+            if step >= best.get(to, step + 1) or not way.access_rule(state):
                 continue
             best[to], came[to] = step, (way, region)
             heapq.heappush(queue, (step, pushed, to))
@@ -201,13 +250,44 @@ for _door in DOORS["groups"]["connector"]:
     CONNECTOR_INSIDES.setdefault(level_of(DOORS["pairs"][_door]), []).append(DOORS["pairs"][_door])
 
 
+def connector_ends() -> Dict[str, List[str]]:
+    """Each connector inside door's other ends (CONNECTOR_INSIDES) that a way leads to from its zone (logic.yml), by any
+    rule: the level's connections and one-ways, and its doors that lead to its other doors (doors.yml); none through a
+    door out to the overworld."""
+    zone_of = {door: zone for zone, node in WRITTEN_LOGIC.items() for door in (node.get("doors") or {})}
+    ways: Dict[str, set] = {}
+    for zone, node in WRITTEN_LOGIC.items():
+        for target in node.get("connections") or {}:
+            ways.setdefault(zone, set()).add(target)
+            ways.setdefault(target, set()).add(zone)
+        for target in node.get("one-way") or {}:
+            ways.setdefault(zone, set()).add(target)
+    leads = [*DOORS["pairs"].items(), *((b, a) for a, b in DOORS["pairs"].items()), *DOORS["one-way"].items()]
+    for door, to in leads:
+        if not door.startswith(FIELD_DOOR) and not to.startswith(FIELD_DOOR) and door in zone_of and to in zone_of:
+            ways.setdefault(zone_of[door], set()).add(zone_of[to])
+    ends = {}
+    for insides in CONNECTOR_INSIDES.values():
+        for inside in insides:
+            reached, todo = {zone_of[inside]}, [zone_of[inside]]
+            while todo:
+                for target in ways.get(todo.pop(), ()):
+                    if target not in reached:
+                        reached.add(target)
+                        todo.append(target)
+            ends[inside] = [other for other in insides if other != inside and zone_of[other] in reached]
+    return ends
+
+
+CONNECTOR_ENDS = connector_ends()
+
+
 def connector_exits(entrances: Mapping[str, str], door: str) -> List[str]:
     """The AP entrances out of the other inside doors of the connector `door` leads into in a slot (`entrances`, the
-    slot data's {door: inside door}): the connector's other ends, which a door's pin also shows (ut_gui.load_pins)."""
+    slot data's {door: inside door}) that Link can walk to from where he comes in (CONNECTOR_ENDS): the connector's
+    other ends, which a door's pin also shows (ut_gui.load_pins)."""
     inside = entrances.get(door)
-    if inside is None or inside not in INSIDE_DOORS:
-        return []
-    return [other for other in CONNECTOR_INSIDES.get(level_of(inside), ()) if other != inside]
+    return list(CONNECTOR_ENDS.get(inside, ())) if inside is not None else []
 
 
 def door_pin_colour(statuses: Mapping[str, str], connected: Callable[[str], bool] = lambda name: False) -> str:

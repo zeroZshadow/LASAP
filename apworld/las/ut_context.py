@@ -14,7 +14,7 @@ from . import GOAL_LOCATION, emulators
 from .checklist import ERROR, INFO, TODO
 from .install import tracker_images
 from .items import ITEM_TABLE, LASR_TO_ITEM
-from .lasr import DUNGEONS, INSTRUMENTS, WARP_ZONES, door_entrance, door_label
+from .lasr import DUNGEONS, INSTRUMENTS, WARP_LOCATORS, WARP_ZONES, door_entrance, door_label
 from .tracker import known_doors
 from .ut_map import (DOOR_STEPS, JUMP_LABELS, LOCATION_DUNGEONS, MAMBO, OVERWORLD_MAP, WARP_HOME, check_label,
                      connector_exits, door_out, dungeon_squares, find_route, held_warps, hidden_door_entrances,
@@ -63,7 +63,7 @@ class TrackerMixin:
         # section
         self.route_target: Optional[str] = None
         self.route_start: Optional[str] = None
-        # the spot of the door Link came through last: the game's last DOOR line's <to> (LASContext)
+        # the spot of the door or warp point Link came through last: the game's last DOOR line's <to> (LASContext)
         self.game_exit: Optional[str] = None
         self.tracker_in_logic: List[str] = []
         self.tracker_state: Any = None
@@ -279,8 +279,8 @@ class TrackerMixin:
             self.route_target = name
 
     def route_from_exit(self) -> bool:
-        """/get_logical_path from the door Link came through last (game_exit) instead of the slot's start: the way
-        through the fewest doors and warps to the route's target (ut_map.find_route), with the warps Link takes from
+        """/get_logical_path from the door or warp point Link came through last (game_exit) instead of the slot's
+        start: the way that costs the least to the route's target (ut_map.find_route), with the warps Link takes from
         where he stands (ut_map.route_jumps), logged as UT logs its own. False, with no route, when there is none: UT's
         from the start then."""
         world = self.tracker_core.get_current_world()
@@ -300,7 +300,8 @@ class TrackerMixin:
             return False
         self.route_start = spot
         self.logical_path_entrances.extend(way.name for way in route)
-        self.print_json([{"type": "text", "text": "From "}, {"type": "color", "color": "blue", "text": door_label(spot)}])
+        label = LASR_TO_ITEM[WARP_LOCATORS[spot]] if spot in WARP_LOCATORS else door_label(spot)
+        self.print_json([{"type": "text", "text": "From "}, {"type": "color", "color": "blue", "text": label}])
 
         def explained(text: List[dict], step: Any) -> List[dict]:  # with its rule, as UT logs a step it has no text for
             if hasattr(step.access_rule, "explain_json"):
@@ -323,8 +324,8 @@ class TrackerMixin:
         return True
 
     def route_points(self, map_name: str) -> Tuple[List[Tuple[float, float, bool]], bool]:
-        """The route on a map, and whether its first point is the door it starts at (route_from_exit): the pins of the
-        doors it goes through, in order (a door Link comes out of at that door's pin), then the target's pin nearest
+        """The route on a map, and whether its first point is the door or warp point it starts at (route_from_exit): the
+        pins of the doors it goes through, in order (a door Link comes out of at that door's pin), then the target's pin nearest
         the last door. A warp point Link warps from or to is a point too (warp_pins), and a warp leaves where Link
         stands. Each point with whether Link walks the leg to it on this map: not after a door he goes into or a warp,
         nor to a door's pin he comes out of a level at, as the map does not show the level in between."""
@@ -366,8 +367,13 @@ class TrackerMixin:
             return min(spots, key=lambda p: (p[0] - last[0]) ** 2 + (p[1] - last[1]) ** 2)
 
         start = self.route_start
-        started = start is not None and add(((start, True),) + (
-            ((door_out(world.get_entrance(start)), False),) if start in entrances else ()))
+        if start in WARP_LOCATORS:  # Link stands on the warp point he warped to
+            started = warps[WARP_LOCATORS[start]] is not None
+            if started:
+                put(warps[WARP_LOCATORS[start]], True)
+        else:
+            started = start is not None and add(((start, True),) + (
+                ((door_out(world.get_entrance(start)), False),) if start in entrances else ()))
         for name in self.logical_path_entrances:
             if name in DOOR_STEPS:
                 add(((name, False), (door_out(world.get_entrance(name)), True)))

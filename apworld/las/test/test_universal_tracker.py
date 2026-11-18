@@ -254,6 +254,7 @@ class TestDeferredEntrances(unittest.TestCase):
         kept = next(door for door in SPOT_ZONES if door_region(door) not in regions and SPOT_ZONES[door] in regions)
         self.assertIs(spot_region(kept, regions), regions[SPOT_ZONES[kept]])
         self.assertIsNone(spot_region("Field_99Z", regions))
+        self.assertIs(spot_region("Warp_EastOfTheBay", regions), regions["animal-village"])  # a warp point's spot
         start = spot_region(door, regions)
         self.assertEqual(find_route(start, start, state), [])
         for location in random.Random(4303).sample(sorted(self.original.get_reachable_locations(state, 1),

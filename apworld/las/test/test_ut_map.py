@@ -9,11 +9,12 @@ from worlds.AutoWorld import AutoWorldRegister
 from . import generate_world
 from .. import GOAL_LOCATION
 from ..items import GAME
-from ..lasr import CATEGORIES, DOORS, DUNGEONS, door_entrance
+from ..lasr import CATEGORIES, DOORS, DUNGEONS, WARP_POINTS, WRITTEN_LOGIC, door_entrance, door_region
 from ..locations import LOCATION_NAMES
 from ..ut_map import (CONNECTOR_INSIDES, LOCATION_DUNGEONS, MAPS, TRACKER_WORLD, check_label, connector_exits,
                       door_pin_colour,
-                      dungeon_map, dungeon_squares, hidden_door_entrances, hidden_locations, map_index)
+                      dungeon_map, dungeon_squares, hidden_door_entrances, hidden_locations, map_index,
+                      zone_places)
 
 TRACKER = Path(__file__).resolve().parent.parent / TRACKER_WORLD["map_page_folder"]
 
@@ -63,11 +64,25 @@ class TestUTMap(unittest.TestCase):
                 self.assertLessEqual({way for ways in CONNECTOR_INSIDES.values() for way in ways}, entrances)
                 self.assertLessEqual(dungeon_entrances & entrances, doors)
 
+    def test_zone_places(self) -> None:
+        """Every door and warp point has its spot, and every zone its place, but the warp map and the Dream Shrine,
+        which no zone paints and no door of their own places (tracker/zone_places.json: run scripts/ut_map.py after
+        Logic Studio changes)."""
+        regions, warps = zone_places()
+        self.assertEqual(set(warps), set(WARP_POINTS))
+        doors = set(DOORS["pairs"]) | set(DOORS["pairs"].values())
+        self.assertLessEqual({door_region(door) for door in doors}, set(regions))
+        zones = {name for name, node in WRITTEN_LOGIC.items() if node.get("type") in ("region", "room")}
+        self.assertEqual(zones - set(regions), {"warp-map", "dream-shrine"})
+
     def test_connector_exits(self) -> None:
         """A door's pin also shows the ways out of the other ends of the connector it leads into in the slot."""
         self.assertEqual(connector_exits({"Field_11A": "FaceShrineEnter_01A"}, "Field_11A"), ["FaceShrineEnter_01B"])
         self.assertEqual(connector_exits({"Field_11A": "TownWell_01A"}, "Field_11A"), [])  # a single door's inside
         self.assertEqual(connector_exits({}, "Field_11A"), [])  # no Entrances
+        # only the ends a way leads to from where Link comes in: Kanalet Castle's back right door's zone has none
+        self.assertEqual(connector_exits({"Field_11A": "KanaletCastle_02D"}, "Field_11A"), [])
+        self.assertEqual(connector_exits({"Field_11A": "KanaletCastle_02B"}, "Field_11A"), ["KanaletCastle_02C"])
         for level, insides in CONNECTOR_INSIDES.items():
             self.assertGreater(len(insides), 1, level)
 

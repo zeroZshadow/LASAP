@@ -107,6 +107,17 @@ class TestWarpPoints(LASTestBase):
         inside = [way.name for way in find_route(self.region("D1.a"), goal, state, route_jumps(self.world))]
         self.assertIn(MAMBO, inside[1:])
 
+    def test_route_warps_across_the_island(self) -> None:
+        """The tracker's route takes the shorter way: a long walk across the island gives way to Manbo's Mambo once Link
+        has it and the warp point at the end."""
+        walker = ("sword", "shield", "bracelet", "boots", "feather", "flippers", "hookshot", "bomb", "ocarina")
+        goal = self.region("animal-village")
+        walked = find_route(self.region("mabe"), goal, self.state_of(*walker), route_jumps(self.world))
+        self.assertNotIn(MAMBO, [way.name for way in walked])
+        route = find_route(self.region("mabe"), goal, self.state_of(*walker, "song-mambo", "warp-animal-village"),
+                           route_jumps(self.world))
+        self.assertEqual([way.name for way in route], [MAMBO, "warp-map -> animal-village"])
+
     def test_route_by_warp_point(self) -> None:
         """The tracker's route walks onto a warp point, named by the item Link has, and warps from it."""
         goal = self.region("turtle-dungeon-top")
@@ -127,17 +138,21 @@ class TestWarpPoints(LASTestBase):
         warps.update({"warp-ukuku-prairie": (1, 0), "warp-seashell-mansion": (9, 0), "warp-turtle-rock": (2, 0)})
         core = SimpleNamespace(get_current_world=lambda: self.world, multiworld=self.multiworld, player_id=self.player)
 
-        def points(route, *items):
-            ctx = SimpleNamespace(logical_path_entrances=route, route_start="Field_X", route_target=target,
+        def points(route, *items, start="Field_X"):
+            ctx = SimpleNamespace(logical_path_entrances=route, route_start=start, route_target=target,
                                   tracker_core=core, warp_pins=lambda _: warps, tracker_state=self.state_of(*items),
                                   section_pins=lambda: TrackerMixin.section_pins(SimpleNamespace(locs=locs, route_pins=None)))
-            return TrackerMixin.route_points(ctx, "M")[0]
+            return TrackerMixin.route_points(ctx, "M")
 
         self.assertEqual(points(["prairie -> warp-map", "warp-map -> turtle-dungeon-top"],
-                                "warp-ukuku-prairie", "warp-turtle-rock"),
+                                "warp-ukuku-prairie", "warp-turtle-rock")[0],
                          [(0, 0, True), (1, 0, True), (2, 0, False), (3, 0, True)])
-        self.assertEqual(points([MAMBO, "warp-map -> turtle-dungeon-top"], "warp-turtle-rock"),
+        self.assertEqual(points([MAMBO, "warp-map -> turtle-dungeon-top"], "warp-turtle-rock")[0],
                          [(0, 0, True), (2, 0, False), (3, 0, True)])
+        # from the warp point Link warped to: its place is the start
+        self.assertEqual(points(["prairie -> warp-map", "warp-map -> turtle-dungeon-top"],
+                                "warp-ukuku-prairie", "warp-turtle-rock", start="Warp_UkukuPrairie"),
+                         ([(1, 0, True), (2, 0, False), (3, 0, True)], True))
 
 
 class TestWarpPointsOff(LASTestBase):
