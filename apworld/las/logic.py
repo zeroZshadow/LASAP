@@ -229,6 +229,16 @@ def house_exits(logic: Mapping[str, Mapping], doors: Mapping[str, Mapping]) -> D
     return found
 
 
+def start_pockets(logic: Mapping[str, Mapping], starts: Mapping[str, str]) -> Set[str]:
+    """The zones of house_exits' doors whose only way out is that door: no other door, no way of their own and no
+    connection from another zone (a one-way into one is no way out). Once the start door leads into the house, a start
+    there never gets out."""
+    linked = {target for node in logic.values() for target in (node.get("connections") or {})}
+    return {zone for door, zone in starts.items()
+            if set(logic[zone].get("doors") or {}) == {door} and not logic[zone].get("connections")
+            and not logic[zone].get("one-way") and zone not in linked}
+
+
 def start_doors(logic: Mapping[str, Mapping], doors: Mapping[str, Any], start: Optional[str]) -> Mapping[str, Any]:
     """doors.yml with the house's door swapped with the start door (house_exits): the start door leads into the house
     and the house's way out leads out of it, and the door outside the house leads into the start door's inside and that

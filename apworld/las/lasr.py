@@ -2,11 +2,11 @@
 import json
 import pkgutil
 import re
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Set, Tuple
 
 import yaml
 
-from .logic import ALWAYS, SHUFFLE_GROUPS, SPEC, START, house_exits, lower_routes, start_doors
+from .logic import ALWAYS, SHUFFLE_GROUPS, SPEC, START, house_exits, lower_routes, start_doors, start_pockets
 
 _Loader = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
 
@@ -302,6 +302,8 @@ DUNGEON_POOL: List[str] = ENTRANCE_POOL + [door for door in DOORS["groups"]["dun
 
 # Random start: {overworld door: its zone} for each door the house's door may be swapped with (logic.house_exits)
 START_DOORS: Dict[str, str] = house_exits(WRITTEN_LOGIC, DOORS)
+# Random start: the zones of START_DOORS that _starts leaves out, as a start there never gets out (logic.start_pockets)
+START_POCKETS: Set[str] = start_pockets(WRITTEN_LOGIC, START_DOORS)
 # The house's door, and the overworld door outside it, which leads into it without Random start
 (HOUSE_DOOR,) = WRITTEN_LOGIC[START]["doors"]
 HOME_DOOR = next(door for door, inside in DOORS["pairs"].items() if inside == HOUSE_DOOR)

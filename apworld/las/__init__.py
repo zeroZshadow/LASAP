@@ -24,7 +24,8 @@ from .ids import LOCATION_OFFSETS
 from .items import FILLER_ITEM, GAME, ITEM_GAME_INFO, ITEM_NAME_GROUPS, ITEM_TABLE, LASR_TO_ITEM, LASItem
 from .lasr import (CATEGORIES, COUNTED, DOORS, DUNGEON_POOL, DUNGEON_REWARD_LOCATIONS, DUNGEONS, ENTRANCE_POOL,
                    HOME_DOOR, HOUSE_DOOR, HOUSE_EXIT, INSTRUMENT_LOCATIONS, INSTRUMENTS, ITEM_DEFS, ITEM_LOCATIONS,
-                   LOGIC, SHOP_LOCATIONS, START_DOORS, TRAPS, WARP_POINTS, PlacementError, closed_dungeons, door_entrance,
+                   LOGIC, SHOP_LOCATIONS, START_DOORS, START_POCKETS, TRAPS, WARP_POINTS, PlacementError,
+                   closed_dungeons, door_entrance,
                    door_label, door_node, door_of_label, door_region, dungeon_item_kind, dungeon_name, dungeon_region, entered_by_door,
                    goal_logic, item_dungeon, location_dungeon, shuffle_dungeons, slot_logic, start_pairs)
 
@@ -355,8 +356,11 @@ class LASWorld(World):
 
     def _pool(self, events_only: bool = True) -> Counter:
         """The LASR items the pool holds before the starting items leave it: every item but those of the vanilla and
-        locked locations (with `events_only` those whose items are events)."""
+        locked locations (with `events_only` those whose items are events), and with Warp Points each warp point's item
+        (item_pool takes junk out for them)."""
         held = Counter({item: definition["quantity"] for item, definition in ITEM_DEFS.items()})
+        if self.options.warp_points:
+            held.update(list(WARP_POINTS))
         for loc in self.unrandomized():
             if not events_only or self._is_progression(self.content(loc)):
                 held[self.content(loc)] -= 1
@@ -474,10 +478,9 @@ class LASWorld(World):
             pool["zol-trap"] -= 1
             pool[replacement] += 1
         if options.warp_points:
-            # each warp point's item takes a junk item's place, before traps can take all of it
-            for warp in WARP_POINTS:
+            # each warp point's item (in _pool) takes a junk item's place, before traps can take all of it
+            for _ in WARP_POINTS:
                 pool[next(junk for junk in JUNK if pool[junk] > 0)] -= 1
-                pool[warp] += 1
         if options.traps.value:
             # then purple rupees and other junk become traps
             count = options.traps.value
@@ -619,14 +622,15 @@ class LASWorld(World):
         return " with these plando connections" if self.plando_doors or self.plando_start else ""
 
     def _starts(self) -> List[Optional[str]]:
-        """The start doors to try: Tarin's (None), or with Random start a random zone of START_DOORS each, then a random
-        door of it that no plando connection names, up to START_ATTEMPTS; the plando's start alone (_plando)."""
+        """The start doors to try: Tarin's (None), or with Random start a random zone of START_DOORS but the pockets
+        (START_POCKETS) each, then a random door of it that no plando connection names, up to START_ATTEMPTS; the
+        plando's start alone (_plando)."""
         if not self.options.random_start:
             return [None]
         if self.plando_start:
             return [self.plando_start]
         planned = set(self.plando_doors)
-        free = {door: zone for door, zone in START_DOORS.items() if door not in planned}
+        free = {door: zone for door, zone in START_DOORS.items() if door not in planned and zone not in START_POCKETS}
         zones = sorted(set(free.values()))
         self.random.shuffle(zones)
         return [self.random.choice(sorted(door for door, its in free.items() if its == zone))

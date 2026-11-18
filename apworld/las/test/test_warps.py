@@ -40,6 +40,15 @@ class TestWarpPoints(LASTestBase):
         self.assertEqual(sum(off[junk] for junk in JUNK) - sum(on[junk] for junk in JUNK), len(WARP_POINTS))
         self.assertEqual(sum(on.values()), sum(off.values()))
 
+    def test_checks_count_the_warps(self) -> None:
+        """The placement checks (_reaches, _start_opens_up) count each progression item of the pool: _pool and the
+        starting items hold it at least as often as item_pool."""
+        held = self.world._pool()
+        held.update(self.world.starting_items)
+        for item, count in self.world.item_pool().items():
+            if self.world._is_progression(item):
+                self.assertLessEqual(count, held[item], item)
+
     def test_patch(self) -> None:
         """The patch lists every warp point as opened by its item."""
         patch = self.world.patch_data()

@@ -9,8 +9,8 @@ from test.general import gen_steps
 from . import LASTestBase, forget, generate, generate_world, patcher_import
 from .. import LASWorld, PlacementError
 from ..lasr import (DOOR_NAMES, DOORS as GAME_DOORS, DUNGEON_DOORS, DUNGEON_POOL, DUNGEONS, ENTRANCE_POOL, HOME_DOOR,
-                    HOUSE_DOOR, HOUSE_EXIT, START_DOORS, WRITTEN_LOGIC, door_entrance, door_label, door_of_label,
-                    door_region, dungeon_region, shuffle_pool, start_pairs)
+                    HOUSE_DOOR, HOUSE_EXIT, START_DOORS, START_POCKETS, WRITTEN_LOGIC, door_entrance, door_label,
+                    door_of_label, door_region, dungeon_region, shuffle_pool, start_pairs)
 from ..locations import LOCATION_NAMES
 from ..options import PlandoDoors
 from ..options import ShuffledDungeons
@@ -126,16 +126,16 @@ class TestRandomStart(LASTestBase):
 class TestRandomStartPocket(unittest.TestCase):
     """A zone whose only way out is the start door is a pocket once that door leads back into the house."""
 
-    def test_a_dead_end_start_is_never_picked(self) -> None:
-        dead_ends = {door for door, zone in START_DOORS.items()
-                     if set((WRITTEN_LOGIC[zone].get("doors") or {})) == {door} and not WRITTEN_LOGIC[zone].get("one-way")
-                     and not WRITTEN_LOGIC[zone].get("connections")
-                     and not any(zone in (node.get("one-way") or {}) or zone in (node.get("connections") or {})
-                                 for node in WRITTEN_LOGIC.values())}
-        self.assertIn("Field_01N", dead_ends)  # the Tal Tal yard of the five chests
+    def test_the_pockets(self) -> None:
+        self.assertIn(START_DOORS["Field_01N"], START_POCKETS)  # the Tal Tal yard of the five chests
+        # only its door, but a connection from the river leads out by water
+        self.assertNotIn(START_DOORS["Field_10N"], START_POCKETS)
+
+    def test_a_pocket_is_never_tried(self) -> None:
         for seed in range(8):
-            world = generate_world({"random_start": True}, 4400 + seed, gen_steps)
-            self.assertNotIn(world.start, dead_ends)
+            world = generate_world({"random_start": True, "entrances": "everything"}, 4400 + seed, gen_steps)
+            self.assertFalse({START_DOORS[door] for door in world._starts()} & START_POCKETS)
+            self.assertNotIn(START_DOORS[world.start], START_POCKETS)
 
 
 class TestEntrancesOff(LASTestBase):
