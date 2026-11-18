@@ -13,7 +13,7 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDButton
 from kivymd.uix.menu import MDDropdownMenu
 
-from .client_gui import Palette, label
+from .client_gui import Palette, label, menu_item
 from .lasr import door_label
 from .ut_map import door_pin_colour
 
@@ -605,7 +605,7 @@ def add_route_clicks(page, ctx) -> None:
             menu.dismiss()
             ctx.route_to(name)
 
-        menu.items = [{"text": door_label(name), "on_release": lambda n=name: pick(n)} for name in found]
+        menu.items = [menu_item(door_label(name), lambda n=name: pick(n)) for name in found]
         menu.open()
         return True
 
@@ -658,7 +658,7 @@ def add_route_search(page, ctx) -> None:
         if not found:
             close()
             return
-        items = [{"text": door_label(name), "on_release": lambda n=name: pick(n)} for name in found[:ROUTE_SUGGESTIONS]]
+        items = [menu_item(door_label(name), lambda n=name: pick(n)) for name in found[:ROUTE_SUGGESTIONS]]
         menu = shown["menu"]
         if menu is None:  # the field keeps the keyboard; a touch outside the menu closes it
             menu = shown["menu"] = MDDropdownMenu(caller=field, items=items, position="bottom", width=dp(420))

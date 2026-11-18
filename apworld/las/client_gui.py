@@ -11,6 +11,7 @@ from kvui import ConnectBarTextInput, MDNavigationItemBase  # isort: skip
 import Utils
 from CommonClient import logger
 from kivy.clock import Clock
+from kivy.lang import Builder
 from kivy.metrics import dp, sp
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.gridlayout import GridLayout
@@ -22,6 +23,7 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDButton, MDButtonIcon, MDButtonText
 from kivymd.uix.label import MDIcon, MDLabel
 from kivymd.uix.menu import MDDropdownMenu
+from kivymd.uix.menu.menu import BaseDropdownItem
 from kivymd.uix.progressindicator import MDCircularProgressIndicator
 from kivymd.uix.selectioncontrol import MDCheckbox
 
@@ -91,18 +93,72 @@ class Tile(ButtonBehavior, MDBoxLayout):
 
 class HoverButton(MDButton):
     """MDButton whose hover follows the pointer inside the tab's ScrollView. KivyMD tests a RelativeLayout's hover
-    with the window position as if it were the parent's, which the scrolled content's offset moves away from the
-    button."""
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.detect_visible = False  # its walk up the tree mixes the same two coordinate systems
+    with the window position as if it were the parent's and walks up the tree in mixed coordinates; the scrolled
+    content's offset breaks both. This test replaces KivyMD's and keeps its states and events."""
 
     def on_mouse_update(self, *args: Any) -> None:
-        window, pos = args[0], args[1]
-        if self.parent is not None and self.get_root_window():
-            pos = self.parent.to_widget(*pos)
-        super().on_mouse_update(window, pos)
+        pos = args[1]
+        window = self.get_root_window()
+        if window is None or self.parent is None:
+            return
+        if not self.collide_point(*self.parent.to_widget(*pos)):
+            self.hovering, self.enter_point = False, None
+            if self.hover_visible:
+                self.hover_visible = False
+                self.dispatch("on_leave")
+            return
+        if self.hovering:
+            return
+        self.hovering = True
+        self.hover_visible = self.shown_at(window, pos)
+        if self.hover_visible:
+            self.enter_point = pos
+            self.dispatch("on_enter")
+
+    def shown_at(self, window: Widget, pos: Tuple[float, float]) -> bool:
+        """Whether every ancestor holds the window point pos and no widget above this branch covers it."""
+        widget: Widget = self.parent
+        while widget.parent is not None and widget.parent is not window:
+            if not widget.collide_point(*widget.parent.to_widget(*pos)):
+                return False
+            widget = widget.parent
+        if not widget.collide_point(*pos):
+            return False
+        for child in window.children:  # topmost first
+            if child is widget:
+                return True
+            if child.collide_point(*pos):
+                return False
+        return True
+
+
+# MDDropdownTextItem's rule sets its label's padding_x, which Kivy deprecates; kv rules also apply to subclasses
+Builder.load_string("""
+<MenuItem>
+    orientation: "vertical"
+
+    MDLabel:
+        text: root.text
+        valign: "center"
+        padding: "12dp", 0
+        shorten: True
+        shorten_from: "right"
+        theme_text_color: "Custom"
+        text_color: app.theme_cls.onSurfaceVariantColor if not root.text_color else root.text_color
+
+    MDDivider:
+        md_bg_color: (app.theme_cls.outlineVariantColor if not root.divider_color else root.divider_color) \
+            if root.divider else (0, 0, 0, 0)
+""")
+
+
+class MenuItem(BaseDropdownItem):
+    """A dropdown menu's text item, as MDDropdownTextItem."""
+
+
+def menu_item(text: str, action: Callable[[], None]) -> Dict[str, Any]:
+    """An MDDropdownMenu item that shows text and calls action."""
+    return {"viewclass": "MenuItem", "text": text, "on_release": action}
 
 
 def label(text: str, size: float = 14, color: Any = None, bold: bool = False, one_line: bool = False,
@@ -338,7 +394,7 @@ class PatchPanel(ScrollView):
             self.menu = None
             self.refresh()
 
-        items = [{"text": value, "on_release": lambda v=value: pick(v)} for value in setting.choices or ()]
+        items = [menu_item(value, lambda v=value: pick(v)) for value in setting.choices or ()]
         self.menu = menu = MDDropdownMenu(caller=caller, items=items, position="bottom")
         menu.bind(on_dismiss=closed)
         menu.open()
