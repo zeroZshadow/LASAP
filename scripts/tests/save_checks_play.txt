@@ -1,9 +1,9 @@
-# Check files by save (DESIGN.md, Persistence), part 1 of 2: a save's checks go to sd:/lasap/<its SaveId>.chk. Runs
+# Check files by save (DESIGN.md, Persistence), part 1 of 2: a save's checks go to sd:/lasap/<its SaveId>-<seed hash>.chk. Runs
 # after reset_saves.sh newgame (no check files) and newgame_file2 (file 2 loaded); save_checks_menu follows on a fresh
 # boot.
 send DBG checkfiles
-expect ^CHECKFILES\s[0-9a-f]{32}\.chk$ 5
+expect ^CHECKFILES\s[0-9a-f]{32}-[0-9a-f]{8}\.chk$ 5
 send DBG collect 7
 expect CHECK\s7 5
 send DBG checkfiles
-expect ^CHECKFILES\s[0-9a-f]{32}\.chk$ 5
+expect ^CHECKFILES\s[0-9a-f]{32}-[0-9a-f]{8}\.chk$ 5

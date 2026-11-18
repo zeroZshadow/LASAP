@@ -7,7 +7,7 @@ tapuntil 1 screen=title when title:Deactive 30
 tapuntil c0 title:GameStart when title:WaitLR+unlocked 20
 until files:DataSelectKeyWait 20
 send DBG checkfiles
-expect ^CHECKFILES\s[0-9a-f]{32}\.chk$ 5
+expect ^CHECKFILES\s[0-9a-f]{32}-[0-9a-f]{8}\.chk$ 5
 
 # Copy file 2 (Start, then Copy below it) to the empty file 3, the first target; the confirmation starts on Cancel
 select 1
@@ -19,7 +19,7 @@ tap 4000 when files:CopyDataConfirm
 tapuntil 1 !files:CopyDataConfirm when files:CopyDataConfirm 5
 until files:CopyDataEnd 15
 send DBG checkfiles
-expect ^CHECKFILES\s[0-9a-f]{32}\.chk\s[0-9a-f]{32}\.chk$ 5
+expect ^CHECKFILES\s[0-9a-f]{32}-[0-9a-f]{8}\.chk\s[0-9a-f]{32}-[0-9a-f]{8}\.chk$ 5
 tapuntil 1 files:DataSelectKeyWait when files:CopyDataEnd 10
 
 # Erase the copy (Delete right of Copy): X+L+R held
@@ -30,7 +30,7 @@ tap 4000 when files:DataSelectConfirm
 tapuntil 1 files:DeleteDataWaitKey when files:DataSelectConfirm 5
 hold c4 0 0 until files:DeleteDataEnd 10
 send DBG checkfiles
-expect ^CHECKFILES\s[0-9a-f]{32}\.chk$ 5
+expect ^CHECKFILES\s[0-9a-f]{32}-[0-9a-f]{8}\.chk$ 5
 tapuntil 1 files:DataSelectKeyWait when files:DeleteDataEnd 10
 
 # Copy again and continue the copy: its checks come from its own file
@@ -49,4 +49,4 @@ tapuntil 1 files:GameStart when files:DataSelectConfirm
 inlevel 60
 expect CHECKS\s7$ 20
 send DBG checkfiles
-expect ^CHECKFILES\s[0-9a-f]{32}\.chk\s[0-9a-f]{32}\.chk$ 5
+expect ^CHECKFILES\s[0-9a-f]{32}-[0-9a-f]{8}\.chk\s[0-9a-f]{32}-[0-9a-f]{8}\.chk$ 5

@@ -1,0 +1,38 @@
+# Check files by save (DESIGN.md, Persistence), on a fresh boot after save_checks_play: file 2 has its own check file
+# with location 7, and the autosave holds file 2's save. Erasing file 2 deletes its check file though the autosave
+# holds its save. A new game in file 2 gets an id no check file has and starts with no checks: SYNC sends only the
+# location collected in it.
+connect 90
+tapuntil 1 screen=title when title:Deactive 30
+tapuntil c0 title:GameStart when title:WaitLR+unlocked 20
+until files:DataSelectKeyWait 20
+send DBG checkfiles
+expect ^CHECKFILES\s[0-9a-f]{32}-[0-9a-f]{8}\.chk$ 5
+
+# Erase file 2 (Start, then Delete right of Copy): X+L+R held
+select 1
+tapuntil 1 files:DataSelectConfirm when files:DataSelectKeyWait
+tap 8000 when files:DataSelectConfirm
+tap 4000 when files:DataSelectConfirm
+tapuntil 1 files:DeleteDataWaitKey when files:DataSelectConfirm 5
+hold c4 0 0 until files:DeleteDataEnd 10
+send DBG checkfiles
+expect ^CHECKFILES$ 5
+tapuntil 1 files:DataSelectKeyWait when files:DeleteDataEnd 10
+
+# A new game in file 2: A on the empty file opens the difficulty choice (Normal first), then OK on the name entry
+select 1
+tapuntil 1 files:DataSelectFirstConfirm when files:DataSelectKeyWait 5
+tapuntil 1 files:InputNameWaitKey when files:DataSelectFirstConfirm 5
+until name:KeyWait 10
+tapuntil 8000 entry=1 when name:KeyWait 5
+tapuntil 1 !name:KeyWait when name:KeyWait+entry=1 5
+inlevel 60
+level MarinTarinHouse
+dismiss 90
+send DBG checkfiles
+expect ^CHECKFILES\s[0-9a-f]{32}-[0-9a-f]{8}\.chk$ 5
+send DBG collect 9
+expect CHECK\s9 5
+game SYNC
+expect CHECKS\s9$ 5
