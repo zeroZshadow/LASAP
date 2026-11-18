@@ -7,7 +7,8 @@
 #                          (worlds/las/test/...), else the whole folder
 #   worktree.sh land <subject> [<line> [<line>]]
 #                          rebase this branch onto master, run the whole world test suite, put the branch on master as
-#                          one commit with that message, then remove the Archipelago worktree
+#                          one commit with that message, then remove the Archipelago worktree; refuses while a process
+#                          has vendor/Archipelago open
 #   worktree.sh teardown   remove the Archipelago worktree only
 # The venvs stay in the main checkout ($MAIN/.venv-ap, $MAIN/.venv-lasr); nothing here links to them.
 set -e
@@ -18,11 +19,26 @@ AP="$ROOT/vendor/Archipelago"
 winpath() { cygpath -w "$1"; }
 
 teardown() {
-    # Remove the junction first, so nothing deletes through it into this worktree's world.
-    if [ -e "$AP/worlds/las" ]; then cmd //c rmdir "$(winpath "$AP/worlds/las")"; fi
-    if [ -e "$AP" ]; then git -C "$MAIN/vendor/Archipelago" worktree remove --force "$AP"; fi
+    # Remove the junction first, so nothing deletes through it into this worktree's world; stop if it is still there.
+    if [ -e "$AP/worlds/las" ]; then
+        cmd //c rmdir "$(winpath "$AP/worlds/las")" || return 1
+        [ ! -e "$AP/worlds/las" ] || return 1
+    fi
+    if [ -e "$AP" ]; then git -C "$MAIN/vendor/Archipelago" worktree remove --force "$AP" || return 1; fi
     git -C "$MAIN/vendor/Archipelago" worktree prune
 }
+
+# Whether a process has vendor/Archipelago or something in it open (a server, a test run or a shell started there):
+# Windows refuses to rename a folder then
+in_use() {
+    [ -e "$AP" ] || return 1
+    if mv "$AP" "$AP.in-use-check" 2>/dev/null; then
+        mv "$AP.in-use-check" "$AP"
+        return 1
+    fi
+    return 0
+}
+IN_USE="vendor/Archipelago is open in another process (a server, test run or shell started in it, or one that reads the world through it): stop that process"
 
 run_tests() {
     # The whole folder unless a test path is given
@@ -36,6 +52,11 @@ run_tests() {
 
 case "$1" in
 setup)
+    if [ -e "$AP" ] && [ ! -e "$AP/.git" ]; then  # what a failed teardown left
+        in_use && { echo "$IN_USE, then run setup again"; exit 1; }
+        [ ! -e "$AP/worlds/las" ] || { echo "vendor/Archipelago is no Archipelago worktree but links the world: run worktree.sh teardown"; exit 1; }
+        rm -rf "$AP"
+    fi
     if [ ! -e "$AP" ]; then
         git -C "$MAIN/vendor/Archipelago" worktree add --detach "$AP" HEAD
         mkdir -p "$AP/Players"
@@ -74,11 +95,14 @@ land)
         exit 1
     fi
     [ "$(git rev-parse HEAD)" != "$(git rev-parse master)" ] || { echo "nothing to land: this branch is master"; exit 1; }
+    # Landing removes the Archipelago worktree at the end, which fails while a process has it open
+    in_use && { echo "not landed: $IN_USE, then land again"; exit 1; }
     # The whole suite, not only the tests of the files changed: a change to data such as logic.yml breaks tests elsewhere
     if ! run_tests -p no:warnings; then
         echo "not landed: the world's tests fail. Fix them, commit, land again"
         exit 1
     fi
+    in_use && { echo "not landed: $IN_USE, then land again"; exit 1; }
     # The squash is made here, not in the main checkout, whose index other sessions may be using; master then only
     # fast-forwards to it.
     if [ $# -gt 1 ]; then
@@ -92,14 +116,20 @@ land)
         exit 1
     fi
     git reset -q --hard "$SQUASH"
-    teardown
     echo "landed $BRANCH on master as $(git rev-parse --short "$SQUASH")"
+    if ! teardown; then
+        echo "the Archipelago worktree is not removed: $IN_USE, then run worktree.sh teardown"
+        exit 1
+    fi
     ;;
 teardown)
-    teardown
+    if ! teardown; then
+        echo "not removed: $IN_USE, then run teardown again"
+        exit 1
+    fi
     ;;
 *)
-    sed -n '2,12p' "$0"
+    sed -n '2,13p' "$0"
     exit 1
     ;;
 esac
