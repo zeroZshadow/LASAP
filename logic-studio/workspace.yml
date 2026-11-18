@@ -103,7 +103,7 @@ taltal-heights-hole:
   condition-basic: bombs
 kanalet-crow:
   type: item
-  condition-basic: kill-crow & (bombs | bracelet)
+  condition-basic: kill-crow[heavy] & (bombs | bracelet)
 kanalet-mad-bomber:
   type: item
   condition-basic: kill-mad-bomber
@@ -1050,7 +1050,7 @@ goponga-west:
 swamp:
   type: region
   connections:
-    bottle-grotto-porch: kill-flower | (bracelet & !classic-d2)
+    bottle-grotto-porch: kill-flower[heavy] | (bracelet & !classic-d2)
     taltal-central: bracelet
 bottle-grotto-porch:
   type: region
@@ -2667,6 +2667,7 @@ kill-big-flower:
 kill-flower:
   type: enemy
   condition-basic: (hookshot & (sword | powders | shoot-arrows | bombs)) | rod | boomerang | bow-wow
+  condition-heavy: bracelet
 kill-lanmola:
   type: enemy
   condition-basic: sword | shoot-arrows | bombs | rod | boomerang
@@ -2676,6 +2677,7 @@ kill-armos:
 kill-crow:
   type: enemy
   condition-basic: sword | shoot-arrows | bombs | rod | boomerang
+  condition-heavy: bracelet
 kill-mad-bomber:
   type: enemy
   condition-basic: sword | shoot-arrows | rod | boomerang
@@ -2948,9 +2950,6 @@ FishingBoat_01A:
 Field_15K:
   type: door
   condition-basic: flippers
-MadBattersWell02_01A:
-  type: door
-  condition-basic: bracelet
 Lv01TailCave_06G_Warp:
   type: door
   condition-basic: kill-rolling-bones
@@ -3044,3 +3043,6 @@ Field_10C:
 Field_15J:
   type: door
   condition-basic: mermaid-scale
+Field_06C:
+  type: door
+  condition-basic: bracelet

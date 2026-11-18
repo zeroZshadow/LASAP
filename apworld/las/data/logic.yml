@@ -200,7 +200,7 @@ kanalet-crow:
   content: golden-leaf
   index: 1
   region: kanalet
-  condition-basic: kill-crow & (bombs | bracelet)
+  condition-basic: kill-crow[heavy] & (bombs | bracelet)
 kanalet-mad-bomber:
   type: item
   content: golden-leaf
@@ -1862,7 +1862,7 @@ woods:
   one-way:
     goponga-central: hookshot
   doors:
-    Field_06C: always
+    Field_06C: bracelet
     Field_07C: always
     Field_07F: always
 woods-west:
@@ -1897,7 +1897,7 @@ goponga-west:
 swamp:
   type: region
   connections:
-    bottle-grotto-porch: kill-flower | (bracelet & !classic-d2)
+    bottle-grotto-porch: kill-flower[heavy] | (bracelet & !classic-d2)
     taltal-central: bracelet
 bottle-grotto-porch:
   type: region
@@ -4111,6 +4111,7 @@ kill-big-flower:
 kill-flower:
   type: enemy
   condition-basic: (hookshot & (sword | powders | shoot-arrows | bombs)) | rod | boomerang | bow-wow
+  condition-heavy: bracelet
 kill-lanmola:
   type: enemy
   condition-basic: sword | shoot-arrows | bombs | rod | boomerang
@@ -4120,6 +4121,7 @@ kill-armos:
 kill-crow:
   type: enemy
   condition-basic: sword | shoot-arrows | bombs | rod | boomerang
+  condition-heavy: bracelet
 kill-mad-bomber:
   type: enemy
   condition-basic: sword | shoot-arrows | rod | boomerang
@@ -4452,7 +4454,7 @@ mad-batters-well-01:
 mad-batters-well-02:
   type: region
   doors:
-    MadBattersWell02_01A: bracelet
+    MadBattersWell02_01A: always
 mad-batters-well-03:
   type: region
   doors:
