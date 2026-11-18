@@ -9,9 +9,10 @@ from worlds.AutoWorld import AutoWorldRegister
 from . import generate_world
 from .. import GOAL_LOCATION
 from ..items import GAME
-from ..lasr import CATEGORIES, DOORS, DUNGEONS, WARP_POINTS, WRITTEN_LOGIC, door_entrance, door_region
+from ..lasr import (CATEGORIES, DOORS, DROP_NAMES, DUNGEONS, WARP_POINTS, WRITTEN_LOGIC, door_entrance, door_label,
+                    door_region)
 from ..locations import LOCATION_NAMES
-from ..ut_map import (CONNECTOR_INSIDES, LOCATION_DUNGEONS, MAPS, TRACKER_WORLD, check_label, connector_exits,
+from ..ut_map import (CONNECTOR_INSIDES, DROP_ROUTES, LOCATION_DUNGEONS, MAPS, TRACKER_WORLD, check_label, connector_exits,
                       door_pin_colour,
                       dungeon_map, dungeon_squares, hidden_door_entrances, hidden_locations, map_index,
                       zone_places)
@@ -52,13 +53,20 @@ class TestUTMap(unittest.TestCase):
     def test_doors_are_the_worlds_entrances(self) -> None:
         dungeon_entrances = {door_entrance(dungeon) for dungeon in DUNGEONS}
         doors = section_names("Doors")
-        self.assertLessEqual(doors, set(DOORS["pairs"]) | dungeon_entrances)
+        self.assertLessEqual(doors, set(DOORS["pairs"]) | dungeon_entrances | DROP_ROUTES)
+        self.assertLessEqual(DROP_ROUTES, doors)
+        # the drops: every one-way down from the overworld
+        self.assertEqual(set(DROP_NAMES), {door for door in DOORS["one-way"] if door.startswith("Field_")})
+        self.assertEqual({door_label(way) for way in DROP_ROUTES}, set(DROP_NAMES.values()))
         for seed, options in enumerate(({"entrances": "everything", "shuffled_dungeons": "everything",
                                          "random_start": True},
-                                        {"entrances": "everything", "shuffled_dungeons": True})):
+                                        {"entrances": "everything", "shuffled_dungeons": True}, {})):
             with self.subTest(options=options):
                 world = generate_world(options, 4300 + seed)
                 entrances = {e.name for e in world.multiworld.get_entrances(1)}
+                self.assertLessEqual(DROP_ROUTES, entrances)  # with or without shuffled doors
+                if not options:
+                    continue
                 self.assertLessEqual(set(world.door_pool), doors & entrances)
                 # the connectors' other ends a door's pin also shows (connector_exits)
                 self.assertLessEqual({way for ways in CONNECTOR_INSIDES.values() for way in ways}, entrances)
@@ -91,6 +99,7 @@ class TestUTMap(unittest.TestCase):
         other ends he has not gone out of count too: in logic keeps it in logic, out of reach makes it out of logic, and
         it is collected once he has gone out of every end. Before, they do not count (they would tell where it leads)."""
         door, near, far, other = "Field_15H", "Tamaranch01_02A", "Tamaranch01_01C", "Tamaranch01_04B"
+        drop = min(DROP_ROUTES)
         cases = [
             # two doors: the far end in logic, out of reach, gone out of while now out of reach, gone out of
             ({door: "passed", far: "passable"}, {door}, "in_logic"),
@@ -106,7 +115,10 @@ class TestUTMap(unittest.TestCase):
             ({door: "passable", far: "impassable"}, set(), "in_logic"),
             ({door: "impassable", far: "passable"}, set(), "out_of_logic"),
             # a dungeon map's pin is the inside door's own: its status counts
-            ({near: "impassable", door_entrance("tail-cave"): "passed"}, set(), "out_of_logic")]
+            ({near: "impassable", door_entrance("tail-cave"): "passed"}, set(), "out_of_logic"),
+            # a drop Link can reach stays in logic: UT gives it "passed", as it is not shuffled
+            ({drop: "passed"}, set(), "in_logic"),
+            ({drop: "impassable"}, set(), "out_of_logic")]
         for statuses, connected, colour in cases:
             with self.subTest(statuses=statuses, connected=connected):
                 self.assertEqual(door_pin_colour(statuses, connected.__contains__), colour)

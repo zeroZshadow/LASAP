@@ -23,6 +23,9 @@ WRITTEN_LOGIC: Dict[str, Dict[str, Any]] = load_yaml("logic.yml")  # with its ro
 DOORS: Dict[str, Any] = load_yaml("doors.yml")
 # Player-facing names of the shuffled overworld doors, by door: the spoiler, plando and the tracker show them (door_label)
 DOOR_NAMES: Dict[str, str] = load_yaml("door_names.yml")
+# The overworld's drops (doors.yml's one-ways down from the overworld), by door: the player-facing names the tracker
+# shows (door_label)
+DROP_NAMES: Dict[str, str] = {"Field_02O": "Eagle's Tower Drop", "Field_13O": "Lanmola Drop"}
 
 DUNGEONS = tuple(SPEC["dungeons"])
 # Each dungeon's number in location and item names (D1-..., key-D1) and in its inside's level (Lv01 ... Lv08): D1 Tail
@@ -215,15 +218,24 @@ def dungeon_route(door: str) -> str:
     return f"{zone_of(door)} -> {zone_of(DOORS['pairs'][door])}"
 
 
-_DOOR_OF_ROUTE = {dungeon_route(door): door for door in DOORS["groups"]["dungeon-other"]}
+def drop_route(door: str) -> str:
+    """The world's way down an overworld drop (DROP_NAMES): from the zone with the hole to the zone it lands in, an
+    entrance of the logic's routes."""
+    return f"{zone_of(door)} -> {zone_of(DOORS['one-way'][door])}"
+
+
+_DOOR_OF_ROUTE = {**{dungeon_route(door): door for door in DOORS["groups"]["dungeon-other"]},
+                  **{drop_route(door): door for door in DROP_NAMES}}
 
 
 def door_label(door: str) -> str:
     """A door's player-facing name: door_names.yml's for a shuffled overworld door, `<that name> Exit` for the inside
-    door it leads to in the game, the door's for a way into a dungeon through another door (dungeon_route). Other
-    names, and doors.yml's own, stay as they are: the world, the seed file and the tracker's data go by doors.yml's
-    names."""
+    door it leads to in the game, the door's for a way into a dungeon through another door (dungeon_route), the drop's
+    for a way down a drop (drop_route). Other names, and doors.yml's own, stay as they are: the world, the seed file and
+    the tracker's data go by doors.yml's names."""
     door = _DOOR_OF_ROUTE.get(door, door)
+    if door in DROP_NAMES:
+        return DROP_NAMES[door]
     if door in DOOR_NAMES:
         return DOOR_NAMES[door]
     if door in _DOOR_OF_INSIDE:

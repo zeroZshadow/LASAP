@@ -13,6 +13,8 @@ Run with .venv-ap: python scripts/ut_map.py [<PopTracker pack folder>]
   affine fit from the exact overworld checks' world coordinates (checks.yml) to their pack pins. Its section is named
   after the door's AP entrance (Entrances); a dungeon's own door also carries its dungeon's (lasr.door_entrance,
   Shuffled dungeons). UT shows what the slot has: the server's locations, the world's entrances.
+- An overworld drop's pin (lasr.DROP_NAMES): its hole (places.json's drop teleport), placed as the doors are. Its
+  section is the world's way down it (lasr.drop_route), which the client names after the drop (lasr.door_label).
 - A dungeon's doors from the overworld (doors.yml's dungeon and dungeon-other groups): a pin on its map where Link
   lands inside (places.json). Its sections: the inside door's entrance (Shuffled dungeons everything); on a dungeon's
   own door every dungeon's door entrance, which the client hides on the maps of the dungeons it is not known to lead
@@ -46,8 +48,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(ROOT / "patcher"))
 from worlds.las import GOAL_LOCATION  # noqa: E402
 from worlds.las.items import LASR_TO_ITEM  # noqa: E402
-from worlds.las.lasr import (DOORS, DUNGEON_DOORS, DUNGEONS, WARP_POINTS, WRITTEN_LOGIC, door_entrance,  # noqa: E402
-                             dungeon_route)
+from worlds.las.lasr import (DOORS, DROP_NAMES, DUNGEON_DOORS, DUNGEONS, WARP_POINTS, WRITTEN_LOGIC,  # noqa: E402
+                             door_entrance, drop_route, dungeon_route)
 from worlds.las.locations import display_name  # noqa: E402
 from worlds.las.ut_map import DUNGEON_SECTIONS, ITEM_SECTIONS, MAPS  # noqa: E402
 import ap_tracker_map  # noqa: E402
@@ -86,6 +88,12 @@ def door_spots() -> dict:
     by_id = {t["id"]: t for t in teleports}
     return {by_id[t["companion"]]["to"]: (t["x"], t["z"], t["y"]) for t in teleports
             if t["level"] == "Field" and t["door"] and t["companion"]}
+
+
+def drop_spots() -> dict:
+    """Overworld drop name (lasr.DROP_NAMES) -> (x, z, height): its hole on the overworld."""
+    return {t["room"]: (t["x"], t["z"], t["y"]) for t in places()["teleports"]
+            if t["level"] == "Field" and t.get("drop") and t["room"] in DROP_NAMES}
 
 
 def landings() -> dict:
@@ -329,6 +337,13 @@ def locations_json(pack: Path) -> list:
         x, y = on_island(*place(*doors[door]))
         sections = [{"name": door}] + ([{"name": door_entrance(dungeon_of[door])}] if door in dungeon_of else [])
         entrances.append({"name": door, "sections": sections,
+                          "map_locations": [{"map": MAPS[0], "x": x, "y": y, "size": DOOR_PIN}]})
+    drops = drop_spots()
+    if set(drops) != set(DROP_NAMES):
+        raise SystemExit(f"no drop teleport for {sorted(set(DROP_NAMES) - set(drops))}")
+    for door in DROP_NAMES:
+        x, y = on_island(*place(*drops[door]))
+        entrances.append({"name": door, "sections": [{"name": drop_route(door)}],
                           "map_locations": [{"map": MAPS[0], "x": x, "y": y, "size": DOOR_PIN}]})
     pins = [{"name": spot["name"], "sections": spot["sections"], "map_locations": [{"map": m, "x": x, "y": y}]}
             for (m, x, y), spot in spots.items()]

@@ -10,9 +10,9 @@ import re
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple
 
 from .items import LASR_TO_ITEM
-from .lasr import (CATEGORIES, DOORS, DUNGEON_DOORS, DUNGEON_NAMES, DUNGEON_NUMBERS, DUNGEONS, INSTRUMENTS, LOGIC,
-                   WARP_LOCATORS, WARP_MAP, WARP_ZONES, WRITTEN_LOGIC, door_entrance, door_region, dungeon_of, dungeon_region,
-                   in_dungeon)
+from .lasr import (CATEGORIES, DOORS, DROP_NAMES, DUNGEON_DOORS, DUNGEON_NAMES, DUNGEON_NUMBERS, DUNGEONS, INSTRUMENTS,
+                   LOGIC, WARP_LOCATORS, WARP_MAP, WARP_ZONES, WRITTEN_LOGIC, door_entrance, door_region, drop_route,
+                   dungeon_of, dungeon_region, in_dungeon)
 from .locations import LOCATION_NAMES
 from .logic import FIELD_DOOR, START
 from .tracker import LEVEL_KEY
@@ -104,9 +104,11 @@ ITEM_SECTIONS = (
 DUNGEON_SECTIONS = tuple((dungeon_label(n), (f"key-D{n}", f"nightmare-key-D{n}", f"map-D{n}", f"compass-D{n}",
                                               f"stone-beak-D{n}"), 5) for n in (*range(1, 9), 0))
 ITEM_SIZE, DUNGEON_ITEM_SIZE = (40, 40), (32, 32)
-# The entrances that go through a door (Entrances, Shuffled dungeons): each door's, named after the door, and each
-# dungeon's door's (lasr.door_entrance)
-DOOR_STEPS = frozenset(DOORS["pairs"]) | frozenset(DOORS["pairs"].values()) | {door_entrance(d) for d in DUNGEONS}
+# The ways down the overworld's drops (lasr.drop_route): the island's map shows them as doors
+DROP_ROUTES = frozenset(drop_route(door) for door in DROP_NAMES)
+# The entrances that go through a door (Entrances, Shuffled dungeons): each door's, named after the door, each
+# dungeon's door's (lasr.door_entrance), and the drops'
+DOOR_STEPS = frozenset(DOORS["pairs"]) | frozenset(DOORS["pairs"].values()) | {door_entrance(d) for d in DUNGEONS} |     DROP_ROUTES
 
 
 # The region Link stands in once a jump landed on a door's spot, when the door is no shuffled one, or on a warp point's
@@ -290,9 +292,15 @@ def connector_exits(entrances: Mapping[str, str], door: str) -> List[str]:
     return list(CONNECTOR_ENDS.get(inside, ())) if inside is not None else []
 
 
+def door_status(name: str, status: str) -> str:
+    """An entrance's status on a door's pin: Universal Tracker's, but a drop (DROP_ROUTES) Link can reach is passable.
+    UT gives an entrance that is not shuffled "passed" once reachable, and a drop leads on however often it is taken."""
+    return "passable" if status == "passed" and name in DROP_ROUTES else status
+
+
 def door_pin_colour(statuses: Mapping[str, str], connected: Callable[[str], bool] = lambda name: False) -> str:
-    """A door pin's colour from Universal Tracker's statuses of its entrances, the strongest (DOOR_COLOURS), else
-    collected. On an overworld door's pin, once the player went through the door (`connected`), the connector's other
+    """A door pin's colour from Universal Tracker's statuses of its entrances (door_status), the strongest
+    (DOOR_COLOURS), else collected. On an overworld door's pin, once the player went through the door (`connected`), the connector's other
     ends (connector_exits) he has not gone out of count too: one in logic keeps the pin in logic, one out of reach makes
     it out of logic, and the pin is collected once he has gone out of every end. UT gives an end out of reach the same
     status whether he has gone out of it or not, so `connected` tells them apart. Before he went through the door its
@@ -303,7 +311,7 @@ def door_pin_colour(statuses: Mapping[str, str], connected: Callable[[str], bool
     for name, status in statuses.items():
         if outside and name in INSIDE_DOORS and (not entered or connected(name)):
             continue  # an end of a door not gone through, or one gone out of
-        shown.add(status)
+        shown.add(door_status(name, status))
     return next((colour for status, colour in DOOR_COLOURS.items() if status in shown), "collected")
 
 

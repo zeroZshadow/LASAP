@@ -17,7 +17,7 @@ from .items import ITEM_TABLE, LASR_TO_ITEM
 from .lasr import DUNGEONS, INSTRUMENTS, WARP_LOCATORS, WARP_ZONES, door_entrance, door_label
 from .tracker import known_doors
 from .ut_map import (DOOR_STEPS, JUMP_LABELS, LOCATION_DUNGEONS, MAMBO, OVERWORLD_MAP, WARP_HOME, check_label,
-                     connector_exits, door_out, dungeon_squares, find_route, held_warps, hidden_door_entrances,
+                     connector_exits, door_out, door_status, dungeon_squares, find_route, held_warps, hidden_door_entrances,
                      hidden_locations, route_jumps, spot_region, warp_step)
 
 TRACKER_DOORS_KEY = "tracker_doors_shown"  # Archipelago's persistent storage, under "las": TrackerMixin.show_doors
@@ -469,8 +469,10 @@ class TrackerMixin:
                              + self.goal_lines(world))
         lines = []
         for key, status in pin.statuses.items():
-            name = check_label(world.location_id_to_name.get(key, str(key))) if pin.kind == "location" \
-                else door_label(key)
+            if pin.kind == "location":
+                name = check_label(world.location_id_to_name.get(key, str(key)))
+            else:
+                name, status = door_label(key), door_status(key, status)
             lines.append(f"{name}: [color={get_ut_color(STATUS_COLOURS.get(status, status))}]{status}[/color]")
             if pin.kind == "entrance" and world is not None and world.get_entrance(key).connected_region is not None:
                 lines.append(f"  -> {door_label(door_out(world.get_entrance(key)))}")
