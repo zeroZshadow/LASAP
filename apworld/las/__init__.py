@@ -473,6 +473,11 @@ class LASWorld(World):
         for replacement in trades[:pool["zol-trap"]]:
             pool["zol-trap"] -= 1
             pool[replacement] += 1
+        if options.warp_points:
+            # each warp point's item takes a junk item's place, before traps can take all of it
+            for warp in WARP_POINTS:
+                pool[next(junk for junk in JUNK if pool[junk] > 0)] -= 1
+                pool[warp] += 1
         if options.traps.value:
             # then purple rupees and other junk become traps
             count = options.traps.value
@@ -482,11 +487,6 @@ class LASWorld(World):
                 count -= taken
                 for _ in range(taken):
                     pool[self.random.choice(TRAPS)] += 1
-        if options.warp_points:
-            # each warp point's item takes a junk item's place
-            for warp in WARP_POINTS:
-                pool[next(junk for junk in JUNK if pool[junk] > 0)] -= 1
-                pool[warp] += 1
         assert all(n >= 0 for n in pool.values()), pool
         filled = len(self.shuffled) - len(self.locked)
         assert sum(pool.values()) == filled, (sum(pool.values()), filled)

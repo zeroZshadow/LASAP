@@ -58,3 +58,13 @@ class TestWarpPointsOff(LASTestBase):
             self.assertNotIn(LASR_TO_ITEM[item], pool)
         self.assertEqual(self.world.patch_data()["warp_points"], [])
 
+
+
+class TestWarpPointsTrapsanity(LASTestBase):
+    options = {"warp_points": True, "traps": "trapsanity"}
+
+    def test_items(self) -> None:
+        """Traps that take every junk item leave the warp items their places."""
+        pool = pool_names(self)
+        for item in WARP_POINTS:
+            self.assertEqual(pool[LASR_TO_ITEM[item]], 1, item)
