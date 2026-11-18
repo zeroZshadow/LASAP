@@ -2667,7 +2667,7 @@ kill-big-flower:
 kill-flower:
   type: enemy
   condition-basic: (hookshot & (sword | powders | shoot-arrows | bombs)) | rod | boomerang | bow-wow
-  condition-heavy: bracelet
+  condition-heavy: hookshot & bracelet
 kill-lanmola:
   type: enemy
   condition-basic: sword | shoot-arrows | bombs | rod | boomerang
