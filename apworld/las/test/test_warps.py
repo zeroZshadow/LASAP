@@ -9,6 +9,7 @@ from .. import JUNK
 from ..items import LASR_TO_ITEM
 from ..lasr import WARP_POINTS
 from ..locations import LOCATION_NAMES
+from ..models import model_for
 from ..ut_map import MAMBO, find_route, route_jumps
 
 ABOVE_TURTLE_ROCK = LOCATION_NAMES["above-turtle-rock"]
@@ -48,6 +49,11 @@ class TestWarpPoints(LASTestBase):
         for item, count in self.world.item_pool().items():
             if self.world._is_progression(item):
                 self.assertLessEqual(count, held[item], item)
+
+    def test_models(self) -> None:
+        """A warp point's item shows the warp medallion: the patch names the item as its location's model."""
+        for item in WARP_POINTS:
+            self.assertEqual(model_for(self.world.create_item(LASR_TO_ITEM[item])), item)
 
     def test_patch(self) -> None:
         """The patch lists every warp point as opened by its item."""

@@ -1,5 +1,6 @@
 """Writes the drop actor's model bounds into the module (las-ap-exl/source/program/ap/drop_bounds.hpp; DESIGN.md, Drop
-actor, Model): per model a drop can show, every items.yml item's and the Archipelago model, its bind-pose centre and
+actor, Model): per model a drop can show, every items.yml item's, the Archipelago model and the warp medallion, its
+bind-pose centre and
 radius (model_bounds.py), the same in every seed. Run in .venv-lasr after a change of those models:
 
 python scripts/drop_bounds.py [--romfs <RomFS folder>]
@@ -14,6 +15,7 @@ sys.path.insert(0, str(ROOT / "patcher"))
 sys.path.insert(0, str(ROOT / "patcher" / "modbuild"))
 import ap_assets  # noqa: E402
 import ap_model  # noqa: E402
+import ap_warp_model  # noqa: E402
 import model_bounds  # noqa: E402
 from las_ap_patch import load_yaml  # noqa: E402
 from local_paths import local_path  # noqa: E402
@@ -42,9 +44,12 @@ def main() -> None:
                      if item.get("model-path") and item.get("model-name") and not item["item-key"].startswith("$")})
     lines = []
     with tempfile.TemporaryDirectory() as built:
-        ap_assets.install(romfs, Path(built), ap_assets.MODEL)
-        for path, name in [(ap_model.FILE_NAME, ap_model.MODEL_NAME), *models]:
-            file = Path(built) / ap_assets.MODEL if path == ap_model.FILE_NAME else actors / path
+        own = {ap_model.FILE_NAME: (ap_assets.MODEL, ap_model.MODEL_NAME),
+               ap_warp_model.FILE_NAME: (ap_assets.WARP_MODEL, ap_warp_model.MODEL_NAME)}
+        for asset, _ in own.values():
+            ap_assets.install(romfs, Path(built), asset)
+        for path, name in [(file, name) for file, (_, name) in own.items()] + models:
+            file = Path(built) / own[path][0] if path in own else actors / path
             try:
                 b = model_bounds.bounds(str(file), name)
             except (SystemExit, Exception) as e:  # the reader stops on layouts it does not know

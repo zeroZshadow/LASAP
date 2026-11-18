@@ -100,7 +100,9 @@ WARP_POINTS: Dict[str, int] = {
     f"warp-{name}": index for index, name in enumerate(
         ("ukuku-prairie", "turtle-rock", "taltal-heights", "animal-village", "manbos-pond", "dampes-shack",
          "seashell-mansion", "taltal-east", "marthas-bay", "taltal-west"))}
-WARP_ITEMS = {item: {"type": "important", "quantity": 0, "item-key": f"$WARP:{index}"}
+# They show the warp medallion (patcher las_ap_patch.WARP_MODEL), which models.has_model reads from model-path.
+WARP_ITEMS = {item: {"type": "important", "quantity": 0, "item-key": f"$WARP:{index}",
+                     "model-path": "ItemWarpMedallion.bfres", "model-name": "ShellRader"}
               for item, index in WARP_POINTS.items()}
 ITEM_DEFS.update(WARP_ITEMS)
 # The warp map's region (logic.yml): a warp point and Manbo's Mambo lead onto it, and it on to each open point's zone

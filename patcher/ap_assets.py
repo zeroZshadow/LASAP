@@ -28,6 +28,7 @@ UI = "region_common/ui/StartUp.arc"
 GAME = "region_common/ui/Game.arc"  # ap_map_icons.ARCHIVE
 ACTOR = "region_common/actor"
 MODEL = f"{ACTOR}/ItemArchipelago.bfres"  # ap_model.FILE_NAME
+WARP_MODEL = f"{ACTOR}/ItemWarpMedallion.bfres"  # ap_warp_model.FILE_NAME
 PLAYER_GHOST = f"{ACTOR}/{ap_ghost_model.FILE_NAME}"
 CHEST = f"{ACTOR}/ObjTreasureBox.bfres"
 LASR_CHESTS = tuple(f"{ACTOR}/{name}" for name in ap_chest_model.LASR_LOOKS)
@@ -35,7 +36,8 @@ SEASHELL_CHEST = f"{ACTOR}/{ap_chest_model.FILE_NAME}"
 CHEST_TEXTURES = LASR_CHESTS + (SEASHELL_CHEST,)
 BALLAD_LOOP = "region_common/audio/stream/BGM_ENSEMBLE_LOOP.bfstm"  # ap_ballad.LOOPED
 # The files the mod adds that come from another RomFS file; the others it adds come from nothing
-SOURCES = {MODEL: f"{ACTOR}/ItemShellRader.bfres", PLAYER_GHOST: f"{ACTOR}/Playerlink.bfres",
+SOURCES = {MODEL: f"{ACTOR}/ItemShellRader.bfres", WARP_MODEL: f"{ACTOR}/ItemShellRader.bfres",
+           PLAYER_GHOST: f"{ACTOR}/Playerlink.bfres",
            **{path: CHEST for path in CHEST_TEXTURES},
            BALLAD_LOOP: "region_common/audio/stream/BGM_ENSEMBLE_INST.bfstm"}
 # The files the patcher makes from their source file (SOURCES) instead of patching it

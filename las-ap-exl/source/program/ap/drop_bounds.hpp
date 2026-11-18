@@ -10,6 +10,7 @@ namespace AP::DropBounds {
     };
     constexpr Bounds kBounds[] = {
         {"ItemArchipelago.bfres", "ShellRader", 0.0000f, 0.0000f, 0.0000f, 0.5249f},
+        {"ItemWarpMedallion.bfres", "ShellRader", 0.0000f, -0.0076f, 0.0000f, 0.5055f},
         {"ItemAnglerKey.bfres", "AnglerKey", 0.0530f, 0.0241f, 0.0000f, 0.4290f},
         {"ItemArrow.bfres", "Arrow", 0.0000f, 0.0044f, 0.0000f, 0.4920f},
         {"ItemBananas.bfres", "Bananas", -0.0781f, 0.0778f, 0.0016f, 0.4075f},

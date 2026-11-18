@@ -29,6 +29,7 @@ def own_files(romfs: Path) -> Dict[str, bytes]:
     import ap_map_icons
     import ap_model
     import ap_ui
+    import ap_warp_model
     from RandomizerCore.Tools.bntx_tools import createRandomizerTitleScreenArchive
     from RandomizerCore.Tools.oead_tools import SARC
 
@@ -37,6 +38,7 @@ def own_files(romfs: Path) -> Dict[str, bytes]:
     createRandomizerTitleScreenArchive(sarc)  # LASR's title screen logo
     built[ap_assets.UI] = ap_ui.build(bytes(sarc.repack()))
     built[ap_assets.MODEL] = ap_model.build(str(romfs / ap_assets.SOURCES[ap_assets.MODEL]))
+    built[ap_assets.WARP_MODEL] = ap_warp_model.build(str(romfs / ap_assets.SOURCES[ap_assets.WARP_MODEL]))
     for path, make in ap_assets.MADE.items():  # the patcher makes these itself, the same way
         built[path] = make((romfs / ap_assets.SOURCES[path]).read_bytes())
     built[ap_assets.GAME] = ap_map_icons.build((romfs / ap_assets.GAME).read_bytes())

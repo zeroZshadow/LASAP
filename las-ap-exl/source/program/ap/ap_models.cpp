@@ -38,6 +38,7 @@ namespace {
         float scale = 1.0f;        // a factor
         std::optional<float> yaw;  // degrees
         float rise = 0.0f;
+        float tilt = 0.0f;         // degrees about x, the model's top towards -z for a negative one
     };
     std::map<LocationId, Model> g_Models;
     std::map<LocationId, Stance> g_Stances;  // the location's item actors'; its chests and drops keep theirs
@@ -194,9 +195,10 @@ namespace {
                 params->scale.y *= stance.scale;
                 params->scale.z *= stance.scale;
                 params->pos.y += stance.rise;
-                if (stance.yaw && params->lebRecord != nullptr) {
+                if ((stance.yaw || stance.tilt != 0.0f) && params->lebRecord != nullptr) {
                     Game::Vec3 degrees = params->lebRecord->rotDegrees;
-                    degrees.y = *stance.yaw;
+                    if (stance.yaw) degrees.y = *stance.yaw;
+                    if (stance.tilt != 0.0f) degrees.x = stance.tilt;
                     Game::Quat q = Game::EulerQuat(degrees);
                     params->rot = {q.x, q.y, q.z, q.w};
                 }
@@ -241,8 +243,8 @@ namespace {
     };
 
     // The seed file's models: "M <local id> <item id> <model file> <model name>" the model of the location's item
-    // (item id -1: the item-get holds up the placeholder's), "S <local id> <scale factor> <yaw or -> <rise>" how its
-    // actors stand otherwise, "I <row key> <item id> <local id>" an Items.gsheet row that stands in for its item, "C
+    // (item id -1: the item-get holds up the placeholder's), "S <local id> <scale factor> <yaw or -> <rise> [<tilt>]"
+    // how its actors stand otherwise, "I <row key> <item id> <local id>" an Items.gsheet row that stands in for its item, "C
     // <local id> <size> <chest file>" the chest of its item (patcher model_lines)
     void LoadModels() {
         SeedFile::ForEach("models", [](Fields& f) {
@@ -261,8 +263,9 @@ namespace {
                 bool noYaw = f.Str() == "-";
                 std::optional<float> yaw = noYaw ? std::nullopt : yawField.Num<float>();
                 auto rise = f.Num<float>();
+                float tilt = f.Num<float>().value_or(0.0f);
                 if (!location || !scale || !rise || (!noYaw && !yaw)) return;
-                g_Stances[*location] = {*scale, yaw, *rise};
+                g_Stances[*location] = {*scale, yaw, *rise, tilt};
             } else if (kind == "I") {
                 std::string_view key = f.Str();
                 auto itemId = f.Num<int>();

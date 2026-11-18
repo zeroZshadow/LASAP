@@ -38,10 +38,13 @@ import ap_model  # noqa: E402
 import ap_option_edits  # noqa: E402
 import ap_player_ghost  # noqa: E402
 import ap_shuffles  # noqa: E402
-from las_ap_patch import (COMPANION_FLAGS, INDEX_KINDS, PLACEHOLDER_KEY, START_ITEMS_FLAG, dungeon_item,  # noqa: E402
-                          load_yaml, model_token)
+from las_ap_patch import (COMPANION_FLAGS, INDEX_KINDS, PLACEHOLDER_KEY, START_ITEMS_FLAG, WARP_MODEL,  # noqa: E402
+                          dungeon_item, load_yaml, model_token)
 
 PLACEHOLDER_ITEM_ID = 71  # must match AP::PLACEHOLDER_ITEM_ID in the exlaunch module
+# The warp medallion's row (WARP_MODEL), which nothing gives: the item-get of a location showing it holds this id's
+# model. Like the placeholder's, the id takes the item-get's default pose (scripts/re/ITEMS.md, Item-get poses).
+WARP_MODEL_ITEM_ID = 132
 # An AP location's chests name CHEST_TOKEN and its local id as their model file (DESIGN.md, Item models)
 CHEST_TOKEN = "apchest:"  # AP::CHEST_TOKEN
 CHEST_FILES = {**lasr_chests.CHEST_TEXTURES, ap_chest_model.CHEST_TYPE: ap_chest_model.FILE_NAME}  # chest-type -> model file
@@ -128,22 +131,26 @@ def add_ap_flags(flags) -> None:
 
 
 def add_placeholder_row(fixes, sheet) -> None:
-    """The placeholder's row, with its own item id and model; the rows' ids and npc keys go to the process's
-    item_rows."""
+    """The placeholder's row and the warp medallion's, each with its own item id and model; the rows' ids and npc keys
+    go to the process's item_rows."""
     for item in sheet["values"]:
         if item["symbol"] in INSTRUMENT_JINGLES:
             item["jingle"] = INSTRUMENT_JINGLES[item["symbol"]]
     # Parsed up front: appending to the sheet invalidates references to its rows.
     rows = {str(item["symbol"]): parseStruct(item) for item in sheet["values"]}
-    if any(row["itemID"] == PLACEHOLDER_ITEM_ID for row in rows.values()):
-        raise ValueError(f"Items.gsheet already uses the placeholder's item id {PLACEHOLDER_ITEM_ID}")
+    for item_id in (PLACEHOLDER_ITEM_ID, WARP_MODEL_ITEM_ID):
+        if any(row["itemID"] == item_id for row in rows.values()):
+            raise ValueError(f"Items.gsheet already uses item id {item_id}")
     fixes.parent.item_rows.update({key: (row["itemID"], str(row["npcKey"])) for key, row in rows.items()})
-    row = copy.deepcopy(rows["SmallKey"])
-    row["symbol"] = PLACEHOLDER_KEY
-    row["itemID"] = PLACEHOLDER_ITEM_ID
-    row["gettingFlag"] = ""
-    row["npcKey"] = PLACEHOLDER_DEF["npc-key"]
-    sheet["values"].append(dictToStruct(row))
+    for key, item_id, npc_key in ((PLACEHOLDER_KEY, PLACEHOLDER_ITEM_ID, PLACEHOLDER_DEF["npc-key"]),
+                                  (WARP_MODEL["item-key"], WARP_MODEL_ITEM_ID, WARP_MODEL["npc-key"])):
+        row = copy.deepcopy(rows["SmallKey"])
+        row["symbol"] = key
+        row["itemID"] = item_id
+        row["gettingFlag"] = ""
+        row["npcKey"] = npc_key
+        sheet["values"].append(dictToStruct(row))
+    fixes.parent.item_rows[WARP_MODEL["item-key"]] = (WARP_MODEL_ITEM_ID, WARP_MODEL["npc-key"])
 
 
 def add_events(proc) -> None:
@@ -255,16 +262,19 @@ def mark_native_item_gets(chart, entry) -> None:
 
 
 def edit_sheets(proc) -> None:
-    """After LASR's run: the Archipelago model gets an Npc entry, which the item-get shows, the chest's entry takes its
-    model from its actor's parameters, and the options' sheet edits (ap_option_edits.SHEETS)."""
+    """After LASR's run: the Archipelago model and the warp medallion get an Npc entry, which the item-get shows, the
+    chest's entry takes its model from its actor's parameters, and the options' sheet edits
+    (ap_option_edits.SHEETS)."""
     files = proc.file_manager
     npc = files.readFile("Npc.gsheet")
     # Parsed before appending: appending to the sheet invalidates references to its rows.
     source = next(parseStruct(row) for row in npc["values"] if row["symbol"] == PLACEHOLDER_SOURCE_NPC)
-    source["symbol"] = PLACEHOLDER_DEF["npc-key"]
-    source["graphics"]["path"] = ap_model.FILE_NAME
-    source["graphics"]["model"] = ap_model.MODEL_NAME
-    npc["values"].append(dictToStruct(source))
+    for key, model in ((PLACEHOLDER_DEF["npc-key"], PLACEHOLDER_DEF), (WARP_MODEL["npc-key"], WARP_MODEL)):
+        entry = copy.deepcopy(source)
+        entry["symbol"] = key
+        entry["graphics"]["path"] = model["model-path"]
+        entry["graphics"]["model"] = model["model-name"]
+        npc["values"].append(dictToStruct(entry))
     # Every chest names its model file and model name, as LASR's "Texture + Size" has it (chest_contents)
     chest = next(row for row in npc["values"] if row["symbol"] == "ObjTreasureBox")
     chest["graphics"]["path"], chest["graphics"]["model"] = "$6", "$7"

@@ -38,7 +38,7 @@ from RandomizerCore.Tools.leb import Room  # noqa: E402
 from ap_save_name import save_name  # noqa: E402
 import seed_file  # noqa: E402
 from las_ap_patch import (COMPANION_FLAGS, INDEX_KINDS, PLACEHOLDER_KEY, START_MARKER, START_UPGRADES,  # noqa: E402
-                          START_WITH_KINDS, MODEL_TOKEN, load_patch, load_yaml, marker_lines)
+                          START_WITH_KINDS, MODEL_TOKEN, load_patch, load_yaml, marker_lines, model_def)
 
 patch = load_patch(Path(sys.argv[1]))
 seed = seed_file.read(Path(sys.argv[2]) / "config/lasr-exl")
@@ -70,7 +70,7 @@ lines = [line.split() for line in seed.get("models", [])]
 shown = {int(p[1]) for p in lines if p[0] == "M"}
 want = {int(patch["location_ids"][loc]) for loc in models
         if loc in patch["location_ids"] and patch["placements"].get(loc) == "ap-item"
-        and item_defs.get(models[loc], {}).get("model-path") and not item_defs[models[loc]]["item-key"].startswith("$")}
+        and model_def(item_defs, models[loc])}
 if shown != want:
     bad += 1
     print(f"MODELS for {sorted(shown ^ want)} differ from location_models")

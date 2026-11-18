@@ -50,7 +50,7 @@ VERTEX_FORMAT = {"_p0": (0x1505, 0), "_n0": (0x0E02, 8), "_t0": (0x0B02, 12), "_
 STRIDE = 24
 
 
-class _Reader:
+class Reader:
     def __init__(self, data: bytearray) -> None:
         self.d = data
 
@@ -68,7 +68,7 @@ def _snorm8(v: float) -> int:
     return max(-127, min(127, round(v * 127))) & 0xFF
 
 
-def _vertex(pos, normal, tangent, uv) -> bytes:
+def vertex(pos, normal, tangent, uv) -> bytes:
     n = [max(-511, min(511, round(c * 511))) & 0x3FF for c in normal]
     binormal = (normal[1] * tangent[2] - normal[2] * tangent[1], normal[2] * tangent[0] - normal[0] * tangent[2],
                 normal[0] * tangent[1] - normal[1] * tangent[0])
@@ -104,7 +104,7 @@ def _balls(lon: int, lat: int, front_ccw: bool):
                 n = (math.sin(theta) * math.cos(phi), math.cos(theta), math.sin(theta) * math.sin(phi))
                 t = (-math.sin(phi), 0.0, math.cos(phi))
                 p = (cx + BALL_RADIUS * n[0], cy + BALL_RADIUS * n[1], BALL_RADIUS * n[2])
-                vertices.append(_vertex(p, n, t, uv))
+                vertices.append(vertex(p, n, t, uv))
         for i in range(lat):
             for j in range(lon):
                 a = first + i * (lon + 1) + j
@@ -115,7 +115,7 @@ def _balls(lon: int, lat: int, front_ccw: bool):
     return vertices, indices
 
 
-def _front_ccw(r: _Reader, base: int, vbuf: int, ibuf: int, icount: int) -> bool:
+def _front_ccw(r: Reader, base: int, vbuf: int, ibuf: int, icount: int) -> bool:
     """Whether the source mesh's outward faces wind counter-clockwise (face normal along the vertex normals)."""
     def pos(i):
         return struct.unpack_from("<3e", r.d, base + vbuf + i * STRIDE)
@@ -136,64 +136,76 @@ def _front_ccw(r: _Reader, base: int, vbuf: int, ibuf: int, icount: int) -> bool
     return score > 0
 
 
-def _rebuild_geometry(data: bytearray) -> None:
-    r = _Reader(data)
+def write_shapes(data: bytearray, source: str, make) -> None:
+    """Overwrites the model's shapes. make(shape index, vertex budget, index budget, front_ccw) gives a shape's
+    vertices (vertex()), triangle indices and bounds ((center x, y, z, extent x, y, z), sphere radius), or None to
+    empty it; front_ccw tells whether the source's outward faces wind counter-clockwise."""
+    r = Reader(data)
     model = r.u64(0x28)
     base = r.u64(r.u64(0xB0) + 8)  # buffer data block
     shapes = r.u64(model + 0x28)
-    indices: list = []
-    shape_count = r.u16(model + 0x6A)
-    for s in range(shape_count):
+    for s in range(r.u16(model + 0x6A)):
         shape = shapes + s * 0x60
         fvtx = r.u64(shape + 0x10)
         meshes = r.u64(shape + 0x18)
         mesh_count = r.u8(shape + 0x5B)
         vcount, voffset = r.u32(fvtx + 0x50), r.u32(fvtx + 0x48)
-        if s == 0:
-            attributes = {r.string(r.u64(r.u64(fvtx + 8) + 16 * a)): (r.u32(r.u64(fvtx + 8) + 16 * a + 8),
-                                                                      r.u16(r.u64(fvtx + 8) + 16 * a + 12))
-                          for a in range(r.u8(fvtx + 0x4C))}
-            if attributes != VERTEX_FORMAT or r.u32(r.u64(fvtx + 0x38)) != STRIDE:
-                raise ValueError(f"unexpected vertex format in {SOURCE}: {attributes}")
-            first_mesh = meshes
-            lon, lat = _sphere_grid(vcount, min(r.u32(meshes + 0x20 + 12 + 0x38 * m) for m in range(mesh_count)))
-            ccw = _front_ccw(r, base, voffset, r.u32(first_mesh + 0x20), r.u32(first_mesh + 0x2C))
-            vertices, indices = _balls(lon, lat, ccw)
-            vertices += [vertices[0]] * (vcount - len(vertices))
+        attributes = {r.string(r.u64(r.u64(fvtx + 8) + 16 * a)): (r.u32(r.u64(fvtx + 8) + 16 * a + 8),
+                                                                  r.u16(r.u64(fvtx + 8) + 16 * a + 12))
+                      for a in range(r.u8(fvtx + 0x4C))}
+        if attributes != VERTEX_FORMAT or r.u32(r.u64(fvtx + 0x38)) != STRIDE:
+            raise ValueError(f"unexpected vertex format in {source}: {attributes}")
+        index_budget = min(r.u32(meshes + 0x20 + 12 + 0x38 * m) for m in range(mesh_count))
+        ccw = _front_ccw(r, base, voffset, r.u32(meshes + 0x20), r.u32(meshes + 0x2C))
+        made = make(s, vcount, index_budget, ccw)
+        indices: list = []
+        if made is not None:
+            vertices, indices, (bounds, radius) = made
+            if len(vertices) > vcount or len(indices) > index_budget:
+                raise ValueError(f"shape {s} of {source} holds {vcount} vertices and {index_budget} indices")
+            vertices = vertices + [vertices[0]] * (vcount - len(vertices))
             data[base + voffset:base + voffset + vcount * STRIDE] = b"".join(vertices)
+            boxes, radii = r.u64(shape + 0x38), r.u64(shape + 0x40)
+            for b in range((radii - boxes) // 24):
+                struct.pack_into("<6f", data, boxes + 24 * b, *bounds)
+            struct.pack_into("<f", data, radii, radius)
         for m in range(mesh_count):
             mesh = meshes + 0x38 * m
             ioffset, icount = r.u32(mesh + 0x20), r.u32(mesh + 0x2C)
             if r.u32(mesh + 0x24) != 3 or r.u32(mesh + 0x28) != 1:
-                raise ValueError(f"unexpected index format in {SOURCE}")
-            # Shape 0 gets the balls (the rest degenerate); other shapes are emptied.
-            values = (indices + [0] * (icount - len(indices))) if s == 0 else [0] * icount
-            struct.pack_into(f"<{icount}H", data, base + ioffset, *values[:icount])
-        if s == 0:
-            extent = RING_RADIUS + BALL_RADIUS
-            bounds = (0.0, CENTER_Y, 0.0, extent, extent, BALL_RADIUS)
-            boxes, radii = r.u64(shape + 0x38), r.u64(shape + 0x40)
-            for b in range((radii - boxes) // 24):
-                struct.pack_into("<6f", data, boxes + 24 * b, *bounds)
-            struct.pack_into("<f", data, radii, math.hypot(extent, extent))
+                raise ValueError(f"unexpected index format in {source}")
+            # the rest degenerate
+            struct.pack_into(f"<{icount}H", data, base + ioffset, *(indices + [0] * (icount - len(indices)))[:icount])
 
 
-def _rebuild_materials(data: bytearray) -> None:
-    r = _Reader(data)
-    for _, material in ap_bntx.materials(data):
+def _rebuild_geometry(data: bytearray) -> None:
+    def make(shape: int, vertex_budget: int, index_budget: int, front_ccw: bool):
+        if shape:  # Shape 0 gets the balls; other shapes are emptied.
+            return None
+        vertices, indices = _balls(*_sphere_grid(vertex_budget, index_budget), front_ccw)
+        extent = RING_RADIUS + BALL_RADIUS
+        return vertices, indices, ((0.0, CENTER_Y, 0.0, extent, extent, BALL_RADIUS), math.hypot(extent, extent))
+    write_shapes(data, SOURCE, make)
+
+
+def set_material_params(data: bytearray, source: str, params_of) -> None:
+    """Sets shader parameters: params_of(material name) gives the values by parameter name (floats)."""
+    r = Reader(data)
+    for material_name, material in ap_bntx.materials(data):
+        wanted = params_of(material_name)
         params, values = r.u64(material + 0x50), r.u64(material + 0x60)
         for p in range(r.u16(material + 0x9E)):
             entry = params + 32 * p
             name = r.string(r.u64(entry + 8))
-            if name in MATERIAL_PARAMS:
+            if name in wanted:
                 size, offset = r.u8(entry + 0x11), r.u16(entry + 0x12)
-                value = MATERIAL_PARAMS[name]
+                value = wanted[name]
                 if size != 4 * len(value):
-                    raise ValueError(f"unexpected size of {name} in {SOURCE}")
+                    raise ValueError(f"unexpected size of {name} in {source}")
                 struct.pack_into(f"<{len(value)}f", data, values + offset, *value)
 
 
-def _bc1(color) -> bytes:
+def bc1(color) -> bytes:
     c = (color[0] >> 3) << 11 | (color[1] >> 2) << 5 | color[2] >> 3
     return struct.pack("<HHI", c, c, 0)
 
@@ -202,10 +214,10 @@ def _textures(width: int) -> dict:
     """Replacement per texture name suffix: its format and its 4x4 blocks by block column."""
     stripes = width // 4
     return {
-        "_alb": (0x1a06, lambda bx: _bc1(COLORS[min(5, bx * 6 // stripes)])),
+        "_alb": (0x1a06, lambda bx: bc1(COLORS[min(5, bx * 6 // stripes)])),
         "_nml": (0x1e02, lambda bx: bytes(16)),  # flat: x = y = 0
-        "_mask01": (0x1a06, lambda bx: _bc1((0, 0, 0))),
-        "_nml2": (0x1a06, lambda bx: _bc1((128, 128, 255))),
+        "_mask01": (0x1a06, lambda bx: bc1((0, 0, 0))),
+        "_nml2": (0x1a06, lambda bx: bc1((128, 128, 255))),
         "_smt": (0x1d01, lambda bx: bytes((SMOOTHNESS, SMOOTHNESS, 0, 0, 0, 0, 0, 0))),
     }
 
@@ -223,5 +235,5 @@ def build(source_path: str) -> bytes:
     """ItemArchipelago.bfres, from the RomFS's ItemShellRader.bfres."""
     data = _rebuild_textures(Path(source_path).read_bytes())
     _rebuild_geometry(data)
-    _rebuild_materials(data)
+    set_material_params(data, SOURCE, lambda material: MATERIAL_PARAMS)
     return bytes(data)

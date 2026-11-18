@@ -51,6 +51,12 @@ STAND_IN_ROWS = {"Dampe1": "dampe-page-1", "DampeHeart": "dampe-heart-challenge"
                  "ShopShovel": "shop-slot3-1st", "ShopBow": "shop-slot3-2nd", "ShopHeart": "shop-slot6",
                  "FishNecklace": "bay-fisherman", "SyrupPowder": "syrup", "WalrusShell": "walrus"}
 HEART_MODELS = ("HeartPiece", "HeartContainer")  # the models LASR shows unshrunk at heart piece places
+# The warp points' items (the world's lasr.WARP_ITEMS, which items.yml leaves out) show the warp medallion
+# (modbuild/ap_warp_model.py). Its Items.gsheet row and Npc entry (modbuild/mod.py) give the item-get its model.
+WARP_ITEM_PREFIX = "warp-"
+# Upright on the ground it would reach into the floor: it leans back (ground-tilt, degrees about x).
+WARP_MODEL = {"item-key": "APWarpMedallion", "model-path": Path(ap_assets.WARP_MODEL).name, "model-name": "ShellRader",
+              "npc-key": "ItemWarpMedallion", "ground-tilt": -30.0}
 # Items counted by inventory bits, as the module names them in the seed file's indices: kind letter per item
 INDEX_KINDS = {"seashell": "S", "heart-piece": "H", "golden-leaf": "L", "heart-container": "C", "bottle": "B",
                "chamber-stone": "P"}
@@ -229,21 +235,31 @@ def model_token(local_id) -> str:
     return f"{MODEL_TOKEN}{int(local_id)}"
 
 
+def model_def(item_defs: dict, name: str) -> dict:
+    """The definition of the model an item called `name` (`location_models`) shows: its item's, the warp medallion for
+    a warp point's, {} for the Archipelago model."""
+    if name.startswith(WARP_ITEM_PREFIX):
+        return WARP_MODEL
+    model = item_defs.get(name, {})
+    return model if model.get("model-path") and not model["item-key"].startswith("$") else {}
+
+
 def shown_models(patch: dict, item_defs: dict) -> dict:
     """The AP locations whose item shows its own model (`location_models`) -> that item's definition; the others show
     the Archipelago model."""
     shown = {}
     for loc, name in patch["location_models"].items():
-        model = item_defs.get(name, {})
-        if (loc in patch["location_ids"] and patch["placements"].get(loc) == "ap-item" and model.get("model-path")
-                and not model["item-key"].startswith("$")):
+        model = model_def(item_defs, name)
+        if loc in patch["location_ids"] and patch["placements"].get(loc) == "ap-item" and model:
             shown[loc] = model
     return shown
 
 
-def ground_transform(loc: str, model_name: str) -> tuple:
-    """How LASR places an item actor that shows `model_name` at `loc`, against how it places one that shows the token,
-    which it treats as any other model: (scale factor, yaw in degrees or None, rise)."""
+def ground_transform(loc: str, model: dict) -> tuple:
+    """How an item actor that shows `model` (an item definition) stands at `loc`, against one that shows the token:
+    as LASR places it, which treats the token as any other model, and the model's own ground-tilt: (scale factor, yaw
+    in degrees or None, rise, tilt in degrees)."""
+    model_name = model["model-name"]
     data = ap_assets.data()
     shell = loc in data["sunken_shells"]
     heart_place = loc in data["heart_rooms"] or shell
@@ -256,7 +272,7 @@ def ground_transform(loc: str, model_name: str) -> tuple:
     if model_name in data["model_sizes"]:
         # a sunken seashell's scale becomes the size, a heart piece's is multiplied by it, the others' start at 1
         factor = data["model_sizes"][model_name] / (shrunk if shell else 1.0)
-    return factor, data["model_rotations"].get(model_name), rise
+    return factor, data["model_rotations"].get(model_name), rise, model.get("ground-tilt", 0.0)
 
 
 def model_lines(patch: dict, item_defs: dict) -> List[str]:
@@ -274,9 +290,10 @@ def model_lines(patch: dict, item_defs: dict) -> List[str]:
     for loc, model in shown_models(patch, item_defs).items():
         item_id, npc_key = item_rows.get(model["item-key"], (-1, ""))
         lines.append(f"M {int(ids[loc])} {item_id if npc_key else -1} {model['model-path']} {model['model-name']}")
-        scale, yaw, rise = ground_transform(loc, model["model-name"])
-        if (scale, yaw, rise) != (1.0, None, 0.0):
-            lines.append(f"S {int(ids[loc])} {scale:.4f} {'-' if yaw is None else f'{yaw:.1f}'} {rise:.4f}")
+        scale, yaw, rise, tilt = ground_transform(loc, model)
+        if (scale, yaw, rise, tilt) != (1.0, None, 0.0, 0.0):
+            lines.append(f"S {int(ids[loc])} {scale:.4f} {'-' if yaw is None else f'{yaw:.1f}'} {rise:.4f}"
+                         + (f" {tilt:.1f}" if tilt else ""))
     for key, loc in STAND_IN_ROWS.items():
         if key in item_rows and loc in ids and patch["placements"].get(loc) == "ap-item":
             lines.append(f"I {key} {item_rows[key][0]} {int(ids[loc])}")
