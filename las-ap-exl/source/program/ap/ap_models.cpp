@@ -110,13 +110,7 @@ namespace {
     // An item-get's fanfare, and a find's popup's (Music::Fanfare): the placeholder's, but for a location that shows an
     // instrument, that instrument's song (DESIGN.md, Instrument songs)
     HOOK_DEFINE_TRAMPOLINE(ItemGetPlayFanfare) {
-        static void Callback(ItemId item) {
-            if (item == AP::PLACEHOLDER_ITEM_ID) {
-                ItemId shown = ShownItem(item);
-                if (shown >= ItemId::FullMoonCello && shown <= ItemId::ThunderDrum) item = shown;
-            }
-            Orig(item);
-        }
+        static void Callback(ItemId item) { Orig(FanfareItem(item)); }
     };
 
     // The other items held up as models: the mansion's present, the NPCs that show what they give
@@ -298,6 +292,12 @@ namespace {
 
     ItemId ShownItem(ItemId item) {
         return ItemId{ShownId(static_cast<u8>(item), LastFoundLocation())};
+    }
+
+    ItemId FanfareItem(ItemId item) {
+        if (item != AP::PLACEHOLDER_ITEM_ID) return item;
+        ItemId shown = ShownItem(item);
+        return shown >= ItemId::FullMoonCello && shown <= ItemId::ThunderDrum ? shown : item;
     }
 
     void InstallModelHooks() {

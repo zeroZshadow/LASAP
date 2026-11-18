@@ -5,7 +5,7 @@
 # given files of scripts/tests/seed; each script leaves the game as the next one expects. `client` starts the LAS client fed from cmds.txt;
 # `ghost` also starts a ghost relay and scripts/ghost_peer.py (--secret test), and joins the client to it. config.ini
 # options are read at boot, so a group per setting. The mod is the make_test_patch.py patch of the `mod:` line's options; suite.py refuses another.
-mod: --settings '{"Owl Gifts": "All"}' --models woods-north-cave-loose=heart-piece,ukuku-cave-west-loose=sword,ukuku-cave-east-loose=magnifying-lens,graveyard-cave=seashell
+mod: --settings '{"Owl Gifts": "All"}' --models woods-north-cave-loose=heart-piece,ukuku-cave-west-loose=sword,ukuku-cave-east-loose=magnifying-lens,graveyard-cave=seashell,D1-instrument=full-moon-cello,D0-rupee-1=coral-triangle --names "D1-instrument=Full Moon Cello,D0-rupee-1=Coral Triangle"
 file1: screens itemget_timing warp_menu itemget_models itemget_pose
 file1_items: boot_file1 ghost_house_pot beach_chest jukebox_height jukebox_cave jukebox_mute jukebox_load load_recv
 newgame_maps: newgame_file2 map_tracker map_skip map_dots map_d7 map_list kept_items_save keysanity
@@ -33,5 +33,7 @@ bouncy_two_chests options.bouncy_items=True tweaks.instant_pickups=Everything: b
 ammo_ghost: newgame_file2 ammo_ghost
 ammo_ghost_powder: newgame_file2 ammo_ghost_powder
 buff_drops tweaks.no_guardian_acorn=True tweaks.no_piece_of_power=True: newgame_file2 buff_drops
+instrument_songs: newgame_file2 instrument_jingle
+instant_instrument_songs tweaks.instant_pickups=Everything: newgame_file2 drop_instrument_song
 shuffles shuffles.txt: boot_file1 shuffles
 stances stances.txt: boot_file1 stances

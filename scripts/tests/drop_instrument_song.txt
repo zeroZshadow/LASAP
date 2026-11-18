@@ -1,0 +1,21 @@
+# A find's popup plays the fanfare of the item found then (DESIGN.md, Instrument songs), also when it waits behind
+# another: Link takes blue rupee 2, then rupee 1 (D0-rupee-1, Lv10ClothesDungeon_08D at 49.5 0.62 87.75), whose
+# location shows the Coral Triangle, then rupee 3, all while rupee 2's popup shows. Rupee 1's popup plays
+# BGM_INST_TRIANGLE. Run after newgame_file2 with Instant Pickups on Everything, on a mod from make_test_patch.py
+# --models D0-rupee-1=coral-triangle --names "D0-rupee-1=Coral Triangle". Clears rupee 1's flag.
+guard hurt
+send DBG setflag Lv10RupeeGet 0
+expect FLAG.Lv10RupeeGet.0 5
+warp Lv10ClothesDungeon 49.5 0 86.25
+poll OK.actor.1F01C1005D036766.1 5 DBG actor 1F01C1005D036766
+goto 51 0.62 87.75
+await 3 popup=1
+goto 49.5 0.62 87.75
+poll OK.actor.1F01C1005D036766.0 3 DBG actor 1F01C1005D036766
+goto 52.5 0.62 87.75
+poll OK.actor.1F01CE005D036766.0 3 DBG actor 1F01CE005D036766
+check showq=2
+await 10 bgm=\S*BGM_INST_TRIANGLE
+await 10 showq=0\s.*popup=0
+send DBG setflag Lv10RupeeGet 0
+expect FLAG.Lv10RupeeGet.0 5

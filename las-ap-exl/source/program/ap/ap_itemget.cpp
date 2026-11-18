@@ -215,7 +215,8 @@ namespace {
         ItemId item = show.id;
         if (show.found) {
             AP::QueueToast(FoundToast(show));
-            AP::Music::Fanfare(item);
+            // decided as it was found: by the time it shows, Link may have found another
+            AP::Music::Fanfare(show.fanfare.value_or(item));
         } else {
             if (item >= ItemId::FullMoonCello && item <= ItemId::ThunderDrum) AP::Music::Fanfare(item);
             std::string name = show.item;
@@ -354,6 +355,7 @@ namespace {
         // the placeholder's location is known now (its flows add it first); a vanilla item is added after
         if (item == AP::PLACEHOLDER_ITEM_ID) {
             show.model = ShownItem(item);
+            show.fanfare = FanfareItem(item);
             show.toast = AP::FoundToast();
             if (show.toast.empty()) show.toast = "You found an\nArchipelago item";
         }
