@@ -3,7 +3,9 @@ standard library."""
 import ast
 from pathlib import Path
 
-RANDOMIZERS = Path(__file__).resolve().parent.parent / "patcher" / "modbuild" / "RandomizerCore" / "Randomizers"
+MODBUILD = Path(__file__).resolve().parent.parent / "patcher" / "modbuild"
+RANDOMIZERS = MODBUILD / "RandomizerCore" / "Randomizers"
+AP_DROP = MODBUILD / "ap_drop.py"
 
 # Checks in buildings without a room table: the level whose overworld door marks them.
 DOOR_LEVELS = {
@@ -30,19 +32,29 @@ INSTRUMENT_ACTORS = ("ItemFullMoon", "ItemConchHorn", "ItemSeaLilys", "ItemSurfH
                      "ItemEveningC", "ItemThunderD")
 
 
+def literal_dicts(path: Path, wanted) -> dict:
+    """A module's top-level dict literals whose name passes `wanted`, by name, without importing it."""
+    found = {}
+    for node in ast.parse(path.read_text(encoding="utf-8")).body:
+        if (isinstance(node, ast.Assign) and isinstance(node.value, ast.Dict)
+                and isinstance(node.targets[0], ast.Name) and wanted(node.targets[0].id)):
+            try:
+                found[node.targets[0].id] = ast.literal_eval(node.value)
+            except ValueError:
+                continue
+    return found
+
+
 def room_tables() -> dict:
-    """LASR location -> room, from the *_ROOMS dicts in LASR's randomizers."""
+    """Location -> room: the *_ROOMS dicts in LASR's randomizers, and the standing items' rooms in ap_drop.py (its
+    HEART_ROOMS and INSTRUMENTS, each entry led by the room)."""
     rooms = {}
     for path in sorted(RANDOMIZERS.glob("*.py")):
-        for node in ast.parse(path.read_text(encoding="utf-8")).body:
-            if (isinstance(node, ast.Assign) and isinstance(node.value, ast.Dict)
-                    and isinstance(node.targets[0], ast.Name) and node.targets[0].id.endswith("_ROOMS")
-                    and not node.targets[0].id.startswith("PANEL")):
-                try:
-                    table = ast.literal_eval(node.value)
-                except ValueError:
-                    continue
-                for loc, room in table.items():
-                    if isinstance(room, str):
-                        rooms.setdefault(loc, room)
+        for table in literal_dicts(path, lambda name: name.endswith("_ROOMS") and not name.startswith("PANEL")).values():
+            for loc, room in table.items():
+                if isinstance(room, str):
+                    rooms.setdefault(loc, room)
+    for table in literal_dicts(AP_DROP, lambda name: name in ("HEART_ROOMS", "INSTRUMENTS")).values():
+        for loc, (room, *_) in table.items():
+            rooms.setdefault(loc, room)
     return rooms
