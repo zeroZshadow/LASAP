@@ -1,5 +1,4 @@
 from RandomizerCore.Tools.fixed_hash import *
-from RandomizerCore.Randomizers.data import MODEL_SIZES, MODEL_ROTATIONS
 
 
 class Actor:
@@ -151,34 +150,6 @@ class Room:
         #     pass
         # elif item_key == 'Rooster':
         #     room_data.addChestRooster()
-
-
-    def setSmallKeyParams(self, model_path, model_name, room, item_key, key_index=0):
-        keys = [a for a in self.actors if a.type == 0xA9]
-
-        if len(keys) > key_index:
-            key = keys[key_index]
-
-            # key.type = 0x88 # GoldenLeaf
-            key.parameters[1] = bytes(model_path, 'utf-8')
-            key.parameters[2] = bytes(model_name, 'utf-8')
-            key.parameters[3] = bytes(room, 'utf-8')
-
-            if item_key == 'Seashell':
-                key.parameters[4] = bytes('true', 'utf-8')
-            else:
-                key.parameters[4] = bytes('false', 'utf-8')
-            
-            if model_name in MODEL_SIZES:
-                size = MODEL_SIZES[model_name]
-                key.scaleX = size
-                key.scaleY = size
-                key.scaleZ = size
-            if model_name in MODEL_ROTATIONS:
-                key.rotY = MODEL_ROTATIONS[model_name]
-    
-
-    
 
 
     def repack(self):

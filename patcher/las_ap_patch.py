@@ -50,13 +50,11 @@ STAND_IN_ROWS = {"Dampe1": "dampe-page-1", "DampeHeart": "dampe-heart-challenge"
                  "DampeBottle": "dampe-bottle-challenge", "DampeFinal": "dampe-final",
                  "ShopShovel": "shop-slot3-1st", "ShopBow": "shop-slot3-2nd", "ShopHeart": "shop-slot6",
                  "FishNecklace": "bay-fisherman", "SyrupPowder": "syrup", "WalrusShell": "walrus"}
-HEART_MODELS = ("HeartPiece", "HeartContainer")  # the models LASR shows unshrunk at heart piece places
 # The warp points' items (the world's lasr.WARP_ITEMS, which items.yml leaves out) show the warp medallion
 # (modbuild/ap_warp_model.py). Its Items.gsheet row and Npc entry (modbuild/mod.py) give the item-get its model.
 WARP_ITEM_PREFIX = "warp-"
-# Upright on the ground it would reach into the floor: it leans back (ground-tilt, degrees about x).
 WARP_MODEL = {"item-key": "APWarpMedallion", "model-path": Path(ap_assets.WARP_MODEL).name, "model-name": "ShellRader",
-              "npc-key": "ItemWarpMedallion", "ground-tilt": -30.0}
+              "npc-key": "ItemWarpMedallion"}
 # A trap (`location_traps`) poses as another item on the ground, but its item-get and popup hold up the Boo figure of
 # the crane game: its Items.gsheet row and Npc entry (modbuild/mod.py) give it that model. A trap without a model to
 # pose as shows the Archipelago model on the ground.
@@ -260,28 +258,8 @@ def shown_models(patch: dict, item_defs: dict) -> dict:
     return shown
 
 
-def ground_transform(loc: str, model: dict) -> tuple:
-    """How an item actor that shows `model` (an item definition) stands at `loc`, against one that shows the token:
-    as LASR places it, which treats the token as any other model, and the model's own ground-tilt: (scale factor, yaw
-    in degrees or None, rise, tilt in degrees)."""
-    model_name = model["model-name"]
-    data = ap_assets.data()
-    shell = loc in data["sunken_shells"]
-    heart_place = loc in data["heart_rooms"] or shell
-    sunken = loc in data["heart_sunken"] or shell
-    # LASR's scale at a heart piece place for a model that is not a heart
-    shrunk = data["heart_sunken_shrunk"] if sunken else data["heart_shrunk"]
-    factor, rise = 1.0, 0.0
-    if heart_place and model_name in HEART_MODELS:
-        factor, rise = 1 / shrunk, (-data["heart_sunken_rise"] if sunken else 0.0)
-    if model_name in data["model_sizes"]:
-        # a sunken seashell's scale becomes the size, a heart piece's is multiplied by it, the others' start at 1
-        factor = data["model_sizes"][model_name] / (shrunk if shell else 1.0)
-    return factor, data["model_rotations"].get(model_name), rise, model.get("ground-tilt", 0.0)
-
-
 def model_lines(patch: dict, item_defs: dict) -> List[str]:
-    """The models' lines (DESIGN.md, Item models): M, S, I and C."""
+    """The models' lines (DESIGN.md, Item models): M, I and C."""
     data = ap_assets.data()
     item_rows, chests = data["item_rows"], data["chests"]
     ids = patch["location_ids"]
@@ -301,12 +279,6 @@ def model_lines(patch: dict, item_defs: dict) -> List[str]:
         row = TRAP_MODEL["item-key"] if loc in traps else model.get("item-key", "")
         item_id, npc_key = item_rows.get(row, (-1, ""))
         lines.append(f"M {int(ids[loc])} {item_id if npc_key else -1} {model['model-path']} {model['model-name']}")
-        if model is PLACEHOLDER_MODEL:
-            continue  # stands as the token does
-        scale, yaw, rise, tilt = ground_transform(loc, model)
-        if (scale, yaw, rise, tilt) != (1.0, None, 0.0, 0.0):
-            lines.append(f"S {int(ids[loc])} {scale:.4f} {'-' if yaw is None else f'{yaw:.1f}'} {rise:.4f}"
-                         + (f" {tilt:.1f}" if tilt else ""))
     for key, loc in STAND_IN_ROWS.items():
         if key in item_rows and loc in ids and patch["placements"].get(loc) == "ap-item":
             lines.append(f"I {key} {item_rows[key][0]} {int(ids[loc])}")

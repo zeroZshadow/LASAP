@@ -188,6 +188,9 @@ namespace AP::Bridge {
     // The model an actor with a location's token among its LEB parameters shows (model file, model name): the location's
     // item's, else the Archipelago model's; none without a token.
     std::optional<std::pair<std::string_view, std::string_view>> TokenModel(const Game::ActorParams& params);
+    // The item id of the model TokenModel gives, when it is an item's (the seed file's M line); none for the
+    // Archipelago model
+    std::optional<int> TokenItemId(const Game::ActorParams& params);
     // The item whose model and pose a held-up item shows: the location's item for the placeholder just found and for
     // LASR's rows that stand in for a location's item, else the item itself.
     ItemId ShownItem(ItemId item);

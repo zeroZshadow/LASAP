@@ -352,7 +352,10 @@ subtract 0x2a8):
   null or closed, and NpcGhost's own code reads no row. The setup reads `layoutId` (`NpcComponent_LayoutId` `0x94ace0`,
   virtual `+0x1d0`: the owner's int LEB parameter the row's `actorArgs.layoutID` (`+0x140`) names, counted from 1),
   which `NpcComponent_CheckLayout` compares (Persistence, Appearing), and `identifier` (`NpcComponent_Identifier`
-  `0x94ad40`, `+0x1d8`: the string LEB parameter the row's `actorArgs.identifier` (`+0x144`) names, type 4 or 5), checks
+  `0x94ad40`, `+0x1d8`: the string LEB parameter the row's `actorArgs.identifier` (`+0x144`) names, counted from 1 and only 1 to 4, so
+  parameters 0 to 3; type 4 or 5; it is the chara's sub name, `NpcComponent_MakeEventChara`, which a linked actor's chara
+  needs to join its owner's event: `NpcComponent_SetupEvent` adds it only when name and sub name both equal a flowchart
+  actor's), checks
   `NpcComponent_CheckLayout`, starts the resource loads and makes `readySignal`.
 - `NpcComponent_OnResourcesLoaded` (`0x968db0`) takes `flowchart`, `modelResource` (the bfres) and `tailorResource` (the drsb), runs `NpcComponent_BuildComponents` (`0x957d80`) and emits `readySignal`.
 - `animationCache`: `NpcAnimation_Get` (`0x9670d0`) binds the animations of `modelResource` (the animation set) and keeps them by name.

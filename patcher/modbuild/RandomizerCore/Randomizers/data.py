@@ -1,13 +1,3 @@
-MODEL_SIZES = {
-    'Marin': 0.65,
-    'ManboTamegoro': 0.35,
-    'Mamu': 0.25
-}
-MODEL_ROTATIONS = {
-    'SinkingSword': 180.0
-}
-
-
 DUNGEON_ENTRANCES = {
     'tail-cave':        ('Lv01TailCave_08D',        '',     'Field_14D', '',     0),
     'bottle-grotto':    ('Lv02BottleGrotto_08C',    '',     'Field_03E', '',     0),

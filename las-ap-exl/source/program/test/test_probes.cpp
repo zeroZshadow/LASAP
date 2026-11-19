@@ -826,14 +826,17 @@ namespace {
             for (int n = g_HitNext > kHitLog ? g_HitNext - kHitLog : 0; n < g_HitNext; n++) s += " " + g_HitLog[n % kHitLog];
             AP::Send(s);
         } else if (what == "drop" && !arg.empty()) {
-            // an item drop as an enemy's (ItemActor_Create) beside Link, launched up
+            // probe drop <item id> [dx dz]: an item drop as an enemy's (ItemActor_Create) beside Link (1.5 toward the
+            // camera, else dx dz from him), launched up
             Player* player = Game::GetPlayer();
             if (player == nullptr || player->playerCollision == nullptr) {
                 AP::Send("ERR probe drop");
                 return true;
             }
             const Game::Vec3& p = player->playerCollision->base.node.coordsNew.pos;
-            Game::Vec4 pos{p.x, p.y + 1, p.z + 1.5f, 0};
+            float dx = a.size() >= 6 ? static_cast<float>(atof(a[4].c_str())) : 0.0f;
+            float dz = a.size() >= 6 ? static_cast<float>(atof(a[5].c_str())) : 1.5f;
+            Game::Vec4 pos{p.x + dx, p.y + 1, p.z + dz, 0};
             Game::Vec3 vel{0, 5, 0};
             Game::Shared<Game::Actor> out;
             Game::ItemActor_Create(out.Reset(), &player->actor, &pos, &vel, static_cast<Game::Data::ItemId>(atoi(arg.c_str())), -1);

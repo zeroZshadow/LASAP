@@ -333,7 +333,7 @@ print(f"dungeon doors={doors} moved doors={len(moved)} jumps={len(jumps)} return
       f"bad={bad}")
 
 # Drop actor: its flowchart reads (a duplicate entry name breaks the entry dictionary the game looks its entries up in)
-# and holds the take entry (LEB parameter 3) of every drop actor; the model every drop actor shows (its token's M line,
+# and holds the take entry (LEB parameter 3) of every drop actor but the props; the model every drop actor shows (its token's M line,
 # else the Archipelago model's) has its bounds in the module's drop_bounds.hpp, and a tree's or hole's drop a link; no
 # small key or dig spot's slime key is left (they are drops).
 drop_flow = evfl.EventFlow()
@@ -357,7 +357,8 @@ launches = {}  # per level, its chest drops' launch flags
 for path in level_dir.rglob("*.leb"):
     for actor in Room(path.read_bytes()).actors:
         if actor.type == ap_drop.DROP_ACTOR_ID:
-            takes[actor.parameters[3].decode()] = path.stem
+            if actor.parameters[0] != ap_drop.Motion.PROP:  # a prop's event gives its item
+                takes[actor.parameters[3].decode()] = path.stem
             token = actor.parameters[1].decode()
             model = drop_models.get(token[len(MODEL_TOKEN):], placeholder) if token.startswith(MODEL_TOKEN) else (
                 token, actor.parameters[2].decode())

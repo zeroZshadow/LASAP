@@ -6,13 +6,9 @@ from RandomizerCore.Helpers.item_get_manager import ItemGetManager
 from RandomizerCore.Helpers.file_manager import FileManager
 from RandomizerCore.Helpers.flag_manager import FlagManager
 from RandomizerCore.Randomizers.seashell_mansion import SeashellMansionRandomizer
-from RandomizerCore.Randomizers.heart_pieces import HeartPieceRandomizer
-from RandomizerCore.Randomizers.instruments import InstrumentRandomizer
 from RandomizerCore.Randomizers.trade_quest import TradeQuestRandomizer
 from RandomizerCore.Randomizers.trendy_game import TrendyGameRandomizer
 from RandomizerCore.Randomizers.free_gifts import FreeGiftsRandomizer
-from RandomizerCore.Randomizers.miscellaneous import MiscRandomizer
-from RandomizerCore.Randomizers.seashells import SeashellRandomizer
 from RandomizerCore.Randomizers.fishing import FishingRandomizer
 from RandomizerCore.Randomizers.owls import OwlStatueRandomizer
 from RandomizerCore.Randomizers.rapids import RapidsRandomizer
@@ -48,17 +44,12 @@ class ModsProcess:
         ChestRandomizer(self)
         FreeGiftsRandomizer(self)
         TradeQuestRandomizer(self)
-        SeashellRandomizer(self)
-        HeartPieceRandomizer(self)
-        MiscRandomizer(self)
         SeashellMansionRandomizer(self)
 
         DampeRandomizer(self)
         RapidsRandomizer(self)
         FishingRandomizer(self)
         TrendyGameRandomizer(self)
-
-        InstrumentRandomizer(self)
 
         OwlStatueRandomizer(self)
 

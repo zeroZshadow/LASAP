@@ -1,12 +1,18 @@
 #pragma once
 // Written by scripts/drop_bounds.py: per model a drop can show (model file, model name), its bind-pose centre and
-// radius in model units (DESIGN.md, Drop actor, Model).
+// radius in model units; per item id, its vanilla model and how high its collision holds its root above the floor
+// (DESIGN.md, Drop actor, Model).
 #include <string_view>
 
 namespace AP::DropBounds {
     struct Bounds {
         std::string_view file, name;
         float x, y, z, radius;
+    };
+    struct Item {
+        int id;
+        std::string_view file, name;
+        float floor;
     };
     constexpr Bounds kBounds[] = {
         {"ItemArchipelago.bfres", "ShellRader", 0.0000f, 0.0000f, 0.0000f, 0.5249f},
@@ -78,5 +84,90 @@ namespace AP::DropBounds {
         {"NpcSkeletalGuardRed.bfres", "SkeletalGuardRed", 0.0000f, 0.5230f, 0.0350f, 0.6726f},
         {"NpcToolShopkeeper.bfres", "ToolShopkeeper", 0.0000f, 0.7215f, 0.1217f, 1.2333f},
         {"ObjSinkingSword.bfres", "SinkingSword", -0.0250f, 0.3412f, -0.0010f, 0.6879f},
+    };
+    constexpr Item kItems[] = {
+        {0, "ItemSwordLv1.bfres", "SwordLv1", 0.0000f},
+        {1, "ItemSwordLv2.bfres", "SwordLv2", 0.0000f},
+        {2, "ItemShield.bfres", "Shield", 0.1250f},
+        {3, "ItemMirrorShield.bfres", "MirrorShield", 0.0000f},
+        {4, "ItemBomb.bfres", "Bomb", 0.0000f},
+        {5, "ItemBow.bfres", "Bow", 0.0000f},
+        {6, "ItemHookShot.bfres", "HookShot", -0.1250f},
+        {7, "ItemBoomerang.bfres", "Boomerang", 0.0000f},
+        {8, "ItemMagicRod.bfres", "MagicRod", 0.0000f},
+        {9, "ItemShovel.bfres", "Shovel", 0.0000f},
+        {10, "ItemSleepyMushroom.bfres", "SleepyMushroom", 0.3800f},
+        {11, "ItemMagicPowder.bfres", "MagicPowder", 0.0000f},
+        {12, "ItemRocsFeather.bfres", "RocsFeather", 0.0000f},
+        {13, "ItemPowerBraceletLv1.bfres", "PowerBraceletLv1", 0.0000f},
+        {14, "ItemPowerBraceletLv2.bfres", "PowerBraceletLv2", 0.0000f},
+        {15, "ItemPegasusBoots.bfres", "PegasusBoots", 0.0000f},
+        {16, "ItemOcarina.bfres", "Ocarina", 0.0000f},
+        {17, "ItemOcarina.bfres", "Ocarina", 0.0000f},
+        {18, "ItemOcarina.bfres", "Ocarina", 0.0000f},
+        {19, "ItemOcarina.bfres", "Ocarina", 0.0000f},
+        {20, "ItemFlippers.bfres", "Flippers", 0.0000f},
+        {21, "ItemSecretMedicine.bfres", "SecretMedicine", 0.0000f},
+        {22, "ItemSecretSeashell.bfres", "SecretSeashell", 0.0750f},
+        {23, "ItemGoldenLeaf.bfres", "GoldenLeaf", 0.0000f},
+        {24, "ItemTailKey.bfres", "TailKey", -0.2000f},
+        {25, "ItemSlimeKey.bfres", "SlimeKey", -0.0750f},
+        {26, "ItemAnglerKey.bfres", "AnglerKey", -0.0750f},
+        {27, "ItemFaceKey.bfres", "FaceKey", -0.0750f},
+        {28, "ItemBirdKey.bfres", "BirdKey", 0.3750f},
+        {29, "ItemYoshiDoll.bfres", "YoshiDoll", 0.0000f},
+        {30, "ItemRibbon.bfres", "Ribbon", 0.0000f},
+        {31, "ItemDogFood.bfres", "DogFood", 0.0000f},
+        {32, "ItemBananas.bfres", "Bananas", 0.0000f},
+        {33, "ItemStick.bfres", "Stick", -0.2000f},
+        {34, "ItemHoneycomb.bfres", "Honeycomb", 0.2000f},
+        {35, "ItemPineapple.bfres", "Pineapple", 0.0000f},
+        {36, "ItemHibiscus.bfres", "Hibiscus", 0.0000f},
+        {37, "ItemLetter.bfres", "Letter", 0.0000f},
+        {38, "ItemBroom.bfres", "Broom", 0.2500f},
+        {39, "ItemFishingHook.bfres", "FishingHook", 0.0000f},
+        {40, "ItemNecklace.bfres", "Necklace", 0.0000f},
+        {42, "ItemMermaidsScale.bfres", "MermaidsScale", 0.0000f},
+        {43, "ItemMagnifyingLens.bfres", "MagnifyingLens", 0.5000f},
+        {44, "ItemCompass.bfres", "Compass", 0.0000f},
+        {45, "ItemDungeonMap.bfres", "DungeonMap", 0.0000f},
+        {47, "ItemStoneBeak.bfres", "StoneBeak", 0.0000f},
+        {48, "ItemSmallKey.bfres", "SmallKey", 0.0000f},
+        {49, "ItemNightmareKey.bfres", "NightmareKey", 0.0000f},
+        {50, "ItemFullMoonCello.bfres", "FullMoonCello", 0.0000f},
+        {51, "ItemConchHorn.bfres", "ConchHorn", 0.0000f},
+        {52, "ItemSeaLilysBell.bfres", "SeaLilysBell", 0.0000f},
+        {53, "ItemSurfHarp.bfres", "SurfHarp", 0.0000f},
+        {54, "ItemWindMarimba.bfres", "WindMarimba", 0.0000f},
+        {55, "ItemCoralTriangle.bfres", "CoralTriangle", 0.0000f},
+        {56, "ItemEveningCalmOrgan.bfres", "EveningCalmOrgan", 0.0000f},
+        {57, "ItemThunderDrum.bfres", "ThunderDrum", 0.0000f},
+        {58, "ItemHeartPiece.bfres", "HeartPiece", 0.0750f},
+        {59, "ItemHeartContainer.bfres", "HeartContainer", 0.0000f},
+        {60, "ItemArrow.bfres", "Arrow", 0.0000f},
+        {100, "ItemRecoveryHeart.bfres", "RecoveryHeart", 0.2500f},
+        {101, "ItemRupeeGreen.bfres", "RupeeGreen", 0.4000f},
+        {102, "ItemRupeeBlue.bfres", "RupeeBlue", 0.4000f},
+        {104, "ItemRupeeRed.bfres", "RupeeRed", 0.4000f},
+        {105, "ItemRupeePurple.bfres", "RupeePurple", 0.4000f},
+        {106, "ItemRupeeSilver.bfres", "RupeeSilver", 0.4000f},
+        {108, "ItemRupeeGold.bfres", "RupeeGold", 0.4000f},
+        {110, "ItemFairy.bfres", "Fairy", 0.2500f},
+        {111, "ItemGuardianAcorn.bfres", "GuardianAcorn", 0.1250f},
+        {112, "ItemPowerPiece.bfres", "PowerPiece", 0.1250f},
+        {61, "ObjAppleRed.bfres", "AppleRed", 0.0000f},
+        {62, "ObjAppleGreen.bfres", "AppleGreen", 0.0000f},
+        {113, "ItemBottle.bfres", "Bottle", 0.0000f},
+        {120, "ItemOcarina.bfres", "Ocarina", 0.0000f},
+        {121, "ItemOcarina.bfres", "Ocarina", 0.0000f},
+        {122, "ItemOcarina.bfres", "Ocarina", 0.0000f},
+        {123, "ItemMagicPowder.bfres", "MagicPowder", 0.0000f},
+        {124, "ItemBomb.bfres", "Bomb", 0.0000f},
+        {125, "ItemArrow.bfres", "Arrow", 0.0000f},
+        {114, "ItemPanelDungeonPiece.bfres", "PanelDungeonPiece", 0.0000f},
+        {115, "ItemPanelDungeonPieceSet.bfres", "PanelDungeonPieceSet", 0.0000f},
+        {116, "ItemShellRader.bfres", "ShellRader", 0.0000f},
+        {126, "ItemBottleFairy.bfres", "BottleFairy", 0.0000f},
+        {117, "ItemPanelDungeonPlusChip.bfres", "PanelDungeonPlusChip", 0.0000f},
     };
 }

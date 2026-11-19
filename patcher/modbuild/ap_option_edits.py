@@ -202,8 +202,13 @@ def song_item(self, flowchart, location: str, got_flag: str, skip: str, after: s
 
 
 def bridge_changes(flowchart) -> None:
-    """TradeQuestRandomizer.kikiChanges's Completed Bridge part: Kiki skips building the bridge."""
+    """TradeQuestRandomizer.kikiChanges's Completed Bridge part: Kiki skips building the bridge, and leaves for good
+    (KikiGone, his row's flag while the option is on: StickDrop is set from the start)."""
+    get = event_tools.findEvent(flowchart, "Event89").data.nxt.v.name
     with gated(flowchart, "completed_bridge"):
+        kiki_gone = event_tools.createActionEvent(flowchart, "EventFlags", "SetFlag",
+                                                  {"symbol": "KikiGone", "value": True}, get)
+        event_tools.insertEventAfter(flowchart, "Event89", kiki_gone)
         event_tools.insertEventAfter(flowchart, "Event9", "Event31")
         event_tools.insertEventAfter(flowchart, "Event10", "Event31")
         fork = event_tools.findEvent(flowchart, "Event28")

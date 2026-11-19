@@ -1,6 +1,8 @@
 """The drop actor (DESIGN.md, Drop actor): ItemAPDrop's rows and flowchart, and drop actors for the seashells in bushes,
 rocks, trees, holes and dig spots, the dungeon keys and golden leaves, the bosses' items, the ghost's reward, the blue
-rupees and, for Bouncy Items, the AP chests and owl statues. The Npc row reads the model, the take entry and the shell sensor from LEB parameters 1 to 4.
+rupees, the items that stand from the start (heart pieces, sunken seashells, instruments and the other free-standing
+items) and, for Bouncy Items, the AP chests and owl statues. The Npc row reads the model, the take entry and the shell
+sensor from LEB parameters 1 to 4.
 """
 import copy
 import math
@@ -11,7 +13,6 @@ import ap_option_edits
 from ap_map import CHEST_ACTOR
 import evfl
 from RandomizerCore.Randomizers.chests import CHEST_ROOMS
-from RandomizerCore.Randomizers.data import MODEL_ROTATIONS, MODEL_SIZES
 from RandomizerCore.Randomizers.golden_leaves import createRoomKey
 from RandomizerCore.Randomizers.seashells import (GRASS_FLAGS, GRASS_ROOMS, HOLE_DROP_POSITONS, HOLE_FLAGS, HOLE_ROOMS,
                                                   ROCK_FLAGS, ROCK_ROOMS, SHELL_FLAGS, SHELL_ROOMS, SUNKEN_SHELLS,
@@ -40,9 +41,22 @@ class Motion(IntEnum):
     BOSS_PIT = 9  # so, but standing nowhere when its room loads: the item falls into a pit, and BOSS_PITS stands it below
     STANDS = 10  # shows where it stands, as a free-standing item: the ghost's reward at its grave
     PLACED = 11  # so from the start, its switch 0 turned on by the module when it is made: the blue rupees
+    PROP = 12  # a model an NPC's event shows (Kiki's stick, the honeycomb in Tarin's tree), never taken: the event gives
+    # the item. Where it was placed, shown from the start when its switch 0 is set (as PLACED), else once the event
+    # activates it; its Fall drops it from there.
 
 
 SMALL_KEY_ID = 0xA9
+# LEB parameter 5 of a drop that stands in a vanilla item's place (PLACED, PROP): how high that item's collision held
+# its root above the floor (floor_height), in thousandths. The module lifts a vanilla pose by the shown item's floor
+# height less this (AP::DROP_FLOOR_PARAM; DESIGN.md, Drop actor, Model).
+FLOOR_PARAM = 5
+# The Npc rows of the item actors a drop takes the place of (STANDING, PROPS, the blue rupees), by actor id
+ORIGIN_ROWS = {0x7B: "ItemSleepyMushroom", 0x81: "ItemOcarina", 0x87: "ItemSecretSeashell", 0x8D: "ItemBirdKey",
+               0x92: "ItemStick", 0x93: "ItemHoneycomb", 0x9C: "ItemMagnifyingLens", 0x9D: "ItemFullMoonCello",
+               0x9E: "ItemConchHorn", 0x9F: "ItemSeaLilysBell", 0xA0: "ItemSurfHarp", 0xA1: "ItemWindMarimba",
+               0xA2: "ItemCoralTriangle", 0xA3: "ItemEveningCalmOrgan", 0xA4: "ItemThunderDrum", 0xAB: "ItemRupeeBlue",
+               0xB0: "ItemHeartPiece", 0x194: "ObjSinkingSword"}
 SLIME_KEY_ID = 0x8A
 SHELL_ID = 0x87
 SHELL_DROPPER_ID = 0x233  # AreaShellDropper
@@ -98,6 +112,66 @@ KEY_ROOMS = {location: [room] for location, room in {**SMALL_KEY_ROOMS, **GOLDEN
 KEY_ROOMS["D4-sunken-item"].append("Lv04AnglersTunnel_06A")
 # Dig spots: the room's seashell, else its slime key (the sunken seashells are heart piece actors, which stay)
 DIG_ROOMS = {location: room for location, room in SHELL_ROOMS.items() if location not in SUNKEN_SHELLS}
+# Items that stand from the start: the game's item actor (or the washed-up sword) in each location's room becomes a
+# drop where it stands (PLACED), switch 1 the location's got flag (LASR's flag table). Per location: the room, the
+# actor's id, the got flag
+HEART_PIECE_ID = 0xB0
+HEART_ROOMS = {
+    "animal-village-northwest": ("Field_13L", "AnimalVillageHeartGet"),
+    "animal-village-cave": ("AnimalVillageCave_01A", "AnimalVillageCaveHeartGet"),
+    "taltal-entrance-blocks": ("Tamaranch04_03B", "TaltalEntranceBlocksHeartGet"),
+    "north-wasteland": ("Field_05H", "NorthWastelandHeartGet"),
+    "desert-cave": ("LanmolaCave_01A", "DesertCaveHeartGet"),
+    "graveyard-cave": ("UnderGrave_01B", "GraveyardCaveHeartGet"),
+    "mabe-well": ("TownWell_01A", "MabeWellHeartGet"),
+    "ukuku-cave-west-loose": ("UkukuCave01_01A", "UkukuCaveWestHeartGet"),
+    "ukuku-cave-east-loose": ("UkukuCave02_01B", "UkukuCaveEastHeartGet"),
+    "bay-passage-sunken": ("MadBattersWellEnter_01B", "BayPassageHeartGet"),
+    "river-crossing-cave": ("AnimalVillageEnter_01B", "RiverCrossingHeartGet"),
+    "rapids-west-island": ("Field_06M", "RapidsWestHeartGet"),
+    "rapids-ascent-cave": ("RapidsRideExit_01A", "RapidsAscentHeartGet"),
+    "kanalet-moat-south": ("Field_08J", "KanaletMoatHeartGet"),
+    "south-bay-sunken": ("Field_15J", "SouthBayHeartGet"),
+    "taltal-crossing-cave": ("Tamaranch04_02C", "TaltalCrossingHeartGet"),
+    "taltal-east-drop": ("EagleTowerExit_01A", "TaltalEastHeartGet"),
+    "taltal-west-escape": ("Field_03B", "TaltalWestHeartGet"),
+    "above-turtle-rock": ("Field_01A", "TurtleRockHeartGet"),
+    "pothole-north": ("Field_12H", "PotholeHeartGet"),
+    "woods-crossing-cave-loose": ("MysteriousWoodsCave01_01A", "WoodsCrossingHeartGet"),
+    "woods-north-cave-loose": ("MysteriousWoodsCave02_01A", "WoodsNorthCaveHeartGet"),
+    "diamond-island": ("Field_05E", "DiamondIslandHeartGet"),
+}
+# The instruments' pedestals: after the item-get, the whiteout and the warp out to the dungeon's entrance (the
+# instrument's LEB parameters 0 and 1: the level and locator)
+INSTRUMENTS = {
+    "D1-instrument": ("Lv01TailCave_03G", 0x9D, "TailCaveInstrumentGet"),
+    "D2-instrument": ("Lv02BottleGrotto_04F", 0x9E, "BottleGrottoInstrumentGet"),
+    "D3-instrument": ("Lv03KeyCavern_06G", 0x9F, "KeyCavernInstrumentGet"),
+    "D4-instrument": ("Lv04AnglersTunnel_03B", 0xA0, "AnglersTunnelInstrumentGet"),
+    "D5-instrument": ("Lv05CatfishsMaw_01D", 0xA1, "CatfishsMawInstrumentGet"),
+    "D6-instrument": ("Lv06FaceShrine_03E", 0xA2, "FaceShrineInstrumentGet"),
+    "D7-instrument": ("Lv07EagleTower_02G", 0xA3, "EaglesTowerInstrumentGet"),
+    "D8-instrument": ("Lv08TurtleRock_01D", 0xA4, "TurtleRockInstrumentGet"),
+}
+STANDING = {
+    **{location: (room, HEART_PIECE_ID, flag) for location, (room, flag) in HEART_ROOMS.items()},
+    **{location: (SHELL_ROOMS[location], SHELL_ID, SHELL_FLAGS[location]) for location in SUNKEN_SHELLS},
+    "washed-up": ("Field_16C", 0x194, "BeachMiscItemGetFlag"),  # ObjSinkingSword
+    "woods-loose": ("Field_06A", 0x7B, "WoodsMiscItemGetFlag"),  # ItemSleepyMushroom
+    "dream-shrine-left": ("DreamShrine_01A", 0x81, "DreamShrineItemGetFlag"),  # ItemOcarina
+    "taltal-rooster-cave": ("EagleKeyCave_01A", 0x8D, "RoosterCaveItemGetFlag"),  # ItemBirdKey
+    "mermaid-cave": ("MermaidStatue_01A", 0x9C, "MermaidCaveItemGetFlag"),  # ItemMagnifyingLens
+    **{location: (room, actor, flag) for location, (room, actor, flag) in INSTRUMENTS.items()},
+}
+# Props (Motion.PROP): the item actor an NPC's event shows, made a drop the event addresses as EVENT_ACTOR with the
+# location as sub name (every drop's chara has its location's, LOCATION_PARAM). Per location: the room,
+# the actor's id, its flowchart actor name and sub name, the event's flowchart, the got flag (switch 1, set in the
+# event; None where the event alone shows it), and whether it shows from the start
+LOCATION_PARAM = 3
+PROPS = {
+    "kiki": ("Field_08L", 0x92, ("Item", "Stick"), "Kiki.bfevfl", None, False),  # ItemStick
+    "tarin-ukuku": ("Field_09H", 0x93, ("Honeycomb", "EventHoneycomb"), "Tarin.bfevfl", "HoneycombDrop", True),
+}
 # Boss drops, per location: the boss's actor (Enemy<name>), its room (Master Stalfos's last fight's)
 BOSS_DROPS = {
     "D1-moldorm": ("DeguTail", "Lv01TailCave_04G"),
@@ -186,6 +260,8 @@ def add(proc, placeholder_key: str) -> None:
     _ghost(proc, flow)
     level_flags = {}
     _blue_rupees(proc, flow, level_flags)
+    _standing(proc, flow, level_flags)
+    _props(proc, level_flags)
     _chests(proc, flow, level_flags, placeholder_key)
     _owls(proc, flow, level_flags)
     files.writeFile(EVENT_FILE, flow)
@@ -199,6 +275,9 @@ def _npc_row(files) -> None:
     row = copy.deepcopy(next(parseStruct(row) for row in sheet["values"] if row["symbol"] == SMALL_KEY_ROW))
     row["symbol"] = DROP_ACTOR
     row["eventInfo"] = {"eventAsset": EVENT_FILE, "actorName": EVENT_ACTOR}
+    # The chara's sub name, which a linked drop needs to join its owner's event (a prop's): NpcComponent_Identifier
+    # reads LEB parameter identifier - 1, only 0 to 3
+    row["actorArgs"]["identifier"] = LOCATION_PARAM + 1
     not_taken = {"category": SWITCH_CONDITION, "parameter": "!1"}
     row["eventTriggers"] = [
         *({"condition": POP_TRIGGER, "entryPoint": FALL, "additionalConditions": [
@@ -257,12 +336,13 @@ def _flow():
     return flow
 
 
-def _take_entry(proc, flowchart, location: str, got_switches: tuple = (1,)) -> None:
-    """The drop's take entry for the location, as LASR's small keys have them, turning the switches on. A second entry of the same name would break the flowchart's entry dictionary, which the game looks every entry
-    up in."""
+def _take_entry(proc, flowchart, location: str, got_switches: tuple = (1,), after=None) -> None:
+    """The drop's take entry for the location, as LASR's small keys have them, turning the switches on, then `after`
+    (an event's name) if given. A second entry of the same name would break the flowchart's entry dictionary, which
+    the game looks every entry up in."""
     if event_tools.findEntryPoint(flowchart, location) is not None:
         raise ValueError(f"{EVENT_FILE} has an entry {location} already")
-    item_event = proc.item_get_manager.get(flowchart, location)
+    item_event = proc.item_get_manager.get(flowchart, location, None, after)
     event_tools.addEntryPoint(flowchart, location)
     event_tools.createActionChain(flowchart, location, [
         (EVENT_ACTOR, "Deactivate", {}),
@@ -276,25 +356,44 @@ def _make_drop(actor) -> None:
     actor.name = f"{DROP_ACTOR}-{actor.key:016X}".encode()
 
 
-def _plain_drop(drop, location: str, motion: Motion, model: tuple) -> None:
-    """The actor as the location's drop, unturned and unscaled."""
+def floor_height(collision) -> float:
+    """How high an Npc row's collision holds the actor's root above the floor: a box (shape 3, its parameters full
+    sizes, which NpcComponent_MakeCollision halves) or a sphere (shape 1) whose bottom is below its offset. A capsule
+    (shape 2) counts as on the floor: its axis and length in the collision maker are not read yet."""
+    shape, size = collision.get("shape"), list(collision.get("parameters", []))
+    offset = dict(collision.get("offset", {})).get("y", 0.0)
+    if shape == 3 and len(size) >= 3:
+        return size[1] / 2 - offset
+    if shape == 1 and size:
+        return size[0] - offset
+    return 0.0
+
+
+def _origin_floor(proc, actor) -> float:
+    """The floor height of the vanilla item actor a drop takes the place of (ORIGIN_ROWS)."""
+    rows = getattr(proc, "_ap_npc_rows", None)
+    if rows is None:
+        rows = {row["symbol"]: row for row in map(parseStruct, proc.file_manager.readFile("Npc.gsheet")["values"])}
+        proc._ap_npc_rows = rows
+    return floor_height(rows[ORIGIN_ROWS[actor.type]]["collision"])
+
+
+def _plain_drop(drop, location: str, motion: Motion, model: tuple, floor: float = 0.0) -> None:
+    """The actor as the location's drop, unturned and unscaled; floor the vanilla item's it replaces (FLOOR_PARAM)."""
     _make_drop(drop)
-    drop.rotY = 0.0
+    drop.rotX = drop.rotY = drop.rotZ = 0.0
     drop.scaleX = drop.scaleY = drop.scaleZ = 1.0
-    drop.parameters = [int(motion), model[0].encode(), model[1].encode(), location.encode(), b"false", 0, 0, 0]
+    drop.parameters = [int(motion), model[0].encode(), model[1].encode(), location.encode(), b"false",
+                       round(floor * 1000) & 0xFFFFFFFF, 0, 0]  # LEB ints are unsigned; the module reads it signed
 
 
 def _show(proc, drop, location: str) -> None:
-    """The location's item on a drop: its model, take entry and shell sensor (LEB parameters 1 to 4), size and turn."""
+    """The location's item on a drop: its model, take entry and shell sensor (LEB parameters 1 to 4)."""
     item_key, _, model_path, model_name = proc.item_info_manager.getItemInfoWithModel(location)
     drop.parameters[1] = model_path.encode()
     drop.parameters[2] = model_name.encode()
     drop.parameters[3] = location.encode()
     drop.parameters[4] = b"true" if item_key == "Seashell" else b"false"
-    if model_name in MODEL_SIZES:
-        drop.scaleX = drop.scaleY = drop.scaleZ = MODEL_SIZES[model_name]
-    if model_name in MODEL_ROTATIONS:
-        drop.rotY = MODEL_ROTATIONS[model_name]
 
 
 def _spot_drop(proc, room_name: str, location: str, flag: int) -> None:
@@ -456,10 +555,101 @@ def _blue_rupees(proc, flow, level_flags: dict) -> None:
     for location, drop in zip(BLUE_RUPEES, rupees):
         model = _model(proc, location)
         got = tuple(drop.switches[0])
-        _plain_drop(drop, location, Motion.PLACED, model)
+        _plain_drop(drop, location, Motion.PLACED, model, _origin_floor(proc, drop))
         drop.switches = [shown, got, NO_SWITCH, NO_SWITCH]
         _take_entry(proc, flow.flowchart, location)
     files.writeFile(room_file, room)
+
+
+def _standing(proc, flow, level_flags: dict) -> None:
+    """The items that stand from the start (STANDING): each a drop where its actor stood, which it replaces, shown once
+    its room's level flag of the drops' own is on (the module turns it on, Place). An instrument's take entry goes on
+    to the whiteout and the warp out, its item-get the game's (mod.native_instrument_get)."""
+    import mod  # patcher/modbuild/mod.py, which imports this module
+    files = proc.file_manager
+    flags = proc.flag_manager.flags
+    shown = {}
+    for location, (room_name, actor_id, got_flag) in STANDING.items():
+        room_file = f"{room_name}.leb"
+        room = files.readFile(room_file)
+        drop = next(a for a in room.actors if a.type == actor_id)
+        after = None
+        if location in INSTRUMENTS:
+            after = _instrument_whiteout(flow.flowchart, drop.parameters[0].decode(), drop.parameters[1].decode())
+        if room_file not in shown:
+            shown[room_file] = (LEVEL_FLAG, _free_level_flag(files, room_file, level_flags))
+        _plain_drop(drop, location, Motion.PLACED, _model(proc, location), _origin_floor(proc, drop))
+        drop.switches = [shown[room_file], (GLOBAL_FLAG, flags[got_flag]), NO_SWITCH, NO_SWITCH]
+        drop.relationships.section_1, drop.relationships.x = [], 0
+        files.writeFile(room_file, room)
+        _take_entry(proc, flow.flowchart, location, after=after)
+        if location in INSTRUMENTS:
+            mod.native_instrument_get(flow.flowchart, location)
+
+
+def _props(proc, level_flags: dict) -> None:
+    """The props (PROPS): each item actor a drop where it stands, and its event's flowchart addressing the drop: every
+    event of an actor of the item actor's name now the drop's, and the honeycomb's fall animation the drop's Fall
+    (another model has none of the honeycomb's animations)."""
+    files = proc.file_manager
+    flags = proc.flag_manager.flags
+    for location, (room_name, actor_id, (name, sub_name), flow_file, got_flag, shown) in PROPS.items():
+        room_file = f"{room_name}.leb"
+        room = files.readFile(room_file)
+        drop = next(a for a in room.actors if a.type == actor_id)
+        _plain_drop(drop, location, Motion.PROP, _model(proc, location), _origin_floor(proc, drop))
+        pop = (LEVEL_FLAG, _free_level_flag(files, room_file, level_flags)) if shown else NO_SWITCH
+        got = (GLOBAL_FLAG, flags[got_flag]) if got_flag else NO_SWITCH
+        drop.switches = [pop, got, NO_SWITCH, NO_SWITCH]
+        files.writeFile(room_file, room)
+        flow = files.readFile(flow_file)
+        _address_prop(flow.flowchart, name, sub_name, location)
+        files.writeFile(flow_file, flow)
+
+
+def _address_prop(chart, name: str, sub_name: str, location: str) -> None:
+    """The flowchart's actor (name, sub_name) becomes the drop (EVENT_ACTOR, location), and the events of an actor of
+    that name without a sub name go to it."""
+    prop = chart.find_actor(evfl.ActorIdentifier(name, sub_name))
+    prop.identifier = evfl.ActorIdentifier(EVENT_ACTOR, location)
+    for event in chart.events:
+        data = event.data
+        if not isinstance(data, evfl.event.ActionEvent):
+            continue
+        actor = data.actor.v
+        if actor is not prop and actor.identifier.name == name and not actor.identifier.sub_name:
+            action = data.actor_action.v.v
+            event_tools.addActorAction(prop, action)
+            data.actor = evfl.util.make_rindex(prop)
+            data.actor_action = evfl.util.make_rindex(prop.find_action(action))
+        elif actor is prop and data.actor_action.v.v == "PlayAnimationEx" and data.params.data.get("name") == "fall":
+            event_tools.addActorAction(prop, "Fall")
+            data.actor_action = evfl.util.make_rindex(prop.find_action("Fall"))
+            data.params.data = {}
+
+
+def _instrument_whiteout(flowchart, level: str, locator: str) -> str:
+    """The instrument pedestal's whiteout after its item-get, then the warp to the locator and an autosave (LASR's
+    InstrumentRandomizer); returns its first event."""
+    shine = event_tools.createActionChain(flowchart, None, [
+        ("Audio", "StopAllBGM", {"duration": 1.0}),
+        ("Link", "PlayInstrumentShineEffect", {}),
+        ("Timer", "Wait", {"time": 2}),
+    ], None)
+    jump = event_tools.createActionChain(flowchart, None, [
+        ("Timer", "Wait", {"time": 2}),
+        ("GameControl", "RequestLevelJump", {"level": level, "locator": locator, "offsetX": 0.0, "offsetZ": 0.0}),
+        ("GameControl", "RequestAutoSave", {}),
+    ], None)
+    return event_tools.createForkEvent(flowchart, shine, [
+        event_tools.createActionEvent(flowchart, "Audio", "StopOtherThanSystemSE", {"duration": 3.0}),
+        event_tools.createActionEvent(flowchart, "Audio", "PlayOneshotSystemSE",
+                                      {"label": "SE_ENV_GET_INST_WHITEOUT2", "pitch": 1.0, "volume": 1.0}),
+        event_tools.createActionChain(flowchart, None, [
+            ("Fade", "StartPreset", {"preset": 3}),
+            ("Fade", "StartParam", {"colorB": 0.9, "colorG": 0.9, "colorR": 0.9, "mode": 2, "time": 0.75}),
+        ]),
+    ], jump)[0]
 
 
 def _chests(proc, flow, level_flags: dict, placeholder_key: str) -> None:

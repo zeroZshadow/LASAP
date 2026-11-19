@@ -24,14 +24,6 @@ class ItemsDatasheetFixes:
             if item['symbol'] == 'SmallKey':
                 item['npcKey'] = 'PatchSmallKey'
                 dummy = parseStruct(item) # create copy to use as a base for custom entries
-            if item['symbol'] == 'Honeycomb':
-                item['npcKey'] = 'PatchHoneycomb'
-            if item['symbol'] == 'Stick':
-                item['npcKey'] = 'PatchStick'
-            if item['symbol'] == 'SlimeKey':
-                item['npcKey'] = 'PatchSlimeKey'
-            if item['symbol'] == 'HeartPiece':
-                item['npcKey'] = 'PatchHeartPiece'
 
             # songs and tunics are patched to use the model from the npcKey
             # capacity upgrades have the same patch, but we don't need to edit them here

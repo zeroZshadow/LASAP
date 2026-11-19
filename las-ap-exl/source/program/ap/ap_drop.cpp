@@ -19,6 +19,7 @@
 #include "loggers.hpp"
 #include "lib.hpp"
 #include "test_only.hpp"
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
@@ -78,10 +79,13 @@ namespace {
         return item == ItemId::HookShot || item == ItemId::AnglerKey || item == ItemId::FaceKey ||
                item == ItemId::HeartContainer;
     }
-    // Its model takes the item pose pair the item constructor stores (DESIGN.md, Drop actor, Model; drop_bounds.hpp): all
-    // kPoses poses (the pair, and the side view's pair after it) are the drop's one pose. A ball's (Bouncy Items) puts
-    // the model's centre, or without bounds its origin, on the ball's centre, the sphere's radius above the root.
+    // Its model takes the item pose pair the item constructor stores (DESIGN.md, Drop actor, Model; drop_bounds.hpp):
+    // the vanilla pair of the item it shows (MakeDropPoses), else a fit of its model's bounds, one pose in every view.
+    // A ball (Bouncy Items) has its model's centre, or without bounds its origin, on the ball's centre, the sphere's
+    // radius above the root, and spins it with the ball.
     constexpr float kBallCentre = 0.3f, kModelScale = 1.1f, kModelRadius = 0.6f;
+    // A prop's touch delay (ItemActor): no touch takes it
+    constexpr float kNeverTouched = 1e30f;
     constexpr size_t kPoses = 4;
     constexpr u32 kLebInt = 3;
     // Out of the ground, as a bush's, rock's or pot's own seashell: the game's default drop start and launch for a
@@ -146,8 +150,9 @@ namespace {
         Game::SharedCtrl ctrl;
         u8 pad_18[0x8];
         ItemActor actor;
+        Game::ItemPose poses[4];   // 0x340: the pose pair the actor keeps a pointer to (MakeDropPoses), twice
     };
-    static_assert(offsetof(ActorBlock, actor) == 0x20 && sizeof(ActorBlock) == 0x340);
+    static_assert(offsetof(ActorBlock, actor) == 0x20 && offsetof(ActorBlock, poses) == 0x340);
 #ifdef LASAP_TEST
     // The PhysX actor's getAngularDamping; the chest's opened flag, its actor switch
     constexpr size_t kGetAngularDamping = 0x1e0;
@@ -202,17 +207,50 @@ namespace {
 
     // A ball goes wherever its launch and bounces take it, other rooms too (DESIGN.md, Bouncy Items, Rooms); a drop that
     // stands stays, and a key that falls again whenever Link enters its zone keeps its zone for that.
+    // A drop that stays where it was placed until something moves it: the game's item actors stand so
+    bool Stands(int motion) {
+        return motion == AP::DROP_STANDS || motion == AP::DROP_PLACED || motion == AP::DROP_PROP;
+    }
+
     bool Roams(int motion) {
-        return Bouncy() && motion != AP::DROP_STANDS && motion != AP::DROP_PLACED && motion != AP::DROP_REFALLS;
+        return Bouncy() && !Stands(motion) && motion != AP::DROP_REFALLS;
     }
 
     StrView RowKey() { return StrView{AP::DROP_ACTOR}; }
 
+    // v turned by the quaternion q
+    Game::Vec3 Rotate(const Game::Float4& q, const Game::Vec3& v) {
+        Game::Vec3 t{2 * (q[1] * v.z - q[2] * v.y), 2 * (q[2] * v.x - q[0] * v.z), 2 * (q[0] * v.y - q[1] * v.x)};
+        return {v.x + q[3] * t.x + q[1] * t.z - q[2] * t.y, v.y + q[3] * t.y + q[2] * t.x - q[0] * t.z,
+                v.z + q[3] * t.z + q[0] * t.y - q[1] * t.x};
+    }
+
+    // The fit's turn (degrees about x, y, z, as an item pose's): in the 3D view the heart container's ground tilt toward
+    // the camera, which the side view's poses do without, as the game's own pairs; the boots and the flippers turned
+    // in both to show their side
+    constexpr float kFitTilt = -30.0f, kSideTurn = -45.0f;
+
+    Game::Vec3 FitTurn(const AP::DropBounds::Bounds& b, bool sideView) {
+        bool side = b.file == "ItemPegasusBoots.bfres" || b.file == "ItemFlippers.bfres";
+        return {sideView ? 0.0f : kFitTilt, side ? kSideTurn : 0.0f, 0};
+    }
+
+    // The fit: turned (FitTurn) and sized so the bounds' radius is at most kModelRadius, its centre that radius above
+    // the root, or on a ball's centre
+    // poses: the pair, the 3D view's, then the side view's (as ItemPose_Pair lays them out)
     void SetPoses(Game::ItemPose* poses, const AP::DropBounds::Bounds& b) {
         float s = std::fmin(kModelScale, kModelRadius / b.radius);
         float lift = Bouncy() ? kBallCentre : s * b.radius;
-        poses[0] = {{-s * b.x, lift - s * b.y, -s * b.z}, {0, 0, 0}, {s, s, s}};
-        std::fill(poses + 1, poses + kPoses, poses[0]);
+        for (size_t view = 0; view < kPoses; view += 2) {
+            Game::ItemPose& pose = poses[view];
+            Game::Vec3 turn = FitTurn(b, view != 0);
+            pose = {{0, 0, 0}, {turn.x, turn.y, turn.z}, {s, s, s}};
+            Game::Vec3 centre = Rotate(Game::ItemPose_Transform(&pose).rotate, {s * b.x, s * b.y, s * b.z});
+            pose.pos[0] = -centre.x;
+            pose.pos[1] = lift - centre.y;
+            pose.pos[2] = -centre.z;
+            poses[view + 1] = pose;
+        }
     }
 
     void MakePoses() {
@@ -224,17 +262,77 @@ namespace {
         }
     }
 
-    // The poses of the model the drop shows: its location's item's, or the Archipelago model's
-    const Game::ItemPose* PosesOf(const Game::ActorParams& params) {
+    // The place in DropBounds::kBounds of the model the drop shows (its location's item's, or the Archipelago
+    // model's), else -1
+    int BoundsIndex(const Game::ActorParams& params) {
         if (auto model = AP::Bridge::TokenModel(params)) {
             for (size_t i = 0; i < std::size(AP::DropBounds::kBounds); i++) {
                 const AP::DropBounds::Bounds& b = AP::DropBounds::kBounds[i];
-                if (b.file == model->first && b.name == model->second) return g_Poses[i];
+                if (b.file == model->first && b.name == model->second) return static_cast<int>(i);
             }
         }
+        return -1;
+    }
+
+    // The fitted poses of the model the drop shows
+    const Game::ItemPose* FittedPoses(const Game::ActorParams& params) {
+        int i = BoundsIndex(params);
+        if (i >= 0) return g_Poses[i];
         Logging.Log("[AP] drop %016llx: no model bounds, its model's origin on the root",
                     static_cast<unsigned long long>(params.lebKey));
         return g_DefaultPoses;
+    }
+
+    // A pose the game tuned: one that places or turns the model. An id without either shows its model as it is, on the
+    // root, half in the floor
+    bool Tuned(const Game::ItemPose& pose) {
+        return pose.pos[0] != 0 || pose.pos[1] != 0 || pose.pos[2] != 0 || pose.rotate[0] != 0 ||
+               pose.rotate[1] != 0 || pose.rotate[2] != 0;
+    }
+
+    // The floor height of the vanilla item a drop stands in place of (AP::DROP_FLOOR_PARAM), else 0
+    float OriginFloor(const Game::ActorParams& params) {
+        const Game::LebParam& param = params.lebParams[AP::DROP_FLOOR_PARAM];
+        return param.type == kLebInt ? static_cast<float>(static_cast<s32>(param.value)) / 1000.0f : 0.0f;
+    }
+
+    // A ball's model in a vanilla pose: turned and sized as the pose has it (ItemPose_Transform, as the item base gives
+    // its model the pose), with its bounds' centre on the ball's centre
+    void CentreOnBall(Game::ItemPose& pose, const AP::DropBounds::Bounds& b) {
+        Game::ItemPoseTransform t = Game::ItemPose_Transform(&pose);
+        Game::Vec3 centre = Rotate(t.rotate, {pose.scale[0] * b.x, pose.scale[1] * b.y, pose.scale[2] * b.z});
+        pose.pos[0] = -centre.x;
+        pose.pos[1] = kBallCentre - centre.y;
+        pose.pos[2] = -centre.z;
+    }
+
+    // The drop's poses: when it shows an item's own model whose pose the game tuned, that item's pair for the view its
+    // spot is in (as the item classes' makers pick it), lifted by the item's floor height less that of the vanilla item
+    // the drop stands in place of, or for a ball turned and sized so on the ball's centre (CentreOnBall); else its
+    // model's fitted poses
+    void MakeDropPoses(const Game::ActorParams& params, Game::ItemPose* out) {
+        // the item constructor takes the pair as given: the side view's here when the spot is in one
+        const Game::ItemPose* fit = FittedPoses(params) + (Game::Item_IsSideView(&params.pos) ? 2 : 0);
+        std::copy(fit, fit + 2, out);
+        std::copy(fit, fit + 2, out + 2);
+        auto model = AP::Bridge::TokenModel(params);
+        auto item = AP::Bridge::TokenItemId(params);
+        int bounds = BoundsIndex(params);
+        if (!model || !item || (Bouncy() && bounds < 0)) return;
+        for (const AP::DropBounds::Item& own : AP::DropBounds::kItems) {
+            if (own.id != *item || own.file != model->first || own.name != model->second) continue;
+            const Game::ItemPose* pair = Game::ItemPose_Pair(static_cast<u8>(*item), Game::Item_IsSideView(&params.pos));
+            if (!Tuned(pair[0])) return;
+            out[0] = pair[0];
+            if (Bouncy()) {
+                CentreOnBall(out[0], AP::DropBounds::kBounds[bounds]);
+            } else {
+                out[0].pos[1] += own.floor - OriginFloor(params);
+            }
+            out[1] = pair[1];
+            std::copy(out, out + 2, out + 2);
+            return;
+        }
     }
 
     int Motion(const Actor& actor) {
@@ -462,7 +560,7 @@ namespace {
             if (Bouncy()) Spin(comp);
             return;
         }
-        if (motion == AP::DROP_STANDS || motion == AP::DROP_PLACED) {
+        if (Stands(motion)) {
             const Game::Vec4& spawn = actor->spawnPos;
             Launch(comp, actor, {spawn.x, spawn.y, spawn.z}, {0, 0, 0});
             return;
@@ -610,10 +708,17 @@ namespace {
     bool Yes(const void*) { return true; }
 
     // A body signal's slot: its argument (a shared_ptr, moved in) released
+    // A drop that stands (Stands) stays where it was placed, as the game's item actors do: its body kinematic, so a
+    // sunken one keeps its height within reach of Link's dive, until its Fall makes it dynamic
     void BodyMade(ComponentCall* self, SharedPtr<>* arg) {
         Shared<>::Adopt(*arg);
         ItemComponent* item = Item(self->comp);
         item->bodyReady = true;
+        Actor* owner = Owner(self->comp);
+        int motion = owner != nullptr ? Motion(*owner) : -1;
+        if (Stands(motion) && item->npc.collision.get() != nullptr) {
+            Game::BodyCollision_SetKinematic(item->npc.collision.get(), true);
+        }
         if (item->fallPending) {
             item->fallPending = false;
             Fall(self->comp);
@@ -804,7 +909,8 @@ namespace {
         mem->ctrl.vtable = g_ActorCtrlVtable;  // shared and weak owners - 1: 0
         auto* actor = reinterpret_cast<Actor*>(&mem->actor);
         StrView key = RowKey();
-        Game::ItemActor_Ctor(actor, &args, &key, kItemId, 1, PosesOf(*params));
+        MakeDropPoses(*params, mem->poses);
+        Game::ItemActor_Ctor(actor, &args, &key, kItemId, 1, mem->poses);
         actor->entity.vtable = g_ActorVtable;
         if (actor->entity.self.ctrl == nullptr) {
             actor->entity.self = {actor, mem};
@@ -852,10 +958,13 @@ namespace {
         Logging.Log("[AP] drop %016llx: launched again from its chest or statue", actor.record->key);
     }
 
-    // A drop that stands from the start (the blue rupees), made and not taken: its switch 0 (a level flag of the
-    // drops' own) goes on before its layout reads it, so it appears where it stands.
-    void Place(const Actor& actor) {
-        if (Motion(actor) != AP::DROP_PLACED || SwitchOn(actor, AP::DropSwitch::Got)) return;
+    // A drop that stands from the start (the blue rupees, a prop with a switch 0), made and not taken: its switch 0 (a
+    // level flag of the drops' own) goes on before its layout reads it, so it appears where it stands. A prop is never
+    // taken: the event that shows it gives its item.
+    void Place(Actor& actor) {
+        int motion = Motion(actor);
+        if (motion == AP::DROP_PROP) reinterpret_cast<ItemActor&>(actor).touchDelay = kNeverTouched;
+        if ((motion != AP::DROP_PLACED && motion != AP::DROP_PROP) || SwitchOn(actor, AP::DropSwitch::Got)) return;
         SetSwitch(actor, AP::DropSwitch::Pop, true);
     }
 

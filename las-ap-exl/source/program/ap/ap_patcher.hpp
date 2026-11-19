@@ -95,11 +95,15 @@ namespace AP {
         DROP_BOSS = 8,       // hops out where its boss's BossItemDrop starts the item, in place of it
         DROP_BOSS_PIT = 9,   // so, but standing nowhere when its room loads: the item falls into a pit
         DROP_STANDS = 10,    // shows where it stands: the ghost's reward
-        DROP_PLACED = 11     // so from the start, its switch 0 turned on by the module when it is made: the blue rupees
+        DROP_PLACED = 11,    // so from the start, its switch 0 turned on by the module when it is made: the blue rupees
+        DROP_PROP = 12       // a model an NPC's event shows and drops (Kiki's stick, Tarin's honeycomb), never taken
     };
     // A drop's switches (patcher: ap_drop, the pops; DROP_OPENED). Pop lets it appear: a chest's or owl statue's
     // launch flag, a falling drop's pop event's, the boss's global flag. Got is set by taking it, and its row lays out
     // no drop once it is on. Opened, a chest's drop's only, holds its chest's opened flag, which goes off when the
     // chest's room loads with no ball out and the item not taken.
     enum class DropSwitch { Pop = 0, Got = 1, Opened = 2 };
+    // A drop that stands in a vanilla item's place: that item's floor height (how high its collision held its root
+    // above the floor), in thousandths, in this LEB parameter (patcher: ap_drop.FLOOR_PARAM)
+    constexpr int DROP_FLOOR_PARAM = 5;
 }

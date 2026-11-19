@@ -33,15 +33,7 @@ namespace {
         std::string_view name;
         std::string shelfPath;     // "actor/<file>", as ShopItem.gsheet names a model
     };
-    // How LASR places an actor with that model, against one with the token (patcher ground_transform)
-    struct Stance {
-        float scale = 1.0f;        // a factor
-        std::optional<float> yaw;  // degrees
-        float rise = 0.0f;
-        float tilt = 0.0f;         // degrees about x, the model's top towards -z for a negative one
-    };
     std::map<LocationId, Model> g_Models;
-    std::map<LocationId, Stance> g_Stances;  // the location's item actors'; its chests and drops keep theirs
     std::map<LocationId, std::string_view> g_Chests;  // a chest location's chest file
     std::map<LocationId, float> g_ChestSizes;  // a chest location's chest size, when not 1
     // LASR's Items.gsheet rows that stand in for a location's item: by item id and by key
@@ -163,39 +155,23 @@ namespace {
         return std::nullopt;
     }
 
-    // How an actor with a location's token stands: a chest at the size of the location's chest, an item actor as LASR
-    // stands one with the location's model; a drop actor sizes its model itself (ap_drop.cpp), as LASR's stand-ins
-    // took no item's size or turn.
-    std::optional<Stance> StanceOf(const Game::ActorParams& params) {
+    // The size of the chest of the location an actor's chest token names, when not 1 (a drop actor sizes its model
+    // itself, ap_drop.cpp)
+    std::optional<float> ChestSizeOf(const Game::ActorParams& params) {
         std::optional<Token> token = ParamsToken(params);
-        if (!token) return std::nullopt;
-        if (token->chest) {
-            auto it = g_ChestSizes.find(token->location);
-            return it != g_ChestSizes.end() ? std::optional(Stance{it->second}) : std::nullopt;
-        }
-        if (params.lebRecord != nullptr && params.lebRecord->actorId == AP::DROP_ACTOR_ID) return std::nullopt;
-        auto it = g_Stances.find(token->location);
-        return it != g_Stances.end() ? std::optional(it->second) : std::nullopt;
+        if (!token || !token->chest) return std::nullopt;
+        auto it = g_ChestSizes.find(token->location);
+        return it != g_ChestSizes.end() ? std::optional(it->second) : std::nullopt;
     }
 
-    // An actor with a location's token stands as StanceOf says: params are built from the LEB record for each
+    // A chest with a location's chest token takes its chest's size: params are built from the LEB record for each
     // creation, so the change applies once.
     HOOK_DEFINE_TRAMPOLINE(ActorCreate) {
         static void Callback(Game::SharedPtr<Game::Actor>* out, Game::SharedPtr<>* owner, Game::ActorParams* params) {
-            std::optional<Stance> found = params != nullptr ? StanceOf(*params) : std::nullopt;
-            if (found) {
-                const Stance& stance = *found;
-                params->scale.x *= stance.scale;
-                params->scale.y *= stance.scale;
-                params->scale.z *= stance.scale;
-                params->pos.y += stance.rise;
-                if ((stance.yaw || stance.tilt != 0.0f) && params->lebRecord != nullptr) {
-                    Game::Vec3 degrees = params->lebRecord->rotDegrees;
-                    if (stance.yaw) degrees.y = *stance.yaw;
-                    if (stance.tilt != 0.0f) degrees.x = stance.tilt;
-                    Game::Quat q = Game::EulerQuat(degrees);
-                    params->rot = {q.x, q.y, q.z, q.w};
-                }
+            if (std::optional<float> size = params != nullptr ? ChestSizeOf(*params) : std::nullopt) {
+                params->scale.x *= *size;
+                params->scale.y *= *size;
+                params->scale.z *= *size;
             }
             Orig(out, owner, params);
         }
@@ -237,9 +213,8 @@ namespace {
     };
 
     // The seed file's models: "M <local id> <item id> <model file> <model name>" the model of the location's item
-    // (item id -1: the item-get holds up the placeholder's), "S <local id> <scale factor> <yaw or -> <rise> [<tilt>]"
-    // how its actors stand otherwise, "I <row key> <item id> <local id>" an Items.gsheet row that stands in for its item, "C
-    // <local id> <size> <chest file>" the chest of its item (patcher model_lines)
+    // (item id -1: the item-get holds up the placeholder's), "I <row key> <item id> <local id>" an Items.gsheet row that
+    // stands in for its item, "C <local id> <size> <chest file>" the chest of its item (patcher model_lines)
     void LoadModels() {
         SeedFile::ForEach("models", [](Fields& f) {
             std::string_view kind = f.Str();
@@ -250,16 +225,6 @@ namespace {
                 if (!location || model.name.empty()) return;
                 model.shelfPath = "actor/" + std::string(model.file);
                 g_Models[*location] = std::move(model);
-            } else if (kind == "S") {
-                auto location = f.Num<LocationId>();
-                auto scale = f.Num<float>();
-                Fields yawField = f;  // the yaw as a number, unless it is "-"
-                bool noYaw = f.Str() == "-";
-                std::optional<float> yaw = noYaw ? std::nullopt : yawField.Num<float>();
-                auto rise = f.Num<float>();
-                float tilt = f.Num<float>().value_or(0.0f);
-                if (!location || !scale || !rise || (!noYaw && !yaw)) return;
-                g_Stances[*location] = {*scale, yaw, *rise, tilt};
             } else if (kind == "I") {
                 std::string_view key = f.Str();
                 auto itemId = f.Num<int>();
@@ -276,8 +241,8 @@ namespace {
                 if (*scale != 1.0f) g_ChestSizes[*location] = *scale;
             }
         });
-        Logging.Log("[AP] models: %zu shown, %zu placed, %zu stand-ins, %zu chests", g_Models.size(),
-                    g_Stances.size(), g_StandIns.size(), g_Chests.size());
+        Logging.Log("[AP] models: %zu shown, %zu stand-ins, %zu chests", g_Models.size(), g_StandIns.size(),
+                    g_Chests.size());
     }
 }
 
@@ -288,6 +253,14 @@ namespace {
         if (model == nullptr) return std::pair<std::string_view, std::string_view>{PLACEHOLDER_MODEL_FILE,
                                                                                    PLACEHOLDER_MODEL_NAME};
         return std::pair{model->file, model->name};
+    }
+
+    std::optional<int> TokenItemId(const Game::ActorParams& params) {
+        std::optional<Token> token = ParamsToken(params);
+        if (!token) return std::nullopt;
+        const Model* model = ModelOf(token->location);
+        if (model == nullptr || model->itemId < 0) return std::nullopt;
+        return model->itemId;
     }
 
     ItemId ShownItem(ItemId item) {
@@ -306,7 +279,7 @@ namespace {
         ItemGetHolderMake::InstallAtFuncPtr(Game::ItemGetHolder_Make.Ptr());
         ItemGetPlayFanfare::InstallAtFuncPtr(Game::ItemGet_PlayFanfare.Ptr());
         ItemModelMake::InstallAtFuncPtr(Game::ItemModel_Make.Ptr());
-        if (!g_Stances.empty() || !g_ChestSizes.empty()) ActorCreate::InstallAtFuncPtr(Game::Actor_Create.Ptr());
+        if (!g_ChestSizes.empty()) ActorCreate::InstallAtFuncPtr(Game::Actor_Create.Ptr());
         DatasheetCreate::InstallAtFuncPtr(Game::Datasheet_Create.Ptr());
     }
 }

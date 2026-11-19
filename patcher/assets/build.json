@@ -102,7 +102,7 @@
   ],
   "SlimeKey": [
    25,
-   "PatchSlimeKey"
+   "ItemSlimeKey"
   ],
   "AnglerKey": [
    26,
@@ -134,11 +134,11 @@
   ],
   "Stick": [
    33,
-   "PatchStick"
+   "ItemStick"
   ],
   "Honeycomb": [
    34,
-   "PatchHoneycomb"
+   "ItemHoneycomb"
   ],
   "Pineapple": [
    35,
@@ -226,7 +226,7 @@
   ],
   "HeartPiece": [
    58,
-   "PatchHeartPiece"
+   "ItemHeartPiece"
   ],
   "HeartContainer": [
    59,
@@ -534,53 +534,6 @@
    "key": "ObjTreasureBoxKey.bfres",
    "seashell": "ObjTreasureBoxSeashell.bfres"
   }
- },
- "heart_rooms": [
-  "animal-village-northwest",
-  "animal-village-cave",
-  "taltal-entrance-blocks",
-  "north-wasteland",
-  "desert-cave",
-  "graveyard-cave",
-  "mabe-well",
-  "ukuku-cave-west-loose",
-  "ukuku-cave-east-loose",
-  "bay-passage-sunken",
-  "river-crossing-cave",
-  "rapids-west-island",
-  "rapids-ascent-cave",
-  "kanalet-moat-south",
-  "south-bay-sunken",
-  "taltal-crossing-cave",
-  "taltal-east-drop",
-  "taltal-west-escape",
-  "above-turtle-rock",
-  "pothole-north",
-  "woods-crossing-cave-loose",
-  "woods-north-cave-loose",
-  "diamond-island"
- ],
- "heart_sunken": [
-  "taltal-east-drop",
-  "south-bay-sunken",
-  "bay-passage-sunken",
-  "river-crossing-cave",
-  "kanalet-moat-south"
- ],
- "heart_shrunk": 0.55,
- "heart_sunken_shrunk": 0.75,
- "heart_sunken_rise": 0.25,
- "sunken_shells": [
-  "kanalet-moat-north",
-  "taltal-sunken"
- ],
- "model_sizes": {
-  "Marin": 0.65,
-  "ManboTamegoro": 0.35,
-  "Mamu": 0.25
- },
- "model_rotations": {
-  "SinkingSword": 180.0
  },
  "shop_text": {
   "shop-slot3-1st": [

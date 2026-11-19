@@ -127,12 +127,14 @@ namespace {
         return reinterpret_cast<const char*>(p);
     }
 
-    // Reads the machine's current state; -1 when it is gone (its memory reused).
+    // Reads the machine's current state; -1 when it is gone (its memory reused): its first named state's entry
+    // changed, or a state no machine of its class has, as when only that entry outlived it.
     int MachineState(Machine& m) {
         uintptr_t sm = m.sm.load();
         uintptr_t name0 = 0;
         u8 state = 0;
         if (sm == 0 || !Read(m.check, name0) || name0 != m.name0 || !Read(sm + 0xd, state)) return -1;
+        if (state != Game::kNoState && state >= kSmHooks[m.hook].states) return -1;
         return state;
     }
 

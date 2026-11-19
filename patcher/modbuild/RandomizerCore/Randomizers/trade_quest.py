@@ -21,15 +21,9 @@ class TradeQuestRandomizer:
         self.parent.file_manager.writeFile('Sale.bfevfl', flow)
 
         flow = self.parent.file_manager.readFile('Kiki.bfevfl')
-        item_key, item_index, model_path, model_name = self.parent.item_info_manager.getItemInfoWithModel('kiki')
+        item_key, item_index = self.parent.item_info_manager.getItemInfo('kiki')
         self.kikiChanges(flow.flowchart, item_key, item_index)
         self.parent.file_manager.writeFile('Kiki.bfevfl', flow)
-        room_data = self.parent.file_manager.readFile('Field_08L.leb')
-        stick_actor = room_data.actors[7]
-        # add the model info to the stick actor parameters
-        stick_actor.parameters[1] = bytes(model_path, 'utf-8')
-        stick_actor.parameters[2] = bytes(model_name, 'utf-8')
-        self.parent.file_manager.writeFile('Field_08L.leb', room_data)
 
         flow = self.parent.file_manager.readFile('Tarin.bfevfl')
         self.tarinChanges(flow.flowchart)

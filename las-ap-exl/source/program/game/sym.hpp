@@ -177,6 +177,17 @@ namespace Game {
     // (item id, side view): the pose the item-get holds the item up in, by item id, else a default (ITEMS.md, Item-get
     // poses)
     inline constexpr Func<const ItemPose*(u8, bool)> ItemPose_ItemGet{0x8d2f50};
+    // (item id, side view): the item's pose pair, {the pose an item actor stands in, the item-get pose}, by item id,
+    // else a default; the side view's pair 0x48 further (ITEMS.md, Item-get poses)
+    inline constexpr Func<const ItemPose*(u8, bool)> ItemPose_Pair{0x8d2b80};
+    // A pose as a node's transform: position, rotation (a quaternion) and scale, one vector register each
+    using Float4 = float __attribute__((vector_size(16)));
+    struct ItemPoseTransform { Float4 pos, rotate, scale; };
+    // (pose): the transform the item base gives its model node from its pose pair's first pose (ItemActor_ApplyPose,
+    // actor vtable +0x138; ITEMS.md, Item actors)
+    inline constexpr Func<ItemPoseTransform(const ItemPose*)> ItemPose_Transform{0x8d3320};
+    // (position): the area there is a side view; the item classes' makers pick the pose pair by it
+    inline constexpr Func<bool(const Vec4*)> Item_IsSideView{0x8b6710};
     // (out future, player, item id, keep carry, message entry*): the item-get, the body of the event actions
     // Link.GenericItemGetSequence(ByKey)
     inline constexpr Func<void(SharedPtr<>*, void*, Data::ItemId, bool, StrView*)> Player_ItemGetSequence{0xd795d0};
@@ -211,6 +222,8 @@ namespace Game {
     // (component, name*, x2, x3) -> the collision (x8), null without the component's row (+0x88) or when the row's
     // collision.shape is 0 (component vtable +0x210)
     inline constexpr Func<Shared<Entity>(void*, const StrView*, void*, void*)> NpcComponent_MakeCollision{0x94b350};
+    // (collision, bool): a dynamic body kinematic or not (PxRigidBody eKINEMATIC); off wakes a body in a scene
+    inline constexpr Func<void(void*, bool)> BodyCollision_SetKinematic{0x10bd430};
     // (component): every row popConditions entry holds (component vtable +0x88)
     inline constexpr Func<bool(void*)> NpcComponent_CheckPop{0x947d70};
     // (component): enables its actor (component vtable +0x98, once +0x88 holds)

@@ -39,15 +39,6 @@ class RoomFixes:
 
         self.parent.file_manager.writeFile('Field_12A.leb', room_data)
 
-        ### Make Honeycomb show new graphics in tree, a different NPC key is used for when the player obtains the item
-        room_data = self.parent.file_manager.readFile('Field_09H.leb')
-
-        item_key, item_index, model_path, model_name = self.parent.item_info_manager.getItemInfoWithModel('tarin-ukuku')
-        room_data.actors[0].parameters[0] = bytes(model_path, 'utf-8')
-        room_data.actors[0].parameters[1] = bytes(model_name, 'utf-8')
-
-        self.parent.file_manager.writeFile('Field_09H.leb', room_data)
-
 
     def fixWaterLoadingZones(self):
         """Changes each water loading zone to be deactivated until the player has flippers

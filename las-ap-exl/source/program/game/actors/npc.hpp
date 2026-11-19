@@ -160,7 +160,7 @@ namespace Game::Actors {
             float yOffset, xzDistance, yDistance, playerAngleRange, reactionAngleRange;
         } doAction;
         struct { float personalSpace; SheetString talkerLabel; } talk;  // 0x128
-        struct { s32 layoutID; s32 identifier; } actorArgs;  // 0x140: indices of the owner's LEB parameters
+        struct { s32 layoutID; s32 identifier; } actorArgs;  // 0x140: the owner's LEB parameters; identifier 1-4 names 0-3 (0 none)
         struct { SheetArray<SheetCondition> conditions; bool depopEnable; } popConditions;  // 0x148
         SheetArray<NpcLayoutCondition> layoutConditions;  // 0x160
         float lookAtOffsetY;       // 0x170

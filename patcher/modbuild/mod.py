@@ -16,10 +16,7 @@ from RandomizerCore import mod_generator  # noqa: E402
 from RandomizerCore.Fixes.Events import player_start  # noqa: E402
 from RandomizerCore.Randomizers import chests as lasr_chests  # noqa: E402
 from RandomizerCore.Randomizers.data import (BGM_TRACKS, DUNGEON_ENTRANCES, DUNGEON_MAP_ICONS,  # noqa: E402
-                                             MODEL_ROTATIONS, MODEL_SIZES, SIDESCROLLER_ENVIRONMENTS,
-                                             TOPDOWN_ENVIRONMENTS)
-from RandomizerCore.Randomizers import heart_pieces  # noqa: E402
-from RandomizerCore.Randomizers.seashells import SUNKEN_SHELLS  # noqa: E402
+                                             SIDESCROLLER_ENVIRONMENTS, TOPDOWN_ENVIRONMENTS)
 from RandomizerCore.Randomizers.shop import TEXT_TO_CHANGE as SHOP_TEXT  # noqa: E402
 from RandomizerCore.Tools import event_tools  # noqa: E402
 from RandomizerCore.Tools.oead_tools import dictToStruct, parseStruct  # noqa: E402
@@ -245,7 +242,7 @@ def chest_placeholder_branch(files) -> None:
 
 def native_instrument_get(flowchart, room) -> None:
     """The instrument pedestal's item-gets (any item, progressive ones on both branches) keep the game's item-get
-    (after InstrumentRandomizer.changeInstrument). The music stops before it, as in the game
+    (after ap_drop._standing makes its take entry). The music stops before it, as in the game
     (MusicalInstrument.bfevfl), so the item's jingle plays alone; LASR's whiteout after it lets the jingle play on
     (its StopAllBGM is in a chain its fork cuts off) until the warp out."""
     first = event_tools.findEntryPoint(flowchart, room).main_event.v.name
@@ -408,14 +405,6 @@ def build(romfs: Path, out: Path, patch: dict) -> dict:
     return {
         "item_rows": proc.item_rows,
         "chests": CHESTS,
-        "heart_rooms": list(heart_pieces.HEART_ROOMS),
-        "heart_sunken": list(heart_pieces.sunken),
-        "heart_shrunk": heart_pieces.SHRUNK,
-        "heart_sunken_shrunk": heart_pieces.SUNKEN_SHRUNK,
-        "heart_sunken_rise": heart_pieces.SUNKEN_RISE,
-        "sunken_shells": list(SUNKEN_SHELLS),
-        "model_sizes": MODEL_SIZES,
-        "model_rotations": MODEL_ROTATIONS,
         "shop_text": SHOP_TEXT,
         "start_flags": START_FLAGS,
         "boss_flags": player_start.BOSS_FLAGS,

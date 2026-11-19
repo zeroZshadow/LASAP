@@ -17,26 +17,6 @@ class NpcDatasheetFixes:
         ranging from event triggers to layout conditions to even graphics changes. 
         Also makes the shell sensor go off if the Npc holds a seashell"""
 
-        if npc['symbol'] == 'ItemHeartPiece':
-            npc['graphics']['path'] = '$1'
-            npc['graphics']['model'] = '$2'
-            npc['eventInfo'] = {'eventAsset': 'SinkingSword.bfevfl', 'actorName': 'SinkingSword'}
-            npc['eventTriggers'][0]['entryPoint'] = '$3'
-            npc['layoutConditions'].append({'category': 1, 'parameter': '$4', 'layoutID': -1})
-            npc['shellSensor'].append({'category': 9, 'parameter': '$5'}) # make specific actors trigger the shell sensor
-            return
-
-        if npc['symbol'] == 'ItemSlimeKey':
-            npc['graphics']['path'] = '$1'
-            npc['graphics']['model'] = '$2'
-            npc['eventInfo'] = {'eventAsset': 'SinkingSword.bfevfl', 'actorName': 'SinkingSword'}
-            npc['eventTriggers'][0]['condition'] = 0
-            npc['eventTriggers'][0]['entryPoint'] = '$3'
-            npc['doAction'] = {'type': 0, 'yOffset': 0.0, 'xzDistance': 0.0, 'yDistance': 0.0, 'playerAngleRange': 0.0, 'reactionAngleRange': 0.0}
-            npc['layoutConditions'].append({'category': 1, 'parameter': '$4', 'layoutID': -1})
-            npc['shellSensor'].append({'category': 9, 'parameter': '$5'}) # make specific actors trigger the shell sensor
-            return
-
         if npc['symbol'] == 'NpcMadBatter':
             npc['eventTriggers'][0]['entryPoint'] = '$2'
             del npc['layoutConditions'][1]
@@ -56,31 +36,12 @@ class NpcDatasheetFixes:
             npc['shellSensor'].append({'category': 9, 'parameter': '$4'}) # make specific smallkey actors trigger the shell sensor
             return
 
-        if npc['symbol'] == 'ItemHoneycomb': # Make the Honeycomb object ring the sensor instead of Tarin
-            npc['graphics']['path'] = '$0'
-            npc['graphics']['model'] = '$1'
-            if placements['tarin-ukuku'] == 'seashell':
-                npc['shellSensor'].append({'category': 2, 'parameter': f"!Seashell:{placements['indexes']['tarin-ukuku']}"})
-            return
-
-        if npc['symbol'] == 'ItemStick': # Change the model of the item that Kiki drops
-            npc['graphics']['path'] = '$1'
-            npc['graphics']['model'] = '$2'
-
         if npc['symbol'] == 'ObjClothBag': # Make it so Papahl's bag appears with him when you get the Pineapple
             npc['layoutConditions'][1] = {'category': 1, 'parameter': 'TradePineappleGet', 'layoutID': 0}
             return
 
         if npc['symbol'] == 'NpcGrandmaUlrira':
             npc['layoutConditions'][1] = {'category': 9, 'parameter': 'true', 'layoutID': 4}
-            return
-
-        if npc['symbol'] == 'ObjSinkingSword': # checks where you press A to grab (ocarina & instruments)
-            npc['graphics']['path'] = '$0'
-            npc['graphics']['model'] = '$1'
-            npc['eventTriggers'][0]['entryPoint'] = '$2'
-            npc['layoutConditions'][0]['parameter'] = '$3'
-            npc['shellSensor'].append({'category': 9, 'parameter': '$4'}) # make specific sinkingsword actors trigger the shell sensor
             return
 
         if npc['symbol'] == 'ObjRoosterBones':
@@ -199,34 +160,9 @@ class NpcDatasheetFixes:
         """We change the graphics for some items, so create new npcs to show the correct model when obtaining them"""
 
         dummy = copy.deepcopy(DUMMY_NPC)
-        dummy['symbol'] = 'PatchSlimeKey'
-        dummy['graphics']['path'] = 'ItemSlimeKey.bfres'
-        dummy['graphics']['model'] = 'SlimeKey'
-        npc_sheet['values'].append(oead_tools.dictToStruct(dummy))
-
-        dummy['symbol'] = 'PatchHeartPiece'
-        dummy['graphics']['path'] = 'ItemHeartPiece.bfres'
-        dummy['graphics']['model'] = 'HeartPiece'
-        npc_sheet['values'].append(oead_tools.dictToStruct(dummy))
-
         dummy['symbol'] = 'PatchSmallKey'
         dummy['graphics']['path'] = 'ItemSmallKey.bfres'
         dummy['graphics']['model'] = 'SmallKey'
-        npc_sheet['values'].append(oead_tools.dictToStruct(dummy))
-
-        dummy['symbol'] = 'PatchSeashell'
-        dummy['graphics']['path'] = 'ItemSecretSeashell.bfres'
-        dummy['graphics']['model'] = 'SecretSeashell'
-        npc_sheet['values'].append(oead_tools.dictToStruct(dummy))
-
-        dummy['symbol'] = 'PatchHoneycomb'
-        dummy['graphics']['path'] = 'ItemHoneycomb.bfres'
-        dummy['graphics']['model'] = 'Honeycomb'
-        npc_sheet['values'].append(oead_tools.dictToStruct(dummy))
-
-        dummy['symbol'] = 'PatchStick'
-        dummy['graphics']['path'] = 'ItemStick.bfres'
-        dummy['graphics']['model'] = 'Stick'
         npc_sheet['values'].append(oead_tools.dictToStruct(dummy))
 
         item = placements['syrup']

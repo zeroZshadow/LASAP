@@ -524,6 +524,8 @@ Item_CheckGettingFlag 0x08dd6940 f (item id): the event flag the item's Items.gs
 Item_SetGettingFlag 0x08dd6a70 f (item id): sets that flag; hooked by the module
 Inventory_HasItem 0x08dd5a30 f (itemId, count, index): 114 tests chamber stone bit index; the item actors' collected check; per item id in re/ITEMS.md
 ItemPose_Pair 0x08dd6b80 f (u8 itemId, bool sideView) -> ItemPose[2]: a switch on the id (0-126, else a default) to {a held pose, the item-get pose}; the side view's pair 0x48 further; the item actors and one other holder (+0x168 item id, 0x091c68b0) call it (re/ITEMS.md, Item-get poses)
+ItemPose_Transform 0x08dd7320 f (ItemPose*) -> {pos, quaternion, scale} in v0-v2: a pose as a node's transform
+ItemActor_ApplyPose 0x08dbcab0 f actor vtable +0x138 of the item base (+0x130 calls it): the model node's (component +0xd8) coordsNew from ItemPose_Transform(+0x300), Node_MarkDirty; not while the node's destroy is requested
 ItemPose_ItemGet 0x08dd6f50 f (u8 itemId, bool sideView) -> ItemPose*: the second pose of ItemPose_Pair (pos, rotation in degrees, scale; 9 floats); hooked by the module
 ItemGetHolder_Make 0x0927e4f0 f (out sp, parent node, u8 itemId): the item-get's item node (0x1e0, vtable 0x0a0c8e38, item id +0x1c1), whose vtable +0xa8 (0x08d88b10) is ItemPose_ItemGet(+0x1c1, side view)
 ItemModel_Make 0x08dd7670 f (out holder, owner sp*, StringView* name, root node sp*, u8 itemId): loads the item's model and posts ItemGet_ModelTask, which makes the component (disabled) into holder +0x18; the item-get and the NPCs that hold items use it
@@ -1753,6 +1755,7 @@ SmallKey_MakeComponent 0x08dcf8a0 f actor vtable +0x128 (actor, name*) -> sp x8:
 SmallKeyComponent_Share 0x08dcff40 f (out, component): its shared_ptr and self pointer
 SmallKey_StartFall 0x08dd22f0 f (component): the Fall action: body dynamic, still, 10 units above the spawn; waits for the body
 Actor_HasComponent 0x094ad490 f (actor, name, length)
+Node_SetWorldCoords 0x094ba810 f (node, Coords* world): coordsNew from world coords (the position relative to the parent's or attachment's; rotation and scale as given), the world coords set, Node_MarkDirty
 Node_SetWorldPos 0x094bad30 f (node, Vec3*): coordsNew.pos from a world position (relative to the parent), Node_MarkDirty
 ObjTree_DropItem 0x091b5f30 f (tree): a bonked tree's drop: Enemy_DropItems from the crown (+0x478 +0x6c, +0.5) at speed +0x478 +0x68 toward its first rail link's point, else toward Link
 AreaShellDropper_Drop 0x085895a0 f (dropper): a bombed hole's seashell through Enemy_DropItems; LASR hooks it at +0x15c
@@ -1990,6 +1993,7 @@ BodyCollision_Ctor 0x095bda50 f (collision, args*, weak world*): Node_Ctor, seco
 BodyCollision_Dtor 0x095beb10 f
 BodyCollision_vtable 0x0a154420 l collision with a body, base; +0x28 SyncPose, +0xa8 SetEnabled, +0xd8 enable, +0xe0 disable; second base at +0xf8 (0x0a154518)
 BodyCollision_SyncPose 0x095beed0 f vtable +0x28: the node's world pose to the body: setKinematicTarget when kinematic in a scene, else setGlobalPose
+BodyCollision_StepPose 0x095bff70 f vtable +0xd0, from the world's stepped (BodyCollision_ConnectWorld): a dynamic body's global pose to the node (Node_SetWorldCoords, its own scale kept), +0x26d set meanwhile
 BodyCollision_SetEnabled 0x095bfc50 f vtable +0xa8 (collision, bool): +0x26c, then vtable +0xd8 (on) or +0xe0 (off)
 BodyCollision_AddToScene 0x095c0bf0 f (collision) -> bool: with +0x180 the PxAggregate's addActor (PhysicsBody_AddToAggregate); else the world's (+0x150) PxScene addActor under lockWrite (body +0x458 = 1) or its pending entry +0x268, then emits +0x1b8 with the body
 BodyCollision_SetKinematic 0x095c1430 f (collision, bool): dynamic body only: PxRigidBody setRigidBodyFlag(eKINEMATIC), body +0x678; turning it off wakes a body in a scene (+0x248 wakeUp)
