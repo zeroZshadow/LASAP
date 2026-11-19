@@ -620,8 +620,6 @@ namespace AP {
         g_FoundFresh = false;
     }
 
-    std::optional<LocationId> LastFoundLocation() { return g_FoundLocation; }
-
     std::optional<LocationId> FoundOrPresentLocation() { return FoundOrPresent(); }
 
     std::string ReceivedToast(const std::string& item, const std::string& sender) {

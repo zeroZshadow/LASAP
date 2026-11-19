@@ -89,7 +89,7 @@ Take the sandbox lock (Emulator, "Sharing the sandbox"). A local MultiServer out
 
   | Command | Effect |
   |---|---|
-  | `state` | Level, screen (`intro`, `title`, `menu`, `loading`, `level`, `other`, `none`: FRAMEWORK.md, Scenes), position, health, rupees, key bits, `dkeys` (per `LevelIndex` 0–9, `<keys>.<bits>`, bits 1 compass, 2 map, 4 stone beak, 8 nightmare key), `dlevel` (255 outside dungeons), received counter, event state, `paused`, `carry` (held over Link's head), `showq=<n>` (item-get queue, `+1` while one shows), `shown` (the last display's item, -1 until it shows), `popup`, `toast` |
+  | `state` | Level, screen (`intro`, `title`, `menu`, `loading`, `level`, `other`, `none`: FRAMEWORK.md, Scenes), position, health, rupees, key bits, `dkeys` (per `LevelIndex` 0–9, `<keys>.<bits>`, bits 1 compass, 2 map, 4 stone beak, 8 nightmare key), `dlevel` (255 outside dungeons), received counter, event state, `paused`, `carry` (held over Link's head), `showq=<n>` (item-get queue, `+1` while one shows), `shown` (the last display's item, -1 until it shows), `held` (the item whose model the last item-get or find popup showed, -1 before any), `popup`, `toast` |
   | `flag <name>` / `setflag <name> 0\|1` | Reads or sets an event flag |
   | `input <buttons hex> <ms> [lx ly]` | Holds buttons and the left stick for a duration |
   | `grant <key> <count> <dungeon> [show 0\|1]` | Same path as `ITEM`, without touching the counter |

@@ -148,7 +148,7 @@ namespace AP::Bridge {
     bool LinkKeptOut();
     void InstallPickupEventHooks();
 #ifdef LASAP_TEST
-    // STATE's " showq=<queued>[+1] shown=<item>"
+    // STATE's " showq=<queued>[+1] shown=<item> held=<item id>"
     std::string ItemGetState();
     // DBG itemget: the item event of that item with that message entry, without the queue (none must run).
     bool TestItemEvent(ItemId item, const std::string& messageEntry);
@@ -191,12 +191,16 @@ namespace AP::Bridge {
     // The item id of the model TokenModel gives, when it is an item's (the seed file's M line); none for the
     // Archipelago model
     std::optional<int> TokenItemId(const Game::ActorParams& params);
-    // The item whose model and pose a held-up item shows: the location's item for the placeholder just found and for
-    // LASR's rows that stand in for a location's item, else the item itself.
+    // The item whose model and pose a held-up item shows: the location's item for the placeholder just found (or the
+    // mansion's present) and for LASR's rows that stand in for a location's item, else the item itself.
     ItemId ShownItem(ItemId item);
     // The item whose fanfare an item-get of `item` plays: for the placeholder just found at a location that shows an
     // instrument, that instrument (its song), else the item itself.
     ItemId FanfareItem(ItemId item);
+#ifdef LASAP_TEST
+    // STATE held=: the item whose model the last item-get or find showed, -1 before any
+    int LastShownItem();
+#endif
 
     // ---- NPC models held up in item-gets (ap_held_model.cpp) ----
 

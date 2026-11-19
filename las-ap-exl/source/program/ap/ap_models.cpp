@@ -17,6 +17,7 @@
 #include "game/sheet.hpp"
 #include "game/sym.hpp"
 #include "loggers.hpp"
+#include "test_only.hpp"
 #include <charconv>
 #include <cstring>
 #include <map>
@@ -39,6 +40,9 @@ namespace {
     // LASR's Items.gsheet rows that stand in for a location's item: by item id and by key
     std::map<u8, LocationId> g_StandIns;
     std::map<std::string_view, LocationId> g_StandInKeys;
+#ifdef LASAP_TEST
+    int g_LastShown = -1;  // STATE held=
+#endif
 
     constexpr size_t kLebRoomString = 0x50;  // LebRoom virtual (offset) -> its characters (ACTORS.md, LEB actor record)
     constexpr u32 kLebString = 4;            // a LEB parameter's type: a string by its offset in the LEB
@@ -92,10 +96,13 @@ namespace {
     }
 
     // The item-get's item node, whose model and pose follow its item id (scripts/re/ITEMS.md, Item node). A
-    // placeholder's location is the one added last: its flows add it right before its item-get.
+    // placeholder's location is the one its found text names: the one added just before, as its flows add it right
+    // before its item-get, else the mansion's present, which adds it after.
     HOOK_DEFINE_TRAMPOLINE(ItemGetHolderMake) {
         static void Callback(Game::SharedPtr<>* out, void* args, u8 itemId) {
-            Orig(out, args, ShownId(itemId, LastFoundLocation()));
+            u8 shown = ShownId(itemId, FoundOrPresentLocation());
+            TEST_ONLY(g_LastShown = shown;)
+            Orig(out, args, shown);
         }
     };
 
@@ -264,8 +271,14 @@ namespace {
     }
 
     ItemId ShownItem(ItemId item) {
-        return ItemId{ShownId(static_cast<u8>(item), LastFoundLocation())};
+        u8 shown = ShownId(static_cast<u8>(item), FoundOrPresentLocation());
+        TEST_ONLY(g_LastShown = shown;)
+        return ItemId{shown};
     }
+
+#ifdef LASAP_TEST
+    int LastShownItem() { return g_LastShown; }
+#endif
 
     ItemId FanfareItem(ItemId item) {
         if (item != AP::PLACEHOLDER_ITEM_ID) return item;

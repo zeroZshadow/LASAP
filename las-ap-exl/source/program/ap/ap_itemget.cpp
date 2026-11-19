@@ -433,7 +433,7 @@ namespace {
 #ifdef LASAP_TEST
     std::string ItemGetState() {
         return " showq=" + std::to_string(g_ShowQueue.size()) + (g_ItemEvent != ItemEvent::None ? "+1" : "") +
-               " shown=" + ItemText(g_ItemEventShown);
+               " shown=" + ItemText(g_ItemEventShown) + " held=" + std::to_string(LastShownItem());
     }
 
     bool TestItemEvent(ItemId item, const std::string& messageEntry) {

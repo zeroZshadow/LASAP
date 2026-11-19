@@ -32,8 +32,6 @@ namespace AP {
     // The location of a placeholder just added; it names the found text until the player is free again.
     void SetFoundLocation(LocationId location);
     void ExpireFoundLocation();
-    // The placeholder added last, also once it no longer names the found text
-    std::optional<LocationId> LastFoundLocation();
     // The placeholder just added, else the mansion's present
     std::optional<LocationId> FoundOrPresentLocation();
     void SetReceivedText(const std::string& item, const std::string& sender);

@@ -341,7 +341,7 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 - **The shop.** Each AP slot of the shop (`ShopRandomizer`'s `TEXT_TO_CHANGE`) names its item on its price tag and in its buy dialog (System.msbt). The seed file's `shop` (`shop_lines`) has per slot the two labels and the location's local id; the module (`ap_text.cpp`) puts the name in both. A slot without a name says "Archipelago Item".
 - The asset build adds the messages `Place:ArchipelagoItem` and `System:APReceived` and the Item event entry point `APReceived`. The module hooks the game's MSBT label lookup and text getter and hands out the text for these two messages (`ap_text.cpp`).
 - The module learns the location from the placeholder's `AddItemID`, so placeholder flows add the item before playing the item-get (LASR's item-get chains and a TreasureBox branch). That location names the found text until the player is free again.
-- The Seashell Mansion's presents add their item after the item-get. The module reads the location from `ShellMansionMaster.PopBox` when the present appears.
+- The Seashell Mansion's presents add their item after the item-get. The module reads the location from `ShellMansionMaster.PopBox` when the present appears; the present's text, model and fanfare follow it.
 
 **Showing received items**
 - The module grants an item the moment its `ITEM` line is handled, and queues a display of it.

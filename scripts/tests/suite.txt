@@ -5,14 +5,14 @@
 # given files of scripts/tests/seed; each script leaves the game as the next one expects. `client` starts the LAS client fed from cmds.txt;
 # `ghost` also starts a ghost relay and scripts/ghost_peer.py (--secret test), and joins the client to it. config.ini
 # options are read at boot, so a group per setting. The mod is the make_test_patch.py patch of the `mod:` line's options; suite.py refuses another.
-mod: --settings '{"Owl Gifts": "All"}' --models woods-north-cave-loose=heart-piece,ukuku-cave-west-loose=sword,ukuku-cave-east-loose=magnifying-lens,graveyard-cave=seashell,D1-instrument=full-moon-cello,D0-rupee-1=coral-triangle --names "D1-instrument=Full Moon Cello,D0-rupee-1=Coral Triangle"
+mod: --settings '{"Owl Gifts": "All"}' --models woods-north-cave-loose=heart-piece,ukuku-cave-west-loose=sword,ukuku-cave-east-loose=magnifying-lens,graveyard-cave=seashell,D1-instrument=full-moon-cello,D0-rupee-1=coral-triangle,5-seashell-reward=sword --names "D1-instrument=Full Moon Cello,D0-rupee-1=Coral Triangle"
 file1: screens itemget_timing warp_menu itemget_models itemget_pose
-file1_items: boot_file1 ghost_house_pot beach_chest jukebox_height jukebox_cave jukebox_mute jukebox_load load_recv
+file1_items: boot_file1 ghost_house_pot beach_chest jukebox_height jukebox_cave jukebox_mute jukebox_load load_recv mansion_present
 newgame_maps: newgame_file2 map_tracker map_skip map_dots map_d7 map_list kept_items_save keysanity
 enemies randomizer.enemies=True randomizer.enemy_sizes=True: boot_file1 enemy_rando
 ohko damage.mode=OHKO: newgame_file2 damage_ohko
 no_damage damage.mode=None: newgame_file2 damage_none
-instant_pickups tweaks.instant_pickups=Everything: boot_file1 received_popup instant_pickup instant_fairy_queen
+instant_pickups tweaks.instant_pickups=Everything: boot_file1 received_popup instant_pickup instant_fairy_queen mansion_present
 instant_world tweaks.instant_pickups=Everything: newgame_file2 instant_freestanding instant_dash jukebox_steal
 instant_incoming tweaks.instant_pickups=Incoming: boot_file1 instant_incoming
 instant_text tweaks.instant_text=True client: newgame_file2 instant_text map_live
