@@ -2508,21 +2508,6 @@
     ]
    },
    {
-    "name": "03G",
-    "sections": [
-     {
-      "name": "Key Cavern - North Basement Room"
-     }
-    ],
-    "map_locations": [
-     {
-      "map": "D3 - Key Cavern",
-      "x": 507,
-      "y": 160
-     }
-    ]
-   },
-   {
     "name": "04F",
     "sections": [
      {
@@ -2646,13 +2631,16 @@
     "name": "03G",
     "sections": [
      {
+      "name": "Key Cavern - North Basement Room"
+     },
+     {
       "name": "Key Cavern - Owl (Basement North)"
      }
     ],
     "map_locations": [
      {
       "map": "D3 - Key Cavern",
-      "x": 515,
+      "x": 511,
       "y": 160
      }
     ]
@@ -2703,7 +2691,7 @@
     ]
    },
    {
-    "name": "04AL",
+    "name": "04B",
     "sections": [
      {
       "name": "Angler's Tunnel - Angler Fish"
@@ -2712,8 +2700,8 @@
     "map_locations": [
      {
       "map": "D4 - Angler's Tunnel",
-      "x": 75,
-      "y": 204
+      "x": 123,
+      "y": 232
      }
     ]
    },
@@ -2808,7 +2796,7 @@
     ]
    },
    {
-    "name": "06A",
+    "name": "04E",
     "sections": [
      {
       "name": "Angler's Tunnel - Key drop in the hole"
@@ -2817,8 +2805,8 @@
     "map_locations": [
      {
       "map": "D4 - Angler's Tunnel",
-      "x": 35,
-      "y": 332
+      "x": 355,
+      "y": 224
      }
     ]
    },
@@ -3453,7 +3441,7 @@
     ]
    },
    {
-    "name": "05HL",
+    "name": "03G",
     "sections": [
      {
       "name": "Eagle's Tower - Evil Eagle"
@@ -3462,8 +3450,8 @@
     "map_locations": [
      {
       "map": "D7 - Eagle's Tower",
-      "x": 607,
-      "y": 268
+      "x": 499,
+      "y": 133
      }
     ]
    },

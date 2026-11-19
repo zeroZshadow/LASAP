@@ -6,9 +6,10 @@ Run with .venv-ap: python scripts/ut_map.py [<PopTracker pack folder>]
 - An overworld location's pins: those of its sections in the LASR PopTracker pack (github.com/Br00ty/lasr_brooty,
   poptracker_map.location_codes), one section per AP location named after it. The pack's island is the game's at 2/3
   (PACK_TO_ISLAND, found by matching the two images), so its pins move onto ap_tracker_map's island exactly.
-- A dungeon location's pin: its place in its room (checks.yml), on ap_tracker_map's grid of rooms. A dungeon check is
-  only on its dungeon's map: the overworld's dungeon pins stand at the dungeon's own door, which may lead into another
-  dungeon.
+- A dungeon location's pin: its place in its room (checks.yml), on ap_tracker_map's grid of rooms. The grid has no
+  side-view rooms, so a check in one stands at the stair into its passage, or where SIDE_PINS puts it. Pins closer than
+  a pin's size are one pin. A dungeon check is only on its dungeon's map: the overworld's dungeon pins stand at the
+  dungeon's own door, which may lead into another dungeon.
 - A shuffled overworld door's pin: its door on the overworld (Logic Studio's places.json teleports), placed by an
   affine fit from the exact overworld checks' world coordinates (checks.yml) to their pack pins. Its section is named
   after the door's AP entrance (Entrances); a dungeon's own door also carries its dungeon's (lasr.door_entrance,
@@ -69,6 +70,9 @@ ISLAND_PIN, DOOR_PIN, DUNGEON_PIN = 30, 12, 11
 EGG_PIN = 24  # the goal's pin at the egg, a diamond like the doors'
 LETTERS = "ABCDEFGHJKLMNP"  # the stair letters, in the order they are given out (I and O read as 1 and 0)
 STAIRS = ("AreaUpstairs", "AreaDownstairs")  # places.json's teleport kinds of a dungeon's stairs
+# A side-view check's pin where the stair into its passage does not show it (room, x, z): Angler's Tunnel's key falls
+# into 04E's pit (its ItemSmallKey there) and is picked up in 06A's side view
+SIDE_PINS = {"D4-sunken-item": ("Lv04AnglersTunnel_04E", 65.25, 41.25)}
 
 
 @functools.cache
@@ -237,15 +241,18 @@ def in_dungeon(room: str, x: float, z: float, origins: dict):
     return round((gx + cx / uw * rw) / step), round((gy + cz / uh * rh) / step)
 
 
-def stair_letters(level: str) -> list:
-    """A dungeon level's stairs that lead to each other, each pair or group under one letter: those of a side-view
-    passage (its side rooms side by side in the layout), and a stair leading to another top-view room with the stair
-    it lands at (or its landing). On the dungeon's image, lettered from its top."""
-    layout, origins = places()["layout"][level], room_origins()
-    teleports = [t for t in places()["teleports"] if t["level"] == level and t["to_level"] == level
-                 and t["kind"] in STAIRS]
-    by_id = {t["id"]: t for t in teleports}
-    side = {room["name"]: room for room in layout if room["side"]}
+def level_stairs(level: str) -> list:
+    """A dungeon level's stairs within it that Link can stand on (a stair on no walkable area, such as Eagle's Tower's
+    06G, is left unused)."""
+    return [t for t in places()["teleports"] if t["level"] == level and t["to_level"] == level
+            and t["kind"] in STAIRS and t["from_area"] is not None]
+
+
+def side_passages(level: str):
+    """A dungeon level's side-view rooms -> their passage: the rooms side by side in the layout, and a room's variants
+    in one place (Angler's Tunnel's 04AL and 04AU), share it. Returns the side rooms and a function giving a side
+    room's passage."""
+    side = {room["name"]: room for room in places()["layout"][level] if room["side"]}
     passage = {name: name for name in side}
 
     def root(name: str) -> str:
@@ -254,8 +261,44 @@ def stair_letters(level: str) -> list:
         return name
     for a in side.values():
         for b in side.values():
-            if a["z"] == b["z"] and abs(a["x"] + a["w"] * places()["tile"] - b["x"]) < 0.01:
+            if a["z"] == b["z"] and (abs(a["x"] + a["w"] * places()["tile"] - b["x"]) < 0.01 or a["x"] == b["x"]):
                 passage[root(a["name"])] = root(b["name"])
+    return side, root
+
+
+def side_entries(level: str) -> dict:
+    """A dungeon level's side-view passage -> the top-view stairs into it (room, x, z)."""
+    side, root = side_passages(level)
+    entries: dict = {}
+    for t in level_stairs(level):
+        to = t["landing"]["room"] if t["landing"] else t["to"]
+        if t["room"] not in side and to in side:
+            entries.setdefault(root(to), []).append((t["room"], t["x"], t["z"]))
+    return entries
+
+
+def check_place(name: str, check: dict) -> tuple:
+    """A dungeon check's place on its map (room, x, z): where it stands, or for one in a side-view room, which the map
+    does not draw, the stair into its passage (or SIDE_PINS)."""
+    if name in SIDE_PINS:
+        return SIDE_PINS[name]
+    side, root = side_passages(check["level"])
+    if check["room"] not in side:
+        return check["room"], check["x"], check["z"]
+    stairs = side_entries(check["level"]).get(root(check["room"]), [])
+    if len(stairs) != 1:
+        raise SystemExit(f"{name}: {len(stairs)} stairs into its side-view room {check['room']}; give it a SIDE_PINS place")
+    return stairs[0]
+
+
+def stair_letters(level: str) -> list:
+    """A dungeon level's stairs that lead to each other, each pair or group under one letter: those of a side-view
+    passage (side_passages), and a stair leading to another top-view room with the stair it lands at (or its
+    landing). On the dungeon's image, lettered from its top."""
+    origins = room_origins()
+    teleports = level_stairs(level)
+    by_id = {t["id"]: t for t in teleports}
+    side, root = side_passages(level)
     groups: dict = {}
     for t in teleports:
         if t["room"] in side:
@@ -301,6 +344,28 @@ def egg_pin(place) -> dict:
             "map_locations": [{"map": MAPS[0], "x": x, "y": y, "size": EGG_PIN}]}
 
 
+def merged_dungeon_spots(spots: dict) -> dict:
+    """Dungeon pins closer than a pin's size (D3's 03G chest and owl statue) as one pin at their middle, their sections
+    together."""
+    groups: list = []  # [[(map, x, y), ...], ...]
+    for key in spots:
+        if key[0] == MAPS[0]:
+            groups.append([key])
+            continue
+        near = [g for g in groups if g[0][0] == key[0] and any(math.dist(k[1:], key[1:]) < DUNGEON_PIN for k in g)]
+        for g in near:
+            groups.remove(g)
+        groups.append([k for g in near for k in g] + [key])
+    merged = {}
+    for group in groups:
+        x = round(sum(k[1] for k in group) / len(group))
+        y = round(sum(k[2] for k in group) / len(group))
+        names = sorted({spots[k]["name"] for k in group})
+        merged[(group[0][0], x, y)] = {"name": "/".join(names),
+                                       "sections": [s for k in group for s in spots[k]["sections"]]}
+    return merged
+
+
 def locations_json(pack: Path) -> list:
     locs = poptracker_map.pack_locations(pack)
     codes = poptracker_map.location_codes(locs)
@@ -314,8 +379,8 @@ def locations_json(pack: Path) -> list:
         if re.match(r"D\d-", lasr):
             check = checks().get(lasr, {})
             if check.get("level") in dungeon_maps and "x" in check:
-                places.append((dungeon_maps[check["level"]], *in_dungeon(check["room"], check["x"], check["z"], origins),
-                               check["room"].rpartition("_")[2]))
+                room, x, z = check_place(lasr, check)
+                places.append((dungeon_maps[check["level"]], *in_dungeon(room, x, z, origins), room.rpartition("_")[2]))
         else:
             for code in codes[lasr]:
                 for m, x, y in locs.pins.get(code, ()):
@@ -329,6 +394,7 @@ def locations_json(pack: Path) -> list:
                 spot["sections"].append(section)
     if unplaced:
         raise SystemExit(f"no pin for {unplaced}")
+    spots = merged_dungeon_spots(spots)
     place = overworld_place(pack)
     doors = door_spots()
     dungeon_of = {door: dungeon for dungeon, door in DUNGEON_DOORS.items()}
