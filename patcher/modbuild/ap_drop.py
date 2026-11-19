@@ -56,7 +56,11 @@ ORIGIN_ROWS = {0x7B: "ItemSleepyMushroom", 0x81: "ItemOcarina", 0x87: "ItemSecre
                0x92: "ItemStick", 0x93: "ItemHoneycomb", 0x9C: "ItemMagnifyingLens", 0x9D: "ItemFullMoonCello",
                0x9E: "ItemConchHorn", 0x9F: "ItemSeaLilysBell", 0xA0: "ItemSurfHarp", 0xA1: "ItemWindMarimba",
                0xA2: "ItemCoralTriangle", 0xA3: "ItemEveningCalmOrgan", 0xA4: "ItemThunderDrum", 0xAB: "ItemRupeeBlue",
-               0xB0: "ItemHeartPiece", 0x194: "ObjSinkingSword"}
+               0xB0: "ItemHeartPiece"}
+# Where the actor a drop stands in for lies sunk into the floor, below its collision's reach: the floor's height there.
+# The drop stands on it, as an item whose root is on the floor. The washed-up sword's root is in the sand, which its
+# area's other actors stand on.
+SUNK = {"washed-up": 3.75}
 SLIME_KEY_ID = 0x8A
 SHELL_ID = 0x87
 SHELL_DROPPER_ID = 0x233  # AreaShellDropper
@@ -578,7 +582,10 @@ def _standing(proc, flow, level_flags: dict) -> None:
             after = _instrument_whiteout(flow.flowchart, drop.parameters[0].decode(), drop.parameters[1].decode())
         if room_file not in shown:
             shown[room_file] = (LEVEL_FLAG, _free_level_flag(files, room_file, level_flags))
-        _plain_drop(drop, location, Motion.PLACED, _model(proc, location), _origin_floor(proc, drop))
+        if location in SUNK:
+            drop.posY = SUNK[location]
+        floor = 0.0 if location in SUNK else _origin_floor(proc, drop)
+        _plain_drop(drop, location, Motion.PLACED, _model(proc, location), floor)
         drop.switches = [shown[room_file], (GLOBAL_FLAG, flags[got_flag]), NO_SWITCH, NO_SWITCH]
         drop.relationships.section_1, drop.relationships.x = [], 0
         files.writeFile(room_file, room)
