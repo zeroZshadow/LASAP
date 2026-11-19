@@ -3046,3 +3046,21 @@ Field_15J:
 Field_06C:
   type: door
   condition-basic: bracelet
+Field_03O:
+  type: door
+  condition-basic: flippers
+Field_03K:
+  type: door
+  condition-basic: flippers
+MamboCave_01A:
+  type: door
+  condition-basic: flippers
+EagleTowerExit_01A_b:
+  type: door
+  condition-basic: flippers
+Field_14J_c:
+  type: door
+  condition-basic: flippers
+CatfishsMawEnter_01B:
+  type: door
+  condition-basic: flippers

@@ -1991,7 +1991,7 @@ catfish-dungeon-porch:
   type: region
   doors:
     Field_14J_b: always
-    Field_14J_c: always
+    Field_14J_c: flippers
 ancient-ruins:
   type: region
   doors:
@@ -2132,8 +2132,8 @@ taltal-waters:
   connections:
     taltal-heights: flippers
   doors:
-    Field_03K: always
-    Field_03O: always
+    Field_03K: flippers
+    Field_03O: flippers
 taltal-central:
   type: region
   connections:
@@ -4356,7 +4356,7 @@ catfishs-maw-enter:
   type: region
   doors:
     CatfishsMawEnter_01A: flippers
-    CatfishsMawEnter_01B: always
+    CatfishsMawEnter_01B: flippers
 christine-house:
   type: region
   doors:
@@ -4395,7 +4395,7 @@ eagle-tower-exit:
   type: region
   doors:
     EagleTowerExit_01A_a: always
-    EagleTowerExit_01A_b: always
+    EagleTowerExit_01A_b: flippers
 fairy-fountain-01:
   type: region
   doors:
@@ -4470,7 +4470,7 @@ magic-powder-house:
 mambo-cave:
   type: region
   doors:
-    MamboCave_01A: always
+    MamboCave_01A: flippers
 mamu-cave:
   type: region
   doors:
