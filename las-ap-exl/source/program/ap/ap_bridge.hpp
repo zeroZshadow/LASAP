@@ -122,8 +122,7 @@ namespace AP::Bridge {
     struct ItemShow {
         ItemId id; std::string item; std::string sender;
         bool found = false; std::string toast; u64 at = 0;
-        std::optional<ItemId> model;    // the item whose model the popup shows, when not this one's
-        std::optional<ItemId> fanfare;  // a find: the item whose fanfare it plays, when not this one's
+        std::optional<ItemId> model;  // the item whose model the popup shows, when not this one's
         u32 event = 0;                // a find: the event that gave it (EventSerial)
     };
     void QueueShow(const ItemShow& show);
@@ -194,13 +193,15 @@ namespace AP::Bridge {
     // The item whose model and pose a held-up item shows: the location's item for the placeholder just found (or the
     // mansion's present) and for LASR's rows that stand in for a location's item, else the item itself.
     ItemId ShownItem(ItemId item);
-    // The item whose fanfare an item-get of `item` plays: for the placeholder just found at a location that shows an
-    // instrument, that instrument (its song), else the item itself.
-    ItemId FanfareItem(ItemId item);
 #ifdef LASAP_TEST
     // STATE held=: the item whose model the last item-get or find showed, -1 before any
     int LastShownItem();
 #endif
+    // An instrument, whose fanfare is its song (DESIGN.md, Instrument songs)
+    inline bool IsInstrument(ItemId item) { return item >= ItemId::FullMoonCello && item <= ItemId::ThunderDrum; }
+    // Plays the fanfare of a find of `item` whose popup shows `shown`: the shown item's song when it is an
+    // instrument, else the item's fanfare. Not from the location found last, which may be a later find's.
+    void PlayFoundFanfare(ItemId item, ItemId shown);
 
     // ---- NPC models held up in item-gets (ap_held_model.cpp) ----
 

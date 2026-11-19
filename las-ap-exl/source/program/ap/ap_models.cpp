@@ -17,6 +17,7 @@
 #include "game/sheet.hpp"
 #include "game/sym.hpp"
 #include "loggers.hpp"
+#include "music/music.hpp"
 #include "test_only.hpp"
 #include <charconv>
 #include <cstring>
@@ -106,10 +107,19 @@ namespace {
         }
     };
 
-    // An item-get's fanfare, and a find's popup's (Music::Fanfare): the placeholder's, but for a location that shows an
-    // instrument, that instrument's song (DESIGN.md, Instrument songs)
+    // While a find's popup plays its fanfare (PlayFoundFanfare)
+    bool g_FoundFanfare = false;
+
+    // An item-get's fanfare: the placeholder's, but for a location that shows an instrument, that instrument's song
+    // (DESIGN.md, Instrument songs). A find's popup's plays as PlayFoundFanfare decides it.
     HOOK_DEFINE_TRAMPOLINE(ItemGetPlayFanfare) {
-        static void Callback(ItemId item) { Orig(FanfareItem(item)); }
+        static void Callback(ItemId item) {
+            if (!g_FoundFanfare && item == AP::PLACEHOLDER_ITEM_ID) {
+                ItemId shown = ShownItem(item);
+                if (IsInstrument(shown)) item = shown;
+            }
+            Orig(item);
+        }
     };
 
     // The other items held up as models: the mansion's present, the NPCs that show what they give
@@ -280,10 +290,10 @@ namespace {
     int LastShownItem() { return g_LastShown; }
 #endif
 
-    ItemId FanfareItem(ItemId item) {
-        if (item != AP::PLACEHOLDER_ITEM_ID) return item;
-        ItemId shown = ShownItem(item);
-        return shown >= ItemId::FullMoonCello && shown <= ItemId::ThunderDrum ? shown : item;
+    void PlayFoundFanfare(ItemId item, ItemId shown) {
+        g_FoundFanfare = true;
+        AP::Music::Fanfare(IsInstrument(shown) ? shown : item);
+        g_FoundFanfare = false;
     }
 
     void InstallModelHooks() {
