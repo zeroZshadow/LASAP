@@ -42,7 +42,7 @@ def table(teleports, dungeons=None):
     The overworld's door comes first in a pair; two doors inside go by their ids."""
     dungeons = dungeon_doors() if dungeons is None else dungeons
     by_id = {t["id"]: t for t in teleports}
-    pairs, one_way, named, inside = {}, {}, {}, {}
+    pairs, one_way, named, inside, drops = {}, {}, {}, {}, []
     for t in teleports:
         if not t["door"]:
             continue
@@ -56,17 +56,22 @@ def table(teleports, dungeons=None):
             pairs[by_id[t["companion"]]["to"]] = t["to"]
             if t["level"] == FIELD and t["to_level"] != FIELD:
                 inside[by_id[t["companion"]]["to"]] = t["to_level"]
+            if t["level"] == FIELD and t.get("drop"):
+                drops.append(by_id[t["companion"]]["to"])
     field_doors = {}
     for level in inside.values():
         field_doors[level] = field_doors.get(level, 0) + 1
     groups = {group: [] for group in GROUPS}
     for door in sorted(set(inside) - set(FIXED)):
         groups[group_of(door, inside[door], field_doors, dungeons)].append(door)
-    return {"pairs": dict(sorted(pairs.items())), "one-way": dict(sorted(one_way.items())), "groups": groups}
+    return {"pairs": dict(sorted(pairs.items())), "one-way": dict(sorted(one_way.items())), "drops": sorted(drops),
+            "groups": groups}
 
 
 def text(found):
     lines = list(HEAD) + ["pairs:"] + [f"  {a}: {b}" for a, b in found["pairs"].items()] + ["one-way:"] + [f"  {a}: {b}" for a, b in found["one-way"].items()]
+    lines += ["drops:  # the overworld doors of pairs that Link falls into: he comes back out somewhere else, not at the hole"]
+    lines += [f"  - {name}" for name in found["drops"]]
     lines += ["groups:  # the pairs with an overworld side, by their overworld name; pairs inside the levels and the doors that stay are in none. Stay: "
               + ", ".join(f"{door} ({what})" for door, what in FIXED.items())]
     for group, names in found["groups"].items():

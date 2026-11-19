@@ -214,11 +214,13 @@ def _route_edges(logic: Mapping[str, Mapping], doors: Mapping[str, Mapping],
     return edges
 
 
-def house_exits(logic: Mapping[str, Mapping], doors: Mapping[str, Mapping]) -> Dict[str, str]:
+def house_exits(logic: Mapping[str, Mapping], doors: Mapping[str, Any]) -> Dict[str, str]:
     """{door: its zone}: the overworld doors the start's door may lead to (start_doors). Each is a door of doors.yml's
     SHUFFLE_GROUPS, so no dungeon's door, and has no rule to go in at any level, so Link can always walk back into the
-    house from where he comes out."""
-    paired = {door for group in SHUFFLE_GROUPS for door in (doors.get("groups") or {}).get(group) or ()}
+    house from where he comes out. No drop (doors.yml's drops): Link goes in by falling into a hole and comes out
+    elsewhere, so he does not walk back in where he comes out."""
+    drops = set(doors.get("drops") or ())
+    paired = {door for group in SHUFFLE_GROUPS for door in (doors.get("groups") or {}).get(group) or ()} - drops
     found = {}
     for zone, node in logic.items():
         if node.get("type") not in PLACES:

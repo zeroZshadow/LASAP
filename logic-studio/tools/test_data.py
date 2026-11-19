@@ -50,6 +50,12 @@ def test_overworld_pairs_are_grouped_by_what_they_lead_into():
         "dungeon": ["Field_01A"], "dungeon-other": ["Field_02A"], "connector": ["Field_04A", "Field_05A"], "single": ["Field_03A"]}
 
 
+def test_a_door_link_falls_into_is_a_drop():
+    teleports = door_pair(1, "Well") + door_pair(2, "House")
+    teleports[0]["drop"] = True
+    assert doors.table(teleports, dungeons=set())["drops"] == ["Field_01A"]
+
+
 def test_fixed_doors_are_in_no_group():
     grouped = {door for names in doors.table(json.loads(PLACES.read_text(encoding="utf-8"))["teleports"])["groups"].values() for door in names}
     assert not grouped & set(doors.FIXED)

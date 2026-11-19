@@ -89,6 +89,12 @@ class TestRoutes(unittest.TestCase):
                  "cave": zone(doors={"Inside_b": ALWAYS})}
         self.assertEqual(house_exits(logic, DOORS), {"Field_a": "mabe"})
 
+    def test_a_drop_is_no_house_exit(self) -> None:
+        """Link falls into a drop's hole and comes out elsewhere, so he does not walk back in there."""
+        logic = {START: zone(doors={"Inside_a": ALWAYS}), "mabe": zone(doors={"Field_a": ALWAYS, "Field_b": ALWAYS})}
+        self.assertEqual(house_exits(logic, {**DOORS, "drops": ["Field_b"]}), {"Field_a": "mabe"})
+        self.assertNotIn("Field_11A", house_exits(WRITTEN_LOGIC, SHIPPED_DOORS))  # Mabe Village's well
+
     def test_refused(self) -> None:
         refused = {
             "empty rule": dict(a=zone(one_way={"b": None}), b=zone()),
