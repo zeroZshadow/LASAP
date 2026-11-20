@@ -87,11 +87,12 @@ class TestWarpPoints(LASTestBase):
         return self.multiworld.get_region(name, self.player)
 
     def test_rock_over_platform(self) -> None:
-        """Dampe's Shack's platform lies under a rock: warping from it needs the Power Bracelet."""
+        """Dampe's Shack's platform lies under a rock, which its item takes away: warping from it needs no Power
+        Bracelet."""
         goal = self.region("turtle-dungeon-top")
-        state = self.state_of("warp-dampes-shack", "warp-turtle-rock")
+        state = self.state_of("warp-turtle-rock")
         self.assertIsNone(find_route(self.region("goponga-central"), goal, state))
-        state.collect(self.world.create_item(LASR_TO_ITEM["bracelet"]), prevent_sweep=True)
+        state.collect(self.world.create_item(LASR_TO_ITEM["warp-dampes-shack"]), prevent_sweep=True)
         self.assertIsNotNone(find_route(self.region("goponga-central"), goal, state))
 
     def test_route_by_mambo(self) -> None:

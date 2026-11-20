@@ -9,6 +9,7 @@
 #include "game/actors/warp_point.hpp"
 #include "game/addr.hpp"
 #include "game/data/inventory.hpp"
+#include "game/hooks/eventflags.hpp"
 #include "game/sym.hpp"
 #include "hooks.hpp"
 #include "loggers.hpp"
@@ -23,6 +24,13 @@ namespace {
     // and WarpPoint_Activate's (Link.AddWarpPoint, which gets there with the bit set too)
     constexpr uintptr_t kHoleStore = 0x8b540, kPlatformStore = 0xcbcf64, kRockStore = 0xc49a24,
                         kActivateStore = 0xdf86e4;
+
+    // The rocks over platforms (scripts/re/UI.md, Warp points): each rock's LEB switch 0, a global flag
+    struct RockFlag {
+        s32 index;
+        const char* flag;
+    };
+    constexpr RockFlag kRockFlags[] = {{5, "WarpManboDanpei"}, {8, "WarpManboShellHouse"}, {9, "WarpTalTalMtWest"}};
 
     // The seed file's warps: the shuffled points' bits
     u64 g_Shuffled = 0;
@@ -100,5 +108,8 @@ namespace {
             return;
         }
         items->WarpPoints |= bit;
+        // A rock over the platform is not made once its flag is set, which lifting it does
+        for (const auto& rock : kRockFlags)
+            if (rock.index == index) EventFlags::SetFlag(rock.flag, true);
     }
 }

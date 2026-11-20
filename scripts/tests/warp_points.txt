@@ -9,6 +9,7 @@
 # - The Tal Tal Heights hole (point 2, Field_03M, 189.75 13.5 32.25), its item received first: Link lands in it and
 #   the warp map opens.
 # - The rock over Dampe's Shack's platform (point 5, Field_03H, 107.25 14.25 32.25): lifting it opens nothing.
+# - Martha's Bay's item (point 8), received before Link lifts its rock: it sets the rock's flag, so the rock is gone.
 # - Manbo's Pond (point 4): Link swims up to Manbo in his cave (MamboCave) with the Ocarina; his song opens nothing.
 # Grants the Shovel (on Y), the Power Bracelet, the Ocarina and the Flippers (sandbox saves only).
 # Screenshots: warp_1 the platform dug up, warp_2 its opening message, warp_3 lifted out of the closed hole,
@@ -87,6 +88,12 @@ face down
 tap 1
 until carry=0 3
 
+# Martha's Bay's item sets its rock's flag
+game ITEM 5 $WARP:8 1 -1 -1 Warp: Martha's Bay|
+expect RECV\s5 10
+check warps=187\s
+poll FLAG.WarpManboShellHouse.1 5 DBG flag WarpManboShellHouse
+
 # Manbo's song: his gift's check; the pond's bit stays clear. Link swims (event 30), which is not free.
 send DBG grant Ocarina 1 -1 0
 expect OK.grant 5
@@ -99,5 +106,5 @@ face right
 tapuntil 1 textready 10
 tapuntil 2 event=30 when textready 120
 shot warp_6.png
-check warps=87\s
+check warps=187\s
 state

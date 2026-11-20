@@ -1059,7 +1059,7 @@ goponga-central:
   connections:
     swamp: bracelet
   one-way:
-    warp-map: warp-dampes-shack & bracelet
+    warp-map: warp-dampes-shack
     taltal-central: bracelet
 graveyard-west:
   type: region
@@ -1126,7 +1126,7 @@ desert:
 marthas-bay-land:
   type: region
   one-way:
-    warp-map: warp-marthas-bay & bracelet
+    warp-map: warp-marthas-bay
     marthas-bay-bushland: ((rooster | feather) & (boomerang | rod)) | (feather & sword)
 prairie-hill:
   type: region
@@ -1273,7 +1273,7 @@ taltal-west2:
   connections:
     turtle-dungeon-porch: always
   one-way:
-    warp-map: warp-taltal-west & bracelet
+    warp-map: warp-taltal-west
     taltal-west1: always
     goponga-west: always
 turtle-dungeon-porch:
@@ -2963,9 +2963,6 @@ RichardCave_02A:
   type: door
   condition-basic: golden-leaf:5
 RichardHouse_01A_b:
-  type: door
-  condition-basic: golden-leaf:5
-Field_14G:
   type: door
   condition-basic: golden-leaf:5
 Lv02BottleGrotto_08C_Warp:

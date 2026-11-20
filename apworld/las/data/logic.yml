@@ -1908,7 +1908,7 @@ goponga-central:
   connections:
     swamp: bracelet
   one-way:
-    warp-map: warp-dampes-shack & bracelet
+    warp-map: warp-dampes-shack
     taltal-central: bracelet
   doors:
     Field_04F: always
@@ -1959,7 +1959,7 @@ prairie:
     Field_11E: always
     Field_11K: break-bush
     Field_12I_b: always
-    Field_14G: golden-leaf:5
+    Field_14G: always
 frog-maze:
   type: region
   doors:
@@ -2022,7 +2022,7 @@ desert:
 marthas-bay-land:
   type: region
   one-way:
-    warp-map: warp-marthas-bay & bracelet
+    warp-map: warp-marthas-bay
     marthas-bay-bushland: ((rooster | feather) & (boomerang | rod)) | (feather & sword)
   doors:
     Field_13I: always
@@ -2263,7 +2263,7 @@ taltal-west2:
   connections:
     turtle-dungeon-porch: always
   one-way:
-    warp-map: warp-taltal-west & bracelet
+    warp-map: warp-taltal-west
     taltal-west1: always
     goponga-west: always
   doors:
