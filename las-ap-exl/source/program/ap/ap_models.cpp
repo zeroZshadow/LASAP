@@ -161,13 +161,11 @@ namespace {
         bool chest;
     };
     std::optional<Token> ParamsToken(const Game::ActorParams& params) {
-        if (params.lebRoom.ptr == nullptr) return std::nullopt;
-        for (const Game::LebParam& param : params.lebParams) {
-            if (param.type != kLebString) continue;
-            const char* text = Game::CallVirtual<const char*(u32)>(params.lebRoom.ptr, kLebRoomString, param.value);
-            if (text == nullptr) continue;
-            if (std::optional<LocationId> location = TokenLocation(text)) return Token{*location, false};
-            if (std::optional<LocationId> location = TokenLocation(text, AP::CHEST_TOKEN)) return Token{*location, true};
+        for (int i = 0; i < static_cast<int>(std::size(params.lebParams)); i++) {
+            std::optional<std::string_view> text = LebString(params, i);
+            if (!text) continue;
+            if (std::optional<LocationId> location = TokenLocation(*text)) return Token{*location, false};
+            if (std::optional<LocationId> location = TokenLocation(*text, AP::CHEST_TOKEN)) return Token{*location, true};
         }
         return std::nullopt;
     }
@@ -262,6 +260,14 @@ namespace {
                     g_Chests.size());
     }
 }
+
+    std::optional<std::string_view> LebString(const Game::ActorParams& params, int index) {
+        const Game::LebParam& param = params.lebParams[index];
+        if (params.lebRoom.ptr == nullptr || param.type != kLebString) return std::nullopt;
+        const char* text = Game::CallVirtual<const char*(u32)>(params.lebRoom.ptr, kLebRoomString, param.value);
+        if (text == nullptr) return std::nullopt;
+        return std::string_view{text};
+    }
 
     std::optional<std::pair<std::string_view, std::string_view>> TokenModel(const Game::ActorParams& params) {
         std::optional<Token> token = ParamsToken(params);

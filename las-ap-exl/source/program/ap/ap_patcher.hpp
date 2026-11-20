@@ -106,4 +106,8 @@ namespace AP {
     // A drop that stands in a vanilla item's place: that item's floor height (how high its collision held its root
     // above the floor), in thousandths, in this LEB parameter (patcher: ap_drop.FLOOR_PARAM)
     constexpr int DROP_FLOOR_PARAM = 5;
+    // Such a drop's Npc row, a string LEB parameter: the drop row with that item's collision (patcher:
+    // ap_drop.ROW_PARAM, origin_row), named from DROP_ACTOR, or for a sunken item one named otherwise (ap_drop.SUNKEN_ROW),
+    // which Bouncy Items leaves as it is; any other drop's is DROP_ACTOR
+    constexpr int DROP_ROW_PARAM = 6;
 }

@@ -187,6 +187,8 @@ namespace AP::Bridge {
     // The model an actor with a location's token among its LEB parameters shows (model file, model name): the location's
     // item's, else the Archipelago model's; none without a token.
     std::optional<std::pair<std::string_view, std::string_view>> TokenModel(const Game::ActorParams& params);
+    // An actor's LEB parameter index when it is a string, its characters (the LEB room's), else none
+    std::optional<std::string_view> LebString(const Game::ActorParams& params, int index);
     // The item id of the model TokenModel gives, when it is an item's (the seed file's M line); none for the
     // Archipelago model
     std::optional<int> TokenItemId(const Game::ActorParams& params);

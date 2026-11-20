@@ -2,7 +2,7 @@
 rocks, trees, holes and dig spots, the dungeon keys and golden leaves, the bosses' items, the ghost's reward, the blue
 rupees, the items that stand from the start (heart pieces, sunken seashells, instruments and the other free-standing
 items) and, for Bouncy Items, the AP chests and owl statues. The Npc row reads the model, the take entry and the shell
-sensor from LEB parameters 1 to 4.
+sensor from LEB parameters 1 to 4; a drop in a vanilla item's place names its own row in parameter 6.
 """
 import copy
 import math
@@ -57,6 +57,14 @@ ORIGIN_ROWS = {0x7B: "ItemSleepyMushroom", 0x81: "ItemOcarina", 0x87: "ItemSecre
                0x9E: "ItemConchHorn", 0x9F: "ItemSeaLilysBell", 0xA0: "ItemSurfHarp", 0xA1: "ItemWindMarimba",
                0xA2: "ItemCoralTriangle", 0xA3: "ItemEveningCalmOrgan", 0xA4: "ItemThunderDrum", 0xAB: "ItemRupeeBlue",
                0xB0: "ItemHeartPiece"}
+# LEB parameter 6 of a drop that stands in a vanilla item's place: its own Npc row (origin_row), which has that item's
+# collision (AP::DROP_ROW_PARAM); any other drop takes DROP_ACTOR's
+ROW_PARAM = 6
+# The standing items under water, which Link dives for. Their rows' names start with SUNKEN_ROW, not DROP_ACTOR, so
+# Bouncy Items leaves them as they are (AP::DROP_ACTOR, the module's ball rows).
+SUNKEN = (*SUNKEN_SHELLS, "kanalet-moat-south", "south-bay-sunken", "bay-passage-sunken", "river-crossing-cave",
+          "taltal-east-drop")
+SUNKEN_ROW = "ItemAPSunken"
 # Where the actor a drop stands in for lies sunk into the floor, below its collision's reach: the floor's height there.
 # The drop stands on it, as an item whose root is on the floor. The washed-up sword's root is in the sand, which its
 # area's other actors stand on.
@@ -271,10 +279,30 @@ def add(proc, placeholder_key: str) -> None:
     files.writeFile(EVENT_FILE, flow)
 
 
+def origin_row(origin: str, sunken: bool = False) -> str:
+    """The drop row of a drop that stands in place of the vanilla item of Npc row origin (ORIGIN_ROWS), under water
+    (SUNKEN) or not."""
+    return (SUNKEN_ROW if sunken else DROP_ACTOR) + origin.removeprefix("Item")
+
+
+def _standing_collision(drop: dict, origin: dict) -> dict:
+    """The drop's collision (its physics traits, filter, ground check) with a vanilla item's shape and size, raised so
+    it reaches no lower than the root, as the small key's: the drop stands at its LEB height, where the vanilla item's
+    floor is, which that item's body rests on."""
+    own = {key: value for key, value in dict(drop).items() if key not in ("shape", "parameters", "offset")}
+    own["shape"] = origin["shape"]
+    own["parameters"] = FloatArray(list(origin["parameters"]))  # dictToStruct keeps only lists of structs
+    offset = dict(origin["offset"])
+    own["offset"] = {**offset, "y": offset["y"] + floor_height(origin)}
+    return own
+
+
 def _npc_row(files) -> None:
     """The small key's row (its model, take entry and shell sensor from LEB parameters, its collision and physics
-    traits) with the drop's flowchart, pops and layout; and BALL_ROW, the same with a ball's collision, which takes its
-    place with Bouncy Items."""
+    traits) with the drop's flowchart, pops and layout; per vanilla item a drop stands in place of (ORIGIN_ROWS) the
+    same with that item's collision (origin_row), so it is as tall and wide as the item a dive or touch reaches, and
+    for the sunken ones (SUNKEN) their own such rows; and BALL_ROW, the same with a ball's collision, which takes the
+    place of each but the sunken ones' with Bouncy Items."""
     sheet = files.readFile("Npc.gsheet")
     row = copy.deepcopy(next(parseStruct(row) for row in sheet["values"] if row["symbol"] == SMALL_KEY_ROW))
     row["symbol"] = DROP_ACTOR
@@ -292,7 +320,15 @@ def _npc_row(files) -> None:
     ]
     row["layoutConditions"] = [TAKEN_LAYOUT]
     row["shellSensor"] = [{"category": 9, "parameter": SHELL_SENSOR}]
-    sheet["values"].append(dictToStruct(row))
+    rows = {r["symbol"]: r for r in map(parseStruct, sheet["values"])}
+    sheet["values"].append(dictToStruct(copy.deepcopy(row)))
+    sunken = {ORIGIN_ROWS[STANDING[location][1]] for location in SUNKEN}
+    for origin, under in [*((origin, False) for origin in sorted(set(ORIGIN_ROWS.values()))),
+                          *((origin, True) for origin in sorted(sunken))]:
+        own = copy.deepcopy(row)
+        own["symbol"] = origin_row(origin, under)
+        own["collision"] = _standing_collision(row["collision"], rows[origin]["collision"])
+        sheet["values"].append(dictToStruct(own))
     row["symbol"] = BALL_ROW
     row["collision"]["traits"] = DROP_ACTOR
     row["collision"]["shape"] = SPHERE_SHAPE
@@ -373,22 +409,27 @@ def floor_height(collision) -> float:
     return 0.0
 
 
-def _origin_floor(proc, actor) -> float:
-    """The floor height of the vanilla item actor a drop takes the place of (ORIGIN_ROWS)."""
+def _origin(proc, actor, location: str) -> tuple[str, float]:
+    """The vanilla item actor a drop takes the place of (ORIGIN_ROWS): the drop's row (origin_row) and that item's
+    floor height."""
     rows = getattr(proc, "_ap_npc_rows", None)
     if rows is None:
         rows = {row["symbol"]: row for row in map(parseStruct, proc.file_manager.readFile("Npc.gsheet")["values"])}
         proc._ap_npc_rows = rows
-    return floor_height(rows[ORIGIN_ROWS[actor.type]]["collision"])
+    origin = ORIGIN_ROWS[actor.type]
+    return origin_row(origin, location in SUNKEN), floor_height(rows[origin]["collision"])
 
 
-def _plain_drop(drop, location: str, motion: Motion, model: tuple, floor: float = 0.0) -> None:
-    """The actor as the location's drop, unturned and unscaled; floor the vanilla item's it replaces (FLOOR_PARAM)."""
+def _plain_drop(drop, location: str, motion: Motion, model: tuple, origin: tuple[str, float] | None = None) -> None:
+    """The actor as the location's drop, unturned and unscaled; origin the vanilla item's it replaces (_origin): the
+    drop's row (ROW_PARAM) and that item's floor height (FLOOR_PARAM)."""
     _make_drop(drop)
     drop.rotX = drop.rotY = drop.rotZ = 0.0
     drop.scaleX = drop.scaleY = drop.scaleZ = 1.0
+    floor = origin[1] if origin else 0.0
     drop.parameters = [int(motion), model[0].encode(), model[1].encode(), location.encode(), b"false",
-                       round(floor * 1000) & 0xFFFFFFFF, 0, 0]  # LEB ints are unsigned; the module reads it signed
+                       round(floor * 1000) & 0xFFFFFFFF,  # LEB ints are unsigned; the module reads it signed
+                       origin[0].encode() if origin else 0, 0]
 
 
 def _show(proc, drop, location: str) -> None:
@@ -559,7 +600,7 @@ def _blue_rupees(proc, flow, level_flags: dict) -> None:
     for location, drop in zip(BLUE_RUPEES, rupees):
         model = _model(proc, location)
         got = tuple(drop.switches[0])
-        _plain_drop(drop, location, Motion.PLACED, model, _origin_floor(proc, drop))
+        _plain_drop(drop, location, Motion.PLACED, model, _origin(proc, drop, location))
         drop.switches = [shown, got, NO_SWITCH, NO_SWITCH]
         _take_entry(proc, flow.flowchart, location)
     files.writeFile(room_file, room)
@@ -584,8 +625,8 @@ def _standing(proc, flow, level_flags: dict) -> None:
             shown[room_file] = (LEVEL_FLAG, _free_level_flag(files, room_file, level_flags))
         if location in SUNK:
             drop.posY = SUNK[location]
-        floor = 0.0 if location in SUNK else _origin_floor(proc, drop)
-        _plain_drop(drop, location, Motion.PLACED, _model(proc, location), floor)
+        origin = None if location in SUNK else _origin(proc, drop, location)
+        _plain_drop(drop, location, Motion.PLACED, _model(proc, location), origin)
         drop.switches = [shown[room_file], (GLOBAL_FLAG, flags[got_flag]), NO_SWITCH, NO_SWITCH]
         drop.relationships.section_1, drop.relationships.x = [], 0
         files.writeFile(room_file, room)
@@ -604,7 +645,7 @@ def _props(proc, level_flags: dict) -> None:
         room_file = f"{room_name}.leb"
         room = files.readFile(room_file)
         drop = next(a for a in room.actors if a.type == actor_id)
-        _plain_drop(drop, location, Motion.PROP, _model(proc, location), _origin_floor(proc, drop))
+        _plain_drop(drop, location, Motion.PROP, _model(proc, location), _origin(proc, drop, location))
         pop = (LEVEL_FLAG, _free_level_flag(files, room_file, level_flags)) if shown else NO_SWITCH
         got = (GLOBAL_FLAG, flags[got_flag]) if got_flag else NO_SWITCH
         drop.switches = [pop, got, NO_SWITCH, NO_SWITCH]

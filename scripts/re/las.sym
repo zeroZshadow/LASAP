@@ -1747,6 +1747,7 @@ ItemActor_Ctor 0x08dba880 f (actor, ActorArgs*, StringView* row key, u8 item id,
 ItemNpcComponent_Ctor 0x08dc7f10 f (component, ComponentName*, StringView* row key)
 ItemNpcComponent_StartEntry 0x08dc8750 f component vtable +0x178 of the item base: runs a trigger's entry
 ItemNpcComponent_BuildComponents 0x08dc9530 f component vtable +0x388 of the item base
+ItemNpcComponent_OnTouch 0x08dc91d0 f component vtable +0x338 of the item base: NpcComponent_OnTouch once the touch delay (+0x308) has run out
 ItemNpcComponent_Update 0x08dca030 f component vtable +0x3c8 of the item base: water lift, traits on landing, rest; not during events
 NpcPhysics_ApplyTraits 0x08e67df0 f (body, traits row): mass, linear and angular damping, axis locks
 SmallKey_Factory 0x08dcebb0 f the actor table's factory of ItemSmallKey
@@ -2217,7 +2218,7 @@ NpcOcarinaReaction_Callback 0x08e64a70 f the OcarinaReaction lambda (vtable 0x0a
 Conditions_CheckRow 0x094a1c70 f (holder, StringView* row, actor) -> every condition of the Conditions.gsheet row holds (Conditions_Check each)
 ConditionsSheet_ptr 0x0a1c7b88 l Conditions.gsheet holder (made on first use)
 Player_SetSwimDepth 0x0925c770 f (player, PlayerSwimDepth): on a change offsets the damage collision's two shapes and the item sensor's shape by the depth's value (table 0x1703b90); Player +0x1ea8
-NpcComponent_OnTouch 0x08e5b400 f vtable +0x338 (component, toucher): outside events, condition 1 while Link dives (+0x1ea8 2), else condition 0
+NpcComponent_OnTouch 0x08e5b400 f vtable +0x338 (component, toucher): outside events, condition 1 while Link dives (+0x1ea8 2), else (or without a condition-1 trigger) condition 0
 NpcComponent_OnHit 0x08e5b890 f vtable +0x350 (component, attacker record*): outside events, by entry 0's attack byte +0xc: 0/3 condition 3, 4 condition 5, 5 condition 4
 LebRoom_RailCount 0x08def120 f vtable +0x30 (lebRoom)
 LebRoom_RailAt 0x08def130 f vtable +0x38 (lebRoom, u32 index) -> rail record (u16 count +0x2c, u8 open +0x2e, u8 interpolation +0x2f, u16 points +0x30)

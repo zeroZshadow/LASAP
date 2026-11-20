@@ -235,8 +235,10 @@ Item actions 2 to 15 are on Y or X: their checks compare `EquipY`/`EquipX` with 
 - `swimDepth`: `Player_SetSwimDepth` (`0xd58770 (player, depth)`) offsets the damage collision's two shapes and the
   item sensor's shape by the depth's value (table `0x1703b90`) when it changes. Swim's enter and update set `Float`
   (anim `float`) or `Dive` (`dive`, `u_swim_wait`), its exit `None`; the Damage state sets `Float` and `None`, the
-  Dash crash `Crash`. NpcComponent's touch virtual (`+0x338`, `0x957400`) raises trigger condition 1 instead of 0
-  while it is `Dive`.
+  Dash crash `Crash`. NpcComponent's touch virtual (`+0x338`, `NpcComponent_OnTouch` `0x957400`) raises trigger
+  condition 1 instead of 0 while it is `Dive`, and condition 0 when the row has no condition-1 trigger (the items:
+  ITEMS.md, Appearing). A dive reaches an item whose collision's top is 1.60 below the water surface, not one 1.675
+  below (Kanalet Castle's moat, surface 6.75, Link floating at 6.38; measured 2026-11-20).
 
 ## Model
 

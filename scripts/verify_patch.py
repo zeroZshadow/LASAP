@@ -14,7 +14,8 @@ their vanilla targets; the markers swap the map's dungeon markers, whose rows st
 lead each moved overworld door into its new inside and that inside back out of the door, a covered door's with the flag
 that opens it. Each landing of a led jump has one return, a jump the jumps lead elsewhere (the door at the landing).
 The drop actor's flowchart reads and holds every drop's take entry, every drop has its model's bounds and a linked one
-(a tree's, hole's, chest's, owl statue's or boss's) its link, and no small key or dig spot's slime key is left. Each chest's launch flag (Bouncy Items) is
+(a tree's, hole's, chest's, owl statue's or boss's) its link, a drop's own row (one that stands in a vanilla item's place)
+is in Npc.gsheet, and no small key or dig spot's slime key is left. Each chest's launch flag (Bouncy Items) is
 used by that chest and its drop alone, among all actors of its level (the RomFS's rooms, as the mod has them) and the
 RomFS flowcharts' level flags; so is each owl statue's (Bouncy Items, Owl Gifts). The start holds the starting items,
 the rupees and the start flags, which the start event neither gives nor sets.
@@ -37,6 +38,7 @@ import ap_goal  # noqa: E402
 import evfl  # noqa: E402
 from RandomizerCore.Randomizers.chests import CHEST_ROOMS  # noqa: E402
 from RandomizerCore.Tools.leb import Room  # noqa: E402
+from RandomizerCore.Tools.oead_tools import readSheet  # noqa: E402
 from ap_save_name import save_name  # noqa: E402
 import seed_file  # noqa: E402
 from las_ap_patch import (COMPANION_FLAGS, INDEX_KINDS, PLACEHOLDER_KEY, START_MARKER, START_UPGRADES,  # noqa: E402
@@ -334,8 +336,9 @@ print(f"dungeon doors={doors} moved doors={len(moved)} jumps={len(jumps)} return
 
 # Drop actor: its flowchart reads (a duplicate entry name breaks the entry dictionary the game looks its entries up in)
 # and holds the take entry (LEB parameter 3) of every drop actor but the props; the model every drop actor shows (its token's M line,
-# else the Archipelago model's) has its bounds in the module's drop_bounds.hpp, and a tree's or hole's drop a link; no
-# small key or dig spot's slime key is left (they are drops).
+# else the Archipelago model's) has its bounds in the module's drop_bounds.hpp, a tree's or hole's drop a link, and a drop
+# that names its own row (ROW_PARAM) a row of the mod's Npc.gsheet; no small key or dig spot's slime key is left (they
+# are drops).
 drop_flow = evfl.EventFlow()
 try:
     drop_flow.read((Path(sys.argv[2]) / "atmosphere/contents/01006BB00C6F0000/romfs/region_common/event" /
@@ -353,6 +356,7 @@ takes = {}
 keys = []
 unlinked = []
 unmeasured = []
+own_rows = []  # (room, row) per drop that names its own row
 launches = {}  # per level, its chest drops' launch flags
 for path in level_dir.rglob("*.leb"):
     for actor in Room(path.read_bytes()).actors:
@@ -366,6 +370,8 @@ for path in level_dir.rglob("*.leb"):
                 unmeasured.append((path.stem, *model))
             if actor.parameters[0] in ap_drop.LAUNCHED:
                 launches.setdefault(path.parent.name, []).append((path.stem, tuple(actor.switches[0])))
+            if actor.parameters[ap_drop.ROW_PARAM] not in (b"", 0):
+                own_rows.append((path.stem, actor.parameters[ap_drop.ROW_PARAM].decode()))
             if actor.parameters[0] in ap_drop.LINKED and actor.relationships.x == 0:
                 unlinked.append(path.stem)
         elif actor.type == ap_drop.SMALL_KEY_ID or (
@@ -382,6 +388,12 @@ if keys:
 if unlinked:
     bad += 1
     print(f"DROP linked drops (tree, hole, chest, owl statue, boss) without a link in {unlinked}")
+npc_rows = {row["symbol"] for row in readSheet(str(Path(sys.argv[2]) / "atmosphere/contents/01006BB00C6F0000/romfs/"
+                                                     "region_common/datasheets/Npc.gsheet"))["values"]}
+rowless = sorted({drop for drop in own_rows if drop[1] not in npc_rows})
+if rowless:
+    bad += 1
+    print(f"DROP drops naming a row Npc.gsheet lacks: {rowless}")
 if unmeasured:
     bad += 1
     print(f"DROP drop models without bounds in drop_bounds.hpp (scripts/drop_bounds.py): {sorted(set(unmeasured))}")

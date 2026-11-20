@@ -177,10 +177,13 @@ namespace {
     // The type ids of the drop's actor and component: their addresses
     u8 g_ActorType, g_ComponentType;
     void (*g_ItemUpdate)(void*) = nullptr;  // the item base's, which the ball's wraps
+    float (*g_WaterLift)(void*) = nullptr;  // the item base's, which a drop that is no ball keeps
+    float (*g_WaterDamping)(void*) = nullptr;
     // Each model's poses (the pair and the side view's), by its place in DropBounds::kBounds, and those of a model
     // without bounds
-    Game::ItemPose g_Poses[std::size(AP::DropBounds::kBounds)][kPoses]{};
-    Game::ItemPose g_DefaultPoses[kPoses]{};
+    // [1] a ball's (IsBall)
+    Game::ItemPose g_Poses[2][std::size(AP::DropBounds::kBounds)][kPoses]{};
+    Game::ItemPose g_DefaultPoses[2][kPoses]{};
     // A PxVec3 a PhysX getter returns: its copy constructor is not trivial, so it comes back through x8
     struct PxVec3 {
         float x = 0, y = 0, z = 0;
@@ -216,7 +219,18 @@ namespace {
         return Bouncy() && !Stands(motion) && motion != AP::DROP_REFALLS;
     }
 
-    StrView RowKey() { return StrView{AP::DROP_ACTOR}; }
+    // The drop's Npc row: for one that stands in a vanilla item's place the row with that item's collision, which its
+    // LEB parameter names (AP::DROP_ROW_PARAM), else the drop row. The item constructor keeps it (ItemActor rowKey),
+    // which holds fewer than 32 characters.
+    StrView RowKey(const Game::ActorParams& params) {
+        std::optional<std::string_view> row = AP::Bridge::LebString(params, AP::DROP_ROW_PARAM);
+        return row && !row->empty() && row->size() < 32 ? StrView{*row} : StrView{AP::DROP_ACTOR};
+    }
+
+    // A ball (Bouncy Items): a drop whose row is the drop row or one of its own (named from AP::DROP_ACTOR), each of
+    // which takes the ball's values (ap_options.cpp); a sunken item's row (patcher ap_drop.SUNKEN_ROW) keeps its box.
+    bool BallRow(std::string_view row) { return Bouncy() && row.starts_with(AP::DROP_ACTOR); }
+    bool IsBall(const Game::ActorParams& params) { return BallRow(RowKey(params).View()); }
 
     // v turned by the quaternion q
     Game::Vec3 Rotate(const Game::Float4& q, const Game::Vec3& v) {
@@ -238,9 +252,9 @@ namespace {
     // The fit: turned (FitTurn) and sized so the bounds' radius is at most kModelRadius, its centre that radius above
     // the root, or on a ball's centre
     // poses: the pair, the 3D view's, then the side view's (as ItemPose_Pair lays them out)
-    void SetPoses(Game::ItemPose* poses, const AP::DropBounds::Bounds& b) {
+    void SetPoses(Game::ItemPose* poses, const AP::DropBounds::Bounds& b, bool ball) {
         float s = std::fmin(kModelScale, kModelRadius / b.radius);
-        float lift = Bouncy() ? kBallCentre : s * b.radius;
+        float lift = ball ? kBallCentre : s * b.radius;
         for (size_t view = 0; view < kPoses; view += 2) {
             Game::ItemPose& pose = poses[view];
             Game::Vec3 turn = FitTurn(b, view != 0);
@@ -254,11 +268,13 @@ namespace {
     }
 
     void MakePoses() {
-        float lift = Bouncy() ? kBallCentre : 0;
-        g_DefaultPoses[0] = {{0, lift, 0}, {0, 0, 0}, {kModelScale, kModelScale, kModelScale}};
-        std::fill(g_DefaultPoses + 1, g_DefaultPoses + kPoses, g_DefaultPoses[0]);
-        for (size_t i = 0; i < std::size(AP::DropBounds::kBounds); i++) {
-            SetPoses(g_Poses[i], AP::DropBounds::kBounds[i]);
+        for (int ball = 0; ball < 2; ball++) {
+            float lift = ball ? kBallCentre : 0;
+            g_DefaultPoses[ball][0] = {{0, lift, 0}, {0, 0, 0}, {kModelScale, kModelScale, kModelScale}};
+            std::fill(g_DefaultPoses[ball] + 1, g_DefaultPoses[ball] + kPoses, g_DefaultPoses[ball][0]);
+            for (size_t i = 0; i < std::size(AP::DropBounds::kBounds); i++) {
+                SetPoses(g_Poses[ball][i], AP::DropBounds::kBounds[i], ball != 0);
+            }
         }
     }
 
@@ -277,10 +293,11 @@ namespace {
     // The fitted poses of the model the drop shows
     const Game::ItemPose* FittedPoses(const Game::ActorParams& params) {
         int i = BoundsIndex(params);
-        if (i >= 0) return g_Poses[i];
+        int ball = IsBall(params) ? 1 : 0;
+        if (i >= 0) return g_Poses[ball][i];
         Logging.Log("[AP] drop %016llx: no model bounds, its model's origin on the root",
                     static_cast<unsigned long long>(params.lebKey));
-        return g_DefaultPoses;
+        return g_DefaultPoses[ball];
     }
 
     // A pose the game tuned: one that places or turns the model. An id without either shows its model as it is, on the
@@ -318,13 +335,13 @@ namespace {
         auto model = AP::Bridge::TokenModel(params);
         auto item = AP::Bridge::TokenItemId(params);
         int bounds = BoundsIndex(params);
-        if (!model || !item || (Bouncy() && bounds < 0)) return;
+        if (!model || !item || (IsBall(params) && bounds < 0)) return;
         for (const AP::DropBounds::Item& own : AP::DropBounds::kItems) {
             if (own.id != *item || own.file != model->first || own.name != model->second) continue;
             const Game::ItemPose* pair = Game::ItemPose_Pair(static_cast<u8>(*item), Game::Item_IsSideView(&params.pos));
             if (!Tuned(pair[0])) return;
             out[0] = pair[0];
-            if (Bouncy()) {
+            if (IsBall(params)) {
                 CentreOnBall(out[0], AP::DropBounds::kBounds[bounds]);
             } else {
                 out[0].pos[1] += own.floor - OriginFloor(params);
@@ -342,6 +359,12 @@ namespace {
     ItemComponent* Item(void* comp) { return static_cast<ItemComponent*>(comp); }
 
     Actor* Owner(void* comp) { return Item(comp)->npc.owner; }
+
+    // The drop of the component is a ball (IsBall): by the row it was made with
+    bool IsBall(void* comp) {
+        Actor* actor = Owner(comp);
+        return actor != nullptr && BallRow(reinterpret_cast<ItemActor*>(actor)->rowKey.View());
+    }
 
     Game::Actors::WaterEvent* WaterOf(void* comp) {
         return Item(comp)->npc.waterEvent.get();
@@ -557,7 +580,7 @@ namespace {
         if (Boss(motion)) {
             const Game::Vec4& spawn = actor->spawnPos;
             Launch(comp, actor, {spawn.x, spawn.y, spawn.z}, g_BossLaunch);
-            if (Bouncy()) Spin(comp);
+            if (IsBall(comp)) Spin(comp);
             return;
         }
         if (Stands(motion)) {
@@ -565,7 +588,7 @@ namespace {
             Launch(comp, actor, {spawn.x, spawn.y, spawn.z}, {0, 0, 0});
             return;
         }
-        if (Bouncy()) {
+        if (IsBall(comp)) {
             BallFall(comp, actor, motion);
             return;
         }
@@ -593,10 +616,11 @@ namespace {
     float LiftAt(float depth) { return std::fmax(0.0f, -kGravity + kSpring * (depth - kRestDepth)); }
 
     float WaterLift(void* comp) {
+        if (!IsBall(comp)) return g_WaterLift(comp);
         float depth;
         return Depth(comp, &depth) ? LiftAt(depth) : -kGravity;
     }
-    float WaterDamping(void*) { return kDamping; }
+    float WaterDamping(void* comp) { return IsBall(comp) ? kDamping : g_WaterDamping(comp); }
 
     // The bounce off a wall PhysX left out: `was` the velocity at the last update, `now` this one's, `step` the time
     // between them and `drag` the linear damping in it
@@ -635,8 +659,12 @@ namespace {
         }
     }
 
-    // The item update, then the ball's: its room, a wall's bounce, and the damping on the ground or in the air.
+    // The item update, then for a ball the ball's: its room, a wall's bounce, and the damping on the ground or in the air.
     void ItemUpdate(void* comp) {
+        if (!IsBall(comp)) {
+            g_ItemUpdate(comp);
+            return;
+        }
         SetProbe(comp);
         g_ItemUpdate(comp);
         Ball& ball = BallOf(comp);
@@ -860,7 +888,8 @@ namespace {
         return Shared<>::Adopt(comp, ctrl);
     }
 
-    // The actor's NPC component (its vtable +0x128, as an item class's maker), with the drop actor's row.
+    // The actor's NPC component (its vtable +0x128, as an item class's maker), with the row the actor was made with
+    // (RowKey).
     Shared<> MakeComponent(Actor* actor, StrView* name) {
         Game::Entity& owner = actor->entity;
         if (owner.flags.Has(EntityFlag::Destroyed) || name->size - 1 > 30 ||
@@ -871,7 +900,7 @@ namespace {
         Game::ComponentName args{name->data, name->size, 1, self.get(), self.View().ctrl};
         void* comp = Game::operator_new(sizeof(DropComponent));
         static_cast<DropComponent*>(comp)->ball = {};
-        StrView key = RowKey();
+        StrView key{reinterpret_cast<ItemActor*>(actor)->rowKey.View()};
         Game::ItemNpcComponent_Ctor(comp, &args, &key);
         self = {};
         *static_cast<uintptr_t**>(comp) = g_ComponentVtable;
@@ -908,7 +937,7 @@ namespace {
         std::memset(static_cast<void*>(mem), 0, sizeof(ActorBlock));
         mem->ctrl.vtable = g_ActorCtrlVtable;  // shared and weak owners - 1: 0
         auto* actor = reinterpret_cast<Actor*>(&mem->actor);
-        StrView key = RowKey();
+        StrView key = RowKey(*params);
         MakeDropPoses(*params, mem->poses);
         Game::ItemActor_Ctor(actor, &args, &key, kItemId, 1, mem->poses);
         actor->entity.vtable = g_ActorVtable;
@@ -1090,6 +1119,8 @@ namespace {
         if (Bouncy()) {
             g_ItemUpdate = reinterpret_cast<void (*)(void*)>(g_ComponentVtable[kItemUpdate / 8]);
             g_ComponentVtable[kItemUpdate / 8] = Slot(&ItemUpdate);
+            g_WaterLift = reinterpret_cast<float (*)(void*)>(g_ComponentVtable[kWaterLift / 8]);
+            g_WaterDamping = reinterpret_cast<float (*)(void*)>(g_ComponentVtable[kWaterDamping / 8]);
             g_ComponentVtable[kWaterLift / 8] = Slot(&WaterLift);
             g_ComponentVtable[kWaterDamping / 8] = Slot(&WaterDamping);
         }

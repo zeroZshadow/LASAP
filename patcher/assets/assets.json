@@ -512,7 +512,7 @@
  "region_common/datasheets/Npc.gsheet": {
   "source": "region_common/datasheets/Npc.gsheet",
   "source_sha256": "39dc9855aa050bc6f0fb4acd6dea7ea09dfe143e2fe26762ee46d9cd1895741e",
-  "sha256": "c7d560dccf11ec415029904309040d4094087b452d66fcb34547efa5fe3bc9d7"
+  "sha256": "2b4fb96b23e46f0c4125d3b7b8c3adb935a6bbdb5cf01512a69f28d6916b0885"
  },
  "region_common/datasheets/NpcPhysicsTraits.gsheet": {
   "source": "region_common/datasheets/NpcPhysicsTraits.gsheet",
@@ -747,12 +747,12 @@
  "region_common/level/AnimalVillageCave/AnimalVillageCave_01A.leb": {
   "source": "region_common/level/AnimalVillageCave/AnimalVillageCave_01A.leb",
   "source_sha256": "9c532e7e2d80d8b8e85692b119e2a5d49cc05707f693484182fe5a19abdba611",
-  "sha256": "bad7e019c7b4162dac03c6359c1e37363d495f66e4f7fc19737ae830d86cccbf"
+  "sha256": "2b8dd3a20c371eb27779962284a7087ad8e77dea08c5dda49e501a0cd55e7ae7"
  },
  "region_common/level/AnimalVillageEnter/AnimalVillageEnter_01B.leb": {
   "source": "region_common/level/AnimalVillageEnter/AnimalVillageEnter_01B.leb",
   "source_sha256": "cfc1b71ff59cb6025480ee59d22a0e09f786d6ef83726a102930621f32aa827d",
-  "sha256": "77ee86c1143bfa8704c609836fed0a01981ff40daa17ba18524ec98010f57884"
+  "sha256": "73ca51863d65be0b2ca6aec5735a66c6ff87a1659710031951f2120620a2503d"
  },
  "region_common/level/ArmosShrine/ArmosShrine_02A.leb": {
   "source": "region_common/level/ArmosShrine/ArmosShrine_02A.leb",
@@ -772,7 +772,7 @@
  "region_common/level/DreamShrine/DreamShrine_01A.leb": {
   "source": "region_common/level/DreamShrine/DreamShrine_01A.leb",
   "source_sha256": "dac50b121c7678290b5ab2dff0fb57f443fe9131a690342d141cd5d6eae31751",
-  "sha256": "e809357146b3d5f278e547fec26a74f0b50fcf76c53608b592f3e3b829424eb3"
+  "sha256": "185d11b015f2c459365e46801b9c4de153228b66bdfae0947d9302b1613bb996"
  },
  "region_common/level/DreamShrine/DreamShrine_01B.leb": {
   "source": "region_common/level/DreamShrine/DreamShrine_01B.leb",
@@ -782,17 +782,17 @@
  "region_common/level/EagleKeyCave/EagleKeyCave_01A.leb": {
   "source": "region_common/level/EagleKeyCave/EagleKeyCave_01A.leb",
   "source_sha256": "7890c2c69cd02673ded3eb32cac645e3c2c2968764b73f148967264152c04064",
-  "sha256": "85787eec4ea8678d599992981885c0ac9f1dc3308bca374810462a31babcb45c"
+  "sha256": "56ecb27321c1dba9d2c23d7ff9c80e0f8380f8232347f28511e21a42174f5e6d"
  },
  "region_common/level/EagleTowerExit/EagleTowerExit_01A.leb": {
   "source": "region_common/level/EagleTowerExit/EagleTowerExit_01A.leb",
   "source_sha256": "790ad3aac15b6760aef0ff292a842f1d71c407a2531fba402bc030d0343827d8",
-  "sha256": "fb4512daa7e6d07b96bf37a2f6e42d99ce968d77f6339a32482a31b14c864bd7"
+  "sha256": "faca31beb4186b4f7afbcf142abfbcef33e650638e2da87fd9ee4a2d878b467c"
  },
  "region_common/level/Field/Field_01A.leb": {
   "source": "region_common/level/Field/Field_01A.leb",
   "source_sha256": "a71af828fd8d82b2b5e038145648e9fa2af064dce6d521b95087539448e64d24",
-  "sha256": "931bb207e790afe6761ebb215fe51c04428b61ca0eb002d28c5029c7c077da14"
+  "sha256": "3adfe3f4867c0c658d771b2848f9d11860b8d6812fe8e520ddccd7c7b58f3529"
  },
  "region_common/level/Field/Field_01M.leb": {
   "source": "region_common/level/Field/Field_01M.leb",
@@ -832,7 +832,7 @@
  "region_common/level/Field/Field_02M.leb": {
   "source": "region_common/level/Field/Field_02M.leb",
   "source_sha256": "100792b70c1f009a14beba5c9c86489774651152f16a7cecaff12ef51bcab235",
-  "sha256": "eba501803192aec849c52fc90c69d2d73a4b5b7a15f1f3f018374b7339a8d091"
+  "sha256": "f21c1503d5b719a12e63fcc0d85a0d2e7be8efe0ecceec122a4cc467b4c0cbd6"
  },
  "region_common/level/Field/Field_02N.leb": {
   "source": "region_common/level/Field/Field_02N.leb",
@@ -847,7 +847,7 @@
  "region_common/level/Field/Field_03B.leb": {
   "source": "region_common/level/Field/Field_03B.leb",
   "source_sha256": "1cb853564c03abf30d429960cfed8c2b1e74545b6120c98571364052348289a7",
-  "sha256": "4169ca297f8bd20572ca1678d4113f0de358c40c8d868b5c010308fd10ce01dd"
+  "sha256": "bc8be72a0e0e337c38e5b9cc697d6da8851d950d2fa291dcc4858551d39b73ca"
  },
  "region_common/level/Field/Field_03F.leb": {
   "source": "region_common/level/Field/Field_03F.leb",
@@ -882,7 +882,7 @@
  "region_common/level/Field/Field_04I.leb": {
   "source": "region_common/level/Field/Field_04I.leb",
   "source_sha256": "4671423040b89cd1134a268960b6aaad5fc20559721cfefcccd18a782939f3d5",
-  "sha256": "af1d6aed26f76b270d11ac3c4e155664355317ea3f7948ea715c23d6c0ec78d3"
+  "sha256": "102d81cd80de5a3997efffc16d33a8598eed750c67f77e66400c71a91f0fd901"
  },
  "region_common/level/Field/Field_05A.leb": {
   "source": "region_common/level/Field/Field_05A.leb",
@@ -897,17 +897,17 @@
  "region_common/level/Field/Field_05E.leb": {
   "source": "region_common/level/Field/Field_05E.leb",
   "source_sha256": "cbc2ad7f0e60cdc96f2c4c6f574051ba13f4ea350ea3024041da01710c7a999b",
-  "sha256": "1b9959e17cfc8769db74be4a47b4c1210d1b975a75e0aefe5ceb4cdbc9754dce"
+  "sha256": "d084bf50764960dd2a39d60ba1cfbd25af2ba447686181f0215e06b6321aa1d2"
  },
  "region_common/level/Field/Field_05H.leb": {
   "source": "region_common/level/Field/Field_05H.leb",
   "source_sha256": "d5e652b93c2be30033c91f70f2ec0faa1d8952bcdd05640dd1d0854e3ac74a02",
-  "sha256": "91f7c93daf5002a3e1e0d3edc113fe9ae2088d6e5de6fa0f21ef40e8292d4482"
+  "sha256": "1363ed5c307340911152cd8ac6b3920e2627e90bbfcaafa623733538b8cdd830"
  },
  "region_common/level/Field/Field_06A.leb": {
   "source": "region_common/level/Field/Field_06A.leb",
   "source_sha256": "0ba33bd9f26b9d6cbba5aa55e45ed135861d2a71c0cf89199e655c8e25201957",
-  "sha256": "fa83fccbbb18b323840f9c55589c68c961ac7cf2f795b1e56d931279f51ac5f2"
+  "sha256": "1515243bec4d94983e92240110441f118d690946a8fdff44781d1bb57f71d7b9"
  },
  "region_common/level/Field/Field_06C.leb": {
   "source": "region_common/level/Field/Field_06C.leb",
@@ -927,7 +927,7 @@
  "region_common/level/Field/Field_06M.leb": {
   "source": "region_common/level/Field/Field_06M.leb",
   "source_sha256": "b003a0ba4f12c147e913048dfdc2995eb489ec1f3ad598fdefafde1973eab903",
-  "sha256": "c32f87448ce400c9e25fb7def9dc669db7e24495280378550d98abb49539d4b9"
+  "sha256": "979cd60885d28672166e0e0414b3a257ffc2ae0621915ad9791cd8ebd3b485ec"
  },
  "region_common/level/Field/Field_06N.leb": {
   "source": "region_common/level/Field/Field_06N.leb",
@@ -962,17 +962,17 @@
  "region_common/level/Field/Field_08J.leb": {
   "source": "region_common/level/Field/Field_08J.leb",
   "source_sha256": "9b30dbdf901a59fce7482ad889a67f30e1abaf056303f0c3afa56379af9563ae",
-  "sha256": "d657e817a4a5f7ac4bfdfae449a6a13eebe5d41cb7193b4a8993b956f1b02d10"
+  "sha256": "f2bd19848ffe49c5343709387bee879385055cbc096226e12c7b4fe780b23da2"
  },
  "region_common/level/Field/Field_08L.leb": {
   "source": "region_common/level/Field/Field_08L.leb",
   "source_sha256": "2ff94cb94e77999edbaeb6fa6d6f74c1376fef4021f76e7395f3cc03cf23b496",
-  "sha256": "9951b7c5947e52571cfd2439f9e60e7bbf91a90451026a1da058d421fcbc6d24"
+  "sha256": "47e4f4a40f12f125af73f628ad9e1d4c1db67d09154d9c2e35dba45a21b182fd"
  },
  "region_common/level/Field/Field_09H.leb": {
   "source": "region_common/level/Field/Field_09H.leb",
   "source_sha256": "aada85c404cbd01b8e3fe9ff44e819e4129706fdf2ec073f4ec5a2eb24157556",
-  "sha256": "081d8fe0d5e00ef417e4d0b10c93bc50d9d8213e87e3846f7f055bb078eb9f96"
+  "sha256": "b0cc700ca5a1f2c91317e878f60aadc78789e430711c9b19b2aedf4e05963251"
  },
  "region_common/level/Field/Field_09L.leb": {
   "source": "region_common/level/Field/Field_09L.leb",
@@ -1037,7 +1037,7 @@
  "region_common/level/Field/Field_12H.leb": {
   "source": "region_common/level/Field/Field_12H.leb",
   "source_sha256": "bc5673d61013de6d7af2b8a3059407bffcec5f3ee0c4754a021e44840d021ee6",
-  "sha256": "635fac5991e360115434b56eaeef5731f2e05e545e6f866ea66a587e99e1b858"
+  "sha256": "9f3d42cb1e3e52529bcb57796fc6e68ba8596f7e0878f94ef43a0c4ccb7d1f4b"
  },
  "region_common/level/Field/Field_12J.leb": {
   "source": "region_common/level/Field/Field_12J.leb",
@@ -1052,7 +1052,7 @@
  "region_common/level/Field/Field_13L.leb": {
   "source": "region_common/level/Field/Field_13L.leb",
   "source_sha256": "4dfd6c733045512c4e71b8263a6f1a2a895386eac101d300bb55390856fd0360",
-  "sha256": "7dc14e0852e7dc46d5122433167f03a5720040948dd3ed1aedc60a396ec7da5d"
+  "sha256": "1ebd50392fb391a76f6e0a546976f3bea8af3cb2c5d09a8a2d7e2339411520be"
  },
  "region_common/level/Field/Field_13O.leb": {
   "source": "region_common/level/Field/Field_13O.leb",
@@ -1092,7 +1092,7 @@
  "region_common/level/Field/Field_15J.leb": {
   "source": "region_common/level/Field/Field_15J.leb",
   "source_sha256": "ecaa0a9bd9e83e1a5f9c7a33672dce14e2d32d17f4f0457c0a943a8e12f36bab",
-  "sha256": "087214afb48d193c584b673905b273f77403371476a55f31802139557d6c6258"
+  "sha256": "2c7f82f4aa6c0f40ceffb7e5d008479fde67f370d82de508fa4984f2e1c82146"
  },
  "region_common/level/Field/Field_15K.leb": {
   "source": "region_common/level/Field/Field_15K.leb",
@@ -1157,7 +1157,7 @@
  "region_common/level/LanmolaCave/LanmolaCave_01A.leb": {
   "source": "region_common/level/LanmolaCave/LanmolaCave_01A.leb",
   "source_sha256": "6a9222b456bb058fbc3848edff40e01ab80e817c075390394347fb230937cd49",
-  "sha256": "a6f78600f14b4b0e65a28a047ac12abeffe51766566e1090fa5d8f1b471e808d"
+  "sha256": "9719b5d059a41a48e963109972b8d0cc85e4123ad4f777a22a3dc4d8c1437211"
  },
  "region_common/level/LanmolaCave/LanmolaCave_02A.leb": {
   "source": "region_common/level/LanmolaCave/LanmolaCave_02A.leb",
@@ -1167,7 +1167,7 @@
  "region_common/level/Lv01TailCave/Lv01TailCave_03G.leb": {
   "source": "region_common/level/Lv01TailCave/Lv01TailCave_03G.leb",
   "source_sha256": "f23293ceaa025b4c423cca6fb2e796ddb60ef74e250ba14197e7865a3eb86489",
-  "sha256": "76add1d3613c6a9a84969632a61d090a262d25fab95bbea866bc15fd2010c43e"
+  "sha256": "652a6f86fafeb97eaa9a4038ae67ac9d17a9c9af5473227430d5edb9efbdf4fa"
  },
  "region_common/level/Lv01TailCave/Lv01TailCave_04B.leb": {
   "source": "region_common/level/Lv01TailCave/Lv01TailCave_04B.leb",
@@ -1267,7 +1267,7 @@
  "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_04F.leb": {
   "source": "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_04F.leb",
   "source_sha256": "9941002d350c492a8224899ae46e8c799254ca488d145f6e6cee3b4338527765",
-  "sha256": "273461509f0c220212d77451ea93ba1a007215af78bd21caa923fb3a6bfdf393"
+  "sha256": "27d4ada9065bf2145d0b76ea4c5ebf2ba716ee51efb0b762a72f8e80b177413c"
  },
  "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_04G.leb": {
   "source": "region_common/level/Lv02BottleGrotto/Lv02BottleGrotto_04G.leb",
@@ -1397,7 +1397,7 @@
  "region_common/level/Lv03KeyCavern/Lv03KeyCavern_06G.leb": {
   "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_06G.leb",
   "source_sha256": "f83e7908f2802076866b037c5eb34a427dfe5b249dbff15429e1f3bf02263cae",
-  "sha256": "4121983a63ea31650fb99d768d05c85259c24bd5752659bf8a4c1ecf58c6bc35"
+  "sha256": "92e12c551f4cebe0a4e8bbbf1c1dbd9192f0cf1a65064f199dd33816c413ab5e"
  },
  "region_common/level/Lv03KeyCavern/Lv03KeyCavern_07B.leb": {
   "source": "region_common/level/Lv03KeyCavern/Lv03KeyCavern_07B.leb",
@@ -1427,7 +1427,7 @@
  "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_03B.leb": {
   "source": "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_03B.leb",
   "source_sha256": "e9567b53bd9e725553340e591ce9982a9e0c75876fb7bf8599cecfcc9da67e03",
-  "sha256": "c3a9ea86701fa0ae0d21c1f73c6add7da40a1bbbb66e7c126a419c35264e7b3a"
+  "sha256": "6cade774e8db8f8c35c9a628faf40035adf3202be37c34d4170707d658ad6582"
  },
  "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_03G.leb": {
   "source": "region_common/level/Lv04AnglersTunnel/Lv04AnglersTunnel_03G.leb",
@@ -1517,7 +1517,7 @@
  "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_01D.leb": {
   "source": "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_01D.leb",
   "source_sha256": "66e7b50b0e7528831cc97866b49ba0c742d898a86223ffb52e4dacf62088cc4c",
-  "sha256": "5db5bc55de6b99775b7cbcb0919d9531a9aad9ebc475096eec0c7c028a33a04d"
+  "sha256": "682af70bfd8435ce2dee23c9aedf37aca80d916dc3753544d1d7f4c83819e62e"
  },
  "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_01E.leb": {
   "source": "region_common/level/Lv05CatfishsMaw/Lv05CatfishsMaw_01E.leb",
@@ -1607,7 +1607,7 @@
  "region_common/level/Lv06FaceShrine/Lv06FaceShrine_03E.leb": {
   "source": "region_common/level/Lv06FaceShrine/Lv06FaceShrine_03E.leb",
   "source_sha256": "b769784a5b3d1c69aa56de746bd77e6dfcd4777cbb4c779b760d21b174b686c7",
-  "sha256": "54d3a2384e8fce5d5c54127564a703602d881e78794986ef4157f6d1a3665f95"
+  "sha256": "5974af7d39463a0676a9570ced33b44014f64539d35c963aac500799f0cbc60a"
  },
  "region_common/level/Lv06FaceShrine/Lv06FaceShrine_03G.leb": {
   "source": "region_common/level/Lv06FaceShrine/Lv06FaceShrine_03G.leb",
@@ -1692,7 +1692,7 @@
  "region_common/level/Lv07EagleTower/Lv07EagleTower_02G.leb": {
   "source": "region_common/level/Lv07EagleTower/Lv07EagleTower_02G.leb",
   "source_sha256": "9dd12d3c033cf3d40135e528320991375452e66adeebba5c637ce7640b50a05b",
-  "sha256": "44fa19b6d84a71a51e111d16801f3f699742858168f7e578494726ddfd42edf2"
+  "sha256": "1bc4bad49a5b9d904015b49210c3b1b84e3d36abe3d2f398c0cff942a1cb6b36"
  },
  "region_common/level/Lv07EagleTower/Lv07EagleTower_02H.leb": {
   "source": "region_common/level/Lv07EagleTower/Lv07EagleTower_02H.leb",
@@ -1752,7 +1752,7 @@
  "region_common/level/Lv08TurtleRock/Lv08TurtleRock_01D.leb": {
   "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_01D.leb",
   "source_sha256": "9399ffa04c0cf804e3164cfb72c6bd2de4336dfa01d525c0ce33e4eb793d44e1",
-  "sha256": "627c921b82e48a8a447753d94b0939f6b370801d43cc50aa94b0eeeeef856956"
+  "sha256": "9d7a7d766317da07649844421c56caa39ff4ceddb4bbc429d5f9b517582b7283"
  },
  "region_common/level/Lv08TurtleRock/Lv08TurtleRock_02A.leb": {
   "source": "region_common/level/Lv08TurtleRock/Lv08TurtleRock_02A.leb",
@@ -1892,7 +1892,7 @@
  "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_08D.leb": {
   "source": "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_08D.leb",
   "source_sha256": "add3e79a5930ce4e3b33199d495feba16cd75e34fb23137662d2764ebec1ee28",
-  "sha256": "8e6571744f11c8fdd28059da374139474efbfecc96d2c6bbdd3acca01d5531df"
+  "sha256": "991e14ef664a60921f7e270123772a556b3945a9a24b433e697235230dd0d9df"
  },
  "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_08E.leb": {
   "source": "region_common/level/Lv10ClothesDungeon/Lv10ClothesDungeon_08E.leb",
@@ -1917,7 +1917,7 @@
  "region_common/level/MadBattersWellEnter/MadBattersWellEnter_01B.leb": {
   "source": "region_common/level/MadBattersWellEnter/MadBattersWellEnter_01B.leb",
   "source_sha256": "dbba59149a2325e6bf155cd71a49167b171a142a5e8943f907e9fdf393592133",
-  "sha256": "fdc4e0635d936698d13841d71e17bb3e2cf9c2449d3ed9f69bd1859aed9b8e63"
+  "sha256": "d848f11f7948c62751a8054b17b8e932533d33e79202f82591c7c3598fd5f9cc"
  },
  "region_common/level/MarinTarinHouse/MarinTarinHouse_01A.leb": {
   "source": "region_common/level/MarinTarinHouse/MarinTarinHouse_01A.leb",
@@ -1927,12 +1927,12 @@
  "region_common/level/MermaidStatue/MermaidStatue_01A.leb": {
   "source": "region_common/level/MermaidStatue/MermaidStatue_01A.leb",
   "source_sha256": "85adf1d193514d48b4664c9b5111bd378f006456d8334c00adedd87f55094e09",
-  "sha256": "185efdd9a75ed9056e5c7f420f97b605b2e967573f2d8f84d22a998355f43cf5"
+  "sha256": "16795b7fa9c1dfd5ccdd716a28c80d6474d65b580e66af95e669b98ba0c923b3"
  },
  "region_common/level/MysteriousWoodsCave01/MysteriousWoodsCave01_01A.leb": {
   "source": "region_common/level/MysteriousWoodsCave01/MysteriousWoodsCave01_01A.leb",
   "source_sha256": "960b9ce298f27fed9e4ee37bbfbfb300ddd7bb79682df5e44af4d573ac1b2f30",
-  "sha256": "c1faa75808b1e6e45589e4f732f01a68f40dbf53ad43516bf3e71a60e7609f8e"
+  "sha256": "ce33fe2528a0c33ca04437fa1db60d0bb77b4892525703686fcda4777cba779a"
  },
  "region_common/level/MysteriousWoodsCave01/MysteriousWoodsCave01_02B.leb": {
   "source": "region_common/level/MysteriousWoodsCave01/MysteriousWoodsCave01_02B.leb",
@@ -1942,7 +1942,7 @@
  "region_common/level/MysteriousWoodsCave02/MysteriousWoodsCave02_01A.leb": {
   "source": "region_common/level/MysteriousWoodsCave02/MysteriousWoodsCave02_01A.leb",
   "source_sha256": "35a50e8a77f47bd5988898dcfe6be9de292a16511c62fd39c97b237a7ce49bd4",
-  "sha256": "450075c537d26afb1cce7899a539e04b15d572ace4fe42ada8250c76497da047"
+  "sha256": "2654e7297a6a12b3ec440058a2444778b1ed4681e6c316787cc5faee07dabdba"
  },
  "region_common/level/PanelLv01TailCave/PanelLv01TailCave_05A.leb": {
   "source": "region_common/level/PanelLv01TailCave/PanelLv01TailCave_05A.leb",
@@ -2272,7 +2272,7 @@
  "region_common/level/RapidsRideExit/RapidsRideExit_01A.leb": {
   "source": "region_common/level/RapidsRideExit/RapidsRideExit_01A.leb",
   "source_sha256": "5cfe2cfe20a5ec391fbbffa7e7aaa4de8afcfa952958ea17db66bcc808b882dc",
-  "sha256": "28c8aa003d05732fb5677717ca148fa7ecb107e2628467141815498524ec1fa3"
+  "sha256": "8c5d4bd15f4c6c275126639e5be0c4dd41d6e34ae06a3939d11da254b898b7ff"
  },
  "region_common/level/RichardCave/RichardCave_01A.leb": {
   "source": "region_common/level/RichardCave/RichardCave_01A.leb",
@@ -2287,7 +2287,7 @@
  "region_common/level/Tamaranch04/Tamaranch04_02C.leb": {
   "source": "region_common/level/Tamaranch04/Tamaranch04_02C.leb",
   "source_sha256": "de7ee3d22b6d9159ca396bf9b78f7c8757f84b4f6c3036bb303cecf8c047d7cb",
-  "sha256": "9f73c41183e1dd2c98fd1844752250e5d465db7689fdae7cd920f033dee98997"
+  "sha256": "697b70da7d0666512cd3418cdd6dab37184cab4fc9f9f51b6b4db0c20f80c3dc"
  },
  "region_common/level/Tamaranch04/Tamaranch04_02D.leb": {
   "source": "region_common/level/Tamaranch04/Tamaranch04_02D.leb",
@@ -2297,7 +2297,7 @@
  "region_common/level/Tamaranch04/Tamaranch04_03B.leb": {
   "source": "region_common/level/Tamaranch04/Tamaranch04_03B.leb",
   "source_sha256": "26636a447b0978d51d01bebc82d9fba6fd7fb6fd64fcd3054bb44d68d46c6806",
-  "sha256": "f4b8195b1665956dc00dca9940ea5e3fdb697123727f1bb242cf3d871e72cc30"
+  "sha256": "7e2e1adf377dba7f53af77b986c7200e55f4088800b63c2119f04d997252a7ee"
  },
  "region_common/level/Tamaranch05/Tamaranch05_04A.leb": {
   "source": "region_common/level/Tamaranch05/Tamaranch05_04A.leb",
@@ -2307,17 +2307,17 @@
  "region_common/level/TownWell/TownWell_01A.leb": {
   "source": "region_common/level/TownWell/TownWell_01A.leb",
   "source_sha256": "1f5a9a8a8645e37752dae9f00c823cce64b603d60a66444f720bcb3b4e2a853b",
-  "sha256": "a49768aeeddb2743023269230a911ba8f8e6466bc24f69633ef02991d6764405"
+  "sha256": "78cde5ab064e505eeb09a333e122c51f1e58f494a1486475fcd07411383b5f8a"
  },
  "region_common/level/UkukuCave01/UkukuCave01_01A.leb": {
   "source": "region_common/level/UkukuCave01/UkukuCave01_01A.leb",
   "source_sha256": "f233d8a69ac3ee0d34056cd996ab86faed74608c935b020ef328f0561d0dd74f",
-  "sha256": "2a81fe91e0be9c4f60ec7a4720ac83971ceeefd720f0a6f1542dc13df13f2d3d"
+  "sha256": "e8e59ea3611e3c27db62f52dc93e3d485a76a858740520e112489f4d08c260e0"
  },
  "region_common/level/UkukuCave02/UkukuCave02_01B.leb": {
   "source": "region_common/level/UkukuCave02/UkukuCave02_01B.leb",
   "source_sha256": "083c58094fa665eed96edd5897f940f6255f354fba736d8eaf7c0f3046848f97",
-  "sha256": "0668de727adc5223b782984fe7c8e6f6fb18e264ddcf88bc7d49a94f4d500d0b"
+  "sha256": "1259eb2c3feca686224709686bd9c13b6045bd61842ba970d6a2c9c011fc70d7"
  },
  "region_common/level/UkukuCave02/UkukuCave02_02A.leb": {
   "source": "region_common/level/UkukuCave02/UkukuCave02_02A.leb",
@@ -2327,7 +2327,7 @@
  "region_common/level/UnderGrave/UnderGrave_01B.leb": {
   "source": "region_common/level/UnderGrave/UnderGrave_01B.leb",
   "source_sha256": "e6b0fafd1d4ef64ad96efd695c710f6365d98e1291087060848479cbd0ef00c9",
-  "sha256": "ec4a0a9d454642eacdbb109c1b3b61572d981415a56790fc737a3493e1351218"
+  "sha256": "75473b8a896666863dc87fd13eb7c8a85e39c3da69a6ad6deb7a39b8c70f86ec"
  },
  "region_common/ui/Game.arc": {
   "source": "region_common/ui/Game.arc",

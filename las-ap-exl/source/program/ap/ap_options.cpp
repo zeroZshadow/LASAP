@@ -124,25 +124,32 @@ namespace {
     };
     static_assert(sizeof(DropRow) == 0x40);
 
-    // Bouncy Items: the drop's row (AP::DROP_ACTOR) takes the values of the ball's (patcher ap_drop.BALL_ROW), its name
-    // kept: the sheet's rows by key give the row's index. Each level load makes the sheet again on rows that kept this
-    // edit (scripts/re/UI.md, Datasheets), so it copies: a swap would undo itself on every second load.
+    // Bouncy Items: each drop row (AP::DROP_ACTOR, and the rows with a vanilla item's collision, AP::DROP_ROW_PARAM,
+    // whose names start with it; not the sunken items', patcher ap_drop.SUNKEN_ROW) takes the values of the ball's
+    // (patcher ap_drop.BALL_ROW), its name kept: the sheet's rows by key give the row's index. Each level load makes the sheet again on rows that kept this edit
+    // (scripts/re/UI.md, Datasheets), so it copies: a swap would undo itself on every second load.
     constexpr std::string_view kBallRow = "ItemAPDropBall";
     void UseBallRow(void* made) {
         const auto* data = static_cast<Game::Sheet<Game::SheetString>*>(made)->data;
         if (data == nullptr) return;
         auto* rows = reinterpret_cast<u8*>(const_cast<Game::SheetString*>(data->rows));
-        u8 *drop = nullptr, *ball = nullptr;
-        for (u32 i = 0; i < data->count; i++) {
-            auto* row = rows + static_cast<size_t>(i) * data->rowSize;
-            std::string_view symbol = reinterpret_cast<const Game::SheetString*>(row)->View();
-            if (symbol == AP::DROP_ACTOR) drop = row;
-            else if (symbol == kBallRow) ball = row;
+        auto symbol = [&](u32 i) {
+            return reinterpret_cast<const Game::SheetString*>(rows + static_cast<size_t>(i) * data->rowSize)->View();
+        };
+        const u8* ball = nullptr;
+        for (u32 i = 0; i < data->count && ball == nullptr; i++) {
+            if (symbol(i) == kBallRow) ball = rows + static_cast<size_t>(i) * data->rowSize;
         }
-        if (drop == nullptr || ball == nullptr) return;
+        if (ball == nullptr) return;
         constexpr size_t kSymbol = sizeof(Game::SheetString);  // the row's first field
-        std::memcpy(drop + kSymbol, ball + kSymbol, data->rowSize - kSymbol);
-        Logging.Log("[AP] options: the drop is a ball");
+        int balls = 0;
+        for (u32 i = 0; i < data->count; i++) {
+            std::string_view name = symbol(i);
+            if (name == kBallRow || !name.starts_with(AP::DROP_ACTOR)) continue;
+            std::memcpy(rows + static_cast<size_t>(i) * data->rowSize + kSymbol, ball + kSymbol, data->rowSize - kSymbol);
+            balls++;
+        }
+        Logging.Log("[AP] options: %d drop rows are balls", balls);
     }
 
     // Easy Fishing: Ol' Baron bites more often in the deep spot (row 4)
