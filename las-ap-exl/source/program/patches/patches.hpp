@@ -32,12 +32,6 @@ namespace Patches {
     // matches.
     constexpr uintptr_t kTiltShiftName = 0x16cbd73;
 
-    // Stable 60 fps (credits to HerculeHercule1)
-    constexpr Patch kStableFps[] = {
-        {0x1019608, inst::Nop()},
-        {0x1019628, inst::Nop()},
-    };
-
     // Nice Bombs: no limit to how many can be placed at once
     constexpr Patch kNiceBombs[] = {{0xd52958, inst::Movz(reg::W8, 1)}};
     // Nice Hookshot: hookshot any surface
@@ -80,8 +74,8 @@ namespace Patches {
         // AreaShellDropper does not call its drop table: the module sets its actor switch instead (seashells.cpp)
         {0x856e4, inst::Nop()},
         // Item actors appear by their actor switch flag alone (ItemActor_CanAppear's Inventory_HasItem(item, 1,
-        // index) forced false: without it, LASR's dig items, ItemSlimeKey actors, hide while the Slime Key is owned,
-        // and Kiki's stick and the honeycomb while that trade item is held)
+        // index) forced false): the item actors the rooms keep, as Dr. Write's broom and Christine's hibiscus, never
+        // hide while Link holds that item
         {0x8c45b8, inst::Movz(reg::W0, 0)},
         // Item models show under water: the "under_water" render property forced true
         {0xff54bc, inst::Nop()},
@@ -99,18 +93,15 @@ namespace Patches {
             exl::patch::CodePatcher p(Game::Offset(kTiltShiftName));
             p.Write("NoTiltShift");
         }
-        if (global_config.stable_fps.enabled) Apply(kStableFps);
         if (global_config.nice_items.bombs) Apply(kNiceBombs);
         if (global_config.nice_items.hookshot) Apply(kNiceHookshot);
         if (global_config.nice_items.rod) Apply(kNiceRod);
         if (global_config.damage.mode != DamageMode::Normal) {
             Apply(DamagePatches(global_config.damage.mode == DamageMode::None ? 0 : kOhkoDamage));
         }
-        if (global_config.randomizer.enabled) {
-            Apply(kRandoFixes);
-            if (global_config.randomizer.free_book) Apply(kFreeBook);
-            if (global_config.randomizer.stealing == Stealing::Always) Apply(kStealAlways);
-            if (global_config.randomizer.stealing == Stealing::Never) Apply(kStealNever);
-        }
+        Apply(kRandoFixes);
+        if (global_config.randomizer.free_book) Apply(kFreeBook);
+        if (global_config.randomizer.stealing == Stealing::Always) Apply(kStealAlways);
+        if (global_config.randomizer.stealing == Stealing::Never) Apply(kStealNever);
     }
 }

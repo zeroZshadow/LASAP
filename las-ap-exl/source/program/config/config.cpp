@@ -26,7 +26,6 @@ namespace {
         auto& movement = config.movement;
         if (key == "full_360" && value == "true") movement.full_360 = true;
         else if (key == "walk_speed") movement.walk_speed = std::stof(value);
-        else if (key == "dash_speed") movement.dash_speed = std::stof(value);
         else if (key == "swim_speed") movement.swim_speed = std::stof(value);
         else if (key == "pop_speed") movement.pop_speed = std::stof(value);
     }
@@ -46,8 +45,7 @@ namespace {
     void ParseRandomizer(PatchConfig& config, const std::string& key, const std::string& value) {
         auto& randomizer = config.randomizer;
         bool on = value == "true";
-        if (key == "enabled" && on) randomizer.enabled = true;
-        else if (key == "free_book" && on) randomizer.free_book = true;
+        if (key == "free_book" && on) randomizer.free_book = true;
         else if (key == "stealing") {
             randomizer.stealing = value == "always" ? Stealing::Always
                                   : value == "never" ? Stealing::Never : Stealing::Normal;
@@ -97,7 +95,6 @@ void PatchConfig::parse(const std::string& text) {
         if (section == "movement") ParseMovement(*this, key, value);
         else if (section == "nice_items") ParseNiceItems(*this, key, on);
         else if (section == "blur_removal" && key == "enabled" && on) blur_removal.enabled = true;
-        else if (section == "stable_fps" && key == "enabled" && on) stable_fps.enabled = true;
         else if (section == "damage") ParseDamage(*this, key, value);
         else if (section == "randomizer") ParseRandomizer(*this, key, value);
         else if (section == "tweaks") ParseTweaks(*this, key, value);

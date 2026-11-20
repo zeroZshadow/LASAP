@@ -21,7 +21,7 @@ class FishingRandomizer:
         ]
 
         for defs in change_defs:
-            self.parent.item_get_manager.get(flowchart, defs[0], defs[1], defs[2], True)
+            self.parent.item_get_manager.get(flowchart, defs[0], defs[1], defs[2])
 
         bottle_get = event_tools.createActionEvent(flowchart, 'EventFlags', 'SetFlag',
             {'symbol': 'FishingBottleGet', 'value': True}, 'Event264')

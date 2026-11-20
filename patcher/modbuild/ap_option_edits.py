@@ -172,7 +172,7 @@ def _dungeon_owls(self, flowchart) -> None:
     with gated(flowchart, "owl_dungeons"):
         for location, after in DUNGEON_OWLS.items():
             after = subflows[after[1]] if isinstance(after, tuple) else after
-            gift = self.parent.item_get_manager.get(flowchart, location, None, None, True)
+            gift = self.parent.item_get_manager.get(flowchart, location, None, None)
             flag_set = event_tools.createActionEvent(flowchart, "EventFlags", "SetFlag",
                                                      {"symbol": location, "value": True}, gift)
             flag_check = event_tools.createSwitchEvent(flowchart, "EventFlags", "CheckFlag", {"symbol": location},
@@ -190,7 +190,7 @@ def marin_song(self, flowchart) -> None:
         flag_set = event_tools.createActionEvent(flowchart, "EventFlags", "SetFlag",
                                                  {"symbol": "MarinsongGet", "value": True}, sad_face)
         event_tools.insertEventAfter(flowchart, "Event92", flag_set)
-        self.parent.item_get_manager.get(flowchart, "marin", sad_face, "Event666", True)
+        self.parent.item_get_manager.get(flowchart, "marin", sad_face, "Event666")
 
 
 def song_item(self, flowchart, location: str, got_flag: str, skip: str, after: str) -> None:
@@ -198,7 +198,7 @@ def song_item(self, flowchart, location: str, got_flag: str, skip: str, after: s
     with gated(flowchart, "song_cutscenes"):
         flag_event = event_tools.createActionEvent(flowchart, "EventFlags", "SetFlag",
                                                    {"symbol": got_flag, "value": True}, after)
-        self.parent.item_get_manager.get(flowchart, location, skip, flag_event, True)
+        self.parent.item_get_manager.get(flowchart, location, skip, flag_event)
 
 
 def bridge_changes(flowchart) -> None:

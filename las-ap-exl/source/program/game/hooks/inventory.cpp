@@ -20,11 +20,6 @@ namespace {
             }
             AP::OnItemAdded(ID, index);
 
-            if (!global_config.randomizer.enabled) {
-                Orig(ID, count, index);
-                return;
-            }
-
             // The ghost in Tarin's house: tops bombs, arrows or powder up to count
             if ((ID == ItemId::Bomb || ID == ItemId::Arrow || ID == ItemId::MagicPowder) &&
                 index == AP::AMMO_REFILL_INDEX) {

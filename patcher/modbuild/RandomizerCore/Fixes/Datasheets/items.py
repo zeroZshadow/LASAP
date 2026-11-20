@@ -93,7 +93,6 @@ class ItemsDatasheetFixes:
         # so if all the traps had the same ID, every trap would act as the first one (ZapTrap)
         dummy['symbol'] = 'ZapTrap'
         dummy['itemID'] = 127
-        # dummy['gettingFlag'] = ''
         dummy['npcKey'] = 'NpcToolShopkeeper'
         sheet['values'].append(dictToStruct(dummy))
         dummy['symbol'] = 'DrownTrap'

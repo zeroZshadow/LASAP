@@ -133,18 +133,6 @@ def setSwitchEventCase(flowchart, switch, case, new):
 	return False
 
 
-def removeEventAfter(flowchart, eventName):
-	"""Removes the next event from the specified event, so that there is nothing after it in the flow"""
-
-	event = findEvent(flowchart, eventName)
-	if not event:
-		print('Not an event!')
-		return
-
-	event.data.nxt.v = None
-	event.data.nxt.set_index(invertList(flowchart.events))
-
-
 def createActionChain(flowchart, before, eventDefs, after=None):
 	"""Create a series of action events in order after {before} and followed by {after} 
 	Return the name of the first event in the chain"""
@@ -163,27 +151,6 @@ def createActionChain(flowchart, before, eventDefs, after=None):
 		insertEventAfter(flowchart, before, current)
 
 	return first
-
-
-def createProgressiveItemSwitch(flowchart, item1, item2, flag, before=None, after=None):
-	"""Create a switch event leading to getting one of two options depending on whether a flag was set beforehand"""
-
-	item1GetSeqEvent = createActionEvent(flowchart, 'Link', 'GenericItemGetSequenceByKey',
-		{'itemKey': item1, 'keepCarry': False, 'messageEntry': ''}, after)
-	item1AddEvent = createActionEvent(flowchart, 'Inventory', 'AddItemByKey',
-		{'itemKey': item1, 'count': 1, 'index': -1, 'autoEquip': False}, item1GetSeqEvent)
-
-	item2GetSeqEvent = createActionEvent(flowchart, 'Link', 'GenericItemGetSequenceByKey',
-		{'itemKey': item2, 'keepCarry': False, 'messageEntry': ''}, after)
-	item2AddEvent = createActionEvent(flowchart, 'Inventory', 'AddItemByKey',
-		{'itemKey': item2, 'count': 1, 'index': -1, 'autoEquip': False}, item2GetSeqEvent)
-
-	flagCheckEvent = createSwitchEvent(flowchart, 'EventFlags', 'CheckFlag',
-		{'symbol': flag}, {0: item1AddEvent, 1: item2AddEvent})
-
-	insertEventAfter(flowchart, before, flagCheckEvent)
-
-	return flagCheckEvent
 
 
 def createActionEvent(flowchart, actor, action, params, nextev=None):

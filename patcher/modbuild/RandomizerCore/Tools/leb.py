@@ -105,16 +105,6 @@ class Room:
     def __init__(self, data, edit_grid=False):
         self.fixed_hash = FixedHash(data)
 
-        # self.points = []
-        # point_entry = [e for e in self.fixed_hash.entries if e.name == b'point'][0]
-        # for entry in point_entry.data.entries:
-        # 	self.points.append(Point(entry.data))
-
-        # self.rails = []
-        # rail_entry = [e for e in self.fixed_hash.entries if e.name == b'rail'][0]
-        # for entry in rail_entry.data.entries:
-        # 	self.rails.append(Rail(data=entry.data, names=self.fixed_hash.namesSection))
-
         self.actors = []
         actor_entry = [e for e in self.fixed_hash.entries if e.name == b'actor'][0]
         for entry in actor_entry.data.entries:
@@ -145,33 +135,12 @@ class Room:
             chest.scaleX = chest_size
             chest.scaleY = chest_size
             chest.scaleZ = chest_size
-        
-        # if item_key == 'BowWow':
-        #     pass
-        # elif item_key == 'Rooster':
-        #     room_data.addChestRooster()
 
 
     def repack(self):
         new_names = b''
 
         for entry in self.fixed_hash.entries:
-            # if entry.name == b'point':
-            # 	entry.data.entries = []
-            # 	for point in self.points:
-            # 		# Create a new point entry for actors to use
-            # 		entry.data.entries.append(Entry(0xFFF3, b'', 0xFFFFFFFF, point.pack()))
-
-            # if entry.name == b'rail':
-            # 	entry.data.entries = []
-            # 	for rail in self.rails:
-            # 		# Create a new rail entry to reference point indexes per rail
-            # 		entry.data.entries.append(Entry(0xFFF2, b'', 0xFFFFFFFF, rail.pack(len(new_names))))
-
-            # 		for param in rail.xC:
-            # 			if isinstance(param, bytes):
-            # 				new_names += param + b'\x00'
-
             if entry.name == b'actor':
                 entry.data.entries = []
                 for actor in self.actors:
@@ -359,86 +328,6 @@ class Relationship:
             packed += self.section_3[i].to_bytes(4, 'little')
 
         return packed
-
-
-# # EXPERIMENTAL POINT AND RAIL SECTIONS
-# class Point:
-# 	def __init__(self, data):
-# 			self.posX = readFloat(data, 0x0, 4)
-# 			self.posY = readFloat(data, 0x4, 4)
-# 			self.posZ = readFloat(data, 0x8, 4)
-# 			self.xC = data[0xC:]
-
-# 	def pack(self):
-# 		packed = b''
-# 		packed += struct.pack('<f', self.posX)
-# 		packed += struct.pack('<f', self.posY)
-# 		packed += struct.pack('<f', self.posZ)
-# 		packed += self.xC
-
-# 		return packed
-
-
-# class Rail:
-# 	def __init__(self, data=None, points=None, names=None):
-# 		if data is not None:
-# 			self.x0 = data[0x0:0xC]
-
-# 			self.xC = []
-# 			for i in range(4):
-# 				paramType = readBytes(data, 0xC + (0x8 * i) + 0x4, 4)
-
-# 				if paramType == 0x2:
-# 					param = readFloat(data, 0xC + (0x8 * i), 4)
-# 				else:
-# 					param = readBytes(data, 0xC + (0x8 * i), 4)
-
-# 				if paramType == 0xFFFFFF04:
-# 					self.xC.append(readString(names, param))
-# 				else:
-# 					self.xC.append(param)
-
-# 			self.num_entries = readBytes(data, 0x2C, 2)
-# 			self.num_indexes = readBytes(data, 0x2E, 2)
-
-# 			self.points = []
-# 			for i in range(self.num_entries):
-# 				self.points.append(readBytes(data, (0x30 + (0x2 * i)), 2))
-
-# 		else:
-# 			self.x0 = b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-# 			self.xC = [25, 25, 25, 25]
-# 			self.num_entries = len(points)
-# 			self.num_indexes = 0x1
-# 			self.points = points
-
-
-# 	def pack(self, nameOffset):
-# 		packed = b''
-# 		packed += self.x0
-
-# 		nameRepr = b'' # + b'\x00'
-
-# 		for i in range(4):
-# 			param = self.xC[i]
-# 			if isinstance(param, bytes):
-# 				packed += (len(nameRepr) + nameOffset).to_bytes(4, 'little')
-# 				packed += (0xFFFFFF04).to_bytes(4, 'little')
-# 				nameRepr += param + b'\x00'
-# 			elif isinstance(param, float):
-# 				packed += struct.pack('<f', param)
-# 				packed += (2).to_bytes(4, 'little')
-# 			else:
-# 				packed += param.to_bytes(4, 'little')
-# 				packed += (3).to_bytes(4, 'little')
-
-# 		packed += self.num_entries.to_bytes(2, 'little')
-# 		packed += self.num_indexes.to_bytes(2, 'little')
-
-# 		for i in range(self.num_entries):
-# 			packed += self.points[i].to_bytes(2, 'little')
-
-# 		return packed
 
 
 # EXPERIMENTAL GRID SECTION

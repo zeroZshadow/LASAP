@@ -47,7 +47,7 @@ To build locally, set up the venvs and `vendor/Archipelago` ([TESTING.md](TESTIN
 bash scripts/build_exl.sh
 ```
 ```bash
-.venv-lasr/Scripts/python.exe scripts/build_release.py
+.venv-ap/Scripts/python.exe scripts/build_release.py
 ```
 
 This writes `build/release/LASAP-<world version>/`. With a `.venv-relay` holding PyInstaller (`uv venv .venv-relay --python 3.12`, then `uv pip install pyinstaller --python .venv-relay`), it also builds `LASGhostRelay.exe`.
@@ -80,6 +80,8 @@ Run the patcher alone:
 ```bash
 .venv-lasr/Scripts/python.exe patcher/las_ap_patch.py <patch.aplas> --romfs <romfs dump> --out <out dir>
 ```
+
+From a checkout it refuses a module older than its source (`patcher/module_check.py`): run `scripts/build_exl.sh` first.
 
 ## Licenses
 

@@ -18,9 +18,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import emu
-from build_release import newer_source
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "patcher"))
+import module_check  # noqa: E402
 import seed_file  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -307,8 +307,8 @@ def main() -> None:
     emu.check()
     if not MODULE.exists():
         raise SystemExit(f"no test module {MODULE}: run scripts/build_exl.sh")
-    if newer := newer_source(MODULE):
-        raise SystemExit(f"the test module is older than {newer}: run scripts/build_exl.sh")
+    if problem := module_check.problem(MODULE):
+        raise SystemExit(problem)
     groups = read_groups(TESTS / "suite.txt")
     if args.groups:
         unknown = set(args.groups) - {g.name for g in groups}

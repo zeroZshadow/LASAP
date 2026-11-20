@@ -138,7 +138,6 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Seashell Mansion": o.seashell_mansion.value,
         "Shop": bool(o.shop),
         "Boss Drops": bool(o.boss_drops),
-        "Companions": False,
         "Dampe": bool(o.dampe),
         "Rapids": bool(o.rapids),
         "Fishing": bool(o.fishing),
@@ -153,10 +152,6 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Nightmare Keys": _DUNGEON_ITEMS[o.nightmare_keys.value],
         "Shuffle Instruments": _INSTRUMENTS[o.instruments.value],
         "Starting Instruments": o.starting_instruments.value,
-        "Race Mode": False,
-        "Required Dungeons": 5,
-        "Create Spoiler Log": False,
-        "Unrandomizer Mode": False,
         "Randomize Enemies": bool(o.randomize_enemies),
         "Randomize Enemy Sizes": bool(o.randomize_enemy_sizes),
         "Bouncy Items": bool(o.bouncy_items),  # read by the AP patcher (ap_options.py), not by LASR
@@ -168,8 +163,6 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Classic D2": bool(o.classic_d2),
         # the dungeons' doors into each other (dungeon_entrances); with everything they are doors of the door pool
         "Shuffled Dungeons": o.shuffled_dungeons == o.shuffled_dungeons.option_dungeons,
-        "Consumable Drops": True,
-        "Bad Pets": False,  # not supported
         "Fast Fishing": bool(o.fast_fishing),
         "Shuffled Bombs": bool(o.shuffled_bombs),
         "Free Book": bool(o.free_book),
@@ -184,10 +177,6 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Stealing": _STEALING[o.stealing.value],
         "Boss Cutscenes": True,
         "Song Cutscenes": bool(o.skip_song_cutscenes),  # on skips them
-        "Chest Animations": True,
-        "Key Animations": True,
-        "Item Get Animations": False,  # not implemented by LASR
-        "Item Pool": "Standard",
         "Traps": _TRAPS.get(o.traps.value, "Many"),
         "Nice Bombs": True,
         "Nice Hookshot": bool(o.nice_hookshot),
@@ -207,11 +196,7 @@ def lasr_settings(options: LASOptions, vanilla: Iterable[str] = ()) -> Dict[str,
         "Blur Removal": False,
         "Disable Low Health Beep": False,  # done by the module; LASR never implemented it
         "No 30 FPS Drops": "On emulators",  # done by the module; not a LASR setting
-        # not implemented by LASR
-        "Randomize Sound Effects": False,
         "Rupees": o.starting_rupees.value,
-        "Containers": 0,
-        "Pieces": 0,
     }
     # set by LASR's main window before shuffling
     settings["Seashells Important"] = any(loc not in vanilla for loc in CATEGORIES["Mansion"])

@@ -70,7 +70,7 @@ REFALL = b"ReFall"
 EVENT_FILE = "APDrop.bfevfl"
 EVENT_ACTOR = "APDrop"
 # The pops (switch 0 turns on while switch 1, the got flag, is off): a dungeon key or golden leaf falls as the small
-# key with LASR's Key Animations, any other comes out at once. A trigger's actor parameter condition (category 4)
+# key does, any other comes out at once. A trigger's actor parameter condition (category 4)
 # compares LEB parameter 0; the first trigger whose conditions hold runs.
 POP_TRIGGER = 14
 TAKE_TRIGGER = 0

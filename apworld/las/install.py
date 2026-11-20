@@ -36,7 +36,8 @@ PATCHER_BUILD = PATCHER_PREFIX + "build.txt"
 SOURCE_PATCHER = Path(__file__).resolve().parent.parent.parent / "patcher"
 # Top-level modules of the patcher
 PATCHER_MODULES = {"las_ap_patch", "ap_assets", "ap_bntx", "ap_chest_model", "ap_ghost_model", "ap_entrances", "ap_goal",
-                   "ap_hints", "ap_map", "ap_options", "ap_save_name", "ap_shuffles", "romfs_check", "seed_file"}
+                   "ap_hints", "ap_map", "ap_options", "ap_save_name", "ap_shuffles", "module_check", "romfs_check",
+                   "seed_file"}
 # Imported only by tracker_images, which builds outside _PATCHER_LOCK and hands its worker processes ap_tracker_map's
 # functions by module name: patcher runs leave these imported
 TRACKER_MODULES = {"ap_astc", "ap_tracker_map"}

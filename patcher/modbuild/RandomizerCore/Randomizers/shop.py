@@ -87,7 +87,7 @@ class ShopRandomizer:
             ('EventFlags', 'SetFlag', {'symbol': 'ShopHeartGet', 'value': True}),
             ('EventFlags', 'SetFlag', {'symbol': 'ShopHeartSteal', 'value': False}),
         ], fast_stealing)
-        give_heart = self.parent.item_get_manager.get(flow.flowchart, 'shop-slot6', None, remove_heart, True)
+        give_heart = self.parent.item_get_manager.get(flow.flowchart, 'shop-slot6', None, remove_heart)
         check_heart = event_tools.createSwitchEvent(flow.flowchart, 'EventFlags', 'CheckFlag',
             {'symbol': 'ShopHeartSteal'}, {0: fast_stealing, 1: give_heart})
 
@@ -95,7 +95,7 @@ class ShopRandomizer:
             ('EventFlags', 'SetFlag', {'symbol': 'BowGet', 'value': True}),
             ('EventFlags', 'SetFlag', {'symbol': 'ShopBowSteal', 'value': False}),
         ], check_heart)
-        give_bow = self.parent.item_get_manager.get(flow.flowchart, 'shop-slot3-2nd', None, remove_bow, True)
+        give_bow = self.parent.item_get_manager.get(flow.flowchart, 'shop-slot3-2nd', None, remove_bow)
         check_bow = event_tools.createSwitchEvent(flow.flowchart, 'EventFlags', 'CheckFlag',
             {'symbol': 'ShopBowSteal'}, {0: check_heart, 1: give_bow})
 
@@ -103,7 +103,7 @@ class ShopRandomizer:
             ('EventFlags', 'SetFlag', {'symbol': 'ScoopGet', 'value': True}),
             ('EventFlags', 'SetFlag', {'symbol': 'ShopShovelSteal', 'value': False}),
         ], check_bow)
-        give_shovel = self.parent.item_get_manager.get(flow.flowchart, 'shop-slot3-1st', None, remove_shovel, True)
+        give_shovel = self.parent.item_get_manager.get(flow.flowchart, 'shop-slot3-1st', None, remove_shovel)
         check_shovel = event_tools.createSwitchEvent(flow.flowchart, 'EventFlags', 'CheckFlag',
             {'symbol': 'ShopShovelSteal'}, {0: check_bow, 1: give_shovel})
 

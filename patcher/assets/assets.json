@@ -532,7 +532,7 @@
  "region_common/event/APDrop.bfevfl": {
   "source": null,
   "source_sha256": null,
-  "sha256": "56271d17af66607f5be45606cfb04687ead70b2ec7ae7b790f6328dc7178bcd1"
+  "sha256": "34123ce8c90de0945b29fa5af251184b4b6f0ccef6a41f06ba05eea1824acd7e"
  },
  "region_common/event/Book.bfevfl": {
   "source": "region_common/event/Book.bfevfl",
@@ -542,82 +542,82 @@
  "region_common/event/ChefBear.bfevfl": {
   "source": "region_common/event/ChefBear.bfevfl",
   "source_sha256": "147df84b30888f2fc97c95970c501c5cd9d104e26e6790ccc78a1aaba7f3c59b",
-  "sha256": "1e1e6081bad767ddd4126cea9a092a17a9308d4d60043e00e9d35f23738dc414"
+  "sha256": "48e725002a878b3267414bfe753af70e910c243d234013f2f0342bb47c3a57ac"
  },
  "region_common/event/Christine.bfevfl": {
   "source": "region_common/event/Christine.bfevfl",
   "source_sha256": "0874231a0f33d7239345c119ded2514f84139dc184f219e7968feced00c412bb",
-  "sha256": "d2577dff4a00054aa93249d6fb3fe76e68951a33b8beeb8d01055e681ea06f19"
+  "sha256": "35cc6154a5b55443010fbc34e7c80ad9486e3e78c9af7162d8e256d76e152b0e"
  },
  "region_common/event/Common.bfevfl": {
   "source": "region_common/event/Common.bfevfl",
   "source_sha256": "9661205f1d397647dd0f76c0f52aafc9089ccfb324efe463305b6c55a0f50d79",
-  "sha256": "4fead6b7f632aa8946051ea84980e3a707c5de5a1a245f562f9c048b5be7d883"
+  "sha256": "144fc0af3601760ab14d0085225da623820f94b93052070e5bd4b9a9ebe8128c"
  },
  "region_common/event/Danpei.bfevfl": {
   "source": "region_common/event/Danpei.bfevfl",
   "source_sha256": "731b68736d99255207601c76cfad12c26be9df1205ed17066065fb3d514fcc7e",
-  "sha256": "0a749f1a145a73d703f41823bd6b9979398433daeae59d9611514b53db1ddc2e"
+  "sha256": "34a15909626ec55d97ff7abc1da3d46f40f699fdb04e39501b7b56bb925e2f3c"
  },
  "region_common/event/DrWrite.bfevfl": {
   "source": "region_common/event/DrWrite.bfevfl",
   "source_sha256": "88ed821e5a9efbb0bbd13a66330d360c10422c664e2a63b8dc1a0884c6c866ff",
-  "sha256": "a6056a3ab68e1320a619198b84ad577b5ec3d513ed170b1914eb8123c68a78bb"
+  "sha256": "627ad0d1ecad76f067a896e68c1267e0ccbd6dc4a5fb94db5c240dcd3fc8d41a"
  },
  "region_common/event/DungeonOwlStatue.bfevfl": {
   "source": "region_common/event/DungeonOwlStatue.bfevfl",
   "source_sha256": "c1a2220f6bbeb93c8e48f6ab79f5a295c2ce1444831716ad650c01c67ed27d64",
-  "sha256": "f63068aa75e5a96c3f17a871054ae32c07c6faa2fc97e16336dc0d0a02377965"
+  "sha256": "198b8598020cf3d20c17f6e3faf5cb9104d2e72a7240e6162002174e3e473d4b"
  },
  "region_common/event/FairyQueen.bfevfl": {
   "source": "region_common/event/FairyQueen.bfevfl",
   "source_sha256": "d2bd074b3b18f1f726e74baef5eaa62e30bc9142d81fd254c16a6813146ca7e0",
-  "sha256": "da422e8b9ae5c3d296c529bd60449c44acb05a8e825561a5e6bef069e6dbe2a6"
+  "sha256": "6a61f80427c82a65929ef2468b2e1af5940cce3ef59c56ebe8352481d44d0d04"
  },
  "region_common/event/FieldOwlStatue.bfevfl": {
   "source": "region_common/event/FieldOwlStatue.bfevfl",
   "source_sha256": "b33e7c9a69c4fb4b97b1da724518c59a6cac36dcc5edc172aa8fdc7f5f53233f",
-  "sha256": "e4caa8a6af814aa441f66fe136806c0bea1ae9bf6df2e6be01fba7ae291d5def"
+  "sha256": "17a952f8f3550f300b86d28f3e76b1b0dc198fd53db2b01ee8d27734d5e6ad99"
  },
  "region_common/event/Fisherman.bfevfl": {
   "source": "region_common/event/Fisherman.bfevfl",
   "source_sha256": "cd1c263c8220d3f7e573d684c1d57c99903b136cb24048259bad4475fbc93fd9",
-  "sha256": "2a76160f6b661db6e48a4e1fdc5323b69314e349e77e10a481b94bb70d84596b"
+  "sha256": "9179f58810dcb4d2f698c82176f086fea84dc6daeb0dbaf5b670fb462d9383c3"
  },
  "region_common/event/GameShopOwner.bfevfl": {
   "source": "region_common/event/GameShopOwner.bfevfl",
   "source_sha256": "1e602a3d2c809ec12429f5a36caad363d2486a36fcdbc9f59e822a525c941916",
-  "sha256": "394caf507ee51995f35c3c0762bdbbc688425299889c81da40638478f150bbc2"
+  "sha256": "7b0ddffdb072df9306cf1db9634c33923534a0f5cf8e4f62d4143c37950c7666"
  },
  "region_common/event/Ghost.bfevfl": {
   "source": "region_common/event/Ghost.bfevfl",
   "source_sha256": "d9267163bce517f1bd9062f5b0f394760268b42fc431f9c069290f029c9ccd1f",
-  "sha256": "1002b7d33e81c6578d53969be3f1c09144389cb73d3316c6b8ea3070e779f9ab"
+  "sha256": "de1ba0db903024e2fa73f87562f1e9d6167f87c24308cf323873d3db4c2f88b8"
  },
  "region_common/event/Goriya.bfevfl": {
   "source": "region_common/event/Goriya.bfevfl",
   "source_sha256": "ecf2bb72de7359c072b779ce8acc36ece70efd12908a244560ffeaefd494d7c4",
-  "sha256": "e23fe82eecf9ace26bb6542e184b28c2a07d97106d84bb6af961edf2b0042da9"
+  "sha256": "f34aa0314268d935b67be11f9e4bd4b1eb648ea89b2ab5fcbe195461e7a14a18"
  },
  "region_common/event/GrandmaUlrira.bfevfl": {
   "source": "region_common/event/GrandmaUlrira.bfevfl",
   "source_sha256": "e5ab771a9e8744e31cda1212c901bc134fb668c841c22d0a7a00bc4438f8e78b",
-  "sha256": "bdf1b7e3ca044e3689f78f3e8ccb4e9178fbe56c02fd7f58739586e305199f88"
+  "sha256": "55fd7db1d5e3408d63b1beafd6268d2b186320de74955c3947a4b6fa22b0e438"
  },
  "region_common/event/Item.bfevfl": {
   "source": "region_common/event/Item.bfevfl",
   "source_sha256": "2ecfa2d151d053e1e4194bbe47c946fa6124555baa0d2cd900447d4cfb9bccd0",
-  "sha256": "6ba71ebce93b748a92a1db895f6f592e8fffb22efaa7d2ef9e7b28513f78d54c"
+  "sha256": "803bb0c121c03666c4267e962bf874c57a4f295607cefda4fb1daefb3c47d338"
  },
  "region_common/event/Kiki.bfevfl": {
   "source": "region_common/event/Kiki.bfevfl",
   "source_sha256": "09dc6f793f1efd2337d836689d3eff94a6abed88da784100a63809cfb7fc8912",
-  "sha256": "3760ac0a3081af4cb4fc532e5f8b027a6cd2a4816b216e557d0c7c26884784a7"
+  "sha256": "b16a28995a41a4ed73e27c4bd9bb15e45868e7f1c0967ece7cecf2779e5718c0"
  },
  "region_common/event/MadBatter.bfevfl": {
   "source": "region_common/event/MadBatter.bfevfl",
   "source_sha256": "3f22fc5d3a2d40cec44f736203ce0c50b5d28e8e90bc14da7f3255f374009f5e",
-  "sha256": "acc153889e1877d28727038c0ede241e94bedcb01854959abf2dc780419c68dd"
+  "sha256": "fadab1e1eec6e5c8adf372522842ed380e3706e3c6d501ec1e6965f36f4783bd"
  },
  "region_common/event/MadamMeowMeow.bfevfl": {
   "source": "region_common/event/MadamMeowMeow.bfevfl",
@@ -627,42 +627,42 @@
  "region_common/event/Mamu.bfevfl": {
   "source": "region_common/event/Mamu.bfevfl",
   "source_sha256": "4044f96cfde18ad2b2597aa28b63bc1b0499c97b9f4fa1c63dfc1a6f2628ae9e",
-  "sha256": "638e642d4d2e4fde32e3612155fc82e044e8240f0b5c8098a7158ecbbc9cef86"
+  "sha256": "500e0b1bce300993e48b28095155d1c4520a6e37bc864c5d5d6bfc550d4bea05"
  },
  "region_common/event/ManboTamegoro.bfevfl": {
   "source": "region_common/event/ManboTamegoro.bfevfl",
   "source_sha256": "d1488a83464843a16d17e93bf3877951bfbbc4b6dd76584a3860177442bf6b4f",
-  "sha256": "a70355d463d28165beb23f80d1fe11c00993d88be90b3e7cd164a86f31fc4ee2"
+  "sha256": "27aae1f72716acc2f84ba519bbe7c6908d0db2911d6b47c810bd284a8c73527c"
  },
  "region_common/event/Marin.bfevfl": {
   "source": "region_common/event/Marin.bfevfl",
   "source_sha256": "fb78f1c1bb2a1aae33de5adfef86d20687fb6037301d3fed5b73debf5319429e",
-  "sha256": "da10ddcddc5f19834eb89f8cfbbbdb980867770dbcdc3a4d8d64fd8c088366b5"
+  "sha256": "29d40dd9c6868b753e334e8a02bff9e2ce6d977e0e42d8ec9c3ed8cf0319701d"
  },
  "region_common/event/MarthaStatue.bfevfl": {
   "source": "region_common/event/MarthaStatue.bfevfl",
   "source_sha256": "064998dc6b456d508aed6834b245821328fba92ac4eff8cfdac7c73a7e260469",
-  "sha256": "3ebee4f24094892e60dd11da49818d2818304a68c765892ed3a0a18d50914987"
+  "sha256": "adccf1f32352eff2514c990938d49b98cf15b2f6034f23690cd0a4917904eee3"
  },
  "region_common/event/MarthasBayFisherman.bfevfl": {
   "source": "region_common/event/MarthasBayFisherman.bfevfl",
   "source_sha256": "752ac52e52447b3265e0a1756013b75f2d69ccc046f1d65aeb3f2aff596fda5e",
-  "sha256": "d0f53f9d41899a41faf755c47d7643a5b6e5b723515fdfbc2a50767b6eebbe4e"
+  "sha256": "9af78a74a6a8b66db8cfb2cd4374671fa9e63dd9111baa3b00061263f2c58e54"
  },
  "region_common/event/MermaidMartha.bfevfl": {
   "source": "region_common/event/MermaidMartha.bfevfl",
   "source_sha256": "c46bef4be93d1a437f25b1da1afc25a1621fe0e33ed5a2617e9c31f9884baf8c",
-  "sha256": "658c405720286b4c96a30e1599cddd47fca6b067a82801ded19e646fbf1cf7d4"
+  "sha256": "3fa32ab495c79230b3efcb9ffeca35bc27dbafaed0819795b0d847b601145abd"
  },
  "region_common/event/Papahl.bfevfl": {
   "source": "region_common/event/Papahl.bfevfl",
   "source_sha256": "dab43bc8b799cd7d7a51bcd6de7d578d863506bdb67f7ef384e7375312b8b695",
-  "sha256": "f15362f4ba827c1cf443f1d32ea8f97515352c88d53cb188b05c3110d675289d"
+  "sha256": "86c2e016b16d9892c07ae70333bdef147a224ab75a9e3f283d11b9007c05fc02"
  },
  "region_common/event/PlayerStart.bfevfl": {
   "source": "region_common/event/PlayerStart.bfevfl",
   "source_sha256": "39a69abcd372498b016d50315a41e857fec48ed1736359651b573c699d5d70af",
-  "sha256": "9d15de361caca8ddd0a4de9816bf4cb8caa2a97324fadefe1b23b5fabdb11645"
+  "sha256": "6f0c647afec0a73e29cf6c974050344b2820450b519204161c7fa657600b7e6e"
  },
  "region_common/event/PrizeCommon.bfevfl": {
   "source": "region_common/event/PrizeCommon.bfevfl",
@@ -672,42 +672,37 @@
  "region_common/event/QuadrupletsMother.bfevfl": {
   "source": "region_common/event/QuadrupletsMother.bfevfl",
   "source_sha256": "344ef2f021f6d6ae10f1816afdbd6aaf0dc63423a32f9ebf87c792f0716e313a",
-  "sha256": "3b20613d9b253153fcabc6658a023c86d48587376e0ce5bae956be7b987a74b9"
+  "sha256": "f04198bd273c20656780c6e2ae0b40f4887c26a5fddbf485348df4d5990f497a"
  },
  "region_common/event/RaftShopMan.bfevfl": {
   "source": "region_common/event/RaftShopMan.bfevfl",
   "source_sha256": "132ce0739aee939e42f32cb0191061b46da1d2ede0eb18a8304db14561e93ffb",
-  "sha256": "77aeb9d6f03f21f8650723f276ceab4bcf95817d6204ecaacd07d040481f4f6e"
+  "sha256": "0f45f8bc805ea2a05091720a1501fa574859e2379323c44221c29e4c010cad12"
  },
  "region_common/event/RibbonBowWow.bfevfl": {
   "source": "region_common/event/RibbonBowWow.bfevfl",
   "source_sha256": "d99b05c7b77632c859e09547bb18725739b60d0a9e95cf049b0ee6051ef0368b",
-  "sha256": "39be397448efa23a5fdaf742e576d656a9ff6ec7cefed228d45e09a795c4f367"
+  "sha256": "faf5271047a222b44ac521f171ea9c1d4179af553dee7a0e82de925538325ab6"
  },
  "region_common/event/RoosterBones.bfevfl": {
   "source": "region_common/event/RoosterBones.bfevfl",
   "source_sha256": "2b766ba9c2720e94991e460006d74dba0500c743e004000e26f07dd78797bab7",
-  "sha256": "02cc8f8abbcfc7d613fd5765f8bb2ce23d39db5586f9cc3bfeb1afe19fbe1193"
+  "sha256": "033954e57344197ff81fe10af29a37bd9966120a0d32bb8f9c83cf56f37005db"
  },
  "region_common/event/Sale.bfevfl": {
   "source": "region_common/event/Sale.bfevfl",
   "source_sha256": "0ffbb5fc876644019abfc791e8b6db186ee131816ed92f9a7fb3a6503f4cce3e",
-  "sha256": "76e8fcfe6242ff2ebc7fd7f3e8433216eee71cb9b24c28175dbd2a706f91092b"
+  "sha256": "6ef4bb2fd81302cebefa9932763730aa88357fd20b5ed29b9b104d256fe07b5c"
  },
  "region_common/event/SecretZora.bfevfl": {
   "source": "region_common/event/SecretZora.bfevfl",
   "source_sha256": "5cafeb26032386e41226077e61c89576268ff4401bb8ef60edc890e4e310fddc",
-  "sha256": "34584156fec41cf8916697967450e46844bf5bc784a3e415a719274b6eaef34e"
+  "sha256": "c8bb11fe981d0bf2262728168130e1fe305bbe5cad06e768612d8f793f3c619e"
  },
  "region_common/event/ShellMansionMaster.bfevfl": {
   "source": "region_common/event/ShellMansionMaster.bfevfl",
   "source_sha256": "1f60e4169bf51f374a3ce60d2046d94599e8a5a8b4704866cd0adcf2e7892566",
-  "sha256": "17edb66bb43a592c905ba7df3418df5cbb86569d5ddd9f7bb2515304dba00ba0"
- },
- "region_common/event/ShellMansionPresent.bfevfl": {
-  "source": "region_common/event/ShellMansionPresent.bfevfl",
-  "source_sha256": "5fb8ca1dca9280117eb05849d2cd3552d9e1995d813344944d6851fc5ec32de5",
-  "sha256": "77c3a926743150ee3f6ef790a58a4fec95345d15a84212920c9ac1274f23590a"
+  "sha256": "41739d930e57be209183cfb3c238927e863b166f4b05cbcdd3c73b22ab7cb65a"
  },
  "region_common/event/SkeletalGuardBlue.bfevfl": {
   "source": "region_common/event/SkeletalGuardBlue.bfevfl",
@@ -717,12 +712,12 @@
  "region_common/event/Syrup.bfevfl": {
   "source": "region_common/event/Syrup.bfevfl",
   "source_sha256": "43b12043d274946608c29f65dc198a382c984551503353ad1ccb7b3ae95f11dd",
-  "sha256": "7f57251e0c212a030ec05b0d26d30fd0ae6228651296d30ad3728e9bf1576c86"
+  "sha256": "b74946eac622aa9fe344ea3fe6c2a7b71da8095fbabc67f11d13eefa8215e50f"
  },
  "region_common/event/Tarin.bfevfl": {
   "source": "region_common/event/Tarin.bfevfl",
   "source_sha256": "95b42cf2e12500108dda0d2b3a13e5438f9626b3f76dacdd9bcfc30c075abb5b",
-  "sha256": "891d295201e186474c5806ca7c7052dbc335a25dccd7adff2820d2b441e41704"
+  "sha256": "96b40a4d6dabcce5cd3571f11f2b4bcf5a7cfaf25aeb4bb33797e75c579dfee8"
  },
  "region_common/event/Telephone.bfevfl": {
   "source": "region_common/event/Telephone.bfevfl",
@@ -732,17 +727,17 @@
  "region_common/event/ToolShopkeeper.bfevfl": {
   "source": "region_common/event/ToolShopkeeper.bfevfl",
   "source_sha256": "684edab84b4b48f7767c3f18f69d638b3bf2a1b15c94b8118d8d4c438cdd7423",
-  "sha256": "287f0cb278ca590e84648abd2ab0f85ef30134812c5c2ceb7c265820402ceb63"
+  "sha256": "c05cc123a54addb2f6f6dde5a772440176d34c5c6ac5fa1d90082b37c72d4d12"
  },
  "region_common/event/TreasureBox.bfevfl": {
   "source": "region_common/event/TreasureBox.bfevfl",
   "source_sha256": "96a6a38edcc5cb59d5a4bb8f6cb14a541ce0062ee7d959e6a15034d3ce2c2d63",
-  "sha256": "d056504619cb6e3f6be4e661c45ec7600cb35faf624c2ccd74f9f50c03d6c03d"
+  "sha256": "36af2a82a996d32ba1cfcf2cb6e2f1510edb9a8fc435d05f03be4987f2577928"
  },
  "region_common/event/Walrus.bfevfl": {
   "source": "region_common/event/Walrus.bfevfl",
   "source_sha256": "6831a17e32972f4f1d126eae35582c103791fb695921bb51e3848bb99d9cdb68",
-  "sha256": "46d144eaca0a91797e4a85e18202d6b2f0e1a6164df9fcc437bb367e0fb5b412"
+  "sha256": "f65500711c6db89b012434de6bce5c7a5f9a61827b356c30fb0e522a395e443d"
  },
  "region_common/event/WindFishsEgg.bfevfl": {
   "source": "region_common/event/WindFishsEgg.bfevfl",

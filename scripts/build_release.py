@@ -1,6 +1,6 @@
 """Builds the release: las.apworld with the patcher inside, and the player options template.
 
-Run with .venv-lasr after scripts/build_exl.sh (it also needs .venv-ap and vendor/Archipelago for "Build APWorlds"):
+Run with .venv-ap after scripts/build_exl.sh (it also needs vendor/Archipelago for "Build APWorlds"):
   python scripts/build_release.py
 Writes build/release/LASAP-<world version>/: las.apworld, "Links Awakening Switch.yaml", the setup guide and, with
 .venv-relay, LASGhostRelay.exe (build_relay.py).
@@ -22,6 +22,8 @@ from local_paths import venv_python
 
 ROOT = Path(__file__).resolve().parent.parent
 PATCHER = ROOT / "patcher"
+sys.path.insert(0, str(PATCHER))
+import module_check  # noqa: E402
 AP = Path(ap.AP)
 AP_PYTHON = venv_python(".venv-ap")
 BUILD = ROOT / "build" / "release"
@@ -70,21 +72,9 @@ def run_ap(code: str) -> set:
     return failed
 
 
-def newer_source(module: Path) -> str:
-    """The newest las-ap-exl source file when it is newer than module (build_exl.sh has not run since it changed),
-    or ""."""
-    root = ROOT / "las-ap-exl"
-    sources = [f for f in root.rglob("*") if f.is_file() and f.suffix in (".cpp", ".hpp", ".h", ".c")
-               and not {"build", "build-test", "out", "deploy"} & set(f.relative_to(root).parts)]
-    newest = max(sources, key=lambda f: f.stat().st_mtime, default=None)
-    if newest is None or not module.exists() or newest.stat().st_mtime <= module.stat().st_mtime:
-        return ""
-    return newest.relative_to(ROOT).as_posix()
-
-
 def check_module() -> None:
-    if newer := newer_source(PATCHER / "exl" / "subsdk9"):
-        sys.exit(f"patcher/exl/subsdk9 is older than {newer}: run scripts/build_exl.sh")
+    if problem := module_check.problem(PATCHER / "exl" / "subsdk9"):
+        sys.exit(problem)
 
 
 def main() -> None:

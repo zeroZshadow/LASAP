@@ -1,10 +1,10 @@
 #!/bin/bash
 # Work in a git worktree of this repository beside other sessions (TESTING.md, "Working in a worktree").
-#   worktree.sh setup      own Archipelago worktree (vendor/Archipelago, worlds/las -> this worktree's world) and the
-#                          built modules (patcher/exl, patcher/exl-test, with their build times) and
+#   worktree.sh setup      own Archipelago worktree (vendor/Archipelago, worlds/las -> this worktree's world, Universal
+#                          Tracker), the built modules (patcher/exl, patcher/exl-test, with their build times) and
 #                          scripts/local_paths.json from the main checkout
 #   worktree.sh test [args] the world's tests with pytest, on this worktree's world: the test paths given
-#                          (worlds/las/test/...), else the whole folder
+#                          (worlds/las/test/...), else the whole folder; each skip prints its reason
 #   worktree.sh land <subject> [<line> [<line>]]
 #                          rebase this branch onto master, run the whole world test suite, put the branch on master as
 #                          one commit with that message, then remove the Archipelago worktree; refuses while a process
@@ -47,7 +47,7 @@ run_tests() {
         case "$arg" in worlds/las/test*) paths=() ;; esac
     done
     [ -e "$AP/worlds/las" ] || { echo "no Archipelago worktree: run worktree.sh setup"; return 1; }
-    (cd "$AP" && "$MAIN/.venv-ap/Scripts/python.exe" -m pytest "${paths[@]}" -q "$@")
+    (cd "$AP" && "$MAIN/.venv-ap/Scripts/python.exe" -m pytest "${paths[@]}" -q -rs "$@")  # -rs: each skip's reason
 }
 
 case "$1" in
@@ -60,6 +60,11 @@ setup)
     if [ ! -e "$AP" ]; then
         git -C "$MAIN/vendor/Archipelago" worktree add --detach "$AP" HEAD
         mkdir -p "$AP/Players"
+    fi
+    # Universal Tracker, which the client's tests need (TESTING.md, Requirements); a skipped test says it is missing
+    if [ ! -e "$AP/custom_worlds/tracker.apworld" ] && [ -e "$MAIN/vendor/Archipelago/custom_worlds/tracker.apworld" ]; then
+        mkdir -p "$AP/custom_worlds"
+        cp "$MAIN/vendor/Archipelago/custom_worlds/tracker.apworld" "$AP/custom_worlds/"
     fi
     if [ ! -e "$AP/worlds/las" ]; then
         cmd //c mklink //J "$(winpath "$AP/worlds/las")" "$(winpath "$ROOT/apworld/las")" > /dev/null

@@ -27,6 +27,7 @@ import ap_hints  # noqa: E402
 import ap_map  # noqa: E402
 import ap_options  # noqa: E402
 import ap_save_name  # noqa: E402
+import module_check  # noqa: E402
 import ap_shuffles  # noqa: E402
 import romfs_check  # noqa: E402
 import seed_file  # noqa: E402
@@ -320,7 +321,7 @@ def config_text(settings: dict, seed_hash: str, slot_name: str) -> str:
                        "rod": settings["Nice Magic Rod"]},
         "blur_removal": {"enabled": settings["Blur Removal"]},
         "damage": {"mode": settings["Damage"]},
-        "randomizer": {"enabled": True, "free_book": settings["Free Book"], "stealing": settings["Stealing"],
+        "randomizer": {"free_book": settings["Free Book"], "stealing": settings["Stealing"],
                        "enemies": settings["Randomize Enemies"], "enemy_sizes": settings["Randomize Enemy Sizes"]},
         # Settings LASR lists but never implemented; the module does them.
         "tweaks": {"instant_text": settings["Instant Text"], "no_low_health_beep": settings["Disable Low Health Beep"],
@@ -396,6 +397,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
     if not (EXL_DIR / "subsdk9").exists():
         print("patcher/exl/subsdk9 is missing; build the exlaunch module first (scripts/build_exl.sh)")
+        return 1
+    problem = module_check.problem(EXL_DIR / "subsdk9")
+    if problem:
+        print(problem)
         return 1
     try:
         if patch_shape(patch) != ap_assets.data()["shape"]:

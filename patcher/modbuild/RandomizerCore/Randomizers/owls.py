@@ -23,7 +23,7 @@ class OwlStatueRandomizer:
             'owl-statue-rapids': 'Event40'
         }
         for k,v in field_owls.items():
-            gift_event = self.parent.item_get_manager.get(flowchart, k, None, None, True)
+            gift_event = self.parent.item_get_manager.get(flowchart, k, None, None)
 
             flag_set = event_tools.createActionEvent(flowchart, 'EventFlags', 'SetFlag',
                 {'symbol': k, 'value': True}, gift_event)

@@ -36,38 +36,10 @@ class ItemEventFixes:
         event_tools.findEntryPoint(flowchart, 'BlueClothes').name = 'ClothesBlue'
         event_tools.findEntryPoint(flowchart, 'Necklace').name = 'PinkBra'
 
-        # now we need to add events for Dampe rewards
-        event_tools.addEntryPoint(flowchart, 'Dampe1')
-        item_key = self.parent.item_defs[self.parent.placements['dampe-page-1']]['item-key']
-        if not item_key.endswith('Trap') and not item_key.startswith('Clothes'):
-            dialog_event = event_tools.createSubFlowEvent(flowchart, '',
-                item_key, {})
-            event_tools.insertEventAfter(flowchart, 'Dampe1', dialog_event)
-
-        event_tools.addEntryPoint(flowchart, 'DampeHeart')
-        item_key = self.parent.item_defs[self.parent.placements['dampe-heart-challenge']]['item-key']
-        if not item_key.endswith('Trap') and not item_key.startswith('Clothes'):
-            dialog_event = event_tools.createSubFlowEvent(flowchart, '',
-                item_key, {})
-            event_tools.insertEventAfter(flowchart, 'DampeHeart', dialog_event)
-
-        event_tools.addEntryPoint(flowchart, 'Dampe2')
-        item_key = self.parent.item_defs[self.parent.placements['dampe-page-2']]['item-key']
-        if not item_key.endswith('Trap') and not item_key.startswith('Clothes'):
-            dialog_event = event_tools.createSubFlowEvent(flowchart, '',
-                item_key, {})
-            event_tools.insertEventAfter(flowchart, 'Dampe2', dialog_event)
-
-        event_tools.addEntryPoint(flowchart, 'DampeBottle')
-        item_key = self.parent.item_defs[self.parent.placements['dampe-bottle-challenge']]['item-key']
-        if not item_key.endswith('Trap') and not item_key.startswith('Clothes'):
-            dialog_event = event_tools.createSubFlowEvent(flowchart, '',
-                item_key, {})
-            event_tools.insertEventAfter(flowchart, 'DampeBottle', dialog_event)
-
-        event_tools.addEntryPoint(flowchart, 'DampeFinal')
-        item_key = self.parent.item_defs[self.parent.placements['dampe-final']]['item-key']
-        if not item_key.endswith('Trap') and not item_key.startswith('Clothes'):
-            dialog_event = event_tools.createSubFlowEvent(flowchart, '',
-                item_key, {})
-            event_tools.insertEventAfter(flowchart, 'DampeFinal', dialog_event)
+        # Dampe's rewards (DampeRandomizer): each entry shows its location's item text
+        for entry, location in (('Dampe1', 'dampe-page-1'), ('DampeHeart', 'dampe-heart-challenge'),
+                                ('Dampe2', 'dampe-page-2'), ('DampeBottle', 'dampe-bottle-challenge'),
+                                ('DampeFinal', 'dampe-final')):
+            event_tools.addEntryPoint(flowchart, entry)
+            item_key = self.parent.item_defs[self.parent.placements[location]]['item-key']
+            event_tools.insertEventAfter(flowchart, entry, event_tools.createSubFlowEvent(flowchart, '', item_key, {}))

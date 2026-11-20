@@ -56,19 +56,16 @@ items: [sword, shield, bracelet, boots, flippers, feather, shovel, hookshot, bow
   warp-taltal-west]
 
 # Every option a rule may name; the world sets each one per slot.
-options: [360-movement, ammo-ghost, bad-pets, blue-rupees, blur-removal, boss-cutscenes, boss-drops, bouncy-items,
-  can-steal, chest-animations, chests, classic-d2, companions, completed-bridge, consumable-drops,
-  create-spoiler-log, dampe, disable-guardian-acorn, disable-low-health-beep, disable-piece-of-power, easy-fishing,
-  fast-fishing, fast-stalfos, fishing, free-book, free-gifts, golden-leaves, heart-pieces, instant-text,
-  item-get-animations, key-animations, map-tracker, miscellaneous, movement-speed, nice-bombs, nice-hookshot,
-  nice-magic-rod, open-kanalet, open-mabe, open-mamu, race-mode, randomize-enemies, randomize-enemy-sizes,
-  randomize-environments, randomize-sound-effects, randomize-text, seashell-hunt, seashells, seashells-important,
-  shop, shuffled-bombs, shuffled-dungeons, shuffled-powder, song-cutscenes, stealing-needs-sword, trade-important,
-  trade-quest, trendy-game, unrandomizer-mode, warp-points]
+options: [360-movement, ammo-ghost, blue-rupees, blur-removal, boss-cutscenes, boss-drops, bouncy-items, can-steal,
+  chests, classic-d2, completed-bridge, dampe, disable-guardian-acorn, disable-low-health-beep,
+  disable-piece-of-power, easy-fishing, fast-fishing, fast-stalfos, fishing, free-book, free-gifts, golden-leaves,
+  heart-pieces, instant-text, map-tracker, miscellaneous, movement-speed, nice-bombs, nice-hookshot, nice-magic-rod,
+  open-kanalet, open-mabe, open-mamu, randomize-enemies, randomize-enemy-sizes, randomize-environments,
+  randomize-text, seashell-hunt, seashells, seashells-important, shop, shuffled-bombs, shuffled-dungeons,
+  shuffled-powder, song-cutscenes, stealing-needs-sword, trade-important, trade-quest, trendy-game, warp-points]
 
 # The options the world always leaves off: a rule never holds through one of them.
-always-off: [bad-pets, blur-removal, companions, create-spoiler-log, disable-low-health-beep, item-get-animations, race-mode,
-  randomize-environments, randomize-sound-effects, randomize-text, trendy-game, unrandomizer-mode]
+always-off: [blur-removal, disable-low-health-beep, randomize-environments, randomize-text, trendy-game]
 
 # A counted group: `name:N` holds with N different items of it.
 counted:

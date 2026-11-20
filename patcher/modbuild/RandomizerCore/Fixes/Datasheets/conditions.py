@@ -8,40 +8,16 @@ class ConditionsDatasheetFixes:
         for condition in sheet['values']:
             self.editConditions(condition)
 
-        self.makeConditions(sheet, mod_generator.placements)
+        self.makeConditions(sheet)
         mod_generator.file_manager.writeFile('Conditions.gsheet', sheet)
 
 
-    def makeConditions(self, sheet, placements):
-        """Create new condition sets for the seashell sensor to work with Dampe, Rapids guy, Fishing Guy, and Seashell mansion"""
+    def makeConditions(self, sheet):
+        """Condition sets that always hold, so the shell sensor stays quiet at Dampe, the rapids, the fishing pond and
+        the Seashell Mansion (NpcDatasheetFixes)"""
 
-        dampe_condition = oead_tools.createCondition('DampeShellsComplete', [(9, 'true')])
-        dampe_locations = ['dampe-page-1', 'dampe-heart-challenge', 'dampe-page-2', 'dampe-bottle-challenge', 'dampe-final']
-        for location in dampe_locations:
-            if placements[location] == 'seashell':
-                dampe_condition['conditions'].append({'category': 2, 'parameter': f"Seashell:{placements['indexes'][location]}"})
-        sheet['values'].append(dampe_condition)
-
-        rapids_condition = oead_tools.createCondition('RapidsShellsComplete', [(9, 'true')])
-        rapids_locations = ['rapids-race-30', 'rapids-race-35', 'rapids-race-45']
-        for location in rapids_locations:
-            if placements[location] == 'seashell':
-                rapids_condition['conditions'].append({'category': 2, 'parameter': f"Seashell:{placements['indexes'][location]}"})
-        sheet['values'].append(rapids_condition)
-
-        fishing_condition = oead_tools.createCondition('FishingShellsComplete', [(9, 'true')])
-        fishing_locations = ['fishing-orange', 'fishing-cheep-cheep', 'fishing-ol-baron', 'fishing-loose', 'fishing-50', 'fishing-100', 'fishing-150']
-        for location in fishing_locations:
-            if placements[location] == 'seashell':
-                fishing_condition['conditions'].append({'category': 2, 'parameter': f"Seashell:{placements['indexes'][location]}"})
-        sheet['values'].append(fishing_condition)
-
-        mansion_condition = oead_tools.createCondition('MansionShellsComplete', [(9, 'true')])
-        mansion_locations = ['5-seashell-reward', '15-seashell-reward', '30-seashell-reward', '40-seashell-reward', '50-seashell-reward']
-        for location in mansion_locations:
-            if placements[location] == 'seashell':
-                mansion_condition['conditions'].append({'category': 2, 'parameter': f"Seashell:{placements['indexes'][location]}"})
-        sheet['values'].append(mansion_condition)
+        for symbol in ('DampeShellsComplete', 'RapidsShellsComplete', 'FishingShellsComplete', 'MansionShellsComplete'):
+            sheet['values'].append(oead_tools.createCondition(symbol, [(9, 'true')]))
 
 
     def editConditions(self, condition):
@@ -85,11 +61,6 @@ class ConditionsDatasheetFixes:
             condition['conditions'][0] = {'category': 1, 'parameter': 'ScoopGet'}
             condition['conditions'][1] = {'category': 1, 'parameter': '!BowGet'}
             return
-
-        # if condition['symbol'] == 'ShopArrowCondition':
-        #     condition['conditions'][0]['category'] = 2 # change Bow check to category 2 instead of the weird category 11
-        #     condition['conditions'].append({'category': 1, 'parameter': 'ShopBowGet'})
-        #     return
 
         if condition['symbol'] == 'ShopHeartPieceCondition':
             condition['conditions'][0] = {'category': 1, 'parameter': '!ShopHeartGet'}

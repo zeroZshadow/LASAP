@@ -18,7 +18,6 @@ deploy/
 out/
 patcher/exl/
 patcher/exl-test/
-patcher/modbuild/RandomizerUI/Resources/textures/chest/bfres/
 
 # Nintendo data and keys: never commit game dumps, keys or saves
 *.keys

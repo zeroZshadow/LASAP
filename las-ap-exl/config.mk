@@ -22,20 +22,3 @@ NPDM_JSON := qlaunch.json
 C_FLAGS := 
 CXX_FLAGS := 
 
-# AsRtld settings
-#------------------------
-
-# Path to the SD card. Used to mount and deploy files on SD, likely with hekate UMS.
-MOUNT_PATH := /mnt/k
-
-# Module settings
-#------------------------
-
-# Settings for deploying over FTP. Used by the deploy-ftp.py script.
-FTP_IP := 192.168.0.235
-FTP_PORT := 5000
-FTP_USERNAME := anonymous
-FTP_PASSWORD :=
-
-# Settings for deploying to Ryu. Used by the deploy-ryu.sh script.
-RYU_PATH ?=

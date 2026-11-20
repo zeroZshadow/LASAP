@@ -6,16 +6,15 @@ class NpcDatasheetFixes:
     def __init__(self, mod_generator) -> None:
         sheet = mod_generator.file_manager.readFile('Npc.gsheet')
         for npc in sheet['values']:
-            self.makeNpcChanges(npc, mod_generator.placements)
+            self.makeNpcChanges(npc)
 
         self.makeNewNpcs(sheet, mod_generator.placements, mod_generator.item_defs)
         mod_generator.file_manager.writeFile('Npc.gsheet', sheet)
 
 
-    def makeNpcChanges(self, npc, placements):
+    def makeNpcChanges(self, npc):
         """Makes lots of changes to the Npc datasheet to make this randomizer work, 
-        ranging from event triggers to layout conditions to even graphics changes. 
-        Also makes the shell sensor go off if the Npc holds a seashell"""
+        ranging from event triggers to layout conditions to even graphics changes."""
 
         if npc['symbol'] == 'NpcMadBatter':
             npc['eventTriggers'][0]['entryPoint'] = '$2'
@@ -66,12 +65,8 @@ class NpcDatasheetFixes:
             del npc['layoutConditions'][0]
             return
 
-        if npc['symbol'] == 'NpcChristine':
+        if npc['symbol'] in ('NpcChristine', 'NpcSecretZora', 'NpcWalrus'):
             del npc['shellSensor'][0]
-            if placements['christine-trade'] == 'seashell':
-                npc['shellSensor'].append({'category': 2, 'parameter': f"!Seashell:{placements['indexes']['christine-trade']}"})
-            if placements['christine-grateful'] == 'seashell':
-                npc['shellSensor'].append({'category': 2, 'parameter': f"!Seashell:{placements['indexes']['christine-grateful']}"})
             return
 
         if npc['symbol'] == 'NpcTarin':
@@ -83,59 +78,10 @@ class NpcDatasheetFixes:
 
         if npc['symbol'] == 'NpcPapahl':
             npc['layoutConditions'][1] = {'category': 1, 'parameter': 'TradePineappleGet', 'layoutID': 2}
-            if placements['papahl'] == 'seashell':
-                npc['shellSensor'].append({'category': 2, 'parameter': f"!Seashell:{placements['indexes']['papahl']}"})
-            return
-
-        if npc['symbol'] == 'NpcMarin':
-            if placements['marin'] == 'seashell':
-                npc['shellSensor'].append({'category': 4, 'parameter': '2'}) # Only the instance of Marin in Mabe should ring the sensor
-                npc['shellSensor'].append({'category': 2, 'parameter': f"!Seashell:{placements['indexes']['marin']}"})
-            return
-
-        if npc['symbol'] == 'NpcSecretZora':
-            del npc['shellSensor'][0]
-            if placements['invisible-zora'] == 'seashell':
-                npc['shellSensor'].append({'category': 2, 'parameter': f"!Seashell:{placements['indexes']['invisible-zora']}"})
-            return
-
-        if npc['symbol'] == 'NpcGoriya':
-            if placements['goriya-trader'] == 'seashell':
-                npc['shellSensor'].append({'category': 2, 'parameter': f"!Seashell:{placements['indexes']['goriya-trader']}"})
-            return
-
-        if npc['symbol'] == 'ObjGhostsGrave':
-            if placements['ghost-reward'] == 'seashell':
-                npc['shellSensor'].append({'category': 2, 'parameter': f"!Seashell:{placements['indexes']['ghost-reward']}"})
-            return
-
-        if npc['symbol'] == 'NpcWalrus':
-            del npc['shellSensor'][0]
-            if placements['walrus'] == 'seashell':
-                npc['shellSensor'].append({'category': 2, 'parameter': f"!Seashell:{placements['indexes']['walrus']}"})
-            return
-
-        if npc['symbol'] == 'NpcFairyQueen':
-            if placements['D0-fairy-1'] == 'seashell':
-                npc['shellSensor'].append({'category': 2, 'parameter': f"!Seashell:{placements['indexes']['D0-fairy-1']}"})
-            if placements['D0-fairy-2'] == 'seashell':
-                npc['shellSensor'].append({'category': 2, 'parameter': f"!Seashell:{placements['indexes']['D0-fairy-2']}"})
-            return
-
-        if npc['symbol'] == 'NpcManboTamegoro':
-            if placements['manbo'] == 'seashell':
-                npc['shellSensor'].append({'category': 2, 'parameter': f"!Seashell:{placements['indexes']['manbo']}"})
             return
 
         if npc['symbol'] == 'NpcMamu':
             del npc['layoutConditions'][0] # removes the frog's song layout condition so he's always there
-            if placements['mamu'] == 'seashell':
-                npc['shellSensor'].append({'category': 2, 'parameter': f"!Seashell:{placements['indexes']['mamu']}"})
-            return
-
-        if npc['symbol'] == 'NpcGameShopOwner':
-            if placements['trendy-prize-final'] == 'seashell':
-                npc['shellSensor'].append({'category': 2, 'parameter': f"!Seashell:{placements['indexes']['trendy-prize-final']}"})
             return
 
         if npc['symbol'] == 'NpcDanpei':
@@ -182,16 +128,6 @@ class NpcDatasheetFixes:
         dummy['graphics']['path'] = item_defs[item]['model-path']
         dummy['graphics']['model'] = item_defs[item]['model-name']
         npc_sheet['values'].append(oead_tools.dictToStruct(dummy))
-
-        # bombBag['symbol'] = 'ObjBombBag'
-        # bombBag['graphics']['path'] = 'ObjBombBag.bfres'
-        # bombBag['graphics']['model'] = 'BombBag'
-        # npc_sheet['values'].append(oead_tools.dictToStruct(bombBag))
-
-        # arrowBag['symbol'] = 'ObjArrowBag'
-        # arrowBag['graphics']['path'] = 'ObjArrowBag.bfres'
-        # arrowBag['graphics']['model'] = 'ArrowBag'
-        # npc_sheet['values'].append(oead_tools.dictToStruct(arrowBag))
 
 
 DUMMY_NPC = {

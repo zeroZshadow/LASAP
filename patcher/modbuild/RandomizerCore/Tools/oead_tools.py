@@ -68,9 +68,6 @@ def listToSheetArray(name, l):
 			if type(s) == dict:
 				d = dictToStruct(s)
 				new.append(d)
-			# elif type(s) == list:
-			# 	for k in s:
-			# 		new.append(listToSheetArray(k, s))
 	else:
 		new = gsheet.StructArray()
 	
@@ -114,19 +111,6 @@ def createCondition(name, checks):
 		condition['conditions'].append({'category': category, 'parameter': parameter})
 
 	return condition
-
-
-### NPC GSHEET
-# # creates a new value for the npc gsheet
-# def newNpcFromDict(npc):
-# 	new = {
-# 		'symbol': npc['symbol'],
-# 		'graphics': {
-
-# 		}
-# 	}
-# 	new['symbol'] = npc['symbol']
-# 	new['graphics'][]
 
 
 class SARC:

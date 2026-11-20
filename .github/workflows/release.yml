@@ -105,14 +105,12 @@ jobs:
         run: |
           uv venv .venv-ap --python "$PYTHON_VERSION"
           uv pip install -r vendor/Archipelago/requirements.txt -r patcher/requirements.txt --python .venv-ap
-          uv venv .venv-lasr --python "$PYTHON_VERSION"
-          uv pip install -r patcher/requirements.txt --python .venv-lasr
           uv venv .venv-relay --python "$PYTHON_VERSION"
           uv pip install pyinstaller --python .venv-relay
       - name: Build the release
         id: build
         run: |
-          .venv-lasr/Scripts/python.exe scripts/build_release.py
+          .venv-ap/Scripts/python.exe scripts/build_release.py
           echo "dir=$(ls -d build/release/LASAP-*)" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v7
         with:

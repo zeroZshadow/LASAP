@@ -5,6 +5,7 @@ cd "$(dirname "$0")/.."
 # In a worktree the venvs stay in the main checkout.
 PY=.venv-ap/Scripts/python.exe
 [ -x "$PY" ] || PY="$(git rev-parse --git-common-dir)/../.venv-ap/Scripts/python.exe"
+$PY patcher/module_check.py patcher/exl-test/subsdk9
 $PY scripts/emu.py check
 $PY scripts/emu.py stop || true
 cp patcher/exl-test/subsdk9 "$($PY scripts/local_paths.py sandbox)"/ryujinx/sdcard/atmosphere/contents/01006BB00C6F0000/exefs/subsdk9

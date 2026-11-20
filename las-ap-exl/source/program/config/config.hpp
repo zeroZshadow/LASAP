@@ -16,7 +16,6 @@ struct PatchConfig {
     struct {
         bool full_360 = false;
         float walk_speed = 1.0f;
-        float dash_speed = 1.0f;
         float swim_speed = 1.0f;
         float pop_speed = 1.15f;
     } movement;
@@ -32,15 +31,10 @@ struct PatchConfig {
     } blur_removal;
 
     struct {
-        bool enabled = false;
-    } stable_fps;
-
-    struct {
         DamageMode mode = DamageMode::Normal;
     } damage;
 
     struct {
-        bool enabled = false;
         bool free_book = false;
         Stealing stealing = Stealing::Normal;
         bool enemies = false;

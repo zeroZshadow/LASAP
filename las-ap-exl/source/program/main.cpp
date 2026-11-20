@@ -17,10 +17,8 @@ namespace {
         Inventory::Install();
         LevelSystem::Install();
         PlayReport::Install();
-        if (config.randomizer.enabled) {
-            Fishing::Install();
-            Seashells::Install();
-        }
+        Fishing::Install();
+        Seashells::Install();
         if (config.randomizer.enemies || config.randomizer.enemy_sizes) Enemies::Install();
         Controls::Install();
         Fixes::Install();

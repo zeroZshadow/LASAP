@@ -42,6 +42,18 @@ def build_release_value(name: str):
                 and isinstance(node.targets[0], ast.Name) and node.targets[0].id == name)
 
 
+
+def module_stale() -> bool:
+    """Whether the source patcher's module build is older than its source, which the patcher refuses
+    (patcher/module_check.py)."""
+    path = install.SOURCE_PATCHER / "module_check.py"
+    if not path.is_file():
+        return False
+    spec = importlib.util.spec_from_file_location("module_check", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return bool(module.newer_source(install.SOURCE_PATCHER / "exl" / "subsdk9"))
+
 def run_without_excluded(code: str) -> subprocess.CompletedProcess:
     """Runs code in a new Python with the patcher's source on its path and the asset build's modules blocked
     (build_release.py's BUILD_ONLY)."""
@@ -338,6 +350,7 @@ class TestInstall(unittest.TestCase):
 
 @unittest.skipUnless((ROMFS / "region_common").is_dir(), "RomFS dump not found (LASAP_ROMFS)")
 @unittest.skipUnless((install.SOURCE_PATCHER / "exl" / "subsdk9").is_file(), "no module build (scripts/build_exl.sh)")
+@unittest.skipIf(module_stale(), "the module build is older than its source (scripts/build_exl.sh)")
 class TestPatchWithoutBuild(LASTestBase):
     """A default seed's patch, with the asset build's modules blocked. The patcher refuses a patch whose locations are
     not those of the assets' build (las_ap_patch.patch_shape), so this also checks the world's against it."""

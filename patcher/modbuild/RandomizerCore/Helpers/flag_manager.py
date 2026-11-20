@@ -98,7 +98,6 @@ class FlagManager:
         self.addFlag('PrizeGet5')
         self.addFlag('PrizeGet6')
 
-        # self.addFlag('Bottle2Get') # shouldnt need this now
         self.addFlag('FishingBottleGet')
 
         self.addFlag('owl-statue-below-D8')
@@ -159,9 +158,7 @@ class FlagManager:
         self.addFlag('DampeFinal')
 
         self.addFlag('ShopShovelSteal')
-        # self.addFlag('ShopShovelGet')
         self.addFlag('ShopBowSteal')
-        # self.addFlag('ShopBowGet')
         self.addFlag('ShopHeartSteal')
         self.addFlag('ShopHeartGet')
 

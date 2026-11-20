@@ -11,72 +11,21 @@ class ChestRandomizer:
 
 
     def writeChestEvent(self):
-        """Writes an itemKey comparision and itemGet chain and connects it to the chest open events"""
-
-        # ### TreasureBox event: Adds in events to make certain items be progressive as well as custom events for other items.
+        """Connects the chest open events to the item-get and makes every chest request an autosave"""
 
         flow = self.parent.file_manager.readFile('TreasureBox.bfevfl')
 
         auto_save = event_tools.createActionEvent(flow.flowchart, 'GameControl', 'RequestAutoSave', {}, None)
-
-        sword_get = self.parent.item_get_manager.getWithAnimation(flow.flowchart, 'SwordLv1', -1 , None, auto_save)
-        sword_check = event_tools.createSwitchEvent(flow.flowchart, 'FlowControl', 'CompareString',
-            {'value1': 'itemKey', 'value2': 'SwordLv1'},
-            {0: sword_get, 1: 'Event33'})
-
-        shield_get = self.parent.item_get_manager.getWithAnimation(flow.flowchart, 'Shield', -1, None, auto_save)
-        shield_check = event_tools.createSwitchEvent(flow.flowchart, 'FlowControl', 'CompareString',
-            {'value1': 'itemKey', 'value2': 'Shield'},
-            {0: shield_get, 1: sword_check})
-
-        bracelet_get = self.parent.item_get_manager.getWithAnimation(flow.flowchart, 'PowerBraceletLv1', -1, None, auto_save)
-        bracelet_check = event_tools.createSwitchEvent(flow.flowchart, 'FlowControl', 'CompareString',
-            {'value1': 'itemKey', 'value2': 'PowerBraceletLv1'},
-            {0: bracelet_get, 1: shield_check})
-
-        red_tunic_get = self.parent.item_get_manager.getWithAnimation(flow.flowchart, 'ClothesRed', -1, None, auto_save)
-        red_tunic_check = event_tools.createSwitchEvent(flow.flowchart, 'FlowControl', 'CompareString',
-            {'value1': 'itemKey', 'value2': 'ClothesRed'},
-            {0: red_tunic_get, 1: bracelet_check})
-
-        blue_tunic_get = self.parent.item_get_manager.getWithAnimation(flow.flowchart, 'ClothesBlue', -1, None, auto_save)
-        blue_tunic_check = event_tools.createSwitchEvent(flow.flowchart, 'FlowControl', 'CompareString',
-            {'value1': 'itemKey', 'value2': 'ClothesBlue'},
-            {0: blue_tunic_get, 1: red_tunic_check})
-
-        zap_get = self.parent.item_get_manager.getWithAnimation(flow.flowchart, 'ZapTrap', -1, None, auto_save)
-        zap_check = event_tools.createSwitchEvent(flow.flowchart, 'FlowControl', 'CompareString',
-            {'value1': 'itemKey', 'value2': 'ZapTrap'},
-            {0: zap_get, 1: blue_tunic_check})
-
-        drown_get = self.parent.item_get_manager.getWithAnimation(flow.flowchart, 'DrownTrap', -1, None, auto_save)
-        drown_check = event_tools.createSwitchEvent(flow.flowchart, 'FlowControl', 'CompareString',
-            {'value1': 'itemKey', 'value2': 'DrownTrap'},
-            {0: drown_get, 1: zap_check})
-
-        squish_get = self.parent.item_get_manager.getWithAnimation(flow.flowchart, 'SquishTrap', -1, None, auto_save)
-        squish_check = event_tools.createSwitchEvent(flow.flowchart, 'FlowControl', 'CompareString',
-            {'value1': 'itemKey', 'value2': 'SquishTrap'},
-            {0: squish_get, 1: drown_check})
-
-        deathball_get = self.parent.item_get_manager.getWithAnimation(flow.flowchart, 'DeathballTrap', -1, None, auto_save)
-        deathball_check = event_tools.createSwitchEvent(flow.flowchart, 'FlowControl', 'CompareString',
-            {'value1': 'itemKey', 'value2': 'DeathballTrap'},
-            {0: deathball_get, 1: squish_check})
-
-        quake_get = self.parent.item_get_manager.getWithAnimation(flow.flowchart, 'QuakeTrap', -1, None, auto_save)
-        last_check = event_tools.createSwitchEvent(flow.flowchart, 'FlowControl', 'CompareString',
-            {'value1': 'itemKey', 'value2': 'QuakeTrap'},
-            {0: quake_get, 1: deathball_check})
 
         # Dungeon items keep the game's own add, without LASR's keysanity switch on their index: that needs LASR's
         # FlowControl.CompareInt rewrite, which the module leaves out, and the Chamber Dungeon's keys have no index.
         # Every shuffled dungeon item is an Archipelago item; the module's AddItemID hook puts an item with an index
         # into that dungeon and one without into the dungeon Link is in.
 
-        # add this chain to TreasureBox_Open and TreasureBox_ShockOpen
-        event_tools.insertEventAfter(flow.flowchart, 'Event32', last_check)
-        event_tools.insertEventAfter(flow.flowchart, 'Event28', last_check)
+        # TreasureBox_Open and TreasureBox_ShockOpen both go on to the item-get (mod.chest_placeholder_branch puts the
+        # placeholder's in front)
+        event_tools.insertEventAfter(flow.flowchart, 'Event32', 'Event33')
+        event_tools.insertEventAfter(flow.flowchart, 'Event28', 'Event33')
 
         # now make the rest of the items also request an autosave
         event_tools.insertEventAfter(flow.flowchart, 'Event40', auto_save)
@@ -285,15 +234,6 @@ CHEST_SIZES = {
     'seashell': 1.2,
     'good': 0.8,
     'junk': 0.8,
-    # 'D1': 1.0,
-    # 'D2': 1.0,
-    # 'D3': 1.0,
-    # 'D4': 1.0,
-    # 'D5': 1.0,
-    # 'D6': 1.0,
-    # 'D7': 1.0,
-    # 'D8': 1.0,
-    # 'D0': 1.0
 }
 
 CHEST_TEXTURES = {
