@@ -69,8 +69,9 @@ GOAL_LOCATION = "Wind Fish"
 GOAL_EVENT = "Victory"
 PATCH_FORMAT = 1
 EARLY_LOCATIONS_WANTED = 10
-# Locations the opener's item must add for the fill to get going: a place for the next item and one more.
-OPENER_GAIN = 2
+# Locations the opener's item must add for the fill to get going. With 2 or 3 the fill can be left a chain of single
+# items in single spots, which it fails to build.
+OPENER_GAIN = 4
 PRE_FILL_ATTEMPTS = 10
 PROGRESSION_CHECKS = 1  # fills per pre-fill try (_progression_fits): more catch little and cost a fill each
 DOOR_MAP_ATTEMPTS = 100
