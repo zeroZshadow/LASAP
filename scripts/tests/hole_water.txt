@@ -1,7 +1,7 @@
 # Water landings through a hole: the hole by Eagle's Tower (Field_02O) drops into a cave of water alone
 # (EagleTowerExit). Link without the flippers falls into the water, and his respawn still goes to his last spot in the
 # overworld, so the module sends him back there, beside the hole (ap_jumps.cpp, TickLanding). Run after
-# newgame_file2 (boot_file1's save owns the flippers), on any mod.
+# newgame_file2 (no flippers), on any mod.
 check flippers=0
 warp Field 217.5 18.75 22.5
 send DBG enemies kill

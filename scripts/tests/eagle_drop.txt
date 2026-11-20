@@ -1,6 +1,6 @@
 # Boss drops (DESIGN.md, Drop actor), a real defeat: in the Evil Eagle's room (Lv07EagleTower_05HL, the tower's top)
 # DBG hit hits it at the power of its life; it speaks as it dies, then its dead event pops its drop where the heart
-# container would start; Link takes it. Run after boot_file1; resets the boss's and the drop's flags.
+# container would start; Link takes it. Run after newgame_file2; resets the boss's and the drop's flags.
 # Screenshots: eagle_pop, eagle_rest.
 guard off hurt
 send DBG setflag DestroyBtl_L07_02HU_Boss 0

@@ -1,8 +1,11 @@
 # Cuts the bush on the pond island east of Mabe (pond-island, Field_11G, bush at 99.75 9.75 125.25) and picks up
 # what it drops: a drop actor (ItemAPDrop), as drop_bush's, that hops up out of the ground without taking Link's
 # control; once it rests, Link is put on it and picks it up. Link stands on the island just south of the bush, faces
-# up into it and cuts it with B. Run after boot_file1; clears the location's got flag, which that save has.
+# up into it and cuts it with B. Run after newgame_file2; clears the location's got flag.
 # Screenshots: island_1 facing the bush, island_2 the dropped item, island_3 the item-get.
+# Cutting the bush takes the sword.
+send DBG give 0 1 0
+expect OK.give 5
 guard hurt
 send DBG setflag PondIslandBushGet 0
 warp Field 99.75 9.75 126.75

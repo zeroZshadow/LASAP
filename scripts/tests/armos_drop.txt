@@ -1,7 +1,7 @@
 # Boss drops (DESIGN.md, Drop actor), a real defeat: Link walks into the Armos Knight's room (ArmosShrine_02A), which
 # starts the fight; DBG hit hits the boss until its dead event starts, and its drop pops where the Face Key would start.
 # With the shrine loaded again the boss drops the item again and the drop stands there; Link takes it. Run after
-# boot_file1; resets the boss's and the drop's flags.
+# newgame_file2; resets the boss's and the drop's flags.
 # Screenshots: armos_pop, armos_rest, armos_reload.
 guard off hurt
 send DBG setflag FaceKeyPop_Btl_ArmosShrine_02A 0

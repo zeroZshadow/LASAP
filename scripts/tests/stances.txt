@@ -1,7 +1,10 @@
 # How actors with a location's token stand (DESIGN.md, Item models), from scripts/tests/seed/stances.txt, which gives
 # beach-chest (11) a chest at size 1.2. The chest takes that size; pond-island's bush drop (76) and
 # ukuku-cave-west-loose's heart piece drop (84) stand unscaled and unturned: rot is the quaternion's y and w. The drop
-# is made once Link cuts the bush (as island_bush, clearing the location's got flag). Run after boot_file1.
+# is made once Link cuts the bush (as island_bush, clearing the location's got flag). Run after newgame_file2.
+# Cutting the bush takes the sword.
+send DBG give 0 1 0
+expect OK.give 5
 guard hurt
 warp Field 86.25 6 173.25
 poll OK.actor.720119005CFF3742.1.id=[0-9a-f]+.x=87.75.z=171.75.scale=1.200.rot=0.000,1.000 5 DBG actor 720119005CFF3742

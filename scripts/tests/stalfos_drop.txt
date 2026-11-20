@@ -1,7 +1,7 @@
 # Boss drops (DESIGN.md, Drop actor) in a level with two boss drops (Catfish's Maw: Master Stalfos's and the Slime
 # Eel's): Link walks west into Master Stalfos's last fight (Lv05CatfishsMaw_01B, the third fight's door open), DBG hit
 # hits it until its dead event starts, and its drop pops where the hookshot would start. With the level loaded again
-# the boss drops the item again and the drop stands there; Link takes it. Run after boot_file1; resets the boss's and the drop's flags. With its intro not seen (MasterStalfos4DemoClear off) the boss
+# the boss drops the item again and the drop stands there; Link takes it. Run after newgame_file2; resets the boss's and the drop's flags. With its intro not seen (MasterStalfos4DemoClear off) the boss
 # says nothing before the fight; once seen it talks first.
 # Screenshots: stalfos_pop, stalfos_rest, stalfos_reload.
 guard off hurt

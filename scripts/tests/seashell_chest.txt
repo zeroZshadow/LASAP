@@ -1,5 +1,5 @@
 # Opens the Armos Maze cave chest (armos-cave, ArmosShrineCave_01A, a chest at 6.75 0 5.25) on a seed where it holds
-# its own seashell (Seashells off), with Chest Appearance texture_and_size: the room loads with the seashell chest
+# its own seashell (Chests off), with Chest Appearance texture_and_size: the room loads with the seashell chest
 # (ObjTreasureBoxSeashell.bfres, which verify_patch.py checks in the patched room) and the server's seashell takes the
 # lowest free bit, as no vanilla source of that seed sets one (DESIGN.md, Indexed items). Run after newgame_file2
 # with the client connected to the server. Screenshots: seashell_chest_1 in front of the chest, seashell_chest_2 the

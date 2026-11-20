@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import emu
+from local_paths import local_path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "patcher"))
 import module_check  # noqa: E402
@@ -33,6 +34,9 @@ TITLE = "01006BB00C6F0000"
 MODULE = ROOT / "patcher" / "exl-test" / "subsdk9"
 NEWGAME = Path(emu.SANDBOX) / "save-newgame"
 GHOST_SECRET = "test"
+SEED = 1  # Generate.py's --seed for the groups' seeds
+PEER_SLOT = "Finder"  # deathlink_peer.py's slot in a `peer` group's seed
+RESTART = "restart"  # a step of a group's list: the emulator stops and starts again, saves and SD card kept
 SCRIPT_TIMEOUT = 300
 PY = sys.executable
 
@@ -44,11 +48,13 @@ class Group:
     config: dict[tuple[str, str], str] = field(default_factory=dict)
     files: list[str] = field(default_factory=list)  # in SEED_SECTIONS
     session: str = ""   # "", "client" or "ghost"
+    players: str = ""   # a folder of TESTS with the YAMLs of the group's seed: a server and the client connected to it
+    peer: bool = False  # deathlink_peer.py as PEER_SLOT, connected to the server
 
 
 def read_groups(path: Path) -> list[Group]:
-    """suite.txt: one group per line, `<name> [<section>.<key>=<value> ...] [<seed sections>.txt ...] [client|ghost]:
-    <script> ...`."""
+    """suite.txt: one group per line, `<name> [<section>.<key>=<value> ...] [<seed sections>.txt ...]
+    [players_<name> [peer]] [client|ghost]: <script|restart> ...`."""
     groups = []
     for raw in path.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
@@ -62,6 +68,10 @@ def read_groups(path: Path) -> list[Group]:
                 group.session = opt
             elif opt.endswith(".txt"):
                 group.files.append(opt)
+            elif opt.startswith("players_"):
+                group.players = opt
+            elif opt == "peer":
+                group.peer = True
             else:
                 key, _, value = opt.partition("=")
                 section, _, option = key.partition(".")
@@ -100,18 +110,29 @@ class Instance:
         self.e2e = self.home / "e2e"
         self.port = emu.instance_port(n)
         self.relay = self.port + 6
+        self.server = self.port + 7
+        self.seed = self.home / "seed"  # the group's generated seed and its mod
+        # LASAP_PTC: the emulator keeps its translation cache, as players have it, and boots and plays faster.
         self.env = dict(os.environ, LASAP_INSTANCE=str(n), LASAP_E2E=str(self.e2e), LASAP_GAME_PORT=str(self.port),
-                        PYTHONUNBUFFERED="1")
+                        LASAP_PTC="1", PYTHONUNBUFFERED="1")
 
     def prepare(self) -> None:
         """Copies the sandbox's data folder once (without its translation caches), and its emulator settings and
-        installed mod with this checkout's test module each run."""
+        installed mod with this checkout's test module each run. Of the instance's translation caches it keeps the
+        last one written: the emulator writes one per build of the game's code, the module included."""
         sandbox = Path(emu.SANDBOX) / "ryujinx"
         if not self.data.exists():
             def skip(folder: str, _names: list[str]) -> list[str]:
                 return ["cpu"] if Path(folder).name == "cache" else ["lasap"] if Path(folder).name == "sdcard" else []
             shutil.copytree(sandbox, self.data, ignore=skip)
         shutil.copyfile(sandbox / "Config.json", self.data / "Config.json")
+        for cpu in (self.data / "games" / TITLE.lower() / "cache/cpu").glob("[01]"):
+            files = list(cpu.glob("*.*"))
+            if files:
+                last = max(files, key=lambda f: f.stat().st_mtime).stem
+                for f in files:
+                    if f.stem != last:
+                        f.unlink()
         for part in (Path("sdcard/atmosphere/contents") / TITLE, Path("sdcard/config/lasr-exl")):
             shutil.rmtree(self.data / part, ignore_errors=True)
             shutil.copytree(sandbox / part, self.data / part)
@@ -122,15 +143,44 @@ class Instance:
         subprocess.run([PY, str(ROOT / "scripts" / "emu.py"), cmd], env=self.env, check=True,
                        stdout=subprocess.DEVNULL)
 
+    def make_seed(self, group: Group) -> Path:
+        """Generates the group's seed from its YAMLs and patches it; returns the multidata. Its mod's config folder is
+        the group's (the mod's RomFS is the same for every seed)."""
+        shutil.rmtree(self.seed, ignore_errors=True)
+        self.seed.mkdir(parents=True)
+        log = LOGS / f"{group.name}.seed.log"
+        with open(log, "wb") as out:
+            generate = [str(ROOT / "scripts" / "ap.py"), "Generate.py", "--player_files_path",
+                        str(TESTS / group.players), "--outputpath", str(self.seed), "--seed", str(SEED), "--plando", "bosses, items"]
+            # stdin closed: Generate.py waits for Enter after an error
+            if subprocess.run([PY, *generate], stdout=out, stderr=subprocess.STDOUT,
+                              stdin=subprocess.DEVNULL).returncode:
+                raise RuntimeError(f"Generate.py failed: {log}")
+            shutil.unpack_archive(next(self.seed.glob("AP_*.zip")), self.seed)
+            patches = list(self.seed.glob("*.aplas"))
+            if len(patches) != 1:
+                raise RuntimeError(f"{len(patches)} LAS slots in {group.players}, not 1")
+            patch = [str(ROOT / "patcher" / "las_ap_patch.py"), str(patches[0]), "--romfs", str(local_path("romfs")),
+                     "--out", str(self.seed / "mod")]
+            if subprocess.run([PY, *patch], stdout=out, stderr=subprocess.STDOUT).returncode:
+                raise RuntimeError(f"las_ap_patch.py failed: {log}")
+        return next(self.seed.glob("*.archipelago"))
+
     def reset(self, base_config: str, group: Group) -> None:
         """The installed config folder with the group's config.ini and seed file sections, the new-game snapshot's
-        saves, no checks file and empty session files."""
+        saves, no checks file and empty session files. A group with a seed takes its mod's config folder instead of
+        the sandbox's. LASAP_SAVE_NAME is the config's save name (save_name.txt)."""
+        source = self.seed / "mod" if group.players else Path(emu.SANDBOX) / "ryujinx/sdcard"
+        if group.players:
+            base_config = (source / "config/lasr-exl/config.ini").read_text(encoding="utf-8")
         config = set_option(base_config, "archipelago", "port", str(self.port))
         for (section, option), value in group.config.items():
             config = set_option(config, section, option, value)
+        self.env["LASAP_SAVE_NAME"] = next((l.partition("=")[2].strip() for l in config.splitlines()
+                                            if l.startswith("save_name")), "")
         folder = self.data / "sdcard/config/lasr-exl"
         shutil.rmtree(folder, ignore_errors=True)
-        shutil.copytree(Path(emu.SANDBOX) / "ryujinx/sdcard/config/lasr-exl", folder)
+        shutil.copytree(source / "config/lasr-exl", folder)
         (folder / "config.ini").write_text(config, encoding="utf-8")
         if group.files:
             sections = seed_file.read(folder)
@@ -141,7 +191,8 @@ class Instance:
         shutil.rmtree(save, ignore_errors=True)
         shutil.copytree(NEWGAME, save)
         shutil.rmtree(self.data / "sdcard/lasap", ignore_errors=True)
-        for name in ("cmds.txt", "peer_cmds.txt", "server_cmds.txt", "client.log", "peer.log", "relay.log"):
+        for name in ("cmds.txt", "peer_cmds.txt", "server_cmds.txt", "client.log", "peer.log", "relay.log",
+                     "server.log"):
             (self.e2e / name).write_bytes(b"")
 
 
@@ -170,14 +221,25 @@ def feed(path: Path, proc: subprocess.Popen) -> None:
 
 
 class Session:
-    """The scripted client session a group needs: the LAS client fed from cmds.txt, and for ghost groups a ghost
-    relay and scripts/ghost_peer.py fed from peer_cmds.txt."""
+    """The scripted client session a group needs: the LAS client fed from cmds.txt; for ghost groups a ghost relay
+    and scripts/ghost_peer.py fed from peer_cmds.txt; for a group with a seed a MultiServer on it fed from
+    server_cmds.txt, the client connected to it and, with `peer`, deathlink_peer.py fed from peer_cmds.txt."""
 
-    def __init__(self, inst: Instance, kind: str):
+    def __init__(self, inst: Instance, group: Group, multidata: Path | None = None):
         self.procs: list[subprocess.Popen] = []
-        if not kind:
+        kind = group.session
+        if not kind and not multidata:
             return
         args = []
+        if multidata:
+            self.spawn(inst, [str(ROOT / "scripts" / "ap.py"), "MultiServer.py", str(multidata), "--host",
+                              "127.0.0.1", "--port", str(inst.server), "--release_mode", "goal", "--collect_mode",
+                              "goal"], "server.log", "server_cmds.txt")
+            wait_port(inst.server, 60)
+            args = ["--connect", f"127.0.0.1:{inst.server}"]
+            if group.peer:
+                self.spawn(inst, [str(ROOT / "scripts" / "deathlink_peer.py"), "--connect",
+                                  f"127.0.0.1:{inst.server}", "--name", PEER_SLOT], "peer.log", "peer_cmds.txt")
         if kind == "ghost":
             self.spawn(inst, [str(ROOT / "apworld" / "las" / "ghost_relay.py"), "--host", "127.0.0.1",
                               "--port", str(inst.relay)], "relay.log")
@@ -232,12 +294,22 @@ def run_group(inst: Instance, group: Group, base_config: str) -> Result:
     result = Result(group, inst.n)
     began = time.time()
     inst.emu("stop")
+    try:
+        multidata = inst.make_seed(group) if group.players else None
+    except (RuntimeError, StopIteration) as e:
+        result.failed, result.tail = "seed", str(e) or "no seed written"
+        result.seconds = time.time() - began
+        return result
     inst.reset(base_config, group)
-    session = Session(inst, group.session)
+    session = Session(inst, group, multidata)
     try:
         inst.emu("start")
         mark = time.time()
         for name in group.scripts:
+            if name == RESTART:
+                inst.emu("stop")
+                inst.emu("start")
+                continue
             log = LOGS / f"{group.name}.{Path(name).stem}.log"
             with open(log, "wb") as out:
                 proc = subprocess.Popen([PY, str(ROOT / "scripts" / "e2e.py"), "run", str(script_path(name))],
@@ -300,7 +372,7 @@ def check_mod(path: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("-j", type=int, default=4, help="emulator instances (default 4)")
+    parser.add_argument("-j", type=int, default=8, help="emulator instances (default 8)")
     parser.add_argument("--no-world", action="store_true", help="skip the world's tests")
     parser.add_argument("groups", nargs="*", help="groups to run (default all)")
     args = parser.parse_args()
@@ -316,8 +388,10 @@ def main() -> None:
             raise SystemExit(f"no such group: {', '.join(sorted(unknown))}")
         groups = [g for g in groups if g.name in args.groups]
     for g in groups:
+        if g.players and not (TESTS / g.players).is_dir():
+            raise SystemExit(f"group {g.name}: no folder {TESTS / g.players}")
         for name in g.scripts:
-            if not script_path(name).exists():
+            if name != RESTART and not script_path(name).exists():
                 raise SystemExit(f"group {g.name}: no script {script_path(name)}")
         for name in g.files:
             if not (SEED_SECTIONS / name).exists():

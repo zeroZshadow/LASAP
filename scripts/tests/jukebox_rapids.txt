@@ -1,7 +1,10 @@
 # The jukebox through the rapids race (music.cpp, KeepsMusic and kZoneCalls; scripts/re/FRAMEWORK.md, Audio): the
 # race's music plays alone while the zone update asks for it again (as GM_RAFTING_TIMEATTACK, a name that is no
 # track), and the race's end, which stops the music and plays BGM_FIELD_NORMAL itself, brings the chosen track back.
-# Run after boot_file1 (no client needed). Last in its group: Link stays on the raft.
+# Run after newgame_file2 (no client needed). Last in its group: Link stays on the raft.
+# The field plays its zone's track once Link has the sword (BGM_FIELD_FIRST before).
+send DBG give 0 1 0
+expect OK.give 5
 send DBG music off
 await 10 music=-
 # The race costs 100 rupees.

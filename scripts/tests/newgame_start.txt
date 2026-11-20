@@ -1,5 +1,5 @@
 # The start state (DESIGN.md, Start state): a new game gets its starting items while Link wakes up and its start flags
-# once he stands outside Tarin's house, each once. Run like newgame_file2 (after reset_saves.sh newgame, from a fresh
+# once he stands outside Tarin's house, each once. Run like newgame_file2 (after reset_saves.sh, from a fresh
 # boot) on a mod patched from
 #   make_test_patch.py <out.aplas> --starting sword,sword,shield,heart-piece,heart-piece,seashell,key-D2,full-moon-cello
 #     --settings '{"Small Keys": "Start With", "Open Kanalet": true, "Rupees": 250}'

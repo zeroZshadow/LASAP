@@ -1,7 +1,7 @@
 # The jukebox and the woods' Great Fairy (music.cpp, the game's own uses of the chosen track): she plays BGM_FAIRY by
 # Link's distance and stops it by name as her level unloads. BGM_FAIRY chosen in the woods takes her instance over at
 # full volume, and plays on (no new instance) at full volume through the Woods Crossing Cave's door and out again.
-# Run after boot_file1 (no client needed).
+# Run after newgame_file2 (no client needed).
 send DBG music off
 await 10 music=-
 # South of the cave's east door (Field_07C).

@@ -1,7 +1,7 @@
 # Entrances, water landings: the Library's way out (Field_12A) leads out of Manbo's cave door in the Tal Tal waters
 # (Field_03K), where Link without the flippers falls into the water. His respawn still goes to his last spot in the
 # Library, so the module sends him back through the cave's door, which leads into the Library (ap_jumps.cpp,
-# TickLanding). Run after boot_file1, flippers not owned, on a mod from make_test_patch.py --entrances
+# TickLanding). Run after newgame_file2 (no flippers) on a mod from make_test_patch.py --entrances
 # '{"Field_03K": "Library_01A", "Field_12A": "MamboCave_01A"}'.
 check flippers=0
 warp Library 7.5 0 10.5

@@ -3,9 +3,12 @@
 # the chest's opened flag stays on; leaves the level at once, before the ball can come down on Link, and after the level
 # loads anew the chest is closed with the flag off: opened again, it launches the ball, which Link takes where it comes
 # to rest; then the chest stays open.
-# Run after boot_file1 on a mod patched with Bouncy Items; clears the chest's opened flag. Link lifts the two pots in
+# Run after newgame_file2 on a mod patched with Bouncy Items; clears the chest's opened flag. Link lifts the two pots in
 # front of the chest first.
 # Screenshots: chest_ball_out (open, the ball out), chest_closed (after the reload), chest_taken (open for good).
+# Lifting pots takes the Power Bracelet.
+send DBG give 13 1 0
+expect OK.give 5
 guard hurt
 send DBG setflag TBOX_OPEN_L02_08C 0
 warp Lv02BottleGrotto 35.25 0 89.25

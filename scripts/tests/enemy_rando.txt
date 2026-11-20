@@ -1,5 +1,5 @@
 # Randomize Enemies and Randomize Enemy Sizes: enemies turn into others of their kind and change size as their room
-# loads. Run after boot_file1 on a mod patched with both settings on. DBG enemies counts what the randomizer did:
+# loads. Run after newgame_file2 on a mod patched with both settings on. DBG enemies counts what the randomizer did:
 # the Octoroks south of Mabe and the enemies of Tail Cave's first rooms.
 send DBG enemies reset
 expect OK.enemies.seen=0 5

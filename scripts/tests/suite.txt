@@ -1,39 +1,55 @@
 # The sandbox test suite for scripts/suite.py: one group per line,
-#   <group> [<section>.<key>=<value> ...] [<seed sections>.txt ...] [client|ghost]: <script> ...
+#   <group> [<section>.<key>=<value> ...] [<seed sections>.txt ...] [players_<name> [peer]] [client|ghost]: <script|restart> ...
 # Each group runs its scripts in order on a fresh emulator from the new-game snapshot's saves, with the mod the
 # sandbox has installed, the given config.ini options changed and the seed file's sections replaced by those of the
 # given files of scripts/tests/seed; each script leaves the game as the next one expects. `client` starts the LAS client fed from cmds.txt;
 # `ghost` also starts a ghost relay and scripts/ghost_peer.py (--secret test), and joins the client to it. config.ini
 # options are read at boot, so a group per setting. The mod is the make_test_patch.py patch of the `mod:` line's options; suite.py refuses another.
 mod: --settings '{"Owl Gifts": "All"}' --models woods-north-cave-loose=heart-piece,ukuku-cave-west-loose=sword,ukuku-cave-east-loose=magnifying-lens,graveyard-cave=seashell,D1-instrument=full-moon-cello,D0-rupee-1=coral-triangle,5-seashell-reward=sword --names "D1-instrument=Full Moon Cello,D0-rupee-1=Coral Triangle"
-file1: screens itemget_timing warp_menu itemget_models itemget_pose
-file1_items: boot_file1 ghost_house_pot beach_chest jukebox_height jukebox_cave jukebox_mute jukebox_load load_recv mansion_present
+boot: screens itemget_timing warp_menu itemget_models itemget_pose
+items: newgame_file2 ghost_house_pot beach_chest jukebox_height jukebox_cave jukebox_mute jukebox_load load_recv mansion_present
 newgame_maps: newgame_file2 map_tracker map_skip map_dots map_d7 map_list kept_items_save keysanity
-enemies randomizer.enemies=True randomizer.enemy_sizes=True: boot_file1 enemy_rando
+enemies randomizer.enemies=True randomizer.enemy_sizes=True: newgame_file2 enemy_rando
 ohko damage.mode=OHKO: newgame_file2 damage_ohko
 no_damage damage.mode=None: newgame_file2 damage_none
-instant_pickups tweaks.instant_pickups=Everything: boot_file1 received_popup instant_pickup instant_fairy_queen mansion_present
-instant_world tweaks.instant_pickups=Everything: newgame_file2 instant_freestanding instant_dash jukebox_steal
-instant_incoming tweaks.instant_pickups=Incoming: boot_file1 instant_incoming
+instant_pickups tweaks.instant_pickups=Everything: newgame_file2 received_popup instant_pickup instant_fairy_queen mansion_present instant_carry instant_underwater instant_buff instant_shop instant_instrument
+instant_world tweaks.instant_pickups=Everything: newgame_file2 drop_instrument_song instant_freestanding instant_dash jukebox_steal
+instant_incoming tweaks.instant_pickups=Incoming: newgame_file2 instant_incoming
 instant_text tweaks.instant_text=True client: newgame_file2 instant_text map_live
-ghosts ghost: boot_file1 ghost_net ghost_puppet jukebox_pane
-ghost_link ghost: boot_file1 ghost_link
-jukebox_ballad: newgame_file2 jukebox_ballad
-map_hints: newgame_file2 map_hints
-texts: newgame_file2 shop_text hint_vanilla
-egg_jukebox: newgame_file2 egg_jukebox
-zol_trap: newgame_file2 zol_trap
-dungeon_found client: newgame_file2 dungeon_found
-door_found client: newgame_file2 door_found
-jukebox_rapids: boot_file1 jukebox_rapids
+ghosts ghost: newgame_file2 ghost_net ghost_puppet jukebox_pane
+ghost_link ghost: newgame_file2 ghost_link
+texts: newgame_file2 shop_text hint_vanilla map_hints zol_trap
+found client: newgame_file2 dungeon_found door_found
 options_on options.open_mabe=True options.randomize_enemies=True options.classic_d2=True options.completed_bridge=True options.ammo_ghost=False: newgame_file2 option_rooms
-options_off: newgame_file2 option_rooms_off
-bouncy options.bouncy_items=True options.owl_dungeons=True: boot_file1 bouncy_chest owl_drop bouncy_roam
-bouncy_two_chests options.bouncy_items=True tweaks.instant_pickups=Everything: boot_file1 bouncy_two_chests
-ammo_ghost: newgame_file2 ammo_ghost
-ammo_ghost_powder: newgame_file2 ammo_ghost_powder
+bouncy options.bouncy_items=True options.owl_dungeons=True: newgame_file2 bouncy_chest owl_drop bouncy_roam pot_chest
+bouncy_two_chests options.bouncy_items=True tweaks.instant_pickups=Everything: newgame_file2 bouncy_two_chests
+ammo_ghost: newgame_file2 ammo_ghost option_rooms_off egg_jukebox
+ammo_ghost_powder: newgame_file2 ammo_ghost_powder jukebox_ballad
 buff_drops tweaks.no_guardian_acorn=True tweaks.no_piece_of_power=True: newgame_file2 buff_drops
-instrument_songs: newgame_file2 instrument_jingle
-instant_instrument_songs tweaks.instant_pickups=Everything: newgame_file2 drop_instrument_song
-shuffles shuffles.txt: boot_file1 shuffles
-stances stances.txt: boot_file1 stances
+instrument_songs: newgame_file2 instrument_jingle jukebox_rapids
+shuffles shuffles.txt: newgame_file2 shuffles
+stances stances.txt: newgame_file2 stances
+boss_drops_a: newgame_file2 moldorm_drop genie_drop slime_eye_drop angler_drop slime_eel_drop stalfos_drop
+boss_drops_b: newgame_file2 facade_drop eagle_drop hothead_drop armos_drop armos_owned lanmola_pit ghost_drop
+received: newgame_file2 crane_game_items itemget_during_talk shop_carry traps warp_bowwow stalled_client
+checks: newgame_file2 ghost_owl chamber_stones medicine_waiting hole_water blue_rupee diamond_island drop_bush island_bush dig_slime_key kiki_bowwow
+jukebox client: newgame_file2 jukebox_sword jukebox jukebox_sideview
+instant_song tweaks.instant_pickups=Everything beach_ballad.txt: newgame_file2 instant_song
+instant_instrument_song tweaks.instant_pickups=Everything beach_organ.txt: newgame_file2 instant_instrument_song
+egg_goal archipelago.instruments_required=3: newgame_file2 egg_ballad egg_goal
+egg_seashells seashell_hunt.txt archipelago.seashell_hunt=True archipelago.seashells_required=3 archipelago.instruments_required=0: newgame_file2 egg_seashells
+egg_seashells_away seashell_hunt.txt archipelago.seashell_hunt=True archipelago.seashells_required=3 archipelago.instruments_required=0: newgame_file2 egg_seashells_away
+egg_seashells_none seashell_hunt.txt archipelago.seashell_hunt=True archipelago.seashells_required=0 archipelago.instruments_required=0: newgame_file2 egg_seashells_none
+newgame_items: newgame_items
+save_name: save_name
+server players_server: newgame_file2 kept_items goal_ending
+companions players_server: newgame_file2 companions
+egg_sign players_sign: newgame_file2 egg_sign
+seashell_chest players_seashell: newgame_file2 seashell_chest
+hints players_hints: newgame_file2 hints
+instant_multiworld players_instant: newgame_file2 instant_multiworld
+instant_incoming_multiworld players_incoming: newgame_file2 instant_incoming_multiworld
+deathlink players_deathlink peer: deathlink_title deathlink deathlink_events deathlink_medicine
+deathlink_off players_deathlink_off peer: newgame_file2 deathlink_off
+save_checks_menu: newgame_file2 save_checks_play restart save_checks_menu
+save_checks_erase: newgame_file2 save_checks_play restart save_checks_erase

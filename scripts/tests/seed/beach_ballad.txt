@@ -1,0 +1,4 @@
+[models]
+M 11 120 NpcMarin.bfres Marin
+[names]
+11 Ballad of the Wind Fish|

@@ -1,6 +1,6 @@
 # Kiki and BowWow: with BowWow following, Kiki picks no fight (Kiki.bfevfl's Bowwow_talk, patches.hpp kRandoFixes),
 # and trades the bananas for his check. Makes BowWow follow and sets TradeBananasGet instead of the trade quest. Run
-# after boot_file1 on a mod without Completed Bridge; clears StickDrop, which that save has and which keeps Kiki away
+# after newgame_file2 on a mod without Completed Bridge; clears StickDrop, which keeps Kiki away
 # (ap_option_edits.npc_rows); leaves BowWow following and the bridge built.
 send DBG setflag StickDrop 0
 expect FLAG.StickDrop.0 5

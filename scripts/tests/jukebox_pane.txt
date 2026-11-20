@@ -1,5 +1,5 @@
 # The Jukebox page (music_jukebox.cpp, DESIGN.md "Jukebox page"): the pause menu's fourth page, Map, Items, System,
-# Jukebox, as a mode of System's slot, and its playback controls. Run after boot_file1 with the client connected (no
+# Jukebox, as a mode of System's slot, and its playback controls. Run after newgame_file2 with the client connected (no
 # server needed). It warps Link into the Wind Fish's Egg, whose track the cursor opens on. STATE's pane= is the page
 # the player sees (3 the Jukebox), navi= the header's state (2 WaitKey), jbox= the list's cursor and first row,
 # bgmvol= the playing tracks' volume targets (the pause menu turns music down to 20); DBG jukebox counts the pages

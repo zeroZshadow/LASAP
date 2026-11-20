@@ -1,9 +1,15 @@
 # The Seashell Mansion's 5-shell present holds the placeholder of 5-seashell-reward, whose model is the sword in the
 # suite's mod (suite.txt mod:). The present adds its item after its item-get (DESIGN.md, In-game text), so the model
 # held up, by the item-get or by the find's popup (Instant Pickups), must be the present location's item's: STATE
-# held=0 (SwordLv1), not the last found location's or the Archipelago model (71). Run after boot_file1: the save
-# holds more than 5 seashells and took the 5-shell present, whose flag the script clears and the present sets again.
+# held=0 (SwordLv1), not the last found location's or the Archipelago model (71). Run after newgame_file2: the script
+# gives seashells 0-5, marks the spirit's first talk seen and clears the 5-shell present's flag, which the present sets again.
 # Screenshots: mansion_1 the present, mansion_2 the held model.
+# Seashells 0-5 (inventory +0x88, a bit each), so the mansion's gauge reaches the 5-shell present, and the spirit's
+# first talk seen (FirstSeashell, ShellMansionMaster's ShellMansionFirst sets it).
+send DBG poke 88 3f
+expect OK.poke 5
+send DBG setflag FirstSeashell 1
+expect FLAG.FirstSeashell.1 5
 send DBG setflag GetSeashell10 0
 expect FLAG.GetSeashell10.0 5
 warp Field 158.25 9.82 102

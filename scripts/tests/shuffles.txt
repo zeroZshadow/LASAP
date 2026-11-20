@@ -3,7 +3,10 @@
 # Jukebox's BGM_MEVE plays as chosen, and the zone's track comes back after it; the Woods Crossing Cave's BGM_CAVE is
 # removed, so it is silent. The field's lighting is the cemetery's. Martha's Bay owl statue says a Chamber Dungeon
 # explanation (System:PanelExplanation1_1), with the wait for input that text lacks added: it stays until dismissed. Run after
-# boot_file1 (the suite's mod: no hints). Screenshots: shuffle_mabe, shuffle_owl.
+# newgame_file2 (the suite's mod: no hints). Screenshots: shuffle_mabe, shuffle_owl.
+# The field plays its zone's track once Link has the sword (BGM_FIELD_FIRST before).
+send DBG give 0 1 0
+expect OK.give 5
 send DBG shuffles
 expect SHUFFLES.tracks=2.environments=2.messages=1 5
 send DBG music off

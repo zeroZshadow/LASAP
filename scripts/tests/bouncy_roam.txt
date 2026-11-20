@@ -3,7 +3,7 @@
 # stays active around Link and lives on when the chest's room unloads. The chest's room loads again with the ball out:
 # the chest is made open and no second ball comes. Link leaves the ball's room behind: the ball is gone. The chest's room
 # loads again: the chest is closed and launches a new ball.
-# Run after boot_file1 on a mod patched with Bouncy Items, the beach chest not taken.
+# Run after newgame_file2 on a mod patched with Bouncy Items, the beach chest not taken.
 guard hurt
 warp Field 86.25 6 173.25
 at 86.25 173.25

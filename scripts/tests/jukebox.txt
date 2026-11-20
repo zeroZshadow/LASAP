@@ -1,8 +1,11 @@
 # The jukebox (DESIGN.md, Music): a chosen track (DBG music, as the Jukebox page chooses) plays instead of the
-# zone's music, through a room change within Field and through doors, until off brings the zone's own track back. Run after boot_file1,
+# zone's music, through a room change within Field and through doors, until off brings the zone's own track back. Run after newgame_file2,
 # with the client connected to the game (no server needed). STATE's zonebgm= is the zone's track, bgm= what plays
 # (name:kind), music= the chosen track; DBG music's log lists the BGM requests with the track each was swapped for and
 # the return address of the call (+9f008: the zone update; +a6988: PlayZoneBgm, which a level's start calls).
+# The field plays its zone's track once Link has the sword (BGM_FIELD_FIRST before).
+send DBG give 0 1 0
+expect OK.give 5
 expect HELLO 30
 # The game keeps a track an earlier test chose: start from none.
 send DBG music off

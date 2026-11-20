@@ -1,7 +1,7 @@
 # Entrances and stealing in the water: the cave door in the Tal Tal waters (Field_03O) leads into the shop, so the
 # shop's way out leads out of it, into the water. Link, with the flippers, leaves with a stolen item and swims: the
 # item comes there (ap_jumps.cpp, TickStolenGoods), and the shopkeeper lets him back in. Sets the steal flags instead
-# of stealing. Gives the flippers and leaves them. Run after boot_file1 on a mod from make_test_patch.py --entrances
+# of stealing. Gives the flippers and leaves them. Run after newgame_file2 on a mod from make_test_patch.py --entrances
 # '{"Field_03O": "Shop_01A", "Field_10D": "EagleTowerExit_01A_b"}'.
 guard hurt
 send DBG grant Flippers 1 -1 0

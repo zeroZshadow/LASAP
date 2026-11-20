@@ -1,0 +1,6 @@
+name: Link
+game: Links Awakening Switch
+Links Awakening Switch:
+  # the Armos Maze cave chest keeps its own seashell, shown as a seashell chest
+  chests: false
+  chest_appearance: texture_and_size

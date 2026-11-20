@@ -1,0 +1,18 @@
+# Creates file 2 in a save with no files, for the new-game snapshot (scripts/newgame_save.py): file select, file 2,
+# Normal, OK on the name entry. Ends once Link wakes up in Tarin's house; the game has written the file by then.
+connect 90
+# With no save the intro plays whole (about 90 s) and takes no button.
+screen title 180
+tapuntil c0 title:GameStart when title:WaitLR+unlocked 20
+# File 2 is slot 1. A on an empty file opens the difficulty choice (Normal first).
+select 1
+tapuntil 1 files:DataSelectFirstConfirm when files:DataSelectKeyWait 5
+tapuntil 1 files:InputNameWaitKey when files:DataSelectFirstConfirm 5
+until name:KeyWait 10
+# The cursor starts on the name, where A opens the keyboard; Down moves it to OK.
+guard name:InputName
+tapuntil 8000 entry=1 when name:KeyWait 5
+tapuntil 1 !name:KeyWait when name:KeyWait+entry=1 5
+guard off name:InputName
+inlevel 60
+level MarinTarinHouse

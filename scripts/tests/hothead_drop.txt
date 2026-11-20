@@ -1,6 +1,6 @@
 # Boss drops (DESIGN.md, Drop actor), a real defeat: in Hot Head's room (Lv08TurtleRock_02D) DBG hit hits its
 # contents (the part inside its mask) at the power of its life; it speaks as it dies, then its dead event pops its drop
-# where the heart container would start; Link takes it. Run after boot_file1; resets the boss's and the drop's flags
+# where the heart container would start; Link takes it. Run after newgame_file2; resets the boss's and the drop's flags
 # and gives Turtle Rock's nightmare key (sandbox saves only). Link opens the boss door with it and walks in, as a
 # player does: the intro walks him into the room and Hot Head comes out of the lava. A hit before that kills it as a
 # plain enemy, gone before its dead event runs, which then crashes the game.

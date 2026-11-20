@@ -1,6 +1,6 @@
 # Mute on the Jukebox page (DESIGN.md, Jukebox page and Music, Mute): ZR silences all music, also a track chosen or
 # started while muted and one that sets its own volume every frame, and leaves jingles; ZR again gives the music back at the volume the game gave it. Run after
-# boot_file1 (no client needed). STATE's bgmvol= is the playing tracks' volume targets in percent (the pause menu
+# newgame_file2 (no client needed). STATE's bgmvol= is the playing tracks' volume targets in percent (the pause menu
 # turns music down to 20), muted= the mute; DBG jukebox shows the guide's A and ZR captions. Screenshot:
 # jukebox_mute.png (the page muted: "Music muted" on the card, "ZR Unmute" in the guide).
 send DBG music off

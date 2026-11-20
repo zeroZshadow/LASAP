@@ -1,6 +1,6 @@
 # Instant Pickups on Incoming (config.ini [tweaks] instant_pickups = incoming): a received item shows as a popup, its
 # toast names it and no event starts; Link's own find plays the game's item-get with its text, also while that popup
-# still shows, and queues no popup of its own. Opens beach-chest as beach_chest does. Run after boot_file1 on a save
+# still shows, and queues no popup of its own. Opens beach-chest as beach_chest does. Run after newgame_file2 on a save
 # where the chest is closed.
 # Screenshots: incoming_received the popup, incoming_find the item-get.
 guard hurt

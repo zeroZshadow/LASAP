@@ -2,9 +2,12 @@
 # taken). Woods North Cave: the chest (woods-north-cave-chest) opened, then the free-standing item taken. The Goponga
 # Swamp cave's two chests (goponga-cave-left, 01A; goponga-cave-right, 01B) opened, the left one's ball taken: both
 # stay open, and after the level loads anew the taken one is open and the other closed, launching its ball again.
-# Run after boot_file1 on a mod with Bouncy Items and Instant Pickups on Everything, these locations not taken.
+# Run after newgame_file2 on a mod with Bouncy Items and Instant Pickups on Everything, these locations not taken.
 # The opened flags stand for the chests' looks: the chest closes on an event that finds its flag off.
 # Screenshots: two_chests_cave, two_chests_taken, two_chests_again.
+# Lifting pots takes the Power Bracelet.
+send DBG give 13 1 0
+expect OK.give 5
 send DBG setflag TBOX_OPEN_MysteriousWC02_01A 0
 send DBG setflag WoodsNorthCaveHeartGet 0
 warp MysteriousWoodsCave02 12.75 0 3.75

@@ -1,7 +1,7 @@
 # Bouncy Items owl statues (DESIGN.md, Drop actor): the Color Dungeon 06C statue (D0-owl-statue-nine-switches, at 35.25
 # 0 60.75; its gift needs the dungeon's beak) launches its ball when examined; Link steps aside, takes it where it comes
 # to rest, and after the level loads anew examining the statue launches nothing.
-# Run after boot_file1 on a mod patched with Bouncy Items and Owl Gifts all; clears the location's flag.
+# Run after newgame_file2 on a mod patched with Bouncy Items and Owl Gifts all; clears the location's flag.
 # Screenshots: owl_ball_out, owl_ball_rest.
 guard hurt
 send DBG setflag D0-owl-statue-nine-switches 0

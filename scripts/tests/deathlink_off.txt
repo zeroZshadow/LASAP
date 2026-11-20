@@ -1,5 +1,5 @@
 # DeathLink off: a seed with death_link off and the DeathLink peer as the other slot (deathlink.txt setup otherwise),
-# after boot_file1. A death from the peer never reaches the game, and Link's own deaths send nothing: one that Tracy's
+# after newgame_file2. A death from the peer never reaches the game, and Link's own deaths send nothing: one that Tracy's
 # Secret Medicine saves, then one that ends in the game over. The script gives the medicine (DBG give 21) and clears
 # the medicines waiting in the save (APMedicine0..1), so whether the save holds one does not matter. Ends with Link
 # alive and free in Mabe. Patterns use \s for spaces.

@@ -1,7 +1,7 @@
 # The jukebox through a 2D room: down Tail Cave's stairs in room 05G into the side-view room 02G, whose zone asks for
 # BGM_DUNGEON_2D_SIDEVIEW, and up its ladder back out. The stairs hold the chosen track (a stop of the game's), free
 # Link for a frame between the room change and the event's PlayZoneBGM, which the jukebox swaps: the track plays on
-# (no new instance). Run after boot_file1, with the client connected to the game (no server needed).
+# (no new instance). Run after newgame_file2, with the client connected to the game (no server needed).
 expect HELLO 30
 # The game keeps a track an earlier test chose: start from none.
 send DBG music off

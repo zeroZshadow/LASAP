@@ -1,5 +1,5 @@
 # DeathLink with Tracy's Secret Medicine, the item the game over revives Link with (a bottled fairy never does), on
-# the deathlink.txt setup (after boot_file1 or deathlink). DBG give 21 adds it: bit 1 of the inventory's byte ac.
+# the deathlink.txt setup (after newgame_file2 or deathlink). DBG give 21 adds it: bit 1 of the inventory's byte ac.
 # Medicines waiting in the save (APMedicine0..1) are cleared first, so none replaces the one used up. A received death
 # ends in the medicine's rescue, as an own death does, and sends nothing; with the medicine used up the next received
 # death kills Link; with a new medicine an own death ends in its rescue and sends nothing. Ends with Link alive and

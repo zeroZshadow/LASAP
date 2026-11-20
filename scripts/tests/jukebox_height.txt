@@ -1,6 +1,6 @@
 # A chosen track whose BgmTable row sets its volume by Link's height (BGM_TARUTARU2_AFTER_THE_RESCUE) through a level
 # load: the track plays on while there is no player, and its height update must then do nothing (music.cpp,
-# UpdateHeight); it read through null and the game crashed. Run after boot_file1 (no client needed).
+# UpdateHeight); it read through null and the game crashed. Run after newgame_file2 (no client needed).
 send DBG music off
 await 10 music=-
 warp Lv06FaceShrine 67.5 0 45

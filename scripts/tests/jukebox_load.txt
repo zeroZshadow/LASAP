@@ -1,6 +1,6 @@
 # A save loaded from the System page turns the Jukebox off (ap_game.cpp, FileLoad): the chosen track, one with a
 # height update (BGM_TARUTARU2_AFTER_THE_RESCUE), stops with the level's music and the loaded save plays its zone's
-# own. The System page's machine is `choice`, the Load screen's `file`. Run after boot_file1 (no client needed).
+# own. The System page's machine is `choice`, the Load screen's `file`. Run after newgame_file2 (no client needed).
 send DBG music off
 await 10 music=-
 warp Lv06FaceShrine 67.5 0 45

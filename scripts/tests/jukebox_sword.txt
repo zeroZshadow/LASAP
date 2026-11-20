@@ -6,6 +6,9 @@ expect HELLO 30
 # The game keeps a track an earlier test chose: start from none.
 send DBG music off
 await 10 music=-
+# The field plays its zone's track once Link has the sword (BGM_FIELD_FIRST before); the beach holds no sword here.
+send DBG give 0 1 0
+expect OK.give 5
 # The debug warp starts no music; choosing the track afterwards asks for the zone's music (PlayZoneBgm), which the
 # jukebox swaps.
 warp Field 37.5 3.75 186.0

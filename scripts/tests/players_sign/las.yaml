@@ -1,0 +1,5 @@
+name: Link
+game: Links Awakening Switch
+Links Awakening Switch:
+  # a count left to chance: hidden until the sign at the egg is read
+  instruments_required: random-range-3-5

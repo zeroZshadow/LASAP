@@ -3,7 +3,7 @@
 # the body drops from the ceiling (it moves, body state 11); DBG slimeeye split does what a boots dash into it does and
 # it splits into its two halves (EnemyDeguZolPhase2, made with no LEB key; state 5); DBG hit kills each half at the
 # power of its life; the controller's dead event pops its drop where the heart container would start; Link takes it.
-# Run after boot_file1; resets the boss's and the drop's flags.
+# Run after newgame_file2; resets the boss's and the drop's flags.
 # Screenshots: slime_eye_split, slime_eye_pop, slime_eye_rest.
 guard off hurt
 send DBG setflag DestroyBtl_L03_07G_Boss 0

@@ -1,4 +1,4 @@
-# From a fresh boot to a new game in file 2. Restore the never-played file 2 first: reset_saves.sh newgame. Each press
+# From a fresh boot to a new game in file 2. Restore the never-played file 2 first: reset_saves.sh. Each press
 # waits until the screen takes it (TESTING.md, "Game state") and stops the script within seconds when it is not
 # taken.
 connect 90

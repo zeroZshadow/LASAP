@@ -1,6 +1,6 @@
 # The ghost's reward (DESIGN.md, Drop actor): the drop in front of the ghost's grave (Field_07E) shows nowhere while
 # Ghost4_Clear (which the ghost's farewell at the grave turns on) is off, stands in place once it is on, and stands
-# there again with the room loaded anew; Link takes it. Run after boot_file1; resets the flag and the drop's got flag.
+# there again with the room loaded anew; Link takes it. Run after newgame_file2; resets the flag and the drop's got flag.
 # Screenshots: ghost_hidden, ghost_shown, ghost_reload.
 guard off hurt
 send DBG setflag Ghost4_Clear 0

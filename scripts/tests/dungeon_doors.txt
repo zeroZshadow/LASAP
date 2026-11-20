@@ -1,5 +1,5 @@
 # Shuffled Dungeons: Tail Cave's door leads into the Color Dungeon and the Color Dungeon's door into Tail Cave. Run
-# after boot_file1 on a mod from make_test_patch.py --dungeons '{"tail-cave": "color-dungeon", "color-dungeon":
+# after newgame_file2 on a mod from make_test_patch.py --dungeons '{"tail-cave": "color-dungeon", "color-dungeon":
 # "tail-cave"}'. Each dungeon's exit leads out of the door that leads into it. The flags open Tail Cave's door and
 # show the graveyard's stairs.
 send DBG setflag TailCaveShutterOpened 1

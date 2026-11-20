@@ -1,7 +1,7 @@
 # A save loaded from the System page counts as a save load (ap_game.cpp, FileLoad): once Link stands in it, the module
 # sends RECV with the loaded save's count, so the client resends the items that save lacks. Raising the counter in
 # play (setrecv, not saved) stands for items received after the save was written; the Load brings back the save's
-# count. The System page's machine is `choice`, the Load screen's `file`. Run after boot_file1 (no client: `game`
+# count. The System page's machine is `choice`, the Load screen's `file`. Run after newgame_file2 (no client: `game`
 # sends the ITEM line).
 free 10
 check recv=0\s

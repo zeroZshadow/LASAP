@@ -1,7 +1,7 @@
 # Instant Pickups on Incoming in a multiworld. A two-slot seed from scripts/tests/players_incoming: Link (LAS, YAML
 # instant_pickups: incoming) and a ChecksFinder slot named "Wandering Walrus", with plando putting Wandering Walrus's
 # Map Width in the beach chest and Link's Progressive Power Bracelet in Tile 1 (generate with --plando "bosses, items").
-# The scripted session runs (server and client, LASAP_E2E), after boot_file1 on a save where the beach chest is closed.
+# The scripted session runs (server and client, LASAP_E2E), after newgame_file2 on a save where the beach chest is closed.
 # 1. Link opens the beach chest: the game's item-get with the text naming the item and its owner, and no popup; the
 #    server has the item sent.
 # 2. While Link walks, the server checks Tile 1 for Wandering Walrus: Link's bracelet arrives as a popup and the toast

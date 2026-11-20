@@ -1,0 +1,9 @@
+name: Link
+game: Links Awakening Switch
+Links Awakening Switch:
+  open_mabe: true
+  owl_statues: all
+  dungeon_items: own_dungeon
+  in_game_hints: server
+  # every hint names a location, so each one read becomes a server hint
+  hint_distribution: precise

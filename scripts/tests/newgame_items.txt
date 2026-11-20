@@ -1,5 +1,5 @@
 # Items arrive the moment a new game starts, while Link wakes up in bed. Run like newgame_file2 (after
-# reset_saves.sh newgame, from a fresh boot). The item-gets wait for Marin's lines, then play one at a time; the
+# reset_saves.sh, from a fresh boot). The item-gets wait for Marin's lines, then play one at a time; the
 # script ends free in Tarin's house with nothing waiting.
 # Screenshot: newgame_2 the end (the camera back on the whole room).
 connect 90

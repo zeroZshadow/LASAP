@@ -1,6 +1,6 @@
 # Boss drops (DESIGN.md, Drop actor) with the boss's item owned before the fight: the Face Key received from
 # elsewhere, Link beats the Armos Knight (ArmosShrine_02A) and its drop still pops and can be taken. Run after
-# boot_file1; resets the boss's and the drop's flags and takes the Face Key away again.
+# newgame_file2; resets the boss's and the drop's flags and takes the Face Key away again.
 # Screenshots: armos_owned_pop.
 guard off hurt
 send DBG setflag FaceKeyPop_Btl_ArmosShrine_02A 0

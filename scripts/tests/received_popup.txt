@@ -1,9 +1,15 @@
 # Instant Pickups on Incoming or Everything (a mod patched with it, or config.ini [tweaks] instant_pickups): a received item
 # shows its model above Link's head and the toast names it, while Link keeps walking; no event starts. Then a song,
 # whose model is Marin (an NPC model, sized and centred as in the item-get), and a trap, which still plays its effect
-# as an event, and a level load while a popup shows. Run after boot_file1 (or newgame_file2), with Link free on open
-# ground.
+# as an event, and a level load while a popup shows. Run after newgame_file2; starts on the open lawn east of Mabe's
+# phone booth tree (Field_12D).
 # Screenshots: popup_item, popup_song.
+# With the sword and the shield Link's walk is anim=walk (idle_bare without them).
+send DBG give 0 1 0
+expect OK.give 5
+send DBG give 2 1 0
+expect OK.give 5
+warp Field 43 10.5 137
 guard hurt
 free 30
 guard event=22

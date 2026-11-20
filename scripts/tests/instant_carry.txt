@@ -2,7 +2,7 @@
 # that holds ghost-house-pot (12 0 8.25) as ghost_house_pot does, so its item drops where it stood, lifts the pot at
 # 10.5 0 9.75 from its left, and walks, carrying it, up into the item. No item-get: the popup shows and he still holds
 # the pot (an item-get would take it out of the game). Then an item from the server shows as a popup while he carries
-# it, without waiting for his hands to be free. Run after boot_file1 or newgame_file2 (the location unchecked) on a mod
+# it, without waiting for his hands to be free. Run after newgame_file2 (the location unchecked) on a mod
 # patched with Instant Pickups on Everything. Grants the Power Bracelet (sandbox saves only).
 # Screenshots: instant_carry the find's popup over the pot.
 guard hurt

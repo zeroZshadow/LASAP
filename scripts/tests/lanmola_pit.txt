@@ -1,7 +1,7 @@
 # Boss drops (DESIGN.md, Drop actor), Lanmola's pit, a real defeat: DBG hit hits Lanmola at the power of its life; its
 # dead event pops its drop out of the sand where the Angler Key would start; with the desert loaded again the drop
 # stands nowhere (no drop falls), and in the cave below the pit (LanmolaCave_02A) the drop where the game's Angler Key
-# stands is there; Link takes it. Run after boot_file1; resets Lanmola's and the drops' flags.
+# stands is there; Link takes it. Run after newgame_file2; resets Lanmola's and the drops' flags.
 # Screenshots: lanmola_pop, lanmola_reload (no ball), lanmola_cave.
 guard off hurt
 send DBG setflag FieldLanmolaDead 0
