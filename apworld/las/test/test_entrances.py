@@ -90,6 +90,14 @@ class TestDoorJumps(unittest.TestCase):
         self.assertIn("Cave Field Field_03C Field Field_06C AppearStairsFld06C", lines)
         self.assertIn("House Field Field_06C Field Field_03C", lines)
 
+    def test_a_jump_into_the_bed_room_lights_its_lamps(self) -> None:
+        """Field_09D's trigger box sets the lamp flags in vanilla; the door led into the bed room sets them instead."""
+        lines = self.ap_entrances.door_jumps({"Field_03C": "BedRoom_01A_b", "Field_09D": "House_01A"},
+                                             {"Field_03C": "House_01A", "Field_09D": "BedRoom_01A_b"})
+        self.assertIn("Field House House_01A BedRoom BedRoom_01A_b BedRoomLamp1 BedRoomLamp2 BedRoomLamp3 BedRoomLamp4",
+                      lines)
+        self.assertIn("Field BedRoom BedRoom_01A_b House House_01A", lines)
+
     def test_a_random_start_swaps_the_houses_door(self) -> None:
         """The start door leads into the house and every jump home out of it; Tarin's door into its inside, and back."""
         level_of = self.ap_entrances.level_of

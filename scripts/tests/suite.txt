@@ -20,6 +20,7 @@ ghosts ghost: newgame_file2 ghost_net ghost_puppet jukebox_pane
 ghost_link ghost: newgame_file2 ghost_link
 texts: newgame_file2 shop_text hint_vanilla map_hints zol_trap
 found client: newgame_file2 dungeon_found door_found
+door_box bed_room_door.txt: newgame_file2 door_box
 options_on options.open_mabe=True options.randomize_enemies=True options.classic_d2=True options.completed_bridge=True options.ammo_ghost=False: newgame_file2 option_rooms
 bouncy options.bouncy_items=True options.owl_dungeons=True: newgame_file2 bouncy_chest owl_drop bouncy_roam pot_chest
 bouncy_two_chests options.bouncy_items=True tweaks.instant_pickups=Everything: newgame_file2 bouncy_two_chests

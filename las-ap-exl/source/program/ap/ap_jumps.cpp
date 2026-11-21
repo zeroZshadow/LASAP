@@ -1,8 +1,9 @@
 // Level jumps the seed leads elsewhere (DESIGN.md, Shuffled dungeons; Goal): every level change goes through
 // LevelManager_LevelJump (scripts/re/ACTORS.md, Level jump), whose hook (game/hooks/level.cpp) asks LeadJump. A door's
 // loading zone, an event's RequestLevelJump and an instrument's warp all name where they lead; the patcher's table
-// (the seed file's jumps) names, per level Link leaves, the targets that lead elsewhere, and for a led jump onto a door
-// something covers, the flag that opens it (scripts/re/ENTRANCES.md, Blocked landings). The overworld map's dungeon markers
+// (the seed file's jumps) names, per level Link leaves, the targets that lead elsewhere, and the flags a led jump sets:
+// for a door something covers, the one that opens it (scripts/re/ENTRANCES.md, Blocked landings), and those a trigger box
+// on the vanilla door sets (Door trigger boxes). The overworld map's dungeon markers
 // follow the doors (the seed file's markers): once the game loaded the map's sheets, each door's row takes the label and show
 // flag of the dungeon behind it. The jumps between the overworld and other levels go to the client as DOOR lines, from
 // which it learns the shuffled doors the player has gone through (DESIGN.md, Entrances, Doors gone through). The shop's
@@ -27,7 +28,10 @@
 
 namespace AP::Bridge {
 namespace {
-    struct Jump { std::string_view from, level, locator, toLevel, toLocator, opening; };  // in the seed file
+    struct Jump {  // in the seed file
+        std::string_view from, level, locator, toLevel, toLocator;
+        std::vector<std::string_view> flags;
+    };
     std::vector<Jump> g_Jumps;
     // a door's marker label, and the label and show flag of the dungeon behind it, which its row takes
     struct Marker { std::string_view door, label, flag; };
@@ -98,12 +102,13 @@ namespace {
     };
 }
 
-    // The seed file's jumps: "<from level> <level> <locator> <new level> <new locator> [<flag>]" lines, a jump from a
-    // room of the first level, or of any level for "*", to that level and locator goes to the new ones, setting the
-    // flag (patcher las_ap_patch.jump_lines)
+    // The seed file's jumps: "<from level> <level> <locator> <new level> <new locator> [<flag>...]" lines, a jump from
+    // a room of the first level, or of any level for "*", to that level and locator goes to the new ones, setting the
+    // flags (patcher las_ap_patch.jump_lines)
     void LoadJumps() {
         SeedFile::ForEach("jumps", [](Fields& f) {
-            Jump jump{f.Str(), f.Str(), f.Str(), f.Str(), f.Str(), f.Str()};
+            Jump jump{f.Str(), f.Str(), f.Str(), f.Str(), f.Str(), {}};
+            for (std::string_view flag = f.Str(); !flag.empty(); flag = f.Str()) jump.flags.push_back(flag);
             if (!jump.toLocator.empty()) g_Jumps.push_back(jump);
         });
         Logging.Log("[AP] level jumps led elsewhere: %zu", g_Jumps.size());
@@ -198,7 +203,7 @@ namespace AP {
             Logging.Log("[AP] jump to %s %s leads to %s %s", jump.level.data(), jump.locator.data(), jump.toLevel.data(),
                         jump.toLocator.data());
             // set before the new level's actors are made, which read it
-            if (!jump.opening.empty()) EventFlags::SetFlag(std::string(jump.opening), true);
+            for (std::string_view flag : jump.flags) EventFlags::SetFlag(std::string(flag), true);
             return std::pair<std::string_view, std::string_view>{jump.toLevel, jump.toLocator};
         }
         return std::nullopt;

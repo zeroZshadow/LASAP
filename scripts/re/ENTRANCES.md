@@ -229,12 +229,34 @@ flag cleared, the enemies killed on landing.
 Link never gets stuck: on covered stairs he is placed on top of the obstacle's collision and steps off it, and in front
 of a cracked wall or the Armos he stands free. The door stays shut from outside until it is opened the vanilla way.
 Setting the obstacle's flag before landing gives the vanilla arrival, except at the Armos doors. **Covered**: a
-`jumps` line's optional sixth field is a flag `LeadJump` sets as it leads the jump, and `door_jumps` gives a jump out
+`jumps` line's fields after the fifth are flags `LeadJump` sets as it leads the jump, and `door_jumps` gives a jump out
 onto a covered door its flag (`ap_entrances.OPENING_FLAGS`: the stairs' gates, `MarthaStatueOpened`, the cracked walls'
 flags). Mamu's (`MamuMazeClear` opens the maze) and the Armos doors are left out. Tested in game 2026-11-12 with led
 exits onto every door of `OPENING_FLAGS`: the flag is clear inside and set on landing, and Link comes up the stairs or
 out of the doorway. The logic needs no change: the door is reached from inside, and from outside it stays a way in only with the
 vanilla rule.
+
+## Door trigger boxes
+
+An `AreaEventBox` with LEB parameters 1 (first switch slot) and 2 (count) sets that range of its switches as Link goes
+through it: `0x67140 (box, bool)` sets the range to the bool's inverse, and `0x67210` calls it with false. Its callers
+with true (`0x688b0`, `0x6c130`, `0x6e510`, which clear the range) are not traced. Standing on a door, the box sets
+flags for the level behind the door before the jump. Boxes with switches within 2.5 of an `AreaLevelOpen` in the
+RomFS:
+
+| Door | Box's switches | Effect |
+|---|---|---|
+| `Field_09D` → `BedRoom_01A_b` | global `BedRoomLamp1`–`4` (152–155) | lights the bed room's four lamps |
+| `DreamShrine_02A` → `BedRoom_01A_a` | the same | lights them again after `Bed.bfevfl` `BedRoomExamine` clears them as Link falls asleep |
+| `UnderGrave_01B` → `Field_08G` | global `AppearStairsFld08G` (14) | opens the grave over the stairs outside (Blocked landings) |
+
+The bed room's lamps (`ObjHouseFaceLamp`, actor id 0x140, LEB name `ObjHouseFace`) are lit while their switch 0 is on:
+the check at `0xb1f890` puts the lamp in its lit state 2, and `0xb1e370` puts it out, clearing switch 0 unless switch 1
+is on or a constant. Nothing else sets the lamp flags; they are clear on a new file. A box stays on its door when the
+door leads elsewhere, so a door led into the bed room arrives with the lamps out. **Covered**: `door_jumps` gives a
+jump in onto an inside whose vanilla door has a box that box's flags (`ap_entrances.DOOR_BOX_FLAGS`). The grave's box
+needs none: `OPENING_FLAGS` sets its flag on a jump out onto `Field_08G`. Field_09D's box still sets the lamp flags when
+Link goes through that door to wherever it leads, which only lights the lamps early.
 
 ## Overworld map icons
 

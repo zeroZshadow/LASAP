@@ -295,13 +295,14 @@ if fairy_warps != {ap_entrances.outside("color-dungeon")}:
     print(f"FAIRY QUEEN warps to {fairy_warps}, not vanilla")
 hunt_lines = ap_goal.jumps(ap_goal.settings_seashells(patch["settings"]))
 # Entrances: per moved door, the overworld's jump through it to the new inside, and that inside's jump to its own old
-# door to this door, with the opening flag of a covered door
+# door to this door, with the opening flag of a covered door and the flags of a trigger box on the inside's own door
 moved, door_pairs = patch["entrances"], patch["entrance_pairs"]
 door_of = {inside: door for door, inside in door_pairs.items()}
 for door, inside in moved.items():
     out_from = ap_entrances.ANY_LEVEL if door_of[inside] == ap_entrances.HOME else ap_entrances.level_of(inside)
     opening = ap_entrances.OPENING_FLAGS.get(door)
-    want += [f"Field {ap_entrances.level_of(door_pairs[door])} {door_pairs[door]} {ap_entrances.level_of(inside)} {inside}",
+    box = "".join(f" {flag}" for flag in ap_entrances.DOOR_BOX_FLAGS.get(inside, []))
+    want += [f"Field {ap_entrances.level_of(door_pairs[door])} {door_pairs[door]} {ap_entrances.level_of(inside)} {inside}{box}",
              f"{out_from} Field {door_of[inside]} Field {door}" + (f" {opening}" if opening else "")]
 if sorted(jumps) != sorted(want + hunt_lines):
     bad += 1

@@ -1,0 +1,3 @@
+[jumps]
+Field Library Library_01A BedRoom BedRoom_01A_b BedRoomLamp1 BedRoomLamp2 BedRoomLamp3 BedRoomLamp4
+BedRoom Field Field_09D Field Field_12A

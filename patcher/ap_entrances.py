@@ -24,6 +24,10 @@ OPENING_FLAGS = {
     "Field_09H": "FieldCrackedWall09H", "Field_09N": "FieldCrackedWall09N", "Field_13N_c": "FieldCrackedWall13N",
     "Field_16E": "FieldCrackedWall16E",
 }
+# The inside door spots whose vanilla door outside has a trigger box on it, and the flags the box sets as Link goes
+# through (scripts/re/ENTRANCES.md, Door trigger boxes): a door led onto one sets them as Link goes in. Field_09D's
+# box lights the Dream Shrine's bed room lamps.
+DOOR_BOX_FLAGS = {"BedRoom_01A_b": ["BedRoomLamp1", "BedRoomLamp2", "BedRoomLamp3", "BedRoomLamp4"]}
 
 
 def level_of(locator: str) -> str:
@@ -58,11 +62,13 @@ def jumps(entrances: Mapping[str, str]) -> List[str]:
 def door_jumps(entrances: Mapping[str, str], pairs: Mapping[str, str]) -> List[str]:
     """The jumps' lines of the overworld doors that lead elsewhere: entrances maps such a door to the inside door it
     leads to, pairs to the one it led to. Tarin's house's jump out is from any level: the warp menu and the Save & Quit
-    after a game over lead outside its door too. A jump out onto a covered door also names the flag that opens it."""
+    after a game over lead outside its door too. A jump out onto a covered door also names the flag that opens it, a
+    jump in onto an inside whose vanilla door has a trigger box the flags the box sets."""
     door_of = {inside: door for door, inside in pairs.items()}
     lines = []
     for door, inside in entrances.items():
-        lines.append(f"{FIELD} {level_of(pairs[door])} {pairs[door]} {level_of(inside)} {inside}")
+        box = "".join(f" {flag}" for flag in DOOR_BOX_FLAGS.get(inside, []))
+        lines.append(f"{FIELD} {level_of(pairs[door])} {pairs[door]} {level_of(inside)} {inside}{box}")
         out_from = ANY_LEVEL if door_of[inside] == HOME else level_of(inside)
         opening = f" {OPENING_FLAGS[door]}" if door in OPENING_FLAGS else ""
         lines.append(f"{out_from} {FIELD} {door_of[inside]} {FIELD} {door}{opening}")

@@ -1,0 +1,24 @@
+# Door trigger boxes (scripts/re/ENTRANCES.md): Field_09D's box lights the Dream Shrine's bed room lamps in vanilla; a
+# door led into the bed room sets the box's flags itself, so the lamps are lit when Link arrives. Run after
+# newgame_file2 with seed/bed_room_door.txt: the Library's door (Field_12A) leads into the bed room and its way out
+# out of the Library's door.
+send DBG flag BedRoomLamp1
+expect FLAG.BedRoomLamp1.0 5
+# the Library's door, north of Link, into the bed room
+warp Field 5.25 10.5 137.5
+hold 0 0 32767 until level=BedRoom 10
+loaded 20
+send DBG flag BedRoomLamp1
+expect FLAG.BedRoomLamp1.1 5
+send DBG flag BedRoomLamp2
+expect FLAG.BedRoomLamp2.1 5
+send DBG flag BedRoomLamp3
+expect FLAG.BedRoomLamp3.1 5
+send DBG flag BedRoomLamp4
+expect FLAG.BedRoomLamp4.1 5
+free 20
+shot door_box_lamps.png
+# its way out, south of Link, out of the Library's door
+hold 0 0 -32767 until level=Field 10
+loaded 20
+at 5.25 136.5 2
