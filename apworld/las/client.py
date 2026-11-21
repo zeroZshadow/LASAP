@@ -26,6 +26,8 @@ PROTOCOL_VERSION = 2
 PING_INTERVAL = 2.0
 RESEND_INTERVAL = 3.0
 HELLO_TIMEOUT = 5.0
+# /deathlink: DeathLink on or off for this slot, set during play; absent, the slot's death_link option holds
+DEATHLINK_KEY = "las_deathlink_{team}_{player}"
 # The release world (scripts/build_release.py): the client leaves out the commands for tests (LASCommandProcessor)
 RELEASE = builtin_patcher_build() is not None
 # The game takes one client at a time; another client's connection waits without an answer (also for the 10 s the
@@ -115,6 +117,19 @@ class LASCommandProcessor(ClientCommands):
                   " (from the patch file)" if not ctx.option("ghost_relay") and ctx.ghost_relay_arg is None else "")
         logger.info(f"Ghost relay: {ghost_relay.shown_address(link.address)}{source}.")
 
+    def _cmd_deathlink(self, value: str = "") -> None:
+        """Show whether DeathLink is on, or turn it on or off for this slot: /deathlink on|off."""
+        ctx = self.ctx
+        if not ctx.slot:
+            logger.error("DeathLink: connect to the slot first.")
+            return
+        if value:
+            if value.lower() not in ("on", "off"):
+                logger.error("Usage: /deathlink [on|off]")
+                return
+            ctx.set_death_link(value.lower() == "on")
+        logger.info(f"DeathLink is {'on' if ctx.death_link_on() else 'off'}.")
+
     def _cmd_resync(self) -> None:
         """Ask the game to resend its received-item count and collected locations."""
         self.ctx.send_game("SYNC")
@@ -159,6 +174,7 @@ class LASContext(TrackerMixin, ClientContext):
         self.game_seed_hash: Optional[str] = None
         self.game_recv: Optional[int] = None
         self.slot_seed_hash: Optional[str] = None
+        self.death_link_stored: Optional[bool] = None  # DEATHLINK_KEY in data storage, None while it holds none
         self.game_checked: Set[int] = set()
         # In-game hints the game reports as read, (slot, location id), and those sent to the server since connecting
         self.game_hints: Set[Tuple[int, int]] = set()
@@ -239,8 +255,8 @@ class LASContext(TrackerMixin, ClientContext):
             asyncio.create_task(self.flush_hints())
             asyncio.create_task(self.send_msgs([{"cmd": "LocationScouts", "locations": sorted(self.server_locations),
                                                  "create_as_hint": 0}]))
-            if args["slot_data"].get("death_link"):
-                asyncio.create_task(self.update_death_link(True))
+            self.death_link_stored = None  # until Retrieved: the option
+            asyncio.create_task(self.update_death_link(self.death_link_on()))
             asyncio.create_task(self.send_level())
             self.send_checked(self.checked_locations)
             self.doors_sent.clear()
@@ -253,7 +269,8 @@ class LASContext(TrackerMixin, ClientContext):
             asyncio.create_task(self.send_sign_read())
             # read or found in an earlier session: the game's save may have lost it (quit without saving)
             asyncio.create_task(self.send_msgs([{"cmd": "Get",
-                                                 "keys": [self.sign_key, self.doors_key, self.entrances_key]}]))
+                                                 "keys": [self.sign_key, self.doors_key, self.entrances_key,
+                                                          self.deathlink_key]}]))
             self.send_logic()
             self.update_ghosts()
         elif cmd == "RoomUpdate":
@@ -273,6 +290,9 @@ class LASContext(TrackerMixin, ClientContext):
             if isinstance(keys.get(self.entrances_key), dict):
                 self.entrances_stored.update(keys[self.entrances_key])
                 self.send_logic()
+            if isinstance(keys.get(self.deathlink_key), bool):
+                self.death_link_stored = keys[self.deathlink_key]
+                asyncio.create_task(self.update_death_link(self.death_link_stored))
         elif cmd == "LocationInfo":
             for item in args["locations"]:
                 if item.location < LOCATION_BASE:
@@ -323,6 +343,10 @@ class LASContext(TrackerMixin, ClientContext):
     @property
     def entrances_key(self) -> str:
         return ENTRANCES_KEY.format(team=self.team, player=self.slot)
+
+    @property
+    def deathlink_key(self) -> str:
+        return DEATHLINK_KEY.format(team=self.team, player=self.slot)
 
     @property
     def found_entrances(self) -> Set[str]:
@@ -766,6 +790,17 @@ class LASContext(TrackerMixin, ClientContext):
             return
         self.store("ghost_names", on)
         self.ghosts.set_names(on)
+
+    def death_link_on(self) -> bool:
+        """The slot's death_link option, unless /deathlink changed it (DEATHLINK_KEY)."""
+        if self.death_link_stored is not None:
+            return self.death_link_stored
+        return bool(self.slot_data.get("death_link"))
+
+    def set_death_link(self, on: bool) -> None:
+        self.death_link_stored = on
+        asyncio.create_task(self.update_death_link(on))
+        asyncio.create_task(self.set_storage(self.deathlink_key, on, "replace", on))
 
     def update_ghosts(self) -> None:
         """Hands the ghost link its settings, secret and slot, and whether the client is logged into the slot; it

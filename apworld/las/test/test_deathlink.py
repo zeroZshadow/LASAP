@@ -112,3 +112,61 @@ class TestClientDeathLink(unittest.TestCase):
             ctx.on_deathlink({"time": 1.0, "source": "Finder", "cause": "Finder fell."})
             return lines
         self.assertEqual(asyncio.run(run()), ["DEATH Finder"])
+
+
+class TestDeathLinkCommand(unittest.TestCase):
+    """/deathlink turns DeathLink on or off for the slot and keeps that in data storage; the slot's death_link option
+    holds until then."""
+
+    def context(self, option: bool):
+        class Socket:
+            closed = False
+
+        class Server:
+            socket = Socket()
+        return client_context(slot=1, team=0, slot_data={"death_link": option},
+                              tags={"AP", "DeathLink"} if option else {"AP"}, server=Server())
+
+    def command(self, ctx, value: str) -> None:
+        from ..client import LASCommandProcessor
+        LASCommandProcessor(ctx)._cmd_deathlink(value)
+
+    @staticmethod
+    def messages(sent) -> list:
+        return [(m["cmd"], set(m["tags"])) if m["cmd"] == "ConnectUpdate" else
+                (m["cmd"], m["key"], m["operations"][0]["value"]) for m in sent]
+
+    def test_toggle(self) -> None:
+        async def run():
+            ctx, sent, _ = self.context(False)
+            self.assertFalse(ctx.death_link_on())
+            self.command(ctx, "on")
+            await asyncio.sleep(0)
+            on = (ctx.death_link_on(), set(ctx.tags), self.messages(sent))
+            sent.clear()
+            self.command(ctx, "OFF")
+            await asyncio.sleep(0)
+            return on, (ctx.death_link_on(), set(ctx.tags), self.messages(sent))
+        on, off = asyncio.run(run())
+        self.assertEqual(on, (True, {"AP", "DeathLink"}, [("ConnectUpdate", {"AP", "DeathLink"}),
+                                                           ("Set", "las_deathlink_0_1", True)]))
+        self.assertEqual(off, (False, {"AP"}, [("ConnectUpdate", {"AP"}), ("Set", "las_deathlink_0_1", False)]))
+
+    def test_stored_choice_overrides_option(self) -> None:
+        async def run(stored):
+            ctx, _, _ = self.context(True)
+            ctx.on_package("Retrieved", {"keys": {ctx.deathlink_key: stored}})
+            await asyncio.sleep(0)
+            return ctx.death_link_on(), "DeathLink" in ctx.tags
+        self.assertEqual(asyncio.run(run(False)), (False, False))
+        self.assertEqual(asyncio.run(run(None)), (True, True))
+
+    def test_needs_slot_and_value(self) -> None:
+        async def run():
+            ctx, sent, _ = self.context(False)
+            self.command(ctx, "maybe")
+            ctx.slot = None
+            self.command(ctx, "on")
+            await asyncio.sleep(0)
+            return ctx.death_link_stored, sent
+        self.assertEqual(asyncio.run(run()), (None, []))

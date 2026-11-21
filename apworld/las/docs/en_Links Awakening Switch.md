@@ -133,3 +133,6 @@ These are options so that a seed plays the same for everyone. How the game looks
 
 Link's deaths reach the other DeathLink players, and theirs kill Link once he is free. Tracy's Secret Medicine revives
 him from either and is used up, and a death it saves you from sends nothing.
+
+The option sets whether DeathLink starts on. The client's `/deathlink on|off` turns it on or off while you play, and the
+room keeps that for your slot.

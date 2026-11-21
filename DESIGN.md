@@ -272,6 +272,7 @@ The client writes these keys from the game's lines; `SIGN` and `DUNGEON` count o
 - `las_sign_<team>_<slot>`: `true` once the sign at the egg's stairs is read, from `SIGN` (Goal, **Hidden count**).
 - `las_doors_<team>_<slot>`: `{door: dungeon}` for each dungeon door found, by `dungeon_entrances` names, from `DUNGEON` (Shuffled dungeons, **Doors found**).
 - `las_entrances_<team>_<slot>`: `{door: inside door}` for each shuffled overworld door gone through, from `DOOR` (Entrances, **Doors gone through**).
+- `las_deathlink_<team>_<slot>`: `true`/`false` from `/deathlink on|off`, absent until then (DeathLink).
 
 ## Game ↔ client protocol (TCP 43384, game listens)
 
@@ -400,7 +401,7 @@ Lines that need a loaded save (`ITEM`, `SYNC`, `DEATH`, most `DBG`) wait until t
 - **Logic.** The warp map is a zone without tiles, `warp-map` (`lasr.WARP_MAP`), with a one-way route into each point's zone with that point's item (`lasr.WARP_ZONES`). Manbo's Mambo works from anywhere outside a dungeon and the warp home reaches Tarin's house from anywhere, so a one-way route leads from `tarin-house` onto the warp map with `ocarina & song-mambo`. Each point's zone leads onto it with the point's item: Link walks onto an open hole or platform. The rocks over the platforms of Dampe's Shack, Martha's Bay and Tal Tal Mountains West need no `bracelet`: the point's item takes its rock away.
 
 **DeathLink** (option `death_link`; `patcher/modbuild/ap_deathlink.py`)
-- The client takes the `DeathLink` tag when the slot data's `death_link` is on: it turns a `DIED` into a DeathLink and a received DeathLink into `DEATH <source player>`. With the option off the client has no tag: the server sends it no deaths, and `DIED` is ignored.
+- The client takes the `DeathLink` tag when the slot data's `death_link` is on: it turns a `DIED` into a DeathLink and a received DeathLink into `DEATH <source player>`. With the option off the client has no tag: the server sends it no deaths, and `DIED` is ignored. `/deathlink on|off` turns the tag on or off during play (`ConnectUpdate`) and stores the choice in data storage (`las_deathlink_<team>_<slot>`, `DEATHLINK_KEY`). On `Connected` the tag follows the option, then the stored choice once `Retrieved` returns it. The patch is the same either way, so the game needs nothing.
 - The patcher changes `Common.bfevfl`'s `GameOver`, which revives Link with Tracy's Secret Medicine (`Inventory.HasItem` itemType 22, used up) unless the shopkeeper takes revenge for a theft. A bottled fairy never revives Link in this game. A received death sets the flag `APDeathLink`, and the flow runs for it as for any other death; the flow clears the flag both where the medicine revives Link and where the death stands. A death that stands sets `APDied` before the game over unless `APDeathLink` is set; the module polls `APDied`, clears it and sends `DIED`. So the medicine's rescue sends nothing, and a received death is never sent back.
 - `DEATH` is dropped (`DEATHDROPPED`) on the intro, the title and the file menus, and when Link is dead already. Otherwise it waits until Link is free and no item display is starting or showing, then the module sets `APDeathLink` and his health to zero. While Link's health is zero no item display or warp menu starts. `APDeathLink` set by a death that reached no game over within 10 s, while Link lives, is cleared.
 
