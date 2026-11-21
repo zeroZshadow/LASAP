@@ -1085,7 +1085,7 @@ prairie:
     river: cross-water
     animal-village: rooster | hookshot
     kanalet-hookshot-island: rooster
-    kanalet-porch: open-kanalet | (kanalet & break-bush) | kanalet-castle.a
+    kanalet-porch: open-kanalet | kanalet-castle.a
     kanalet-east: bananas | completed-bridge | cross-water
   one-way:
     warp-map: warp-ukuku-prairie | warp-seashell-mansion
