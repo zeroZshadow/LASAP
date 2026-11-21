@@ -1071,7 +1071,7 @@ D3-hallway-3:
   type: item
   content: rupee-300
   region: D3.c
-  condition-basic: boots & kill-zol-red & kill-stalfos
+  condition-basic: break-obstacle & kill-zol-red & kill-stalfos
 D3-hallway-2:
   type: item
   content: zol-trap
@@ -1944,7 +1944,7 @@ prairie:
     river: cross-water
     animal-village: rooster | hookshot
     kanalet-hookshot-island: rooster
-    kanalet-porch: open-kanalet | (kanalet & break-bush)
+    kanalet-porch: open-kanalet | (kanalet & break-bush) | kanalet-castle.a
     kanalet-east: bananas | completed-bridge | cross-water
   one-way:
     warp-map: warp-ukuku-prairie | warp-seashell-mansion
@@ -2335,7 +2335,7 @@ Tamaranch04d-left:
 Tamaranch04d-right:
   type: region
   connections:
-    Tamaranch04d-left: rooster
+    Tamaranch04d-left: rooster | hookshot
   doors:
     Tamaranch04_04C: always
 Tamaranch04e:
@@ -2878,11 +2878,11 @@ D4.c:
   connections:
     D4.d: key-D4
   one-way:
-    D4.e: kill-spiny
+    D4.e: kill-spiny & kill-zol-red
 D4.a:
   type: region
   connections:
-    D4.c: kill-spiny[pit]
+    D4.c: kill-zol-red
     D4.b: dash-jump
   doors:
     Lv04AnglersTunnel_08D: always
