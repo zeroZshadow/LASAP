@@ -450,9 +450,10 @@ class LASWorld(World):
         return bool(self.classification(LASR_TO_ITEM[lasr_item]) & ItemClassification.progression)
 
     def classification(self, name: str) -> ItemClassification:
-        """ITEM_TABLE's, except that stone beaks are progression only while dungeon owl statues give checks."""
+        """ITEM_TABLE's, except that stone beaks are progression only while dungeon owl statues give checks, else useful
+        while they give hints."""
         if ITEM_TABLE[name].lasr_name.startswith("stone-beak-") and not lasr_settings.dungeon_owls(self.options):
-            return ItemClassification.filler
+            return ItemClassification.useful if lasr_settings.beak_hints(self.options) else ItemClassification.filler
         return ITEM_TABLE[name].classification
 
     # --- items ---

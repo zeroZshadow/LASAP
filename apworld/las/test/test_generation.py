@@ -496,10 +496,15 @@ class TestChestAppearance(LASTestBase):
         self.assertEqual(chest_look(options, "heart-container"), ["junk", "life-upgrade"])
 
     def test_stone_beaks(self) -> None:
-        """A stone beak is junk without dungeon owl statues, else progression in progression's chest."""
+        """A stone beak is progression in progression's chest with dungeon owl statues, else useful in a useful item's
+        chest with in-game hints, else junk."""
         options, beak = self.world.options, LASR_TO_ITEM["stone-beak-D1"]
-        self.assertEqual(chest_look(options, "stone-beak-D1"), ["junk", "junk"])
+        self.assertEqual(chest_look(options, "stone-beak-D1"), ["good", None])
+        self.assertTrue(self.world.create_item(beak).useful)
         self.assertFalse(self.world.create_item(beak).advancement)
+        options.in_game_hints.value = options.in_game_hints.option_off
+        self.assertEqual(chest_look(options, "stone-beak-D1"), ["junk", "junk"])
+        self.assertFalse(self.world.create_item(beak).useful)
         for owls in (options.owl_statues.option_dungeons, options.owl_statues.option_all):
             options.owl_statues.value = owls
             self.assertEqual(chest_look(options, "stone-beak-D1"), ["important", None])

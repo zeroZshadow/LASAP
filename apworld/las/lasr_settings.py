@@ -45,13 +45,19 @@ def dungeon_owls(options: LASOptions) -> bool:
     return _OWLS[options.owl_statues.value] in ("Dungeons", "All")
 
 
+def beak_hints(options: LASOptions) -> bool:
+    """Whether the dungeon owl statues give hints, which needs their dungeon's stone beak: then a beak is useful
+    without dungeon_owls."""
+    return options.in_game_hints.value != options.in_game_hints.option_off
+
+
 def chest_look(options: LASOptions, lasr_item: Optional[str], progression: bool = False, useful: bool = False,
                trap: bool = False) -> List[Optional[str]]:
     """How a chest holding this item looks: [LASR item type, which sets the chest size; chest texture, None for the
     plain chest]. lasr_item is the LASR item for this player's items, None for another player's item, which looks
     by its classification. The types follow LASR's shuffler and its chest code for the "Size" setting; seashells
-    get the patcher's seashell texture. A stone beak that is progression (dungeon_owls) looks like other progression,
-    not in LASR's junk chest."""
+    get the patcher's seashell texture. A stone beak that is progression (dungeon_owls) or useful (beak_hints) looks
+    like other progression or useful items, not in LASR's junk chest."""
     if lasr_item is None:
         if trap or not (progression or useful):
             return ["junk", "junk"]
@@ -63,6 +69,8 @@ def chest_look(options: LASOptions, lasr_item: Optional[str], progression: bool 
         item_type = "important"
     if lasr_item.startswith("stone-beak-") and dungeon_owls(options):
         return ["important", None]
+    if lasr_item.startswith("stone-beak-") and beak_hints(options):
+        return ["good", None]
     if options.chest_appearance.value == options.chest_appearance.option_size:
         if lasr_item in ("heart-container", "red-tunic", "blue-tunic"):
             item_type = "junk"
