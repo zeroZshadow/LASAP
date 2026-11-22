@@ -49,6 +49,10 @@ def import_world(logic_file):
     from worlds.las.lasr import COUNTED, DOOR_LOGIC, ITEM_DEFS, LOGIC, door_logic
     from worlds.las.logic import NEVER, PLACES, PRESETS, START, house_exits, lower_routes, make_rule, node_tokens, parse, start_doors
     from worlds.las.options import LASOptions
+    # The world's Logic option offers players only some of logic.yml's levels; here it takes every level, so each can be asked.
+    # setup_multiworld reads the options from type_hints, a cached dict.
+    hints = LASOptions.type_hints
+    hints["logic"] = type(hints["logic"].__name__, (hints["logic"],), {f"option_{level}": i for i, level in enumerate(PRESETS)})
     return dict(CollectionState=CollectionState, FillError=FillError, distribute=distribute_items_restrictive, setup=setup_multiworld, gen_steps=gen_steps,
                 world_type=AutoWorldRegister.world_types["Links Awakening Switch"], lasr=lasr_module, item_names=LASR_TO_ITEM, counted=COUNTED,
                 door_logic_dict=DOOR_LOGIC, item_defs=ITEM_DEFS, logic=LOGIC, door_logic=door_logic, presets=PRESETS, make_rule=make_rule,
