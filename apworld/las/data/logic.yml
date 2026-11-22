@@ -1127,7 +1127,7 @@ D4-east-side-north:
   type: item
   content: key-D4
   region: D4.b
-  condition-basic: bombs | flippers
+  condition-basic: bombs
 D4-east-side-south:
   type: item
   content: key-D4
@@ -1185,7 +1185,7 @@ D5-instrument:
   type: item
   content: wind-marimba
   region: D5.c
-  condition-basic: hookshot & kill-slime-eel
+  condition-basic: kill-slime-eel
 D5-slime-eel:
   type: item
   content: heart-container
@@ -1419,13 +1419,12 @@ D8-instrument:
   type: item
   content: thunder-drum
   region: D8.a
-  condition-basic: feather & rod & kill-hothead
 D8-hothead:
   type: item
   content: heart-container
   index: 7
   region: D8.c
-  condition-basic: feather & rod & kill-hothead
+  condition-basic: feather & kill-hothead
 D8-far-northwest:
   type: item
   content: nightmare-key-D8
@@ -1447,7 +1446,6 @@ D8-northern-ledge:
   type: item
   content: medicine
   region: D8.d
-  condition-basic: feather & hookshot
 D8-gibdos:
   type: item
   content: key-D8
@@ -1493,7 +1491,7 @@ D8-east-of-pots:
 D8-east-roomba:
   type: item
   content: key-D8
-  region: D8.x
+  region: D8.i
   condition-basic: D8.af
 D8-far-southwest:
   type: item
@@ -2908,6 +2906,8 @@ D5.e:
     D5.c: kill-slime-eel
 D5.h:
   type: region
+  connections:
+    D5.ad: kill-star
 D5.i:
   type: region
   one-way:
@@ -2968,7 +2968,7 @@ D6.a:
 D6.b:
   type: region
   connections:
-    D6.aa: always
+    D6.aa: break-pot
 D6.c:
   type: region
   connections:
@@ -3030,7 +3030,7 @@ D6.s:
 D6.t:
   type: region
   connections:
-    D6.s: feather
+    D6.s: feather & hit-crystal-switch
 D8.a:
   type: region
   connections:
@@ -3052,7 +3052,7 @@ D8.e:
 D8.f:
   type: region
   connections:
-    D8.b: kill-cueball
+    D8.b: kill-cueball & feather
 D8.g:
   type: region
   connections:
@@ -3074,6 +3074,8 @@ D8.l:
   type: region
   connections:
     D8.am: always
+  one-way:
+    D8.o: always
 D8.m:
   type: region
   one-way:
@@ -3084,8 +3086,8 @@ D8.n:
     D8.m: always
 D8.o:
   type: region
-  connections:
-    D8.l: always
+  one-way:
+    D8.l: kill-zol-green
 D8.p:
   type: region
   connections:
@@ -3108,6 +3110,7 @@ D8.t:
     D8.w: feather
   one-way:
     D8.w: hookshot
+    D8.as: always
 D8.v:
   type: region
   one-way:
@@ -3118,12 +3121,14 @@ D8.w:
   type: region
 D8.x:
   type: region
-  one-way:
-    D8.af: dash-jump
+  connections:
+    D8.i: feather
 D8.z:
   type: region
 D8.aa:
   type: region
+  one-way:
+    D8.ag: kill-rope[heavy]
   doors:
     Lv08TurtleRock_08H: always
 D0.o:
@@ -3150,7 +3155,7 @@ D0.m:
   type: region
   connections:
     D0.n: key-D0:3
-    D0.l: always
+    D0.l: hit-color-dungeon-switch
 D0.k:
   type: region
 D0.c:
@@ -3357,7 +3362,7 @@ D5.u:
 D5.v:
   type: region
   connections:
-    D5.w: key-D5:2
+    D5.w: key-D5:3
   one-way:
     D5.t: always
 D5.w:
@@ -3415,7 +3420,7 @@ D5.af:
 D5.ah:
   type: region
   connections:
-    D5.h: kill-stalfos-knight
+    D5.h: always
   doors:
     Lv05CatfishsMaw_03B: always
 D5.2d-a:
@@ -3538,7 +3543,7 @@ D6.ad:
 D6.ae:
   type: region
   connections:
-    D6.af: bracelet
+    D6.af: break-pot
 D6.af:
   type: region
   doors:
@@ -3804,16 +3809,19 @@ D8.ad:
 D8.ae:
   type: region
   doors:
-    Lv08TurtleRock_08E: always
+    Lv08TurtleRock_08E: kill-arm-mimic
 D8.af:
   type: region
+  connections:
+    D8.i: dash-jump
+  one-way:
+    D8.ag: always
 D8.ag:
   type: region
-  connections:
-    D8.af: kill-smasher
-    D8.aa: kill-smasher
   one-way:
     D8.v: kill-smasher
+    D8.aa: kill-smasher
+    D8.af: kill-smasher
 D8.ah:
   type: region
   connections:
@@ -3822,10 +3830,14 @@ D8.ai:
   type: region
   connections:
     D8.ah: bombs
+  one-way:
+    D8.x: always
   doors:
     Lv08TurtleRock_06F: always
 D8.aj:
   type: region
+  one-way:
+    D8.ad: always
   doors:
     Lv08TurtleRock_06E: always
 D8.ak:
@@ -3867,23 +3879,24 @@ D8.aq:
 D8.ar:
   type: region
   connections:
-    D8.ao: kill-vire & kill-rope
+    D8.ao: kill-vire[heavy] & kill-rope[heavy]
   one-way:
     D8.h: hookshot
 D8.as:
   type: region
-  connections:
+  one-way:
+    D8.au: kill-hinox
     D8.t: kill-hinox
 D8.at:
   type: region
   connections:
     D8.s: kill-rolling-bones
     D8.z: kill-rolling-bones
-    D8.t: always
+    D8.t: kill-rolling-bones
 D8.au:
   type: region
-  connections:
-    D8.as: kill-hinox
+  one-way:
+    D8.as: kill-rope
 D8.av:
   type: region
   connections:
@@ -4016,6 +4029,8 @@ field.rapids-south-east:
   type: region
   connections:
     ancient-ruins: kill-zol-green & kill-armos
+D8.i:
+  type: region
 break-bush:
   type: interaction
   condition-basic: sword | powders | bracelet | bombs | rod | boomerang
@@ -4099,7 +4114,7 @@ dampe-3-4:
   condition-basic: dampe-3-3 & thunder-drum
 hit-crystal-far:
   type: interaction
-  condition-basic: shoot-arrows | bombs | hookshot | boomerang | rod
+  condition-basic: shoot-arrows | bombs | hookshot | boomerang | rod | sword:2
 D7-collapsed:
   type: interaction
   condition-basic: D7.j
@@ -4159,7 +4174,8 @@ kill-stone-hinox:
   condition-basic: (sword | shoot-arrows | bombs | rod | boomerang) & feather
 kill-vire:
   type: enemy
-  condition-basic: sword | powders | shoot-arrows | bombs | rod | boomerang
+  condition-basic: sword | powders | shoot-arrows | rod | boomerang | (bombs & hookshot)
+  condition-heavy: bracelet
 kill-rope:
   type: enemy
   condition-basic: sword | powders | shoot-arrows | bombs | rod | boomerang
