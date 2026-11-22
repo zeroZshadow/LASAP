@@ -18,7 +18,7 @@ from .lasr import DUNGEONS, INSTRUMENTS, WARP_LOCATORS, WARP_ZONES, door_entranc
 from .tracker import known_doors
 from .ut_map import (DOOR_STEPS, JUMP_LABELS, LOCATION_DUNGEONS, MAMBO, OVERWORLD_MAP, WARP_HOME, check_label,
                      connector_exits, door_out, door_status, drop_exits, dungeon_squares, find_route, held_warps,
-                     hidden_door_entrances, hidden_locations, route_jumps, spot_region, warp_step)
+                     hidden_door_entrances, hidden_locations, route_jumps, spot_region, unentered_ends, warp_step)
 
 TRACKER_DOORS_KEY = "tracker_doors_shown"  # Archipelago's persistent storage, under "las": TrackerMixin.show_doors
 # A pin status's colour in its tooltip (TrackerMixin.pin_text): Universal Tracker's, by its colour names
@@ -465,7 +465,8 @@ class TrackerMixin:
 
     def pin_text(self, pin) -> str:
         """A map pin's tooltip (ut_gui.MapHover): each of its checks (check_label) or doors with its status, a door
-        gone through with the door it leads to; the egg's whether the goal is in logic, with the goal's items."""
+        gone through with the door it leads to, but not the ends of a door not gone through (unentered_ends); the
+        egg's whether the goal is in logic, with the goal's items."""
         from worlds.tracker.TrackerClient import get_ut_color
         world = self.tracker_core.get_current_world()
         if pin.go_mode is not None:
@@ -473,7 +474,10 @@ class TrackerMixin:
             return "\n".join([f"Go mode: [color={colour}]{'yes' if pin.go_mode else 'no'}[/color]"]
                              + self.goal_lines(world))
         lines = []
+        hidden = unentered_ends(pin.statuses, pin.connected) if pin.kind == "entrance" else []
         for key, status in pin.statuses.items():
+            if key in hidden:
+                continue
             if pin.kind == "location":
                 name = check_label(world.location_id_to_name.get(key, str(key)))
             else:

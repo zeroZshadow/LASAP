@@ -3,6 +3,7 @@ connects the dungeon doors' entrances once the player has found them."""
 import random
 import unittest
 from types import SimpleNamespace
+from unittest import mock
 
 from BaseClasses import CollectionState
 from worlds.AutoWorld import AutoWorldRegister
@@ -201,6 +202,31 @@ class TestDeferredEntrances(unittest.TestCase):
         ctx.slot_data = {}
         for drop in DROP_ENDS:
             self.assertEqual(TrackerMixin.door_pin_names(ctx, [drop]), [drop])
+
+    def test_tooltip_hides_unentered_ends(self) -> None:
+        """A door pin's tooltip leaves off the connector's other ends until the player went through the door, as they
+        would tell where it leads. The colours are stubbed: Universal Tracker's open a Kivy window, whose log history
+        keeps later tests' worlds alive."""
+        from ..ut_context import TrackerMixin
+        regen = regenerate(self.slot_data, 4308)
+        core = SimpleNamespace(get_current_world=lambda: regen.worlds[1], multiworld=regen, player_id=1)
+        ctx = SimpleNamespace(slot_data=self.slot_data, tracker_core=core)
+        entrances = self.slot_data["entrances"]
+        start = self.slot_data["start"]
+        door = next(door for door in ENTRANCE_POOL if door != start and connector_exits(entrances, door))
+        ends = connector_exits(entrances, door)
+        statuses = {name: "passable" for name in [door, *ends]}
+        pin = SimpleNamespace(kind="entrance", go_mode=None, statuses=statuses,
+                              connected=lambda name: TrackerMixin.entrance_connected(ctx, name))
+        with mock.patch("worlds.tracker.TrackerClient.get_ut_color", return_value="FFFFFF"):
+            text = TrackerMixin.pin_text(ctx, pin)
+            self.assertIn(door_label(door), text)
+            for end in ends:
+                self.assertNotIn(door_label(end), text)
+            regen.worlds[1].reconnect_found_entrances("las_entrances_0_1", {door: entrances[door]})
+            text = TrackerMixin.pin_text(ctx, pin)
+            for end in ends:
+                self.assertIn(door_label(end), text)
 
     def test_way_out_of_a_reached_inside(self) -> None:
         """Through a connector's door Link reaches its other inside door before he knows where that one leads out: its

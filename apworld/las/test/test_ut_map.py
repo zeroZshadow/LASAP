@@ -14,7 +14,7 @@ from ..lasr import (CATEGORIES, DOORS, DROP_NAMES, DUNGEONS, WARP_POINTS, WRITTE
 from ..locations import LOCATION_NAMES
 from ..ut_map import (CONNECTOR_INSIDES, DROP_ENDS, DROP_ROUTES, LOCATION_DUNGEONS, MAPS, TRACKER_WORLD, check_label,
                       connector_exits, door_pin_colour, drop_exits, dungeon_map, dungeon_squares,
-                      hidden_door_entrances, hidden_locations, map_index, zone_places)
+                      hidden_door_entrances, hidden_locations, map_index, unentered_ends, zone_places)
 
 TRACKER = Path(__file__).resolve().parent.parent / TRACKER_WORLD["map_page_folder"]
 
@@ -141,6 +141,20 @@ class TestUTMap(unittest.TestCase):
         for statuses, connected, colour in cases:
             with self.subTest(statuses=statuses, connected=connected):
                 self.assertEqual(door_pin_colour(statuses, connected.__contains__), colour)
+
+    def test_unentered_ends(self) -> None:
+        """A door pin's ends stay off its tooltip until the player went through the door; a drop's while Link cannot
+        reach it; a dungeon map's pin has none."""
+        door, near, far = "Field_15H", "Tamaranch01_02A", "Tamaranch01_01C"
+        drop, end = "eagle-dungeon-drop -> eagle-tower-exit", "EagleTowerExit_01A_b"
+        cases = [({door: "passable", far: "passable"}, set(), [far]),
+                 ({door: "passed", far: "impassable"}, {door}, []),
+                 ({drop: "impassable", end: "passable"}, set(), [end]),
+                 ({drop: "passed", end: "passable"}, set(), []),
+                 ({near: "impassable", door_entrance("tail-cave"): "passed"}, set(), [])]
+        for statuses, connected, hidden in cases:
+            with self.subTest(statuses=statuses, connected=connected):
+                self.assertEqual(unentered_ends(statuses, connected.__contains__), hidden)
 
     def test_dungeon_doors_are_on_their_dungeons_maps(self) -> None:
         """A pin inside each door into a dungeon's level, on that dungeon's map."""

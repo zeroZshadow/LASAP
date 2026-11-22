@@ -341,14 +341,25 @@ def door_pin_colour(statuses: Mapping[str, str], connected: Callable[[str], bool
     through the door its ends do not count, as they would tell where it leads. A drop's pin counts as gone through
     while Link can reach the drop, as where it leads is known: its ends (drop_exits) count then, and it is collected
     once he has gone through the doors of the area it lands in; out of reach it is out of logic."""
-    outside = [name for name in statuses if name in OUTSIDE_DOORS or name in DROP_ROUTES]
-    entered = any(statuses[name] != "impassable" if name in DROP_ROUTES else connected(name) for name in outside)
+    hidden = unentered_ends(statuses, connected)
+    outside = any(name in OUTSIDE_DOORS or name in DROP_ROUTES for name in statuses)
     shown = set()
     for name, status in statuses.items():
-        if outside and name in INSIDE_DOORS and (not entered or connected(name)):
+        if name in hidden or (outside and name in INSIDE_DOORS and connected(name)):
             continue  # an end of a door not gone through, or one gone out of
         shown.add(door_status(name, status, statuses))
     return next((colour for status, colour in DOOR_COLOURS.items() if status in shown), "collected")
+
+
+def unentered_ends(statuses: Mapping[str, str], connected: Callable[[str], bool]) -> List[str]:
+    """A door pin's entrances that tell where its door leads, while the player has not gone through it (`connected`):
+    the ends (connector_exits, drop_exits) on an overworld door's or a drop's pin. A drop counts as gone through while
+    Link can reach it (door_pin_colour). Neither the pin's colour nor its tooltip shows them."""
+    outside = [name for name in statuses if name in OUTSIDE_DOORS or name in DROP_ROUTES]
+    if not outside or any(statuses[name] != "impassable" if name in DROP_ROUTES else connected(name)
+                          for name in outside):
+        return []
+    return [name for name in statuses if name in INSIDE_DOORS]
 
 
 def door_out(entrance: Any) -> str:
