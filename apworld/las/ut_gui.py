@@ -499,9 +499,9 @@ def outlined(lines: List[Tuple[Tuple[float, ...], Dict[str, Any]]], width: float
 
 
 class RouteLine(Widget):
-    """The route on Universal Tracker's map (TrackerMixin.route_points), in the map image's pixels, under the pins:
-    a solid ROUTE_COLOR line where Link walks on the map and a dashed ROUTE_THROUGH_COLOR one where he goes through a
-    level the map does not show, both with a dark edge."""
+    """The route on Universal Tracker's map (TrackerMixin.route_points), in the map image's pixels, over the check
+    pins and under the doors' (draw_route): a solid ROUTE_COLOR line where Link walks on the map and a dashed
+    ROUTE_THROUGH_COLOR one where he goes through a level the map does not show, both with a dark edge."""
 
     def draw(self, points: List[Tuple[float, float, bool]], pin_size: float, smooth: float) -> None:
         self.canvas.clear()
@@ -540,8 +540,9 @@ class RouteStart(Widget):
 
 
 def draw_route(page, points: List[Tuple[float, float, bool]], started: bool, pin_size: float) -> None:
-    """Draws the route on the map page's pins' canvas, which loading a map empties: its line under the pins, its start
-    over them, moved back on top as Universal Tracker adds pins and icons. Their soft edges are ROUTE_SMOOTH screen
+    """Draws the route on the map page's pins' canvas, which loading a map empties: its line over the check pins and
+    under the door and event pins (load_pins adds them in that order), its start over them all, moved back on top as
+    Universal Tracker adds pins and icons. Their soft edges are ROUTE_SMOOTH screen
     pixels wide at the map's zoom (follow_zoom)."""
     canvas = page.ids.location_canvas
     image = page.ids.tracker_map
@@ -550,7 +551,10 @@ def draw_route(page, points: List[Tuple[float, float, bool]], started: bool, pin
     line = next((w for w in canvas.children if isinstance(w, RouteLine)), None)
     if line is None:
         line = RouteLine()
-        canvas.add_widget(line, index=len(canvas.children))
+    else:
+        canvas.remove_widget(line)
+    above = [i for i, w in enumerate(canvas.children) if isinstance(w, MapPin) and w.kind != "location"]
+    canvas.add_widget(line, index=above[-1] + 1 if above else 0)  # under the lowest door or event pin
     line.draw(points, pin_size, smooth)
     start = next((w for w in canvas.children if isinstance(w, RouteStart)), None)
     if start is None:
