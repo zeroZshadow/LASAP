@@ -18,18 +18,15 @@ PATCHER = ROOT / "patcher"
 STEPS = ("generate_early", "create_regions", "create_items", "set_rules", "connect_entrances", "generate_basic")
 OPTION_SETS = [
     {},
-    {"logic": "advanced"},
-    {"logic": "glitched"},
-    {"logic": "hell"},
     {"open_mabe": False, "open_kanalet": False, "open_mamu": False, "completed_bridge": False,
      "classic_d2": True, "stealing": "never", "shuffled_bombs": False, "shuffled_powder": False},
-    {"logic": "hell", "owl_statues": "all", "blue_rupees": True, "trade_quest": True, "dampe": True,
+    {"owl_statues": "all", "blue_rupees": True, "trade_quest": True, "dampe": True,
      "rapids": True, "fishing": True, "seashell_mansion": 50, "free_book": False, "fast_fishing": False,
      "fast_stalfos": False, "stealing": "always", "warp_points": True},
     {"chests": False, "free_gifts": False, "miscellaneous": False, "boss_drops": False, "instruments": "vanilla",
      "starting_instruments": 3, "seashell_mansion": 0, "dungeon_items": "start_with"},
     {"shuffled_dungeons": True},
-    {"logic": "hell", "shuffled_dungeons": True, "owl_statues": "dungeons"},
+    {"shuffled_dungeons": True, "owl_statues": "dungeons"},
 ]
 
 

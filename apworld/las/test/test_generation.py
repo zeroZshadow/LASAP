@@ -453,16 +453,12 @@ class TestTrapCount(LASTestBase):
         self.assertEqual(lasr_settings(self.world.options)["Traps"], "Many")
 
 
-class TestAdvanced(LASTestBase):
-    options = {"logic": "advanced"}
+class TestNoQuickerFeatures(LASTestBase):
+    options = {"free_book": False, "fast_fishing": False, "fast_stalfos": False}
 
 
-class TestGlitched(LASTestBase):
-    options = {"logic": "glitched", "free_book": False, "fast_fishing": False, "fast_stalfos": False}
-
-
-class TestHell(LASTestBase):
-    options = {"logic": "hell", "small_keys": "anywhere", "nightmare_keys": "anywhere", "stealing": "always"}
+class TestKeysAnywhere(LASTestBase):
+    options = {"small_keys": "anywhere", "nightmare_keys": "anywhere", "stealing": "always"}
 
 
 class TestChestAppearance(LASTestBase):

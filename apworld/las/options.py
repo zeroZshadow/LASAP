@@ -8,13 +8,10 @@ from .lasr import DOORS, DUNGEON_POOL, HOUSE_DOOR, HOUSE_EXIT, START_DOORS, door
 
 
 class Logic(Choice):
-    """Which LASR logic preset the item placement must respect.
-    basic: no tricks. advanced: some harder techniques. glitched / hell: glitches."""
+    """Which logic the item placement must respect.
+    basic: no tricks."""
     display_name = "Logic"
     option_basic = 0
-    option_advanced = 1
-    option_glitched = 2
-    option_hell = 3
     default = 0
 
 
