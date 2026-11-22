@@ -94,7 +94,8 @@ class BlueRupees(Toggle):
 
 
 class OwlStatues(Choice):
-    """Make owl statues give items. Each one adds a location and a 20 rupee item."""
+    """Make owl statues give items. Each one adds a location and a 20 rupee item. With the dungeons' owl statues, the
+    stone beaks are progression."""
     display_name = "Owl Statues"
     option_none = 0
     option_overworld = 1

@@ -495,6 +495,16 @@ class TestChestAppearance(LASTestBase):
         options.chest_appearance.value = options.chest_appearance.option_size
         self.assertEqual(chest_look(options, "heart-container"), ["junk", "life-upgrade"])
 
+    def test_stone_beaks(self) -> None:
+        """A stone beak is junk without dungeon owl statues, else progression in progression's chest."""
+        options, beak = self.world.options, LASR_TO_ITEM["stone-beak-D1"]
+        self.assertEqual(chest_look(options, "stone-beak-D1"), ["junk", "junk"])
+        self.assertFalse(self.world.create_item(beak).advancement)
+        for owls in (options.owl_statues.option_dungeons, options.owl_statues.option_all):
+            options.owl_statues.value = owls
+            self.assertEqual(chest_look(options, "stone-beak-D1"), ["important", None])
+            self.assertTrue(self.world.create_item(beak).advancement)
+
 
 class TestTrapDecoys(LASTestBase):
     """A trap shows the model of one of the slot's shuffled progression items, in that item's chest, and the patch lists

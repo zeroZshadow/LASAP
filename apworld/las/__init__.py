@@ -450,6 +450,9 @@ class LASWorld(World):
         return bool(self.classification(LASR_TO_ITEM[lasr_item]) & ItemClassification.progression)
 
     def classification(self, name: str) -> ItemClassification:
+        """ITEM_TABLE's, except that stone beaks are progression only while dungeon owl statues give checks."""
+        if ITEM_TABLE[name].lasr_name.startswith("stone-beak-") and not lasr_settings.dungeon_owls(self.options):
+            return ItemClassification.filler
         return ITEM_TABLE[name].classification
 
     # --- items ---
@@ -501,7 +504,7 @@ class LASWorld(World):
         for loc in self.vanilla:
             content = self.content(loc)
             if self._is_progression(content):
-                item = self.create_event(LASR_TO_ITEM[content], ITEM_TABLE[LASR_TO_ITEM[content]].classification)
+                item = self.create_event(LASR_TO_ITEM[content], self.classification(LASR_TO_ITEM[content]))
                 self.get_location(LOCATION_NAMES[loc]).place_locked_item(item)
         for loc in self.locked:
             self.get_location(LOCATION_NAMES[loc]).place_locked_item(self.create_item(LASR_TO_ITEM[self.content(loc)]))
