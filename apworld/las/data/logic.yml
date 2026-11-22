@@ -2942,6 +2942,8 @@ D5.p:
     D5.r: key-D5
     D5.o: kill-helmasaur
     D5.t: kill-helmasaur
+  one-way:
+    D5.y: kill-stalfos-red & kill-stalfos-yellow
 D5.q:
   type: region
   connections:
@@ -3373,8 +3375,9 @@ D5.x:
 D5.y:
   type: region
   connections:
-    D5.p: fast-stalfos | kill-master-stalfos
     D5.l: fast-stalfos | kill-master-stalfos
+  one-way:
+    D5.p: fast-stalfos | kill-master-stalfos
 D5.z:
   type: region
   one-way:
