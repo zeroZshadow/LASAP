@@ -113,6 +113,10 @@ class ShopRandomizer:
         # lands somewhere other than Field_10D, whose ExitOutShop does not run then (AP::STOLEN_GOODS_ENTRY)
         event_tools.addEntryPoint(flow.flowchart, STOLEN_GOODS_ENTRY)
         event_tools.insertEventAfter(flow.flowchart, STOLEN_GOODS_ENTRY, check_shovel)
+        # Coming back in with StealSuccess still set (a led exit and straight back in, before the module's request):
+        # EntranceIn_Tool walks Link in and gives the items, where the shopkeeper's AngerDad would kill him
+        walk_in = event_tools.createSubFlowEvent(flow.flowchart, '', 'EntranceIn', {}, check_shovel)
+        event_tools.setSwitchEventCase(flow.flowchart, 'Event313', 1, walk_in)
 
         self.parent.file_manager.writeFile('PlayerStart.bfevfl', flow)
 

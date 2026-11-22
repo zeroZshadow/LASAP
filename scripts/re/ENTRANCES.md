@@ -201,9 +201,11 @@ The eight telephone boxes are eight levels. **Covered.** Fable: confirmed (it fo
   Link leaves through Madam's door. **Covered** for the module; the logic follows the spots. Fable: confirmed.
 - Stealing is the exception: leaving the shop with an item sets `StealSuccess` and the item's steal flag, and
   `ExitOutShop` gives the item and clears `StealSuccess` (LASR's chain). A led shop exit lands on another door's entry,
-  and `EntranceIn_Tool` punishes Link while `StealSuccess` is set. The patcher copies the chain into the `PlayerStart` entry
-  `APStolenGoods`, which the module requests once Link stands or swims free outside the shop with `StealSuccess` set
-  (`TickStolenGoods`), and before it sends him back from a water landing (DESIGN.md, Entrances, Water landings).
+  and `EntranceIn_Tool` punishes Link while `StealSuccess` is set (`ToolShopkeeper` `AngerDad`). The patcher copies the
+  chain into the `PlayerStart` entry `APStolenGoods`, which the module requests once Link stands or swims free outside
+  the shop with `StealSuccess` set (`TickStolenGoods`), and before it sends him back from a water landing (DESIGN.md,
+  Entrances, Water landings). Holding the stick back towards the door walks him in again before he is free:
+  `EntranceIn_Tool`'s `StealSuccess` case walks him in (`EntranceIn`) and plays the chain in place of `AngerDad`.
   **Covered.** In game (2026-11-15): a shop exit led into the Tal Tal waters gives the item while Link swims, and
   without the flippers before the way back into the shop; the shopkeeper lets him in.
 

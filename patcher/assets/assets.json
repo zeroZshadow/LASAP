@@ -532,7 +532,7 @@
  "region_common/event/APDrop.bfevfl": {
   "source": null,
   "source_sha256": null,
-  "sha256": "34123ce8c90de0945b29fa5af251184b4b6f0ccef6a41f06ba05eea1824acd7e"
+  "sha256": "2d15ab621045cfc6393356d986d8de8fd372acc2019816e5b43e6537d1edb254"
  },
  "region_common/event/Book.bfevfl": {
   "source": "region_common/event/Book.bfevfl",
@@ -552,7 +552,7 @@
  "region_common/event/Common.bfevfl": {
   "source": "region_common/event/Common.bfevfl",
   "source_sha256": "9661205f1d397647dd0f76c0f52aafc9089ccfb324efe463305b6c55a0f50d79",
-  "sha256": "144fc0af3601760ab14d0085225da623820f94b93052070e5bd4b9a9ebe8128c"
+  "sha256": "f0db04340108bfd690d64ac8fdb5d054b13e8094c6bb424601c2227bda4e0ec3"
  },
  "region_common/event/Danpei.bfevfl": {
   "source": "region_common/event/Danpei.bfevfl",
@@ -567,7 +567,7 @@
  "region_common/event/DungeonOwlStatue.bfevfl": {
   "source": "region_common/event/DungeonOwlStatue.bfevfl",
   "source_sha256": "c1a2220f6bbeb93c8e48f6ab79f5a295c2ce1444831716ad650c01c67ed27d64",
-  "sha256": "198b8598020cf3d20c17f6e3faf5cb9104d2e72a7240e6162002174e3e473d4b"
+  "sha256": "634b0a6222be1b8afd2cfa1a910bfc3186c126076fe9431e028824bef9baccbb"
  },
  "region_common/event/FairyQueen.bfevfl": {
   "source": "region_common/event/FairyQueen.bfevfl",
@@ -577,7 +577,7 @@
  "region_common/event/FieldOwlStatue.bfevfl": {
   "source": "region_common/event/FieldOwlStatue.bfevfl",
   "source_sha256": "b33e7c9a69c4fb4b97b1da724518c59a6cac36dcc5edc172aa8fdc7f5f53233f",
-  "sha256": "17a952f8f3550f300b86d28f3e76b1b0dc198fd53db2b01ee8d27734d5e6ad99"
+  "sha256": "6bbafae0dd61990b08e13575d5df1c474bace87d5e1ffb4e1c432da766eb2a2f"
  },
  "region_common/event/Fisherman.bfevfl": {
   "source": "region_common/event/Fisherman.bfevfl",
@@ -592,7 +592,7 @@
  "region_common/event/Ghost.bfevfl": {
   "source": "region_common/event/Ghost.bfevfl",
   "source_sha256": "d9267163bce517f1bd9062f5b0f394760268b42fc431f9c069290f029c9ccd1f",
-  "sha256": "de1ba0db903024e2fa73f87562f1e9d6167f87c24308cf323873d3db4c2f88b8"
+  "sha256": "3d7a930ec7671dd6ee814c32d82e207b47669f8c9aaebee5666829cc1f016b8e"
  },
  "region_common/event/Goriya.bfevfl": {
   "source": "region_common/event/Goriya.bfevfl",
@@ -607,7 +607,7 @@
  "region_common/event/Item.bfevfl": {
   "source": "region_common/event/Item.bfevfl",
   "source_sha256": "2ecfa2d151d053e1e4194bbe47c946fa6124555baa0d2cd900447d4cfb9bccd0",
-  "sha256": "803bb0c121c03666c4267e962bf874c57a4f295607cefda4fb1daefb3c47d338"
+  "sha256": "6b6ddb65cde2696297caad768de1b1549ccea8be5e078b9391675a6d89af7055"
  },
  "region_common/event/Kiki.bfevfl": {
   "source": "region_common/event/Kiki.bfevfl",
@@ -662,7 +662,7 @@
  "region_common/event/PlayerStart.bfevfl": {
   "source": "region_common/event/PlayerStart.bfevfl",
   "source_sha256": "39a69abcd372498b016d50315a41e857fec48ed1736359651b573c699d5d70af",
-  "sha256": "6f0c647afec0a73e29cf6c974050344b2820450b519204161c7fa657600b7e6e"
+  "sha256": "a330ac4720481de44bafbde03a1b9e666fd06ce7ec2d24fe9779a1c81012afe7"
  },
  "region_common/event/PrizeCommon.bfevfl": {
   "source": "region_common/event/PrizeCommon.bfevfl",
@@ -687,7 +687,7 @@
  "region_common/event/RoosterBones.bfevfl": {
   "source": "region_common/event/RoosterBones.bfevfl",
   "source_sha256": "2b766ba9c2720e94991e460006d74dba0500c743e004000e26f07dd78797bab7",
-  "sha256": "033954e57344197ff81fe10af29a37bd9966120a0d32bb8f9c83cf56f37005db"
+  "sha256": "3cb2fb67ee8ffc9d9192af26b21ed5b14c95d047abb8b6c5cc71848a5c77fcf4"
  },
  "region_common/event/Sale.bfevfl": {
   "source": "region_common/event/Sale.bfevfl",
@@ -732,7 +732,7 @@
  "region_common/event/TreasureBox.bfevfl": {
   "source": "region_common/event/TreasureBox.bfevfl",
   "source_sha256": "96a6a38edcc5cb59d5a4bb8f6cb14a541ce0062ee7d959e6a15034d3ce2c2d63",
-  "sha256": "36af2a82a996d32ba1cfcf2cb6e2f1510edb9a8fc435d05f03be4987f2577928"
+  "sha256": "995079d727755061e0d7f1e6bc74afc4f05aff297caa98c77d561ced482be4c7"
  },
  "region_common/event/Walrus.bfevfl": {
   "source": "region_common/event/Walrus.bfevfl",

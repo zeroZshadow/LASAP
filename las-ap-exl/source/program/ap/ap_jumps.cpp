@@ -46,7 +46,7 @@ namespace {
     // Stealing (scripts/re/ENTRANCES.md, Doors, companions and arrival events): leaving the shop with an item sets
     // StealSuccess, and Field_10D's arrival entry ExitOutShop gives the item and clears it. A shop exit led elsewhere
     // lands on another door's entry, so the patcher's copy of that chain plays once Link stands or swims free outside
-    // the shop; with StealSuccess left set the shopkeeper punishes him on the way back in.
+    // the shop. Back in the shop before that, its arrival entry EntranceIn_Tool plays the chain.
     constexpr const char* kShopLevel = "Shop";
     constexpr const char* kStealFlag = "StealSuccess";
     constexpr const char* kPlayerStartEvent = "event/PlayerStart.bfevfl";

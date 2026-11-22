@@ -18,7 +18,8 @@ The drop actor's flowchart reads and holds every drop's take entry, every drop h
 is in Npc.gsheet, and no small key or dig spot's slime key is left. Each chest's launch flag (Bouncy Items) is
 used by that chest and its drop alone, among all actors of its level (the RomFS's rooms, as the mod has them) and the
 RomFS flowcharts' level flags; so is each owl statue's (Bouncy Items, Owl Gifts). The start holds the starting items,
-the rupees and the start flags, which the start event neither gives nor sets.
+the rupees and the start flags, which the start event neither gives nor sets. The shop's arrival entry gives the stolen
+items while StealSuccess is set.
 
 python scripts/verify_patch.py <patch.aplas> <patcher output dir>
 """
@@ -496,5 +497,13 @@ if player_start.exists():
     if given:
         bad += 1
         print(f"START the start event still gives or sets {given}")
+    # Back in the shop with StealSuccess set, its arrival entry walks Link in and gives the stolen items
+    # (ShopRandomizer.makeStealingEventChanges)
+    entries = {e.name: e.main_event.v for e in chart.flowchart.entry_points}
+    steal_case = entries["EntranceIn_Tool"].data.cases[1].v.data
+    if (getattr(steal_case, "entry_point_name", None) != "EntranceIn" or
+            steal_case.nxt.v is not entries.get("APStolenGoods")):
+        bad += 1
+        print("START EntranceIn_Tool does not give the stolen items on the way back in")
 print(f"start items={len(items)} rupees={sum(rupees)} flags={len(flags)} bad={bad}")
 sys.exit(1 if bad else 0)

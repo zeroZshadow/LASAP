@@ -1,0 +1,27 @@
+# Stealing and straight back in: Link comes into the shop with StealSuccess still set, as when a led shop exit takes
+# him out and the stick held up walks him back in before the module's stolen-goods request. The shop's arrival entry
+# EntranceIn_Tool walks him in and gives the item where the shopkeeper would kill him (patcher
+# ShopRandomizer.makeStealingEventChanges). Sets the steal flags while the jump into the shop loads, so only the
+# arrival entry can give the item. Run after newgame_file2.
+guard hurt
+send DBG setflag ScoopGet 0
+expect FLAG.ScoopGet.0 5
+warp Field 51.75 10.5 117
+hold 0 0 32767 until level=Shop 5
+send DBG setflag ShopShovelSteal 1
+expect FLAG.ShopShovelSteal.1 5
+send DBG setflag StealSuccess 1
+expect FLAG.StealSuccess.1 5
+level Shop
+until textready 20
+dismiss 20
+poll FLAG.StealSuccess.0 10 DBG flag StealSuccess
+send DBG flag ShopShovelSteal
+expect FLAG.ShopShovelSteal.0 5
+send DBG flag ScoopGet
+expect FLAG.ScoopGet.1 5
+free 20
+level Shop
+# no punishment after the item: Link stays free in the shop
+wait 3
+free 5

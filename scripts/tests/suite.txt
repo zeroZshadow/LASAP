@@ -7,7 +7,7 @@
 # options are read at boot, so a group per setting. The mod is the make_test_patch.py patch of the `mod:` line's options; suite.py refuses another.
 mod: --settings '{"Owl Gifts": "All"}' --models woods-north-cave-loose=heart-piece,ukuku-cave-west-loose=sword,ukuku-cave-east-loose=magnifying-lens,graveyard-cave=seashell,D1-instrument=full-moon-cello,D0-rupee-1=coral-triangle,5-seashell-reward=sword --names "D1-instrument=Full Moon Cello,D0-rupee-1=Coral Triangle"
 boot: screens itemget_timing warp_menu itemget_models itemget_pose
-items: newgame_file2 ghost_house_pot beach_chest jukebox_height jukebox_cave jukebox_mute jukebox_load load_recv mansion_present
+items: newgame_file2 ghost_house_pot beach_chest jukebox_height jukebox_cave jukebox_mute jukebox_load load_recv mansion_present steal_back_in
 newgame_maps: newgame_file2 map_tracker map_skip map_dots map_d7 map_list kept_items_save keysanity
 enemies randomizer.enemies=True randomizer.enemy_sizes=True: newgame_file2 enemy_rando
 ohko damage.mode=OHKO: newgame_file2 damage_ohko
