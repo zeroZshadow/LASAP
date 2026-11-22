@@ -1109,6 +1109,7 @@ river:
     face-dungeon-cave-porch: cross-water & kill-armos
     kanalet-east: cross-water
     marthas-bay-land: cross-water
+    taltal-heights: cross-water
 catfish-dungeon-porch:
   type: region
 ancient-ruins:
