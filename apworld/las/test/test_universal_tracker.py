@@ -1,6 +1,7 @@
 """Universal Tracker regenerates a slot from its slot data (interpret_slot_data) with the same locations and rules, and
 connects the dungeon doors' entrances once the player has found them."""
 import random
+import sys
 import unittest
 from types import SimpleNamespace
 from unittest import mock
@@ -205,8 +206,8 @@ class TestDeferredEntrances(unittest.TestCase):
 
     def test_tooltip_hides_unentered_ends(self) -> None:
         """A door pin's tooltip leaves off the connector's other ends until the player went through the door, as they
-        would tell where it leads. The colours are stubbed: Universal Tracker's open a Kivy window, whose log history
-        keeps later tests' worlds alive."""
+        would tell where it leads. Universal Tracker's client module is a stub with its colours: the real one opens a
+        Kivy window, whose log history keeps later tests' worlds alive, and the test runs without it installed."""
         from ..ut_context import TrackerMixin
         regen = regenerate(self.slot_data, 4308)
         core = SimpleNamespace(get_current_world=lambda: regen.worlds[1], multiworld=regen, player_id=1)
@@ -218,7 +219,8 @@ class TestDeferredEntrances(unittest.TestCase):
         statuses = {name: "passable" for name in [door, *ends]}
         pin = SimpleNamespace(kind="entrance", go_mode=None, statuses=statuses,
                               connected=lambda name: TrackerMixin.entrance_connected(ctx, name))
-        with mock.patch("worlds.tracker.TrackerClient.get_ut_color", return_value="FFFFFF"):
+        client = SimpleNamespace(get_ut_color=lambda _status: "FFFFFF")
+        with mock.patch.dict(sys.modules, {"worlds.tracker.TrackerClient": client}):
             text = TrackerMixin.pin_text(ctx, pin)
             self.assertIn(door_label(door), text)
             for end in ends:
