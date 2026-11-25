@@ -298,10 +298,13 @@ rapids-south-island:
   type: item
 rapids-race-45:
   type: item
+  condition-basic: can-farm-rupees
 rapids-race-35:
   type: item
+  condition-basic: hookshot & can-farm-rupees
 rapids-race-30:
   type: item
+  condition-basic: hookshot & can-farm-rupees
 rapids-ascent-cave:
   type: item
   condition-basic: hookshot

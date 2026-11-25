@@ -579,16 +579,19 @@ rapids-race-45:
   content: heart-piece
   index: 29
   region: rapids-ride-ticket
+  condition-basic: can-farm-rupees
 rapids-race-35:
   type: item
   content: seashell
   index: 47
   region: rapids-ride-ticket
+  condition-basic: hookshot & can-farm-rupees
 rapids-race-30:
   type: item
   content: chamber-stone
   index: 8
   region: rapids-ride-ticket
+  condition-basic: hookshot & can-farm-rupees
 rapids-ascent-cave:
   type: item
   content: heart-piece
