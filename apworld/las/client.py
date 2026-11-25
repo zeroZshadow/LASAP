@@ -1014,6 +1014,22 @@ async def prepare_patch(ctx: LASContext, patch: bool) -> None:
     ctx.start_tracker_images()
 
 
+_fault_log = None  # the log file faulthandler writes to, kept open for the client's life
+
+
+def log_native_crashes() -> None:
+    """Has a crash in native code (Kivy, SDL, a driver) write the Python stack of every thread into the client's log
+    file. Such a crash ends the process at once, with no Python exception and nothing on screen."""
+    import faulthandler
+    import logging
+    global _fault_log
+    for handler in logging.getLogger().handlers:
+        if isinstance(handler, logging.FileHandler):
+            _fault_log = open(handler.baseFilename, "a", encoding="utf-8")
+            faulthandler.enable(_fault_log, all_threads=True)
+            return
+
+
 def launch(*launch_args: str) -> None:
     async def main(args) -> None:
         ctx = LASContext(args.connect, args.password, args.game_host, args.game_port, args.patch)
@@ -1067,6 +1083,7 @@ def launch(*launch_args: str) -> None:
         args.game_host = LASWorld.settings.game_host
 
     Utils.init_logging("LASClient", exception_logger="Client")
+    log_native_crashes()
     if UT_VERSION and not TRACKER_LOADED:
         logger.info(f"Universal Tracker {UT_VERSION} is older than v{'.'.join(map(str, TRACKER_MIN_VERSION))}, the "
                     f"first that shows its map here. Update it for the map tab.")

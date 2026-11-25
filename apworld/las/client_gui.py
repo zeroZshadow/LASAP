@@ -267,6 +267,8 @@ class PatchPanel(ScrollView):
         }
 
     def refresh(self) -> None:
+        if MDApp.get_running_app() is None:
+            return  # the window closed; the client still runs its disconnect while it shuts down
         if self.menu is not None or any(field.focus for field in self.fields.values()):
             return  # built again once the menu closes or the field loses focus
         model = self.model()
@@ -883,7 +885,7 @@ class TrackerPanel(MDBoxLayout):
         self.refresh()
 
     def refresh(self) -> None:
-        if self.map is not None:
+        if self.map is not None or MDApp.get_running_app() is None:
             return
         status = self.ctx.tracker_status()
         if status == self.shown:
@@ -936,7 +938,8 @@ def make_manager(base):
                 super().remove_client_tab(tab)
 
         def show_patch_tab(self) -> None:
-            if not hasattr(self, "patch_tab") or self.screens.current_tab is self.patch_tab:
+            if (MDApp.get_running_app() is None or not hasattr(self, "patch_tab") or
+                    self.screens.current_tab is self.patch_tab):
                 return
             self.screens.current_tab.active = False
             self.screens.switch_screens(self.patch_tab)
