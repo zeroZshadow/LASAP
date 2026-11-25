@@ -1014,20 +1014,40 @@ async def prepare_patch(ctx: LASContext, patch: bool) -> None:
     ctx.start_tracker_images()
 
 
-_fault_log = None  # the log file faulthandler writes to, kept open for the client's life
+_fault_log = None  # the file faulthandler writes to, kept open for the client's life
 
 
 def log_native_crashes() -> None:
-    """Has a crash in native code (Kivy, SDL, a driver) write the Python stack of every thread into the client's log
-    file. Such a crash ends the process at once, with no Python exception and nothing on screen."""
+    """Has a crash in native code (Kivy, SDL, a driver) write the Python stack of every thread into a file beside the
+    client's log, <log name>_crash.txt. Such a crash ends the process at once, with no Python exception and nothing on
+    screen. On Windows faulthandler also writes exceptions native code handles itself, so the file is not the log's
+    (whose handler would write over them) and its last dump is the one that ended the process."""
     import faulthandler
     import logging
     global _fault_log
     for handler in logging.getLogger().handlers:
         if isinstance(handler, logging.FileHandler):
-            _fault_log = open(handler.baseFilename, "a", encoding="utf-8")
+            log = Path(handler.baseFilename)
+            _fault_log = open(log.with_name(log.stem + "_crash.txt"), "w", encoding="utf-8")
             faulthandler.enable(_fault_log, all_threads=True)
             return
+
+
+def stop_logging_native_crashes() -> None:
+    """At a clean exit: the crash file goes again unless something was written to it."""
+    import faulthandler
+    global _fault_log
+    if _fault_log is None:
+        return
+    faulthandler.disable()
+    path = Path(_fault_log.name)
+    _fault_log.close()
+    _fault_log = None
+    try:
+        if path.stat().st_size == 0:
+            path.unlink()
+    except OSError:
+        pass
 
 
 def launch(*launch_args: str) -> None:
@@ -1089,5 +1109,8 @@ def launch(*launch_args: str) -> None:
                     f"first that shows its map here. Update it for the map tab.")
     import colorama
     colorama.just_fix_windows_console()
-    asyncio.run(main(args))
+    try:
+        asyncio.run(main(args))
+    finally:
+        stop_logging_native_crashes()
     colorama.deinit()

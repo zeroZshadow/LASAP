@@ -120,8 +120,13 @@ class TrackerMixin:
 
     async def build_tracker_images(self, romfs: Path) -> None:
         self.tracker_problem = None
+        loop = asyncio.get_running_loop()
+
+        def log(line: str) -> None:  # the log shows in the window, which only its own thread may change
+            loop.call_soon_threadsafe(logger.info, line)
+
         try:
-            path = await asyncio.to_thread(tracker_images, romfs, logger.info)
+            path = await asyncio.to_thread(tracker_images, romfs, log)
         except Exception as e:
             logger.exception(f"Could not build the tracker's map: {e}")
             self.tracker_problem = f"Could not build the map: {e}"
